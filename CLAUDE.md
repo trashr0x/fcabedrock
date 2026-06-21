@@ -132,8 +132,37 @@ git worktree add ../fcabedrock-agent-<task> -b agent/<task> main
 Worktrees isolate work; they do not justify broad diffs, opportunistic cleanup,
 or unrelated refactors.
 
+## Plan before code
+
+For any non-trivial implementation task, do not start editing immediately.
+
+First inspect the relevant docs and code, then propose a short, concrete plan:
+
+- what will change, and which files/projects it touches;
+- whether any **public** API, contract, or diagnostic changes (this is the
+  workflow face of principle P-4 — design the surface before the implementation);
+- what tests will be added or updated;
+- assumptions, open questions, and ambiguities that need confirmation.
+
+For non-trivial implementation work, present the plan and wait for a go-ahead
+before editing code.
+
+For consequential changes — new public surface, cross-package contract, a
+deviation from the spec or a decision, anything touching determinism or output
+bytes — the plan should be more explicit about the contract, risks, and test
+coverage before asking for approval.
+
+If the task is purely mechanical or trivial, say so and proceed with a brief
+note rather than a full plan.
+
+If scope expands mid-task, stop and revise the plan before continuing — this is
+the planning-time face of "surgical changes" (principle P-1) and of the
+diff-growth rule in the git-discipline section above.
+
+Do not implement first and explain later.
+
 ## Current status
 
-Design phase complete; `bedrock-spec-v1.md` frozen pending final review.
-Next up: **M0 — solution skeleton + golden-fixture harness.** See
-`docs/roadmap.md`.
+Design phase complete. Final review passed.
+Next up: **M0 — solution skeleton + golden-fixture harness.**
+See `docs/roadmap.md`.
