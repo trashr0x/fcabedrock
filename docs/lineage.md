@@ -12,8 +12,11 @@ so vNext neither under-builds (missing learned features) nor over-builds
 
 ## 1. FcaBedrock v2 (VB.NET, ICCS 2010)
 
-The direct predecessor. A desktop tool that loads tabular or 3-column data,
-auto-detects or accepts a `.bed` spec, and exports `.cxt` / `.dat`.
+The direct predecessor. Initial versions began as the author's BSc final-year
+project and were extended during the PhD at Sheffield Hallam University, during
+which the tool was published at ICCS 2010 (Andrews & Orphanides). A desktop tool
+that loads tabular or 3-column data, auto-detects or accepts a `.bed` spec, and
+exports `.cxt` / `.dat`.
 
 **Feature floor (vNext must meet or exceed):**
 
@@ -71,7 +74,7 @@ with a one-way `.bed` reader for migration.
 
 ---
 
-## 2. PhD thesis (Orphanides, Jan 2023)
+## 2. PhD thesis (Orphanides, Sep 2022)
 
 "Appropriating Data from Structured Sources for Formal Concept Analysis."
 Establishes the *semantics* vNext implements and the *theory ceiling* it
@@ -113,8 +116,8 @@ leaves room for.
 
 A separate prototype, newer than v2 in some respects, explored triple-store /
 SPARQL input and scaled query results into formal contexts. The source code is
-not assumed to be available to future readers, but the approach is documented
-in the PhD thesis, §5.4.4 "CUBIST Scaleful Approach". For vNext, this is
+not assumed to be available to future readers, but the approach is documented in
+the PhD thesis, Section 5.4.4, "CUBIST Scaleful Approach". For vNext, this is
 treated as a design signal for a future SPARQL adapter, not as a v1 requirement.
 
 **What it confirms / adds beyond v2:**
@@ -172,9 +175,9 @@ The three predecessors agree on the substance and differ only in rigor:
 - The SPARQL adapter is deferred (D-007 scope is CSV/triples first) but its
   shape is now concrete: a `SELECT` result set is just another
   `IObjectRecordStream`, so it slots in without disturbing Core/Conversion.
-- Three independent binning bugs in SPARQL2FCA are explicitly catalogued above
-  so vNext's principled implementations are validated against the *intent*, not
-  the buggy prior code.
+- SPARQL2FCA's binning was prototype-grade rather than specification-grade (§3);
+  vNext's principled implementations are validated against the *intent*
+  documented in the thesis, not against the prototype's behaviour.
 
 > Basis for this synthesis: the original FcaBedrock v2 behaviour and example
 > files, the PhD thesis, and the SPARQL/CUBIST prototype lineage described in

@@ -31,21 +31,27 @@ spec and the engineering record. Implementation starts at milestone **M0**
 ## Lineage and credits
 
 This project is a from-scratch successor to the original **FcaBedrock** (v2,
-VB.NET), developed during the author's PhD at Sheffield Hallam University and
-published as:
+VB.NET). Initial versions of FcaBedrock were created as part of the author's BSc
+Computing final year project, and subsequent versions were developed during the
+author's PhD at Sheffield Hallam University on appropriating structured data for
+Formal Concept Analysis (FCA).
+
+The original FcaBedrock tool was published as:
 
 > Andrews, S., Orphanides, C.: *FcaBedrock, a Formal Context Creator.*
 > In: Croitoru, M., Ferré, S., Lukose, D. (eds.) ICCS 2010. LNCS, vol. 6208,
 > pp. 181–184. Springer, Heidelberg (2010).
 
-The original tool was co-authored with **Simon Andrews**, the author's PhD
-supervisor, and remains available on
+The ICCS 2010 paper is the primary publication reference for the original tool.
+The later PhD thesis provides the fuller treatment of FCA data appropriation and
+the conceptual-scaling semantics that inform vNext.
+
+The original tool remains available on
 [SourceForge](https://sourceforge.net/projects/fcabedrock). vNext is a
 sole-authored rewrite that reproduces the v2 compatibility behaviour (verified
 against the v2 output as byte-equality golden tests) while modernising the
-architecture; the conceptual-scaling semantics derive from the author's PhD
-thesis on appropriating structured data for FCA. The SPARQL2FCA prototype
-informs the (deferred) triple-store source path.
+architecture. The SPARQL2FCA prototype informs the deferred triple-store source
+path.
 
 ## License
 
