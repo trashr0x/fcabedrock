@@ -13,16 +13,16 @@ user-curated **Bedrock spec** describing how raw values become formal-context
 attributes via conceptual scaling, and emits deterministic **Burmeister
 `.cxt`** or **FIMI `.dat`** files for downstream FCA tools (ConExp, etc.).
 
-Lineage: the original FcaBedrock (v2, VB.NET) was published at ICCS 2010 with
-supervisor Simon Andrews and developed alongside the author's PhD on
-appropriating structured data for FCA. vNext is a sole-authored, from-scratch
-rewrite. See `docs/lineage.md` for what v2 did and what the thesis settled.
+Lineage: the original FcaBedrock (v2, VB.NET) began as the author's BSc final
+year project, was extended during the author's PhD on appropriating structured
+data for FCA, and was published at ICCS 2010 with Simon Andrews. vNext is a
+sole-authored, from-scratch rewrite. See `docs/lineage.md` for what v2 did and
+what the thesis settled.
 
-- **Author / copyright:** Constantinos Orphanides (sole).
-- **License:** MIT (same as v2).
+- **Author / copyright:** Constantinos Orphanides.
+- **License:** MIT.
 - **Credit:** v2, the ICCS 2010 paper, the PhD thesis, and Simon Andrews are
-  acknowledged in `README.md` / `ACKNOWLEDGMENTS.md`. Simon may join as a
-  second author later; not currently.
+  acknowledged in `README.md`.
 
 ## The one idea that anchors everything
 
@@ -32,13 +32,13 @@ formal attributes. Every v2 "attribute type" is a (discretizer, scale) pair,
 and new combinations fall out for free. If a change blurs this separation,
 it's almost certainly wrong. See `docs/decisions.md` D-002.
 
-```
+```text
 raw value --[discretizer]--> bin label --[scale]--> formal attribute(s)
 ```
 
 ## Repository layout
 
-```
+```text
 /CLAUDE.md                     # this file
 /README.md                     # public-facing; includes credits
 /docs/
@@ -61,7 +61,7 @@ raw value --[discretizer]--> bin label --[scale]--> formal attribute(s)
 /tests/
   *.Tests/                     # xUnit per package
   FcaBedrock.Golden.Tests/     # byte-equality against the v2 mini-* fixtures
-  FcaBedrock.Bench/            # BenchmarkDotNet; large synthetic data, opt-in
+  FcaBedrock.Benchmarks/       # BenchmarkDotNet; large synthetic data, opt-in
 /fixtures/
   v2/                          # the three v2 mini-* examples, checked in verbatim
 ```
