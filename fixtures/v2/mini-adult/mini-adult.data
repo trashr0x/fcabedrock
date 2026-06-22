@@ -1,4 +1,4 @@
-age,education,employment,sex,US-citizen,classs
+age,education,employment,sex,US-citizen,class
 39,Bachelors,Clerical,Male,Yes,<=50K
 50,Bachelors,Managerial,Female,Yes,<=50K
 38,HS-grad,Unskilled,Male,Yes,<=50K
