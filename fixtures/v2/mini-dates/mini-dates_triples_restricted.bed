@@ -1,0 +1,33 @@
+[Number of Attributes]
+3
+
+[Attributes]
+dob
+name
+gender
+
+[Attribute Categories]
+<,01/01/1980,01/01/2000,01/01/2020,>
+george,chara,markos,constantinos,katia,simon,marinos,ioanna,christis,andreas,john
+male,female
+
+[Category Values]
+<,01/01/1980,01/01/2000,01/01/2020,>
+george,chara,markos,constantinos,katia,simon,marinos,ioanna,christis,andreas,john
+male,female
+
+[Convert Attribute]
+True
+True
+True
+
+[Attribute Type]
+d
+c
+c
+
+[Restrict To Values]
+
+chara,constantinos,katia,ioanna
+
+[End]
