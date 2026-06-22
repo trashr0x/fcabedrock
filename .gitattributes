@@ -1,0 +1,4 @@
+# Keep the v2 golden fixtures byte-exact: never normalize line endings (v2 .cxt
+# and .dat outputs use CRLF, and golden comparison is byte-for-byte), but still
+# render textual diffs in review. See docs/principles.md P-9.
+fixtures/** -text

@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/FcaBedrock.Core/FcaBedrock.Core.csproj" />
+    <Project Path="src/FcaBedrock.Diagnostics/FcaBedrock.Diagnostics.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/FcaBedrock.Architecture.Tests/FcaBedrock.Architecture.Tests.csproj" />
+    <Project Path="tests/FcaBedrock.Golden.Tests/FcaBedrock.Golden.Tests.csproj" />
+  </Folder>
+</Solution>

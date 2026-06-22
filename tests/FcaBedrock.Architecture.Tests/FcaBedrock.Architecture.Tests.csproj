@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+  </ItemGroup>
+
+  <!-- Referenced only so their assemblies land in this project's output directory
+       for reflection (a test seam, P-6). The dependency-direction rules are
+       asserted over the compiled FcaBedrock.*.dll metadata. -->
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\FcaBedrock.Diagnostics\FcaBedrock.Diagnostics.csproj" />
+    <ProjectReference Include="..\..\src\FcaBedrock.Core\FcaBedrock.Core.csproj" />
+  </ItemGroup>
+
+</Project>

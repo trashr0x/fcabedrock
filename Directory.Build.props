@@ -1,0 +1,37 @@
+<Project>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Deterministic>true</Deterministic>
+  </PropertyGroup>
+
+  <!-- Analyzers and code style. EnforceCodeStyleInBuild makes the .editorconfig
+       IDE* severities run at build, not just in the IDE. GenerateDocumentationFile
+       is required for IDE0005 (unused usings) to report at build; CS1591 is
+       silenced so an empty/skeleton project is not forced to carry XML docs. -->
+  <PropertyGroup>
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <AnalysisLevel>latest</AnalysisLevel>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+
+    <!-- Warnings are errors everywhere. There is no CI yet, so a CI-only gate
+         would never fire; the analyzer-dense .editorconfig is meant to bite. Use
+         -p:TreatWarningsAsErrors=false for ad-hoc local debugging. -->
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <RepoRoot>$(MSBuildThisFileDirectory)</RepoRoot>
+    <Authors>Constantinos Orphanides</Authors>
+    <Company>Constantinos Orphanides</Company>
+    <Product>FcaBedrock vNext</Product>
+    <Copyright>Copyright (c) Constantinos Orphanides</Copyright>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+  </PropertyGroup>
+
+</Project>
