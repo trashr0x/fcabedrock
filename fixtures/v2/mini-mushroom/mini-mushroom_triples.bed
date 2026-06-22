@@ -1,0 +1,45 @@
+[Number of Attributes]
+5
+
+[Attributes]
+class
+bruises?
+gill-size
+veil-type
+ring-number
+
+[Attribute Categories]
+edible,poisonous
+bruises,no
+broad,narrow
+partial,universal
+none,one,two
+
+[Category Values]
+e,p
+t,f
+b,n
+p,u
+n,o,t
+
+[Convert Attribute]
+False
+True
+True
+True
+True
+
+[Attribute Type]
+c
+b
+c
+c
+c
+
+[Restrict To Values]
+
+
+
+
+
+[End]
