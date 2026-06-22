@@ -28,6 +28,12 @@ spec and the engineering record. Implementation starts at milestone **M0**
   SPARQL2FCA prototype) settled, distilled.
 - **`CLAUDE.md`** — repo orientation for contributors and coding agents.
 
+## Test fixtures
+
+vNext's golden tests compare output byte-for-byte against fixtures produced by
+FcaBedrock v2, under `fixtures/v2/`. Fixture-level dataset provenance and
+attribution are documented in `fixtures/v2/ATTRIBUTION.md`.
+
 ## Lineage and credits
 
 This project is a from-scratch successor to the original **FcaBedrock** (v2,

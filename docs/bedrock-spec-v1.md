@@ -1465,7 +1465,7 @@ source = { kind = "column", index = 5 }
 include = false
 ```
 
-### 19.3 mini-adult-3col-with-names (triple input)
+### 19.3 mini-adult_triples_named (triple input, named subjects)
 
 ```toml
 [spec]

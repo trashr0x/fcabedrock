@@ -14,7 +14,11 @@ vertical slices, not waterfall phases — each should leave the system working.
 
 ### M0 — Skeleton + golden harness
 
-Solution + 9 projects per `CLAUDE.md` layout. xUnit + BenchmarkDotNet wiring.
+Solution per `CLAUDE.md` layout, with packages created by the milestone that
+first needs them — M0 creates `FcaBedrock.Diagnostics` + `FcaBedrock.Core` plus
+the test projects; the remaining packages follow as their code lands (empty
+shells up front would be speculative noise — P-3). xUnit wiring (BenchmarkDotNet
+deferred to M8, where its first benchmark lives).
 `FcaBedrock.Golden.Tests` running against the three v2 `fixtures/v2/` examples
 with placeholder pass-throughs (expected = the v2 file; actual starts as a copy
 until M1). One end-to-end smoke test: read `mini-mushroom.bed` + data, write
@@ -52,9 +56,9 @@ clear diagnostics.
 
 Subject-grouped fast path (single-pass streaming) first; unordered slow path
 (external sort-merge, configurable in-memory buffer) second. Object-key
-derivation from the subject column. Reproduce `mini-adult-3col-with-names`
+derivation from the subject column. Reproduce `mini-adult_triples_named`
 byte-identical.
-**Exit:** both triple orderings work; 3-col golden matches.
+**Exit:** both triple orderings work; the triple-input golden matches.
 
 ### M4 — Continuous scaling beyond manual cuts
 
@@ -88,7 +92,7 @@ fast spec-authoring loop.
 ### M8 — First scaling / benchmark pass
 
 BenchmarkDotNet against synthetic 7.3M- and 73M-record datasets (in
-`FcaBedrock.Bench`, gated behind a category filter — NOT in normal
+`FcaBedrock.Benchmarks`, gated behind a category filter — NOT in normal
 `dotnet test`). Profile, fix allocation hotspots, set memory budgets. Pressure-
 tests the `Sources` and `Conversion` streaming choices (D-007).
 **Exit:** documented throughput/memory at target scale; no full-matrix

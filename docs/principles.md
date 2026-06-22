@@ -258,7 +258,7 @@ allocations; elsewhere, write for clarity.
 ### P-18 — Performance claims are measured, not asserted
 
 Any "this is faster / lower-allocation" change to a hot path is backed by a
-BenchmarkDotNet result in `FcaBedrock.Bench`, not by intuition. A clever trick
+BenchmarkDotNet result in `FcaBedrock.Benchmarks`, not by intuition. A clever trick
 justified by performance needs benchmark evidence; otherwise prefer the simpler
 code. Non-obvious code that exists for *determinism or correctness* rather than
 performance is governed by P-7 ("Determinism is a test, not an aspiration") and
@@ -272,7 +272,7 @@ they're modern.
 
 ### P-19 — Large-scale tests are opt-in and never gate the normal suite
 
-The 7.3M / 73M synthetic datasets live in `FcaBedrock.Bench`, behind a category
+The 7.3M / 73M synthetic datasets live in `FcaBedrock.Benchmarks`, behind a category
 filter. `dotnet test` stays fast and runs on the mini fixtures. A multi-minute
 benchmark must never be reachable by a plain `dotnet test`.
 
