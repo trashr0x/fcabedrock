@@ -11,7 +11,7 @@ namespace FcaBedrock.Golden.Tests;
 public sealed class ByteComparerTests
 {
     [Fact]
-    public void IdenticalSequences_AreReportedEqual()
+    public void Compare_WhenSequencesIdentical_ThenReportsEqual()
     {
         var a = new byte[] { 0x42, 0x00, 0x01, 0x58 };
         var b = new byte[] { 0x42, 0x00, 0x01, 0x58 };
@@ -23,7 +23,7 @@ public sealed class ByteComparerTests
     }
 
     [Fact]
-    public void DifferingByte_IsReportedAtItsOffset()
+    public void Compare_WhenBytesDifferAtOffset_ThenReportsThatOffset()
     {
         var a = new byte[] { 0x42, 0x00, 0x01, 0x58 };
         var b = new byte[] { 0x42, 0x00, 0x99, 0x58 };
@@ -35,7 +35,7 @@ public sealed class ByteComparerTests
     }
 
     [Fact]
-    public void LengthMismatch_IsReportedAtFirstMissingByte()
+    public void Compare_WhenLengthsDiffer_ThenReportsFirstMissingByteOffset()
     {
         var shorter = new byte[] { 0x01, 0x02, 0x03 };
         var longer = new byte[] { 0x01, 0x02, 0x03, 0x04 };
@@ -47,7 +47,7 @@ public sealed class ByteComparerTests
     }
 
     [Fact]
-    public void EmptySequences_AreReportedEqual()
+    public void Compare_WhenBothEmpty_ThenReportsEqual()
     {
         var result = ByteComparer.Compare(Array.Empty<byte>(), Array.Empty<byte>());
 

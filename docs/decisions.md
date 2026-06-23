@@ -511,6 +511,30 @@ refinement markers (D-003, D-005, D-021); the entries below are new.
 - **Affects:** all packages; governance. See also the mechanical-backstop
   follow-up in `roadmap.md` (M0).
 
+### D-039 — Test conventions + ArchUnitNET for architecture tests
+
+- **Status:** accepted
+- **Date:** 2026-06-23
+- **Decision:** project test conventions live in `CLAUDE.md` ("Testing
+  conventions"): one `FcaBedrock.<Package>.Tests` project per package (created when
+  the package gains code), unit test class `<ClassUnderTest>Tests` mirroring the
+  production type's folder/namespace, unit/behavioural methods named
+  `Subject_When<Condition>_Then<Outcome>`, and architecture tests named
+  `Subject_Should<Outcome>`. Architecture/dependency tests are written with
+  **ArchUnitNET** (`TngTech.ArchUnitNET.xUnit`), replacing the hand-rolled
+  reflection harness.
+- **Why:** one documented test style (P-5), and a fluent arch-test library whose
+  type-level dependency analysis can enforce invariants reflection cannot — notably
+  P-12 ("Core is pure: no `System.IO`") once Core has code at M1. The cross-package
+  layering and cycle rules read declaratively and extend cleanly as packages land.
+- **Rejected:** NetArchTest.Rules — simpler fluent API but less expressive and less
+  actively maintained; the hand-rolled reflection harness — zero-dependency but
+  assembly-reference granular, so it cannot see type-level dependencies like
+  `System.IO.File`. On M0's empty assemblies all three are equally vacuous, so the
+  arch suite keeps a non-vacuous "production assemblies were loaded" guard.
+- **Affects:** tests (`FcaBedrock.Architecture.Tests`, `*.Tests` naming),
+  `CLAUDE.md`, `Directory.Packages.props`.
+
 ---
 
 ## Spec-field defaults

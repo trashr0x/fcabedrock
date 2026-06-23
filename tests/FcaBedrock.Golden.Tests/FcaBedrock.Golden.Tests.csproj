@@ -7,8 +7,7 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
-    <PackageReference Include="xunit" />
-    <PackageReference Include="xunit.runner.visualstudio" />
+    <PackageReference Include="xunit.v3" />
   </ItemGroup>
 
   <!-- User-supplied v2 golden fixtures, copied next to the test assembly so tests
@@ -16,11 +15,7 @@
        .gitattributes prevents EOL normalization. The README is excluded. When no
        fixtures are present the glob matches nothing and the harness skips. -->
   <ItemGroup>
-    <Content Include="$(RepoRoot)fixtures\v2\**\*"
-             Exclude="$(RepoRoot)fixtures\v2\**\*.md"
-             Link="fixtures\v2\%(RecursiveDir)%(Filename)%(Extension)"
-             CopyToOutputDirectory="PreserveNewest"
-             Visible="false" />
+    <Content Include="$(RepoRoot)fixtures\v2\**\*" Exclude="$(RepoRoot)fixtures\v2\**\*.md" Link="fixtures\v2\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" Visible="false" />
   </ItemGroup>
 
 </Project>

@@ -1,52 +1,81 @@
 // Copyright (c) Constantinos Orphanides. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
-using System.Reflection;
+using ArchUnitNET.Loader;
+using ArchUnitNET.xUnitV3;
 using Xunit;
+using static ArchUnitNET.Fluent.ArchRuleDefinition;
+using static ArchUnitNET.Fluent.Slices.SliceRuleDefinition;
+using ArchModel = ArchUnitNET.Domain.Architecture;
+using Assembly = System.Reflection.Assembly;
 
 namespace FcaBedrock.Architecture.Tests;
 
-// Executable encoding of the CLAUDE.md dependency rule: Diagnostics is the only
-// internal package referenced by everything, Core references only Diagnostics,
-// and there are no cycles. The rules are read off the compiled FcaBedrock.*.dll
-// metadata, so the moment a later milestone introduces a forbidden cross-package
-// reference, the offending edge fails here.
+// Executable encoding of the CLAUDE.md dependency rule, via ArchUnitNET:
+// Diagnostics is a leaf, Core depends only on Diagnostics, and the packages form
+// no cycles. Rules are expressed against the loaded production assemblies (exact,
+// and correct-by-construction as packages are added). ArchUnitNET reads compiled
+// type-level metadata, so these become load-bearing the moment M1 gives the
+// (currently empty) assemblies real types and references; until then the
+// dependency/cycle rules are vacuously satisfied, and
+// Architecture_ShouldIncludeProductionAssemblies is the non-vacuous M0 check that
+// the suite really inspected the production assemblies rather than nothing.
 public sealed class DependencyRulesTests
 {
-    private const string Prefix = "FcaBedrock.";
+    private static readonly Assembly[] Production = LoadProductionAssemblies();
+
+    private static readonly ArchModel Architecture =
+        new ArchLoader().LoadAssemblies(Production).Build();
 
     [Fact]
-    public void Diagnostics_IsALeaf()
+    public void Architecture_ShouldIncludeProductionAssemblies()
     {
-        var diagnostics = Production().Single(a => Name(a) == "FcaBedrock.Diagnostics");
+        var names = Production.Select(a => a.GetName().Name).ToList();
 
-        Assert.Empty(InternalReferences(diagnostics));
+        Assert.Contains("FcaBedrock.Core", names);
+        Assert.Contains("FcaBedrock.Diagnostics", names);
     }
 
     [Fact]
-    public void Core_ReferencesOnlyDiagnostics()
+    public void Diagnostics_ShouldNotDependOnOtherPackages()
     {
-        var core = Production().Single(a => Name(a) == "FcaBedrock.Core");
+        var others = ProductionExcept("FcaBedrock.Diagnostics");
+        Assert.NotEmpty(others); // at least FcaBedrock.Core is present
 
-        Assert.All(InternalReferences(core), r => Assert.Equal("FcaBedrock.Diagnostics", r));
+        Types().That().ResideInAssembly(Asm("FcaBedrock.Diagnostics"))
+            .Should().NotDependOnAny(Types().That().ResideInAssembly(others[0], others[1..]))
+            .WithoutRequiringPositiveResults() // tolerate empty subject on M0's typeless assemblies
+            .Check(Architecture);
     }
 
     [Fact]
-    public void InternalReferenceGraph_IsAcyclic()
+    public void Core_ShouldOnlyDependOnDiagnostics()
     {
-        var graph = Production().ToDictionary(
-            Name,
-            a => InternalReferences(a).ToHashSet(StringComparer.Ordinal),
-            StringComparer.Ordinal);
+        var forbidden = ProductionExcept("FcaBedrock.Core", "FcaBedrock.Diagnostics");
+        if (forbidden.Length == 0)
+        {
+            return; // M0: no other packages exist yet; this rule gains teeth at M1
+        }
 
-        var cycle = FindCycle(graph);
-
-        Assert.True(cycle is null, cycle is null ? string.Empty : "reference cycle: " + string.Join(" -> ", cycle));
+        Types().That().ResideInAssembly(Asm("FcaBedrock.Core"))
+            .Should().NotDependOnAny(Types().That().ResideInAssembly(forbidden[0], forbidden[1..]))
+            .WithoutRequiringPositiveResults() // tolerate empty subject on M0's typeless assemblies
+            .Check(Architecture);
     }
 
-    private static string Name(Assembly assembly) => assembly.GetName().Name ?? string.Empty;
+    [Fact]
+    public void Packages_ShouldBeFreeOfCycles()
+    {
+        Slices().Matching("FcaBedrock.(*)").Should().BeFreeOfCycles().Check(Architecture);
+    }
 
-    private static IReadOnlyList<Assembly> Production()
+    private static Assembly Asm(string simpleName) =>
+        Production.Single(a => a.GetName().Name == simpleName);
+
+    private static Assembly[] ProductionExcept(params string[] simpleNames) =>
+        Production.Where(a => !simpleNames.Contains(a.GetName().Name)).ToArray();
+
+    private static Assembly[] LoadProductionAssemblies()
     {
         var result = new List<Assembly>();
         foreach (var path in Directory.EnumerateFiles(AppContext.BaseDirectory, "FcaBedrock.*.dll"))
@@ -60,66 +89,6 @@ public sealed class DependencyRulesTests
             result.Add(Assembly.LoadFrom(path));
         }
 
-        return result;
-    }
-
-    private static IEnumerable<string> InternalReferences(Assembly assembly) =>
-        assembly.GetReferencedAssemblies()
-            .Select(a => a.Name ?? string.Empty)
-            .Where(n => n.StartsWith(Prefix, StringComparison.Ordinal));
-
-    private static IReadOnlyList<string>? FindCycle(IReadOnlyDictionary<string, HashSet<string>> graph)
-    {
-        var visiting = new HashSet<string>(StringComparer.Ordinal);
-        var visited = new HashSet<string>(StringComparer.Ordinal);
-        var stack = new List<string>();
-
-        foreach (var node in graph.Keys)
-        {
-            var cycle = Visit(node, graph, visiting, visited, stack);
-            if (cycle is not null)
-            {
-                return cycle;
-            }
-        }
-
-        return null;
-    }
-
-    private static IReadOnlyList<string>? Visit(
-        string node,
-        IReadOnlyDictionary<string, HashSet<string>> graph,
-        HashSet<string> visiting,
-        HashSet<string> visited,
-        List<string> stack)
-    {
-        if (visited.Contains(node))
-        {
-            return null;
-        }
-
-        if (!visiting.Add(node))
-        {
-            var from = stack.IndexOf(node);
-            return stack.Skip(from < 0 ? 0 : from).Append(node).ToList();
-        }
-
-        stack.Add(node);
-        if (graph.TryGetValue(node, out var dependencies))
-        {
-            foreach (var dependency in dependencies)
-            {
-                var cycle = Visit(dependency, graph, visiting, visited, stack);
-                if (cycle is not null)
-                {
-                    return cycle;
-                }
-            }
-        }
-
-        stack.RemoveAt(stack.Count - 1);
-        visiting.Remove(node);
-        visited.Add(node);
-        return null;
+        return result.ToArray();
     }
 }

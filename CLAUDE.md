@@ -91,6 +91,32 @@ references. `Core` never references `Sources`, `Export`, `Cli`, or `Desktop`.
 - **Prefer small composable pieces over god classes.** Keep responsibilities
   narrow, APIs focused, and implementation units easy to test and replace.
 
+## Testing conventions
+
+How a session writes tests (the project standard; rationale in `docs/decisions.md`
+D-039):
+
+- **One test project per production package**, named `FcaBedrock.<Package>.Tests`,
+  created when that package first has testable code — not before (see the M0
+  "only M0-relevant projects" choice).
+- **Unit test class = `<ClassUnderTest>Tests`**, placed in a folder and namespace
+  that mirror the production type's:
+  `src/FcaBedrock.Core/Scaling/NominalScale.cs` (namespace
+  `FcaBedrock.Core.Scaling`) →
+  `tests/FcaBedrock.Core.Tests/Scaling/NominalScaleTests.cs` (namespace
+  `FcaBedrock.Core.Tests.Scaling`).
+- **Unit / behavioural test methods** are named
+  `Subject_When<Condition>_Then<Outcome>` — `Subject` is the method under test for
+  a unit test, or the behaviour/feature for a higher-level test (e.g.
+  `Compare_WhenLengthsDiffer_ThenReportsFirstMissingByteOffset`).
+- **Architecture tests** use assertion-style `Subject_Should<Outcome>` (When/Then
+  is artificial for static-structure rules) and are written with **ArchUnitNET**,
+  not hand-rolled reflection.
+- **Cross-cutting suites** (the golden harness, the architecture suite) are
+  organized by behaviour, not mirrored to a production type. Test-only helpers
+  (e.g. `ByteComparer`, `FixturePaths`) live at the test-project root and do not
+  mirror production.
+
 ## Workflow for a new session
 
 1. Read this file + `docs/decisions.md` + `docs/roadmap.md` (current position).

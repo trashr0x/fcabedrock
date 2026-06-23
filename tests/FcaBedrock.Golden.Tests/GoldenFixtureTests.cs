@@ -14,7 +14,7 @@ namespace FcaBedrock.Golden.Tests;
 public sealed class GoldenFixtureTests
 {
     [Fact]
-    public void EveryGoldenOutput_ByteMatchesActual_Placeholder()
+    public void GoldenOutputs_WhenComparedToActual_ThenMatchByteForByte()
     {
         foreach (var expectedPath in FixturePaths.EnumerateExpectedOutputs())
         {
@@ -28,7 +28,7 @@ public sealed class GoldenFixtureTests
     }
 
     [Fact]
-    public void MiniMushroom_HasGoldenOutputs_WhenPresent()
+    public void MiniMushroom_WhenPresent_ThenHasGoldenOutputs()
     {
         var exampleDir = Path.Combine(FixturePaths.V2Root, "mini-mushroom");
         if (!Directory.Exists(exampleDir))
