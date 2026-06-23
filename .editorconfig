@@ -325,9 +325,8 @@ dotnet_diagnostic.IDE0060.severity = warning
 # IDE0062: Make local function static
 dotnet_diagnostic.IDE0062.severity = warning
 
-# IDE0073: File header
-dotnet_diagnostic.IDE0073.severity = warning
-file_header_template = Copyright (c) Constantinos Orphanides. All rights reserved.\nLicensed under the MIT License. See LICENSE in the project root for license information.
+# IDE0073: File header — not required; the root LICENSE covers the whole MIT repo.
+dotnet_diagnostic.IDE0073.severity = none
 
 # IDE0161: Convert to file-scoped namespace
 dotnet_diagnostic.IDE0161.severity = warning

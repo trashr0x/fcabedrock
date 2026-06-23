@@ -1,6 +1,3 @@
-// Copyright (c) Constantinos Orphanides. All rights reserved.
-// Licensed under the MIT License. See LICENSE in the project root for license information.
-
 namespace FcaBedrock.Golden.Tests;
 
 // Locates the v2 fixtures that the csproj copies next to the test assembly, and

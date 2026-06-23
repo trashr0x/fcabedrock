@@ -1,8 +1,3 @@
-// Copyright (c) Constantinos Orphanides. All rights reserved.
-// Licensed under the MIT License. See LICENSE in the project root for license information.
-
-using Xunit;
-
 namespace FcaBedrock.Golden.Tests;
 
 // The golden harness over the real v2 fixtures. In M0 there is no converter yet,

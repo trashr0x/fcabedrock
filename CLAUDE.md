@@ -116,6 +116,22 @@ D-039):
   organized by behaviour, not mirrored to a production type. Test-only helpers
   (e.g. `ByteComparer`, `FixturePaths`) live at the test-project root and do not
   mirror production.
+- **Common usings are global, not per-file.** Each test project declares
+  `<Using Include="Xunit" />` (a project-level `global using Xunit;`); don't repeat
+  `using Xunit;` per file. Suite-specific usings (e.g. ArchUnitNET) stay file-level.
+- **Runner.** Tests are xUnit v3 on Microsoft.Testing.Platform (MTP). `dotnet test`
+  runs them in MTP mode via `global.json`
+  (`"test": { "runner": "Microsoft.Testing.Platform" }`) — not the legacy VSTest
+  path, and not the `TestingPlatformDotnetTestSupport` compat shim (that shim is for
+  SDK 8/9-style `dotnet test`, which we don't use on .NET 10). Invoke with
+  `dotnet test`, or `dotnet test --solution FcaBedrock.slnx` to target the solution
+  explicitly — the positional `dotnet test <solution>` form is rejected in MTP mode.
+  Running a test project/`.dll` directly instead uses xUnit's *native* console mode
+  (single-dash options), not MTP.
+- **Zero-tests guard.** Every test project sets
+  `<TestingPlatformCommandLineArguments>--minimum-expected-tests 1</TestingPlatformCommandLineArguments>`,
+  so a run that discovers no tests fails (MTP exit code 9) instead of silently
+  passing green. Carry this property to every new test project.
 
 ## Workflow for a new session
 

@@ -1,6 +1,3 @@
-// Copyright (c) Constantinos Orphanides. All rights reserved.
-// Licensed under the MIT License. See LICENSE in the project root for license information.
-
 using System.Globalization;
 using System.Text;
 using static System.FormattableString;

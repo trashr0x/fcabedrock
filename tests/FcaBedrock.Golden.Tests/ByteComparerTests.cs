@@ -1,8 +1,3 @@
-// Copyright (c) Constantinos Orphanides. All rights reserved.
-// Licensed under the MIT License. See LICENSE in the project root for license information.
-
-using Xunit;
-
 namespace FcaBedrock.Golden.Tests;
 
 // M0's real evidence that the byte-compare mechanism works: these run regardless

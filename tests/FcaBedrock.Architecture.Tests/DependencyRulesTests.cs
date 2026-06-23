@@ -1,9 +1,5 @@
-// Copyright (c) Constantinos Orphanides. All rights reserved.
-// Licensed under the MIT License. See LICENSE in the project root for license information.
-
 using ArchUnitNET.Loader;
 using ArchUnitNET.xUnitV3;
-using Xunit;
 using static ArchUnitNET.Fluent.ArchRuleDefinition;
 using static ArchUnitNET.Fluent.Slices.SliceRuleDefinition;
 using ArchModel = ArchUnitNET.Domain.Architecture;
