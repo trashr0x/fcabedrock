@@ -1,0 +1,32 @@
+<Project>
+
+  <!-- Re-import the repo-root props first. MSBuild stops at the first
+       Directory.Build.props it finds walking up, so without this explicit
+       import the test projects would shadow (not merge with) the root props and
+       lose TargetFramework, Nullable, ImplicitUsings, the analyzers,
+       TreatWarningsAsErrors, and RepoRoot. The Golden fixture-copy glob below
+       relies on $(RepoRoot). -->
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+
+  <!-- Shared defaults for every FcaBedrock.*.Tests project. A new test project
+       inherits all of this and carries only its own references/items. -->
+  <PropertyGroup>
+    <!-- xUnit v3 test projects are self-hosting Microsoft.Testing.Platform apps,
+         so they must build as executables. (Microsoft.NET.Test.Sdk used to set
+         this implicitly; it is no longer referenced — see the ItemGroup note.) -->
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <!-- Guard: fail the run (MTP exit code 9) if a project discovers 0 tests,
+         so a broken test setup cannot silently green a CI run. -->
+    <TestingPlatformCommandLineArguments>--minimum-expected-tests 1</TestingPlatformCommandLineArguments>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- xUnit v3 self-hosts Microsoft.Testing.Platform; no Microsoft.NET.Test.Sdk
+         (VSTest) is needed for `dotnet test` (MTP runner, see global.json). -->
+    <PackageReference Include="xunit.v3" />
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+</Project>

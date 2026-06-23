@@ -1,21 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <IsPackable>false</IsPackable>
-    <IsTestProject>true</IsTestProject>
-    <!-- Guard: fail the run (MTP exit code 9) if this project discovers 0 tests,
-         so a broken test setup cannot silently green a CI run. -->
-    <TestingPlatformCommandLineArguments>--minimum-expected-tests 1</TestingPlatformCommandLineArguments>
-  </PropertyGroup>
+  <!-- Common test config (IsTestProject, the zero-tests guard, xunit.v3, the
+       Xunit global using) is inherited from tests/Directory.Build.props. -->
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.NET.Test.Sdk" />
-    <PackageReference Include="xunit.v3" />
     <PackageReference Include="TngTech.ArchUnitNET.xUnitV3" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Using Include="Xunit" />
   </ItemGroup>
 
   <!-- Referenced only so their assemblies land in this project's output directory

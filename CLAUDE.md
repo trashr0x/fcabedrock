@@ -99,6 +99,13 @@ D-039):
 - **One test project per production package**, named `FcaBedrock.<Package>.Tests`,
   created when that package first has testable code — not before (see the M0
   "only M0-relevant projects" choice).
+- **Shared test config lives in `tests/Directory.Build.props`.** It re-imports the
+  repo-root `Directory.Build.props` (via `GetPathOfFileAbove`, so it augments
+  rather than shadows it) and supplies the defaults every test project needs:
+  `OutputType=Exe`, `IsTestProject`, `IsPackable=false`, the `xunit.v3` reference,
+  the `Xunit` global using, and the zero-tests guard. A new
+  `FcaBedrock.<Package>.Tests` project inherits all of it and carries **only** its
+  own references/items (e.g. ArchUnitNET, project references, fixture content).
 - **Unit test class = `<ClassUnderTest>Tests`**, placed in a folder and namespace
   that mirror the production type's:
   `src/FcaBedrock.Core/Scaling/NominalScale.cs` (namespace
@@ -116,10 +123,13 @@ D-039):
   organized by behaviour, not mirrored to a production type. Test-only helpers
   (e.g. `ByteComparer`, `FixturePaths`) live at the test-project root and do not
   mirror production.
-- **Common usings are global, not per-file.** Each test project declares
-  `<Using Include="Xunit" />` (a project-level `global using Xunit;`); don't repeat
-  `using Xunit;` per file. Suite-specific usings (e.g. ArchUnitNET) stay file-level.
-- **Runner.** Tests are xUnit v3 on Microsoft.Testing.Platform (MTP). `dotnet test`
+- **Common usings are global, not per-file.** The `Xunit` global using is supplied
+  once by `tests/Directory.Build.props` (a project-level `global using Xunit;`);
+  don't repeat `using Xunit;` per file. Suite-specific usings (e.g. ArchUnitNET)
+  stay file-level.
+- **Runner.** Tests are xUnit v3 on Microsoft.Testing.Platform (MTP). Each test
+  project is xUnit v3's self-hosting MTP executable (`OutputType=Exe`, set in the
+  shared props); no `Microsoft.NET.Test.Sdk` (VSTest) is referenced. `dotnet test`
   runs them in MTP mode via `global.json`
   (`"test": { "runner": "Microsoft.Testing.Platform" }`) — not the legacy VSTest
   path, and not the `TestingPlatformDotnetTestSupport` compat shim (that shim is for
@@ -128,10 +138,11 @@ D-039):
   explicitly — the positional `dotnet test <solution>` form is rejected in MTP mode.
   Running a test project/`.dll` directly instead uses xUnit's *native* console mode
   (single-dash options), not MTP.
-- **Zero-tests guard.** Every test project sets
-  `<TestingPlatformCommandLineArguments>--minimum-expected-tests 1</TestingPlatformCommandLineArguments>`,
-  so a run that discovers no tests fails (MTP exit code 9) instead of silently
-  passing green. Carry this property to every new test project.
+- **Zero-tests guard.** `tests/Directory.Build.props` sets
+  `<TestingPlatformCommandLineArguments>--minimum-expected-tests 1</TestingPlatformCommandLineArguments>`
+  for every test project, so a run that discovers no tests fails (MTP exit code 9)
+  instead of silently passing green. Inherited automatically — no longer carried
+  per-project.
 
 ## Workflow for a new session
 

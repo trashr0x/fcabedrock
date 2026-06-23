@@ -535,6 +535,42 @@ refinement markers (D-003, D-005, D-021); the entries below are new.
 - **Affects:** tests (`FcaBedrock.Architecture.Tests`, `*.Tests` naming),
   `CLAUDE.md`, `Directory.Packages.props`.
 
+### D-040 — Shared `tests/Directory.Build.props`; MTP-only (no Microsoft.NET.Test.Sdk)
+
+- **Status:** accepted
+- **Date:** 2026-06-23
+- **Decision:** common test-project configuration is centralized in a single
+  `tests/Directory.Build.props` instead of being repeated per `.csproj`:
+  `OutputType=Exe`, `IsTestProject=true`, `IsPackable=false`, the zero-tests guard
+  (`--minimum-expected-tests 1`), the `xunit.v3` package reference, and the `Xunit`
+  global using. Its first line re-imports the repo-root `Directory.Build.props` via
+  `$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))`.
+  Each `FcaBedrock.<Package>.Tests` project now carries only its own
+  references/items. `Microsoft.NET.Test.Sdk` is dropped: xUnit v3 self-hosts
+  Microsoft.Testing.Platform, so `OutputType=Exe` + `xunit.v3` is sufficient for
+  `dotnet test` (MTP runner per `global.json`); CLI build/test, the guard, and
+  golden fixture copying were all verified green without it, and Visual Studio
+  2026 Test Explorer was confirmed to discover and run both projects without it.
+  `Microsoft.NET.Test.Sdk` is therefore removed from `Directory.Packages.props`
+  entirely; if some future tooling needs VSTest, re-add the `PackageReference` to
+  the shared props (one line) rather than per project.
+- **Why:** the convention is one test project per package (D-039), so the six
+  duplicated boilerplate lines would be re-pasted for every future package, and
+  the zero-tests guard relied on each session remembering to copy it. Centralizing
+  makes the guard automatic and shrinks each `.csproj` to its unique parts.
+- **Rejected:** a `tests/Directory.Build.props` *without* the parent import — it
+  shadows (does not merge with) the root props, silently dropping
+  `TargetFramework`, `Nullable`, analyzers, `TreatWarningsAsErrors`, and
+  `RepoRoot` (the last breaks the Golden fixture-copy glob). Putting the shared
+  block in the **root** `Directory.Build.props` under
+  `Condition="'$(IsTestProject)'=='true'"` — fails, because props are imported
+  before the csproj body sets `IsTestProject`; a root `Directory.Build.targets`
+  with that condition works but is less discoverable and mixes test config into a
+  root file. Keeping `Microsoft.NET.Test.Sdk` unconditionally — unnecessary VSTest
+  weight for the MTP/CLI path.
+- **Affects:** tests (`tests/Directory.Build.props`, both `*.Tests` csproj),
+  `CLAUDE.md`. Refines D-039.
+
 ---
 
 ## Spec-field defaults
