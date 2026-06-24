@@ -216,6 +216,14 @@ Do not implement first and explain later.
 
 ## Current status
 
-Design phase complete. Final review passed.
-Next up: **M0 — solution skeleton + golden-fixture harness.**
+M0 complete: solution skeleton, build/test infra (xUnit v3 on
+Microsoft.Testing.Platform), the golden byte-compare harness over `fixtures/v2/`,
+and the ArchUnitNET dependency guardrails are committed. The golden "actual" is
+still a placeholder byte-copy and the `Core`/`Diagnostics` packages are empty
+shells — both close in M1.
+Next up: **M1 — reproduce v2 on mini-mushroom + mini-adult** (first real
+end-to-end slice: Diagnostics types, `.bed` reader, wide-CSV source, the
+`identity`/`manual_cuts` discretizers and `nominal`/`dichotomic`/`ordinal` scales,
+planner, and the `.cxt`/`.dat` writers, with the golden placeholder swapped for
+real conversion output).
 See `docs/roadmap.md`.

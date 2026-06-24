@@ -6,9 +6,15 @@ vertical slices, not waterfall phases — each should leave the system working.
 
 ## Current position
 
-> **Design phase complete.** `docs/bedrock-spec-v1.md` drafted and frozen
-> pending a final review pass (optionally a cold second opinion from a fresh
-> model). **Next: M0.**
+> **M0 complete.** Solution skeleton (`FcaBedrock.Core` + `FcaBedrock.Diagnostics`
+> in `src/`; `FcaBedrock.Golden.Tests` + `FcaBedrock.Architecture.Tests` in
+> `tests/`), build/test infra (root + `tests/` `Directory.Build.props`, central
+> package versions, xUnit v3 on Microsoft.Testing.Platform via `global.json`,
+> zero-tests guard), the golden byte-compare harness over `fixtures/v2/`, and the
+> ArchUnitNET dependency/cycle guardrails are committed. Two caveats M1 closes: the
+> golden "actual" is still a placeholder byte-copy (no converter yet), and the
+> `Core`/`Diagnostics` packages are empty shells, so the architecture rules are
+> vacuously satisfied until they hold real types. **Next: M1.**
 
 ## Milestones
 
