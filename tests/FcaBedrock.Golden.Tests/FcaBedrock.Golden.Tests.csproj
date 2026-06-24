@@ -3,6 +3,16 @@
   <!-- Common test config (IsTestProject, the zero-tests guard, xunit.v3, the
        Xunit global using) is inherited from tests/Directory.Build.props. -->
 
+  <!-- The full pipeline under test: read .bed (Spec) -> source (Sources) ->
+       plan (Core) -> emit (Conversion) -> write (Export), byte-compared to the
+       v2 goldens. -->
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\FcaBedrock.Spec\FcaBedrock.Spec.csproj" />
+    <ProjectReference Include="..\..\src\FcaBedrock.Sources\FcaBedrock.Sources.csproj" />
+    <ProjectReference Include="..\..\src\FcaBedrock.Conversion\FcaBedrock.Conversion.csproj" />
+    <ProjectReference Include="..\..\src\FcaBedrock.Export\FcaBedrock.Export.csproj" />
+  </ItemGroup>
+
   <!-- User-supplied v2 golden fixtures, copied next to the test assembly so tests
        read them via AppContext.BaseDirectory. A plain file copy preserves bytes;
        .gitattributes prevents EOL normalization. The README is excluded. When no

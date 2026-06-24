@@ -1,1 +1,13 @@
-<Project Sdk="Microsoft.NET.Sdk" />
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\FcaBedrock.Diagnostics\FcaBedrock.Diagnostics.csproj" />
+  </ItemGroup>
+
+  <!-- White-box access for the Core unit tests (planner/scale internals). A test
+       seam only; no production behavior depends on it (principle P-6). -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="FcaBedrock.Core.Tests" />
+  </ItemGroup>
+
+</Project>

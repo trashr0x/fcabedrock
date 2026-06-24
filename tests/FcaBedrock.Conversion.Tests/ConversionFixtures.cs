@@ -1,0 +1,45 @@
+using System.Text;
+using FcaBedrock.Core.Discretization;
+using FcaBedrock.Core.Scaling;
+using FcaBedrock.Core.Spec;
+using FcaBedrock.Sources;
+
+namespace FcaBedrock.Conversion.Tests;
+
+// Test-only builders for the emitter tests. The mushroom data/spec are inlined so
+// the test is self-contained (the byte-equal golden fixtures live in Golden.Tests).
+internal static class ConversionFixtures
+{
+    public const string MushroomCsv =
+        "class,bruises?,gill-size,veil-type,ring-number\n" +
+        "e,t,b,p,n\n" +
+        "e,t,n,p,t\n" +
+        "e,f,n,p,n\n" +
+        "e,t,b,p,o\n" +
+        "e,f,n,p,n";
+
+    public static readonly IReadOnlyDictionary<string, string> NoLabels = new Dictionary<string, string>();
+
+    public static Binding Wide(char delimiter = ',', bool hasHeader = true, string missingToken = "?") =>
+        new(SourceShape.Wide, delimiter, '"', hasHeader, "invariant", missingToken, new RowIndexObjectKey());
+
+    public static WideCsvSource SourceOver(string text, Binding binding) =>
+        new(() => new MemoryStream(Encoding.UTF8.GetBytes(text)), binding);
+
+    public static BedrockSpec MushroomSpec() =>
+        new(Wide(),
+        [
+            new AttributeSpec("class", new ColumnSource(0), Include: false, null, null, [], NoLabels, MissingPolicy.Skip, UnknownValuePolicy.Warn),
+            new AttributeSpec("bruises?", new ColumnSource(1), Include: true, new IdentityDiscretizer(), new DichotomicScale("t"), ["t", "f"], NoLabels, MissingPolicy.Skip, UnknownValuePolicy.Warn),
+            new AttributeSpec("gill-size", new ColumnSource(2), Include: true, new IdentityDiscretizer(), new NominalScale(), ["b", "n"], Labels(("b", "broad"), ("n", "narrow")), MissingPolicy.Skip, UnknownValuePolicy.Warn),
+            new AttributeSpec("veil-type", new ColumnSource(3), Include: true, new IdentityDiscretizer(), new NominalScale(), ["p", "u"], Labels(("p", "partial"), ("u", "universal")), MissingPolicy.Skip, UnknownValuePolicy.Warn),
+            new AttributeSpec("ring-number", new ColumnSource(4), Include: true, new IdentityDiscretizer(), new NominalScale(), ["n", "o", "t"], Labels(("n", "none"), ("o", "one"), ("t", "two")), MissingPolicy.Skip, UnknownValuePolicy.Warn),
+        ]);
+
+    public static AttributeSpec Nominal(string name, int index, params string[] domain) =>
+        new(name, new ColumnSource(index), Include: true, new IdentityDiscretizer(), new NominalScale(),
+            domain, NoLabels, MissingPolicy.Skip, UnknownValuePolicy.Warn);
+
+    private static IReadOnlyDictionary<string, string> Labels(params (string Key, string Value)[] pairs) =>
+        pairs.ToDictionary(p => p.Key, p => p.Value);
+}

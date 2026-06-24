@@ -65,11 +65,23 @@ public sealed class DependencyRulesTests
         Slices().Matching("FcaBedrock.(*)").Should().BeFreeOfCycles().Check(Architecture);
     }
 
+    [Fact]
+    public void Core_ShouldNotDependOnSystemIo()
+    {
+        // P-12: Core is pure — no file/stream I/O. ArchUnitNET sees type-level
+        // dependencies (incl. BCL targets by namespace) that the package-reference
+        // rules cannot; this is the purity guard D-039 anticipated for M1. Core now
+        // has real types, so this is non-vacuous (no WithoutRequiringPositiveResults).
+        Types().That().ResideInAssembly(Asm("FcaBedrock.Core"))
+            .Should().NotDependOnAnyTypesThat().ResideInNamespace("System.IO")
+            .Check(Architecture);
+    }
+
     private static Assembly Asm(string simpleName) =>
         Production.Single(a => a.GetName().Name == simpleName);
 
     private static Assembly[] ProductionExcept(params string[] simpleNames) =>
-        Production.Where(a => !simpleNames.Contains(a.GetName().Name)).ToArray();
+        [.. Production.Where(a => !simpleNames.Contains(a.GetName().Name))];
 
     private static Assembly[] LoadProductionAssemblies()
     {
@@ -85,6 +97,6 @@ public sealed class DependencyRulesTests
             result.Add(Assembly.LoadFrom(path));
         }
 
-        return result.ToArray();
+        return [.. result];
     }
 }

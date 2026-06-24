@@ -473,3 +473,13 @@ indent_style = unset
 insert_final_newline = false
 tab_width = unset
 trim_trailing_whitespace = false
+
+# FcaBedrock test projects. The ASP.NET-derived test glob above keys on a 'test'
+# directory; this repo's layout is 'tests', so these relaxations target it. They
+# disable analyzer rules that either fight the xUnit analyzers or add no value in
+# fast unit tests — the same spirit as the test relaxations above.
+[tests/**.cs]
+# CA2007 (ConfigureAwait) conflicts with xUnit1030; xUnit owns the test sync context.
+dotnet_diagnostic.CA2007.severity = none
+# Responsive-cancellation token plumbing is low value in fast, in-memory unit tests.
+dotnet_diagnostic.xUnit1051.severity = suggestion

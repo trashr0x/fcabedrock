@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Common test config (IsTestProject, the zero-tests guard, xunit.v3, the
+       Xunit global using) is inherited from tests/Directory.Build.props. -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\FcaBedrock.Diagnostics\FcaBedrock.Diagnostics.csproj" />
+  </ItemGroup>
+
+</Project>

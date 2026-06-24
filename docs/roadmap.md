@@ -6,15 +6,22 @@ vertical slices, not waterfall phases — each should leave the system working.
 
 ## Current position
 
-> **M0 complete.** Solution skeleton (`FcaBedrock.Core` + `FcaBedrock.Diagnostics`
-> in `src/`; `FcaBedrock.Golden.Tests` + `FcaBedrock.Architecture.Tests` in
-> `tests/`), build/test infra (root + `tests/` `Directory.Build.props`, central
-> package versions, xUnit v3 on Microsoft.Testing.Platform via `global.json`,
-> zero-tests guard), the golden byte-compare harness over `fixtures/v2/`, and the
-> ArchUnitNET dependency/cycle guardrails are committed. Two caveats M1 closes: the
-> golden "actual" is still a placeholder byte-copy (no converter yet), and the
-> `Core`/`Diagnostics` packages are empty shells, so the architecture rules are
-> vacuously satisfied until they hold real types. **Next: M1.**
+> **M1 in progress — slice 1 (mini-mushroom) done.** The walking skeleton runs the
+> whole pipeline end-to-end and reproduces v2 byte-for-byte on **mini-mushroom**
+> (comma+header and tab+noheader): `.bed` reader (`FcaBedrock.Spec`), wide-CSV
+> source over Sep (`FcaBedrock.Sources`, D-041), planner with `identity` +
+> `nominal` + `dichotomic` + `value_labels` (`FcaBedrock.Core`), streaming emitter
+> (`FcaBedrock.Conversion`), and `.cxt`/`.dat` writers with a `--v2-compat` preset
+> (`FcaBedrock.Export`). `FcaBedrock.Diagnostics` holds `Result`/`Diagnosed` (no
+> `BedrockResult<T>` — D-042). The golden placeholder byte-copy is replaced by real
+> conversion output; output is proven on two axes (D-043: golden v2-compat
+> byte-equality + native spec conformance). All nine packages now hold real code,
+> so the ArchUnit dependency/cycle rules are non-vacuous. `dotnet test` is green
+> (72 tests).
+>
+> **Next: M1 slice 2** — `manual_cuts` (+ numeric/locale parsing and the `30to<40`
+> plan-time label style), the `ordinal` scale, `.bed` types `o`/`n`, and the
+> **mini-adult** goldens, to reach the M1 exit criterion below.
 
 ## Milestones
 

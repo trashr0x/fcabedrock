@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\FcaBedrock.Core\FcaBedrock.Core.csproj" />
+    <ProjectReference Include="..\FcaBedrock.Diagnostics\FcaBedrock.Diagnostics.csproj" />
+    <ProjectReference Include="..\FcaBedrock.Sources\FcaBedrock.Sources.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -216,14 +216,20 @@ Do not implement first and explain later.
 
 ## Current status
 
-M0 complete: solution skeleton, build/test infra (xUnit v3 on
-Microsoft.Testing.Platform), the golden byte-compare harness over `fixtures/v2/`,
-and the ArchUnitNET dependency guardrails are committed. The golden "actual" is
-still a placeholder byte-copy and the `Core`/`Diagnostics` packages are empty
-shells — both close in M1.
-Next up: **M1 — reproduce v2 on mini-mushroom + mini-adult** (first real
-end-to-end slice: Diagnostics types, `.bed` reader, wide-CSV source, the
-`identity`/`manual_cuts` discretizers and `nominal`/`dichotomic`/`ordinal` scales,
-planner, and the `.cxt`/`.dat` writers, with the golden placeholder swapped for
-real conversion output).
-See `docs/roadmap.md`.
+**M1 in progress — slice 1 (mini-mushroom walking skeleton) complete.** The full
+pipeline runs end-to-end and reproduces v2 byte-for-byte on **mini-mushroom**
+(both the comma+header and tab+noheader variants): v2 `.bed` reader
+(`FcaBedrock.Spec`, `c`/`b`/excluded types) → wide-CSV source over **Sep**
+(`FcaBedrock.Sources`, D-041) → planner with `identity` + `nominal` + `dichotomic`
+and `value_labels` (`FcaBedrock.Core`) → streaming emitter (`FcaBedrock.Conversion`)
+→ `.cxt`/`.dat` writers with a `--v2-compat` preset (`FcaBedrock.Export`).
+`FcaBedrock.Diagnostics` holds `Result`/`Diagnosed` (no `BedrockResult<T>` alias —
+D-042). All nine packages from the layout now hold real code; the ArchUnit
+dependency/cycle rules are non-vacuous. Output is proven on two axes (D-043):
+golden byte-equality under `--v2-compat`, and native-path spec conformance.
+`dotnet test --solution FcaBedrock.slnx` is green (72 tests).
+
+Next up: **M1 slice 2** — `manual_cuts` discretizer (+ numeric/locale parsing and
+the v2 `30to<40` plan-time label style), the `ordinal` scale, `.bed` type map
+`o`/`n`, and the **mini-adult** + `mini-adult_noheader` goldens, reaching the M1
+exit criterion. See `docs/roadmap.md`.

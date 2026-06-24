@@ -106,7 +106,7 @@ spec-field default, it lives in spec §21 and is only cross-referenced here.
 
 ### D-006 — Diagnostics package as the shared leaf
 
-- **Status:** accepted
+- **Status:** accepted; `BedrockResult<T>` alias dropped by D-042
 - **Decision:** `FcaBedrock.Diagnostics` holds `Result<T, TError>`,
   `BedrockResult<T>` (alias), `Diagnosed<T>`, `BedrockDiagnostic`,
   `DiagnosticCode` (enum), `DiagnosticSeverity`, `DiagnosticLocation`.
@@ -570,6 +570,80 @@ refinement markers (D-003, D-005, D-021); the entries below are new.
   weight for the MTP/CLI path.
 - **Affects:** tests (`tests/Directory.Build.props`, both `*.Tests` csproj),
   `CLAUDE.md`. Refines D-039.
+
+---
+
+## M1 (mini-mushroom walking skeleton)
+
+### D-041 — Sep as the DSV tokenizer for the wide-CSV source
+
+- **Status:** accepted
+- **Date:** 2026-06-24
+- **Decision:** `FcaBedrock.Sources.WideCsvSource` delegates raw DSV tokenization
+  (field splitting, RFC 4180 quoting, custom separators) to **Sep**
+  (`nietras/Sep`, MIT). `WideCsvSource` wraps it and owns the FCA semantics the
+  tokenizer knows nothing about: the declared `binding.delimiter`, `has_header`,
+  missing detection (`missing_token`/empty → `null`), row-index object naming, and
+  re-readability (a `Func<Stream>` so the `.cxt` two-pass can replay). Sep is the
+  only new runtime dependency; it is one `PackageVersion` in
+  `Directory.Packages.props` referenced only by `Sources`.
+- **Why:** hand-rolling correct RFC 4180 quoting (escaped quotes, embedded
+  delimiters/newlines) is a classic bug farm, and the v1 scale target (D-007, up
+  to ~73M records) wants a parser already hardened and benchmarked for span-based,
+  zero-allocation streaming. Sep is currently the fastest .NET CSV parser and its
+  span-first row/col API suits the emit hot path (P-17). Wrapping rather than
+  exposing it keeps Sep out of the public surface, so it can be swapped without a
+  contract change (P-4).
+- **Rejected:** (a) hand-rolling a span DSV parser — reinvents the wheel we
+  explicitly chose not to, and shifts the hardening/benchmark burden onto us; (b)
+  `Sylvan.Data.Csv` — also fast and mature, but exposes an ADO.NET
+  `DbDataReader` shape with slightly more per-field overhead and a less span-native
+  API than Sep.
+- **Affects:** Sources, `Directory.Packages.props`; spec §5.1/§5.2.
+
+### D-042 — Drop the `BedrockResult<T>` alias; use `Result<T, BedrockDiagnostic>`
+
+- **Status:** accepted (refines D-006)
+- **Date:** 2026-06-24
+- **Decision:** `Result<T, TError>` is a `readonly struct` whose `Ok`/`Err`
+  factories allocate nothing, so the `BedrockResult<T>` "alias" D-006 named would
+  be pure typing-sugar with no runtime benefit — and C# cannot alias a
+  partly-closed generic anyway. It is **not** introduced; call sites use
+  `Result<T, BedrockDiagnostic>` directly. `Diagnosed<T>` (the aggregating carrier)
+  is unaffected and remains the standard for validate/plan.
+- **Why:** one result type, no indirection, no second way to spell the same thing
+  (P-5). Naming the alias only to never realize it would have been a phantom in the
+  surface.
+- **Rejected:** a `BedrockResult` static factory class over the closed generic —
+  still indirection for zero benefit; a distinct wrapper type — a second result
+  type to learn, against P-5.
+- **Affects:** Diagnostics; refines D-006 (alias struck from the type list).
+
+### D-043 — Two test axes: golden = v2-compat evidence, conformance = native spec
+
+- **Status:** accepted
+- **Date:** 2026-06-24
+- **Decision:** output behavior is proven along two distinct axes. (1) **Golden
+  tests** (`FcaBedrock.Golden.Tests`) run the pipeline under
+  `WriterOptions.V2Compat` and assert byte-identity against the `fixtures/v2/`
+  goldens — *compatibility evidence* (P-9). (2) **Spec-conformance tests** run the
+  **native** (non-v2) path and assert documented behavior with spec-section
+  citations (e.g. native `.cxt` is LF + trailing newline §18.1; native `.dat` has
+  no trailing space §18.2/§21.4; dichotomic name is `{column}` alone §10.7/§12.2;
+  `value_labels` change names not order/count §10.8). Per-fixture binding (which
+  the v2 `.bed` never recorded — delimiter/header/shape) lives in a typed
+  `FixtureCase` table, as the fixtures README sanctions.
+- **Why:** the v2 goldens are deliberately *not* the spec's native output (v2-isms
+  are quarantined behind `--v2-compat`, D-011), so byte-equality to v2 alone would
+  leave the native contract unproven. The conformance axis is how code is held to
+  the spec, not merely to v2 (P-8); the golden axis is how v2 compatibility stays
+  evidenced (P-9).
+- **Rejected:** a single golden axis — would silently let the native default drift
+  from the spec; asserting native output against checked-in native golden files —
+  premature before the native format stabilizes, and the spec text is the
+  authority at this stage.
+- **Affects:** tests (`FcaBedrock.Golden.Tests`: `GoldenFixtureTests`,
+  `SpecConformanceTests`, `FixtureCase`); spec §18.
 
 ---
 

@@ -1,25 +1,33 @@
+using FcaBedrock.Export;
+
 namespace FcaBedrock.Golden.Tests;
 
-// The golden harness over the real v2 fixtures. In M0 there is no converter yet,
-// so "actual" is a byte-copy of the expected golden file (the documented
-// placeholder); this exercises locate -> read -> byte-compare end to end. At M1
-// the copy is replaced by real Convert output. The loop no-ops (passes) until the
-// user adds fixtures; a [Fact] loop is used instead of a [Theory] so an empty
-// fixture set does not fail with xUnit's "no data" error.
+// The golden harness over the real v2 fixtures: it runs the full conversion
+// pipeline (.bed -> source -> plan -> emit -> write) under WriterOptions.V2Compat
+// and asserts byte-identical output against the v2 goldens. This is v2-compat
+// *compatibility evidence*; native-path *spec conformance* is asserted separately
+// (SpecConformanceTests). The active fixture set is FixtureCase.Active.
 public sealed class GoldenFixtureTests
 {
-    [Fact]
-    public void GoldenOutputs_WhenComparedToActual_ThenMatchByteForByte()
+    public static IEnumerable<object[]> Cases =>
+        FixtureCase.Active.Select(c => new object[] { c });
+
+    [Theory]
+    [MemberData(nameof(Cases))]
+    public async Task Cxt_WhenConvertedV2Compat_ThenByteIdenticalToGolden(FixtureCase fixture)
     {
-        foreach (var expectedPath in FixturePaths.EnumerateExpectedOutputs())
-        {
-            var expected = File.ReadAllBytes(expectedPath);
-            var actual = expected.ToArray(); // M0 placeholder; M1: real conversion output
+        var actual = await GoldenConversion.WriteCxtAsync(fixture, WriterOptions.V2Compat);
 
-            var result = ByteComparer.Compare(expected, actual);
+        AssertBytesEqual(fixture.ExpectedCxtPath, actual);
+    }
 
-            Assert.True(result.AreEqual, $"{expectedPath}{Environment.NewLine}{result.Message}");
-        }
+    [Theory]
+    [MemberData(nameof(Cases))]
+    public async Task Dat_WhenConvertedV2Compat_ThenByteIdenticalToGolden(FixtureCase fixture)
+    {
+        var actual = await GoldenConversion.WriteDatAsync(fixture, WriterOptions.V2Compat);
+
+        AssertBytesEqual(fixture.ExpectedDatPath, actual);
     }
 
     [Fact]
@@ -37,5 +45,13 @@ public sealed class GoldenFixtureTests
             .ToList();
 
         Assert.NotEmpty(outputs);
+    }
+
+    private static void AssertBytesEqual(string expectedPath, byte[] actual)
+    {
+        var expected = File.ReadAllBytes(expectedPath);
+        var result = ByteComparer.Compare(expected, actual);
+
+        Assert.True(result.AreEqual, $"{expectedPath}{Environment.NewLine}{result.Message}");
     }
 }
