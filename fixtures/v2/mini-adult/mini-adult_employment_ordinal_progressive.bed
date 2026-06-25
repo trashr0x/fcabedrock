@@ -1,0 +1,51 @@
+[Number of Attributes]
+6
+
+[Attributes]
+age
+education
+employment
+sex
+US-citizen
+class
+
+[Attribute Categories]
+<,30,40,50,>
+Bachelors,Masters,11th,HS-grad
+Unskilled,Clerical,Professional,Managerial
+Male,Female
+Yes,No
+>50K,<=50K
+
+[Category Values]
+<,30,40,50,>
+Bachelors,Masters,11th,HS-grad
+<,Managerial,>
+Male,Female
+Yes,No
+>50K,<=50K
+
+[Convert Attribute]
+True
+True
+True
+True
+True
+False
+
+[Attribute Type]
+o
+c
+n
+c
+b
+c
+
+[Restrict To Values]
+
+
+
+
+
+
+[End]
