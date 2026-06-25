@@ -13,7 +13,9 @@ public abstract record Scale
 
     /// <summary>
     /// Plan-time: describe the formal attributes this scale produces over the
-    /// given ordered bin labels, in canonical enumeration order (§17 rule 2).
+    /// given bin structure, in canonical enumeration order (§17 rule 2). Most
+    /// scales need only <see cref="BinScheme.Labels"/>; an ordinal scale also reads
+    /// the cut thresholds and open ends.
     /// </summary>
-    internal abstract IReadOnlyList<FormalAttributeShape> BuildShapes(IReadOnlyList<string> binLabels);
+    internal abstract IReadOnlyList<FormalAttributeShape> BuildShapes(BinScheme bins);
 }

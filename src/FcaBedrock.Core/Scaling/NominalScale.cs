@@ -9,10 +9,10 @@ public sealed record NominalScale : Scale
 {
     public override string Kind => "nominal";
 
-    internal override IReadOnlyList<FormalAttributeShape> BuildShapes(IReadOnlyList<string> binLabels)
+    internal override IReadOnlyList<FormalAttributeShape> BuildShapes(BinScheme bins)
     {
-        var shapes = new List<FormalAttributeShape>(binLabels.Count);
-        foreach (var bin in binLabels)
+        var shapes = new List<FormalAttributeShape>(bins.Labels.Count);
+        foreach (var bin in bins.Labels)
         {
             shapes.Add(new FormalAttributeShape(ValueLabel: bin, ScaleOp: "", BinKey: bin, CrossingBins: [bin]));
         }

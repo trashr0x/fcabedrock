@@ -1,3 +1,4 @@
+using FcaBedrock.Core.Discretization;
 using FcaBedrock.Core.Spec;
 using FcaBedrock.Diagnostics;
 
@@ -12,8 +13,13 @@ namespace FcaBedrock.Core.Planning;
 /// </summary>
 public static class ConversionPlanner
 {
-    /// <summary>Plans the conversion, aggregating all validation/plan diagnostics (P-13).</summary>
-    public static Diagnosed<ConversionPlan> Plan(BedrockSpec spec, SourceSchema schema)
+    /// <summary>
+    /// Plans the conversion, aggregating all validation/plan diagnostics (P-13).
+    /// <paramref name="labelStyle"/> selects how cut bin labels render in names
+    /// (spec §8/§14); it affects rendered names only, never identity (P-14, D-044).
+    /// </summary>
+    public static Diagnosed<ConversionPlan> Plan(
+        BedrockSpec spec, SourceSchema schema, LabelStyle labelStyle = LabelStyle.Native)
     {
         ArgumentNullException.ThrowIfNull(spec);
         ArgumentNullException.ThrowIfNull(schema);
@@ -37,7 +43,7 @@ public static class ConversionPlanner
                 continue; // slice 1: excluded attributes contribute nothing (restrictions land later)
             }
 
-            PlanAttribute(attribute, schema, formalAttributes, plannedAttributes, idByName, idByIdentity, diagnostics);
+            PlanAttribute(attribute, schema, labelStyle, formalAttributes, plannedAttributes, idByName, idByIdentity, diagnostics);
         }
 
         if (HasError(diagnostics))
@@ -52,6 +58,7 @@ public static class ConversionPlanner
     private static void PlanAttribute(
         AttributeSpec attribute,
         SourceSchema schema,
+        LabelStyle labelStyle,
         List<FormalAttribute> formalAttributes,
         List<PlannedAttribute> plannedAttributes,
         Dictionary<string, int> idByName,
@@ -66,14 +73,14 @@ public static class ConversionPlanner
             ?? throw new InvalidOperationException($"Included attribute '{attribute.Name}' has no scale.");
 
         var columnIndex = ResolveColumn(attribute.Name, attribute.Source, schema);
-        var binLabels = discretizer.BinLabels(attribute.DeclaredDomain);
-        var knownBins = new HashSet<string>(binLabels, StringComparer.Ordinal);
+        var scheme = discretizer.DescribeBins(attribute.DeclaredDomain);
+        var knownBins = new HashSet<string>(scheme.Labels, StringComparer.Ordinal);
 
         var crossesByBin = new Dictionary<string, List<int>>(StringComparer.Ordinal);
-        foreach (var shape in scale.BuildShapes(binLabels))
+        foreach (var shape in scale.BuildShapes(scheme))
         {
             var id = formalAttributes.Count;
-            var name = RenderName(attribute, shape);
+            var name = RenderName(attribute, shape, discretizer, labelStyle);
             var identity = new FormalAttributeIdentity(attribute.Name, scale.Kind, shape.BinKey, shape.ScaleOp);
 
             if (!idByName.TryAdd(name, id))
@@ -118,7 +125,8 @@ public static class ConversionPlanner
             attribute.UnknownValuePolicy));
     }
 
-    private static string RenderName(AttributeSpec attribute, Scaling.FormalAttributeShape shape)
+    private static string RenderName(
+        AttributeSpec attribute, Scaling.FormalAttributeShape shape, Discretizer discretizer, LabelStyle labelStyle)
     {
         // Scale-specific default naming (§10.7). An explicit formal_attribute_format
         // override is not modelled until it has a caller (a later slice / M2 TOML).
@@ -127,9 +135,11 @@ public static class ConversionPlanner
             return attribute.Name; // dichotomic: column alone
         }
 
+        // value_labels (display names) win where set; otherwise the discretizer
+        // renders the canonical bin label for the style (cut bins → v2-compat form).
         var display = attribute.ValueLabels.TryGetValue(shape.ValueLabel, out var label)
             ? label
-            : shape.ValueLabel;
+            : discretizer.RenderBinLabel(shape.ValueLabel, labelStyle);
 
         return shape.ScaleOp.Length == 0
             ? $"{attribute.Name}-{display}"               // nominal

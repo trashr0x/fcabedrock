@@ -1,10 +1,12 @@
+using FcaBedrock.Core.Scaling;
+
 namespace FcaBedrock.Core.Discretization;
 
 /// <summary>
 /// Maps a raw value to a bin label (the discretizer half of the orthogonal
 /// discretizer × scale model — decisions.md D-002). A closed set within Core;
 /// external assemblies construct the concrete kinds but cannot derive new ones
-/// (the plan-time member is internal).
+/// (the plan-time members are internal).
 /// </summary>
 public abstract record Discretizer
 {
@@ -23,4 +25,25 @@ public abstract record Discretizer
     /// the given declared domain. Centralizes determinism rule §17(3).
     /// </summary>
     internal abstract IReadOnlyList<string> BinLabels(IReadOnlyList<string> declaredDomain);
+
+    /// <summary>
+    /// Plan-time: the full bin structure a scale needs — the bins plus the cut
+    /// edges and open ends an ordinal scale thresholds on. The default treats the
+    /// bin labels as their own thresholds with no open ends (correct for value
+    /// bins); cut discretizers override to supply real cuts. <see cref="BinLabels"/>
+    /// stays the label authority.
+    /// </summary>
+    internal virtual BinScheme DescribeBins(IReadOnlyList<string> declaredDomain)
+    {
+        var labels = BinLabels(declaredDomain);
+        return new BinScheme(labels, labels, OpenLow: false, OpenHigh: false);
+    }
+
+    /// <summary>
+    /// Name-render time: the display form of a canonical bin label under
+    /// <paramref name="style"/>. The default is style-independent (the canonical
+    /// label itself); cut discretizers override for the v2-compat interior form.
+    /// Identity/keys never go through here — only the rendered name (P-14, D-044).
+    /// </summary>
+    internal virtual string RenderBinLabel(string canonicalLabel, LabelStyle style) => canonicalLabel;
 }

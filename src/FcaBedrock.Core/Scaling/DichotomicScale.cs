@@ -9,6 +9,6 @@ public sealed record DichotomicScale(string TrueValue) : Scale
 {
     public override string Kind => "dichotomic";
 
-    internal override IReadOnlyList<FormalAttributeShape> BuildShapes(IReadOnlyList<string> binLabels) =>
+    internal override IReadOnlyList<FormalAttributeShape> BuildShapes(BinScheme bins) =>
         [new FormalAttributeShape(ValueLabel: null, ScaleOp: "", BinKey: "", CrossingBins: [TrueValue])];
 }
