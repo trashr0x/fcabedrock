@@ -40,6 +40,6 @@ internal static class ConversionFixtures
         new(name, new ColumnSource(index), Include: true, new IdentityDiscretizer(), new NominalScale(),
             domain, NoLabels, MissingPolicy.Skip, UnknownValuePolicy.Warn);
 
-    private static IReadOnlyDictionary<string, string> Labels(params (string Key, string Value)[] pairs) =>
+    private static Dictionary<string, string> Labels(params (string Key, string Value)[] pairs) =>
         pairs.ToDictionary(p => p.Key, p => p.Value);
 }
