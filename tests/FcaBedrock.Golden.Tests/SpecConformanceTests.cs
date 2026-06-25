@@ -11,9 +11,16 @@ namespace FcaBedrock.Golden.Tests;
 public sealed class SpecConformanceTests
 {
     private static readonly FixtureCase Mushroom = FixtureCase.Active[0];
+    private static readonly FixtureCase Adult = FixtureCase.Active.Single(c => c.Variant == "mini-adult");
+    private static readonly FixtureCase AdultOrdinalDiscrete =
+        FixtureCase.Active.Single(c => c.Variant == "mini-adult_employment_ordinal_discrete");
+    private static readonly FixtureCase AdultOrdinalProgressive =
+        FixtureCase.Active.Single(c => c.Variant == "mini-adult_employment_ordinal_progressive");
 
-    private static async Task<string> NativeCxtAsync() =>
-        Encoding.UTF8.GetString(await GoldenConversion.WriteCxtAsync(Mushroom, WriterOptions.Native));
+    private static Task<string> NativeCxtAsync() => NativeCxtAsync(Mushroom);
+
+    private static async Task<string> NativeCxtAsync(FixtureCase fixture) =>
+        Encoding.UTF8.GetString(await GoldenConversion.WriteCxtAsync(fixture, WriterOptions.Native));
 
     private static async Task<string> NativeDatAsync() =>
         Encoding.UTF8.GetString(await GoldenConversion.WriteDatAsync(Mushroom, WriterOptions.Native));
@@ -71,5 +78,46 @@ public sealed class SpecConformanceTests
         Assert.Contains("gill-size-broad", lines);
         Assert.Contains("gill-size-narrow", lines);
         Assert.DoesNotContain("gill-size-b", lines);
+    }
+
+    [Fact]
+    public async Task NativeCxt_WhenNumericCuts_ThenInteriorBinsUseMathNotation()
+    {
+        // §11.2: native interior bins render "[a, b)" (with the comma-space), not v2's
+        // "ato<b" — the contract the v2 goldens deliberately do not exercise.
+        var lines = (await NativeCxtAsync(Adult)).Split('\n');
+
+        Assert.Contains("age-<30", lines);
+        Assert.Contains("age-[30, 40)", lines);
+        Assert.Contains("age-[40, 50)", lines);
+        Assert.Contains("age->=50", lines);
+        Assert.DoesNotContain("age-30to<40", lines); // the v2-compat form is not the native default
+    }
+
+    [Fact]
+    public async Task NativeCxt_WhenOrderedCutsDiscrete_ThenBelowAndAtOrAboveColumns()
+    {
+        // §11.x / §12.1: a cut at Managerial over the ordered domain yields two
+        // mutually-exclusive bins.
+        var lines = (await NativeCxtAsync(AdultOrdinalDiscrete)).Split('\n');
+
+        Assert.Contains("employment-<Managerial", lines);
+        Assert.Contains("employment->=Managerial", lines);
+    }
+
+    [Fact]
+    public async Task NativeCxt_WhenProgressive_ThenCumulativeBelowThresholdsAndOpenEndAll()
+    {
+        // §12.3 (D-047): le ordinal names thresholds at the cuts; the open top renders
+        // `all`, canonical in the native path too (so v2-compat does not change the schema).
+        var lines = (await NativeCxtAsync(AdultOrdinalProgressive)).Split('\n');
+
+        Assert.Contains("age-<30", lines);
+        Assert.Contains("age-<40", lines);
+        Assert.Contains("age-<50", lines);
+        Assert.Contains("age-all", lines);
+        Assert.Contains("employment-<Managerial", lines);
+        Assert.Contains("employment-all", lines);
+        Assert.DoesNotContain("age-[30, 40)", lines); // progressive labels are cuts, not intervals
     }
 }

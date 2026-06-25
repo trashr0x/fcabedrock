@@ -1,3 +1,4 @@
+using System.Globalization;
 using FcaBedrock.Core.Discretization;
 using FcaBedrock.Core.Scaling;
 using FcaBedrock.Core.Spec;
@@ -24,6 +25,13 @@ internal static class SpecFixtures
     public static AttributeSpec Dichotomic(string name, int index, string trueValue, IReadOnlyList<string> domain) =>
         new(name, new ColumnSource(index), Include: true, new IdentityDiscretizer(), new DichotomicScale(trueValue),
             domain, NoLabels, MissingPolicy.Skip, UnknownValuePolicy.Warn);
+
+    // Numeric cut discretizer (open ends, invariant parse) paired with any scale —
+    // nominal for discrete output, OrdinalScale for progressive.
+    public static AttributeSpec NumericCuts(string name, int index, IReadOnlyList<double> cuts, Scale scale) =>
+        new(name, new ColumnSource(index), Include: true,
+            new ManualCutsDiscretizer(cuts, BinEnds.Open, CultureInfo.InvariantCulture), scale,
+            DeclaredDomain: [], NoLabels, MissingPolicy.Skip, UnknownValuePolicy.Warn);
 
     public static AttributeSpec Excluded(string name, int index) =>
         new(name, new ColumnSource(index), Include: false, Discretizer: null, Scale: null,

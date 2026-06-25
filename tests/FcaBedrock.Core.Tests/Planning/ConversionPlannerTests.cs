@@ -45,6 +45,53 @@ public sealed class ConversionPlannerTests
     }
 
     [Fact]
+    public void Plan_WhenNumericCutsNominal_ThenStyleChangesInteriorNamesButNotIdentityOrCrossings()
+    {
+        var spec = new BedrockSpec(SpecFixtures.WideRowIndex(),
+            [SpecFixtures.NumericCuts("age", 0, [30, 40, 50], new NominalScale())]);
+
+        Assert.True(ConversionPlanner.Plan(spec, new SourceSchema(1), LabelStyle.Native).TryGetValue(out var native));
+        Assert.True(ConversionPlanner.Plan(spec, new SourceSchema(1), LabelStyle.V2Compat).TryGetValue(out var v2));
+
+        Assert.Equal(
+            ["age-<30", "age-[30, 40)", "age-[40, 50)", "age->=50"],
+            native.FormalAttributes.Select(f => f.RenderedName));
+        Assert.Equal(
+            ["age-<30", "age-30to<40", "age-40to<50", "age->=50"],
+            v2.FormalAttributes.Select(f => f.RenderedName));
+
+        // D-035: rendering differs by style; identity and crossings do not.
+        Assert.Equal(native.FormalAttributes.Select(f => f.Identity), v2.FormalAttributes.Select(f => f.Identity));
+        var ageNative = native.Attributes.Single(a => a.Name == "age");
+        var ageV2 = v2.Attributes.Single(a => a.Name == "age");
+        Assert.True(ageNative.KnownBins.SetEquals(["<30", "[30, 40)", "[40, 50)", ">=50"]));
+        Assert.True(ageNative.KnownBins.SetEquals(ageV2.KnownBins));
+        Assert.Equal([1], ageNative.CrossesByBin["[30, 40)"]); // canonical key, identical under both styles
+        Assert.Equal([1], ageV2.CrossesByBin["[30, 40)"]);
+    }
+
+    [Fact]
+    public void Plan_WhenNumericCutsOrdinalLe_ThenCumulativeCrossingsAndStyleIndependentThresholdNames()
+    {
+        var spec = new BedrockSpec(SpecFixtures.WideRowIndex(),
+            [SpecFixtures.NumericCuts("age", 0, [30, 40, 50], new OrdinalScale(OrdinalDirection.Le))]);
+
+        Assert.True(ConversionPlanner.Plan(spec, new SourceSchema(1), LabelStyle.Native).TryGetValue(out var native));
+        Assert.True(ConversionPlanner.Plan(spec, new SourceSchema(1), LabelStyle.V2Compat).TryGetValue(out var v2));
+
+        // Threshold labels come from the cuts (no interval), so they are style-independent.
+        string[] expected = ["age-<30", "age-<40", "age-<50", "age-all"];
+        Assert.Equal(expected, native.FormalAttributes.Select(f => f.RenderedName));
+        Assert.Equal(expected, v2.FormalAttributes.Select(f => f.RenderedName));
+
+        var age = native.Attributes.Single(a => a.Name == "age");
+        Assert.Equal([0, 1, 2, 3], age.CrossesByBin["<30"]);       // crossed by <30, <40, <50, all
+        Assert.Equal([1, 2, 3], age.CrossesByBin["[30, 40)"]);     // crossed by <40, <50, all
+        Assert.Equal([2, 3], age.CrossesByBin["[40, 50)"]);        // crossed by <50, all
+        Assert.Equal([3], age.CrossesByBin[">=50"]);               // crossed by all only
+    }
+
+    [Fact]
     public void Plan_WhenAttributeExcluded_ThenItProducesNoFormalAttributes()
     {
         Assert.True(ConversionPlanner.Plan(SpecFixtures.MiniMushroom(), new SourceSchema(5)).TryGetValue(out var plan));

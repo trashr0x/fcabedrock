@@ -57,4 +57,66 @@ public sealed class BedToSpecTests
             ],
             plan.FormalAttributes.Select(f => f.RenderedName));
     }
+
+    private static BedDocument EmploymentOrdinalDoc() => BedReader.Read(BedFixtures.EmploymentOrdinalBed);
+
+    private static BedrockSpec EmploymentOrdinalSpec(ScalingMode mode = ScalingMode.Discrete) =>
+        BedToSpec.ToSpec(EmploymentOrdinalDoc(), Wide(), mode);
+
+    [Fact]
+    public void ToSpec_WhenTypeO_ThenManualCutsFromNumericCutSpecWithNoValueLabels()
+    {
+        var age = EmploymentOrdinalSpec().Attributes[0];
+
+        var cuts = Assert.IsType<ManualCutsDiscretizer>(age.Discretizer);
+        Assert.Equal(new double[] { 30, 40, 50 }, cuts.Cuts);
+        Assert.Equal(BinEnds.Open, cuts.Ends);
+        Assert.Equal("[30, 40)", cuts.Discretize("35"));
+        Assert.Empty(age.ValueLabels);
+    }
+
+    [Fact]
+    public void ToSpec_WhenTypeN_ThenOrderedCutsOverDomainWithCutAtManagerial()
+    {
+        var employment = EmploymentOrdinalSpec().Attributes[2];
+
+        var ordered = Assert.IsType<OrderedCutsDiscretizer>(employment.Discretizer);
+        Assert.Equal(["Unskilled", "Clerical", "Professional", "Managerial"], ordered.Order);
+        Assert.Equal(["Managerial"], ordered.Cuts);
+        Assert.Equal("<Managerial", ordered.Discretize("Clerical"));
+        Assert.Equal(">=Managerial", ordered.Discretize("Managerial"));
+        Assert.Empty(employment.ValueLabels);
+    }
+
+    [Fact]
+    public void ToSpec_WhenDiscreteMode_ThenCutTypesUseNominalScale()
+    {
+        var spec = EmploymentOrdinalSpec(ScalingMode.Discrete);
+
+        Assert.IsType<NominalScale>(spec.Attributes[0].Scale); // o (age)
+        Assert.IsType<NominalScale>(spec.Attributes[2].Scale); // n (employment)
+    }
+
+    [Fact]
+    public void ToSpec_WhenProgressiveMode_ThenCutTypesUseOrdinalLeScale()
+    {
+        var spec = EmploymentOrdinalSpec(ScalingMode.Progressive);
+
+        Assert.Equal(OrdinalDirection.Le, Assert.IsType<OrdinalScale>(spec.Attributes[0].Scale).Direction);
+        Assert.Equal(OrdinalDirection.Le, Assert.IsType<OrdinalScale>(spec.Attributes[2].Scale).Direction);
+
+        // Non-cut types are unaffected by the mode.
+        Assert.IsType<NominalScale>(spec.Attributes[1].Scale);    // education (c)
+        Assert.IsType<DichotomicScale>(spec.Attributes[4].Scale); // US-citizen (b)
+    }
+
+    [Fact]
+    public void ToSpec_WhenBindingLocaleNonInvariant_ThenNumericDiscretizerParsesWithIt()
+    {
+        var deDe = new Binding(SourceShape.Wide, ',', '"', HasHeader: true, "de-DE", "?", new RowIndexObjectKey());
+
+        var age = BedToSpec.ToSpec(EmploymentOrdinalDoc(), deDe).Attributes[0];
+
+        Assert.Equal(">=50", Assert.IsType<ManualCutsDiscretizer>(age.Discretizer).Discretize("50,5"));
+    }
 }
