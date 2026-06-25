@@ -1,5 +1,3 @@
-using FcaBedrock.Export;
-
 namespace FcaBedrock.Golden.Tests;
 
 // The golden harness over the real v2 fixtures: it runs the full conversion
@@ -16,7 +14,7 @@ public sealed class GoldenFixtureTests
     [MemberData(nameof(Cases))]
     public async Task Cxt_WhenConvertedV2Compat_ThenByteIdenticalToGolden(FixtureCase fixture)
     {
-        var actual = await GoldenConversion.WriteCxtAsync(fixture, WriterOptions.V2Compat);
+        var actual = await GoldenConversion.WriteCxtAsync(fixture, fixture.V2Writer);
 
         AssertBytesEqual(fixture.ExpectedCxtPath, actual);
     }
@@ -25,7 +23,7 @@ public sealed class GoldenFixtureTests
     [MemberData(nameof(Cases))]
     public async Task Dat_WhenConvertedV2Compat_ThenByteIdenticalToGolden(FixtureCase fixture)
     {
-        var actual = await GoldenConversion.WriteDatAsync(fixture, WriterOptions.V2Compat);
+        var actual = await GoldenConversion.WriteDatAsync(fixture, fixture.V2Writer);
 
         AssertBytesEqual(fixture.ExpectedDatPath, actual);
     }

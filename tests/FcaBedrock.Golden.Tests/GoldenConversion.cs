@@ -1,4 +1,5 @@
 using FcaBedrock.Conversion;
+using FcaBedrock.Core.Discretization;
 using FcaBedrock.Core.Planning;
 using FcaBedrock.Diagnostics;
 using FcaBedrock.Export;
@@ -14,7 +15,7 @@ internal static class GoldenConversion
 {
     public static async Task<byte[]> WriteCxtAsync(FixtureCase fixture, WriterOptions options)
     {
-        var (plan, source) = await PrepareAsync(fixture);
+        var (plan, source) = await PrepareAsync(fixture, options);
         using var stream = new MemoryStream();
         await CxtWriter.WriteAsync(plan, () => EmitAsync(plan, source), options, stream);
         return stream.ToArray();
@@ -22,27 +23,35 @@ internal static class GoldenConversion
 
     public static async Task<byte[]> WriteDatAsync(FixtureCase fixture, WriterOptions options)
     {
-        var (plan, source) = await PrepareAsync(fixture);
+        var (plan, source) = await PrepareAsync(fixture, options);
         using var stream = new MemoryStream();
         await DatWriter.WriteAsync(EmitAsync(plan, source), options, stream);
         return stream.ToArray();
     }
 
-    private static async Task<(ConversionPlan Plan, IRecordSource Source)> PrepareAsync(FixtureCase fixture)
+    private static async Task<(ConversionPlan Plan, IRecordSource Source)> PrepareAsync(
+        FixtureCase fixture, WriterOptions options)
     {
         var document = BedReader.Read(await File.ReadAllTextAsync(fixture.BedPath));
-        var spec = BedToSpec.ToSpec(document, fixture.Binding);
+        var spec = BedToSpec.ToSpec(document, fixture.Binding, fixture.ScalingMode);
 
         var dataPath = fixture.DataPath;
         var source = new WideCsvSource(() => File.OpenRead(dataPath), fixture.Binding);
 
         var schema = await source.GetSchemaAsync();
-        var planned = ConversionPlanner.Plan(spec, schema);
+        var planned = ConversionPlanner.Plan(spec, schema, LabelStyleFor(options));
         Assert.False(planned.HasErrors, Describe(planned.Diagnostics));
         Assert.True(planned.TryGetValue(out var plan));
 
         return (plan, source);
     }
+
+    // One v2 intent, two layers: v2-compat writer bytes (CRLF) imply the v2-compat
+    // label style at plan time (the cut-bin `30to<40` form). Native (LF) otherwise.
+    // Keyed on the line ending so a per-fixture writer tweak (e.g. the progressive
+    // .dat's missing trailing space) still selects the v2 label style. (D-044)
+    private static LabelStyle LabelStyleFor(WriterOptions options) =>
+        options.LineEnding == "\r\n" ? LabelStyle.V2Compat : LabelStyle.Native;
 
     // Emit ignores data-level diagnostics here: the M1 fixtures are clean (no
     // unknown values), and a stray diagnostic would surface as a byte mismatch.
