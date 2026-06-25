@@ -72,77 +72,44 @@ references. `Core` never references `Sources`, `Export`, `Cli`, or `Desktop`.
 
 ## Hard conventions (do not violate without a decision-log entry)
 
-- **Target framework:** .NET 10. Modern APIs are welcome where justified
-  (`System.IO.Pipelines`, `IAsyncEnumerable`, `Span`/`Memory`, `ValueTask`),
-  but do not cargo-cult performance tricks. Justify allocations in hot paths.
-- **The core library is UI-independent.** No UI types leak into `Core`,
-  `Conversion`, or `Export`.
-- **Determinism is a correctness property.** Same spec + same normalized
-  input ⇒ byte-identical output. The ordering rules live in the planner, not
-  scattered. See spec §17 (Determinism rules) and `docs/decisions.md` D-004.
-- **Exporters are dumb.** All planning/conversion semantics happen before
-  export. A writer only serializes an already-decided result.
-- **Error handling:** `Result<T, BedrockDiagnostic>` (alias `BedrockResult<T>`)
-  for single-error operations; `Diagnosed<T>` (value + diagnostic list) for
-  aggregating operations like validation and planning. Convert streams
-  diagnostics alongside the emit stream. Codes are an enum, not free strings.
-- **Scale of intent:** v1 targets 10×–100× the v2 EMAGE workload
-  (~7.3M–73M records). Streaming is a v1 concern, not a v2 retrofit.
-- **Prefer small composable pieces over god classes.** Keep responsibilities
-  narrow, APIs focused, and implementation units easy to test and replace.
+Operational summary; the invariants are authoritative in `docs/principles.md`
+(P-7/P-12/P-13/P-14/P-16) and `docs/decisions.md`.
+
+- **Target framework: .NET 10.** Modern APIs (`System.IO.Pipelines`,
+  `IAsyncEnumerable`, `Span`/`Memory`, `ValueTask`) where justified; justify
+  allocations in hot paths, don't cargo-cult.
+- **Determinism is a correctness property:** same spec + same normalized input ⇒
+  byte-identical output; ordering rules live in the planner. Spec §17, D-004, P-7.
+- **Core is pure / UI-independent; exporters are dumb** — all semantics decided
+  before export, writers only serialize. P-12, P-14.
+- **Error handling:** `Result<T, BedrockDiagnostic>` for single-error ops;
+  `Diagnosed<T>` (value + diagnostic list) for aggregating ops (validation,
+  planning); convert streams diagnostics alongside the emit stream. Codes are an
+  enum. P-13.
+- **Scale of intent:** v1 targets 10×–100× the v2 EMAGE workload (~7.3M–73M
+  records) — streaming is a v1 concern, not a retrofit. D-007.
+- **Small composable pieces over god classes.** P-16.
 
 ## Testing conventions
 
-How a session writes tests (the project standard; rationale in `docs/decisions.md`
-D-039):
+The project standard; full `Directory.Build.props` / MTP-runner mechanics and
+rationale live in `docs/decisions.md` D-039/D-040.
 
-- **One test project per production package**, named `FcaBedrock.<Package>.Tests`,
-  created when that package first has testable code — not before (see the M0
-  "only M0-relevant projects" choice).
-- **Shared test config lives in `tests/Directory.Build.props`.** It re-imports the
-  repo-root `Directory.Build.props` (via `GetPathOfFileAbove`, so it augments
-  rather than shadows it) and supplies the defaults every test project needs:
-  `OutputType=Exe`, `IsTestProject`, `IsPackable=false`, the `xunit.v3` reference,
-  the `Xunit` global using, and the zero-tests guard. A new
-  `FcaBedrock.<Package>.Tests` project inherits all of it and carries **only** its
-  own references/items (e.g. ArchUnitNET, project references, fixture content).
-- **Unit test class = `<ClassUnderTest>Tests`**, placed in a folder and namespace
-  that mirror the production type's:
-  `src/FcaBedrock.Core/Scaling/NominalScale.cs` (namespace
-  `FcaBedrock.Core.Scaling`) →
-  `tests/FcaBedrock.Core.Tests/Scaling/NominalScaleTests.cs` (namespace
-  `FcaBedrock.Core.Tests.Scaling`).
-- **Unit / behavioural test methods** are named
-  `Subject_When<Condition>_Then<Outcome>` — `Subject` is the method under test for
-  a unit test, or the behaviour/feature for a higher-level test (e.g.
-  `Compare_WhenLengthsDiffer_ThenReportsFirstMissingByteOffset`).
-- **Architecture tests** use assertion-style `Subject_Should<Outcome>` (When/Then
-  is artificial for static-structure rules) and are written with **ArchUnitNET**,
-  not hand-rolled reflection.
-- **Cross-cutting suites** (the golden harness, the architecture suite) are
-  organized by behaviour, not mirrored to a production type. Test-only helpers
-  (e.g. `ByteComparer`, `FixturePaths`) live at the test-project root and do not
-  mirror production.
-- **Common usings are global, not per-file.** The `Xunit` global using is supplied
-  once by `tests/Directory.Build.props` (a project-level `global using Xunit;`);
-  don't repeat `using Xunit;` per file. Suite-specific usings (e.g. ArchUnitNET)
-  stay file-level.
-- **Runner.** Tests are xUnit v3 on Microsoft.Testing.Platform (MTP). Each test
-  project is xUnit v3's self-hosting MTP executable (`OutputType=Exe`, set in the
-  shared props); no `Microsoft.NET.Test.Sdk` (VSTest) is referenced. `dotnet test`
-  runs them in MTP mode via `global.json`
-  (`"test": { "runner": "Microsoft.Testing.Platform" }`) — not the legacy VSTest
-  path, and not the `TestingPlatformDotnetTestSupport` compat shim (that shim is for
-  SDK 8/9-style `dotnet test`, which we don't use on .NET 10). Invoke with
-  `dotnet test`, or `dotnet test --solution FcaBedrock.slnx` to target the solution
-  explicitly — the positional `dotnet test <solution>` form is rejected in MTP mode.
-  Running a test project/`.dll` directly instead uses xUnit's *native* console mode
-  (single-dash options), not MTP.
-- **Zero-tests guard.** `tests/Directory.Build.props` sets
-  `<TestingPlatformCommandLineArguments>--minimum-expected-tests 1</TestingPlatformCommandLineArguments>`
-  for every test project, so a run that discovers no tests fails (MTP exit code 9)
-  instead of silently passing green. Inherited automatically — no longer carried
-  per-project.
+- **One xUnit v3 test project per production package**, `FcaBedrock.<Package>.Tests`,
+  created when that package first has testable code (not before).
+- **Shared config is in `tests/Directory.Build.props`** — it re-imports the
+  repo-root props and supplies `OutputType=Exe`, the `xunit.v3` reference, the
+  `Xunit` global using, and the zero-tests guard. A new test project inherits all
+  of it and carries **only** its own references/items. Don't repeat `using Xunit;`
+  per file.
+- **Naming:** test class `<ClassUnderTest>Tests` in a folder/namespace mirroring
+  the production type; unit/behavioural methods `Subject_When<Condition>_Then<Outcome>`;
+  architecture tests `Subject_Should<Outcome>` (**ArchUnitNET**, not hand-rolled
+  reflection). Cross-cutting suites (golden harness, architecture) are organized by
+  behaviour, not mirrored to a type.
+- **Runner:** xUnit v3 on Microsoft.Testing.Platform. Run `dotnet test` (MTP mode
+  via `global.json`), or `dotnet test --solution FcaBedrock.slnx`; the positional
+  `dotnet test <solution>` form is rejected in MTP mode.
 
 ## Workflow for a new session
 
@@ -163,78 +130,67 @@ D-039):
 
 ## Git / workspace discipline for agent sessions
 
-Agent sessions use isolated Git worktrees by default.
+**Default mode: you run unattended in your own per-task Git worktree** — not
+optional setup; it's where every session works, whether or not the operator is
+watching. One mode, deliberately: a "supervised vs unattended" split is just
+another missable trigger.
+
+**Worktree pre-flight — idempotent; run before your first edit, and re-run after
+any resume/compaction:**
+
+1. `git rev-parse --abbrev-ref HEAD` (and `git worktree list` if unsure).
+2. Already on an `agent/<task>` branch in a dedicated worktree → proceed.
+3. On `main` / the operator's checkout and about to edit → create the worktree
+   first: `git worktree add ../fcabedrock-agent-<task> -b agent/<task> main`.
+
+It's a *check*, so re-running after a resume is a cheap no-op — that is what makes
+it survive compaction. Don't assume a task-start step ran.
+
+**Operator curation is expected, not an anomaly.** Mid-task the operator may
+stage/commit your files into logically-grouped commits on the branch (to organize
+history), often from an external Git tool in the same worktree. So a clean/partial
+`git status`, files you created already committed, or commits you did not author
+are **not errors** — don't investigate, re-create, or re-stage; just continue. The
+operator merges to `main` only at task finalization (the same point you would).
+
+Standing rules:
 
 - one task = one branch = one worktree;
-- the main checkout is the human/operator workspace;
-- do not reuse a dirty worktree for unrelated work;
-- do not switch branches with uncommitted changes;
-- do not commit unless explicitly asked;
-- do not rewrite history unless explicitly asked;
-- before editing, run `git status`;
-- before handing work back, run `git status` and summarize changed files;
-- if the diff grows outside the requested task, stop and explain why before
-  continuing.
+- do not reuse a dirty worktree for unrelated work, or switch branches with
+  uncommitted changes;
+- **do not commit or rewrite history unless explicitly asked** — the operator
+  commits;
+- before editing, run the pre-flight (location) and `git status` (cleanliness);
+- at hand-off, summarize the files your task changed via `git diff main...HEAD`
+  (the operator may have already committed some, so `git status` can be clean);
+- if the diff grows outside the task, stop and explain before continuing.
 
-Recommended setup:
-
-```bash
-git worktree add ../fcabedrock-agent-<task> -b agent/<task> main
-```
-
-Worktrees isolate work; they do not justify broad diffs, opportunistic cleanup,
-or unrelated refactors.
+Worktrees isolate work; they don't justify broad diffs, opportunistic cleanup, or
+unrelated refactors.
 
 ## Plan before code
 
-For any non-trivial implementation task, do not start editing immediately.
+For non-trivial work, don't start editing immediately. Inspect the docs/code,
+then propose a short concrete plan: what changes and which files/projects;
+whether any **public** API/contract/diagnostic changes (the workflow face of P-4);
+tests to add or update; and open questions. Present it and wait for a go-ahead.
 
-First inspect the relevant docs and code, then propose a short, concrete plan:
+For consequential changes — new public surface, a cross-package contract, a
+deviation from the spec or a decision, or anything touching determinism or output
+bytes — be more explicit about the contract, risks, and test coverage first.
 
-- what will change, and which files/projects it touches;
-- whether any **public** API, contract, or diagnostic changes (this is the
-  workflow face of principle P-4 — design the surface before the implementation);
-- what tests will be added or updated;
-- assumptions, open questions, and ambiguities that need confirmation.
+Purely mechanical/trivial tasks: say so and proceed with a brief note.
 
-For non-trivial implementation work, present the plan and wait for a go-ahead
-before editing code.
-
-For consequential changes — new public surface, cross-package contract, a
-deviation from the spec or a decision, anything touching determinism or output
-bytes — the plan should be more explicit about the contract, risks, and test
-coverage before asking for approval.
-
-If the task is purely mechanical or trivial, say so and proceed with a brief
-note rather than a full plan.
-
-If scope expands mid-task, stop and revise the plan before continuing — this is
-the planning-time face of "surgical changes" (principle P-1) and of the
-diff-growth rule in the git-discipline section above.
-
-Do not implement first and explain later.
+If scope expands mid-task, stop and revise the plan before continuing (the
+planning-time face of P-1 "surgical changes" and the diff-growth rule above).
+Don't implement first and explain later.
 
 ## Current status
 
-**M1 complete — mini-mushroom + mini-adult reproduced byte-for-byte.** The full
-pipeline runs end-to-end and matches v2 on both families: v2 `.bed` reader
-(`FcaBedrock.Spec`) → wide-CSV source over **Sep** (`FcaBedrock.Sources`, D-041) →
-planner (`FcaBedrock.Core`) → streaming emitter (`FcaBedrock.Conversion`) →
-`.cxt`/`.dat` writers with a `--v2-compat` preset (`FcaBedrock.Export`). **Slice 1**
-delivered `identity` + `nominal` + `dichotomic` + `value_labels` (`c`/`b`/excluded
-types) on mini-mushroom. **Slice 2** added the cut discretizers `manual_cuts`
-(numeric, locale-aware) and `ordered_cuts` (categorical, spec §11.8 / D-046)
-sharing one `CutBinLabels` helper, the `ordinal` scale (cumulative `le`, open-end
-`all` — §12.3 / D-047), the plan-time `LabelStyle` render hook (`30to<40` vs
-`[30, 40)` — D-044), `.bed` types `o`/`n` with the out-of-band `ScalingMode`
-(discrete→nominal / progressive→ordinal — D-045), and the four **mini-adult**
-goldens (base, `_noheader`, employment-ordinal `_discrete` + `_progressive`).
-`FcaBedrock.Diagnostics` holds `Result`/`Diagnosed` (no `BedrockResult<T>` alias —
-D-042). All nine packages hold real code; the ArchUnit dependency/cycle/purity
-rules are non-vacuous. Output is proven on two axes (D-043): golden byte-equality
-under `--v2-compat`, and native-path spec conformance.
-`dotnet test --solution FcaBedrock.slnx` is green (136 tests).
+**M1 complete** — mini-mushroom + mini-adult reproduced byte-for-byte; the full
+pipeline (`.bed` reader → wide-CSV source → planner → streaming emitter →
+`.cxt`/`.dat` with a `--v2-compat` preset) is green. **Next: M2** — the TOML spec
+format + fingerprinting.
 
-Next up: **M2** — the TOML spec format + fingerprinting (and the deferred
-value-bin `ordinal` path + independent `boundary` knob, D-047). See
-`docs/roadmap.md`.
+`docs/roadmap.md` is the live source for current position, test count, and the
+deferred backlog — consult it rather than duplicating the detail here.
