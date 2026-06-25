@@ -216,20 +216,25 @@ Do not implement first and explain later.
 
 ## Current status
 
-**M1 in progress — slice 1 (mini-mushroom walking skeleton) complete.** The full
-pipeline runs end-to-end and reproduces v2 byte-for-byte on **mini-mushroom**
-(both the comma+header and tab+noheader variants): v2 `.bed` reader
-(`FcaBedrock.Spec`, `c`/`b`/excluded types) → wide-CSV source over **Sep**
-(`FcaBedrock.Sources`, D-041) → planner with `identity` + `nominal` + `dichotomic`
-and `value_labels` (`FcaBedrock.Core`) → streaming emitter (`FcaBedrock.Conversion`)
-→ `.cxt`/`.dat` writers with a `--v2-compat` preset (`FcaBedrock.Export`).
+**M1 complete — mini-mushroom + mini-adult reproduced byte-for-byte.** The full
+pipeline runs end-to-end and matches v2 on both families: v2 `.bed` reader
+(`FcaBedrock.Spec`) → wide-CSV source over **Sep** (`FcaBedrock.Sources`, D-041) →
+planner (`FcaBedrock.Core`) → streaming emitter (`FcaBedrock.Conversion`) →
+`.cxt`/`.dat` writers with a `--v2-compat` preset (`FcaBedrock.Export`). **Slice 1**
+delivered `identity` + `nominal` + `dichotomic` + `value_labels` (`c`/`b`/excluded
+types) on mini-mushroom. **Slice 2** added the cut discretizers `manual_cuts`
+(numeric, locale-aware) and `ordered_cuts` (categorical, spec §11.8 / D-046)
+sharing one `CutBinLabels` helper, the `ordinal` scale (cumulative `le`, open-end
+`all` — §12.3 / D-047), the plan-time `LabelStyle` render hook (`30to<40` vs
+`[30, 40)` — D-044), `.bed` types `o`/`n` with the out-of-band `ScalingMode`
+(discrete→nominal / progressive→ordinal — D-045), and the four **mini-adult**
+goldens (base, `_noheader`, employment-ordinal `_discrete` + `_progressive`).
 `FcaBedrock.Diagnostics` holds `Result`/`Diagnosed` (no `BedrockResult<T>` alias —
-D-042). All nine packages from the layout now hold real code; the ArchUnit
-dependency/cycle rules are non-vacuous. Output is proven on two axes (D-043):
-golden byte-equality under `--v2-compat`, and native-path spec conformance.
-`dotnet test --solution FcaBedrock.slnx` is green (72 tests).
+D-042). All nine packages hold real code; the ArchUnit dependency/cycle/purity
+rules are non-vacuous. Output is proven on two axes (D-043): golden byte-equality
+under `--v2-compat`, and native-path spec conformance.
+`dotnet test --solution FcaBedrock.slnx` is green (136 tests).
 
-Next up: **M1 slice 2** — `manual_cuts` discretizer (+ numeric/locale parsing and
-the v2 `30to<40` plan-time label style), the `ordinal` scale, `.bed` type map
-`o`/`n`, and the **mini-adult** + `mini-adult_noheader` goldens, reaching the M1
-exit criterion. See `docs/roadmap.md`.
+Next up: **M2** — the TOML spec format + fingerprinting (and the deferred
+value-bin `ordinal` path + independent `boundary` knob, D-047). See
+`docs/roadmap.md`.

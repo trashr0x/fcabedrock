@@ -34,12 +34,16 @@ exports `.cxt` / `.dat`.
   | `b` | boolean | `identity` + `dichotomic` |
   | `o` | continuous-numeric, discrete/progressive | numeric discretizer + `nominal`/`ordinal` |
   | `d` | date, discrete/progressive | **deferred in v1** — `value_type="date"` reserved, planner rejects (`DateValueTypeNotImplementedV1`, spec §11.7) |
-  | `n` | ordinal (ordered categories) | ordered categorical discretizer + `ordinal` scale |
+  | `n` | ordinal (ordered categories) | `ordered_cuts` discretizer + `nominal` (discrete) / `ordinal` (progressive) scale |
 
   So vNext needs no new *scale* for `o`, `d`, or `n` — all fall out of the
-  discretizer × scale split. `n` is already expressible today; `d` is a
-  conscious parity deferral (continuous-numeric is the v1 priority; date scaling
-  reserved but not implemented — D-038). `c`, `b`, `o`, `n` are the v1 target.
+  discretizer × scale split. `n` is implemented (M1 slice 2) as `ordered_cuts` +
+  `nominal`/`ordinal`: for `n`, `[Attribute Categories]` holds the **ordered
+  domain** and `[Category Values]` the **cut**, and the discrete/progressive
+  choice is supplied **out-of-band** (the two `.bed`s are byte-identical) — see
+  D-045/D-046. `d` is a conscious parity deferral (continuous-numeric is the v1
+  priority; date scaling reserved but not implemented — D-038). `c`, `b`, `o`,
+  `n` are the v1 target.
 - Continuous treatments: free binning (one bin per value), user-defined
   boundaries with discrete (interval) scaling, user-defined boundaries with
   progressive (cumulative) scaling, equal-width auto-bins, equal-frequency

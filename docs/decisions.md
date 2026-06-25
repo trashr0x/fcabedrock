@@ -647,6 +647,107 @@ refinement markers (D-003, D-005, D-021); the entries below are new.
 
 ---
 
+### D-044 — Bin-label style is a plan-time render hook, not a writer flag
+
+- **Status:** accepted
+- **Date:** 2026-06-25
+- **Decision:** the v2 `30to<40` vs native `[30, 40)` cut-bin label difference is
+  applied once, at name render, via a `LabelStyle { Native, V2Compat }` input to
+  `ConversionPlanner.Plan` and an `internal virtual Discretizer.RenderBinLabel`
+  hook (default identity; cut discretizers transform only the interior `[a, b)`
+  form). Discretizers emit **one canonical label** (`<c0`, `[a, b)`, `>=cn`) used
+  as the bin key / `BinKey` / `CrossesByBin` key; the style touches only the
+  rendered name. `WriterOptions` gains no label flag.
+- **Why:** label style affects `output_fingerprint` only, never the schema (§8/§14,
+  D-011/D-035). Canonical identity + late render keeps writers dumb (P-14) and lets
+  one planner path serve both styles.
+- **Affects:** `FcaBedrock.Core` (`Discretizer.RenderBinLabel`, `LabelStyle`,
+  `ConversionPlanner`); the golden harness derives the style from the v2-compat
+  line ending.
+
+---
+
+### D-045 — v2 `o` and `n` are both cut-based; discrete→nominal, progressive→ordinal
+
+- **Status:** accepted
+- **Date:** 2026-06-25
+- **Decision:** v2's continuous (`o`) and ordinal (`n`) types are both cut
+  discretizers; the discrete/progressive toggle is the **scale** choice, not a
+  discretizer mode. `o` → `manual_cuts`, `n` → `ordered_cuts` (D-046); discrete →
+  `nominal`, progressive → `OrdinalScale(direction = le)`. The mode is **not in the
+  `.bed`** (the two ordinal `.bed`s are byte-identical) — it is supplied
+  **out-of-band** (a `ScalingMode` argument to `BedToSpec.ToSpec`, like `Binding`),
+  defaulting to discrete. **No TOML reader is needed** to reproduce the progressive
+  golden. `d` (date) stays rejected (D-038).
+- **Why:** matches the orthogonal model (D-002) and the verified v2 output (`n`
+  produces mutually-exclusive `<Managerial`/`>=Managerial`). Treating the mode as
+  caller metadata mirrors how delimiter/header already are.
+- **Rejected:** mapping `n` to a cumulative ordinal by default (refuted by the
+  discrete `n` golden); gating the progressive golden behind the M2 TOML reader.
+- **Affects:** `FcaBedrock.Spec` (`BedToSpec`, `ScalingMode`); the golden harness
+  (`FixtureCase.ScalingMode`).
+
+---
+
+### D-046 — `ordered_cuts` discretizer (spec §11.8); v2 `.bed` section-role asymmetry
+
+- **Status:** accepted
+- **Date:** 2026-06-25
+- **Decision:** add an `ordered_cuts` discretizer — cuts over a declared category
+  order — as the categorical sibling of `manual_cuts`, sharing one `CutBinLabels`
+  label/identity helper. Documented in spec §11.8 **before/with** the code (P-8).
+  For v2 `n`, `[Attribute Categories]` carries the ordered domain and
+  `[Category Values]` carries the cut (`<,Managerial,>`); for `o`, both carry the
+  numeric cut spec.
+- **Why:** keeps numeric and ordered cuts symmetric and DRY (P-16); the shared
+  label helper guarantees they never drift on bin labels or `--v2-compat` rendering.
+- **Rejected:** modelling `n` with `value_groups` (loses order and threshold
+  semantics); a mode-switched single cut discretizer (god type, P-16).
+- **Affects:** `FcaBedrock.Core` (`OrderedCutsDiscretizer`, `ManualCutsDiscretizer`,
+  `CutBinLabels`, `BinEnds`); spec §11.8, §19.2.
+
+---
+
+### D-047 — Open-end ordinal threshold renders `all`, canonical in both paths
+
+- **Status:** accepted
+- **Date:** 2026-06-25
+- **Decision:** for an `ordinal` scale over an **open-ended** cut discretizer, the
+  tautological threshold at the open end has no finite edge and renders **`all`**
+  (v2's `age-all`). It is **canonical** — emitted natively too — so `--v2-compat`
+  never changes the schema (D-035); `drop_top` suppresses it. Over half-open
+  `[lo, hi)` cut bins only the geometry-aligned boundary is well-defined (`le`+`<`,
+  `ge`+`>=`); the straddling combinations and the independent `boundary` knob await
+  the M2 value-bin path (no M1 producer, P-3). Spec §12.3 amended.
+- **Why:** makes "N bins → N formal attributes" exact and reproduces v2's
+  progressive column count; an `all`-only-under-`--v2-compat` rule would add a
+  column under compat, violating D-035.
+- **Rejected:** a math-y native `<∞` with `all` only under `--v2-compat`.
+- **Affects:** `FcaBedrock.Core` (`OrdinalScale`, `BinScheme`, `OrdinalDirection`);
+  spec §12.3.
+
+---
+
+### D-048 — v2's progressive `.dat` omits the trailing space its discrete export emits
+
+- **Status:** accepted
+- **Date:** 2026-06-25
+- **Decision:** v2's `.dat` export is internally inconsistent — its **discrete**
+  output writes a per-line trailing space (the documented v2-ism,
+  `NonemptyLineTrailingSpace`), its **progressive** output does **not**, though both
+  come from a byte-identical `.bed`. The golden harness reproduces each fixture's
+  actual bytes by letting a `FixtureCase` carry the `WriterOptions` it needs
+  (`mini-adult_employment_ordinal_progressive` overrides
+  `NonemptyLineTrailingSpace = false`). Writers stay dumb (P-14): trailing space is
+  a pure output knob the caller picks per output.
+- **Why:** the fixtures are ground truth (P-9) and must not be edited; the
+  difference is a v2 export wart, not a semantic one (every `.cxt` and the discrete
+  `.dat` match unchanged). A per-fixture writer option keeps the scaling mode out of
+  the writer.
+- **Affects:** the golden harness (`FixtureCase.V2Writer`, `GoldenFixtureTests`).
+
+---
+
 ## Spec-field defaults
 
 These are recorded in spec §21 ("Decisions log") and not duplicated here:

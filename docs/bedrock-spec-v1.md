@@ -928,6 +928,45 @@ sortable date value that feeds the existing numeric discretizers — no new
 scale. The `mini-dates` example is correspondingly a **deferred** fixture, not
 part of the M1 compatibility target.
 
+### 11.8 `ordered_cuts`
+
+Cut points over an **ordered categorical** domain — the categorical sibling of
+`manual_cuts` (§11.2). Where `manual_cuts` cuts a numeric axis, `ordered_cuts`
+cuts a user-declared category order. This is how v2's `n` (ordinal) type is
+expressed in the orthogonal model.
+
+```toml
+discretizer = {
+  kind  = "ordered_cuts",
+  order = ["Unskilled", "Clerical", "Professional", "Managerial"],  # required; low → high
+  cuts  = ["Managerial"],                                           # required; members of order, ascending by position
+  ends  = "open",                                                   # default "open"; "open" | "closed"
+}
+```
+
+**`order`** *(required, array of strings)*. The domain low→high. A raw value not
+in `order` produces **no bin** (subject to `unknown_value_policy`).
+
+**`cuts`** *(required, length ≥ 1)*. Each is a member of `order`, strictly
+ascending by position. A value equal to a cut falls into the bin **at or above**
+it — the same half-open rule as `manual_cuts` (the cut is the lower edge of the
+upper bin).
+
+**`ends`** behaves as in §11.2. Bin labels reuse the §11.2 template over the
+**category strings**: `"<{c0}"`, `"[{c_i}, {c_{i+1}})"`, `">={c_n}"`, with the
+same `--v2-compat` interior transform (`{c_i}to<{c_{i+1}}`). The labels are schema
+strings; there is no numeric parse and no locale (categories are used verbatim).
+
+Pairs with `nominal` (discrete — one formal attribute per bin) or `ordinal`
+(progressive — cumulative thresholds; §12.3).
+
+> **v2 `.bed` section roles differ for `n`.** For `o` (`manual_cuts`), both
+> `[Attribute Categories]` and `[Category Values]` carry the numeric cut spec.
+> For `n` (`ordered_cuts`), `[Attribute Categories]` carries the **ordered
+> domain** and `[Category Values]` carries the **cut** (e.g. `<,Managerial,>`).
+> Neither file records the discrete/progressive choice (the two `.bed`s are
+> byte-identical) — it is supplied out-of-band on migration.
+
 ## 12. Scale reference
 
 A scale maps each bin label (the discretizer's output) to zero or more
@@ -1004,6 +1043,20 @@ true for everything in `direction = "ge"` — i.e., `≥<lowest>`) is
 tautological for objects with non-missing data. Set `drop_top = true` to
 suppress it. The lattice's supremum is unaffected; only the explicit
 formal attribute is omitted.
+
+**Over cut bins (`manual_cuts` / `ordered_cuts`).** When the ordered bins come
+from a cut discretizer, each threshold sits at a bin's far edge: for `le`, bin
+*i*'s **upper** edge (so cuts 30/40/50 give `<30`, `<40`, `<50`); for `ge`, its
+**lower** edge. An **open** end (§11.2 `ends = "open"`) has no finite edge there,
+so its tautological threshold is labelled **`all`** rather than a value — v2's
+`age-all`. This keeps "N bins → N formal attributes" exact (four open bins → four
+columns). `all` is **canonical**: it is emitted on the native path too, so a
+`--v2-compat` run does not change the schema (§14 — column count/identity is
+style-independent); `drop_top` suppresses it. Because half-open `[lo, hi)` cut
+bins can only be crossed whole, only the boundary aligned with that half-openness
+is well-defined — `le` pairs with `<` (strict), `ge` with `>=` (inclusive); the
+straddling combinations (`le`+inclusive, `ge`+strict) are meaningful only over
+*value* bins (e.g. `identity` with an explicit `order`).
 
 ### 12.4 Modelled but not implemented in v1
 
@@ -1463,6 +1516,22 @@ declared_domain = ["Yes", "No"]
 name = "class"
 source = { kind = "column", index = 5 }
 include = false
+```
+
+**Employment as an ordered cut (v2 `n`).** The `mini-adult_employment_ordinal_*`
+fixtures re-type `employment` as `n`: an `ordered_cuts` discretizer (§11.8) over
+the ordered domain, cut at `Managerial`. The `discrete` and `progressive` files
+share one `.bed` (byte-identical); the mode is supplied out-of-band on migration.
+
+```toml
+# discrete (nominal):  employment-<Managerial, employment->=Managerial
+discretizer = { kind = "ordered_cuts",
+                order = ["Unskilled", "Clerical", "Professional", "Managerial"],
+                cuts  = ["Managerial"], ends = "open" }
+scale = { kind = "nominal" }
+
+# progressive (ordinal, le):  employment-<Managerial, employment-all
+scale = { kind = "ordinal", direction = "le" }
 ```
 
 ### 19.3 mini-adult_triples_named (triple input, named subjects)
