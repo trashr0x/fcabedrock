@@ -46,12 +46,10 @@ internal static class GoldenConversion
         return (plan, source);
     }
 
-    // One v2 intent, two layers: v2-compat writer bytes (CRLF) imply the v2-compat
-    // label style at plan time (the cut-bin `30to<40` form). Native (LF) otherwise.
-    // Keyed on the line ending so a per-fixture writer tweak (e.g. the progressive
-    // .dat's missing trailing space) still selects the v2 label style. (D-044)
+    // One v2 intent, two layers: v2-compat writer bytes imply the v2-compat label
+    // style at plan time (the cut-bin `30to<40` form). Native otherwise. (D-044)
     private static LabelStyle LabelStyleFor(WriterOptions options) =>
-        options.LineEnding == "\r\n" ? LabelStyle.V2Compat : LabelStyle.Native;
+        options == WriterOptions.V2Compat ? LabelStyle.V2Compat : LabelStyle.Native;
 
     // Emit ignores data-level diagnostics here: the M1 fixtures are clean (no
     // unknown values), and a stray diagnostic would surface as a byte mismatch.

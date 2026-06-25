@@ -728,26 +728,6 @@ refinement markers (D-003, D-005, D-021); the entries below are new.
 
 ---
 
-### D-048 — v2's progressive `.dat` omits the trailing space its discrete export emits
-
-- **Status:** accepted
-- **Date:** 2026-06-25
-- **Decision:** v2's `.dat` export is internally inconsistent — its **discrete**
-  output writes a per-line trailing space (the documented v2-ism,
-  `NonemptyLineTrailingSpace`), its **progressive** output does **not**, though both
-  come from a byte-identical `.bed`. The golden harness reproduces each fixture's
-  actual bytes by letting a `FixtureCase` carry the `WriterOptions` it needs
-  (`mini-adult_employment_ordinal_progressive` overrides
-  `NonemptyLineTrailingSpace = false`). Writers stay dumb (P-14): trailing space is
-  a pure output knob the caller picks per output.
-- **Why:** the fixtures are ground truth (P-9) and must not be edited; the
-  difference is a v2 export wart, not a semantic one (every `.cxt` and the discrete
-  `.dat` match unchanged). A per-fixture writer option keeps the scaling mode out of
-  the writer.
-- **Affects:** the golden harness (`FixtureCase.V2Writer`, `GoldenFixtureTests`).
-
----
-
 ## Spec-field defaults
 
 These are recorded in spec §21 ("Decisions log") and not duplicated here:

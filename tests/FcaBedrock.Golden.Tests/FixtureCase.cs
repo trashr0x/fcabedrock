@@ -1,5 +1,4 @@
 using FcaBedrock.Core.Spec;
-using FcaBedrock.Export;
 using FcaBedrock.Spec;
 
 namespace FcaBedrock.Golden.Tests;
@@ -27,12 +26,6 @@ public sealed record FixtureCase(string Family, string Variant, Binding Binding)
     // ordinal .bed files are byte-identical); supplied out-of-band like the Binding.
     public ScalingMode ScalingMode { get; init; } = ScalingMode.Discrete;
 
-    // The v2-compat writer options that reproduce this fixture's exact bytes.
-    // Default is the standard v2 preset; a fixture overrides it where v2's own
-    // output is inconsistent (the progressive .dat omits the trailing space its
-    // discrete sibling emits — a v2 export quirk the golden captures, P-9).
-    public WriterOptions V2Writer { get; init; } = WriterOptions.V2Compat;
-
     public static Binding Wide(char delimiter, bool hasHeader) =>
         new(SourceShape.Wide, delimiter, '"', hasHeader, "invariant", "?", new RowIndexObjectKey());
 
@@ -47,7 +40,6 @@ public sealed record FixtureCase(string Family, string Variant, Binding Binding)
         {
             DataVariant = "mini-adult",
             ScalingMode = ScalingMode.Progressive,
-            V2Writer = WriterOptions.V2Compat with { NonemptyLineTrailingSpace = false },
         },
     ];
 
