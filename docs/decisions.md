@@ -789,6 +789,11 @@ refinement markers (D-003, D-005, D-021); the entries below are new.
   (round-trip fidelity); the default-`boundary` round-trip trap over cut bins
   (§12.3); revisiting the `value_type`-vs-discretizer rule (§10.2 — a live
   conflict, left validating). See `docs/roadmap.md`.
+- **Deferred (migrator hygiene):** make `BedToSpec` return `Result<T, 
+  BedrockDiagnostic>` instead of throwing (P-13), so excluded-config recovery can
+  emit a *diagnostic* rather than relying on the broad recovery `catch (Exception)` 
+  in `MapAttribute`. Natural to fold in when M2 reworks the `.bed` → TOML migrator; 
+  not worth a standalone refactor now.
 - **Affects:** Core (planner `ValidateValueLabels` + `RenderName`; new
   `Discretizer.ConsultsValueLabels`; `AttributeSpec` doc), Diagnostics (enum:
   `EmittedFieldOnExcludedAttribute` removed), Spec (`BedToSpec` migrator), spec
