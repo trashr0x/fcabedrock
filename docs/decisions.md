@@ -573,6 +573,33 @@ refinement markers (D-003, D-005, D-021); the entries below are new.
 
 ---
 
+### D-048 — `AGENTS.md` canonical; `CLAUDE.md` imports it; no symlink
+
+- **Status:** accepted
+- **Date:** 2026-06-26
+- **Decision:** the shared, tool-agnostic agent guidance formerly in `CLAUDE.md`
+  is now canonical in **`AGENTS.md`** (the cross-tool convention Codex and other
+  agents read natively). `CLAUDE.md` is reduced to a one-line Claude Code import
+  shim — `@AGENTS.md` — which inlines the file into context identically to inline
+  content. Any Claude-only instructions go *after* that import line; Codex-only
+  runtime config stays in Codex's own config, never the shared file. The two
+  self-references in the migrated file (the `# AGENTS.md` title and the
+  `/AGENTS.md # this file` layout-block line) were repointed; historical
+  `CLAUDE.md` mentions elsewhere in this log (e.g. D-040 "Affects") are left as-is.
+- **Why:** a Claude session and a Codex session working the same repo need one
+  source of truth, not two files that silently drift. The import costs Claude
+  nothing and Codex reads `AGENTS.md` directly.
+- **Rejected:** a `CLAUDE.md → AGENTS.md` **symlink** — this checkout has
+  `core.symlinks=false` (the Windows default; `core.autocrlf=true` compounds it),
+  so a committed symlink checks out as a one-line text file containing the path,
+  i.e. Claude would load the literal string `AGENTS.md` as its entire guidance.
+  Duplicating the content across both files — guaranteed drift.
+- **Affects:** `AGENTS.md` (renamed from `CLAUDE.md`, history preserved via
+  `git mv`), `CLAUDE.md` (new import shim). Process/tooling only; no code, no
+  output bytes.
+
+---
+
 ## M1 (mini-mushroom walking skeleton)
 
 ### D-041 — Sep as the DSV tokenizer for the wide-CSV source
