@@ -6,8 +6,9 @@ namespace FcaBedrock.Core.Spec;
 /// <summary>
 /// One logical attribute and how it becomes zero or more formal attributes. Spec
 /// §10. <see cref="Discretizer"/>/<see cref="Scale"/> are required when
-/// <see cref="Include"/> is true and absent when it is false; the planner enforces
-/// the §10.9 rules.
+/// <see cref="Include"/> is true; when it is false they may still be present but
+/// are parked — the planner ignores all emitted config of an excluded attribute
+/// (§10.9 / D-049, an authoring toggle).
 /// </summary>
 /// <param name="Name">Unique logical name.</param>
 /// <param name="Source">Where the raw value comes from.</param>

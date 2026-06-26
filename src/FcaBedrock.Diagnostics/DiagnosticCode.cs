@@ -13,12 +13,6 @@ public enum DiagnosticCode
     /// <summary>Two attributes declare the same <c>name</c>. Spec §10.2.</summary>
     AttributeNameDuplicate,
 
-    /// <summary>
-    /// An emitted-only field (discretizer, scale, value_labels, …) is set on an
-    /// <c>include = false</c> attribute. Spec §10.9.
-    /// </summary>
-    EmittedFieldOnExcludedAttribute,
-
     /// <summary>A <c>value_labels</c> key is not in the declared domain. Spec §10.8.</summary>
     ValueLabelKeyNotInDomain,
 

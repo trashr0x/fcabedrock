@@ -307,8 +307,8 @@ this separation (see decisions.md D-003, D-005).
 
 1. **Parse / validate** — resolve TOML syntax, `extends` composition, and
    *static* spec validity (overlapping cuts, scale/discretizer compatibility,
-   `value_labels` applicability, emitted-only fields on excluded attributes,
-   duplicate `name`s, formal-attribute identity collisions). Reads no data
+   `value_labels` keys in domain when live (§10.8), duplicate `name`s,
+   formal-attribute identity collisions). Reads no data
    *rows*. It MAY inspect source *schema metadata* supplied by the caller —
    header names, column count — to validate source bindings (e.g. a
    `{ kind = "column", name = "age" }` binding against an actual header);
@@ -675,18 +675,21 @@ value_labels    = { b = "broad", n = "narrow" }
 # Raw incidence in the file is still matched against "b" and "n".
 ```
 
-**Applicability.** `value_labels` only applies when the discretizer is
-`identity` or `free_per_value` — those are the discretizers whose bin
-label IS the raw value. For `value_groups`, the group `label` field
-already serves this purpose; for `manual_cuts` and the auto-binning
-discretizers, bin labels are computed from cuts. Setting `value_labels`
-under any of those discretizers is a validation error
-(`ValueLabelsNotApplicable`).
+**Applicability.** `value_labels` is consulted only when the discretizer is
+`identity` or `free_per_value` — those are the discretizers whose bin label IS
+the raw value. For `value_groups`, the group `label` field already serves this
+purpose; for `manual_cuts` and the auto-binning discretizers, bin labels are
+computed from cuts. Under any of those discretizers `value_labels` is **dormant
+and ignored** — never an error — exactly as `declared_domain` is ignored for
+cut-based discretizers (§10.3). This keeps an attribute toggleable: switching its
+discretizer does not force you to strip retained labels (D-049).
 
-**Coverage.** A raw value present in `declared_domain` but absent from
-`value_labels` falls through to the raw value as label. A label in
+**Coverage.** This applies only when `value_labels` is *live* (an `identity` or
+`free_per_value` discretizer). A raw value present in `declared_domain` but
+absent from `value_labels` falls through to the raw value as label. A label in
 `value_labels` for a value not in `declared_domain` is an error
-(`ValueLabelKeyNotInDomain`). This catches typos.
+(`ValueLabelKeyNotInDomain`) — a typo-catcher. Under a discretizer that does not
+consult `value_labels` the labels are dormant, so neither error fires.
 
 **Determinism.** `value_labels` affects only the output formal-attribute
 names, not their *order* or *count*. It contributes to
@@ -703,32 +706,20 @@ discretizer = { kind = "...", ... }
 scale       = { kind = "...", ... }
 ```
 
-When `include = false` they MAY be omitted: the attribute emits no formal
-attributes and no incidence, and exists only to filter (`restrict_to`) or as an
-inert no-op. The fields that only shape *emitted* output — `discretizer`,
+**`include = false` is an authoring toggle (D-049).** When `include = false` the
+attribute emits no formal attributes and no incidence, and `discretizer`/`scale`
+MAY be omitted. But any emitted-shaping config it *does* carry — `discretizer`,
 `scale`, `value_labels`, `declared_domain`, `formal_attribute_format`,
-`display_name`, `missing_policy`, `unknown_value_policy` — are a validation
-error (`EmittedFieldOnExcludedAttribute`) **when explicitly present** on an
-`include = false` attribute. Only `name`, `source`, `include`, and
-`restrict_to` are meaningful when `include = false`. This makes the two states
-unambiguous:
+`display_name`, `missing_policy`, `unknown_value_policy` — is **retained but
+ignored**, never an error. This lets you park an attribute (toggle it off without
+stripping its scale) and switch it back on later with its configuration intact —
+the round-trip the TOML reader/writer relies on. The attribute is still validated
+*syntactically* (§10.1), and `restrict_to` still applies (§10.4); only the
+emitted-shaping semantics are dormant while excluded. The states:
 
-- `include = false` + `restrict_to` (+ no emitted-only fields) → filter-only.
-- `include = false` + nothing else → inert no-op (allowed during staged edits).
-- `include = true` → `discretizer` and `scale` required.
-
-**"Explicitly present" is scoped deliberately.** The error fires only for
-emitted-only fields the attribute supplies itself, or that an applied
-template/matcher supplies to it. Built-in defaults and `[defaults]` values —
-the ones that would apply to an *included* attribute (e.g. `display_name`
-defaulting to `name`, or `missing_policy` inherited from `[defaults]`) — are
-**not** treated as "present" on an excluded attribute; they are silently
-ignored, never errors. Validation therefore checks the explicitly-set and
-template-inherited fields, not the fully-defaulted resolved view. A template
-that supplies `discretizer`/`scale` (or any other emitted-only field) to an
-`include = false` attribute **is** an error: it is almost certainly an
-accidental template choice, and surfacing it is safer than silently ignoring a
-whole scale configuration.
+- `include = false` + `restrict_to` → filter-only (filters objects, emits nothing).
+- `include = false`, anything else → inactive: emits nothing; carried config is parked.
+- `include = true` → active: `discretizer` and `scale` required and fully validated.
 
 ## 11. Discretizer reference
 
@@ -1255,9 +1246,7 @@ Every distinct condition has its own `DiagnosticCode`. v1's initial set:
 | `AttributeNameDuplicate` | Error | spec validate |
 | `DiscretizerCutsNotAscending` | Error | spec validate |
 | `DiscretizerCutsTooFew` | Error | spec validate |
-| `ValueLabelsNotApplicable` | Error | spec validate |
 | `ValueLabelKeyNotInDomain` | Error | spec validate |
-| `EmittedFieldOnExcludedAttribute` | Error | spec validate |
 | `SourceValueTypeInvalid` | Error | spec validate |
 | `RestrictToOnNumericRequiresRange` | Error | spec validate |
 | `RestrictToValueNotInDomain` | Warning | spec validate |
@@ -1420,8 +1409,8 @@ mode = "row_index"
 name = "class"
 source = { kind = "column", index = 0 }
 include = false                              # was [Convert Attribute] = False
-# excluded → no discretizer/scale/declared_domain/value_labels (would be
-# EmittedFieldOnExcludedAttribute); class is dropped from the analysis entirely
+# excluded → emits nothing; discretizer/scale/etc. are optional here and ignored
+# while off (D-049, an authoring toggle). class is dropped from the analysis.
 
 [[attribute]]
 name = "bruises?"
@@ -1690,10 +1679,11 @@ readers know the rationale and don't re-litigate.
     imposes no contiguity.
 
 13. **Filter-only attributes** (§10.1, §10.4) → `include = false` suppresses
-    formal-attribute emission but **not** the attribute's own `restrict_to`.
-    This makes object-filtering-by-a-field consistent across wide and triple
-    input (v2 only did this consistently for wide). The EMAGE example (§19.4)
-    uses it for `Gene` and `Strength`.
+    formal-attribute emission but **not** the attribute's own `restrict_to`; any
+    emitted-shaping config it retains is ignored, not rejected (the authoring
+    toggle, §10.9 / D-049). This makes object-filtering-by-a-field consistent
+    across wide and triple input (v2 only did this consistently for wide). The
+    EMAGE example (§19.4) uses it for `Gene` and `Strength`.
 
 14. **`source` may repeat** (§10.2) → two attributes may share one `source` to
     apply multiple scalings (e.g. nominal bins + ordinal thresholds on `age`).
@@ -1721,9 +1711,9 @@ readers know the rationale and don't re-litigate.
     formula and label precision are settled at M4.
 
 18. **Discretizer/scale required only when emitting** (§10.9) → required when
-    `include = true`; omitted when `include = false`. Emitted-only fields on an
-    excluded attribute are `EmittedFieldOnExcludedAttribute` (Error). Makes the
-    filter-only examples valid.
+    `include = true`; optional when `include = false`. Emitted-shaping config on
+    an excluded attribute is retained but ignored, not an error — `include` is an
+    authoring toggle (D-049). Makes the filter-only examples valid.
 
 19. **Scale-specific default naming** (§10.7) → nominal `{column}-{value}`;
     ordinal `{column}-{scale_op}{value}`; dichotomic `{column}` alone (no value

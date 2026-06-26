@@ -40,17 +40,39 @@ public static class BedToSpec
 
     private static AttributeSpec MapAttribute(BedDocument document, int index, CultureInfo culture, ScalingMode mode)
     {
-        var name = document.Names[index];
-        var source = new ColumnSource(index);
-
-        // Excluded: carry only name/source/include — no emitted-only fields, so the
-        // planner's §10.9 guard stays satisfied (the v2 categories/values are dropped).
-        if (!document.Convert[index])
+        if (document.Convert[index])
         {
-            return new AttributeSpec(name, source, Include: false, Discretizer: null, Scale: null,
-                DeclaredDomain: [], NoLabels, MissingPolicy.Skip, UnknownValuePolicy.Warn);
+            return MapByType(document, index, culture, mode);
         }
 
+        // include = false is an authoring toggle (D-049): recover the v2 config so the
+        // parked attribute round-trips and can be switched back on — but dormant config
+        // must never block migration. An unsupported type, or config that fails to
+        // parse, degrades to a bare excluded attribute (the pre-D-049 drop-on-exclude
+        // behavior); the planner ignores an excluded attribute either way.
+        var name = document.Names[index];
+        var source = new ColumnSource(index);
+        try
+        {
+            return MapByType(document, index, culture, mode) with { Include = false };
+        }
+        catch (Exception)
+        {
+            // Broad by intent: the failure cause is immaterial — unrecoverable dormant
+            // config is dropped. The exception surface here is incidental (parse/ctor
+            // failures), so narrowing would risk silently reverting to a hard failure;
+            // a genuine bug in MapByType still surfaces on the included path above.
+            return BareExcluded(name, source);
+        }
+    }
+
+    // Builds the included (active) form from the v2 type code. Throws on an
+    // unsupported type or malformed config; MapAttribute swallows that only for an
+    // excluded attribute, whose config is dormant (D-049).
+    private static AttributeSpec MapByType(BedDocument document, int index, CultureInfo culture, ScalingMode mode)
+    {
+        var name = document.Names[index];
+        var source = new ColumnSource(index);
         var type = document.Types[index];
         var values = document.Values[index];
         var categories = document.Categories[index];
@@ -70,6 +92,10 @@ public static class BedToSpec
                 $"v2 .bed type '{type}' on attribute '{name}' is not supported in this slice."),
         };
     }
+
+    private static AttributeSpec BareExcluded(string name, ColumnSource source) =>
+        new(name, source, Include: false, Discretizer: null, Scale: null,
+            DeclaredDomain: [], NoLabels, MissingPolicy.Skip, UnknownValuePolicy.Warn);
 
     private static AttributeSpec Cut(string name, ColumnSource source, Discretizer discretizer, ScalingMode mode) =>
         new(name, source, Include: true, discretizer, ScaleFor(mode),

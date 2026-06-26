@@ -20,7 +20,7 @@ vertical slices, not waterfall phases — each should leave the system working.
 > (base, noheader, employment-ordinal discrete + progressive). Output is proven on
 > two axes (D-043: golden v2-compat byte-equality + native spec conformance);
 > ArchUnit dependency/cycle/purity rules are non-vacuous. `dotnet test` is green
-> (136 tests).
+> (141 tests).
 >
 > **Next: M2** — the TOML spec format + fingerprinting (and the value-bin `ordinal`
 > path + independent `boundary` knob deferred from slice 2).
@@ -63,7 +63,11 @@ New schema, reader/writer, schema + output fingerprints. One-way `.bed` → TOML
 migrator. Round-trip tests over every scale × discretizer combination plus the
 three v2 examples. Add `interordinal`/`biordinal`/`contranominal` as parsable
 types the planner rejects with structured diagnostics (D-010). `[output]`,
-`[provenance]`, `extends` (D-027) parsing.
+`[provenance]`, `extends` (D-027) parsing. The writer must carry the D-049
+round-trip-fidelity items: authored-vs-default presence tracking (`missing_policy`,
+`unknown_value_policy`, `display_name`, `formal_attribute_format`), the
+default-`boundary` cut-bin trap (§12.3), and the `value_type`-vs-discretizer rule
+(§10.2).
 **Exit:** any v1 spec round-trips; v2 specs migrate; rejected scales produce
 clear diagnostics.
 

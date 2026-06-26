@@ -1,3 +1,4 @@
+using System.Globalization;
 using FcaBedrock.Core.Discretization;
 using FcaBedrock.Core.Planning;
 using FcaBedrock.Core.Scaling;
@@ -126,14 +127,57 @@ public sealed class ConversionPlannerTests
     }
 
     [Fact]
-    public void Plan_WhenExcludedAttributeSetsScale_ThenReportsEmittedFieldOnExcludedAttribute()
+    public void Plan_WhenExcludedAttributeRetainsEmittedConfig_ThenIgnoredWithoutError()
     {
-        var bad = new AttributeSpec("x", new ColumnSource(0), Include: false,
-            new IdentityDiscretizer(), new NominalScale(), ["a"], SpecFixtures.NoLabels,
+        // include = false is an authoring toggle (D-049): retained discretizer/scale/
+        // domain/labels are parked, not rejected, and contribute no formal attributes.
+        var parked = new AttributeSpec("x", new ColumnSource(0), Include: false,
+            new IdentityDiscretizer(), new NominalScale(), ["a"],
+            new Dictionary<string, string> { ["a"] = "Alpha" },
             MissingPolicy.Skip, UnknownValuePolicy.Warn);
-        var spec = new BedrockSpec(SpecFixtures.WideRowIndex(), [bad]);
+        var spec = new BedrockSpec(SpecFixtures.WideRowIndex(), [parked]);
 
-        AssertFailsWith(ConversionPlanner.Plan(spec, new SourceSchema(1)), DiagnosticCode.EmittedFieldOnExcludedAttribute);
+        var result = ConversionPlanner.Plan(spec, new SourceSchema(1));
+
+        Assert.True(result.TryGetValue(out var plan));
+        Assert.False(result.HasErrors);
+        Assert.DoesNotContain(plan.Attributes, a => a.Name == "x");
+        Assert.All(plan.FormalAttributes, f => Assert.NotEqual("x", f.Identity.AttributeName));
+    }
+
+    [Fact]
+    public void Plan_WhenActiveCutBasedAttributeHasDormantValueLabels_ThenIgnoredWithoutError()
+    {
+        // §10.8 / D-049: value_labels under a cut-based discretizer is dormant — it is
+        // ignored, so a key absent from declared_domain is NOT ValueLabelKeyNotInDomain.
+        var age = new AttributeSpec("age", new ColumnSource(0), Include: true,
+            new ManualCutsDiscretizer([30.0, 40.0], BinEnds.Open, CultureInfo.InvariantCulture),
+            new NominalScale(), DeclaredDomain: [],
+            new Dictionary<string, string> { ["old"] = "Old retained label" },
+            MissingPolicy.Skip, UnknownValuePolicy.Warn);
+        var spec = new BedrockSpec(SpecFixtures.WideRowIndex(), [age]);
+
+        var result = ConversionPlanner.Plan(spec, new SourceSchema(1));
+
+        Assert.True(result.TryGetValue(out _));
+        Assert.DoesNotContain(result.Diagnostics, d => d.Code == DiagnosticCode.ValueLabelKeyNotInDomain);
+    }
+
+    [Fact]
+    public void Plan_WhenCutBasedAttributeHasValueLabelsMatchingBinLabel_ThenLabelsAreIgnoredInNames()
+    {
+        // §10.8 / D-049: value_labels is dormant under a cut discretizer — it must not
+        // change rendered names, even when a key happens to match a cut-bin label.
+        var age = new AttributeSpec("age", new ColumnSource(0), Include: true,
+            new ManualCutsDiscretizer([30.0], BinEnds.Open, CultureInfo.InvariantCulture),
+            new NominalScale(), DeclaredDomain: [],
+            new Dictionary<string, string> { ["<30"] = "Young" },
+            MissingPolicy.Skip, UnknownValuePolicy.Warn);
+        var spec = new BedrockSpec(SpecFixtures.WideRowIndex(), [age]);
+
+        Assert.True(ConversionPlanner.Plan(spec, new SourceSchema(1)).TryGetValue(out var plan));
+
+        Assert.Equal(["age-<30", "age->=30"], plan.FormalAttributes.Select(f => f.RenderedName));
     }
 
     [Fact]

@@ -135,9 +135,12 @@ public static class ConversionPlanner
             return attribute.Name; // dichotomic: column alone
         }
 
-        // value_labels (display names) win where set; otherwise the discretizer
-        // renders the canonical bin label for the style (cut bins → v2-compat form).
-        var display = attribute.ValueLabels.TryGetValue(shape.ValueLabel, out var label)
+        // value_labels (display names) win where set — but only for discretizers
+        // that consult them (§10.8 / D-049). Under a cut discretizer the labels are
+        // dormant, so the discretizer renders the canonical bin label for the style
+        // (cut bins → v2-compat form) and a label keyed to a bin string is ignored.
+        var display = discretizer.ConsultsValueLabels
+            && attribute.ValueLabels.TryGetValue(shape.ValueLabel, out var label)
             ? label
             : discretizer.RenderBinLabel(shape.ValueLabel, labelStyle);
 
@@ -180,7 +183,9 @@ public static class ConversionPlanner
 
             if (!attribute.Include)
             {
-                ValidateExcluded(attribute, diagnostics);
+                // §10.9 / D-049: include = false is an authoring toggle. Any emitted
+                // config the attribute retains is parked — ignored here, never an
+                // error. (restrict_to still applies; that lands in a later slice.)
                 continue;
             }
 
@@ -188,29 +193,18 @@ public static class ConversionPlanner
         }
     }
 
-    private static void ValidateExcluded(AttributeSpec attribute, List<BedrockDiagnostic> diagnostics)
-    {
-        // §10.9: emitted-only fields explicitly set on an excluded attribute are an
-        // error. Built-in/[defaults] values are not "present" and are ignored, so
-        // the reader leaves these empty for an excluded attribute.
-        var hasEmittedFields = attribute.Discretizer is not null
-            || attribute.Scale is not null
-            || attribute.ValueLabels.Count > 0
-            || attribute.DeclaredDomain.Count > 0;
-
-        if (hasEmittedFields)
-        {
-            diagnostics.Add(new BedrockDiagnostic(
-                DiagnosticCode.EmittedFieldOnExcludedAttribute,
-                DiagnosticSeverity.Error,
-                $"Excluded attribute '{attribute.Name}' sets emitted-only fields (discretizer/scale/value_labels/declared_domain).",
-                new DiagnosticLocation(AttributeName: attribute.Name)));
-        }
-    }
-
     private static void ValidateValueLabels(AttributeSpec attribute, List<BedrockDiagnostic> diagnostics)
     {
         if (attribute.ValueLabels.Count == 0)
+        {
+            return;
+        }
+
+        // §10.8 / D-049: value_labels is only consulted by discretizers whose bin
+        // label IS the raw value (identity, free_per_value). Under any other
+        // discretizer the labels are dormant — ignored here and in RenderName, never
+        // an error. Discretizer.ConsultsValueLabels is the single authority.
+        if (attribute.Discretizer?.ConsultsValueLabels != true)
         {
             return;
         }

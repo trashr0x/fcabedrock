@@ -46,4 +46,13 @@ public abstract record Discretizer
     /// Identity/keys never go through here — only the rendered name (P-14, D-044).
     /// </summary>
     internal virtual string RenderBinLabel(string canonicalLabel, LabelStyle style) => canonicalLabel;
+
+    /// <summary>
+    /// Whether <c>value_labels</c> (raw value → display label, §10.8) applies to
+    /// this discretizer — true only when the bin label IS the raw value
+    /// (<c>identity</c>, <c>free_per_value</c>). For every other discretizer
+    /// <c>value_labels</c> is dormant: ignored by both validation and name
+    /// rendering, never an error (D-049). The single authority for that rule.
+    /// </summary>
+    internal virtual bool ConsultsValueLabels => false;
 }

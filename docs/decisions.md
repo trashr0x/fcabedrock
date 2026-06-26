@@ -444,7 +444,9 @@ refinement markers (D-003, D-005, D-021); the entries below are new.
 
 ### D-037 — Scale-specific default naming; emitted-field discipline
 
-- **Status:** accepted
+- **Status:** accepted; (b) superseded by D-049 — `EmittedFieldOnExcludedAttribute`
+  is removed and `include = false` is an authoring toggle (retained config is
+  ignored, not an error). (a) stands.
 - **Decision:** (a) default formal-attribute naming is scale-specific —
   nominal `{column}-{value}`, ordinal `{column}-{scale_op}{value}`, dichotomic
   `{column}` alone, `as_attribute` adds `{column}-missing`; an explicit
@@ -752,6 +754,45 @@ refinement markers (D-003, D-005, D-021); the entries below are new.
 - **Rejected:** a math-y native `<∞` with `all` only under `--v2-compat`.
 - **Affects:** `FcaBedrock.Core` (`OrdinalScale`, `BinScheme`, `OrdinalDirection`);
   spec §12.3.
+
+---
+
+### D-049 — `include = false` is an authoring toggle; dormant config never blocks
+
+- **Status:** accepted
+- **Date:** 2026-06-27
+- **Decision:** `include = false` is a pure on/off **authoring toggle**. An
+  excluded attribute MAY retain any emitted-shaping config (`discretizer`,
+  `scale`, `value_labels`, `declared_domain`, `formal_attribute_format`,
+  `display_name`, `missing_policy`, `unknown_value_policy`); the planner ignores
+  it while excluded — it is **never** an error. This reverses D-037(b)'s
+  `EmittedFieldOnExcludedAttribute`, which is **removed** (diagnostic + enum
+  member). `restrict_to` still applies (D-021/D-032). Consequences: (a) the v2
+  `.bed` migrator now **preserves** an excluded attribute's derived
+  discretizer/scale/domain — best-effort: an unsupported type or config that fails
+  to parse degrades to a bare excluded attribute, never failing the migration; (b)
+  `value_labels` under a discretizer that does not
+  consult it is **dormant** — ignored by both validation *and* name rendering, so
+  it cannot change output even when a key matches a cut-bin label. `value_labels`
+  applies only when the discretizer consults it (`identity`/`free_per_value`); the
+  single authority is `Discretizer.ConsultsValueLabels`. So `ValueLabelsNotApplicable`
+  (spec-text only) and the enforced `ValueLabelKeyNotInDomain` fire only for live
+  labels — `ValueLabelKeyNotInDomain` stays the typo-catcher there.
+- **Why:** the D-037(b) rule made toggling an attribute off destructive (strip all
+  config) and a TOML round-trip of a parked attribute lossy — authoring-hostile
+  ahead of the M2 reader/writer. The principle: inactive/dormant config must not
+  block authoring; active attributes are still validated normally. Aligns excluded
+  attributes and dormant `value_labels` with how `declared_domain` is already
+  ignored for cut-based discretizers (§10.3).
+- **Deferred (M2 writer):** authored-vs-default presence tracking for
+  `missing_policy`/`unknown_value_policy`/`display_name`/`formal_attribute_format`
+  (round-trip fidelity); the default-`boundary` round-trip trap over cut bins
+  (§12.3); revisiting the `value_type`-vs-discretizer rule (§10.2 — a live
+  conflict, left validating). See `docs/roadmap.md`.
+- **Affects:** Core (planner `ValidateValueLabels` + `RenderName`; new
+  `Discretizer.ConsultsValueLabels`; `AttributeSpec` doc), Diagnostics (enum:
+  `EmittedFieldOnExcludedAttribute` removed), Spec (`BedToSpec` migrator), spec
+  §7 / §10.8 / §10.9 / §16.4 / §17. Supersedes D-037(b); refines D-021 / D-032.
 
 ---
 

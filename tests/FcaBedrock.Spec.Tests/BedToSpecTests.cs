@@ -13,14 +13,67 @@ public sealed class BedToSpecTests
     private static BedrockSpec MushroomSpec() => BedToSpec.ToSpec(BedReader.Read(BedFixtures.MushroomBed), Wide());
 
     [Fact]
-    public void ToSpec_WhenExcludedAttribute_ThenCarriesNoEmittedFields()
+    public void ToSpec_WhenExcludedAttribute_ThenRetainsEmittedConfig()
     {
+        // include = false is an authoring toggle (D-049): the migrator preserves the
+        // excluded attribute's v2 config (class is type c → identity + nominal, domain
+        // e/p, value_labels e→edible / p→poisonous) so the spec round-trips and can be
+        // switched back on. The planner ignores it while excluded.
         var cls = MushroomSpec().Attributes[0];
 
         Assert.False(cls.Include);
-        Assert.Null(cls.Scale);
-        Assert.Null(cls.Discretizer);
-        Assert.Empty(cls.DeclaredDomain);
+        Assert.IsType<IdentityDiscretizer>(cls.Discretizer);
+        Assert.IsType<NominalScale>(cls.Scale);
+        Assert.Equal(["e", "p"], cls.DeclaredDomain);
+        Assert.Equal("edible", cls.ValueLabels["e"]);
+        Assert.Equal("poisonous", cls.ValueLabels["p"]);
+    }
+
+    [Fact]
+    public void ToSpec_WhenExcludedAttributeOfUnsupportedType_ThenMigratesAsBareExcluded()
+    {
+        // A deferred/unsupported v2 type (d = date) on an excluded attribute still
+        // migrates — as a bare excluded attribute — rather than failing the whole
+        // migration, preserving the pre-D-049 drop-on-exclude robustness.
+        var document = new BedDocument(
+            AttributeCount: 1, Names: ["when"], Categories: [["2020", "2021"]],
+            Values: [["2020", "2021"]], Convert: [false], Types: ["d"], RestrictTo: [""]);
+
+        var when = BedToSpec.ToSpec(document, Wide()).Attributes[0];
+
+        Assert.False(when.Include);
+        Assert.Null(when.Discretizer);
+        Assert.Null(when.Scale);
+        Assert.Empty(when.DeclaredDomain);
+    }
+
+    [Fact]
+    public void ToSpec_WhenExcludedAttributeHasMalformedConfig_ThenMigratesAsBareExcluded()
+    {
+        // D-049: dormant config must never block migration. An excluded type-o column
+        // with non-numeric cut tokens can't be recovered → bare excluded, not a throw.
+        var document = new BedDocument(
+            AttributeCount: 1, Names: ["age"], Categories: [["young", "old"]],
+            Values: [["<", "abc", ">"]], Convert: [false], Types: ["o"], RestrictTo: [""]);
+
+        var age = BedToSpec.ToSpec(document, Wide()).Attributes[0];
+
+        Assert.False(age.Include);
+        Assert.Null(age.Discretizer);
+        Assert.Null(age.Scale);
+        Assert.Empty(age.DeclaredDomain);
+    }
+
+    [Fact]
+    public void ToSpec_WhenIncludedAttributeHasMalformedConfig_ThenMigrationFails()
+    {
+        // The recover-or-degrade path is for excluded (dormant) config only: an active
+        // attribute with malformed config still fails migration, surfacing the error.
+        var document = new BedDocument(
+            AttributeCount: 1, Names: ["age"], Categories: [["young", "old"]],
+            Values: [["<", "abc", ">"]], Convert: [true], Types: ["o"], RestrictTo: [""]);
+
+        Assert.ThrowsAny<Exception>(() => BedToSpec.ToSpec(document, Wide()));
     }
 
     [Fact]
