@@ -1,4 +1,15 @@
-# Keep the v2 golden fixtures byte-exact: never normalize line endings (v2 .cxt
-# and .dat outputs use CRLF, and golden comparison is byte-for-byte), but still
-# render textual diffs in review. See docs/principles.md P-9.
-fixtures/** -text
+# Golden v2-compat OUTPUTS carry a byte-exact contract: the writer emits the line
+# ending as a format decision, not a platform one (literal "\r\n" for v2-compat,
+# never Environment.NewLine), and the golden harness compares byte-for-byte. So
+# the expected .cxt/.dat must be CRLF on every OS, including Linux CI. Freeze them
+# — no normalization — but they still render as textual diffs in review (no NUL
+# bytes). See docs/principles.md P-9 and the determinism contract (D-004).
+fixtures/v2/**/expected/*.cxt -text
+fixtures/v2/**/expected/*.dat -text
+
+# Fixture INPUTS carry no byte contract — the readers are EOL-agnostic (BedReader
+# normalizes CRLF->LF before parsing; the Sep CSV reader tokenizes either) — so
+# treat them as ordinary text: LF in the repo, native on checkout. This is where
+# "the EOL shouldn't matter as long as the code handles both" actually applies.
+fixtures/v2/**/*.bed  text
+fixtures/v2/**/*.data text

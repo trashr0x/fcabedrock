@@ -30,4 +30,23 @@ public sealed class BedReaderTests
         Assert.Equal(5, document.RestrictTo.Count);
         Assert.All(document.RestrictTo, r => Assert.Equal("", r));
     }
+
+    [Fact]
+    public void Read_WhenSourceUsesCrlf_ThenParsesIdenticallyToLf()
+    {
+        // Line endings are not data: a .bed file must parse the same whether it
+        // arrived with LF (Unix) or CRLF (Windows) endings. The reader normalizes
+        // CRLF->LF before splitting, so no terminator survives into a token.
+        var fromLf = BedReader.Read(BedFixtures.MushroomBed);
+        var fromCrlf = BedReader.Read(BedFixtures.MushroomBed.Replace("\n", "\r\n"));
+
+        Assert.Equal(fromLf.AttributeCount, fromCrlf.AttributeCount);
+        Assert.Equal(fromLf.Names, fromCrlf.Names);
+        Assert.Equal(fromLf.Types, fromCrlf.Types);
+        Assert.Equal(fromLf.Convert, fromCrlf.Convert);
+        Assert.Equal(fromLf.Categories, fromCrlf.Categories);
+        Assert.Equal(fromLf.Values, fromCrlf.Values);
+        Assert.Equal(fromLf.RestrictTo, fromCrlf.RestrictTo);
+        Assert.Equal("ring-number", fromCrlf.Names[^1]); // a token ending its line — no trailing '\r'
+    }
 }

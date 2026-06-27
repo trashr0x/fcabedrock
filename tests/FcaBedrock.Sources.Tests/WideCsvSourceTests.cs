@@ -22,6 +22,9 @@ public sealed class WideCsvSourceTests
         return records;
     }
 
+    private static string Projection(ObjectRecord record) =>
+        string.Join("|", Enumerable.Range(0, record.FieldCount).Select(i => record.Field(i) ?? "<null>"));
+
     [Fact]
     public async Task ReadAsync_WhenCommaWithHeader_ThenSkipsHeaderAndNamesByRowIndex()
     {
@@ -90,5 +93,28 @@ public sealed class WideCsvSourceTests
 
         Assert.Equal(2, second.Count);
         Assert.Equal(first.Select(r => r.Field(0)), second.Select(r => r.Field(0)));
+    }
+
+    [Fact]
+    public async Task ReadAsync_WhenInputUsesCrlf_ThenRecordsMatchLfParse()
+    {
+        // Sep treats \r\n and \n alike as row terminators, so wide-CSV parsing is
+        // EOL-agnostic: a Windows (CRLF) file yields the same records as a Unix (LF) one.
+        const string lf = "a,b,c\nx,y,z\np,q,r";
+
+        var fromLf = await ReadAllAsync(Source(lf, Wide()));
+        var fromCrlf = await ReadAllAsync(Source(lf.Replace("\n", "\r\n"), Wide()));
+
+        Assert.Equal(fromLf.Select(Projection), fromCrlf.Select(Projection));
+        Assert.Equal("r", fromCrlf[^1].Field(2)); // the terminator never leaks into the last field
+    }
+
+    [Fact]
+    public async Task GetSchemaAsync_WhenHeaderUsesCrlf_ThenHeaderNamesCarryNoCarriageReturn()
+    {
+        var schema = await Source("a,b,c\r\n1,2,3", Wide())
+            .GetSchemaAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal(["a", "b", "c"], schema.Header); // not ["a", "b", "c\r"]
     }
 }
