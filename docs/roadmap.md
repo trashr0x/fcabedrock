@@ -59,17 +59,54 @@ The `mini-dates` example is **not** an M1 target — date support is deferred
 
 ### M2 — TOML spec format + fingerprinting
 
-New schema, reader/writer, schema + output fingerprints. One-way `.bed` → TOML
-migrator. Round-trip tests over every scale × discretizer combination plus the
-three v2 examples. Add `interordinal`/`biordinal`/`contranominal` as parsable
-types the planner rejects with structured diagnostics (D-010). `[output]`,
-`[provenance]`, `extends` (D-027) parsing. The writer must carry the D-049
-round-trip-fidelity items: authored-vs-default presence tracking (`missing_policy`,
-`unknown_value_policy`, `display_name`, `formal_attribute_format`), the
-default-`boundary` cut-bin trap (§12.3), and the `value_type`-vs-discretizer rule
-(§10.2).
-**Exit:** any v1 spec round-trips; v2 specs migrate; rejected scales produce
-clear diagnostics.
+New TOML schema, reader/writer, and three fingerprints — `schema_fingerprint`
+plus per-format `cxt_output_fingerprint` / `dat_output_fingerprint` (D-051) over a
+plan-derived canonical JSON encoding (D-053). One-way `.bed` → TOML migrator,
+moved toward `Diagnosed<T>` while it is reworked (the D-049 migrator-hygiene item;
+minimum bar: no silently-dropped parked config). Round-trip tests over every
+scale × discretizer combination plus the three v2 examples, covering
+omitted-vs-authored defaults (D-049 presence tracking), parked config,
+`restrict_to` string/range/open-ended/mixed forms, `[output]` per-leaf `extends`
+merge, multi-file `extends` chains, `[provenance]`, and preserved-but-rejected
+templates/matchers. Add `interordinal`/`biordinal`/`contranominal` as parsable
+types the planner rejects (D-010). `[output]`, `[provenance]`, `extends`
+(D-027, position-preserving override D-052) parsing.
+
+Finalized M2 spec decisions (D-050…D-058) land here: malformed-numeric handling
+(D-050), split fingerprints (D-051/D-053), `extends` ordering (D-052), v1
+quote-char (D-054), `value_groups` dropping `declared_domain` (D-055), cut
+validation (D-056), `restrict_to` parsed-but-rejected until M4 (D-057), and the
+empty-output diagnostics (D-058). Also the value-bin `ordinal` path + live
+`boundary` knob deferred from slice 2 (D-047), and the remaining D-049
+writer-fidelity items (presence tracking; the default-`boundary` cut-bin trap
+§12.3; the `value_type`-vs-discretizer rule §10.2). New diagnostics land as their
+emit sites do (`SourceValueUnparseable`, `RestrictToNotImplementedV1`,
+`TemplateMatcherNotImplementedV1`, plus the binding/cut/fingerprint/empty-output
+codes); data-phase codes are aggregated from day one (count + bounded sample, not
+per-row).
+
+**Before implementation:** a separate M1-adjacent conformance pass reconciles
+already-shipped M1 code with the M2 wording in the areas that touch it —
+whitespace normalization, malformed-numeric diagnostics/no-cross behavior, cut-bin
+ordinal boundary behavior, dichotomic/value-label naming, and diagnostic gaps in
+shipped planner paths. The M2 spec/docs describe the v1 **end-state**; the M1
+byte-equality goldens are not reopened by the docs, and the malformed-numeric
+change is byte-neutral (still "keep object, no cross", only adds a diagnostic).
+
+**Verification gates:** re-run the M1 golden suite after the whitespace and
+malformed-numeric changes (v2-compat guard); a fingerprint-stability golden for
+the canonical numeric encoding (`30` / `30.0` / `3e1`); value-bin ordinal
+conformance tests over all `direction × boundary` combinations plus
+`OrdinalBoundaryIncompatibleWithCuts`; and `.gitattributes` for new byte-sensitive
+TOML/expected-output fixtures.
+
+**Deferred from M2:** triple headers / triple role-name binding / object-/
+subject-name filtering → M3 (triple-source audit); `restrict_to` *execution* → M4;
+template/matcher *resolution* → M6. M2 parses/preserves/round-trips these where the
+format requires it (e.g. templates/matchers under `extends`) but rejects their use
+with the transitional diagnostics above.
+**Exit:** any v1 spec round-trips; v2 specs migrate; rejected scales/features
+produce clear diagnostics.
 
 ### M3 — Three-column (triple) source
 
@@ -165,3 +202,7 @@ Modelled in the spec where noted, so adding them later isn't a format break.
   behind `--v2-compat` where needed, rather than chasing a v2 quirk forever.
 - The CLI track (M0–M8) and the UI track (M9) are independent after M5. Don't
   let UI work block converter progress.
+- The 2026-06-26 review deferred three tightening items: cut validation (now D-056,
+  landed in M2), a `.cxt` size/diagnostics item to M7, and an allocation item to
+  M8. The latter two are tracked here pending their own `decisions.md` entries when
+  M7/M8 are picked up.

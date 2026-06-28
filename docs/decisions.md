@@ -242,7 +242,7 @@ spec-field default, it lives in spec §21 and is only cross-referenced here.
   `[Category Values]`). Applies only under `identity` / `free_per_value`.
 - **Why:** caught during spec review — v2 outputs `gill-size-broad`, not
   `gill-size-b`. Without it, mini-mushroom byte-equality (M1) fails and output
-  names are ugly. Affects `output_fingerprint`, not `schema_fingerprint`.
+  names are ugly. Affects `output_fingerprint` (now split per-format, D-051), not `schema_fingerprint`.
 - **Affects:** Core, Export, spec §10.8 ("value_labels").
 
 ### D-024 — Object grouping by composite key (deferred to v1.1)
@@ -389,8 +389,10 @@ reverse, the earlier decisions.
 
 ### D-035 — Fingerprint scopes: schema = planned columns only
 
-- **Status:** accepted (refines D-004-adjacent fingerprint wording; tightened in
-  Round 4)
+- **Status:** accepted; the single `output_fingerprint` is split into per-format
+  `cxt_output_fingerprint` / `dat_output_fingerprint` by D-051 and its plan-derived
+  canonical encoding pinned by D-053 (refines D-004-adjacent fingerprint wording;
+  tightened in Round 4)
 - **Decision:** `schema_fingerprint` hashes **only the final ordered list of
   planned formal-attribute canonical identities** (logical name + scale +
   canonical bin/threshold key + operator), as produced by Plan. No policy is an
@@ -687,8 +689,8 @@ refinement markers (D-003, D-005, D-021); the entries below are new.
   form). Discretizers emit **one canonical label** (`<c0`, `[a, b)`, `>=cn`) used
   as the bin key / `BinKey` / `CrossesByBin` key; the style touches only the
   rendered name. `WriterOptions` gains no label flag.
-- **Why:** label style affects `output_fingerprint` only, never the schema (§8/§14,
-  D-011/D-035). Canonical identity + late render keeps writers dumb (P-14) and lets
+- **Why:** label style affects `output_fingerprint` (now split per-format, D-051)
+  only, never the schema (§8/§14, D-011/D-035). Canonical identity + late render keeps writers dumb (P-14) and lets
   one planner path serve both styles.
 - **Affects:** `FcaBedrock.Core` (`Discretizer.RenderBinLabel`, `LabelStyle`,
   `ConversionPlanner`); the golden harness derives the style from the v2-compat
@@ -798,6 +800,210 @@ refinement markers (D-003, D-005, D-021); the entries below are new.
   `Discretizer.ConsultsValueLabels`; `AttributeSpec` doc), Diagnostics (enum:
   `EmittedFieldOnExcludedAttribute` removed), Spec (`BedToSpec` migrator), spec
   §7 / §10.8 / §10.9 / §16.4 / §17. Supersedes D-037(b); refines D-021 / D-032.
+
+---
+
+## M2 (TOML spec format + fingerprinting)
+
+These finalize the M2 contract before the TOML reader/writer, `.bed` migrator,
+fingerprints, manifests, and `extends` are implemented. They were settled over
+four review passes; the spec text (`bedrock-spec-v1.md`) is updated to match in
+the same documentation pass. Implementation follows a separate M1-adjacent
+conformance pass (`roadmap.md`).
+
+### D-050 — Malformed numeric values are present-but-invalid, not missing
+
+- **Status:** accepted (supersedes the §11.5 "parse failure → missing" wording and
+  the "NaN/∞ → missing" clause of D-036)
+- **Date:** 2026-06-28
+- **Decision:** for a numeric attribute, a value that is present but not a usable
+  finite number — fails to parse under `binding.locale`, or parses to NaN/±∞ — is
+  **invalid**, not missing. The object is kept, no cross is emitted, the value is
+  excluded from calibration, and `SourceValueUnparseable` is reported at the
+  severity `unknown_value_policy` selects (`skip` → silent; `warn` → Warning;
+  `fail` → Error/abort; `include` → Warning, since an unparseable token cannot be
+  added to a numeric domain). Only empty cells and explicit `missing_token`
+  matches are *missing* and follow `missing_policy`.
+- **Why:** "missing" and "malformed" diverge under `missing_policy = "as_attribute"`
+  (missing crosses the `-missing` column; malformed must not) and for diagnostics
+  (malformed data deserves a signal). Reusing `unknown_value_policy` for severity
+  avoids a second strictness knob (P-5); for numeric attributes that policy was
+  otherwise inert (cut discretizers ignore `declared_domain`, §10.3). NaN/±∞ are
+  folded in with parse-failure rather than split into a third behavior.
+- **Rejected:** keeping parse-failure as missing (conflates two conditions, hides
+  bad data); a fixed Warning severity (a `fail` pipeline expects malformed data to
+  abort); a dedicated malformed-value policy knob (P-6, redundant with
+  `unknown_value_policy`).
+- **Affects:** Core (planner/emit), Conversion; spec §10.6 / §11.5 / §16.4;
+  diagnostic `SourceValueUnparseable`. Byte-neutral on M1 (still "keep object, no
+  cross"; only adds a diagnostic).
+
+### D-051 — Per-format output fingerprints (cxt + dat) replace the single output_fingerprint
+
+- **Status:** accepted (supersedes the single-`output_fingerprint` model of D-035;
+  `schema_fingerprint` unchanged)
+- **Date:** 2026-06-28
+- **Decision:** the `[spec]` block stores `schema_fingerprint`,
+  `cxt_output_fingerprint`, and `dat_output_fingerprint`. Both output fingerprints
+  build on `schema_fingerprint` and add the **shared** byte-affecting inputs that
+  schema omits — `duplicate_object_policy`, object-ordering policy, `restrict_to`
+  (once executable), and conversion-affecting binding/source settings. `.cxt` then
+  adds rendered names + bin-label style + `.cxt` writer settings; `.dat` adds only
+  `.dat` writer settings (`base_index`, line endings, trailing space). Rendered
+  names never affect `.dat`.
+- **Why:** a single output fingerprint conflated `.cxt`-only and `.dat`-only
+  settings, so a `.cxt`-only change perturbed the `.dat` hash. The split is exact
+  per format. The row-shaping policies (`duplicate_object_policy`, ordering) sit in
+  *both* output fingerprints, not `schema_fingerprint`, because they change rows,
+  not columns (D-035).
+- **Rejected:** one `output_fingerprint` (imprecise); folding output identity into
+  `schema_fingerprint` (would make `.dat` column identity depend on formatting).
+- **Affects:** Spec, Core; spec §3 / §14 / §15 / §21-item-16; diagnostics
+  `CxtOutputFingerprintStale`, `DatOutputFingerprintStale`.
+
+### D-052 — extends overrides attributes position-preservingly
+
+- **Status:** accepted (supersedes §13 rule 5 "concatenate; current wins"; refines
+  D-027)
+- **Date:** 2026-06-28
+- **Decision:** under `extends`, base attributes keep their original positions; a
+  derived attribute with the same `name` replaces the base attribute **in place**
+  (whole-attribute replacement — inherited fields, including `restrict_to`, are
+  dropped unless repeated); a derived attribute with a new `name` is appended after
+  all inherited attributes; the merge is applied at each step of a multi-level
+  chain, base-most first. Suppress an inherited attribute by overriding it with
+  `include = false`. `[output]` / `[output.cxt]` / `[output.dat]` merge per leaf
+  field. Base-stored fingerprints are ignored and recomputed for the resolved spec.
+- **Why:** attribute order is column order (§17 rule 1) and feeds
+  `schema_fingerprint`, so plain concatenation would reorder columns whenever a
+  derived spec re-tuned an inherited attribute — surprising and fingerprint-
+  changing. Position-preserving override keeps column order stable across re-tunes.
+  `[output]` merge was previously unspecified.
+- **Rejected:** concatenation with append-on-override (reorders columns);
+  field-level merge of same-name attributes (error-prone, already rejected by D-027).
+- **Affects:** Spec; spec §13.
+
+### D-053 — Fingerprints hash a plan-derived canonical JSON structure, not TOML text
+
+- **Status:** accepted (supersedes the §2/§3 "canonical TOML projection" framing;
+  refines D-035's plan-based hashing)
+- **Date:** 2026-06-28
+- **Decision:** all three fingerprints hash a fixed UTF-8 canonical JSON structure
+  generated from the resolved/calibrated **plan**, never the spec's TOML text. The
+  structure carries a format-version tag; arrays stay in planned order; map keys
+  are sorted; strings use one documented JSON escaping rule; numbers are the parsed
+  numeric value reformatted with invariant, shortest round-trippable .NET
+  formatting (so `30`, `30.0`, `3e1` collapse and no machine-dependent float drift);
+  cut-bin open ends are structural flags, not `∞` strings.
+- **Why:** §2/§3 still described a "canonical TOML projection," which D-035 had
+  already obsoleted by defining `schema_fingerprint` over the planned list. Hashing
+  the plan is the single source of truth. Pinning the numeric format and a version
+  tag makes stored fingerprints portable and the encoding evolvable — both durable
+  contracts (P-11), so they must be fixed before any spec ships with a stored hash.
+- **Rejected:** hashing TOML text (formatting-sensitive, and `30` vs `30.0` would
+  differ); `"R"`/`"G17"` float formatting (17 digits defeats the `30.0`/`30`
+  collapse).
+- **Affects:** Spec, Core (fingerprint encoder); spec §2 / §3 / §14. Needs a
+  canonical-encoding stability golden (numeric cuts) at implementation.
+
+### D-054 — v1 supports only the standard double quote_char
+
+- **Status:** accepted (refines D-041 / §5.1)
+- **Date:** 2026-06-28
+- **Decision:** v1 accepts only `quote_char = "\""`; a custom `quote_char` parses
+  but is rejected with `QuoteCharNotSupportedV1`. `delimiter` is a single
+  non-newline character and MUST differ from `quote_char`
+  (`BindingDelimiterQuoteConflict`). The `quote_char` field is retained so a later
+  version can lift the restriction without a format change (the D-010 pattern).
+- **Why:** the Sep tokenizer (D-041) is exercised and golden-tested only with the
+  standard quote; promising arbitrary quote chars in v1 would be an unverified
+  contract. Narrowing now, with a reserved field, keeps the door open.
+- **Rejected:** silently honoring a custom `quote_char` (unverified); removing the
+  field (would force a format change to re-add).
+- **Affects:** Sources, Spec; spec §5.1 / §16.4; diagnostics
+  `QuoteCharNotSupportedV1`, `BindingDelimiterQuoteConflict`.
+
+### D-055 — value_groups does not use declared_domain
+
+- **Status:** accepted (refines D-022)
+- **Date:** 2026-06-28
+- **Decision:** `declared_domain` is not meaningful for `value_groups` and is
+  removed from §10.3's applicability list (now `identity` / `free_per_value` only).
+  For `value_groups`, the `groups` plus the `unmatched` policy define recognition:
+  a value matches a group → its label; otherwise `unmatched` decides (`skip` defers
+  to `unknown_value_policy`, `other` → synthetic `Other` after declared groups,
+  `passthrough` → its own raw label). `passthrough` discovers columns from data, so
+  it triggers Calibrate, emits `ValueGroupsPassthroughDataDependent` (Warning), and
+  omits stored fingerprints unless frozen.
+- **Why:** `declared_domain` + `value_groups` created two overlapping
+  "recognized-value" gates (P-5) — and since unmatched-`skip` already defers to
+  `unknown_value_policy`, the domain added nothing but precedence ambiguity (it also
+  made regex groups, the high-cardinality case D-022 targets, useless). Dropping it
+  dissolves the ambiguity.
+- **Rejected:** a domain-vs-group precedence rule (made regex groups pointless);
+  rejecting `passthrough` + `declared_domain` only (still leaves the overlap).
+- **Affects:** Core, Spec; spec §7 / §10.3 / §11.6 / §17;
+  diagnostic `ValueGroupsPassthroughDataDependent`.
+
+### D-056 — Cut validation in M2
+
+- **Status:** accepted (formalizes the 2026-06-26 review item; refines D-046)
+- **Date:** 2026-06-28
+- **Decision:** M2 validates hand-authored TOML cuts, since hand-written specs first
+  become possible at M2: `manual_cuts` — strictly ascending (`DiscretizerCutsNotAscending`),
+  length ≥ 1 (`DiscretizerCutsTooFew`), and `ends = "closed"` requires ≥ 2 cuts
+  (`DiscretizerEndsClosedTooFewCuts`); `ordered_cuts` — `order` entries distinct and
+  non-empty (`OrderDomainInvalid`), cuts ∈ `order` (`OrderedCutsCutNotInDomain`),
+  cuts strictly ascending by order position (`OrderedCutsNotAscending`), plus the
+  closed-ends rule.
+- **Why:** v2 `.bed` migration produced cuts mechanically, but a hand-authored TOML
+  spec can easily express invalid cuts; these need clear diagnostics at the
+  validate phase rather than surfacing as confusing downstream behavior. Recorded
+  here because the 2026-06-26 review agreed the item without a decision entry.
+- **Affects:** Core (cut validation), Spec; spec §11.2 / §11.8 / §16.4; diagnostics
+  `DiscretizerEndsClosedTooFewCuts`, `OrderDomainInvalid`, `OrderedCutsCutNotInDomain`,
+  `OrderedCutsNotAscending` (and existing `DiscretizerCutsNotAscending` / `DiscretizerCutsTooFew`).
+
+### D-057 — restrict_to round-trips in M2; execution deferred to M4
+
+- **Status:** accepted (refines D-021 / D-032; sequences §10.4)
+- **Date:** 2026-06-28
+- **Decision:** M2 parses, preserves, and round-trips every `restrict_to` form
+  (string list, open- and closed-range, mixed), but planning/conversion **rejects**
+  any `restrict_to` with `RestrictToNotImplementedV1` until execution lands at M4 —
+  it is never silently ignored. While unimplemented, `restrict_to` does not enter
+  the output fingerprints, and a spec containing any `restrict_to` is not
+  fully-frozen, so tooling stores no fingerprints for it.
+- **Why:** the M2 carrier is needed for round-trip and migration, and `restrict_to`
+  is an output-fingerprint input — but its execution is roadmap M4. Silently
+  ignoring it would produce unfiltered output mismatching the spec's intent; storing
+  an M2 output fingerprint that excludes `restrict_to` would go stale when M4 lands.
+  The parse-but-reject pattern (as for templates/matchers) closes both holes.
+- **Rejected:** silently ignoring `restrict_to` in M2 (latent correctness bug);
+  pulling wide-CSV `restrict_to` execution forward into M2 (expands M2 scope; M4 is
+  the restriction milestone).
+- **Affects:** Core (planner guard), Spec; spec §10.4 / §14 / §16.4; diagnostic
+  `RestrictToNotImplementedV1` (transitional — removed at M4).
+
+### D-058 — Empty-output diagnostics: mechanical names replace EmptyExtent/EmptyIntent
+
+- **Status:** accepted (supersedes the §16.4 `EmptyExtent` / `EmptyIntent` rows)
+- **Date:** 2026-06-28
+- **Decision:** the overloaded FCA-concept names `EmptyExtent` / `EmptyIntent` are
+  removed in favor of four mechanical, correctly-phased diagnostics:
+  `NoFormalAttributes` (zero columns, **plan**), `NoObjectsEmitted` (zero rows after
+  filtering, **emit**), `AttributeHasNoCrosses` (an empty column, **emit**,
+  aggregated), `ObjectHasNoCrosses` (an empty row, **emit**, aggregated). All four
+  warn and still write a structurally-valid (if degenerate) output rather than
+  failing; zero-column output is allowed because §10.1 already blesses inert
+  attributes during staged editing.
+- **Why:** `EmptyExtent` was listed at the plan phase, which is impossible for a
+  per-attribute "no crosses" meaning (it needs emit-time data); and "extent/intent"
+  are concept-level FCA terms, confusing when applied per-attribute/per-object. The
+  per-element emit diagnostics must aggregate (P-19) or they flood at 73M rows.
+- **Rejected:** keeping `EmptyExtent` / `EmptyIntent` (wrong phase, overloaded
+  names); failing on zero columns (blocks the staged-editing workflow §10.1 allows).
+- **Affects:** Core (planner/emit), Diagnostics, Spec; spec §16.2 / §16.4.
 
 ---
 

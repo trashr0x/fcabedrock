@@ -45,9 +45,9 @@ sections, all optional except `[spec]`, `[binding]`, and at least one
 | `[[matcher]]` | 0..N | Pattern-based template application |
 | `[[attribute]]` | 1..N | Logical attributes and how to scale them |
 
-Order within the file is informative. The fingerprint is computed over a
-canonical projection (sorted keys, normalized whitespace) so that file
-formatting does not affect schema identity.
+Order within the file is informative. Fingerprints are computed over a canonical
+structure derived from the **resolved/calibrated plan**, not over the spec's TOML
+text (§14), so file formatting never affects schema or output identity.
 
 A spec MUST declare `version` in `[spec]`. Implementations encountering
 an unknown `version` MUST refuse to load the spec and emit
@@ -58,8 +58,9 @@ an unknown `version` MUST refuse to load the spec and emit
 ```toml
 [spec]
 version = 1                                 # required, integer
-schema_fingerprint = "sha256:abc123..."     # optional; written by tooling
-output_fingerprint = "sha256:def456..."     # optional; written by tooling
+schema_fingerprint     = "sha256:abc123..." # optional; written by tooling (frozen specs)
+cxt_output_fingerprint = "sha256:def456..." # optional; written by tooling (frozen specs)
+dat_output_fingerprint = "sha256:7890ab..." # optional; written by tooling (frozen specs)
 extends = "base.toml"                       # optional; spec composition
 description = "Mini-mushroom analysis"      # optional; free text
 ```
@@ -72,13 +73,23 @@ formal-attribute schema this spec produces (their ordered list with full
 identifying info). Two specs with the same `schema_fingerprint` produce
 identical attribute IDs. Controls `.dat` compatibility.
 
-**`output_fingerprint`** *(optional, string)*. Deterministic hash of
-everything that affects the byte-level output, including formal-attribute
-display names. Controls `.cxt` byte equality.
+**`cxt_output_fingerprint`** *(optional, string)*. Deterministic hash of
+everything that affects the `.cxt` byte-level output, including formal-attribute
+rendered names. Controls `.cxt` byte equality.
 
-Both fingerprints SHOULD be written by tooling on save, verified on load,
-and emitted as warnings if mismatched. Both are SHA-256 over a canonical
-TOML projection.
+**`dat_output_fingerprint`** *(optional, string)*. Deterministic hash of
+everything that affects the `.dat` byte-level output. `.dat` carries numeric IDs,
+not names, so rendered names do not enter it. Controls `.dat` byte equality.
+
+All three fingerprints SHOULD be written by tooling on save **for fully-frozen
+specs only** (§14) — a spec whose schema is data-dependent (absent
+`declared_domain`, an auto-binning discretizer, `unknown_value_policy =
+"include"`, `value_groups` `unmatched = "passthrough"`, or any not-yet-executable
+`restrict_to`) omits the stored fingerprints rather than storing a value the next
+dataset would invalidate. When present they are verified on load and emitted as
+warnings if mismatched (`SchemaFingerprintStale`, `CxtOutputFingerprintStale`,
+`DatOutputFingerprintStale`). All are SHA-256 over the plan-derived canonical
+structure described in §14.
 
 **`extends`** *(optional, relative path)*. See §13.
 
@@ -123,11 +134,15 @@ missing_token = "?"                          # default "?"; any non-empty string
 **`encoding`** *(default `"utf-8"`)*. Any encoding accepted by the
 implementation. Implementations MUST support at least UTF-8.
 
-**`delimiter`** *(default `","`)*. Any single character. Common
-alternatives: `"\t"`, `";"`, `"|"`.
+**`delimiter`** *(default `","`)*. A single non-newline character; common
+alternatives `"\t"`, `";"`, `"|"`. It MUST differ from `quote_char`
+(`BindingDelimiterQuoteConflict` otherwise).
 
-**`quote_char`** *(default `"\""`)*. RFC 4180-style quoting; `""` inside
-a quoted field is an escaped quote.
+**`quote_char`** *(default `"\""`)*. RFC 4180-style quoting; `""` inside a quoted
+field is an escaped quote. **v1 supports only the standard double quote `"`**; a
+custom `quote_char` parses but is rejected with `QuoteCharNotSupportedV1`. (The
+field is retained so a later version can lift the restriction without a format
+change.)
 
 **`has_header`** *(default `true`)*. Only used when `shape = "wide"`. If
 true, the first non-empty row is consumed as a header and is available
@@ -145,6 +160,15 @@ locale's conventions.
 after whitespace trimming, is treated as missing. To disable
 token-based missing detection, set `missing_token = ""`. Empty string
 cells are *always* missing regardless of this setting.
+
+**Whitespace.** Leading and trailing whitespace around an **unquoted** data field
+value is trimmed before any interpretation — missing-token detection, matching
+against `declared_domain` / `value_labels` keys / `restrict_to` / a `dichotomic`
+`true_value` / `value_groups`, and numeric parsing. Whitespace inside a **quoted**
+field is preserved (deliberate spaces survive). The spec-side strings you write in
+the TOML are taken **verbatim** and never trimmed; only the data-side field value
+is. The rule is uniform across all matching, so a value never fails to match
+purely because of surrounding spaces in the source file.
 
 ### 5.2 Wide-CSV binding
 
@@ -176,6 +200,13 @@ non-standard order. Indices are 0-based.
 
 Attributes under triple binding use
 `{ kind = "predicate", name = "..." }` to bind by predicate string.
+
+> **Triple-source surface is finalized at M3.** Beyond the above, v1 reserves but
+> does not yet settle the triple-specific surface: header rows for triple input,
+> binding `columns` by header **name** (rather than 0-based index), and
+> object/subject-name filtering are all deferred to the M3 triple-source audit
+> (`roadmap.md`). M2 neither adds nor relies on them; `has_header` stays
+> meaningful only for `shape = "wide"`.
 
 ### 5.3.1 Triple multi-value and grouping semantics
 
@@ -316,8 +347,11 @@ this separation (see decisions.md D-003, D-005).
    records or values. Produces a validated spec or aggregated diagnostics.
 2. **Calibrate** — the only phase that reads data to resolve *data-dependent
    schema elements*: absent `declared_domain`s (observed-domain discovery),
-   auto-discretizer cuts (`equal_width`, `equal_frequency`), and
-   `unknown_value_policy = "include"` extensions. Produces a fully-resolved
+   auto-discretizer cuts (`equal_width`, `equal_frequency`),
+   `unknown_value_policy = "include"` extensions, and `value_groups`
+   `unmatched = "passthrough"` (which discovers one column per observed ungrouped
+   value, §11.6). A numeric value that is **present but unparseable** is excluded
+   from calibration (§11.5) — it never influences a cut. Produces a fully-resolved
    spec; calibrated cuts are captured in the run manifest (§15).
 3. **Plan** — consume a validated, calibrated spec and produce the immutable
    `ConversionPlan`: the ordered formal-attribute schema with stable IDs, scale
@@ -330,9 +364,9 @@ this separation (see decisions.md D-003, D-005).
 
 **Fully-declared specs skip Calibrate.** A spec with explicit `declared_domain`s,
 only `manual_cuts` / `identity` / `value_groups` / `free_per_value`
-discretizers, and no `unknown_value_policy = "include"` is fully determined by
-its own text: Parse → Plan → Emit, deterministic from the spec alone, no data
-pre-pass that affects the schema.
+discretizers, no `unknown_value_policy = "include"`, and no `value_groups`
+`unmatched = "passthrough"` is fully determined by its own text: Parse → Plan →
+Emit, deterministic from the spec alone, no data pre-pass that affects the schema.
 
 **`convert` auto-calibrates by default** (D-005, D-028): a spec needing
 calibration is calibrated in-line, and the resolved cuts are recorded in the
@@ -350,8 +384,10 @@ input-independent, declare the domain explicitly or freeze it with `calibrate`.
 
 ## 8. The `[output]` block
 
-Output-formatting options. All optional with sensible defaults. All fields
-contribute to `output_fingerprint`; none to `schema_fingerprint`.
+Output-formatting options. All optional with sensible defaults. They feed the
+per-format output fingerprints (§14) — `[output.cxt]` and `bin_label_unicode` →
+`cxt_output_fingerprint`; `[output.dat]` → `dat_output_fingerprint` — and none
+feeds `schema_fingerprint`.
 
 ```toml
 [output]
@@ -441,6 +477,14 @@ The resolved (post-merge) per-attribute config is what feeds into the
 schema fingerprint. Source-file template references and matcher rules
 are not part of the fingerprint themselves.
 
+> **Resolution lands at M6; M2 carries them through.** Templates and matchers are
+> **parsed, preserved, and merged under `extends`** in M2 (so a spec using them
+> round-trips through the TOML reader/writer), but they are **not applied**. Any
+> spec that actually *uses* them — a present `[[matcher]]`, or an `[[attribute]]`
+> with a `template = "..."` reference — fails planning/conversion with
+> `TemplateMatcherNotImplementedV1` until matcher resolution is implemented at M6
+> (`roadmap.md`). An unreferenced `[[template]]` block round-trips without error.
+
 ## 10. The `[[attribute]]` block
 
 Each `[[attribute]]` describes one logical attribute and how it becomes
@@ -495,6 +539,11 @@ For `binding.shape = "triple"`:
 source = { kind = "predicate", name = "age" }
 ```
 
+A wide-CSV `column` source MUST supply **exactly one** of `index` or `name`
+(neither or both is `SourceBindingInvalid`); binding by `name` requires
+`has_header = true` (also `SourceBindingInvalid` otherwise), while binding by
+`index` needs no header.
+
 A source may declare a **value type** controlling how raw values parse before
 discretization:
 
@@ -503,12 +552,16 @@ source = { kind = "column", index = 0, value_type = "number" }            # nume
 source = { kind = "column", index = 1, value_type = "string" }            # no parse (default for identity/value_groups)
 ```
 
-`value_type` is `"string"` (default for `identity` / `value_groups`) or
-`"number"` (default for the numeric discretizers `manual_cuts`, `equal_width`,
-`equal_frequency`). The value `"date"` is **reserved but not implemented in
+`value_type` is `"string"` or `"number"`. It defaults to `"string"` for the
+discretizers whose bins are raw values or category strings — `identity`,
+`free_per_value`, `value_groups`, and `ordered_cuts` — and to `"number"` for the
+numeric-cut discretizers `manual_cuts`, `equal_width`, and `equal_frequency`. For
+numeric distinct-value binning, set `value_type = "number"` explicitly on a
+`free_per_value` source. The value `"date"` is **reserved but not implemented in
 v1** (§11.7): a spec setting `value_type = "date"` parses but is rejected by the
-v1 planner with `DateValueTypeNotImplementedV1`. A `value_type` that is not one
-of these, or is applied incompatibly with the discretizer, is
+v1 planner with `DateValueTypeNotImplementedV1`. A `value_type` that is not one of
+these, or that conflicts with the discretizer-implied or `restrict_to`-implied
+type (e.g. a string discretizer with a numeric-range `restrict_to`), is
 `SourceValueTypeInvalid` (Error).
 
 A spec MUST NOT declare two attributes with the same `name`. Two attributes
@@ -534,9 +587,10 @@ declared_domain = ["Bachelors", "Masters", "PhD", "HS-grad", "11th"]
 
 The set of raw values that are recognized as schema-bearing. Values
 *not* in this list are subject to `unknown_value_policy`. Only meaningful
-for discretizers that operate on raw values (`identity`, `free_per_value`,
-and `value_groups`); ignored for cut-based discretizers (`manual_cuts`,
-`equal_width`, etc.).
+for the raw-value discretizers `identity` and `free_per_value`; ignored for
+cut-based discretizers (`manual_cuts`, `ordered_cuts`, `equal_width`, etc.) and
+for `value_groups` (whose `groups` + `unmatched` already define recognition —
+§11.6, D-055).
 
 When `declared_domain` is explicit, its **declaration order drives the
 formal-attribute (column) order** for `identity` and `free_per_value` scaled
@@ -584,6 +638,15 @@ Mixed forms (string and range) within the same `restrict_to` list are
 allowed — useful when the discretizer is `value_groups` operating on a
 mix of categorical and numeric raw values.
 
+> **Execution lands at the restriction milestone (M4).** `restrict_to` is a v1
+> feature, but its *execution* is sequenced after M2: M2 **parses and
+> round-trips** every form above (string list, open- and closed-range, mixed),
+> yet planning/conversion **rejects** any `restrict_to` with
+> `RestrictToNotImplementedV1` until M4 (`roadmap.md`) — it is never silently
+> ignored. While unimplemented, `restrict_to` does **not** enter the output
+> fingerprints, and a spec containing any `restrict_to` is not "fully frozen", so
+> tooling stores no fingerprints for it (§14).
+
 ### 10.5 missing_policy
 
 ```toml
@@ -618,6 +681,14 @@ therefore makes `schema_fingerprint` data-dependent; implementations MUST
 recompute the fingerprint after calibration and emit `UnknownValuePolicyInclude`
 (Warning) so the data-dependence is visible. The `UnknownValueObserved`
 severity follows the policy: `warn` → Warning, `fail` → Error.
+
+**Numeric attributes.** For numeric attributes (cut-based discretizers, where
+`declared_domain` is ignored — §10.3) there are no out-of-domain *categorical*
+values, so `unknown_value_policy` instead governs the severity of a **present but
+unparseable** numeric value (`SourceValueUnparseable`, §11.5): `skip` → no cross,
+no diagnostic; `warn` → no cross, Warning; `fail` → Error/abort; `include` →
+no cross, Warning (an unparseable token cannot be added to a numeric domain, so
+`include` behaves as `warn` here).
 
 ### 10.7 formal_attribute_format
 
@@ -656,7 +727,22 @@ Template placeholders:
 - `{scale_op}` — for ordinal scales, the inequality operator (`>=`, `<=`,
   `<`, `>`, or Unicode per §8); empty for non-ordinal scales
 
-This setting affects `output_fingerprint` but not `schema_fingerprint`.
+**`{value}` resolution by formal-attribute kind** (so a custom
+`formal_attribute_format` that uses `{value}` is well-defined everywhere):
+
+| Formal attribute | `{value}` resolves to |
+|---|---|
+| `nominal` bin | the bin label (category value or cut-bin label) |
+| `ordinal` threshold | the threshold label (`{scale_op}` carries the operator) |
+| `dichotomic` (the single column) | the scale's `true_value` (the default format omits it) |
+| `missing_policy = "as_attribute"` column | the literal `missing` |
+
+If two formal attributes render to the same name under the chosen format (e.g. a
+real category value `missing` colliding with the missing column), the planner
+emits `FormalAttributeNameCollision` (§10.2).
+
+This setting affects `cxt_output_fingerprint` only — not `schema_fingerprint`, and
+not `dat_output_fingerprint` (`.dat` carries numeric IDs, no names).
 
 ### 10.8 value_labels
 
@@ -693,7 +779,8 @@ consult `value_labels` the labels are dormant, so neither error fires.
 
 **Determinism.** `value_labels` affects only the output formal-attribute
 names, not their *order* or *count*. It contributes to
-`output_fingerprint` but not `schema_fingerprint`.
+`cxt_output_fingerprint` (rendered names) but not `schema_fingerprint` or
+`dat_output_fingerprint`.
 
 ### 10.9 discretizer and scale
 
@@ -758,7 +845,9 @@ discretizer = {
 ends — three cuts produce four bins (`<c0`, `[c0,c1)`, `[c1,c2)`, `≥c2`).
 With `"closed"`, only the interior bins are produced — three cuts
 produce two bins (`[c0,c1)`, `[c1,c2)`); values outside the cuts'
-overall range produce no bin (treated as out-of-range).
+overall range produce no bin (treated as out-of-range). `ends = "closed"`
+therefore requires **at least two cuts** (one cut yields no interior bin); fewer
+is `DiscretizerEndsClosedTooFewCuts` (Error).
 
 Out-of-range objects are kept (no cross emitted for the discretized
 attribute, similar to missing). To exclude them entirely, use
@@ -766,7 +855,8 @@ attribute, similar to missing). To exclude them entirely, use
 
 Bin label format: `"<{c0}"`, `"[{c_i}, {c_{i+1}})"`, `">={c_n}"` (ASCII
 operators by default; see §8 for the `bin_label_unicode` knob). The
-exact format affects `output_fingerprint` but not `schema_fingerprint`.
+exact format affects `cxt_output_fingerprint` (a `.cxt` name concern) but not
+`schema_fingerprint`.
 A v2-compat byte-equality mode is available at the writer level (CLI
 flag `--v2-compat` on `convert`), not as a spec setting, since v2
 compatibility is a one-time output concern rather than a spec property.
@@ -835,10 +925,14 @@ runs under these rules, which apply to both `equal_width` and `equal_frequency`:
 - **Parsing:** raw values are parsed to `double` using `binding.locale` (§5.1),
   whose default is `invariant`. Determinism comes from the locale being a
   *declared* part of the spec, not from hardcoding invariant — the same spec
-  parses identically everywhere. A value that fails to parse under that locale,
-  or parses to NaN or ±∞, is treated as **missing** for the attribute (per
-  `missing_policy`) and is **excluded** from calibration — it never influences
-  a cut.
+  parses identically everywhere. A value that is **present but not a usable finite
+  number** — it fails to parse under that locale, or parses to NaN or ±∞ — is
+  **not** treated as missing (D-050, superseding the earlier "NaN/∞ → missing"
+  wording). It is a present-but-invalid value: the object is kept, no cross is
+  emitted for that attribute, the value is **excluded** from calibration (it never
+  influences a cut), and `SourceValueUnparseable` is reported at the severity
+  `unknown_value_policy` selects (§10.6). Only empty cells and explicit
+  `missing_token` matches are *missing* and follow `missing_policy`.
 - **Sort:** calibration sorts the surviving values ascending by IEEE-754
   total order (`double` default comparer), a stable, culture-independent order.
 - **Insufficient distinct values:** if the count of distinct surviving values is
@@ -894,11 +988,23 @@ discretizer = {
 - `"other"` — values not matching any group fall into a synthetic group
   labelled `Other`.
 - `"passthrough"` — values not matching any group keep their raw value
-  as the bin label (mixed grouped and ungrouped attributes).
+  as the bin label (mixed grouped and ungrouped attributes). Because the set of
+  pass-through bins is **discovered from the data**, this makes the schema
+  data-dependent: it resolves in the Calibrate phase (§7), emits
+  `ValueGroupsPassthroughDataDependent` (Warning), and — like the other
+  data-dependent cases — means tooling stores no fingerprints for the spec unless
+  it is frozen (§14).
 
 A value matching multiple groups falls into the first matching group in
 declaration order; this is part of the planner's deterministic resolution
 and IS captured in the schema fingerprint.
+
+`declared_domain` is **not** consulted for `value_groups` (D-055): the `groups`
+and the `unmatched` policy together define which values are recognized, so a
+separate domain list would be a second, overlapping gate. Recognition is
+therefore: a value matches a group → its group label; otherwise the `unmatched`
+policy decides (`skip` defers to `unknown_value_policy`, `other` → the synthetic
+`Other` bin, `passthrough` → the value's own raw label).
 
 ### 11.7 Date-valued sources (deferred)
 
@@ -936,12 +1042,17 @@ discretizer = {
 ```
 
 **`order`** *(required, array of strings)*. The domain low→high. A raw value not
-in `order` produces **no bin** (subject to `unknown_value_policy`).
+in `order` produces **no bin** (subject to `unknown_value_policy`). Entries MUST
+be distinct and non-empty; duplicate or empty entries are `OrderDomainInvalid`
+(Error).
 
 **`cuts`** *(required, length ≥ 1)*. Each is a member of `order`, strictly
 ascending by position. A value equal to a cut falls into the bin **at or above**
 it — the same half-open rule as `manual_cuts` (the cut is the lower edge of the
-upper bin).
+upper bin). A cut not present in `order` is `OrderedCutsCutNotInDomain` (Error);
+cuts out of position order or duplicated are `OrderedCutsNotAscending` (Error).
+The `ends = "closed"` ≥2-cuts rule (§11.2) applies here too
+(`DiscretizerEndsClosedTooFewCuts`).
 
 **`ends`** behaves as in §11.2. Bin labels reuse the §11.2 template over the
 **category strings**: `"<{c0}"`, `"[{c_i}, {c_{i+1}})"`, `">={c_n}"`, with the
@@ -1049,6 +1160,16 @@ is well-defined — `le` pairs with `<` (strict), `ge` with `>=` (inclusive); th
 straddling combinations (`le`+inclusive, `ge`+strict) are meaningful only over
 *value* bins (e.g. `identity` with an explicit `order`).
 
+Over cut bins the cut **geometry** decides the operator, so an **omitted/default**
+`boundary` is simply honored (it renders the geometry-aligned operator — `<` for
+`le`, `>=` for `ge`); an **explicit** `boundary` requesting the straddling
+combination is rejected with `OrdinalBoundaryIncompatibleWithCuts` (Error) rather
+than silently overridden. The writer preserves whether `boundary` was authored or
+defaulted so a round-trip stays faithful. **Over value bins** (`identity` /
+`free_per_value` with an explicit `order`) there is no half-open geometry, so all
+four `direction × boundary` combinations are well-defined and `boundary` is fully
+live; this value-bin ordinal path is implemented at M2.
+
 ### 12.4 Modelled but not implemented in v1
 
 The following scales parse but the v1 planner rejects them with
@@ -1087,22 +1208,35 @@ The base spec is loaded and merged with the current spec. Merge semantics:
 4. `[[matcher]]` entries from both are concatenated. Order: base
    matchers, then current matchers (so current matchers take precedence
    per the last-match-wins rule in §9.2).
-5. `[[attribute]]` entries are concatenated. If two attributes share a
-   `name`, the current spec's wins entirely (no field-level merge —
-   too error-prone).
-6. `[provenance]` from the current spec wins (provenance is per-spec,
+5. `[[attribute]]` entries merge by `name`, **position-preserving**: a base
+   attribute keeps its original position; a derived attribute with the same
+   `name` replaces it **in place** (whole-attribute replacement, no field-level
+   merge — too error-prone, so inherited fields *including* `restrict_to` are
+   dropped unless the override repeats them); a derived attribute with a new
+   `name` is appended after all inherited attributes. To suppress an inherited
+   attribute, override it with `include = false`. Attribute order is column order
+   (§17 rule 1), so position-preserving override keeps a derived spec's column
+   order stable when it only re-tunes inherited attributes.
+6. `[output]`, `[output.cxt]`, and `[output.dat]` merge **per leaf field**
+   (current overrides base field-by-field; a base `[output.cxt]` line-ending and
+   a derived `[output.cxt]` trailing-newline both survive).
+7. `[provenance]` from the current spec wins (provenance is per-spec,
    not inherited).
 
-Multi-level `extends` is allowed (a chain) but cycles MUST be detected
-and rejected with `SpecExtendsCycle`.
+Multi-level `extends` is allowed (a chain); the merge above is applied at **each**
+step, base-most first. Cycles MUST be detected and rejected with
+`SpecExtendsCycle`.
 
-The schema fingerprint is computed over the *resolved* (fully merged)
-spec, not over the source files. So a derived spec and an equivalent
-flat spec produce identical fingerprints.
+Fingerprints are computed over the *resolved* (fully merged) plan, not the source
+files, so a derived spec and an equivalent flat spec fingerprint identically. Any
+fingerprint fields stored in a **base** spec's `[spec]` block are ignored when
+resolving a derived spec and recomputed for the resolved result.
 
 ## 14. Fingerprints
 
-Two fingerprints, both SHA-256, both written to the `[spec]` block.
+Three fingerprints, all SHA-256, all written to the `[spec]` block of a
+**fully-frozen** spec (below): one `schema_fingerprint` plus a per-format
+`cxt_output_fingerprint` and `dat_output_fingerprint`.
 
 **Canonical formal-attribute identity ≠ rendered `.cxt` name.** This distinction
 underpins both fingerprints, so it is stated first:
@@ -1115,7 +1249,8 @@ underpins both fingerprints, so it is stated first:
 - **Rendered name** is the string that appears in a `.cxt` for that column,
   produced from the canonical identity by `formal_attribute_format`,
   `display_name`, and `value_labels`. These affect rendered names and
-  `output_fingerprint` only — never canonical identity or `schema_fingerprint`.
+  `cxt_output_fingerprint` only — never canonical identity, `schema_fingerprint`,
+  or `dat_output_fingerprint`.
 
 **`schema_fingerprint`** is computed from the **final ordered list of planned
 formal attributes only** — their canonical identities, in plan order, as
@@ -1136,61 +1271,110 @@ It does **not** depend on object-/row-affecting settings (object-key mode,
 `schema_fingerprint` produce `.dat` files with identical column identity and
 IDs for the same input through the same binding.
 
-**`output_fingerprint`** is computed from the **effective conversion plan plus
-the effective output settings** — i.e. everything that can change the output
-bytes for identical input, not just the formatting layer. Concretely it covers:
-the `schema_fingerprint`; binding shape and column/predicate mappings;
-`delimiter`, `quote_char`, and `missing_token`; source `value_type`s;
-`missing_policy`; `unknown_value_policy`; object-key mode and
-`duplicate_object_policy`; all `restrict_to` filters; discretizer and scale
-configuration; `binding.locale`; object-ordering policy; the rendered
-formal-attribute names (`formal_attribute_format`, `display_name`,
-`value_labels`); bin-label style and `bin_label_unicode`; and writer settings —
-`.dat` `base_index`, line endings (`.cxt` and `.dat`), trailing-space settings,
-and `[output.cxt] trailing_newline`. Two specs with the same `output_fingerprint`
-produce byte-identical output for identical input. Provenance (§4) is in neither
-fingerprint.
+**Per-format output fingerprints.** Rather than one `output_fingerprint`, the
+spec carries a `cxt_output_fingerprint` and a `dat_output_fingerprint`, so that a
+`.cxt`-only setting does not perturb the `.dat` hash and vice-versa (D-051). Both
+build on `schema_fingerprint` and add the settings that change *that format's*
+bytes:
+
+- **Shared inputs** (in **both** output fingerprints — they change which objects,
+  crosses, columns, and rows appear, for either format): `schema_fingerprint`;
+  the row-shaping settings `schema_fingerprint` deliberately omits —
+  `duplicate_object_policy` and the object-ordering policy (and `restrict_to`
+  filters *once their execution is implemented*; until then `restrict_to` is not
+  an input, §10.4); and the conversion-affecting binding/source settings —
+  binding shape and column/predicate mappings, `encoding`, `has_header`,
+  `delimiter`, `quote_char`, `missing_token`, source `value_type`s,
+  `missing_policy`, `unknown_value_policy`, `binding.locale`, object-key mode, and
+  discretizer/scale configuration.
+- **`cxt_output_fingerprint` adds** the `.cxt`-only settings: the rendered
+  formal-attribute names (`formal_attribute_format`, `display_name`,
+  `value_labels`), the bin-label style (the `--v2-compat` cut-label transform) and
+  `bin_label_unicode`, and the `.cxt` writer settings (line endings,
+  `trailing_newline`).
+- **`dat_output_fingerprint` adds** only the `.dat` writer settings: `base_index`,
+  line endings, and trailing-space settings. Rendered names and `.cxt`-only
+  settings never affect `.dat` (it carries numeric IDs, not names).
+
+Two specs with the same `cxt_output_fingerprint` (resp. `dat_output_fingerprint`)
+produce byte-identical `.cxt` (resp. `.dat`) for identical input. Provenance (§4)
+is in none of the three fingerprints.
+
+**Canonical hash input.** All three fingerprints hash a fixed UTF-8 **canonical
+JSON structure generated from the resolved/calibrated plan** — never the spec's
+TOML text (D-053). The structure carries a format-version tag (so the encoding can
+evolve without silent collisions); arrays stay in planned order (column order is
+significant); object/map keys are sorted; strings use one documented JSON escaping
+rule; and numbers are the **parsed** numeric value reformatted with invariant,
+shortest round-trippable .NET formatting, so `30`, `30.0`, and `3e1` hash
+identically and a cut never renders as `34.250000001` on one machine and `34.25`
+on another. Cut-bin open ends are encoded as **structural flags**, not as `∞`
+strings.
+
+**Stored only for fully-frozen specs.** Tooling writes the stored fingerprints
+only when the spec is fully determined by its own text — no observed-domain
+calibration (absent `declared_domain`), no auto-binning discretizer, no
+`unknown_value_policy = "include"`, no `value_groups` `unmatched = "passthrough"`,
+and no `restrict_to` while its execution is unimplemented. A spec needing any of
+these is data-dependent (or not-yet-executable), so a stored hash would be
+invalidated by the next dataset (or by the feature landing); such runs record the
+**effective** fingerprints in the run manifest (§15) instead.
 
 **Native vs effective fingerprints (CLI overrides).** Fingerprints stored in
 the `[spec]` block describe the spec's **native resolved output settings only**
 — what the spec produces with no CLI overrides. A CLI override such as
 `--v2-compat` (§8) does not rewrite the spec or its stored fingerprints; it
 changes line endings, bin labels, and `.dat` trailing space at run time. The
-run manifest (§15) records the **effective** `output_fingerprint` after
-overrides, which may legitimately differ from the spec-stored value. On load,
-the spec-stored fingerprint is verified against the spec's *native* settings
-only: a mismatch there is a real warning; a difference between the spec-stored
-and manifest fingerprints under `--v2-compat` is expected, not an error. The
+run manifest (§15) records the **effective** `cxt_output_fingerprint` /
+`dat_output_fingerprint` after overrides, which may legitimately differ from the
+spec-stored values. On load, each spec-stored fingerprint is verified against the
+spec's *native* settings only: a mismatch there is a real warning
+(`SchemaFingerprintStale` / `CxtOutputFingerprintStale` /
+`DatOutputFingerprintStale`); a difference between the spec-stored and manifest
+fingerprints under `--v2-compat` is expected, not an error. The
 `schema_fingerprint` is unaffected by output-only CLI overrides.
 
 ## 15. Run manifest
 
-When `convert` runs, an optional sidecar `<output>.manifest.toml` is
-emitted containing:
+When `convert` runs, a sidecar `<output>.manifest.toml` is emitted **by default**,
+containing:
 
 ```toml
 [run]
-tool_version       = "fcabedrock-vnext 1.0.0"
-timestamp          = 2026-05-09T12:34:56Z
-command_line       = ["fcabedrock", "convert", "--spec", "foo.toml", ...]
-spec_path          = "foo.toml"
-spec_fingerprint   = "sha256:..."
-output_fingerprint = "sha256:..."
-input_path         = "data.csv"
-input_hash         = "sha256:..."
-output_path        = "ctx.dat"
-output_hash        = "sha256:..."
+tool_version           = "fcabedrock-vnext 1.0.0"
+timestamp              = 2026-05-09T12:34:56Z   # recorded; not a fingerprint input
+command_line           = ["fcabedrock", "convert", "--spec", "foo.toml", ...]  # recorded; not a fingerprint input
+spec_path              = "foo.toml"
+spec_file_hash         = "sha256:..."           # raw TOML bytes of the spec file
+schema_fingerprint     = "sha256:..."
+cxt_output_fingerprint = "sha256:..."           # present if a .cxt was written
+dat_output_fingerprint = "sha256:..."           # present if a .dat was written
+input_path             = "data.csv"
+input_hash             = "sha256:..."
+output_path            = "ctx.dat"
+output_hash            = "sha256:..."
+
+# For an `extends` chain, every spec file in the chain is recorded:
+# [[run.spec_files]]
+# path = "analysis.toml"   ; hash = "sha256:..."
+# [[run.spec_files]]
+# path = "base/emage.toml" ; hash = "sha256:..."
 
 [run.calibration]
 # Only present if any auto-discretizer ran
 "age" = { discretizer = "equal_frequency", cuts = [38.0, 49.0, 52.0] }
 ```
 
-The manifest captures everything needed to reproduce the conversion
-exactly, including any auto-calibrated cuts. The `output_fingerprint` recorded
-here is the **effective** one — after any CLI overrides such as `--v2-compat`
-— so it may differ from the spec-stored native fingerprint (§14). Citing a
-manifest in a paper is sufficient for reproducibility audits.
+The manifest is **written by default** on every `convert`. It captures everything
+needed to reproduce the conversion exactly, including any auto-calibrated cuts and
+— for an `extends` chain — the path and raw hash of every spec file involved. The
+output fingerprints recorded here are the **effective** ones (after any CLI
+overrides such as `--v2-compat`), so they may differ from the spec-stored native
+values (§14); only the format(s) actually written are recorded. `spec_file_hash`
+is the raw TOML bytes, distinct from the canonical, plan-derived
+`schema_fingerprint`. `timestamp` and `command_line` are recorded for the audit
+trail but are not fingerprint inputs. Citing a manifest in a paper is sufficient
+for reproducibility audits.
 
 ## 16. Diagnostics
 
@@ -1215,7 +1399,7 @@ public enum DiagnosticSeverity { Info, Warning, Error, Fatal }
 ```
 
 - **Info**: informational (e.g., "auto-discretizer calibrated to cuts X").
-- **Warning**: non-fatal issue (e.g., empty extent, deprecated field).
+- **Warning**: non-fatal issue (e.g., an empty column, a stale fingerprint).
 - **Error**: fatal to the operation but recoverable for the next call
   (e.g., spec validation fails, but file remains usable).
 - **Fatal**: unrecoverable; the implementation should stop processing.
@@ -1263,9 +1447,46 @@ Every distinct condition has its own `DiagnosticCode`. v1's initial set:
 | `UnknownValuePolicyInclude` | Warning | calibrate |
 | `TripleSubjectNotContiguous` | Error | emit |
 | `DuplicateObjectKey` | Error, Warning, or Info (per `duplicate_object_policy`) | emit |
-| `EmptyExtent` | Warning | plan |
-| `EmptyIntent` | Warning | emit |
+| `SourceValueUnparseable` | Warning or Error (per `unknown_value_policy`; `skip` silent) | calibrate/emit |
+| `QuoteCharNotSupportedV1` | Error | spec validate |
+| `BindingDelimiterQuoteConflict` | Error | spec validate |
+| `SourceBindingInvalid` | Error | spec validate |
+| `OrderedCutsCutNotInDomain` | Error | spec validate |
+| `OrderedCutsNotAscending` | Error | spec validate |
+| `OrderDomainInvalid` | Error | spec validate |
+| `DiscretizerEndsClosedTooFewCuts` | Error | spec validate |
+| `OrdinalBoundaryIncompatibleWithCuts` | Error | plan |
+| `ValueGroupsPassthroughDataDependent` | Warning | calibrate |
+| `RestrictToNotImplementedV1` | Error | plan (transitional) |
+| `TemplateMatcherNotImplementedV1` | Error | plan (transitional) |
+| `SchemaFingerprintStale` | Warning | spec load |
+| `CxtOutputFingerprintStale` | Warning | spec load |
+| `DatOutputFingerprintStale` | Warning | spec load |
+| `NoFormalAttributes` | Warning | plan |
+| `NoObjectsEmitted` | Warning | emit |
+| `AttributeHasNoCrosses` | Warning (aggregated) | emit |
+| `ObjectHasNoCrosses` | Warning (aggregated) | emit |
 | `OutputCxtSizeAdvisory` | Warning | export |
+
+`EmptyExtent` / `EmptyIntent` were dropped in favor of the unambiguous,
+correctly-phased `AttributeHasNoCrosses` (an empty column, emit) and
+`ObjectHasNoCrosses` (an empty row, emit); whole-context emptiness is
+`NoFormalAttributes` (zero columns, plan) and `NoObjectsEmitted` (zero rows after
+filtering, emit). All four still write a structurally-valid (if degenerate)
+output rather than failing.
+
+**Transitional codes.** `RestrictToNotImplementedV1` and
+`TemplateMatcherNotImplementedV1` are emitted only by milestones *before* the
+feature's implementation milestone (restrict_to → M4, templates/matchers → M6,
+`roadmap.md`); they are removed once the feature lands and are **not** part of the
+v1 end-state set. They are distinct from the permanent `*NotImplementedV1`
+reservations in §20.
+
+**Aggregation.** Data-phase diagnostics that can fire per value or per object —
+`SourceValueUnparseable`, `UnknownValueObserved`, `AttributeHasNoCrosses`,
+`ObjectHasNoCrosses` — are emitted **aggregated**: a per-attribute (or per-source)
+count with a bounded sample, never one diagnostic per row, so a malformed column
+at 73M records does not produce 73M diagnostics.
 
 The full list is maintained in code as the `DiagnosticCode` enum.
 
@@ -1286,7 +1507,9 @@ same-output across runs and across machines:
    - `manual_cuts`: ascending by cut value.
    - `equal_width`, `equal_frequency`: ascending by computed
      cut value.
-   - `value_groups`: declaration order in the spec.
+   - `value_groups`: group declaration order in the spec; a synthetic `Other`
+     bin (`unmatched = "other"`) is ordered **after** all declared groups, and
+     data-discovered `passthrough` bins follow in first-observation order.
    - `identity`, `free_per_value`:
      - if `declared_domain` is explicit, bin order is **declaration order**;
      - if the domain is calibrated from observed values (absent
@@ -1600,6 +1823,11 @@ Tissue (grouped into Endoderm/Mesoderm) and TheilerStage (four ordinal
 buckets). `Gene` and `Strength` are filter-only (`include = false`): they shape
 *which objects* enter the context without becoming *columns* in it.
 
+> This example illustrates the v1 **end-state**. `restrict_to` execution (and the
+> `equal_frequency` calibration shown here) land at later milestones (M4); under
+> M2 a spec like this round-trips but is rejected at conversion with
+> `RestrictToNotImplementedV1` (§10.4).
+
 ## 20. Modelled-but-not-implemented appendix (v1)
 
 Reserved in the spec format; v1 planner rejects with the listed
@@ -1699,9 +1927,12 @@ readers know the rationale and don't re-litigate.
 
 16. **Fingerprint scope** (§14) → `schema_fingerprint` = formal-attribute schema
     only (column identity), excluding `duplicate_object_policy`, `restrict_to`,
-    object-key mode, and ordering. `output_fingerprint` = everything affecting
-    byte output, including those object/row settings plus naming and formatting.
-    Provenance in neither.
+    object-key mode, and ordering. Output identity is split per format into
+    `cxt_output_fingerprint` and `dat_output_fingerprint` (D-051): both add the
+    row-shaping/conversion settings schema omits, then `.cxt` adds rendered names
+    + `.cxt` writer settings while `.dat` adds only `.dat` writer settings. All
+    hash a plan-derived canonical JSON structure, not TOML text (D-053), and are
+    stored only for fully-frozen specs. Provenance in none.
 
 17. **Processing phases** (§7) → Parse/validate → Calibrate → Plan → Emit.
     `convert` auto-calibrates by default (cuts captured in the manifest) but
@@ -1727,7 +1958,7 @@ readers know the rationale and don't re-litigate.
     invariant. Locale is **not** a separate `schema_fingerprint` input: its
     effect is already captured in the resolved cuts/labels/columns, so two
     plans with the same formal-attribute identity fingerprint identically.
-    Locale's observable effect lives in `output_fingerprint` and the manifest.
+    Locale's observable effect lives in the output fingerprints and the manifest.
 
 21. **Date support deferred** (§10.2, §11.7) → `value_type = "date"` is reserved
     but not implemented in v1; the planner rejects it with
@@ -1742,12 +1973,23 @@ readers know the rationale and don't re-litigate.
 22. **Native vs effective fingerprints** (§14, §15) → spec-stored fingerprints
     describe native resolved output (no CLI overrides). `--v2-compat` changes
     effective output without rewriting the spec; the manifest records the
-    effective `output_fingerprint`. A spec↔manifest difference under
+    effective output fingerprints. A spec↔manifest difference under
     `--v2-compat` is expected, not an error.
 
 23. **Parse/validate may read source schema, not rows** (§7) → it MAY inspect
     header names / column count to validate name-based bindings; it scans no
     object records or values.
+
+24. **M2 contract additions** (D-050…D-058) → malformed-numeric values are
+    present-but-invalid, not missing (D-050, §11.5); output fingerprints split per
+    format over a plan-derived canonical encoding (D-051/D-053, §14); `extends`
+    overrides attributes position-preservingly (D-052, §13); v1 accepts only the
+    standard `quote_char` (D-054, §5.1); `value_groups` ignores `declared_domain`
+    (D-055, §11.6); hand-authored cuts are validated (D-056, §11.2/§11.8);
+    `restrict_to` round-trips in M2 but is rejected at conversion until M4 (D-057,
+    §10.4); and the empty-output diagnostics are `NoFormalAttributes` /
+    `NoObjectsEmitted` / `AttributeHasNoCrosses` / `ObjectHasNoCrosses` (D-058,
+    §16.4). See `docs/decisions.md` for rationale.
 
 ---
 
