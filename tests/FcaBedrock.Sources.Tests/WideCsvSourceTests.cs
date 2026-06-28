@@ -65,6 +65,57 @@ public sealed class WideCsvSourceTests
         Assert.Equal("z", records[0].Field(1));
     }
 
+    // --- Whitespace handling (spec §5.1): trim unquoted, preserve quoted ---
+
+    [Fact]
+    public async Task ReadAsync_WhenUnquotedFieldHasSurroundingWhitespace_ThenTrimmed()
+    {
+        var records = await ReadAllAsync(Source("a,b\n x , y ", Wide()));
+
+        Assert.Equal("x", records[0].Field(0));
+        Assert.Equal("y", records[0].Field(1));
+    }
+
+    [Fact]
+    public async Task ReadAsync_WhenQuotedFieldHasInteriorWhitespace_ThenPreserved()
+    {
+        var records = await ReadAllAsync(Source("a,b\n\"  x  \",y", Wide()));
+
+        Assert.Equal("  x  ", records[0].Field(0)); // deliberate spaces inside quotes survive
+    }
+
+    [Fact]
+    public async Task ReadAsync_WhenWhitespaceOutsideQuotes_ThenTrimmedToQuotedContent()
+    {
+        var records = await ReadAllAsync(Source("a,b\n \"x\" ,y", Wide()));
+
+        Assert.Equal("x", records[0].Field(0));
+    }
+
+    [Fact]
+    public async Task ReadAsync_WhenUnquotedMissingTokenHasSurroundingWhitespace_ThenMissing()
+    {
+        var records = await ReadAllAsync(Source("a,b\n ? ,y", Wide()));
+
+        Assert.Null(records[0].Field(0)); // " ? " trims to "?" → the missing token
+    }
+
+    [Fact]
+    public async Task ReadAsync_WhenUnquotedAllWhitespace_ThenMissing()
+    {
+        var records = await ReadAllAsync(Source("a,b\n   ,y", Wide()));
+
+        Assert.Null(records[0].Field(0)); // trims to empty → missing
+    }
+
+    [Fact]
+    public async Task ReadAsync_WhenQuotedTokenHasInteriorWhitespace_ThenNotMissing()
+    {
+        var records = await ReadAllAsync(Source("a,b\n\" ? \",y", Wide()));
+
+        Assert.Equal(" ? ", records[0].Field(0)); // quoted → preserved, not the bare missing token
+    }
+
     [Fact]
     public async Task GetSchemaAsync_WhenHeader_ThenReturnsHeaderNamesAndCount()
     {

@@ -5,11 +5,12 @@ namespace FcaBedrock.Core.Tests.Discretization;
 public sealed class IdentityDiscretizerTests
 {
     [Fact]
-    public void Discretize_WhenGivenValue_ThenReturnsValueUnchanged()
+    public void Discretize_WhenGivenValue_ThenReturnsValueAsBin()
     {
         var discretizer = new IdentityDiscretizer();
 
-        Assert.Equal("broad", discretizer.Discretize("broad"));
+        // The raw value is its own bin; domain membership is decided later by the planner/emitter.
+        Assert.Equal(BinResult.Bin("broad"), discretizer.Discretize("broad"));
     }
 
     [Fact]

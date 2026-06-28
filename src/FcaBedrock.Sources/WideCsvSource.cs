@@ -88,14 +88,18 @@ public sealed class WideCsvSource : IRecordSource
 
     private SepReader OpenReader() =>
         Sep.New(_delimiter)
-            .Reader(o => o with { HasHeader = _hasHeader, Unescape = true })
+            // Trim = Outer trims an UNQUOTED field's surrounding whitespace before unescape, while
+            // preserving whitespace INSIDE a quoted field — exactly spec §5.1. Sep still owns
+            // tokenization/unescape, so the D-041 integration contract is unchanged.
+            .Reader(o => o with { HasHeader = _hasHeader, Unescape = true, Trim = SepTrim.Outer })
             .From(_openStream());
 
-    private string? Normalize(string raw)
-    {
-        var trimmed = raw.Trim();
-        return trimmed.Length == 0 || string.Equals(trimmed, _missingToken, StringComparison.Ordinal)
+    // The value is already quote-aware-trimmed by Sep (§5.1), so missing detection is a direct
+    // comparison: an empty value (unquoted blank or quoted "") or one equal to the verbatim
+    // missing_token. A quoted value with deliberate interior whitespace is preserved and is not
+    // missing unless it equals the token exactly.
+    private string? Normalize(string value) =>
+        value.Length == 0 || string.Equals(value, _missingToken, StringComparison.Ordinal)
             ? null
-            : raw;
-    }
+            : value;
 }

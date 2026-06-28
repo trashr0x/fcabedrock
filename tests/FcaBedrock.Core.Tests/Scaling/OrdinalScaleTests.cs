@@ -74,4 +74,23 @@ public sealed class OrdinalScaleTests
 
         Assert.Equal(shapes.Select(s => s.ValueLabel), shapes.Select(s => s.BinKey));
     }
+
+    [Fact]
+    public void BuildShapes_WhenDefaultBoundaryOverCutBins_ThenOperatorIsGeometryAligned()
+    {
+        // §12.3 (D-047): over half-open cut bins the cut geometry decides the operator — le
+        // pairs with the strict "<", ge with the inclusive ">=". This is the default-boundary
+        // behavior the spec says is "simply honored". An explicit *straddling* boundary
+        // (le+inclusive / ge+strict) is rejected with OrdinalBoundaryIncompatibleWithCuts only
+        // once the value-bin path and the boundary field land at M2 — there is no M1 producer,
+        // so there is nothing straddling to assert here yet.
+        var scheme = AgeScheme();
+
+        Assert.All(
+            new OrdinalScale(OrdinalDirection.Le).BuildShapes(scheme).Where(s => s.ScaleOp.Length > 0),
+            s => Assert.Equal("<", s.ScaleOp));
+        Assert.All(
+            new OrdinalScale(OrdinalDirection.Ge).BuildShapes(scheme).Where(s => s.ScaleOp.Length > 0),
+            s => Assert.Equal(">=", s.ScaleOp));
+    }
 }

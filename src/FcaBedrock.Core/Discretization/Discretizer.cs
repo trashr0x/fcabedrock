@@ -14,11 +14,11 @@ public abstract record Discretizer
     public abstract string Kind { get; }
 
     /// <summary>
-    /// Emit-time: map a single non-missing raw value to a bin label, or
-    /// <see langword="null"/> for "no bin" (out of range). Missing detection
-    /// happens before this is called.
+    /// Emit-time: classify a single non-missing raw value into a <see cref="BinResult"/>
+    /// — a recognized bin, no bin (out of range), an unknown value, or an unparseable
+    /// numeric (decisions.md D-059). Missing detection happens before this is called.
     /// </summary>
-    public abstract string? Discretize(string rawValue);
+    public abstract BinResult Discretize(string rawValue);
 
     /// <summary>
     /// Plan-time: the ordered bin labels the scale will see for an attribute with

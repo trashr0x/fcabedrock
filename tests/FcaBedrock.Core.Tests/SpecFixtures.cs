@@ -30,7 +30,7 @@ internal static class SpecFixtures
     // nominal for discrete output, OrdinalScale for progressive.
     public static AttributeSpec NumericCuts(string name, int index, IReadOnlyList<double> cuts, Scale scale) =>
         new(name, new ColumnSource(index), Include: true,
-            new ManualCutsDiscretizer(cuts, BinEnds.Open, CultureInfo.InvariantCulture), scale,
+            ManualCutsDiscretizer.Create(cuts, BinEnds.Open, CultureInfo.InvariantCulture).Value!, scale,
             DeclaredDomain: [], NoLabels, MissingPolicy.Skip, UnknownValuePolicy.Warn);
 
     public static AttributeSpec Excluded(string name, int index) =>

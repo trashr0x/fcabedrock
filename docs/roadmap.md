@@ -19,11 +19,18 @@ vertical slices, not waterfall phases — each should leave the system working.
 > with the out-of-band `ScalingMode` (D-045), and the four **mini-adult** goldens
 > (base, noheader, employment-ordinal discrete + progressive). Output is proven on
 > two axes (D-043: golden v2-compat byte-equality + native spec conformance);
-> ArchUnit dependency/cycle/purity rules are non-vacuous. `dotnet test` is green
-> (141 tests).
+> ArchUnit dependency/cycle/purity rules are non-vacuous.
+>
+> The **M1-adjacent conformance pass** (the M2 "Before implementation" reconciliation)
+> has landed: §5.1 whitespace via Sep `SepTrim.Outer`, malformed-numeric diagnostics
+> (D-050) + the `BinResult` outcome model and per-attribute data-diagnostic aggregation
+> (D-059), the cut-validation smart-factory wired into `BedToSpec` (D-056), and
+> ordinal/naming conformance tests. Byte-neutral on the goldens. `dotnet test` is green
+> (172 tests).
 >
 > **Next: M2** — the TOML spec format + fingerprinting (and the value-bin `ordinal`
-> path + independent `boundary` knob deferred from slice 2).
+> path + independent `boundary` knob deferred from slice 2; the explicit-straddling
+> `OrdinalBoundaryIncompatibleWithCuts` guard lands with the boundary field there).
 
 ## Milestones
 

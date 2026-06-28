@@ -6,7 +6,8 @@ public sealed class OrderedCutsDiscretizerTests
 {
     private static readonly string[] Employment = ["Unskilled", "Clerical", "Professional", "Managerial"];
 
-    private static OrderedCutsDiscretizer Cut(params string[] cuts) => new(Employment, cuts, BinEnds.Open);
+    private static OrderedCutsDiscretizer Cut(params string[] cuts) =>
+        OrderedCutsDiscretizer.Create(Employment, cuts, BinEnds.Open).Value!;
 
     [Fact]
     public void Kind_WhenOrderedCuts_ThenIsTheOrderedCutsString() =>
@@ -18,11 +19,12 @@ public sealed class OrderedCutsDiscretizerTests
     [InlineData("Professional", "<Managerial")]
     [InlineData("Managerial", ">=Managerial")] // the cut category itself goes into the upper bin
     public void Discretize_WhenCutAtTopCategory_ThenSplitsBelowAndAtOrAbove(string raw, string expected) =>
-        Assert.Equal(expected, Cut("Managerial").Discretize(raw));
+        Assert.Equal(BinResult.Bin(expected), Cut("Managerial").Discretize(raw));
 
     [Fact]
-    public void Discretize_WhenValueNotInOrder_ThenNoBin() =>
-        Assert.Null(Cut("Managerial").Discretize("Director"));
+    public void Discretize_WhenValueNotInOrder_ThenUnknown() =>
+        // §11.8: a value not in order is unknown (subject to unknown_value_policy), not a silent no-bin.
+        Assert.Equal(BinResult.Unknown("Director"), Cut("Managerial").Discretize("Director"));
 
     [Fact]
     public void BinLabels_WhenSingleCut_ThenBelowAndAtOrAbove() =>
@@ -34,7 +36,7 @@ public sealed class OrderedCutsDiscretizerTests
     [InlineData("Professional", "[Clerical, Managerial)")]
     [InlineData("Managerial", ">=Managerial")]
     public void Discretize_WhenMultipleCuts_ThenLocatesInteriorBin(string raw, string expected) =>
-        Assert.Equal(expected, Cut("Clerical", "Managerial").Discretize(raw));
+        Assert.Equal(BinResult.Bin(expected), Cut("Clerical", "Managerial").Discretize(raw));
 
     [Fact]
     public void Discretize_WhenAnyKnownValue_ThenResultIsAlwaysAKnownBinLabel()
@@ -44,7 +46,8 @@ public sealed class OrderedCutsDiscretizerTests
 
         foreach (var raw in Employment)
         {
-            Assert.Contains(discretizer.Discretize(raw), labels);
+            Assert.True(discretizer.Discretize(raw).TryGetLabel(out var label));
+            Assert.Contains(label, labels);
         }
     }
 

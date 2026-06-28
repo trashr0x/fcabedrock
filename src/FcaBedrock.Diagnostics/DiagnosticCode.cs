@@ -16,6 +16,24 @@ public enum DiagnosticCode
     /// <summary>A <c>value_labels</c> key is not in the declared domain. Spec §10.8.</summary>
     ValueLabelKeyNotInDomain,
 
+    /// <summary><c>manual_cuts</c>/<c>ordered_cuts</c> cuts are not strictly ascending. Spec §11.2 / §11.8.</summary>
+    DiscretizerCutsNotAscending,
+
+    /// <summary>A cut discretizer was given fewer than one cut. Spec §11.2 / §11.8.</summary>
+    DiscretizerCutsTooFew,
+
+    /// <summary><c>ends = "closed"</c> requires at least two cuts; fewer were given. Spec §11.2 / §11.8.</summary>
+    DiscretizerEndsClosedTooFewCuts,
+
+    /// <summary><c>ordered_cuts.order</c> has duplicate or empty entries. Spec §11.8.</summary>
+    OrderDomainInvalid,
+
+    /// <summary>An <c>ordered_cuts</c> cut is not a member of <c>order</c>. Spec §11.8.</summary>
+    OrderedCutsCutNotInDomain,
+
+    /// <summary><c>ordered_cuts</c> cuts are not strictly ascending by order position. Spec §11.8.</summary>
+    OrderedCutsNotAscending,
+
     // --- Planning ---
 
     /// <summary>
@@ -34,7 +52,14 @@ public enum DiagnosticCode
 
     /// <summary>
     /// A raw value outside the declared domain was observed. Severity follows
-    /// <c>unknown_value_policy</c> (default warn). Spec §10.6.
+    /// <c>unknown_value_policy</c> (default warn). Aggregated per attribute. Spec §10.6 / §16.4.
     /// </summary>
     UnknownValueObserved,
+
+    /// <summary>
+    /// A present-but-unparseable numeric value (parse failure, NaN, or ±∞) was observed:
+    /// the object is kept, no cross is emitted. Severity follows <c>unknown_value_policy</c>
+    /// (<c>skip</c> silent). Aggregated per attribute. Spec §10.6 / §11.5 / §16.4 (D-050).
+    /// </summary>
+    SourceValueUnparseable,
 }

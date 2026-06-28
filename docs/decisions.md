@@ -1007,6 +1007,42 @@ conformance pass (`roadmap.md`).
 
 ---
 
+## M1-adjacent conformance pass
+
+Landed when shipped M1 code was reconciled with the merged M2 wording (the "Before
+implementation" pass in `roadmap.md`), before M2 proper. Mostly realizes earlier
+decisions (D-050 malformed-numeric, D-056 cut validation); the one new architectural
+decision is below.
+
+### D-059 — Discretization outcomes and data-diagnostic aggregation
+
+- **Status:** accepted
+- **Date:** 2026-06-28
+- **Decision:** discretizers return a structured `BinResult` distinguishing a recognized
+  **bin**, **no-bin** (out-of-range), an **unknown** value, and an **unparseable** numeric —
+  replacing the old `string?` that collapsed all four into "label or null". Emit-phase data
+  diagnostics that can occur per row (`UnknownValueObserved`, `SourceValueUnparseable`) are
+  **aggregated per attribute** with a count and a bounded sample, flushed in plan order after
+  the stream (deterministic — P-7), never one diagnostic per row.
+- **Why:** `string?` conflated the silent no-cross cases (out-of-range, §11.2) with the
+  diagnosable ones (unparseable §11.5/D-050; unknown §10.6/§11.8), so malformed/unknown data
+  could not be surfaced without re-deriving it in the emitter (P-16); and per-row diagnostics
+  do not scale to the v1 data target (~73M records, D-007). One result type plus one
+  aggregation pattern keeps future discretizers (`equal_width`/`equal_frequency` at M4,
+  `value_groups`) and emit diagnostics consistent (P-5). Also closes the §11.8 gap where an
+  `ordered_cuts` value-not-in-order was silently dropped instead of treated as unknown.
+- **Rejected:** keeping `string?` and re-deriving unparseable-vs-out-of-range in the emitter
+  (duplicates the parse/culture logic out of the discretizer, double-parses the hot path); a
+  second `TryDiscretize` out-param method (two ways to spell one decision, P-5); per-row data
+  diagnostics (flood at scale, P-19).
+- **Affects:** Core (discretizers, `BinResult`), Conversion (emit aggregation), Diagnostics
+  (`SourceValueUnparseable`); spec §10.6 / §11.5 / §11.8 / §16.4. The §5.1 whitespace
+  reconciliation in the same pass needed no decision entry — `SepTrim.Outer` is an
+  implementation detail inside the existing Sep integration (D-041); its conformance tests
+  are the record.
+
+---
+
 ## Spec-field defaults
 
 These are recorded in spec §21 ("Decisions log") and not duplicated here:

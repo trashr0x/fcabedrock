@@ -77,6 +77,35 @@ public sealed class BedToSpecTests
     }
 
     [Fact]
+    public void ToSpec_WhenIncludedAttributeHasNonAscendingCuts_ThenMigrationFailsWithCutDiagnostic()
+    {
+        // D-056: cut validation runs in the smart factory wired into BedToSpec. An active
+        // type-o column with descending cuts fails migration with a clear message — the
+        // old behavior was silently wrong bins (or an opaque IndexOutOfRange).
+        var document = new BedDocument(
+            AttributeCount: 1, Names: ["age"], Categories: [["young", "old"]],
+            Values: [["<", "50", "30", ">"]], Convert: [true], Types: ["o"], RestrictTo: [""]);
+
+        var ex = Assert.ThrowsAny<Exception>(() => BedToSpec.ToSpec(document, Wide()));
+        Assert.Contains("ascending", ex.Message);
+    }
+
+    [Fact]
+    public void ToSpec_WhenExcludedAttributeHasNonAscendingCuts_ThenMigratesAsBareExcluded()
+    {
+        // The cut-validation failure flows into the D-049 excluded-recovery catch, so a
+        // parked column with invalid cuts still migrates as bare excluded, never failing.
+        var document = new BedDocument(
+            AttributeCount: 1, Names: ["age"], Categories: [["young", "old"]],
+            Values: [["<", "50", "30", ">"]], Convert: [false], Types: ["o"], RestrictTo: [""]);
+
+        var age = BedToSpec.ToSpec(document, Wide()).Attributes[0];
+
+        Assert.False(age.Include);
+        Assert.Null(age.Discretizer);
+    }
+
+    [Fact]
     public void ToSpec_WhenTypeB_ThenDichotomicWithFirstValueAsTrueValue()
     {
         var bruises = MushroomSpec().Attributes[1];
@@ -124,7 +153,7 @@ public sealed class BedToSpecTests
         var cuts = Assert.IsType<ManualCutsDiscretizer>(age.Discretizer);
         Assert.Equal(new double[] { 30, 40, 50 }, cuts.Cuts);
         Assert.Equal(BinEnds.Open, cuts.Ends);
-        Assert.Equal("[30, 40)", cuts.Discretize("35"));
+        Assert.Equal(BinResult.Bin("[30, 40)"), cuts.Discretize("35"));
         Assert.Empty(age.ValueLabels);
     }
 
@@ -136,8 +165,8 @@ public sealed class BedToSpecTests
         var ordered = Assert.IsType<OrderedCutsDiscretizer>(employment.Discretizer);
         Assert.Equal(["Unskilled", "Clerical", "Professional", "Managerial"], ordered.Order);
         Assert.Equal(["Managerial"], ordered.Cuts);
-        Assert.Equal("<Managerial", ordered.Discretize("Clerical"));
-        Assert.Equal(">=Managerial", ordered.Discretize("Managerial"));
+        Assert.Equal(BinResult.Bin("<Managerial"), ordered.Discretize("Clerical"));
+        Assert.Equal(BinResult.Bin(">=Managerial"), ordered.Discretize("Managerial"));
         Assert.Empty(employment.ValueLabels);
     }
 
@@ -170,6 +199,6 @@ public sealed class BedToSpecTests
 
         var age = BedToSpec.ToSpec(EmploymentOrdinalDoc(), deDe).Attributes[0];
 
-        Assert.Equal(">=50", Assert.IsType<ManualCutsDiscretizer>(age.Discretizer).Discretize("50,5"));
+        Assert.Equal(BinResult.Bin(">=50"), Assert.IsType<ManualCutsDiscretizer>(age.Discretizer).Discretize("50,5"));
     }
 }

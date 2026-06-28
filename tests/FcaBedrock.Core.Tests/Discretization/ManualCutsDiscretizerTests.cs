@@ -6,10 +6,10 @@ namespace FcaBedrock.Core.Tests.Discretization;
 public sealed class ManualCutsDiscretizerTests
 {
     private static ManualCutsDiscretizer Open(params double[] cuts) =>
-        new(cuts, BinEnds.Open, CultureInfo.InvariantCulture);
+        ManualCutsDiscretizer.Create(cuts, BinEnds.Open, CultureInfo.InvariantCulture).Value!;
 
     private static ManualCutsDiscretizer Closed(params double[] cuts) =>
-        new(cuts, BinEnds.Closed, CultureInfo.InvariantCulture);
+        ManualCutsDiscretizer.Create(cuts, BinEnds.Closed, CultureInfo.InvariantCulture).Value!;
 
     [Fact]
     public void Kind_WhenManualCuts_ThenIsTheManualCutsString() =>
@@ -24,26 +24,26 @@ public sealed class ManualCutsDiscretizerTests
     [InlineData("50", ">=50")]
     [InlineData("80", ">=50")]
     public void Discretize_WhenOpenEnds_ThenLocatesHalfOpenBin(string raw, string expected) =>
-        Assert.Equal(expected, Open(30, 40, 50).Discretize(raw));
+        Assert.Equal(BinResult.Bin(expected), Open(30, 40, 50).Discretize(raw));
 
     [Theory]
     [InlineData("abc")]
     [InlineData("")]
     [InlineData("Infinity")]
     [InlineData("NaN")]
-    public void Discretize_WhenUnparseableOrNonFinite_ThenNoBin(string raw) =>
-        Assert.Null(Open(30, 40, 50).Discretize(raw));
+    public void Discretize_WhenUnparseableOrNonFinite_ThenUnparseable(string raw) =>
+        Assert.Equal(BinResult.Unparseable(raw), Open(30, 40, 50).Discretize(raw)); // §11.5 / D-050
 
     [Theory]
     [InlineData("25")]
     [InlineData("50")]
     [InlineData("80")]
     public void Discretize_WhenClosedEndsAndOutOfRange_ThenNoBin(string raw) =>
-        Assert.Null(Closed(30, 40, 50).Discretize(raw));
+        Assert.Equal(BinResult.NoBin, Closed(30, 40, 50).Discretize(raw)); // §11.2: silent no-cross
 
     [Fact]
     public void Discretize_WhenClosedEndsAndInRange_ThenInteriorBin() =>
-        Assert.Equal("[30, 40)", Closed(30, 40, 50).Discretize("35"));
+        Assert.Equal(BinResult.Bin("[30, 40)"), Closed(30, 40, 50).Discretize("35"));
 
     [Fact]
     public void BinLabels_WhenOpenEnds_ThenOrderedWithOpenOuterBins() =>
@@ -57,7 +57,8 @@ public sealed class ManualCutsDiscretizerTests
 
         foreach (var raw in new[] { "10", "30", "39", "40", "50", "99" })
         {
-            Assert.Contains(discretizer.Discretize(raw), labels);
+            Assert.True(discretizer.Discretize(raw).TryGetLabel(out var label));
+            Assert.Contains(label, labels);
         }
     }
 
@@ -80,9 +81,9 @@ public sealed class ManualCutsDiscretizerTests
     [Fact]
     public void Discretize_WhenLocaleUsesCommaDecimal_ThenParsesWithInjectedCulture()
     {
-        var deDe = new ManualCutsDiscretizer([30], BinEnds.Open, CultureInfo.GetCultureInfo("de-DE"));
+        var deDe = ManualCutsDiscretizer.Create([30], BinEnds.Open, CultureInfo.GetCultureInfo("de-DE")).Value!;
 
-        Assert.Equal(">=30", deDe.Discretize("30,5")); // "30,5" == 30.5 in de-DE
-        Assert.Equal("<30", deDe.Discretize("29,5"));
+        Assert.Equal(BinResult.Bin(">=30"), deDe.Discretize("30,5")); // "30,5" == 30.5 in de-DE
+        Assert.Equal(BinResult.Bin("<30"), deDe.Discretize("29,5"));
     }
 }

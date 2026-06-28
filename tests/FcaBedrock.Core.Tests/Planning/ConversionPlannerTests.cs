@@ -151,7 +151,7 @@ public sealed class ConversionPlannerTests
         // §10.8 / D-049: value_labels under a cut-based discretizer is dormant — it is
         // ignored, so a key absent from declared_domain is NOT ValueLabelKeyNotInDomain.
         var age = new AttributeSpec("age", new ColumnSource(0), Include: true,
-            new ManualCutsDiscretizer([30.0, 40.0], BinEnds.Open, CultureInfo.InvariantCulture),
+            ManualCutsDiscretizer.Create([30.0, 40.0], BinEnds.Open, CultureInfo.InvariantCulture).Value!,
             new NominalScale(), DeclaredDomain: [],
             new Dictionary<string, string> { ["old"] = "Old retained label" },
             MissingPolicy.Skip, UnknownValuePolicy.Warn);
@@ -169,7 +169,7 @@ public sealed class ConversionPlannerTests
         // §10.8 / D-049: value_labels is dormant under a cut discretizer — it must not
         // change rendered names, even when a key happens to match a cut-bin label.
         var age = new AttributeSpec("age", new ColumnSource(0), Include: true,
-            new ManualCutsDiscretizer([30.0], BinEnds.Open, CultureInfo.InvariantCulture),
+            ManualCutsDiscretizer.Create([30.0], BinEnds.Open, CultureInfo.InvariantCulture).Value!,
             new NominalScale(), DeclaredDomain: [],
             new Dictionary<string, string> { ["<30"] = "Young" },
             MissingPolicy.Skip, UnknownValuePolicy.Warn);
@@ -187,6 +187,18 @@ public sealed class ConversionPlannerTests
         var spec = new BedrockSpec(SpecFixtures.WideRowIndex(), [attr]);
 
         AssertFailsWith(ConversionPlanner.Plan(spec, new SourceSchema(1)), DiagnosticCode.ValueLabelKeyNotInDomain);
+    }
+
+    [Fact]
+    public void Plan_WhenValueLabelsPartial_ThenLabeledValueUsesLabelAndUnlabeledFallsThroughToRaw()
+    {
+        // §10.8 coverage: a value in declared_domain but absent from value_labels falls through
+        // to the raw value as its label; nominal default naming is {column}-{value} (§10.7).
+        var attr = SpecFixtures.Nominal("g", 0, ["b", "n"], new Dictionary<string, string> { ["b"] = "broad" });
+        var spec = new BedrockSpec(SpecFixtures.WideRowIndex(), [attr]);
+
+        Assert.True(ConversionPlanner.Plan(spec, new SourceSchema(1)).TryGetValue(out var plan));
+        Assert.Equal(["g-broad", "g-n"], plan.FormalAttributes.Select(f => f.RenderedName));
     }
 
     [Fact]

@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 using FcaBedrock.Core.Discretization;
 using FcaBedrock.Core.Scaling;
@@ -37,8 +38,24 @@ internal static class ConversionFixtures
         ]);
 
     public static AttributeSpec Nominal(string name, int index, params string[] domain) =>
+        Nominal(name, index, UnknownValuePolicy.Warn, domain);
+
+    public static AttributeSpec Nominal(string name, int index, UnknownValuePolicy policy, params string[] domain) =>
         new(name, new ColumnSource(index), Include: true, new IdentityDiscretizer(), new NominalScale(),
-            domain, NoLabels, MissingPolicy.Skip, UnknownValuePolicy.Warn);
+            domain, NoLabels, MissingPolicy.Skip, policy);
+
+    // A numeric manual_cuts attribute (open ends, nominal) with a configurable unknown-value
+    // policy — for exercising the malformed-numeric path (§11.5 / D-050).
+    public static AttributeSpec NumericCuts(string name, int index, UnknownValuePolicy policy, params double[] cuts) =>
+        new(name, new ColumnSource(index), Include: true,
+            ManualCutsDiscretizer.Create(cuts, BinEnds.Open, CultureInfo.InvariantCulture).Value!,
+            new NominalScale(), DeclaredDomain: [], NoLabels, MissingPolicy.Skip, policy);
+
+    // An ordered_cuts attribute (open ends, nominal) over a category order with one cut.
+    public static AttributeSpec OrderedCuts(string name, int index, IReadOnlyList<string> order, string cut) =>
+        new(name, new ColumnSource(index), Include: true,
+            OrderedCutsDiscretizer.Create(order, [cut], BinEnds.Open).Value!,
+            new NominalScale(), DeclaredDomain: [], NoLabels, MissingPolicy.Skip, UnknownValuePolicy.Warn);
 
     private static Dictionary<string, string> Labels(params (string Key, string Value)[] pairs) =>
         pairs.ToDictionary(p => p.Key, p => p.Value);

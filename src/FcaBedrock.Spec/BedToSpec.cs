@@ -2,6 +2,7 @@ using System.Globalization;
 using FcaBedrock.Core.Discretization;
 using FcaBedrock.Core.Scaling;
 using FcaBedrock.Core.Spec;
+using FcaBedrock.Diagnostics;
 
 namespace FcaBedrock.Spec;
 
@@ -108,14 +109,25 @@ public static class BedToSpec
     {
         var (cutTokens, ends) = ParseCutSpec(values);
         var cuts = cutTokens.Select(t => double.Parse(t, CultureInfo.InvariantCulture)).ToList();
-        return new ManualCutsDiscretizer(cuts, ends, culture);
+        return Require(ManualCutsDiscretizer.Create(cuts, ends, culture));
     }
 
     private static OrderedCutsDiscretizer OrderedCuts(IReadOnlyList<string> order, IReadOnlyList<string> values)
     {
         var (cutTokens, ends) = ParseCutSpec(values);
-        return new OrderedCutsDiscretizer(order, cutTokens, ends);
+        return Require(OrderedCutsDiscretizer.Create(order, cutTokens, ends));
     }
+
+    // M1 BedToSpec still throws and returns a bare spec (the Diagnosed<T> rework is M2, D-049):
+    // convert a cut-validation failure (D-056) into an exception carrying the diagnostic messages.
+    // On the included path MapByType throws (a clear D-056 message replaces the old opaque
+    // IndexOutOfRange/wrong-bins behavior); on the excluded path MapAttribute's catch degrades to
+    // BareExcluded. The factory's Diagnosed signature is already what the M2 reader will thread.
+    private static T Require<T>(Diagnosed<T> result)
+        where T : class =>
+        result.TryGetValue(out var value)
+            ? value
+            : throw new FormatException(string.Join("; ", result.Diagnostics.Select(d => d.Message)));
 
     // The v2 cut spec is the [Category Values] tokens with sentinel ends: a leading
     // "<" and/or trailing ">" mark open ends; the interior tokens are the cuts.

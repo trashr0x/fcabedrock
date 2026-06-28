@@ -1,5 +1,6 @@
 using System.Globalization;
 using FcaBedrock.Core.Scaling;
+using FcaBedrock.Diagnostics;
 
 namespace FcaBedrock.Core.Discretization;
 
@@ -10,22 +11,67 @@ namespace FcaBedrock.Core.Discretization;
 /// does an out-of-range value under <see cref="BinEnds.Closed"/> (§11.2). Cut
 /// labels are invariant schema strings, not locale numbers (§14), so the same
 /// spec yields the same labels everywhere.
+/// <para>
+/// Constructed only through <see cref="Create"/>, which validates the cut spec
+/// (<see cref="CutValidation.ValidateManual"/>) so an invalid one is unrepresentable
+/// (P-10, D-056). The private constructor trusts its already-validated inputs.
+/// </para>
 /// </summary>
-public sealed record ManualCutsDiscretizer(IReadOnlyList<double> Cuts, BinEnds Ends, CultureInfo Culture) : Discretizer
+public sealed record ManualCutsDiscretizer : Discretizer
 {
-    private readonly IReadOnlyList<string> _cutLabels = [.. Cuts.Select(FormatCut)];
-    private readonly IReadOnlyList<string> _binLabels = CutBinLabels.Build([.. Cuts.Select(FormatCut)], Ends);
+    /// <summary>The cut points, strictly ascending (validated by <see cref="Create"/>).</summary>
+    public IReadOnlyList<double> Cuts { get; }
+
+    /// <summary>Whether the outer bins extend to ±∞ (<see cref="BinEnds.Open"/>) or are dropped.</summary>
+    public BinEnds Ends { get; }
+
+    /// <summary>The culture used to parse raw data values (never ambient — P-12).</summary>
+    public CultureInfo Culture { get; }
+
+    private readonly IReadOnlyList<string> _cutLabels;
+    private readonly IReadOnlyList<string> _binLabels;
+
+    private ManualCutsDiscretizer(IReadOnlyList<double> cuts, BinEnds ends, CultureInfo culture)
+    {
+        // Snapshot the caller's list: a mutable input must not desync Cuts from the cached
+        // labels after construction (P-10 — the validated invariants stay true for life).
+        Cuts = [.. cuts];
+        Ends = ends;
+        Culture = culture;
+        _cutLabels = [.. Cuts.Select(FormatCut)];
+        _binLabels = CutBinLabels.Build(_cutLabels, ends);
+    }
+
+    /// <summary>
+    /// Validates the cut spec and, if valid, builds the discretizer (spec §11.2,
+    /// D-056). On any problem returns <see cref="Diagnosed{T}.Failed"/> with the
+    /// cut diagnostics and never constructs — so the discretizer's invariants
+    /// (non-empty / ascending / closed-ends ≥ 2) always hold. Wired into
+    /// <c>BedToSpec</c> now; reused by the M2 TOML reader.
+    /// </summary>
+    public static Diagnosed<ManualCutsDiscretizer> Create(
+        IReadOnlyList<double> cuts, BinEnds ends, CultureInfo culture)
+    {
+        ArgumentNullException.ThrowIfNull(cuts);
+        ArgumentNullException.ThrowIfNull(culture);
+
+        var diagnostics = CutValidation.ValidateManual(cuts, ends);
+        return diagnostics.Count == 0
+            ? Diagnosed<ManualCutsDiscretizer>.Ok(new ManualCutsDiscretizer(cuts, ends, culture))
+            : Diagnosed<ManualCutsDiscretizer>.Failed(diagnostics);
+    }
 
     public override string Kind => "manual_cuts";
 
-    public override string? Discretize(string rawValue)
+    public override BinResult Discretize(string rawValue)
     {
         if (!double.TryParse(rawValue, NumberStyles.Float, Culture, out var value) || !double.IsFinite(value))
         {
-            return null;
+            return BinResult.Unparseable(rawValue); // §11.5 / D-050: kept, no cross, diagnosable
         }
 
-        return CutBinLabels.LabelFor(_binLabels, FirstCutAbove(value), Cuts.Count, Ends);
+        var label = CutBinLabels.LabelFor(_binLabels, FirstCutAbove(value), Cuts.Count, Ends);
+        return label is null ? BinResult.NoBin : BinResult.Bin(label); // null ⇒ out of a closed range (§11.2)
     }
 
     internal override IReadOnlyList<string> BinLabels(IReadOnlyList<string> declaredDomain) => _binLabels;

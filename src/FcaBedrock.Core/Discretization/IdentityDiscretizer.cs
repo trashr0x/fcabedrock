@@ -9,7 +9,9 @@ public sealed record IdentityDiscretizer : Discretizer
 {
     public override string Kind => "identity";
 
-    public override string? Discretize(string rawValue) => rawValue;
+    // The raw value is its own bin label; the emitter's KnownBins gate turns a value
+    // outside the declared domain into an unknown (identity has no domain of its own).
+    public override BinResult Discretize(string rawValue) => BinResult.Bin(rawValue);
 
     internal override IReadOnlyList<string> BinLabels(IReadOnlyList<string> declaredDomain) => declaredDomain;
 
