@@ -791,10 +791,10 @@ refinement markers (D-003, D-005, D-021); the entries below are new.
   (round-trip fidelity); the default-`boundary` round-trip trap over cut bins
   (§12.3); revisiting the `value_type`-vs-discretizer rule (§10.2 — a live
   conflict, left validating). See `docs/roadmap.md`.
-- **Deferred (migrator hygiene):** make `BedToSpec` return `Result<T, 
+- **Deferred (migrator hygiene):** make `BedToSpec` return `Result<T,
   BedrockDiagnostic>` instead of throwing (P-13), so excluded-config recovery can
-  emit a *diagnostic* rather than relying on the broad recovery `catch (Exception)` 
-  in `MapAttribute`. Natural to fold in when M2 reworks the `.bed` → TOML migrator; 
+  emit a *diagnostic* rather than relying on the broad recovery `catch (Exception)`
+  in `MapAttribute`. Natural to fold in when M2 reworks the `.bed` → TOML migrator;
   not worth a standalone refactor now.
 - **Affects:** Core (planner `ValidateValueLabels` + `RenderName`; new
   `Discretizer.ConsultsValueLabels`; `AttributeSpec` doc), Diagnostics (enum:
@@ -1095,9 +1095,9 @@ feature, so they are recorded here. They refine, not reverse, earlier decisions.
   String-fixing — `identity`, `value_groups`, `ordered_cuts` (only `"string"`).
   Number-fixing — `manual_cuts`, `equal_width`, `equal_frequency` (only `"number"`).
   Flexible — `free_per_value` (either: `"number"` → parsed-numeric bin identity, so
-  `90` / `90.0` / `9e1` collapse to one bin; `"string"` → verbatim spelling). `identity`
-  + `"number"` is `SourceValueTypeInvalid`; numeric distinct-value binning uses
-  `free_per_value`.
+  `90` / `90.0` / `9e1` collapse to one bin; `"string"` → verbatim spelling).
+  `identity` + `"number"` is `SourceValueTypeInvalid`; numeric distinct-value binning
+  uses `free_per_value`.
 - **Why:** D-049 flagged the §10.2 `value_type`-vs-discretizer rule as a *live
   conflict* — it spoke of one "discretizer-implied type," which mis-described
   `free_per_value` (legitimately both) and could reject its headline numeric use

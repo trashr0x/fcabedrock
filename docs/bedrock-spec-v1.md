@@ -796,7 +796,7 @@ Template placeholders:
 `formal_attribute_format` that uses `{value}` is well-defined everywhere):
 
 | Formal attribute | `{value}` resolves to |
-|---|---|
+| --- | --- |
 | `nominal` bin | the bin label (category value or cut-bin label) |
 | `ordinal` threshold | the threshold label (`{scale_op}` carries the operator) |
 | `dichotomic` (the single column) | the scale's `true_value` (the default format omits it) |
@@ -1501,7 +1501,7 @@ Any subset of fields may be populated.
 Every distinct condition has its own `DiagnosticCode`. v1's initial set:
 
 | Code | Severity | Where |
-|---|---|---|
+| --- | --- | --- |
 | `SpecVersionUnsupported` | Fatal | spec parse |
 | `SpecExtendsCycle` | Fatal | spec resolve |
 | `SpecExtendsNotFound` | Fatal | spec resolve |
@@ -2030,7 +2030,7 @@ readers know the rationale and don't re-litigate.
     object-key mode, and ordering. Output identity is split per format into
     `cxt_output_fingerprint` and `dat_output_fingerprint` (D-051): both add the
     row-shaping/conversion settings schema omits, then `.cxt` adds rendered names
-    + `.cxt` writer settings while `.dat` adds only `.dat` writer settings. All
+    plus `.cxt` writer settings while `.dat` adds only `.dat` writer settings. All
     hash a plan-derived canonical JSON structure, not TOML text (D-053), and are
     stored only for fully-frozen specs. Provenance in none.
 
