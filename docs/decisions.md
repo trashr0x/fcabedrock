@@ -1043,6 +1043,156 @@ decision is below.
 
 ---
 
+## Tier 1 spec audit (pre-M2)
+
+A consolidated internal-consistency audit of `bedrock-spec-v1.md`, reconciled over
+two external review rounds, before M2 implementation. Most findings were doc fixes
+needing no decision; the six below change a validation/output contract or sequence a
+feature, so they are recorded here. They refine, not reverse, earlier decisions.
+
+### D-060 — Ordinal-over-cuts validation contract
+
+- **Status:** accepted
+- **Date:** 2026-06-30
+- **Decision:** three linked rules for ordinal scales over cut discretizers.
+  (a) `scale.order` is a **value-bin** field only (`identity` / `free_per_value`):
+  required for non-numeric value bins, optional for numeric. It MUST NOT appear with
+  a **cut** discretizer (`manual_cuts`, `ordered_cuts`, `equal_width`,
+  `equal_frequency`); presence is `OrdinalOrderNotAllowedWithCuts` (Error). The cut
+  discretizer is the single source of order, and `ordered_cuts` bin order is added to
+  §17 rule 3 (ascending by cut position). (b) Both ordinal-over-cuts compatibility
+  checks run at **spec validate**: `OrdinalOrderNotAllowedWithCuts` and — re-phased
+  from plan — `OrdinalBoundaryIncompatibleWithCuts`; both depend only on authored
+  spec shape (discretizer kind, presence of `scale.order`, authored-vs-default
+  `boundary`), never on data or calibrated cut values. (c) `[defaults]
+  .ordinal_direction` / `ordinal_boundary` fill a missing `scale.direction` /
+  `scale.boundary`; a per-attribute field wins. A boundary arriving via the default
+  is **defaulted, not authored**: over cut bins it never overrides the geometry
+  operator and never trips `OrdinalBoundaryIncompatibleWithCuts`. The reader/writer
+  preserves authored-vs-default provenance.
+- **Why:** the spec required `order` for any non-numeric bin labels, contradicting the
+  §19.2 progressive golden (ordinal `le` over `ordered_cuts` with no `scale.order`)
+  and the cut-geometry rule; §17 also omitted `ordered_cuts` entirely. Hard-rejecting
+  `scale.order` over cuts (not silently ignoring it) keeps one visible source of order
+  on an active attribute and matches the sibling `OrdinalBoundaryIncompatibleWithCuts`
+  treatment. Validate phase is the earliest point these static errors can be caught
+  and matches the other cut validations (D-056) and the M2 validation freeze.
+- **Rejected:** ignoring `scale.order` over cuts as dormant (the
+  `declared_domain`-over-cuts / D-049 pattern) — on an *active* attribute it leaves two
+  visible order declarations and can silently void the authored one; the local
+  ordinal-over-cuts contract (boundary already rejects) is the tighter consistency
+  axis. Placing the checks at plan — they need no data, so validate is earlier.
+- **Affects:** Core (validate, `OrdinalScale`), Spec, Diagnostics
+  (`OrdinalOrderNotAllowedWithCuts` new; `OrdinalBoundaryIncompatibleWithCuts`
+  re-phased plan→validate); spec §6 / §12.3 / §16.4 / §17. Refines D-044 / D-046 /
+  D-047 / D-049.
+
+### D-061 — value_type matrix: free_per_value flexible, identity string-only
+
+- **Status:** accepted
+- **Date:** 2026-06-30
+- **Decision:** each discretizer either **fixes** the value type or is **flexible**.
+  String-fixing — `identity`, `value_groups`, `ordered_cuts` (only `"string"`).
+  Number-fixing — `manual_cuts`, `equal_width`, `equal_frequency` (only `"number"`).
+  Flexible — `free_per_value` (either: `"number"` → parsed-numeric bin identity, so
+  `90` / `90.0` / `9e1` collapse to one bin; `"string"` → verbatim spelling). `identity`
+  + `"number"` is `SourceValueTypeInvalid`; numeric distinct-value binning uses
+  `free_per_value`.
+- **Why:** D-049 flagged the §10.2 `value_type`-vs-discretizer rule as a *live
+  conflict* — it spoke of one "discretizer-implied type," which mis-described
+  `free_per_value` (legitimately both) and could reject its headline numeric use
+  (D-022). Naming type-fixing vs flexible makes the four real conflict cases exact and
+  keeps one numeric distinct-binner (P-5).
+- **Rejected:** making `identity` also flexible (a second way to spell numeric distinct
+  binning, P-5); leaving the rule vague (the original live conflict).
+- **Affects:** Core (validate), Spec; spec §10.2 / §11.3; diagnostic
+  `SourceValueTypeInvalid` (scope clarified). Resolves the D-049-deferred item; refines
+  D-022.
+
+### D-062 — Cross-attribute restrict not modelled in v1; drop the diagnostic
+
+- **Status:** accepted
+- **Date:** 2026-06-30
+- **Decision:** cross-attribute restrict ("include attr A only when attr B = X") has no
+  reserved carrier syntax in v1 and is **not modelled**. The named
+  `RestrictCrossAttributeNotImplementedV1` diagnostic is **removed** from §20 — it was
+  unreachable, since no v1 syntax could trigger it. It remains prose-only future work.
+- **Why:** a `*NotImplementedV1` reservation is only meaningful when a parseable
+  carrier lets a v1 spec express the feature and be cleanly rejected (the `composite` /
+  `date` / scale pattern). With no carrier the code was dead. Not every future idea
+  needs reserved syntax (P-3).
+- **Rejected:** inventing a carrier now (P-3 — no current need); keeping the dead
+  diagnostic (misleads readers into thinking the feature is expressible).
+- **Affects:** Spec; spec §20; `roadmap.md` (stale "§19" → "§20" reference fixed);
+  diagnostic `RestrictCrossAttributeNotImplementedV1` removed.
+
+### D-063 — restrict_to: M2 validates shape, M4 executes; diagnostic ownership
+
+- **Status:** accepted
+- **Date:** 2026-06-30
+- **Decision:** M2 validates the *shape* of `restrict_to` at parse/validate even though
+  execution is deferred to M4 (D-057): `RestrictToOnNumericRequiresRange` (Error) owns
+  the numeric-source + non-range-entry mismatch; `RestrictToValueNotInDomain` (Warning)
+  is the explicit-domain typo-catcher. `SourceValueTypeInvalid` (§10.2) does **not**
+  duplicate the numeric/string-entry case. Conversion still rejects all `restrict_to`
+  with `RestrictToNotImplementedV1` until M4. Mixed string/range `restrict_to` lists
+  round-trip (D-057) but, under the single-`value_type` matrix (D-061), each entry must
+  match the attribute's type, so a genuinely mixed list is rejected at validation (§10.4).
+- **Why:** D-057 established round-trip + execution-deferral, but §10.4 prose never
+  documented the static checks the §16.4 table already listed, nor their precedence vs
+  `SourceValueTypeInvalid`. One condition → one owning code (P-13).
+- **Rejected:** deferring shape validation to M4 with execution (an authoring error
+  would surface late); letting both codes fire on the same mismatch (ambiguous, P-5).
+- **Affects:** Core (validate), Spec; spec §10.4 / §10.2; diagnostics
+  `RestrictToOnNumericRequiresRange`, `RestrictToValueNotInDomain`. Refines D-057.
+
+### D-064 — Wide column object keys deferred to M3; object-key diagnostic taxonomy
+
+- **Status:** accepted
+- **Date:** 2026-06-30
+- **Decision:** wide `object_key.mode = "column"` (and the `duplicate_object_policy`
+  machinery it gates) is parsed and round-tripped from M2, but its **execution is
+  deferred to M3**, alongside the triple subject-derived column key; until then
+  conversion rejects a wide column object key with the transitional
+  `ObjectKeyColumnNotImplementedV1`. Object-key validation gains a taxonomy:
+  `ObjectKeyBindingInvalid` (malformed — e.g. column mode without a resolvable
+  `column`), `ObjectKeyModeInvalidForShape` (e.g. `row_index` under triple);
+  `ObjectKeyCompositeNotImplementedV1` is unchanged.
+- **Why:** D-034 fully specified wide column-key behavior, but no milestone implemented
+  it and no guard existed — a silent partial implementation (carrier parses, execution
+  missing), the hole D-057 closed for `restrict_to`. M3 already builds subject-derived
+  column keys, so it is the natural home. Distinct conditions get distinct codes (P-13).
+- **Rejected:** implementing wide column keys in M2 (expands M2 scope; M3 is the
+  object-key milestone); leaving execution unguarded (latent wrong output — a silent
+  `row_index` fallback).
+- **Affects:** Core (validate/plan), Sources, Spec; spec §5.4 / §6.1 / §16.4;
+  diagnostics `ObjectKeyColumnNotImplementedV1` (transitional, removed at M3),
+  `ObjectKeyBindingInvalid`, `ObjectKeyModeInvalidForShape`. Refines D-034.
+
+### D-065 — Calibration/vocabulary over the input universe, before restrict_to
+
+- **Status:** accepted
+- **Date:** 2026-06-30
+- **Decision:** the formal-attribute **vocabulary** and any auto-discretizer
+  **calibration** are computed over the **input universe**, *before* `restrict_to`
+  (§10.4) selects emitted objects. `restrict_to` filters emitted objects, never the
+  calibration population or the column set. Post-filter empty columns are allowed
+  (`AttributeHasNoCrosses`). Population-relative calibration (quantiles over only the
+  surviving objects) is recorded as a **future option**, not a v1 setting.
+- **Why:** the §7 phase order (Calibrate before Emit-time restriction, D-036) already
+  implied this, but §19.4 (`equal_frequency` + `restrict_to` on TheilerStage) made the
+  consequence non-obvious and the spec never stated it. "Define vocabulary first, then
+  select objects" is the FCA-coherent model and keeps the schema stable under
+  object-filter changes (reproducibility). Documenting it as a deliberate choice — with
+  the §19.4 consequence visible — prevents it being read as a bug.
+- **Rejected:** population-relative calibration as the v1 default/option (P-3 — no
+  current need; a larger M4 design); leaving the interaction unspecified (the audit's
+  F14 — a determinism/expectation gap).
+- **Affects:** Conversion (calibrate/emit ordering), Spec; spec §7 / §19.4; `roadmap.md`
+  (population-relative noted as future). Refines D-021 / D-036.
+
+---
+
 ## Spec-field defaults
 
 These are recorded in spec §21 ("Decisions log") and not duplicated here:

@@ -125,11 +125,12 @@ delimiter     = ","                          # default ","; any single char
 quote_char    = "\""                         # default "\""
 has_header    = true                         # only meaningful for shape = "wide"
 locale        = "invariant"                  # default "invariant"
-missing_token = "?"                          # default "?"; any non-empty string
+missing_token = "?"                          # default "?"; "" disables token detection
 ```
 
 **`shape`** *(required, enum)*. `"wide"` for one-row-per-object DSV,
-`"triple"` for subject-predicate-value DSV.
+`"triple"` for subject-predicate-value DSV. An absent `shape` is
+`BindingShapeMissing` (Error).
 
 **`encoding`** *(default `"utf-8"`)*. Any encoding accepted by the
 implementation. Implementations MUST support at least UTF-8.
@@ -243,7 +244,8 @@ mode = "row_index"                           # "row_index" | "column" | "composi
 
 **`mode = "row_index"`** *(default for wide; not allowed for triple)*.
 Object names are `0`, `1`, `2`, … in input order. Keys are unique by
-construction; `duplicate_object_policy` does not apply.
+construction; `duplicate_object_policy` does not apply. Declaring `row_index`
+under `shape = "triple"` is `ObjectKeyModeInvalidForShape` (Error, spec validate).
 
 **`mode = "column"`**:
 
@@ -255,7 +257,17 @@ column = "id"                                # name (with header) or index
 
 Object name is taken from the named/indexed column. The column is excluded
 from the conversion (no formal attributes generated from it). Duplicate key
-values are governed by `duplicate_object_policy` (§6.1).
+values are governed by `duplicate_object_policy` (§6.1). A `column` object key
+missing its `column`, or naming a column that does not resolve, is
+`ObjectKeyBindingInvalid` (Error, spec validate).
+
+> **Wide `column` execution lands at M3.** Wide `object_key.mode = "column"` (and
+> with it the `duplicate_object_policy` machinery, §6.1) is **parsed and
+> round-tripped** from M2, but its *execution* is sequenced with the triple
+> object-key work at M3: until then conversion **rejects** a wide `column` object
+> key with `ObjectKeyColumnNotImplementedV1` (transitional) rather than silently
+> falling back to row index. Triple binding's subject-derived `column` key (below)
+> is the M3 driver. (M1/M2 wide conversion uses `row_index`.)
 
 **`mode = "composite"`** **(deferred)**:
 
@@ -300,6 +312,17 @@ override for emitted attributes. If absent, the scale-specific defaults from
 §10.7 apply (this is the normal case — there is no hard-coded `{column}-{value}`
 default).
 
+`ordinal_direction` and `ordinal_boundary` supply the defaults for an `ordinal`
+scale (§12.3) that omits `direction` / `boundary`; a per-attribute `scale` field
+wins (§9 precedence). **`direction`** applies to **all** ordinal scales — for cut-bin
+scales it selects which bin edge each threshold sits on (`le` → upper, `ge` → lower).
+**`boundary`** selects the operator only for **value-bin** ordinal scales (where all
+four `direction × boundary` combinations are live); for **cut-bin** scales the
+operator is fixed by the cut geometry, so a **defaulted** `boundary` never selects it
+and never trips `OrdinalBoundaryIncompatibleWithCuts` (§12.3) — only an
+explicitly-authored straddling `boundary` does. Authored-vs-default provenance is
+preserved by the reader/writer.
+
 ### 6.1 Duplicate object keys
 
 Applicability depends on object-key mode (§5.4):
@@ -337,9 +360,11 @@ A conversion proceeds through four ordered phases. Implementations MUST preserve
 this separation (see decisions.md D-003, D-005).
 
 1. **Parse / validate** — resolve TOML syntax, `extends` composition, and
-   *static* spec validity (overlapping cuts, scale/discretizer compatibility,
-   `value_labels` keys in domain when live (§10.8), duplicate `name`s,
-   formal-attribute identity collisions). Reads no data
+   *static* spec validity (cut validation §11.2/§11.8, scale/discretizer
+   compatibility — including `OrdinalOrderNotAllowedWithCuts` and
+   `OrdinalBoundaryIncompatibleWithCuts` (§12.3), `value_labels` keys in domain
+   when live (§10.8), duplicate `name`s, formal-attribute identity collisions,
+   `BindingShapeMissing` when `shape` is absent). Reads no data
    *rows*. It MAY inspect source *schema metadata* supplied by the caller —
    header names, column count — to validate source bindings (e.g. a
    `{ kind = "column", name = "age" }` binding against an actual header);
@@ -381,6 +406,16 @@ observed domain is filled in — but the user is warned (`ObservedDomainUsed`,
 Warning) because the resulting formal-attribute schema then depends on this
 specific input rather than on the spec alone. To make such a spec
 input-independent, declare the domain explicitly or freeze it with `calibrate`.
+
+**Calibration and vocabulary precede object filtering.** The formal-attribute
+**vocabulary** (which columns exist) and any auto-discretizer **calibration** are
+computed over the **input universe** — *before* `restrict_to` (§10.4) selects which
+objects are emitted. `restrict_to` filters **emitted objects**, never the
+calibration population or the column set: define the attribute vocabulary first,
+then select objects (the FCA model). A consequence is that after filtering some
+columns may carry no crosses (`AttributeHasNoCrosses`, §16.4) — allowed, not an
+error. (Population-relative calibration — quantiles over only the surviving objects
+— is a recognized future option recorded in decisions.md/roadmap, not a v1 setting.)
 
 ## 8. The `[output]` block
 
@@ -552,17 +587,28 @@ source = { kind = "column", index = 0, value_type = "number" }            # nume
 source = { kind = "column", index = 1, value_type = "string" }            # no parse (default for identity/value_groups)
 ```
 
-`value_type` is `"string"` or `"number"`. It defaults to `"string"` for the
-discretizers whose bins are raw values or category strings — `identity`,
-`free_per_value`, `value_groups`, and `ordered_cuts` — and to `"number"` for the
-numeric-cut discretizers `manual_cuts`, `equal_width`, and `equal_frequency`. For
-numeric distinct-value binning, set `value_type = "number"` explicitly on a
-`free_per_value` source. The value `"date"` is **reserved but not implemented in
-v1** (§11.7): a spec setting `value_type = "date"` parses but is rejected by the
-v1 planner with `DateValueTypeNotImplementedV1`. A `value_type` that is not one of
-these, or that conflicts with the discretizer-implied or `restrict_to`-implied
-type (e.g. a string discretizer with a numeric-range `restrict_to`), is
-`SourceValueTypeInvalid` (Error).
+`value_type` is `"string"` or `"number"`. Each discretizer either **fixes** the
+type or is **flexible**:
+
+- **String-fixing** — `identity`, `value_groups`, `ordered_cuts`: bins are category
+  strings; only `value_type = "string"` is valid (the default).
+- **Number-fixing** — `manual_cuts`, `equal_width`, `equal_frequency`: cuts are
+  numeric; only `value_type = "number"` is valid (the default).
+- **Flexible** — `free_per_value`: accepts **either**. With `"string"` (default)
+  each distinct spelling is its own bin; with `"number"` the *parsed numeric value*
+  is the bin identity, so `90`, `90.0`, and `9e1` collapse to one bin. Use
+  `free_per_value` — not `identity`, which is string-fixing — for numeric
+  distinct-value binning.
+
+The value `"date"` is **reserved but not implemented in v1** (§11.7): a spec setting
+`value_type = "date"` parses but is rejected by the v1 planner with
+`DateValueTypeNotImplementedV1`. A `value_type` that is not one of these, that a
+type-fixing discretizer disallows (e.g. `identity` + `"number"`, or `manual_cuts` +
+`"string"`), or that conflicts with the `restrict_to`-implied type — a **string**
+`value_type` paired with a numeric-**range** `restrict_to` — is
+`SourceValueTypeInvalid` (Error). The mirror case, a **numeric** source with a
+non-range string `restrict_to` entry, is owned by `RestrictToOnNumericRequiresRange`
+(§10.4), not this code.
 
 A spec MUST NOT declare two attributes with the same `name`. Two attributes
 MAY share the same `source` — this is how one field carries multiple scalings
@@ -597,11 +643,14 @@ formal-attribute (column) order** for `identity` and `free_per_value` scaled
 nominally (§17 rule 3) — this is what makes a spec-first run reproducible and
 v2-byte-compatible regardless of the order values happen to appear in the data.
 
-If `declared_domain` is empty or absent, the Calibrate phase (§7) fills it
-from the observed domain in the data, and the user is warned
-(`ObservedDomainUsed`) because the resulting schema then depends on this
-specific input. For input-independent, spec-first workflows, declare the
-domain explicitly or freeze it with `fcabedrock calibrate`.
+If `declared_domain` is absent **or an empty list `[]`**, the Calibrate phase (§7)
+fills it from the observed domain in the data, and the user is warned
+(`ObservedDomainUsed`) because the resulting schema then depends on this specific
+input. An empty `[]` is treated as **absent** — *not* as "zero columns"; only a
+**non-empty** explicit list drives column order (§17 rule 3). The TOML
+reader/writer round-trips an authored `[]` verbatim; `calibrate`/freeze may replace
+it with the observed values. For input-independent, spec-first workflows, declare
+the domain explicitly or freeze it with `fcabedrock calibrate`.
 
 ### 10.4 restrict_to
 
@@ -634,9 +683,25 @@ restrict_to = [
 Range bounds are inclusive on the low side and exclusive on the high
 side, matching the bin convention.
 
-Mixed forms (string and range) within the same `restrict_to` list are
-allowed — useful when the discretizer is `value_groups` operating on a
-mix of categorical and numeric raw values.
+Mixed forms (string and range) within the same `restrict_to` list **parse and
+round-trip** (D-057), but each entry must satisfy the attribute's single
+`value_type` (§10.2): a string-fixing source accepts only string entries, a
+number-fixing source only ranges. A genuinely mixed list is therefore a
+**validation error** (`SourceValueTypeInvalid` / `RestrictToOnNumericRequiresRange`,
+below) — no single-attribute `value_type` admits both.
+
+**Static validation (M2).** Even though `restrict_to` *execution* is deferred
+(below), its *shape* is validated at parse/validate from M2 onward:
+
+- a numeric source (`value_type = "number"`, or a numeric-cut discretizer) whose
+  `restrict_to` contains a non-range (bare string) entry is
+  `RestrictToOnNumericRequiresRange` (Error). This code — **not**
+  `SourceValueTypeInvalid` (§10.2) — owns the numeric-source/string-entry mismatch;
+- a `restrict_to` string value absent from an explicit `declared_domain` (where one
+  applies — `identity` / `free_per_value`) is `RestrictToValueNotInDomain`
+  (Warning), a typo-catcher.
+
+These are *shape* checks only — no rows are filtered until execution lands at M4.
 
 > **Execution lands at the restriction milestone (M4).** `restrict_to` is a v1
 > feature, but its *execution* is sequenced after M2: M2 **parses and
@@ -871,8 +936,11 @@ you want one bin per distinct number rather than ranges.
 discretizer = { kind = "free_per_value" }
 ```
 
-Different from `identity` only in that it can be safely paired with
-auto-bin scales (the scale knows the values came from numeric data).
+Different from `identity` in that it is **type-flexible** (§10.2): with
+`value_type = "number"` its bin identity is the *parsed numeric value*, so `90`,
+`90.0`, and `9e1` collapse to one bin; with `value_type = "string"` (the default)
+each distinct spelling is its own bin. Use `free_per_value` — not `identity` — for
+numeric distinct-value bins; `identity` is string-only (§10.2).
 
 ### 11.4 `equal_width`
 
@@ -1135,10 +1203,16 @@ matches v2's progressive-scaling output.
 **`boundary = "inclusive"`** (default): the inequality is non-strict
 (`≥` / `≤`). **`"strict"`**: strict (`>` / `<`).
 
-**`order`** *(required for non-numeric bin labels; optional for numeric)*.
-Declares the natural order of bin labels. For numeric labels (output of
-`manual_cuts`, `equal_width`, `equal_frequency`), the natural numeric
-order is used if `order` is absent.
+**`order`** *(value-bin ordinal scales only)*. Declares the natural order of bin
+labels, and applies **only** to **value-bin** discretizers (`identity` /
+`free_per_value`): there it is **required** for non-numeric labels and optional for
+numeric labels (the natural numeric order is used if absent). It **MUST NOT** be
+present with a **cut** discretizer (`manual_cuts`, `ordered_cuts`, `equal_width`,
+`equal_frequency`), whose bin order is fixed by the cut geometry (§17 rule 3) — the
+cut discretizer is the single source of order. An `order` over cut bins is
+`OrdinalOrderNotAllowedWithCuts` (Error, spec validate); a value-bin ordinal scale
+that needs `order` but omits it is `OrdinalOrderMissing` (Error), and an `order`
+entry not among the bin labels is `OrdinalOrderHasUnknownValue` (Error).
 
 **`drop_top`** *(default `false`)*. The "top" formal attribute (the one
 true for everything in `direction = "ge"` — i.e., `≥<lowest>`) is
@@ -1160,12 +1234,16 @@ is well-defined — `le` pairs with `<` (strict), `ge` with `>=` (inclusive); th
 straddling combinations (`le`+inclusive, `ge`+strict) are meaningful only over
 *value* bins (e.g. `identity` with an explicit `order`).
 
-Over cut bins the cut **geometry** decides the operator, so an **omitted/default**
-`boundary` is simply honored (it renders the geometry-aligned operator — `<` for
-`le`, `>=` for `ge`); an **explicit** `boundary` requesting the straddling
-combination is rejected with `OrdinalBoundaryIncompatibleWithCuts` (Error) rather
-than silently overridden. The writer preserves whether `boundary` was authored or
-defaulted so a round-trip stays faithful. **Over value bins** (`identity` /
+Over cut bins the cut **geometry** determines the operator. An **omitted or
+defaulted** `boundary` (including one inherited from `[defaults].ordinal_boundary`,
+§6) does **not** request an operator — the geometry renders it (`<` for `le`, `>=`
+for `ge`), *regardless of the defaulted value* (so `[defaults].ordinal_boundary =
+"strict"` does not turn a `ge` cut threshold into `>`). Only an **explicitly
+authored, per-attribute** `boundary` requesting the straddling combination
+(`le`+inclusive or `ge`+strict) is invalid → `OrdinalBoundaryIncompatibleWithCuts`
+(Error, **spec validate**). The reader/writer preserves whether `boundary` was
+authored or defaulted (§6) — both so the round-trip stays faithful and so this
+check fires only on the authored case. **Over value bins** (`identity` /
 `free_per_value` with an explicit `order`) there is no half-open geometry, so all
 four `direction × boundary` combinations are well-defined and `boundary` is fully
 live; this value-bin ordinal path is implemented at M2.
@@ -1224,8 +1302,9 @@ The base spec is loaded and merged with the current spec. Merge semantics:
    not inherited).
 
 Multi-level `extends` is allowed (a chain); the merge above is applied at **each**
-step, base-most first. Cycles MUST be detected and rejected with
-`SpecExtendsCycle`.
+step, base-most first. A referenced base spec that cannot be found is
+`SpecExtendsNotFound` (Fatal); cycles MUST be detected and rejected with
+`SpecExtendsCycle` (Fatal).
 
 Fingerprints are computed over the *resolved* (fully merged) plan, not the source
 files, so a derived spec and an equivalent flat spec fingerprint identically. Any
@@ -1438,8 +1517,12 @@ Every distinct condition has its own `DiagnosticCode`. v1's initial set:
 | `FormalAttributeNameCollision` | Error | plan |
 | `OrdinalOrderMissing` | Error | plan |
 | `OrdinalOrderHasUnknownValue` | Error | plan |
+| `OrdinalOrderNotAllowedWithCuts` | Error | spec validate |
 | `ScaleNotImplementedV1` | Fatal | plan |
 | `ObjectKeyCompositeNotImplementedV1` | Fatal | plan |
+| `ObjectKeyBindingInvalid` | Error | spec validate |
+| `ObjectKeyModeInvalidForShape` | Error | spec validate |
+| `ObjectKeyColumnNotImplementedV1` | Error | plan (transitional) |
 | `DateValueTypeNotImplementedV1` | Fatal | plan |
 | `ObservedDomainUsed` | Warning | calibrate |
 | `CalibrationDataInsufficient` | Error | calibrate |
@@ -1455,7 +1538,7 @@ Every distinct condition has its own `DiagnosticCode`. v1's initial set:
 | `OrderedCutsNotAscending` | Error | spec validate |
 | `OrderDomainInvalid` | Error | spec validate |
 | `DiscretizerEndsClosedTooFewCuts` | Error | spec validate |
-| `OrdinalBoundaryIncompatibleWithCuts` | Error | plan |
+| `OrdinalBoundaryIncompatibleWithCuts` | Error | spec validate |
 | `ValueGroupsPassthroughDataDependent` | Warning | calibrate |
 | `RestrictToNotImplementedV1` | Error | plan (transitional) |
 | `TemplateMatcherNotImplementedV1` | Error | plan (transitional) |
@@ -1475,9 +1558,10 @@ correctly-phased `AttributeHasNoCrosses` (an empty column, emit) and
 filtering, emit). All four still write a structurally-valid (if degenerate)
 output rather than failing.
 
-**Transitional codes.** `RestrictToNotImplementedV1` and
-`TemplateMatcherNotImplementedV1` are emitted only by milestones *before* the
-feature's implementation milestone (restrict_to → M4, templates/matchers → M6,
+**Transitional codes.** `RestrictToNotImplementedV1`,
+`TemplateMatcherNotImplementedV1`, and `ObjectKeyColumnNotImplementedV1` are
+emitted only by milestones *before* the feature's implementation milestone
+(restrict_to → M4, templates/matchers → M6, wide `column` object keys → M3,
 `roadmap.md`); they are removed once the feature lands and are **not** part of the
 v1 end-state set. They are distinct from the permanent `*NotImplementedV1`
 reservations in §20.
@@ -1502,16 +1586,24 @@ same-output across runs and across machines:
    discretizer's output:
    - `nominal`: bin labels in the order produced by the discretizer.
    - `dichotomic`: single attribute, no order question.
-   - `ordinal`: ascending order of `order` (or natural numeric order).
+   - `ordinal`:
+     - over **value bins** (`identity` / `free_per_value`): ascending order of
+       `scale.order`, or natural numeric order;
+     - over **cut bins** (`manual_cuts` / `ordered_cuts` / `equal_width` /
+       `equal_frequency`): the discretizer's bin order (rule 3) — `scale.order`
+       is forbidden there (§12.3, D-060).
 3. **Discretizer bin order**:
    - `manual_cuts`: ascending by cut value.
+   - `ordered_cuts`: ascending by cut **position** in the declared `order`
+     (the categorical analogue of `manual_cuts`; §11.8).
    - `equal_width`, `equal_frequency`: ascending by computed
      cut value.
    - `value_groups`: group declaration order in the spec; a synthetic `Other`
      bin (`unmatched = "other"`) is ordered **after** all declared groups, and
      data-discovered `passthrough` bins follow in first-observation order.
    - `identity`, `free_per_value`:
-     - if `declared_domain` is explicit, bin order is **declaration order**;
+     - if `declared_domain` is a **non-empty** explicit list, bin order is
+       **declaration order**;
      - if the domain is calibrated from observed values (absent
        `declared_domain`), bin order is **first-observation order** during
        calibration (deterministic given source order);
@@ -1817,11 +1909,15 @@ restrict_to = [{ from = 3, to = 9 }]         # TS 3-8
 ```
 
 This single spec captures: keep only objects observed for Bmp5 and only their
-strongly-detected observations within Theiler stages 3–8 (three filter-only
-attributes), then analyze the surviving objects along two emitted dimensions —
-Tissue (grouped into Endoderm/Mesoderm) and TheilerStage (four ordinal
-buckets). `Gene` and `Strength` are filter-only (`include = false`): they shape
-*which objects* enter the context without becoming *columns* in it.
+strongly-detected observations within Theiler stages 3–8, then analyze the
+surviving objects along two emitted dimensions — Tissue (grouped into
+Endoderm/Mesoderm) and TheilerStage (four ordinal buckets). `Gene` and `Strength`
+are the two **filter-only** attributes (`include = false` + `restrict_to`): they
+shape *which objects* enter the context without becoming *columns* in it.
+`TheilerStage` is **emitted and restricted** — it is not filter-only. Note its
+`equal_frequency` cuts calibrate over the **input universe** before `restrict_to`
+filters objects (§7), so the surviving TS 3–8 objects need not span all four
+buckets and some columns may end up empty.
 
 > This example illustrates the v1 **end-state**. `restrict_to` execution (and the
 > `equal_frequency` calibration shown here) land at later milestones (M4); under
@@ -1840,7 +1936,11 @@ diagnostic code. Re-listed here for visibility.
 | Scale `contranominal` | `ScaleNotImplementedV1` | §12.4.3 |
 | Object key `composite` | `ObjectKeyCompositeNotImplementedV1` | §5.4 |
 | Date value type (`value_type = "date"`) + date scaling | `DateValueTypeNotImplementedV1` | §11.7 |
-| Cross-attribute restrict (e.g. "include attr A only when attr B = X") | `RestrictCrossAttributeNotImplementedV1` | future enhancement |
+
+**Not modelled in v1 (no reserved carrier).** Cross-attribute restrict ("include
+attr A only when attr B = X") has **no reserved syntax** — unlike the rows above, no
+v1 spec can express it, so there is no rejection diagnostic. It is prose-only future
+work (D-062).
 
 ## 21. Decisions log
 
@@ -1990,6 +2090,23 @@ readers know the rationale and don't re-litigate.
     §10.4); and the empty-output diagnostics are `NoFormalAttributes` /
     `NoObjectsEmitted` / `AttributeHasNoCrosses` / `ObjectHasNoCrosses` (D-058,
     §16.4). See `docs/decisions.md` for rationale.
+
+25. **Tier 1 spec-audit additions** (D-060…D-065) → ordinal `scale.order` is
+    value-bin only and forbidden over cut discretizers
+    (`OrdinalOrderNotAllowedWithCuts`); both ordinal-over-cuts compatibility checks
+    (`OrdinalOrderNotAllowedWithCuts`, `OrdinalBoundaryIncompatibleWithCuts`) are
+    **spec-validate** and static, and the `[defaults]` ordinal merge preserves
+    authored-vs-default provenance (D-060, §6/§12.3/§17); `free_per_value` is
+    type-flexible while `identity` is string-only (D-061, §10.2/§11.3);
+    cross-attribute restrict is **not modelled** in v1, so the unreachable
+    `RestrictCrossAttributeNotImplementedV1` is dropped (D-062, §20); `restrict_to`
+    *shape* is validated at M2 (`RestrictToOnNumericRequiresRange` owning the
+    numeric/string-entry mismatch) while execution stays M4 (D-063, §10.4); wide
+    `column` object keys are deferred to M3 (`ObjectKeyColumnNotImplementedV1`) with
+    an `ObjectKeyBindingInvalid` / `ObjectKeyModeInvalidForShape` validation taxonomy
+    (D-064, §5.4/§6.1/§16.4); and schema/calibration are computed over the input
+    universe before `restrict_to` filters emitted objects (D-065, §7). See
+    `docs/decisions.md` for rationale.
 
 ---
 

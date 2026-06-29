@@ -26,11 +26,13 @@ vertical slices, not waterfall phases — each should leave the system working.
 > (D-050) + the `BinResult` outcome model and per-attribute data-diagnostic aggregation
 > (D-059), the cut-validation smart-factory wired into `BedToSpec` (D-056), and
 > ordinal/naming conformance tests. Byte-neutral on the goldens. `dotnet test` is green
-> (172 tests).
+> (178 tests).
 >
 > **Next: M2** — the TOML spec format + fingerprinting (and the value-bin `ordinal`
 > path + independent `boundary` knob deferred from slice 2; the explicit-straddling
-> `OrdinalBoundaryIncompatibleWithCuts` guard lands with the boundary field there).
+> `OrdinalBoundaryIncompatibleWithCuts` guard — now a **spec-validate** check, with
+> the new `OrdinalOrderNotAllowedWithCuts` — lands with the boundary field there,
+> D-060).
 
 ## Milestones
 
@@ -92,6 +94,15 @@ emit sites do (`SourceValueUnparseable`, `RestrictToNotImplementedV1`,
 codes); data-phase codes are aggregated from day one (count + bounded sample, not
 per-row).
 
+The **Tier 1 spec-audit** decisions (D-060…D-065) further refine the M2 contract:
+the ordinal-over-cuts validation contract with both checks (`OrdinalOrderNotAllowedWithCuts`,
+`OrdinalBoundaryIncompatibleWithCuts`) at spec validate (D-060), the `value_type`
+matrix / flexible `free_per_value` (D-061), dropping the unreachable
+cross-attribute-restrict diagnostic (D-062), `restrict_to` shape-validation vs M4
+execution (D-063), and the object-key diagnostic taxonomy with wide `column`
+execution deferred to M3 (D-064). The calibration-before-`restrict_to` semantics
+(D-065) are documented now; their execution lands with `restrict_to` at M4.
+
 **Before implementation:** a separate M1-adjacent conformance pass reconciles
 already-shipped M1 code with the M2 wording in the areas that touch it —
 whitespace normalization, malformed-numeric diagnostics/no-cross behavior, cut-bin
@@ -104,7 +115,8 @@ change is byte-neutral (still "keep object, no cross", only adds a diagnostic).
 malformed-numeric changes (v2-compat guard); a fingerprint-stability golden for
 the canonical numeric encoding (`30` / `30.0` / `3e1`); value-bin ordinal
 conformance tests over all `direction × boundary` combinations plus
-`OrdinalBoundaryIncompatibleWithCuts`; and `.gitattributes` for new byte-sensitive
+`OrdinalBoundaryIncompatibleWithCuts` and `OrdinalOrderNotAllowedWithCuts` (both at
+spec validate, D-060); and `.gitattributes` for new byte-sensitive
 TOML/expected-output fixtures.
 
 **Deferred from M2:** triple headers / triple role-name binding / object-/
@@ -120,8 +132,12 @@ produce clear diagnostics.
 Subject-grouped fast path (single-pass streaming) first; unordered slow path
 (external sort-merge, configurable in-memory buffer) second. Object-key
 derivation from the subject column. Reproduce `mini-adult_triples_named`
-byte-identical.
-**Exit:** both triple orderings work; the triple-input golden matches.
+byte-identical. Also lands **wide `object_key.mode = "column"`** execution and
+activates `duplicate_object_policy` (D-064) — the same column-object-key machinery,
+shared with triple's subject-derived key; M2 only parses/round-trips/rejects it
+(`ObjectKeyColumnNotImplementedV1`).
+**Exit:** both triple orderings work; the triple-input golden matches; wide column
+object keys convert with `duplicate_object_policy` honored.
 
 ### M4 — Continuous scaling beyond manual cuts
 
@@ -181,8 +197,10 @@ Modelled in the spec where noted, so adding them later isn't a format break.
   a non-breaking addition (the `value_type` field already exists).
 - **`std_dev` discretizer** (D-020) — removed entirely; re-add as a new
   discretizer kind if a real need appears (non-breaking).
-- **Cross-attribute restrict** ("include attr A only when attr B = X") — noted
-  in spec §19; future enhancement.
+- **Cross-attribute restrict** ("include attr A only when attr B = X") — **not
+  modelled** in v1 (no reserved carrier syntax; the unreachable
+  `RestrictCrossAttributeNotImplementedV1` was dropped, D-062); prose-only in spec
+  §20. Future enhancement.
 - **Post-context reductions** — clarify / reduce / minimum-support, in a
   sibling `FcaBedrock.Reduce` tool (D-025). Min-support flagged by the thesis.
 - **Direct DB / SPARQL adapters** — thesis future work; new `Sources` adapters
