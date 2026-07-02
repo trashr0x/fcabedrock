@@ -1193,6 +1193,261 @@ feature, so they are recorded here. They refine, not reverse, earlier decisions.
 
 ---
 
+## Tier 2 register (pre-M2): model boundary + carrier scope
+
+A reconciled pass fixing the M2 *implementation* contracts the earlier M2/Tier-1
+decisions left open: the in-memory two-model split, the resolve/validate seam, the
+exact fingerprint encoding, and the carrier-vs-execution scope for discretizers,
+absent domains, triple input, and `missing_policy`. These pin cross-package
+contracts (P-4) before the TOML reader/writer, migrator, and fingerprints are
+built; they refine, not reverse, D-009 / D-049 / D-050…D-065.
+
+### D-066 — Parsed spec document model vs. resolved Core `BedrockSpec`
+
+- **Status:** accepted
+- **Date:** 2026-07-03
+- **Decision:** M2 splits the spec into **two models**. The Spec layer owns a
+  faithful, presence-tracked **document model** (`SpecDocument` and siblings under
+  `src/FcaBedrock.Spec/Toml/`) mirroring the authored TOML: every section
+  (`[spec]`, `[provenance]`, `[binding]`, `[defaults]`, `[output]`, `[[attribute]]`,
+  `[[template]]`, `[[matcher]]`), optional/nullable fields tracking **presence**,
+  authored-vs-default **provenance** for the round-trippable defaults (`boundary`,
+  `direction`, `missing_policy`, `unknown_value_policy`, `display_name`,
+  `formal_attribute_format`), a column bound **by name or by index**, and
+  possibly-invalid parsed states. It **resolves+validates into** Core's
+  `BedrockSpec`: the resolved model with defaults merged, `extends` applied,
+  name→index resolved, illegal states unrepresentable (P-10). A bind-by-header
+  `NamedColumnSource` and a triple `predicate` **attribute source** are therefore
+  **document-model states only**, never resolved Core sources; the Core wide
+  binding carries a resolved column **index** plus a `value_type`. The one
+  exception is the *basic triple binding shape* (`shape = "triple"`), which
+  **does** resolve into a **minimal Core carrier** — just enough for
+  `ConversionPlanner` to reject a triple spec with `TripleSourceNotImplementedV1`
+  (D-072, D-067) — while triple predicate-source *execution* and the advanced
+  triple surface remain document-layer / M3 concerns.
+- **Why:** round-trip fidelity (D-049 presence tracking, D-057 `restrict_to`
+  preservation, D-052 `extends` merge) needs a model that holds exactly what was
+  authored — provenance, unresolved references, an authored `[]` — while the
+  planner's determinism guarantees need a model where bad states cannot occur
+  (P-10) and Core stays pure (P-12). One model cannot be both. Splitting them
+  confines Tomlyn and every authoring concession to Spec and hands the planner a
+  clean resolved input.
+- **Rejected:** a single model for both parse and plan — it either admits invalid
+  states (defeating P-10, scattering guards through the planner) or rejects at
+  parse and loses the authored form a faithful round-trip needs (breaking
+  D-049/D-057); resolving name→index inside Core — pulls header/schema knowledge
+  into a pure package and lets a resolved source hold an unresolved reference.
+- **Affects:** Spec (new `Toml/` document model), Core (`BedrockSpec`,
+  `AttributeSpec`, wide binding + a minimal triple binding carrier (D-072),
+  `OrdinalScale`, `ObjectKey` grow *resolved* fields), Diagnostics; spec §2 / §3 /
+  §5.4 / §10.2. Defines public Core/Spec surface (P-4). Realizes D-009; refines D-049.
+
+### D-067 — Resolve/validate seam and diagnostic phase ownership
+
+- **Status:** accepted
+- **Date:** 2026-07-03
+- **Decision:** the document→Core transformation is a **single
+  `SpecResolver.Resolve(document) → Diagnosed<BedrockSpec>`** step that resolves and
+  validates **together** (not two sequential passes): defaults merge, `extends`
+  resolves, name→index resolves, and the static checks run against the resolving
+  model, aggregating all diagnostics (P-13). Each §16.4 code is **owned by exactly
+  one phase**: construction-time invariants stay in Core smart factories
+  (`CutValidation`, D-056; the `OrdinalScale`/`ObjectKey` factories — P-10);
+  resolution-time *static* checks (source-binding shape, `value_type` matrix,
+  ordinal-over-cuts, `restrict_to` shape, object-key taxonomy, and the existing
+  Core duplicate-name / `value_labels` checks — invoked from the seam, not
+  re-homed) live in the seam; plan-time checks (`FormalAttributeCollision`,
+  `ScaleNotImplementedV1`, and the transitional `*NotImplementedV1` rejects whose
+  carriers resolve into Core — e.g. `RestrictToNotImplementedV1`,
+  `TripleSourceNotImplementedV1`) stay in `ConversionPlanner`, while a
+  read/resolve-owned transitional reject such as `DiscretizerKindNotYetSupported`
+  (D-070, no carrier built) fires in the seam; data-phase codes fire in
+  Calibrate/Emit. This seam is the
+  real M7 `validate` caller, so it is built where it is used, not speculatively
+  (P-3). One condition → one owning code.
+- **Why:** M2 is the first point hand-authored TOML can express invalid specs, so
+  the ~20 static diagnostics need a definite home and a definite phase. A combined
+  resolve+validate avoids a half-resolved intermediate a separate validate pass
+  would re-derive; single-owner phasing keeps §16.4's "Where" column honest and
+  stops two codes firing on one mistake (P-5). Reusing the existing Core static
+  checks from the seam (not big-bang-refactoring them) keeps the diff surgical
+  (P-1).
+- **Rejected:** sequential resolve-then-validate (a throwaway half-resolved model,
+  and cross-field checks want the merged view); scattering static checks across
+  reader, Core, and planner (drifts from the §16.4 phase column, risks double
+  reporting).
+- **Affects:** Spec (`SpecResolver`), Core (factories, planner guards),
+  Diagnostics; spec §7 / §16.4. Realizes the §16.4 "Where" column; pairs with D-066.
+
+### D-068 — `missing_policy = "as_attribute"` scheduled into M2; effective-`missing_token` migration
+
+- **Status:** accepted (schedules the previously-unscheduled §10.5 branch)
+- **Date:** 2026-07-03
+- **Decision:** `missing_policy = "as_attribute"` (§10.5) — omitted from the M1
+  pipeline — is **implemented in M2**. Plan appends a `{column}-missing`
+  `FormalAttribute` at the correct ordinal position (after the value columns for
+  nominal; the second column for dichotomic) with its own canonical identity; Emit
+  crosses it when a value is *missing* (empty cell or explicit `missing_token`
+  match — never a merely unparseable numeric, D-050) instead of the M1
+  unconditional skip. The `.bed` migrator detects it structurally: a
+  `[Category Values]` entry equal to the **effective `binding.missing_token`** (the
+  resolved token, *not* a hardcoded `?`) becomes `missing_policy = "as_attribute"`
+  and is excluded from `declared_domain`.
+- **Why:** the column set `as_attribute` produces is deterministic and enters
+  `schema_fingerprint` through the planned list (§14), so leaving it unimplemented
+  while M2 ships fingerprints would freeze an incomplete schema; and the migrator
+  must recognize a non-`?` missing token or it silently drops a real v2 attribute.
+  Anchoring the ordinal-position rule and the effective-token rule keeps the
+  planner/emitter/migrator (three packages) consistent (P-4).
+- **Rejected:** deferring `as_attribute` past M2 (its column is a fingerprint
+  input, §14 — would ship a knowingly-incomplete schema hash); hardcoding `?` in
+  the migrator (misreads any spec with a custom `missing_token`).
+- **Affects:** Core (`ConversionPlanner`, `PlannedAttribute`), Conversion
+  (`Emitter`), Spec (`BedToSpec`); spec §10.5 / §14 / §17. Byte-neutral on the M1
+  goldens (no fixture uses `as_attribute`).
+
+### D-069 — Canonical fingerprint encoding, pinned (appendix to D-053)
+
+- **Status:** accepted (appends D-053; pins the exact structure before any stored hash ships)
+- **Date:** 2026-07-03
+- **Decision:** the plan-derived canonical structure D-053 mandated is pinned
+  concretely, so a stored hash is portable and version-tagged before Slice E ships
+  one (P-11). It is **UTF-8, no BOM**, with sorted object keys, arrays in planned
+  order, and this fixed shape:
+  - a root object carrying `"fp_format": 1` (the encoding **version literal**;
+    bumped only on an incompatible encoding change) and a `"kind"` of `"schema"` /
+    `"cxt_output"` / `"dat_output"`;
+  - **schema** content = `"attributes"`, an **ordered array** (plan/column order)
+    of canonical-identity objects, each carrying the §14 four-tuple under fixed keys
+    `"name"`, `"scale"`, `"op"`, `"bin"`, where `"bin"` encodes a cut bin as
+    `{"lo":…, "hi":…, "lo_open":<bool>, "hi_open":<bool>}` with **open ends as JSON
+    booleans, never `∞`/`"all"` strings**, a value bin as its string label, and a
+    threshold by its canonical key;
+  - **cxt_output / dat_output** = an object nesting the schema array under
+    `"schema"`, the D-051 **shared** row/binding inputs under `"shared"`, and the
+    per-format inputs under `"cxt"` / `"dat"` (rendered names + label style +
+    `bin_label_unicode` + `.cxt` writer settings for cxt; `base_index` + line
+    endings + trailing-space for dat) — never mixed;
+  - **numbers** are the *parsed* numeric value reformatted with invariant, shortest
+    round-trippable .NET formatting, so `30`, `30.0`, `3e1` collapse and no machine
+    float drift occurs (P-11);
+  - **strings** use one JSON escaping rule (minimal `\"`, `\\`, control escapes,
+    UTF-8 passthrough otherwise).
+
+  Slice E realizes exactly this and ships the canonical-stability golden that locks it.
+- **Why:** D-053 fixed the *properties* (version tag, sorted keys, shortest
+  numbers, structural open ends) but not a concrete shape, and a durable hash
+  contract (P-11) cannot ship half-specified — the first stored fingerprint
+  fossilizes whatever the encoder emits. Pinning the root shape, field names, and
+  version literal now makes Slice E mechanical and the golden a genuine lock.
+- **Rejected:** hashing TOML text (D-053, formatting-sensitive); leaving field
+  names to the encoder (the first stored hash fossilizes an unreviewed shape);
+  `∞`/`"all"` sentinels for open ends (string-fragile; booleans are exact);
+  `"R"`/`"G17"` floats (17 digits defeat the `30.0`≡`30` collapse, D-053).
+- **Affects:** Spec, Core (fingerprint encoder); spec §3 / §14. Needs the
+  canonical-stability golden at Slice E. Appends D-053; supports D-051.
+
+### D-070 — Minimal M2 discretizer-carrier scope; three-tier kind response
+
+- **Status:** accepted
+- **Date:** 2026-07-03
+- **Decision:** M2 executes only the three M1 discretizers; the rest are
+  **recognized by kind name and rejected**, in **three tiers**:
+  - **executable** — `identity`, `manual_cuts`, `ordered_cuts` (M1) parse, resolve,
+    and convert;
+  - **known-but-not-yet-supported** — `free_per_value`, `equal_width`,
+    `equal_frequency`, `value_groups` are recognized by **kind name only** and
+    rejected at **read/resolve** with a **transitional** `DiscretizerKindNotYetSupported`.
+    M2 does **not** build full document/Core carriers for their parameter shapes and
+    does **not** promise round-trip for them (minimal carrier);
+  - **unrecognized** — any other `kind` is a generic unrecognized-kind **parse** error.
+
+  The distinction that survives is the *code*: a recognized deferred kind gets an
+  actionable "valid v1 feature, later milestone" diagnostic; a typo gets a generic
+  unknown-kind error. `free_per_value`, `equal_width`, `equal_frequency`, and
+  `value_groups` all execute at **M4** (roadmap.md). The M2-executable value-bin
+  ordinal is therefore `identity` + an explicit **string** `order` only (D-061
+  string-fixing); numeric value-bin ordinal (`free_per_value` + `order`) is rejected
+  in M2 by the `free_per_value` read/resolve reject above, never silently accepted.
+- **Why:** M2's job is the format, migrator, fingerprints, and `extends` — not new
+  discretizers (M4 is the discretizer milestone). Building full document/Core
+  carriers and round-trip for parameter shapes M2 cannot execute is speculative
+  surface for kinds no M2 workflow reaches (P-3/P-6) — and no v2 `.bed` type maps to
+  these vNext-native discretizers, so migration loses nothing by not carrying them.
+  Recognizing the *name* is enough to separate "valid v1 feature, later milestone"
+  (a transitional, actionable diagnostic) from "typo / unknown kind" (a generic
+  parse error) so an author can tell which they hit (P-13). Rejecting at read/resolve
+  (not silently accepting) avoids the wrong-output hole D-057 closed for `restrict_to`.
+- **Rejected:** implementing the M4 discretizers in M2 (scope creep, P-1); building
+  full round-trip carriers for the deferred discretizers' parameter shapes in M2
+  (speculative surface for kinds M2 cannot execute — P-3/P-6; no v2 type maps to
+  them, so migration loses nothing); one code for both not-yet-supported and unknown
+  kinds (hides whether the spec is valid, P-13); silently ignoring unimplemented
+  kinds (latent wrong output).
+- **Affects:** Spec (reader/resolver), Diagnostics; spec §11 / §16.4; diagnostic
+  `DiscretizerKindNotYetSupported` (transitional, **read/resolve**, removed as each
+  kind lands). Refines D-020 / D-061; roadmap.md assigns `value_groups` → M4.
+
+### D-071 — Absent/empty `declared_domain`: M2 interim reject until calibrate
+
+- **Status:** accepted (sequences §10.3 for M2; refines D-036)
+- **Date:** 2026-07-03
+- **Decision:** omitted `declared_domain` **and** an explicit empty `[]` both
+  resolve as **absent** (§10.3), and the reader/writer **round-trips the authored
+  form verbatim** (omitted stays omitted, `[]` stays `[]`). The §10.3 end-state —
+  Calibrate fills an absent domain from observed data with `ObservedDomainUsed` — is
+  **not yet built in M2** (Calibrate is M4-ward), so an M2 conversion of the
+  **M2-supported value-bin discretizer** (`identity`) with an absent domain is
+  **rejected** with a transitional `ObservedDomainCalibrationNotImplementedV1`,
+  never silently emitting an empty or data-order-dependent schema. **Precedence:**
+  `free_per_value` is a *deferred* discretizer (D-070), already rejected earlier at
+  read/resolve with `DiscretizerKindNotYetSupported` — that code owns the
+  `free_per_value` case, and the absent-domain code never fires for it in M2 (one
+  condition → one owning code, P-13). Cut discretizers ignore `declared_domain`
+  (§10.3) and are unaffected.
+- **Why:** the authored `[]`-vs-omitted distinction must survive round-trip (D-049)
+  even though both mean "absent," so provenance is preserved without inventing a
+  third state. An absent value-bin domain has no columns until calibration observes
+  the data; converting it in M2 without Calibrate would emit zero columns or
+  silently depend on input order — both violate the spec's reproducibility intent. A
+  transitional reject makes the gap explicit and actionable (the D-057 / D-070
+  pattern) until M4 lands calibration.
+- **Rejected:** treating `[]` as "zero columns" (contradicts §10.3); silently
+  calibrating in M2 (Calibrate is not built — a latent, undocumented
+  data-dependence); collapsing omitted and `[]` at read time (loses authored
+  provenance, D-049).
+- **Affects:** Spec (reader/writer), Core (planner guard), Diagnostics; spec §7 /
+  §10.3; diagnostic `ObservedDomainCalibrationNotImplementedV1` (transitional,
+  removed at M4). Refines D-036; pairs with D-070.
+
+### D-072 — Basic triple TOML carrier in M2; conversion deferred to M3
+
+- **Status:** accepted (sequences §5.3 for M2; refines D-009)
+- **Date:** 2026-07-03
+- **Decision:** M2 carries and **round-trips** the *basic* triple binding —
+  `shape = "triple"`, `ordering`, `columns` (`subject`/`predicate`/`value`), and
+  `{ kind = "predicate", name = … }` attribute sources — but **conversion rejects**
+  any triple spec with a transitional `TripleSourceNotImplementedV1` until the
+  triple source lands at M3. This M2 reject is **required** so a triple spec is not
+  silently mis-converted as wide. The **advanced** triple surface (triple header
+  rows, binding `columns` by header **name**, object/subject-name filtering) stays
+  **M3** and is neither parsed nor relied on in M2 (§5.3). The triple *execution*
+  diagnostics (`TripleSubjectNotContiguous`, …) are M3, not M2.
+- **Why:** round-trip and migration need the basic triple carrier now (the three v2
+  `mini-*_triples` examples must survive read→write→read as documents), but the
+  triple *reader/streaming* is the M3 milestone. Parsing-but-rejecting closes the
+  silent-mis-conversion hole (D-057 pattern) while keeping M2 scoped to the format.
+  Deferring the advanced surface matches the §5.3 M3 finalization note.
+- **Rejected:** pulling triple conversion into M2 (that is the whole M3 milestone —
+  scope creep, P-1); omitting the triple carrier from M2 (migration of the
+  `mini-*_triples` specs would drop config, D-049); parsing the advanced surface now
+  (no M2 consumer, P-3).
+- **Affects:** Spec (reader/writer), Core/Conversion (planner guard), Diagnostics;
+  spec §5.3 / §16.4; diagnostic `TripleSourceNotImplementedV1` (transitional,
+  removed at M3). Refines D-009; the M3 triple audit owns the advanced surface.
+
+---
+
 ## Spec-field defaults
 
 These are recorded in spec §21 ("Decisions log") and not duplicated here:

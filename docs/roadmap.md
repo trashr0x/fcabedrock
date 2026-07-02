@@ -33,6 +33,11 @@ vertical slices, not waterfall phases — each should leave the system working.
 > `OrdinalBoundaryIncompatibleWithCuts` guard — now a **spec-validate** check, with
 > the new `OrdinalOrderNotAllowedWithCuts` — lands with the boundary field there,
 > D-060).
+>
+> The **Tier 2 register** (D-066…D-072) settling the M2 model boundary, carrier
+> scope, and pinned fingerprint encoding has landed; M2 implementation then proceeds
+> in slices A–G (model split → `as_attribute` → reader/writer → validation →
+> fingerprints → `extends`/triple → migrator).
 
 ## Milestones
 
@@ -124,8 +129,28 @@ subject-name filtering → M3 (triple-source audit); `restrict_to` *execution* �
 template/matcher *resolution* → M6. M2 parses/preserves/round-trips these where the
 format requires it (e.g. templates/matchers under `extends`) but rejects their use
 with the transitional diagnostics above.
-**Exit:** any v1 spec round-trips; v2 specs migrate; rejected scales/features
-produce clear diagnostics.
+
+The **Tier 2 register (D-066…D-072)** settles the M2 model boundary and carrier
+scope: the two-model split — a faithful, presence-tracked Spec document model
+resolving into Core's illegal-states-unrepresentable `BedrockSpec` (D-066) — with a
+single resolve+validate seam owning the static diagnostics by phase (D-067); the
+canonical fingerprint encoding pinned to an exact shape before any stored hash ships
+(D-069); `missing_policy = "as_attribute"` scheduled into M2 with the
+effective-`missing_token` migration rule (D-068); and three transitional-code gates
+for known v1 features outside M2 — the **minimal discretizer carrier**, where
+`free_per_value`/`equal_width`/`equal_frequency`/`value_groups` are recognized by
+kind name and rejected at read/resolve (`DiscretizerKindNotYetSupported`) *without*
+round-trip carriers for their parameter shapes (D-070); the absent/`[]`
+`declared_domain` reject (`ObservedDomainCalibrationNotImplementedV1`, D-071); and
+the basic triple carrier, which *does* round-trip but rejects conversion
+(`TripleSourceNotImplementedV1` → M3, D-072). Three settled scope calls:
+(1) **minimal discretizer carrier** — only `identity`/`manual_cuts`/`ordered_cuts`
+convert in M2; the deferred discretizers are recognized by name and rejected, not
+carried; (2) **string-only value-bin ordinal** — `identity` + an explicit string
+`order`; numeric value-bin ordinal (`free_per_value` + `order`) rejects → M4;
+(3) **basic triple carrier** — round-trip only, conversion → M3.
+**Exit:** TOML specs in the M2-supported v1 surface round-trip; v2 specs migrate;
+known v1 features outside M2 produce clear diagnostics.
 
 ### M3 — Three-column (triple) source
 
@@ -139,13 +164,17 @@ shared with triple's subject-derived key; M2 only parses/round-trips/rejects it
 **Exit:** both triple orderings work; the triple-input golden matches; wide column
 object keys convert with `duplicate_object_policy` honored.
 
-### M4 — Continuous scaling beyond manual cuts
+### M4 — Discretizers beyond manual cuts (continuous + grouping)
 
 `free_per_value`, `equal_width(n)`, `equal_frequency(n)` with their knobs
-(`range`, `precision`, `tie_policy`, `cut_placement`). Calibration pass over
-synthetic distributions. Restrict-on-raw-value semantics tested explicitly
-(D-021). `calibrate` command groundwork (D-028).
-**Exit:** auto-binning calibrates deterministically; cuts captured in manifest.
+(`range`, `precision`, `tie_policy`, `cut_placement`), plus the **`value_groups`**
+discretizer (D-022/D-055) — the non-M1 discretizers deferred from M2 (recognized by
+name and rejected there, D-070). Calibration pass over synthetic distributions;
+`value_groups` `unmatched = "passthrough"` resolves its data-dependent bins here
+too. Restrict-on-raw-value semantics tested explicitly (D-021). `calibrate` command
+groundwork (D-028).
+**Exit:** auto-binning calibrates deterministically; cuts captured in manifest;
+`value_groups` (incl. passthrough) converts.
 
 ### M5 — Discovery / auto-detect
 
@@ -212,6 +241,12 @@ Modelled in the spec where noted, so adding them later isn't a format break.
 - **Multi-level taxonomic value hierarchies** — value_groups is single-level in
   v1; multi-level (Bachelors → Uni-Degree → Education with per-analysis
   granularity) is a real design exercise, deferred until single-level ships.
+- **Observed-domain calibration for categorical value bins** — filling an
+  absent/`[]` `declared_domain` from data (`ObservedDomainUsed`, §10.3) for
+  `identity` value bins has **no assigned milestone** (numeric auto-binning
+  calibration is M4); M2 rejects it transitionally
+  (`ObservedDomainCalibrationNotImplementedV1`, D-071). Assign when a spec-first
+  workflow needs observed categorical domains.
 - **Sampling / compressed output / memory-budget knob** — streaming filters and
   writer wrappers; additive, land opportunistically (likely around M7/M8).
 - **TCA (triadic FCA)** — out of scope for the foreseeable.
