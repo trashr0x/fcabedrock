@@ -30,7 +30,7 @@ task touches (see the `AGENTS.md` workflow, D-073); read the log in full before
 proposing architectural changes. Status is annotated only where an entry is
 superseded or refined. A new entry MUST add its line here.
 
-**Architecture**
+### Architecture
 
 - D-001 — Separable binding vs scaling in the spec
 - D-002 — Orthogonal discretizer × scale model (the anchoring idea)
@@ -44,7 +44,7 @@ superseded or refined. A new entry MUST add its line here.
 - D-010 — Modelled-but-rejected scales/features carry forward-compat
 - D-011 — v2 byte-equality is a CLI flag, not a spec setting
 
-**Scope / feature decisions**
+### Scope / feature decisions
 
 - D-020 — v1 scale and discretizer surface
 - D-021 — Three filtering levers kept distinct *(refined by D-032)*
@@ -56,7 +56,7 @@ superseded or refined. A new entry MUST add its line here.
 - D-027 — Spec composition via `extends`
 - D-028 — Calibration on-the-fly by default; `calibrate` to freeze
 
-**Round 1 spec audit**
+### Round 1 spec audit
 
 - D-030 — Triple multi-value union; scale decides folding
 - D-031 — `subject_grouped` requires contiguous subjects
@@ -66,12 +66,12 @@ superseded or refined. A new entry MUST add its line here.
 - D-035 — Fingerprint scopes: schema = planned columns only *(output split by D-051/D-053)*
 - D-036 — Four-phase processing model; convert calibrates, never discovers
 
-**Round 2 spec audit**
+### Round 2 spec audit
 
 - D-037 — Scale-specific default naming; emitted-field discipline *((b) superseded by D-049)*
 - D-038 — Date support deferred; v2 six-type-code map confirmed
 
-**Process / governance**
+### Process / governance
 
 - D-029 — Engineering principles formalized as docs/principles.md
 - D-039 — Test conventions + ArchUnitNET for architecture tests
@@ -79,7 +79,7 @@ superseded or refined. A new entry MUST add its line here.
 - D-048 — `AGENTS.md` canonical; `CLAUDE.md` imports it; no symlink
 - D-073 — Decision index; sessions read it first, then relevant entries
 
-**M1 (mini-mushroom walking skeleton)**
+### M1 (mini-mushroom walking skeleton)
 
 - D-041 — Sep as the DSV tokenizer for the wide-CSV source
 - D-042 — Drop the `BedrockResult<T>` alias; use `Result<T, BedrockDiagnostic>`
@@ -90,7 +90,7 @@ superseded or refined. A new entry MUST add its line here.
 - D-047 — Open-end ordinal threshold renders `all`, canonical in both paths
 - D-049 — `include = false` is an authoring toggle; dormant config never blocks
 
-**M2 (TOML spec format + fingerprinting)**
+### M2 (TOML spec format + fingerprinting)
 
 - D-050 — Malformed numeric values are present-but-invalid, not missing
 - D-051 — Per-format output fingerprints (cxt + dat)
@@ -102,11 +102,11 @@ superseded or refined. A new entry MUST add its line here.
 - D-057 — `restrict_to` round-trips in M2; execution deferred to M4
 - D-058 — Empty-output diagnostics: mechanical names replace EmptyExtent/EmptyIntent
 
-**M1-adjacent conformance pass**
+### M1-adjacent conformance pass
 
 - D-059 — Discretization outcomes and data-diagnostic aggregation
 
-**Tier 1 spec audit (pre-M2)**
+### Tier 1 spec audit (pre-M2)
 
 - D-060 — Ordinal-over-cuts validation contract
 - D-061 — `value_type` matrix: `free_per_value` flexible, `identity` string-only
@@ -115,7 +115,7 @@ superseded or refined. A new entry MUST add its line here.
 - D-064 — Wide column object keys deferred to M3; object-key diagnostic taxonomy
 - D-065 — Calibration/vocabulary over the input universe, before `restrict_to`
 
-**Tier 2 register (pre-M2)**
+### Tier 2 register (pre-M2)
 
 - D-066 — Parsed spec document model vs. resolved Core `BedrockSpec`
 - D-067 — Resolve/validate seam and diagnostic phase ownership

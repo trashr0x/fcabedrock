@@ -39,19 +39,19 @@ Notes:
 
 ## Variant matrix
 
-| Fixture variant                 | Source family    | Input shape / behaviour exercised                                             | Activation                              |
-| ------------------------------- | ---------------- | ----------------------------------------------------------------------------- | --------------------------------------- |
-| `mini-mushroom`                 | Mushroom-derived | Wide delimited input with header; dichotomic + nominal scaling                | M1                                      |
-| `mini-mushroom_tabbed_noheader` | Mushroom-derived | TSV input; `has_header=false` / positional columns                            | M1                                      |
-| `mini-mushroom_triples`         | Mushroom-derived | Subject-predicate-value triple input                                          | M3                                      |
-| `mini-adult`                    | Adult-derived    | Wide delimited input with header; manual numeric cuts on age                  | M1                                      |
-| `mini-adult_noheader`           | Adult-derived    | Wide delimited input; `has_header=false` / positional columns                 | M1                                      |
-| `mini-adult_employment_ordinal_discrete`    | Adult-derived | Type `n` (`ordered_cuts`) on employment, discrete → nominal; reuses `mini-adult.data`   | M1                  |
-| `mini-adult_employment_ordinal_progressive` | Adult-derived | Same `.bed` bytes, progressive → ordinal (le); cumulative `<…`/`all` thresholds | M1                  |
-| `mini-adult_triples`            | Adult-derived    | Subject-predicate-value triple input with numeric subjects                    | M3                                      |
-| `mini-adult_triples_named`      | Adult-derived    | Subject-predicate-value triple input with named subjects (spec §19.3)         | M3                                      |
-| `mini-dates_triples`            | Handcrafted      | Triple input with date values                                                 | Parked — date support deferred by D-038 |
-| `mini-dates_triples_restricted` | Handcrafted      | Triple input with date values plus `restrict_to`; shares the dates data shape | Parked — date support deferred by D-038 |
+| Fixture variant                             | Source family    | Input shape / behaviour exercised                                                     | Activation                              |
+| ------------------------------------------- | ---------------- | ------------------------------------------------------------------------------------- | --------------------------------------- |
+| `mini-mushroom`                             | Mushroom-derived | Wide delimited input with header; dichotomic + nominal scaling                        | M1                                      |
+| `mini-mushroom_tabbed_noheader`             | Mushroom-derived | TSV input; `has_header=false` / positional columns                                    | M1                                      |
+| `mini-mushroom_triples`                     | Mushroom-derived | Subject-predicate-value triple input                                                  | M3                                      |
+| `mini-adult`                                | Adult-derived    | Wide delimited input with header; manual numeric cuts on age                          | M1                                      |
+| `mini-adult_noheader`                       | Adult-derived    | Wide delimited input; `has_header=false` / positional columns                         | M1                                      |
+| `mini-adult_employment_ordinal_discrete`    | Adult-derived    | Type `n` (`ordered_cuts`) on employment, discrete → nominal; reuses `mini-adult.data` | M1                                      |
+| `mini-adult_employment_ordinal_progressive` | Adult-derived    | Same `.bed` bytes, progressive → ordinal (le); cumulative `<…`/`all` thresholds       | M1                                      |
+| `mini-adult_triples`                        | Adult-derived    | Subject-predicate-value triple input with numeric subjects                            | M3                                      |
+| `mini-adult_triples_named`                  | Adult-derived    | Subject-predicate-value triple input with named subjects (spec §19.3)                 | M3                                      |
+| `mini-dates_triples`                        | Handcrafted      | Triple input with date values                                                         | Parked — date support deferred by D-038 |
+| `mini-dates_triples_restricted`             | Handcrafted      | Triple input with date values plus `restrict_to`; shares the dates data shape         | Parked — date support deferred by D-038 |
 
 ## Activation policy
 
