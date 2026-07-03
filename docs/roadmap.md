@@ -43,7 +43,7 @@ vertical slices, not waterfall phases — each should leave the system working.
 
 ### M0 — Skeleton + golden harness
 
-Solution per `CLAUDE.md` layout, with packages created by the milestone that
+Solution per `AGENTS.md` layout, with packages created by the milestone that
 first needs them — M0 creates `FcaBedrock.Diagnostics` + `FcaBedrock.Core` plus
 the test projects; the remaining packages follow as their code lands (empty
 shells up front would be speculative noise — P-3). xUnit wiring (BenchmarkDotNet
@@ -156,12 +156,13 @@ known v1 features outside M2 produce clear diagnostics.
 
 Subject-grouped fast path (single-pass streaming) first; unordered slow path
 (external sort-merge, configurable in-memory buffer) second. Object-key
-derivation from the subject column. Reproduce `mini-adult_triples_named`
-byte-identical. Also lands **wide `object_key.mode = "column"`** execution and
+derivation from the subject column. Reproduce the three triple goldens
+byte-identical (`mini-mushroom_triples`, `mini-adult_triples`, and the
+named-subjects `mini-adult_triples_named`, spec §19.3). Also lands **wide `object_key.mode = "column"`** execution and
 activates `duplicate_object_policy` (D-064) — the same column-object-key machinery,
 shared with triple's subject-derived key; M2 only parses/round-trips/rejects it
 (`ObjectKeyColumnNotImplementedV1`).
-**Exit:** both triple orderings work; the triple-input golden matches; wide column
+**Exit:** both triple orderings work; all three triple-input goldens match; wide column
 object keys convert with `duplicate_object_policy` honored.
 
 ### M4 — Discretizers beyond manual cuts (continuous + grouping)

@@ -8,7 +8,7 @@ reads as obviously-true-and-unactionable, it has failed and should be cut.
 
 Scope boundaries with the other docs:
 
-- `CLAUDE.md` = where things live, how a session works (operational).
+- `AGENTS.md` = where things live, how a session works (operational).
 - `decisions.md` = why we chose a specific thing on a specific date (rationale).
 - `roadmap.md` = what's next (sequence).
 - **`principles.md` (this file) = what's always true, that code must conform to.**

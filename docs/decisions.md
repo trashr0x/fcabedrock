@@ -16,6 +16,9 @@ survives. Newest decisions at the bottom of each section.
 - **Affects:** packages / spec sections.
 ```
 
+Early entries recorded before the **Date** field was introduced are
+intentionally undated; new entries include it.
+
 This file expands on spec §21 ("Decisions log") with the broader architectural
 decisions, not just the spec-field defaults. Where a decision is purely a
 spec-field default, it lives in spec §21 and is only cross-referenced here.

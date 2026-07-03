@@ -1,11 +1,11 @@
 # FcaBedrock vNext
 
 A ground-up .NET 10 rewrite of **FcaBedrock**, a preprocessing tool for
-**Formal Concept Analysis (FCA)**. It ingests structured data (wide CSV/TSV and
-subject–predicate–value triples), applies a user-curated TOML *Bedrock spec*
-describing how raw values become formal-context attributes via conceptual
-scaling, and emits deterministic **Burmeister `.cxt`** and **FIMI `.dat`**
-formal-context files for downstream FCA tools (ConExp, In-Close, etc.).
+**Formal Concept Analysis (FCA)**. It ingests structured data, applies a
+user-curated *Bedrock spec* describing how raw values become formal-context
+attributes via conceptual scaling, and emits deterministic **Burmeister
+`.cxt`** and **FIMI `.dat`** formal-context files for downstream FCA tools
+(ConExp, In-Close, etc.).
 
 The design centres on one idea: **discretization and scaling are orthogonal.** A
 *discretizer* maps a raw value to a bin label; a *scale* maps a bin label to
@@ -14,9 +14,22 @@ zero or more formal attributes. Every legacy attribute "type" is a
 
 ## Status
 
-Pre-implementation. The design phase is complete; see `docs/` for the normative
-spec and the engineering record. Implementation starts at milestone **M0**
-(`docs/roadmap.md`).
+Under active development. **M1 is complete**: the full pipeline — v2 `.bed`
+spec reader, wide CSV/TSV source, planner, streaming emitter, `.cxt`/`.dat`
+writers — reproduces FcaBedrock v2 byte-for-byte on the mini-mushroom and
+mini-adult fixture families (under `--v2-compat`).
+
+What works today vs what is designed but not yet implemented:
+
+- **Today (M1):** wide CSV/TSV input; v2 `.bed` specs; deterministic
+  `.cxt`/`.dat` output, with a `--v2-compat` preset.
+- **M2 (in progress):** the TOML Bedrock spec format, fingerprinting, and a
+  one-way `.bed` → TOML migrator.
+- **M3 and beyond:** subject–predicate–value triple input (M3), auto-binning
+  discretizers (M4), discovery, templates, the full CLI, benchmarks, and a
+  desktop UI.
+
+`docs/roadmap.md` is the live source for the current position.
 
 ## Documentation
 
@@ -26,7 +39,8 @@ spec and the engineering record. Implementation starts at milestone **M0**
 - **`docs/roadmap.md`** — milestones M0–M9 and the deferred backlog.
 - **`docs/lineage.md`** — what the predecessors (v2, the PhD thesis, the
   SPARQL2FCA prototype) settled, distilled.
-- **`CLAUDE.md`** — repo orientation for contributors and coding agents.
+- **`AGENTS.md`** — repo orientation for contributors and coding agents
+  (`CLAUDE.md` is its Claude Code import shim).
 
 ## Test fixtures
 

@@ -1,8 +1,9 @@
 # FcaBedrock vNext — Bedrock Spec Schema (v1)
 
-**Status:** Draft for review (consolidation of design decisions made over
-multiple design sessions). Intended to be the canonical reference once
-agreed; subsequent changes go through the same review.
+**Status:** Normative. This is the canonical reference for the Bedrock v1
+format: when code and this spec disagree, the code is the bug
+(`docs/principles.md` P-8). Changes go through review and are recorded in
+`docs/decisions.md` — never made silently.
 
 **Audience:** Project maintainers and tool authors implementing readers,
 writers, validators, and converters for the Bedrock spec format.
@@ -1496,9 +1497,11 @@ public readonly record struct DiagnosticLocation(
 
 Any subset of fields may be populated.
 
-### 16.4 Initial diagnostic codes (illustrative)
+### 16.4 Diagnostic codes (v1 registry)
 
-Every distinct condition has its own `DiagnosticCode`. v1's initial set:
+Every distinct condition has its own `DiagnosticCode`; each code is owned by
+exactly one phase — the "Where" column below is the phase-ownership contract
+(decisions.md D-067). v1's initial set:
 
 | Code | Severity | Where |
 | --- | --- | --- |
