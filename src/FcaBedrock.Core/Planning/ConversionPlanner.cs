@@ -24,6 +24,16 @@ public static class ConversionPlanner
         ArgumentNullException.ThrowIfNull(spec);
         ArgumentNullException.ThrowIfNull(schema);
 
+        // Fail-closed guard (D-072, transitional → M3): a triple spec resolves to a
+        // minimal reject-carrier (D-066) that would otherwise plan to an empty plan
+        // with zero diagnostics — the only silent path a resolved carrier can take.
+        if (spec.Binding.Shape == SourceShape.Triple)
+        {
+            return Diagnosed<ConversionPlan>.Failed([new BedrockDiagnostic(
+                DiagnosticCode.TripleSourceNotImplementedV1, DiagnosticSeverity.Error,
+                "Triple source conversion is not implemented in this milestone (planned for M3).")]);
+        }
+
         var diagnostics = new List<BedrockDiagnostic>();
         ValidateStatic(spec, diagnostics);
         if (HasError(diagnostics))

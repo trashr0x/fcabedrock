@@ -13,7 +13,10 @@ namespace FcaBedrock.Spec;
 /// matching v2. Maps <c>c</c>, <c>b</c>, <c>o</c> (numeric cuts), <c>n</c> (ordered
 /// cuts), and excluded attributes; <c>d</c> (date) is a parity deferral (D-038).
 /// The discrete-vs-progressive choice for <c>o</c>/<c>n</c> is supplied out-of-band
-/// via <see cref="ScalingMode"/> — the <c>.bed</c> never recorded it.
+/// via <see cref="ScalingMode"/> — the <c>.bed</c> never recorded it. The v2
+/// restrict data (<see cref="BedDocument.RestrictTo"/>) stays unmapped until the
+/// migrator rework (M2 Slice G); every attribute resolves with an empty
+/// <c>RestrictTo</c>.
 /// </summary>
 public static class BedToSpec
 {
@@ -52,7 +55,7 @@ public static class BedToSpec
         // parse, degrades to a bare excluded attribute (the pre-D-049 drop-on-exclude
         // behavior); the planner ignores an excluded attribute either way.
         var name = document.Names[index];
-        var source = new ColumnSource(index);
+        var source = new ColumnSource(index, SourceValueType.String); // bare-excluded fallback: no discretizer → string (D-061)
         try
         {
             return MapByType(document, index, culture, mode) with { Include = false };
@@ -73,17 +76,18 @@ public static class BedToSpec
     private static AttributeSpec MapByType(BedDocument document, int index, CultureInfo culture, ScalingMode mode)
     {
         var name = document.Names[index];
-        var source = new ColumnSource(index);
         var type = document.Types[index];
+        // o is number-fixing (manual_cuts); c/b/n read as strings (identity/ordered_cuts) — D-061.
+        var source = new ColumnSource(index, type == "o" ? SourceValueType.Number : SourceValueType.String);
         var values = document.Values[index];
         var categories = document.Categories[index];
 
         return type switch
         {
             "c" => new AttributeSpec(name, source, Include: true, new IdentityDiscretizer(), new NominalScale(),
-                values, ValueLabels(values, categories), MissingPolicy.Skip, UnknownValuePolicy.Warn),
+                values, RestrictTo: [], ValueLabels(values, categories), MissingPolicy.Skip, UnknownValuePolicy.Warn),
             "b" => new AttributeSpec(name, source, Include: true, new IdentityDiscretizer(), new DichotomicScale(values[0]),
-                values, NoLabels, MissingPolicy.Skip, UnknownValuePolicy.Warn),
+                values, RestrictTo: [], NoLabels, MissingPolicy.Skip, UnknownValuePolicy.Warn),
             // o (numeric) and n (ordered categorical) are both cut-based (D-045): the
             // cut spec is in [Category Values]; for n the ordered domain is in
             // [Attribute Categories]. Discrete → nominal, progressive → ordinal(le).
@@ -96,11 +100,11 @@ public static class BedToSpec
 
     private static AttributeSpec BareExcluded(string name, ColumnSource source) =>
         new(name, source, Include: false, Discretizer: null, Scale: null,
-            DeclaredDomain: [], NoLabels, MissingPolicy.Skip, UnknownValuePolicy.Warn);
+            DeclaredDomain: [], RestrictTo: [], NoLabels, MissingPolicy.Skip, UnknownValuePolicy.Warn);
 
     private static AttributeSpec Cut(string name, ColumnSource source, Discretizer discretizer, ScalingMode mode) =>
         new(name, source, Include: true, discretizer, ScaleFor(mode),
-            DeclaredDomain: [], NoLabels, MissingPolicy.Skip, UnknownValuePolicy.Warn);
+            DeclaredDomain: [], RestrictTo: [], NoLabels, MissingPolicy.Skip, UnknownValuePolicy.Warn);
 
     private static Scale ScaleFor(ScalingMode mode) =>
         mode == ScalingMode.Progressive ? new OrdinalScale(OrdinalDirection.Le) : new NominalScale();

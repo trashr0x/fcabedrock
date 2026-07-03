@@ -131,8 +131,8 @@ public sealed class ConversionPlannerTests
     {
         // include = false is an authoring toggle (D-049): retained discretizer/scale/
         // domain/labels are parked, not rejected, and contribute no formal attributes.
-        var parked = new AttributeSpec("x", new ColumnSource(0), Include: false,
-            new IdentityDiscretizer(), new NominalScale(), ["a"],
+        var parked = new AttributeSpec("x", new ColumnSource(0, SourceValueType.String), Include: false,
+            new IdentityDiscretizer(), new NominalScale(), ["a"], RestrictTo: [],
             new Dictionary<string, string> { ["a"] = "Alpha" },
             MissingPolicy.Skip, UnknownValuePolicy.Warn);
         var spec = new BedrockSpec(SpecFixtures.WideRowIndex(), [parked]);
@@ -150,9 +150,9 @@ public sealed class ConversionPlannerTests
     {
         // §10.8 / D-049: value_labels under a cut-based discretizer is dormant — it is
         // ignored, so a key absent from declared_domain is NOT ValueLabelKeyNotInDomain.
-        var age = new AttributeSpec("age", new ColumnSource(0), Include: true,
+        var age = new AttributeSpec("age", new ColumnSource(0, SourceValueType.Number), Include: true,
             ManualCutsDiscretizer.Create([30.0, 40.0], BinEnds.Open, CultureInfo.InvariantCulture).Value!,
-            new NominalScale(), DeclaredDomain: [],
+            new NominalScale(), DeclaredDomain: [], RestrictTo: [],
             new Dictionary<string, string> { ["old"] = "Old retained label" },
             MissingPolicy.Skip, UnknownValuePolicy.Warn);
         var spec = new BedrockSpec(SpecFixtures.WideRowIndex(), [age]);
@@ -168,9 +168,9 @@ public sealed class ConversionPlannerTests
     {
         // §10.8 / D-049: value_labels is dormant under a cut discretizer — it must not
         // change rendered names, even when a key happens to match a cut-bin label.
-        var age = new AttributeSpec("age", new ColumnSource(0), Include: true,
+        var age = new AttributeSpec("age", new ColumnSource(0, SourceValueType.Number), Include: true,
             ManualCutsDiscretizer.Create([30.0], BinEnds.Open, CultureInfo.InvariantCulture).Value!,
-            new NominalScale(), DeclaredDomain: [],
+            new NominalScale(), DeclaredDomain: [], RestrictTo: [],
             new Dictionary<string, string> { ["<30"] = "Young" },
             MissingPolicy.Skip, UnknownValuePolicy.Warn);
         var spec = new BedrockSpec(SpecFixtures.WideRowIndex(), [age]);
@@ -223,6 +223,23 @@ public sealed class ConversionPlannerTests
         var spec = new BedrockSpec(SpecFixtures.WideRowIndex(), [SpecFixtures.Nominal("a", 0, ["x", "x"])]);
 
         AssertFailsWith(ConversionPlanner.Plan(spec, new SourceSchema(1)), DiagnosticCode.FormalAttributeCollision);
+    }
+
+    [Fact]
+    public void Plan_WhenBindingShapeTriple_ThenReportsTripleSourceNotImplementedV1()
+    {
+        // D-072: a triple spec is a minimal reject-carrier (D-066); the guard
+        // short-circuits before static validation, so this is the sole diagnostic.
+        var binding = new Binding(SourceShape.Triple, ',', '"', HasHeader: false, "invariant", "?",
+            new ColumnObjectKey(0, DuplicateObjectPolicy.Fail));
+        var spec = new BedrockSpec(binding, []);
+
+        var result = ConversionPlanner.Plan(spec, new SourceSchema(3));
+
+        Assert.True(result.HasErrors);
+        var diagnostic = Assert.Single(result.Diagnostics);
+        Assert.Equal(DiagnosticCode.TripleSourceNotImplementedV1, diagnostic.Code);
+        Assert.Equal(DiagnosticSeverity.Error, diagnostic.Severity);
     }
 
     private static void AssertFailsWith(Diagnosed<ConversionPlan> result, DiagnosticCode code)

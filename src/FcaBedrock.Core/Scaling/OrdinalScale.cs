@@ -13,8 +13,16 @@ namespace FcaBedrock.Core.Scaling;
 ///
 /// <para>The threshold of an open end (±∞) has no finite cut and renders
 /// <c>all</c> (spec §12.3); it is kept unless <see cref="DropTop"/>.</para>
+///
+/// <para><see cref="Boundary"/> and <see cref="Order"/> are resolved carriers
+/// for the value-bin ordinal path (§12.3, D-060) — a later M2 slice;
+/// <see cref="BuildShapes"/> does not read them yet.</para>
 /// </summary>
-public sealed record OrdinalScale(OrdinalDirection Direction = OrdinalDirection.Ge, bool DropTop = false) : Scale
+public sealed record OrdinalScale(
+    OrdinalDirection Direction = OrdinalDirection.Ge,
+    bool DropTop = false,
+    OrdinalBoundary Boundary = OrdinalBoundary.Inclusive,
+    IReadOnlyList<string>? Order = null) : Scale
 {
     // The label an open-end (±∞) tautological threshold renders as (D-047).
     private const string OpenEndLabel = "all";

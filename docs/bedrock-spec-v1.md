@@ -1506,7 +1506,10 @@ Every distinct condition has its own `DiagnosticCode`. v1's initial set:
 | `SpecExtendsCycle` | Fatal | spec resolve |
 | `SpecExtendsNotFound` | Fatal | spec resolve |
 | `BindingShapeMissing` | Error | spec validate |
+| `BindingLocaleInvalid` | Error | spec validate |
 | `AttributeNameDuplicate` | Error | spec validate |
+| `AttributeNameMissing` | Error | spec validate |
+| `AttributeScalingMissing` | Error | spec validate |
 | `DiscretizerCutsNotAscending` | Error | spec validate |
 | `DiscretizerCutsTooFew` | Error | spec validate |
 | `ValueLabelKeyNotInDomain` | Error | spec validate |
@@ -1523,6 +1526,7 @@ Every distinct condition has its own `DiagnosticCode`. v1's initial set:
 | `ObjectKeyBindingInvalid` | Error | spec validate |
 | `ObjectKeyModeInvalidForShape` | Error | spec validate |
 | `ObjectKeyColumnNotImplementedV1` | Error | plan (transitional) |
+| `TripleSourceNotImplementedV1` | Error | plan (transitional) |
 | `DateValueTypeNotImplementedV1` | Fatal | plan |
 | `ObservedDomainUsed` | Warning | calibrate |
 | `CalibrationDataInsufficient` | Error | calibrate |
@@ -1559,11 +1563,11 @@ filtering, emit). All four still write a structurally-valid (if degenerate)
 output rather than failing.
 
 **Transitional codes.** `RestrictToNotImplementedV1`,
-`TemplateMatcherNotImplementedV1`, and `ObjectKeyColumnNotImplementedV1` are
-emitted only by milestones *before* the feature's implementation milestone
-(restrict_to → M4, templates/matchers → M6, wide `column` object keys → M3,
-`roadmap.md`); they are removed once the feature lands and are **not** part of the
-v1 end-state set. They are distinct from the permanent `*NotImplementedV1`
+`TemplateMatcherNotImplementedV1`, `ObjectKeyColumnNotImplementedV1`, and
+`TripleSourceNotImplementedV1` are emitted only by milestones *before* the
+feature's implementation milestone (restrict_to → M4, templates/matchers → M6,
+wide `column` object keys → M3, triple sources → M3, `roadmap.md`); they are
+removed once the feature lands and are **not** part of the v1 end-state set. They are distinct from the permanent `*NotImplementedV1`
 reservations in §20.
 
 **Aggregation.** Data-phase diagnostics that can fire per value or per object —

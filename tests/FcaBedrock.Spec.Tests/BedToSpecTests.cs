@@ -193,6 +193,34 @@ public sealed class BedToSpecTests
     }
 
     [Fact]
+    public void ToSpec_WhenStringFixingTypes_ThenSourceValueTypeString()
+    {
+        // D-061: c/b (identity) and n (ordered_cuts) are string-fixing.
+        var spec = EmploymentOrdinalSpec();
+
+        Assert.Equal(SourceValueType.String, Assert.IsType<ColumnSource>(spec.Attributes[1].Source).ValueType); // education (c)
+        Assert.Equal(SourceValueType.String, Assert.IsType<ColumnSource>(spec.Attributes[2].Source).ValueType); // employment (n)
+        Assert.Equal(SourceValueType.String, Assert.IsType<ColumnSource>(spec.Attributes[4].Source).ValueType); // US-citizen (b)
+    }
+
+    [Fact]
+    public void ToSpec_WhenTypeO_ThenSourceValueTypeNumber()
+    {
+        // D-061: o migrates to manual_cuts, which is number-fixing.
+        var age = EmploymentOrdinalSpec().Attributes[0];
+
+        Assert.Equal(SourceValueType.Number, Assert.IsType<ColumnSource>(age.Source).ValueType);
+    }
+
+    [Fact]
+    public void ToSpec_WhenMigrated_ThenRestrictToEmpty()
+    {
+        // Deliberate until the migrator rework (M2 Slice G): the v2 [Restrict To
+        // Values] section stays unmapped, so every attribute resolves unrestricted.
+        Assert.All(MushroomSpec().Attributes, a => Assert.Empty(a.RestrictTo));
+    }
+
+    [Fact]
     public void ToSpec_WhenBindingLocaleNonInvariant_ThenNumericDiscretizerParsesWithIt()
     {
         var deDe = new Binding(SourceShape.Wide, ',', '"', HasHeader: true, "de-DE", "?", new RowIndexObjectKey());

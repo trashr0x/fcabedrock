@@ -8,6 +8,46 @@ namespace FcaBedrock.Diagnostics;
 /// </summary>
 public enum DiagnosticCode
 {
+    // --- Spec resolve ---
+
+    /// <summary>
+    /// The document has no <c>[spec]</c>/<c>version</c>, or declares a version other
+    /// than <c>1</c>; the spec must be refused. Fatal. Spec §2/§3 (D-067).
+    /// </summary>
+    SpecVersionUnsupported,
+
+    /// <summary>The document has no <c>[binding]</c> or no <c>shape</c>. Spec §5.1 (D-067).</summary>
+    BindingShapeMissing,
+
+    /// <summary>
+    /// <c>binding.locale</c> is neither <c>"invariant"</c> nor a resolvable culture
+    /// name. Spec §5.1 / §17 (D-067).
+    /// </summary>
+    BindingLocaleInvalid,
+
+    /// <summary>
+    /// A wide column source is unresolvable: both or neither of <c>index</c>/<c>name</c>;
+    /// <c>name</c> with <c>has_header = false</c>, with no header schema supplied, or not
+    /// found in the header; an <c>index</c> that is negative or out of the supplied
+    /// schema's range. One code, message variants. Spec §10.2 (D-066/D-067).
+    /// </summary>
+    SourceBindingInvalid,
+
+    /// <summary>An <c>[[attribute]]</c> has a null or empty <c>name</c>. Spec §10.1 (D-067).</summary>
+    AttributeNameMissing,
+
+    /// <summary>
+    /// An included attribute is missing its <c>discretizer</c> or <c>scale</c> (§10.9),
+    /// or a <c>dichotomic</c> scale has no <c>true_value</c> (§12.2). Message variants (D-067).
+    /// </summary>
+    AttributeScalingMissing,
+
+    /// <summary>
+    /// A column object key's <c>column</c> ref is missing or unresolvable (by index or
+    /// header name). Spec §5.4 (D-064/D-067).
+    /// </summary>
+    ObjectKeyBindingInvalid,
+
     // --- Spec validation ---
 
     /// <summary>Two attributes declare the same <c>name</c>. Spec §10.2.</summary>
@@ -47,6 +87,13 @@ public enum DiagnosticCode
     /// Spec §10.2 / §14.
     /// </summary>
     FormalAttributeNameCollision,
+
+    /// <summary>
+    /// The spec binds a triple source, whose conversion is not implemented in this
+    /// milestone; the planner rejects it before any planning. Spec §5.1 (D-072;
+    /// transitional, removed at M3).
+    /// </summary>
+    TripleSourceNotImplementedV1,
 
     // --- Emit ---
 

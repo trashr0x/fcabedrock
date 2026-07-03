@@ -13,6 +13,17 @@ public sealed class OrdinalScaleTests
         Assert.Equal("ordinal", new OrdinalScale().Kind);
 
     [Fact]
+    public void Ctor_WhenDefaults_ThenBoundaryInclusiveAndNoOrder()
+    {
+        // Carrier construction only: Boundary/Order are resolved shells for the
+        // value-bin ordinal path (§12.3, D-060); BuildShapes does not read them yet.
+        var scale = new OrdinalScale();
+
+        Assert.Equal(OrdinalBoundary.Inclusive, scale.Boundary);
+        Assert.Null(scale.Order);
+    }
+
+    [Fact]
     public void BuildShapes_WhenLe_ThenBelowThresholdsAscendingThenAll()
     {
         var shapes = new OrdinalScale(OrdinalDirection.Le).BuildShapes(AgeScheme());
