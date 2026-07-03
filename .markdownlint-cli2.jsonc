@@ -1,15 +1,9 @@
 {
-  "config": {
-    // MD024: the decisions.md index (D-073) deliberately mirrors the section
-    // headings it points to. Only flag duplicate headings that share the same
-    // parent heading (the changelog-style setting).
-    "MD024": { "siblings_only": true },
-    // MD013: no hard line-length cap — matches the VS Code extension default
-    // and the repo's existing style (wide tables, long reference lines).
-    "MD013": false
-  },
-  "ignores": [
-    // The one-line Claude Code import shim (D-048); not a markdown document.
-    "CLAUDE.md"
-  ]
+    "config": {
+      "extends": "./.markdownlint.jsonc"
+    },
+    "ignores": [
+      // The one-line Claude Code import shim (D-048); not a markdown document.
+      "CLAUDE.md"
+    ]
 }

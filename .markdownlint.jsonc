@@ -1,0 +1,10 @@
+{
+    // MD024: the decisions.md index (D-073) deliberately mirrors the section
+    // headings it points to. Only flag duplicate headings that share the same
+    // parent heading (the changelog-style setting).
+    "MD024": { "siblings_only": true },
+
+    // MD013: no hard line-length cap; the repo style allows wide tables and
+    // long reference lines.
+    "MD013": false
+}
