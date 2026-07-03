@@ -8,36 +8,22 @@ vertical slices, not waterfall phases — each should leave the system working.
 
 > **M1 complete — mini-mushroom + mini-adult reproduced byte-for-byte.** The whole
 > pipeline runs end-to-end and matches v2 on both families: `.bed` reader
-> (`FcaBedrock.Spec`), wide-CSV source over Sep (`FcaBedrock.Sources`, D-041),
-> planner (`FcaBedrock.Core`), streaming emitter (`FcaBedrock.Conversion`), and
-> `.cxt`/`.dat` writers with a `--v2-compat` preset (`FcaBedrock.Export`).
-> **Slice 1** delivered `identity` + `nominal` + `dichotomic` + `value_labels` on
-> mini-mushroom. **Slice 2** added the cut discretizers `manual_cuts` (numeric,
-> locale-aware) and `ordered_cuts` (categorical, D-046) sharing one label helper,
-> the `ordinal` scale (cumulative `le`, open-end `all`, D-047), the plan-time
-> `LabelStyle` render hook (`30to<40` vs `[30, 40)`, D-044), `.bed` types `o`/`n`
-> with the out-of-band `ScalingMode` (D-045), and the four **mini-adult** goldens
-> (base, noheader, employment-ordinal discrete + progressive). Output is proven on
-> two axes (D-043: golden v2-compat byte-equality + native spec conformance);
-> ArchUnit dependency/cycle/purity rules are non-vacuous.
+> (`FcaBedrock.Spec`), wide-CSV source over Sep (`FcaBedrock.Sources`), planner
+> (`FcaBedrock.Core`), streaming emitter (`FcaBedrock.Conversion`), and
+> `.cxt`/`.dat` writers with a `--v2-compat` preset (`FcaBedrock.Export`). Output
+> is proven on two axes (D-043: golden v2-compat byte-equality + native spec
+> conformance); the M1 decisions are D-041…D-049.
 >
-> The **M1-adjacent conformance pass** (the M2 "Before implementation" reconciliation)
-> has landed: §5.1 whitespace via Sep `SepTrim.Outer`, malformed-numeric diagnostics
-> (D-050) + the `BinResult` outcome model and per-attribute data-diagnostic aggregation
-> (D-059), the cut-validation smart-factory wired into `BedToSpec` (D-056), and
-> ordinal/naming conformance tests. Byte-neutral on the goldens. `dotnet test` is green
-> (178 tests).
+> The **M1-adjacent conformance pass** (the M2 "Before implementation"
+> reconciliation) has landed (D-050 malformed-numeric, D-056 cut validation,
+> D-059 `BinResult` + diagnostic aggregation, §5.1 whitespace, plus conformance
+> tests), byte-neutral on the goldens. `dotnet test` is green (178 tests).
 >
-> **Next: M2** — the TOML spec format + fingerprinting (and the value-bin `ordinal`
-> path + independent `boundary` knob deferred from slice 2; the explicit-straddling
-> `OrdinalBoundaryIncompatibleWithCuts` guard — now a **spec-validate** check, with
-> the new `OrdinalOrderNotAllowedWithCuts` — lands with the boundary field there,
-> D-060).
->
-> The **Tier 2 register** (D-066…D-072) settling the M2 model boundary, carrier
-> scope, and pinned fingerprint encoding has landed; M2 implementation then proceeds
-> in slices A–G (model split → `as_attribute` → reader/writer → validation →
-> fingerprints → `extends`/triple → migrator).
+> **Now: M2** — the TOML spec format + fingerprinting. The M2 contract is
+> settled across D-050…D-058, the Tier 1 spec audit (D-060…D-065), and the
+> Tier 2 register (D-066…D-072); implementation proceeds in slices A–G (model
+> split → `as_attribute` → reader/writer → validation → fingerprints →
+> `extends`/triple → migrator).
 
 ## Milestones
 
@@ -77,8 +63,9 @@ New TOML schema, reader/writer, and three fingerprints — `schema_fingerprint`
 plus per-format `cxt_output_fingerprint` / `dat_output_fingerprint` (D-051) over a
 plan-derived canonical JSON encoding (D-053). One-way `.bed` → TOML migrator,
 moved toward `Diagnosed<T>` while it is reworked (the D-049 migrator-hygiene item;
-minimum bar: no silently-dropped parked config). Round-trip tests over every
-scale × discretizer combination plus the three v2 examples, covering
+minimum bar: no silently-dropped parked config). Round-trip tests over the
+M2-supported v1 surface (the D-070/D-072 carrier scope) plus the three v2
+examples, covering
 omitted-vs-authored defaults (D-049 presence tracking), parked config,
 `restrict_to` string/range/open-ended/mixed forms, `[output]` per-leaf `extends`
 merge, multi-file `extends` chains, `[provenance]`, and preserved-but-rejected
@@ -86,35 +73,25 @@ templates/matchers. Add `interordinal`/`biordinal`/`contranominal` as parsable
 types the planner rejects (D-010). `[output]`, `[provenance]`, `extends`
 (D-027, position-preserving override D-052) parsing.
 
-Finalized M2 spec decisions (D-050…D-058) land here: malformed-numeric handling
-(D-050), split fingerprints (D-051/D-053), `extends` ordering (D-052), v1
-quote-char (D-054), `value_groups` dropping `declared_domain` (D-055), cut
-validation (D-056), `restrict_to` parsed-but-rejected until M4 (D-057), and the
-empty-output diagnostics (D-058). Also the value-bin `ordinal` path + live
-`boundary` knob deferred from slice 2 (D-047), and the remaining D-049
-writer-fidelity items (presence tracking; the default-`boundary` cut-bin trap
-§12.3; the `value_type`-vs-discretizer rule §10.2). New diagnostics land as their
-emit sites do (`SourceValueUnparseable`, `RestrictToNotImplementedV1`,
-`TemplateMatcherNotImplementedV1`, plus the binding/cut/fingerprint/empty-output
-codes); data-phase codes are aggregated from day one (count + bounded sample, not
-per-row).
+The finalized M2 spec decisions **D-050…D-058** land here (see the decisions.md
+index for titles). Also the value-bin `ordinal` path + live `boundary` knob
+deferred from slice 2 (D-047), and the remaining D-049 writer-fidelity items
+(presence tracking; the default-`boundary` cut-bin trap §12.3; the
+`value_type`-vs-discretizer rule §10.2). New diagnostics land as their emit
+sites do; data-phase codes are aggregated from day one (count + bounded sample,
+not per-row).
 
-The **Tier 1 spec-audit** decisions (D-060…D-065) further refine the M2 contract:
-the ordinal-over-cuts validation contract with both checks (`OrdinalOrderNotAllowedWithCuts`,
-`OrdinalBoundaryIncompatibleWithCuts`) at spec validate (D-060), the `value_type`
-matrix / flexible `free_per_value` (D-061), dropping the unreachable
-cross-attribute-restrict diagnostic (D-062), `restrict_to` shape-validation vs M4
-execution (D-063), and the object-key diagnostic taxonomy with wide `column`
-execution deferred to M3 (D-064). The calibration-before-`restrict_to` semantics
-(D-065) are documented now; their execution lands with `restrict_to` at M4.
+The **Tier 1 spec-audit** decisions **D-060…D-065** further refine the M2
+contract (ordinal-over-cuts validation, the `value_type` matrix, dropping the
+unreachable cross-attribute-restrict diagnostic, `restrict_to` shape-validation
+vs M4 execution, the object-key taxonomy with wide `column` execution → M3,
+calibration-before-`restrict_to`); see the decisions.md index.
 
-**Before implementation:** a separate M1-adjacent conformance pass reconciles
-already-shipped M1 code with the M2 wording in the areas that touch it —
-whitespace normalization, malformed-numeric diagnostics/no-cross behavior, cut-bin
-ordinal boundary behavior, dichotomic/value-label naming, and diagnostic gaps in
-shipped planner paths. The M2 spec/docs describe the v1 **end-state**; the M1
-byte-equality goldens are not reopened by the docs, and the malformed-numeric
-change is byte-neutral (still "keep object, no cross", only adds a diagnostic).
+The M1-adjacent conformance pass that reconciled already-shipped M1 code with
+the M2 wording has **landed** (see Current position). The M2 spec/docs describe
+the v1 **end-state**; the M1 byte-equality goldens were not reopened, and the
+malformed-numeric change was byte-neutral (still "keep object, no cross", only
+adds a diagnostic).
 
 **Verification gates:** re-run the M1 golden suite after the whitespace and
 malformed-numeric changes (v2-compat guard); a fingerprint-stability golden for
@@ -131,24 +108,17 @@ format requires it (e.g. templates/matchers under `extends`) but rejects their u
 with the transitional diagnostics above.
 
 The **Tier 2 register (D-066…D-072)** settles the M2 model boundary and carrier
-scope: the two-model split — a faithful, presence-tracked Spec document model
-resolving into Core's illegal-states-unrepresentable `BedrockSpec` (D-066) — with a
-single resolve+validate seam owning the static diagnostics by phase (D-067); the
-canonical fingerprint encoding pinned to an exact shape before any stored hash ships
-(D-069); `missing_policy = "as_attribute"` scheduled into M2 with the
-effective-`missing_token` migration rule (D-068); and three transitional-code gates
-for known v1 features outside M2 — the **minimal discretizer carrier**, where
-`free_per_value`/`equal_width`/`equal_frequency`/`value_groups` are recognized by
-kind name and rejected at read/resolve (`DiscretizerKindNotYetSupported`) *without*
-round-trip carriers for their parameter shapes (D-070); the absent/`[]`
-`declared_domain` reject (`ObservedDomainCalibrationNotImplementedV1`, D-071); and
-the basic triple carrier, which *does* round-trip but rejects conversion
-(`TripleSourceNotImplementedV1` → M3, D-072). Three settled scope calls:
-(1) **minimal discretizer carrier** — only `identity`/`manual_cuts`/`ordered_cuts`
-convert in M2; the deferred discretizers are recognized by name and rejected, not
-carried; (2) **string-only value-bin ordinal** — `identity` + an explicit string
-`order`; numeric value-bin ordinal (`free_per_value` + `order`) rejects → M4;
-(3) **basic triple carrier** — round-trip only, conversion → M3.
+scope: the document-model / Core two-model split with a single resolve+validate
+seam owning the static diagnostics by phase (D-066/D-067); the canonical
+fingerprint encoding pinned before any stored hash ships (D-069);
+`missing_policy = "as_attribute"` scheduled into M2 (D-068); and three
+carrier-vs-execution gates — deferred discretizers recognized by kind name and
+rejected at read/resolve without parameter carriers (D-070), absent/`[]`
+`declared_domain` rejected until Calibrate lands (D-071), and the basic triple
+carrier round-tripping but rejecting conversion → M3 (D-072). Net M2 execution
+scope: only `identity`/`manual_cuts`/`ordered_cuts` convert; the value-bin
+ordinal is string-only (`identity` + explicit `order`; numeric → M4); triple
+conversion is M3.
 **Exit:** TOML specs in the M2-supported v1 surface round-trip; v2 specs migrate;
 known v1 features outside M2 produce clear diagnostics.
 

@@ -23,6 +23,111 @@ This file expands on spec §21 ("Decisions log") with the broader architectural
 decisions, not just the spec-field defaults. Where a decision is purely a
 spec-field default, it lives in spec §21 and is only cross-referenced here.
 
+## Index
+
+One line per decision, grouped as the sections below. Read the entries your
+task touches (see the `AGENTS.md` workflow, D-073); read the log in full before
+proposing architectural changes. Status is annotated only where an entry is
+superseded or refined. A new entry MUST add its line here.
+
+**Architecture**
+
+- D-001 — Separable binding vs scaling in the spec
+- D-002 — Orthogonal discretizer × scale model (the anchoring idea)
+- D-003 — Discovery is a separate operation, not implicit in convert *(refined by D-036)*
+- D-004 — Determinism rules centralized in the planner
+- D-005 — Plan/Emit separation, with calibration before planning *(refined by D-036)*
+- D-006 — Diagnostics package as the shared leaf *(alias dropped by D-042)*
+- D-007 — Target 10×–100× the v2 EMAGE workload
+- D-008 — Avalonia for the desktop UI
+- D-009 — New TOML spec format; one-way `.bed` migration
+- D-010 — Modelled-but-rejected scales/features carry forward-compat
+- D-011 — v2 byte-equality is a CLI flag, not a spec setting
+
+**Scope / feature decisions**
+
+- D-020 — v1 scale and discretizer surface
+- D-021 — Three filtering levers kept distinct *(refined by D-032)*
+- D-022 — `value_groups` discretizer (clustering raw values)
+- D-023 — `value_labels` (raw value → display label)
+- D-024 — Object grouping by composite key (deferred to v1.1)
+- D-025 — Post-context reductions live in a sibling tool
+- D-026 — Reproducibility: provenance block + run manifest
+- D-027 — Spec composition via `extends`
+- D-028 — Calibration on-the-fly by default; `calibrate` to freeze
+
+**Round 1 spec audit**
+
+- D-030 — Triple multi-value union; scale decides folding
+- D-031 — `subject_grouped` requires contiguous subjects
+- D-032 — Filter-only attributes (`include = false` keeps `restrict_to`)
+- D-033 — `source` may repeat across attributes
+- D-034 — Duplicate object keys defined by key mode; `fail` default *(execution → M3, D-064)*
+- D-035 — Fingerprint scopes: schema = planned columns only *(output split by D-051/D-053)*
+- D-036 — Four-phase processing model; convert calibrates, never discovers
+
+**Round 2 spec audit**
+
+- D-037 — Scale-specific default naming; emitted-field discipline *((b) superseded by D-049)*
+- D-038 — Date support deferred; v2 six-type-code map confirmed
+
+**Process / governance**
+
+- D-029 — Engineering principles formalized as docs/principles.md
+- D-039 — Test conventions + ArchUnitNET for architecture tests
+- D-040 — Shared `tests/Directory.Build.props`; MTP-only
+- D-048 — `AGENTS.md` canonical; `CLAUDE.md` imports it; no symlink
+- D-073 — Decision index; sessions read it first, then relevant entries
+
+**M1 (mini-mushroom walking skeleton)**
+
+- D-041 — Sep as the DSV tokenizer for the wide-CSV source
+- D-042 — Drop the `BedrockResult<T>` alias; use `Result<T, BedrockDiagnostic>`
+- D-043 — Two test axes: golden = v2-compat evidence, conformance = native spec
+- D-044 — Bin-label style is a plan-time render hook, not a writer flag
+- D-045 — v2 `o` and `n` are both cut-based; discrete→nominal, progressive→ordinal
+- D-046 — `ordered_cuts` discretizer; v2 `.bed` section-role asymmetry
+- D-047 — Open-end ordinal threshold renders `all`, canonical in both paths
+- D-049 — `include = false` is an authoring toggle; dormant config never blocks
+
+**M2 (TOML spec format + fingerprinting)**
+
+- D-050 — Malformed numeric values are present-but-invalid, not missing
+- D-051 — Per-format output fingerprints (cxt + dat)
+- D-052 — `extends` overrides attributes position-preservingly
+- D-053 — Fingerprints hash a plan-derived canonical JSON structure *(pinned by D-069)*
+- D-054 — v1 supports only the standard double `quote_char`
+- D-055 — `value_groups` does not use `declared_domain`
+- D-056 — Cut validation in M2
+- D-057 — `restrict_to` round-trips in M2; execution deferred to M4
+- D-058 — Empty-output diagnostics: mechanical names replace EmptyExtent/EmptyIntent
+
+**M1-adjacent conformance pass**
+
+- D-059 — Discretization outcomes and data-diagnostic aggregation
+
+**Tier 1 spec audit (pre-M2)**
+
+- D-060 — Ordinal-over-cuts validation contract
+- D-061 — `value_type` matrix: `free_per_value` flexible, `identity` string-only
+- D-062 — Cross-attribute restrict not modelled in v1; drop the diagnostic
+- D-063 — `restrict_to`: M2 validates shape, M4 executes; diagnostic ownership
+- D-064 — Wide column object keys deferred to M3; object-key diagnostic taxonomy
+- D-065 — Calibration/vocabulary over the input universe, before `restrict_to`
+
+**Tier 2 register (pre-M2)**
+
+- D-066 — Parsed spec document model vs. resolved Core `BedrockSpec`
+- D-067 — Resolve/validate seam and diagnostic phase ownership
+- D-068 — `missing_policy = "as_attribute"` scheduled into M2
+- D-069 — Canonical fingerprint encoding, pinned (appendix to D-053)
+- D-070 — Minimal M2 discretizer-carrier scope; three-tier kind response
+- D-071 — Absent/empty `declared_domain`: M2 interim reject until calibrate
+- D-072 — Basic triple TOML carrier in M2; conversion deferred to M3
+
+Spec-field defaults are recorded in spec §21 items 1–11 (see the final section
+of this file).
+
 ---
 
 ## Architecture
@@ -604,6 +709,38 @@ refinement markers (D-003, D-005, D-021); the entries below are new.
 - **Affects:** `AGENTS.md` (renamed from `CLAUDE.md`, history preserved via
   `git mv`), `CLAUDE.md` (new import shim). Process/tooling only; no code, no
   output bytes.
+
+### D-073 — Decision index; sessions read it first, then relevant entries
+
+- **Status:** accepted
+- **Date:** 2026-07-04
+- **Decision:** this file opens with a compact **index** — one line per
+  decision, grouped by section, status annotated only where superseded or
+  refined. The `AGENTS.md` session workflow changes from "read
+  `docs/decisions.md`" to "read the index, then the entries the task touches";
+  reading the log in full remains the bar before proposing architectural
+  changes (the rule at the top of `AGENTS.md`). A new decision entry MUST also
+  add its index line. The same documentation pass restores spec §21 to its
+  documented scope (this file's preamble): items 1–11 remain the
+  spec-field-default record; items 12–25 become one-line cross-references to
+  the owning spec sections and decisions, with their item numbers preserved
+  (they are referenced by number, e.g. "§21-item-16" in D-051).
+- **Why:** the log is append-only and was a mandatory full read for every
+  session, an unbounded per-session cost (~90 KB and growing) when most tasks
+  touch a handful of entries. An index converts the default read to
+  index + relevant entries without touching history or weakening the
+  architectural-change bar. Separately, §21 items 12–25 had drifted beyond the
+  documented "spec-field defaults" contract, restating decisions in a third
+  place that could drift from both the spec body and this log.
+- **Rejected:** splitting or archiving old entries (breaks `D-NNN` references
+  and hides the reasoning trail the append-only rule exists to preserve);
+  keeping the mandatory full read (unbounded); summarizing entries in place
+  (rewrites history); renumbering or deleting §21 items (breaks external
+  item-number references).
+- **Affects:** `docs/decisions.md` (index), `AGENTS.md` (workflow step 1,
+  Current-status trim), spec §21 (items 12–25 → cross-references; §21 is
+  informative, so no normative change). Process/docs only; no code, no output
+  bytes.
 
 ---
 

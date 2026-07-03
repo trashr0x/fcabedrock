@@ -113,8 +113,11 @@ rationale live in `docs/decisions.md` D-039/D-040.
 
 ## Workflow for a new session
 
-1. Read this file + `docs/decisions.md` + `docs/roadmap.md` (current position).
-   Skim `docs/principles.md` — it's the invariant set code must satisfy.
+1. Read this file + `docs/roadmap.md` (current position) + the **index** at
+   the top of `docs/decisions.md`; then read the decision entries your task
+   touches (D-073). Read the log in full before proposing architectural
+   changes (the rule at the top of this file). Skim `docs/principles.md` —
+   it's the invariant set code must satisfy.
 2. For spec questions, `docs/bedrock-spec-v1.md` is the source of truth.
    Do not infer format behavior from code; the spec governs.
 3. When you make a real architectural decision, append an entry to
@@ -187,10 +190,6 @@ Don't implement first and explain later.
 
 ## Current status
 
-**M1 complete** — mini-mushroom + mini-adult reproduced byte-for-byte; the full
-pipeline (`.bed` reader → wide-CSV source → planner → streaming emitter →
-`.cxt`/`.dat` with a `--v2-compat` preset) is green. **Next: M2** — the TOML spec
-format + fingerprinting.
-
+**M1 complete; M2 (TOML spec format + fingerprinting) in progress.**
 `docs/roadmap.md` is the live source for current position, test count, and the
 deferred backlog — consult it rather than duplicating the detail here.

@@ -1951,8 +1951,12 @@ work (D-062).
 
 ## 21. Decisions log
 
-Settled questions from the design conversation, recorded here so future
-readers know the rationale and don't re-litigate.
+Settled questions from the design conversation, recorded so future readers
+don't re-litigate. Items 1–11 record the **spec-field defaults** in full —
+this section is their home (`docs/decisions.md` cross-references them here).
+Items 12–25 are one-line pointers to the owning spec sections and
+`docs/decisions.md` entries; item numbers are stable (they are referenced by
+number, e.g. "§21-item-16" in D-051).
 
 1. **Bin label style** → math notation (`<30`, `[30, 40)`, `≥50` or
    `>=50` depending on §8 `bin_label_unicode`). v2 style available via
@@ -2005,115 +2009,40 @@ readers know the rationale and don't re-litigate.
     the range. Overlapping ranges sharing a boundary (Interpretation C,
     e.g., interordinal/biordinal) remain deferred.
 
-12. **Triple multi-value semantics** (§5.3.1) → rows sharing an object key
-    accumulate crosses by union; duplicate triples are idempotent; this is
-    normal input, not a duplicate-object condition. Whether multiple values
-    fold into one formal attribute is a property of the chosen scale, not a
-    source toggle (one standard way). `subject_grouped` requires contiguous
-    subjects (`TripleSubjectNotContiguous` Error otherwise); `unordered`
-    imposes no contiguity.
+12. **Triple multi-value union; scale decides folding** → §5.3.1;
+    decisions.md D-030/D-031.
 
-13. **Filter-only attributes** (§10.1, §10.4) → `include = false` suppresses
-    formal-attribute emission but **not** the attribute's own `restrict_to`; any
-    emitted-shaping config it retains is ignored, not rejected (the authoring
-    toggle, §10.9 / D-049). This makes object-filtering-by-a-field consistent
-    across wide and triple input (v2 only did this consistently for wide). The
-    EMAGE example (§19.4) uses it for `Gene` and `Strength`.
+13. **Filter-only attributes** → §10.1, §10.4, §10.9; D-032/D-049. Used by the
+    EMAGE example (§19.4).
 
-14. **`source` may repeat** (§10.2) → two attributes may share one `source` to
-    apply multiple scalings (e.g. nominal bins + ordinal thresholds on `age`).
-    `name` must still be unique; identical resulting formal-attribute identity
-    is rejected (`FormalAttributeCollision`). Replaces the earlier blanket ban.
+14. **`source` may repeat across attributes** → §10.2; D-033.
 
-15. **Duplicate object keys** (§6.1) → defined by object-key mode. `row_index`
-    and triple input: not applicable. Wide `column` mode: `duplicate_object_policy`
-    defaults to **`fail`** (a duplicate in a column you chose as the identifier
-    is probably a data error); `keep` (suffix + warn) and `dedupe` (union) opt
-    in. The stray `"merge"` value and the `duplicate_policy` misnomer are
-    removed; cross-row merge by derived key is the deferred `composite` feature.
+15. **Duplicate object keys defined by key mode; `fail` default** → §5.4, §6.1;
+    D-034.
 
-16. **Fingerprint scope** (§14) → `schema_fingerprint` = formal-attribute schema
-    only (column identity), excluding `duplicate_object_policy`, `restrict_to`,
-    object-key mode, and ordering. Output identity is split per format into
-    `cxt_output_fingerprint` and `dat_output_fingerprint` (D-051): both add the
-    row-shaping/conversion settings schema omits, then `.cxt` adds rendered names
-    plus `.cxt` writer settings while `.dat` adds only `.dat` writer settings. All
-    hash a plan-derived canonical JSON structure, not TOML text (D-053), and are
-    stored only for fully-frozen specs. Provenance in none.
+16. **Fingerprint scope** → §14; D-035/D-051/D-053.
 
-17. **Processing phases** (§7) → Parse/validate → Calibrate → Plan → Emit.
-    `convert` auto-calibrates by default (cuts captured in the manifest) but
-    never *discovers*; absent `declared_domain`s are calibrated with an
-    `ObservedDomainUsed` warning. Auto-discretizer determinism rules
-    (parse/sort/insufficient-data/NaN) are fixed now (§11.5); exact quantile
-    formula and label precision are settled at M4.
+17. **Processing phases** → §7; D-036 (with D-003/D-005/D-028).
 
-18. **Discretizer/scale required only when emitting** (§10.9) → required when
-    `include = true`; optional when `include = false`. Emitted-shaping config on
-    an excluded attribute is retained but ignored, not an error — `include` is an
-    authoring toggle (D-049). Makes the filter-only examples valid.
+18. **Discretizer/scale required only when emitting** → §10.9; D-037(a)/D-049.
 
-19. **Scale-specific default naming** (§10.7) → nominal `{column}-{value}`;
-    ordinal `{column}-{scale_op}{value}`; dichotomic `{column}` alone (no value
-    suffix, matching v2 `bruises?`); `as_attribute` adds `{column}-missing`. An
-    explicit `formal_attribute_format` overrides the scale default entirely.
-    Required for M1 byte-equality.
+19. **Scale-specific default naming** → §10.7; D-037(a).
 
-20. **Locale governs numeric parsing; not an independent fingerprint input**
-    (§5.1, §11.5, §14) → numeric parsing uses `binding.locale` (default
-    `invariant`); determinism is from the declared locale, not hardcoded
-    invariant. Locale is **not** a separate `schema_fingerprint` input: its
-    effect is already captured in the resolved cuts/labels/columns, so two
-    plans with the same formal-attribute identity fingerprint identically.
-    Locale's observable effect lives in the output fingerprints and the manifest.
+20. **Locale governs numeric parsing; not an independent fingerprint input** →
+    §5.1, §11.5, §14; D-035/D-036.
 
-21. **Date support deferred** (§10.2, §11.7) → `value_type = "date"` is reserved
-    but not implemented in v1; the planner rejects it with
-    `DateValueTypeNotImplementedV1`. Continuous *numeric* support is the v1
-    priority; full date support (cut syntax, `DateOnly`/`DateTime` semantics,
-    day-space binning, label rounding, date diagnostics) is not worth
-    front-loading. v2 had a distinct `d` type, so this is a conscious parity
-    deferral, not an oversight. v2's `n` (Ordinal) type maps to our `ordinal`
-    scale over an ordered categorical discretizer — already covered (see
-    lineage.md). `mini-dates` is a deferred fixture, not an M1 target.
+21. **Date support deferred** → §10.2, §11.7; D-038 (v2 type-code map in
+    lineage.md).
 
-22. **Native vs effective fingerprints** (§14, §15) → spec-stored fingerprints
-    describe native resolved output (no CLI overrides). `--v2-compat` changes
-    effective output without rewriting the spec; the manifest records the
-    effective output fingerprints. A spec↔manifest difference under
-    `--v2-compat` is expected, not an error.
+22. **Native vs effective fingerprints (CLI overrides)** → §14, §15.
 
-23. **Parse/validate may read source schema, not rows** (§7) → it MAY inspect
-    header names / column count to validate name-based bindings; it scans no
-    object records or values.
+23. **Parse/validate may read source schema, not rows** → §7.
 
-24. **M2 contract additions** (D-050…D-058) → malformed-numeric values are
-    present-but-invalid, not missing (D-050, §11.5); output fingerprints split per
-    format over a plan-derived canonical encoding (D-051/D-053, §14); `extends`
-    overrides attributes position-preservingly (D-052, §13); v1 accepts only the
-    standard `quote_char` (D-054, §5.1); `value_groups` ignores `declared_domain`
-    (D-055, §11.6); hand-authored cuts are validated (D-056, §11.2/§11.8);
-    `restrict_to` round-trips in M2 but is rejected at conversion until M4 (D-057,
-    §10.4); and the empty-output diagnostics are `NoFormalAttributes` /
-    `NoObjectsEmitted` / `AttributeHasNoCrosses` / `ObjectHasNoCrosses` (D-058,
-    §16.4). See `docs/decisions.md` for rationale.
+24. **M2 contract additions** → D-050…D-058 (decisions.md); the owning sections
+    (§5.1, §10.4, §11.5, §11.6, §13, §14, §16.4) are updated in place.
 
-25. **Tier 1 spec-audit additions** (D-060…D-065) → ordinal `scale.order` is
-    value-bin only and forbidden over cut discretizers
-    (`OrdinalOrderNotAllowedWithCuts`); both ordinal-over-cuts compatibility checks
-    (`OrdinalOrderNotAllowedWithCuts`, `OrdinalBoundaryIncompatibleWithCuts`) are
-    **spec-validate** and static, and the `[defaults]` ordinal merge preserves
-    authored-vs-default provenance (D-060, §6/§12.3/§17); `free_per_value` is
-    type-flexible while `identity` is string-only (D-061, §10.2/§11.3);
-    cross-attribute restrict is **not modelled** in v1, so the unreachable
-    `RestrictCrossAttributeNotImplementedV1` is dropped (D-062, §20); `restrict_to`
-    *shape* is validated at M2 (`RestrictToOnNumericRequiresRange` owning the
-    numeric/string-entry mismatch) while execution stays M4 (D-063, §10.4); wide
-    `column` object keys are deferred to M3 (`ObjectKeyColumnNotImplementedV1`) with
-    an `ObjectKeyBindingInvalid` / `ObjectKeyModeInvalidForShape` validation taxonomy
-    (D-064, §5.4/§6.1/§16.4); and schema/calibration are computed over the input
-    universe before `restrict_to` filters emitted objects (D-065, §7). See
-    `docs/decisions.md` for rationale.
+25. **Tier 1 spec-audit additions** → D-060…D-065 (decisions.md); the owning
+    sections (§5.4, §6, §7, §10.2, §10.4, §12.3, §17, §20) are updated in place.
 
 ---
 

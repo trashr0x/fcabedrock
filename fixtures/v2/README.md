@@ -2,7 +2,9 @@
 
 These fixtures preserve FcaBedrock v2 compatibility behaviour. The expected
 `.cxt` and `.dat` files are golden outputs produced by the original FcaBedrock
-v2 tool and must not be edited to make tests pass.
+v2 tool and must not be edited to make tests pass; if vNext intentionally
+diverges from v2, record the decision and gate the behaviour behind the
+appropriate compatibility mode (P-9).
 
 Dataset provenance and attribution for adapted fixtures are documented in
 `ATTRIBUTION.md`.
@@ -64,8 +66,3 @@ The variant matrix above is documentation of test intent. The test harness does
 **not** parse this Markdown as a source of truth. If the harness later needs
 machine-readable fixture metadata, add a separate manifest or a typed
 fixture-case list in tests.
-
-Golden outputs are compatibility evidence. Do not edit expected `.cxt` or `.dat`
-files to make a new implementation pass. If vNext intentionally diverges from
-v2, record the decision and gate the behaviour behind the appropriate
-compatibility mode.

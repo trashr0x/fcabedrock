@@ -2,10 +2,7 @@
 
 This directory contains small v2 compatibility fixtures used to verify
 FcaBedrock vNext behaviour against outputs produced by the original FcaBedrock
-v2 tool.
-
-The expected `.cxt` and `.dat` files are golden outputs and must not be edited
-to make tests pass.
+v2 tool. Handling rules for the golden outputs are in `README.md`.
 
 ## UCI-derived fixtures
 
