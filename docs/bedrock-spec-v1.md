@@ -725,7 +725,9 @@ missing_policy = "as_attribute"   # missing produces a "<name>-missing" formal a
 in the schema and that attribute crosses for objects with missing
 values. For nominal scales this is one extra formal attribute; for
 dichotomic scales it is the second formal attribute (true_value crosses
-when present, missing crosses when absent).
+when present, missing crosses when absent); for ordinal scales it
+follows the threshold formal attributes. The rule is uniform: the
+missing attribute appends after the scale's formal attributes (D-074).
 
 ### 10.6 unknown_value_policy
 

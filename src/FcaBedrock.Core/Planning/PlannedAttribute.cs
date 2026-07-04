@@ -18,7 +18,10 @@ namespace FcaBedrock.Core.Planning;
 /// nothing (e.g. the false pole of a dichotomy) is not.
 /// </param>
 /// <param name="CrossesByBin">Bin label → ascending global formal-attribute ids it crosses.</param>
-/// <param name="MissingPolicy">How missing values are handled.</param>
+/// <param name="MissingFormalAttributeId">
+/// Formal-attribute id crossed when the value is missing
+/// (<c>missing_policy = "as_attribute"</c>); null = missing values skip.
+/// </param>
 /// <param name="UnknownValuePolicy">How out-of-domain values are handled.</param>
 public sealed record PlannedAttribute(
     string Name,
@@ -26,5 +29,5 @@ public sealed record PlannedAttribute(
     Discretizer Discretizer,
     IReadOnlySet<string> KnownBins,
     IReadOnlyDictionary<string, IReadOnlyList<int>> CrossesByBin,
-    MissingPolicy MissingPolicy,
+    int? MissingFormalAttributeId,
     UnknownValuePolicy UnknownValuePolicy);

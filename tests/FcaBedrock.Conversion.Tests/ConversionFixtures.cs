@@ -41,15 +41,27 @@ internal static class ConversionFixtures
         Nominal(name, index, UnknownValuePolicy.Warn, domain);
 
     public static AttributeSpec Nominal(string name, int index, UnknownValuePolicy policy, params string[] domain) =>
+        Nominal(name, index, policy, MissingPolicy.Skip, domain);
+
+    public static AttributeSpec Nominal(string name, int index, UnknownValuePolicy policy, MissingPolicy missing, params string[] domain) =>
         new(name, new ColumnSource(index, SourceValueType.String), Include: true, new IdentityDiscretizer(), new NominalScale(),
-            domain, RestrictTo: [], NoLabels, MissingPolicy.Skip, policy);
+            domain, RestrictTo: [], NoLabels, missing, policy);
+
+    public static AttributeSpec Dichotomic(
+        string name, int index, string trueValue, IReadOnlyList<string> domain,
+        MissingPolicy missing = MissingPolicy.Skip) =>
+        new(name, new ColumnSource(index, SourceValueType.String), Include: true, new IdentityDiscretizer(), new DichotomicScale(trueValue),
+            domain, RestrictTo: [], NoLabels, missing, UnknownValuePolicy.Warn);
 
     // A numeric manual_cuts attribute (open ends, nominal) with a configurable unknown-value
     // policy — for exercising the malformed-numeric path (§11.5 / D-050).
     public static AttributeSpec NumericCuts(string name, int index, UnknownValuePolicy policy, params double[] cuts) =>
+        NumericCuts(name, index, policy, MissingPolicy.Skip, cuts);
+
+    public static AttributeSpec NumericCuts(string name, int index, UnknownValuePolicy policy, MissingPolicy missing, params double[] cuts) =>
         new(name, new ColumnSource(index, SourceValueType.Number), Include: true,
             ManualCutsDiscretizer.Create(cuts, BinEnds.Open, CultureInfo.InvariantCulture).Value!,
-            new NominalScale(), DeclaredDomain: [], RestrictTo: [], NoLabels, MissingPolicy.Skip, policy);
+            new NominalScale(), DeclaredDomain: [], RestrictTo: [], NoLabels, missing, policy);
 
     // An ordered_cuts attribute (open ends, nominal) over a category order with one cut.
     public static AttributeSpec OrderedCuts(string name, int index, IReadOnlyList<string> order, string cut) =>

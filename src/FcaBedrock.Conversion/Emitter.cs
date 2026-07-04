@@ -67,7 +67,12 @@ public static class Emitter
         var raw = record.Field(attribute.SourceColumnIndex);
         if (raw is null)
         {
-            return; // missing → skip (slice 1 default; missing_policy = as_attribute lands later)
+            if (attribute.MissingFormalAttributeId is { } missingId)
+            {
+                crossed.Add(missingId); // §10.5 missing_policy = "as_attribute" (D-068)
+            }
+
+            return; // skip (null id): no cross, no diagnostic
         }
 
         var result = attribute.Discretizer.Discretize(raw);

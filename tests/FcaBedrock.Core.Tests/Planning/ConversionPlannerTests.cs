@@ -226,6 +226,92 @@ public sealed class ConversionPlannerTests
     }
 
     [Fact]
+    public void Plan_WhenNominalAsAttribute_ThenMissingAttributeAppendedAfterValueBins()
+    {
+        // §10.5 / D-068: nominal + as_attribute → one extra column after the value
+        // bins, canonical identity (name, scale, "missing", "") (§14).
+        var spec = new BedrockSpec(SpecFixtures.WideRowIndex(),
+            [SpecFixtures.Nominal("a", 0, ["x", "y"], missing: MissingPolicy.AsAttribute)]);
+
+        Assert.True(ConversionPlanner.Plan(spec, new SourceSchema(1)).TryGetValue(out var plan));
+
+        Assert.Equal(["a-x", "a-y", "a-missing"], plan.FormalAttributes.Select(f => f.RenderedName));
+        Assert.Equal(new FormalAttributeIdentity("a", "nominal", "missing", ""), plan.FormalAttributes[2].Identity);
+        var planned = Assert.Single(plan.Attributes);
+        Assert.Equal(2, planned.MissingFormalAttributeId);
+        Assert.All(planned.CrossesByBin.Values, ids => Assert.DoesNotContain(2, ids)); // no bin crosses it
+    }
+
+    [Fact]
+    public void Plan_WhenDichotomicAsAttribute_ThenMissingIsSecondColumn()
+    {
+        // §10.5 / §12.2: true_value crosses when present, missing crosses when absent.
+        var spec = new BedrockSpec(SpecFixtures.WideRowIndex(),
+            [SpecFixtures.Dichotomic("bruises?", 0, "t", ["t", "f"], missing: MissingPolicy.AsAttribute)]);
+
+        Assert.True(ConversionPlanner.Plan(spec, new SourceSchema(1)).TryGetValue(out var plan));
+
+        Assert.Equal(["bruises?", "bruises?-missing"], plan.FormalAttributes.Select(f => f.RenderedName));
+        Assert.Equal(1, Assert.Single(plan.Attributes).MissingFormalAttributeId);
+    }
+
+    [Fact]
+    public void Plan_WhenOrdinalAsAttribute_ThenMissingAttributeAppendedAfterThresholds()
+    {
+        // D-074: the position rule is uniform across scale kinds — the missing
+        // column follows the ordinal threshold columns.
+        var spec = new BedrockSpec(SpecFixtures.WideRowIndex(),
+            [SpecFixtures.NumericCuts("age", 0, [30, 40, 50], new OrdinalScale(OrdinalDirection.Le),
+                missing: MissingPolicy.AsAttribute)]);
+
+        Assert.True(ConversionPlanner.Plan(spec, new SourceSchema(1)).TryGetValue(out var plan));
+
+        Assert.Equal(
+            ["age-<30", "age-<40", "age-<50", "age-all", "age-missing"],
+            plan.FormalAttributes.Select(f => f.RenderedName));
+        Assert.Equal(4, Assert.Single(plan.Attributes).MissingFormalAttributeId);
+    }
+
+    [Fact]
+    public void Plan_WhenAsAttributeOnEarlierAttribute_ThenLaterAttributeIdsFollowMissingColumn()
+    {
+        // §14: the missing column occupies a real slot in the planned list — the
+        // next attribute's formal ids start after it (fingerprint-input ordering).
+        var spec = new BedrockSpec(SpecFixtures.WideRowIndex(),
+        [
+            SpecFixtures.Nominal("a", 0, ["x"], missing: MissingPolicy.AsAttribute),
+            SpecFixtures.Nominal("b", 1, ["z"]),
+        ]);
+
+        Assert.True(ConversionPlanner.Plan(spec, new SourceSchema(2)).TryGetValue(out var plan));
+
+        Assert.Equal(["a-x", "a-missing", "b-z"], plan.FormalAttributes.Select(f => f.RenderedName));
+        Assert.Equal([2], plan.Attributes.Single(a => a.Name == "b").CrossesByBin["z"]);
+    }
+
+    [Fact]
+    public void Plan_WhenDomainContainsLiteralMissingUnderAsAttribute_ThenCollisionDiagnostics()
+    {
+        // §10.7: a real category value "missing" collides with the missing column
+        // in both rendered name and canonical identity; existing machinery reports it.
+        var spec = new BedrockSpec(SpecFixtures.WideRowIndex(),
+            [SpecFixtures.Nominal("a", 0, ["missing"], missing: MissingPolicy.AsAttribute)]);
+
+        var result = ConversionPlanner.Plan(spec, new SourceSchema(1));
+
+        AssertFailsWith(result, DiagnosticCode.FormalAttributeNameCollision);
+        AssertFailsWith(result, DiagnosticCode.FormalAttributeCollision);
+    }
+
+    [Fact]
+    public void Plan_WhenSkip_ThenMissingFormalAttributeIdIsNull()
+    {
+        Assert.True(ConversionPlanner.Plan(SpecFixtures.MiniMushroom(), new SourceSchema(5)).TryGetValue(out var plan));
+
+        Assert.All(plan.Attributes, a => Assert.Null(a.MissingFormalAttributeId));
+    }
+
+    [Fact]
     public void Plan_WhenBindingShapeTriple_ThenReportsTripleSourceNotImplementedV1()
     {
         // D-072: a triple spec is a minimal reject-carrier (D-066); the guard

@@ -34,6 +34,87 @@ public sealed class EmitterTests
     }
 
     [Fact]
+    public async Task EmitAsync_WhenValueMissingUnderAsAttribute_ThenCrossesMissingAttribute()
+    {
+        // §10.5 / D-068: an empty cell is missing → the {column}-missing column crosses.
+        var spec = new BedrockSpec(ConversionFixtures.Wide(hasHeader: false),
+            [ConversionFixtures.Nominal("a", 0, UnknownValuePolicy.Warn, MissingPolicy.AsAttribute, "x", "y")]);
+
+        var (objects, diagnostics) = await RunAsync(spec, ",pad", ConversionFixtures.Wide(hasHeader: false));
+
+        Assert.Empty(diagnostics);
+        Assert.Equal([2], Assert.Single(objects).CrossedFormalAttributeIds); // a-x, a-y, a-missing
+    }
+
+    [Fact]
+    public async Task EmitAsync_WhenMissingTokenMatchUnderAsAttribute_ThenCrossesMissingAttribute()
+    {
+        // The missing_token match is normalized to null by the source (§5.1), so the
+        // as_attribute cross covers both missing forms end-to-end.
+        var spec = new BedrockSpec(ConversionFixtures.Wide(hasHeader: false),
+            [ConversionFixtures.Nominal("a", 0, UnknownValuePolicy.Warn, MissingPolicy.AsAttribute, "x", "y")]);
+
+        var (objects, diagnostics) = await RunAsync(spec, "?", ConversionFixtures.Wide(hasHeader: false));
+
+        Assert.Empty(diagnostics);
+        Assert.Equal([2], Assert.Single(objects).CrossedFormalAttributeIds);
+    }
+
+    [Fact]
+    public async Task EmitAsync_WhenValuePresentUnderAsAttribute_ThenOnlyValueBinCrosses()
+    {
+        var spec = new BedrockSpec(ConversionFixtures.Wide(hasHeader: false),
+            [ConversionFixtures.Nominal("a", 0, UnknownValuePolicy.Warn, MissingPolicy.AsAttribute, "x", "y")]);
+
+        var (objects, _) = await RunAsync(spec, "x", ConversionFixtures.Wide(hasHeader: false));
+
+        Assert.Equal([0], Assert.Single(objects).CrossedFormalAttributeIds); // a-x only, never a-missing
+    }
+
+    [Fact]
+    public async Task EmitAsync_WhenNumericUnparseableUnderAsAttribute_ThenNoMissingCross()
+    {
+        // D-050 boundary: a present-but-unparseable numeric is NOT missing — no
+        // missing cross; it stays a SourceValueUnparseable at the policy's severity.
+        var spec = new BedrockSpec(ConversionFixtures.Wide(hasHeader: false),
+            [ConversionFixtures.NumericCuts("age", 0, UnknownValuePolicy.Warn, MissingPolicy.AsAttribute, 30, 40, 50)]);
+
+        var (objects, diagnostics) = await RunAsync(spec, "abc", ConversionFixtures.Wide(hasHeader: false));
+
+        Assert.Empty(Assert.Single(objects).CrossedFormalAttributeIds);
+        var diagnostic = Assert.Single(diagnostics);
+        Assert.Equal(DiagnosticCode.SourceValueUnparseable, diagnostic.Code);
+    }
+
+    [Fact]
+    public async Task EmitAsync_WhenUnknownValueUnderAsAttribute_ThenNoMissingCross()
+    {
+        // An out-of-domain value is present, not missing (§10.6) — no missing cross.
+        var spec = new BedrockSpec(ConversionFixtures.Wide(hasHeader: false),
+            [ConversionFixtures.Nominal("a", 0, UnknownValuePolicy.Warn, MissingPolicy.AsAttribute, "x", "y")]);
+
+        var (objects, diagnostics) = await RunAsync(spec, "z", ConversionFixtures.Wide(hasHeader: false));
+
+        Assert.Empty(Assert.Single(objects).CrossedFormalAttributeIds);
+        Assert.Contains(diagnostics, d => d.Code == DiagnosticCode.UnknownValueObserved);
+    }
+
+    [Fact]
+    public async Task EmitAsync_WhenDichotomicUnderAsAttribute_ThenFalsePoleNoCrossAndMissingCrosses()
+    {
+        // §12.2: true_value crosses when present, missing crosses when absent; the
+        // false pole is present and crosses nothing.
+        var spec = new BedrockSpec(ConversionFixtures.Wide(hasHeader: false),
+            [ConversionFixtures.Dichotomic("d", 0, "t", ["t", "f"], MissingPolicy.AsAttribute)]);
+
+        var (objects, diagnostics) = await RunAsync(spec, "f\n?", ConversionFixtures.Wide(hasHeader: false));
+
+        Assert.Empty(diagnostics);
+        Assert.Empty(objects[0].CrossedFormalAttributeIds);      // false pole: no cross
+        Assert.Equal([1], objects[1].CrossedFormalAttributeIds); // missing: d-missing
+    }
+
+    [Fact]
     public async Task EmitAsync_WhenValueOutsideDeclaredDomain_ThenWarnsAndCrossesNothing()
     {
         var spec = new BedrockSpec(ConversionFixtures.Wide(hasHeader: false),

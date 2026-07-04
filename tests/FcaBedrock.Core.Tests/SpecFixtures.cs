@@ -18,20 +18,25 @@ internal static class SpecFixtures
         string name,
         int index,
         IReadOnlyList<string> domain,
-        IReadOnlyDictionary<string, string>? valueLabels = null) =>
+        IReadOnlyDictionary<string, string>? valueLabels = null,
+        MissingPolicy missing = MissingPolicy.Skip) =>
         new(name, new ColumnSource(index, SourceValueType.String), Include: true, new IdentityDiscretizer(), new NominalScale(),
-            domain, RestrictTo: [], valueLabels ?? NoLabels, MissingPolicy.Skip, UnknownValuePolicy.Warn);
+            domain, RestrictTo: [], valueLabels ?? NoLabels, missing, UnknownValuePolicy.Warn);
 
-    public static AttributeSpec Dichotomic(string name, int index, string trueValue, IReadOnlyList<string> domain) =>
+    public static AttributeSpec Dichotomic(
+        string name, int index, string trueValue, IReadOnlyList<string> domain,
+        MissingPolicy missing = MissingPolicy.Skip) =>
         new(name, new ColumnSource(index, SourceValueType.String), Include: true, new IdentityDiscretizer(), new DichotomicScale(trueValue),
-            domain, RestrictTo: [], NoLabels, MissingPolicy.Skip, UnknownValuePolicy.Warn);
+            domain, RestrictTo: [], NoLabels, missing, UnknownValuePolicy.Warn);
 
     // Numeric cut discretizer (open ends, invariant parse) paired with any scale —
     // nominal for discrete output, OrdinalScale for progressive.
-    public static AttributeSpec NumericCuts(string name, int index, IReadOnlyList<double> cuts, Scale scale) =>
+    public static AttributeSpec NumericCuts(
+        string name, int index, IReadOnlyList<double> cuts, Scale scale,
+        MissingPolicy missing = MissingPolicy.Skip) =>
         new(name, new ColumnSource(index, SourceValueType.Number), Include: true,
             ManualCutsDiscretizer.Create(cuts, BinEnds.Open, CultureInfo.InvariantCulture).Value!, scale,
-            DeclaredDomain: [], RestrictTo: [], NoLabels, MissingPolicy.Skip, UnknownValuePolicy.Warn);
+            DeclaredDomain: [], RestrictTo: [], NoLabels, missing, UnknownValuePolicy.Warn);
 
     public static AttributeSpec Excluded(string name, int index) =>
         new(name, new ColumnSource(index, SourceValueType.String), Include: false, Discretizer: null, Scale: null,

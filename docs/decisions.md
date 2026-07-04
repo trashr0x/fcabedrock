@@ -125,6 +125,10 @@ superseded or refined. A new entry MUST add its line here.
 - D-071 — Absent/empty `declared_domain`: M2 interim reject until calibrate
 - D-072 — Basic triple TOML carrier in M2; conversion deferred to M3
 
+### M2 implementation (slices)
+
+- D-074 — `as_attribute` missing-column position uniform across scale kinds (appendix to D-068)
+
 Spec-field defaults are recorded in spec §21 items 1–11 (see the final section
 of this file).
 
@@ -1585,6 +1589,32 @@ built; they refine, not reverse, D-009 / D-049 / D-050…D-065.
 - **Affects:** Spec (reader/writer), Core/Conversion (planner guard), Diagnostics;
   spec §5.3 / §16.4; diagnostic `TripleSourceNotImplementedV1` (transitional,
   removed at M3). Refines D-009; the M3 triple audit owns the advanced surface.
+
+### D-074 — `as_attribute` missing-column position uniform across scale kinds (appendix to D-068)
+
+- **Status:** accepted (appends D-068; lands with M2 Slice B)
+- **Date:** 2026-07-04
+- **Decision:** the `{column}-missing` column appends **after the scale's columns
+  for every scale kind** — D-068 named nominal (after the value bins) and
+  dichotomic (the second column); ordinal, reachable in M2 via the string
+  value-bin path (D-047/D-070), follows the same rule: after the threshold
+  columns. Canonical identity is `(name, scale_kind, "missing", "")` (§14); the
+  rendered name is the literal `{column}-missing`, bypassing `value_labels` and
+  label style ("missing" is not a raw value). Emit-time contract:
+  `PlannedAttribute` carries the resolved missing formal-attribute id (null =
+  missing values skip) instead of the policy enum, so the emitter never
+  reinterprets policy; `AttributeSpec.MissingPolicy` remains the policy source
+  for planning and for the Slice E output-fingerprint shared inputs.
+- **Why:** the planner's append branch is scale-agnostic, so ordinal support is
+  free; excluding it would cost a scale-kind special case and leave
+  `ordinal + as_attribute` silently behaving as skip — the exact gap D-068
+  closes — which Slice E would then freeze incorrectly into `schema_fingerprint`.
+- **Rejected:** rejecting `as_attribute` on ordinal scales (extra code plus a
+  transitional diagnostic for a combination that works uniformly); keeping
+  `MissingPolicy` on `PlannedAttribute` alongside the id (two fields with an
+  invariant to keep in sync).
+- **Affects:** Core (`ConversionPlanner`, `PlannedAttribute`), Conversion
+  (`Emitter`); spec §10.5 (ordinal clause). Appends D-068.
 
 ---
 

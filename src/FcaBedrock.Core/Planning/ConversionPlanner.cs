@@ -89,29 +89,9 @@ public static class ConversionPlanner
         var crossesByBin = new Dictionary<string, List<int>>(StringComparer.Ordinal);
         foreach (var shape in scale.BuildShapes(scheme))
         {
-            var id = formalAttributes.Count;
             var name = RenderName(attribute, shape, discretizer, labelStyle);
             var identity = new FormalAttributeIdentity(attribute.Name, scale.Kind, shape.BinKey, shape.ScaleOp);
-
-            if (!idByName.TryAdd(name, id))
-            {
-                diagnostics.Add(new BedrockDiagnostic(
-                    DiagnosticCode.FormalAttributeNameCollision,
-                    DiagnosticSeverity.Error,
-                    $"Formal attribute name '{name}' (from attribute '{attribute.Name}') collides with an earlier one.",
-                    new DiagnosticLocation(AttributeName: attribute.Name)));
-            }
-
-            if (!idByIdentity.TryAdd(identity, id))
-            {
-                diagnostics.Add(new BedrockDiagnostic(
-                    DiagnosticCode.FormalAttributeCollision,
-                    DiagnosticSeverity.Error,
-                    $"Formal attribute identity ({identity.AttributeName}/{identity.Scale}/{identity.BinKey}) collides with an earlier one.",
-                    new DiagnosticLocation(AttributeName: attribute.Name)));
-            }
-
-            formalAttributes.Add(new FormalAttribute(id, name, identity));
+            var id = AddFormalAttribute(name, identity, formalAttributes, idByName, idByIdentity, diagnostics);
 
             foreach (var bin in shape.CrossingBins)
             {
@@ -125,14 +105,58 @@ public static class ConversionPlanner
             }
         }
 
+        // §10.5 / D-068 / D-074: the missing column appends after the scale's columns
+        // (uniformly across scale kinds); its bin key is the literal "missing" with an
+        // empty operator (§14). The rendered name bypasses value_labels and label
+        // style — "missing" is not a raw value.
+        int? missingId = null;
+        if (attribute.MissingPolicy == MissingPolicy.AsAttribute)
+        {
+            var identity = new FormalAttributeIdentity(attribute.Name, scale.Kind, "missing", "");
+            missingId = AddFormalAttribute(
+                $"{attribute.Name}-missing", identity, formalAttributes, idByName, idByIdentity, diagnostics);
+        }
+
         plannedAttributes.Add(new PlannedAttribute(
             attribute.Name,
             columnIndex,
             discretizer,
             knownBins,
             Freeze(crossesByBin),
-            attribute.MissingPolicy,
+            missingId,
             attribute.UnknownValuePolicy));
+    }
+
+    private static int AddFormalAttribute(
+        string name,
+        FormalAttributeIdentity identity,
+        List<FormalAttribute> formalAttributes,
+        Dictionary<string, int> idByName,
+        Dictionary<FormalAttributeIdentity, int> idByIdentity,
+        List<BedrockDiagnostic> diagnostics)
+    {
+        var id = formalAttributes.Count;
+
+        if (!idByName.TryAdd(name, id))
+        {
+            diagnostics.Add(new BedrockDiagnostic(
+                DiagnosticCode.FormalAttributeNameCollision,
+                DiagnosticSeverity.Error,
+                $"Formal attribute name '{name}' (from attribute '{identity.AttributeName}') collides with an earlier one.",
+                new DiagnosticLocation(AttributeName: identity.AttributeName)));
+        }
+
+        if (!idByIdentity.TryAdd(identity, id))
+        {
+            diagnostics.Add(new BedrockDiagnostic(
+                DiagnosticCode.FormalAttributeCollision,
+                DiagnosticSeverity.Error,
+                $"Formal attribute identity ({identity.AttributeName}/{identity.Scale}/{identity.BinKey}) collides with an earlier one.",
+                new DiagnosticLocation(AttributeName: identity.AttributeName)));
+        }
+
+        formalAttributes.Add(new FormalAttribute(id, name, identity));
+        return id;
     }
 
     private static string RenderName(
