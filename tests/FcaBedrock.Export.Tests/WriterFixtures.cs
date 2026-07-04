@@ -1,5 +1,6 @@
 using System.Text;
 using FcaBedrock.Core.Planning;
+using FcaBedrock.Core.Scaling;
 using FcaBedrock.Core.Spec;
 
 namespace FcaBedrock.Export.Tests;
@@ -11,8 +12,8 @@ internal static class WriterFixtures
     public static ConversionPlan TwoColumnPlan() =>
         new(
             [
-                new FormalAttribute(0, "a-x", new FormalAttributeIdentity("a", "nominal", "x", "")),
-                new FormalAttribute(1, "a-y", new FormalAttributeIdentity("a", "nominal", "y", "")),
+                new FormalAttribute(0, "a-x", new FormalAttributeIdentity("a", "nominal", "x", ""), new ValueBin("x")),
+                new FormalAttribute(1, "a-y", new FormalAttributeIdentity("a", "nominal", "y", ""), new ValueBin("y")),
             ],
             [],
             new RowIndexObjectKey());

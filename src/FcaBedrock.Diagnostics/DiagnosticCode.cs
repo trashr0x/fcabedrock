@@ -238,6 +238,30 @@ public enum DiagnosticCode
     /// </summary>
     ObservedDomainCalibrationNotImplementedV1,
 
+    // --- Spec load (stored-fingerprint verification, D-051/D-069/D-077) ---
+
+    /// <summary>
+    /// The stored <c>schema_fingerprint</c> does not match the fingerprint
+    /// recomputed from the resolved plan: the spec's schema changed since it was
+    /// frozen. Warning — the run proceeds; recompute or remove the stored value.
+    /// Spec §3 / §14 / §16.4.
+    /// </summary>
+    SchemaFingerprintStale,
+
+    /// <summary>
+    /// The stored <c>cxt_output_fingerprint</c> does not match the fingerprint
+    /// recomputed from the plan and the spec's <i>native</i> output settings
+    /// (CLI overrides never enter, §14). Warning. Spec §3 / §14 / §16.4.
+    /// </summary>
+    CxtOutputFingerprintStale,
+
+    /// <summary>
+    /// The stored <c>dat_output_fingerprint</c> does not match the fingerprint
+    /// recomputed from the plan and the spec's <i>native</i> output settings.
+    /// Warning. Spec §3 / §14 / §16.4.
+    /// </summary>
+    DatOutputFingerprintStale,
+
     // --- Emit ---
 
     /// <summary>

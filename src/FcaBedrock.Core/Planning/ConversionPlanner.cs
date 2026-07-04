@@ -1,4 +1,5 @@
 using FcaBedrock.Core.Discretization;
+using FcaBedrock.Core.Scaling;
 using FcaBedrock.Core.Spec;
 using FcaBedrock.Diagnostics;
 
@@ -92,7 +93,7 @@ public static class ConversionPlanner
         {
             var name = RenderName(attribute, shape, discretizer, labelStyle);
             var identity = new FormalAttributeIdentity(attribute.Name, scale.Kind, shape.BinKey, shape.ScaleOp);
-            var id = AddFormalAttribute(name, identity, formalAttributes, idByName, idByIdentity, diagnostics);
+            var id = AddFormalAttribute(name, identity, shape.Bin, formalAttributes, idByName, idByIdentity, diagnostics);
 
             foreach (var bin in shape.CrossingBins)
             {
@@ -115,7 +116,7 @@ public static class ConversionPlanner
         {
             var identity = new FormalAttributeIdentity(attribute.Name, scale.Kind, "missing", "");
             missingId = AddFormalAttribute(
-                $"{attribute.Name}-missing", identity, formalAttributes, idByName, idByIdentity, diagnostics);
+                $"{attribute.Name}-missing", identity, new ValueBin("missing"), formalAttributes, idByName, idByIdentity, diagnostics);
         }
 
         plannedAttributes.Add(new PlannedAttribute(
@@ -131,6 +132,7 @@ public static class ConversionPlanner
     private static int AddFormalAttribute(
         string name,
         FormalAttributeIdentity identity,
+        CanonicalBin bin,
         List<FormalAttribute> formalAttributes,
         Dictionary<string, int> idByName,
         Dictionary<FormalAttributeIdentity, int> idByIdentity,
@@ -156,7 +158,7 @@ public static class ConversionPlanner
                 new DiagnosticLocation(AttributeName: identity.AttributeName)));
         }
 
-        formalAttributes.Add(new FormalAttribute(id, name, identity));
+        formalAttributes.Add(new FormalAttribute(id, name, identity, bin));
         return id;
     }
 

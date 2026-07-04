@@ -16,4 +16,6 @@ public sealed record IdentityDiscretizer : Discretizer
     internal override IReadOnlyList<string> BinLabels(IReadOnlyList<string> declaredDomain) => declaredDomain;
 
     internal override bool ConsultsValueLabels => true;
+
+    internal override bool ConsumesDeclaredDomain => true;
 }

@@ -12,9 +12,11 @@ public sealed record NominalScale : Scale
     internal override IReadOnlyList<FormalAttributeShape> BuildShapes(BinScheme bins)
     {
         var shapes = new List<FormalAttributeShape>(bins.Labels.Count);
-        foreach (var bin in bins.Labels)
+        for (var i = 0; i < bins.Labels.Count; i++)
         {
-            shapes.Add(new FormalAttributeShape(ValueLabel: bin, ScaleOp: "", BinKey: bin, CrossingBins: [bin]));
+            var bin = bins.Labels[i];
+            shapes.Add(new FormalAttributeShape(
+                ValueLabel: bin, ScaleOp: "", BinKey: bin, Bin: bins.Bins[i], CrossingBins: [bin]));
         }
 
         return shapes;

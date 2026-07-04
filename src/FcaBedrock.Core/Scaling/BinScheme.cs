@@ -16,10 +16,16 @@ namespace FcaBedrock.Core.Scaling;
 /// labels. An ordinal scale names its thresholds from these, never from the
 /// interval bin labels.
 /// </param>
+/// <param name="Bins">
+/// The structural twin of <paramref name="Labels"/>, index-aligned: each bin's
+/// <see cref="CanonicalBin"/> for the fingerprint encoder (D-069/D-077). Value
+/// bins mirror their label; cut discretizers supply interval structure.
+/// </param>
 /// <param name="OpenLow">The lower end runs to −∞: a <c>ge</c> ordinal's tautological threshold renders <c>all</c>.</param>
 /// <param name="OpenHigh">The upper end runs to +∞: a <c>le</c> ordinal's tautological threshold renders <c>all</c>.</param>
 internal sealed record BinScheme(
     IReadOnlyList<string> Labels,
+    IReadOnlyList<CanonicalBin> Bins,
     IReadOnlyList<string> Thresholds,
     bool OpenLow,
     bool OpenHigh);

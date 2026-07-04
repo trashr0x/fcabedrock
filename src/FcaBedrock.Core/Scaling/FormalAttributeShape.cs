@@ -11,9 +11,11 @@ namespace FcaBedrock.Core.Scaling;
 /// </param>
 /// <param name="ScaleOp">The ordinal operator (e.g. <c>&gt;=</c>); empty otherwise.</param>
 /// <param name="BinKey">The canonical bin/threshold key, for identity and collisions.</param>
+/// <param name="Bin">The structural twin of <paramref name="BinKey"/> (D-069/D-077).</param>
 /// <param name="CrossingBins">The bin labels for which this formal attribute crosses.</param>
 internal sealed record FormalAttributeShape(
     string? ValueLabel,
     string ScaleOp,
     string BinKey,
+    CanonicalBin Bin,
     IReadOnlyList<string> CrossingBins);

@@ -130,6 +130,7 @@ superseded or refined. A new entry MUST add its line here.
 - D-074 — `as_attribute` missing-column position uniform across scale kinds (appendix to D-068)
 - D-075 — Slice C TOML reader/writer contract: strictness, parse codes, canonical form
 - D-076 — Slice D seam/plan validation contract details (appends D-067)
+- D-077 — Slice E fingerprint encoding/verification contract details (appends D-069)
 
 Spec-field defaults are recorded in spec §21 items 1–11 (see the final section
 of this file).
@@ -1754,6 +1755,100 @@ built; they refine, not reverse, D-009 / D-049 / D-050…D-065.
   guards), Diagnostics (the twelve Slice D codes); spec §10.3 / §16.4. Each
   matrix point is locked by a dedicated test in `SpecResolverTests` /
   `ConversionPlannerTests`.
+
+### D-077 — Slice E fingerprint encoding/verification contract details
+
+- **Status:** accepted (appends D-069; realizes D-035/D-051/D-053/D-069 in code)
+- **Date:** 2026-07-05
+- **Decision:** Slice E ships the fingerprint encoder
+  (`FcaBedrock.Core.Fingerprinting`), the plan-side structural bin, and
+  stored-fingerprint verification (`SpecFingerprints`); the residual details
+  D-069 left open are pinned here:
+  - **Hash string:** `"sha256:" + 64 lowercase hex chars` over the canonical
+    UTF-8 (no BOM) bytes. Verification compares the full stored string
+    ordinally; a malformed stored value simply reads as stale (no parse-time
+    format validation).
+  - **Byte rules:** compact JSON (no insignificant whitespace); one escaping
+    rule (`\"`, `\\`, the `\b \t \n \f \r` shorthands, remaining C0 controls as
+    lowercase `\u00xx`, raw UTF-8 otherwise); doubles in invariant shortest
+    round-trippable form, integers invariant decimal; the canonical writer is
+    hand-rolled (`CanonicalJson`), never a JSON library, so the form cannot
+    drift with a library upgrade (the D-075 rationale on a hash contract).
+  - **Cut bins:** always the fixed four-key object
+    `{"hi":…,"hi_open":…,"lo":…,"lo_open":…}`; an unbounded end is `null` plus
+    its `*_open: true` flag. **`lo_open`/`hi_open` mean *unbounded end* (the
+    bin runs to ±∞ on that side), never interval inclusivity** — every bounded
+    cut bin is uniformly half-open `[lo, hi)` (§11.2), so `<30` carries
+    `hi_open: false`. Bounds are JSON numbers for `manual_cuts`, JSON strings
+    for `ordered_cuts`. Non-interval bins stay plain strings: value bins,
+    ordinal thresholds (incl. `all`, D-047), the dichotomic empty key, the
+    missing column's `missing`.
+  - **The plan carries the structure:** `FormalAttribute` gains a public
+    `CanonicalBin` (`ValueBin` / `NumericCutBin` / `TextCutBin`; `null` bound =
+    unbounded), produced by the same planner walk as the identity's `BinKey` —
+    single producer, no string parse-back (P-4 surface, byte-neutral on the M1
+    goldens).
+  - **Vocabulary:** JSON enum spellings are the spec's TOML spellings; label
+    style spells `"native"`/`"v2-compat"`; line endings hash as the
+    `"lf"`/`"crlf"` tokens, never raw control characters. All object keys are
+    fixed ASCII, sorted ordinal.
+  - **`shared` content (M2):** binding = `{delimiter, encoding, has_header,
+    locale, missing_token, object_key, quote_char, shape}`, with `encoding`
+    the constant `"utf-8"` until M3 models encoding in Core (UTF-8 specs keep
+    their hash when it lands); attributes = **included attributes only**, spec
+    order, each `{declared_domain, discretizer, missing_policy, name, scale,
+    source, unknown_value_policy}`. `declared_domain` is the **effective**
+    domain (`Discretizer.ConsumesDeclaredDomain`): cut discretizers hash `[]`,
+    so an inert authored domain never moves an output fingerprint (§10.3, the
+    D-049 parked-config discipline). `manual_cuts.Culture` is not encoded — it
+    *is* `binding.locale`, and double-counting is the mistake D-035 removed.
+    `restrict_to` is absent until executable (§14); M4 adds it
+    present-only-when-non-empty, so restrict_to-free specs keep their hashes,
+    and filter-only attributes join through that same route.
+  - **`cxt`/`dat` content:** per D-069 (`bin_label_unicode` + `label_style` +
+    `line_endings` + `rendered_names` + `trailing_newline`; `base_index` +
+    `empty_line_trailing_space` + `line_endings` +
+    `nonempty_line_trailing_space`). **`size_advisory_bytes` is not an input**
+    — it changes a warning, never output bytes; §3's byte-affecting definition
+    wins over §8's blanket sentence (clarified there). `bin_label_unicode`
+    hashes the resolved flag although Unicode rendering is not built yet: when
+    rendering lands, rendered names change and the stale warning fires — the
+    mechanism working as designed.
+  - **Pairing precondition:** `ComputeCxtOutputFingerprint`'s `LabelStyle`
+    input must be the style the plan was produced with (rendered names bake it
+    in); `SpecFingerprints.ComputeNative` guarantees the Native/Native pairing
+    (v2-compat is a CLI override, D-011); the M7 effective path pairs
+    V2Compat/V2Compat.
+  - **Verification:** defined over a successful plan only (a failed
+    resolve/plan already fails the run). Absent stored field → silent (§3
+    optional); match → silent (no "verified" noise, P-3); mismatch → its own
+    Warning (`SchemaFingerprintStale` / `CxtOutputFingerprintStale` /
+    `DatOutputFingerprintStale`, phase "spec load"); all stale fields co-fire
+    (the D-076 stance). No production call site is added — tests call it now
+    and M7's CLI is the real caller (the D-067 pattern). *Writing* stored
+    fingerprints and enforcing the §14 fully-frozen gate are M7 tooling.
+- **Why:** the first stored hash fossilizes the encoder's bytes, so every
+  residual freedom — compactness, escaping, the unbounded-end encoding, the key
+  vocabulary, the exact `shared` key set — had to be pinned and golden-locked
+  before any spec ships with a stored value (P-11, D-069). The locks: the
+  hand-authored canonical-JSON goldens plus a hard SHA-256 vector
+  (`FingerprintCalculatorTests`), the roadmap 30/30.0/3e1 TOML golden, and the
+  §19.1/§19.2 end-to-end baselines (`SpecFingerprintsTests`).
+- **Rejected:** renaming `lo_open`/`hi_open` to `*_unbounded` (amends D-069's
+  pinned field names for a readability gain the definition here provides —
+  review-settled); omitting the `lo`/`hi` key on unbounded ends (a conditional
+  shape; the fixed four-key object is the literal D-069 reading); hashing the
+  authored `declared_domain` under cut discretizers (an inert edit would move
+  output fingerprints); a `System.Text.Json` writer (library-version drift on
+  a durable hash contract); raw line-ending characters in the canonical bytes
+  (escape noise; the token names are the spec's own vocabulary).
+- **Affects:** Core (`CanonicalBin` + leaves, `FormalAttribute.Bin`,
+  `BinScheme.Bins`, `FormalAttributeShape.Bin`, discretizer
+  `DescribeBins`/`ConsumesDeclaredDomain`, new `Fingerprinting` namespace:
+  `FingerprintCalculator`, `CanonicalJson`, `CxtFingerprintInputs`,
+  `DatFingerprintInputs`, `LineEnding`), Spec (`SpecFingerprints`,
+  `ComputedFingerprints`), Diagnostics (the three stale codes); spec §3 / §8 /
+  §14. Appends D-069; byte-neutral on the M1 goldens.
 
 ---
 

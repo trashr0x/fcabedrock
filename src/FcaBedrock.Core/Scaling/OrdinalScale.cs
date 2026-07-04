@@ -40,7 +40,8 @@ public sealed record OrdinalScale(
         for (var i = 0; i < bins.Thresholds.Count; i++)
         {
             var cut = bins.Thresholds[i];
-            shapes.Add(new FormalAttributeShape(cut, ScaleOp: "<", BinKey: cut, CrossingBins: [.. bins.Labels.Take(i + 1)]));
+            shapes.Add(new FormalAttributeShape(
+                cut, ScaleOp: "<", BinKey: cut, Bin: new ValueBin(cut), CrossingBins: [.. bins.Labels.Take(i + 1)]));
         }
 
         if (bins.OpenHigh && !DropTop)
@@ -65,12 +66,14 @@ public sealed record OrdinalScale(
         {
             var cut = bins.Thresholds[i];
             var fromBin = bins.OpenLow ? i + 1 : i; // the open-bottom bin sits before the first cut
-            shapes.Add(new FormalAttributeShape(cut, ScaleOp: ">=", BinKey: cut, CrossingBins: [.. bins.Labels.Skip(fromBin)]));
+            shapes.Add(new FormalAttributeShape(
+                cut, ScaleOp: ">=", BinKey: cut, Bin: new ValueBin(cut), CrossingBins: [.. bins.Labels.Skip(fromBin)]));
         }
 
         return shapes;
     }
 
     private static FormalAttributeShape OpenEnd(IReadOnlyList<string> labels) =>
-        new(ValueLabel: OpenEndLabel, ScaleOp: "", BinKey: OpenEndLabel, CrossingBins: [.. labels]);
+        new(ValueLabel: OpenEndLabel, ScaleOp: "", BinKey: OpenEndLabel, Bin: new ValueBin(OpenEndLabel),
+            CrossingBins: [.. labels]);
 }

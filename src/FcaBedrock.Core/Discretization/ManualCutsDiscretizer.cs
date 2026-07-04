@@ -30,6 +30,7 @@ public sealed record ManualCutsDiscretizer : Discretizer
 
     private readonly IReadOnlyList<string> _cutLabels;
     private readonly IReadOnlyList<string> _binLabels;
+    private readonly IReadOnlyList<CanonicalBin> _structuralBins;
 
     private ManualCutsDiscretizer(IReadOnlyList<double> cuts, BinEnds ends, CultureInfo culture)
     {
@@ -40,6 +41,7 @@ public sealed record ManualCutsDiscretizer : Discretizer
         Culture = culture;
         _cutLabels = [.. Cuts.Select(FormatCut)];
         _binLabels = CutBinLabels.Build(_cutLabels, ends);
+        _structuralBins = BuildStructuralBins(Cuts, ends);
     }
 
     /// <summary>
@@ -77,7 +79,7 @@ public sealed record ManualCutsDiscretizer : Discretizer
     internal override IReadOnlyList<string> BinLabels(IReadOnlyList<string> declaredDomain) => _binLabels;
 
     internal override BinScheme DescribeBins(IReadOnlyList<string> declaredDomain) =>
-        new(_binLabels, _cutLabels, OpenLow: Ends == BinEnds.Open, OpenHigh: Ends == BinEnds.Open);
+        new(_binLabels, _structuralBins, _cutLabels, OpenLow: Ends == BinEnds.Open, OpenHigh: Ends == BinEnds.Open);
 
     internal override string RenderBinLabel(string canonicalLabel, LabelStyle style) =>
         CutBinLabels.Render(canonicalLabel, style);
@@ -97,4 +99,28 @@ public sealed record ManualCutsDiscretizer : Discretizer
     }
 
     private static string FormatCut(double cut) => cut.ToString(CultureInfo.InvariantCulture);
+
+    // Index-aligned with CutBinLabels.Build: open ends add the two unbounded outer
+    // bins around the interiors; closed ends keep interiors only. A null bound is
+    // the unbounded (±∞) end — never interval inclusivity (D-077).
+    private static IReadOnlyList<CanonicalBin> BuildStructuralBins(IReadOnlyList<double> cuts, BinEnds ends)
+    {
+        var bins = new List<CanonicalBin>(cuts.Count + 1);
+        if (ends == BinEnds.Open)
+        {
+            bins.Add(new NumericCutBin(Lo: null, Hi: cuts[0]));
+        }
+
+        for (var i = 0; i + 1 < cuts.Count; i++)
+        {
+            bins.Add(new NumericCutBin(cuts[i], cuts[i + 1]));
+        }
+
+        if (ends == BinEnds.Open)
+        {
+            bins.Add(new NumericCutBin(Lo: cuts[^1], Hi: null));
+        }
+
+        return bins;
+    }
 }

@@ -29,6 +29,7 @@ public sealed record OrderedCutsDiscretizer : Discretizer
     public BinEnds Ends { get; }
 
     private readonly IReadOnlyList<string> _binLabels;
+    private readonly IReadOnlyList<CanonicalBin> _structuralBins;
     private readonly int[] _cutPositions;
     private readonly Dictionary<string, int> _positionByValue;
 
@@ -40,6 +41,7 @@ public sealed record OrderedCutsDiscretizer : Discretizer
         Cuts = [.. cuts];
         Ends = ends;
         _binLabels = CutBinLabels.Build(Cuts, ends);
+        _structuralBins = BuildStructuralBins(Cuts, ends);
         _positionByValue = IndexPositions(Order);
         _cutPositions = [.. Cuts.Select(cut => PositionOf(Order, cut))];
     }
@@ -77,7 +79,7 @@ public sealed record OrderedCutsDiscretizer : Discretizer
     internal override IReadOnlyList<string> BinLabels(IReadOnlyList<string> declaredDomain) => _binLabels;
 
     internal override BinScheme DescribeBins(IReadOnlyList<string> declaredDomain) =>
-        new(_binLabels, Cuts, OpenLow: Ends == BinEnds.Open, OpenHigh: Ends == BinEnds.Open);
+        new(_binLabels, _structuralBins, Cuts, OpenLow: Ends == BinEnds.Open, OpenHigh: Ends == BinEnds.Open);
 
     internal override string RenderBinLabel(string canonicalLabel, LabelStyle style) =>
         CutBinLabels.Render(canonicalLabel, style);
@@ -109,6 +111,30 @@ public sealed record OrderedCutsDiscretizer : Discretizer
         // Internal invariant: Create validates cuts ⊆ order before constructing, so the
         // private ctor never reaches here; a violation is a bug (OrderedCutsCutNotInDomain).
         throw new ArgumentException($"ordered_cuts cut '{value}' is not a member of order.", nameof(value));
+    }
+
+    // Index-aligned with CutBinLabels.Build, exactly as in ManualCutsDiscretizer but
+    // with the cut category strings as bounds. A null bound is the unbounded end —
+    // never interval inclusivity (D-077).
+    private static IReadOnlyList<CanonicalBin> BuildStructuralBins(IReadOnlyList<string> cuts, BinEnds ends)
+    {
+        var bins = new List<CanonicalBin>(cuts.Count + 1);
+        if (ends == BinEnds.Open)
+        {
+            bins.Add(new TextCutBin(Lo: null, Hi: cuts[0]));
+        }
+
+        for (var i = 0; i + 1 < cuts.Count; i++)
+        {
+            bins.Add(new TextCutBin(cuts[i], cuts[i + 1]));
+        }
+
+        if (ends == BinEnds.Open)
+        {
+            bins.Add(new TextCutBin(Lo: cuts[^1], Hi: null));
+        }
+
+        return bins;
     }
 
     private static Dictionary<string, int> IndexPositions(IReadOnlyList<string> order)

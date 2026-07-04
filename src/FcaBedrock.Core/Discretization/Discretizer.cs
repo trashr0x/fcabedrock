@@ -36,7 +36,12 @@ public abstract record Discretizer
     internal virtual BinScheme DescribeBins(IReadOnlyList<string> declaredDomain)
     {
         var labels = BinLabels(declaredDomain);
-        return new BinScheme(labels, labels, OpenLow: false, OpenHigh: false);
+        return new BinScheme(
+            labels,
+            [.. labels.Select(CanonicalBin (label) => new ValueBin(label))],
+            labels,
+            OpenLow: false,
+            OpenHigh: false);
     }
 
     /// <summary>
@@ -55,4 +60,13 @@ public abstract record Discretizer
     /// rendering, never an error (D-049). The single authority for that rule.
     /// </summary>
     internal virtual bool ConsultsValueLabels => false;
+
+    /// <summary>
+    /// Whether <see cref="BinLabels"/> reads the declared domain — true only for
+    /// value-bin discretizers whose bin universe IS the domain (<c>identity</c>;
+    /// <c>free_per_value</c> at M4). Cut discretizers ignore it (§10.3). The
+    /// single authority for the fingerprint's effective-domain gate: an inert
+    /// authored domain must not perturb output fingerprints (D-077).
+    /// </summary>
+    internal virtual bool ConsumesDeclaredDomain => false;
 }

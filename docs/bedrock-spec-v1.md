@@ -423,7 +423,9 @@ error. (Population-relative calibration — quantiles over only the surviving ob
 Output-formatting options. All optional with sensible defaults. They feed the
 per-format output fingerprints (§14) — `[output.cxt]` and `bin_label_unicode` →
 `cxt_output_fingerprint`; `[output.dat]` → `dat_output_fingerprint` — and none
-feeds `schema_fingerprint`.
+feeds `schema_fingerprint`. The one exception is `size_advisory_bytes`: it
+changes a warning, never output bytes, so it is not a fingerprint input
+(D-077).
 
 ```toml
 [output]
@@ -1403,7 +1405,12 @@ rule; and numbers are the **parsed** numeric value reformatted with invariant,
 shortest round-trippable .NET formatting, so `30`, `30.0`, and `3e1` hash
 identically and a cut never renders as `34.250000001` on one machine and `34.25`
 on another. Cut-bin open ends are encoded as **structural flags**, not as `∞`
-strings.
+strings: the cut-bin object's `lo_open`/`hi_open` booleans mean **unbounded
+end** — the bin runs to ±∞ on that side — never interval inclusivity, since
+every bounded cut bin is uniformly half-open `[lo, hi)` (§11.2); `<30`
+therefore carries `hi_open = false`. A fingerprint value is the string
+`sha256:` followed by 64 lowercase hex characters of the SHA-256 over the
+canonical UTF-8 bytes (D-077).
 
 **Stored only for fully-frozen specs.** Tooling writes the stored fingerprints
 only when the spec is fully determined by its own text — no observed-domain
@@ -1425,8 +1432,10 @@ spec-stored values. On load, each spec-stored fingerprint is verified against th
 spec's *native* settings only: a mismatch there is a real warning
 (`SchemaFingerprintStale` / `CxtOutputFingerprintStale` /
 `DatOutputFingerprintStale`); a difference between the spec-stored and manifest
-fingerprints under `--v2-compat` is expected, not an error. The
-`schema_fingerprint` is unaffected by output-only CLI overrides.
+fingerprints under `--v2-compat` is expected, not an error. Verification is
+defined where a plan is computable — the resolved spec planned with its native
+settings; a spec that fails resolve or plan reports those failures instead
+(D-077). The `schema_fingerprint` is unaffected by output-only CLI overrides.
 
 ## 15. Run manifest
 

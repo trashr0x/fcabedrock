@@ -25,18 +25,24 @@ vertical slices, not waterfall phases — each should leave the system working.
 > split → `as_attribute` → reader/writer → validation → fingerprints →
 > `extends`/triple → migrator).
 >
-> **Slices A–D have landed:** the presence-tracked document model +
+> **Slices A–E have landed:** the presence-tracked document model +
 > resolve/validate seam (D-066/D-067), `missing_policy = "as_attribute"`
 > (D-068/D-074), the TOML reader/writer (D-075) — strict CST reader with
 > the D-070 kind gates and the closed deferred-surface set, canonical writer,
 > D-010 deferred scales rejecting at plan, round-trip + §19 read→resolve
-> parity tests — and Slice D validation (D-076): the §16.4 spec-validate
+> parity tests — Slice D validation (D-076): the §16.4 spec-validate
 > checks now emit at the seam (quote/delimiter D-054, the `value_type` matrix
 > D-061, `restrict_to` shape D-063, ordinal-over-cuts D-060, object-key
 > mode-vs-shape D-064) and the transitional plan guards fail closed
 > (`restrict_to` D-057, wide `column`/`composite` object keys D-064,
-> absent-domain `identity` D-071). `dotnet test` is green (405 tests).
-> Next: Slice E (fingerprints, D-069).
+> absent-domain `identity` D-071) — and Slice E fingerprints (D-069/D-077):
+> the D-069 canonical JSON encoder + SHA-256 in Core (structural cut bins on
+> the plan, byte-neutral on the M1 goldens), native-settings computation +
+> stored-fingerprint verification in Spec (`SchemaFingerprintStale` /
+> `CxtOutputFingerprintStale` / `DatOutputFingerprintStale` at spec load), the
+> canonical-stability goldens, and the 30/30.0/3e1 numeric golden.
+> `dotnet test` is green (441 tests).
+> Next: Slice F (`extends`/triple, D-027/D-052).
 
 ## Milestones
 
