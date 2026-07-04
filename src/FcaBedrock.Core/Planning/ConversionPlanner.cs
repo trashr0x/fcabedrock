@@ -50,7 +50,8 @@ public static class ConversionPlanner
         {
             if (!attribute.Include)
             {
-                continue; // slice 1: excluded attributes contribute nothing (restrictions land later)
+                continue; // excluded attributes contribute nothing; their restrict_to
+                          // is guarded in ValidateStatic until execution lands at M4
             }
 
             PlanAttribute(attribute, schema, labelStyle, formalAttributes, plannedAttributes, idByName, idByIdentity, diagnostics);
@@ -203,6 +204,8 @@ public static class ConversionPlanner
 
     private static void ValidateStatic(BedrockSpec spec, List<BedrockDiagnostic> diagnostics)
     {
+        ValidateObjectKey(spec.Binding.ObjectKey, diagnostics);
+
         var seenNames = new HashSet<string>(StringComparer.Ordinal);
         foreach (var attribute in spec.Attributes)
         {
@@ -215,11 +218,24 @@ public static class ConversionPlanner
                     new DiagnosticLocation(AttributeName: attribute.Name)));
             }
 
+            // §10.4 / D-057: restrict_to filters whether or not the attribute is
+            // included (filter-only pattern), so the transitional reject sits
+            // before the include-skip — silently ignoring it would emit
+            // unfiltered output. Removed when execution lands at M4.
+            if (attribute.RestrictTo.Count > 0)
+            {
+                diagnostics.Add(new BedrockDiagnostic(
+                    DiagnosticCode.RestrictToNotImplementedV1,
+                    DiagnosticSeverity.Error,
+                    $"Attribute '{attribute.Name}' carries restrict_to, whose execution is not implemented in this milestone (planned for M4, §10.4).",
+                    new DiagnosticLocation(AttributeName: attribute.Name)));
+            }
+
             if (!attribute.Include)
             {
                 // §10.9 / D-049: include = false is an authoring toggle. Any emitted
                 // config the attribute retains is parked — ignored here, never an
-                // error. (restrict_to still applies; that lands in a later slice.)
+                // error. (restrict_to stays live and is guarded above.)
                 continue;
             }
 
@@ -234,7 +250,49 @@ public static class ConversionPlanner
                     new DiagnosticLocation(AttributeName: attribute.Name)));
             }
 
+            // §10.3 / D-071: an absent domain (omitted or authored []) on the
+            // value-bin discretizer needs the observed-domain calibration the
+            // pipeline does not build yet; planning it would emit an empty or
+            // data-order-dependent schema. Blanket across scales — dichotomic
+            // included, since every observed value would be "unknown" and the
+            // column would never cross (D-076). Cut discretizers ignore the
+            // domain (§10.3) and are unaffected. Removed when calibration lands.
+            if (attribute.Discretizer is IdentityDiscretizer && attribute.DeclaredDomain.Count == 0)
+            {
+                diagnostics.Add(new BedrockDiagnostic(
+                    DiagnosticCode.ObservedDomainCalibrationNotImplementedV1,
+                    DiagnosticSeverity.Error,
+                    $"Attribute '{attribute.Name}' has no declared_domain; observed-domain calibration is not implemented in this milestone — declare the domain explicitly (§10.3).",
+                    new DiagnosticLocation(AttributeName: attribute.Name)));
+            }
+
             ValidateValueLabels(attribute, diagnostics);
+        }
+    }
+
+    // §5.4 / D-064: object-key modes the v1 planner cannot execute are refused
+    // rather than silently falling back to row index. The shape is Wide by
+    // construction — the triple guard at the top of Plan precedes this check.
+    private static void ValidateObjectKey(ObjectKey objectKey, List<BedrockDiagnostic> diagnostics)
+    {
+        switch (objectKey)
+        {
+            case CompositeObjectKey:
+                // Permanent v1 reservation (D-024): composite keys are v1.1.
+                diagnostics.Add(new BedrockDiagnostic(
+                    DiagnosticCode.ObjectKeyCompositeNotImplementedV1,
+                    DiagnosticSeverity.Fatal,
+                    "Composite object keys are not implemented in v1 (§5.4/§20)."));
+                break;
+
+            case ColumnObjectKey:
+                // Transitional (D-064): wide column keys execute at M3, with the
+                // triple subject-derived key machinery.
+                diagnostics.Add(new BedrockDiagnostic(
+                    DiagnosticCode.ObjectKeyColumnNotImplementedV1,
+                    DiagnosticSeverity.Error,
+                    "Wide column object keys are not implemented in this milestone (planned for M3, §5.4)."));
+                break;
         }
     }
 

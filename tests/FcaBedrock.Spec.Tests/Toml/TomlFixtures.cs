@@ -150,7 +150,9 @@ internal static class TomlFixtures
     /// non-standard quote_char (a carrier, D-054), mixed restrict_to (D-057), an
     /// authored-empty declared_domain (D-071), as_attribute (D-068), an
     /// authored-equals-default value, a value-bin ordinal with order, a deferred
-    /// scale carrier (D-010), and a parked attribute (D-049).
+    /// scale carrier (D-010), and a parked attribute (D-049). A read/round-trip
+    /// exhibit only: several of these carriers deliberately fail the Slice D
+    /// seam/plan validation (D-076), so never assert a clean resolve over it.
     /// </summary>
     public const string KitchenSink = """
         [spec]

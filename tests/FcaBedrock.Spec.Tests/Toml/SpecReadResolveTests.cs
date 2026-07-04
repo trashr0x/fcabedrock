@@ -76,6 +76,46 @@ public sealed class SpecReadResolveTests
     }
 
     [Fact]
+    public void ReadResolve_WhenBoundaryInheritedFromDefaultsOverCuts_ThenResolvesClean()
+    {
+        // D-060(c) end-to-end: the reader's presence tracking (Boundary stays null
+        // on the scale section) is what lets the seam treat a [defaults]-inherited
+        // straddling boundary as defaulted — it never trips the cut-bin check.
+        var toml =
+            "[spec]\nversion = 1\n[binding]\nshape = \"wide\"\n" +
+            "[defaults]\nordinal_boundary = \"strict\"\n" +
+            "[[attribute]]\nname = \"age\"\nsource = { kind = \"column\", index = 0 }\n" +
+            "discretizer = { kind = \"manual_cuts\", cuts = [30, 40] }\n" +
+            "scale = { kind = \"ordinal\", direction = \"ge\" }\n";
+
+        var spec = ResolveOk(toml, new SourceSchema(1));
+
+        var scale = Assert.IsType<OrdinalScale>(spec.Attributes[0].Scale);
+        Assert.Equal(OrdinalDirection.Ge, scale.Direction);
+        Assert.Equal(OrdinalBoundary.Strict, scale.Boundary); // filled, but defaulted — inert over cuts
+    }
+
+    [Fact]
+    public void ReadResolve_WhenBoundaryAuthoredStraddlingOverCuts_ThenFailsAtResolve()
+    {
+        // D-060(b): the same combination authored per-attribute is rejected at the
+        // seam — spec validate, not plan.
+        var toml =
+            "[spec]\nversion = 1\n[binding]\nshape = \"wide\"\n" +
+            "[[attribute]]\nname = \"age\"\nsource = { kind = \"column\", index = 0 }\n" +
+            "discretizer = { kind = \"manual_cuts\", cuts = [30, 40] }\n" +
+            "scale = { kind = \"ordinal\", direction = \"ge\", boundary = \"strict\" }\n";
+
+        var read = SpecReader.Read(toml);
+        Assert.True(read.TryGetValue(out var document));
+
+        var resolved = SpecResolver.Resolve(document, new SourceSchema(1));
+
+        Assert.False(resolved.TryGetValue(out _));
+        Assert.Contains(resolved.Diagnostics, d => d.Code == DiagnosticCode.OrdinalBoundaryIncompatibleWithCuts);
+    }
+
+    [Fact]
     public void ReadResolve_WhenDeferredDiscretizerKind_ThenReadFailsBeforeResolve()
     {
         // D-070: no carrier exists, so the pipeline stops at read — there is no

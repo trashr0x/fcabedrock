@@ -20,11 +20,12 @@ internal static class DocumentFixtures
 
     public static BindingSection WideBinding(
         char? delimiter = null,
+        char? quoteChar = null,
         bool? hasHeader = null,
         string? locale = null,
         string? missingToken = null,
         ObjectKeySection? objectKey = null) =>
-        new(SourceShape.Wide, Encoding: null, delimiter, QuoteChar: null, hasHeader, locale, missingToken,
+        new(SourceShape.Wide, Encoding: null, delimiter, quoteChar, hasHeader, locale, missingToken,
             Ordering: null, Columns: null, objectKey);
 
     public static BindingSection TripleBinding(TripleColumnsSection? columns = null) =>

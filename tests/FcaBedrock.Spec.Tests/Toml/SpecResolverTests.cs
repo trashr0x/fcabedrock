@@ -86,17 +86,19 @@ public sealed class SpecResolverTests
     }
 
     [Fact]
-    public void Resolve_WhenValueTypeAuthored_ThenAuthoredWinsOverDiscretizerDefault()
+    public void Resolve_WhenValueTypeAuthoredOnExcludedAttribute_ThenAuthoredWinsOverParkedDiscretizerDefault()
     {
-        // The compatibility matrix (SourceValueTypeInvalid, D-061) is the validation
-        // slice; here the authored value simply wins.
+        // D-049/D-076: the D-061 matrix fires for included attributes only, so the
+        // one legal authored-≠-derived pairing is on a parked attribute — where the
+        // authored source type still wins over the parked discretizer's default.
         var document = DocumentFixtures.Document(
             [DocumentFixtures.Attribute("a", DocumentFixtures.Column(0, SourceValueType.String),
-                discretizer: Discretizer("manual_cuts"), scale: new NominalScaleSection())]);
+                include: false, discretizer: Discretizer("manual_cuts"), scale: new NominalScaleSection())]);
 
         var result = SpecResolver.Resolve(document);
 
         Assert.True(result.TryGetValue(out var spec));
+        Assert.Empty(result.Diagnostics);
         Assert.Equal(SourceValueType.String, Assert.IsType<ColumnSource>(Assert.Single(spec.Attributes).Source).ValueType);
     }
 
@@ -238,13 +240,29 @@ public sealed class SpecResolverTests
     }
 
     [Fact]
-    public void Resolve_WhenRestrictToAuthored_ThenCarriedIntoCore()
+    public void Resolve_WhenRestrictToStringsOnStringSource_ThenCarriedIntoCore()
     {
-        // D-057: carried as an inert resolved carrier; plan-phase reject is Slice D.
-        IReadOnlyList<RestrictToEntry> restrict = [new RestrictToValue("a"), new RestrictToRange(1, To: null)];
+        // D-057: carried as an inert resolved carrier; execution deferral is the
+        // plan-phase reject (RestrictToNotImplementedV1). Entries must match the
+        // attribute's single value_type (D-063), so each carrier test is same-typed.
+        IReadOnlyList<RestrictToEntry> restrict = [new RestrictToValue("a"), new RestrictToValue("b")];
         var document = DocumentFixtures.Document(
             [DocumentFixtures.Attribute("x", DocumentFixtures.Column(0),
-                discretizer: Discretizer("identity"), scale: new NominalScaleSection(), restrictTo: restrict)]);
+                discretizer: Discretizer("identity"), scale: new NominalScaleSection(),
+                declaredDomain: ["a", "b"], restrictTo: restrict)]);
+
+        Assert.True(SpecResolver.Resolve(document).TryGetValue(out var spec));
+
+        Assert.Equal(restrict, Assert.Single(spec.Attributes).RestrictTo);
+    }
+
+    [Fact]
+    public void Resolve_WhenRestrictToRangesOnNumberSource_ThenCarriedIntoCore()
+    {
+        IReadOnlyList<RestrictToEntry> restrict = [new RestrictToRange(1, To: null), new RestrictToRange(null, 5)];
+        var document = DocumentFixtures.Document(
+            [DocumentFixtures.Attribute("x", DocumentFixtures.Column(0),
+                discretizer: Discretizer("manual_cuts"), scale: new NominalScaleSection(), restrictTo: restrict)]);
 
         Assert.True(SpecResolver.Resolve(document).TryGetValue(out var spec));
 
@@ -438,6 +456,357 @@ public sealed class SpecResolverTests
         Assert.Contains(result.Diagnostics, d => d.Code == DiagnosticCode.AttributeNameMissing);
         Assert.Contains(result.Diagnostics, d => d.Code == DiagnosticCode.AttributeScalingMissing);
         Assert.Equal(3, result.Diagnostics.Count);
+    }
+
+    // --- Slice D seam validation (D-054/D-060/D-061/D-063/D-064/D-076) ---
+
+    [Fact]
+    public void Resolve_WhenQuoteCharAuthoredNonStandard_ThenQuoteCharNotSupportedV1()
+    {
+        // D-054: the field parses (a retained carrier) but v1 rejects any quote
+        // other than the standard double quote at the seam.
+        var document = DocumentFixtures.Document(binding: DocumentFixtures.WideBinding(quoteChar: '\''));
+
+        var result = SpecResolver.Resolve(document);
+
+        Assert.Equal(DiagnosticCode.QuoteCharNotSupportedV1, Assert.Single(result.Diagnostics).Code);
+        Assert.False(result.TryGetValue(out _));
+    }
+
+    [Fact]
+    public void Resolve_WhenQuoteCharAuthoredStandard_ThenNoDiagnostic()
+    {
+        var document = DocumentFixtures.Document(binding: DocumentFixtures.WideBinding(quoteChar: '"'));
+
+        var result = SpecResolver.Resolve(document);
+
+        Assert.True(result.TryGetValue(out _));
+        Assert.Empty(result.Diagnostics);
+    }
+
+    [Fact]
+    public void Resolve_WhenDelimiterEqualsDefaultedQuoteChar_ThenBindingDelimiterQuoteConflict()
+    {
+        // §5.1: the conflict is judged on the resolved pair — an authored '"'
+        // delimiter collides with the defaulted quote.
+        var document = DocumentFixtures.Document(binding: DocumentFixtures.WideBinding(delimiter: '"'));
+
+        var result = SpecResolver.Resolve(document);
+
+        Assert.Equal(DiagnosticCode.BindingDelimiterQuoteConflict, Assert.Single(result.Diagnostics).Code);
+        Assert.False(result.TryGetValue(out _));
+    }
+
+    [Fact]
+    public void Resolve_WhenDelimiterAndQuoteCharBothAuthoredSame_ThenBothDiagnosticsFire()
+    {
+        // D-076: two distinct §5.1 conditions — the unsupported quote and the
+        // delimiter conflict — report independently.
+        var document = DocumentFixtures.Document(
+            binding: DocumentFixtures.WideBinding(delimiter: '|', quoteChar: '|'));
+
+        var result = SpecResolver.Resolve(document);
+
+        Assert.Contains(result.Diagnostics, d => d.Code == DiagnosticCode.QuoteCharNotSupportedV1);
+        Assert.Contains(result.Diagnostics, d => d.Code == DiagnosticCode.BindingDelimiterQuoteConflict);
+        Assert.Equal(2, result.Diagnostics.Count);
+    }
+
+    [Theory]
+    [InlineData("identity", SourceValueType.Number)]
+    [InlineData("ordered_cuts", SourceValueType.Number)]
+    [InlineData("manual_cuts", SourceValueType.String)]
+    public void Resolve_WhenValueTypeConflictsWithTypeFixingDiscretizer_ThenSourceValueTypeInvalid(
+        string kind, SourceValueType authored)
+    {
+        // §10.2 (D-061): identity/ordered_cuts are string-fixing, manual_cuts
+        // number-fixing; the other authored type is invalid.
+        var document = DocumentFixtures.Document(
+            [DocumentFixtures.Attribute("a", DocumentFixtures.Column(0, authored),
+                discretizer: Discretizer(kind), scale: new NominalScaleSection(), declaredDomain: ["x"])]);
+
+        var result = SpecResolver.Resolve(document);
+
+        var diagnostic = Assert.Single(result.Diagnostics);
+        Assert.Equal(DiagnosticCode.SourceValueTypeInvalid, diagnostic.Code);
+        Assert.Equal("a", diagnostic.Location?.AttributeName);
+    }
+
+    [Theory]
+    [InlineData("identity", SourceValueType.String)]
+    [InlineData("ordered_cuts", SourceValueType.String)]
+    [InlineData("manual_cuts", SourceValueType.Number)]
+    public void Resolve_WhenValueTypeMatchesTypeFixingDiscretizer_ThenNoDiagnostic(
+        string kind, SourceValueType authored)
+    {
+        var document = DocumentFixtures.Document(
+            [DocumentFixtures.Attribute("a", DocumentFixtures.Column(0, authored),
+                discretizer: Discretizer(kind), scale: new NominalScaleSection(), declaredDomain: ["x"])]);
+
+        var result = SpecResolver.Resolve(document);
+
+        Assert.True(result.TryGetValue(out _));
+        Assert.Empty(result.Diagnostics);
+    }
+
+    [Fact]
+    public void Resolve_WhenNumberSourceHasStringRestrictTo_ThenRestrictToOnNumericRequiresRange()
+    {
+        // §10.4 (D-063): this code — not SourceValueTypeInvalid — owns the
+        // numeric-source/string-entry mismatch.
+        var document = DocumentFixtures.Document(
+            [DocumentFixtures.Attribute("age", DocumentFixtures.Column(0),
+                discretizer: Discretizer("manual_cuts"), scale: new NominalScaleSection(),
+                restrictTo: [new RestrictToValue("young")])]);
+
+        var result = SpecResolver.Resolve(document);
+
+        var diagnostic = Assert.Single(result.Diagnostics);
+        Assert.Equal(DiagnosticCode.RestrictToOnNumericRequiresRange, diagnostic.Code);
+        Assert.Equal("age", diagnostic.Location?.AttributeName);
+    }
+
+    [Fact]
+    public void Resolve_WhenStringSourceHasRangeRestrictTo_ThenSourceValueTypeInvalid()
+    {
+        // §10.4 (D-063): the mirror case — a range entry on a string-typed source —
+        // is owned by the §10.2 code.
+        var document = DocumentFixtures.Document(
+            [DocumentFixtures.Attribute("edu", DocumentFixtures.Column(0),
+                discretizer: Discretizer("identity"), scale: new NominalScaleSection(),
+                declaredDomain: ["a"], restrictTo: [new RestrictToRange(1, 5)])]);
+
+        var result = SpecResolver.Resolve(document);
+
+        Assert.Equal(DiagnosticCode.SourceValueTypeInvalid, Assert.Single(result.Diagnostics).Code);
+    }
+
+    [Fact]
+    public void Resolve_WhenParkedCutDiscretizerTypesLiveRestrictTo_ThenStillRejected()
+    {
+        // D-076: restrict_to is live on an excluded (filter-only) attribute, and a
+        // parked numeric-cut discretizer legitimately types it (§10.4 — "a numeric
+        // source … or a numeric-cut discretizer"); the string entry still rejects.
+        var document = DocumentFixtures.Document(
+            [DocumentFixtures.Attribute("age", DocumentFixtures.Column(0), include: false,
+                discretizer: Discretizer("manual_cuts"), restrictTo: [new RestrictToValue("young")])]);
+
+        var result = SpecResolver.Resolve(document);
+
+        Assert.Equal(DiagnosticCode.RestrictToOnNumericRequiresRange, Assert.Single(result.Diagnostics).Code);
+    }
+
+    [Fact]
+    public void Resolve_WhenFilterOnlyStringRestrictTo_ThenResolvesClean()
+    {
+        // §19.4: the filter-only pattern — string entries over an untyped,
+        // discretizer-less source default to string and validate clean.
+        var document = DocumentFixtures.Document(
+            [DocumentFixtures.Attribute("Gene", DocumentFixtures.Column(0), include: false,
+                restrictTo: [new RestrictToValue("Bmp5")])]);
+
+        var result = SpecResolver.Resolve(document);
+
+        Assert.True(result.TryGetValue(out _));
+        Assert.Empty(result.Diagnostics);
+    }
+
+    [Fact]
+    public void Resolve_WhenRestrictToValueNotInExplicitDomain_ThenWarningAndStillResolves()
+    {
+        // §10.4 (D-063): the typo-catcher warns without failing the resolve.
+        var document = DocumentFixtures.Document(
+            [DocumentFixtures.Attribute("edu", DocumentFixtures.Column(0),
+                discretizer: Discretizer("identity"), scale: new NominalScaleSection(),
+                declaredDomain: ["Bachelors", "Masters"],
+                restrictTo: [new RestrictToValue("Bachelors"), new RestrictToValue("Bachelor")])]);
+
+        var result = SpecResolver.Resolve(document);
+
+        Assert.True(result.TryGetValue(out _));
+        var diagnostic = Assert.Single(result.Diagnostics);
+        Assert.Equal(DiagnosticCode.RestrictToValueNotInDomain, diagnostic.Code);
+        Assert.Equal(DiagnosticSeverity.Warning, diagnostic.Severity);
+        Assert.Contains("Bachelor", diagnostic.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Resolve_WhenDomainAbsent_ThenNoDomainTypoWarning()
+    {
+        // D-071: omitted and authored-[] both resolve absent — no explicit domain,
+        // no typo-catcher; the plan-phase calibration reject owns the absence.
+        foreach (var domain in new IReadOnlyList<string>?[] { null, [] })
+        {
+            var document = DocumentFixtures.Document(
+                [DocumentFixtures.Attribute("edu", DocumentFixtures.Column(0),
+                    discretizer: Discretizer("identity"), scale: new NominalScaleSection(),
+                    declaredDomain: domain, restrictTo: [new RestrictToValue("x")])]);
+
+            var result = SpecResolver.Resolve(document);
+
+            Assert.True(result.TryGetValue(out _));
+            Assert.Empty(result.Diagnostics);
+        }
+    }
+
+    [Fact]
+    public void Resolve_WhenRestrictToValueNotInParkedDomain_ThenNoWarning()
+    {
+        // D-049/D-076: declared_domain is emitted-shaping config, parked when the
+        // attribute is excluded — the live restrict_to is not checked against it.
+        var document = DocumentFixtures.Document(
+            [DocumentFixtures.Attribute("edu", DocumentFixtures.Column(0), include: false,
+                discretizer: Discretizer("identity"),
+                declaredDomain: ["Bachelors"], restrictTo: [new RestrictToValue("nope")])]);
+
+        var result = SpecResolver.Resolve(document);
+
+        Assert.True(result.TryGetValue(out _));
+        Assert.Empty(result.Diagnostics);
+    }
+
+    [Theory]
+    [InlineData("manual_cuts")]
+    [InlineData("ordered_cuts")]
+    public void Resolve_WhenOrdinalOrderAuthoredOverCutDiscretizer_ThenOrdinalOrderNotAllowedWithCuts(string kind)
+    {
+        // §12.3 (D-060(a)): the cut geometry is the single source of bin order.
+        var document = DocumentFixtures.Document(
+            [DocumentFixtures.Attribute("a", DocumentFixtures.Column(0),
+                discretizer: Discretizer(kind),
+                scale: new OrdinalScaleSection(Direction: null, Boundary: null, Order: ["lo", "hi"], DropTop: null))]);
+
+        var result = SpecResolver.Resolve(document);
+
+        var diagnostic = Assert.Single(result.Diagnostics);
+        Assert.Equal(DiagnosticCode.OrdinalOrderNotAllowedWithCuts, diagnostic.Code);
+        Assert.Equal("a", diagnostic.Location?.AttributeName);
+    }
+
+    [Fact]
+    public void Resolve_WhenOrdinalOrderAuthoredEmptyOverCuts_ThenPresenceStillRejects()
+    {
+        // §12.3 "MUST NOT be present" — an authored [] is still an order
+        // declaration over cut bins.
+        var document = DocumentFixtures.Document(
+            [DocumentFixtures.Attribute("a", DocumentFixtures.Column(0),
+                discretizer: Discretizer("manual_cuts"),
+                scale: new OrdinalScaleSection(Direction: null, Boundary: null, Order: [], DropTop: null))]);
+
+        var result = SpecResolver.Resolve(document);
+
+        Assert.Equal(DiagnosticCode.OrdinalOrderNotAllowedWithCuts, Assert.Single(result.Diagnostics).Code);
+    }
+
+    [Theory]
+    [InlineData(OrdinalDirection.Le, OrdinalBoundary.Inclusive)]
+    [InlineData(OrdinalDirection.Ge, OrdinalBoundary.Strict)]
+    public void Resolve_WhenAuthoredBoundaryStraddlesCutGeometry_ThenOrdinalBoundaryIncompatibleWithCuts(
+        OrdinalDirection direction, OrdinalBoundary boundary)
+    {
+        // §12.3 (D-060(b)): over half-open cut bins 'le' pairs with '<' and 'ge'
+        // with '>='; an authored straddling boundary is rejected at the seam.
+        var document = DocumentFixtures.Document(
+            [DocumentFixtures.Attribute("a", DocumentFixtures.Column(0),
+                discretizer: Discretizer("manual_cuts"),
+                scale: new OrdinalScaleSection(direction, boundary, Order: null, DropTop: null))]);
+
+        var result = SpecResolver.Resolve(document);
+
+        Assert.Equal(DiagnosticCode.OrdinalBoundaryIncompatibleWithCuts, Assert.Single(result.Diagnostics).Code);
+    }
+
+    [Fact]
+    public void Resolve_WhenAuthoredBoundaryStraddlesDefaultedDirection_ThenStillRejects()
+    {
+        // D-060: authoredness is judged on the per-attribute boundary; the
+        // geometry is judged on the resolved direction — here from [defaults].
+        var defaults = new DefaultsSection(
+            Include: null, MissingPolicy: null, UnknownValuePolicy: null, DuplicateObjectPolicy: null,
+            OrdinalDirection.Le, OrdinalBoundary: null);
+        var document = DocumentFixtures.Document(
+            [DocumentFixtures.Attribute("a", DocumentFixtures.Column(0),
+                discretizer: Discretizer("manual_cuts"),
+                scale: new OrdinalScaleSection(Direction: null, OrdinalBoundary.Inclusive, Order: null, DropTop: null))],
+            defaults: defaults);
+
+        var result = SpecResolver.Resolve(document);
+
+        Assert.Equal(DiagnosticCode.OrdinalBoundaryIncompatibleWithCuts, Assert.Single(result.Diagnostics).Code);
+    }
+
+    [Fact]
+    public void Resolve_WhenBoundaryDefaultedOverCuts_ThenNeverTrips()
+    {
+        // D-060(c): a boundary arriving via [defaults].ordinal_boundary is
+        // defaulted, not authored — over cut bins it never selects the operator
+        // and never trips the check, whatever its value.
+        var defaults = new DefaultsSection(
+            Include: null, MissingPolicy: null, UnknownValuePolicy: null, DuplicateObjectPolicy: null,
+            OrdinalDirection: null, OrdinalBoundary.Strict);
+        var document = DocumentFixtures.Document(
+            [DocumentFixtures.Attribute("a", DocumentFixtures.Column(0),
+                discretizer: Discretizer("manual_cuts"),
+                scale: new OrdinalScaleSection(OrdinalDirection.Ge, Boundary: null, Order: null, DropTop: null))],
+            defaults: defaults);
+
+        var result = SpecResolver.Resolve(document);
+
+        Assert.True(result.TryGetValue(out var spec));
+        Assert.Empty(result.Diagnostics);
+        // The defaulted value still fills the resolved carrier; only the check
+        // distinguishes defaulted from authored.
+        Assert.Equal(OrdinalBoundary.Strict, Assert.IsType<OrdinalScale>(Assert.Single(spec.Attributes).Scale).Boundary);
+    }
+
+    [Theory]
+    [InlineData(OrdinalDirection.Le, OrdinalBoundary.Strict)]
+    [InlineData(OrdinalDirection.Ge, OrdinalBoundary.Inclusive)]
+    public void Resolve_WhenAlignedBoundaryAuthoredOverCuts_ThenNoDiagnostic(
+        OrdinalDirection direction, OrdinalBoundary boundary)
+    {
+        var document = DocumentFixtures.Document(
+            [DocumentFixtures.Attribute("a", DocumentFixtures.Column(0),
+                discretizer: Discretizer("manual_cuts"),
+                scale: new OrdinalScaleSection(direction, boundary, Order: null, DropTop: null))]);
+
+        var result = SpecResolver.Resolve(document);
+
+        Assert.True(result.TryGetValue(out _));
+        Assert.Empty(result.Diagnostics);
+    }
+
+    [Fact]
+    public void Resolve_WhenOrdinalOverCutsConfigParked_ThenNeverAnError()
+    {
+        // D-049/D-060: the ordinal-over-cuts contract applies to active attributes;
+        // parked scale config never blocks.
+        var document = DocumentFixtures.Document(
+            [DocumentFixtures.Attribute("a", DocumentFixtures.Column(0), include: false,
+                discretizer: Discretizer("manual_cuts"),
+                scale: new OrdinalScaleSection(OrdinalDirection.Ge, OrdinalBoundary.Strict, Order: ["x"], DropTop: null))]);
+
+        var result = SpecResolver.Resolve(document);
+
+        Assert.True(result.TryGetValue(out _));
+        Assert.Empty(result.Diagnostics);
+    }
+
+    [Fact]
+    public void Resolve_WhenObjectKeyRowIndexUnderTriple_ThenObjectKeyModeInvalidForShape()
+    {
+        // §5.4 (D-064): row_index is positional over wide rows; under triple the
+        // subject keys objects.
+        var objectKey = new ObjectKeySection(ObjectKeyMode.RowIndex, Column: null, Columns: null, Aggregate: null);
+        var binding = new BindingSection(SourceShape.Triple, Encoding: null, Delimiter: null, QuoteChar: null,
+            HasHeader: null, Locale: null, MissingToken: null, TripleOrdering.SubjectGrouped,
+            new TripleColumnsSection(0, 1, 2), objectKey);
+        var document = DocumentFixtures.Document(binding: binding);
+
+        var result = SpecResolver.Resolve(document);
+
+        Assert.Equal(DiagnosticCode.ObjectKeyModeInvalidForShape, Assert.Single(result.Diagnostics).Code);
+        Assert.False(result.TryGetValue(out _));
     }
 
     // --- Determinism bridge (P-7) ---

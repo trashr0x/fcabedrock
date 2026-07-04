@@ -363,6 +363,133 @@ public sealed class ConversionPlannerTests
         Assert.Equal(["g-b"], plan.FormalAttributes.Select(f => f.RenderedName));
     }
 
+    // --- Slice D plan guards (D-057/D-063/D-064/D-071/D-076) ---
+
+    [Fact]
+    public void Plan_WhenObjectKeyComposite_ThenReportsObjectKeyCompositeNotImplementedV1Fatal()
+    {
+        // §5.4 / D-024/D-064: a permanent v1 reservation, rejected at plan.
+        var spec = new BedrockSpec(WideWithKey(new CompositeObjectKey()), [SpecFixtures.Nominal("g", 0, ["b"])]);
+
+        var result = ConversionPlanner.Plan(spec, new SourceSchema(1));
+
+        AssertFailsWith(result, DiagnosticCode.ObjectKeyCompositeNotImplementedV1);
+        var diagnostic = Assert.Single(result.Diagnostics);
+        Assert.Equal(DiagnosticSeverity.Fatal, diagnostic.Severity);
+    }
+
+    [Fact]
+    public void Plan_WhenObjectKeyColumnUnderWide_ThenReportsObjectKeyColumnNotImplementedV1()
+    {
+        // §5.4 / D-064: transitional until wide column keys execute at M3 — never
+        // a silent row_index fallback.
+        var spec = new BedrockSpec(
+            WideWithKey(new ColumnObjectKey(0, DuplicateObjectPolicy.Fail)), [SpecFixtures.Nominal("g", 1, ["b"])]);
+
+        var result = ConversionPlanner.Plan(spec, new SourceSchema(2));
+
+        AssertFailsWith(result, DiagnosticCode.ObjectKeyColumnNotImplementedV1);
+        Assert.Contains("M3", Assert.Single(result.Diagnostics).Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Plan_WhenObjectKeyCompositeAndDuplicateNames_ThenBothDiagnosticsReport()
+    {
+        // P-13: the object-key guard aggregates with the attribute checks rather
+        // than short-circuiting the static pass.
+        var spec = new BedrockSpec(WideWithKey(new CompositeObjectKey()),
+            [SpecFixtures.Nominal("g", 0, ["b"]), SpecFixtures.Nominal("g", 1, ["b"])]);
+
+        var result = ConversionPlanner.Plan(spec, new SourceSchema(2));
+
+        Assert.Contains(result.Diagnostics, d => d.Code == DiagnosticCode.ObjectKeyCompositeNotImplementedV1);
+        Assert.Contains(result.Diagnostics, d => d.Code == DiagnosticCode.AttributeNameDuplicate);
+    }
+
+    [Fact]
+    public void Plan_WhenRestrictToPresent_ThenReportsRestrictToNotImplementedV1()
+    {
+        // §10.4 / D-057: never silently ignored — unfiltered output would mismatch
+        // the spec's intent. Transitional until execution lands at M4.
+        var attr = SpecFixtures.Nominal("g", 0, ["b"]) with { RestrictTo = [new RestrictToValue("b")] };
+        var spec = new BedrockSpec(SpecFixtures.WideRowIndex(), [attr]);
+
+        var result = ConversionPlanner.Plan(spec, new SourceSchema(1));
+
+        AssertFailsWith(result, DiagnosticCode.RestrictToNotImplementedV1);
+    }
+
+    [Fact]
+    public void Plan_WhenRestrictToOnExcludedAttribute_ThenStillReportsRestrictToNotImplementedV1()
+    {
+        // §10.4 / D-057/D-076: restrict_to filters even on a filter-only attribute;
+        // the guard sits before the include-skip.
+        var attr = SpecFixtures.Excluded("Gene", 0) with { RestrictTo = [new RestrictToValue("Bmp5")] };
+        var spec = new BedrockSpec(SpecFixtures.WideRowIndex(), [attr, SpecFixtures.Nominal("g", 1, ["b"])]);
+
+        var result = ConversionPlanner.Plan(spec, new SourceSchema(2));
+
+        AssertFailsWith(result, DiagnosticCode.RestrictToNotImplementedV1);
+    }
+
+    [Fact]
+    public void Plan_WhenIncludedIdentityHasNoDomain_ThenReportsObservedDomainCalibrationNotImplementedV1()
+    {
+        // §10.3 / D-071: an absent domain needs the observed-domain calibration the
+        // pipeline does not build yet; rejecting beats a silently empty or
+        // data-order-dependent schema.
+        var spec = new BedrockSpec(SpecFixtures.WideRowIndex(), [SpecFixtures.Nominal("g", 0, [])]);
+
+        var result = ConversionPlanner.Plan(spec, new SourceSchema(1));
+
+        AssertFailsWith(result, DiagnosticCode.ObservedDomainCalibrationNotImplementedV1);
+    }
+
+    [Fact]
+    public void Plan_WhenDichotomicIdentityHasNoDomain_ThenReportsObservedDomainCalibrationNotImplementedV1()
+    {
+        // D-071/D-076: the reject is blanket across scales — with no domain every
+        // observed value is "unknown" and the dichotomic column never crosses.
+        var spec = new BedrockSpec(SpecFixtures.WideRowIndex(), [SpecFixtures.Dichotomic("b?", 0, "t", [])]);
+
+        var result = ConversionPlanner.Plan(spec, new SourceSchema(1));
+
+        AssertFailsWith(result, DiagnosticCode.ObservedDomainCalibrationNotImplementedV1);
+    }
+
+    [Fact]
+    public void Plan_WhenExcludedIdentityHasNoDomain_ThenNoCalibrationDiagnostic()
+    {
+        // D-049: parked config never blocks — the guard applies to included
+        // attributes only.
+        var parked = new AttributeSpec("x", new ColumnSource(0, SourceValueType.String), Include: false,
+            new IdentityDiscretizer(), new NominalScale(), DeclaredDomain: [], RestrictTo: [],
+            SpecFixtures.NoLabels, MissingPolicy.Skip, UnknownValuePolicy.Warn);
+        var spec = new BedrockSpec(SpecFixtures.WideRowIndex(), [parked, SpecFixtures.Nominal("g", 1, ["b"])]);
+
+        var result = ConversionPlanner.Plan(spec, new SourceSchema(2));
+
+        Assert.True(result.TryGetValue(out _));
+        Assert.Empty(result.Diagnostics);
+    }
+
+    [Fact]
+    public void Plan_WhenCutDiscretizerHasNoDomain_ThenNoCalibrationDiagnostic()
+    {
+        // §10.3: cut discretizers ignore declared_domain — the D-071 guard is
+        // value-bin only.
+        var spec = new BedrockSpec(SpecFixtures.WideRowIndex(),
+            [SpecFixtures.NumericCuts("age", 0, [30.0], new NominalScale())]);
+
+        var result = ConversionPlanner.Plan(spec, new SourceSchema(1));
+
+        Assert.True(result.TryGetValue(out _));
+        Assert.Empty(result.Diagnostics);
+    }
+
+    private static Binding WideWithKey(ObjectKey key) =>
+        new(SourceShape.Wide, ',', '"', HasHeader: true, "invariant", "?", key);
+
     private static void AssertFailsWith(Diagnosed<ConversionPlan> result, DiagnosticCode code)
     {
         Assert.True(result.HasErrors);

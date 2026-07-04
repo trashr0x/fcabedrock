@@ -129,6 +129,7 @@ superseded or refined. A new entry MUST add its line here.
 
 - D-074 — `as_attribute` missing-column position uniform across scale kinds (appendix to D-068)
 - D-075 — Slice C TOML reader/writer contract: strictness, parse codes, canonical form
+- D-076 — Slice D seam/plan validation contract details (appends D-067)
 
 Spec-field defaults are recorded in spec §21 items 1–11 (see the final section
 of this file).
@@ -1535,7 +1536,8 @@ built; they refine, not reverse, D-009 / D-049 / D-050…D-065.
 
 ### D-071 — Absent/empty `declared_domain`: M2 interim reject until calibrate
 
-- **Status:** accepted (sequences §10.3 for M2; refines D-036)
+- **Status:** accepted (sequences §10.3 for M2; refines D-036; refined by D-076 —
+  retirement is "when observed-domain calibration lands", not a fixed milestone)
 - **Date:** 2026-07-03
 - **Decision:** omitted `declared_domain` **and** an explicit empty `[]` both
   resolve as **absent** (§10.3), and the reader/writer **round-trips the authored
@@ -1556,14 +1558,16 @@ built; they refine, not reverse, D-009 / D-049 / D-050…D-065.
   the data; converting it in M2 without Calibrate would emit zero columns or
   silently depend on input order — both violate the spec's reproducibility intent. A
   transitional reject makes the gap explicit and actionable (the D-057 / D-070
-  pattern) until M4 lands calibration.
+  pattern) until observed-domain calibration lands (numeric auto-binning
+  calibration is M4; the categorical case is backlog-unassigned — D-076).
 - **Rejected:** treating `[]` as "zero columns" (contradicts §10.3); silently
   calibrating in M2 (Calibrate is not built — a latent, undocumented
   data-dependence); collapsing omitted and `[]` at read time (loses authored
   provenance, D-049).
 - **Affects:** Spec (reader/writer), Core (planner guard), Diagnostics; spec §7 /
   §10.3; diagnostic `ObservedDomainCalibrationNotImplementedV1` (transitional,
-  removed at M4). Refines D-036; pairs with D-070.
+  removed when observed-domain calibration lands — see the roadmap backlog and
+  D-076). Refines D-036; pairs with D-070.
 
 ### D-072 — Basic triple TOML carrier in M2; conversion deferred to M3
 
@@ -1691,6 +1695,65 @@ built; they refine, not reverse, D-009 / D-049 / D-050…D-065.
   `SpecSurfaceNotYetSupported`, `ScaleNotImplementedV1`), spec §16.4,
   `Directory.Packages.props`. Realizes D-009/D-066/D-070/D-071/D-072 read/write
   faces; realizes D-010 for scales.
+
+### D-076 — Slice D seam/plan validation contract details
+
+- **Status:** accepted (appends D-067; realizes D-054/D-060/D-061/D-063/D-064/
+  D-071 at the seam and planner)
+- **Date:** 2026-07-05
+- **Decision:** Slice D activates the static validation the earlier decisions
+  assigned but left operationally open; the details settled here:
+  - **`include = false` interaction matrix.** (a) The `restrict_to` **shape**
+    checks (`RestrictToOnNumericRequiresRange`; the range-entry-on-string-source
+    case of `SourceValueTypeInvalid`) run on **excluded/filter-only attributes
+    too**: `restrict_to` is *live* config, not parked — §10.1/§10.4 apply it
+    whether or not the attribute is included (the §19.4 filter-only pattern), so
+    its static shape is validated on the same terms. (b)
+    `RestrictToValueNotInDomain` does **not** run on excluded attributes:
+    `declared_domain` is emitted-shaping config, parked under D-049 — a live
+    check must not warn against a dormant list. (c) A **parked numeric-cut
+    discretizer still types a live `restrict_to`** (an excluded attribute
+    retaining `manual_cuts` resolves `value_type = "number"`, so a bare-string
+    entry rejects). Deliberate, not a D-049 violation: `value_type` is a
+    source-level property whose D-061 derivation is include-independent, and
+    §10.4 itself defines a numeric source as "`value_type = "number"`, *or a
+    numeric-cut discretizer*" — recorded so the combination is not later "fixed"
+    into a silent skip. The remaining Slice D checks (the `value_type` matrix,
+    ordinal-over-cuts) are include-gated per D-049/D-060 ("active attribute").
+  - **Quote/delimiter co-fire.** `QuoteCharNotSupportedV1` (authored quote ≠
+    `"`) and `BindingDelimiterQuoteConflict` (resolved delimiter = resolved
+    quote) are distinct §5.1 conditions and report independently — both fire
+    when both hold (e.g. delimiter and quote both authored `|`). Two conditions,
+    two codes (P-13), not double reporting of one.
+  - **`ObservedDomainCalibrationNotImplementedV1`** is an **Error at plan** and
+    **blanket across scales** for an included `identity` attribute with an
+    absent domain — dichotomic included, because with no domain every observed
+    value is "unknown" and the single column never crosses (the same
+    silent-wrong-output D-071 closes). The blanket survives the future value-bin
+    ordinal slice: `scale.order` orders bins, but the domain remains the bin
+    *source* for `identity`, so an ordinal `order` never substitutes for a
+    domain. Retirement is phrased "when observed-domain calibration lands" — the
+    categorical case is unassigned in the roadmap backlog — not a bare "M4".
+  - **Domain typo-catcher gate.** `RestrictToValueNotInDomain` additionally
+    requires a resolved **string** `value_type`: on a mis-typed numeric
+    `identity` source the same entries are already owned by
+    `SourceValueTypeInvalid` / `RestrictToOnNumericRequiresRange`, and a third
+    diagnostic would be noise (P-13).
+- **Why:** the phase/owner assignments were settled (D-060/D-063/D-064/D-067/
+  D-071), but the excluded-attribute interactions, the co-fire policy, and the
+  blanket's scale coverage were not derivable from any single entry — and each
+  reads as a bug (a D-049 violation, a P-13 violation, an over-broad reject)
+  unless the rationale is on record.
+- **Rejected:** skipping restrict_to shape checks on excluded attributes (a
+  filter-only attribute's restrict_to changes output at M4, so its shape errors
+  must surface at authoring time); warning against a parked domain (turns
+  toggling an attribute off into new warnings — the authoring-hostility D-049
+  removed); suppressing the delimiter conflict when the quote is unsupported
+  (hides an independent, independently-fixable mistake).
+- **Affects:** Spec (`SpecResolver` seam checks), Core (`ConversionPlanner`
+  guards), Diagnostics (the twelve Slice D codes); spec §10.3 / §16.4. Each
+  matrix point is locked by a dedicated test in `SpecResolverTests` /
+  `ConversionPlannerTests`.
 
 ---
 

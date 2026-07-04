@@ -114,6 +114,69 @@ public enum DiagnosticCode
     /// <summary><c>ordered_cuts</c> cuts are not strictly ascending by order position. Spec §11.8.</summary>
     OrderedCutsNotAscending,
 
+    /// <summary>
+    /// <c>binding.quote_char</c> is authored as something other than the standard
+    /// double quote <c>"</c>, the only quote v1 supports; the field is retained so a
+    /// later version can lift the restriction without a format change. Spec §5.1
+    /// (D-054).
+    /// </summary>
+    QuoteCharNotSupportedV1,
+
+    /// <summary>
+    /// The resolved <c>binding.delimiter</c> equals the resolved
+    /// <c>binding.quote_char</c>; the two must differ. Fires independently of
+    /// <see cref="QuoteCharNotSupportedV1"/> — both report when both conditions
+    /// hold (D-076). Spec §5.1.
+    /// </summary>
+    BindingDelimiterQuoteConflict,
+
+    /// <summary>
+    /// The source's <c>value_type</c> is invalid for the attribute: an authored type
+    /// a type-fixing discretizer disallows (<c>identity</c>/<c>ordered_cuts</c> are
+    /// string-fixing, <c>manual_cuts</c> number-fixing, D-061), or a string-typed
+    /// source whose <c>restrict_to</c> contains a numeric-range entry (the mirror
+    /// case is <see cref="RestrictToOnNumericRequiresRange"/>). Spec §10.2 / §10.4
+    /// (D-061/D-063).
+    /// </summary>
+    SourceValueTypeInvalid,
+
+    /// <summary>
+    /// A number-typed source (authored <c>value_type = "number"</c> or a numeric-cut
+    /// discretizer) has a bare-string <c>restrict_to</c> entry; numeric restriction
+    /// uses range entries. This code — not <see cref="SourceValueTypeInvalid"/> —
+    /// owns the numeric-source/string-entry mismatch. Spec §10.4 (D-063).
+    /// </summary>
+    RestrictToOnNumericRequiresRange,
+
+    /// <summary>
+    /// A <c>restrict_to</c> string value is absent from the attribute's explicit
+    /// non-empty <c>declared_domain</c> — a typo-catcher, Warning only; the resolve
+    /// still succeeds. Spec §10.4 (D-063).
+    /// </summary>
+    RestrictToValueNotInDomain,
+
+    /// <summary>
+    /// <c>scale.order</c> is present on an ordinal scale over a cut discretizer,
+    /// whose cut geometry is the single source of bin order; <c>order</c> is a
+    /// value-bin field only. Spec §12.3 / §17 (D-060).
+    /// </summary>
+    OrdinalOrderNotAllowedWithCuts,
+
+    /// <summary>
+    /// A per-attribute authored <c>boundary</c> requests the straddling combination
+    /// (<c>le</c>+inclusive or <c>ge</c>+strict) over cut bins, whose half-open
+    /// geometry fixes the operator. An omitted or <c>[defaults]</c>-inherited
+    /// <c>boundary</c> is defaulted, not authored, and never trips this. Spec §6 /
+    /// §12.3 (D-060).
+    /// </summary>
+    OrdinalBoundaryIncompatibleWithCuts,
+
+    /// <summary>
+    /// The <c>object_key.mode</c> is not valid under the binding's <c>shape</c>
+    /// (<c>row_index</c> under <c>shape = "triple"</c>). Spec §5.4 (D-064).
+    /// </summary>
+    ObjectKeyModeInvalidForShape,
+
     // --- Planning ---
 
     /// <summary>
@@ -141,6 +204,39 @@ public enum DiagnosticCode
     /// Spec §12.4 / §16.4 / §20 (D-010; permanent v1 reservation).
     /// </summary>
     ScaleNotImplementedV1,
+
+    /// <summary>
+    /// The spec declares a <c>composite</c> object key, deferred to v1.1; the v1
+    /// planner rejects it. Fatal. Spec §5.4 / §20 (D-024/D-064; permanent v1
+    /// reservation).
+    /// </summary>
+    ObjectKeyCompositeNotImplementedV1,
+
+    /// <summary>
+    /// The spec declares a wide <c>column</c> object key, whose execution is
+    /// sequenced with the triple object-key work; the planner rejects it rather
+    /// than silently falling back to row index. Spec §5.4 (D-064; transitional,
+    /// removed at M3).
+    /// </summary>
+    ObjectKeyColumnNotImplementedV1,
+
+    /// <summary>
+    /// An attribute carries <c>restrict_to</c>, whose execution is not implemented
+    /// in this milestone; the planner rejects it — included or filter-only — rather
+    /// than silently emitting unfiltered output. Spec §10.4 (D-057/D-063;
+    /// transitional, removed at M4).
+    /// </summary>
+    RestrictToNotImplementedV1,
+
+    /// <summary>
+    /// An included <c>identity</c> attribute has an absent <c>declared_domain</c>
+    /// (omitted or authored <c>[]</c>), which needs the observed-domain calibration
+    /// the pipeline does not build yet; the planner rejects it rather than silently
+    /// emitting an empty or data-order-dependent schema. Spec §10.3 (D-071;
+    /// transitional, removed when observed-domain calibration lands — see the
+    /// roadmap backlog).
+    /// </summary>
+    ObservedDomainCalibrationNotImplementedV1,
 
     // --- Emit ---
 

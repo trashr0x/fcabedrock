@@ -653,6 +653,18 @@ reader/writer round-trips an authored `[]` verbatim; `calibrate`/freeze may repl
 it with the observed values. For input-independent, spec-first workflows, declare
 the domain explicitly or freeze it with `fcabedrock calibrate`.
 
+> **M2 rejects absent domains at plan (transitional).** The Calibrate phase that
+> fills an absent domain is not yet built (the categorical observed-domain case
+> has no assigned milestone — see the roadmap backlog), so an M2 conversion of an
+> included `identity` attribute with an absent `declared_domain` (omitted or
+> authored `[]`) is **rejected** with `ObservedDomainCalibrationNotImplementedV1`
+> rather than silently emitting an empty or data-order-dependent schema (D-071).
+> The reject is blanket across scales — dichotomic included, since with no domain
+> every observed value is "unknown" and the column never crosses (D-076). Cut
+> discretizers ignore `declared_domain` (above) and are unaffected; the deferred
+> `free_per_value` is already rejected earlier at read (D-070), which owns that
+> case. The code retires when observed-domain calibration lands.
+
 ### 10.4 restrict_to
 
 Object-level filter. Empty/absent ⇒ no filter. Multiple entries within
@@ -1555,6 +1567,7 @@ exactly one phase — the "Where" column below is the phase-ownership contract
 | `OrdinalBoundaryIncompatibleWithCuts` | Error | spec validate |
 | `ValueGroupsPassthroughDataDependent` | Warning | calibrate |
 | `RestrictToNotImplementedV1` | Error | plan (transitional) |
+| `ObservedDomainCalibrationNotImplementedV1` | Error | plan (transitional) |
 | `TemplateMatcherNotImplementedV1` | Error | plan (transitional) |
 | `SchemaFingerprintStale` | Warning | spec load |
 | `CxtOutputFingerprintStale` | Warning | spec load |
@@ -1573,11 +1586,13 @@ filtering, emit). All four still write a structurally-valid (if degenerate)
 output rather than failing.
 
 **Transitional codes.** `RestrictToNotImplementedV1`,
-`TemplateMatcherNotImplementedV1`, `ObjectKeyColumnNotImplementedV1`, and
-`TripleSourceNotImplementedV1` are emitted only by milestones *before* the
-feature's implementation milestone (restrict_to → M4, templates/matchers → M6,
-wide `column` object keys → M3, triple sources → M3, `roadmap.md`); they are
-removed once the feature lands and are **not** part of the v1 end-state set. They are distinct from the permanent `*NotImplementedV1`
+`TemplateMatcherNotImplementedV1`, `ObjectKeyColumnNotImplementedV1`,
+`TripleSourceNotImplementedV1`, and `ObservedDomainCalibrationNotImplementedV1`
+are emitted only by milestones *before* the feature's implementation milestone
+(restrict_to → M4, templates/matchers → M6, wide `column` object keys → M3,
+triple sources → M3, observed-domain calibration → when it lands — the
+categorical case is unassigned in the roadmap backlog (D-071); `roadmap.md`);
+they are removed once the feature lands and are **not** part of the v1 end-state set. They are distinct from the permanent `*NotImplementedV1`
 reservations in §20. Two parse-phase codes are transitional on the same terms:
 `DiscretizerKindNotYetSupported` (a recognized-but-deferred discretizer kind —
 `free_per_value`, `equal_width`, `equal_frequency`, `value_groups` — rejected at
