@@ -1508,6 +1508,11 @@ exactly one phase — the "Where" column below is the phase-ownership contract
 | Code | Severity | Where |
 | --- | --- | --- |
 | `SpecVersionUnsupported` | Fatal | spec parse |
+| `SpecTomlInvalid` | Fatal (parser warnings surface as Warning) | spec parse |
+| `SpecKeyUnrecognized` | Error | spec parse |
+| `SpecFieldInvalid` | Error | spec parse |
+| `DiscretizerKindNotYetSupported` | Error | spec parse (transitional) |
+| `SpecSurfaceNotYetSupported` | Error | spec parse (transitional) |
 | `SpecExtendsCycle` | Fatal | spec resolve |
 | `SpecExtendsNotFound` | Fatal | spec resolve |
 | `BindingShapeMissing` | Error | spec validate |
@@ -1573,7 +1578,18 @@ output rather than failing.
 feature's implementation milestone (restrict_to → M4, templates/matchers → M6,
 wide `column` object keys → M3, triple sources → M3, `roadmap.md`); they are
 removed once the feature lands and are **not** part of the v1 end-state set. They are distinct from the permanent `*NotImplementedV1`
-reservations in §20.
+reservations in §20. Two parse-phase codes are transitional on the same terms:
+`DiscretizerKindNotYetSupported` (a recognized-but-deferred discretizer kind —
+`free_per_value`, `equal_width`, `equal_frequency`, `value_groups` — rejected at
+read with no parameter carrier, D-070; removed as each kind lands at M4) and
+`SpecSurfaceNotYetSupported` (recognized v1 surface the reader does not model
+yet — `[spec].extends`, `[[template]]`/`[[matcher]]`, attribute `template` /
+`display_name` / `formal_attribute_format`, `[defaults]`
+`formal_attribute_format`, `value_type = "date"` — a **closed, per-table** set,
+never a fallback for unknown keys, D-075; entries retire as the M2 slices land
+their carriers and the row is removed at M2 exit, except the `date` entry,
+which retires when the D-038 carrier lands and hands over to the permanent
+plan-phase `DateValueTypeNotImplementedV1`).
 
 **Aggregation.** Data-phase diagnostics that can fire per value or per object —
 `SourceValueUnparseable`, `UnknownValueObserved`, `AttributeHasNoCrosses`,

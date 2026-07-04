@@ -5,6 +5,9 @@
   <ItemGroup>
     <!-- Runtime: DSV tokenizer for the wide-CSV source (decisions.md D-041). -->
     <PackageVersion Include="Sep" Version="0.15.0" />
+    <!-- Runtime: TOML parser for the Bedrock spec format, confined to
+         FcaBedrock.Spec (decisions.md D-009/D-066). -->
+    <PackageVersion Include="Tomlyn" Version="2.10.1" />
   </ItemGroup>
   <ItemGroup>
     <!-- Test-only. -->

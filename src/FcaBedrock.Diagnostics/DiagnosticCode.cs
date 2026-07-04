@@ -8,6 +8,46 @@ namespace FcaBedrock.Diagnostics;
 /// </summary>
 public enum DiagnosticCode
 {
+    // --- Spec parse ---
+
+    /// <summary>
+    /// The document is not valid TOML 1.0 (syntax error, duplicate key, malformed
+    /// datetime, …). Fatal: no document is produced. Spec §2 / §16.4 (D-075).
+    /// </summary>
+    SpecTomlInvalid,
+
+    /// <summary>
+    /// A key or table is not part of the v1 spec vocabulary (typo or misplaced
+    /// key). The read fails so a write never silently drops authored content.
+    /// Spec §16.4 (D-075).
+    /// </summary>
+    SpecKeyUnrecognized,
+
+    /// <summary>
+    /// A known key has the wrong type, shape, or an unrecognized enum/kind
+    /// spelling. One code, message variants naming the expected form. Spec §16.4
+    /// (D-075; covers the D-070 tier-3 unknown-kind case).
+    /// </summary>
+    SpecFieldInvalid,
+
+    /// <summary>
+    /// A recognized-but-deferred discretizer kind (<c>free_per_value</c>,
+    /// <c>equal_width</c>, <c>equal_frequency</c>, <c>value_groups</c>) was
+    /// authored; no carrier is built and round-trip is not promised. Spec §11 /
+    /// §16.4 (D-070; transitional, removed as each kind lands at M4).
+    /// </summary>
+    DiscretizerKindNotYetSupported,
+
+    /// <summary>
+    /// A recognized v1 surface the reader does not yet model was authored
+    /// (<c>[spec].extends</c>, <c>[[template]]</c>/<c>[[matcher]]</c>, attribute
+    /// <c>template</c>, <c>display_name</c>, <c>formal_attribute_format</c>,
+    /// <c>value_type = "date"</c>). Closed, per-table set — never a fallback for
+    /// unknown keys. Transitional intra-M2 scaffolding, retired as slices D–G
+    /// land their carriers (D-075).
+    /// </summary>
+    SpecSurfaceNotYetSupported,
+
     // --- Spec resolve ---
 
     /// <summary>
@@ -94,6 +134,13 @@ public enum DiagnosticCode
     /// transitional, removed at M3).
     /// </summary>
     TripleSourceNotImplementedV1,
+
+    /// <summary>
+    /// An attribute uses a modelled-but-deferred scale (<c>interordinal</c>,
+    /// <c>biordinal</c>, <c>contranominal</c>); v1 planning rejects it. Fatal.
+    /// Spec §12.4 / §16.4 / §20 (D-010; permanent v1 reservation).
+    /// </summary>
+    ScaleNotImplementedV1,
 
     // --- Emit ---
 

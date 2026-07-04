@@ -128,6 +128,7 @@ superseded or refined. A new entry MUST add its line here.
 ### M2 implementation (slices)
 
 - D-074 — `as_attribute` missing-column position uniform across scale kinds (appendix to D-068)
+- D-075 — Slice C TOML reader/writer contract: strictness, parse codes, canonical form
 
 Spec-field defaults are recorded in spec §21 items 1–11 (see the final section
 of this file).
@@ -1615,6 +1616,81 @@ built; they refine, not reverse, D-009 / D-049 / D-050…D-065.
   invariant to keep in sync).
 - **Affects:** Core (`ConversionPlanner`, `PlannedAttribute`), Conversion
   (`Emitter`); spec §10.5 (ordinal clause). Appends D-068.
+
+### D-075 — Slice C TOML reader/writer contract: strictness, parse codes, canonical form
+
+- **Status:** accepted
+- **Date:** 2026-07-04
+- **Decision:** the M2 Slice C reader/writer fixes the contracts the spec left
+  open:
+  - **Library:** Tomlyn (D-009's lean), exact-pinned via central package
+    management and confined to `FcaBedrock.Spec` (D-066); the reader walks the
+    CST (`SyntaxParser.Parse` → `DocumentSyntax`) for node spans, and no Tomlyn
+    type appears on any public signature.
+  - **Reader strictness:** unknown keys/tables are **Errors**
+    (`SpecKeyUnrecognized`) — the spec is silent on unknown-key policy, and a
+    reader that accepted what the writer would drop makes read→write silently
+    lossy. Known keys with the wrong type/shape/spelling are `SpecFieldInvalid`
+    (one code, message names the expected form; also the D-070 tier-3
+    unknown-kind case). TOML-level errors are `SpecTomlInvalid` (Fatal; Tomlyn
+    parser warnings surface under the same code at Warning).
+  - **Two-phase aggregation (the P-13 reading):** all TOML syntax errors report
+    together and are terminal (a broken tree would cascade garbage); on clean
+    syntax, one whole-document semantic pass aggregates every diagnostic.
+  - **Deferred-surface scaffolding:** recognized-but-unmodelled v1 surface —
+    `[spec].extends`, `[[template]]`/`[[matcher]]`, attribute `template` /
+    `display_name` / `formal_attribute_format`, `[defaults]`
+    `formal_attribute_format`, `value_type = "date"` — fails the read with the
+    transitional `SpecSurfaceNotYetSupported` (Error) so nothing known is
+    silently dropped. The set is **closed and per-owning-table**, never a
+    fallback: near-miss keys and a listed name in the wrong table get
+    `SpecKeyUnrecognized`. Entries retire as slices D–G land their carriers;
+    the `date` entry retires when the D-038 carrier lands (the v1 end-state is
+    the plan-phase `DateValueTypeNotImplementedV1`).
+  - **Canonical writer:** hand-rolled emission (not Tomlyn serialization — the
+    canonical form is owned here and cannot drift with a library upgrade):
+    authored-only fields (presence tracking survives verbatim, D-049/D-071),
+    fixed section/key order (spec presentation order), inline tables for the
+    nested groups, LF-only/no-BOM, invariant shortest numbers (integral doubles
+    as bare integers, matching §11.2's own examples), RFC 3339 date-times, and
+    `value_labels` in authored order (never sorted; label order is inert). The
+    round-trip contract is **document-model fidelity, not byte fidelity** of
+    authored files (§2 makes formatting informative; fingerprints hash the
+    plan, D-053); the test oracle is canonical-text idempotence.
+  - **`created_at`:** offset date-times verbatim; local forms coerce to a
+    zero-offset `DateTimeOffset` (deterministic across machines; the field is
+    inert provenance, §4).
+  - **API:** `SpecReader.Read(string toml, string? filePath = null)` →
+    `Diagnosed<SpecDocument>` and `SpecWriter.Write(SpecDocument)` → `string` —
+    string-only, mirroring `BedReader`; file I/O belongs to a host slice.
+
+  The slice also realizes D-010 for scales: `interordinal`/`biordinal`/
+  `contranominal` parse into a kind-only `DeferredScaleSection`, resolve into
+  the Core `UnimplementedScale` reject-carrier (the D-072 pattern), and fail at
+  **plan** with `ScaleNotImplementedV1` (Fatal) — parse-but-fail-to-plan, the
+  roadmap-M2 "parsable types the planner rejects" item.
+- **Why:** round-trip fidelity is a headline property of the format, so reader
+  strictness and writer canonicalization must be decided together — the reader
+  must reject exactly what the writer cannot re-emit. Distinct codes keep
+  typo-vs-valid-feature actionable (the D-070 rationale); the closed
+  deferred-surface set keeps the transitional code from becoming a catch-all.
+  Hashing is already formatting-immune (D-053), so one canonical written form
+  costs nothing and buys deterministic output and a trivial round-trip oracle.
+- **Rejected:** warning-and-drop for unknown keys (silent loss on write-after-
+  read); one code for all parse problems (hides whether the spec is valid v1 —
+  P-13); parsing deferred surface into inert carriers now (pulls Slice F /
+  naming-slice semantics forward, and an authored-but-ignored
+  `formal_attribute_format` would silently change intended output); Tomlyn's
+  serializer for writing (its formatting choices can drift across versions);
+  byte-preserving round-trip (would require a lossless CST document model for
+  no consumer — §2 makes formatting informative).
+- **Affects:** Spec (`SpecReader`, `SpecWriter`, `TomlSpellings`, `TomlLiteral`,
+  read infra; `DeferredScaleSection`; resolver mapping), Core
+  (`UnimplementedScale`, planner guard), Diagnostics (`SpecTomlInvalid`,
+  `SpecKeyUnrecognized`, `SpecFieldInvalid`, `DiscretizerKindNotYetSupported`,
+  `SpecSurfaceNotYetSupported`, `ScaleNotImplementedV1`), spec §16.4,
+  `Directory.Packages.props`. Realizes D-009/D-066/D-070/D-071/D-072 read/write
+  faces; realizes D-010 for scales.
 
 ---
 

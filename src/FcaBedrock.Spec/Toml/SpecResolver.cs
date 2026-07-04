@@ -396,6 +396,11 @@ public static class SpecResolver
                     ordinal.Boundary ?? defaults?.OrdinalBoundary ?? OrdinalBoundary.Inclusive,
                     ordinal.Order);
 
+            case DeferredScaleSection deferred:
+                // §12.4 / D-010: resolves into the Core reject-carrier; the planner
+                // owns the refusal (ScaleNotImplementedV1, Fatal) — not this seam.
+                return new UnimplementedScale(deferred.Kind);
+
             default:
                 AddScalingMissing(diagnostics, attribute, "has no scale (§10.9)");
                 return null;

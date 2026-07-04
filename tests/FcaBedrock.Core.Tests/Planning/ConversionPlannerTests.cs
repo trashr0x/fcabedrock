@@ -328,6 +328,41 @@ public sealed class ConversionPlannerTests
         Assert.Equal(DiagnosticSeverity.Error, diagnostic.Severity);
     }
 
+    [Theory]
+    [InlineData("interordinal")]
+    [InlineData("biordinal")]
+    [InlineData("contranominal")]
+    public void Plan_WhenScaleIsDeferred_ThenReportsScaleNotImplementedV1(string kind)
+    {
+        // §12.4 / D-010: deferred scales are parsable carriers the v1 planner
+        // refuses — parse-but-fail-to-plan, at the plan phase (§16.4).
+        var attr = new AttributeSpec("a", new ColumnSource(0, SourceValueType.String), Include: true,
+            new IdentityDiscretizer(), new UnimplementedScale(kind),
+            ["x"], RestrictTo: [], SpecFixtures.NoLabels, MissingPolicy.Skip, UnknownValuePolicy.Warn);
+        var spec = new BedrockSpec(SpecFixtures.WideRowIndex(), [attr]);
+
+        var result = ConversionPlanner.Plan(spec, new SourceSchema(1));
+
+        AssertFailsWith(result, DiagnosticCode.ScaleNotImplementedV1);
+        var diagnostic = Assert.Single(result.Diagnostics, d => d.Code == DiagnosticCode.ScaleNotImplementedV1);
+        Assert.Equal(DiagnosticSeverity.Fatal, diagnostic.Severity);
+        Assert.Contains(kind, diagnostic.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Plan_WhenDeferredScaleOnExcludedAttribute_ThenParkedAndNeverAnError()
+    {
+        // §10.9 / D-049: parked config never blocks — the deferred-scale guard
+        // applies to included attributes only.
+        var parked = new AttributeSpec("x", new ColumnSource(0, SourceValueType.String), Include: false,
+            new IdentityDiscretizer(), new UnimplementedScale("biordinal"),
+            ["a"], RestrictTo: [], SpecFixtures.NoLabels, MissingPolicy.Skip, UnknownValuePolicy.Warn);
+        var spec = new BedrockSpec(SpecFixtures.WideRowIndex(), [parked, SpecFixtures.Nominal("g", 1, ["b"])]);
+
+        Assert.True(ConversionPlanner.Plan(spec, new SourceSchema(2)).TryGetValue(out var plan));
+        Assert.Equal(["g-b"], plan.FormalAttributes.Select(f => f.RenderedName));
+    }
+
     private static void AssertFailsWith(Diagnosed<ConversionPlan> result, DiagnosticCode code)
     {
         Assert.True(result.HasErrors);

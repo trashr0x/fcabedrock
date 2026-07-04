@@ -223,6 +223,17 @@ public static class ConversionPlanner
                 continue;
             }
 
+            // §12.4 / D-010: deferred scales are parsable carriers the v1 planner
+            // refuses — a permanent reservation, unlike the transitional rejects.
+            if (attribute.Scale is Scaling.UnimplementedScale unimplemented)
+            {
+                diagnostics.Add(new BedrockDiagnostic(
+                    DiagnosticCode.ScaleNotImplementedV1,
+                    DiagnosticSeverity.Fatal,
+                    $"Attribute '{attribute.Name}' uses scale '{unimplemented.Kind}', which v1 does not implement (§12.4/§20).",
+                    new DiagnosticLocation(AttributeName: attribute.Name)));
+            }
+
             ValidateValueLabels(attribute, diagnostics);
         }
     }

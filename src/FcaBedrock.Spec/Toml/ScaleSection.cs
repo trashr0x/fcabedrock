@@ -3,10 +3,8 @@ using FcaBedrock.Core.Scaling;
 namespace FcaBedrock.Spec.Toml;
 
 /// <summary>
-/// An authored attribute <c>scale</c> (§12). This slice models the three
-/// implemented scales; the §12.4 deferred scales (<c>interordinal</c>,
-/// <c>biordinal</c>, <c>contranominal</c>) join at the reader slice as
-/// parsable-but-rejected (D-010).
+/// An authored attribute <c>scale</c> (§12): the three implemented scales plus
+/// the §12.4 deferred kinds as parsable-but-rejected carriers (D-010).
 /// </summary>
 public abstract record ScaleSection;
 
@@ -27,3 +25,13 @@ public sealed record OrdinalScaleSection(
     OrdinalBoundary? Boundary,
     IReadOnlyList<string>? Order,
     bool? DropTop) : ScaleSection;
+
+/// <summary>
+/// A modelled-but-deferred scale (§12.4, D-010): <c>interordinal</c>,
+/// <c>biordinal</c>, or <c>contranominal</c>, carried kind-only (the spec
+/// defines no parameters for them). Resolves into the Core deferred-scale
+/// marker so <c>ConversionPlanner</c> rejects with
+/// <c>ScaleNotImplementedV1</c> (Fatal) — parse-but-fail-to-plan.
+/// </summary>
+/// <param name="Kind">The authored kind name.</param>
+public sealed record DeferredScaleSection(string Kind) : ScaleSection;

@@ -4,4 +4,17 @@
     <ProjectReference Include="..\FcaBedrock.Core\FcaBedrock.Core.csproj" />
   </ItemGroup>
 
+  <!-- Tomlyn is confined to this package (D-009/D-066): no Tomlyn type appears
+       on any public signature. -->
+  <ItemGroup>
+    <PackageReference Include="Tomlyn" />
+  </ItemGroup>
+
+  <!-- White-box access for the Spec unit tests (spelling map / TOML literal
+       internals). A test seam only; no production behavior depends on it
+       (principle P-6). -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="FcaBedrock.Spec.Tests" />
+  </ItemGroup>
+
 </Project>

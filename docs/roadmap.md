@@ -24,6 +24,14 @@ vertical slices, not waterfall phases — each should leave the system working.
 > Tier 2 register (D-066…D-072); implementation proceeds in slices A–G (model
 > split → `as_attribute` → reader/writer → validation → fingerprints →
 > `extends`/triple → migrator).
+>
+> **Slices A–C have landed:** the presence-tracked document model +
+> resolve/validate seam (D-066/D-067), `missing_policy = "as_attribute"`
+> (D-068/D-074), and the TOML reader/writer (D-075) — strict CST reader with
+> the D-070 kind gates and the closed deferred-surface set, canonical writer,
+> D-010 deferred scales rejecting at plan, round-trip + §19 read→resolve
+> parity tests. `dotnet test` is green (365 tests). Next: Slice D (validation
+> at the seam).
 
 ## Milestones
 
