@@ -357,6 +357,57 @@ public sealed class FingerprintCalculatorTests
         Assert.Contains("\"unknown_value_policy\":\"include\"", json, StringComparison.Ordinal);
     }
 
+    // --- Value-bin ordinal (D-081): the encoder is unchanged; these pin its output ---
+
+    private static BedrockSpec ValueBinOrdinalSpec(IReadOnlyList<string> order) =>
+        new(SpecFixtures.WideRowIndex(),
+            [SpecFixtures.OrdinalValueBins("edu", 0, ["a", "b", "c"],
+                new OrdinalScale(OrdinalDirection.Ge, DropTop: false, OrdinalBoundary.Inclusive, order))]);
+
+    [Fact]
+    public void BuildSchemaJson_WhenValueBinOrdinal_ThenColumnsCarryOpAndRawValueBinInPlanOrder()
+    {
+        // The schema identity of a value-bin ordinal column is {raw value, op}, in
+        // plan (order) sequence — no encoder change was needed (D-081).
+        Assert.True(ConversionPlanner.Plan(ValueBinOrdinalSpec(["a", "b", "c"]), new SourceSchema(1)).TryGetValue(out var plan));
+
+        Assert.Equal(
+            "{\"attributes\":["
+                + "{\"bin\":\"a\",\"name\":\"edu\",\"op\":\">=\",\"scale\":\"ordinal\"},"
+                + "{\"bin\":\"b\",\"name\":\"edu\",\"op\":\">=\",\"scale\":\"ordinal\"},"
+                + "{\"bin\":\"c\",\"name\":\"edu\",\"op\":\">=\",\"scale\":\"ordinal\"}"
+                + "],\"fp_format\":1,\"kind\":\"schema\"}",
+            FingerprintCalculator.BuildSchemaJson(plan!));
+    }
+
+    [Fact]
+    public void BuildCxtOutputJson_WhenValueBinOrdinal_ThenSharedScaleEncodesTheOrderArray()
+    {
+        // AppendScale already encodes the ordinal order/boundary/direction/drop_top;
+        // for a value-bin ordinal the order array is the live config in the shared JSON.
+        Assert.True(ConversionPlanner.Plan(ValueBinOrdinalSpec(["a", "b", "c"]), new SourceSchema(1)).TryGetValue(out var plan));
+
+        var json = FingerprintCalculator.BuildCxtOutputJson(plan!, ValueBinOrdinalSpec(["a", "b", "c"]), NativeCxt());
+
+        Assert.Contains(
+            "\"scale\":{\"boundary\":\"inclusive\",\"direction\":\"ge\",\"drop_top\":false,\"kind\":\"ordinal\",\"order\":[\"a\",\"b\",\"c\"]}",
+            json, StringComparison.Ordinal);
+        Assert.Contains("\"declared_domain\":[\"a\",\"b\",\"c\"]", json, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ComputeSchemaFingerprint_WhenOrderPermuted_ThenSchemaFingerprintChanges()
+    {
+        // Two permutations of the same domain change the column identities/sequence,
+        // so the schema fingerprint moves — the order is not inert (D-081).
+        Assert.True(ConversionPlanner.Plan(ValueBinOrdinalSpec(["a", "b", "c"]), new SourceSchema(1)).TryGetValue(out var abc));
+        Assert.True(ConversionPlanner.Plan(ValueBinOrdinalSpec(["a", "c", "b"]), new SourceSchema(1)).TryGetValue(out var acb));
+
+        Assert.NotEqual(
+            FingerprintCalculator.ComputeSchemaFingerprint(abc!),
+            FingerprintCalculator.ComputeSchemaFingerprint(acb!));
+    }
+
     // --- Canonical JSON byte rules (D-077 pins 2-4) ---------------------------
 
     [Fact]

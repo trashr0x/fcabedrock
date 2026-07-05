@@ -496,6 +496,25 @@ public sealed class BedMigratorTests
     }
 
     [Fact]
+    public void Migrate_WhenRealMiniDatesFixture_ThenErrorBedDateTypeNotSupported()
+    {
+        // The real on-disk fixtures/v2/mini-dates .bed (not a synthetic one, closing
+        // the M2-exit review's fixture-coverage caveat): its included `dob` attribute
+        // is v2 type `d`, deferred from v1 (D-038/D-079), so migration fails honestly
+        // rather than silently dropping an included attribute (the D-068 hazard). The
+        // c-typed `name`/`gender` attributes migrate cleanly, so this is the sole error.
+        var path = Path.Combine(AppContext.BaseDirectory, "fixtures", "v2", "mini-dates", "mini-dates_triples.bed");
+        Assert.True(File.Exists(path), $"expected the copied fixture at {path}");
+
+        var migrated = BedMigrator.Migrate(ReadBed(File.ReadAllText(path)), WideBinding());
+
+        Assert.False(migrated.TryGetValue(out _));
+        var error = Assert.Single(migrated.Diagnostics);
+        Assert.Equal(DiagnosticCode.BedDateTypeNotSupported, error.Code);
+        Assert.Equal("dob", error.Location?.AttributeName);
+    }
+
+    [Fact]
     public void Migrate_WhenIncludedTypeUnknown_ThenErrorBedTypeUnrecognized()
     {
         var migrated = BedMigrator.Migrate(ReadBed(Bed(new BedAttr("weird", "x", "a,b"))), WideBinding());

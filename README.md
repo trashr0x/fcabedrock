@@ -14,17 +14,18 @@ zero or more formal attributes. Every legacy attribute "type" is a
 
 ## Status
 
-Under active development. **M1 is complete**: the full pipeline — v2 `.bed`
-spec reader, wide CSV/TSV source, planner, streaming emitter, `.cxt`/`.dat`
-writers — reproduces FcaBedrock v2 byte-for-byte on the mini-mushroom and
-mini-adult fixture families (under `--v2-compat`).
+Under active development. **M1 and M2 are complete.** M1 built the full pipeline
+— v2 `.bed` spec reader, wide CSV/TSV source, planner, streaming emitter,
+`.cxt`/`.dat` writers — reproducing FcaBedrock v2 byte-for-byte on the
+mini-mushroom and mini-adult fixture families (under `--v2-compat`). M2 added the
+TOML Bedrock spec format with reader/writer, the three plan-derived fingerprints,
+spec composition (`extends`), and the one-way `.bed` → TOML migrator.
 
 What works today vs what is designed but not yet implemented:
 
-- **Today (M1):** wide CSV/TSV input; v2 `.bed` specs; deterministic
-  `.cxt`/`.dat` output, with a `--v2-compat` preset.
-- **M2 (in progress):** the TOML Bedrock spec format, fingerprinting, and a
-  one-way `.bed` → TOML migrator.
+- **Today (M1 + M2):** wide CSV/TSV input; v2 `.bed` specs **and** the native
+  TOML spec format (round-trip, `extends`, fingerprints, `.bed` → TOML
+  migration); deterministic `.cxt`/`.dat` output, with a `--v2-compat` preset.
 - **M3 and beyond:** subject–predicate–value triple input (M3), auto-binning
   discretizers (M4), discovery, templates, the full CLI, benchmarks, and a
   desktop UI.

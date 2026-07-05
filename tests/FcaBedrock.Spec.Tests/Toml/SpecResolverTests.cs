@@ -899,6 +899,185 @@ public sealed class SpecResolverTests
         Assert.False(result.TryGetValue(out _));
     }
 
+    // --- Duplicate names + value_labels re-homed to the seam (D-080) ---
+
+    [Fact]
+    public void Resolve_WhenDuplicateAttributeName_ThenAttributeNameDuplicate()
+    {
+        // §10.2 (D-080): the dup-name reject now fires at the seam, not the planner.
+        var document = DocumentFixtures.Document(
+            [DocumentFixtures.Nominal("dup", 0, ["a"]), DocumentFixtures.Nominal("dup", 1, ["b"])]);
+
+        var result = SpecResolver.Resolve(document);
+
+        Assert.False(result.TryGetValue(out _));
+        Assert.Equal("dup", Assert.Single(
+            result.Diagnostics, d => d.Code == DiagnosticCode.AttributeNameDuplicate).Location?.AttributeName);
+    }
+
+    [Fact]
+    public void Resolve_WhenNameRepeatedThrice_ThenOneDuplicateDiagnosticPerExtraOccurrence()
+    {
+        var document = DocumentFixtures.Document(
+        [
+            DocumentFixtures.Nominal("dup", 0, ["a"]),
+            DocumentFixtures.Nominal("dup", 1, ["b"]),
+            DocumentFixtures.Nominal("dup", 2, ["c"]),
+        ]);
+
+        var result = SpecResolver.Resolve(document);
+
+        Assert.Equal(2, result.Diagnostics.Count(d => d.Code == DiagnosticCode.AttributeNameDuplicate));
+    }
+
+    [Fact]
+    public void Resolve_WhenDuplicateNameAndSiblingSourceBroken_ThenBothAggregateInOnePass()
+    {
+        // The D-080 payoff: the dup check reads the document sections, so a
+        // duplicate whose sibling field fails to resolve (ResolveAttribute drops
+        // it) still surfaces — alongside that sibling's own diagnostic (P-13). The
+        // former Core-model check over resolved attributes would have lost it.
+        var document = DocumentFixtures.Document(
+        [
+            DocumentFixtures.Nominal("dup", 0, ["a"]),
+            DocumentFixtures.Attribute("dup", DocumentFixtures.Column(-1),
+                discretizer: new IdentityDiscretizerSection(), scale: new NominalScaleSection(), declaredDomain: ["b"]),
+        ]);
+
+        var result = SpecResolver.Resolve(document);
+
+        Assert.Contains(result.Diagnostics, d => d.Code == DiagnosticCode.AttributeNameDuplicate);
+        Assert.Contains(result.Diagnostics, d => d.Code == DiagnosticCode.SourceBindingInvalid);
+    }
+
+    [Fact]
+    public void Resolve_WhenValueLabelKeyNotInDomain_ThenValueLabelKeyNotInDomain()
+    {
+        // §10.8 (D-080): the live typo-catcher for identity value labels, at the seam.
+        var document = DocumentFixtures.Document(
+            [DocumentFixtures.Nominal("g", 0, ["b", "n"], new Dictionary<string, string> { ["x"] = "broad" })]);
+
+        var result = SpecResolver.Resolve(document);
+
+        Assert.False(result.TryGetValue(out _));
+        Assert.Equal("g", Assert.Single(
+            result.Diagnostics, d => d.Code == DiagnosticCode.ValueLabelKeyNotInDomain).Location?.AttributeName);
+    }
+
+    [Fact]
+    public void Resolve_WhenValueLabelsUnderCutDiscretizer_ThenDormantAndNoDiagnostic()
+    {
+        // §10.8 / D-049: value_labels is dormant under a cut discretizer (its bin
+        // labels are not raw values) — ignored, never ValueLabelKeyNotInDomain.
+        var document = DocumentFixtures.Document(
+            [DocumentFixtures.Attribute("age", DocumentFixtures.Column(0),
+                discretizer: new ManualCutsDiscretizerSection([30.0], BinEnds.Open),
+                scale: new NominalScaleSection(),
+                valueLabels: new Dictionary<string, string> { ["old"] = "Old label" })]);
+
+        var result = SpecResolver.Resolve(document);
+
+        Assert.True(result.TryGetValue(out _));
+        Assert.DoesNotContain(result.Diagnostics, d => d.Code == DiagnosticCode.ValueLabelKeyNotInDomain);
+    }
+
+    [Fact]
+    public void Resolve_WhenExcludedIdentityHasStaleValueLabels_ThenParkedAndNoDiagnostic()
+    {
+        // D-049: value_labels on an excluded attribute is parked config — the seam
+        // check is include-gated, so a stale key never blocks a toggled-off attribute.
+        var document = DocumentFixtures.Document(
+            [DocumentFixtures.Attribute("g", DocumentFixtures.Column(0), include: false,
+                discretizer: new IdentityDiscretizerSection(), scale: new NominalScaleSection(),
+                declaredDomain: ["b"], valueLabels: new Dictionary<string, string> { ["x"] = "stale" })]);
+
+        var result = SpecResolver.Resolve(document);
+
+        Assert.True(result.TryGetValue(out _));
+        Assert.Empty(result.Diagnostics);
+    }
+
+    [Fact]
+    public void Resolve_WhenDuplicateNameAndStaleLabel_ThenBothSeamChecksAggregate()
+    {
+        // P-13: the two re-homed seam checks aggregate with each other and the rest
+        // of the resolve pass rather than short-circuiting.
+        var document = DocumentFixtures.Document(
+        [
+            DocumentFixtures.Nominal("g", 0, ["b"]),
+            DocumentFixtures.Nominal("g", 1, ["b"], new Dictionary<string, string> { ["x"] = "stale" }),
+        ]);
+
+        var result = SpecResolver.Resolve(document);
+
+        Assert.Contains(result.Diagnostics, d => d.Code == DiagnosticCode.AttributeNameDuplicate);
+        Assert.Contains(result.Diagnostics, d => d.Code == DiagnosticCode.ValueLabelKeyNotInDomain);
+    }
+
+    // --- Value-bin ordinal order shape (D-081) ---
+
+    private static OrdinalScaleSection OrdinalOrder(IReadOnlyList<string> order) =>
+        new(Direction: null, Boundary: null, order, DropTop: null);
+
+    [Fact]
+    public void Resolve_WhenValueBinOrderHasDuplicateEntries_ThenOrderDomainInvalid()
+    {
+        // §12.3 (D-081): over a non-cut discretizer the authored scale.order must
+        // have distinct, non-empty entries — OrderDomainInvalid, broadened from
+        // ordered_cuts to any authored order.
+        var document = DocumentFixtures.Document(
+            [DocumentFixtures.Attribute("edu", DocumentFixtures.Column(0),
+                discretizer: new IdentityDiscretizerSection(), scale: OrdinalOrder(["a", "a"]), declaredDomain: ["a"])]);
+
+        var result = SpecResolver.Resolve(document);
+
+        Assert.False(result.TryGetValue(out _));
+        Assert.Contains(result.Diagnostics, d => d.Code == DiagnosticCode.OrderDomainInvalid);
+    }
+
+    [Fact]
+    public void Resolve_WhenValueBinOrderHasEmptyEntry_ThenOrderDomainInvalid()
+    {
+        var document = DocumentFixtures.Document(
+            [DocumentFixtures.Attribute("edu", DocumentFixtures.Column(0),
+                discretizer: new IdentityDiscretizerSection(), scale: OrdinalOrder(["a", ""]), declaredDomain: ["a"])]);
+
+        var result = SpecResolver.Resolve(document);
+
+        Assert.Contains(result.Diagnostics, d => d.Code == DiagnosticCode.OrderDomainInvalid);
+    }
+
+    [Fact]
+    public void Resolve_WhenValueBinOrderMalformedButExcluded_ThenParkedAndNoDiagnostic()
+    {
+        // D-049: the order-shape check is include-gated, like the ordinal-over-cuts
+        // checks — a parked order never blocks a toggled-off attribute.
+        var document = DocumentFixtures.Document(
+            [DocumentFixtures.Attribute("edu", DocumentFixtures.Column(0), include: false,
+                discretizer: new IdentityDiscretizerSection(), scale: OrdinalOrder(["a", "a"]), declaredDomain: ["a"])]);
+
+        var result = SpecResolver.Resolve(document);
+
+        Assert.True(result.TryGetValue(out _));
+        Assert.Empty(result.Diagnostics);
+    }
+
+    [Fact]
+    public void Resolve_WhenValueBinOrderValid_ThenResolvesWithoutDiagnostic()
+    {
+        // A well-formed order resolves cleanly; the order-vs-domain permutation is a
+        // plan-phase check (OrdinalOrderMissing / OrdinalOrderHasUnknownValue), not this.
+        var document = DocumentFixtures.Document(
+            [DocumentFixtures.Attribute("edu", DocumentFixtures.Column(0),
+                discretizer: new IdentityDiscretizerSection(), scale: OrdinalOrder(["a", "b", "c"]),
+                declaredDomain: ["a", "b", "c"])]);
+
+        var result = SpecResolver.Resolve(document);
+
+        Assert.True(result.TryGetValue(out _));
+        Assert.Empty(result.Diagnostics);
+    }
+
     // --- Determinism bridge (P-7) ---
 
     [Fact]

@@ -1,4 +1,5 @@
 using FcaBedrock.Core.Planning;
+using FcaBedrock.Core.Scaling;
 using FcaBedrock.Core.Spec;
 using FcaBedrock.Diagnostics;
 
@@ -234,6 +235,28 @@ public sealed class EmitterTests
         Assert.Equal(
             first.Select(d => (d.Code, d.Severity, d.Message)),
             second.Select(d => (d.Code, d.Severity, d.Message)));
+    }
+
+    [Theory]
+    [InlineData(OrdinalDirection.Ge, OrdinalBoundary.Inclusive, new[] { 0 }, new[] { 0, 1 }, new[] { 0, 1, 2 })]
+    [InlineData(OrdinalDirection.Ge, OrdinalBoundary.Strict, new int[0], new[] { 0 }, new[] { 0, 1 })]
+    [InlineData(OrdinalDirection.Le, OrdinalBoundary.Inclusive, new[] { 0, 1, 2 }, new[] { 1, 2 }, new[] { 2 })]
+    [InlineData(OrdinalDirection.Le, OrdinalBoundary.Strict, new[] { 1, 2 }, new[] { 2 }, new int[0])]
+    public async Task EmitAsync_WhenValueBinOrdinal_ThenIncidenceMatchesThresholdSemantics(
+        OrdinalDirection direction, OrdinalBoundary boundary, int[] low, int[] mid, int[] high)
+    {
+        // §12.3 worked example (D-081): identity value bins ordered low < mid < high
+        // (order = the domain). The four direction × boundary combinations give the
+        // cumulative-threshold incidence, all live over value bins (no cut geometry).
+        var spec = new BedrockSpec(ConversionFixtures.Wide(hasHeader: false),
+            [ConversionFixtures.OrdinalValueBins("edu", 0, ["low", "mid", "high"], direction, boundary)]);
+
+        var (objects, diagnostics) = await RunAsync(spec, "low\nmid\nhigh", ConversionFixtures.Wide(hasHeader: false));
+
+        Assert.Empty(diagnostics);
+        Assert.Equal(low, objects[0].CrossedFormalAttributeIds);
+        Assert.Equal(mid, objects[1].CrossedFormalAttributeIds);
+        Assert.Equal(high, objects[2].CrossedFormalAttributeIds);
     }
 
     private static async Task<(List<EmittedObject> Objects, List<BedrockDiagnostic> Diagnostics)> RunAsync(

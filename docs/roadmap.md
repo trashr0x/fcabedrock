@@ -19,11 +19,11 @@ vertical slices, not waterfall phases — each should leave the system working.
 > D-059 `BinResult` + diagnostic aggregation, §5.1 whitespace, plus conformance
 > tests), byte-neutral on the goldens. `dotnet test` is green (178 tests).
 >
-> **Now: M2** — the TOML spec format + fingerprinting. The M2 contract is
-> settled across D-050…D-058, the Tier 1 spec audit (D-060…D-065), and the
-> Tier 2 register (D-066…D-072); implementation proceeds in slices A–G (model
-> split → `as_attribute` → reader/writer → validation → fingerprints →
-> `extends`/triple → migrator).
+> **M2 — the TOML spec format + fingerprinting — is complete.** The M2 contract
+> was settled across D-050…D-058, the Tier 1 spec audit (D-060…D-065), and the
+> Tier 2 register (D-066…D-072); it landed in slices A–G (model split →
+> `as_attribute` → reader/writer → validation → fingerprints → `extends`/triple →
+> migrator) plus the exit-review Slice H and cleanup below.
 >
 > **Slices A–G have landed:** the presence-tracked document model +
 > resolve/validate seam (D-066/D-067), `missing_policy = "as_attribute"`
@@ -57,9 +57,18 @@ vertical slices, not waterfall phases — each should leave the system working.
 > six `migrate (v2)` diagnostic codes), and re-routing the golden harness
 > through migrate→resolve byte-identically — the migrated mini-mushroom
 > reproduces the pinned Slice E fingerprints exactly.
-> `dotnet test` is green (515 tests).
-> Next: M2 exit review (the `AttributeNameDuplicate` phase-alignment cleanup
-> below remains a standalone item), then M3 (triple source).
+>
+> **The M2 exit review has landed (D-080/D-081).** Slice H implemented the
+> value-bin `ordinal` path — `identity` + an explicit string `order` (D-081) —
+> thresholding on the authored order under all four `direction × boundary`
+> combinations, with `OrdinalOrderMissing`/`OrdinalOrderHasUnknownValue` at plan;
+> this closed the last silent-output gap (an `identity` + `ordinal` spec no longer
+> resolves, plans, and emits while ignoring the authored order/boundary). The
+> standalone cleanup re-homed `AttributeNameDuplicate` / `ValueLabelKeyNotInDomain`
+> from the planner to the resolve seam over the document model (D-080). Both are
+> byte- and fingerprint-neutral on every golden and pinned baseline.
+> `dotnet test` is green (547 tests).
+> Next: M3 (triple source).
 
 ## Milestones
 
@@ -192,9 +201,14 @@ config knob with a "truncated" marker; defaults to `identity` + `nominal`.
 ### M6 — Templates + matchers
 
 The bulk-edit model in `Spec` (defaults < templates < matchers < per-attribute
-overrides; last-match-wins). Replaces v2 "Repeat-To".
+overrides; last-match-wins). Replaces v2 "Repeat-To". Also lands the
+**naming-fidelity carriers** deferred from M2 — `display_name` and
+`formal_attribute_format` on attributes/templates (and `[defaults]
+.formal_attribute_format`), until now recognized-but-rejected at read
+(`SpecSurfaceNotYetSupported`, §16.4).
 **Exit:** the Internet-Ads dataset (1554 booleans) expressible in <50 lines of
-TOML; resolution precedence tested.
+TOML; resolution precedence tested; `display_name` / `formal_attribute_format`
+round-trip and drive rendered names.
 
 ### M7 — CLI
 
@@ -274,8 +288,7 @@ Modelled in the spec where noted, so adding them later isn't a format break.
   M8. The latter two are tracked here pending their own `decisions.md` entries when
   M7/M8 are picked up.
 - Phase alignment for `AttributeNameDuplicate` (noted at the Slice F review,
-  2026-07-05): the code is emitted by `ConversionPlanner` while spec §16.4 still
-  lists it as spec validate. Align docs and code as a standalone cleanup — either
-  re-home the check to the resolve seam (the D-067 phase-ownership reading) or
-  move the §16.4 "Where" cell to plan, with a `decisions.md` note either way —
-  not inside a feature slice.
+  2026-07-05): **done at the M2 exit review (D-080).** The check — and its twin
+  `ValueLabelKeyNotInDomain` — were re-homed from `ConversionPlanner` to the
+  resolve seam over the document model, matching the §16.4 "spec validate" cell
+  (the D-067 phase-ownership reading), byte- and fingerprint-neutral.

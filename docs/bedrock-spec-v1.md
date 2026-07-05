@@ -1231,13 +1231,21 @@ present with a **cut** discretizer (`manual_cuts`, `ordered_cuts`, `equal_width`
 cut discretizer is the single source of order. An `order` over cut bins is
 `OrdinalOrderNotAllowedWithCuts` (Error, spec validate); a value-bin ordinal scale
 that needs `order` but omits it is `OrdinalOrderMissing` (Error), and an `order`
-entry not among the bin labels is `OrdinalOrderHasUnknownValue` (Error).
+entry not among the bin labels is `OrdinalOrderHasUnknownValue` (Error). `order`
+lists the **raw** bin values (never display labels) and must be a **full
+permutation** of the bin labels — a bin label with no `order` entry is likewise
+`OrdinalOrderMissing`. In M2 this path executes for `identity` with an explicit
+**string** `order` only; numeric value bins are `free_per_value`, deferred to M4
+(§11), so the "optional for numeric" case above activates then.
 
 **`drop_top`** *(default `false`)*. The "top" formal attribute (the one
-true for everything in `direction = "ge"` — i.e., `≥<lowest>`) is
-tautological for objects with non-missing data. Set `drop_top = true` to
-suppress it. The lattice's supremum is unaffected; only the explicit
-formal attribute is omitted.
+true for everything in `direction = "ge"` — i.e., `≥<lowest>`, and `≤<highest>`
+for `direction = "le"`) is tautological for objects with non-missing data. Set
+`drop_top = true` to suppress it. The lattice's supremum is unaffected; only the
+explicit formal attribute is omitted. Over **value** bins under a **strict**
+`boundary` there is no tautological threshold — the extreme threshold (`>{highest}`
+/ `<{lowest}`) is instead statically empty and is **kept** (an empty column is
+legal, §10.1) — so `drop_top` is a no-op there.
 
 **Over cut bins (`manual_cuts` / `ordered_cuts`).** When the ordered bins come
 from a cut discretizer, each threshold sits at a bin's far edge: for `le`, bin
@@ -1547,7 +1555,7 @@ exactly one phase — the "Where" column below is the phase-ownership contract
 
 | Code | Severity | Where |
 | --- | --- | --- |
-| `SpecVersionUnsupported` | Fatal | spec parse |
+| `SpecVersionUnsupported` | Fatal | spec resolve |
 | `SpecTomlInvalid` | Fatal (parser warnings surface as Warning) | spec parse |
 | `SpecKeyUnrecognized` | Error | spec parse |
 | `SpecFieldInvalid` | Error | spec parse |
@@ -1637,9 +1645,11 @@ yet — attribute/template `display_name` / `formal_attribute_format`,
 `[defaults]` `formal_attribute_format`, `value_type = "date"` — a **closed,
 per-table** set, never a fallback for unknown keys, D-075; the
 extends/template/matcher entries were retired by their Slice F carriers, D-078;
-the remaining entries retire as their slices land and the row is removed at M2
-exit, except the `date` entry, which retires when the D-038 carrier lands and
-hands over to the permanent plan-phase `DateValueTypeNotImplementedV1`).
+the **naming carriers** (`display_name`, `formal_attribute_format`) are assigned
+to **M6** with the naming-fidelity work, and the `value_type = "date"` entry
+retires when the D-038 carrier lands and hands over to the permanent plan-phase
+`DateValueTypeNotImplementedV1` — so this row **persists past M2 exit** carrying
+those still-deferred surfaces).
 
 **The `migrate (v2)` phase** is the one-way `.bed` → TOML migration (D-009/D-079),
 a tooling phase outside the §7 processing pipeline. The migrator carries what the
@@ -1654,7 +1664,10 @@ retires if the date carrier lands (D-038).
 count with a bounded sample, never one diagnostic per row, so a malformed column
 at 73M records does not produce 73M diagnostics.
 
-The full list is maintained in code as the `DiagnosticCode` enum.
+The `DiagnosticCode` enum is the authority for the codes a build can actually
+raise; it grows per slice (P-3), so it currently holds fewer members than this
+registry — the future-phase rows above (the calibrate/emit/export codes and the
+deferred-milestone reservations) join the enum as their emit sites land.
 
 ## 17. Determinism rules
 

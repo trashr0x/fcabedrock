@@ -40,7 +40,7 @@ superseded or refined. A new entry MUST add its line here.
 - D-006 — Diagnostics package as the shared leaf *(alias dropped by D-042)*
 - D-007 — Target 10×–100× the v2 EMAGE workload
 - D-008 — Avalonia for the desktop UI
-- D-009 — New TOML spec format; one-way `.bed` migration
+- D-009 — New TOML spec format; one-way `.bed` migration *(migrator realized by D-079)*
 - D-010 — Modelled-but-rejected scales/features carry forward-compat
 - D-011 — v2 byte-equality is a CLI flag, not a spec setting
 
@@ -99,7 +99,7 @@ superseded or refined. A new entry MUST add its line here.
 - D-054 — v1 supports only the standard double `quote_char`
 - D-055 — `value_groups` does not use `declared_domain`
 - D-056 — Cut validation in M2
-- D-057 — `restrict_to` round-trips in M2; execution deferred to M4
+- D-057 — `restrict_to` round-trips in M2; execution deferred to M4 *(carriage realized by D-079)*
 - D-058 — Empty-output diagnostics: mechanical names replace EmptyExtent/EmptyIntent
 
 ### M1-adjacent conformance pass
@@ -119,7 +119,7 @@ superseded or refined. A new entry MUST add its line here.
 
 - D-066 — Parsed spec document model vs. resolved Core `BedrockSpec`
 - D-067 — Resolve/validate seam and diagnostic phase ownership
-- D-068 — `missing_policy = "as_attribute"` scheduled into M2
+- D-068 — `missing_policy = "as_attribute"` scheduled into M2 *(migrator branch realized by D-079)*
 - D-069 — Canonical fingerprint encoding, pinned (appendix to D-053)
 - D-070 — Minimal M2 discretizer-carrier scope; three-tier kind response
 - D-071 — Absent/empty `declared_domain`: M2 interim reject until calibrate
@@ -133,6 +133,8 @@ superseded or refined. A new entry MUST add its line here.
 - D-077 — Slice E fingerprint encoding/verification contract details (appends D-069)
 - D-078 — Slice F composition/carrier contract details (realizes D-027/D-052; refines D-067/D-075)
 - D-079 — Slice G `.bed` migrator contract: document-model target, Diagnosed surfaces (realizes D-009/D-049/D-057/D-068)
+- D-080 — `AttributeNameDuplicate` / `ValueLabelKeyNotInDomain` re-homed to the resolve seam (realizes D-067; supersedes its "not re-homed" parenthetical)
+- D-081 — Value-bin ordinal path (Slice H): identity + explicit order (realizes the D-047-deferred path; refines D-060)
 
 Spec-field defaults are recorded in spec §21 items 1–11 (see the final section
 of this file).
@@ -263,7 +265,7 @@ of this file).
 
 ### D-009 — New TOML spec format; one-way .bed migration
 
-- **Status:** accepted
+- **Status:** accepted (the migrator's document-model realization is D-079)
 - **Decision:** the Bedrock spec is a new TOML format, record-per-attribute.
   A v2 `.bed` reader exists for one-way migration (load v2, save as TOML).
   `.bed` writing is not supported.
@@ -1116,7 +1118,7 @@ conformance pass (`roadmap.md`).
 
 ### D-057 — restrict_to round-trips in M2; execution deferred to M4
 
-- **Status:** accepted (refines D-021 / D-032; sequences §10.4)
+- **Status:** accepted (refines D-021 / D-032; sequences §10.4; migrator carriage realized by D-079)
 - **Date:** 2026-06-28
 - **Decision:** M2 parses, preserves, and round-trips every `restrict_to` form
   (string list, open- and closed-range, mixed), but planning/conversion **rejects**
@@ -1431,7 +1433,7 @@ built; they refine, not reverse, D-009 / D-049 / D-050…D-065.
 
 ### D-068 — `missing_policy = "as_attribute"` scheduled into M2; effective-`missing_token` migration
 
-- **Status:** accepted (schedules the previously-unscheduled §10.5 branch)
+- **Status:** accepted (schedules the previously-unscheduled §10.5 branch; migrator branch realized by D-079)
 - **Date:** 2026-07-03
 - **Decision:** `missing_policy = "as_attribute"` (§10.5) — omitted from the M1
   pipeline — is **implemented in M2**. Plan appends a `{column}-missing`
@@ -2046,6 +2048,144 @@ built; they refine, not reverse, D-009 / D-049 / D-050…D-065.
   (migrate→resolve route; `FixtureCase` supplies a `BindingSection`), spec
   §16.4 (the `migrate (v2)` phase rows). M1 goldens byte-identical; Slice E
   fingerprint baselines unchanged.
+
+### D-080 — `AttributeNameDuplicate` / `ValueLabelKeyNotInDomain` re-homed to the resolve seam
+
+- **Status:** accepted (the M2-exit standalone cleanup; supersedes D-067's
+  "invoked from the seam, not re-homed" parenthetical for these two codes)
+- **Date:** 2026-07-05
+- **Decision:** the two remaining Core-emitted spec-validate checks —
+  `AttributeNameDuplicate` and `ValueLabelKeyNotInDomain` — are **physically
+  moved** into `SpecResolver` as private static checks over the **document
+  model**, and deleted from `ConversionPlanner`. Both are §16.4 *spec validate*
+  codes (their "Where" cell already read `spec validate`); the planner emitting
+  them was the phase drift flagged at the Slice F review. The re-home matches
+  the D-076 seam style: the dup-name check runs in the wide-shape attribute loop
+  (after the triple early-return, so triple documents are unaffected — as the
+  planner's triple guard already did), skips null/empty names
+  (`AttributeNameMissing` owns those), and reports **one diagnostic per extra
+  occurrence**, message verbatim. The `value_labels` check runs in the
+  `include`-gated `ValidateAttributeConstraints` block, keyed on
+  `section.Discretizer is IdentityDiscretizerSection` (≡
+  `Discretizer.ConsultsValueLabels` in M2 — `free_per_value` is the only other
+  consulting kind and is read-rejected before the seam, D-070; it joins the gate
+  at M4), checking keys against `declared_domain ?? []`. `FormalAttributeCollision`
+  / `FormalAttributeNameCollision` stay at **plan** as the output-integrity
+  backstop (colliding *rendered/canonical* identities, not authored names).
+- **Why:** D-067 assigned these to the seam but, to keep that slice surgical,
+  left them "invoked from the seam, not re-homed" — a parenthetical the code
+  never realized (they stayed in the planner). Realizing the physical re-home
+  over the **document model** is not cosmetic: `ResolveAttribute` returns `null`
+  for an attribute whose source/discretizer/scale fails to resolve, so a
+  Core-model check would *lose* a duplicate whose sibling field is broken — the
+  document-model check catches it and aggregates with that sibling's own
+  diagnostic (P-13). It also makes §16.4's "Where" column honest without a spec
+  edit.
+- **Consequences:** (i) a Core-only caller hand-building a `BedrockSpec` and
+  planning it directly no longer gets these two checks — the resolve seam is the
+  enforced entry point for spec validation (every §16.4 spec-validate code is
+  already seam-owned; the planner keeps only its plan-phase checks). (ii) These
+  checks aggregate within the resolve pass rather than the plan pass — the
+  cross-phase split every D-067 seam check already has. Neither is a public API
+  change: no new public Core surface, no production `InternalsVisibleTo`, and the
+  diagnostic codes/severities/messages are unchanged. **Byte- and
+  fingerprint-neutral** on every golden and pinned baseline (validation-only; no
+  planned column, name, or hash input moves).
+- **Rejected:** a Core *helper* over the resolved model invoked from the seam
+  (D-067's literal parenthetical) — semantically weaker (drops duplicates whose
+  sibling resolution fails) and still splits the check across packages; moving
+  the §16.4 "Where" cell to `plan` instead of moving the code (records the drift
+  as intended rather than fixing it, and orphans the checks from the seam that
+  owns every other spec-validate code); leaving the drift (a standing
+  code-vs-spec disagreement, P-8).
+- **Affects:** Spec (`SpecResolver` two new private checks; `SpecComposer`
+  doc-comment), Core (`ConversionPlanner` two checks + `ValidateValueLabels`
+  removed), tests (planner tests relocated to `SpecResolverTests`). Diagnostics
+  unchanged. Realizes the D-067 seam assignment for these two codes; pairs with
+  D-076. Spec §10.2 / §10.8 / §16.4 (no text change — the cells already read
+  `spec validate`).
+
+### D-081 — Value-bin ordinal path (Slice H): identity + explicit order
+
+- **Status:** accepted (M2 Slice H; realizes the D-047-deferred value-bin path
+  and closes the F1 silent-output hole; refines D-060)
+- **Date:** 2026-07-05
+- **Decision:** the value-bin ordinal path (§12.3) is implemented, so an
+  `ordinal` scale over a **value-bin** discretizer thresholds on the explicit
+  `scale.order` instead of the (unread) cut geometry. Scope and semantics:
+  - **Kind gate.** In M2 the only value-bin discretizer is `identity`
+    (`free_per_value` → M4, read-rejected by D-070), so this path is
+    `identity` + a **string** `order` only (D-061 string-fixing). `order` is
+    **always required** in M2; §12.3's "optional for numeric" branch belongs to
+    the numeric value-bin (`free_per_value`) case and activates at M4.
+  - **Permutation rule.** `order` must be a **full permutation** of the
+    `declared_domain`: every domain value gets a threshold. At **plan** an
+    omitted `order` **or** a domain value missing from `order` is
+    `OrdinalOrderMissing`; an `order` entry outside the domain is
+    `OrdinalOrderHasUnknownValue` (one per stray entry). These two codes were
+    already §16.4-registered at `plan`; Slice H adds their enum members and emit
+    sites. The membership check is suppressed on an absent domain — D-071's
+    `ObservedDomainCalibrationNotImplementedV1` owns that (one condition → one
+    code, P-13). `order` lists **raw domain values, never display labels**.
+  - **Order list shape** (distinct, non-empty entries) is validated at the
+    **resolve seam** by broadening `OrderDomainInvalid` (its existing §16.4
+    `spec validate` cell) from `ordered_cuts.order` to *any* authored order over
+    a non-cut discretizer; include-gated (parked orders never block, D-049). A
+    cut discretizer's order stays `OrdinalOrderNotAllowedWithCuts` (D-060) — the
+    two are mutually exclusive by discretizer kind, no double-report.
+  - **Threshold semantics.** For order position *i* (value `order[i]`),
+    `direction × boundary` pick the operator and crossings: `ge`+inclusive →
+    `>=`, crosses `order[i..]`; `ge`+strict → `>`, crosses `order[i+1..]`;
+    `le`+inclusive → `<=`, crosses `order[..i+1]`; `le`+strict → `<`, crosses
+    `order[..i]`. Enumeration is by **ascending order position** in both
+    directions. Value schemes have **no open end**, so there is no `all`
+    threshold (unlike the cut path, D-047); *N* bins give *N* shapes (before
+    `drop_top`).
+  - **`drop_top`.** Suppresses the **inclusive tautological** threshold (`ge` →
+    the first, `le` → the last). Under a **strict** boundary it is a **no-op**:
+    there is no tautological threshold; the statically-empty end (`> highest` /
+    `< lowest`) is **kept and simply never crosses** (the closed-ends cut
+    precedent — an empty column is legal, §10.1). *(Open question 1 →
+    recommended option.)* An empty column that never crosses is a future
+    **emit-phase** `AttributeHasNoCrosses` concern (D-058); Slice H makes no
+    claim it surfaces now — that code has no emit site yet.
+  - **Naming / identity.** Names render through the existing `RenderName`
+    (`{attr}-{op}{display}`, `value_labels` applied since `identity` consults
+    them); the canonical identity's `BinKey` is the **raw** order value, so it
+    is style-independent (the roadmap gate `BinKey == ValueLabel`). The
+    fingerprint **encoder is untouched**: `AppendScale` already encoded ordinal
+    `boundary`/`direction`/`drop_top`/`order`, and each threshold column encodes
+    as `{"bin":"<raw value>","op":"<op>","scale":"ordinal"}`. Two order
+    permutations of one domain change the column identities/sequence, so the
+    schema fingerprint moves — byte- and fingerprint-neutral on every existing
+    golden and pinned baseline (no cut spec takes this path).
+- **Why:** the path was committed M2 scope in three places (roadmap M2 body, the
+  Tier-2 net-scope line, spec §12.3 "implemented at M2") but never landed:
+  `OrdinalScale.BuildShapes` read only the cut geometry, and an `identity` +
+  `ordinal` spec resolved, planned, and emitted output that **silently ignored**
+  the authored `order`/`boundary` — the exact wrong-output hazard D-057/D-070/
+  D-071 close elsewhere, and a path that could mint a wrong schema fingerprint.
+  A `BinScheme.CutBins` discriminator selects the path with one bit, keeping the
+  cut geometry (and its `Boundary`-is-unread rule, D-060) exactly as it was.
+- **Rejected:** *drop_top drops the statically-empty end under strict* (open
+  question 1 alt) — that end is not tautological, and dropping it would make
+  `drop_top` mean two different things by boundary; keeping it matches the
+  closed-ends cut precedent and an empty column is already legal (§10.1). *A new
+  §16.4 code for "order omits a domain value"* (open question 2 alt) — it is the
+  same defect as an omitted `order` (a bin with no threshold), so a message
+  variant of `OrdinalOrderMissing` keeps the registry closed. *Plan-phase
+  duplicate/empty order validation* (open question 3 alt) — that would split
+  `OrderDomainInvalid`'s phase ownership across packages; the seam already owns
+  the identical `ordered_cuts.order` shape check. *Building the numeric value-bin
+  ordinal now* — that is `free_per_value`, an M4 discretizer (D-070); M2 is
+  string-only.
+- **Affects:** Core (`OrdinalScale.BuildValueThresholds`, `BinScheme.CutBins`
+  and its three construction sites), Core (`ConversionPlanner` order-permutation
+  guard), Spec (`SpecResolver` broadened `OrderDomainInvalid`), Diagnostics
+  (`OrdinalOrderMissing`, `OrdinalOrderHasUnknownValue` enum members added). Spec
+  §12.3 (surgical: `drop_top` value-bin + strict-no-op wording, the
+  full-permutation clause). Byte- and fingerprint-neutral. Refines D-047/D-060;
+  pairs with D-070 (kind scope) and D-071 (absent-domain precedence).
 
 ---
 

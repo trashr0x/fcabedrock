@@ -279,11 +279,12 @@ public sealed class SpecComposerTests
     }
 
     [Fact]
-    public void Compose_WhenDerivedDuplicatesAnAttributeName_ThenDuplicateSurvivesToRejectDownstream()
+    public void Compose_WhenDerivedDuplicatesAnAttributeName_ThenResolveSeamRejects()
     {
         // Fail-closed duplicate discipline (D-078): the merge never collapses
-        // authoring duplicates — AttributeNameDuplicate owns the reject, exactly
-        // as it would for the same duplicate in a flat file.
+        // authoring duplicates — AttributeNameDuplicate owns the reject at the
+        // resolve seam (D-080), exactly as it would for the same duplicate in a
+        // flat file.
         var source = new InMemorySpecTextSource().Add("base.toml",
             "[spec]\nversion = 1\n[binding]\nshape = \"wide\"\n" + Attribute("a", 0));
         var root = Read(
@@ -293,9 +294,9 @@ public sealed class SpecComposerTests
         var composed = ComposeOk(root, "derived.toml", source);
 
         Assert.Equal(["a", "a"], composed.Attributes.Select(a => a.Name));
-        Assert.True(SpecResolver.Resolve(composed).TryGetValue(out var spec));
-        var plan = ConversionPlanner.Plan(spec, new SourceSchema(3));
-        Assert.Contains(plan.Diagnostics, d => d.Code == DiagnosticCode.AttributeNameDuplicate);
+        var resolved = SpecResolver.Resolve(composed);
+        Assert.False(resolved.TryGetValue(out _));
+        Assert.Contains(resolved.Diagnostics, d => d.Code == DiagnosticCode.AttributeNameDuplicate);
     }
 
     [Fact]

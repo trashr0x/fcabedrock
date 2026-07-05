@@ -190,6 +190,6 @@ Don't implement first and explain later.
 
 ## Current status
 
-**M1 complete; M2 (TOML spec format + fingerprinting) in progress.**
+**M1 and M2 (TOML spec format + fingerprinting) complete; M3 (triple source) next.**
 `docs/roadmap.md` is the live source for current position, test count, and the
 deferred backlog — consult it rather than duplicating the detail here.

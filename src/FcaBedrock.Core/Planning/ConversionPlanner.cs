@@ -208,18 +208,11 @@ public static class ConversionPlanner
     {
         ValidateObjectKey(spec.Binding.ObjectKey, diagnostics);
 
-        var seenNames = new HashSet<string>(StringComparer.Ordinal);
+        // Duplicate authored names (AttributeNameDuplicate) and value_labels keys
+        // (ValueLabelKeyNotInDomain) are rejected at the resolve seam over the
+        // document model (D-080); the planner keeps only its plan-phase checks.
         foreach (var attribute in spec.Attributes)
         {
-            if (!seenNames.Add(attribute.Name))
-            {
-                diagnostics.Add(new BedrockDiagnostic(
-                    DiagnosticCode.AttributeNameDuplicate,
-                    DiagnosticSeverity.Error,
-                    $"Attribute name '{attribute.Name}' is declared more than once.",
-                    new DiagnosticLocation(AttributeName: attribute.Name)));
-            }
-
             // §10.4 / D-057: restrict_to filters whether or not the attribute is
             // included (filter-only pattern), so the transitional reject sits
             // before the include-skip — silently ignoring it would emit
@@ -268,7 +261,63 @@ public static class ConversionPlanner
                     new DiagnosticLocation(AttributeName: attribute.Name)));
             }
 
-            ValidateValueLabels(attribute, diagnostics);
+            // §12.3 / D-081: the value-bin ordinal path (identity — the only M2
+            // value-bin discretizer, D-070) needs an explicit scale.order that is a
+            // full permutation of the declared_domain, or it would silently ignore the
+            // authored order/boundary. Membership is checked only for a non-empty
+            // domain — an absent domain is already rejected by D-071 above, so
+            // re-reporting here would double up (cut discretizers ignore the domain and
+            // never take this path — their order is OrdinalOrderNotAllowedWithCuts).
+            if (attribute.Discretizer is IdentityDiscretizer
+                && attribute.Scale is OrdinalScale ordinal
+                && attribute.DeclaredDomain.Count > 0)
+            {
+                ValidateValueBinOrder(attribute, ordinal, diagnostics);
+            }
+        }
+    }
+
+    // §12.3 / D-081: an identity value-bin ordinal must author a scale.order that is
+    // a full permutation of the declared_domain — every domain value gets a threshold
+    // (a value with no order entry is OrdinalOrderMissing; an order entry outside the
+    // domain is OrdinalOrderHasUnknownValue, one per stray entry). The order lists raw
+    // domain values, never display labels. Duplicate/empty order entries are caught
+    // earlier at the resolve seam (OrderDomainInvalid, D-081). Runs on an included,
+    // non-empty-domain identity attribute only (the caller's gate).
+    private static void ValidateValueBinOrder(
+        AttributeSpec attribute, OrdinalScale ordinal, List<BedrockDiagnostic> diagnostics)
+    {
+        if (ordinal.Order is not { } order)
+        {
+            diagnostics.Add(new BedrockDiagnostic(
+                DiagnosticCode.OrdinalOrderMissing, DiagnosticSeverity.Error,
+                $"Attribute '{attribute.Name}' uses an ordinal scale over identity value bins but declares no scale.order; the bin order must be explicit (§12.3).",
+                new DiagnosticLocation(AttributeName: attribute.Name)));
+            return;
+        }
+
+        var domain = new HashSet<string>(attribute.DeclaredDomain, StringComparer.Ordinal);
+        foreach (var value in order)
+        {
+            if (!domain.Contains(value))
+            {
+                diagnostics.Add(new BedrockDiagnostic(
+                    DiagnosticCode.OrdinalOrderHasUnknownValue, DiagnosticSeverity.Error,
+                    $"scale.order entry '{value}' on attribute '{attribute.Name}' is not in its declared_domain (§12.3).",
+                    new DiagnosticLocation(AttributeName: attribute.Name)));
+            }
+        }
+
+        var ordered = new HashSet<string>(order, StringComparer.Ordinal);
+        foreach (var value in attribute.DeclaredDomain)
+        {
+            if (!ordered.Contains(value))
+            {
+                diagnostics.Add(new BedrockDiagnostic(
+                    DiagnosticCode.OrdinalOrderMissing, DiagnosticSeverity.Error,
+                    $"declared_domain value '{value}' on attribute '{attribute.Name}' has no scale.order entry; every value bin needs a threshold (§12.3).",
+                    new DiagnosticLocation(AttributeName: attribute.Name)));
+            }
         }
     }
 
@@ -295,36 +344,6 @@ public static class ConversionPlanner
                     DiagnosticSeverity.Error,
                     "Wide column object keys are not implemented in this milestone (planned for M3, §5.4)."));
                 break;
-        }
-    }
-
-    private static void ValidateValueLabels(AttributeSpec attribute, List<BedrockDiagnostic> diagnostics)
-    {
-        if (attribute.ValueLabels.Count == 0)
-        {
-            return;
-        }
-
-        // §10.8 / D-049: value_labels is only consulted by discretizers whose bin
-        // label IS the raw value (identity, free_per_value). Under any other
-        // discretizer the labels are dormant — ignored here and in RenderName, never
-        // an error. Discretizer.ConsultsValueLabels is the single authority.
-        if (attribute.Discretizer?.ConsultsValueLabels != true)
-        {
-            return;
-        }
-
-        var domain = new HashSet<string>(attribute.DeclaredDomain, StringComparer.Ordinal);
-        foreach (var key in attribute.ValueLabels.Keys)
-        {
-            if (!domain.Contains(key))
-            {
-                diagnostics.Add(new BedrockDiagnostic(
-                    DiagnosticCode.ValueLabelKeyNotInDomain,
-                    DiagnosticSeverity.Error,
-                    $"value_labels key '{key}' on attribute '{attribute.Name}' is not in its declared_domain.",
-                    new DiagnosticLocation(AttributeName: attribute.Name)));
-            }
         }
     }
 

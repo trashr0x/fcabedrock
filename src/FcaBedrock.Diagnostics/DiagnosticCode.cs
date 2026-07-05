@@ -218,6 +218,22 @@ public enum DiagnosticCode
     FormalAttributeNameCollision,
 
     /// <summary>
+    /// A value-bin ordinal scale (<c>identity</c> — the only M2 value-bin
+    /// discretizer, D-070) needs an explicit <c>scale.order</c> but omits it, or a
+    /// <c>declared_domain</c> value has no <c>order</c> entry (every value bin needs
+    /// a threshold — <c>order</c> must be a full permutation of the domain). Spec
+    /// §12.3 (D-081).
+    /// </summary>
+    OrdinalOrderMissing,
+
+    /// <summary>
+    /// A <c>scale.order</c> entry is not among the attribute's bin labels (its
+    /// <c>declared_domain</c> for <c>identity</c>); <c>order</c> lists raw domain
+    /// values, never display labels. Spec §12.3 (D-081).
+    /// </summary>
+    OrdinalOrderHasUnknownValue,
+
+    /// <summary>
     /// The spec binds a triple source, whose conversion is not implemented in this
     /// milestone; the planner rejects it before any planning. Spec §5.1 (D-072;
     /// transitional, removed at M3).

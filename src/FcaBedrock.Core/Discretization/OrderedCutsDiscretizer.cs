@@ -80,7 +80,7 @@ public sealed record OrderedCutsDiscretizer : Discretizer
     internal override IReadOnlyList<string> BinLabels(IReadOnlyList<string> declaredDomain) => _binLabels;
 
     internal override BinScheme DescribeBins(IReadOnlyList<string> declaredDomain) =>
-        new(_binLabels, _structuralBins, Cuts, OpenLow: Ends == BinEnds.Open, OpenHigh: Ends == BinEnds.Open);
+        new(_binLabels, _structuralBins, Cuts, OpenLow: Ends == BinEnds.Open, OpenHigh: Ends == BinEnds.Open, CutBins: true);
 
     internal override string RenderBinLabel(string canonicalLabel, LabelStyle style) =>
         CutBinLabels.Render(canonicalLabel, style);

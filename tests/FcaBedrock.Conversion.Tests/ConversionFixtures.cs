@@ -63,6 +63,14 @@ internal static class ConversionFixtures
             ManualCutsDiscretizer.Create(cuts, BinEnds.Open, CultureInfo.InvariantCulture).Value!,
             new NominalScale(), DeclaredDomain: [], RestrictTo: [], NoLabels, missing, policy);
 
+    // An identity value-bin ordinal attribute (§12.3, D-081): the explicit string
+    // order is the declared domain itself, with a configurable direction/boundary.
+    public static AttributeSpec OrdinalValueBins(
+        string name, int index, IReadOnlyList<string> domain, OrdinalDirection direction, OrdinalBoundary boundary) =>
+        new(name, new ColumnSource(index, SourceValueType.String), Include: true,
+            new IdentityDiscretizer(), new OrdinalScale(direction, DropTop: false, boundary, domain),
+            domain, RestrictTo: [], NoLabels, MissingPolicy.Skip, UnknownValuePolicy.Warn);
+
     // An ordered_cuts attribute (open ends, nominal) over a category order with one cut.
     public static AttributeSpec OrderedCuts(string name, int index, IReadOnlyList<string> order, string cut) =>
         new(name, new ColumnSource(index, SourceValueType.String), Include: true,

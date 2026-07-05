@@ -38,6 +38,15 @@ internal static class SpecFixtures
             ManualCutsDiscretizer.Create(cuts, BinEnds.Open, CultureInfo.InvariantCulture).Value!, scale,
             DeclaredDomain: [], RestrictTo: [], NoLabels, missing, UnknownValuePolicy.Warn);
 
+    // An identity value-bin ordinal attribute (§12.3, D-081): an explicit order over
+    // the declared domain, paired with an OrdinalScale carrying that order.
+    public static AttributeSpec OrdinalValueBins(
+        string name, int index, IReadOnlyList<string> domain, OrdinalScale scale,
+        IReadOnlyDictionary<string, string>? valueLabels = null,
+        MissingPolicy missing = MissingPolicy.Skip) =>
+        new(name, new ColumnSource(index, SourceValueType.String), Include: true,
+            new IdentityDiscretizer(), scale, domain, RestrictTo: [], valueLabels ?? NoLabels, missing, UnknownValuePolicy.Warn);
+
     public static AttributeSpec Excluded(string name, int index) =>
         new(name, new ColumnSource(index, SourceValueType.String), Include: false, Discretizer: null, Scale: null,
             DeclaredDomain: [], RestrictTo: [], NoLabels, MissingPolicy.Skip, UnknownValuePolicy.Warn);

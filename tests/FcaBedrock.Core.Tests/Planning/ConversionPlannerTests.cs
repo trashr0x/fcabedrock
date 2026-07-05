@@ -115,18 +115,6 @@ public sealed class ConversionPlannerTests
     }
 
     [Fact]
-    public void Plan_WhenDuplicateAttributeName_ThenReportsAttributeNameDuplicate()
-    {
-        var spec = new BedrockSpec(SpecFixtures.WideRowIndex(),
-        [
-            SpecFixtures.Nominal("dup", 0, ["a"]),
-            SpecFixtures.Nominal("dup", 1, ["b"]),
-        ]);
-
-        AssertFailsWith(ConversionPlanner.Plan(spec, new SourceSchema(2)), DiagnosticCode.AttributeNameDuplicate);
-    }
-
-    [Fact]
     public void Plan_WhenExcludedAttributeRetainsEmittedConfig_ThenIgnoredWithoutError()
     {
         // include = false is an authoring toggle (D-049): retained discretizer/scale/
@@ -146,24 +134,6 @@ public sealed class ConversionPlannerTests
     }
 
     [Fact]
-    public void Plan_WhenActiveCutBasedAttributeHasDormantValueLabels_ThenIgnoredWithoutError()
-    {
-        // §10.8 / D-049: value_labels under a cut-based discretizer is dormant — it is
-        // ignored, so a key absent from declared_domain is NOT ValueLabelKeyNotInDomain.
-        var age = new AttributeSpec("age", new ColumnSource(0, SourceValueType.Number), Include: true,
-            ManualCutsDiscretizer.Create([30.0, 40.0], BinEnds.Open, CultureInfo.InvariantCulture).Value!,
-            new NominalScale(), DeclaredDomain: [], RestrictTo: [],
-            new Dictionary<string, string> { ["old"] = "Old retained label" },
-            MissingPolicy.Skip, UnknownValuePolicy.Warn);
-        var spec = new BedrockSpec(SpecFixtures.WideRowIndex(), [age]);
-
-        var result = ConversionPlanner.Plan(spec, new SourceSchema(1));
-
-        Assert.True(result.TryGetValue(out _));
-        Assert.DoesNotContain(result.Diagnostics, d => d.Code == DiagnosticCode.ValueLabelKeyNotInDomain);
-    }
-
-    [Fact]
     public void Plan_WhenCutBasedAttributeHasValueLabelsMatchingBinLabel_ThenLabelsAreIgnoredInNames()
     {
         // §10.8 / D-049: value_labels is dormant under a cut discretizer — it must not
@@ -178,15 +148,6 @@ public sealed class ConversionPlannerTests
         Assert.True(ConversionPlanner.Plan(spec, new SourceSchema(1)).TryGetValue(out var plan));
 
         Assert.Equal(["age-<30", "age->=30"], plan.FormalAttributes.Select(f => f.RenderedName));
-    }
-
-    [Fact]
-    public void Plan_WhenValueLabelKeyNotInDomain_ThenReportsValueLabelKeyNotInDomain()
-    {
-        var attr = SpecFixtures.Nominal("g", 0, ["b", "n"], new Dictionary<string, string> { ["x"] = "broad" });
-        var spec = new BedrockSpec(SpecFixtures.WideRowIndex(), [attr]);
-
-        AssertFailsWith(ConversionPlanner.Plan(spec, new SourceSchema(1)), DiagnosticCode.ValueLabelKeyNotInDomain);
     }
 
     [Fact]
@@ -393,17 +354,19 @@ public sealed class ConversionPlannerTests
     }
 
     [Fact]
-    public void Plan_WhenObjectKeyCompositeAndDuplicateNames_ThenBothDiagnosticsReport()
+    public void Plan_WhenObjectKeyCompositeAndRestrictToPresent_ThenBothDiagnosticsReport()
     {
         // P-13: the object-key guard aggregates with the attribute checks rather
-        // than short-circuiting the static pass.
-        var spec = new BedrockSpec(WideWithKey(new CompositeObjectKey()),
-            [SpecFixtures.Nominal("g", 0, ["b"]), SpecFixtures.Nominal("g", 1, ["b"])]);
+        // than short-circuiting the static pass. Duplicate names moved to the resolve
+        // seam (D-080), so a still-plan-phase code — RestrictToNotImplementedV1 —
+        // pairs with the object-key reject here.
+        var attr = SpecFixtures.Nominal("g", 0, ["b"]) with { RestrictTo = [new RestrictToValue("b")] };
+        var spec = new BedrockSpec(WideWithKey(new CompositeObjectKey()), [attr]);
 
-        var result = ConversionPlanner.Plan(spec, new SourceSchema(2));
+        var result = ConversionPlanner.Plan(spec, new SourceSchema(1));
 
         Assert.Contains(result.Diagnostics, d => d.Code == DiagnosticCode.ObjectKeyCompositeNotImplementedV1);
-        Assert.Contains(result.Diagnostics, d => d.Code == DiagnosticCode.AttributeNameDuplicate);
+        Assert.Contains(result.Diagnostics, d => d.Code == DiagnosticCode.RestrictToNotImplementedV1);
     }
 
     [Fact]
@@ -485,6 +448,90 @@ public sealed class ConversionPlannerTests
 
         Assert.True(result.TryGetValue(out _));
         Assert.Empty(result.Diagnostics);
+    }
+
+    // --- Value-bin ordinal (identity + explicit order, D-081) ---
+
+    [Fact]
+    public void Plan_WhenValueBinOrdinalLe_ThenThresholdNamesValueLabelsAndCumulativeCrossings()
+    {
+        // §12.3 / D-081: identity + explicit order → cumulative threshold columns
+        // named {attr}-{op}{label}; value_labels supply the display label, the raw
+        // order value is the style-independent identity key.
+        var scale = new OrdinalScale(OrdinalDirection.Le, DropTop: false, OrdinalBoundary.Inclusive,
+            ["Pre-Uni", "Undergrad", "Postgrad"]);
+        var spec = new BedrockSpec(SpecFixtures.WideRowIndex(),
+            [SpecFixtures.OrdinalValueBins("edu", 0, ["Pre-Uni", "Undergrad", "Postgrad"], scale,
+                new Dictionary<string, string> { ["Pre-Uni"] = "PU", ["Undergrad"] = "UG", ["Postgrad"] = "PG" })]);
+
+        Assert.True(ConversionPlanner.Plan(spec, new SourceSchema(1)).TryGetValue(out var plan));
+
+        Assert.Equal(["edu-<=PU", "edu-<=UG", "edu-<=PG"], plan.FormalAttributes.Select(f => f.RenderedName));
+        Assert.Equal(["Pre-Uni", "Undergrad", "Postgrad"], plan.FormalAttributes.Select(f => f.Identity.BinKey));
+        Assert.All(plan.FormalAttributes, f => Assert.Equal("<=", f.Identity.Operator));
+
+        var edu = Assert.Single(plan.Attributes);
+        Assert.True(edu.KnownBins.SetEquals(["Pre-Uni", "Undergrad", "Postgrad"]));
+        Assert.Equal([0, 1, 2], edu.CrossesByBin["Pre-Uni"]);   // <=Pre-Uni, <=Undergrad, <=Postgrad
+        Assert.Equal([1, 2], edu.CrossesByBin["Undergrad"]);    // <=Undergrad, <=Postgrad
+        Assert.Equal([2], edu.CrossesByBin["Postgrad"]);        // <=Postgrad (tautological) only
+    }
+
+    [Fact]
+    public void Plan_WhenValueBinOrdinalOmitsOrder_ThenReportsOrdinalOrderMissing()
+    {
+        // The F1 silent path, closed: identity + ordinal with no order used to plan
+        // and emit while ignoring the authored order/boundary — now rejected (§12.3).
+        var scale = new OrdinalScale(OrdinalDirection.Ge, DropTop: false, OrdinalBoundary.Inclusive, Order: null);
+        var spec = new BedrockSpec(SpecFixtures.WideRowIndex(),
+            [SpecFixtures.OrdinalValueBins("edu", 0, ["a", "b"], scale)]);
+
+        AssertFailsWith(ConversionPlanner.Plan(spec, new SourceSchema(1)), DiagnosticCode.OrdinalOrderMissing);
+    }
+
+    [Fact]
+    public void Plan_WhenOrderOmitsADomainValue_ThenReportsOrdinalOrderMissing()
+    {
+        // A full permutation is required — a domain value with no order entry has no
+        // threshold (§12.3). Same code, message variant naming the missing value.
+        var scale = new OrdinalScale(OrdinalDirection.Ge, DropTop: false, OrdinalBoundary.Inclusive, ["a", "b"]);
+        var spec = new BedrockSpec(SpecFixtures.WideRowIndex(),
+            [SpecFixtures.OrdinalValueBins("edu", 0, ["a", "b", "c"], scale)]);
+
+        var result = ConversionPlanner.Plan(spec, new SourceSchema(1));
+
+        AssertFailsWith(result, DiagnosticCode.OrdinalOrderMissing);
+        Assert.Contains("c",
+            Assert.Single(result.Diagnostics, d => d.Code == DiagnosticCode.OrdinalOrderMissing).Message,
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Plan_WhenOrderHasTwoStrayEntries_ThenTwoOrdinalOrderHasUnknownValue()
+    {
+        // Each order entry outside the declared_domain gets its own diagnostic (§12.3).
+        var scale = new OrdinalScale(OrdinalDirection.Ge, DropTop: false, OrdinalBoundary.Inclusive, ["a", "x", "y"]);
+        var spec = new BedrockSpec(SpecFixtures.WideRowIndex(),
+            [SpecFixtures.OrdinalValueBins("edu", 0, ["a"], scale)]);
+
+        var result = ConversionPlanner.Plan(spec, new SourceSchema(1));
+
+        Assert.Equal(2, result.Diagnostics.Count(d => d.Code == DiagnosticCode.OrdinalOrderHasUnknownValue));
+    }
+
+    [Fact]
+    public void Plan_WhenValueBinOrdinalAsAttribute_ThenMissingColumnFollowsThresholds()
+    {
+        // D-068/D-074: the missing column follows the ordinal threshold columns,
+        // uniformly across scale kinds.
+        var scale = new OrdinalScale(OrdinalDirection.Le, DropTop: false, OrdinalBoundary.Inclusive, ["a", "b"]);
+        var spec = new BedrockSpec(SpecFixtures.WideRowIndex(),
+            [SpecFixtures.OrdinalValueBins("edu", 0, ["a", "b"], scale, missing: MissingPolicy.AsAttribute)]);
+
+        Assert.True(ConversionPlanner.Plan(spec, new SourceSchema(1)).TryGetValue(out var plan));
+
+        Assert.Equal(["edu-<=a", "edu-<=b", "edu-missing"], plan.FormalAttributes.Select(f => f.RenderedName));
+        Assert.Equal(2, Assert.Single(plan.Attributes).MissingFormalAttributeId);
     }
 
     private static Binding WideWithKey(ObjectKey key) =>

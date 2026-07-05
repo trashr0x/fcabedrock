@@ -269,8 +269,8 @@ public static class SpecComposer
     /// (the derived section verbatim; inherited fields are dropped unless
     /// repeated); new names append after all inherited attributes, in derived
     /// order. Unnamed attributes never match; duplicates are preserved for
-    /// <c>AttributeNameDuplicate</c> to reject downstream, exactly as in a flat
-    /// file (D-078).
+    /// <c>AttributeNameDuplicate</c> to reject at the resolve seam (D-080),
+    /// exactly as in a flat file (D-078).
     /// </summary>
     private static IReadOnlyList<AttributeSection> MergeAttributes(
         IReadOnlyList<AttributeSection> baseAttributes,

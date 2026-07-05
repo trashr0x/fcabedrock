@@ -6,4 +6,12 @@
     <ProjectReference Include="..\..\src\FcaBedrock.Spec\FcaBedrock.Spec.csproj" />
   </ItemGroup>
 
+  <!-- The real mini-dates v2 .bed, copied next to the test assembly so the
+       migrator conformance test reads the on-disk fixture (not a synthetic one),
+       via AppContext.BaseDirectory. A plain copy; the migrator parses lines, so
+       EOL normalization is irrelevant (no byte comparison). -->
+  <ItemGroup>
+    <Content Include="$(RepoRoot)fixtures\v2\mini-dates\mini-dates_triples.bed" Link="fixtures\v2\mini-dates\mini-dates_triples.bed" CopyToOutputDirectory="PreserveNewest" Visible="false" />
+  </ItemGroup>
+
 </Project>

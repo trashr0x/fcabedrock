@@ -41,7 +41,8 @@ public abstract record Discretizer
             [.. labels.Select(CanonicalBin (label) => new ValueBin(label))],
             labels,
             OpenLow: false,
-            OpenHigh: false);
+            OpenHigh: false,
+            CutBins: false);
     }
 
     /// <summary>

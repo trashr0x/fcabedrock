@@ -126,8 +126,24 @@ public static class SpecResolver
         }
 
         var attributes = new List<AttributeSpec>(document.Attributes.Count);
+        var seenNames = new HashSet<string>(StringComparer.Ordinal);
         foreach (var section in document.Attributes)
         {
+            // §10.2 (D-080): duplicate authored names reject at the seam, over the
+            // document model — a duplicate whose sibling field fails to resolve still
+            // surfaces (ResolveAttribute would drop the broken one and hide the clash).
+            // Empty names are owned by AttributeNameMissing, so they are skipped here;
+            // one diagnostic per extra occurrence. This sits after the triple
+            // early-return, so triple documents are unaffected — exactly as the
+            // former planner check was (it followed the planner's triple guard).
+            if (!string.IsNullOrEmpty(section.Name) && !seenNames.Add(section.Name))
+            {
+                diagnostics.Add(new BedrockDiagnostic(
+                    DiagnosticCode.AttributeNameDuplicate, DiagnosticSeverity.Error,
+                    $"Attribute name '{section.Name}' is declared more than once.",
+                    new DiagnosticLocation(AttributeName: section.Name)));
+            }
+
             if (ResolveAttribute(section, document.Defaults, schema, hasHeader, culture, diagnostics) is { } attribute)
             {
                 attributes.Add(attribute);
@@ -432,6 +448,8 @@ public static class SpecResolver
         {
             ValidateValueType(section, attribute, diagnostics);
             ValidateOrdinalOverCuts(section, attribute, defaults, diagnostics);
+            ValidateValueLabels(section, attribute, diagnostics);
+            ValidateOrdinalOrderShape(section, attribute, diagnostics);
         }
 
         // restrict_to is live config even when the attribute is excluded (the
@@ -470,6 +488,38 @@ public static class SpecResolver
                 DiagnosticCode.SourceValueTypeInvalid, DiagnosticSeverity.Error,
                 $"Attribute '{attribute}' {problem} (§10.2).",
                 new DiagnosticLocation(AttributeName: attribute)));
+        }
+    }
+
+    // §10.8 (D-080): value_labels keys must name a declared_domain value. Re-homed
+    // from the planner to the seam, over the document model (D-067 phase ownership):
+    // the code is §16.4 spec-validate, and reading the section directly catches a
+    // stale key even when a sibling field fails to resolve (ResolveAttribute would
+    // return null). In M2 `section.Discretizer is IdentityDiscretizerSection` is
+    // exactly Discretizer.ConsultsValueLabels — free_per_value is the only other
+    // consulting kind and it is read-rejected before this seam (D-070); it joins
+    // this gate when it lands at M4. Under any other discretizer value_labels is
+    // dormant (§10.8/D-049) — ignored here and in name rendering, never an error.
+    // Include-gated by the caller, so a parked label list never blocks (D-049).
+    private static void ValidateValueLabels(
+        AttributeSection section, string attribute, List<BedrockDiagnostic> diagnostics)
+    {
+        if (section.ValueLabels is not { Count: > 0 } labels
+            || section.Discretizer is not IdentityDiscretizerSection)
+        {
+            return;
+        }
+
+        var domain = new HashSet<string>(section.DeclaredDomain ?? [], StringComparer.Ordinal);
+        foreach (var key in labels.Keys)
+        {
+            if (!domain.Contains(key))
+            {
+                diagnostics.Add(new BedrockDiagnostic(
+                    DiagnosticCode.ValueLabelKeyNotInDomain, DiagnosticSeverity.Error,
+                    $"value_labels key '{key}' on attribute '{attribute}' is not in its declared_domain.",
+                    new DiagnosticLocation(AttributeName: attribute)));
+            }
         }
     }
 
@@ -576,6 +626,39 @@ public static class SpecResolver
                 DiagnosticCode.OrdinalBoundaryIncompatibleWithCuts, DiagnosticSeverity.Error,
                 $"Attribute '{attribute}' authors an ordinal boundary that straddles the cut geometry ('le' pairs with strict '<', 'ge' with inclusive '>='); over cut bins the geometry fixes the operator (§12.3).",
                 new DiagnosticLocation(AttributeName: attribute)));
+        }
+    }
+
+    // §12.3 (D-081): over a non-cut discretizer an authored scale.order is the
+    // value-bin ordering; its entries must be distinct and non-empty — the same
+    // structural rule ordered_cuts.order already carries via OrderDomainInvalid,
+    // broadened here to any authored order. The order-vs-domain permutation
+    // (missing / unknown values) is a plan-phase check (OrdinalOrderMissing /
+    // OrdinalOrderHasUnknownValue); this seam owns only the list's internal
+    // validity. A cut discretizer's order is OrdinalOrderNotAllowedWithCuts
+    // (ValidateOrdinalOverCuts), so those kinds are skipped here — no double
+    // report. Include-gated by the caller, so a parked order never blocks (D-049),
+    // exactly like the ordinal-over-cuts checks.
+    private static void ValidateOrdinalOrderShape(
+        AttributeSection section, string attribute, List<BedrockDiagnostic> diagnostics)
+    {
+        if (section.Scale is not OrdinalScaleSection { Order: { } order }
+            || section.Discretizer is ManualCutsDiscretizerSection or OrderedCutsDiscretizerSection)
+        {
+            return;
+        }
+
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var value in order)
+        {
+            if (value.Length == 0 || !seen.Add(value))
+            {
+                diagnostics.Add(new BedrockDiagnostic(
+                    DiagnosticCode.OrderDomainInvalid, DiagnosticSeverity.Error,
+                    $"Attribute '{attribute}' scale.order entries must be distinct and non-empty (§12.3).",
+                    new DiagnosticLocation(AttributeName: attribute)));
+                return;
+            }
         }
     }
 
