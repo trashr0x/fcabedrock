@@ -1605,6 +1605,12 @@ exactly one phase — the "Where" column below is the phase-ownership contract
 | `AttributeHasNoCrosses` | Warning (aggregated) | emit |
 | `ObjectHasNoCrosses` | Warning (aggregated) | emit |
 | `OutputCxtSizeAdvisory` | Warning | export |
+| `BedStructureInvalid` | Fatal | migrate (v2) |
+| `BedDateTypeNotSupported` | Error | migrate (v2) |
+| `BedTypeUnrecognized` | Error | migrate (v2) |
+| `BedAttributeConfigInvalid` | Error | migrate (v2) |
+| `BedParkedConfigDropped` | Warning | migrate (v2) |
+| `BedMissingTokenLabelDropped` | Warning | migrate (v2) |
 
 `EmptyExtent` / `EmptyIntent` were dropped in favor of the unambiguous,
 correctly-phased `AttributeHasNoCrosses` (an empty column, emit) and
@@ -1634,6 +1640,13 @@ extends/template/matcher entries were retired by their Slice F carriers, D-078;
 the remaining entries retire as their slices land and the row is removed at M2
 exit, except the `date` entry, which retires when the D-038 carrier lands and
 hands over to the permanent plan-phase `DateValueTypeNotImplementedV1`).
+
+**The `migrate (v2)` phase** is the one-way `.bed` → TOML migration (D-009/D-079),
+a tooling phase outside the §7 processing pipeline. The migrator carries what the
+document model can represent and defers semantic validation to the resolve seam,
+so only transcription failures own codes here; a migrated spec then flows through
+the ordinary parse/resolve/validate/plan phases above. `BedDateTypeNotSupported`
+retires if the date carrier lands (D-038).
 
 **Aggregation.** Data-phase diagnostics that can fire per value or per object —
 `SourceValueUnparseable`, `UnknownValueObserved`, `AttributeHasNoCrosses`,

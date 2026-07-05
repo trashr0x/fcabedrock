@@ -5,12 +5,15 @@ using FcaBedrock.Diagnostics;
 using FcaBedrock.Export;
 using FcaBedrock.Sources;
 using FcaBedrock.Spec;
+using FcaBedrock.Spec.Toml;
 
 namespace FcaBedrock.Golden.Tests;
 
-// Drives the full pipeline for one fixture: read .bed (Spec) -> wide source
-// (Sources) -> plan (Core) -> emit (Conversion) -> write (Export). The single
-// orchestrator the golden harness exercises (later, M7's CLI plays this role).
+// Drives the full pipeline for one fixture: read .bed -> migrate to a spec
+// document -> resolve (Spec) -> wide source (Sources) -> plan (Core) -> emit
+// (Conversion) -> write (Export). The single orchestrator the golden harness
+// exercises (later, M7's CLI plays this role); byte-equality here is also the
+// gate on the migrate->resolve route reproducing v2 (D-079).
 internal static class GoldenConversion
 {
     public static async Task<byte[]> WriteCxtAsync(FixtureCase fixture, WriterOptions options)
@@ -32,11 +35,17 @@ internal static class GoldenConversion
     private static async Task<(ConversionPlan Plan, IRecordSource Source)> PrepareAsync(
         FixtureCase fixture, WriterOptions options)
     {
-        var document = BedReader.Read(await File.ReadAllTextAsync(fixture.BedPath));
-        var spec = BedToSpec.ToSpec(document, fixture.Binding, fixture.ScalingMode);
+        var read = BedReader.Read(await File.ReadAllTextAsync(fixture.BedPath), fixture.BedPath);
+        Assert.True(read.TryGetValue(out var document), Describe(read.Diagnostics));
+
+        var migrated = BedMigrator.Migrate(document, fixture.Binding, fixture.ScalingMode, fixture.BedPath);
+        Assert.True(migrated.TryGetValue(out var specDocument), Describe(migrated.Diagnostics));
+
+        var resolved = SpecResolver.Resolve(specDocument);
+        Assert.True(resolved.TryGetValue(out var spec), Describe(resolved.Diagnostics));
 
         var dataPath = fixture.DataPath;
-        var source = new WideCsvSource(() => File.OpenRead(dataPath), fixture.Binding);
+        var source = new WideCsvSource(() => File.OpenRead(dataPath), spec.Binding);
 
         var schema = await source.GetSchemaAsync();
         var planned = ConversionPlanner.Plan(spec, schema, LabelStyleFor(options));

@@ -921,9 +921,13 @@ public sealed class SpecResolverTests
         // The hand-built document twin must plan to the exact formal-attribute
         // schema the .bed migration path yields (P-7 — one schema, two producers).
         var viaDocument = SpecResolver.Resolve(DocumentFixtures.MiniMushroom());
-        var viaBed = BedToSpec.ToSpec(
-            BedReader.Read(BedFixtures.MushroomBed),
-            new Binding(SourceShape.Wide, ',', '"', HasHeader: true, "invariant", "?", new RowIndexObjectKey()));
+        Assert.True(BedReader.Read(BedFixtures.MushroomBed).TryGetValue(out var bedDocument));
+        var migrated = BedMigrator.Migrate(
+            bedDocument,
+            new BindingSection(SourceShape.Wide, Encoding: null, ',', QuoteChar: null, HasHeader: true,
+                Locale: null, MissingToken: null, Ordering: null, Columns: null, ObjectKey: null));
+        Assert.True(migrated.TryGetValue(out var bedSpecDocument));
+        Assert.True(SpecResolver.Resolve(bedSpecDocument).TryGetValue(out var viaBed));
 
         Assert.True(viaDocument.TryGetValue(out var documentSpec));
         Assert.True(ConversionPlanner.Plan(documentSpec, new SourceSchema(5)).TryGetValue(out var documentPlan));

@@ -1,13 +1,16 @@
 using FcaBedrock.Core.Spec;
 using FcaBedrock.Spec;
+using FcaBedrock.Spec.Toml;
 
 namespace FcaBedrock.Golden.Tests;
 
 // One activated golden fixture: its .bed, .data, expected outputs, and the binding
 // the v2 .bed never recorded (delimiter/header/shape are supplied here, per the
-// fixtures README's sanction for a typed fixture-case list). The active set grows
-// per milestone — mini-adult joins next M1 slice, triples at M3, dates stay parked.
-public sealed record FixtureCase(string Family, string Variant, Binding Binding)
+// fixtures README's sanction for a typed fixture-case list). The binding is the
+// authored document form (D-066) — the .bed migrates onto it and the resolve seam
+// applies the §5.1 defaults. The active set grows per milestone — triples at M3,
+// dates stay parked.
+public sealed record FixtureCase(string Family, string Variant, BindingSection Binding)
 {
     private string Dir => Path.Combine(FixturePaths.V2Root, Family);
 
@@ -26,8 +29,9 @@ public sealed record FixtureCase(string Family, string Variant, Binding Binding)
     // ordinal .bed files are byte-identical); supplied out-of-band like the Binding.
     public ScalingMode ScalingMode { get; init; } = ScalingMode.Discrete;
 
-    public static Binding Wide(char delimiter, bool hasHeader) =>
-        new(SourceShape.Wide, delimiter, '"', hasHeader, "invariant", "?", new RowIndexObjectKey());
+    public static BindingSection Wide(char delimiter, bool hasHeader) =>
+        new(SourceShape.Wide, Encoding: null, delimiter, QuoteChar: null, hasHeader,
+            Locale: null, MissingToken: null, Ordering: null, Columns: null, ObjectKey: null);
 
     public static IReadOnlyList<FixtureCase> Active { get; } =
     [

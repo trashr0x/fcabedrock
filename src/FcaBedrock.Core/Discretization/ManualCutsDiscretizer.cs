@@ -48,8 +48,8 @@ public sealed record ManualCutsDiscretizer : Discretizer
     /// Validates the cut spec and, if valid, builds the discretizer (spec §11.2,
     /// D-056). On any problem returns <see cref="Diagnosed{T}.Failed"/> with the
     /// cut diagnostics and never constructs — so the discretizer's invariants
-    /// (non-empty / ascending / closed-ends ≥ 2) always hold. Wired into
-    /// <c>BedToSpec</c> now; reused by the M2 TOML reader.
+    /// (non-empty / ascending / closed-ends ≥ 2) always hold. Wired into the
+    /// resolve seam (D-067), the one path both TOML and migrated specs take.
     /// </summary>
     public static Diagnosed<ManualCutsDiscretizer> Create(
         IReadOnlyList<double> cuts, BinEnds ends, CultureInfo culture)

@@ -25,7 +25,7 @@ vertical slices, not waterfall phases — each should leave the system working.
 > split → `as_attribute` → reader/writer → validation → fingerprints →
 > `extends`/triple → migrator).
 >
-> **Slices A–E have landed:** the presence-tracked document model +
+> **Slices A–G have landed:** the presence-tracked document model +
 > resolve/validate seam (D-066/D-067), `missing_policy = "as_attribute"`
 > (D-068/D-074), the TOML reader/writer (D-075) — strict CST reader with
 > the D-070 kind gates and the closed deferred-surface set, canonical writer,
@@ -48,9 +48,18 @@ vertical slices, not waterfall phases — each should leave the system working.
 > tables), the `[[template]]`/`[[matcher]]` carriers merged-but-rejected-on-use
 > at the seam (`TemplateMatcherNotImplementedV1`, out at M6), the
 > extends/template/matcher deferred-surface retirements, and the composed≡flat
-> canonical-text + three-fingerprint equivalence tests (no encoder change).
-> `dotnet test` is green (488 tests).
-> Next: Slice G (`.bed` migrator rework, D-049 hygiene).
+> canonical-text + three-fingerprint equivalence tests (no encoder change) —
+> and Slice G, the `.bed` migrator rework (D-079): `BedReader`/`BedMigrator`
+> speak `Diagnosed<T>` and target the document model (`.bed` → `SpecDocument` →
+> writer/seam — D-009's "save as TOML" realized), carrying `restrict_to`
+> (D-057), detecting the effective-missing-token `as_attribute` idiom (D-068),
+> parking excluded config without the silent degrade (the D-049 hygiene item;
+> six `migrate (v2)` diagnostic codes), and re-routing the golden harness
+> through migrate→resolve byte-identically — the migrated mini-mushroom
+> reproduces the pinned Slice E fingerprints exactly.
+> `dotnet test` is green (515 tests).
+> Next: M2 exit review (the `AttributeNameDuplicate` phase-alignment cleanup
+> below remains a standalone item), then M3 (triple source).
 
 ## Milestones
 

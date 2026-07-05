@@ -49,7 +49,8 @@ public sealed record OrderedCutsDiscretizer : Discretizer
     /// <summary>
     /// Validates the order and cut spec and, if valid, builds the discretizer
     /// (spec §11.8, D-056). On any problem returns <see cref="Diagnosed{T}.Failed"/>
-    /// and never constructs. Wired into <c>BedToSpec</c> now; reused by the M2 TOML reader.
+    /// and never constructs. Wired into the resolve seam (D-067), the one path
+    /// both TOML and migrated specs take.
     /// </summary>
     public static Diagnosed<OrderedCutsDiscretizer> Create(
         IReadOnlyList<string> order, IReadOnlyList<string> cuts, BinEnds ends)

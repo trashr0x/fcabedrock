@@ -132,6 +132,7 @@ superseded or refined. A new entry MUST add its line here.
 - D-076 — Slice D seam/plan validation contract details (appends D-067)
 - D-077 — Slice E fingerprint encoding/verification contract details (appends D-069)
 - D-078 — Slice F composition/carrier contract details (realizes D-027/D-052; refines D-067/D-075)
+- D-079 — Slice G `.bed` migrator contract: document-model target, Diagnosed surfaces (realizes D-009/D-049/D-057/D-068)
 
 Spec-field defaults are recorded in spec §21 items 1–11 (see the final section
 of this file).
@@ -943,7 +944,8 @@ refinement markers (D-003, D-005, D-021); the entries below are new.
   BedrockDiagnostic>` instead of throwing (P-13), so excluded-config recovery can
   emit a *diagnostic* rather than relying on the broad recovery `catch (Exception)`
   in `MapAttribute`. Natural to fold in when M2 reworks the `.bed` → TOML migrator;
-  not worth a standalone refactor now.
+  not worth a standalone refactor now. *(Landed at M2 Slice G, D-079 —
+  `Diagnosed<SpecDocument>` over the document model.)*
 - **Affects:** Core (planner `ValidateValueLabels` + `RenderName`; new
   `Discretizer.ConsultsValueLabels`; `AttributeSpec` doc), Diagnostics (enum:
   `EmittedFieldOnExcludedAttribute` removed), Spec (`BedToSpec` migrator), spec
@@ -1956,6 +1958,94 @@ built; they refine, not reverse, D-009 / D-049 / D-050…D-065.
   `TemplateMatcherNotImplementedV1`); spec §9 / §13 / §16.4. Realizes
   D-027/D-052; refines D-067/D-075; byte-neutral on the M1 goldens and the
   Slice E fingerprint baselines (Core untouched).
+
+### D-079 — Slice G `.bed` migrator contract: document-model target, Diagnosed surfaces
+
+- **Status:** accepted (realizes D-009's save-as-TOML face, the D-049
+  migrator-hygiene item, D-068's migrator branch, and D-057's carriage;
+  supersedes the M1 Core-targeting `BedToSpec`)
+- **Date:** 2026-07-05
+- **Decision:** the one-way v2 migrator targets the **document model**:
+  `BedMigrator.Migrate(BedDocument, BindingSection, ScalingMode, derivedFrom?) →
+  Diagnosed<SpecDocument>` replaces `BedToSpec` (Core-targeting, throwing), and
+  `BedReader.Read(text, filePath?)` returns `Diagnosed<BedDocument>` (structural
+  problems — missing section, entry-count shortfall, unparseable count/convert
+  flag — are `BedStructureInvalid`, Fatal, aggregated). A migrated spec is
+  written by `SpecWriter`, resolved through the one seam (D-066/D-067), and
+  fingerprinted like any authored spec; the golden harness runs this
+  migrate→resolve route. Contract points:
+  - **Carry what the carrier represents; validation stays at the seam.** The
+    migrator transcribes; representable-but-invalid config (e.g. non-ascending
+    cuts) carries verbatim and fails at resolve under its owning code
+    (D-056/D-067) — an *included* malformed-cut `.bed` therefore now fails at
+    resolve, not migrate. Only transcription failures diagnose at migrate: an
+    unparseable numeric cut token (the carrier stores numbers) or a dichotomic
+    true value equal to the effective missing token (contradicts the D-068
+    domain exclusion; no seam check would catch it) → `BedAttributeConfigInvalid`;
+    type `d` on an included attribute → `BedDateTypeNotSupported` (D-038 parity
+    deferral — failing is honest, a spec silently missing an included attribute
+    changes the analysis; retires if the date carrier lands); an unknown type
+    code → `BedTypeUnrecognized` (the D-070 typo-vs-deferred tiering).
+  - **Parked config (D-049):** an excluded attribute parks its **full** config —
+    including representable-but-invalid config, which the seam skips while
+    parked, so flipping `include = true` is what surfaces validation (better
+    than M1, which degraded it). Untranscribable parked config degrades to bare
+    excluded (`name`, `source`, `include = false`, plus the live `restrict_to`)
+    with `BedParkedConfigDropped` (Warning) — replacing M1's silent broad
+    `catch (Exception)`. Excluded attributes hence resolve parked-with-nulls in
+    Core rather than M1's carried discretizer/scale — planner- and
+    fingerprint-inert (both skip excluded attributes).
+  - **restrict_to (D-057):** a non-empty `[Restrict To Values]` line migrates to
+    authored string `RestrictToValue` entries, tokens verbatim (no per-token
+    trim — v2 restrict is raw-value equality, OR within an attribute),
+    include-independent (§10.1/D-076); a blank line stays unauthored. Numeric
+    attributes keep string entries too — a range cannot express v2's exact
+    match ([x, x) is empty under lo-inclusive/hi-exclusive) — and the seam's
+    `RestrictToOnNumericRequiresRange` owns the mismatch; the migrator stays
+    silent (one condition → one owning code, P-13). The planner still rejects
+    any carried `restrict_to` with `RestrictToNotImplementedV1` until M4.
+  - **Missing token (D-068):** for the domain-list types (`c`, `b`) a
+    `[Category Values]` entry equal to the **effective** token — null when
+    `missing_token` is authored `""` (§5.1: detection disabled), else the
+    authored value or the default `?` — selects `missing_policy = "as_attribute"`
+    and leaves `declared_domain`/`value_labels`; a display label on the token
+    has no v1 carrier (`{column}-missing` is canonical, D-074) →
+    `BedMissingTokenLabelDropped` (Warning). Cut types (`o`, `n`) get no
+    detection — their `[Category Values]` is a cut spec, not a domain.
+  - **Authoring rules:** `ends` is always authored (the resolver defaults an
+    absent `ends` to open, but a sentinel-less v2 cut spec means closed —
+    omission would silently flip it); the progressive ordinal authors
+    `direction = "le"` **only** (an authored `boundary`/`order` over cuts is a
+    D-060 validation error; the resolver defaults reproduce v2's rendering);
+    everything the resolver already defaults correctly stays unauthored
+    (`value_type`, quote/locale/missing token, object key, the policies,
+    `include = true`, `[defaults]`, `[output]`). Dichotomic display labels now
+    carry as dormant `value_labels` (byte-/fingerprint-inert; dichotomic renders
+    the column name alone) instead of dropping silently. `[spec]` holds
+    `version = 1` only — no stored fingerprints (a migrated spec is unfrozen;
+    D-057) and no `created_at` (no clock in pure code — P-7); `derived_from`
+    lands in `[provenance]` when the caller supplies it.
+- **Why:** D-009 promised "load v2, save as TOML", but the M1 migrator could
+  only produce a Core spec — unwritable, unfingerprintable, restrict-dropping —
+  and D-049 deferred the hygiene ("no silently-dropped parked config") to this
+  rework. Targeting the document model gets the writer, seam validation, and
+  fingerprints for free and keeps every static check single-homed (D-067);
+  the migrated mini-mushroom reproducing the pinned Slice E baselines is the
+  proof the `.bed` path and the §19.1 TOML path are one spec.
+- **Rejected:** keeping a Core-targeting migrator alongside the document path
+  (two producers to hold semantically aligned forever); wrapping the M1
+  exceptions in `Diagnosed` at the edges (keeps the broad catch and the silent
+  drops); converting v2 numeric restrict tokens to ranges (changes semantics —
+  see above); parking an included `d` attribute as excluded so migration
+  "succeeds" (silently changes the analysis — the exact hazard D-068 names);
+  hardcoding `?` in missing-token detection (already rejected by D-068).
+- **Affects:** Spec (`BedReader`, `BedMigrator` replacing `BedToSpec`,
+  `BedDocument`/`ScalingMode` docs), Diagnostics (`BedStructureInvalid`,
+  `BedDateTypeNotSupported`, `BedTypeUnrecognized`, `BedAttributeConfigInvalid`,
+  `BedParkedConfigDropped`, `BedMissingTokenLabelDropped`), golden harness
+  (migrate→resolve route; `FixtureCase` supplies a `BindingSection`), spec
+  §16.4 (the `migrate (v2)` phase rows). M1 goldens byte-identical; Slice E
+  fingerprint baselines unchanged.
 
 ---
 

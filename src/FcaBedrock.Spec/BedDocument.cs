@@ -5,7 +5,7 @@ namespace FcaBedrock.Spec;
 /// arrays, one entry per attribute (the brittle v2 layout that decisions.md D-009
 /// replaces with TOML). Notably it carries <b>no</b> binding (delimiter, header,
 /// shape): the v2 format never recorded those, so the caller supplies a
-/// <see cref="FcaBedrock.Core.Spec.Binding"/> when mapping to a spec.
+/// <see cref="Toml.BindingSection"/> when migrating to a spec document.
 /// </summary>
 /// <param name="AttributeCount">The declared number of attributes.</param>
 /// <param name="Names">Attribute names (<c>[Attributes]</c>).</param>

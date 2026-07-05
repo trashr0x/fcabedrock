@@ -288,6 +288,57 @@ public enum DiagnosticCode
     /// </summary>
     DatOutputFingerprintStale,
 
+    // --- v2 .bed migration (D-009 one-way migration; Slice G) ---
+
+    /// <summary>
+    /// The v2 <c>.bed</c> structure is unreadable: a missing bracket section, an
+    /// entry-count shortfall, or an unparseable attribute count / convert flag.
+    /// Fatal: no document is produced (the <c>SpecTomlInvalid</c> of the migration
+    /// path). Spec §16.4 (D-009/D-079).
+    /// </summary>
+    BedStructureInvalid,
+
+    /// <summary>
+    /// An included attribute uses the v2 date type <c>d</c>, which is deferred from
+    /// v1 (D-038) and has no spec carrier; the migration fails rather than silently
+    /// producing a spec missing an included attribute. The recognized-but-deferred
+    /// tier — a typo'd type code is <see cref="BedTypeUnrecognized"/>. Spec §16.4 (D-079).
+    /// </summary>
+    BedDateTypeNotSupported,
+
+    /// <summary>
+    /// An included attribute's v2 type code is outside the six-code set
+    /// (c/b/o/n/d) — a corrupt or hand-mangled <c>.bed</c>. Spec §16.4 (D-038's
+    /// type-code map; D-079).
+    /// </summary>
+    BedTypeUnrecognized,
+
+    /// <summary>
+    /// An included attribute's v2 config cannot be transcribed into the document
+    /// model: an unparseable numeric cut token (the carrier stores numbers), or a
+    /// <c>dichotomic</c> true value equal to the effective missing token
+    /// (contradicts the D-068 domain-exclusion rule). Config the model can carry is
+    /// carried instead and validated at the resolve seam. Spec §16.4 (D-079).
+    /// </summary>
+    BedAttributeConfigInvalid,
+
+    /// <summary>
+    /// An excluded attribute's v2 config cannot be transcribed (the
+    /// <see cref="BedDateTypeNotSupported"/>/<see cref="BedTypeUnrecognized"/>/
+    /// <see cref="BedAttributeConfigInvalid"/> conditions) and was degraded to a
+    /// bare excluded attribute — name, source, <c>include = false</c>. Warning:
+    /// dormant config never blocks migration (D-049), but it is never dropped
+    /// silently either. Spec §16.4 (D-049/D-079).
+    /// </summary>
+    BedParkedConfigDropped,
+
+    /// <summary>
+    /// A v2 missing-token category (D-068) carried a display label, which has no v1
+    /// carrier — the missing column is canonically <c>{column}-missing</c>
+    /// (§10.5/D-074); the label is dropped with this Warning. Spec §16.4 (D-068/D-079).
+    /// </summary>
+    BedMissingTokenLabelDropped,
+
     // --- Emit ---
 
     /// <summary>

@@ -68,7 +68,8 @@ internal static class DocumentFixtures
         new(Index: null, name, valueType);
 
     // The document-model twin of the .bed mini-mushroom (BedFixtures.MushroomBed):
-    // must plan to the same formal-attribute schema as the BedToSpec path (P-7).
+    // must plan to the same formal-attribute schema as the migrated .bed path
+    // (BedMigrator -> SpecResolver, P-7).
     public static SpecDocument MiniMushroom() =>
         Document(
         [
