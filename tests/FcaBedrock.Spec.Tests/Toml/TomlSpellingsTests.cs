@@ -94,10 +94,10 @@ public sealed class TomlSpellingsTests
     {
         // D-075: the sets are exact and per-table — the transitional reject must
         // never absorb typo-like unknown keys or a listed name in another table.
-        Assert.Equal(["extends"], TomlSpellings.SpecDeferredKeys);
+        // Slice F retired extends/template/matcher (D-078); the remaining
+        // entries belong to the naming-fidelity slice.
         Assert.Equal(["formal_attribute_format"], TomlSpellings.DefaultsDeferredKeys);
-        Assert.Equal(["display_name", "formal_attribute_format", "template"], TomlSpellings.AttributeDeferredKeys);
-        Assert.Equal(["template", "matcher"], TomlSpellings.DeferredTables);
+        Assert.Equal(["display_name", "formal_attribute_format"], TomlSpellings.AttributeDeferredKeys);
     }
 
     private static void AssertBothWays<T>((string Text, T Value)[] table)

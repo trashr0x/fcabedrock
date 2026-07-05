@@ -139,11 +139,13 @@ public sealed class SpecWriterTests
                 BinLabelUnicode: false,
                 new CxtOutputSection(LineEndings.Lf, TrailingNewline: true, SizeAdvisoryBytes: 1_073_741_824),
                 new DatOutputSection(LineEndings.Crlf, BaseIndex: 0, NonemptyLineTrailingSpace: null, EmptyLineTrailingSpace: null)),
+            [],
+            [],
             [
                 new AttributeSection(
                     "age", new PredicateSourceSection("age", SourceValueType.Number), Description: "years",
-                    Include: null, Discretizer: null, Scale: null, DeclaredDomain: null, RestrictTo: null,
-                    ValueLabels: null, MissingPolicy: null, UnknownValuePolicy: null),
+                    Include: null, Template: null, Discretizer: null, Scale: null, DeclaredDomain: null,
+                    RestrictTo: null, ValueLabels: null, MissingPolicy: null, UnknownValuePolicy: null),
             ]);
 
         Assert.Equal(
@@ -208,9 +210,80 @@ public sealed class SpecWriterTests
     }
 
     [Fact]
+    public void Write_WhenExtendsAuthored_ThenEmittedBetweenFingerprintsAndDescription()
+    {
+        var document = new SpecDocument(
+            new SpecSection(1, null, null, "sha256:7890ab", "../base.toml", "derived"),
+            null, null, null, null, [], [], []);
+
+        Assert.Equal(
+            Lines(
+                "[spec]",
+                "version = 1",
+                "dat_output_fingerprint = \"sha256:7890ab\"",
+                "extends = \"../base.toml\"",
+                "description = \"derived\""),
+            SpecWriter.Write(document));
+    }
+
+    [Fact]
+    public void Write_WhenTemplatesAndMatchersAuthored_ThenEmittedBetweenOutputAndAttributes()
+    {
+        // §2 section order: [output] → [[template]] → [[matcher]] → [[attribute]];
+        // only authored keys emit, in the canonical per-section key order.
+        var document = DocumentFixtures.Document(
+            [DocumentFixtures.Attribute("a", template: "boolean_yes_no")],
+            output: new OutputSection(BinLabelUnicode: true, Cxt: null, Dat: null),
+            templates:
+            [
+                new TemplateSection(
+                    "boolean_yes_no", Include: null,
+                    new IdentityDiscretizerSection(), new DichotomicScaleSection("Yes"),
+                    ["Yes", "No"], RestrictTo: null, ValueLabels: null,
+                    MissingPolicy: null, UnknownValuePolicy: null),
+            ],
+            matchers:
+            [
+                new MatcherSection(new MatchSection("^feature_\\d+$", null), "boolean_yes_no"),
+                new MatcherSection(new MatchSection(null, [10, 1553]), "boolean_yes_no"),
+            ]);
+
+        Assert.Equal(
+            Lines(
+                "[spec]",
+                "version = 1",
+                "",
+                "[binding]",
+                "shape = \"wide\"",
+                "",
+                "[output]",
+                "bin_label_unicode = true",
+                "",
+                "[[template]]",
+                "id = \"boolean_yes_no\"",
+                "declared_domain = [\"Yes\", \"No\"]",
+                "discretizer = { kind = \"identity\" }",
+                "scale = { kind = \"dichotomic\", true_value = \"Yes\" }",
+                "",
+                "[[matcher]]",
+                "match = { name_regex = \"^feature_\\\\d+$\" }",
+                "template = \"boolean_yes_no\"",
+                "",
+                "[[matcher]]",
+                "match = { source_index_range = [10, 1553] }",
+                "template = \"boolean_yes_no\"",
+                "",
+                "[[attribute]]",
+                "name = \"a\"",
+                "source = { kind = \"column\", index = 0 }",
+                "template = \"boolean_yes_no\""),
+            SpecWriter.Write(document));
+    }
+
+    [Fact]
     public void Write_WhenDocumentEmpty_ThenEmptyText()
     {
-        var document = new SpecDocument(null, null, null, null, null, []);
+        var document = new SpecDocument(null, null, null, null, null, [], [], []);
 
         Assert.Equal(string.Empty, SpecWriter.Write(document));
     }

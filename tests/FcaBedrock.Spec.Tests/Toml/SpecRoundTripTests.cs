@@ -118,6 +118,51 @@ public sealed class SpecRoundTripTests
     }
 
     [Fact]
+    public void RoundTrip_WhenDerivedSpecAuthored_ThenExtendsSurvivesWriteRead()
+    {
+        // A derived (uncomposed) document is itself round-trippable authored
+        // surface (D-078); extends is consumed only by SpecComposer.
+        var document = DocumentFixtures.Document(spec: DocumentFixtures.SpecV1(extends: "../base/emage.toml"));
+
+        var reread = Read(SpecWriter.Write(document));
+
+        Assert.Equal("../base/emage.toml", reread.Spec?.Extends);
+    }
+
+    [Fact]
+    public void RoundTrip_WhenTemplatesAndMatchersAuthored_ThenCarriersSurviveInOrder()
+    {
+        var document = DocumentFixtures.Document(
+            [DocumentFixtures.Attribute("a", template: "second")],
+            templates:
+            [
+                new TemplateSection("first", null, new IdentityDiscretizerSection(), new NominalScaleSection(),
+                    ["x"], null, null, null, null),
+                new TemplateSection("second", true, null, new DeferredScaleSection("contranominal"),
+                    null, [new RestrictToValue("Yes")], new Dictionary<string, string> { ["y"] = "yes" },
+                    MissingPolicy.Skip, UnknownValuePolicy.Warn),
+            ],
+            matchers:
+            [
+                new MatcherSection(new MatchSection("^f_\\d+$", null), "first"),
+                new MatcherSection(new MatchSection(null, [10, 1553]), "second"),
+            ]);
+
+        var reread = Read(SpecWriter.Write(document));
+
+        Assert.Equal(["first", "second"], reread.Templates.Select(t => t.Id));
+        Assert.Equal(["x"], reread.Templates[0].DeclaredDomain);
+        Assert.True(reread.Templates[1].Include);
+        Assert.Equal("contranominal", Assert.IsType<DeferredScaleSection>(reread.Templates[1].Scale).Kind);
+        Assert.Equal([new RestrictToValue("Yes")], reread.Templates[1].RestrictTo);
+        Assert.Equal(MissingPolicy.Skip, reread.Templates[1].MissingPolicy);
+        Assert.Equal("^f_\\d+$", reread.Matchers[0].Match?.NameRegex);
+        Assert.Equal("first", reread.Matchers[0].Template);
+        Assert.Equal([10L, 1553L], reread.Matchers[1].Match?.SourceIndexRange);
+        Assert.Equal("second", reread.Attributes[0].Template);
+    }
+
+    [Fact]
     public void RoundTrip_WhenEscapableStringsEverywhere_ThenVerbatim()
     {
         var document = DocumentFixtures.Document(

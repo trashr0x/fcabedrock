@@ -19,8 +19,19 @@ internal static class SpecSectionReaders
             cursor.TakeString("schema_fingerprint"),
             cursor.TakeString("cxt_output_fingerprint"),
             cursor.TakeString("dat_output_fingerprint"),
+            cursor.TakeString("extends"),
             cursor.TakeString("description"));
-        cursor.Finish(TomlSpellings.SpecDeferredKeys);
+        cursor.Finish();
+        return section;
+    }
+
+    public static MatcherSection ReadMatcher(TomlReadContext context, TableSyntaxBase table)
+    {
+        var cursor = new TomlTableCursor(context, "[[matcher]]", table);
+        var section = new MatcherSection(
+            ReadMatch(context, cursor),
+            cursor.TakeString("template"));
+        cursor.Finish();
         return section;
     }
 
@@ -111,6 +122,23 @@ internal static class SpecSectionReaders
             cursor.TakeBool("nonempty_line_trailing_space"),
             cursor.TakeBool("empty_line_trailing_space"));
         cursor.Finish();
+        return section;
+    }
+
+    private static MatchSection? ReadMatch(TomlReadContext context, TomlTableCursor cursor)
+    {
+        if (cursor.TakeInlineTable("match") is not { } table)
+        {
+            return null;
+        }
+
+        // Pattern semantics (arity, regex syntax) are M6 territory — the match
+        // is carried verbatim at authored shape (D-078).
+        var inner = new TomlTableCursor(context, "matcher match", table);
+        var section = new MatchSection(
+            inner.TakeString("name_regex"),
+            inner.TakeLongArray("source_index_range"));
+        inner.Finish();
         return section;
     }
 

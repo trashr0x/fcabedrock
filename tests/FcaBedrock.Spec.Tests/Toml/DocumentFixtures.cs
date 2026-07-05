@@ -13,10 +13,15 @@ internal static class DocumentFixtures
         IReadOnlyList<AttributeSection>? attributes = null,
         BindingSection? binding = null,
         DefaultsSection? defaults = null,
-        SpecSection? spec = null) =>
-        new(spec ?? SpecV1(), Provenance: null, binding ?? WideBinding(), defaults, Output: null, attributes ?? []);
+        SpecSection? spec = null,
+        IReadOnlyList<TemplateSection>? templates = null,
+        IReadOnlyList<MatcherSection>? matchers = null,
+        OutputSection? output = null,
+        ProvenanceSection? provenance = null) =>
+        new(spec ?? SpecV1(), provenance, binding ?? WideBinding(), defaults, output, templates ?? [], matchers ?? [], attributes ?? []);
 
-    public static SpecSection SpecV1(long? version = 1) => new(version, null, null, null, null);
+    public static SpecSection SpecV1(long? version = 1, string? extends = null) =>
+        new(version, null, null, null, extends, null);
 
     public static BindingSection WideBinding(
         char? delimiter = null,
@@ -42,8 +47,9 @@ internal static class DocumentFixtures
         IReadOnlyList<RestrictToEntry>? restrictTo = null,
         IReadOnlyDictionary<string, string>? valueLabels = null,
         MissingPolicy? missingPolicy = null,
-        UnknownValuePolicy? unknownValuePolicy = null) =>
-        new(name, source ?? Column(0), Description: null, include, discretizer, scale,
+        UnknownValuePolicy? unknownValuePolicy = null,
+        string? template = null) =>
+        new(name, source ?? Column(0), Description: null, include, template, discretizer, scale,
             declaredDomain, restrictTo, valueLabels, missingPolicy, unknownValuePolicy);
 
     // An included identity + nominal attribute — the smallest fully-resolvable shape.

@@ -286,12 +286,102 @@ public sealed class SpecResolverTests
         Assert.Equal("age", diagnostic.Location?.AttributeName);
     }
 
+    // --- Extends / templates / matchers (Slice F, D-078) ---
+
+    [Fact]
+    public void Resolve_WhenDocumentStillCarriesExtends_ThenThrowsArgumentException()
+    {
+        // Call-contract, not a diagnostic: Resolve never throws for valid inputs
+        // under its contract, and a document with authored extends is invalid
+        // input to Resolve — compose first (§13, D-078).
+        var document = DocumentFixtures.Document(spec: DocumentFixtures.SpecV1(extends: "base.toml"));
+
+        var exception = Assert.Throws<ArgumentException>(() => SpecResolver.Resolve(document));
+        Assert.Contains("SpecComposer.Compose", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Resolve_WhenMatcherPresent_ThenTemplateMatcherNotImplementedAggregated()
+    {
+        var document = DocumentFixtures.Document(
+            [DocumentFixtures.Nominal("g", 0, ["b"])],
+            matchers:
+            [
+                new MatcherSection(new MatchSection("^a$", null), "t"),
+                new MatcherSection(new MatchSection(null, [0, 1]), "t"),
+            ]);
+
+        var result = SpecResolver.Resolve(document);
+
+        var diagnostic = Assert.Single(result.Diagnostics);
+        Assert.Equal(DiagnosticCode.TemplateMatcherNotImplementedV1, diagnostic.Code);
+        Assert.Equal(DiagnosticSeverity.Error, diagnostic.Severity);
+        Assert.Contains("2 [[matcher]] entries", diagnostic.Message, StringComparison.Ordinal);
+        Assert.False(result.TryGetValue(out _));
+    }
+
+    [Fact]
+    public void Resolve_WhenAttributesReferenceTemplates_ThenOneRejectPerAttribute()
+    {
+        var document = DocumentFixtures.Document(
+        [
+            DocumentFixtures.Attribute("a", DocumentFixtures.Column(0), template: "boolean_yes_no",
+                discretizer: new IdentityDiscretizerSection(), scale: new NominalScaleSection(),
+                declaredDomain: ["x"]),
+            DocumentFixtures.Nominal("b", 1, ["y"]),
+            DocumentFixtures.Attribute("c", DocumentFixtures.Column(2), template: "other",
+                discretizer: new IdentityDiscretizerSection(), scale: new NominalScaleSection(),
+                declaredDomain: ["z"]),
+        ]);
+
+        var result = SpecResolver.Resolve(document);
+
+        var rejects = result.Diagnostics.Where(d => d.Code == DiagnosticCode.TemplateMatcherNotImplementedV1).ToList();
+        Assert.Equal(["a", "c"], rejects.Select(d => d.Location?.AttributeName));
+        Assert.False(result.TryGetValue(out _));
+    }
+
+    [Fact]
+    public void Resolve_WhenOnlyUnreferencedTemplates_ThenResolvesCleanly()
+    {
+        // §9: an unreferenced [[template]] block is inert — it resolves (and
+        // converts) without error; only *use* rejects before M6.
+        var document = DocumentFixtures.Document(
+            [DocumentFixtures.Nominal("g", 0, ["b"])],
+            templates:
+            [
+                new TemplateSection("unused", null, new IdentityDiscretizerSection(),
+                    new NominalScaleSection(), ["x"], null, null, null, null),
+            ]);
+
+        var result = SpecResolver.Resolve(document);
+
+        Assert.True(result.TryGetValue(out var spec));
+        Assert.Empty(result.Diagnostics);
+        Assert.Single(spec.Attributes);
+    }
+
+    [Fact]
+    public void Resolve_WhenMatcherPresentAndBindingShapeMissing_ThenBothReport()
+    {
+        // P-13 aggregation: the template/matcher reject precedes the shape
+        // gate's early return, so both surface in one pass.
+        var document = new SpecDocument(
+            DocumentFixtures.SpecV1(), null, null, null, null,
+            [], [new MatcherSection(new MatchSection("^a$", null), "t")], []);
+
+        var result = SpecResolver.Resolve(document);
+
+        Assert.Contains(result.Diagnostics, d => d.Code == DiagnosticCode.TemplateMatcherNotImplementedV1);
+        Assert.Contains(result.Diagnostics, d => d.Code == DiagnosticCode.BindingShapeMissing);
+    }
+
     // --- Failures ---
 
     [Fact]
     public void Resolve_WhenSpecSectionOrVersionMissing_ThenSpecVersionUnsupportedFatal()
     {
-        var noSpec = new SpecDocument(null, null, DocumentFixtures.WideBinding(), null, null, []);
+        var noSpec = new SpecDocument(null, null, DocumentFixtures.WideBinding(), null, null, [], [], []);
         var noVersion = DocumentFixtures.Document(spec: DocumentFixtures.SpecV1(version: null));
 
         foreach (var document in new[] { noSpec, noVersion })
@@ -318,7 +408,7 @@ public sealed class SpecResolverTests
     [Fact]
     public void Resolve_WhenBindingOrShapeMissing_ThenBindingShapeMissing()
     {
-        var noBinding = new SpecDocument(DocumentFixtures.SpecV1(), null, null, null, null, []);
+        var noBinding = new SpecDocument(DocumentFixtures.SpecV1(), null, null, null, null, [], [], []);
         var noShape = DocumentFixtures.Document(binding: new BindingSection(
             Shape: null, Encoding: null, Delimiter: null, QuoteChar: null, HasHeader: null,
             Locale: null, MissingToken: null, Ordering: null, Columns: null, ObjectKey: null));

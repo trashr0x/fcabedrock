@@ -5,12 +5,14 @@ using Tomlyn.Syntax;
 namespace FcaBedrock.Spec.Toml;
 
 /// <summary>
-/// Reads one <c>[[attribute]]</c> (§10) into its presence-tracked section,
-/// including the nested inline-table groups. Kind dispatch follows the D-070
-/// three tiers for discretizers (full carrier / recognized-deferred reject /
-/// unknown-kind field error) and D-010 for the deferred scales (kind-only
-/// carrier; the planner rejects). Diagnostics raised inside the table carry the
-/// attribute's name as scope (§16.3).
+/// Reads one <c>[[attribute]]</c> (§10) — and one <c>[[template]]</c> (§9.1),
+/// whose body is the attribute config surface minus
+/// <c>name</c>/<c>source</c>/<c>description</c> — into its presence-tracked
+/// section, including the nested inline-table groups. Kind dispatch follows the
+/// D-070 three tiers for discretizers (full carrier / recognized-deferred
+/// reject / unknown-kind field error) and D-010 for the deferred scales
+/// (kind-only carrier; the planner rejects). Diagnostics raised inside an
+/// attribute table carry the attribute's name as scope (§16.3).
 /// </summary>
 internal static class AttributeReader
 {
@@ -26,6 +28,7 @@ internal static class AttributeReader
                 ReadSource(context, cursor),
                 cursor.TakeString("description"),
                 cursor.TakeBool("include"),
+                cursor.TakeString("template"),
                 ReadDiscretizer(context, cursor),
                 ReadScale(context, cursor),
                 cursor.TakeStringArray("declared_domain"),
@@ -40,6 +43,30 @@ internal static class AttributeReader
         {
             context.AttributeName = null;
         }
+    }
+
+    /// <summary>
+    /// Reads one <c>[[template]]</c> (§9.1). The identity fields
+    /// <c>name</c>/<c>source</c>/<c>description</c> are always per-attribute, so
+    /// here they are simply not taken and fall to <c>SpecKeyUnrecognized</c>
+    /// (the D-075 listed-name-in-the-wrong-table stance); the naming-deferred
+    /// keys stay <c>SpecSurfaceNotYetSupported</c> exactly as on attributes.
+    /// </summary>
+    public static TemplateSection ReadTemplate(TomlReadContext context, TableSyntaxBase table)
+    {
+        var cursor = new TomlTableCursor(context, "[[template]]", table);
+        var section = new TemplateSection(
+            cursor.TakeString("id"),
+            cursor.TakeBool("include"),
+            ReadDiscretizer(context, cursor, owner: "template"),
+            ReadScale(context, cursor, owner: "template"),
+            cursor.TakeStringArray("declared_domain"),
+            ReadRestrictTo(context, cursor),
+            ReadValueLabels(context, cursor),
+            cursor.TakeEnum("missing_policy", TomlSpellings.MissingPolicies),
+            cursor.TakeEnum("unknown_value_policy", TomlSpellings.UnknownValuePolicies));
+        cursor.Finish(TomlSpellings.AttributeDeferredKeys);
+        return section;
     }
 
     private static SourceSection? ReadSource(TomlReadContext context, TomlTableCursor cursor)
@@ -114,15 +141,15 @@ internal static class AttributeReader
         return null;
     }
 
-    private static DiscretizerSection? ReadDiscretizer(TomlReadContext context, TomlTableCursor cursor)
+    private static DiscretizerSection? ReadDiscretizer(TomlReadContext context, TomlTableCursor cursor, string owner = "attribute")
     {
         if (cursor.TakeInlineTable("discretizer") is not { } table)
         {
             return null;
         }
 
-        var inner = new TomlTableCursor(context, "attribute discretizer", table);
-        var kind = TakeKind(context, inner, "attribute discretizer", table.Span, "a §11 discretizer kind");
+        var inner = new TomlTableCursor(context, $"{owner} discretizer", table);
+        var kind = TakeKind(context, inner, $"{owner} discretizer", table.Span, "a §11 discretizer kind");
         switch (kind)
         {
             case TomlSpellings.IdentityKind:
@@ -169,15 +196,15 @@ internal static class AttributeReader
         }
     }
 
-    private static ScaleSection? ReadScale(TomlReadContext context, TomlTableCursor cursor)
+    private static ScaleSection? ReadScale(TomlReadContext context, TomlTableCursor cursor, string owner = "attribute")
     {
         if (cursor.TakeInlineTable("scale") is not { } table)
         {
             return null;
         }
 
-        var inner = new TomlTableCursor(context, "attribute scale", table);
-        var kind = TakeKind(context, inner, "attribute scale", table.Span, "a §12 scale kind");
+        var inner = new TomlTableCursor(context, $"{owner} scale", table);
+        var kind = TakeKind(context, inner, $"{owner} scale", table.Span, "a §12 scale kind");
         switch (kind)
         {
             case TomlSpellings.NominalKind:
@@ -215,7 +242,7 @@ internal static class AttributeReader
 
                 context.Error(
                     DiagnosticCode.SpecFieldInvalid,
-                    $"attribute scale kind '{kind}' is not recognized (§12).",
+                    $"{owner} scale kind '{kind}' is not recognized (§12).",
                     table.Span);
                 return null;
         }

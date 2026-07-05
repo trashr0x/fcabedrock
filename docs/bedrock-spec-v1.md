@@ -519,9 +519,11 @@ are not part of the fingerprint themselves.
 > **parsed, preserved, and merged under `extends`** in M2 (so a spec using them
 > round-trips through the TOML reader/writer), but they are **not applied**. Any
 > spec that actually *uses* them — a present `[[matcher]]`, or an `[[attribute]]`
-> with a `template = "..."` reference — fails planning/conversion with
-> `TemplateMatcherNotImplementedV1` until matcher resolution is implemented at M6
-> (`roadmap.md`). An unreferenced `[[template]]` block round-trips without error.
+> with a `template = "..."` reference — fails **spec resolution** (the
+> document→Core resolve seam, D-067/D-078; templates never resolve into Core, so
+> the seam owns the reject) with `TemplateMatcherNotImplementedV1`, and therefore
+> cannot convert, until matcher resolution is implemented at M6 (`roadmap.md`).
+> An unreferenced `[[template]]` block round-trips and converts without error.
 
 ## 10. The `[[attribute]]` block
 
@@ -1296,10 +1298,19 @@ extends = "../base/emage.toml"
 The base spec is loaded and merged with the current spec. Merge semantics:
 
 1. `[binding]` fields are unioned, with the current spec's values
-   overriding the base's per-field.
+   overriding the base's per-field. The **nested tables** — the triple
+   `columns` role map and `[binding.object_key]` — override as **whole
+   values**: an authored current table replaces the base's entirely
+   (field-mixing a key mode from one file with columns from another, or
+   partially remapping triple roles into silently duplicated indices, would
+   compose incoherent hybrids — D-078), unlike `[output]`'s per-leaf merge
+   (rule 6).
 2. `[defaults]` fields are unioned per-field, current overrides base.
 3. `[[template]]` entries from both are concatenated. If two templates
-   share an `id`, the current spec's wins.
+   share an `id`, the current spec's wins: it replaces the base's entry **in
+   place** (base position kept, mirroring rule 5). This is **carrier
+   composition only** — how the document lists merge — not template
+   resolution precedence, which is M6's (§9.2, D-078).
 4. `[[matcher]]` entries from both are concatenated. Order: base
    matchers, then current matchers (so current matchers take precedence
    per the last-match-wins rule in §9.2).
@@ -1309,14 +1320,22 @@ The base spec is loaded and merged with the current spec. Merge semantics:
    merge — too error-prone, so inherited fields *including* `restrict_to` are
    dropped unless the override repeats them); a derived attribute with a new
    `name` is appended after all inherited attributes. To suppress an inherited
-   attribute, override it with `include = false`. Attribute order is column order
-   (§17 rule 1), so position-preserving override keeps a derived spec's column
-   order stable when it only re-tunes inherited attributes.
+   attribute, override it with `include = false` — and, replacement being
+   whole-attribute, repeat at least `name` and `source`. Attribute order is
+   column order (§17 rule 1), so position-preserving override keeps a derived
+   spec's column order stable when it only re-tunes inherited attributes.
 6. `[output]`, `[output.cxt]`, and `[output.dat]` merge **per leaf field**
    (current overrides base field-by-field; a base `[output.cxt]` line-ending and
    a derived `[output.cxt]` trailing-newline both survive).
 7. `[provenance]` from the current spec wins (provenance is per-spec,
    not inherited).
+8. `[spec]` is **per-spec**: the composed `version`, `description`, and any
+   stored fingerprints are the current (most-derived) spec's, and `extends`
+   is consumed by composition. A base's `[spec]` contributes nothing — but
+   **every spec in the chain MUST itself declare `version = 1`** (§2), checked
+   per file as the chain is composed (the referencing spec before any base
+   loads, each base at its load — D-078), so a wrong-version file can never
+   smuggle content into a v1 composed spec.
 
 Multi-level `extends` is allowed (a chain); the merge above is applied at **each**
 step, base-most first. A referenced base spec that cannot be found is
@@ -1577,7 +1596,7 @@ exactly one phase — the "Where" column below is the phase-ownership contract
 | `ValueGroupsPassthroughDataDependent` | Warning | calibrate |
 | `RestrictToNotImplementedV1` | Error | plan (transitional) |
 | `ObservedDomainCalibrationNotImplementedV1` | Error | plan (transitional) |
-| `TemplateMatcherNotImplementedV1` | Error | plan (transitional) |
+| `TemplateMatcherNotImplementedV1` | Error | spec resolve (transitional) |
 | `SchemaFingerprintStale` | Warning | spec load |
 | `CxtOutputFingerprintStale` | Warning | spec load |
 | `DatOutputFingerprintStale` | Warning | spec load |
@@ -1595,7 +1614,8 @@ filtering, emit). All four still write a structurally-valid (if degenerate)
 output rather than failing.
 
 **Transitional codes.** `RestrictToNotImplementedV1`,
-`TemplateMatcherNotImplementedV1`, `ObjectKeyColumnNotImplementedV1`,
+`TemplateMatcherNotImplementedV1` (owned by spec resolve — templates/matchers
+never resolve into Core, D-078), `ObjectKeyColumnNotImplementedV1`,
 `TripleSourceNotImplementedV1`, and `ObservedDomainCalibrationNotImplementedV1`
 are emitted only by milestones *before* the feature's implementation milestone
 (restrict_to → M4, templates/matchers → M6, wide `column` object keys → M3,
@@ -1607,13 +1627,13 @@ reservations in §20. Two parse-phase codes are transitional on the same terms:
 `free_per_value`, `equal_width`, `equal_frequency`, `value_groups` — rejected at
 read with no parameter carrier, D-070; removed as each kind lands at M4) and
 `SpecSurfaceNotYetSupported` (recognized v1 surface the reader does not model
-yet — `[spec].extends`, `[[template]]`/`[[matcher]]`, attribute `template` /
-`display_name` / `formal_attribute_format`, `[defaults]`
-`formal_attribute_format`, `value_type = "date"` — a **closed, per-table** set,
-never a fallback for unknown keys, D-075; entries retire as the M2 slices land
-their carriers and the row is removed at M2 exit, except the `date` entry,
-which retires when the D-038 carrier lands and hands over to the permanent
-plan-phase `DateValueTypeNotImplementedV1`).
+yet — attribute/template `display_name` / `formal_attribute_format`,
+`[defaults]` `formal_attribute_format`, `value_type = "date"` — a **closed,
+per-table** set, never a fallback for unknown keys, D-075; the
+extends/template/matcher entries were retired by their Slice F carriers, D-078;
+the remaining entries retire as their slices land and the row is removed at M2
+exit, except the `date` entry, which retires when the D-038 carrier lands and
+hands over to the permanent plan-phase `DateValueTypeNotImplementedV1`).
 
 **Aggregation.** Data-phase diagnostics that can fire per value or per object —
 `SourceValueUnparseable`, `UnknownValueObserved`, `AttributeHasNoCrosses`,

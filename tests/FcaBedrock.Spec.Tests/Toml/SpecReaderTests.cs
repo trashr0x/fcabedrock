@@ -19,11 +19,14 @@ public sealed class SpecReaderTests
 
         Assert.NotNull(document.Spec);
         Assert.Equal(1, document.Spec!.Version);
+        Assert.Null(document.Spec.Extends);
         Assert.Null(document.Spec.Description);
         Assert.Null(document.Provenance);
         Assert.Null(document.Binding);
         Assert.Null(document.Defaults);
         Assert.Null(document.Output);
+        Assert.Empty(document.Templates);
+        Assert.Empty(document.Matchers);
         Assert.Empty(document.Attributes);
     }
 
@@ -54,6 +57,62 @@ public sealed class SpecReaderTests
         var gillSize = document.Attributes[2];
         Assert.Equal(["b", "n"], gillSize.ValueLabels!.Keys); // authored order preserved
         Assert.Equal("broad", gillSize.ValueLabels["b"]);
+    }
+
+    [Fact]
+    public void Read_WhenExtendsAuthored_ThenSpecSectionCarriesIt()
+    {
+        var document = ReadOk("[spec]\nversion = 1\nextends = \"../base/emage.toml\"\n");
+
+        Assert.Equal("../base/emage.toml", document.Spec?.Extends);
+    }
+
+    [Fact]
+    public void Read_WhenTemplateAuthored_ThenCarrierHoldsIdAndConfig()
+    {
+        // The §9.1 example verbatim.
+        var document = ReadOk(
+            "[[template]]\n" +
+            "id = \"boolean_yes_no\"\n" +
+            "discretizer    = { kind = \"identity\" }\n" +
+            "scale          = { kind = \"dichotomic\", true_value = \"Yes\" }\n" +
+            "declared_domain = [\"Yes\", \"No\"]\n");
+
+        var template = Assert.Single(document.Templates);
+        Assert.Equal("boolean_yes_no", template.Id);
+        Assert.IsType<IdentityDiscretizerSection>(template.Discretizer);
+        Assert.Equal("Yes", Assert.IsType<DichotomicScaleSection>(template.Scale).TrueValue);
+        Assert.Equal(["Yes", "No"], template.DeclaredDomain);
+        Assert.Null(template.Include);
+    }
+
+    [Fact]
+    public void Read_WhenMatchersAuthored_ThenBothMatchFormsCarry()
+    {
+        // The §9.2 example verbatim: one name_regex matcher, one range matcher.
+        var document = ReadOk(
+            "[[matcher]]\n" +
+            "match    = { name_regex = \"^feature_\\\\d+$\" }\n" +
+            "template = \"boolean_yes_no\"\n" +
+            "\n" +
+            "[[matcher]]\n" +
+            "match    = { source_index_range = [10, 1553] }\n" +
+            "template = \"boolean_yes_no\"\n");
+
+        Assert.Equal(2, document.Matchers.Count);
+        Assert.Equal("^feature_\\d+$", document.Matchers[0].Match?.NameRegex);
+        Assert.Null(document.Matchers[0].Match?.SourceIndexRange);
+        Assert.Equal("boolean_yes_no", document.Matchers[0].Template);
+        Assert.Equal([10L, 1553L], document.Matchers[1].Match?.SourceIndexRange);
+        Assert.Null(document.Matchers[1].Match?.NameRegex);
+    }
+
+    [Fact]
+    public void Read_WhenAttributeReferencesTemplate_ThenCarried()
+    {
+        var document = ReadOk(Attribute("template = \"boolean_yes_no\""));
+
+        Assert.Equal("boolean_yes_no", document.Attributes[0].Template);
     }
 
     [Fact]

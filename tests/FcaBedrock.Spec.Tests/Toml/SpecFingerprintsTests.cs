@@ -186,6 +186,68 @@ public sealed class SpecFingerprintsTests
     }
 
     [Fact]
+    public void ComputeNative_WhenComposedEqualsFlat_ThenAllThreeFingerprintsIdentical()
+    {
+        // §13: fingerprints are computed over the resolved (fully merged) plan,
+        // so a derived spec and its flat equivalent fingerprint identically —
+        // no encoder change is involved, only composition (D-078).
+        var flat = Pipeline(TomlFixtures.MiniMushroom, new SourceSchema(5));
+        var composed = ComposedPipeline(TomlFixtures.MiniMushroomDerived, new SourceSchema(5));
+
+        Assert.Equal(
+            SpecFingerprints.ComputeNative(flat.Document, flat.Spec, flat.Plan),
+            SpecFingerprints.ComputeNative(composed.Document, composed.Spec, composed.Plan));
+    }
+
+    [Fact]
+    public void VerifyStored_WhenBaseStoresGarbageFingerprints_ThenComposedVerifiesSilently()
+    {
+        // §13: base-stored fingerprints are ignored when resolving a derived
+        // spec — they never reach the composed [spec], so nothing goes stale.
+        var garbageBase = TomlFixtures.MiniMushroomBase.Replace(
+            "version = 1",
+            """
+            version = 1
+            schema_fingerprint = "sha256:0000"
+            cxt_output_fingerprint = "sha256:1111"
+            dat_output_fingerprint = "sha256:2222"
+            """,
+            StringComparison.Ordinal);
+        var (document, spec, plan) = ComposedPipeline(TomlFixtures.MiniMushroomDerived, new SourceSchema(5), garbageBase);
+
+        Assert.Empty(SpecFingerprints.VerifyStored(document, SpecFingerprints.ComputeNative(document, spec, plan)));
+    }
+
+    [Fact]
+    public void VerifyStored_WhenDerivedStoresFingerprints_ThenVerifiedAgainstComposedPlan()
+    {
+        // A derived spec's own stored fingerprints survive composition and are
+        // verified against the composed plan: frozen values are silent, and a
+        // perturbed one raises exactly its warning.
+        var bare = ComposedPipeline(TomlFixtures.MiniMushroomDerived, new SourceSchema(5));
+        var computed = SpecFingerprints.ComputeNative(bare.Document, bare.Spec, bare.Plan);
+
+        var frozen = TomlFixtures.MiniMushroomDerived.Replace(
+            "version = 1",
+            $"""
+            version = 1
+            schema_fingerprint = "{computed.SchemaFingerprint}"
+            cxt_output_fingerprint = "{computed.CxtOutputFingerprint}"
+            dat_output_fingerprint = "{computed.DatOutputFingerprint}"
+            """,
+            StringComparison.Ordinal);
+        var silent = ComposedPipeline(frozen, new SourceSchema(5));
+        Assert.Empty(SpecFingerprints.VerifyStored(
+            silent.Document, SpecFingerprints.ComputeNative(silent.Document, silent.Spec, silent.Plan)));
+
+        var perturbed = frozen.Replace(computed.SchemaFingerprint, "sha256:0000", StringComparison.Ordinal);
+        var stale = ComposedPipeline(perturbed, new SourceSchema(5));
+        var diagnostic = Assert.Single(SpecFingerprints.VerifyStored(
+            stale.Document, SpecFingerprints.ComputeNative(stale.Document, stale.Spec, stale.Plan)));
+        Assert.Equal(DiagnosticCode.SchemaFingerprintStale, diagnostic.Code);
+    }
+
+    [Fact]
     public void ComputeNative_WhenMiniMushroom_ThenStabilityBaselineHolds()
     {
         // End-to-end stability baseline over the §19.1 worked example, pinned at
@@ -253,5 +315,39 @@ public sealed class SpecFingerprintsTests
             string.Join("; ", planned.Diagnostics.Select(d => $"{d.Code}: {d.Message}")));
 
         return (document, spec, plan);
+    }
+
+    /// <summary>
+    /// The composed twin of <see cref="Pipeline"/>: reads the derived TOML,
+    /// composes it over "mushroom-base.toml", then resolves and plans the
+    /// composed document (D-078).
+    /// </summary>
+    private static (SpecDocument Document, BedrockSpec Spec, ConversionPlan Plan) ComposedPipeline(
+        string derivedToml, SourceSchema schema, string? baseToml = null)
+    {
+        var read = SpecReader.Read(derivedToml);
+        Assert.True(read.TryGetValue(out var derived),
+            string.Join("; ", read.Diagnostics.Select(d => $"{d.Code}: {d.Message}")));
+
+        var composed = SpecComposer.Compose(
+            derived, "derived.toml", new SingleBaseSource(baseToml ?? TomlFixtures.MiniMushroomBase));
+        Assert.True(composed.TryGetValue(out var document),
+            string.Join("; ", composed.Diagnostics.Select(d => $"{d.Code}: {d.Message}")));
+
+        var resolved = SpecResolver.Resolve(document, schema);
+        Assert.True(resolved.TryGetValue(out var spec),
+            string.Join("; ", resolved.Diagnostics.Select(d => $"{d.Code}: {d.Message}")));
+
+        var planned = ConversionPlanner.Plan(spec, schema);
+        Assert.True(planned.TryGetValue(out var plan),
+            string.Join("; ", planned.Diagnostics.Select(d => $"{d.Code}: {d.Message}")));
+
+        return (document, spec, plan);
+    }
+
+    private sealed class SingleBaseSource(string toml) : ISpecTextSource
+    {
+        public SpecSourceText? Load(string reference, string referrerKey) =>
+            reference == "mushroom-base.toml" ? new SpecSourceText(reference, toml) : null;
     }
 }

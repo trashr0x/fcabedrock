@@ -40,11 +40,10 @@ public enum DiagnosticCode
 
     /// <summary>
     /// A recognized v1 surface the reader does not yet model was authored
-    /// (<c>[spec].extends</c>, <c>[[template]]</c>/<c>[[matcher]]</c>, attribute
-    /// <c>template</c>, <c>display_name</c>, <c>formal_attribute_format</c>,
+    /// (<c>display_name</c>, <c>formal_attribute_format</c>,
     /// <c>value_type = "date"</c>). Closed, per-table set — never a fallback for
-    /// unknown keys. Transitional intra-M2 scaffolding, retired as slices D–G
-    /// land their carriers (D-075).
+    /// unknown keys. Transitional intra-M2 scaffolding, retired as slices land
+    /// their carriers (D-075; extends/template/matcher retired by Slice F, D-078).
     /// </summary>
     SpecSurfaceNotYetSupported,
 
@@ -52,9 +51,36 @@ public enum DiagnosticCode
 
     /// <summary>
     /// The document has no <c>[spec]</c>/<c>version</c>, or declares a version other
-    /// than <c>1</c>; the spec must be refused. Fatal. Spec §2/§3 (D-067).
+    /// than <c>1</c>; the spec must be refused. Fatal. Emitted by the resolve seam,
+    /// and by composition for every spec in an <c>extends</c> chain (root gated
+    /// before any base loads; each base at its load) — per flow it fires exactly
+    /// once. Spec §2/§3/§13 (D-067/D-078).
     /// </summary>
     SpecVersionUnsupported,
+
+    /// <summary>
+    /// An authored <c>[spec].extends</c> reference could not be resolved to a base
+    /// spec by the composition source. Fatal — the composed spec cannot be built.
+    /// Spec §13 (D-027/D-078).
+    /// </summary>
+    SpecExtendsNotFound,
+
+    /// <summary>
+    /// The <c>extends</c> chain revisits a spec it already contains (including a
+    /// spec extending itself); composition must be a finite chain. Fatal.
+    /// Spec §13 (D-027/D-078).
+    /// </summary>
+    SpecExtendsCycle,
+
+    /// <summary>
+    /// The document <em>uses</em> templates/matchers — a <c>[[matcher]]</c> entry is
+    /// present (one aggregated diagnostic per document), or an attribute references a
+    /// <c>template</c> (one per attribute) — and resolution is not implemented; the
+    /// resolve seam rejects rather than silently ignoring schema-changing config.
+    /// Unreferenced <c>[[template]]</c> blocks are inert and resolve cleanly.
+    /// Spec §9 / §16.4 (D-078; transitional, removed at M6).
+    /// </summary>
+    TemplateMatcherNotImplementedV1,
 
     /// <summary>The document has no <c>[binding]</c> or no <c>shape</c>. Spec §5.1 (D-067).</summary>
     BindingShapeMissing,

@@ -146,13 +146,16 @@ internal static class TomlFixtures
 
     /// <summary>
     /// One document exercising every M2-modelled field: full [spec]/[provenance]/
-    /// [binding]/[defaults]/[output] surface, a composite object key carrier, a
-    /// non-standard quote_char (a carrier, D-054), mixed restrict_to (D-057), an
-    /// authored-empty declared_domain (D-071), as_attribute (D-068), an
-    /// authored-equals-default value, a value-bin ordinal with order, a deferred
-    /// scale carrier (D-010), and a parked attribute (D-049). A read/round-trip
+    /// [binding]/[defaults]/[output] surface (incl. extends, D-078), a composite
+    /// object key carrier, a non-standard quote_char (a carrier, D-054), mixed
+    /// restrict_to (D-057), an authored-empty declared_domain (D-071),
+    /// as_attribute (D-068), an authored-equals-default value, a value-bin
+    /// ordinal with order, deferred scale carriers (D-010) on an attribute and a
+    /// template, [[template]]/[[matcher]] carriers with an attribute template
+    /// reference (D-078), and a parked attribute (D-049). A read/round-trip
     /// exhibit only: several of these carriers deliberately fail the Slice D
-    /// seam/plan validation (D-076), so never assert a clean resolve over it.
+    /// seam/plan validation (D-076) — and the uncomposed extends now throws at
+    /// resolve (D-078) — so never assert a clean resolve over it.
     /// </summary>
     public const string KitchenSink = """
         [spec]
@@ -160,6 +163,7 @@ internal static class TomlFixtures
         schema_fingerprint = "sha256:abc123"
         cxt_output_fingerprint = "sha256:def456"
         dat_output_fingerprint = "sha256:7890ab"
+        extends = "../base/kitchen.toml"
         description = "kitchen sink"
 
         [provenance]
@@ -206,6 +210,29 @@ internal static class TomlFixtures
         nonempty_line_trailing_space = true
         empty_line_trailing_space = true
 
+        [[template]]
+        id = "boolean_yes_no"
+        declared_domain = ["Yes", "No"]
+        discretizer = { kind = "identity" }
+        scale = { kind = "dichotomic", true_value = "Yes" }
+
+        [[template]]
+        id = "deferred_scale"
+        include = true
+        restrict_to = ["Yes"]
+        missing_policy = "skip"
+        unknown_value_policy = "warn"
+        value_labels = { y = "yes" }
+        scale = { kind = "contranominal" }
+
+        [[matcher]]
+        match = { name_regex = "^feature_\\d+$" }
+        template = "boolean_yes_no"
+
+        [[matcher]]
+        match = { source_index_range = [10, 1553] }
+        template = "boolean_yes_no"
+
         [[attribute]]
         name = "bruises?"
         source = { kind = "column", name = "bruises?", value_type = "string" }
@@ -242,9 +269,78 @@ internal static class TomlFixtures
         name = "parked"
         source = { kind = "column", index = 4 }
         include = false
+        template = "boolean_yes_no"
         declared_domain = ["a"]
         discretizer = { kind = "ordered_cuts", order = ["a", "b"], cuts = ["b"], ends = "open" }
         scale = { kind = "nominal" }
+        """;
+
+    /// <summary>
+    /// §19.1 split in two for the §13 composed≡flat equivalence tests (D-078):
+    /// the base carries the binding and the first three attributes. Its [spec]
+    /// description is deliberately different from the flat fixture's — [spec]
+    /// is per-spec and must not leak into the composed document.
+    /// </summary>
+    public const string MiniMushroomBase = """
+        [spec]
+        version = 1
+        description = "will be overridden; [spec] is per-spec"
+
+        [binding]
+        shape = "wide"
+        has_header = true
+        missing_token = "?"
+
+        [binding.object_key]
+        mode = "row_index"
+
+        [[attribute]]
+        name = "class"
+        source = { kind = "column", index = 0 }
+        include = false
+
+        [[attribute]]
+        name = "bruises?"
+        source = { kind = "column", index = 1 }
+        discretizer = { kind = "identity" }
+        scale = { kind = "dichotomic", true_value = "t" }
+        declared_domain = ["t", "f"]
+
+        [[attribute]]
+        name = "gill-size"
+        source = { kind = "column", index = 2 }
+        discretizer = { kind = "identity" }
+        scale = { kind = "nominal" }
+        declared_domain = ["b", "n"]
+        value_labels    = { b = "broad", n = "narrow" }
+        """;
+
+    /// <summary>
+    /// §19.1 split in two: the derived analysis extends
+    /// <see cref="MiniMushroomBase"/> (as "mushroom-base.toml") and appends the
+    /// last two attributes; composed, it equals <see cref="MiniMushroom"/>.
+    /// </summary>
+    public const string MiniMushroomDerived = """
+        [spec]
+        version = 1
+        extends = "mushroom-base.toml"
+        description = "v2 mini-mushroom spec, modernized"
+
+        [[attribute]]
+        name = "veil-type"
+        source = { kind = "column", index = 3 }
+        discretizer = { kind = "identity" }
+        scale = { kind = "nominal" }
+        declared_domain = ["p", "u"]
+        value_labels    = { p = "partial", u = "universal" }
+
+        [[attribute]]
+        name = "ring-number"
+        source = { kind = "column", index = 4 }
+        discretizer = { kind = "identity" }
+        scale = { kind = "nominal" }
+        declared_domain = ["n", "o", "t"]
+        value_labels    = { n = "none", o = "one", t = "two" }
         """;
 
     /// <summary>

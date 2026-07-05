@@ -131,6 +131,7 @@ superseded or refined. A new entry MUST add its line here.
 - D-075 — Slice C TOML reader/writer contract: strictness, parse codes, canonical form
 - D-076 — Slice D seam/plan validation contract details (appends D-067)
 - D-077 — Slice E fingerprint encoding/verification contract details (appends D-069)
+- D-078 — Slice F composition/carrier contract details (realizes D-027/D-052; refines D-067/D-075)
 
 Spec-field defaults are recorded in spec §21 items 1–11 (see the final section
 of this file).
@@ -1849,6 +1850,112 @@ built; they refine, not reverse, D-009 / D-049 / D-050…D-065.
   `DatFingerprintInputs`, `LineEnding`), Spec (`SpecFingerprints`,
   `ComputedFingerprints`), Diagnostics (the three stale codes); spec §3 / §8 /
   §14. Appends D-069; byte-neutral on the M1 goldens.
+
+### D-078 — Slice F composition/carrier contract details
+
+- **Status:** accepted (realizes D-027/D-052; refines D-067/D-075)
+- **Date:** 2026-07-05
+- **Decision:** Slice F ships §13 `extends` composition and the
+  template/matcher document carriers; the contracts the earlier decisions left
+  operationally open are pinned here:
+  - **Composition is a document→document step preceding the seam.**
+    `SpecComposer.Compose(document, documentKey, source) → Diagnosed<SpecDocument>`
+    walks the chain and folds the §13 merge base-most first, producing a flat
+    document (`extends` consumed) that the unchanged
+    `SpecResolver.Resolve(document, schema)` consumes. The §13 merge rules are
+    defined over *authored* surface, so the merge must run on the
+    presence-tracked model (`null` never overrides an authored value; `derived
+    ?? base` is the only override operator). For §16.4 phase ownership,
+    composition is part of the **spec-resolve phase** — the
+    `SpecExtendsNotFound`/`SpecExtendsCycle` "Where = spec resolve" rows stand
+    unchanged. This refines D-067's "extends resolves in the seam": the seam
+    stays a single loader-free resolve+validate step; composition precedes it.
+  - **Loading seam; no file I/O in Spec.** `ISpecTextSource.Load(reference,
+    referrerKey) → SpecSourceText(CanonicalKey, Toml)?` supplies base text; the
+    source owns reference→canonical-key resolution (relative paths, case
+    rules), so path/OS determinism hazards never enter Spec logic, and the
+    composer compares canonical keys ordinally (cycles = a revisited key,
+    including self-extends). Slice F's production API is deliberately
+    **string/text-source only**: file loading is **M7 host work, not missing
+    Slice F work** (D-075 "file I/O belongs to a host slice", P-3); tests
+    compose through an in-memory source.
+  - **Resolve-without-compose is a call-contract violation.** `Resolve` on a
+    document with an authored `extends` throws `ArgumentException` — the
+    document is not bad; the *call* skipped composition. Resolve never throws
+    for valid inputs under its contract; an uncomposed extends document is
+    invalid input to Resolve. Extends can therefore never be silently ignored,
+    and no diagnostic code is spent on a host-sequencing error.
+  - **Version gating.** Every spec in a chain must itself declare
+    `version = 1`: the composer gates the **root before any source
+    consultation** (an unversioned root must not drive v1 extends semantics or
+    surface a missing-base/cycle diagnostic first) and **each base at its
+    load** (Fatal `SpecVersionUnsupported`, base-file location). The composed
+    document's version (the derived file's) is re-checked only by the seam —
+    per flow the condition fires exactly once.
+  - **Merge details** (beyond §13's own rules): the composed `[spec]` is
+    derived-only (version, description, stored fingerprints; base-stored
+    fingerprints never merge); the nested `[binding]` tables (`columns`,
+    `object_key`) override as **whole values** — per-leaf mixing would compose
+    an incoherent key-mode hybrid or a partial triple remap with silently
+    duplicated role indices (unvalidated until M3) — unlike `[output]`'s
+    per-leaf merge; attribute/template replacement searches only the **base
+    region** of the working list and marks each name/id overridden at most
+    once, so authoring duplicates are preserved into the composed document for
+    the flat-file diagnostics (`AttributeNameDuplicate`) rather than silently
+    collapsed.
+  - **Template/matcher carriers.** `TemplateSection` mirrors the
+    `AttributeSection` config fields (minus `name`/`source`/`description`,
+    §9.1) as a deliberately **flat** record — a shared config record earns its
+    keep when M6 applies templates; `MatcherSection`/`MatchSection` carry
+    `match` at authored shape (`source_index_range` at authored arity; M6 owns
+    pattern semantics). Template bodies parse with attribute strictness:
+    per-attribute identity fields fall to `SpecKeyUnrecognized` (the D-075
+    wrong-table stance), the naming-deferred keys stay
+    `SpecSurfaceNotYetSupported`, deferred discretizer kinds stay
+    `DiscretizerKindNotYetSupported` (D-070). Same-`id` template merge
+    (replace in place, first base-region match) is **carrier composition
+    only**, not resolution precedence; within-file duplicate ids are
+    unvalidated until M6.
+  - **Use-reject ownership.** `TemplateMatcherNotImplementedV1` fires at the
+    **seam**, not the planner — templates/matchers never resolve into Core, so
+    by D-067's own criterion (plan-time rejects are for carriers that resolve
+    into Core) a Core reject-carrier would be speculative surface removed at
+    M6. §16.4's Where cell moves from "plan (transitional)" to "spec resolve
+    (transitional)" accordingly. Granularity: one aggregated Error per document
+    for `[[matcher]]` presence (anonymous and span-less at document level;
+    count in the message) plus one Error per attribute with an authored
+    `template` reference (AttributeName location); emitted before the
+    binding-shape gate so they aggregate on shape-less and triple documents.
+    An unreferenced `[[template]]` is inert and resolves/converts cleanly.
+  - **Deferred-surface retirement.** `extends`, `[[template]]`/`[[matcher]]`,
+    and attribute `template` leave the D-075 `SpecSurfaceNotYetSupported` set
+    (their sets/branches deleted); the remaining entries
+    (`display_name`/`formal_attribute_format`, `value_type = "date"`) belong
+    to the naming-fidelity slice and D-038.
+- **Why:** D-027/D-052 fixed the merge semantics but not the API shape, phase
+  ownership, version gating, nested-table granularity, duplicate handling, or
+  carrier scope — and each unpinned point reads as a bug or an invitation to
+  scope creep without the rationale on record. The fingerprint invariant (§13:
+  composed ≡ flat, all three fingerprints) is locked by tests over the
+  unchanged Slice E machinery — composition needed no encoder change, which is
+  itself evidence the document→document design is at the right altitude.
+- **Rejected:** merging inside `Resolve` (a loader on the seam signature and a
+  half-composed intermediate — the shape D-067 already rejected); a
+  resolve-side "not found" diagnostic for the uncomposed case (synthesizes a
+  fake condition for a host bug and dilutes `SpecExtendsNotFound`); per-leaf
+  merge of `columns`/`object_key` (incoherent hybrids); collapsing same-name
+  derived duplicates (masks `AttributeNameDuplicate`); a shared
+  attribute/template config record now (churns every construction site for a
+  duplication M6 may reshape anyway); a compose-then-resolve convenience
+  overload before M7 gives it a real caller (P-3).
+- **Affects:** Spec (`SpecComposer`, `ISpecTextSource`/`SpecSourceText`,
+  `SpecSection.Extends`, `AttributeSection.Template`,
+  `TemplateSection`/`MatcherSection`/`MatchSection`, reader/writer carriers,
+  `TomlSpellings` set retirements, `SpecResolver` guard + rejects),
+  Diagnostics (`SpecExtendsNotFound`, `SpecExtendsCycle`,
+  `TemplateMatcherNotImplementedV1`); spec §9 / §13 / §16.4. Realizes
+  D-027/D-052; refines D-067/D-075; byte-neutral on the M1 goldens and the
+  Slice E fingerprint baselines (Core untouched).
 
 ---
 

@@ -121,12 +121,11 @@ public sealed class SpecReaderDiagnosticsTests
     }
 
     [Theory]
-    [InlineData("[spec]\nversion = 1\nextends = \"base.toml\"\n", "extends")]
-    [InlineData("[[template]]\nid = \"t\"\n", "template")]
-    [InlineData("[[matcher]]\npattern = \"x\"\n", "matcher")]
     [InlineData("[defaults]\nformal_attribute_format = \"{value}\"\n", "formal_attribute_format")]
     public void Read_WhenDeferredSurfaceAuthored_ThenSpecSurfaceNotYetSupported(string toml, string field)
     {
+        // Slice F retired extends/template/matcher from this set (D-078); the
+        // remaining entries belong to the naming-fidelity slice.
         var result = SpecReader.Read(toml);
 
         var diagnostic = Assert.Single(result.Diagnostics);
@@ -137,7 +136,6 @@ public sealed class SpecReaderDiagnosticsTests
     [Theory]
     [InlineData("display_name = \"Education\"")]
     [InlineData("formal_attribute_format = \"{value}\"")]
-    [InlineData("template = \"boolean_yes_no\"")]
     public void Read_WhenDeferredAttributeKeyAuthored_ThenSpecSurfaceNotYetSupported(string line)
     {
         var result = SpecReader.Read(Attribute(line));
@@ -145,6 +143,63 @@ public sealed class SpecReaderDiagnosticsTests
         var diagnostic = Assert.Single(result.Diagnostics);
         Assert.Equal(DiagnosticCode.SpecSurfaceNotYetSupported, diagnostic.Code);
         Assert.Equal("a", diagnostic.Location?.AttributeName);
+    }
+
+    [Theory]
+    [InlineData("display_name = \"Boolean\"")]
+    [InlineData("formal_attribute_format = \"{value}\"")]
+    public void Read_WhenDeferredKeyInsideTemplate_ThenSpecSurfaceNotYetSupported(string line)
+    {
+        // §9.1: a template may carry any attribute config field, so the
+        // naming-deferred keys reject inside [[template]] exactly as on an
+        // attribute (D-078).
+        var result = SpecReader.Read($"[[template]]\nid = \"t\"\n{line}\n");
+
+        var diagnostic = Assert.Single(result.Diagnostics);
+        Assert.Equal(DiagnosticCode.SpecSurfaceNotYetSupported, diagnostic.Code);
+    }
+
+    [Theory]
+    [InlineData("name = \"a\"")]
+    [InlineData("source = { kind = \"column\", index = 0 }")]
+    [InlineData("description = \"per-attribute only\"")]
+    public void Read_WhenTemplateDeclaresPerAttributeField_ThenSpecKeyUnrecognized(string line)
+    {
+        // §9.1 forbids name/source/description in a template — the D-075
+        // listed-name-in-the-wrong-table stance, not the transitional code.
+        var result = SpecReader.Read($"[[template]]\nid = \"t\"\n{line}\n");
+
+        var diagnostic = Assert.Single(result.Diagnostics);
+        Assert.Equal(DiagnosticCode.SpecKeyUnrecognized, diagnostic.Code);
+    }
+
+    [Fact]
+    public void Read_WhenTemplateDiscretizerKindDeferred_ThenDiscretizerKindNotYetSupported()
+    {
+        // D-070 applies inside templates too: M2 has no parameter carrier for
+        // the deferred kinds, so accepting one would silently drop config.
+        var result = SpecReader.Read("[[template]]\nid = \"t\"\ndiscretizer = { kind = \"equal_width\", n = 4 }\n");
+
+        var diagnostic = Assert.Single(result.Diagnostics);
+        Assert.Equal(DiagnosticCode.DiscretizerKindNotYetSupported, diagnostic.Code);
+    }
+
+    [Fact]
+    public void Read_WhenMatcherHasUnknownKey_ThenSpecKeyUnrecognized()
+    {
+        var result = SpecReader.Read("[[matcher]]\npattern = \"x\"\n");
+
+        var diagnostic = Assert.Single(result.Diagnostics);
+        Assert.Equal(DiagnosticCode.SpecKeyUnrecognized, diagnostic.Code);
+        Assert.Contains("pattern", diagnostic.Message, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("[template]\nid = \"t\"\n")]
+    [InlineData("[matcher]\ntemplate = \"t\"\n")]
+    public void Read_WhenTemplateOrMatcherWrittenAsSingleTable_ThenSpecFieldInvalid(string toml)
+    {
+        AssertFailsWith(SpecReader.Read(toml), DiagnosticCode.SpecFieldInvalid);
     }
 
     [Fact]

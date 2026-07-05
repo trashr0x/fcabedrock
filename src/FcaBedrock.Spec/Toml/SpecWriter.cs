@@ -28,6 +28,16 @@ public static class SpecWriter
         WriteBinding(builder, document.Binding);
         WriteDefaults(builder, document.Defaults);
         WriteOutput(builder, document.Output);
+        foreach (var template in document.Templates)
+        {
+            WriteTemplate(builder, template);
+        }
+
+        foreach (var matcher in document.Matchers)
+        {
+            WriteMatcher(builder, matcher);
+        }
+
         foreach (var attribute in document.Attributes)
         {
             WriteAttribute(builder, attribute);
@@ -62,6 +72,11 @@ public static class SpecWriter
         if (spec.DatOutputFingerprint is { } dat)
         {
             builder.Key("dat_output_fingerprint", TomlLiteral.FormatString(dat));
+        }
+
+        if (spec.Extends is { } extends)
+        {
+            builder.Key("extends", TomlLiteral.FormatString(extends));
         }
 
         if (spec.Description is { } description)
@@ -290,6 +305,82 @@ public static class SpecWriter
         }
     }
 
+    private static void WriteTemplate(TomlBuilder builder, TemplateSection template)
+    {
+        // Mirrors WriteAttribute's key order minus the per-attribute identity
+        // fields (name/source/description), with id leading (§9.1).
+        builder.BeginSection("[[template]]");
+        if (template.Id is { } id)
+        {
+            builder.Key("id", TomlLiteral.FormatString(id));
+        }
+
+        if (template.Include is { } include)
+        {
+            builder.Key("include", TomlLiteral.FormatBool(include));
+        }
+
+        if (template.DeclaredDomain is { } domain)
+        {
+            builder.Key("declared_domain", FormatStringArray(domain));
+        }
+
+        if (template.RestrictTo is { } restrictTo)
+        {
+            builder.Key("restrict_to", FormatRestrictTo(restrictTo));
+        }
+
+        if (template.MissingPolicy is { } missing)
+        {
+            builder.Key("missing_policy", TomlLiteral.FormatString(TomlSpellings.ToToml(TomlSpellings.MissingPolicies, missing)));
+        }
+
+        if (template.UnknownValuePolicy is { } unknown)
+        {
+            builder.Key("unknown_value_policy", TomlLiteral.FormatString(TomlSpellings.ToToml(TomlSpellings.UnknownValuePolicies, unknown)));
+        }
+
+        if (template.ValueLabels is { } labels)
+        {
+            builder.Key("value_labels", FormatValueLabels(labels));
+        }
+
+        if (template.Discretizer is { } discretizer)
+        {
+            builder.Key("discretizer", FormatDiscretizer(discretizer));
+        }
+
+        if (template.Scale is { } scale)
+        {
+            builder.Key("scale", FormatScale(scale));
+        }
+    }
+
+    private static void WriteMatcher(TomlBuilder builder, MatcherSection matcher)
+    {
+        builder.BeginSection("[[matcher]]");
+        if (matcher.Match is { } match)
+        {
+            var items = new List<string>(2);
+            if (match.NameRegex is { } nameRegex)
+            {
+                items.Add(Item("name_regex", TomlLiteral.FormatString(nameRegex)));
+            }
+
+            if (match.SourceIndexRange is { } range)
+            {
+                items.Add(Item("source_index_range", FormatLongArray(range)));
+            }
+
+            builder.Key("match", InlineTable(items));
+        }
+
+        if (matcher.Template is { } template)
+        {
+            builder.Key("template", TomlLiteral.FormatString(template));
+        }
+    }
+
     private static void WriteAttribute(TomlBuilder builder, AttributeSection attribute)
     {
         builder.BeginSection("[[attribute]]");
@@ -311,6 +402,11 @@ public static class SpecWriter
         if (attribute.Include is { } include)
         {
             builder.Key("include", TomlLiteral.FormatBool(include));
+        }
+
+        if (attribute.Template is { } templateRef)
+        {
+            builder.Key("template", TomlLiteral.FormatString(templateRef));
         }
 
         if (attribute.DeclaredDomain is { } domain)
@@ -590,6 +686,17 @@ public static class SpecWriter
         foreach (var value in values)
         {
             items.Add(TomlLiteral.FormatDouble(value));
+        }
+
+        return Array(items);
+    }
+
+    private static string FormatLongArray(IReadOnlyList<long> values)
+    {
+        var items = new List<string>(values.Count);
+        foreach (var value in values)
+        {
+            items.Add(TomlLiteral.FormatLong(value));
         }
 
         return Array(items);

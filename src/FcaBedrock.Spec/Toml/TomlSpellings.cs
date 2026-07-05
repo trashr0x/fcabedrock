@@ -121,19 +121,19 @@ internal static class TomlSpellings
     // carry; the reader rejects it with the transitional
     // SpecSurfaceNotYetSupported so nothing known is silently dropped. The sets
     // are exact: near-miss keys and a listed name in the wrong table fall to
-    // SpecKeyUnrecognized. Slices D–G retire entries as their carriers land.
-
-    /// <summary><c>[spec]</c> keys deferred to the extends slice (Slice F).</summary>
-    internal static readonly string[] SpecDeferredKeys = ["extends"];
+    // SpecKeyUnrecognized. Entries retire as slices land their carriers —
+    // Slice F retired extends/template/matcher (D-078); the remaining entries
+    // belong to the naming-fidelity slice.
 
     /// <summary><c>[defaults]</c> keys deferred to the naming-fidelity slice.</summary>
     internal static readonly string[] DefaultsDeferredKeys = ["formal_attribute_format"];
 
-    /// <summary><c>[[attribute]]</c> keys deferred to the naming-fidelity slice (M6 for <c>template</c>).</summary>
-    internal static readonly string[] AttributeDeferredKeys = ["display_name", "formal_attribute_format", "template"];
-
-    /// <summary>Top-level tables deferred to the extends slice (Slice F): <c>[[template]]</c>/<c>[[matcher]]</c>.</summary>
-    internal static readonly string[] DeferredTables = ["template", "matcher"];
+    /// <summary>
+    /// <c>[[attribute]]</c> keys deferred to the naming-fidelity slice; also the
+    /// deferred set for <c>[[template]]</c> bodies, which carry the same config
+    /// surface (§9.1, D-078).
+    /// </summary>
+    internal static readonly string[] AttributeDeferredKeys = ["display_name", "formal_attribute_format"];
 
     /// <summary>Parses <paramref name="text"/> against a spelling table; exact (ordinal) match only.</summary>
     internal static bool TryParse<T>((string Text, T Value)[] table, string text, out T value)

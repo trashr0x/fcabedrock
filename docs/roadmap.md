@@ -40,9 +40,17 @@ vertical slices, not waterfall phases — each should leave the system working.
 > the plan, byte-neutral on the M1 goldens), native-settings computation +
 > stored-fingerprint verification in Spec (`SchemaFingerprintStale` /
 > `CxtOutputFingerprintStale` / `DatOutputFingerprintStale` at spec load), the
-> canonical-stability goldens, and the 30/30.0/3e1 numeric golden.
-> `dotnet test` is green (441 tests).
-> Next: Slice F (`extends`/triple, D-027/D-052).
+> canonical-stability goldens, and the 30/30.0/3e1 numeric golden —
+> and Slice F composition (D-078): §13 `extends` via `SpecComposer` over the
+> string-only `ISpecTextSource` seam (root/base version gates, base-most-first
+> fold, `SpecExtendsNotFound`/`SpecExtendsCycle`, position-preserving D-052
+> attribute override, per-leaf `[output]` merge, whole-value nested binding
+> tables), the `[[template]]`/`[[matcher]]` carriers merged-but-rejected-on-use
+> at the seam (`TemplateMatcherNotImplementedV1`, out at M6), the
+> extends/template/matcher deferred-surface retirements, and the composed≡flat
+> canonical-text + three-fingerprint equivalence tests (no encoder change).
+> `dotnet test` is green (488 tests).
+> Next: Slice G (`.bed` migrator rework, D-049 hygiene).
 
 ## Milestones
 
@@ -256,3 +264,9 @@ Modelled in the spec where noted, so adding them later isn't a format break.
   landed in M2), a `.cxt` size/diagnostics item to M7, and an allocation item to
   M8. The latter two are tracked here pending their own `decisions.md` entries when
   M7/M8 are picked up.
+- Phase alignment for `AttributeNameDuplicate` (noted at the Slice F review,
+  2026-07-05): the code is emitted by `ConversionPlanner` while spec §16.4 still
+  lists it as spec validate. Align docs and code as a standalone cleanup — either
+  re-home the check to the resolve seam (the D-067 phase-ownership reading) or
+  move the §16.4 "Where" cell to plan, with a `decisions.md` note either way —
+  not inside a feature slice.

@@ -252,6 +252,42 @@ internal sealed class TomlTableCursor
         return values;
     }
 
+    /// <summary>
+    /// An authored integer array, or null when absent. Carried at authored
+    /// arity — element count is value territory for the owning consumer (D-066).
+    /// </summary>
+    public IReadOnlyList<long>? TakeLongArray(string key)
+    {
+        if (Take(key) is not { } pair)
+        {
+            return null;
+        }
+
+        if (pair.Value is not ArraySyntax array)
+        {
+            Invalid(pair, key, "an array of integers");
+            return null;
+        }
+
+        var values = new List<long>();
+        foreach (var item in array.Items)
+        {
+            if (item.Value is IntegerValueSyntax integer)
+            {
+                values.Add(integer.Value);
+            }
+            else if (item.Value is { } node)
+            {
+                _context.Error(
+                    DiagnosticCode.SpecFieldInvalid,
+                    $"{_label} key '{key}' expects an array of integers.",
+                    node.Span);
+            }
+        }
+
+        return values;
+    }
+
     /// <summary>An authored numeric array (integer and float nodes mix), or null when absent.</summary>
     public IReadOnlyList<double>? TakeDoubleArray(string key)
     {

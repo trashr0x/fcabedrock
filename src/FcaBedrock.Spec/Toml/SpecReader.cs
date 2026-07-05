@@ -62,6 +62,8 @@ public static class SpecReader
         bool? binLabelUnicode = null;
         CxtOutputSection? cxt = null;
         DatOutputSection? dat = null;
+        var templates = new List<TemplateSection>();
+        var matchers = new List<MatcherSection>();
         var attributes = new List<AttributeSection>();
 
         foreach (var pair in syntax.KeyValues)
@@ -117,6 +119,14 @@ public static class SpecReader
                     dat = SpecSectionReaders.ReadOutputDat(context, table);
                     break;
 
+                case ("template", true):
+                    templates.Add(AttributeReader.ReadTemplate(context, table));
+                    break;
+
+                case ("matcher", true):
+                    matchers.Add(SpecSectionReaders.ReadMatcher(context, table));
+                    break;
+
                 case ("attribute", true):
                     attributes.Add(AttributeReader.Read(context, table));
                     break;
@@ -125,6 +135,13 @@ public static class SpecReader
                     context.Error(
                         DiagnosticCode.SpecFieldInvalid,
                         "Attributes are written as [[attribute]] — an array of tables (§10).",
+                        nameKey.Span);
+                    break;
+
+                case ("template" or "matcher", false):
+                    context.Error(
+                        DiagnosticCode.SpecFieldInvalid,
+                        $"[[{name}]] is an array of tables (§9).",
                         nameKey.Span);
                     break;
 
@@ -137,23 +154,10 @@ public static class SpecReader
                     break;
 
                 default:
-                    if (TomlSpellings.IsIn(TomlSpellings.DeferredTables, name))
-                    {
-                        // D-075 closed set: [[template]]/[[matcher]] land with the
-                        // extends slice (Slice F); read fails so nothing is dropped.
-                        context.Error(
-                            DiagnosticCode.SpecSurfaceNotYetSupported,
-                            $"[[{name}]] is recognized v1 surface not yet supported by this build (D-075).",
-                            nameKey.Span);
-                    }
-                    else
-                    {
-                        context.Error(
-                            DiagnosticCode.SpecKeyUnrecognized,
-                            $"Table '{name}' is not recognized.",
-                            nameKey.Span);
-                    }
-
+                    context.Error(
+                        DiagnosticCode.SpecKeyUnrecognized,
+                        $"Table '{name}' is not recognized.",
+                        nameKey.Span);
                     break;
             }
         }
@@ -169,7 +173,7 @@ public static class SpecReader
             ? new OutputSection(binLabelUnicode, cxt, dat)
             : null;
 
-        var document = new SpecDocument(spec, provenance, binding, defaults, output, attributes);
+        var document = new SpecDocument(spec, provenance, binding, defaults, output, templates, matchers, attributes);
         return Finish(document, context.Diagnostics);
     }
 

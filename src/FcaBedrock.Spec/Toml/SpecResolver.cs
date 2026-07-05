@@ -11,10 +11,15 @@ namespace FcaBedrock.Spec.Toml;
 /// <see cref="Core.Spec.BedrockSpec"/>, validating in the same pass and
 /// aggregating all diagnostics (D-066/D-067). Defaults merge here (§5.1/§6,
 /// D-060(c)) and by-name column bindings resolve to indices against the
-/// supplied schema. Never throws for document content — every cannot-resolve
-/// state maps to a seam-owned diagnostic (D-067). A triple document resolves
-/// to a minimal reject-carrier (binding, no attributes) that the planner
-/// refuses with <c>TripleSourceNotImplementedV1</c> (D-072).
+/// supplied schema. Never throws for valid inputs under its contract — every
+/// cannot-resolve state maps to a seam-owned diagnostic (D-067) — but the
+/// contract takes a <em>composed or extends-free</em> document: one that still
+/// carries an authored <c>[spec].extends</c> is invalid input (the caller
+/// skipped <see cref="SpecComposer.Compose"/>, §13/D-078) and throws
+/// <see cref="ArgumentException"/> rather than silently ignoring composition.
+/// A triple document resolves to a minimal reject-carrier (binding, no
+/// attributes) that the planner refuses with
+/// <c>TripleSourceNotImplementedV1</c> (D-072).
 /// </summary>
 public static class SpecResolver
 {
@@ -28,6 +33,16 @@ public static class SpecResolver
     public static Diagnosed<BedrockSpec> Resolve(SpecDocument document, SourceSchema? schema = null)
     {
         ArgumentNullException.ThrowIfNull(document);
+        if (document.Spec?.Extends is { } extends)
+        {
+            // Call-contract violation, not document content: the document is
+            // fine, the caller skipped composition (§13, D-078). Throwing here
+            // guarantees extends is never silently ignored.
+            throw new ArgumentException(
+                $"The document declares extends = \"{extends}\" and must be composed before resolving; " +
+                "apply SpecComposer.Compose first (§13, D-078).",
+                nameof(document));
+        }
 
         var diagnostics = new List<BedrockDiagnostic>();
 
@@ -47,6 +62,30 @@ public static class SpecResolver
                 DiagnosticCode.SpecVersionUnsupported, DiagnosticSeverity.Fatal,
                 $"Spec version {version} is not supported; this implementation supports version 1 (§2/§3)."));
             return Diagnosed<BedrockSpec>.Failed(diagnostics);
+        }
+
+        // §9/D-078: templates/matchers are carried and composed but not applied
+        // before M6; a document that *uses* them must fail here — they never
+        // resolve into Core, so a silent pass would drop schema-changing config.
+        // Checked before the shape gate so they aggregate on shape-less and
+        // triple documents too. Unreferenced [[template]] blocks are inert.
+        if (document.Matchers.Count > 0)
+        {
+            diagnostics.Add(new BedrockDiagnostic(
+                DiagnosticCode.TemplateMatcherNotImplementedV1, DiagnosticSeverity.Error,
+                $"The document declares {document.Matchers.Count} [[matcher]] entr{(document.Matchers.Count == 1 ? "y" : "ies")}; " +
+                "matcher resolution lands at M6 (§9, D-078)."));
+        }
+
+        foreach (var attribute in document.Attributes)
+        {
+            if (attribute.Template is { } templateRef)
+            {
+                diagnostics.Add(new BedrockDiagnostic(
+                    DiagnosticCode.TemplateMatcherNotImplementedV1, DiagnosticSeverity.Error,
+                    $"The attribute references template = \"{templateRef}\"; template resolution lands at M6 (§9, D-078).",
+                    new DiagnosticLocation(AttributeName: attribute.Name)));
+            }
         }
 
         // §5.1: shape is the one binding field with no default; without it nothing
