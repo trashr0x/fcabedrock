@@ -146,9 +146,14 @@ custom `quote_char` parses but is rejected with `QuoteCharNotSupportedV1`. (The
 field is retained so a later version can lift the restriction without a format
 change.)
 
-**`has_header`** *(default `true`)*. Only used when `shape = "wide"`. If
-true, the first non-empty row is consumed as a header and is available
-for column-by-name binding.
+**`has_header`** *(default is **shape-specific**: `true` for `shape = "wide"`,
+`false` for `shape = "triple"`)*. If true, the first non-empty record is consumed
+as a header and is available for binding columns/roles by name; if false, every
+record is data. Triple data is typically headerless, hence the `false` default
+there — a `true` default would silently consume the first triple as a header. The
+resolved behaviour is identical across shapes; there is no header heuristic
+(guessing belongs to `probe`, not `convert`). Triple role binding by header **name**
+(§5.3) requires `has_header = true`.
 
 **`locale`** *(default `"invariant"`)*. Governs how raw values parse to numbers
 (decimal separator). Any IETF BCP 47 tag, or `"invariant"` for culture-invariant
@@ -166,8 +171,9 @@ cells are *always* missing regardless of this setting.
 **Whitespace.** Leading and trailing whitespace around an **unquoted** data field
 value is trimmed before any interpretation — missing-token detection, matching
 against `declared_domain` / `value_labels` keys / `restrict_to` / a `dichotomic`
-`true_value` / `value_groups`, and numeric parsing. Whitespace inside a **quoted**
-field is preserved (deliberate spaces survive). The spec-side strings you write in
+`true_value` / `value_groups`, numeric parsing, and — for triple input — deriving
+the object name from the **subject** and matching the **predicate** selector.
+Whitespace inside a **quoted** field is preserved (deliberate spaces survive). The spec-side strings you write in
 the TOML are taken **verbatim** and never trimmed; only the data-side field value
 is. The rule is uniform across all matching, so a value never fails to match
 purely because of surrounding spaces in the source file.
@@ -196,19 +202,26 @@ columns = { subject = 0, predicate = 1, value = 2 }
 single-pass streaming (faster, less memory). `"unordered"` requires
 external sort-merge or buffering (slower, more memory).
 
-**`columns`** *(required for triple, table)*. Maps the three logical
-roles to column indices. Supports remapping if the source columns are in
-non-standard order. Indices are 0-based.
+**`columns`** *(optional for triple, table; omitted ⇒ `{ subject = 0,
+predicate = 1, value = 2 }`)*. Maps the three logical roles to source columns,
+using **one addressing mode**: omit it entirely, give all three roles as 0-based
+**indices**, or give all three as header **names** (requires `has_header = true`,
+§5.1). Mixing indices and names, or a partial role table, is `SourceBindingInvalid`
+(§10.2). The three roles MUST resolve to three **distinct** physical columns
+(`TripleColumnsNotDistinct` otherwise). Header text used to resolve a role does not
+become an output name (object and attribute names come from the subject values and
+the attribute `name`); extra physical columns beyond the three roles are ignored.
 
 Attributes under triple binding use
 `{ kind = "predicate", name = "..." }` to bind by predicate string.
 
-> **Triple-source surface is finalized at M3.** Beyond the above, v1 reserves but
-> does not yet settle the triple-specific surface: header rows for triple input,
-> binding `columns` by header **name** (rather than 0-based index), and
-> object/subject-name filtering are all deferred to the M3 triple-source audit
-> (`roadmap.md`). M2 neither adds nor relies on them; `has_header` stays
-> meaningful only for `shape = "wide"`.
+> **Triple-source surface finalized at M3 (D-082).** Header rows for triple input
+> and binding `columns` by header **name** are settled above — `has_header` is
+> shape-specific (§5.1), role binding may be by index or name. Object/subject
+> identity is always the resolved **subject** (§5.4): there is no separate
+> subject-name filter, and an authored `[binding.object_key]` under triple is
+> rejected (`ObjectKeyModeInvalidForShape`). Object filtering is the ordinary
+> `restrict_to` (§10.4), executed at M4.
 
 ### 5.3.1 Triple multi-value and grouping semantics
 
@@ -228,13 +241,28 @@ mapping can fold several values into a single formal attribute. There is no
 separate "collapse multi-values" option — pick the scale that expresses the
 intent (one standard way per concern).
 
+**Absent predicate vs missing value.** Triple input has no cell-per-column
+guarantee: a subject may carry **no** row for a given predicate. An **absent**
+predicate is **no observation** — it produces no cross and never crosses a
+`missing_policy = "as_attribute"` `-missing` column (§10.5). A value is **missing**
+(and then follows `missing_policy`) only when a **matching-predicate row exists**
+and its value is empty, equals `missing_token`, or is absent because the row is too
+short to reach the value column. An unknown or empty **predicate** keeps the subject
+as an object but sets no crosses. Predicate matching is exact and ordinal (P-12);
+because predicate strings are data (not schema), a mistyped attribute predicate
+simply never matches and surfaces at emit as `AttributeHasNoCrosses`, not a
+binding error.
+
 **Grouping under `subject_grouped`.** When `ordering = "subject_grouped"`, all
 rows for a given subject MUST be contiguous; this is what permits single-pass,
 zero-buffer streaming. If a subject recurs after a different subject has
 intervened, the converter emits `TripleSubjectNotContiguous` (Error),
 identifying the subject and record index, and stops. Input that is not
 subject-grouped MUST declare `ordering = "unordered"`, which buffers or
-sort-merges (slower, more memory) and imposes no contiguity requirement.
+sort-merges (slower, more memory) and imposes no contiguity requirement. The
+contiguity check and the subject's first-appearance position (§17 rule 4) are both
+judged over **every valid subject row**, including rows whose predicate matches no
+attribute or produces no cross.
 
 ### 5.4 Object key resolution
 
@@ -256,19 +284,22 @@ mode = "column"
 column = "id"                                # name (with header) or index
 ```
 
-Object name is taken from the named/indexed column. The column is excluded
-from the conversion (no formal attributes generated from it). Duplicate key
-values are governed by `duplicate_object_policy` (§6.1). A `column` object key
-missing its `column`, or naming a column that does not resolve, is
-`ObjectKeyBindingInvalid` (Error, spec validate).
+Object name is taken from the named/indexed column. The column is **not implicit**
+as an attribute — it generates no formal attributes on its own — but it MAY be
+referenced explicitly by an `[[attribute]]` source (§10.2, D-033), the same field
+serving as both object key and an analyzed attribute. Object order is the **order of
+first occurrence of each cleaned key value** (§17 rule 4). Duplicate key values are
+governed by `duplicate_object_policy` (§6.1). A `column` object key missing its
+`column`, or naming a column that does not resolve, is `ObjectKeyBindingInvalid`
+(Error, spec validate); a data-derived key that is empty, whitespace-only, or
+contains newline/control characters is `ObjectKeyValueInvalid` (Error, emit).
 
-> **Wide `column` execution lands at M3.** Wide `object_key.mode = "column"` (and
-> with it the `duplicate_object_policy` machinery, §6.1) is **parsed and
-> round-tripped** from M2, but its *execution* is sequenced with the triple
-> object-key work at M3: until then conversion **rejects** a wide `column` object
-> key with `ObjectKeyColumnNotImplementedV1` (transitional) rather than silently
-> falling back to row index. Triple binding's subject-derived `column` key (below)
-> is the M3 driver. (M1/M2 wide conversion uses `row_index`.)
+> **Wide `column` execution lands at M3 (D-083).** Wide `object_key.mode = "column"`
+> — and with it the `duplicate_object_policy` machinery (§6.1) — is parsed and
+> round-tripped from M2 and **executes from M3**, sharing the object-key machinery
+> with triple's subject-derived key. (M1/M2 wide conversion used `row_index` and
+> rejected a `column` key with the now-retired transitional
+> `ObjectKeyColumnNotImplementedV1`.)
 
 **`mode = "composite"`** **(deferred)**:
 
@@ -282,11 +313,13 @@ aggregate = "union"                          # "union" | "intersection"
 Rows sharing the composite key are merged into one formal object. The v1
 planner emits `ObjectKeyCompositeNotImplementedV1` and stops.
 
-For triple binding with no `[binding.object_key]` block, the default is
-`mode = "column"` with `column` set to the subject column from
-`binding.columns.subject`. This matches v2's behavior (subject becomes
-object name). Repeated subjects accumulate per §5.3.1 and are not a
-duplicate-object condition.
+For triple binding the object key is **always** the resolved subject: with no
+`[binding.object_key]` block the default is `mode = "column"` with `column` set to
+`binding.columns.subject`. This matches v2's behavior (subject becomes object name).
+An **authored** `[binding.object_key]` under `shape = "triple"` is rejected
+(`ObjectKeyModeInvalidForShape`, Error, spec validate) — triple identity is not
+repointable. Repeated subjects accumulate per §5.3.1 and are not a duplicate-object
+condition.
 
 ## 6. The `[defaults]` block
 
@@ -343,14 +376,26 @@ For `column` mode, given input where key `P001` appears at rows 1 and 3:
   the safe response is to surface it rather than silently invent or merge. v2
   wide mode always used `row_index`, so there is no v2 precedent to preserve
   here.
-- **`"keep"`**: each row becomes its own formal object; the colliding key is
-  disambiguated by appending the record index (`P001`, …, `P001#2`). Emit
-  `DuplicateObjectKey` (Warning). Note the generated `#N` name does not appear
-  in the source data.
+- **`"keep"`**: each row becomes its own formal object. Object names are assigned by
+  the **converter** (the object-key resolver, **not** the writer — P-15 "exporters
+  are dumb"), in object emission order (§17 rule 4), and are **unique by
+  construction**: the first occurrence of a cleaned key takes the key itself; a later
+  occurrence takes `<key>#<record-index>` (0-based source record index, e.g. `P001`,
+  …, `P001#2`). If any candidate is already assigned — colliding with a literal data
+  key or an earlier generated name — the converter appends `#1`, `#2`, … (ascending
+  integers from 1) and takes the first unused; all comparisons are ordinal (P-12).
+  The assigned-name set is bounded object-name metadata (P-16); `.cxt` serializes
+  these names and `.dat` ignores them, so the guarantee is observable only in `.cxt`.
+  Emit `DuplicateObjectKey` (Warning). The suffix is generated by the converter; it
+  is not part of the duplicate row's cleaned key.
 - **`"dedupe"`**: rows sharing a key collapse to one formal object; later rows'
-  crosses union onto the first. Emit `DuplicateObjectKey` (Info). Note this can
-  cross mutually-exclusive bins on one object (e.g. two ages), which is only
-  meaningful for genuinely set-valued data.
+  crosses union onto the first, and the object keeps the **first occurrence's**
+  position (§17 rule 4). Emit `DuplicateObjectKey` (Info). Because non-contiguous
+  keys cannot be merged in a single naive pass without holding all crosses (P-16),
+  `dedupe` uses external grouping/sort-merge/spool — the same machinery as triple
+  `unordered` — but, unlike `unordered`, emits in **first-occurrence** order, not
+  sorted order (§17 rule 4). Note this can cross mutually-exclusive bins on one
+  object (e.g. two ages), meaningful only for genuinely set-valued data.
 
 There is no `"merge"` value; cross-row merging by a *derived* key is the
 deferred `composite` object-key feature (§5.4).
@@ -582,7 +627,15 @@ source = { kind = "predicate", name = "age" }
 A wide-CSV `column` source MUST supply **exactly one** of `index` or `name`
 (neither or both is `SourceBindingInvalid`); binding by `name` requires
 `has_header = true` (also `SourceBindingInvalid` otherwise), while binding by
-`index` needs no header.
+`index` needs no header. A `name` — here or in a triple `columns` role (§5.3) — MUST
+resolve to **exactly one** column; no matching header, or a duplicate matching
+header, is `SourceBindingInvalid`.
+
+The source `kind` MUST match the binding `shape`: `column` under `wide`, `predicate`
+under `triple`. A mismatch (a `predicate` source under `wide`, or a `column` source
+under `triple`) is `SourceBindingInvalid`, which also owns invalid triple `columns`
+shape/addressing (§5.3) — a missing or partial role table, mixed index/name
+addressing, or all-name binding without `has_header = true`.
 
 A source may declare a **value type** controlling how raw values parse before
 discretization:
@@ -744,6 +797,14 @@ dichotomic scales it is the second formal attribute (true_value crosses
 when present, missing crosses when absent); for ordinal scales it
 follows the threshold formal attributes. The rule is uniform: the
 missing attribute appends after the scale's formal attributes (D-074).
+
+**Triple input (what counts as missing).** For a predicate-backed attribute,
+"missing" requires a **matching-predicate row** for the subject whose value is
+empty, equals `missing_token`, or is absent because the row is too short. A
+predicate simply **not present** for a subject is **no observation**, not missing
+(§5.3.1): under `"as_attribute"` it does **not** cross `<name>-missing`. This is the
+triple analogue of the wide cell-per-column model — where every object carries a
+value (present or missing) for every column — which triple input does not guarantee.
 
 ### 10.6 unknown_value_policy
 
@@ -1406,10 +1467,13 @@ bytes:
   `duplicate_object_policy` and the object-ordering policy (and `restrict_to`
   filters *once their execution is implemented*; until then `restrict_to` is not
   an input, §10.4); and the conversion-affecting binding/source settings —
-  binding shape and column/predicate mappings, `encoding`, `has_header`,
-  `delimiter`, `quote_char`, `missing_token`, source `value_type`s,
-  `missing_policy`, `unknown_value_policy`, `binding.locale`, object-key mode, and
-  discretizer/scale configuration.
+  binding shape, the **resolved** column/predicate mappings (for triple, the
+  resolved role→column-index map plus `ordering`; a role bound by header name and
+  the equivalent index bind hash identically, §5.3), `encoding` (a real input from
+  M3, D-082 — UTF-8 specs keep their prior hash), `has_header`, `delimiter`,
+  `quote_char`, `missing_token`, source `value_type`s, `missing_policy`,
+  `unknown_value_policy`, `binding.locale`, object-key mode, and discretizer/scale
+  configuration.
 - **`cxt_output_fingerprint` adds** the `.cxt`-only settings: the rendered
   formal-attribute names (`formal_attribute_format`, `display_name`,
   `value_labels`), the bin-label style (the `--v2-compat` cut-label transform) and
@@ -1583,6 +1647,7 @@ exactly one phase — the "Where" column below is the phase-ownership contract
 | `ObjectKeyCompositeNotImplementedV1` | Fatal | plan |
 | `ObjectKeyBindingInvalid` | Error | spec validate |
 | `ObjectKeyModeInvalidForShape` | Error | spec validate |
+| `TripleColumnsNotDistinct` | Error | spec validate |
 | `ObjectKeyColumnNotImplementedV1` | Error | plan (transitional) |
 | `TripleSourceNotImplementedV1` | Error | plan (transitional) |
 | `DateValueTypeNotImplementedV1` | Fatal | plan |
@@ -1592,6 +1657,7 @@ exactly one phase — the "Where" column below is the phase-ownership contract
 | `UnknownValuePolicyInclude` | Warning | calibrate |
 | `TripleSubjectNotContiguous` | Error | emit |
 | `DuplicateObjectKey` | Error, Warning, or Info (per `duplicate_object_policy`) | emit |
+| `ObjectKeyValueInvalid` | Error | emit |
 | `SourceValueUnparseable` | Warning or Error (per `unknown_value_policy`; `skip` silent) | calibrate/emit |
 | `QuoteCharNotSupportedV1` | Error | spec validate |
 | `BindingDelimiterQuoteConflict` | Error | spec validate |
@@ -1705,10 +1771,20 @@ same-output across runs and across machines:
      - if `unknown_value_policy = "include"` appends newly-observed values
        during calibration, those are **appended after** the declared/observed
        values, in first-observation order.
-4. **Object order in the output** = source emission order. Wide CSV: row
-   order. Triple subject-grouped: order of first appearance of each
-   subject. Triple unordered: post-sort order, where the sort key is the
-   subject string under invariant culture.
+4. **Object order in the output**:
+   - **Wide** `row_index`, or `column` under `keep` / `fail` / all-unique keys:
+     source **row order**.
+   - **Wide** `column` under `dedupe`: **first-occurrence order of each cleaned key
+     value** (later duplicates merge onto the first; §6.1) — a generalization of row
+     order.
+   - **Triple `subject_grouped`**: order of **first appearance** of each subject.
+   - **Triple `unordered`**: post-sort order, where the sort key is the cleaned
+     subject string under **ordinal** comparison (P-12), *not* culture-aware.
+
+   Wide `dedupe` (first-occurrence) and triple `unordered` (ordinal-sorted) differ
+   deliberately, even though both may group non-contiguous keys: `unordered` is a
+   declared no-input-order mode, while `dedupe` cleans duplicates in row-ordered
+   input.
 5. **Attribute IDs in `.dat`** = `base_index`-based (default 1; §8), in the
    order from rules 1–2.
 6. **Formal-attribute names in `.cxt`** = produced by

@@ -73,7 +73,7 @@ references. `Core` never references `Sources`, `Export`, `Cli`, or `Desktop`.
 ## Hard conventions (do not violate without a decision-log entry)
 
 Operational summary; the invariants are authoritative in `docs/principles.md`
-(P-7/P-12/P-13/P-14/P-16) and `docs/decisions.md`.
+(P-7/P-13/P-14/P-15/P-17) and `docs/decisions.md`.
 
 - **Target framework: .NET 10.** Modern APIs (`System.IO.Pipelines`,
   `IAsyncEnumerable`, `Span`/`Memory`, `ValueTask`) where justified; justify
@@ -81,14 +81,14 @@ Operational summary; the invariants are authoritative in `docs/principles.md`
 - **Determinism is a correctness property:** same spec + same normalized input ⇒
   byte-identical output; ordering rules live in the planner. Spec §17, D-004, P-7.
 - **Core is pure / UI-independent; exporters are dumb** — all semantics decided
-  before export, writers only serialize. P-12, P-14.
+  before export, writers only serialize. P-13, P-15.
 - **Error handling:** `Result<T, BedrockDiagnostic>` for single-error ops;
   `Diagnosed<T>` (value + diagnostic list) for aggregating ops (validation,
   planning); convert streams diagnostics alongside the emit stream. Codes are an
-  enum. P-13.
+  enum. P-14.
 - **Scale of intent:** v1 targets 10×–100× the v2 EMAGE workload (~7.3M–73M
   records) — streaming is a v1 concern, not a retrofit. D-007.
-- **Small composable pieces over god classes.** P-16.
+- **Small composable pieces over god classes.** P-17.
 
 ## Testing conventions
 

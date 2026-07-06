@@ -20,7 +20,7 @@ it, it should — this doc holds only the judgment calls a linter can't make.
 The first section (**Working discipline**, P-1…P-6) governs *how you work on
 the codebase* and matters most for AI-agent sessions, which tend to expand
 scope. The remaining sections (**Correctness, Architecture, Performance,
-Testing**, P-7…P-21) are invariants about *the system itself*. There are 21
+Testing**, P-7…P-22) are invariants about *the system itself*. There are 22
 principles in total; the count is deliberate, not a target — add or cut only
 under the test stated above.
 
@@ -164,9 +164,29 @@ is explicit and tested (a cut that renders as `34.25` on one machine and
 
 *Check when:* implementing discretizers, parsers, or anything numeric in output.
 
+### P-12 — Strings compare and sort ordinally; culture-aware collation is a determinism hazard
+
+String identity, equality, matching, deduplication, grouping, source binding, and
+any deterministic *ordering* of strings use ordinal comparison
+(`StringComparer.Ordinal` / `StringComparison.Ordinal` — a UTF-16 code-unit
+compare), never a culture-aware one. Culture-aware collation, `InvariantCulture`
+included, is ICU/NLS-version dependent: the same two strings can order or match
+differently across machines and runtimes — a determinism bug on any path feeding
+output bytes, IDs, or fingerprints (e.g. the unordered triple subject sort, spec
+§17 rule 4). This is the string-side companion to P-11 ("Floating-point and
+locale…"): `binding.locale` governs numeric/date *parsing* only (decimal
+separators), never string collation — the two are separate concerns and must not
+be conflated. Where a spec section fixes a *non-string* order (numeric or
+positional cut order), that order governs; this principle is about string-keyed
+comparison and ordering.
+
+*Check when:* sorting, comparing, matching, deduplicating, grouping, or binding by
+any string key — object names/keys, triple subjects, predicate selectors, header
+names, declared-domain values, bin labels.
+
 ## Architecture
 
-### P-12 — Core is pure: no I/O, no UI, no ambient state
+### P-13 — Core is pure: no I/O, no UI, no ambient state
 
 `FcaBedrock.Core` references only `System.*` and `FcaBedrock.Diagnostics`. No
 file access, no network, no `Console`, no `DateTime.Now`/`Guid.NewGuid` in
@@ -176,7 +196,7 @@ network. If you reach for `System.IO` in Core, the design is wrong.
 
 *Check when:* adding any type or dependency to Core.
 
-### P-13 — Errors are values at package boundaries; exceptions are for the unexpected
+### P-14 — Errors are values at package boundaries; exceptions are for the unexpected
 
 The project default for expected failures is result/diagnostic values, not
 exceptions. Across package seams and for anything a caller can sensibly handle,
@@ -196,7 +216,7 @@ The distinction:
 
 *Check when:* designing any public method that can fail.
 
-### P-14 — Exporters are dumb; semantics happen before export
+### P-15 — Exporters are dumb; semantics happen before export
 
 A writer serializes an already-decided result and makes zero scaling, ordering,
 or policy decisions. A writer may *preserve* an order the planner already
@@ -208,7 +228,7 @@ separators).
 
 *Check when:* touching anything in Export.
 
-### P-15 — The pipeline stays streaming; never materialize the full incidence matrix
+### P-16 — The pipeline stays streaming; never materialize the full incidence matrix
 
 `Emit` yields objects; the set of all crosses is never held in memory at once in
 Core or Conversion. Bounded metadata collections are fine — object names, the
@@ -224,7 +244,7 @@ does not.
 `.ToList()` / `.ToArray()` on an emit stream (as opposed to on a bounded
 metadata collection).
 
-### P-16 — Compose small pieces at real variation points; prefer composition over inheritance
+### P-17 — Compose small pieces at real variation points; prefer composition over inheritance
 
 Discretizers, scales, sources, and writers are small and single-purpose,
 composed by the planner. Use interfaces at real variation points or test seams —
@@ -243,7 +263,7 @@ relationship. Inheritance is not a code-sharing mechanism.
 
 ## Performance
 
-### P-17 — Allocation discipline is scoped to hot paths, not blanket
+### P-18 — Allocation discipline is scoped to hot paths, not blanket
 
 The emit loop and the byte-level parser are allocation-audited: prefer
 `Span`/`Memory`, pooled buffers, `ValueTask`, no per-object closures or boxing.
@@ -255,7 +275,7 @@ and "optimize nothing" are both wrong.
 *Check when:* writing in Sources (parse loop) or Conversion (emit loop), audit
 allocations; elsewhere, write for clarity.
 
-### P-18 — Performance claims are measured, not asserted
+### P-19 — Performance claims are measured, not asserted
 
 Any "this is faster / lower-allocation" change to a hot path is backed by a
 BenchmarkDotNet result in `FcaBedrock.Benchmarks`, not by intuition. A clever trick
@@ -270,7 +290,7 @@ they're modern.
 
 *Check when:* introducing any non-obvious performance construct.
 
-### P-19 — Large-scale tests are opt-in and never gate the normal suite
+### P-20 — Large-scale tests are opt-in and never gate the normal suite
 
 The 7.3M / 73M synthetic datasets live in `FcaBedrock.Benchmarks`, behind a category
 filter. `dotnet test` stays fast and runs on the mini fixtures. A multi-minute
@@ -280,7 +300,7 @@ benchmark must never be reachable by a plain `dotnet test`.
 
 ## Testing
 
-### P-20 — Golden and policy/property tests, where each applies
+### P-21 — Golden and policy/property tests, where each applies
 
 Where output bytes are affected, add or update a **golden test** (proves
 byte/output compatibility). Where semantics are affected, add or update a
@@ -292,7 +312,7 @@ change may require neither.
 *Check when:* adding or changing any scale, discretizer, source, policy, writer,
 or output-affecting behavior.
 
-### P-21 — A behavior bug fix starts with a failing test
+### P-22 — A behavior bug fix starts with a failing test
 
 Before fixing a behavior bug, write the test that fails because of it; the fix
 is correct when that test goes green and nothing else goes red — a permanent

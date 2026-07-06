@@ -112,7 +112,7 @@ superseded or refined. A new entry MUST add its line here.
 - D-061 — `value_type` matrix: `free_per_value` flexible, `identity` string-only
 - D-062 — Cross-attribute restrict not modelled in v1; drop the diagnostic
 - D-063 — `restrict_to`: M2 validates shape, M4 executes; diagnostic ownership
-- D-064 — Wide column object keys deferred to M3; object-key diagnostic taxonomy
+- D-064 — Wide column object keys deferred to M3; object-key diagnostic taxonomy *(execution realized by D-083)*
 - D-065 — Calibration/vocabulary over the input universe, before `restrict_to`
 
 ### Tier 2 register (pre-M2)
@@ -123,7 +123,7 @@ superseded or refined. A new entry MUST add its line here.
 - D-069 — Canonical fingerprint encoding, pinned (appendix to D-053)
 - D-070 — Minimal M2 discretizer-carrier scope; three-tier kind response
 - D-071 — Absent/empty `declared_domain`: M2 interim reject until calibrate
-- D-072 — Basic triple TOML carrier in M2; conversion deferred to M3
+- D-072 — Basic triple TOML carrier in M2; conversion deferred to M3 *(conversion realized by D-082)*
 
 ### M2 implementation (slices)
 
@@ -135,6 +135,13 @@ superseded or refined. A new entry MUST add its line here.
 - D-079 — Slice G `.bed` migrator contract: document-model target, Diagnosed surfaces (realizes D-009/D-049/D-057/D-068)
 - D-080 — `AttributeNameDuplicate` / `ValueLabelKeyNotInDomain` re-homed to the resolve seam (realizes D-067; supersedes its "not re-homed" parenthetical)
 - D-081 — Value-bin ordinal path (Slice H): identity + explicit order (realizes the D-047-deferred path; refines D-060)
+
+### M3 (triple source + wide column object keys)
+
+- D-082 — M3 triple source contract: reader, orderings, object identity, absent-vs-missing semantics, structural-error severity (realizes D-072; retires `TripleSourceNotImplementedV1`)
+- D-083 — Wide `column` object-key execution + `duplicate_object_policy`; `dedupe` on the shared sort-merge path (realizes D-064; retires `ObjectKeyColumnNotImplementedV1`)
+- D-084 — Ordinal string comparison is the project-wide rule (adds principle P-12; corrects §17 rule 4)
+- D-085 — M3 diagnostic taxonomy: structural triple/column-key codes, severities, retirements (refines D-067)
 
 Spec-field defaults are recorded in spec §21 items 1–11 (see the final section
 of this file).
@@ -648,7 +655,7 @@ refinement markers (D-003, D-005, D-021); the entries below are new.
   reflection harness.
 - **Why:** one documented test style (P-5), and a fluent arch-test library whose
   type-level dependency analysis can enforce invariants reflection cannot — notably
-  P-12 ("Core is pure: no `System.IO`") once Core has code at M1. The cross-package
+  P-13 ("Core is pure: no `System.IO`") once Core has code at M1. The cross-package
   layering and cycle rules read declaratively and extend cleanly as packages land.
 - **Rejected:** NetArchTest.Rules — simpler fluent API but less expressive and less
   actively maintained; the hand-rolled reflection harness — zero-dependency but
@@ -773,7 +780,7 @@ refinement markers (D-003, D-005, D-021); the entries below are new.
   delimiters/newlines) is a classic bug farm, and the v1 scale target (D-007, up
   to ~73M records) wants a parser already hardened and benchmarked for span-based,
   zero-allocation streaming. Sep is currently the fastest .NET CSV parser and its
-  span-first row/col API suits the emit hot path (P-17). Wrapping rather than
+  span-first row/col API suits the emit hot path (P-18). Wrapping rather than
   exposing it keeps Sep out of the public surface, so it can be swapped without a
   contract change (P-4).
 - **Rejected:** (a) hand-rolling a span DSV parser — reinvents the wheel we
@@ -841,7 +848,7 @@ refinement markers (D-003, D-005, D-021); the entries below are new.
   as the bin key / `BinKey` / `CrossesByBin` key; the style touches only the
   rendered name. `WriterOptions` gains no label flag.
 - **Why:** label style affects `output_fingerprint` (now split per-format, D-051)
-  only, never the schema (§8/§14, D-011/D-035). Canonical identity + late render keeps writers dumb (P-14) and lets
+  only, never the schema (§8/§14, D-011/D-035). Canonical identity + late render keeps writers dumb (P-15) and lets
   one planner path serve both styles.
 - **Affects:** `FcaBedrock.Core` (`Discretizer.RenderBinLabel`, `LabelStyle`,
   `ConversionPlanner`); the golden harness derives the style from the v2-compat
@@ -881,10 +888,10 @@ refinement markers (D-003, D-005, D-021); the entries below are new.
   For v2 `n`, `[Attribute Categories]` carries the ordered domain and
   `[Category Values]` carries the cut (`<,Managerial,>`); for `o`, both carry the
   numeric cut spec.
-- **Why:** keeps numeric and ordered cuts symmetric and DRY (P-16); the shared
+- **Why:** keeps numeric and ordered cuts symmetric and DRY (P-17); the shared
   label helper guarantees they never drift on bin labels or `--v2-compat` rendering.
 - **Rejected:** modelling `n` with `value_groups` (loses order and threshold
-  semantics); a mode-switched single cut discretizer (god type, P-16).
+  semantics); a mode-switched single cut discretizer (god type, P-17).
 - **Affects:** `FcaBedrock.Core` (`OrderedCutsDiscretizer`, `ManualCutsDiscretizer`,
   `CutBinLabels`, `BinEnds`); spec §11.8, §19.2.
 
@@ -943,7 +950,7 @@ refinement markers (D-003, D-005, D-021); the entries below are new.
   (§12.3); revisiting the `value_type`-vs-discretizer rule (§10.2 — a live
   conflict, left validating). See `docs/roadmap.md`.
 - **Deferred (migrator hygiene):** make `BedToSpec` return `Result<T,
-  BedrockDiagnostic>` instead of throwing (P-13), so excluded-config recovery can
+  BedrockDiagnostic>` instead of throwing (P-14), so excluded-config recovery can
   emit a *diagnostic* rather than relying on the broad recovery `catch (Exception)`
   in `MapAttribute`. Natural to fold in when M2 reworks the `.bed` → TOML migrator;
   not worth a standalone refactor now. *(Landed at M2 Slice G, D-079 —
@@ -1152,7 +1159,7 @@ conformance pass (`roadmap.md`).
 - **Why:** `EmptyExtent` was listed at the plan phase, which is impossible for a
   per-attribute "no crosses" meaning (it needs emit-time data); and "extent/intent"
   are concept-level FCA terms, confusing when applied per-attribute/per-object. The
-  per-element emit diagnostics must aggregate (P-19) or they flood at 73M rows.
+  per-element emit diagnostics must aggregate (P-20) or they flood at 73M rows.
 - **Rejected:** keeping `EmptyExtent` / `EmptyIntent` (wrong phase, overloaded
   names); failing on zero columns (blocks the staged-editing workflow §10.1 allows).
 - **Affects:** Core (planner/emit), Diagnostics, Spec; spec §16.2 / §16.4.
@@ -1178,7 +1185,7 @@ decision is below.
   the stream (deterministic — P-7), never one diagnostic per row.
 - **Why:** `string?` conflated the silent no-cross cases (out-of-range, §11.2) with the
   diagnosable ones (unparseable §11.5/D-050; unknown §10.6/§11.8), so malformed/unknown data
-  could not be surfaced without re-deriving it in the emitter (P-16); and per-row diagnostics
+  could not be surfaced without re-deriving it in the emitter (P-17); and per-row diagnostics
   do not scale to the v1 data target (~73M records, D-007). One result type plus one
   aggregation pattern keeps future discretizers (`equal_width`/`equal_frequency` at M4,
   `value_groups`) and emit diagnostics consistent (P-5). Also closes the §11.8 gap where an
@@ -1186,7 +1193,7 @@ decision is below.
 - **Rejected:** keeping `string?` and re-deriving unparseable-vs-out-of-range in the emitter
   (duplicates the parse/culture logic out of the discretizer, double-parses the hot path); a
   second `TryDiscretize` out-param method (two ways to spell one decision, P-5); per-row data
-  diagnostics (flood at scale, P-19).
+  diagnostics (flood at scale, P-20).
 - **Affects:** Core (discretizers, `BinResult`), Conversion (emit aggregation), Diagnostics
   (`SourceValueUnparseable`); spec §10.6 / §11.5 / §11.8 / §16.4. The §5.1 whitespace
   reconciliation in the same pass needed no decision entry — `SepTrim.Outer` is an
@@ -1292,7 +1299,7 @@ feature, so they are recorded here. They refine, not reverse, earlier decisions.
   match the attribute's type, so a genuinely mixed list is rejected at validation (§10.4).
 - **Why:** D-057 established round-trip + execution-deferral, but §10.4 prose never
   documented the static checks the §16.4 table already listed, nor their precedence vs
-  `SourceValueTypeInvalid`. One condition → one owning code (P-13).
+  `SourceValueTypeInvalid`. One condition → one owning code (P-14).
 - **Rejected:** deferring shape validation to M4 with execution (an authoring error
   would surface late); letting both codes fire on the same mismatch (ambiguous, P-5).
 - **Affects:** Core (validate), Spec; spec §10.4 / §10.2; diagnostics
@@ -1313,7 +1320,7 @@ feature, so they are recorded here. They refine, not reverse, earlier decisions.
 - **Why:** D-034 fully specified wide column-key behavior, but no milestone implemented
   it and no guard existed — a silent partial implementation (carrier parses, execution
   missing), the hole D-057 closed for `restrict_to`. M3 already builds subject-derived
-  column keys, so it is the natural home. Distinct conditions get distinct codes (P-13).
+  column keys, so it is the natural home. Distinct conditions get distinct codes (P-14).
 - **Rejected:** implementing wide column keys in M2 (expands M2 scope; M3 is the
   object-key milestone); leaving execution unguarded (latent wrong output — a silent
   `row_index` fallback).
@@ -1381,7 +1388,7 @@ built; they refine, not reverse, D-009 / D-049 / D-050…D-065.
   preservation, D-052 `extends` merge) needs a model that holds exactly what was
   authored — provenance, unresolved references, an authored `[]` — while the
   planner's determinism guarantees need a model where bad states cannot occur
-  (P-10) and Core stays pure (P-12). One model cannot be both. Splitting them
+  (P-10) and Core stays pure (P-13). One model cannot be both. Splitting them
   confines Tomlyn and every authoring concession to Spec and hands the planner a
   clean resolved input.
 - **Rejected:** a single model for both parse and plan — it either admits invalid
@@ -1402,7 +1409,7 @@ built; they refine, not reverse, D-009 / D-049 / D-050…D-065.
   `SpecResolver.Resolve(document) → Diagnosed<BedrockSpec>`** step that resolves and
   validates **together** (not two sequential passes): defaults merge, `extends`
   resolves, name→index resolves, and the static checks run against the resolving
-  model, aggregating all diagnostics (P-13). Each §16.4 code is **owned by exactly
+  model, aggregating all diagnostics (P-14). Each §16.4 code is **owned by exactly
   one phase**: construction-time invariants stay in Core smart factories
   (`CutValidation`, D-056; the `OrdinalScale`/`ObjectKey` factories — P-10);
   resolution-time *static* checks (source-binding shape, `value_type` matrix,
@@ -1528,13 +1535,13 @@ built; they refine, not reverse, D-009 / D-049 / D-050…D-065.
   these vNext-native discretizers, so migration loses nothing by not carrying them.
   Recognizing the *name* is enough to separate "valid v1 feature, later milestone"
   (a transitional, actionable diagnostic) from "typo / unknown kind" (a generic
-  parse error) so an author can tell which they hit (P-13). Rejecting at read/resolve
+  parse error) so an author can tell which they hit (P-14). Rejecting at read/resolve
   (not silently accepting) avoids the wrong-output hole D-057 closed for `restrict_to`.
 - **Rejected:** implementing the M4 discretizers in M2 (scope creep, P-1); building
   full round-trip carriers for the deferred discretizers' parameter shapes in M2
   (speculative surface for kinds M2 cannot execute — P-3/P-6; no v2 type maps to
   them, so migration loses nothing); one code for both not-yet-supported and unknown
-  kinds (hides whether the spec is valid, P-13); silently ignoring unimplemented
+  kinds (hides whether the spec is valid, P-14); silently ignoring unimplemented
   kinds (latent wrong output).
 - **Affects:** Spec (reader/resolver), Diagnostics; spec §11 / §16.4; diagnostic
   `DiscretizerKindNotYetSupported` (transitional, **read/resolve**, removed as each
@@ -1556,7 +1563,7 @@ built; they refine, not reverse, D-009 / D-049 / D-050…D-065.
   `free_per_value` is a *deferred* discretizer (D-070), already rejected earlier at
   read/resolve with `DiscretizerKindNotYetSupported` — that code owns the
   `free_per_value` case, and the absent-domain code never fires for it in M2 (one
-  condition → one owning code, P-13). Cut discretizers ignore `declared_domain`
+  condition → one owning code, P-14). Cut discretizers ignore `declared_domain`
   (§10.3) and are unaffected.
 - **Why:** the authored `[]`-vs-omitted distinction must survive round-trip (D-049)
   even though both mean "absent," so provenance is preserved without inventing a
@@ -1644,7 +1651,7 @@ built; they refine, not reverse, D-009 / D-049 / D-050…D-065.
     (one code, message names the expected form; also the D-070 tier-3
     unknown-kind case). TOML-level errors are `SpecTomlInvalid` (Fatal; Tomlyn
     parser warnings surface under the same code at Warning).
-  - **Two-phase aggregation (the P-13 reading):** all TOML syntax errors report
+  - **Two-phase aggregation (the P-14 reading):** all TOML syntax errors report
     together and are terminal (a broken tree would cascade garbage); on clean
     syntax, one whole-document semantic pass aggregates every diagnostic.
   - **Deferred-surface scaffolding:** recognized-but-unmodelled v1 surface —
@@ -1688,7 +1695,7 @@ built; they refine, not reverse, D-009 / D-049 / D-050…D-065.
   costs nothing and buys deterministic output and a trivial round-trip oracle.
 - **Rejected:** warning-and-drop for unknown keys (silent loss on write-after-
   read); one code for all parse problems (hides whether the spec is valid v1 —
-  P-13); parsing deferred surface into inert carriers now (pulls Slice F /
+  P-14); parsing deferred surface into inert carriers now (pulls Slice F /
   naming-slice semantics forward, and an authored-but-ignored
   `formal_attribute_format` would silently change intended output); Tomlyn's
   serializer for writing (its formatting choices can drift across versions);
@@ -1730,7 +1737,7 @@ built; they refine, not reverse, D-009 / D-049 / D-050…D-065.
     `"`) and `BindingDelimiterQuoteConflict` (resolved delimiter = resolved
     quote) are distinct §5.1 conditions and report independently — both fire
     when both hold (e.g. delimiter and quote both authored `|`). Two conditions,
-    two codes (P-13), not double reporting of one.
+    two codes (P-14), not double reporting of one.
   - **`ObservedDomainCalibrationNotImplementedV1`** is an **Error at plan** and
     **blanket across scales** for an included `identity` attribute with an
     absent domain — dichotomic included, because with no domain every observed
@@ -1744,11 +1751,11 @@ built; they refine, not reverse, D-009 / D-049 / D-050…D-065.
     requires a resolved **string** `value_type`: on a mis-typed numeric
     `identity` source the same entries are already owned by
     `SourceValueTypeInvalid` / `RestrictToOnNumericRequiresRange`, and a third
-    diagnostic would be noise (P-13).
+    diagnostic would be noise (P-14).
 - **Why:** the phase/owner assignments were settled (D-060/D-063/D-064/D-067/
   D-071), but the excluded-attribute interactions, the co-fire policy, and the
   blanket's scale coverage were not derivable from any single entry — and each
-  reads as a bug (a D-049 violation, a P-13 violation, an over-broad reject)
+  reads as a bug (a D-049 violation, a P-14 violation, an over-broad reject)
   unless the rationale is on record.
 - **Rejected:** skipping restrict_to shape checks on excluded attributes (a
   filter-only attribute's restrict_to changes output at M4, so its shape errors
@@ -2004,7 +2011,7 @@ built; they refine, not reverse, D-009 / D-049 / D-050…D-065.
     attributes keep string entries too — a range cannot express v2's exact
     match ([x, x) is empty under lo-inclusive/hi-exclusive) — and the seam's
     `RestrictToOnNumericRequiresRange` owns the mismatch; the migrator stays
-    silent (one condition → one owning code, P-13). The planner still rejects
+    silent (one condition → one owning code, P-14). The planner still rejects
     any carried `restrict_to` with `RestrictToNotImplementedV1` until M4.
   - **Missing token (D-068):** for the domain-list types (`c`, `b`) a
     `[Category Values]` entry equal to the **effective** token — null when
@@ -2079,7 +2086,7 @@ built; they refine, not reverse, D-009 / D-049 / D-050…D-065.
   for an attribute whose source/discretizer/scale fails to resolve, so a
   Core-model check would *lose* a duplicate whose sibling field is broken — the
   document-model check catches it and aggregates with that sibling's own
-  diagnostic (P-13). It also makes §16.4's "Where" column honest without a spec
+  diagnostic (P-14). It also makes §16.4's "Where" column honest without a spec
   edit.
 - **Consequences:** (i) a Core-only caller hand-building a `BedrockSpec` and
   planning it directly no longer gets these two checks — the resolve seam is the
@@ -2126,7 +2133,7 @@ built; they refine, not reverse, D-009 / D-049 / D-050…D-065.
     already §16.4-registered at `plan`; Slice H adds their enum members and emit
     sites. The membership check is suppressed on an absent domain — D-071's
     `ObservedDomainCalibrationNotImplementedV1` owns that (one condition → one
-    code, P-13). `order` lists **raw domain values, never display labels**.
+    code, P-14). `order` lists **raw domain values, never display labels**.
   - **Order list shape** (distinct, non-empty entries) is validated at the
     **resolve seam** by broadening `OrderDomainInvalid` (its existing §16.4
     `spec validate` cell) from `ordered_cuts.order` to *any* authored order over
@@ -2186,6 +2193,211 @@ built; they refine, not reverse, D-009 / D-049 / D-050…D-065.
   §12.3 (surgical: `drop_top` value-bin + strict-no-op wording, the
   full-permutation clause). Byte- and fingerprint-neutral. Refines D-047/D-060;
   pairs with D-070 (kind scope) and D-071 (absent-domain precedence).
+
+---
+
+## M3 (triple source + wide column object keys)
+
+These land the M3 triple-source audit (a review pass over the finalized triple and
+wide-column-key surface, analogous to the Tier-1/Tier-2 M2 passes). They are the
+**spec/decisions** landing; the triple reader, column-key execution, `DiagnosticCode`
+enum members, and golden activation are the M3 *implementation* that follows.
+
+### D-082 — M3 triple source contract: reader, orderings, object identity, absent-vs-missing
+
+- **Status:** accepted (M3; realizes D-072; the M3 triple-source audit)
+- **Date:** 2026-07-07
+- **Decision:** M3 implements the triple source; the audit-settled contract:
+  - **Reader + orderings.** A triple `IRecordSource` streams subject/predicate/value
+    rows. `ordering = "subject_grouped"` is the single-pass fast path — rows for a
+    subject MUST be contiguous; a recurrence after an intervening subject is
+    `TripleSubjectNotContiguous` (Error, stop — D-031). `ordering = "unordered"`
+    groups non-contiguous subjects via external sort-merge/spool, never a full
+    matrix (P-16). Both are required for M3 completion.
+  - **Object identity = the resolved subject**, always (§5.4 default `column` =
+    subject). An authored `[binding.object_key]` under `shape = "triple"` is
+    rejected (`ObjectKeyModeInvalidForShape`, D-085) — identity is not repointable.
+    Every valid subject row establishes/keeps an object, **including rows whose
+    predicate matches no attribute** (an object with no crosses is legal, §10.1).
+    Contiguity and first-appearance order are judged over **every valid subject
+    row**, ignored-predicate and no-cross rows included.
+  - **Absent vs missing (audit NF-2).** An **absent** predicate (no triple for that
+    subject+predicate) is **no observation** — no cross, and never crosses
+    `-missing`. `missing_policy` fires **only** when a matching-predicate row
+    *exists* and its value is empty / `missing_token` / absent-because-short. An
+    unknown or empty predicate keeps the subject and sets no crosses. Predicate
+    matching is exact ordinal (P-12).
+  - **Cleanup scope.** The §5.1 quote-aware trim applies to the subject (→ object
+    name) and predicate (→ selector), not only value-side matching; the cleaned
+    subject is both the object name and the grouping/sort key.
+  - **`has_header`** default is **shape-specific**: wide `true`, triple `false`
+    (triple data is typically headerless — the v2 goldens are; a `true` default
+    would silently consume the first triple as a header). Once resolved, behaviour
+    is identical, no heuristics. `columns` is **optional** (omit → `subject = 0,
+    predicate = 1, value = 2`) and uses **one addressing mode** — omitted, all-index,
+    or all-name; no mixing; all-name requires `has_header = true`.
+  - **Structural-error severity.** Missing/invalid subject, a row too short for the
+    subject role, non-distinct roles, and invalid `columns` shape are **Error**
+    (halt this conversion — the §16.2 usable-next-call reading), matching
+    `TripleSubjectNotContiguous` / `DuplicateObjectKey`; value-level problems
+    aggregate (§16.4). Codes are D-085.
+  - **Determinism / fingerprints.** Predicate arrival order never affects
+    formal-attribute order or `.dat` item order (§17 rules 1–3, 8). Output
+    fingerprints encode the **resolved** role→column-index map and `ordering` (so
+    name-bound ≡ index-bound roles hash identically), and `binding.encoding` becomes
+    a real Core input (was the constant `"utf-8"`, D-077; UTF-8 specs keep their
+    hash).
+  - Conversion no longer rejects triple: `TripleSourceNotImplementedV1` retires.
+- **Why:** D-072 carried the basic triple binding but rejected conversion; M3 is the
+  triple milestone. The audit surfaced three silent-wrong-output hazards left
+  implicit by the pre-M3 spec: triple breaks wide's "every object has a cell per
+  column" invariant (absent ≠ missing), structural errors had no severity/home, and
+  determinism needs the resolved-index fingerprint plus ordinal collation (D-084).
+- **Rejected:** absent predicate = missing (would cross `-missing` for every
+  unobserved predicate — schema-inflating and surprising); triple `has_header`
+  default `true` (silently eats row 1 of headerless data); mixed index/name
+  `columns` (ambiguous addressing, §5.3); per-row structural-error aggregation on the
+  streaming path (cannot aggregate without buffering — abort is honest).
+- **Affects:** Sources (new triple `IRecordSource`), Core (`Binding` triple +
+  encoding carrier, `SpecResolver`, planner guard removal), Conversion
+  (grouping/sort-merge + emit), Spec (writer already round-trips), Diagnostics
+  (D-085); spec §5.1 / §5.3 / §5.3.1 / §5.4 / §10.2 / §10.5 / §14 / §17. Realizes
+  D-072; pairs with D-083 / D-084 / D-085.
+
+### D-083 — Wide `column` object-key execution + `duplicate_object_policy`
+
+- **Status:** accepted (M3; realizes D-064 / D-034)
+- **Date:** 2026-07-07
+- **Decision:** wide `object_key.mode = "column"` executes at M3 with
+  `duplicate_object_policy` over the **cleaned** key value:
+  - **`fail`** (default): a repeated key → `DuplicateObjectKey` (Error), stop.
+  - **`keep`**: each row is its own object. Name assignment is a **conversion**
+    concern (the object-key resolver, **not** the writer — P-15): names are assigned
+    in object emission order (§17 rule 4) and are **unique by construction** — the
+    first occurrence of a cleaned key takes the key itself, a later occurrence takes
+    `<key>#<record-index>` (0-based). If any candidate is already assigned (a literal
+    data key or an earlier generated name), the resolver **escalates** by appending
+    `#1`, `#2`, … (ascending integers from 1) and taking the first unused; all
+    comparisons are ordinal (P-12). The assigned-name set is bounded object-name
+    metadata (P-16); `.cxt` serializes these names and `.dat` ignores them, so the
+    guarantee is observable only in `.cxt`. `DuplicateObjectKey` (Warning).
+  - **`dedupe`**: rows sharing a key collapse to one object, later crosses union onto
+    the first; `DuplicateObjectKey` (Info). Non-contiguous keys cannot stream in one
+    pass without holding all crosses (P-16), so `dedupe` is built on the **shared
+    external grouping/sort-merge/spool path** — the same infrastructure as triple
+    `unordered` (D-082).
+  - **Output order (audit NF-7).** Wide `column` object order = **order of first
+    occurrence of each cleaned key** (§17 rule 4). This generalizes row order:
+    `row_index` / `keep` / `fail` / all-unique reduce to row order; `dedupe` merges
+    onto the first and adds no new position. It is **distinct from triple
+    `unordered`**, which emits in **ordinal-sorted** subject order — the shared
+    grouping infrastructure must not make `dedupe` sorted. The asymmetry is
+    principled: `unordered` is a declared no-input-order mode (sort is the canonical
+    deterministic choice); `dedupe` cleans duplicates in inherently row-ordered wide
+    input (first-occurrence respects it).
+  - The key column is **not implicit** as an attribute but **may** be explicitly
+    bound by an `[[attribute]]` source (§5.4 "excluded from conversion" → "not
+    implicit"; D-033 source-repeat).
+  - `ObjectKeyColumnNotImplementedV1` retires.
+- **Why:** D-064 deferred wide column-key execution to M3 alongside the triple
+  subject-derived key — one column-object-key machine. The audit found `dedupe` is
+  the sole policy incompatible with single-pass streaming, and that its output order
+  (first-occurrence) differs from triple `unordered` (sorted) despite the shared
+  infra — a determinism trap worth pinning. `keep` uniqueness was tightened from a
+  "documented residual" to a guarantee once it was clear the **converter** can hold
+  the assigned-name set as bounded metadata (P-16), so uniqueness is affordable and
+  stays upstream of the dumb writer (P-15) rather than being decided in the `.cxt`
+  writer.
+- **Rejected:** silent `row_index` fallback (D-064's latent-wrong-output hole);
+  duplicate output object names under `keep` as a documented residual (rejected in
+  audit Round 2 — names are already held, uniqueness is affordable); sorting
+  `dedupe` output like triple `unordered` (contradicts §6.1 "union onto the first");
+  buffering all crosses for `dedupe` (violates P-16).
+- **Affects:** Core (`ColumnObjectKey` execution, planner guard removal),
+  Sources/Conversion (grouping/sort-merge/spool shared with D-082, `keep`
+  name-uniqueness), Diagnostics (`DuplicateObjectKey`, D-085); spec §5.4 / §6.1 /
+  §17 rule 4. Realizes D-064 / D-034; pairs with D-082.
+
+### D-084 — Ordinal string comparison is the project-wide rule
+
+- **Status:** accepted (M3 audit; adds principle P-12)
+- **Date:** 2026-07-07
+- **Decision:** all string identity, equality, matching, deduplication, grouping,
+  source binding, and deterministic string **ordering** use ordinal comparison
+  (`StringComparer.Ordinal`, a UTF-16 code-unit compare), never culture-aware
+  collation; `binding.locale` (§5.1) governs numeric/date **parsing** only, never
+  string collation. Recorded as new principle **P-12** ("Strings compare and sort
+  ordinally…"), the string-side companion to P-11 (numeric/locale parsing), and it
+  corrects spec **§17 rule 4**: the `unordered` triple subject sort key is the
+  cleaned subject string under **ordinal** comparison (was "invariant culture").
+- **Why:** the audit (F-054) found "invariant culture" for the unordered subject
+  sort a determinism hazard — `InvariantCulture` string collation is ICU/NLS-version
+  dependent and can reorder across machines/runtimes, drifting output bytes on a
+  golden/fingerprint path (P-7); ordinal is byte-stable. The code already uses
+  `StringComparer.Ordinal` for name/identity dedup, so this codifies practice and
+  closes the one string-sorted axis (unordered triple) before it is built. A
+  dedicated principle (not a P-11 extension) has its own check moment — comparing or
+  sorting strings — distinct from P-11's numeric-parsing moment.
+- **Rejected:** `InvariantCulture` collation (ICU-version-dependent — the hazard);
+  extending P-11 instead of a sibling principle (different check moment; leaves a
+  correctness rule structurally implicit — Codex's Option B); "byte-value" wording
+  (`Ordinal` compares UTF-16 code units, not bytes — precision matters).
+- **Affects:** `principles.md` (new **P-12**; old P-12…P-21 renumbered P-13…P-22,
+  cross-references updated in `decisions.md` / `AGENTS.md`), spec §17 rule 4;
+  Core / Conversion / Sources (ordinal collation on the unordered path and all
+  string keys) at implementation. Byte-neutral on existing goldens (they are
+  `subject_grouped`, unsorted).
+
+### D-085 — M3 diagnostic taxonomy: structural triple/column-key codes
+
+- **Status:** accepted (M3; refines D-067; the audit's NF-1)
+- **Date:** 2026-07-07
+- **Decision:** M3 gives triple/column-key **structural** conditions real §16.4
+  codes rather than misusing value-level codes or `DuplicateObjectKey`:
+  - **New codes.** `ObjectKeyValueInvalid` (Error, emit) — a data-derived object name
+    (triple subject or wide column key) is empty, whitespace-only, contains
+    newline/control characters, or its mapped column is absent from the row (an
+    unusable object name; a newline would corrupt the line-structured `.cxt`,
+    §18.1). `TripleColumnsNotDistinct` (Error, spec validate) — the **resolved** case
+    where two logical roles (subject/predicate/value) point to the same physical
+    column.
+  - **Extend existing (no new code).** `SourceBindingInvalid` (Error, spec validate)
+    additionally owns invalid triple `columns` **shape/addressing** — missing/partial
+    role table, mixed index/name addressing, all-name without `has_header = true`,
+    header-name no-match, duplicate matching header — **plus** the source
+    `kind`↔`shape` mismatch (`column`↔wide, `predicate`↔triple). This parallels its
+    existing wide meaning (name binding needs `has_header`; unresolvable reference);
+    its message/Context disambiguates the attribute `source` from the `columns`
+    table. `ObjectKeyModeInvalidForShape` additionally owns any authored
+    `[binding.object_key]` under triple.
+  - **Severity.** Structural row/source errors are **Error** (halt this conversion,
+    file usable next call — §16.2), matching `TripleSubjectNotContiguous` /
+    `DuplicateObjectKey`; never `Fatal` (reserved for a corrupt/unrecoverable spec).
+  - **Enum timing.** The §16.4 **table** is the documentation home; each
+    `DiagnosticCode` **enum member** lands with its **emit site** at the implementing
+    slice ("grows per slice", P-3) — the two new codes above and the
+    already-spec'd-but-unimplemented `DuplicateObjectKey`,
+    `TripleSubjectNotContiguous`, `AttributeHasNoCrosses`, `ObjectHasNoCrosses`,
+    `NoObjectsEmitted`, `NoFormalAttributes`.
+  - **Retirements.** `TripleSourceNotImplementedV1` (D-082) and
+    `ObjectKeyColumnNotImplementedV1` (D-083) are removed with their guards when M3
+    lands.
+- **Why:** the audit (F-081 / NF-1) found the triple/column-key structural-error
+  class had no diagnostic home, and that reusing value-level (`UnknownValueObserved`)
+  or duplicate-key codes would break one-condition → one-owning-code (P-14).
+  Assigning owners/severities now — and consolidating shape/addressing under the
+  existing `SourceBindingInvalid` rather than proliferating codes — keeps §16.4's
+  phase-ownership honest (D-067).
+- **Rejected:** reusing `UnknownValueObserved` / `DuplicateObjectKey` for structural
+  conditions (mis-phased, mis-severity, P-14); a dedicated code per shape/addressing
+  variant (`SourceBindingInvalid` already means "binding shape invalid" —
+  proliferation for no gain); `Fatal` for row-level structural errors (the file is
+  usable next call); adding enum members in this docs landing (would strand members
+  no emit site raises, P-3).
+- **Affects:** Diagnostics (`ObjectKeyValueInvalid`, `TripleColumnsNotDistinct`, and
+  the six deferred codes, at their emit sites), Core / Conversion / Sources (emit
+  sites), Spec (`SpecResolver` shape checks); spec §16.4. Refines D-067; pairs with
+  D-082 / D-083.
 
 ---
 

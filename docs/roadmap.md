@@ -68,7 +68,16 @@ vertical slices, not waterfall phases — each should leave the system working.
 > from the planner to the resolve seam over the document model (D-080). Both are
 > byte- and fingerprint-neutral on every golden and pinned baseline.
 > `dotnet test` is green (547 tests).
-> Next: M3 (triple source).
+>
+> **The M3 triple-source audit has landed (spec/decisions only, D-082…D-085).** A
+> review pass over the finalized triple + wide-column-key surface settled the
+> contract — shape-specific `has_header`, optional/one-mode `columns`, absent-vs-
+> missing semantics, ordinal string collation (new principle **P-12**; §17 rule 4),
+> wide `dedupe` first-occurrence order on the shared sort-merge path, `keep` name
+> uniqueness, and the structural diagnostic taxonomy — with the spec, `decisions.md`,
+> and `principles.md` updated. This landing is docs-only and byte-/fingerprint-neutral
+> (no enum members, no `FixtureCase.Active` change, no production code).
+> Next: M3 **implementation** (triple reader + wide column-key execution).
 
 ## Milestones
 
@@ -170,13 +179,26 @@ known v1 features outside M2 produce clear diagnostics.
 ### M3 — Three-column (triple) source
 
 Subject-grouped fast path (single-pass streaming) first; unordered slow path
-(external sort-merge, configurable in-memory buffer) second. Object-key
-derivation from the subject column. Reproduce the three triple goldens
-byte-identical (`mini-mushroom_triples`, `mini-adult_triples`, and the
-named-subjects `mini-adult_triples_named`, spec §19.3). Also lands **wide `object_key.mode = "column"`** execution and
-activates `duplicate_object_policy` (D-064) — the same column-object-key machinery,
-shared with triple's subject-derived key; M2 only parses/round-trips/rejects it
-(`ObjectKeyColumnNotImplementedV1`).
+(external sort-merge; the in-memory buffer is a runtime knob, not a spec field)
+second. Object-key derivation from the subject column. Reproduce the three triple
+goldens byte-identical (`mini-mushroom_triples`, `mini-adult_triples`, and the
+named-subjects `mini-adult_triples_named`, spec §19.3 — all `subject_grouped`;
+verify each input is subject-contiguous before locking). Also lands **wide
+`object_key.mode = "column"`** execution and activates `duplicate_object_policy`
+(D-064) — the same column-object-key machinery, shared with triple's subject-derived
+key; M2 only parses/round-trips/rejects it (`ObjectKeyColumnNotImplementedV1`).
+
+The **M3 triple-source audit (D-082…D-085)** settled the contract before coding:
+shape-specific `has_header` (triple defaults `false`); `columns` optional / one
+addressing mode; object identity = the resolved subject (an authored triple
+`object_key` is rejected); **absent predicate = no observation** (≠ a present-missing
+value); structural row/source errors are `Error`; ordinal string collation is a
+project-wide rule (new principle P-12; §17 rule 4); wide `dedupe` runs on the shared
+sort-merge path and emits in **first-occurrence** order (≠ triple `unordered`'s
+ordinal sort); `keep` guarantees unique object names; and the structural diagnostic
+taxonomy (new `ObjectKeyValueInvalid` / `TripleColumnsNotDistinct`, extended
+`SourceBindingInvalid`). `TripleSourceNotImplementedV1` and
+`ObjectKeyColumnNotImplementedV1` retire when the code lands.
 **Exit:** both triple orderings work; all three triple-input goldens match; wide column
 object keys convert with `duplicate_object_policy` honored.
 
