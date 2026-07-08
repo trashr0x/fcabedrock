@@ -5,7 +5,7 @@ namespace FcaBedrock.Spec.Toml;
 
 /// <summary>
 /// Shared state for one <see cref="SpecReader"/> pass: the aggregating
-/// diagnostics list (P-13), the source label for locations, and the current
+/// diagnostics list (P-14), the source label for locations, and the current
 /// attribute scope. Positions come from Tomlyn's zero-based spans, shifted to
 /// the 1-based convention of <see cref="DiagnosticLocation"/> (§16.3).
 /// </summary>

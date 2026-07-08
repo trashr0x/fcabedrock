@@ -140,7 +140,7 @@ superseded or refined. A new entry MUST add its line here.
 
 - D-082 — M3 triple source contract: reader, orderings, object identity, absent-vs-missing semantics, structural-error severity (realizes D-072; retires `TripleSourceNotImplementedV1`)
 - D-083 — Wide `column` object-key execution + `duplicate_object_policy`; `dedupe` on the shared sort-merge path (realizes D-064; retires `ObjectKeyColumnNotImplementedV1`)
-- D-084 — Ordinal string comparison is the project-wide rule (adds principle P-12; corrects §17 rule 4)
+- D-084 — Ordinal string comparison is the project-wide rule (adds principle P-12)
 - D-085 — M3 diagnostic taxonomy: structural triple/column-key codes, severities, retirements (refines D-067)
 
 Spec-field defaults are recorded in spec §21 items 1–11 (see the final section
@@ -2212,8 +2212,10 @@ enum members, and golden activation are the M3 *implementation* that follows.
     rows. `ordering = "subject_grouped"` is the single-pass fast path — rows for a
     subject MUST be contiguous; a recurrence after an intervening subject is
     `TripleSubjectNotContiguous` (Error, stop — D-031). `ordering = "unordered"`
-    groups non-contiguous subjects via external sort-merge/spool, never a full
-    matrix (P-16). Both are required for M3 completion.
+    groups non-contiguous (interleaved) subjects via external sort-merge/spool,
+    never a full matrix (P-16), and emits objects in **first-appearance order of
+    each cleaned subject** — the same output order as `subject_grouped`, differing
+    only in the contiguity requirement. Both are required for M3 completion.
   - **Object identity = the resolved subject**, always (§5.4 default `column` =
     subject). An authored `[binding.object_key]` under `shape = "triple"` is
     rejected (`ObjectKeyModeInvalidForShape`, D-085) — identity is not repointable.
@@ -2243,10 +2245,12 @@ enum members, and golden activation are the M3 *implementation* that follows.
     aggregate (§16.4). Codes are D-085.
   - **Determinism / fingerprints.** Predicate arrival order never affects
     formal-attribute order or `.dat` item order (§17 rules 1–3, 8). Output
-    fingerprints encode the **resolved** role→column-index map and `ordering` (so
-    name-bound ≡ index-bound roles hash identically), and `binding.encoding` becomes
-    a real Core input (was the constant `"utf-8"`, D-077; UTF-8 specs keep their
-    hash).
+    fingerprints encode the **resolved** role→column-index map (so name-bound ≡
+    index-bound roles hash identically), and `binding.encoding` becomes a real Core
+    input (was the constant `"utf-8"`, D-077; UTF-8 specs keep their hash). The
+    triple `ordering` field is **not** a fingerprint input — `subject_grouped` and
+    `unordered` emit identical first-appearance bytes, so it is an acceptance/
+    streaming property, not a byte one.
   - Conversion no longer rejects triple: `TripleSourceNotImplementedV1` retires.
 - **Why:** D-072 carried the basic triple binding but rejected conversion; M3 is the
   triple milestone. The audit surfaced three silent-wrong-output hazards left
@@ -2289,21 +2293,21 @@ enum members, and golden activation are the M3 *implementation* that follows.
   - **Output order (audit NF-7).** Wide `column` object order = **order of first
     occurrence of each cleaned key** (§17 rule 4). This generalizes row order:
     `row_index` / `keep` / `fail` / all-unique reduce to row order; `dedupe` merges
-    onto the first and adds no new position. It is **distinct from triple
-    `unordered`**, which emits in **ordinal-sorted** subject order — the shared
-    grouping infrastructure must not make `dedupe` sorted. The asymmetry is
-    principled: `unordered` is a declared no-input-order mode (sort is the canonical
-    deterministic choice); `dedupe` cleans duplicates in inherently row-ordered wide
-    input (first-occurrence respects it).
+    onto the first and adds no new position. Triple `unordered` (and
+    `subject_grouped`) emit the same first-appearance order of each cleaned subject,
+    so wide `column` and triple share **one** first-occurrence principle; the shared
+    grouping infrastructure must not sort object output. The two triple orderings
+    differ only in the contiguity requirement — `unordered` accepts interleaved input,
+    `subject_grouped` requires contiguity — not in output order.
   - The key column is **not implicit** as an attribute but **may** be explicitly
     bound by an `[[attribute]]` source (§5.4 "excluded from conversion" → "not
     implicit"; D-033 source-repeat).
   - `ObjectKeyColumnNotImplementedV1` retires.
 - **Why:** D-064 deferred wide column-key execution to M3 alongside the triple
   subject-derived key — one column-object-key machine. The audit found `dedupe` is
-  the sole policy incompatible with single-pass streaming, and that its output order
-  (first-occurrence) differs from triple `unordered` (sorted) despite the shared
-  infra — a determinism trap worth pinning. `keep` uniqueness was tightened from a
+  the sole policy incompatible with single-pass streaming; its first-occurrence
+  output order matches triple `unordered`'s first-appearance order on the shared
+  grouping infra (neither sorts object output). `keep` uniqueness was tightened from a
   "documented residual" to a guarantee once it was clear the **converter** can hold
   the assigned-name set as bounded metadata (P-16), so uniqueness is affordable and
   stays upstream of the dumb writer (P-15) rather than being decided in the `.cxt`
@@ -2311,7 +2315,7 @@ enum members, and golden activation are the M3 *implementation* that follows.
 - **Rejected:** silent `row_index` fallback (D-064's latent-wrong-output hole);
   duplicate output object names under `keep` as a documented residual (rejected in
   audit Round 2 — names are already held, uniqueness is affordable); sorting
-  `dedupe` output like triple `unordered` (contradicts §6.1 "union onto the first");
+  `dedupe` output (contradicts §6.1 "union onto the first");
   buffering all crosses for `dedupe` (violates P-16).
 - **Affects:** Core (`ColumnObjectKey` execution, planner guard removal),
   Sources/Conversion (grouping/sort-merge/spool shared with D-082, `keep`
@@ -2327,15 +2331,13 @@ enum members, and golden activation are the M3 *implementation* that follows.
   (`StringComparer.Ordinal`, a UTF-16 code-unit compare), never culture-aware
   collation; `binding.locale` (§5.1) governs numeric/date **parsing** only, never
   string collation. Recorded as new principle **P-12** ("Strings compare and sort
-  ordinally…"), the string-side companion to P-11 (numeric/locale parsing), and it
-  corrects spec **§17 rule 4**: the `unordered` triple subject sort key is the
-  cleaned subject string under **ordinal** comparison (was "invariant culture").
+  ordinally…"), the string-side companion to P-11 (numeric/locale parsing).
 - **Why:** the audit (F-054) found "invariant culture" for the unordered subject
   sort a determinism hazard — `InvariantCulture` string collation is ICU/NLS-version
   dependent and can reorder across machines/runtimes, drifting output bytes on a
   golden/fingerprint path (P-7); ordinal is byte-stable. The code already uses
-  `StringComparer.Ordinal` for name/identity dedup, so this codifies practice and
-  closes the one string-sorted axis (unordered triple) before it is built. A
+  `StringComparer.Ordinal` for name/identity dedup, so this codifies practice across
+  every string-keyed surface (predicate matching, key dedup, name uniqueness). A
   dedicated principle (not a P-11 extension) has its own check moment — comparing or
   sorting strings — distinct from P-11's numeric-parsing moment.
 - **Rejected:** `InvariantCulture` collation (ICU-version-dependent — the hazard);
@@ -2343,10 +2345,11 @@ enum members, and golden activation are the M3 *implementation* that follows.
   correctness rule structurally implicit — Codex's Option B); "byte-value" wording
   (`Ordinal` compares UTF-16 code units, not bytes — precision matters).
 - **Affects:** `principles.md` (new **P-12**; old P-12…P-21 renumbered P-13…P-22,
-  cross-references updated in `decisions.md` / `AGENTS.md`), spec §17 rule 4;
-  Core / Conversion / Sources (ordinal collation on the unordered path and all
-  string keys) at implementation. Byte-neutral on existing goldens (they are
-  `subject_grouped`, unsorted).
+  cross-references updated in `decisions.md` / `AGENTS.md`);
+  Core / Conversion / Sources (ordinal collation on all string keys) at
+  implementation. Byte-neutral: `unordered` emits first-appearance order (no object
+  string sort), so ordinal collation governs matching/dedup/grouping only, not
+  object order.
 
 ### D-085 — M3 diagnostic taxonomy: structural triple/column-key codes
 

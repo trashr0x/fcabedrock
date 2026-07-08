@@ -3,7 +3,7 @@ namespace FcaBedrock.Export;
 /// <summary>
 /// Byte-level formatting knobs for the writers (spec §8). The defaults are the
 /// vNext-native output; <see cref="V2Compat"/> reproduces v2's exact bytes. These
-/// are the writers' only choices — all semantics are decided before export (P-14).
+/// are the writers' only choices — all semantics are decided before export (P-15).
 /// </summary>
 public sealed record WriterOptions
 {

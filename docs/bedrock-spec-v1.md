@@ -393,8 +393,9 @@ For `column` mode, given input where key `P001` appears at rows 1 and 3:
   position (§17 rule 4). Emit `DuplicateObjectKey` (Info). Because non-contiguous
   keys cannot be merged in a single naive pass without holding all crosses (P-16),
   `dedupe` uses external grouping/sort-merge/spool — the same machinery as triple
-  `unordered` — but, unlike `unordered`, emits in **first-occurrence** order, not
-  sorted order (§17 rule 4). Note this can cross mutually-exclusive bins on one
+  `unordered` — and, like `unordered`, emits in **first-occurrence** order (§17
+  rule 4); neither sorts its object output. Note this can cross mutually-exclusive
+  bins on one
   object (e.g. two ages), meaningful only for genuinely set-valued data.
 
 There is no `"merge"` value; cross-row merging by a *derived* key is the
@@ -1464,12 +1465,15 @@ bytes:
 - **Shared inputs** (in **both** output fingerprints — they change which objects,
   crosses, columns, and rows appear, for either format): `schema_fingerprint`;
   the row-shaping settings `schema_fingerprint` deliberately omits —
-  `duplicate_object_policy` and the object-ordering policy (and `restrict_to`
-  filters *once their execution is implemented*; until then `restrict_to` is not
-  an input, §10.4); and the conversion-affecting binding/source settings —
+  `duplicate_object_policy` (which shapes which objects appear and in what order;
+  and `restrict_to` filters *once their execution is implemented* — until then
+  `restrict_to` is not an input, §10.4); and the conversion-affecting binding/source settings —
   binding shape, the **resolved** column/predicate mappings (for triple, the
-  resolved role→column-index map plus `ordering`; a role bound by header name and
-  the equivalent index bind hash identically, §5.3), `encoding` (a real input from
+  resolved role→column-index map; a role bound by header name and the equivalent
+  index bind hash identically, §5.3 — the triple `ordering` field is **not** a
+  fingerprint input, since `subject_grouped` and `unordered` emit identical
+  first-appearance bytes: an acceptance/streaming property, cf. `size_advisory_bytes`),
+  `encoding` (a real input from
   M3, D-082 — UTF-8 specs keep their prior hash), `has_header`, `delimiter`,
   `quote_char`, `missing_token`, source `value_type`s, `missing_policy`,
   `unknown_value_policy`, `binding.locale`, object-key mode, and discretizer/scale
@@ -1778,13 +1782,14 @@ same-output across runs and across machines:
      value** (later duplicates merge onto the first; §6.1) — a generalization of row
      order.
    - **Triple `subject_grouped`**: order of **first appearance** of each subject.
-   - **Triple `unordered`**: post-sort order, where the sort key is the cleaned
-     subject string under **ordinal** comparison (P-12), *not* culture-aware.
+   - **Triple `unordered`**: order of **first appearance** of each cleaned subject
+     (interleaved input allowed; the converter groups all rows per cleaned subject).
 
-   Wide `dedupe` (first-occurrence) and triple `unordered` (ordinal-sorted) differ
-   deliberately, even though both may group non-contiguous keys: `unordered` is a
-   declared no-input-order mode, while `dedupe` cleans duplicates in row-ordered
-   input.
+   Triple `unordered` and `subject_grouped` produce the **same** object order (first
+   appearance of each cleaned subject) and differ only in the contiguity requirement:
+   `unordered` accepts interleaved input, `subject_grouped` requires contiguity for
+   single-pass streaming. Wide `dedupe` follows the same first-occurrence principle;
+   none of these sorts its object output.
 5. **Attribute IDs in `.dat`** = `base_index`-based (default 1; §8), in the
    order from rules 1–2.
 6. **Formal-attribute names in `.cxt`** = produced by
@@ -2017,7 +2022,7 @@ version = 1
 
 [binding]
 shape = "triple"
-ordering = "subject_grouped"
+ordering = "unordered"
 columns = { subject = 0, predicate = 1, value = 2 }
 missing_token = "?"
 

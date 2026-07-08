@@ -6,7 +6,7 @@ namespace FcaBedrock.Sources;
 /// A replayable stream of object records. <see cref="ReadAsync"/> may be called
 /// more than once (each call re-reads from the start) — the <c>.cxt</c> writer
 /// relies on this for its two-pass layout (spec §18.1) instead of buffering the
-/// matrix (P-15).
+/// matrix (P-16).
 /// </summary>
 public interface IRecordSource
 {

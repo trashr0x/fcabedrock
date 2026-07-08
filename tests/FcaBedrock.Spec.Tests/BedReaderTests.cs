@@ -76,7 +76,7 @@ public sealed class BedReaderTests
     [Fact]
     public void Read_WhenMultipleSectionsMissing_ThenAllAggregate()
     {
-        // P-13: everything checkable is reported in one pass, not first-failure-wins.
+        // P-14: everything checkable is reported in one pass, not first-failure-wins.
         var withoutTwo = BedFixtures.MushroomBed
             .Replace("[Attribute Type]", "[Attribute Kind]")
             .Replace("[Convert Attribute]", "[Convert]");

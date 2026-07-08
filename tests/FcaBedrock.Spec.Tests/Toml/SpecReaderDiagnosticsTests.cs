@@ -249,7 +249,7 @@ public sealed class SpecReaderDiagnosticsTests
     [Fact]
     public void Read_WhenSeveralProblems_ThenAllAggregateInOnePass()
     {
-        // P-13: one read reports everything — unknown key, bad spelling, and a
+        // P-14: one read reports everything — unknown key, bad spelling, and a
         // deferred discretizer kind together.
         var result = SpecReader.Read(
             "[binding]\nshape = \"wibble\"\nmissing_polcy = \"skip\"\n" +

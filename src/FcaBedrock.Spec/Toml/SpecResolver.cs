@@ -436,7 +436,7 @@ public static class SpecResolver
     // The Slice D static attribute checks (D-067). They read the document
     // sections directly — authored-vs-default provenance exists only there
     // (D-060) — and run whether or not the source/discretizer/scale resolved,
-    // so one bad field does not mask another (P-13).
+    // so one bad field does not mask another (P-14).
     private static void ValidateAttributeConstraints(
         AttributeSection section,
         string attribute,

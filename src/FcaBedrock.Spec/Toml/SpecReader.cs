@@ -13,7 +13,7 @@ namespace FcaBedrock.Spec.Toml;
 /// shapes fail with <c>SpecFieldInvalid</c>. The reader enforces parse shape
 /// only — possibly-invalid <em>values</em> land in the document for the
 /// resolve/validate seam to judge (D-066/D-067). Diagnostics aggregate in two
-/// phases (P-13): all TOML-level errors together (<c>SpecTomlInvalid</c>,
+/// phases (P-14): all TOML-level errors together (<c>SpecTomlInvalid</c>,
 /// terminal — a broken tree would cascade garbage), then all semantic issues
 /// from one whole-document walk.
 /// </summary>

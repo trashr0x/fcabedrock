@@ -3,7 +3,7 @@ namespace FcaBedrock.Core.Discretization;
 /// <summary>
 /// The one place the cut-bin label template lives, shared by
 /// <see cref="ManualCutsDiscretizer"/> and <see cref="OrderedCutsDiscretizer"/> so
-/// numeric and ordered cuts never drift (P-16). Operates on already-formatted cut
+/// numeric and ordered cuts never drift (P-17). Operates on already-formatted cut
 /// strings: <c>&lt;{c0}</c>, <c>[{ci}, {cj})</c>, <c>&gt;={cn}</c> (spec §11.2), with
 /// the v2-compat interior transform <c>[{ci}, {cj}) → {ci}to&lt;{cj}</c> (D-044). The
 /// canonical (native) form is the identity-bearing key; the v2 form is a pure

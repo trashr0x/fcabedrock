@@ -7,7 +7,7 @@ namespace FcaBedrock.Core.Discretization;
 /// <summary>
 /// User-defined numeric cut points (spec §11.2). Raw values are parsed to
 /// <see cref="double"/> with the injected <see cref="CultureInfo"/> (never ambient
-/// — P-12); a value that fails to parse or is non-finite gets no bin (§11.5), as
+/// — P-11); a value that fails to parse or is non-finite gets no bin (§11.5), as
 /// does an out-of-range value under <see cref="BinEnds.Closed"/> (§11.2). Cut
 /// labels are invariant schema strings, not locale numbers (§14), so the same
 /// spec yields the same labels everywhere.
@@ -25,7 +25,7 @@ public sealed record ManualCutsDiscretizer : Discretizer
     /// <summary>Whether the outer bins extend to ±∞ (<see cref="BinEnds.Open"/>) or are dropped.</summary>
     public BinEnds Ends { get; }
 
-    /// <summary>The culture used to parse raw data values (never ambient — P-12).</summary>
+    /// <summary>The culture used to parse raw data values (never ambient — P-11).</summary>
     public CultureInfo Culture { get; }
 
     private readonly IReadOnlyList<string> _cutLabels;

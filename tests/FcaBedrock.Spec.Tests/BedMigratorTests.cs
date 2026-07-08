@@ -555,7 +555,7 @@ public sealed class BedMigratorTests
     [Fact]
     public void Migrate_WhenSeveralAttributesInvalid_ThenAllErrorsAggregateWithAttributeLocations()
     {
-        // P-13: the whole document reports in one pass, not first-failure-wins.
+        // P-14: the whole document reports in one pass, not first-failure-wins.
         var migrated = BedMigrator.Migrate(
             ReadBed(Bed(
                 new BedAttr("dob", "d", "<,01/01/1980,>"),

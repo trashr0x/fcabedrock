@@ -8,7 +8,7 @@ namespace FcaBedrock.Spec;
 /// for one-way migration (decisions.md D-009/D-079). Structural problems — a
 /// missing section, an entry-count shortfall, an unparseable count or convert
 /// flag — are <c>BedStructureInvalid</c> (Fatal) diagnostics, aggregated where the
-/// parse can continue past them (P-13); the optional file path is only a label
+/// parse can continue past them (P-14); the optional file path is only a label
 /// for diagnostic locations, mirroring <see cref="Toml.SpecReader"/>.
 /// </summary>
 public static class BedReader

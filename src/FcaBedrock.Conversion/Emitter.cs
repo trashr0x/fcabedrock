@@ -10,7 +10,7 @@ namespace FcaBedrock.Conversion;
 /// <summary>
 /// Streams object records through a <see cref="ConversionPlan"/>, producing one
 /// <see cref="EmittedObject"/> per record (spec §7 step 4). Single-pass and
-/// allocation-streaming: the incidence matrix is never materialized (P-15). All
+/// allocation-streaming: the incidence matrix is never materialized (P-16). All
 /// ordering and naming are already decided by the planner; emit only looks values
 /// up. Data diagnostics (unknown / unparseable values) are <b>aggregated per
 /// attribute</b> — a count with a bounded sample, flushed in plan order after the
@@ -19,7 +19,7 @@ namespace FcaBedrock.Conversion;
 /// </summary>
 public static class Emitter
 {
-    // Per-attribute sample cap for aggregated diagnostics; bounded metadata (P-15).
+    // Per-attribute sample cap for aggregated diagnostics; bounded metadata (P-16).
     private const int SampleCap = 3;
 
     /// <summary>Emits the formal objects for <paramref name="plan"/> over <paramref name="source"/>.</summary>
@@ -114,7 +114,7 @@ public static class Emitter
 
     // "include" extends the domain during the Calibrate phase, never at emit, so an
     // unknown reaching emit under that policy is an impossible state (preserved from the
-    // per-row path — P-13). Other policies accrue to the aggregate and surface at flush.
+    // per-row path — P-14). Other policies accrue to the aggregate and surface at flush.
     private static void RecordUnknown(PlannedAttribute attribute, string value, DiagnosticTally unknown)
     {
         if (attribute.UnknownValuePolicy == UnknownValuePolicy.Include)
@@ -181,7 +181,7 @@ public static class Emitter
     }
 
     // Per-attribute occurrence count plus a bounded first-observed sample (deterministic
-    // given source order). Bounded metadata, never the matrix (P-15).
+    // given source order). Bounded metadata, never the matrix (P-16).
     private sealed class DiagnosticTally
     {
         private readonly List<string> _sample = [];

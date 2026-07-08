@@ -33,11 +33,11 @@ public readonly struct Result<T, TError>
     /// <summary>True when this holds an error.</summary>
     public bool IsError => !IsOk;
 
-    /// <summary>The value. Throws if this is an error (a programmer error — P-13).</summary>
+    /// <summary>The value. Throws if this is an error (a programmer error — P-14).</summary>
     public T Value =>
         IsOk ? _value : throw new InvalidOperationException("Cannot read Value of an error Result.");
 
-    /// <summary>The error. Throws if this is ok (a programmer error — P-13).</summary>
+    /// <summary>The error. Throws if this is ok (a programmer error — P-14).</summary>
     public TError Error =>
         IsOk ? throw new InvalidOperationException("Cannot read Error of an ok Result.") : _error;
 

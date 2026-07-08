@@ -49,7 +49,7 @@ public abstract record Discretizer
     /// Name-render time: the display form of a canonical bin label under
     /// <paramref name="style"/>. The default is style-independent (the canonical
     /// label itself); cut discretizers override for the v2-compat interior form.
-    /// Identity/keys never go through here — only the rendered name (P-14, D-044).
+    /// Identity/keys never go through here — only the rendered name (P-15, D-044).
     /// </summary>
     internal virtual string RenderBinLabel(string canonicalLabel, LabelStyle style) => canonicalLabel;
 

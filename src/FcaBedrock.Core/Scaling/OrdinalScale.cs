@@ -97,7 +97,7 @@ public sealed record OrdinalScale(
     // key/name is the raw order value via RenderName (never a display label). Order is a
     // validated permutation of the domain by plan time (OrdinalOrderMissing /
     // OrdinalOrderHasUnknownValue); a null Order here means a resolve/plan-guard bypass —
-    // a programmer error (P-13).
+    // a programmer error (P-14).
     private List<FormalAttributeShape> BuildValueThresholds()
     {
         if (Order is not { } order)

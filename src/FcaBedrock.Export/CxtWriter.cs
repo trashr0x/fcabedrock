@@ -9,7 +9,7 @@ namespace FcaBedrock.Export;
 /// object and formal-attribute counts and names, then the incidence matrix. The
 /// layout needs the object names before any row, so the writer makes two passes
 /// over the replayable object stream, buffering only the (bounded) object names —
-/// never the matrix (P-15). Dumb: it emits the planner's order and names verbatim (P-14).
+/// never the matrix (P-16). Dumb: it emits the planner's order and names verbatim (P-15).
 /// </summary>
 public static class CxtWriter
 {
@@ -28,7 +28,7 @@ public static class CxtWriter
         ArgumentNullException.ThrowIfNull(options);
         ArgumentNullException.ThrowIfNull(output);
 
-        // Pass 1: object names + count (bounded metadata only — §18.1, P-15).
+        // Pass 1: object names + count (bounded metadata only — §18.1, P-16).
         var objectNames = new List<string>();
         await foreach (var obj in openObjects().WithCancellation(cancellationToken).ConfigureAwait(false))
         {

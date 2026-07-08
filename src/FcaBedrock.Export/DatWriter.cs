@@ -8,7 +8,7 @@ namespace FcaBedrock.Export;
 /// Writes the FIMI <c>.dat</c> format (spec §18.2): one line per object listing
 /// the <see cref="WriterOptions.BaseIndex"/>-based ids of the formal attributes it
 /// crosses. Single-pass and dumb — it serializes the emitted objects in order and
-/// makes no semantic decisions (P-14).
+/// makes no semantic decisions (P-15).
 /// </summary>
 public static class DatWriter
 {

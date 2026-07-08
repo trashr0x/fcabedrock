@@ -3,7 +3,7 @@ namespace FcaBedrock.Spec.Toml;
 /// <summary>
 /// The authored <c>[output]</c> section (§8). Carried inert by design:
 /// <c>BedrockSpec</c> never carries output config — the writers take
-/// <c>WriterOptions</c> from the caller (P-12/P-14). Wired to the reader/writer
+/// <c>WriterOptions</c> from the caller (P-13/P-15). Wired to the reader/writer
 /// and fingerprint slices (C/E).
 /// </summary>
 /// <param name="BinLabelUnicode">Whether bin labels render Unicode operators (§8).</param>

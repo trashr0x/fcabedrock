@@ -364,7 +364,7 @@ public sealed class SpecResolverTests
     [Fact]
     public void Resolve_WhenMatcherPresentAndBindingShapeMissing_ThenBothReport()
     {
-        // P-13 aggregation: the template/matcher reject precedes the shape
+        // P-14 aggregation: the template/matcher reject precedes the shape
         // gate's early return, so both surface in one pass.
         var document = new SpecDocument(
             DocumentFixtures.SpecV1(), null, null, null, null,
@@ -530,7 +530,7 @@ public sealed class SpecResolverTests
     [Fact]
     public void Resolve_WhenMultipleProblems_ThenAllDiagnosticsAggregate()
     {
-        // P-13/D-067: resolve + validate in one pass, reporting everything at once.
+        // P-14/D-067: resolve + validate in one pass, reporting everything at once.
         var document = DocumentFixtures.Document(
         [
             DocumentFixtures.Attribute(name: null, DocumentFixtures.Column(0),
@@ -935,7 +935,7 @@ public sealed class SpecResolverTests
     {
         // The D-080 payoff: the dup check reads the document sections, so a
         // duplicate whose sibling field fails to resolve (ResolveAttribute drops
-        // it) still surfaces — alongside that sibling's own diagnostic (P-13). The
+        // it) still surfaces — alongside that sibling's own diagnostic (P-14). The
         // former Core-model check over resolved attributes would have lost it.
         var document = DocumentFixtures.Document(
         [
@@ -1000,7 +1000,7 @@ public sealed class SpecResolverTests
     [Fact]
     public void Resolve_WhenDuplicateNameAndStaleLabel_ThenBothSeamChecksAggregate()
     {
-        // P-13: the two re-homed seam checks aggregate with each other and the rest
+        // P-14: the two re-homed seam checks aggregate with each other and the rest
         // of the resolve pass rather than short-circuiting.
         var document = DocumentFixtures.Document(
         [

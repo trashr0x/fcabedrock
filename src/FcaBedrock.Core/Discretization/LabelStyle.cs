@@ -5,7 +5,7 @@ namespace FcaBedrock.Core.Discretization;
 /// canonical bin <i>key</i> (identity) is style-independent; only the rendered
 /// name differs. Affects <c>output_fingerprint</c> only, never
 /// <c>schema_fingerprint</c> (decisions.md D-011/D-035, D-044). A plan-time input;
-/// the writers stay dumb (P-14).
+/// the writers stay dumb (P-15).
 /// </summary>
 public enum LabelStyle
 {

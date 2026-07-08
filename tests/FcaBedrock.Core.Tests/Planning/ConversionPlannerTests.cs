@@ -356,7 +356,7 @@ public sealed class ConversionPlannerTests
     [Fact]
     public void Plan_WhenObjectKeyCompositeAndRestrictToPresent_ThenBothDiagnosticsReport()
     {
-        // P-13: the object-key guard aggregates with the attribute checks rather
+        // P-14: the object-key guard aggregates with the attribute checks rather
         // than short-circuiting the static pass. Duplicate names moved to the resolve
         // seam (D-080), so a still-plan-phase code — RestrictToNotImplementedV1 —
         // pairs with the object-key reject here.

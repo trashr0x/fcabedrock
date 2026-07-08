@@ -10,14 +10,14 @@ namespace FcaBedrock.Core.Planning;
 /// <see cref="ConversionPlan"/>. Pure and data-free (spec §7 step 3). Centralizes
 /// every ordering rule (decisions.md D-004): attribute order follows the spec,
 /// formal-attribute order follows the discretizer's bins then the scale's
-/// enumeration, and names are rendered here (not in the writers — P-14).
+/// enumeration, and names are rendered here (not in the writers — P-15).
 /// </summary>
 public static class ConversionPlanner
 {
     /// <summary>
-    /// Plans the conversion, aggregating all validation/plan diagnostics (P-13).
+    /// Plans the conversion, aggregating all validation/plan diagnostics (P-14).
     /// <paramref name="labelStyle"/> selects how cut bin labels render in names
-    /// (spec §8/§14); it affects rendered names only, never identity (P-14, D-044).
+    /// (spec §8/§14); it affects rendered names only, never identity (P-15, D-044).
     /// </summary>
     public static Diagnosed<ConversionPlan> Plan(
         BedrockSpec spec, SourceSchema schema, LabelStyle labelStyle = LabelStyle.Native)

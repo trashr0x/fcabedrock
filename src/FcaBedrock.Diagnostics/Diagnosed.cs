@@ -4,7 +4,7 @@ namespace FcaBedrock.Diagnostics;
 
 /// <summary>
 /// The project-standard carrier for operations that aggregate diagnostics — a
-/// value plus every diagnostic produced, not just the first (principle P-13).
+/// value plus every diagnostic produced, not just the first (principle P-14).
 /// Used by validation and planning so callers can surface all problems at once.
 /// </summary>
 public readonly struct Diagnosed<T>

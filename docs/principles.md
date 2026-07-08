@@ -172,8 +172,8 @@ any deterministic *ordering* of strings use ordinal comparison
 compare), never a culture-aware one. Culture-aware collation, `InvariantCulture`
 included, is ICU/NLS-version dependent: the same two strings can order or match
 differently across machines and runtimes — a determinism bug on any path feeding
-output bytes, IDs, or fingerprints (e.g. the unordered triple subject sort, spec
-§17 rule 4). This is the string-side companion to P-11 ("Floating-point and
+output bytes, IDs, or fingerprints (e.g. triple predicate matching, or object-key
+deduplication and `keep` name uniqueness). This is the string-side companion to P-11 ("Floating-point and
 locale…"): `binding.locale` governs numeric/date *parsing* only (decimal
 separators), never string collation — the two are separate concerns and must not
 be conflated. Where a spec section fixes a *non-string* order (numeric or

@@ -6,9 +6,9 @@ namespace FcaBedrock.Core.Discretization;
 /// <summary>
 /// The one place cut-spec validity rules live, shared by the
 /// <see cref="ManualCutsDiscretizer"/> and <see cref="OrderedCutsDiscretizer"/>
-/// smart factories so numeric and ordered cuts never drift (P-16, decisions.md
+/// smart factories so numeric and ordered cuts never drift (P-17, decisions.md
 /// D-056). Validation runs at construction (the boundary) so an invalid cut spec
-/// can never be represented as a discretizer (P-10/P-13); each rule maps to a
+/// can never be represented as a discretizer (P-10/P-14); each rule maps to a
 /// distinct <see cref="DiagnosticCode"/> (spec §11.2 / §11.8). All cut diagnostics
 /// are <see cref="DiagnosticSeverity.Error"/>.
 /// </summary>

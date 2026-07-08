@@ -68,7 +68,7 @@ public sealed class DependencyRulesTests
     [Fact]
     public void Core_ShouldNotDependOnSystemIo()
     {
-        // P-12: Core is pure — no file/stream I/O. ArchUnitNET sees type-level
+        // P-13: Core is pure — no file/stream I/O. ArchUnitNET sees type-level
         // dependencies (incl. BCL targets by namespace) that the package-reference
         // rules cannot; this is the purity guard D-039 anticipated for M1. Core now
         // has real types, so this is non-vacuous (no WithoutRequiringPositiveResults).

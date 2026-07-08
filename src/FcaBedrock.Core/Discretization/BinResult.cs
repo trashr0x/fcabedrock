@@ -28,7 +28,7 @@ public enum BinOutcome
 /// ones (<see cref="BinOutcome.Unknown"/>, <see cref="BinOutcome.Unparseable"/>),
 /// replacing the old <c>string?</c> that collapsed all of these into "label or null"
 /// (decisions.md D-059). A <c>readonly record struct</c> so the emit hot path stays
-/// allocation-free (P-17) and tests get value equality.
+/// allocation-free (P-18) and tests get value equality.
 /// </summary>
 public readonly record struct BinResult
 {
