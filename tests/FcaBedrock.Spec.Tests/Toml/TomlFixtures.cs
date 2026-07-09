@@ -119,7 +119,7 @@ internal static class TomlFixtures
 
         [binding]
         shape = "triple"
-        ordering = "subject_grouped"
+        ordering = "unordered"
         columns = { subject = 0, predicate = 1, value = 2 }
         missing_token = "?"
 
@@ -142,6 +142,26 @@ internal static class TomlFixtures
         name = "class"
         source = { kind = "predicate", name = "class" }
         include = false
+        """;
+
+    /// <summary>
+    /// Synthetic (not a §19 worked example) — a minimal <c>subject_grouped</c> triple spec so
+    /// read → resolve → plan coverage exists for the Slice C fast path (§19.3 uses
+    /// <c>unordered</c>, which the planner still refuses until Slice D).
+    /// </summary>
+    public const string TripleSubjectGrouped = """
+        [spec]
+        version = 1
+
+        [binding]
+        shape = "triple"
+        ordering = "subject_grouped"
+
+        [[attribute]]
+        name = "age"
+        source = { kind = "predicate", name = "age" }
+        discretizer = { kind = "manual_cuts", cuts = [30, 40, 50], ends = "open" }
+        scale = { kind = "nominal" }
         """;
 
     /// <summary>

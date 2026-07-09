@@ -242,11 +242,12 @@ public enum DiagnosticCode
     OrdinalOrderHasUnknownValue,
 
     /// <summary>
-    /// The spec binds a triple source, whose conversion is not implemented in this
-    /// milestone; the planner rejects it before any planning. Spec §5.1 (D-072;
-    /// transitional, removed at M3).
+    /// The spec binds a triple source with <c>ordering = "unordered"</c>, whose
+    /// grouping/spool is not implemented in this milestone slice; the planner rejects
+    /// it before any planning. <c>subject_grouped</c> converts. Spec §5.3 (D-082;
+    /// transitional, removed at M3 Slice D when the unordered spool lands).
     /// </summary>
-    TripleSourceNotImplementedV1,
+    TripleUnorderedNotImplementedV1,
 
     /// <summary>
     /// An attribute uses a modelled-but-deferred scale (<c>interordinal</c>,
@@ -377,4 +378,20 @@ public enum DiagnosticCode
     /// (<c>skip</c> silent). Aggregated per attribute. Spec §10.6 / §11.5 / §16.4 (D-050).
     /// </summary>
     SourceValueUnparseable,
+
+    /// <summary>
+    /// A triple <c>subject_grouped</c> source is not contiguous: a subject recurs after
+    /// an intervening subject (its group already closed). Error — the conversion halts,
+    /// the file is usable next call (§16.2); <c>ordering = "unordered"</c> accepts
+    /// interleaved input instead. Spec §5.3 / §16.4 (D-082).
+    /// </summary>
+    TripleSubjectNotContiguous,
+
+    /// <summary>
+    /// A data-derived object name (a triple subject or a wide column key) is unusable:
+    /// empty, whitespace-only, a <c>missing_token</c>, contains a newline/control
+    /// character, or its mapped column is absent from the row (a newline would corrupt
+    /// the line-structured <c>.cxt</c>, §18.1). Error, per row. Spec §5.4 / §16.4 (D-085).
+    /// </summary>
+    ObjectKeyValueInvalid,
 }

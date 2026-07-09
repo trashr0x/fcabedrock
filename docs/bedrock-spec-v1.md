@@ -1653,7 +1653,7 @@ exactly one phase — the "Where" column below is the phase-ownership contract
 | `ObjectKeyModeInvalidForShape` | Error | spec validate |
 | `TripleColumnsNotDistinct` | Error | spec validate |
 | `ObjectKeyColumnNotImplementedV1` | Error | plan (transitional) |
-| `TripleSourceNotImplementedV1` | Error | plan (transitional) |
+| `TripleUnorderedNotImplementedV1` | Error | plan (transitional) |
 | `DateValueTypeNotImplementedV1` | Fatal | plan |
 | `ObservedDomainUsed` | Warning | calibrate |
 | `CalibrationDataInsufficient` | Error | calibrate |
@@ -1700,10 +1700,10 @@ output rather than failing.
 **Transitional codes.** `RestrictToNotImplementedV1`,
 `TemplateMatcherNotImplementedV1` (owned by spec resolve — templates/matchers
 never resolve into Core, D-078), `ObjectKeyColumnNotImplementedV1`,
-`TripleSourceNotImplementedV1`, and `ObservedDomainCalibrationNotImplementedV1`
+`TripleUnorderedNotImplementedV1`, and `ObservedDomainCalibrationNotImplementedV1`
 are emitted only by milestones *before* the feature's implementation milestone
-(restrict_to → M4, templates/matchers → M6, wide `column` object keys → M3,
-triple sources → M3, observed-domain calibration → when it lands — the
+(restrict_to → M4, templates/matchers → M6, wide `column` object keys → M3 Slice E,
+triple `unordered` grouping → M3 Slice D, observed-domain calibration → when it lands — the
 categorical case is unassigned in the roadmap backlog (D-071); `roadmap.md`);
 they are removed once the feature lands and are **not** part of the v1 end-state set. They are distinct from the permanent `*NotImplementedV1`
 reservations in §20. Two parse-phase codes are transitional on the same terms:

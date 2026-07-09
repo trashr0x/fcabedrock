@@ -18,9 +18,10 @@ namespace FcaBedrock.Spec.Toml;
 /// skipped <see cref="SpecComposer.Compose"/>, §13/D-078) and throws
 /// <see cref="ArgumentException"/> rather than silently ignoring composition.
 /// A triple document resolves fully — its predicate sources, role→index map,
-/// ordering, and encoding become Core (D-082) — but triple <em>conversion</em> is
-/// still refused by the planner with <c>TripleSourceNotImplementedV1</c> until the
-/// triple reader lands (M3, Slice C).
+/// ordering, and encoding become Core (D-082). Conversion runs for
+/// <c>ordering = "subject_grouped"</c> (M3, Slice C); <c>"unordered"</c> is still
+/// refused by the planner with <c>TripleUnorderedNotImplementedV1</c> until its
+/// grouping/spool lands (M3, Slice D).
 /// </summary>
 public static class SpecResolver
 {

@@ -21,9 +21,9 @@ public abstract record SourceSection;
 public sealed record ColumnSourceSection(int? Index, string? Name, SourceValueType? ValueType) : SourceSection;
 
 /// <summary>
-/// A triple predicate source (§10.2/§5.3): never resolved in this slice —
-/// inert under a triple shape (the conversion guard rejects the spec, D-072)
-/// and <c>SourceBindingInvalid</c> under wide.
+/// A triple predicate source (§10.2/§5.3): resolves to a Core <c>PredicateSource</c>
+/// under a triple shape (matched against each row's predicate at emit, D-082) and is
+/// <c>SourceBindingInvalid</c> under wide.
 /// </summary>
 /// <param name="Name">The predicate name.</param>
 /// <param name="ValueType">Authored value type; null defaults per-discretizer at resolve (§10.2/D-061).</param>

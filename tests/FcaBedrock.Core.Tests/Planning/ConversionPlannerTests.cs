@@ -273,20 +273,40 @@ public sealed class ConversionPlannerTests
     }
 
     [Fact]
-    public void Plan_WhenBindingShapeTriple_ThenReportsTripleSourceNotImplementedV1()
+    public void Plan_WhenTripleSubjectGrouped_ThenBuildsFormalAttributesFromPredicates()
     {
-        // D-072: a triple spec is a minimal reject-carrier (D-066); the guard
-        // short-circuits before static validation, so this is the sole diagnostic.
-        var binding = new Binding(SourceShape.Triple, "utf-8", ',', '"', HasHeader: false, "invariant", "?",
-            new ColumnObjectKey(0, DuplicateObjectPolicy.Fail));
-        var spec = new BedrockSpec(binding, []);
+        // D-082: a triple subject_grouped spec now plans (the transitional refusal retired at
+        // Slice C). Formal attributes come from the predicate sources; each planned attribute
+        // reads by predicate, not column; the subject-derived ColumnObjectKey is accepted.
+        var spec = new BedrockSpec(SpecFixtures.TripleSubjectGrouped(), [
+            SpecFixtures.PredicateNominal("color", "hasColor", ["red", "green"]),
+            SpecFixtures.PredicateNominal("size", "hasSize", ["big", "small"]),
+        ]);
+
+        var result = ConversionPlanner.Plan(spec, new SourceSchema(3));
+
+        Assert.True(result.TryGetValue(out var plan));
+        Assert.Equal(
+            ["color-red", "color-green", "size-big", "size-small"],
+            plan.FormalAttributes.Select(f => f.RenderedName).ToArray());
+        Assert.All(plan.Attributes, a => Assert.IsType<PredicateAttributeSource>(a.Source));
+        Assert.DoesNotContain(result.Diagnostics, d => d.Code == DiagnosticCode.ObjectKeyColumnNotImplementedV1);
+    }
+
+    [Fact]
+    public void Plan_WhenTripleUnordered_ThenReportsTripleUnorderedNotImplementedV1()
+    {
+        // §5.3 / D-082 (transitional → Slice D): ordering = "unordered" is gated at plan, so it
+        // never reaches the subject-grouped emit where interleaved input would be mis-flagged
+        // TripleSubjectNotContiguous. subject_grouped converts.
+        var spec = new BedrockSpec(SpecFixtures.TripleSubjectGrouped(TripleOrdering.Unordered), [
+            SpecFixtures.PredicateNominal("color", "hasColor", ["red", "green"]),
+        ]);
 
         var result = ConversionPlanner.Plan(spec, new SourceSchema(3));
 
         Assert.True(result.HasErrors);
-        var diagnostic = Assert.Single(result.Diagnostics);
-        Assert.Equal(DiagnosticCode.TripleSourceNotImplementedV1, diagnostic.Code);
-        Assert.Equal(DiagnosticSeverity.Error, diagnostic.Severity);
+        Assert.Contains(result.Diagnostics, d => d.Code == DiagnosticCode.TripleUnorderedNotImplementedV1);
     }
 
     [Theory]

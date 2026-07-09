@@ -456,11 +456,11 @@ public sealed class FingerprintCalculatorTests
 
     // --- Triple binding: role map + predicate source (Slice B, D-082) -------
     //
-    // A triple spec is refused by the planner, so these exercise the shared/binding
-    // encoding below the planner: a hand-built triple Core spec paired with any
-    // valid (wide) plan — AppendShared/AppendBinding read only the spec, so the
-    // borrowed plan supplies just the unread schema array. The planner guard stays
-    // intact.
+    // These exercise the shared/binding encoding below the planner: a hand-built triple
+    // Core spec paired with any valid (wide) plan — AppendShared/AppendBinding read only
+    // the spec, so the borrowed plan supplies just the unread schema array. The spec uses
+    // ordering = "unordered" (still planner-refused until Slice D), keeping the fingerprint
+    // focus on the role map / binding rather than a full triple conversion.
 
     private static BedrockSpec TripleSpec(TripleColumns columns, string predicate = "age") =>
         new(new Binding(SourceShape.Triple, "utf-8", ',', '"', HasHeader: false, "invariant", "?",

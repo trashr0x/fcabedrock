@@ -14,6 +14,18 @@ internal static class SpecFixtures
     public static Binding WideRowIndex(char delimiter = ',', bool hasHeader = true) =>
         new(SourceShape.Wide, "utf-8", delimiter, '"', hasHeader, "invariant", "?", new RowIndexObjectKey());
 
+    // A triple binding with the default (0,1,2) role map; the object key is always the subject
+    // column (§5.4). ordering selects the streaming path (SubjectGrouped converts at Slice C).
+    public static Binding TripleSubjectGrouped(TripleOrdering ordering = TripleOrdering.SubjectGrouped) =>
+        new(SourceShape.Triple, "utf-8", ',', '"', HasHeader: false, "invariant", "?",
+            new ColumnObjectKey(0, DuplicateObjectPolicy.Fail), new TripleColumns(0, 1, 2), ordering);
+
+    public static AttributeSpec PredicateNominal(
+        string name, string predicate, IReadOnlyList<string> domain,
+        MissingPolicy missing = MissingPolicy.Skip) =>
+        new(name, new PredicateSource(predicate, SourceValueType.String), Include: true, new IdentityDiscretizer(), new NominalScale(),
+            domain, RestrictTo: [], NoLabels, missing, UnknownValuePolicy.Warn);
+
     public static AttributeSpec Nominal(
         string name,
         int index,

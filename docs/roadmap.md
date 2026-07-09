@@ -198,8 +198,10 @@ sort-merge path and emits in **first-occurrence** order — the same first-appea
 principle as triple `unordered` (neither sorts object output); `keep` guarantees
 unique object names; and the structural diagnostic
 taxonomy (new `ObjectKeyValueInvalid` / `TripleColumnsNotDistinct`, extended
-`SourceBindingInvalid`). `TripleSourceNotImplementedV1` and
-`ObjectKeyColumnNotImplementedV1` retire when the code lands.
+`SourceBindingInvalid`). `TripleSourceNotImplementedV1` retires with the
+subject_grouped reader (Slice C) — replaced by the narrower transitional
+`TripleUnorderedNotImplementedV1` until the `unordered` spool lands (Slice D);
+`ObjectKeyColumnNotImplementedV1` retires with wide column keys (Slice E).
 **Exit:** both triple orderings work; all three triple-input goldens match; wide column
 object keys convert with `duplicate_object_policy` honored.
 

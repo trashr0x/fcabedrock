@@ -184,7 +184,7 @@ public sealed class SpecReaderTests
         var document = ReadOk(TomlFixtures.MiniAdultTriples);
 
         Assert.Equal(SourceShape.Triple, document.Binding?.Shape);
-        Assert.Equal(TripleOrdering.SubjectGrouped, document.Binding?.Ordering);
+        Assert.Equal(TripleOrdering.Unordered, document.Binding?.Ordering); // §19.3 uses unordered
         Assert.Equal(
             new TripleColumnsSection(new IndexColumnRef(0), new IndexColumnRef(1), new IndexColumnRef(2)),
             document.Binding?.Columns);

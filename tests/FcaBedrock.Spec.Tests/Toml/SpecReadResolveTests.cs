@@ -9,9 +9,9 @@ namespace FcaBedrock.Spec.Tests.Toml;
 /// <summary>
 /// Read → resolve integration (D-066/D-067): the §19 worked examples flow from
 /// authored TOML through <see cref="SpecResolver"/> — §19.1 planning to the same
-/// schema as the in-code document twin (P-7 parity), §19.3 resolving to the
-/// D-072 triple reject-carrier, and the D-010 deferred-scale path failing at
-/// plan, not before.
+/// schema as the in-code document twin (P-7 parity), §19.3 (unordered) resolving but
+/// refused at plan until Slice D with a subject_grouped twin that resolves and plans
+/// (D-082), and the D-010 deferred-scale path failing at plan, not before.
 /// </summary>
 public sealed class SpecReadResolveTests
 {
@@ -41,11 +41,11 @@ public sealed class SpecReadResolveTests
     }
 
     [Fact]
-    public void ReadResolve_WhenTripleToml_ThenResolvesButPlanRefuses()
+    public void ReadResolve_WhenTripleToml_ThenResolvesButUnorderedRefusesAtPlan()
     {
-        // D-082: the triple document resolves fully now (predicate sources + role
-        // map + ordering); the planner still owns the transitional conversion
-        // refusal until the triple reader lands (Slice C).
+        // §19.3 uses ordering = "unordered": the triple document resolves fully (predicate
+        // sources + role map + ordering), but the planner refuses the unordered grouping/spool
+        // until M3 Slice D (D-082). The subject_grouped fast path converts — see the twin below.
         var spec = ResolveOk(TomlFixtures.MiniAdultTriples, schema: null);
 
         Assert.Equal(SourceShape.Triple, spec.Binding.Shape);
@@ -53,7 +53,23 @@ public sealed class SpecReadResolveTests
 
         var plan = ConversionPlanner.Plan(spec, new SourceSchema(3));
         Assert.True(plan.HasErrors);
-        Assert.Contains(plan.Diagnostics, d => d.Code == DiagnosticCode.TripleSourceNotImplementedV1);
+        Assert.Contains(plan.Diagnostics, d => d.Code == DiagnosticCode.TripleUnorderedNotImplementedV1);
+    }
+
+    [Fact]
+    public void ReadResolve_WhenSubjectGroupedTripleToml_ThenResolvesAndPlans()
+    {
+        // D-082 / Slice C: a subject_grouped triple spec resolves and plans — the blanket
+        // transitional triple-conversion refusal retired at Slice C, leaving only the unordered gate.
+        var spec = ResolveOk(TomlFixtures.TripleSubjectGrouped, schema: null);
+
+        Assert.Equal(SourceShape.Triple, spec.Binding.Shape);
+        Assert.NotEmpty(spec.Attributes);
+
+        var plan = ConversionPlanner.Plan(spec, new SourceSchema(3));
+        Assert.False(plan.HasErrors);
+        Assert.True(plan.TryGetValue(out var value));
+        Assert.NotEmpty(value.FormalAttributes);
     }
 
     [Fact]

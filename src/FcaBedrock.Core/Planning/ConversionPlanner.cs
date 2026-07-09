@@ -25,16 +25,6 @@ public static class ConversionPlanner
         ArgumentNullException.ThrowIfNull(spec);
         ArgumentNullException.ThrowIfNull(schema);
 
-        // Fail-closed guard (D-072, transitional → M3): a triple spec resolves to a
-        // minimal reject-carrier (D-066) that would otherwise plan to an empty plan
-        // with zero diagnostics — the only silent path a resolved carrier can take.
-        if (spec.Binding.Shape == SourceShape.Triple)
-        {
-            return Diagnosed<ConversionPlan>.Failed([new BedrockDiagnostic(
-                DiagnosticCode.TripleSourceNotImplementedV1, DiagnosticSeverity.Error,
-                "Triple source conversion is not implemented in this milestone (planned for M3).")]);
-        }
-
         var diagnostics = new List<BedrockDiagnostic>();
         ValidateStatic(spec, diagnostics);
         if (HasError(diagnostics))
@@ -84,7 +74,7 @@ public static class ConversionPlanner
         var scale = attribute.Scale
             ?? throw new InvalidOperationException($"Included attribute '{attribute.Name}' has no scale.");
 
-        var columnIndex = ResolveColumn(attribute.Name, attribute.Source, schema);
+        var source = ResolveAttributeSource(attribute.Name, attribute.Source, schema);
         var scheme = discretizer.DescribeBins(attribute.DeclaredDomain);
         var knownBins = new HashSet<string>(scheme.Labels, StringComparer.Ordinal);
 
@@ -121,7 +111,7 @@ public static class ConversionPlanner
 
         plannedAttributes.Add(new PlannedAttribute(
             attribute.Name,
-            columnIndex,
+            source,
             discretizer,
             knownBins,
             Freeze(crossesByBin),
@@ -186,15 +176,21 @@ public static class ConversionPlanner
             : $"{attribute.Name}-{shape.ScaleOp}{display}"; // ordinal
     }
 
-    private static int ResolveColumn(string attributeName, SourceBinding source, SourceSchema schema)
-    {
-        var index = source switch
+    // §10.2 / D-082: a wide attribute resolves to a range-checked column index; a triple
+    // attribute carries its predicate selector verbatim (matched against data at emit, not
+    // a column — so no schema range-check; a mistyped predicate surfaces at emit, D-082).
+    // The resolver guarantees ColumnSource↔wide / PredicateSource↔triple (SourceBindingInvalid).
+    private static AttributeSource ResolveAttributeSource(string attributeName, SourceBinding source, SourceSchema schema) =>
+        source switch
         {
-            ColumnSource column => column.Index,
+            ColumnSource column => new ColumnAttributeSource(ResolveColumnIndex(attributeName, column.Index, schema)),
+            PredicateSource predicate => new PredicateAttributeSource(predicate.Predicate),
             _ => throw new NotSupportedException(
-                $"Source binding {source.GetType().Name} on attribute '{attributeName}' is not supported in this slice."),
+                $"Source binding {source.GetType().Name} on attribute '{attributeName}' is not supported."),
         };
 
+    private static int ResolveColumnIndex(string attributeName, int index, SourceSchema schema)
+    {
         if (index < 0 || index >= schema.ColumnCount)
         {
             throw new InvalidOperationException(
@@ -206,7 +202,21 @@ public static class ConversionPlanner
 
     private static void ValidateStatic(BedrockSpec spec, List<BedrockDiagnostic> diagnostics)
     {
-        ValidateObjectKey(spec.Binding.ObjectKey, diagnostics);
+        // §5.3 / D-082 (transitional → M3 Slice D): Slice C implements the subject_grouped
+        // fast path only. ordering = "unordered" needs the external grouping/spool that lands
+        // in Slice D; reject it fail-closed here — the one seam that sees ordering, since the
+        // plan deliberately does not carry it (Slice A) — rather than letting it reach the
+        // subject-grouped emit, where valid interleaved input would be mis-flagged
+        // TripleSubjectNotContiguous. subject_grouped plans and converts.
+        if (spec.Binding.Shape == SourceShape.Triple
+            && spec.Binding.Ordering == TripleOrdering.Unordered)
+        {
+            diagnostics.Add(new BedrockDiagnostic(
+                DiagnosticCode.TripleUnorderedNotImplementedV1, DiagnosticSeverity.Error,
+                "Triple ordering = \"unordered\" is not implemented in this milestone (planned for M3 Slice D); ordering = \"subject_grouped\" converts."));
+        }
+
+        ValidateObjectKey(spec.Binding.ObjectKey, spec.Binding.Shape, diagnostics);
 
         // Duplicate authored names (AttributeNameDuplicate) and value_labels keys
         // (ValueLabelKeyNotInDomain) are rejected at the resolve seam over the
@@ -321,10 +331,11 @@ public static class ConversionPlanner
         }
     }
 
-    // §5.4 / D-064: object-key modes the v1 planner cannot execute are refused
-    // rather than silently falling back to row index. The shape is Wide by
-    // construction — the triple guard at the top of Plan precedes this check.
-    private static void ValidateObjectKey(ObjectKey objectKey, List<BedrockDiagnostic> diagnostics)
+    // §5.4 / D-064 / D-082: object-key modes the v1 planner cannot execute are refused
+    // rather than silently falling back to row index. Shape-aware: a triple ColumnObjectKey
+    // is the subject-derived key, executed by the triple emit (D-082) — allowed; a wide
+    // ColumnObjectKey stays a transitional reject until it executes at M3 Slice E.
+    private static void ValidateObjectKey(ObjectKey objectKey, SourceShape shape, List<BedrockDiagnostic> diagnostics)
     {
         switch (objectKey)
         {
@@ -336,9 +347,8 @@ public static class ConversionPlanner
                     "Composite object keys are not implemented in v1 (§5.4/§20)."));
                 break;
 
-            case ColumnObjectKey:
-                // Transitional (D-064): wide column keys execute at M3, with the
-                // triple subject-derived key machinery.
+            case ColumnObjectKey when shape == SourceShape.Wide:
+                // Transitional (D-064): wide column keys execute at M3 Slice E.
                 diagnostics.Add(new BedrockDiagnostic(
                     DiagnosticCode.ObjectKeyColumnNotImplementedV1,
                     DiagnosticSeverity.Error,
