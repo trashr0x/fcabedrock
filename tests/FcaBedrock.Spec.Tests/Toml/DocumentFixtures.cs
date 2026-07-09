@@ -33,9 +33,14 @@ internal static class DocumentFixtures
         new(SourceShape.Wide, Encoding: null, delimiter, quoteChar, hasHeader, locale, missingToken,
             Ordering: null, Columns: null, objectKey);
 
-    public static BindingSection TripleBinding(TripleColumnsSection? columns = null) =>
-        new(SourceShape.Triple, Encoding: null, Delimiter: null, QuoteChar: null, HasHeader: null, Locale: null,
-            MissingToken: null, TripleOrdering.SubjectGrouped, columns, ObjectKey: null);
+    public static BindingSection TripleBinding(
+        TripleColumnsSection? columns = null,
+        TripleOrdering? ordering = TripleOrdering.SubjectGrouped,
+        bool? hasHeader = null,
+        string? encoding = null,
+        ObjectKeySection? objectKey = null) =>
+        new(SourceShape.Triple, encoding, Delimiter: null, QuoteChar: null, hasHeader, Locale: null,
+            MissingToken: null, ordering, columns, objectKey);
 
     public static AttributeSection Attribute(
         string? name = "a",

@@ -12,7 +12,7 @@ internal static class SpecFixtures
     public static readonly IReadOnlyDictionary<string, string> NoLabels = new Dictionary<string, string>();
 
     public static Binding WideRowIndex(char delimiter = ',', bool hasHeader = true) =>
-        new(SourceShape.Wide, delimiter, '"', hasHeader, "invariant", "?", new RowIndexObjectKey());
+        new(SourceShape.Wide, "utf-8", delimiter, '"', hasHeader, "invariant", "?", new RowIndexObjectKey());
 
     public static AttributeSpec Nominal(
         string name,

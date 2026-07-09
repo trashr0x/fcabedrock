@@ -453,4 +453,57 @@ public sealed class FingerprintCalculatorTests
         Assert.Throws<ArgumentOutOfRangeException>(() => CanonicalJson.AppendNumber(builder, double.NaN));
         Assert.Throws<ArgumentOutOfRangeException>(() => CanonicalJson.AppendNumber(builder, double.PositiveInfinity));
     }
+
+    // --- Triple binding: role map + predicate source (Slice B, D-082) -------
+    //
+    // A triple spec is refused by the planner, so these exercise the shared/binding
+    // encoding below the planner: a hand-built triple Core spec paired with any
+    // valid (wide) plan — AppendShared/AppendBinding read only the spec, so the
+    // borrowed plan supplies just the unread schema array. The planner guard stays
+    // intact.
+
+    private static BedrockSpec TripleSpec(TripleColumns columns, string predicate = "age") =>
+        new(new Binding(SourceShape.Triple, "utf-8", ',', '"', HasHeader: false, "invariant", "?",
+                new ColumnObjectKey(columns.Subject, DuplicateObjectPolicy.Fail), columns, TripleOrdering.Unordered),
+            [
+                new AttributeSpec(predicate, new PredicateSource(predicate, SourceValueType.String), Include: true,
+                    new IdentityDiscretizer(), new NominalScale(), [predicate], [], SpecFixtures.NoLabels,
+                    MissingPolicy.Skip, UnknownValuePolicy.Warn),
+            ]);
+
+    [Fact]
+    public void BuildCxtOutputJson_WhenTripleBinding_ThenSharedEncodesRoleMapAndPredicateSource()
+    {
+        var json = FingerprintCalculator.BuildCxtOutputJson(
+            Plan(GoldenSpec()), TripleSpec(new TripleColumns(0, 1, 2)), NativeCxt());
+
+        // "columns" sorts before "delimiter"; role keys are ordinal-sorted
+        // (predicate/subject/value); the triple `ordering` is deliberately absent.
+        Assert.Contains(
+            "\"binding\":{\"columns\":{\"predicate\":1,\"subject\":0,\"value\":2},\"delimiter\":\",\",\"encoding\":\"utf-8\"",
+            json);
+        Assert.Contains("\"source\":{\"predicate\":\"age\",\"value_type\":\"string\"}", json);
+        Assert.DoesNotContain("ordering", json);
+    }
+
+    [Fact]
+    public void ComputeOutputFingerprints_WhenTripleColumnsDiffer_ThenBothMoveButSameMapMatches()
+    {
+        var plan = Plan(GoldenSpec());
+        var a = TripleSpec(new TripleColumns(0, 1, 2));
+        var b = TripleSpec(new TripleColumns(2, 1, 0));
+
+        // The resolved role→index map is a shared input, so it moves both formats.
+        Assert.NotEqual(
+            FingerprintCalculator.ComputeCxtOutputFingerprint(plan, a, NativeCxt()),
+            FingerprintCalculator.ComputeCxtOutputFingerprint(plan, b, NativeCxt()));
+        Assert.NotEqual(
+            FingerprintCalculator.ComputeDatOutputFingerprint(plan, a, NativeDat()),
+            FingerprintCalculator.ComputeDatOutputFingerprint(plan, b, NativeDat()));
+
+        // The same map hashes identically (name-bound ≡ index-bound, D-082).
+        Assert.Equal(
+            FingerprintCalculator.ComputeCxtOutputFingerprint(plan, a, NativeCxt()),
+            FingerprintCalculator.ComputeCxtOutputFingerprint(plan, TripleSpec(new TripleColumns(0, 1, 2)), NativeCxt()));
+    }
 }

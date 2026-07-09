@@ -174,6 +174,37 @@ public sealed class SpecRoundTripTests
         Assert.Equal(["tab\there", "new\nline", "日本"], reread.Attributes[0].DeclaredDomain);
     }
 
+    [Fact]
+    public void RoundTrip_WhenTripleColumnsByName_ThenNameRefsSurvive()
+    {
+        // Slice B: triple columns may bind roles by header name; the ColumnRef form
+        // round-trips through read∘write (D-082).
+        var columns = new TripleColumnsSection(new NameColumnRef("subj"), new NameColumnRef("pred"), new NameColumnRef("obj"));
+        var document = DocumentFixtures.Document(
+            [DocumentFixtures.Attribute("age", new PredicateSourceSection("age", ValueType: null),
+                discretizer: new IdentityDiscretizerSection(), scale: new NominalScaleSection())],
+            binding: DocumentFixtures.TripleBinding(columns, hasHeader: true));
+
+        var first = SpecWriter.Write(document);
+        var reread = Read(first);
+
+        Assert.Equal(columns, reread.Binding?.Columns);
+        Assert.Equal(first, SpecWriter.Write(reread)); // canonical idempotence
+    }
+
+    [Fact]
+    public void RoundTrip_WhenTripleColumnsMixIndexAndName_ThenBothFormsSurvive()
+    {
+        // The document model carries any authored per-role form (D-066); mixed
+        // addressing is rejected only at resolve.
+        var columns = new TripleColumnsSection(new IndexColumnRef(0), new NameColumnRef("pred"), new IndexColumnRef(2));
+        var document = DocumentFixtures.Document(binding: DocumentFixtures.TripleBinding(columns));
+
+        var reread = Read(SpecWriter.Write(document));
+
+        Assert.Equal(columns, reread.Binding?.Columns);
+    }
+
     private static FcaBedrock.Spec.Toml.SpecDocument Read(string toml)
     {
         var result = SpecReader.Read(toml);

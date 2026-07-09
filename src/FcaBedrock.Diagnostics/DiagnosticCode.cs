@@ -198,10 +198,18 @@ public enum DiagnosticCode
     OrdinalBoundaryIncompatibleWithCuts,
 
     /// <summary>
-    /// The <c>object_key.mode</c> is not valid under the binding's <c>shape</c>
-    /// (<c>row_index</c> under <c>shape = "triple"</c>). Spec §5.4 (D-064).
+    /// An <c>object_key</c> is not valid under the binding's <c>shape</c>: a
+    /// <c>row_index</c> key under <c>shape = "triple"</c>, or <em>any</em> authored
+    /// <c>[binding.object_key]</c> under triple (triple identity is always the
+    /// resolved subject and is not repointable). Spec §5.4 (D-064/D-082).
     /// </summary>
     ObjectKeyModeInvalidForShape,
+
+    /// <summary>
+    /// Two triple <c>columns</c> roles (subject/predicate/value) resolve to the same
+    /// physical column; the three roles must be distinct. Spec §5.3 / §16.4 (D-085).
+    /// </summary>
+    TripleColumnsNotDistinct,
 
     // --- Planning ---
 

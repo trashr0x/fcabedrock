@@ -256,7 +256,7 @@ public sealed class BedMigratorTests
         var resolved = ResolveOk(MigrateOk(BedFixtures.MushroomBed));
 
         Assert.Equal(
-            new Binding(SourceShape.Wide, ',', '"', HasHeader: true, "invariant", "?", new RowIndexObjectKey()),
+            new Binding(SourceShape.Wide, "utf-8", ',', '"', HasHeader: true, "invariant", "?", new RowIndexObjectKey()),
             resolved.Binding);
 
         var gillSize = resolved.Attributes[2];

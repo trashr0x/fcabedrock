@@ -22,7 +22,7 @@ internal static class ConversionFixtures
     public static readonly IReadOnlyDictionary<string, string> NoLabels = new Dictionary<string, string>();
 
     public static Binding Wide(char delimiter = ',', bool hasHeader = true, string missingToken = "?") =>
-        new(SourceShape.Wide, delimiter, '"', hasHeader, "invariant", missingToken, new RowIndexObjectKey());
+        new(SourceShape.Wide, "utf-8", delimiter, '"', hasHeader, "invariant", missingToken, new RowIndexObjectKey());
 
     public static WideCsvSource SourceOver(string text, Binding binding) =>
         new(() => new MemoryStream(Encoding.UTF8.GetBytes(text)), binding);

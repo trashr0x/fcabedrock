@@ -6,7 +6,7 @@ namespace FcaBedrock.Sources.Tests;
 public sealed class WideCsvSourceTests
 {
     private static Binding Wide(char delimiter = ',', bool hasHeader = true, string missingToken = "?") =>
-        new(SourceShape.Wide, delimiter, '"', hasHeader, "invariant", missingToken, new RowIndexObjectKey());
+        new(SourceShape.Wide, "utf-8", delimiter, '"', hasHeader, "invariant", missingToken, new RowIndexObjectKey());
 
     private static WideCsvSource Source(string text, Binding binding) =>
         new(() => new MemoryStream(Encoding.UTF8.GetBytes(text)), binding);

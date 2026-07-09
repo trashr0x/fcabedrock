@@ -130,7 +130,7 @@ public sealed class SpecWriterTests
             new BindingSection(
                 SourceShape.Triple, Encoding: null, Delimiter: null, QuoteChar: null, HasHeader: null,
                 Locale: null, MissingToken: null, TripleOrdering.Unordered,
-                new TripleColumnsSection(0, 1, 2),
+                new TripleColumnsSection(new IndexColumnRef(0), new IndexColumnRef(1), new IndexColumnRef(2)),
                 new ObjectKeySection(ObjectKeyMode.Column, new NameColumnRef("id"), Columns: null, Aggregate: null)),
             new DefaultsSection(
                 Include: true, MissingPolicy: null, UnknownValuePolicy: Core.Spec.UnknownValuePolicy.Warn,

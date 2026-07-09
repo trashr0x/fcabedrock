@@ -22,12 +22,6 @@ public static class FingerprintCalculator
 {
     private const string HashPrefix = "sha256:";
 
-    // §5.1: v1 sources are UTF-8-only and Core carries no encoding field; the
-    // §14-listed shared input is therefore this constant until M3 models
-    // encoding in Core, at which point the resolved value threads through with
-    // no hash change for UTF-8 specs (D-077).
-    private const string EncodingName = "utf-8";
-
     /// <summary>
     /// The <c>schema_fingerprint</c>: the final ordered list of planned canonical
     /// formal-attribute identities, and nothing else (§14, D-035).
@@ -368,26 +362,56 @@ public static class FingerprintCalculator
 
     private static void AppendSource(StringBuilder builder, AttributeSpec attribute)
     {
-        if (attribute.Source is not ColumnSource column)
+        switch (attribute.Source)
         {
-            // Triple predicate sources short-circuit planning (D-072); programmer error.
-            throw new InvalidOperationException(
-                $"Source binding {attribute.Source.GetType().Name} on attribute '{attribute.Name}' has no fingerprint encoding.");
-        }
+            case ColumnSource column:
+                builder.Append("{\"column\":");
+                CanonicalJson.AppendNumber(builder, column.Index);
+                builder.Append(",\"value_type\":");
+                CanonicalJson.AppendString(builder, Spell(column.ValueType));
+                builder.Append('}');
+                break;
 
-        builder.Append("{\"column\":");
-        CanonicalJson.AppendNumber(builder, column.Index);
-        builder.Append(",\"value_type\":");
-        CanonicalJson.AppendString(builder, Spell(column.ValueType));
-        builder.Append('}');
+            case PredicateSource predicate:
+                builder.Append("{\"predicate\":");
+                CanonicalJson.AppendString(builder, predicate.Predicate);
+                builder.Append(",\"value_type\":");
+                CanonicalJson.AppendString(builder, Spell(predicate.ValueType));
+                builder.Append('}');
+                break;
+
+            default:
+                throw new InvalidOperationException(
+                    $"Source binding {attribute.Source.GetType().Name} on attribute '{attribute.Name}' has no fingerprint encoding.");
+        }
     }
 
     private static void AppendBinding(StringBuilder builder, Binding binding)
     {
-        builder.Append("{\"delimiter\":");
+        builder.Append('{');
+
+        // Triple role→column-index map (§5.3/D-082): present only under triple, so
+        // wide bindings keep their exact bytes (the D-077 present-only-when-applicable
+        // precedent). "columns" sorts before "delimiter" ('c' < 'd'); its role keys
+        // are ordinal-sorted (predicate/subject/value). A role bound by header name
+        // resolves to the same indices as the equivalent index bind, so the two hash
+        // identically. The triple `ordering` field is deliberately not encoded — both
+        // orderings emit identical first-appearance bytes (D-082, Slice A).
+        if (binding.TripleColumns is { } columns)
+        {
+            builder.Append("\"columns\":{\"predicate\":");
+            CanonicalJson.AppendNumber(builder, columns.Predicate);
+            builder.Append(",\"subject\":");
+            CanonicalJson.AppendNumber(builder, columns.Subject);
+            builder.Append(",\"value\":");
+            CanonicalJson.AppendNumber(builder, columns.Value);
+            builder.Append("},");
+        }
+
+        builder.Append("\"delimiter\":");
         CanonicalJson.AppendString(builder, binding.Delimiter.ToString());
         builder.Append(",\"encoding\":");
-        CanonicalJson.AppendString(builder, EncodingName);
+        CanonicalJson.AppendString(builder, binding.Encoding);
         builder.Append(",\"has_header\":");
         CanonicalJson.AppendBool(builder, binding.HasHeader);
         builder.Append(",\"locale\":");

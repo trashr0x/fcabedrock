@@ -202,22 +202,28 @@ public sealed class SpecResolverTests
     }
 
     [Fact]
-    public void Resolve_WhenTripleShape_ThenTripleRejectCarrierWithNoAttributes()
+    public void Resolve_WhenTripleShape_ThenPredicateSourceRoleMapAndOrderingResolve()
     {
-        // D-066/D-072: predicate sources are document-only, so nothing resolves under
-        // triple; the carrier exists solely for the planner guard to refuse.
+        // D-082: triple resolves fully now — the predicate source, role→index map,
+        // and ordering become Core; the planner still guards triple *conversion*.
         var document = DocumentFixtures.Document(
-            [DocumentFixtures.Attribute("p", new PredicateSourceSection("pred", ValueType: null))],
-            binding: DocumentFixtures.TripleBinding(new TripleColumnsSection(1, 2, 3)));
+            [DocumentFixtures.Attribute("p", new PredicateSourceSection("pred", ValueType: null),
+                discretizer: new IdentityDiscretizerSection(), scale: new NominalScaleSection())],
+            binding: DocumentFixtures.TripleBinding(
+                new TripleColumnsSection(new IndexColumnRef(1), new IndexColumnRef(2), new IndexColumnRef(3))));
 
         var result = SpecResolver.Resolve(document);
 
         Assert.True(result.TryGetValue(out var spec));
         Assert.Empty(result.Diagnostics);
         Assert.Equal(SourceShape.Triple, spec.Binding.Shape);
-        Assert.Empty(spec.Attributes);
+        Assert.Equal(new TripleColumns(1, 2, 3), spec.Binding.TripleColumns);
+        Assert.Equal(TripleOrdering.SubjectGrouped, spec.Binding.Ordering);
 
-        // §5.4 triple default: the subject column keys objects (inert behind the guard).
+        var source = Assert.IsType<PredicateSource>(Assert.Single(spec.Attributes).Source);
+        Assert.Equal("pred", source.Predicate);
+
+        // §5.4 triple default: the resolved subject column keys objects.
         var key = Assert.IsType<ColumnObjectKey>(spec.Binding.ObjectKey);
         Assert.Equal(1, key.Index);
         Assert.Equal(DuplicateObjectPolicy.Fail, key.Policy);
@@ -890,7 +896,7 @@ public sealed class SpecResolverTests
         var objectKey = new ObjectKeySection(ObjectKeyMode.RowIndex, Column: null, Columns: null, Aggregate: null);
         var binding = new BindingSection(SourceShape.Triple, Encoding: null, Delimiter: null, QuoteChar: null,
             HasHeader: null, Locale: null, MissingToken: null, TripleOrdering.SubjectGrouped,
-            new TripleColumnsSection(0, 1, 2), objectKey);
+            new TripleColumnsSection(new IndexColumnRef(0), new IndexColumnRef(1), new IndexColumnRef(2)), objectKey);
         var document = DocumentFixtures.Document(binding: binding);
 
         var result = SpecResolver.Resolve(document);
@@ -1116,6 +1122,317 @@ public sealed class SpecResolverTests
             bedPlan.FormalAttributes.Select(f => (f.RenderedName, f.Identity)),
             documentPlan.FormalAttributes.Select(f => (f.RenderedName, f.Identity)));
     }
+
+    // --- Triple binding resolution + static validation (D-082 / D-085) ---
+
+    [Fact]
+    public void Resolve_WhenTripleColumnsByName_ThenResolvesToIndices()
+    {
+        var document = DocumentFixtures.Document(
+            [TriplePredicate()],
+            binding: DocumentFixtures.TripleBinding(
+                new TripleColumnsSection(new NameColumnRef("s"), new NameColumnRef("p"), new NameColumnRef("o")),
+                hasHeader: true));
+
+        var result = SpecResolver.Resolve(document, new SourceSchema(3, ["s", "p", "o"]));
+
+        Assert.True(result.TryGetValue(out var spec));
+        Assert.Empty(result.Diagnostics);
+        Assert.Equal(new TripleColumns(0, 1, 2), spec.Binding.TripleColumns);
+        // §5.4: the resolved subject column keys objects.
+        Assert.Equal(0, Assert.IsType<ColumnObjectKey>(spec.Binding.ObjectKey).Index);
+    }
+
+    [Fact]
+    public void Resolve_WhenTripleColumnsNameVsIndex_ThenSameResolvedBinding()
+    {
+        // D-082: a role bound by header name resolves to the same index as the
+        // equivalent index bind (both need has_header = true), so the resolved
+        // binding — and therefore the output fingerprint — is identical.
+        var schema = new SourceSchema(3, ["s", "p", "o"]);
+        var byName = SpecResolver.Resolve(DocumentFixtures.Document([TriplePredicate()],
+            binding: DocumentFixtures.TripleBinding(
+                new TripleColumnsSection(new NameColumnRef("s"), new NameColumnRef("p"), new NameColumnRef("o")),
+                hasHeader: true)), schema);
+        var byIndex = SpecResolver.Resolve(DocumentFixtures.Document([TriplePredicate()],
+            binding: DocumentFixtures.TripleBinding(
+                new TripleColumnsSection(new IndexColumnRef(0), new IndexColumnRef(1), new IndexColumnRef(2)),
+                hasHeader: true)), schema);
+
+        Assert.True(byName.TryGetValue(out var nameSpec));
+        Assert.True(byIndex.TryGetValue(out var indexSpec));
+        Assert.Equal(indexSpec.Binding, nameSpec.Binding);
+    }
+
+    [Fact]
+    public void Resolve_WhenTripleColumnsNotDistinct_ThenTripleColumnsNotDistinct()
+    {
+        var document = DocumentFixtures.Document(binding: DocumentFixtures.TripleBinding(
+            new TripleColumnsSection(new IndexColumnRef(0), new IndexColumnRef(1), new IndexColumnRef(0))));
+
+        var result = SpecResolver.Resolve(document);
+
+        Assert.Equal(DiagnosticCode.TripleColumnsNotDistinct, Assert.Single(result.Diagnostics).Code);
+        Assert.False(result.TryGetValue(out _));
+    }
+
+    [Fact]
+    public void Resolve_WhenTripleColumnsPartial_ThenSourceBindingInvalid()
+    {
+        var document = DocumentFixtures.Document(binding: DocumentFixtures.TripleBinding(
+            new TripleColumnsSection(new IndexColumnRef(0), Predicate: null, Value: null)));
+
+        var result = SpecResolver.Resolve(document);
+
+        Assert.Equal(DiagnosticCode.SourceBindingInvalid, Assert.Single(result.Diagnostics).Code);
+    }
+
+    [Fact]
+    public void Resolve_WhenTripleColumnsMixedAddressing_ThenSourceBindingInvalid()
+    {
+        var document = DocumentFixtures.Document(binding: DocumentFixtures.TripleBinding(
+            new TripleColumnsSection(new IndexColumnRef(0), new NameColumnRef("p"), new IndexColumnRef(2)),
+            hasHeader: true));
+
+        var result = SpecResolver.Resolve(document, new SourceSchema(3, ["s", "p", "o"]));
+
+        Assert.Equal(DiagnosticCode.SourceBindingInvalid, Assert.Single(result.Diagnostics).Code);
+    }
+
+    [Fact]
+    public void Resolve_WhenTripleColumnsAllNameWithoutHeader_ThenSourceBindingInvalid()
+    {
+        // has_header defaults false for triple (§5.1), so name roles cannot resolve.
+        var document = DocumentFixtures.Document(binding: DocumentFixtures.TripleBinding(
+            new TripleColumnsSection(new NameColumnRef("s"), new NameColumnRef("p"), new NameColumnRef("o"))));
+
+        var result = SpecResolver.Resolve(document);
+
+        Assert.False(result.TryGetValue(out _));
+        Assert.NotEmpty(result.Diagnostics);
+        Assert.All(result.Diagnostics, d => Assert.Equal(DiagnosticCode.SourceBindingInvalid, d.Code));
+    }
+
+    [Fact]
+    public void Resolve_WhenTripleColumnsByNameWithoutSchema_ThenSourceBindingInvalid()
+    {
+        // has_header = true, but no header schema is supplied to resolve the names.
+        var document = DocumentFixtures.Document(binding: DocumentFixtures.TripleBinding(
+            new TripleColumnsSection(new NameColumnRef("s"), new NameColumnRef("p"), new NameColumnRef("o")),
+            hasHeader: true));
+
+        var result = SpecResolver.Resolve(document); // schema: null
+
+        Assert.False(result.TryGetValue(out _));
+        Assert.NotEmpty(result.Diagnostics);
+        Assert.All(result.Diagnostics, d => Assert.Equal(DiagnosticCode.SourceBindingInvalid, d.Code));
+    }
+
+    [Fact]
+    public void Resolve_WhenTripleColumnNameNotInHeader_ThenSourceBindingInvalid()
+    {
+        var document = DocumentFixtures.Document(binding: DocumentFixtures.TripleBinding(
+            new TripleColumnsSection(new NameColumnRef("s"), new NameColumnRef("p"), new NameColumnRef("x")),
+            hasHeader: true));
+
+        var result = SpecResolver.Resolve(document, new SourceSchema(3, ["s", "p", "o"]));
+
+        Assert.Equal(DiagnosticCode.SourceBindingInvalid, Assert.Single(result.Diagnostics).Code);
+    }
+
+    [Fact]
+    public void Resolve_WhenTripleColumnNameMatchesDuplicateHeader_ThenSourceBindingInvalid()
+    {
+        // §5.3/§10.2: a role name must resolve to exactly one column.
+        var document = DocumentFixtures.Document(binding: DocumentFixtures.TripleBinding(
+            new TripleColumnsSection(new NameColumnRef("dup"), new NameColumnRef("p"), new NameColumnRef("o")),
+            hasHeader: true));
+
+        var result = SpecResolver.Resolve(document, new SourceSchema(4, ["dup", "dup", "p", "o"]));
+
+        Assert.Equal(DiagnosticCode.SourceBindingInvalid, Assert.Single(result.Diagnostics).Code);
+    }
+
+    [Fact]
+    public void Resolve_WhenTripleColumnIndexOutOfRange_ThenSourceBindingInvalid()
+    {
+        var document = DocumentFixtures.Document(binding: DocumentFixtures.TripleBinding(
+            new TripleColumnsSection(new IndexColumnRef(0), new IndexColumnRef(1), new IndexColumnRef(5))));
+
+        var result = SpecResolver.Resolve(document, new SourceSchema(3));
+
+        Assert.Equal(DiagnosticCode.SourceBindingInvalid, Assert.Single(result.Diagnostics).Code);
+    }
+
+    [Fact]
+    public void Resolve_WhenColumnSourceUnderTriple_ThenSourceBindingInvalid()
+    {
+        var document = DocumentFixtures.Document(
+            [DocumentFixtures.Attribute("a", new ColumnSourceSection(0, Name: null, ValueType: null),
+                discretizer: new IdentityDiscretizerSection(), scale: new NominalScaleSection())],
+            binding: DocumentFixtures.TripleBinding());
+
+        var result = SpecResolver.Resolve(document);
+
+        Assert.Equal(DiagnosticCode.SourceBindingInvalid, Assert.Single(result.Diagnostics).Code);
+    }
+
+    [Fact]
+    public void Resolve_WhenPredicateSourceUnderWide_ThenSourceBindingInvalid()
+    {
+        var document = DocumentFixtures.Document(
+            [DocumentFixtures.Attribute("a", new PredicateSourceSection("p", ValueType: null),
+                discretizer: new IdentityDiscretizerSection(), scale: new NominalScaleSection())]);
+
+        var result = SpecResolver.Resolve(document);
+
+        Assert.Equal(DiagnosticCode.SourceBindingInvalid, Assert.Single(result.Diagnostics).Code);
+    }
+
+    [Fact]
+    public void Resolve_WhenPredicateSourceHasNoName_ThenSourceBindingInvalid()
+    {
+        var document = DocumentFixtures.Document(
+            [DocumentFixtures.Attribute("a", new PredicateSourceSection(Name: null, ValueType: null),
+                discretizer: new IdentityDiscretizerSection(), scale: new NominalScaleSection())],
+            binding: DocumentFixtures.TripleBinding());
+
+        var result = SpecResolver.Resolve(document);
+
+        Assert.Equal(DiagnosticCode.SourceBindingInvalid, Assert.Single(result.Diagnostics).Code);
+    }
+
+    [Fact]
+    public void Resolve_WhenTripleOrderingMissing_ThenSourceBindingInvalid()
+    {
+        var document = DocumentFixtures.Document(
+            [TriplePredicate()],
+            binding: DocumentFixtures.TripleBinding(ordering: null));
+
+        var result = SpecResolver.Resolve(document);
+
+        Assert.Equal(DiagnosticCode.SourceBindingInvalid, Assert.Single(result.Diagnostics).Code);
+    }
+
+    [Fact]
+    public void Resolve_WhenAuthoredObjectKeyColumnUnderTriple_ThenObjectKeyModeInvalidForShape()
+    {
+        // §5.4/D-082: ANY authored [binding.object_key] under triple is rejected,
+        // not just row_index — triple identity is always the subject.
+        var objectKey = new ObjectKeySection(ObjectKeyMode.Column, new IndexColumnRef(0), Columns: null, Aggregate: null);
+        var document = DocumentFixtures.Document(binding: DocumentFixtures.TripleBinding(objectKey: objectKey));
+
+        var result = SpecResolver.Resolve(document);
+
+        Assert.Equal(DiagnosticCode.ObjectKeyModeInvalidForShape, Assert.Single(result.Diagnostics).Code);
+    }
+
+    [Fact]
+    public void Resolve_WhenTripleHasHeaderDefaulted_ThenFalse()
+    {
+        var document = DocumentFixtures.Document([TriplePredicate()], binding: DocumentFixtures.TripleBinding());
+
+        var result = SpecResolver.Resolve(document);
+
+        Assert.True(result.TryGetValue(out var spec));
+        Assert.False(spec.Binding.HasHeader);
+    }
+
+    [Fact]
+    public void Resolve_WhenNonUtf8Encoding_ThenSourceBindingInvalid()
+    {
+        var document = DocumentFixtures.Document(
+            [DocumentFixtures.Nominal("g", 0, ["b"])],
+            binding: DocumentFixtures.WideBinding() with { Encoding = "latin1" });
+
+        var result = SpecResolver.Resolve(document, new SourceSchema(1));
+
+        Assert.Equal(DiagnosticCode.SourceBindingInvalid, Assert.Single(result.Diagnostics).Code);
+        Assert.False(result.TryGetValue(out _));
+    }
+
+    [Fact]
+    public void Resolve_WhenEncodingUpperCaseUtf8_ThenCanonicalizesToUtf8()
+    {
+        var authored = SpecResolver.Resolve(DocumentFixtures.Document(
+            [DocumentFixtures.Nominal("g", 0, ["b"])],
+            binding: DocumentFixtures.WideBinding() with { Encoding = "UTF-8" }), new SourceSchema(1));
+        var unspecified = SpecResolver.Resolve(
+            DocumentFixtures.Document([DocumentFixtures.Nominal("g", 0, ["b"])]), new SourceSchema(1));
+
+        Assert.True(authored.TryGetValue(out var authoredSpec));
+        Assert.True(unspecified.TryGetValue(out var unspecifiedSpec));
+        Assert.Equal("utf-8", authoredSpec.Binding.Encoding);
+        Assert.Equal(unspecifiedSpec.Binding.Encoding, authoredSpec.Binding.Encoding);
+    }
+
+    [Fact]
+    public void Resolve_WhenWideSourceNameMatchesDuplicateHeader_ThenSourceBindingInvalid()
+    {
+        // §10.2: a wide source name must resolve to exactly one column — a duplicate
+        // matching header is invalid, not a silent first-match bind.
+        var document = DocumentFixtures.Document(
+            [DocumentFixtures.Attribute("g", DocumentFixtures.NamedColumn("age"),
+                discretizer: new IdentityDiscretizerSection(), scale: new NominalScaleSection(), declaredDomain: ["x"])],
+            binding: DocumentFixtures.WideBinding(hasHeader: true));
+
+        var result = SpecResolver.Resolve(document, new SourceSchema(2, ["age", "age"]));
+
+        Assert.Equal(DiagnosticCode.SourceBindingInvalid, Assert.Single(result.Diagnostics).Code);
+        Assert.False(result.TryGetValue(out _));
+    }
+
+    [Fact]
+    public void Resolve_WhenWideObjectKeyNameMatchesDuplicateHeader_ThenObjectKeyBindingInvalid()
+    {
+        // §5.4/§10.2: the object-key column name must resolve to exactly one column.
+        var objectKey = new ObjectKeySection(ObjectKeyMode.Column, new NameColumnRef("id"), Columns: null, Aggregate: null);
+        var document = DocumentFixtures.Document(
+            [DocumentFixtures.Nominal("g", 0, ["b"])],
+            binding: DocumentFixtures.WideBinding(hasHeader: true, objectKey: objectKey));
+
+        var result = SpecResolver.Resolve(document, new SourceSchema(3, ["id", "id", "g"]));
+
+        Assert.Equal(DiagnosticCode.ObjectKeyBindingInvalid, Assert.Single(result.Diagnostics).Code);
+        Assert.False(result.TryGetValue(out _));
+    }
+
+    [Fact]
+    public void Resolve_WhenPredicateSourceValueTypeConflictsDiscretizer_ThenSourceValueTypeInvalid()
+    {
+        // §10.2: value_type is a source-level property of predicate sources too, so
+        // a string value_type over the number-fixing manual_cuts is invalid.
+        var document = DocumentFixtures.Document(
+            [DocumentFixtures.Attribute("a", new PredicateSourceSection("p", SourceValueType.String),
+                discretizer: new ManualCutsDiscretizerSection([30.0], BinEnds.Open), scale: new NominalScaleSection())],
+            binding: DocumentFixtures.TripleBinding());
+
+        var result = SpecResolver.Resolve(document);
+
+        Assert.Equal(DiagnosticCode.SourceValueTypeInvalid, Assert.Single(result.Diagnostics).Code);
+        Assert.False(result.TryGetValue(out _));
+    }
+
+    [Fact]
+    public void Resolve_WhenPredicateSourceNumericWithBareStringRestrict_ThenRestrictToOnNumericRequiresRange()
+    {
+        // §10.4: the numeric-needs-range shape check applies to predicate sources too.
+        var document = DocumentFixtures.Document(
+            [DocumentFixtures.Attribute("a", new PredicateSourceSection("p", SourceValueType.Number),
+                discretizer: new ManualCutsDiscretizerSection([30.0], BinEnds.Open), scale: new NominalScaleSection(),
+                restrictTo: [new RestrictToValue("high")])],
+            binding: DocumentFixtures.TripleBinding());
+
+        var result = SpecResolver.Resolve(document);
+
+        Assert.Equal(DiagnosticCode.RestrictToOnNumericRequiresRange, Assert.Single(result.Diagnostics).Code);
+        Assert.False(result.TryGetValue(out _));
+    }
+
+    // A fully-resolvable triple predicate attribute (identity + nominal).
+    private static AttributeSection TriplePredicate(string name = "a", string predicate = "p") =>
+        DocumentFixtures.Attribute(name, new PredicateSourceSection(predicate, ValueType: null),
+            discretizer: new IdentityDiscretizerSection(), scale: new NominalScaleSection());
 
     private static DiscretizerSection Discretizer(string kind) => kind switch
     {

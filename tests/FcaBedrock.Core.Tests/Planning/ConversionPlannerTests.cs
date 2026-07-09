@@ -277,7 +277,7 @@ public sealed class ConversionPlannerTests
     {
         // D-072: a triple spec is a minimal reject-carrier (D-066); the guard
         // short-circuits before static validation, so this is the sole diagnostic.
-        var binding = new Binding(SourceShape.Triple, ',', '"', HasHeader: false, "invariant", "?",
+        var binding = new Binding(SourceShape.Triple, "utf-8", ',', '"', HasHeader: false, "invariant", "?",
             new ColumnObjectKey(0, DuplicateObjectPolicy.Fail));
         var spec = new BedrockSpec(binding, []);
 
@@ -535,7 +535,7 @@ public sealed class ConversionPlannerTests
     }
 
     private static Binding WideWithKey(ObjectKey key) =>
-        new(SourceShape.Wide, ',', '"', HasHeader: true, "invariant", "?", key);
+        new(SourceShape.Wide, "utf-8", ',', '"', HasHeader: true, "invariant", "?", key);
 
     private static void AssertFailsWith(Diagnosed<ConversionPlan> result, DiagnosticCode code)
     {

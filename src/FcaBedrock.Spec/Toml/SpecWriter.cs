@@ -646,17 +646,17 @@ public static class SpecWriter
         var items = new List<string>(3);
         if (columns.Subject is { } subject)
         {
-            items.Add(Item("subject", TomlLiteral.FormatLong(subject)));
+            items.Add(Item("subject", FormatColumnRef(subject)));
         }
 
         if (columns.Predicate is { } predicate)
         {
-            items.Add(Item("predicate", TomlLiteral.FormatLong(predicate)));
+            items.Add(Item("predicate", FormatColumnRef(predicate)));
         }
 
         if (columns.Value is { } value)
         {
-            items.Add(Item("value", TomlLiteral.FormatLong(value)));
+            items.Add(Item("value", FormatColumnRef(value)));
         }
 
         return InlineTable(items);

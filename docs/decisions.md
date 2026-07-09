@@ -2369,7 +2369,9 @@ enum members, and golden activation are the M3 *implementation* that follows.
     role table, mixed index/name addressing, all-name without `has_header = true`,
     header-name no-match, duplicate matching header — **plus** the source
     `kind`↔`shape` mismatch (`column`↔wide, `predicate`↔triple). This parallels its
-    existing wide meaning (name binding needs `has_header`; unresolvable reference);
+    existing wide meaning (name binding needs `has_header`; a reference must resolve
+    to **exactly one** column — both a no-matching-header and a duplicate matching
+    header are invalid for wide sources and column object keys too, §10.2);
     its message/Context disambiguates the attribute `source` from the `columns`
     table. `ObjectKeyModeInvalidForShape` additionally owns any authored
     `[binding.object_key]` under triple.

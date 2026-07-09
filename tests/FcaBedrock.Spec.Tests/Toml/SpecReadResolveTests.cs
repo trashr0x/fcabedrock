@@ -41,14 +41,15 @@ public sealed class SpecReadResolveTests
     }
 
     [Fact]
-    public void ReadResolve_WhenTripleToml_ThenRejectCarrierAndPlanRefuses()
+    public void ReadResolve_WhenTripleToml_ThenResolvesButPlanRefuses()
     {
-        // D-072: the triple document resolves to the minimal carrier; the planner
-        // owns the transitional refusal.
+        // D-082: the triple document resolves fully now (predicate sources + role
+        // map + ordering); the planner still owns the transitional conversion
+        // refusal until the triple reader lands (Slice C).
         var spec = ResolveOk(TomlFixtures.MiniAdultTriples, schema: null);
 
         Assert.Equal(SourceShape.Triple, spec.Binding.Shape);
-        Assert.Empty(spec.Attributes);
+        Assert.NotEmpty(spec.Attributes);
 
         var plan = ConversionPlanner.Plan(spec, new SourceSchema(3));
         Assert.True(plan.HasErrors);

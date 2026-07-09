@@ -72,7 +72,8 @@ internal static class SpecSectionReaders
         var cursor = new TomlTableCursor(context, "[binding.object_key]", table);
         var section = new ObjectKeySection(
             cursor.TakeEnum("mode", TomlSpellings.ObjectKeyModes),
-            ReadColumnRef(context, cursor),
+            ReadColumnRef(context, cursor, "column",
+                "[binding.object_key] key 'column' expects a 0-based column index or a header name (§5.4)."),
             cursor.TakeStringArray("columns"),
             cursor.TakeEnum("aggregate", TomlSpellings.Aggregates));
         cursor.Finish();
@@ -149,18 +150,26 @@ internal static class SpecSectionReaders
             return null;
         }
 
+        // Each role addresses a column by index or header name (§5.3). One-addressing-
+        // mode / distinctness / partial-table are semantic checks owned by the resolver
+        // (D-066/D-085); the reader only captures the authored refs.
         var inner = new TomlTableCursor(context, "[binding] columns", table);
         var section = new TripleColumnsSection(
-            inner.TakeInt("subject"),
-            inner.TakeInt("predicate"),
-            inner.TakeInt("value"));
+            ReadTripleRole(context, inner, "subject"),
+            ReadTripleRole(context, inner, "predicate"),
+            ReadTripleRole(context, inner, "value"));
         inner.Finish();
         return section;
     }
 
-    private static ColumnRef? ReadColumnRef(TomlReadContext context, TomlTableCursor cursor)
+    private static ColumnRef? ReadTripleRole(TomlReadContext context, TomlTableCursor cursor, string role) =>
+        ReadColumnRef(context, cursor, role,
+            $"[binding] columns.{role} expects a 0-based column index or a header name (§5.3).");
+
+    private static ColumnRef? ReadColumnRef(
+        TomlReadContext context, TomlTableCursor cursor, string key, string expected)
     {
-        if (cursor.Take("column") is not { } pair)
+        if (cursor.Take(key) is not { } pair)
         {
             return null;
         }
@@ -174,10 +183,7 @@ internal static class SpecSectionReaders
                 return new NameColumnRef(name);
 
             default:
-                context.Error(
-                    DiagnosticCode.SpecFieldInvalid,
-                    "[binding.object_key] key 'column' expects a 0-based column index or a header name (§5.4).",
-                    pair.Value?.Span ?? pair.Span);
+                context.Error(DiagnosticCode.SpecFieldInvalid, expected, pair.Value?.Span ?? pair.Span);
                 return null;
         }
     }

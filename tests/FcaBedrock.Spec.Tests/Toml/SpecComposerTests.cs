@@ -220,7 +220,9 @@ public sealed class SpecComposerTests
 
         var composed = ComposeOk(root, "derived.toml", source);
 
-        Assert.Equal(new TripleColumnsSection(2, 0, 1), composed.Binding?.Columns);
+        Assert.Equal(
+            new TripleColumnsSection(new IndexColumnRef(2), new IndexColumnRef(0), new IndexColumnRef(1)),
+            composed.Binding?.Columns);
         Assert.Equal(TripleOrdering.SubjectGrouped, composed.Binding?.Ordering); // scalar field still inherits
     }
 
@@ -344,8 +346,8 @@ public sealed class SpecComposerTests
     [Fact]
     public void Compose_WhenTripleBase_ThenComposedStillRejectsAtPlan()
     {
-        // D-072 is undisturbed by composition: the composed triple spec resolves
-        // to the reject-carrier and the planner refuses it.
+        // Composition is undisturbed by the D-082 triple resolution: the composed
+        // triple spec resolves fully and the planner still refuses conversion.
         var source = new InMemorySpecTextSource().Add("base.toml", TomlFixtures.MiniAdultTriples);
         var root = Read(
             "[spec]\nversion = 1\nextends = \"base.toml\"\n" +
@@ -356,7 +358,7 @@ public sealed class SpecComposerTests
         Assert.Equal(TripleOrdering.Unordered, composed.Binding?.Ordering);
         Assert.True(SpecResolver.Resolve(composed).TryGetValue(out var spec));
         Assert.Equal(SourceShape.Triple, spec.Binding.Shape);
-        Assert.Empty(spec.Attributes);
+        Assert.NotEmpty(spec.Attributes);
 
         var plan = ConversionPlanner.Plan(spec, new SourceSchema(3));
         Assert.Contains(plan.Diagnostics, d => d.Code == DiagnosticCode.TripleSourceNotImplementedV1);

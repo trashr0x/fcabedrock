@@ -17,9 +17,10 @@ namespace FcaBedrock.Spec.Toml;
 /// carries an authored <c>[spec].extends</c> is invalid input (the caller
 /// skipped <see cref="SpecComposer.Compose"/>, §13/D-078) and throws
 /// <see cref="ArgumentException"/> rather than silently ignoring composition.
-/// A triple document resolves to a minimal reject-carrier (binding, no
-/// attributes) that the planner refuses with
-/// <c>TripleSourceNotImplementedV1</c> (D-072).
+/// A triple document resolves fully — its predicate sources, role→index map,
+/// ordering, and encoding become Core (D-082) — but triple <em>conversion</em> is
+/// still refused by the planner with <c>TripleSourceNotImplementedV1</c> until the
+/// triple reader lands (M3, Slice C).
 /// </summary>
 public static class SpecResolver
 {
@@ -102,28 +103,34 @@ public static class SpecResolver
 
         var bindingSection = document.Binding;
         ValidateBinding(bindingSection, diagnostics);
-        var hasHeader = bindingSection.HasHeader ?? true;
+        // §5.1: has_header defaults are shape-specific — wide true, triple false
+        // (triple data is typically headerless; a true default would eat row 1).
+        var hasHeader = bindingSection.HasHeader ?? (shape == SourceShape.Wide);
         var locale = bindingSection.Locale ?? "invariant";
         var culture = ResolveCulture(locale, diagnostics);
+        var encoding = ResolveEncoding(bindingSection.Encoding, diagnostics);
 
-        // [binding].encoding stays document-only: Core carries no encoding field
-        // and Sources is UTF-8-only until M3 (recorded for Slice C).
+        // §5.3/§5.4 sequencing: the triple role→index map (and ordering) resolve
+        // before the object key, because the triple object key is the resolved
+        // subject column — which may be bound by header name (D-082).
+        var tripleColumns = shape == SourceShape.Triple
+            ? ResolveTripleColumns(bindingSection, hasHeader, schema, diagnostics)
+            : null;
+        var ordering = shape == SourceShape.Triple
+            ? ResolveOrdering(bindingSection, diagnostics)
+            : (TripleOrdering?)null;
+
         var binding = new Binding(
             shape,
+            encoding,
             bindingSection.Delimiter ?? ',',
             bindingSection.QuoteChar ?? '"',
             hasHeader,
             locale,
             bindingSection.MissingToken ?? "?",
-            ResolveObjectKey(bindingSection, shape, document.Defaults, schema, diagnostics));
-
-        if (shape == SourceShape.Triple)
-        {
-            // Reject-carrier only (D-066/D-072): predicate sources are
-            // document-only, so no attributes resolve; the planner guard refuses
-            // the spec before any planning.
-            return Finish(new BedrockSpec(binding, []), diagnostics);
-        }
+            ResolveObjectKey(bindingSection, shape, tripleColumns?.Subject ?? 0, document.Defaults, schema, diagnostics),
+            tripleColumns,
+            ordering);
 
         var attributes = new List<AttributeSpec>(document.Attributes.Count);
         var seenNames = new HashSet<string>(StringComparer.Ordinal);
@@ -133,9 +140,7 @@ public static class SpecResolver
             // document model — a duplicate whose sibling field fails to resolve still
             // surfaces (ResolveAttribute would drop the broken one and hide the clash).
             // Empty names are owned by AttributeNameMissing, so they are skipped here;
-            // one diagnostic per extra occurrence. This sits after the triple
-            // early-return, so triple documents are unaffected — exactly as the
-            // former planner check was (it followed the planner's triple guard).
+            // one diagnostic per extra occurrence. Applies to both shapes.
             if (!string.IsNullOrEmpty(section.Name) && !seenNames.Add(section.Name))
             {
                 diagnostics.Add(new BedrockDiagnostic(
@@ -144,7 +149,7 @@ public static class SpecResolver
                     new DiagnosticLocation(AttributeName: section.Name)));
             }
 
-            if (ResolveAttribute(section, document.Defaults, schema, hasHeader, culture, diagnostics) is { } attribute)
+            if (ResolveAttribute(section, shape, document.Defaults, schema, hasHeader, culture, diagnostics) is { } attribute)
             {
                 attributes.Add(attribute);
             }
@@ -199,29 +204,33 @@ public static class SpecResolver
     private static ObjectKey ResolveObjectKey(
         BindingSection binding,
         SourceShape shape,
+        int subjectColumn,
         DefaultsSection? defaults,
         SourceSchema? schema,
         List<BedrockDiagnostic> diagnostics)
     {
         var policy = defaults?.DuplicateObjectPolicy ?? DuplicateObjectPolicy.Fail;
         var section = binding.ObjectKey;
-        if (section?.Mode is not { } mode)
+
+        // §5.4/D-082: triple object identity is always the resolved subject and is
+        // not repointable, so ANY authored [binding.object_key] under triple is
+        // rejected (not just row_index). The default is the subject column.
+        if (shape == SourceShape.Triple)
         {
-            // §5.4 defaults: wide → row_index; triple → the subject column (inert
-            // behind the planner guard, D-072).
-            return shape == SourceShape.Wide
-                ? new RowIndexObjectKey()
-                : new ColumnObjectKey(binding.Columns?.Subject ?? 0, policy);
+            if (section is not null)
+            {
+                diagnostics.Add(new BedrockDiagnostic(
+                    DiagnosticCode.ObjectKeyModeInvalidForShape, DiagnosticSeverity.Error,
+                    "[binding.object_key] is not allowed under shape = \"triple\"; the object key is always the subject (§5.4)."));
+            }
+
+            return new ColumnObjectKey(subjectColumn, policy);
         }
 
-        // §5.4 (D-064): row_index keys are positional over wide rows only; under
-        // triple the subject keys objects, so the mode contradicts the shape.
-        if (mode == ObjectKeyMode.RowIndex && shape == SourceShape.Triple)
+        // §5.4 defaults: wide → row_index.
+        if (section?.Mode is not { } mode)
         {
-            diagnostics.Add(new BedrockDiagnostic(
-                DiagnosticCode.ObjectKeyModeInvalidForShape, DiagnosticSeverity.Error,
-                "object_key mode \"row_index\" is not allowed under shape = \"triple\" (§5.4)."));
-            return new RowIndexObjectKey(); // placeholder; the Error fails the result
+            return new RowIndexObjectKey();
         }
 
         return mode switch
@@ -260,7 +269,8 @@ public static class SpecResolver
                 return byIndex.Index;
 
             case NameColumnRef byName when schema?.Header is { } header:
-                var index = IndexOf(header, byName.Name);
+                // §5.4/§10.2: the key column name must resolve to exactly one column.
+                var index = ResolveUniqueHeader(header, byName.Name);
                 if (index >= 0)
                 {
                     return index;
@@ -268,7 +278,9 @@ public static class SpecResolver
 
                 diagnostics.Add(new BedrockDiagnostic(
                     DiagnosticCode.ObjectKeyBindingInvalid, DiagnosticSeverity.Error,
-                    $"object_key column '{byName.Name}' is not in the source header (§5.4)."));
+                    index == -1
+                        ? $"object_key column '{byName.Name}' is not in the source header (§5.4)."
+                        : $"object_key column '{byName.Name}' matches multiple source header columns; it must resolve to exactly one (§5.4)."));
                 return null;
 
             case NameColumnRef byName:
@@ -285,8 +297,142 @@ public static class SpecResolver
         }
     }
 
+    // §5.1/D-082: v1 accepts UTF-8 only. Recognized spellings canonicalize to
+    // "utf-8" so casing/spelling never perturbs the hash (UTF-8 specs keep their
+    // bytes); any other encoding fails at resolve — no non-UTF-8 decoding in v1.
+    private static string ResolveEncoding(string? authored, List<BedrockDiagnostic> diagnostics)
+    {
+        if (authored is null)
+        {
+            return "utf-8";
+        }
+
+        var normalized = authored.Trim();
+        if (string.Equals(normalized, "utf-8", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(normalized, "utf8", StringComparison.OrdinalIgnoreCase))
+        {
+            return "utf-8";
+        }
+
+        AddBindingInvalid(diagnostics, $"binding.encoding '{authored}' is not supported; v1 accepts only UTF-8 (§5.1).");
+        return "utf-8"; // placeholder; the Error fails the result
+    }
+
+    // §5.3/§5.4: resolve the triple role→index map. Omitted columns default to
+    // (subject 0, predicate 1, value 2). One addressing mode across the three
+    // roles; a partial table, mixed addressing, an unresolvable name, or
+    // non-distinct roles are diagnosed (D-085). Placeholders keep resolution
+    // going so sibling problems still surface; any Error fails the result.
+    private static TripleColumns ResolveTripleColumns(
+        BindingSection binding, bool hasHeader, SourceSchema? schema, List<BedrockDiagnostic> diagnostics)
+    {
+        var section = binding.Columns;
+        if (section is null)
+        {
+            return new TripleColumns(0, 1, 2);
+        }
+
+        if (section.Subject is null || section.Predicate is null || section.Value is null)
+        {
+            AddBindingInvalid(diagnostics,
+                "triple binding.columns must map all three roles (subject, predicate, value) or omit the table entirely (§5.3).");
+            return new TripleColumns(0, 1, 2);
+        }
+
+        var names = (section.Subject is NameColumnRef ? 1 : 0)
+            + (section.Predicate is NameColumnRef ? 1 : 0)
+            + (section.Value is NameColumnRef ? 1 : 0);
+        if (names is not (0 or 3))
+        {
+            AddBindingInvalid(diagnostics,
+                "triple binding.columns must use one addressing mode — all indices or all names, not a mix (§5.3).");
+            return new TripleColumns(0, 1, 2);
+        }
+
+        var subject = ResolveRole(section.Subject, "subject", hasHeader, schema, diagnostics);
+        var predicate = ResolveRole(section.Predicate, "predicate", hasHeader, schema, diagnostics);
+        var value = ResolveRole(section.Value, "value", hasHeader, schema, diagnostics);
+        if (subject is null || predicate is null || value is null)
+        {
+            return new TripleColumns(subject ?? 0, predicate ?? 1, value ?? 2);
+        }
+
+        if (subject == predicate || subject == value || predicate == value)
+        {
+            diagnostics.Add(new BedrockDiagnostic(
+                DiagnosticCode.TripleColumnsNotDistinct, DiagnosticSeverity.Error,
+                $"triple binding.columns roles must be distinct physical columns, but resolved to " +
+                $"subject={subject}, predicate={predicate}, value={value} (§5.3)."));
+        }
+
+        return new TripleColumns(subject.Value, predicate.Value, value.Value);
+    }
+
+    private static int? ResolveRole(
+        ColumnRef role, string name, bool hasHeader, SourceSchema? schema, List<BedrockDiagnostic> diagnostics)
+    {
+        switch (role)
+        {
+            case IndexColumnRef { Index: < 0 } byIndex:
+                AddBindingInvalid(diagnostics, $"triple binding.columns.{name} index {byIndex.Index} is negative (§5.3).");
+                return null;
+
+            case IndexColumnRef byIndex when schema is not null && byIndex.Index >= schema.ColumnCount:
+                AddBindingInvalid(diagnostics,
+                    $"triple binding.columns.{name} index {byIndex.Index} is out of range for a source with {schema.ColumnCount} columns (§5.3).");
+                return null;
+
+            case IndexColumnRef byIndex:
+                return byIndex.Index;
+
+            case NameColumnRef byName when !hasHeader:
+                AddBindingInvalid(diagnostics,
+                    $"triple binding.columns.{name} binds by name '{byName.Name}' but the binding declares has_header = false (§5.3).");
+                return null;
+
+            case NameColumnRef byName when schema?.Header is { } header:
+                // §5.3/§10.2: a name must resolve to exactly one column — no match
+                // and a duplicate match are both invalid.
+                var resolved = ResolveUniqueHeader(header, byName.Name);
+                if (resolved >= 0)
+                {
+                    return resolved;
+                }
+
+                AddBindingInvalid(diagnostics, resolved == -1
+                    ? $"triple binding.columns.{name} binds by name '{byName.Name}', which is not in the source header (§5.3)."
+                    : $"triple binding.columns.{name} binds by name '{byName.Name}', which matches multiple header columns; it must resolve to exactly one (§5.3).");
+                return null;
+
+            case NameColumnRef byName:
+                AddBindingInvalid(diagnostics,
+                    $"triple binding.columns.{name} binds by name '{byName.Name}' but no header schema was supplied (§5.3).");
+                return null;
+
+            default:
+                // ColumnRef is a closed Index/Name set; unreachable in practice.
+                AddBindingInvalid(diagnostics, $"triple binding.columns.{name} has an unrecognized reference (§5.3).");
+                return null;
+        }
+    }
+
+    // §5.3: ordering is required for triple. Not a fingerprint input (D-082) — an
+    // acceptance/streaming property; the document carries the Core enum directly.
+    private static TripleOrdering ResolveOrdering(BindingSection binding, List<BedrockDiagnostic> diagnostics)
+    {
+        if (binding.Ordering is { } ordering)
+        {
+            return ordering;
+        }
+
+        AddBindingInvalid(diagnostics,
+            "shape = \"triple\" requires binding.ordering (\"subject_grouped\" or \"unordered\") (§5.3).");
+        return TripleOrdering.Unordered; // placeholder; the Error fails the result
+    }
+
     private static AttributeSpec? ResolveAttribute(
         AttributeSection section,
+        SourceShape shape,
         DefaultsSection? defaults,
         SourceSchema? schema,
         bool hasHeader,
@@ -303,7 +449,7 @@ public static class SpecResolver
 
         var label = string.IsNullOrEmpty(name) ? "<unnamed>" : name;
         var include = section.Include ?? defaults?.Include ?? true;
-        var source = ResolveSource(section, label, schema, hasHeader, diagnostics);
+        var source = ResolveSource(section, label, shape, schema, hasHeader, diagnostics);
 
         Discretizer? discretizer = null;
         Scale? scale = null;
@@ -336,26 +482,43 @@ public static class SpecResolver
             section.UnknownValuePolicy ?? defaults?.UnknownValuePolicy ?? UnknownValuePolicy.Warn);
     }
 
-    private static ColumnSource? ResolveSource(
+    private static SourceBinding? ResolveSource(
         AttributeSection section,
         string attribute,
+        SourceShape shape,
         SourceSchema? schema,
         bool hasHeader,
         List<BedrockDiagnostic> diagnostics)
     {
         switch (section.Source)
         {
+            // §10.2: source kind must match the binding shape.
+            case ColumnSourceSection when shape == SourceShape.Triple:
+                AddSourceInvalid(diagnostics, attribute, "has a column source, which requires a wide binding");
+                return null;
+
             case ColumnSourceSection column:
                 if (ResolveColumnIndex(column, attribute, schema, hasHeader, diagnostics) is not { } index)
                 {
                     return null;
                 }
 
-                return new ColumnSource(index, ResolveValueType(column, section.Discretizer));
+                return new ColumnSource(index, ResolveValueType(column.ValueType, section.Discretizer));
 
-            case PredicateSourceSection:
+            case PredicateSourceSection when shape != SourceShape.Triple:
                 AddSourceInvalid(diagnostics, attribute, "has a predicate source, which requires a triple binding");
                 return null;
+
+            case PredicateSourceSection predicate:
+                // The predicate is a data selector, not a header name — no schema
+                // resolution; it only must be a non-empty string (§5.3/§10.2).
+                if (predicate.Name is not { Length: > 0 } predicateName)
+                {
+                    AddSourceInvalid(diagnostics, attribute, "has a predicate source with no name");
+                    return null;
+                }
+
+                return new PredicateSource(predicateName, ResolveValueType(predicate.ValueType, section.Discretizer));
 
             default:
                 AddSourceInvalid(diagnostics, attribute, "declares no source");
@@ -410,13 +573,16 @@ public static class SpecResolver
         }
         else
         {
-            var found = IndexOf(header, byName);
+            // §10.2: a source name must resolve to exactly one column.
+            var found = ResolveUniqueHeader(header, byName);
             if (found >= 0)
             {
                 return found;
             }
 
-            problem = $"binds source name '{byName}', which is not in the source header";
+            problem = found == -1
+                ? $"binds source name '{byName}', which is not in the source header"
+                : $"binds source name '{byName}', which matches multiple source header columns; it must resolve to exactly one";
         }
 
         AddSourceInvalid(diagnostics, attribute, problem);
@@ -427,11 +593,21 @@ public static class SpecResolver
     // manual_cuts is number-fixing, identity/ordered_cuts/none string (D-061).
     // Include-independent: value_type is a source-level property, so a parked
     // cut discretizer still types the source — and its live restrict_to (D-076).
-    private static SourceValueType ResolveValueType(ColumnSourceSection column, DiscretizerSection? discretizer) =>
-        column.ValueType
+    // Shape-agnostic: both column and predicate sources carry a value_type.
+    private static SourceValueType ResolveValueType(SourceValueType? authored, DiscretizerSection? discretizer) =>
+        authored
             ?? (discretizer is ManualCutsDiscretizerSection
                 ? SourceValueType.Number
                 : SourceValueType.String);
+
+    // The authored value_type of any source kind (§10.2 — both column and predicate
+    // sources carry one), or null when none is authored / no source.
+    private static SourceValueType? AuthoredValueType(SourceSection? source) => source switch
+    {
+        ColumnSourceSection column => column.ValueType,
+        PredicateSourceSection predicate => predicate.ValueType,
+        _ => null,
+    };
 
     // The Slice D static attribute checks (D-067). They read the document
     // sections directly — authored-vs-default provenance exists only there
@@ -462,22 +638,24 @@ public static class SpecResolver
     // value_type; only an authored type can conflict — the derived default is
     // the fixed type by construction. Parked (excluded) config never blocks
     // (D-049), and the flexible deferred kinds are read-rejected before this
-    // seam (D-070).
+    // seam (D-070). Source-kind agnostic: value_type is a source-level property of
+    // both column and predicate sources (§10.2).
     private static void ValidateValueType(
         AttributeSection section, string attribute, List<BedrockDiagnostic> diagnostics)
     {
-        if (section.Source is not ColumnSourceSection { ValueType: { } authored })
+        var authored = AuthoredValueType(section.Source);
+        if (authored is not { } value)
         {
             return;
         }
 
         var problem = section.Discretizer switch
         {
-            IdentityDiscretizerSection when authored == SourceValueType.Number =>
+            IdentityDiscretizerSection when value == SourceValueType.Number =>
                 "declares value_type = \"number\", but identity is string-fixing — numeric distinct-value binning uses free_per_value",
-            OrderedCutsDiscretizerSection when authored == SourceValueType.Number =>
+            OrderedCutsDiscretizerSection when value == SourceValueType.Number =>
                 "declares value_type = \"number\", but ordered_cuts is string-fixing (categories are used verbatim)",
-            ManualCutsDiscretizerSection when authored == SourceValueType.String =>
+            ManualCutsDiscretizerSection when value == SourceValueType.String =>
                 "declares value_type = \"string\", but manual_cuts is number-fixing (cuts are numeric)",
             _ => null,
         };
@@ -530,20 +708,20 @@ public static class SpecResolver
     // §10.4/D-076). The domain typo-catcher fires only against a live domain:
     // included, string-typed identity with an explicit non-empty declared_domain
     // (declared_domain is parked when excluded, D-049; the numeric mismatch is
-    // owned by RestrictToOnNumericRequiresRange).
+    // owned by RestrictToOnNumericRequiresRange). Source-kind agnostic: the
+    // value-type shape checks apply to any source carrying a value_type (§10.2).
     private static void ValidateRestrictTo(
         AttributeSection section,
         string attribute,
         bool include,
         List<BedrockDiagnostic> diagnostics)
     {
-        if (section.RestrictTo is not { Count: > 0 } entries
-            || section.Source is not ColumnSourceSection column)
+        if (section.RestrictTo is not { Count: > 0 } entries || section.Source is not { } source)
         {
             return;
         }
 
-        var valueType = ResolveValueType(column, section.Discretizer);
+        var valueType = ResolveValueType(AuthoredValueType(source), section.Discretizer);
         foreach (var entry in entries)
         {
             switch (entry)
@@ -749,6 +927,14 @@ public static class SpecResolver
             $"Attribute '{attribute}' {problem} (§10.2).",
             new DiagnosticLocation(AttributeName: attribute)));
 
+    // §10.2/§5.3 (D-085): SourceBindingInvalid also owns binding-level problems
+    // (the triple columns table, ordering, encoding) that belong to no attribute;
+    // the caller-supplied message names the binding concern and its § reference,
+    // disambiguating it from an attribute source. No attribute Location.
+    private static void AddBindingInvalid(List<BedrockDiagnostic> diagnostics, string message) =>
+        diagnostics.Add(new BedrockDiagnostic(
+            DiagnosticCode.SourceBindingInvalid, DiagnosticSeverity.Error, message));
+
     private static void AddScalingMissing(List<BedrockDiagnostic> diagnostics, string attribute, string problem) =>
         diagnostics.Add(new BedrockDiagnostic(
             DiagnosticCode.AttributeScalingMissing, DiagnosticSeverity.Error,
@@ -766,6 +952,29 @@ public static class SpecResolver
         }
 
         return -1;
+    }
+
+    // §10.2/§5.3: a header name must resolve to exactly one column. Returns the sole
+    // index, -1 when no header matches, or -2 when several do — the -2 case is the
+    // duplicate-matching-header reject shared by wide sources, wide column object
+    // keys, and triple roles (ordinal compare, P-12).
+    private static int ResolveUniqueHeader(IReadOnlyList<string> header, string name)
+    {
+        var matches = 0;
+        var index = -1;
+        for (var i = 0; i < header.Count; i++)
+        {
+            if (string.Equals(header[i], name, StringComparison.Ordinal))
+            {
+                matches++;
+                if (index < 0)
+                {
+                    index = i;
+                }
+            }
+        }
+
+        return matches switch { 1 => index, 0 => -1, _ => -2 };
     }
 
     private static Diagnosed<BedrockSpec> Finish(BedrockSpec spec, List<BedrockDiagnostic> diagnostics)

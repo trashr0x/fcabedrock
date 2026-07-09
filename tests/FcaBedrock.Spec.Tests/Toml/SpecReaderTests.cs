@@ -185,7 +185,9 @@ public sealed class SpecReaderTests
 
         Assert.Equal(SourceShape.Triple, document.Binding?.Shape);
         Assert.Equal(TripleOrdering.SubjectGrouped, document.Binding?.Ordering);
-        Assert.Equal(new TripleColumnsSection(0, 1, 2), document.Binding?.Columns);
+        Assert.Equal(
+            new TripleColumnsSection(new IndexColumnRef(0), new IndexColumnRef(1), new IndexColumnRef(2)),
+            document.Binding?.Columns);
 
         var age = Assert.IsType<PredicateSourceSection>(document.Attributes[0].Source);
         Assert.Equal("age", age.Name);
