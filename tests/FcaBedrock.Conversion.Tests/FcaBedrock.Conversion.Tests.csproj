@@ -4,6 +4,10 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\FcaBedrock.Conversion\FcaBedrock.Conversion.csproj" />
+    <!-- Test-only: the unordered .cxt determinism test drives EmitTripleAsync → CxtWriter to
+         exercise the two-pass replay. Keeps that assertion slice-local rather than pulling the
+         Slice G Golden harness; no production dependency (Export does not reference Conversion). -->
+    <ProjectReference Include="..\..\src\FcaBedrock.Export\FcaBedrock.Export.csproj" />
   </ItemGroup>
 
 </Project>

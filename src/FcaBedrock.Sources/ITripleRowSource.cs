@@ -7,8 +7,8 @@ namespace FcaBedrock.Sources;
 /// (§5.3). Grouping rows into FCA objects, subject validation, and contiguity are the
 /// Conversion layer's job (D-082); this only tokenizes and normalizes.
 /// <see cref="ReadRowsAsync"/> may be called more than once (each call re-reads from the
-/// start) — the <c>.cxt</c> two-pass and the Slice D grouping/spool rely on it instead of
-/// buffering the matrix (P-16).
+/// start) — the <c>.cxt</c> two-pass and the <c>unordered</c> first-appearance grouping rely
+/// on it instead of buffering the matrix (P-16).
 /// </summary>
 public interface ITripleRowSource
 {

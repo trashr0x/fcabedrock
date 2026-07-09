@@ -6,4 +6,10 @@
     <ProjectReference Include="..\FcaBedrock.Sources\FcaBedrock.Sources.csproj" />
   </ItemGroup>
 
+  <!-- White-box access for the Conversion unit tests (grouper/decorator internals). A test
+       seam only; no production behavior depends on it (principle P-6). -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="FcaBedrock.Conversion.Tests" />
+  </ItemGroup>
+
 </Project>

@@ -49,6 +49,16 @@ internal static class ConversionFixtures
         "m3,class,e\nm3,bruises?,t\nm3,gill-size,b\nm3,veil-type,p\nm3,ring-number,o\n" +
         "m4,class,e\nm4,bruises?,f\nm4,gill-size,n\nm4,veil-type,p\nm4,ring-number,n";
 
+    // The same 25 triples as MushroomTripleData, reordered predicate-major (subject-interleaved):
+    // every subject recurs non-contiguously, so subject_grouped would reject it — the unordered path
+    // must reproduce the same objects (first-appearance m0..m4) and crosses.
+    public const string MushroomTripleDataInterleaved =
+        "m0,class,e\nm1,class,e\nm2,class,e\nm3,class,e\nm4,class,e\n" +
+        "m0,bruises?,t\nm1,bruises?,t\nm2,bruises?,f\nm3,bruises?,t\nm4,bruises?,f\n" +
+        "m0,gill-size,b\nm1,gill-size,n\nm2,gill-size,n\nm3,gill-size,b\nm4,gill-size,n\n" +
+        "m0,veil-type,p\nm1,veil-type,p\nm2,veil-type,p\nm3,veil-type,p\nm4,veil-type,p\n" +
+        "m0,ring-number,n\nm1,ring-number,t\nm2,ring-number,n\nm3,ring-number,o\nm4,ring-number,n";
+
     public static Binding Triple(TripleOrdering ordering = TripleOrdering.SubjectGrouped, string missingToken = "?") =>
         new(SourceShape.Triple, "utf-8", ',', '"', HasHeader: false, "invariant", missingToken,
             new ColumnObjectKey(0, DuplicateObjectPolicy.Fail), new TripleColumns(0, 1, 2), ordering);

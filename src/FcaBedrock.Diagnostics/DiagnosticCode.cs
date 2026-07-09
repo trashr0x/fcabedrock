@@ -242,14 +242,6 @@ public enum DiagnosticCode
     OrdinalOrderHasUnknownValue,
 
     /// <summary>
-    /// The spec binds a triple source with <c>ordering = "unordered"</c>, whose
-    /// grouping/spool is not implemented in this milestone slice; the planner rejects
-    /// it before any planning. <c>subject_grouped</c> converts. Spec §5.3 (D-082;
-    /// transitional, removed at M3 Slice D when the unordered spool lands).
-    /// </summary>
-    TripleUnorderedNotImplementedV1,
-
-    /// <summary>
     /// An attribute uses a modelled-but-deferred scale (<c>interordinal</c>,
     /// <c>biordinal</c>, <c>contranominal</c>); v1 planning rejects it. Fatal.
     /// Spec §12.4 / §16.4 / §20 (D-010; permanent v1 reservation).

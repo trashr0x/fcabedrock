@@ -202,20 +202,9 @@ public static class ConversionPlanner
 
     private static void ValidateStatic(BedrockSpec spec, List<BedrockDiagnostic> diagnostics)
     {
-        // §5.3 / D-082 (transitional → M3 Slice D): Slice C implements the subject_grouped
-        // fast path only. ordering = "unordered" needs the external grouping/spool that lands
-        // in Slice D; reject it fail-closed here — the one seam that sees ordering, since the
-        // plan deliberately does not carry it (Slice A) — rather than letting it reach the
-        // subject-grouped emit, where valid interleaved input would be mis-flagged
-        // TripleSubjectNotContiguous. subject_grouped plans and converts.
-        if (spec.Binding.Shape == SourceShape.Triple
-            && spec.Binding.Ordering == TripleOrdering.Unordered)
-        {
-            diagnostics.Add(new BedrockDiagnostic(
-                DiagnosticCode.TripleUnorderedNotImplementedV1, DiagnosticSeverity.Error,
-                "Triple ordering = \"unordered\" is not implemented in this milestone (planned for M3 Slice D); ordering = \"subject_grouped\" converts."));
-        }
-
+        // The plan is ordering-independent (it does not carry binding.ordering): subject_grouped
+        // and unordered plan identically and select their row stream at emit via
+        // TripleRowSources.ForOrdering (§5.3 / §17 rule 4 / D-082). No ordering check here.
         ValidateObjectKey(spec.Binding.ObjectKey, spec.Binding.Shape, diagnostics);
 
         // Duplicate authored names (AttributeNameDuplicate) and value_labels keys

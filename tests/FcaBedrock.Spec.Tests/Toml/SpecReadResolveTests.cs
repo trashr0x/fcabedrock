@@ -41,26 +41,26 @@ public sealed class SpecReadResolveTests
     }
 
     [Fact]
-    public void ReadResolve_WhenTripleToml_ThenResolvesButUnorderedRefusesAtPlan()
+    public void ReadResolve_WhenTripleToml_ThenResolvesAndPlans()
     {
         // §19.3 uses ordering = "unordered": the triple document resolves fully (predicate
-        // sources + role map + ordering), but the planner refuses the unordered grouping/spool
-        // until M3 Slice D (D-082). The subject_grouped fast path converts — see the twin below.
+        // sources + role map + ordering) and plans cleanly — the plan is ordering-independent
+        // (D-082); ordering is honored at emit. The subject_grouped twin below plans the same way.
         var spec = ResolveOk(TomlFixtures.MiniAdultTriples, schema: null);
 
         Assert.Equal(SourceShape.Triple, spec.Binding.Shape);
         Assert.NotEmpty(spec.Attributes);
 
         var plan = ConversionPlanner.Plan(spec, new SourceSchema(3));
-        Assert.True(plan.HasErrors);
-        Assert.Contains(plan.Diagnostics, d => d.Code == DiagnosticCode.TripleUnorderedNotImplementedV1);
+        Assert.False(plan.HasErrors);
+        Assert.True(plan.TryGetValue(out _));
     }
 
     [Fact]
     public void ReadResolve_WhenSubjectGroupedTripleToml_ThenResolvesAndPlans()
     {
-        // D-082 / Slice C: a subject_grouped triple spec resolves and plans — the blanket
-        // transitional triple-conversion refusal retired at Slice C, leaving only the unordered gate.
+        // D-082: a subject_grouped triple spec resolves and plans — the blanket transitional
+        // triple-conversion refusal retired at Slice C; the unordered gate retired at Slice D.
         var spec = ResolveOk(TomlFixtures.TripleSubjectGrouped, schema: null);
 
         Assert.Equal(SourceShape.Triple, spec.Binding.Shape);

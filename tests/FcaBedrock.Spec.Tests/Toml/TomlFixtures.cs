@@ -146,8 +146,8 @@ internal static class TomlFixtures
 
     /// <summary>
     /// Synthetic (not a §19 worked example) — a minimal <c>subject_grouped</c> triple spec so
-    /// read → resolve → plan coverage exists for the Slice C fast path (§19.3 uses
-    /// <c>unordered</c>, which the planner still refuses until Slice D).
+    /// read → resolve → plan coverage exists for the single-pass fast path (§19.3 uses
+    /// <c>unordered</c>, which plans identically and converts via first-appearance grouping).
     /// </summary>
     public const string TripleSubjectGrouped = """
         [spec]

@@ -11,7 +11,7 @@ namespace FcaBedrock.Sources;
 /// normalization. It is deliberately dumb — no grouping, no subject/contiguity validation,
 /// no object-key semantics (D-082); those belong to the Conversion layer. Constructed from a
 /// replayable stream factory so it can be re-read for the <c>.cxt</c> two-pass and the
-/// Slice D grouping/spool without temp files.
+/// <c>unordered</c> first-appearance grouping (D-082) without temp files.
 /// </summary>
 public sealed class TripleCsvSource : ITripleRowSource
 {

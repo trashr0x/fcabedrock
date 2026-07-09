@@ -294,19 +294,24 @@ public sealed class ConversionPlannerTests
     }
 
     [Fact]
-    public void Plan_WhenTripleUnordered_ThenReportsTripleUnorderedNotImplementedV1()
+    public void Plan_WhenTripleUnordered_ThenPlansIdenticallyToSubjectGrouped()
     {
-        // §5.3 / D-082 (transitional → Slice D): ordering = "unordered" is gated at plan, so it
-        // never reaches the subject-grouped emit where interleaved input would be mis-flagged
-        // TripleSubjectNotContiguous. subject_grouped converts.
-        var spec = new BedrockSpec(SpecFixtures.TripleSubjectGrouped(TripleOrdering.Unordered), [
-            SpecFixtures.PredicateNominal("color", "hasColor", ["red", "green"]),
-        ]);
+        // §5.3 / §17 rule 4 / D-082: the plan is ordering-independent — it does not carry
+        // binding.ordering. unordered plans exactly like subject_grouped (no plan-phase reject);
+        // ordering is honored at emit via TripleRowSources.ForOrdering, not here.
+        AttributeSpec[] attributes = [SpecFixtures.PredicateNominal("color", "hasColor", ["red", "green"])];
+        var unordered = new BedrockSpec(SpecFixtures.TripleSubjectGrouped(TripleOrdering.Unordered), attributes);
+        var grouped = new BedrockSpec(SpecFixtures.TripleSubjectGrouped(TripleOrdering.SubjectGrouped), attributes);
 
-        var result = ConversionPlanner.Plan(spec, new SourceSchema(3));
+        var unorderedResult = ConversionPlanner.Plan(unordered, new SourceSchema(3));
+        var groupedResult = ConversionPlanner.Plan(grouped, new SourceSchema(3));
 
-        Assert.True(result.HasErrors);
-        Assert.Contains(result.Diagnostics, d => d.Code == DiagnosticCode.TripleUnorderedNotImplementedV1);
+        Assert.False(unorderedResult.HasErrors);
+        Assert.True(unorderedResult.TryGetValue(out var unorderedPlan));
+        Assert.True(groupedResult.TryGetValue(out var groupedPlan));
+        Assert.Equal(
+            groupedPlan.FormalAttributes.Select(a => a.RenderedName),
+            unorderedPlan.FormalAttributes.Select(a => a.RenderedName));
     }
 
     [Theory]

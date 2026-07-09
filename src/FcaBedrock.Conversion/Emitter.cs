@@ -58,15 +58,17 @@ public static class Emitter
     }
 
     /// <summary>
-    /// Emits the formal objects for a triple <paramref name="plan"/> over
-    /// <paramref name="source"/> under <c>ordering = "subject_grouped"</c>: groups contiguous
-    /// rows by cleaned subject, routes each row's predicate to the attribute(s) that bind it,
-    /// and unions their crosses (§5.3.1 / §17 rule 8). Object order is first-appearance of each
-    /// cleaned subject (§17 rule 4). Structural failures (invalid subject, non-contiguity) are
-    /// reported to <paramref name="diagnostics"/> and stop the stream — never exceptions across
-    /// the Sources/Conversion seam (D-082). Single-pass, no matrix (P-16). <c>ordering =
-    /// "unordered"</c> is gated at plan (<c>TripleUnorderedNotImplementedV1</c>), so it never
-    /// reaches here; this path is deliberately ordering-agnostic for Slice D reuse.
+    /// Emits the formal objects for a triple <paramref name="plan"/> over a
+    /// <b>subject-contiguous</b> <paramref name="source"/>: groups contiguous rows by cleaned
+    /// subject, routes each row's predicate to the attribute(s) that bind it, and unions their
+    /// crosses (§5.3.1 / §17 rule 8). Object order is first-appearance of each cleaned subject
+    /// (§17 rule 4). Structural failures (invalid subject, non-contiguity) are reported to
+    /// <paramref name="diagnostics"/> and stop the stream — never exceptions across the
+    /// Sources/Conversion seam (D-082). Single-pass, no matrix (P-16). This path is
+    /// ordering-agnostic: <c>ordering = "subject_grouped"</c> feeds it the raw source directly,
+    /// while <c>ordering = "unordered"</c> feeds it a <see cref="UnorderedTripleRowSource"/> that
+    /// has already made interleaved rows contiguous (so the contiguity check is a no-op there) —
+    /// see <see cref="TripleRowSources.ForOrdering"/>.
     /// </summary>
     public static async IAsyncEnumerable<EmittedObject> EmitTripleAsync(
         ConversionPlan plan,
@@ -94,7 +96,7 @@ public static class Emitter
             // §5.4 / §18.1 / D-085: the subject is the object name; a null (empty / missing_token
             // / short, per the source), whitespace-only, or control-char-bearing subject has no
             // usable identity — halt this conversion.
-            if (!IsValidObjectName(row.Subject))
+            if (!ObjectNames.IsUsable(row.Subject))
             {
                 diagnostics.Add(new BedrockDiagnostic(
                     DiagnosticCode.ObjectKeyValueInvalid, DiagnosticSeverity.Error,
@@ -177,27 +179,6 @@ public static class Emitter
         }
 
         return map;
-    }
-
-    // §5.4 / §18.1 / D-085: a usable object name is non-null, not whitespace-only, and free of
-    // control/newline characters (a newline would corrupt the line-structured .cxt). The source
-    // has already normalized empty / missing_token / short → null.
-    private static bool IsValidObjectName(string? name)
-    {
-        if (string.IsNullOrWhiteSpace(name))
-        {
-            return false;
-        }
-
-        foreach (var ch in name)
-        {
-            if (char.IsControl(ch))
-            {
-                return false;
-            }
-        }
-
-        return true;
     }
 
     private static void Accumulate(

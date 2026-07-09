@@ -344,12 +344,12 @@ public sealed class SpecComposerTests
     }
 
     [Fact]
-    public void Compose_WhenTripleBase_ThenComposedUnorderedRejectsAtPlan()
+    public void Compose_WhenTripleBase_ThenComposedUnorderedPlansCleanly()
     {
-        // Composition is undisturbed by the D-082 triple resolution: the composed triple
-        // spec resolves fully. The subject_grouped base would convert, but the derived layer
-        // overrides ordering to "unordered", whose grouping/spool is not implemented until
-        // M3 Slice D, so the planner refuses it — proving the override reaches the planner.
+        // Composition is undisturbed by the D-082 triple resolution: the composed triple spec
+        // resolves fully, and the derived layer's ordering = "unordered" override is preserved
+        // (asserted on Binding.Ordering). The plan is ordering-independent, so the composed spec
+        // plans cleanly — ordering is honored later at emit (TripleRowSources.ForOrdering).
         var source = new InMemorySpecTextSource().Add("base.toml", TomlFixtures.TripleSubjectGrouped);
         var root = Read(
             "[spec]\nversion = 1\nextends = \"base.toml\"\n" +
@@ -363,7 +363,7 @@ public sealed class SpecComposerTests
         Assert.NotEmpty(spec.Attributes);
 
         var plan = ConversionPlanner.Plan(spec, new SourceSchema(3));
-        Assert.Contains(plan.Diagnostics, d => d.Code == DiagnosticCode.TripleUnorderedNotImplementedV1);
+        Assert.False(plan.HasErrors);
     }
 
     // --- Equivalence ---
