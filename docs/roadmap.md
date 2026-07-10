@@ -313,6 +313,12 @@ Modelled in the spec where noted, so adding them later isn't a format break.
   landed in M2), a `.cxt` size/diagnostics item to M7, and an allocation item to
   M8. The latter two are tracked here pending their own `decisions.md` entries when
   M7/M8 are picked up.
+- Conversion run/session API (M7): M3 Slice E added internal
+  `EmitReplay.CollectDiagnosticsOnce` so the `.cxt` two-pass replay records emit
+  diagnostics once without buffering the matrix (P-16; lifecycle contract in its
+  XML doc). Revisit at M7, when CLI orchestration can own a real conversion-run
+  abstraction that emits once and serializes separately — the helper is the interim
+  seam until then.
 - Phase alignment for `AttributeNameDuplicate` (noted at the Slice F review,
   2026-07-05): **done at the M2 exit review (D-080).** The check — and its twin
   `ValueLabelKeyNotInDomain` — were re-homed from `ConversionPlanner` to the
