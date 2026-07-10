@@ -24,6 +24,12 @@ internal static class ConversionFixtures
     public static Binding Wide(char delimiter = ',', bool hasHeader = true, string missingToken = "?") =>
         new(SourceShape.Wide, "utf-8", delimiter, '"', hasHeader, "invariant", missingToken, new RowIndexObjectKey());
 
+    // A wide binding whose object key is a source column (§5.4/§6.1). Headerless by default so tests
+    // feed raw data rows; the first row sets the schema width for the plan-time index range-check.
+    public static Binding WideWithKey(
+        int index, DuplicateObjectPolicy policy, bool hasHeader = false, string missingToken = "?") =>
+        new(SourceShape.Wide, "utf-8", ',', '"', hasHeader, "invariant", missingToken, new ColumnObjectKey(index, policy));
+
     public static WideCsvSource SourceOver(string text, Binding binding) =>
         new(() => new MemoryStream(Encoding.UTF8.GetBytes(text)), binding);
 

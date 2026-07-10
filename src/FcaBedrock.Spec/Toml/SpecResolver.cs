@@ -225,7 +225,11 @@ public static class SpecResolver
                     "[binding.object_key] is not allowed under shape = \"triple\"; the object key is always the subject (§5.4)."));
             }
 
-            return new ColumnObjectKey(subjectColumn, policy);
+            // §6.1: duplicate_object_policy does not apply to triple (the subject is never a
+            // duplicate-object condition). Carry the inert default so defaults.duplicate_object_policy
+            // never reaches the triple key — otherwise it would perturb the output fingerprint
+            // while triple emit ignores it, breaking "fingerprint = output bytes" (§14/D-077).
+            return new ColumnObjectKey(subjectColumn, DuplicateObjectPolicy.Fail);
         }
 
         // §5.4 defaults: wide → row_index.
@@ -257,9 +261,9 @@ public static class SpecResolver
                     $"object_key column index {byIndex.Index} is negative (§5.4)."));
                 return null;
 
-            // Without a schema the width is unknown; the plan-phase column-key
-            // reject (ObjectKeyColumnNotImplementedV1, D-064) closes that window
-            // until wide column keys execute at M3.
+            // The resolve-time upper-bound check when a schema IS supplied. When resolve runs
+            // schema-less (the conversion pipeline), the planner range-checks the resolved wide key
+            // index against the schema it has instead (ObjectKeyBindingInvalid, D-083 interim).
             case IndexColumnRef byIndex when schema is not null && byIndex.Index >= schema.ColumnCount:
                 diagnostics.Add(new BedrockDiagnostic(
                     DiagnosticCode.ObjectKeyBindingInvalid, DiagnosticSeverity.Error,

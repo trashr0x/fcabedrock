@@ -33,11 +33,10 @@ public sealed class WideCsvSource : IRecordSource
             throw new NotSupportedException("WideCsvSource supports only the '\"' quote character (RFC 4180).");
         }
 
-        if (binding.ObjectKey is not RowIndexObjectKey)
-        {
-            throw new NotSupportedException("WideCsvSource supports only row-index object keys in this slice.");
-        }
-
+        // The source is object-key-agnostic: it always names records by row index, and the emitter
+        // derives column-key names + duplicate policy from the plan (§5.4/§6.1, P-15). Object-key
+        // rejects (composite → Fatal, wide dedupe → transitional) are the planner's, reached because
+        // the pipeline builds the source before it plans.
         _openStream = openStream;
         _delimiter = binding.Delimiter;
         _hasHeader = binding.HasHeader;
@@ -91,7 +90,11 @@ public sealed class WideCsvSource : IRecordSource
             // Trim = Outer trims an UNQUOTED field's surrounding whitespace before unescape, while
             // preserving whitespace INSIDE a quoted field — exactly spec §5.1. Sep still owns
             // tokenization/unescape, so the D-041 integration contract is unchanged.
-            .Reader(o => o with { HasHeader = _hasHeader, Unescape = true, Trim = SepTrim.Outer })
+            // DisableColCountCheck lets a short/ragged row through (like TripleCsvSource) rather than
+            // throwing across the Sources/Conversion seam: an absent mapped cell then surfaces as data
+            // — an absent key column is ObjectKeyValueInvalid at emit, an absent attribute cell is
+            // missing (§5.4/§16.4, D-085). This is narrow raggedness tolerance, not a parsing redesign.
+            .Reader(o => o with { HasHeader = _hasHeader, Unescape = true, Trim = SepTrim.Outer, DisableColCountCheck = true })
             .From(_openStream());
 
     // The value is already quote-aware-trimmed by Sep (§5.1), so missing detection is a direct

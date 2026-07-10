@@ -332,8 +332,8 @@ public sealed class FingerprintCalculatorTests
     {
         // The golden literals pin the default spellings; this pins the rest of
         // the M2-reachable vocabulary (D-077): ge/strict/closed/fail/include,
-        // v2-compat, crlf. Plan-unreachable spellings (triple, column object
-        // keys, keep/dedupe) join the goldens when their milestones land.
+        // v2-compat, crlf. Triple and wide column keys (fail/keep) are now
+        // plan-reachable (M3); only dedupe joins the goldens when Slice F lands.
         var cuts = new AttributeSpec(
             "v", new ColumnSource(0, SourceValueType.Number), Include: true,
             ManualCutsDiscretizer.Create([10, 20], BinEnds.Closed, CultureInfo.InvariantCulture).Value!,
@@ -356,6 +356,50 @@ public sealed class FingerprintCalculatorTests
         Assert.Contains("\"unknown_value_policy\":\"fail\"", json, StringComparison.Ordinal);
         Assert.Contains("\"unknown_value_policy\":\"include\"", json, StringComparison.Ordinal);
     }
+
+    // --- Wide column object key (D-083): plan-reachable at Slice E; index + policy are byte-affecting ---
+
+    [Fact]
+    public void BuildCxtOutputJson_WhenWideColumnKeepKey_ThenEncodesColumnIndexAndPolicy()
+    {
+        var spec = WideColumnKeySpec(0, DuplicateObjectPolicy.Keep);
+        Assert.True(ConversionPlanner.Plan(spec, new SourceSchema(2)).TryGetValue(out var plan));
+
+        var json = FingerprintCalculator.BuildCxtOutputJson(plan, spec, NativeCxt());
+
+        Assert.Contains(
+            "\"object_key\":{\"column\":0,\"duplicate_object_policy\":\"keep\",\"mode\":\"column\"}",
+            json, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ComputeOutputFingerprint_WhenWideKeyPolicyOrIndexVaries_ThenBothFormatsMove()
+    {
+        // The object key rides in the SHARED binding payload, so both .cxt and .dat fingerprints move
+        // when the key column index or policy changes (keep #N names are byte-affecting) — asserted per
+        // format, since a tuple NotEqual would pass on either alone.
+        var keep0 = WideKeyOutputFingerprints(0, DuplicateObjectPolicy.Keep);
+        var fail0 = WideKeyOutputFingerprints(0, DuplicateObjectPolicy.Fail);
+        var keep1 = WideKeyOutputFingerprints(1, DuplicateObjectPolicy.Keep);
+
+        Assert.NotEqual(keep0.Cxt, fail0.Cxt); // policy
+        Assert.NotEqual(keep0.Dat, fail0.Dat);
+        Assert.NotEqual(keep0.Cxt, keep1.Cxt); // key column index
+        Assert.NotEqual(keep0.Dat, keep1.Dat);
+    }
+
+    private static (string Cxt, string Dat) WideKeyOutputFingerprints(int keyIndex, DuplicateObjectPolicy policy)
+    {
+        var spec = WideColumnKeySpec(keyIndex, policy);
+        Assert.True(ConversionPlanner.Plan(spec, new SourceSchema(2)).TryGetValue(out var plan));
+        var cxt = FingerprintCalculator.ComputeCxtOutputFingerprint(plan, spec, NativeCxt());
+        var dat = FingerprintCalculator.ComputeDatOutputFingerprint(plan, spec, NativeDat());
+        return (cxt, dat);
+    }
+
+    private static BedrockSpec WideColumnKeySpec(int keyIndex, DuplicateObjectPolicy policy) =>
+        new(new Binding(SourceShape.Wide, "utf-8", ',', '"', HasHeader: true, "invariant", "?", new ColumnObjectKey(keyIndex, policy)),
+            [SpecFixtures.Nominal("g", 1, ["b"])]);
 
     // --- Value-bin ordinal (D-081): the encoder is unchanged; these pin its output ---
 

@@ -22,7 +22,16 @@ public static class Emitter
     // Per-attribute sample cap for aggregated diagnostics; bounded metadata (P-16).
     private const int SampleCap = 3;
 
-    /// <summary>Emits the formal objects for <paramref name="plan"/> over <paramref name="source"/>.</summary>
+    /// <summary>
+    /// Emits the formal objects for <paramref name="plan"/> over <paramref name="source"/>. Object
+    /// names follow <c>plan.ObjectKey</c>: <c>row_index</c> uses the source row index, while a wide
+    /// <c>column</c> key names each object from its cleaned key cell and applies
+    /// <c>duplicate_object_policy</c> — <c>fail</c> (a repeat halts with <c>DuplicateObjectKey</c>) or
+    /// <c>keep</c> (each row its own object, colliding names disambiguated by the converter — §5.4/§6.1,
+    /// P-15). All policies stream in source-row order (§17 rule 4); no grouping, no matrix (P-16).
+    /// Emit diagnostics accrue to <paramref name="diagnostics"/> once per enumeration — a replaying
+    /// caller (the <c>.cxt</c> two-pass) wraps this with <see cref="EmitReplay.CollectDiagnosticsOnce"/>.
+    /// </summary>
     public static async IAsyncEnumerable<EmittedObject> EmitAsync(
         ConversionPlan plan,
         IRecordSource source,
@@ -37,24 +46,97 @@ public static class Emitter
         var unknown = NewTallies(count);
         var unparseable = NewTallies(count);
 
+        var columnKey = plan.ObjectKey as ColumnObjectKey;
+        var failSeen = columnKey?.Policy == DuplicateObjectPolicy.Fail ? new HashSet<string>(StringComparer.Ordinal) : null;
+        var keepNamer = columnKey?.Policy == DuplicateObjectPolicy.Keep ? new ColumnKeyNamer() : null;
+        var keepDuplicates = new DiagnosticTally();
+        var keepDisambiguations = new DiagnosticTally();
+        var recordIndex = 0;
+
         await foreach (var record in source.ReadAsync(cancellationToken).ConfigureAwait(false))
         {
+            string name;
+            if (columnKey is null)
+            {
+                name = record.Name; // row_index: the source-assigned row index (unchanged)
+            }
+            else
+            {
+                var key = record.Field(columnKey.Index);
+                if (!ObjectNames.IsUsable(key))
+                {
+                    // §5.4/§16.4/D-085: an empty / missing_token / whitespace / control-char key cell,
+                    // or a cell absent from a ragged row, cannot name an object — halt this conversion.
+                    diagnostics.Add(new BedrockDiagnostic(
+                        DiagnosticCode.ObjectKeyValueInvalid, DiagnosticSeverity.Error,
+                        $"The wide object key at record {recordIndex} is empty, whitespace-only, a missing token, absent, or contains a control character; it cannot name an object (§5.4).",
+                        new DiagnosticLocation(RecordIndex: recordIndex)));
+                    yield break;
+                }
+
+                switch (columnKey.Policy)
+                {
+                    case DuplicateObjectPolicy.Fail:
+                        if (!failSeen!.Add(key!))
+                        {
+                            // §6.1: a duplicate key means the key does not identify objects — stop.
+                            diagnostics.Add(new BedrockDiagnostic(
+                                DiagnosticCode.DuplicateObjectKey, DiagnosticSeverity.Error,
+                                $"The wide object key '{key}' at record {recordIndex} duplicates an earlier record; duplicate_object_policy = \"fail\" (§6.1).",
+                                new DiagnosticLocation(RecordIndex: recordIndex)));
+                            yield break;
+                        }
+
+                        name = key!;
+                        break;
+
+                    case DuplicateObjectPolicy.Keep:
+                        name = keepNamer!.Assign(key!, recordIndex, out var duplicate, out var disambiguated);
+                        if (duplicate)
+                        {
+                            keepDuplicates.Record(key!);
+                        }
+
+                        if (disambiguated)
+                        {
+                            keepDisambiguations.Record($"{key}→{name}");
+                        }
+
+                        break;
+
+                    default:
+                        // Wide dedupe is rejected by the planner until Slice F; reaching emit is a bug.
+                        throw new InvalidOperationException(
+                            "Wide column object key with duplicate_object_policy = \"dedupe\" reached emit; the planner rejects it until M3 Slice F.");
+                }
+            }
+
             var crossed = new SortedSet<int>();
             for (var i = 0; i < count; i++)
             {
                 Accumulate(plan.Attributes[i], record, crossed, unknown[i], unparseable[i]);
             }
 
-            yield return new EmittedObject(record.Name, [.. crossed]);
+            yield return new EmittedObject(name, [.. crossed]);
+            recordIndex++;
         }
 
-        // Aggregated data-phase diagnostics: one per attribute, in plan order, so the
-        // diagnostic sequence is deterministic (P-7) and bounded regardless of row count.
+        // Aggregated data-phase diagnostics: one per attribute, in plan order, so the diagnostic
+        // sequence is deterministic (P-7) and bounded regardless of row count. Reached only on normal
+        // completion — a structural yield break above (invalid/duplicate key) skips these, suppressing
+        // any pending keep warnings from the partial stream (matching the triple path).
         for (var i = 0; i < count; i++)
         {
             Flush(plan.Attributes[i], unparseable[i], DiagnosticCode.SourceValueUnparseable, UnparseableSeverity, diagnostics);
             Flush(plan.Attributes[i], unknown[i], DiagnosticCode.UnknownValueObserved, UnknownSeverity, diagnostics);
         }
+
+        // §6.1 keep: repeated cleaned keys aggregate to one DuplicateObjectKey (Warning); name-collision
+        // escalations aggregate to one ObjectKeyNameDisambiguated (Warning). Two conditions, two codes.
+        FlushKeep(keepDuplicates, DiagnosticCode.DuplicateObjectKey,
+            "object name(s) reused a cleaned key and were kept as separate objects", diagnostics);
+        FlushKeep(keepDisambiguations, DiagnosticCode.ObjectKeyNameDisambiguated,
+            "object name(s) were disambiguated to stay unique", diagnostics);
     }
 
     /// <summary>
@@ -288,6 +370,22 @@ public static class Emitter
             severity,
             $"{tally.Count} value(s) on attribute '{attribute.Name}' {reason} (e.g. {tally.Sample}).",
             new DiagnosticLocation(AttributeName: attribute.Name)));
+    }
+
+    // Aggregated keep object-key diagnostic (§6.1, D-083/D-085): one Warning with a bounded count +
+    // sample, flushed after the stream on normal completion (P-7/P-16). No location — the condition
+    // spans the object stream, not a single record or attribute.
+    private static void FlushKeep(
+        DiagnosticTally tally, DiagnosticCode code, string reason, ICollection<BedrockDiagnostic> diagnostics)
+    {
+        if (tally.Count == 0)
+        {
+            return;
+        }
+
+        diagnostics.Add(new BedrockDiagnostic(
+            code, DiagnosticSeverity.Warning,
+            $"{tally.Count} {reason} (e.g. {tally.Sample}) — duplicate_object_policy = \"keep\" (§6.1)."));
     }
 
     // Unknown categorical value severity (§10.6). "include" cannot reach Flush — RecordUnknown

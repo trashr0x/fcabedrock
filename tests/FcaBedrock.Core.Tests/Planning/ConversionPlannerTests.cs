@@ -364,18 +364,50 @@ public sealed class ConversionPlannerTests
         Assert.Equal(DiagnosticSeverity.Fatal, diagnostic.Severity);
     }
 
-    [Fact]
-    public void Plan_WhenObjectKeyColumnUnderWide_ThenReportsObjectKeyColumnNotImplementedV1()
+    [Theory]
+    [InlineData(DuplicateObjectPolicy.Fail)]
+    [InlineData(DuplicateObjectPolicy.Keep)]
+    public void Plan_WhenObjectKeyColumnFailOrKeepUnderWide_ThenAccepted(DuplicateObjectPolicy policy)
     {
-        // §5.4 / D-064: transitional until wide column keys execute at M3 — never
-        // a silent row_index fallback.
+        // §5.4/§6.1 (D-083): wide column keys with fail/keep execute at M3 Slice E — no transitional
+        // reject, no silent row_index fallback. The key column may sit anywhere in range.
         var spec = new BedrockSpec(
-            WideWithKey(new ColumnObjectKey(0, DuplicateObjectPolicy.Fail)), [SpecFixtures.Nominal("g", 1, ["b"])]);
+            WideWithKey(new ColumnObjectKey(0, policy)), [SpecFixtures.Nominal("g", 1, ["b"])]);
+
+        var result = ConversionPlanner.Plan(spec, new SourceSchema(2));
+
+        Assert.False(result.HasErrors);
+        Assert.DoesNotContain(result.Diagnostics, d => d.Code == DiagnosticCode.ObjectKeyColumnNotImplementedV1);
+        Assert.True(result.TryGetValue(out _));
+    }
+
+    [Fact]
+    public void Plan_WhenObjectKeyColumnDedupeUnderWide_ThenReportsObjectKeyColumnNotImplementedV1()
+    {
+        // §6.1 (D-083): dedupe's non-contiguous grouping lands at Slice F; until then it stays a
+        // transitional reject (narrowed from the old blanket wide-column guard).
+        var spec = new BedrockSpec(
+            WideWithKey(new ColumnObjectKey(0, DuplicateObjectPolicy.Dedupe)), [SpecFixtures.Nominal("g", 1, ["b"])]);
 
         var result = ConversionPlanner.Plan(spec, new SourceSchema(2));
 
         AssertFailsWith(result, DiagnosticCode.ObjectKeyColumnNotImplementedV1);
-        Assert.Contains("M3", Assert.Single(result.Diagnostics).Message, StringComparison.Ordinal);
+        Assert.Contains("Slice F", Assert.Single(result.Diagnostics).Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Plan_WhenObjectKeyColumnIndexOutOfRange_ThenObjectKeyBindingInvalid()
+    {
+        // D-085 taxonomy: an out-of-range key INDEX is a binding error caught at plan (the conversion
+        // pipeline resolves schema-less, so the resolver's upper-bound check cannot fire) — distinct
+        // from an absent data cell (ObjectKeyValueInvalid at emit). Interim phase placement (D-083).
+        var spec = new BedrockSpec(
+            WideWithKey(new ColumnObjectKey(5, DuplicateObjectPolicy.Fail)), [SpecFixtures.Nominal("g", 1, ["b"])]);
+
+        var result = ConversionPlanner.Plan(spec, new SourceSchema(2));
+
+        AssertFailsWith(result, DiagnosticCode.ObjectKeyBindingInvalid);
+        Assert.Contains("out of range", Assert.Single(result.Diagnostics).Message, StringComparison.Ordinal);
     }
 
     [Fact]

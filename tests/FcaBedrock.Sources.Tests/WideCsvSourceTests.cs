@@ -168,4 +168,30 @@ public sealed class WideCsvSourceTests
 
         Assert.Equal(["a", "b", "c"], schema.Header); // not ["a", "b", "c\r"]
     }
+
+    // --- Ragged rows (D-085): DisableColCountCheck tolerates short/long rows ---
+
+    [Fact]
+    public async Task ReadAsync_WhenRaggedShortRow_ThenShortRecordAndAbsentCellsNull()
+    {
+        // A row shorter than the header is not an error (no exception across the Sources seam); its
+        // absent trailing cells read as null (absent), and reading past the row width never throws.
+        var records = await ReadAllAsync(Source("a,b,c\nx,y", Wide()));
+
+        var record = Assert.Single(records);
+        Assert.Equal(2, record.FieldCount);
+        Assert.Equal("x", record.Field(0));
+        Assert.Equal("y", record.Field(1));
+        Assert.Null(record.Field(2)); // absent (beyond the short row) → null
+    }
+
+    [Fact]
+    public async Task ReadAsync_WhenRaggedLongRow_ThenExtraCellsAreRead()
+    {
+        var records = await ReadAllAsync(Source("a,b\nx,y,z", Wide()));
+
+        var record = Assert.Single(records);
+        Assert.Equal(3, record.FieldCount);
+        Assert.Equal("z", record.Field(2));
+    }
 }

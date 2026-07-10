@@ -2250,7 +2250,11 @@ enum members, and golden activation are the M3 *implementation* that follows.
     input (was the constant `"utf-8"`, D-077; UTF-8 specs keep their hash). The
     triple `ordering` field is **not** a fingerprint input — `subject_grouped` and
     `unordered` emit identical first-appearance bytes, so it is an acceptance/
-    streaming property, not a byte one.
+    streaming property, not a byte one. The subject key is a resolved `column` key
+    whose `duplicate_object_policy` is inapplicable (§6.1); the resolver pins it to
+    the inert `fail` so `defaults.duplicate_object_policy` never reaches the triple
+    key or perturbs its output fingerprint — otherwise two specs with identical
+    output bytes would hash differently (§14/D-077).
   - Conversion no longer rejects triple: `TripleSourceNotImplementedV1` retires.
 - **Why:** D-072 carried the basic triple binding but rejected conversion; M3 is the
   triple milestone. The audit surfaced three silent-wrong-output hazards left
@@ -2284,7 +2288,11 @@ enum members, and golden activation are the M3 *implementation* that follows.
     `#1`, `#2`, … (ascending integers from 1) and taking the first unused; all
     comparisons are ordinal (P-12). The assigned-name set is bounded object-name
     metadata (P-16); `.cxt` serializes these names and `.dat` ignores them, so the
-    guarantee is observable only in `.cxt`. `DuplicateObjectKey` (Warning).
+    guarantee is observable only in `.cxt`. A repeated cleaned key aggregates to one
+    `DuplicateObjectKey` (Warning); a candidate-name collision that forces the `#N`
+    escalation aggregates to a separate `ObjectKeyNameDisambiguated` (Warning) — one
+    condition, one code (D-085). Both flush once after the object stream and are
+    suppressed on a structural halt (an invalid key).
   - **`dedupe`**: rows sharing a key collapse to one object, later crosses union onto
     the first; `DuplicateObjectKey` (Info). Non-contiguous keys cannot stream in one
     pass without holding all crosses (P-16), so `dedupe` is built on the **shared
@@ -2302,7 +2310,16 @@ enum members, and golden activation are the M3 *implementation* that follows.
   - The key column is **not implicit** as an attribute but **may** be explicitly
     bound by an `[[attribute]]` source (§5.4 "excluded from conversion" → "not
     implicit"; D-033 source-repeat).
-  - `ObjectKeyColumnNotImplementedV1` retires.
+  - **Slice split.** Wide `fail`/`keep` execute at **Slice E**; `dedupe` (the shared
+    spool path) at **Slice F**. `ObjectKeyColumnNotImplementedV1` narrows to wide
+    `dedupe` at Slice E and retires fully at Slice F. The source stays key-agnostic
+    (row-index names); the emitter derives column-key names + policy from the plan.
+  - **Key-index phase (interim).** The resolved key index is range-checked at **plan**
+    (`ObjectKeyBindingInvalid`, upper bound) because the conversion pipeline resolves
+    schema-less, so the schema is first available at plan; negatives are already
+    rejected at resolve. This is a binding error, distinct from an absent data cell at
+    emit (`ObjectKeyValueInvalid`). A future schema-aware resolve/validate pass may move
+    the check back to spec-validate without changing the code.
 - **Why:** D-064 deferred wide column-key execution to M3 alongside the triple
   subject-derived key — one column-object-key machine. The audit found `dedupe` is
   the sole policy incompatible with single-pass streaming; its first-occurrence
@@ -2317,10 +2334,12 @@ enum members, and golden activation are the M3 *implementation* that follows.
   audit Round 2 — names are already held, uniqueness is affordable); sorting
   `dedupe` output (contradicts §6.1 "union onto the first");
   buffering all crosses for `dedupe` (violates P-16).
-- **Affects:** Core (`ColumnObjectKey` execution, planner guard removal),
-  Sources/Conversion (grouping/sort-merge/spool shared with D-082, `keep`
-  name-uniqueness), Diagnostics (`DuplicateObjectKey`, D-085); spec §5.4 / §6.1 /
-  §17 rule 4. Realizes D-064 / D-034; pairs with D-082.
+- **Affects:** Core (`ColumnObjectKey` execution, planner guard narrowed to `dedupe`
+  + key-index range-check), Sources (row-index-agnostic `WideCsvSource`, ragged
+  tolerance), Conversion (`keep` name-uniqueness via `ColumnKeyNamer`; grouping/
+  sort-merge/spool shared with D-082 for `dedupe`), Diagnostics (`DuplicateObjectKey`,
+  `ObjectKeyNameDisambiguated`, D-085); spec §5.4 / §6.1 / §16.4 / §17 rule 4. Realizes
+  D-064 / D-034; pairs with D-082.
 
 ### D-084 — Ordinal string comparison is the project-wide rule
 
@@ -2363,7 +2382,10 @@ enum members, and golden activation are the M3 *implementation* that follows.
     unusable object name; a newline would corrupt the line-structured `.cxt`,
     §18.1). `TripleColumnsNotDistinct` (Error, spec validate) — the **resolved** case
     where two logical roles (subject/predicate/value) point to the same physical
-    column.
+    column. `ObjectKeyNameDisambiguated` (Warning, aggregated, emit) — under wide
+    `keep`, an object's assigned name needed `#N` escalation because its candidate
+    collided with an already-assigned name (a literal key vs a generated name);
+    distinct from `DuplicateObjectKey` (repeated cleaned keys) — one condition, one code.
   - **Extend existing (no new code).** `SourceBindingInvalid` (Error, spec validate)
     additionally owns invalid triple `columns` **shape/addressing** — missing/partial
     role table, mixed index/name addressing, all-name without `has_header = true`,
@@ -2378,15 +2400,22 @@ enum members, and golden activation are the M3 *implementation* that follows.
   - **Severity.** Structural row/source errors are **Error** (halt this conversion,
     file usable next call — §16.2), matching `TripleSubjectNotContiguous` /
     `DuplicateObjectKey`; never `Fatal` (reserved for a corrupt/unrecoverable spec).
+  - **Interim phase (wide column-key index).** An out-of-range wide `column` key index
+    is a binding error (`ObjectKeyBindingInvalid`) but is checked at **plan** — the
+    conversion pipeline resolves schema-less, so the schema is first available there
+    (D-083). It stays distinct from a per-row absent key cell (`ObjectKeyValueInvalid`,
+    emit); a future schema-aware resolve pass may move it back to spec-validate, same code.
   - **Enum timing.** The §16.4 **table** is the documentation home; each
     `DiagnosticCode` **enum member** lands with its **emit site** at the implementing
-    slice ("grows per slice", P-3) — the two new codes above and the
-    already-spec'd-but-unimplemented `DuplicateObjectKey`,
+    slice ("grows per slice", P-3) — the new codes above
+    (`ObjectKeyValueInvalid`, `TripleColumnsNotDistinct`, `ObjectKeyNameDisambiguated`)
+    and the already-spec'd-but-unimplemented `DuplicateObjectKey`,
     `TripleSubjectNotContiguous`, `AttributeHasNoCrosses`, `ObjectHasNoCrosses`,
     `NoObjectsEmitted`, `NoFormalAttributes`.
-  - **Retirements.** `TripleSourceNotImplementedV1` (D-082) and
-    `ObjectKeyColumnNotImplementedV1` (D-083) are removed with their guards when M3
-    lands.
+  - **Retirements.** `TripleSourceNotImplementedV1` (D-082) is removed with its guard
+    when the triple source lands (Slice C). `ObjectKeyColumnNotImplementedV1` (D-083)
+    **narrows** to wide `dedupe` when `fail`/`keep` land (Slice E) and retires fully
+    when `dedupe` lands (Slice F).
 - **Why:** the audit (F-081 / NF-1) found the triple/column-key structural-error
   class had no diagnostic home, and that reusing value-level (`UnknownValueObserved`)
   or duplicate-key codes would break one-condition → one-owning-code (P-14).

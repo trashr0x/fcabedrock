@@ -1,12 +1,10 @@
 namespace FcaBedrock.Core.Spec;
 
 /// <summary>
-/// How object names are derived. Spec §5.4. A closed set; v1 executes
-/// <see cref="RowIndexObjectKey"/> only. <see cref="ColumnObjectKey"/> executes
-/// at M3 and <see cref="CompositeObjectKey"/> is a permanent v1 reject (D-064);
-/// both are resolved carriers in this slice — conversion currently fails loudly
-/// in <c>WideCsvSource</c>, and the plan-phase diagnostics (D-064) land with
-/// the M2 validation slice.
+/// How object names are derived. Spec §5.4. A closed set: <see cref="RowIndexObjectKey"/> and
+/// <see cref="ColumnObjectKey"/> execute (wide <c>fail</c>/<c>keep</c> at M3 Slice E; wide
+/// <c>dedupe</c> at Slice F; a triple <see cref="ColumnObjectKey"/> is the subject key), while
+/// <see cref="CompositeObjectKey"/> is a permanent v1 reject (D-024/D-064).
 /// </summary>
 public abstract record ObjectKey;
 
@@ -15,9 +13,9 @@ public sealed record RowIndexObjectKey : ObjectKey;
 
 /// <summary>
 /// Object names come from a source column, resolved to a 0-based index, with
-/// <paramref name="Policy"/> governing duplicate keys (§5.4/§6.1). Execution is
-/// M3 (D-064); until its plan-phase guard lands, conversion fails loudly in
-/// <c>WideCsvSource</c>.
+/// <paramref name="Policy"/> governing duplicate keys (§5.4/§6.1). Wide execution: <c>fail</c>/
+/// <c>keep</c> at M3 Slice E, <c>dedupe</c> at Slice F. Under a triple binding this is the resolved
+/// subject key (the policy is inapplicable and pinned to <c>Fail</c>, D-082/§6.1).
 /// </summary>
 /// <param name="Index">0-based index of the key column.</param>
 /// <param name="Policy">How duplicate keys are handled (§6.1; Fail is the spec default).</param>

@@ -201,8 +201,8 @@ taxonomy (new `ObjectKeyValueInvalid` / `TripleColumnsNotDistinct`, extended
 `SourceBindingInvalid`). `TripleSourceNotImplementedV1` retired with the
 subject_grouped reader (Slice C) — briefly replaced by a narrower transitional
 unordered guard, which itself retired when the `unordered` grouping landed
-(Slice D); `ObjectKeyColumnNotImplementedV1` retires with wide column keys
-(Slice E).
+(Slice D); `ObjectKeyColumnNotImplementedV1` narrows to wide `dedupe` when
+`fail`/`keep` land (Slice E) and retires when `dedupe` lands (Slice F).
 **Exit:** both triple orderings work; all three triple-input goldens match; wide column
 object keys convert with `duplicate_object_policy` honored.
 

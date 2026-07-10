@@ -22,6 +22,15 @@ public sealed class ObjectRecord
     /// <summary>The number of fields read for this record.</summary>
     public int FieldCount => _fields.Length;
 
-    /// <summary>The raw value at a 0-based column, or <see langword="null"/> when missing.</summary>
-    public string? Field(int index) => _fields[index];
+    /// <summary>
+    /// The raw value at a 0-based column, or <see langword="null"/> when the cell is missing
+    /// (empty / <c>missing_token</c>) <b>or absent</b> — an <paramref name="index"/> at or beyond
+    /// <see cref="FieldCount"/> is a ragged short row, whose mapped cell is treated as absent (§5.4,
+    /// D-085), not an error. A negative index is never a "missing cell" — it is a programmer error.
+    /// </summary>
+    public string? Field(int index)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(index);
+        return index < _fields.Length ? _fields[index] : null;
+    }
 }

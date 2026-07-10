@@ -256,10 +256,11 @@ public enum DiagnosticCode
     ObjectKeyCompositeNotImplementedV1,
 
     /// <summary>
-    /// The spec declares a wide <c>column</c> object key, whose execution is
-    /// sequenced with the triple object-key work; the planner rejects it rather
-    /// than silently falling back to row index. Spec §5.4 (D-064; transitional,
-    /// removed at M3).
+    /// The spec declares a wide <c>column</c> object key under <c>duplicate_object_policy =
+    /// "dedupe"</c>, whose non-contiguous grouping is not implemented in this milestone; the planner
+    /// rejects it rather than silently falling back to row index. Wide <c>fail</c>/<c>keep</c> execute
+    /// at M3 Slice E; only <c>dedupe</c> stays transitional. Spec §5.4/§6.1 (D-064/D-083; transitional,
+    /// removed at M3 Slice F).
     /// </summary>
     ObjectKeyColumnNotImplementedV1,
 
@@ -386,4 +387,22 @@ public enum DiagnosticCode
     /// the line-structured <c>.cxt</c>, §18.1). Error, per row. Spec §5.4 / §16.4 (D-085).
     /// </summary>
     ObjectKeyValueInvalid,
+
+    /// <summary>
+    /// A wide <c>column</c> object key repeats a cleaned key value, governed by
+    /// <c>duplicate_object_policy</c>: <c>fail</c> → <b>Error</b> naming the key + record index, stop;
+    /// <c>keep</c> → aggregated <b>Warning</b> (each row stays its own object, later occurrences get a
+    /// <c>#record-index</c> suffix). Does not apply to <c>row_index</c> or triple. Spec §5.4 / §6.1 /
+    /// §16.4 (D-034/D-083/D-085).
+    /// </summary>
+    DuplicateObjectKey,
+
+    /// <summary>
+    /// Under <c>keep</c>, a <c>column</c> object's assigned name needed <c>#N</c> escalation because
+    /// its candidate name (the cleaned key, or <c>&lt;key&gt;#&lt;record-index&gt;</c>) was already
+    /// assigned — a literal data key colliding with a generated name, or vice versa. Warning-only,
+    /// aggregated (count + a bounded <c>key→name</c> sample); distinct from <c>DuplicateObjectKey</c>,
+    /// which reports repeated cleaned keys. Spec §6.1 / §16.4 (D-083/D-085).
+    /// </summary>
+    ObjectKeyNameDisambiguated,
 }

@@ -26,7 +26,7 @@ public static class ConversionPlanner
         ArgumentNullException.ThrowIfNull(schema);
 
         var diagnostics = new List<BedrockDiagnostic>();
-        ValidateStatic(spec, diagnostics);
+        ValidateStatic(spec, schema, diagnostics);
         if (HasError(diagnostics))
         {
             return Diagnosed<ConversionPlan>.Failed(diagnostics);
@@ -200,12 +200,12 @@ public static class ConversionPlanner
         return index;
     }
 
-    private static void ValidateStatic(BedrockSpec spec, List<BedrockDiagnostic> diagnostics)
+    private static void ValidateStatic(BedrockSpec spec, SourceSchema schema, List<BedrockDiagnostic> diagnostics)
     {
         // The plan is ordering-independent (it does not carry binding.ordering): subject_grouped
         // and unordered plan identically and select their row stream at emit via
         // TripleRowSources.ForOrdering (§5.3 / §17 rule 4 / D-082). No ordering check here.
-        ValidateObjectKey(spec.Binding.ObjectKey, spec.Binding.Shape, diagnostics);
+        ValidateObjectKey(spec.Binding.ObjectKey, spec.Binding.Shape, schema, diagnostics);
 
         // Duplicate authored names (AttributeNameDuplicate) and value_labels keys
         // (ValueLabelKeyNotInDomain) are rejected at the resolve seam over the
@@ -320,11 +320,12 @@ public static class ConversionPlanner
         }
     }
 
-    // §5.4 / D-064 / D-082: object-key modes the v1 planner cannot execute are refused
-    // rather than silently falling back to row index. Shape-aware: a triple ColumnObjectKey
-    // is the subject-derived key, executed by the triple emit (D-082) — allowed; a wide
-    // ColumnObjectKey stays a transitional reject until it executes at M3 Slice E.
-    private static void ValidateObjectKey(ObjectKey objectKey, SourceShape shape, List<BedrockDiagnostic> diagnostics)
+    // §5.4 / D-064 / D-082 / D-083: object-key modes the v1 planner cannot execute are refused
+    // rather than silently falling back to row index. Shape-aware: a triple ColumnObjectKey is the
+    // subject-derived key, executed by the triple emit (D-082) — allowed; a wide ColumnObjectKey
+    // executes at M3 Slice E for fail/keep, with dedupe staying a transitional reject until Slice F.
+    private static void ValidateObjectKey(
+        ObjectKey objectKey, SourceShape shape, SourceSchema schema, List<BedrockDiagnostic> diagnostics)
     {
         switch (objectKey)
         {
@@ -336,12 +337,29 @@ public static class ConversionPlanner
                     "Composite object keys are not implemented in v1 (§5.4/§20)."));
                 break;
 
-            case ColumnObjectKey when shape == SourceShape.Wide:
-                // Transitional (D-064): wide column keys execute at M3 Slice E.
-                diagnostics.Add(new BedrockDiagnostic(
-                    DiagnosticCode.ObjectKeyColumnNotImplementedV1,
-                    DiagnosticSeverity.Error,
-                    "Wide column object keys are not implemented in this milestone (planned for M3, §5.4)."));
+            case ColumnObjectKey column when shape == SourceShape.Wide:
+                // Range-check the resolved key index (upper bound) here, not at resolve: the
+                // conversion pipeline resolves schema-less (the schema comes from the source), so the
+                // schema is first available at plan. Negative indices are already rejected at resolve.
+                // This is a binding-level error (ObjectKeyBindingInvalid), distinct from an absent data
+                // cell at emit (ObjectKeyValueInvalid) — the D-085 taxonomy. Interim placement: a future
+                // schema-aware resolve/validate pass may move it back to spec-validate, same code (D-083).
+                if (column.Index >= schema.ColumnCount)
+                {
+                    diagnostics.Add(new BedrockDiagnostic(
+                        DiagnosticCode.ObjectKeyBindingInvalid, DiagnosticSeverity.Error,
+                        $"object_key column index {column.Index} is out of range for a source with {schema.ColumnCount} columns (§5.4)."));
+                }
+
+                // Transitional (D-083): wide fail/keep execute at Slice E; dedupe's non-contiguous
+                // grouping (the D-082 shared spool) lands at Slice F.
+                if (column.Policy == DuplicateObjectPolicy.Dedupe)
+                {
+                    diagnostics.Add(new BedrockDiagnostic(
+                        DiagnosticCode.ObjectKeyColumnNotImplementedV1, DiagnosticSeverity.Error,
+                        "Wide column object keys with duplicate_object_policy = \"dedupe\" are not implemented in this milestone (planned for M3 Slice F, §6.1)."));
+                }
+
                 break;
         }
     }

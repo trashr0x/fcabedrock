@@ -95,6 +95,38 @@ public sealed class SpecFingerprintsTests
     }
 
     [Fact]
+    public void ComputeOutput_WhenTripleDuplicatePolicyVaries_ThenFingerprintsUnchanged()
+    {
+        // §6.1/D-077: duplicate_object_policy does not apply to triple (the subject is never a
+        // duplicate-object condition) and triple emit ignores it. It rides in the SHARED binding
+        // payload, so it must perturb neither output fingerprint (.cxt and .dat) — else two specs
+        // with identical output bytes would hash differently.
+        var none = TripleOutputFingerprints(null);
+
+        Assert.Equal(none, TripleOutputFingerprints(DuplicateObjectPolicy.Keep));
+        Assert.Equal(none, TripleOutputFingerprints(DuplicateObjectPolicy.Dedupe));
+    }
+
+    private static (string Cxt, string Dat) TripleOutputFingerprints(DuplicateObjectPolicy? defaultsPolicy)
+    {
+        var document = DocumentFixtures.Document(
+            [DocumentFixtures.Attribute("p", new PredicateSourceSection("pred", ValueType: null),
+                discretizer: new IdentityDiscretizerSection(), scale: new NominalScaleSection(),
+                declaredDomain: ["x", "y"])],
+            binding: DocumentFixtures.TripleBinding(
+                new TripleColumnsSection(new IndexColumnRef(0), new IndexColumnRef(1), new IndexColumnRef(2))),
+            defaults: defaultsPolicy is { } p ? new DefaultsSection(null, null, null, p, null, null) : null);
+
+        Assert.True(SpecResolver.Resolve(document).TryGetValue(out var spec));
+        Assert.True(ConversionPlanner.Plan(spec, new SourceSchema(3)).TryGetValue(out var plan));
+        var cxt = FingerprintCalculator.ComputeCxtOutputFingerprint(
+            plan, spec, new CxtFingerprintInputs(LabelStyle.Native, BinLabelUnicode: false, LineEnding.Lf, TrailingNewline: true));
+        var dat = FingerprintCalculator.ComputeDatOutputFingerprint(
+            plan, spec, new DatFingerprintInputs(BaseIndex: 1, LineEnding.Lf, NonemptyLineTrailingSpace: false, EmptyLineTrailingSpace: false));
+        return (cxt, dat);
+    }
+
+    [Fact]
     public void VerifyStored_WhenNoStoredFingerprints_ThenSilent()
     {
         var (document, spec, plan) = Pipeline(TomlFixtures.MiniMushroom, new SourceSchema(5));
