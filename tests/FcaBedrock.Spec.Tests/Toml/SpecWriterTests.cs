@@ -138,7 +138,10 @@ public sealed class SpecWriterTests
             new OutputSection(
                 BinLabelUnicode: false,
                 new CxtOutputSection(LineEndings.Lf, TrailingNewline: true, SizeAdvisoryBytes: 1_073_741_824),
-                new DatOutputSection(LineEndings.Crlf, BaseIndex: 0, NonemptyLineTrailingSpace: null, EmptyLineTrailingSpace: null)),
+                new DatOutputSection(LineEndings.Crlf, BaseIndex: 0, NonemptyLineTrailingSpace: null, EmptyLineTrailingSpace: null)
+                {
+                    TrailingNewline = false,
+                }),
             [],
             [],
             [
@@ -180,6 +183,7 @@ public sealed class SpecWriterTests
                 "",
                 "[output.dat]",
                 "line_endings = \"crlf\"",
+                "trailing_newline = false",
                 "base_index = 0",
                 "",
                 "[[attribute]]",

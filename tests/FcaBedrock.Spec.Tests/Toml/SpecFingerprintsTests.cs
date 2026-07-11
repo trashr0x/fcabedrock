@@ -80,6 +80,30 @@ public sealed class SpecFingerprintsTests
     }
 
     [Fact]
+    public void ComputeNative_WhenDatTrailingNewlineDisabled_ThenFeedsFalseAndDiffersFromDefault()
+    {
+        // D-087: an authored [output.dat] trailing_newline = false resolves into the dat
+        // fingerprint inputs and yields a distinct dat fingerprint from the default (true),
+        // whose native computation is unchanged (the omit-when-default backward-compat rule).
+        var (document, spec, plan) = Pipeline(MinimalSpec() + "\n[output.dat]\ntrailing_newline = false\n", new SourceSchema(1));
+        var (defaultDoc, defaultSpec, defaultPlan) = Pipeline(MinimalSpec(), new SourceSchema(1));
+
+        var computed = SpecFingerprints.ComputeNative(document, spec, plan);
+
+        Assert.Equal(
+            FingerprintCalculator.ComputeDatOutputFingerprint(
+                plan, spec,
+                new DatFingerprintInputs(BaseIndex: 1, LineEnding.Lf, NonemptyLineTrailingSpace: false, EmptyLineTrailingSpace: false)
+                {
+                    TrailingNewline = false,
+                }),
+            computed.DatOutputFingerprint);
+        Assert.NotEqual(
+            SpecFingerprints.ComputeNative(defaultDoc, defaultSpec, defaultPlan).DatOutputFingerprint,
+            computed.DatOutputFingerprint);
+    }
+
+    [Fact]
     public void ComputeNative_WhenOnlySizeAdvisoryDiffers_ThenFingerprintsAreIdentical()
     {
         // size_advisory_bytes changes a warning, never bytes — not a fingerprint

@@ -116,6 +116,18 @@ public static class FingerprintCalculator
         CanonicalJson.AppendString(builder, Spell(inputs.LineEnding));
         builder.Append(",\"nonempty_line_trailing_space\":");
         CanonicalJson.AppendBool(builder, inputs.NonemptyLineTrailingSpace);
+
+        // trailing_newline sorts last of the dat keys (alphabetical) and is emitted ONLY
+        // when disabled. Omitting it at the historical default (true) keeps every pinned
+        // .dat fingerprint byte-identical — the backward-compat contract (D-087) — while a
+        // false value produces a distinct hash. This deliberately diverges from the cxt
+        // twin (BuildCxtOutputJson), which has always emitted trailing_newline
+        // unconditionally; the divergence is what preserves the pre-D-087 dat pins.
+        if (!inputs.TrailingNewline)
+        {
+            builder.Append(",\"trailing_newline\":false");
+        }
+
         builder.Append("},\"fp_format\":1,\"kind\":\"dat_output\",\"schema\":");
         AppendSchemaAttributes(builder, plan);
         builder.Append(",\"shared\":");

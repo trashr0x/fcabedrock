@@ -46,6 +46,24 @@ public sealed class DatWriterTests
     }
 
     [Fact]
+    public async Task WriteAsync_WhenTrailingNewlineDisabled_ThenOnlyFinalTerminatorOmitted()
+    {
+        // D-087: TrailingNewline = false suppresses ONLY the final line terminator; the
+        // separators *between* lines are preserved (a bounded change, not a reflow). This is
+        // what the shape-derived v2-compat triple .dat rule rides on.
+        var objects = new[]
+        {
+            WriterFixtures.Object("0", 0, 1, 3, 5),
+            WriterFixtures.Object("1", 0, 2, 3, 7),
+            WriterFixtures.Object("2", 4),
+        };
+
+        var text = await WriterFixtures.WriteDatAsync(objects, WriterOptions.Native with { TrailingNewline = false });
+
+        Assert.Equal("1 2 4 6\n1 3 4 8\n5", text);
+    }
+
+    [Fact]
     public async Task WriteAsync_WhenBaseIndexZero_ThenIdsAreZeroBased()
     {
         var text = await WriterFixtures.WriteDatAsync(

@@ -225,7 +225,10 @@ public static class SpecComposer
             derived.LineEndings ?? baseSection.LineEndings,
             derived.BaseIndex ?? baseSection.BaseIndex,
             derived.NonemptyLineTrailingSpace ?? baseSection.NonemptyLineTrailingSpace,
-            derived.EmptyLineTrailingSpace ?? baseSection.EmptyLineTrailingSpace);
+            derived.EmptyLineTrailingSpace ?? baseSection.EmptyLineTrailingSpace)
+        {
+            TrailingNewline = derived.TrailingNewline ?? baseSection.TrailingNewline,
+        };
     }
 
     /// <summary>

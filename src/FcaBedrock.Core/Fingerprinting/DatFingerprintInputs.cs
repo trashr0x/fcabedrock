@@ -13,4 +13,13 @@ public sealed record DatFingerprintInputs(
     int BaseIndex,
     LineEnding LineEnding,
     bool NonemptyLineTrailingSpace,
-    bool EmptyLineTrailingSpace);
+    bool EmptyLineTrailingSpace)
+{
+    /// <summary>
+    /// Whether the <c>.dat</c> file ends with a final newline (§18.2). Additive with a
+    /// default of <c>true</c>, the historical behavior, so the positional constructor is
+    /// unchanged and every existing construction preserves its byte-identical fingerprint
+    /// (D-087). Encoded into the canonical JSON only when <c>false</c>.
+    /// </summary>
+    public bool TrailingNewline { get; init; } = true;
+}

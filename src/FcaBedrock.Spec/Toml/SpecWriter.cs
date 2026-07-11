@@ -288,6 +288,11 @@ public static class SpecWriter
                 builder.Key("line_endings", TomlLiteral.FormatString(TomlSpellings.ToToml(TomlSpellings.LineEndingKinds, lineEndings)));
             }
 
+            if (dat.TrailingNewline is { } trailingNewline)
+            {
+                builder.Key("trailing_newline", TomlLiteral.FormatBool(trailingNewline));
+            }
+
             if (dat.BaseIndex is { } baseIndex)
             {
                 builder.Key("base_index", TomlLiteral.FormatLong(baseIndex));

@@ -121,7 +121,10 @@ internal static class SpecSectionReaders
             cursor.TakeEnum("line_endings", TomlSpellings.LineEndingKinds),
             cursor.TakeInt("base_index"),
             cursor.TakeBool("nonempty_line_trailing_space"),
-            cursor.TakeBool("empty_line_trailing_space"));
+            cursor.TakeBool("empty_line_trailing_space"))
+        {
+            TrailingNewline = cursor.TakeBool("trailing_newline"),
+        };
         cursor.Finish();
         return section;
     }

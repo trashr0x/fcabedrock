@@ -78,18 +78,23 @@ vertical slices, not waterfall phases — each should leave the system working.
 > and `principles.md` updated. This landing is docs-only and byte-/fingerprint-neutral
 > (no enum members, no `FixtureCase.Active` change, no production code).
 >
-> **M3 implementation has landed through Slice F.** Slices C–D added the triple reader
-> and both orderings (`subject_grouped` single-pass; `unordered` first-appearance
-> grouping); Slice E added wide `column` `fail`/`keep`; **Slice F** landed wide `dedupe`
-> on a **bounded shared grouping/spool backend** (spill runs + bounded-fan-in merge, the
-> two-channel storage-failure model, the public `EmitReplaySession`, and the `.cxt`
+> **M3 is complete (Slices C–G).** Slices C–D added the triple reader and both orderings
+> (`subject_grouped` single-pass; `unordered` first-appearance grouping); Slice E added wide
+> `column` `fail`/`keep`; **Slice F** landed wide `dedupe` on a **bounded shared
+> grouping/spool backend** (spill runs + bounded-fan-in merge, the two-channel
+> storage-failure model, the public `EmitReplaySession`, and the `.cxt`
 > object-name-sequence invariant), migrated triple `unordered` onto that backend with
 > `EmitTripleAsync` owning ordering from a new `SourceExecution` plan carrier, and
-> **retired `ObjectKeyColumnNotImplementedV1` entirely** (D-082…D-085). `dotnet test` is
-> green (756 tests; one platform-gated confidentiality test skips off its OS).
-> **M3 is not yet complete** — **Slice G** still owns triple-golden activation
-> (`FixtureCase.Triple(...)`, the three `mini-*_triples` goldens), the final repeatability
-> verification, and the final stale-reject audit.
+> **retired `ObjectKeyColumnNotImplementedV1` entirely** (D-082…D-085). **Slice G** activated
+> the three `mini-*_triples` goldens in the harness via `FixtureCase.Triple(...)` and a
+> shape-aware golden orchestrator (a replay session for `.cxt`, single-pass `.dat`), which
+> required **shape-aware `.bed` migration** (D-086: triple attributes bind by predicate name)
+> and a **symmetrical `[output.dat].trailing_newline`** control with a shape-derived v2-compat
+> `.dat` final-newline rule (D-087). All three unordered triple goldens are byte-identical to
+> v2 (verified repeatable), the final stale-reject audit is clean, and every pinned fingerprint
+> and canonical-byte baseline is preserved. `dotnet test` is green (777 tests: 776 passed, one
+> platform-gated confidentiality test skipped off its OS). **M4 (discretizers beyond manual
+> cuts) is next** — no M4 work has started.
 
 ## Milestones
 
@@ -215,9 +220,12 @@ subject_grouped reader (Slice C) — briefly replaced by a narrower transitional
 unordered guard, which itself retired when the `unordered` grouping landed
 (Slice D); `ObjectKeyColumnNotImplementedV1` narrowed to wide `dedupe` when
 `fail`/`keep` landed (Slice E) and retired when `dedupe` landed (Slice F, on the
-bounded shared grouping/spool backend). **Slices C–F are implemented; Slice G** still
-owns triple-golden activation, `FixtureCase.Triple(...)`, final repeatability, and the
-stale-reject audit.
+bounded shared grouping/spool backend). **Slices C–G are implemented: Slice G** activated
+the three `mini-*_triples` goldens (`FixtureCase.Triple(...)`, a shape-aware golden
+orchestrator), which required **shape-aware `.bed` migration** (D-086: triple attributes
+bind by predicate name) and a **symmetrical `[output.dat].trailing_newline`** control with a
+shape-derived v2-compat `.dat` final-newline rule (D-087), plus the final repeatability
+verification and stale-reject audit. **M3 is complete.**
 **Exit:** both triple orderings work; all three triple-input goldens match; wide column
 object keys convert with `duplicate_object_policy` honored.
 

@@ -7,8 +7,9 @@ namespace FcaBedrock.Core.Spec;
 /// interleaved subjects; both emit objects in first-appearance order of each
 /// cleaned subject (D-082, Slice A), so ordering is deliberately <em>not</em> a
 /// fingerprint input. The document layer reuses this enum directly (as it does
-/// <see cref="SourceShape"/> / <see cref="SourceValueType"/>). Execution lands
-/// with the triple reader (M3, Slice C/D).
+/// <see cref="SourceShape"/> / <see cref="SourceValueType"/>). Both orderings execute
+/// at emit (emitter-owned, D-082): <see cref="SubjectGrouped"/> as the single-pass fast
+/// path, <see cref="Unordered"/> through first-appearance grouping.
 /// </summary>
 public enum TripleOrdering
 {

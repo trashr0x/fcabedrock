@@ -56,8 +56,8 @@ public sealed class FingerprintCalculatorTests
 
     private static DatFingerprintInputs NativeDat(
         int baseIndex = 1, LineEnding lineEnding = LineEnding.Lf,
-        bool nonemptySpace = false, bool emptySpace = false) =>
-        new(baseIndex, lineEnding, nonemptySpace, emptySpace);
+        bool nonemptySpace = false, bool emptySpace = false, bool trailingNewline = true) =>
+        new(baseIndex, lineEnding, nonemptySpace, emptySpace) { TrailingNewline = trailingNewline };
 
     private static string Sha256Of(string canonical) =>
         "sha256:" + Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(canonical)));
@@ -83,6 +83,16 @@ public sealed class FingerprintCalculatorTests
                 + "\"nonempty_line_trailing_space\":false},\"fp_format\":1,\"kind\":\"dat_output\",\"schema\":"
                 + GoldenSchemaArray + ",\"shared\":" + GoldenShared + "}",
             FingerprintCalculator.BuildDatOutputJson(Plan(GoldenSpec()), GoldenSpec(), NativeDat()));
+
+    [Fact]
+    public void BuildDatOutputJson_WhenTrailingNewlineDisabled_ThenEncodesTrailingNewlineFalse() =>
+        // D-087: the key is emitted (alphabetically last) ONLY when disabled; at the default
+        // it is omitted, which is what keeps the pinned bytes above byte-identical.
+        Assert.Equal(
+            "{\"dat\":{\"base_index\":1,\"empty_line_trailing_space\":false,\"line_endings\":\"lf\","
+                + "\"nonempty_line_trailing_space\":false,\"trailing_newline\":false},\"fp_format\":1,\"kind\":\"dat_output\",\"schema\":"
+                + GoldenSchemaArray + ",\"shared\":" + GoldenShared + "}",
+            FingerprintCalculator.BuildDatOutputJson(Plan(GoldenSpec()), GoldenSpec(), NativeDat(trailingNewline: false)));
 
     [Fact]
     public void ComputeSchemaFingerprint_WhenGoldenPlan_ThenSha256OfThePinnedBytes()
@@ -267,6 +277,7 @@ public sealed class FingerprintCalculatorTests
         Assert.NotEqual(baseline, FingerprintCalculator.ComputeDatOutputFingerprint(plan, spec, NativeDat(lineEnding: LineEnding.Crlf)));
         Assert.NotEqual(baseline, FingerprintCalculator.ComputeDatOutputFingerprint(plan, spec, NativeDat(nonemptySpace: true)));
         Assert.NotEqual(baseline, FingerprintCalculator.ComputeDatOutputFingerprint(plan, spec, NativeDat(emptySpace: true)));
+        Assert.NotEqual(baseline, FingerprintCalculator.ComputeDatOutputFingerprint(plan, spec, NativeDat(trailingNewline: false)));
     }
 
     [Fact]

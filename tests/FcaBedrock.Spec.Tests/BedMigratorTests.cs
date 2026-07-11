@@ -17,6 +17,13 @@ public sealed class BedMigratorTests
         new(SourceShape.Wide, Encoding: null, delimiter, QuoteChar: null, hasHeader,
             locale, missingToken, Ordering: null, Columns: null, ObjectKey: null);
 
+    // The triple analogue: unordered first-appearance (the v2 triple goldens are
+    // subject-interleaved, D-082), headerless, normative 0/1/2 columns (Columns: null).
+    private static BindingSection TripleBinding(
+        char delimiter = ',', bool hasHeader = false, string? missingToken = null, string? locale = null) =>
+        new(SourceShape.Triple, Encoding: null, delimiter, QuoteChar: null, hasHeader,
+            locale, missingToken, Ordering: TripleOrdering.Unordered, Columns: null, ObjectKey: null);
+
     private static BedDocument ReadBed(string text)
     {
         Assert.True(BedReader.Read(text).TryGetValue(out var document));
@@ -128,6 +135,36 @@ public sealed class BedMigratorTests
             Assert.Null(source.Name);
             Assert.Null(source.ValueType);
         });
+    }
+
+    [Fact]
+    public void Migrate_WhenTripleBinding_ThenSourcesArePredicateNamedByAttribute()
+    {
+        // D-086: under a triple binding an attribute binds by predicate name, not a
+        // column index — the migrator authors a PredicateSourceSection carrying the
+        // v2 attribute name (spec §19.3). Covers the o/c/n/b type families via Bare.
+        var document = MigrateOk(BedFixtures.EmploymentOrdinalBed, TripleBinding());
+
+        Assert.All(document.Attributes, a =>
+        {
+            var source = Assert.IsType<PredicateSourceSection>(a.Source);
+            Assert.Equal(a.Name, source.Name);
+            Assert.Null(source.ValueType);
+        });
+    }
+
+    [Fact]
+    public void Migrate_WhenTripleBindingResolved_ThenPredicateSourcesResolveClean()
+    {
+        // The migrated triple document resolves through the one seam and each predicate
+        // source becomes a Core PredicateSource keyed by the attribute name (D-086). A
+        // wide-shaped column source would instead be SourceBindingInvalid here (§10.2),
+        // which is why migration must be shape-aware.
+        var document = MigrateOk(BedFixtures.MushroomBed, TripleBinding());
+        var spec = ResolveOk(document);
+
+        Assert.Equal("bruises?", Assert.IsType<PredicateSource>(spec.Attributes[1].Source).Predicate);
+        Assert.Equal("gill-size", Assert.IsType<PredicateSource>(spec.Attributes[2].Source).Predicate);
     }
 
     // --- type maps ---------------------------------------------------------

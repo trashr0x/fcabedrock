@@ -491,6 +491,7 @@ size_advisory_bytes = 1_073_741_824          # default — warn when output woul
 
 [output.dat]
 line_endings              = "lf"             # default — "lf" | "crlf"
+trailing_newline          = true             # default — emit the final line terminator (see §18.2)
 base_index                = 1                # default — 1 | 0  (FIMI is 1-based; 0 for ML conventions)
 nonempty_line_trailing_space = false         # default — no trailing space after the last item id
 empty_line_trailing_space = false            # default — bare empty line for objects with no crosses
@@ -518,10 +519,12 @@ Both knobs exist for callers whose FIMI consumer has a specific expectation.
 **v2 byte-equality mode** is *not* a spec setting — it's a CLI flag
 (`--v2-compat`) on the convert command that overrides `[output]` to v2's exact
 byte conventions. The complete set of v2-isms, all behind this one flag: CRLF
-line endings (`.cxt` and `.dat`), `30to<40`-style bin labels, and a trailing
-space on every non-empty `.dat` line. Keeping every v2-ism behind the single
-flag means the vNext default output is uniformly clean; v2 reproduction is one
-switch, not a scattering of legacy defaults.
+line endings (`.cxt` and `.dat`), `30to<40`-style bin labels, a trailing
+space on every non-empty `.dat` line, and a **shape-dependent `.dat` final
+newline** — present for a wide source, absent for a triple source (v2's triple
+converter wrote no final `.dat` line terminator; §18.2, D-087). Keeping every
+v2-ism behind the single flag means the vNext default output is uniformly clean;
+v2 reproduction is one switch, not a scattering of legacy defaults.
 
 ## 9. Templates and matchers
 
@@ -1491,8 +1494,11 @@ bytes:
   `bin_label_unicode`, and the `.cxt` writer settings (line endings,
   `trailing_newline`).
 - **`dat_output_fingerprint` adds** only the `.dat` writer settings: `base_index`,
-  line endings, and trailing-space settings. Rendered names and `.cxt`-only
-  settings never affect `.dat` (it carries numeric IDs, not names).
+  line endings, trailing-space settings, and `trailing_newline` (§18.2). The
+  `trailing_newline` key is encoded into the canonical JSON only when disabled
+  (`false`); omitting it at the default `true` keeps every pre-D-087 stored `.dat`
+  hash byte-identical. Rendered names and `.cxt`-only settings never affect `.dat`
+  (it carries numeric IDs, not names).
 
 Two specs with the same `cxt_output_fingerprint` (resp. `dat_output_fingerprint`)
 produce byte-identical `.cxt` (resp. `.dat`) for identical input. Provenance (§4)
@@ -1894,6 +1900,16 @@ empty lines defaults to false (no spurious whitespace); set
 **Line endings**: `\n` by default. `\r\n` available via `[output.dat]
 line_endings = "crlf"` or `--v2-compat`.
 
+**Trailing newline** after the last line: emitted by default, like `.cxt`
+(§18.1). Set `[output.dat] trailing_newline = false` to suppress **only** the
+final line terminator; the single-space separators *between* lines are
+unaffected. Under `--v2-compat` the final `.dat` newline is **shape-dependent**:
+present for a wide source (matching v2's wide converter) but **absent for a
+triple source** — v2's triple converter wrote no final `.dat` line terminator.
+The conversion orchestrator applies this v2-compat exception per resolved shape;
+it is not a separate CLI flag, and native output ignores shape and honors
+`trailing_newline` (D-087).
+
 ## 19. Worked examples
 
 ### 19.1 mini-mushroom (v2 compat)
@@ -2158,8 +2174,10 @@ number, e.g. "§21-item-16" in D-051).
 4. **FIMI `.dat` trailing space** → both non-empty and empty lines default to
    no trailing space (clean modern output). Configurable via `[output.dat]
    nonempty_line_trailing_space` and `empty_line_trailing_space`. All v2-isms
-   (CRLF, `30to<40` labels, trailing space) live behind `--v2-compat` so the
-   native default is uniformly clean.
+   (CRLF, `30to<40` labels, trailing space, the shape-dependent `.dat` final
+   newline) live behind `--v2-compat` so the native default is uniformly clean.
+   The `.dat` **final newline** itself defaults to present (`[output.dat]
+   trailing_newline = true`, §18.2).
 
 5. **`.cxt` size advisory threshold** → 1 GB. Configurable via
    `[output.cxt] size_advisory_bytes`. Subject to revision once we

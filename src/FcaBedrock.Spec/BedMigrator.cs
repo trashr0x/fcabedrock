@@ -11,8 +11,10 @@ namespace FcaBedrock.Spec;
 /// Maps a parsed <see cref="BedDocument"/> plus a caller-supplied
 /// <see cref="BindingSection"/> to a presence-tracked <see cref="SpecDocument"/>
 /// (D-009 "load v2, save as TOML"; D-079). The v2 type codes become
-/// (discretizer, scale) section pairs (D-002); attributes bind positionally,
-/// matching v2. The migrator carries what the document model can represent and
+/// (discretizer, scale) section pairs (D-002); a wide binding binds each attribute
+/// to its positional column, a triple binding binds it to the predicate named for
+/// it (§19.3/D-086) — matching v2's tabular and 3-column loads. The migrator
+/// carries what the document model can represent and
 /// defers semantic validation to the resolve seam (D-067) — only transcription
 /// failures diagnose here. <c>include = false</c> attributes park their full
 /// config (D-049); unrecoverable parked config degrades to a bare excluded
@@ -52,7 +54,7 @@ public static class BedMigrator
         var attributes = new List<AttributeSection>(document.AttributeCount);
         for (var i = 0; i < document.AttributeCount; i++)
         {
-            MigrateAttribute(document, i, missingToken, mode, diagnostics, attributes);
+            MigrateAttribute(document, i, binding.Shape, missingToken, mode, diagnostics, attributes);
         }
 
         var spec = new SpecSection(
@@ -73,13 +75,14 @@ public static class BedMigrator
     private static void MigrateAttribute(
         BedDocument document,
         int index,
+        SourceShape? shape,
         string? missingToken,
         ScalingMode mode,
         List<BedrockDiagnostic> diagnostics,
         List<AttributeSection> attributes)
     {
         var include = document.Convert[index];
-        var mapped = MapConfig(document, index, missingToken, mode);
+        var mapped = MapConfig(document, index, shape, missingToken, mode);
 
         if (mapped.Section is { } section)
         {
@@ -105,14 +108,14 @@ public static class BedMigrator
             DiagnosticCode.BedParkedConfigDropped,
             $"Excluded attribute '{document.Names[index]}': v2 config was not migrated ({reasons}) — parked bare (include = false).",
             document.Names[index]));
-        attributes.Add(Bare(document, index) with { Include = false });
+        attributes.Add(Bare(document, index, shape) with { Include = false });
     }
 
     // Maps the v2 config to a full attribute section, include-agnostically; a null
     // Section means the config cannot be transcribed and Diagnostics holds the
     // Error(s). Diagnostics alongside a non-null Section are Warnings.
     private static MappedAttribute MapConfig(
-        BedDocument document, int index, string? missingToken, ScalingMode mode)
+        BedDocument document, int index, SourceShape? shape, string? missingToken, ScalingMode mode)
     {
         var name = document.Names[index];
         var type = document.Types[index];
@@ -121,11 +124,11 @@ public static class BedMigrator
 
         return type switch
         {
-            "c" => MapCategorical(document, index, missingToken),
-            "b" => MapDichotomic(document, index, missingToken),
-            "o" => MapNumericCuts(document, index, mode),
+            "c" => MapCategorical(document, index, shape, missingToken),
+            "b" => MapDichotomic(document, index, shape, missingToken),
+            "o" => MapNumericCuts(document, index, shape, mode),
             "n" => new MappedAttribute(
-                Bare(document, index) with
+                Bare(document, index, shape) with
                 {
                     Discretizer = new OrderedCutsDiscretizerSection(
                         categories, CutTokens(values, out var ends), ends),
@@ -143,11 +146,11 @@ public static class BedMigrator
         };
     }
 
-    private static MappedAttribute MapCategorical(BedDocument document, int index, string? missingToken)
+    private static MappedAttribute MapCategorical(BedDocument document, int index, SourceShape? shape, string? missingToken)
     {
         var (domain, labels, missing, warnings) = SplitMissingToken(document, index, missingToken);
         return new MappedAttribute(
-            Bare(document, index) with
+            Bare(document, index, shape) with
             {
                 Discretizer = new IdentityDiscretizerSection(),
                 Scale = new NominalScaleSection(),
@@ -158,7 +161,7 @@ public static class BedMigrator
             warnings);
     }
 
-    private static MappedAttribute MapDichotomic(BedDocument document, int index, string? missingToken)
+    private static MappedAttribute MapDichotomic(BedDocument document, int index, SourceShape? shape, string? missingToken)
     {
         var name = document.Names[index];
         var trueValue = document.Values[index][0];
@@ -174,7 +177,7 @@ public static class BedMigrator
 
         var (domain, labels, missing, warnings) = SplitMissingToken(document, index, missingToken);
         return new MappedAttribute(
-            Bare(document, index) with
+            Bare(document, index, shape) with
             {
                 Discretizer = new IdentityDiscretizerSection(),
                 Scale = new DichotomicScaleSection(trueValue),
@@ -185,7 +188,7 @@ public static class BedMigrator
             warnings);
     }
 
-    private static MappedAttribute MapNumericCuts(BedDocument document, int index, ScalingMode mode)
+    private static MappedAttribute MapNumericCuts(BedDocument document, int index, SourceShape? shape, ScalingMode mode)
     {
         var name = document.Names[index];
         var tokens = CutTokens(document.Values[index], out var ends);
@@ -209,7 +212,7 @@ public static class BedMigrator
         }
 
         return new MappedAttribute(
-            Bare(document, index) with
+            Bare(document, index, shape) with
             {
                 Discretizer = new ManualCutsDiscretizerSection(cuts, ends),
                 Scale = ScaleFor(mode),
@@ -263,12 +266,16 @@ public static class BedMigrator
         return (domain, labels.Count > 0 ? labels : null, missing, warnings);
     }
 
-    // Name + positional source + the include-independent restrict_to (§10.1/D-057);
-    // everything else unauthored. The full maps build on this via `with`.
-    private static AttributeSection Bare(BedDocument document, int index) =>
+    // Name + shape-appropriate source + the include-independent restrict_to
+    // (§10.1/D-057); everything else unauthored. The full maps build on this via
+    // `with`. A wide (or shape-absent) binding binds by positional column; a triple
+    // binding binds by predicate name — the v2 attribute name (§19.3/D-086).
+    private static AttributeSection Bare(BedDocument document, int index, SourceShape? shape) =>
         new(
             Name: document.Names[index],
-            Source: new ColumnSourceSection(Index: index, Name: null, ValueType: null),
+            Source: shape == SourceShape.Triple
+                ? new PredicateSourceSection(Name: document.Names[index], ValueType: null)
+                : new ColumnSourceSection(Index: index, Name: null, ValueType: null),
             Description: null,
             Include: null,
             Template: null,

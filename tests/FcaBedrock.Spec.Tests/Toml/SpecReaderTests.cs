@@ -291,11 +291,11 @@ public sealed class SpecReaderTests
         var document = ReadOk(
             "[output]\nbin_label_unicode = true\n" +
             "[output.cxt]\nline_endings = \"crlf\"\ntrailing_newline = false\nsize_advisory_bytes = 0\n" +
-            "[output.dat]\nline_endings = \"lf\"\nbase_index = 0\nnonempty_line_trailing_space = true\nempty_line_trailing_space = true\n");
+            "[output.dat]\nline_endings = \"lf\"\ntrailing_newline = false\nbase_index = 0\nnonempty_line_trailing_space = true\nempty_line_trailing_space = true\n");
 
         Assert.True(document.Output?.BinLabelUnicode);
         Assert.Equal(new CxtOutputSection(LineEndings.Crlf, false, 0), document.Output?.Cxt);
-        Assert.Equal(new DatOutputSection(LineEndings.Lf, 0, true, true), document.Output?.Dat);
+        Assert.Equal(new DatOutputSection(LineEndings.Lf, 0, true, true) { TrailingNewline = false }, document.Output?.Dat);
     }
 
     [Fact]

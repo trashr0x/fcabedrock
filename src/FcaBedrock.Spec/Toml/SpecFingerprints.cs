@@ -46,7 +46,10 @@ public static class SpecFingerprints
             output?.Dat?.BaseIndex ?? 1,
             ToLineEnding(output?.Dat?.LineEndings ?? LineEndings.Lf),
             output?.Dat?.NonemptyLineTrailingSpace ?? false,
-            output?.Dat?.EmptyLineTrailingSpace ?? false);
+            output?.Dat?.EmptyLineTrailingSpace ?? false)
+        {
+            TrailingNewline = output?.Dat?.TrailingNewline ?? true,
+        };
 
         return new ComputedFingerprints(
             FingerprintCalculator.ComputeSchemaFingerprint(plan),

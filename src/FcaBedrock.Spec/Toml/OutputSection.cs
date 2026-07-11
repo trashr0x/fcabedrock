@@ -32,7 +32,16 @@ public sealed record DatOutputSection(
     LineEndings? LineEndings,
     int? BaseIndex,
     bool? NonemptyLineTrailingSpace,
-    bool? EmptyLineTrailingSpace);
+    bool? EmptyLineTrailingSpace)
+{
+    /// <summary>
+    /// Whether the file ends with a final newline (§18.2, default true); null when
+    /// absent. The symmetrical twin of <see cref="CxtOutputSection.TrailingNewline"/>
+    /// (D-087) — an additive property, so the positional constructor and deconstruction
+    /// are unchanged and existing call sites keep compiling.
+    /// </summary>
+    public bool? TrailingNewline { get; init; }
+}
 
 /// <summary>
 /// Line-ending conventions for output files (§8). A document-model twin:

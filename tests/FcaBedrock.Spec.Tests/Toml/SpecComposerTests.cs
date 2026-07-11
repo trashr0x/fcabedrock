@@ -239,6 +239,23 @@ public sealed class SpecComposerTests
     }
 
     [Fact]
+    public void Compose_WhenDatTrailingNewlineOnlyInBase_ThenDerivedInheritsIt()
+    {
+        // §13 rule 6 leaves-merge per field: the D-087 dat trailing_newline composes like
+        // its cxt twin — a derived that overrides only base_index still inherits the base's
+        // trailing_newline.
+        var source = new InMemorySpecTextSource().Add("base.toml",
+            "[spec]\nversion = 1\n[output.dat]\ntrailing_newline = false\nbase_index = 0\n");
+        var root = Read(
+            "[spec]\nversion = 1\nextends = \"base.toml\"\n[output.dat]\nbase_index = 1\n");
+
+        var composed = ComposeOk(root, "root.toml", source);
+
+        Assert.False(composed.Output?.Dat?.TrailingNewline); // inherited from base
+        Assert.Equal(1, composed.Output?.Dat?.BaseIndex);     // overridden by derived
+    }
+
+    [Fact]
     public void Compose_WhenDerivedOverridesAttribute_ThenPositionAndOrderStable()
     {
         // D-052: base [a, b, c]; derived overrides b, adds d → [a, b', c, d].

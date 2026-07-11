@@ -11,7 +11,7 @@ namespace FcaBedrock.Spec.Toml;
 /// <param name="Encoding">Source text encoding (§5.1, default <c>"utf-8"</c>); resolved/validated at the seam (D-082).</param>
 /// <param name="Delimiter">Field delimiter (§5.1, default <c>','</c>).</param>
 /// <param name="QuoteChar">Quote character (§5.1, default <c>'"'</c>).</param>
-/// <param name="HasHeader">Whether the first row is a header (§5.1, default true).</param>
+/// <param name="HasHeader">Whether the first row is a header (§5.1; the default is shape-specific — wide true, triple false).</param>
 /// <param name="Locale">Locale for data parsing (§5.1, default <c>"invariant"</c>).</param>
 /// <param name="MissingToken">Token marking a missing value (§5.1, default <c>"?"</c>).</param>
 /// <param name="Ordering">Triple row ordering (§5.3); triple shape only.</param>

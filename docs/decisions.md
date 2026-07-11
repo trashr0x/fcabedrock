@@ -142,6 +142,8 @@ superseded or refined. A new entry MUST add its line here.
 - D-083 — Wide `column` object-key execution + `duplicate_object_policy`; `dedupe` on the shared sort-merge path (realizes D-064; retires `ObjectKeyColumnNotImplementedV1`)
 - D-084 — Ordinal string comparison is the project-wide rule (adds principle P-12)
 - D-085 — M3 diagnostic taxonomy: structural triple/column-key codes, severities, retirements (refines D-067)
+- D-086 — Shape-aware `.bed` migration sources: wide → column, triple → predicate by attribute name (refines D-079)
+- D-087 — Symmetrical `[output.dat].trailing_newline` + shape-derived v2 triple `.dat` final-newline compat (new fingerprint input, backward-compatible encoding)
 
 Spec-field defaults are recorded in spec §21 items 1–11 (see the final section
 of this file).
@@ -2522,6 +2524,90 @@ enum members, and golden activation are the M3 *implementation* that follows.
   the six deferred codes, at their emit sites), Core / Conversion / Sources (emit
   sites), Spec (`SpecResolver` shape checks); spec §16.4. Refines D-067; pairs with
   D-082 / D-083.
+
+---
+
+### D-086 — Shape-aware `.bed` migration sources
+
+- **Status:** accepted (M3, Slice G; refines D-079)
+- **Date:** 2026-07-11
+- **Decision:** the one-way v2 migrator (`BedMigrator`) authors an attribute
+  `source` per the binding **shape**: a wide (or shape-absent) binding keeps the
+  positional `ColumnSourceSection(Index: i)` byte-for-byte, while a **triple**
+  binding authors `PredicateSourceSection(Name: <v2 attribute name>)` — the
+  attribute's own name is the predicate it binds (spec §19.3). The shape is
+  threaded through the private `MigrateAttribute → MapConfig → Map* → Bare`
+  chain from `binding.Shape`; `Migrate`'s public signature is unchanged and no
+  diagnostic is added or renamed. This closes the only gap that kept the
+  sanctioned migrate→resolve route from expressing the three v2 triple goldens:
+  a migrated triple spec now resolves to a Core `PredicateSource` instead of
+  dead-ending at `SourceBindingInvalid` (a column source under a triple binding,
+  §10.2). Value types stay unauthored (defaulted per discretizer at resolve,
+  D-061), exactly as on the wide path.
+- **Why:** D-079 moved the migrator onto the document model but `Bare`
+  hard-coded a positional column source; triple-golden activation (Slice G)
+  needs the migrator to speak both shapes. Deriving the predicate name from the
+  v2 attribute name matches v2's own 3-column loader (lineage.md) and spec §19.3
+  (`name = "age"` → `source = { kind = "predicate", name = "age" }`).
+- **Rejected:** a second migrator overload or a public shape parameter (the
+  binding already carries the shape — thread it privately); authoring the
+  predicate `value_type` (would create a place for it to disagree with the
+  discretizer default — the same reasoning as the wide positional source, D-061).
+- **Affects:** Spec (`BedMigrator` private chain + type XML doc). No public
+  signature, diagnostic, fingerprint, or output-byte change. Refines D-079;
+  enables the Slice G triple goldens.
+
+---
+
+### D-087 — Symmetrical final-newline controls and v2 triple `.dat` compatibility
+
+- **Status:** accepted (M3, Slice G)
+- **Date:** 2026-07-11
+- **Decision:** three settled parts.
+  - **Native control.** `[output.dat] trailing_newline` (default `true`) is the
+    symmetrical twin of `[output.cxt] trailing_newline` — an additive
+    `{ get; init; }` property on `DatOutputSection` / `DatFingerprintInputs`
+    (positional constructors and deconstruction unchanged, so every existing
+    caller and record deconstruction keeps compiling; a `[output.dat]` document
+    that previously rejected the key now accepts it). `DatWriter` already honored
+    `WriterOptions.TrailingNewline`; the knob simply reaches it from the spec.
+  - **Backward-compatible fingerprint encoding.** `trailing_newline` is a
+    `dat_output_fingerprint` input (§14), encoded into the canonical `.dat` JSON
+    (alphabetically last of the dat keys) **only when disabled** (`false`).
+    Omitting the key at the historical default (`true`) keeps every pre-D-087
+    stored `.dat` hash byte-identical; a `false` value produces a distinct hash.
+    This deliberately diverges from the `.cxt` twin, which has always emitted
+    `trailing_newline` unconditionally — the divergence is exactly what preserves
+    the existing dat pins.
+  - **Shape-derived v2-compat override.** v2's `.dat` final newline is
+    shape-dependent: v2's wide converter wrote a final line terminator, its
+    triple converter did **not** (the three `mini-*_triples.dat` goldens end
+    without CRLF). Under `--v2-compat` the conversion orchestrator therefore
+    suppresses the final `.dat` newline for a **triple** source and keeps it for
+    a **wide** source; the `V2Compat` preset stays the common baseline (it leaves
+    `TrailingNewline` at its default) and the exception is applied per resolved
+    shape, not baked into the preset. Native output ignores shape and honors the
+    authored/default `trailing_newline`. Full v2-compat matrix: wide `.cxt`/`.dat`
+    and triple `.cxt` → final CRLF; triple `.dat` → no final CRLF.
+- **Why:** activating the triple `.dat` goldens (Slice G) surfaced that they end
+  without a trailing newline while every wide `.dat` and every `.cxt` ends with
+  one. Rather than a per-fixture knob or an M7 deferral, the byte fact is v2's
+  shape-dependent behavior; modelling it as a symmetrical native control plus a
+  shape-derived compat override keeps the vNext default clean and the v2-ism
+  behind the one flag (§8), with no lost fidelity.
+- **Rejected:** a per-fixture newline boolean in the golden harness (the rule is
+  shape-derived, not fixture-specific); baking the triple exception into the
+  `V2Compat` preset (it is a shape decision the orchestrator owns, not a writer
+  byte-convention); emitting `trailing_newline` unconditionally in the dat
+  fingerprint like the cxt twin (would re-pin every stored `.dat` hash for no
+  gain); deferring the `.dat` final-newline handling to M7 (a byte-equality fact
+  needed now, not CLI work).
+- **Affects:** Spec (`DatOutputSection`, `ReadOutputDat`, `SpecWriter`,
+  `MergeDat`, `SpecFingerprints`), Core (`DatFingerprintInputs`,
+  `FingerprintCalculator.BuildDatOutputJson`), Export (`WriterOptions` doc only),
+  the golden orchestrator (`DatOptionsFor`); spec §8 / §14 / §18.2 / §21. One new
+  fingerprint input with backward-compatible encoding; no new diagnostic; wide
+  output bytes unchanged.
 
 ---
 

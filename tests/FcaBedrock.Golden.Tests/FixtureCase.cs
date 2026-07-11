@@ -33,6 +33,15 @@ public sealed record FixtureCase(string Family, string Variant, BindingSection B
         new(SourceShape.Wide, Encoding: null, delimiter, QuoteChar: null, hasHeader,
             Locale: null, MissingToken: null, Ordering: null, Columns: null, ObjectKey: null);
 
+    // Triple analogue of Wide: the three v2 triple goldens are subject-interleaved, so
+    // ordering is `unordered` (first-appearance object order, D-082); headerless; the
+    // roles sit at the normative default 0/1/2 positions (Columns: null). The object
+    // key is always the subject under triple (ObjectKey: null). Extend the ordering
+    // argument when a subject_grouped golden exists (P-3).
+    public static BindingSection Triple(char delimiter, bool hasHeader) =>
+        new(SourceShape.Triple, Encoding: null, delimiter, QuoteChar: null, hasHeader,
+            Locale: null, MissingToken: null, Ordering: TripleOrdering.Unordered, Columns: null, ObjectKey: null);
+
     public static IReadOnlyList<FixtureCase> Active { get; } =
     [
         new("mini-mushroom", "mini-mushroom", Wide(',', hasHeader: true)),
@@ -45,6 +54,14 @@ public sealed record FixtureCase(string Family, string Variant, BindingSection B
             DataVariant = "mini-adult",
             ScalingMode = ScalingMode.Progressive,
         },
+
+        // Triple inputs (M3 Slice G): headerless, comma-delimited, roles at 0/1/2,
+        // unordered. Byte-identical .bed to their wide twins; the outputs differ only
+        // in object names (and the named fixture's subjects). Wide positions above are
+        // preserved so SpecConformanceTests' Active[0]/Single(...) pins still hold.
+        new("mini-mushroom", "mini-mushroom_triples", Triple(',', hasHeader: false)),
+        new("mini-adult", "mini-adult_triples", Triple(',', hasHeader: false)),
+        new("mini-adult", "mini-adult_triples_named", Triple(',', hasHeader: false)),
     ];
 
     public override string ToString() => Variant;
