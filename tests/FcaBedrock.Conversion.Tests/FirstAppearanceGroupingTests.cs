@@ -1,3 +1,5 @@
+using System.Globalization;
+
 namespace FcaBedrock.Conversion.Tests;
 
 public sealed class FirstAppearanceGroupingTests
@@ -51,10 +53,44 @@ public sealed class FirstAppearanceGroupingTests
         Assert.Equal([0, 2, 1], result.Select(r => r.Tag)); // "SS" group, then the distinct "ß" group
     }
 
-    private static async Task<List<Row>> CollectAsync(IEnumerable<Row> input)
+    [Fact]
+    public async Task GroupByFirstAppearanceAsync_WhenSpillForced_ThenMatchesInMemory()
+    {
+        // A one-byte budget spills every row (each over budget → its own run), forcing the full
+        // spill/merge path. The codec round-trips keys (incl. null) exactly, so the order is identical
+        // to the in-memory path — spilling never changes results (P-7).
+        Row[] input =
+        [
+            new("a", 0), new("b", 1), new("a", 2), new("c", 3), new("b", 4),
+            new("a", 5), new(null, 6), new("b", 7), new(null, 8),
+        ];
+
+        var inMemory = await CollectAsync(input);
+        var spilled = await CollectAsync(input, SpillEveryRow());
+
+        Assert.Equal(inMemory.Select(r => r.Tag), spilled.Select(r => r.Tag));
+    }
+
+    [Fact]
+    public async Task GroupByFirstAppearanceAsync_WhenSpillForcedMultiStage_ThenFirstAppearanceOrder()
+    {
+        // Fan-in 2 with a per-row spill forces multi-stage merges; keys still group in first-appearance
+        // order (0, 1, 2 first appear at rows 0, 1, 2), source order preserved within each group.
+        Row[] input = [.. Enumerable.Range(0, 12).Select(i => new Row((i % 3).ToString(CultureInfo.InvariantCulture), i))];
+
+        var spilled = await CollectAsync(input, new GroupingOptions(maxBufferedBytes: 1, maxMergeFanIn: 2));
+
+        Assert.Equal([0, 3, 6, 9, 1, 4, 7, 10, 2, 5, 8, 11], spilled.Select(r => r.Tag));
+    }
+
+    private static GroupingOptions SpillEveryRow() => new(maxBufferedBytes: 1);
+
+    private static async Task<List<Row>> CollectAsync(IEnumerable<Row> input, GroupingOptions? options = null)
     {
         var result = new List<Row>();
-        await foreach (var row in FirstAppearanceGrouping.GroupByFirstAppearanceAsync(ToAsync(input), static r => r.Key))
+        var reports = new GroupingReports();
+        await foreach (var row in FirstAppearanceGrouping.GroupByFirstAppearanceAsync(
+            ToAsync(input), static r => r.Key, RowCodec.Instance, options ?? GroupingOptions.Default, reports))
         {
             result.Add(row);
         }
@@ -68,6 +104,32 @@ public sealed class FirstAppearanceGroupingTests
         {
             await Task.Yield();
             yield return row;
+        }
+    }
+
+    private sealed class RowCodec : IRowCodec<Row>
+    {
+        public static readonly RowCodec Instance = new();
+
+        public long Measure(Row row) => RowFraming.MeasureString(row.Key) + sizeof(int);
+
+        // Retained referenced objects only (the RankedRow slot + backing array are counted by the loop).
+        public long MeasureResident(Row row) =>
+            row.Key is null ? 0 : ResidentModel.StringCost(row.Key.Length);
+
+        public void Write(Row row, Span<byte> destination)
+        {
+            var offset = 0;
+            RowFraming.WriteString(destination, ref offset, row.Key);
+            RowFraming.WriteInt32(destination, ref offset, row.Tag);
+        }
+
+        public Row Read(ReadOnlySpan<byte> source)
+        {
+            var offset = 0;
+            var key = RowFraming.ReadString(source, ref offset);
+            var tag = RowFraming.ReadInt32(source, ref offset);
+            return new Row(key, tag);
         }
     }
 }

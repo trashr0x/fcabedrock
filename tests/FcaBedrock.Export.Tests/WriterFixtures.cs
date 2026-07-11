@@ -16,7 +16,8 @@ internal static class WriterFixtures
                 new FormalAttribute(1, "a-y", new FormalAttributeIdentity("a", "nominal", "y", ""), new ValueBin("y")),
             ],
             [],
-            new RowIndexObjectKey());
+            new RowIndexObjectKey(),
+            WideExecution.Instance);
 
     public static EmittedObject Object(string name, params int[] crossed) => new(name, crossed);
 

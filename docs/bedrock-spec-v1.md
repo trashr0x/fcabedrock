@@ -294,13 +294,12 @@ governed by `duplicate_object_policy` (§6.1). A `column` object key missing its
 (Error, spec validate); a data-derived key that is empty, whitespace-only, or
 contains newline/control characters is `ObjectKeyValueInvalid` (Error, emit).
 
-> **Wide `column` execution lands at M3 (D-083).** Wide `object_key.mode = "column"`
-> — and with it the `duplicate_object_policy` machinery (§6.1) — is parsed and
-> round-tripped from M2 and executes at M3, sharing the object-key machinery with
-> triple's subject-derived key: `fail`/`keep` at Slice E, `dedupe` at Slice F. (M1/M2
-> wide conversion used `row_index` and rejected a `column` key with the transitional
-> `ObjectKeyColumnNotImplementedV1`, which now guards only wide `dedupe` and retires at
-> Slice F.)
+> **Wide `column` execution (D-083).** Wide `object_key.mode = "column"` — and with it
+> the `duplicate_object_policy` machinery (§6.1) — executes at M3, sharing the
+> object-key machinery with triple's subject-derived key: `fail`/`keep` stream
+> single-pass and `dedupe` runs on the shared grouping/sort-merge/spool path. (M1/M2
+> wide conversion used `row_index`; the transitional `ObjectKeyColumnNotImplementedV1`
+> guard retired when `dedupe` landed.)
 
 **`mode = "composite"`** **(deferred)**:
 
@@ -396,7 +395,9 @@ For `column` mode, given input where key `P001` appears at rows 1 and 3:
   duplicate row's cleaned key.
 - **`"dedupe"`**: rows sharing a key collapse to one formal object; later rows'
   crosses union onto the first, and the object keeps the **first occurrence's**
-  position (§17 rule 4). Emit `DuplicateObjectKey` (Info). Because non-contiguous
+  position (§17 rule 4). Emit **one aggregated** `DuplicateObjectKey` (Info) — a count
+  of the merged (duplicate) rows with a bounded **source-order** sample, and **silent**
+  when every key is unique. Because non-contiguous
   keys cannot be merged in a single naive pass without holding all crosses (P-16),
   `dedupe` uses external grouping/sort-merge/spool — the same machinery as triple
   `unordered` — and, like `unordered`, emits in **first-occurrence** order (§17
@@ -1658,7 +1659,6 @@ exactly one phase — the "Where" column below is the phase-ownership contract
 | `ObjectKeyBindingInvalid` | Error | spec validate (wide column-key index range-check at plan, interim — D-083) |
 | `ObjectKeyModeInvalidForShape` | Error | spec validate |
 | `TripleColumnsNotDistinct` | Error | spec validate |
-| `ObjectKeyColumnNotImplementedV1` | Error | plan (transitional) |
 | `DateValueTypeNotImplementedV1` | Fatal | plan |
 | `ObservedDomainUsed` | Warning | calibrate |
 | `CalibrationDataInsufficient` | Error | calibrate |
@@ -1668,6 +1668,7 @@ exactly one phase — the "Where" column below is the phase-ownership contract
 | `DuplicateObjectKey` | Error, Warning, or Info (per `duplicate_object_policy`) | emit |
 | `ObjectKeyNameDisambiguated` | Warning (aggregated) | emit |
 | `ObjectKeyValueInvalid` | Error | emit |
+| `GroupingStorageFailed` | Error (in-path / escalated), or Warning (cleanup-only) | emit |
 | `SourceValueUnparseable` | Warning or Error (per `unknown_value_policy`; `skip` silent) | calibrate/emit |
 | `QuoteCharNotSupportedV1` | Error | spec validate |
 | `BindingDelimiterQuoteConflict` | Error | spec validate |
@@ -1705,14 +1706,14 @@ output rather than failing.
 
 **Transitional codes.** `RestrictToNotImplementedV1`,
 `TemplateMatcherNotImplementedV1` (owned by spec resolve — templates/matchers
-never resolve into Core, D-078), `ObjectKeyColumnNotImplementedV1`, and
-`ObservedDomainCalibrationNotImplementedV1`
+never resolve into Core, D-078), and `ObservedDomainCalibrationNotImplementedV1`
 are emitted only by milestones *before* the feature's implementation milestone
-(restrict_to → M4, templates/matchers → M6, wide `column` object keys under
-`duplicate_object_policy = "dedupe"` → M3 Slice F (wide `fail`/`keep` execute at
-Slice E), observed-domain calibration → when it lands — the
-categorical case is unassigned in the roadmap backlog (D-071); `roadmap.md`);
-they are removed once the feature lands and are **not** part of the v1 end-state set. They are distinct from the permanent `*NotImplementedV1`
+(restrict_to → M4, templates/matchers → M6, observed-domain calibration → when it
+lands — the categorical case is unassigned in the roadmap backlog (D-071);
+`roadmap.md`); they are removed once the feature lands and are **not** part of the
+v1 end-state set. (`ObjectKeyColumnNotImplementedV1` was one such code; it retired
+when wide `dedupe` landed at M3 Slice F, so `column` object keys now execute for
+every `duplicate_object_policy`.) They are distinct from the permanent `*NotImplementedV1`
 reservations in §20. Two parse-phase codes are transitional on the same terms:
 `DiscretizerKindNotYetSupported` (a recognized-but-deferred discretizer kind —
 `free_per_value`, `equal_width`, `equal_frequency`, `value_groups` — rejected at
@@ -1851,6 +1852,15 @@ header. It MUST NOT materialize the full incidence matrix in memory: holding
 object names and counts (bounded metadata) is allowed; holding all
 crosses/cells in Core is not. (`.dat`, by contrast, needs no header count and
 streams in a single pass.)
+
+**Object-name sequence invariant (normative).** When the writer replays the object
+stream, the two passes MUST yield the **same object-name sequence** — the same count
+and the same order. The writer checks each pass-2 object's name against the pass-1
+name at its position and fails the write (a structural error; the partial output is
+discarded) on a mismatch, overflow, or shortfall, so a non-deterministic producer
+cannot silently misalign the header names and the incidence rows. (Full producer
+content determinism — that a replay also yields the same *crosses* — is a separate
+determinism property, §17; the writer enforces only name/row alignment.)
 
 ### 18.2 FIMI `.dat`
 

@@ -7,14 +7,14 @@ using FcaBedrock.Sources;
 
 namespace FcaBedrock.Conversion.Tests;
 
-// Slice D: triple ordering = "unordered". Interleaved (predicate-major) input is regrouped by
-// TripleRowSources.ForOrdering into subject-contiguous, first-appearance order and emitted through
-// the same Emitter.EmitTripleAsync as subject_grouped. Tests drive the production seam (ForOrdering),
-// not a hand-wrapped decorator.
+// Slice D/F: triple ordering = "unordered". Interleaved (predicate-major) input is regrouped into
+// subject-contiguous, first-appearance order and emitted through the same Emitter.EmitTripleAsync as
+// subject_grouped. EmitTripleAsync owns ordering selection from plan.Execution (D-082), so tests pass
+// the raw source; the emitter builds the unordered wrapper with emitter-owned per-enumeration reports.
 public sealed class UnorderedTripleEmitterTests
 {
     [Fact]
-    public async Task ForOrderingUnordered_WhenInterleavedNamedSubjects_ThenFirstAppearanceObjectOrder()
+    public async Task Unordered_WhenInterleavedNamedSubjects_ThenFirstAppearanceObjectOrder()
     {
         // The load-bearing Slice D property: interleaved input emits objects in first-appearance
         // order of the cleaned subject — NOT sorted (a sort would begin "Alice..."). Mirrors the
@@ -40,7 +40,7 @@ public sealed class UnorderedTripleEmitterTests
     }
 
     [Fact]
-    public async Task ForOrderingUnordered_WhenInterleavedMushroom_ThenMatchesSubjectGrouped()
+    public async Task Unordered_WhenInterleavedMushroom_ThenMatchesSubjectGrouped()
     {
         // The unordered path over interleaved input reproduces the subject_grouped objects+crosses
         // exactly (§17 rules 4/8): same first-appearance order (m0..m4), same union crosses.
@@ -59,7 +59,7 @@ public sealed class UnorderedTripleEmitterTests
     }
 
     [Fact]
-    public async Task ForOrderingUnordered_WhenSubjectFirstSeenViaUnboundPredicate_ThenItLeadsInFirstAppearance()
+    public async Task Unordered_WhenSubjectFirstSeenViaUnboundPredicate_ThenItLeadsInFirstAppearance()
     {
         // A subject whose first row binds no attribute still forms its object at that first-appearance
         // position (§10.1 / §17 rule 4), ahead of a subject that appears later — the interleaved run
@@ -76,7 +76,7 @@ public sealed class UnorderedTripleEmitterTests
     }
 
     [Fact]
-    public async Task ForOrderingUnordered_WhenPresentMissingInterleaved_ThenMissingPolicyApplies()
+    public async Task Unordered_WhenPresentMissingInterleaved_ThenMissingPolicyApplies()
     {
         // Interleaved rows for one subject union; a present-missing value fires missing_policy on the
         // unordered path too (§10.5 / §5.3.1). s1's SQL (record 0) and ? (record 2) are non-contiguous.
@@ -92,7 +92,7 @@ public sealed class UnorderedTripleEmitterTests
     }
 
     [Fact]
-    public async Task ForOrderingUnordered_WhenSubjectInvalid_ThenObjectKeyValueInvalid()
+    public async Task Unordered_WhenSubjectInvalid_ThenObjectKeyValueInvalid()
     {
         var spec = new BedrockSpec(ConversionFixtures.Triple(TripleOrdering.Unordered),
             [ConversionFixtures.PredicateNominal("a", "a", ["x", "y"])]);
@@ -106,7 +106,7 @@ public sealed class UnorderedTripleEmitterTests
     }
 
     [Fact]
-    public async Task ForOrderingUnordered_WhenLaterRowFollowsInvalidSubject_ThenHaltsAtErrorAndDropsLaterRows()
+    public async Task Unordered_WhenLaterRowFollowsInvalidSubject_ThenHaltsAtErrorAndDropsLaterRows()
     {
         // Codex halt-ordering: a structural subject error halts at that source record; a later row
         // must not be reordered ahead of it and must not influence output. Record 2 (Sam,job) must
@@ -129,7 +129,7 @@ public sealed class UnorderedTripleEmitterTests
         // never yielded, so no later row can be reordered ahead of the structural error.
         var inner = ConversionFixtures.TripleSourceOver(
             "Sam,age,39\n?,age,50\nSam,job,Clerical", ConversionFixtures.Triple(TripleOrdering.Unordered));
-        var decorated = new UnorderedTripleRowSource(inner);
+        var decorated = new UnorderedTripleRowSource(inner, GroupingOptions.Default, new GroupingReports());
 
         var rows = new List<TripleRow>();
         await foreach (var row in decorated.ReadRowsAsync())
@@ -142,7 +142,7 @@ public sealed class UnorderedTripleEmitterTests
     }
 
     [Fact]
-    public async Task ForOrderingUnordered_WhenRunTwice_ThenIdenticalObjectsAndCrosses()
+    public async Task Unordered_WhenRunTwice_ThenIdenticalObjectsAndCrosses()
     {
         var spec = ConversionFixtures.MushroomTripleSpec();
 
@@ -179,13 +179,16 @@ public sealed class UnorderedTripleEmitterTests
     private static async Task<(List<EmittedObject> Objects, List<BedrockDiagnostic> Diagnostics)> RunAsync(
         BedrockSpec spec, string tripleData, TripleOrdering ordering)
     {
+        // EmitTripleAsync owns ordering from plan.Execution (D-082), so the spec's binding must carry
+        // the intended ordering; rebuild it here (all these fixtures use the default triple binding).
+        var orderedSpec = new BedrockSpec(ConversionFixtures.Triple(ordering), spec.Attributes);
         var source = ConversionFixtures.TripleSourceOver(tripleData, ConversionFixtures.Triple(ordering));
         var schema = await source.GetSchemaAsync();
-        Assert.True(ConversionPlanner.Plan(spec, schema).TryGetValue(out var plan));
+        Assert.True(ConversionPlanner.Plan(orderedSpec, schema).TryGetValue(out var plan));
 
         var diagnostics = new List<BedrockDiagnostic>();
         var objects = new List<EmittedObject>();
-        await foreach (var emitted in Emitter.EmitTripleAsync(plan, TripleRowSources.ForOrdering(source, ordering), diagnostics))
+        await foreach (var emitted in Emitter.EmitTripleAsync(plan, source, diagnostics))
         {
             objects.Add(emitted);
         }
@@ -202,7 +205,7 @@ public sealed class UnorderedTripleEmitterTests
         using var stream = new MemoryStream();
         await CxtWriter.WriteAsync(
             plan,
-            () => Emitter.EmitTripleAsync(plan, TripleRowSources.ForOrdering(source, TripleOrdering.Unordered), new List<BedrockDiagnostic>()),
+            () => Emitter.EmitTripleAsync(plan, source, new List<BedrockDiagnostic>()),
             WriterOptions.Native,
             stream);
         return stream.ToArray();

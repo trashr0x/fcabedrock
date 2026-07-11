@@ -290,15 +290,14 @@ public sealed class ConversionPlannerTests
             ["color-red", "color-green", "size-big", "size-small"],
             plan.FormalAttributes.Select(f => f.RenderedName).ToArray());
         Assert.All(plan.Attributes, a => Assert.IsType<PredicateAttributeSource>(a.Source));
-        Assert.DoesNotContain(result.Diagnostics, d => d.Code == DiagnosticCode.ObjectKeyColumnNotImplementedV1);
     }
 
     [Fact]
     public void Plan_WhenTripleUnordered_ThenPlansIdenticallyToSubjectGrouped()
     {
-        // §5.3 / §17 rule 4 / D-082: the plan is ordering-independent — it does not carry
-        // binding.ordering. unordered plans exactly like subject_grouped (no plan-phase reject);
-        // ordering is honored at emit via TripleRowSources.ForOrdering, not here.
+        // §5.3 / §17 rule 4 / D-082: the formal-attribute schema is ordering-independent — unordered
+        // plans the same schema as subject_grouped (no plan-phase reject). The resolved ordering rides
+        // on the plan's SourceExecution; EmitTripleAsync honors it at emit, not here.
         AttributeSpec[] attributes = [SpecFixtures.PredicateNominal("color", "hasColor", ["red", "green"])];
         var unordered = new BedrockSpec(SpecFixtures.TripleSubjectGrouped(TripleOrdering.Unordered), attributes);
         var grouped = new BedrockSpec(SpecFixtures.TripleSubjectGrouped(TripleOrdering.SubjectGrouped), attributes);
@@ -312,6 +311,41 @@ public sealed class ConversionPlannerTests
         Assert.Equal(
             groupedPlan.FormalAttributes.Select(a => a.RenderedName),
             unorderedPlan.FormalAttributes.Select(a => a.RenderedName));
+    }
+
+    [Fact]
+    public void Plan_WhenWide_ThenExecutionIsWide()
+    {
+        // D-082: the plan carries a shape-specific SourceExecution; a wide source plans the singleton.
+        Assert.True(ConversionPlanner.Plan(SpecFixtures.MiniMushroom(), new SourceSchema(5)).TryGetValue(out var plan));
+        Assert.Same(WideExecution.Instance, plan.Execution);
+    }
+
+    [Theory]
+    [InlineData(TripleOrdering.SubjectGrouped)]
+    [InlineData(TripleOrdering.Unordered)]
+    public void Plan_WhenTriple_ThenExecutionIsTripleWithResolvedOrdering(TripleOrdering ordering)
+    {
+        // D-082: the plan carries the resolved ordering on its SourceExecution (no fallback).
+        var spec = new BedrockSpec(SpecFixtures.TripleSubjectGrouped(ordering),
+            [SpecFixtures.PredicateNominal("color", "hasColor", ["red", "green"])]);
+
+        Assert.True(ConversionPlanner.Plan(spec, new SourceSchema(3)).TryGetValue(out var plan));
+        var triple = Assert.IsType<TripleExecution>(plan.Execution);
+        Assert.Equal(ordering, triple.Ordering);
+    }
+
+    [Fact]
+    public void Plan_WhenTripleBindingHasNoResolvedOrdering_ThenThrowsInvariant()
+    {
+        // D-082: triple ordering is required; a null ordering on a triple binding is a corrupt Core
+        // state, thrown via the invariant path (never a silent SubjectGrouped default that would mask
+        // an invalid binding and could wrongly reject interleaved data).
+        var binding = new Binding(SourceShape.Triple, "utf-8", ',', '"', HasHeader: false, "invariant", "?",
+            new ColumnObjectKey(0, DuplicateObjectPolicy.Fail), new TripleColumns(0, 1, 2), Ordering: null);
+        var spec = new BedrockSpec(binding, [SpecFixtures.PredicateNominal("color", "hasColor", ["red", "green"])]);
+
+        Assert.Throws<InvalidOperationException>(() => ConversionPlanner.Plan(spec, new SourceSchema(3)));
     }
 
     [Theory]
@@ -367,32 +401,19 @@ public sealed class ConversionPlannerTests
     [Theory]
     [InlineData(DuplicateObjectPolicy.Fail)]
     [InlineData(DuplicateObjectPolicy.Keep)]
-    public void Plan_WhenObjectKeyColumnFailOrKeepUnderWide_ThenAccepted(DuplicateObjectPolicy policy)
+    [InlineData(DuplicateObjectPolicy.Dedupe)]
+    public void Plan_WhenObjectKeyColumnUnderWide_ThenAccepted(DuplicateObjectPolicy policy)
     {
-        // §5.4/§6.1 (D-083): wide column keys with fail/keep execute at M3 Slice E — no transitional
-        // reject, no silent row_index fallback. The key column may sit anywhere in range.
+        // §5.4/§6.1 (D-083): wide column keys execute at M3 for every duplicate_object_policy —
+        // fail/keep single-pass, dedupe on the shared spool backend — with no transitional reject and no
+        // silent row_index fallback. The key column may sit anywhere in range.
         var spec = new BedrockSpec(
             WideWithKey(new ColumnObjectKey(0, policy)), [SpecFixtures.Nominal("g", 1, ["b"])]);
 
         var result = ConversionPlanner.Plan(spec, new SourceSchema(2));
 
         Assert.False(result.HasErrors);
-        Assert.DoesNotContain(result.Diagnostics, d => d.Code == DiagnosticCode.ObjectKeyColumnNotImplementedV1);
         Assert.True(result.TryGetValue(out _));
-    }
-
-    [Fact]
-    public void Plan_WhenObjectKeyColumnDedupeUnderWide_ThenReportsObjectKeyColumnNotImplementedV1()
-    {
-        // §6.1 (D-083): dedupe's non-contiguous grouping lands at Slice F; until then it stays a
-        // transitional reject (narrowed from the old blanket wide-column guard).
-        var spec = new BedrockSpec(
-            WideWithKey(new ColumnObjectKey(0, DuplicateObjectPolicy.Dedupe)), [SpecFixtures.Nominal("g", 1, ["b"])]);
-
-        var result = ConversionPlanner.Plan(spec, new SourceSchema(2));
-
-        AssertFailsWith(result, DiagnosticCode.ObjectKeyColumnNotImplementedV1);
-        Assert.Contains("Slice F", Assert.Single(result.Diagnostics).Message, StringComparison.Ordinal);
     }
 
     [Fact]

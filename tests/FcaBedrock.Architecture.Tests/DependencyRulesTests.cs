@@ -1,5 +1,6 @@
 using ArchUnitNET.Loader;
 using ArchUnitNET.xUnitV3;
+using FcaBedrock.Core.Planning;
 using static ArchUnitNET.Fluent.ArchRuleDefinition;
 using static ArchUnitNET.Fluent.Slices.SliceRuleDefinition;
 using ArchModel = ArchUnitNET.Domain.Architecture;
@@ -74,6 +75,16 @@ public sealed class DependencyRulesTests
         // has real types, so this is non-vacuous (no WithoutRequiringPositiveResults).
         Types().That().ResideInAssembly(Asm("FcaBedrock.Core"))
             .Should().NotDependOnAnyTypesThat().ResideInNamespace("System.IO")
+            .Check(Architecture);
+    }
+
+    [Fact]
+    public void SourceExecutionHierarchy_ShouldResideInCore()
+    {
+        // D-082: the shape-specific execution hierarchy (SourceExecution + variants) is Core-only
+        // value; it must not leak into Sources/Conversion/Export, which reference Core, not the reverse.
+        Classes().That().AreAssignableTo(typeof(SourceExecution))
+            .Should().ResideInAssembly(Asm("FcaBedrock.Core"))
             .Check(Architecture);
     }
 

@@ -77,7 +77,19 @@ vertical slices, not waterfall phases — each should leave the system working.
 > uniqueness, and the structural diagnostic taxonomy — with the spec, `decisions.md`,
 > and `principles.md` updated. This landing is docs-only and byte-/fingerprint-neutral
 > (no enum members, no `FixtureCase.Active` change, no production code).
-> Next: M3 **implementation** (triple reader + wide column-key execution).
+>
+> **M3 implementation has landed through Slice F.** Slices C–D added the triple reader
+> and both orderings (`subject_grouped` single-pass; `unordered` first-appearance
+> grouping); Slice E added wide `column` `fail`/`keep`; **Slice F** landed wide `dedupe`
+> on a **bounded shared grouping/spool backend** (spill runs + bounded-fan-in merge, the
+> two-channel storage-failure model, the public `EmitReplaySession`, and the `.cxt`
+> object-name-sequence invariant), migrated triple `unordered` onto that backend with
+> `EmitTripleAsync` owning ordering from a new `SourceExecution` plan carrier, and
+> **retired `ObjectKeyColumnNotImplementedV1` entirely** (D-082…D-085). `dotnet test` is
+> green (756 tests; one platform-gated confidentiality test skips off its OS).
+> **M3 is not yet complete** — **Slice G** still owns triple-golden activation
+> (`FixtureCase.Triple(...)`, the three `mini-*_triples` goldens), the final repeatability
+> verification, and the final stale-reject audit.
 
 ## Milestones
 
@@ -201,8 +213,11 @@ taxonomy (new `ObjectKeyValueInvalid` / `TripleColumnsNotDistinct`, extended
 `SourceBindingInvalid`). `TripleSourceNotImplementedV1` retired with the
 subject_grouped reader (Slice C) — briefly replaced by a narrower transitional
 unordered guard, which itself retired when the `unordered` grouping landed
-(Slice D); `ObjectKeyColumnNotImplementedV1` narrows to wide `dedupe` when
-`fail`/`keep` land (Slice E) and retires when `dedupe` lands (Slice F).
+(Slice D); `ObjectKeyColumnNotImplementedV1` narrowed to wide `dedupe` when
+`fail`/`keep` landed (Slice E) and retired when `dedupe` landed (Slice F, on the
+bounded shared grouping/spool backend). **Slices C–F are implemented; Slice G** still
+owns triple-golden activation, `FixtureCase.Triple(...)`, final repeatability, and the
+stale-reject audit.
 **Exit:** both triple orderings work; all three triple-input goldens match; wide column
 object keys convert with `duplicate_object_policy` honored.
 
@@ -250,6 +265,22 @@ BenchmarkDotNet against synthetic 7.3M- and 73M-record datasets (in
 `FcaBedrock.Benchmarks`, gated behind a category filter — NOT in normal
 `dotnet test`). Profile, fix allocation hotspots, set memory budgets. Pressure-
 tests the `Sources` and `Conversion` streaming choices (D-007).
+
+**Cross-platform resident-accounting validation** (prerequisite for the
+cross-platform v1 / Avalonia release, M9). D-082's resident-accounting layout
+constants carry a numerical `actual retained ≤ modeled` guarantee only on
+.NET 10 CoreCLR **x64**. Before shipping a cross-platform release, validate them on
+the other target runtimes: validate the constants on .NET 10 CoreCLR **ARM64**,
+exercising **macOS ARM64** and, where available, **Linux/Windows ARM64** in CI, and
+verify `Unsafe.SizeOf<RankedRow<T>>`, object/array/string layouts, reference sizes,
+alignment, and the numerical `actual retained ≤ modeled` guarantee on each. Introduce
+**target-specific correctness constants** if runtime layouts differ, and extend D-082's
+numerical guarantee beyond x64 **only after** each target is validated. Validated
+Windows, Linux, and macOS runtime targets are a **prerequisite for the cross-platform
+release**. Note the split (as in the grouping-backend note below): M8 may tune the
+buffer budget and fan-in, but the layout **safety constants are correctness inputs** —
+they cannot be performance-tuned without revalidation.
+
 **Exit:** documented throughput/memory at target scale; no full-matrix
 materialization.
 
@@ -313,12 +344,16 @@ Modelled in the spec where noted, so adding them later isn't a format break.
   landed in M2), a `.cxt` size/diagnostics item to M7, and an allocation item to
   M8. The latter two are tracked here pending their own `decisions.md` entries when
   M7/M8 are picked up.
-- Conversion run/session API (M7): M3 Slice E added internal
-  `EmitReplay.CollectDiagnosticsOnce` so the `.cxt` two-pass replay records emit
-  diagnostics once without buffering the matrix (P-16; lifecycle contract in its
-  XML doc). Revisit at M7, when CLI orchestration can own a real conversion-run
-  abstraction that emits once and serializes separately — the helper is the interim
-  seam until then.
+- Conversion run/session API (M7): M3 Slice F promoted the interim replay helper to the
+  public `EmitReplaySession` (`EmitReplay.Begin`) — it brackets one conversion attempt,
+  collects data diagnostics once, and aggregates grouping storage failures across the
+  `.cxt` two-pass, flushing the finals at disposal (P-16). Revisit at M7, when CLI
+  orchestration can own a real conversion-run abstraction that emits once and serializes
+  separately; the session may be superseded by that API.
+- Grouping backend knobs (M7/M8): `GroupingOptions` (in-memory budget, merge fan-in,
+  temp root) is **internal** — never a spec/TOML/fingerprint input (the storage strategy
+  never changes bytes). Exposing a memory-budget/temp knob is an M7 concern; tuning the
+  provisional budget/fan-in defaults against real 7.3M–73M distributions is M8 (P-19).
 - Phase alignment for `AttributeNameDuplicate` (noted at the Slice F review,
   2026-07-05): **done at the M2 exit review (D-080).** The check — and its twin
   `ValueLabelKeyNotInDomain` — were re-homed from `ConversionPlanner` to the

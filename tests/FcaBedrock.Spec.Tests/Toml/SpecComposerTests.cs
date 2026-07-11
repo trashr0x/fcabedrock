@@ -348,8 +348,8 @@ public sealed class SpecComposerTests
     {
         // Composition is undisturbed by the D-082 triple resolution: the composed triple spec
         // resolves fully, and the derived layer's ordering = "unordered" override is preserved
-        // (asserted on Binding.Ordering). The plan is ordering-independent, so the composed spec
-        // plans cleanly — ordering is honored later at emit (TripleRowSources.ForOrdering).
+        // (asserted on Binding.Ordering). The composed spec plans cleanly; the resolved ordering rides
+        // on the plan's SourceExecution and is honored later at emit (EmitTripleAsync).
         var source = new InMemorySpecTextSource().Add("base.toml", TomlFixtures.TripleSubjectGrouped);
         var root = Read(
             "[spec]\nversion = 1\nextends = \"base.toml\"\n" +

@@ -256,15 +256,6 @@ public enum DiagnosticCode
     ObjectKeyCompositeNotImplementedV1,
 
     /// <summary>
-    /// The spec declares a wide <c>column</c> object key under <c>duplicate_object_policy =
-    /// "dedupe"</c>, whose non-contiguous grouping is not implemented in this milestone; the planner
-    /// rejects it rather than silently falling back to row index. Wide <c>fail</c>/<c>keep</c> execute
-    /// at M3 Slice E; only <c>dedupe</c> stays transitional. Spec §5.4/§6.1 (D-064/D-083; transitional,
-    /// removed at M3 Slice F).
-    /// </summary>
-    ObjectKeyColumnNotImplementedV1,
-
-    /// <summary>
     /// An attribute carries <c>restrict_to</c>, whose execution is not implemented
     /// in this milestone; the planner rejects it — included or filter-only — rather
     /// than silently emitting unfiltered output. Spec §10.4 (D-057/D-063;
@@ -392,8 +383,9 @@ public enum DiagnosticCode
     /// A wide <c>column</c> object key repeats a cleaned key value, governed by
     /// <c>duplicate_object_policy</c>: <c>fail</c> → <b>Error</b> naming the key + record index, stop;
     /// <c>keep</c> → aggregated <b>Warning</b> (each row stays its own object, later occurrences get a
-    /// <c>#record-index</c> suffix). Does not apply to <c>row_index</c> or triple. Spec §5.4 / §6.1 /
-    /// §16.4 (D-034/D-083/D-085).
+    /// <c>#record-index</c> suffix); <c>dedupe</c> → aggregated <b>Info</b> (rows sharing a cleaned key
+    /// collapse to one object, crosses unioned onto the first, with a bounded source-order sample). Does
+    /// not apply to <c>row_index</c> or triple. Spec §5.4 / §6.1 / §16.4 (D-034/D-083/D-085).
     /// </summary>
     DuplicateObjectKey,
 
@@ -405,4 +397,15 @@ public enum DiagnosticCode
     /// which reports repeated cleaned keys. Spec §6.1 / §16.4 (D-083/D-085).
     /// </summary>
     ObjectKeyNameDisambiguated,
+
+    /// <summary>
+    /// A conversion that grouped on the external sort-merge spool path (triple <c>unordered</c> or wide
+    /// <c>dedupe</c>) hit a storage failure. Two channels (D-082): an <b>in-path</b> failure — storage
+    /// still needed for correct row delivery — is <b>Error</b> and halts this conversion; a
+    /// <b>cleanup-class</b> failure — storage that can no longer affect delivered rows (consumed-run
+    /// deletes, teardown) — is <b>Warning</b> and the conversion completes. Aggregated to one final
+    /// per stable identity <c>(operation, kind)</c> with a combined count and bounded path samples, and
+    /// promoted to the worst severity across replay passes. Spec §16.4 (D-082/D-085).
+    /// </summary>
+    GroupingStorageFailed,
 }

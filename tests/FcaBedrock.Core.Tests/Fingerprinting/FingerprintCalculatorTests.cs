@@ -332,8 +332,8 @@ public sealed class FingerprintCalculatorTests
     {
         // The golden literals pin the default spellings; this pins the rest of
         // the M2-reachable vocabulary (D-077): ge/strict/closed/fail/include,
-        // v2-compat, crlf. Triple and wide column keys (fail/keep) are now
-        // plan-reachable (M3); only dedupe joins the goldens when Slice F lands.
+        // v2-compat, crlf. Triple and wide column keys — fail/keep and now dedupe —
+        // are all plan-reachable at M3 (Slice F landed dedupe).
         var cuts = new AttributeSpec(
             "v", new ColumnSource(0, SourceValueType.Number), Include: true,
             ManualCutsDiscretizer.Create([10, 20], BinEnds.Closed, CultureInfo.InvariantCulture).Value!,

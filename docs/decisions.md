@@ -2271,6 +2271,81 @@ enum members, and golden activation are the M3 *implementation* that follows.
   (grouping/sort-merge + emit), Spec (writer already round-trips), Diagnostics
   (D-085); spec §5.1 / §5.3 / §5.3.1 / §5.4 / §10.2 / §10.5 / §14 / §17. Realizes
   D-072; pairs with D-083 / D-084 / D-085.
+- **Slice F implementation — the bounded shared grouping backend (durable invariants):**
+  the slow path (triple `unordered`, wide `dedupe`) runs on one internal backend —
+  `FirstAppearanceGrouping` orchestrating a rank map (the **single** cleaned-key
+  structure), spill runs, and a bounded-fan-in multi-stage `RunMerger`. Invariants:
+  - **Byte-neutral spilling.** The row codec round-trips values exactly (strings as
+    length + raw UTF-16 code units, lone surrogates preserved), so spilling never
+    changes output bytes (P-7); a zero-spill enumeration stays fully in memory.
+  - **Lazy, owned, confidential workspace.** The spool directory is created only on
+    the first required spill (zero-spill needs no disk, even under an unusable temp
+    root); it is a uniquely-named, create-new per-enumeration directory, and only that
+    recorded path is ever deleted. Because it holds raw source data it is created
+    owner-restricted (Unix `700`; Windows an explicit owner-only, inheritance-disabled
+    DACL; run handles `FileShare.None` + non-inheritable) — if the restrictive ACL
+    cannot be established, workspace creation **fails** rather than proceeding
+    unprotected.
+  - **Bounded resources — two accounting rules.** The intake buffer spills on a
+    **deterministic modeled resident accounting** = the `List` buffer object + its backing
+    array (`capacity × Unsafe.SizeOf<RankedRow<TRow>>()` — the list's *real* capacity × the
+    exact element stride) + each row's **retained referenced objects** (its record + the
+    record's two reference fields, its name, its field array + one reference per field, and each
+    non-null string with header/length/terminator/8-byte alignment). This is a **two-tier**
+    guarantee: the spill decision is always the modeled value, and on **.NET 10 CoreCLR x64**
+    the padded layout constants make **actual retained live-object bytes ≤ modeled** — a
+    numerical bound over the **stable retained graph at the post-`Add` checkpoint** (the `List`
+    resize copy transient, GC commitment, fragmentation, and allocator bookkeeping are
+    **excluded**). On other architectures/runtimes the model still bounds buffering
+    operationally, but the byte guarantee is not asserted until that layout is validated. The
+    layout constants are **correctness** constants (their code XML docs are authoritative):
+    **M8 tunes the buffer budget and fan-in, never these** — changing one requires re-validating
+    the object layout. Separately, the initial run's on-disk size is the **exact serialized
+    accounting** — the sum of each row's serialized size plus **all run framing**. Intermediate
+    runs may exceed the budget; peak temp disk is pinned to **`3T`** (`T` = the intake-final
+    initial spill payload, captured once) by a pre-batch **degraded-cleanup escalation** that
+    halts before any merge batch whose projected live bytes would exceed `3T` — failed
+    consumed-run deletions are **retried at each batch boundary** (each failed attempt
+    aggregates) so a transient failure does not force the escalation.
+  - **Validated framing (narrowed).** Run reads validate field counts and string
+    lengths against the record buffer with checked/saturating `long` arithmetic, so a
+    safely-identifiable truncated/corrupt record becomes an owned storage-failure
+    outcome — never a malformed row or silent corruption. It does **not** claim
+    OOM-immunity for payload-consistent huge lengths (documented residual).
+  - **Two-channel storage failures, one ordered ledger.** Stable logical identity is
+    `(Operation, Kind)`, both **application-defined** (mapped from runtime exceptions; identity
+    never includes the random path or severity). Both channels share **one per-enumeration
+    insertion-ordered ledger**: **in-path** failures are recorded as **Error** by the site that
+    detects them, at their first-logical-occurrence position — before the cleanup their
+    unwinding triggers — and additionally throw an internal `GroupingStorageException` from
+    advancement only (never disposal) so the emitter halts (it catches only to stop, not to
+    record); **cleanup-class** failures (consumed-run deletes, workspace teardown, and **reader
+    close / a failed reader construction after a successful open** — `CleanupClose`) are recorded
+    as **Warning** as they occur while enumeration continues, so disposal/open-cleanup never
+    throws a storage exception and never masks the primary result, cancellation, or in-path
+    failure. The emitter renders the ledger after the stream in **first-occurrence order**, one
+    aggregate per identity at worst severity (count + ≤3 first-occurrence samples); the replay
+    session re-aggregates across passes, preserving each pass's positions.
+  - **Replay session + `.cxt` invariant.** The public `EmitReplaySession`
+    (`EmitReplay.Begin`) brackets one conversion attempt: data diagnostics collect
+    once (first pass), storage failures are intercepted on every pass and the final
+    aggregates append at **disposal** (in first-logical-occurrence order — the D-059
+    rule), so a pass-2-only storage failure is never lost. The `.cxt` writer enforces
+    the **object-name sequence invariant** (§18.1): a replay that diverges in name
+    count/order fails the write.
+  - **Plan carries `SourceExecution`.** The plan gains a `SourceExecution`
+    (`WideExecution` / `TripleExecution(ordering)`) — a pure value, **not** a
+    fingerprint input; `EmitTripleAsync` owns ordering selection from it (the external
+    `TripleRowSources` selector retired), and the emit entrypoints reject a mismatched
+    variant.
+  - **Runtime knobs internal until M7.** `GroupingOptions` (budget, fan-in, temp root)
+    is internal — never a spec/TOML/fingerprint input (the storage strategy never
+    changes bytes).
+  - **Rejected:** an external sort library (ExternalSort — Parquet baggage; SQLite —
+    disproportionate); a record-and-rethrow failure model (P-14 — storage failures
+    cross the seam as diagnostics, not exceptions); warnings-as-exceptions (a faulted
+    async iterator cannot resume); deriving failure identity from the runtime exception
+    type (it must neither split one condition nor merge unrelated ones).
 
 ### D-083 — Wide `column` object-key execution + `duplicate_object_policy`
 
@@ -2340,6 +2415,14 @@ enum members, and golden activation are the M3 *implementation* that follows.
   sort-merge/spool shared with D-082 for `dedupe`), Diagnostics (`DuplicateObjectKey`,
   `ObjectKeyNameDisambiguated`, D-085); spec §5.4 / §6.1 / §16.4 / §17 rule 4. Realizes
   D-064 / D-034; pairs with D-082.
+- **Slice F implementation — Info aggregation is normative:** `dedupe` emits on the
+  shared grouping backend (D-082). It reports **one aggregated** `DuplicateObjectKey`
+  (Info) — a count of the merged (duplicate) rows with a bounded **source-order** sample
+  (the duplicate keys in the order they recurred, detected via the grouper's intake hook
+  so no second seen-set is needed) — and is **silent** when every key is unique; flushed
+  only on normal completion (suppressed on a structural halt). The object name is the
+  cleaned key; the wide key column may double as an `[[attribute]]` source (D-033), and
+  its crosses union with the other attributes' onto the one object.
 
 ### D-084 — Ordinal string comparison is the project-wide rule
 
@@ -2352,9 +2435,11 @@ enum members, and golden activation are the M3 *implementation* that follows.
   string collation. Recorded as new principle **P-12** ("Strings compare and sort
   ordinally…"), the string-side companion to P-11 (numeric/locale parsing).
 - **Why:** the audit (F-054) found "invariant culture" for the unordered subject
-  sort a determinism hazard — `InvariantCulture` string collation is ICU/NLS-version
-  dependent and can reorder across machines/runtimes, drifting output bytes on a
-  golden/fingerprint path (P-7); ordinal is byte-stable. The code already uses
+  grouping a determinism hazard — `InvariantCulture` string collation is ICU/NLS-version
+  dependent and can mis-group or reorder across machines/runtimes, drifting output bytes
+  on a golden/fingerprint path (P-7); ordinal is byte-stable. (Slice F confirms this: the
+  grouping backend keys strictly by `StringComparer.Ordinal` and emits in first-appearance
+  order — there is no culture-sensitive sort.) The code already uses
   `StringComparer.Ordinal` for name/identity dedup, so this codifies practice across
   every string-keyed surface (predicate matching, key dedup, name uniqueness). A
   dedicated principle (not a P-11 extension) has its own check moment — comparing or
@@ -2386,6 +2471,10 @@ enum members, and golden activation are the M3 *implementation* that follows.
     `keep`, an object's assigned name needed `#N` escalation because its candidate
     collided with an already-assigned name (a literal key vs a generated name);
     distinct from `DuplicateObjectKey` (repeated cleaned keys) — one condition, one code.
+    `GroupingStorageFailed` (Error in-path/escalated, or Warning cleanup-only; emit) — a
+    spool-storage failure on the shared grouping backend (triple `unordered` / wide
+    `dedupe`), carrying the two-channel model, stable `(Operation, Kind)` identity,
+    bounded aggregation, and severity promotion of D-082 (Slice F).
   - **Extend existing (no new code).** `SourceBindingInvalid` (Error, spec validate)
     additionally owns invalid triple `columns` **shape/addressing** — missing/partial
     role table, mixed index/name addressing, all-name without `has_header = true`,
@@ -2414,8 +2503,9 @@ enum members, and golden activation are the M3 *implementation* that follows.
     `NoObjectsEmitted`, `NoFormalAttributes`.
   - **Retirements.** `TripleSourceNotImplementedV1` (D-082) is removed with its guard
     when the triple source lands (Slice C). `ObjectKeyColumnNotImplementedV1` (D-083)
-    **narrows** to wide `dedupe` when `fail`/`keep` land (Slice E) and retires fully
-    when `dedupe` lands (Slice F).
+    narrowed to wide `dedupe` when `fail`/`keep` landed (Slice E) and **retired fully
+    when `dedupe` landed (Slice F)** — the enum member and its planner guard are gone, so
+    wide `column` object keys now execute for every `duplicate_object_policy`.
 - **Why:** the audit (F-081 / NF-1) found the triple/column-key structural-error
   class had no diagnostic home, and that reusing value-level (`UnknownValueObserved`)
   or duplicate-key codes would break one-condition → one-owning-code (P-14).

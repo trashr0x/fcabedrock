@@ -53,9 +53,26 @@ public static class ConversionPlanner
             return Diagnosed<ConversionPlan>.Failed(diagnostics);
         }
 
-        var plan = new ConversionPlan(formalAttributes, plannedAttributes, spec.Binding.ObjectKey);
+        var plan = new ConversionPlan(
+            formalAttributes, plannedAttributes, spec.Binding.ObjectKey, ResolveExecution(spec.Binding));
         return Diagnosed<ConversionPlan>.Ok(plan, diagnostics);
     }
+
+    // §5 / D-082: the plan carries a shape-specific SourceExecution. Wide → the singleton;
+    // triple → the resolved ordering verbatim (no fallback — ordering is required by the spec and the
+    // resolver produces a non-null value or fails with a diagnostic; a null ordering on a triple
+    // binding is a corrupt/internally-inconsistent Core state, so it throws via the invariant path,
+    // like ResolveColumnIndex, rather than silently defaulting and masking the invalid binding). Not a
+    // fingerprint input.
+    private static SourceExecution ResolveExecution(Binding binding) =>
+        binding.Shape switch
+        {
+            SourceShape.Wide => WideExecution.Instance,
+            SourceShape.Triple => new TripleExecution(binding.Ordering
+                ?? throw new InvalidOperationException(
+                    "Triple binding has no resolved ordering; the resolver must supply one (corrupt Core state).")),
+            _ => throw new InvalidOperationException($"Unknown source shape {binding.Shape}."),
+        };
 
     private static void PlanAttribute(
         AttributeSpec attribute,
@@ -202,9 +219,9 @@ public static class ConversionPlanner
 
     private static void ValidateStatic(BedrockSpec spec, SourceSchema schema, List<BedrockDiagnostic> diagnostics)
     {
-        // The plan is ordering-independent (it does not carry binding.ordering): subject_grouped
-        // and unordered plan identically and select their row stream at emit via
-        // TripleRowSources.ForOrdering (§5.3 / §17 rule 4 / D-082). No ordering check here.
+        // Static validation is ordering-agnostic: subject_grouped and unordered validate identically.
+        // The resolved ordering is carried on the plan's SourceExecution (ResolveExecution, below) and
+        // selects the row stream at emit (§5.3 / §17 rule 4 / D-082); no ordering-specific check here.
         ValidateObjectKey(spec.Binding.ObjectKey, spec.Binding.Shape, schema, diagnostics);
 
         // Duplicate authored names (AttributeNameDuplicate) and value_labels keys
@@ -320,10 +337,11 @@ public static class ConversionPlanner
         }
     }
 
-    // §5.4 / D-064 / D-082 / D-083: object-key modes the v1 planner cannot execute are refused
-    // rather than silently falling back to row index. Shape-aware: a triple ColumnObjectKey is the
-    // subject-derived key, executed by the triple emit (D-082) — allowed; a wide ColumnObjectKey
-    // executes at M3 Slice E for fail/keep, with dedupe staying a transitional reject until Slice F.
+    // §5.4 / D-064 / D-082 / D-083: object-key modes the v1 planner cannot execute are refused rather
+    // than silently falling back to row index. Shape-aware: a triple ColumnObjectKey is the
+    // subject-derived key, executed by the triple emit (D-082); a wide ColumnObjectKey executes at M3
+    // (row_index/fail/keep single-pass, dedupe on the shared spool backend). Only composite stays a v1
+    // reject.
     private static void ValidateObjectKey(
         ObjectKey objectKey, SourceShape shape, SourceSchema schema, List<BedrockDiagnostic> diagnostics)
     {
@@ -349,15 +367,6 @@ public static class ConversionPlanner
                     diagnostics.Add(new BedrockDiagnostic(
                         DiagnosticCode.ObjectKeyBindingInvalid, DiagnosticSeverity.Error,
                         $"object_key column index {column.Index} is out of range for a source with {schema.ColumnCount} columns (§5.4)."));
-                }
-
-                // Transitional (D-083): wide fail/keep execute at Slice E; dedupe's non-contiguous
-                // grouping (the D-082 shared spool) lands at Slice F.
-                if (column.Policy == DuplicateObjectPolicy.Dedupe)
-                {
-                    diagnostics.Add(new BedrockDiagnostic(
-                        DiagnosticCode.ObjectKeyColumnNotImplementedV1, DiagnosticSeverity.Error,
-                        "Wide column object keys with duplicate_object_policy = \"dedupe\" are not implemented in this milestone (planned for M3 Slice F, §6.1)."));
                 }
 
                 break;

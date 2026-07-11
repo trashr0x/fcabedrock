@@ -34,9 +34,9 @@ public sealed class WideCsvSource : IRecordSource
         }
 
         // The source is object-key-agnostic: it always names records by row index, and the emitter
-        // derives column-key names + duplicate policy from the plan (§5.4/§6.1, P-15). Object-key
-        // rejects (composite → Fatal, wide dedupe → transitional) are the planner's, reached because
-        // the pipeline builds the source before it plans.
+        // derives column-key names + duplicate policy from the plan (§5.4/§6.1, P-15) — including
+        // dedupe, which now executes. Only a composite object key is a planner reject (Fatal), reached
+        // because the pipeline builds the source before it plans.
         _openStream = openStream;
         _delimiter = binding.Delimiter;
         _hasHeader = binding.HasHeader;

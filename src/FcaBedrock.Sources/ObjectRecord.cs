@@ -10,6 +10,13 @@ public sealed class ObjectRecord
 {
     private readonly string?[] _fields;
 
+    /// <summary>
+    /// Constructs a record over <paramref name="fields"/>. <b>Construction transfers exclusive,
+    /// immutable ownership</b> of the caller-provided array — it is captured by reference, not copied.
+    /// A source must never mutate or reuse the array after yielding the record: downstream stages may
+    /// hold it past the yield (e.g. the dedupe grouping wraps a record as a zero-copy live row and may
+    /// buffer/spill it, D-082/D-083), so a buffer-reusing source would corrupt every such row.
+    /// </summary>
     public ObjectRecord(string name, string?[] fields)
     {
         Name = name;
