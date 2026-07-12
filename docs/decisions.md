@@ -111,7 +111,7 @@ superseded or refined. A new entry MUST add its line here.
 - D-060 — Ordinal-over-cuts validation contract
 - D-061 — `value_type` matrix: `free_per_value` flexible, `identity` string-only
 - D-062 — Cross-attribute restrict not modelled in v1; drop the diagnostic
-- D-063 — `restrict_to`: M2 validates shape, M4 executes; diagnostic ownership
+- D-063 — `restrict_to`: M2 validates shape, M4 executes; diagnostic ownership *(exact numeric form added + diagnostic renamed by D-091)*
 - D-064 — Wide column object keys deferred to M3; object-key diagnostic taxonomy *(execution realized by D-083)*
 - D-065 — Calibration/vocabulary over the input universe, before `restrict_to`
 
@@ -129,10 +129,10 @@ superseded or refined. A new entry MUST add its line here.
 
 - D-074 — `as_attribute` missing-column position uniform across scale kinds (appendix to D-068)
 - D-075 — Slice C TOML reader/writer contract: strictness, parse codes, canonical form
-- D-076 — Slice D seam/plan validation contract details (appends D-067)
+- D-076 — Slice D seam/plan validation contract details (appends D-067) *(exact numeric form added + diagnostic renamed by D-091)*
 - D-077 — Slice E fingerprint encoding/verification contract details (appends D-069)
 - D-078 — Slice F composition/carrier contract details (realizes D-027/D-052; refines D-067/D-075)
-- D-079 — Slice G `.bed` migrator contract: document-model target, Diagnosed surfaces (realizes D-009/D-049/D-057/D-068)
+- D-079 — Slice G `.bed` migrator contract: document-model target, Diagnosed surfaces (realizes D-009/D-049/D-057/D-068) *(numeric restrict migration refined by D-091)*
 - D-080 — `AttributeNameDuplicate` / `ValueLabelKeyNotInDomain` re-homed to the resolve seam (realizes D-067; supersedes its "not re-homed" parenthetical)
 - D-081 — Value-bin ordinal path (Slice H): identity + explicit order (realizes the D-047-deferred path; refines D-060)
 
@@ -144,6 +144,14 @@ superseded or refined. A new entry MUST add its line here.
 - D-085 — M3 diagnostic taxonomy: structural triple/column-key codes, severities, retirements (refines D-067)
 - D-086 — Shape-aware `.bed` migration sources: wide → column, triple → predicate by attribute name (refines D-079)
 - D-087 — Symmetrical `[output.dat].trailing_newline` + shape-derived v2 triple `.dat` final-newline compat (new fingerprint input, backward-compatible encoding)
+
+### Tier 1 M4 spec audit (pre-M4)
+
+- D-088 — Shared auto-calibration invariants + equal-frequency contract (restates D-028)
+- D-089 — Equal-width range-mode contract
+- D-090 — `value_groups` execution contract
+- D-091 — `restrict_to` execution contract: existential matching, exact numeric entries, canonical `restrictions` encoding (refines D-063/D-076/D-079)
+- D-092 — Numeric `free_per_value` rendered labels
 
 Spec-field defaults are recorded in spec §21 items 1–11 (see the final section
 of this file).
@@ -1289,7 +1297,7 @@ feature, so they are recorded here. They refine, not reverse, earlier decisions.
 
 ### D-063 — restrict_to: M2 validates shape, M4 executes; diagnostic ownership
 
-- **Status:** accepted
+- **Status:** accepted *(refined by D-091: exact numeric restrict entries added; `RestrictToOnNumericRequiresRange` renamed `RestrictToNumericEntryRequired` in live text)*
 - **Date:** 2026-06-30
 - **Decision:** M2 validates the *shape* of `restrict_to` at parse/validate even though
   execution is deferred to M4 (D-057): `RestrictToOnNumericRequiresRange` (Error) owns
@@ -1714,7 +1722,7 @@ built; they refine, not reverse, D-009 / D-049 / D-050…D-065.
 ### D-076 — Slice D seam/plan validation contract details
 
 - **Status:** accepted (appends D-067; realizes D-054/D-060/D-061/D-063/D-064/
-  D-071 at the seam and planner)
+  D-071 at the seam and planner) *(refined by D-091: exact numeric restrict entries added; `RestrictToOnNumericRequiresRange` renamed `RestrictToNumericEntryRequired` in live text)*
 - **Date:** 2026-07-05
 - **Decision:** Slice D activates the static validation the earlier decisions
   assigned but left operationally open; the details settled here:
@@ -1974,7 +1982,7 @@ built; they refine, not reverse, D-009 / D-049 / D-050…D-065.
 
 - **Status:** accepted (realizes D-009's save-as-TOML face, the D-049
   migrator-hygiene item, D-068's migrator branch, and D-057's carriage;
-  supersedes the M1 Core-targeting `BedToSpec`)
+  supersedes the M1 Core-targeting `BedToSpec`) *(numeric restrict migration refined by D-091: a parseable v2 numeric token migrates to an exact `{ value = n }` entry)*
 - **Date:** 2026-07-05
 - **Decision:** the one-way v2 migrator targets the **document model**:
   `BedMigrator.Migrate(BedDocument, BindingSection, ScalingMode, derivedFrom?) →
@@ -2608,6 +2616,198 @@ enum members, and golden activation are the M3 *implementation* that follows.
   the golden orchestrator (`DatOptionsFor`); spec §8 / §14 / §18.2 / §21. One new
   fingerprint input with backward-compatible encoding; no new diagnostic; wide
   output bytes unchanged.
+
+---
+
+## Tier 1 M4 spec audit (pre-M4)
+
+### D-088 — Shared auto-calibration invariants + equal-frequency contract
+
+- **Status:** accepted (pre-M4 Tier 1 audit; docs-only)
+- **Date:** 2026-07-12
+- **Decision:** four settled invariants ahead of the M4 calibration work.
+  - **Auto/frozen byte-equivalence (both auto discretizers).** For `equal_width`
+    and `equal_frequency`, converting on the fly and converting from the
+    `calibrate`-frozen spec MUST produce **byte-identical** `.cxt`/`.dat` on the
+    calibration dataset; only **audit metadata** — the run manifest, recorded
+    command line, spec-file hashes, and calibration diagnostics — is exempt. This
+    restates D-028 at the output-byte level: freezing changes *when*
+    cuts resolve, never *which* cuts.
+  - **General calibration population.** Each record contributes its
+    non-missing, usable value; a numeric value contributes only when it parses to
+    a finite number under `binding.locale`; for triple input each distinct cleaned
+    `(subject, predicate, value)` observation contributes once (§5.3.1); wide rows
+    are independent observations.
+  - **`tie_policy` is calibration-time.** It assigns an **entire
+    tied-value group** to one side of a candidate boundary and never splits a
+    group; Emit does no tie handling of its own — it applies ordinary §11.2
+    half-open `[lo, hi)` geometry to the resolved cuts.
+  - **Formula-stage distinct-gap obligation + phase-split cut validity.** When
+    distinct ≥ `bins`, quantile/tie placement selects `bins - 1`
+    distinct, strictly-ascending cut gaps and never drops a bin because several
+    target boundaries fall in one tied group; the exact quantile formula stays
+    deferred, bounded by this obligation and the auto/frozen equivalence.
+    Spec-determined cuts validate at spec-validate; **data-calibrated** cuts that
+    are non-finite or not strictly ascending are `CalibrationCutsInvalid` (Error,
+    calibrate).
+- **Why:** the tie/emit boundary, the calibration population, and the
+  frozen-equivalence guarantee were implied but never normative; the M4
+  implementation needs them pinned before cuts are computed, and golden pins can
+  only be set once the byte-equivalence is a stated contract.
+- **Rejected:** emit-time tie handling (splits tied groups, contradicts half-open
+  geometry); dropping bins on tied-boundary collisions (silently fewer bins);
+  freezing the exact quantile-index formula now (a tuning choice, not a
+  determinism guarantee, §11.5).
+- **Affects:** spec §5.3.1 / §7 / §11.4 / §11.5; new diagnostic
+  `CalibrationCutsInvalid`. Restates D-028. Docs-only landing (no enum/code change
+  here; codes land with their M4 emit sites, §16.4).
+
+---
+
+### D-089 — Equal-width range-mode contract
+
+- **Status:** accepted (pre-M4 Tier 1 audit; docs-only)
+- **Date:** 2026-07-12
+- **Decision:** `equal_width`'s `range` mode decides its phase and fingerprint
+  eligibility.
+  - **`range = "manual"` is spec-determined.** `vmin`/`vmax` fix the
+    span, the `bins - 1` cuts come from the spec alone, no data calibration runs,
+    it skips Calibrate (§7), and it is **eligible for stored fingerprints** like
+    any fully-declared spec (§14). Missing `vmin`/`vmax` → `SpecFieldInvalid`
+    (parse); a non-finite or non-increasing authored range → `EqualWidthRangeInvalid`
+    (Error, spec validate); a `precision`/`round_to` that collapses the derived
+    cuts → `EqualWidthCutsCollapsed` (Error, spec validate).
+  - **Data-derived range** (`min_max` / `percentile_p1_p99`). No usable spread →
+    `CalibrationDataInsufficient` (calibrate); final cuts non-finite or not
+    strictly ascending, including rounding collapse → `CalibrationCutsInvalid`
+    (calibrate, shared with D-088).
+  - **Distinct-value guard scoping.** The ≥`bins`-distinct guard is
+    **`equal_frequency`-only** — `equal_width` never applies it, because
+    equal-width bins are placed by span, not by count.
+- **Why:** the manual-vs-data-range split governs which phase runs and whether a
+  spec can carry stored fingerprints; the distinct-value guard was mistakenly
+  assumed to cover both auto discretizers.
+- **Rejected:** applying the distinct-value guard to `equal_width` (span-based,
+  tolerates sparse data); treating a manual range as data-dependent (it is fully
+  spec-determined and fully-frozen-eligible).
+- **Affects:** spec §3 / §7 / §11.4 / §14; new diagnostics `EqualWidthRangeInvalid`,
+  `EqualWidthCutsCollapsed`. Docs-only landing.
+
+---
+
+### D-090 — value_groups execution contract
+
+- **Status:** accepted (pre-M4 Tier 1 audit; docs-only)
+- **Date:** 2026-07-12
+- **Decision:** the `value_groups` grouping discretizer, pinned for M4.
+  - **Regex semantics.** `pattern` is a .NET regex matched
+    culture-invariant, case-sensitive, and partial (unanchored `IsMatch`); authors
+    anchor (`^…$`) for full-string matching, and inline options such as `(?i)` are
+    honored as part of the pattern.
+  - **Validity, one condition → one code.** `values` and `pattern`
+    are independently optional and may be combined. `SpecFieldInvalid` (parse)
+    owns a missing/empty label, an empty or invalid `pattern`, an empty explicit
+    value, or a group with neither matcher; there is no dedicated regex-error code.
+  - **Unique labels.** Authored labels must be distinct, and an
+    authored label colliding with the synthetic `Other` (`unmatched = "other"`) is
+    a duplicate → `ValueGroupsLabelDuplicate` (Error, spec validate); duplicates
+    never surface as `SpecFieldInvalid`. A pass-through value merely *observed* to
+    equal an authored label is data-dependent → plan-phase
+    `FormalAttributeCollision`; repeated pass-through observations are idempotent.
+  - **Ordinal over groups.** Ordinal `value_groups` (with `unmatched`
+    `skip`/`other`) requires an explicit `scale.order` that is a full permutation
+    of the group labels, including `Other` when applicable; `ordinal` +
+    `unmatched = "passthrough"` is `OrdinalNotAllowedWithValueGroupsPassthrough`
+    (Error, spec validate). §12.3's order-consuming family and §17 rule 2 extend to
+    `value_groups` skip/other, and `OrdinalOrderMissing` /
+    `OrdinalOrderHasUnknownValue` now cover group-label permutations.
+  - **`include` behaves as warn** under `unmatched = "skip"`: an unmatched value is
+    not a domain gap (`value_groups` ignores `declared_domain`, D-055), so
+    `unknown_value_policy = "include"` yields no bin, `UnknownValueObserved`
+    (Warning), and no `UnknownValuePolicyInclude` (no schema extension).
+- **Why:** `value_groups` is the M4 grouping discretizer; its regex behavior,
+  validity codes, and ordinal/passthrough/include interactions were under-specified
+  and each would otherwise read as an implementation choice rather than a contract.
+- **Rejected:** a dedicated regex-error diagnostic (`SpecFieldInvalid` already owns
+  malformed fields, P-14); ordinal over `passthrough` (its data-discovered bins
+  cannot be a full authored permutation); routing duplicate labels through
+  `SpecFieldInvalid` (duplicates own `ValueGroupsLabelDuplicate`).
+- **Affects:** spec §11.6 / §12.3 / §16.4 / §17; new diagnostics
+  `ValueGroupsLabelDuplicate`, `OrdinalNotAllowedWithValueGroupsPassthrough`.
+  Docs-only landing.
+
+---
+
+### D-091 — restrict_to execution contract
+
+- **Status:** accepted (pre-M4 Tier 1 audit; docs-only; refines D-063/D-076/D-079)
+- **Date:** 2026-07-12
+- **Decision:** the M4 execution semantics, numeric surface, migration mapping, and
+  fingerprint encoding for `restrict_to`.
+  - **Existential matching.** An object passes an attribute's
+    `restrict_to` when at least one observed value matches at least one entry (OR
+    within an attribute); an absent triple predicate and a missing value match
+    nothing; failing any attribute's restriction excludes the object (AND across
+    attributes, §10.1); wide input is the one-value special case.
+  - **Exact numeric entries.** `{ value = n }` matches by
+    parsed numeric identity (`30`, `30.0`, `3e1`), with finite `n`, and coexists
+    with ranges; `{}` is the full usable-numeric range. Bounded ranges require
+    finite `from < to`; equal, reversed, or non-finite provided bounds, and a
+    non-finite exact value, are `RestrictToRangeInvalid` (Error, spec validate). A
+    bare string on a numeric source is `RestrictToNumericEntryRequired` — which
+    **renames** `RestrictToOnNumericRequiresRange` in live text (the enum rename
+    lands with the M4 check site).
+  - **Locale-aware migration** (refines D-079). A parseable v2 numeric restrict
+    token migrates to an exact `{ value = n }` entry — parsed under the effective
+    `binding.locale`, then written as the numeric exact entry — replacing D-079's
+    keep-as-string carriage now that an exact numeric form exists.
+  - **Canonical `restrictions` encoding.** `restrict_to` is encoded
+    as a `restrictions` array in the **shared** portion of the canonical structure
+    (§14) — entering **both** output fingerprints, excluded from
+    `schema_fingerprint` — present only when non-empty and, as an explicit
+    exception to the planned-order rule, **canonically sorted**. Each restriction
+    object is `{"entries":[…],"source":{…}}` reusing the D-077 source encoding
+    (`{"predicate":<name>,"value_type":<type>}` or
+    `{"column":<index>,"value_type":<type>}`); entries are `{"value":<string>}`,
+    `{"value":<number>}`, or `{"from":<number|null>,"to":<number|null>}` (both range
+    keys always present). Entries sort by complete canonical JSON (ordinal) with
+    canonically-identical entries deduplicated (`30`/`30.0` collapse) and
+    overlapping-but-non-identical ranges **not** merged; restriction objects (AND)
+    sort likewise with exact duplicates removed; filter-only attributes contribute
+    their object here, not through the included-attribute column encoding.
+- **Why:** `restrict_to` was carried and shape-validated (D-057/D-063/D-076/D-079)
+  but its execution, numeric surface, and fingerprint encoding were open; M4 needs
+  all three pinned before rows are filtered, and reusing the D-077 source encoding
+  mints no new fingerprint vocabulary.
+- **Rejected:** universal (non-existential) matching (contradicts the FCA
+  object-filter intent, §7); a bespoke source vocabulary for restrictions (reuse
+  D-077); keeping `restrict_to` in planned order in the fingerprint (order is
+  semantically immaterial, so canonical sort); merging overlapping ranges (loses
+  authored intent and is unneeded for determinism); keeping the v2 numeric-token
+  keep-as-string migration (an exact numeric entry now expresses it faithfully).
+- **Affects:** spec §10.2 / §10.4 / §14 / §16.4 / §19.4; renames
+  `RestrictToOnNumericRequiresRange` → `RestrictToNumericEntryRequired` and adds
+  `RestrictToRangeInvalid` in live text; refines D-063/D-076/D-079. Docs-only
+  landing (enum rename/addition land with the M4 check sites).
+
+---
+
+### D-092 — Numeric free_per_value rendered labels
+
+- **Status:** accepted (pre-M4 Tier 1 audit; docs-only)
+- **Date:** 2026-07-12
+- **Decision:** a numeric `free_per_value` bin's **rendered label** — and any
+  `{value}` in `formal_attribute_format` — is the parsed numeric value formatted
+  with the §14 invariant, shortest round-trippable rule, so `90`, `90.0`, and `9e1`
+  share one bin rendered `90`. This carries the bin-identity collapse
+  already specified (§11.3) through to the rendered name, reusing the fingerprint
+  number formatter (§14).
+- **Why:** §11.3 pinned bin *identity* but not the rendered *label*; without this,
+  the same numeric bin could render `90.0` on one path and `90` on another,
+  breaking `.cxt` determinism and the `cxt_output_fingerprint`.
+- **Rejected:** rendering the first observed spelling (data-order-dependent); a
+  separate label formatter (reuse the one canonical §14 number formatting).
+- **Affects:** spec §10.7 / §11.3. No new diagnostic. Docs-only landing.
 
 ---
 

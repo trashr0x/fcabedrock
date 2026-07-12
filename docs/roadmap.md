@@ -95,6 +95,18 @@ vertical slices, not waterfall phases — each should leave the system working.
 > and canonical-byte baseline is preserved. `dotnet test` is green (777 tests: 776 passed, one
 > platform-gated confidentiality test skipped off its OS). **M4 (discretizers beyond manual
 > cuts) is next** — no M4 work has started.
+>
+> **The pre-M4 Tier 1 spec audit has landed (docs-only, D-088…D-092).** A review pass
+> over the M4 contract — auto/frozen calibration byte-equivalence and the calibration
+> population (D-088), the `equal_width` range-mode split (D-089), the `value_groups`
+> execution contract (D-090), the `restrict_to` execution contract with existential
+> matching, exact numeric entries, and the canonical `restrictions` fingerprint
+> encoding (D-091), and numeric `free_per_value` rendered labels (D-092) — updated
+> `bedrock-spec-v1.md`, `decisions.md`, and `roadmap.md` in place. It renames
+> `RestrictToOnNumericRequiresRange` → `RestrictToNumericEntryRequired` and adds six
+> diagnostics in the §16.4 registry; the enum members and rename land with their M4
+> check sites. This landing is docs-only — no production code, tests, fixtures, enum
+> members, or output/fingerprint bytes changed. **M4 implementation has not started.**
 
 ## Milestones
 
@@ -238,8 +250,29 @@ name and rejected there, D-070). Calibration pass over synthetic distributions;
 `value_groups` `unmatched = "passthrough"` resolves its data-dependent bins here
 too. Restrict-on-raw-value semantics tested explicitly (D-021). `calibrate` command
 groundwork (D-028).
-**Exit:** auto-binning calibrates deterministically; cuts captured in manifest;
-`value_groups` (incl. passthrough) converts.
+
+The **pre-M4 Tier 1 spec audit** (D-088…D-092, docs-only) pins the M4 contract and
+widens its scope to also include: **`unknown_value_policy = "include"`**
+calibration and **closure of the confirmed `include` emit crash**; **identity
+observed-domain calibration** (filling an absent `declared_domain` from data),
+which **retires `ObservedDomainCalibrationNotImplementedV1`**; and `restrict_to`
+**execution** — **existential** matching (D-091) with **exact numeric entries**
+(`{ value = n }`) alongside ranges — which retires `RestrictToNotImplementedV1`.
+Auto/frozen calibration is byte-equivalent (D-088); `equal_width` `range = "manual"`
+stays spec-determined (D-089); `value_groups` gets its regex/validation/ordinal
+contract (D-090).
+
+**Manifest deferral boundary.** Numeric calibrated cuts remain **required**
+manifest data (§15), and all resolved calibration outcomes — cuts, observed
+domains, included values, and pass-through bins — remain in the calibrated
+spec/plan; only *additional* non-cut manifest representation of
+discovered/appended/passthrough values is deferred to the manifest layer, without
+re-deriving M4 semantics.
+
+**Exit:** auto-binning calibrates deterministically and byte-identically to its
+frozen form; cuts captured in manifest; `value_groups` (incl. passthrough)
+converts; observed-domain calibration and `unknown_value_policy = "include"`
+resolve; `restrict_to` filters (existential; exact-numeric and range entries).
 
 ### M5 — Discovery / auto-detect
 
@@ -327,12 +360,6 @@ Modelled in the spec where noted, so adding them later isn't a format break.
 - **Multi-level taxonomic value hierarchies** — value_groups is single-level in
   v1; multi-level (Bachelors → Uni-Degree → Education with per-analysis
   granularity) is a real design exercise, deferred until single-level ships.
-- **Observed-domain calibration for categorical value bins** — filling an
-  absent/`[]` `declared_domain` from data (`ObservedDomainUsed`, §10.3) for
-  `identity` value bins has **no assigned milestone** (numeric auto-binning
-  calibration is M4); M2 rejects it transitionally
-  (`ObservedDomainCalibrationNotImplementedV1`, D-071). Assign when a spec-first
-  workflow needs observed categorical domains.
 - **Sampling / compressed output / memory-budget knob** — streaming filters and
   writer wrappers; additive, land opportunistically (likely around M7/M8).
 - **TCA (triadic FCA)** — out of scope for the foreseeable.
