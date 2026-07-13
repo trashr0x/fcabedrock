@@ -150,8 +150,16 @@ superseded or refined. A new entry MUST add its line here.
 - D-088 — Shared auto-calibration invariants + equal-frequency contract (restates D-028)
 - D-089 — Equal-width range-mode contract
 - D-090 — `value_groups` execution contract
-- D-091 — `restrict_to` execution contract: existential matching, exact numeric entries, canonical `restrictions` encoding (refines D-063/D-076/D-079)
+- D-091 — `restrict_to` execution contract: existential matching, exact numeric entries, canonical `restrictions` encoding (refines D-063/D-076/D-079) *(merged-`dedupe` restriction + type-directed migration clarified in place — Tier 2 audit)*
 - D-092 — Numeric `free_per_value` rendered labels
+
+### Tier 2 M4 implementation-contract audit (pre-M4)
+
+- D-093 — Calibrated-state model: Core-owned resolved calibration outcomes consumed by Plan (refines D-036/D-088; realizes D-028's freeze face)
+- D-094 — M4 canonical fingerprint encodings + effective-configuration hashing rule (appendix to D-069/D-077)
+- D-095 — Bounded-memory calibration + subject-local triple deduplication + `GroupingStorageFailed` calibrate ownership (refines D-088/D-082)
+- D-096 — Numeric `free_per_value` identity: locale-parsed, zero-canonicalized; normalized domain/label/order keys (refines D-061/D-081/D-092)
+- D-097 — Filter-only restriction diagnostics report unparseable values under `unknown_value_policy` (refines D-049/D-076)
 
 Spec-field defaults are recorded in spec §21 items 1–11 (see the final section
 of this file).
@@ -2740,7 +2748,10 @@ enum members, and golden activation are the M3 *implementation* that follows.
 
 ### D-091 — restrict_to execution contract
 
-- **Status:** accepted (pre-M4 Tier 1 audit; docs-only; refines D-063/D-076/D-079)
+- **Status:** accepted (pre-M4 Tier 1 audit; docs-only; refines D-063/D-076/D-079).
+  Merged-`dedupe` restriction and type-directed migration **clarified in place** by
+  the pre-M4 Tier 2 audit (2026-07-13) — no superseding entry, the D-091 contract is
+  still unimplemented (the correcting-fresh-decision convention).
 - **Date:** 2026-07-12
 - **Decision:** the M4 execution semantics, numeric surface, migration mapping, and
   fingerprint encoding for `restrict_to`.
@@ -2748,7 +2759,12 @@ enum members, and golden activation are the M3 *implementation* that follows.
     `restrict_to` when at least one observed value matches at least one entry (OR
     within an attribute); an absent triple predicate and a missing value match
     nothing; failing any attribute's restriction excludes the object (AND across
-    attributes, §10.1); wide input is the one-value special case.
+    attributes, §10.1). Under wide `dedupe` all rows for a key are grouped **first**
+    and the restriction is evaluated existentially over the **merged** object: if
+    any of the merged observations matches, the complete object survives with **all**
+    its observations and crosses (single-row behaviour is `keep`/`fail` or upstream
+    conflict resolution, not `dedupe`). Wide `row_index`/`fail`/`keep` — where an
+    object carries one observation per source — is the one-observation special case.
   - **Exact numeric entries.** `{ value = n }` matches by
     parsed numeric identity (`30`, `30.0`, `3e1`), with finite `n`, and coexists
     with ranges; `{}` is the full usable-numeric range. Bounded ranges require
@@ -2757,10 +2773,16 @@ enum members, and golden activation are the M3 *implementation* that follows.
     bare string on a numeric source is `RestrictToNumericEntryRequired` — which
     **renames** `RestrictToOnNumericRequiresRange` in live text (the enum rename
     lands with the M4 check site).
-  - **Locale-aware migration** (refines D-079). A parseable v2 numeric restrict
-    token migrates to an exact `{ value = n }` entry — parsed under the effective
-    `binding.locale`, then written as the numeric exact entry — replacing D-079's
-    keep-as-string carriage now that an exact numeric form exists.
+  - **Type-directed migration** (refines D-079). Migration is directed by the v2
+    attribute **type**, not by whether a token looks numeric: only a parseable
+    **finite** restrict token on a type-`o` (numeric) attribute migrates to an exact
+    `{ value = n }` entry — parsed under the effective `binding.locale`, then written
+    as the numeric exact entry — replacing D-079's keep-as-string carriage now that
+    an exact numeric form exists. A numeric-**looking** token on a categorical
+    attribute stays a **verbatim string**; and an **unparseable** token on a type-`o`
+    attribute also stays a string, then fails later at the resolve seam with
+    `RestrictToNumericEntryRequired`. Migration never parses a categorical token or
+    silently drops an unparseable numeric one.
   - **Canonical `restrictions` encoding.** `restrict_to` is encoded
     as a `restrictions` array in the **shared** portion of the canonical structure
     (§14) — entering **both** output fingerprints, excluded from
@@ -2808,6 +2830,294 @@ enum members, and golden activation are the M3 *implementation* that follows.
 - **Rejected:** rendering the first observed spelling (data-order-dependent); a
   separate label formatter (reuse the one canonical §14 number formatting).
 - **Affects:** spec §10.7 / §11.3. No new diagnostic. Docs-only landing.
+
+---
+
+## Tier 2 M4 implementation-contract audit (pre-M4)
+
+A second pre-M4 review, after the Tier 1 spec audit (D-088…D-092), that audited
+the M4 **implementation contract** — the calibrated-state boundary between
+Calibrate and Plan, the exact canonical fingerprint encodings for the M4
+discretizers, the bounded-memory calibration obligation, numeric
+`free_per_value` identity, and the filter-only restriction diagnostics. The
+findings were adjudicated with the operator and Codex; these entries land the
+accepted outcomes. Like the Tier 1 landing this is **docs-only** — no production
+code, tests, enum members, fixtures, or output/fingerprint bytes change; the new
+diagnostic enum members land with their M4 validation/check sites (the D-088/D-091
+pattern).
+
+### D-093 — Calibrated-state model: Core-owned resolved calibration outcomes; Plan consumes calibrated state
+
+- **Status:** accepted (pre-M4 Tier 2 audit; docs-only; refines D-036/D-088)
+- **Date:** 2026-07-13
+- **Decision:** the boundary between the Calibrate and Plan phases (§7) is a
+  single, resolved **calibrated-state** value, contracted as follows:
+  - **Core-owned, immutable, resolved.** The resolved calibration outcome is an
+    immutable value owned by `Core` that carries everything a data-reading pass
+    discovers — resolved auto cuts, observed domains, `unknown_value_policy =
+    "include"` additions, and `value_groups` `unmatched = "passthrough"` bins. It is
+    **produced by the Conversion calibrator** and returned through `Diagnosed<…>`
+    (P-14, alongside `ObservedDomainUsed` / `CalibrationDataInsufficient` / …), and
+    it is what **Plan consumes**. The freeze path (`calibrate`) and later manifest
+    serialization read this **same** retained outcome — none re-derives M4 semantics
+    from raw data (the retention boundary, D-028/D-036; §15).
+  - **One Plan input contract.** A fully declared / spec-determined configuration
+    satisfies the **same** calibrated-state contract **without** a data-reading
+    calibration pass: it is already calibration-ready and enters the identical Plan
+    input. There is one Plan input shape, not an "auto" and a "declared" one.
+  - **Plan rejects unresolved state.** Plan must not accept calibration-dependent
+    state that has not been resolved. This is a **call-contract / package-boundary**
+    obligation, enforced structurally (the D-078 posture — a mis-sequenced internal
+    call is a programmer error), **not** a permanent runtime diagnostic; no code is
+    minted for the bypass.
+  - **Structural auto/frozen equivalence.** Resolved auto cuts reuse the manual-cut
+    geometry, label, and identity machinery (`CutBinLabels` / `NumericCutBin`);
+    sharing that machinery is what makes the D-088 auto/frozen byte-equivalence
+    **structural** rather than a property two code paths must independently maintain.
+  - **API shape left open.** Exact type names and member layouts are **not** fixed
+    here (per the register); this entry pins the contract and its retention boundary,
+    not the surface.
+- **Why:** M4 introduces the first calibration that reads data. Without a single
+  owned, retained outcome, planning, freezing, and manifest serialization could each
+  re-derive cuts/domains — three chances to diverge and break determinism (P-7).
+  Making the resolved state Core-owned and immutable, and routing declared specs
+  through the same path, collapses those to one contract and makes the D-088
+  byte-equivalence fall out of shared machinery.
+- **Rejected:** letting Plan re-run calibration or read raw data (re-derivation;
+  breaks the retention boundary); a separate Plan input for declared vs auto specs
+  (two contracts to keep in sync); a permanent runtime diagnostic for feeding Plan
+  unresolved state (a mis-sequenced internal call is programmer error, D-078);
+  fixing the concrete types now (premature — the register leaves layout to
+  implementation).
+- **Affects:** Core (owns the calibrated-state value), Conversion (calibrator
+  produces it), Spec/manifest (consume the retained outcome); spec §7 / §15. Refines
+  D-036/D-088; realizes D-028's freeze face at the contract level. Docs-only landing
+  (types land with the M4 calibrator).
+
+---
+
+### D-094 — M4 canonical fingerprint encodings; effective-configuration hashing rule
+
+- **Status:** accepted (pre-M4 Tier 2 audit; docs-only; appendix to D-069/D-077)
+- **Date:** 2026-07-13
+- **Decision:** pin the canonical JSON encoding of every M4 discretizer in the
+  `shared.attributes[].discretizer` sub-object (the D-077 shared per-attribute
+  encoding), and the rule for what an M4 fingerprint hashes. All the D-069/D-077
+  conventions carry over unchanged — UTF-8 no BOM, compact JSON, **object keys
+  sorted ordinal ascending**, `kind` as a key, TOML enum spellings, and the §14
+  invariant shortest round-trippable number formatter (so `1.0` encodes `1`,
+  `90.0`/`9e1` encode `90`). The per-kind shapes:
+  - **`free_per_value`** — no config beyond the kind (its numeric-vs-string identity
+    rides on `source.value_type`, already in `source`; its bins/domain are effective,
+    below):
+
+    ```json
+    {"kind":"free_per_value"}
+    ```
+  - **`equal_width`** — authored `bins`, `range`, `precision`, and — **only** when
+    `range = "manual"` — `vmin`/`vmax`. `precision` mirrors its two TOML forms: the
+    string `"exact"` or the object `{"round_to":<number>}`. Data-derived range, then
+    manual range:
+
+    ```json
+    {"bins":4,"kind":"equal_width","precision":"exact","range":"min_max"}
+    {"bins":4,"kind":"equal_width","precision":{"round_to":1},"range":"manual","vmax":100,"vmin":0}
+    ```
+  - **`equal_frequency`** — authored `bins`, `tie_policy`, `cut_placement`
+    (resolved defaults spelled: `"left"`, `"right_value"`):
+
+    ```json
+    {"bins":4,"cut_placement":"right_value","kind":"equal_frequency","tie_policy":"left"}
+    ```
+  - **`value_groups`** — `groups` in **declaration order** (order is significant —
+    first-match wins, §11.6 — so it is a planned-order array, **not** sorted),
+    `unmatched` (spelled `"skip"`/`"other"`/`"passthrough"`), and each group object
+    with keys sorted `label`/`pattern`/`values`, where `values` and `pattern` are
+    present **only when authored** and the inner `values` array preserves **authored
+    order with duplicates retained** (it is authored configuration, not a
+    canonicalized set — the §14 arrays-in-planned-order default; only `restrictions`
+    sort):
+
+    ```json
+    {"groups":[{"label":"School","values":["11th","HS-grad"]},{"label":"ICD-Cardiac","pattern":"^I[0-9]{2}"}],"kind":"value_groups","unmatched":"skip"}
+    ```
+  - **Effective vs authored (the hashing rule).** Fingerprints hash the
+    **effective** planned bins/cuts/columns/order (the resolved `bin` objects in the
+    `schema` array, D-069) and the **effective** (calibrated/extended) domains (the
+    `Discretizer.ConsumesDeclaredDomain` domain, D-077). A data-calibrated
+    discretizer's **resolved cuts are not re-encoded** in its `discretizer`
+    sub-object — they already appear as `bin` objects in the `schema` array, so
+    duplicating them would be redundant. What the `discretizer` sub-object carries is
+    the **authored** kind and its authored configuration (the shapes above). Because
+    that sub-object feeds the **output** fingerprints (`shared`) but **not**
+    `schema_fingerprint` (which hashes the `schema` columns only), an **auto**
+    (`equal_frequency`) spec and its **frozen** form (`manual_cuts` with explicit
+    cuts) share the same `schema_fingerprint` and emit **byte-identical** contexts
+    (D-088), yet may carry **different** `cxt`/`dat` output fingerprints — a
+    one-directional guarantee (same output fingerprint ⇒ same bytes; not the
+    converse, §14), so this is sound.
+  - **Golden-lock before first use.** As D-069 was locked by the Slice-E
+    canonical-stability golden before any stored hash shipped, the M4 per-kind
+    canonical **bytes and SHA-256 vectors MUST be golden-locked before the first M4
+    fingerprint is produced**. The first stored/compared M4 hash fossilizes these
+    bytes.
+- **Why:** the M4 discretizers had no pinned canonical encoding (they reject at
+  read pre-M4, D-070), so the first M4 fingerprint would fossilize whatever the
+  encoder happened to emit (P-11, the D-069 rationale). Pinning the shapes, the
+  omission rules, and the effective/authored split now makes the M4 encoder
+  mechanical and its goldens a genuine lock, and states plainly why auto and frozen
+  output fingerprints may differ despite identical bytes.
+- **Rejected:** re-encoding resolved auto cuts in the `discretizer` sub-object
+  (redundant with the `schema` bins; invites a two-source-of-truth drift); sorting
+  the `groups` array (declaration order is semantically significant, §11.6);
+  always-present `vmin`/`vmax` (they are not authored under a data-derived range);
+  a bespoke number format for cuts (reuse the one §14 formatter, D-069); deferring
+  the shapes to the M4 encoder unreviewed (the first stored hash fossilizes them).
+- **Affects:** Core (M4 fingerprint encoder — the `AppendDiscretizer` cases for the
+  four kinds), Spec; spec §14. Appends D-069/D-077. Needs the M4 canonical-byte /
+  hash goldens before the first M4 fingerprint. Docs-only landing.
+
+---
+
+### D-095 — Bounded-memory calibration; subject-local triple deduplication; `GroupingStorageFailed` calibrate ownership
+
+- **Status:** accepted (pre-M4 Tier 2 audit; docs-only; refines D-088/D-082)
+- **Date:** 2026-07-13
+- **Decision:**
+  - **Bounded-memory calibration is an M4 obligation.** Equal-frequency and
+    percentile-range (`percentile_p1_p99`) calibration MUST be **exact,
+    deterministic, and bounded-memory in M4** — not a later performance retrofit.
+    When the calibration population exceeds the working-memory budget, the
+    implementation spills/sorts/aggregates (or uses an equivalent exact method); the
+    spill and non-spill paths MUST produce **byte-identical** cuts and output.
+    **Approximate quantiles are prohibited.** M8 may tune budgets and benchmark
+    algorithms (the D-082 split), but it never *establishes* boundedness — that
+    exists at M4.
+  - **Subject-local triple deduplication.** The §5.3.1 "each distinct cleaned
+    `(subject, predicate, value)` contributes once" rule is realized with a
+    **subject-local** deduplication of `(predicate, value)` within the current
+    subject — **never** a dataset-wide seen set. `subject_grouped` deduplicates the
+    contiguous run; `unordered` may group/spool first, then apply the **same**
+    subject-local rule. Discovery order remains **raw input order** (§17 rule 3) —
+    the deduplication changes how repeats are collapsed, not the first-appearance
+    order.
+  - **Budgets are internal.** Memory budgets, fan-in, spill thresholds, and similar
+    controls are **implementation internals** — never TOML surface and never
+    fingerprint inputs (the D-082 `GroupingOptions` precedent: a knob that cannot
+    change output bytes is not a spec field). Tuning them is byte-neutral by
+    construction.
+  - **`GroupingStorageFailed` extends to calibrate.** The existing
+    `GroupingStorageFailed` code now owns storage failures in the **calibrate** phase
+    as well as emit, with unchanged identity/aggregation/severity: an **in-path**
+    failure is Error with **no** calibrated result; a **cleanup-only** failure is
+    Warning. No new diagnostic code.
+- **Why:** M4 calibrates over the v1 target population (7.3M–73M records, D-007);
+  a calibration that must hold every value in memory would break at target scale, and
+  a calibration that goes approximate under pressure would break determinism (P-7)
+  and the D-088 auto/frozen byte-equivalence. Fixing "exact + bounded" as an M4
+  property — with spill/non-spill byte-identity — closes both. Subject-local
+  deduplication keeps the triple path bounded without a dataset-wide set (which would
+  defeat the point). Keeping budgets internal preserves the D-082 rule that tuning cannot move
+  bytes.
+- **Rejected:** deferring boundedness to M8 (a data structure that only becomes
+  bounded after a perf pass is a scale bug shipped early); approximate quantiles
+  under memory pressure (breaks determinism and D-088); a dataset-wide deduplication
+  set for triples (unbounded — the very thing to avoid); exposing budgets as TOML/fingerprint
+  inputs (a byte-neutral knob has no place in either, D-082); a new storage-failure
+  code for calibrate (the aggregation/severity semantics are identical to emit's).
+- **Affects:** Conversion (calibrator: bounded quantile/percentile pass, spill
+  path), Sources (subject-local triple deduplication), Diagnostics (`GroupingStorageFailed`
+  phase widens to calibrate/emit — registry cell only); spec §7 / §11.4 / §11.5 /
+  §16.4; roadmap M4/M8. Refines D-088/D-082. Docs-only landing.
+
+---
+
+### D-096 — Numeric `free_per_value` identity: locale-parsed, zero-canonicalized; normalized domain/label/order keys
+
+- **Status:** accepted (pre-M4 Tier 2 audit; docs-only; refines D-061/D-081/D-092)
+- **Date:** 2026-07-13
+- **Decision:**
+  - **Identity.** A numeric `free_per_value` bin's identity is **finite parsed
+    numeric equality** under `binding.locale`: `90`, `90.0`, and `9e1` are one bin
+    (extending D-092's rendered-label rule to the spec-side keys that name the same
+    bin). **All zero spellings** (`0`, `0.0`, `-0`, `+0`, `0e0`) canonicalize to
+    **positive zero** and render `0`. (The Tier 1 claim that .NET equality
+    distinguishes signed zero was incorrect; the canonicalization is nonetheless
+    pinned so `-0` never leaks into a key, label, or hash.)
+  - **`declared_domain`.** A numeric `free_per_value` `declared_domain` entry parses
+    under `binding.locale` — a **stated exception** to the "spec strings are
+    verbatim" rule (§5.1), on par with numeric `restrict_to` entries. An **invalid**
+    (unparseable), **non-finite** (NaN/±∞), or **normalization-duplicate** (two
+    spellings, one numeric identity) authored entry is the new **`DeclaredDomainInvalid`**
+    (Error, spec validate).
+  - **`value_labels` / `scale.order`.** Both use the **same** normalized numeric
+    identity. A `value_labels` key that is invalid or out-of-domain stays
+    `ValueLabelKeyNotInDomain`; two keys collapsing to one numeric identity is the
+    new **`ValueLabelKeyDuplicate`** (Error, spec validate). An invalid or
+    normalization-duplicate numeric `scale.order` entry reuses `OrderDomainInvalid`;
+    a valid-but-out-of-domain `order` entry stays `OrdinalOrderHasUnknownValue`; an
+    **absent** numeric `order` uses **natural numeric ascending** order (§12.3).
+  - **Authored spellings survive; Core keys are canonical.** The document model
+    round-trips the authored spellings verbatim (round-trip fidelity, D-081); the
+    resolved keys the Core planner and fingerprint see are the canonical numeric
+    identities.
+- **Why:** D-092 pinned how a numeric `free_per_value` bin *renders*; it did not pin
+  how spec-side **keys** (`declared_domain`, `value_labels`, `scale.order`) that
+  refer to those bins are identified. Without normalized identity, `90` and `90.0`
+  in a domain would be two bins on one path and one on another, and a `value_labels`
+  entry keyed `90.0` would silently miss a `90` bin — breaking determinism and the
+  fingerprint. Two new spec-validate codes give an author a precise error instead of
+  a silent miss.
+- **Rejected:** string-identical domain/label/order keys for numeric
+  `free_per_value` (contradicts the bin-identity collapse, §11.3/D-092); preserving
+  signed zero (`-0` leaking into a key/label/hash is a determinism hazard for no
+  gain); overloading `ValueLabelKeyNotInDomain` for the duplicate case (a distinct
+  condition deserves its own code, P-14); a new code for duplicate numeric `order`
+  (reuse `OrderDomainInvalid`, which already owns duplicate/invalid domain entries).
+- **Affects:** Core (numeric `free_per_value` identity, signed-zero canonicalization),
+  Spec (document model round-trip; the two new validate checks), Diagnostics (new
+  `DeclaredDomainInvalid`, `ValueLabelKeyDuplicate`); spec §5.1 / §10.3 / §10.8 /
+  §11.3 / §12.3 / §16.4 / §17. Refines D-061/D-081/D-092. Docs-only landing (enum
+  members land with the M4 validate sites).
+
+---
+
+### D-097 — Filter-only restriction diagnostics: unparseable values report under `unknown_value_policy`
+
+- **Status:** accepted (pre-M4 Tier 2 audit; docs-only; refines D-049/D-076)
+- **Date:** 2026-07-13
+- **Decision:** a narrow refinement of D-049/D-076 for what a **filter-only**
+  attribute (`include = false` + `restrict_to`) reports while evaluating its
+  restriction (it interacts with D-091's execution and D-050's present-but-invalid
+  rule):
+  - On a **filter-only numeric** restriction, a **valid non-match** and a **missing**
+    value are **silent** (a non-match is the restriction working, not an anomaly).
+    An **unparseable / non-finite** input is a **non-match** (it can match no numeric
+    entry) **plus** an aggregated `SourceValueUnparseable` at the severity
+    `unknown_value_policy` selects — `skip` silent, `warn` Warning, `fail`
+    Error/abort, `include` Warning (an unparseable token cannot join a numeric domain,
+    so `include` behaves as `warn`, §10.6).
+  - An **included-and-restricted** attribute (not filter-only) keeps its **ordinary**
+    malformed/unknown-value diagnostics even when the restriction excludes the object:
+    restrictions **filter objects, not observations**. Each **raw observation is
+    diagnosed at most once** — the restriction pass and the discretization pass do not
+    each report the same unparseable cell twice.
+- **Why:** D-050/§10.6 pinned unparseable-value reporting for *discretized*
+  attributes; a **filter-only** attribute is discarded before discretization, so
+  without this its unparseable inputs would report **nothing** — a silent data-quality
+  hole exactly where a filter is meant to be trustworthy. Routing the filter-only
+  restriction path through the same `unknown_value_policy` severity closes the hole
+  without inventing a code, and the "filter objects, not observations" rule keeps an
+  included attribute's diagnostics intact and single-counted.
+- **Rejected:** silence on filter-only unparseable inputs (the data-quality hole);
+  a new diagnostic code for the restriction path (reuse `SourceValueUnparseable` at
+  the policy severity); suppressing an included-and-restricted attribute's ordinary
+  diagnostics when its object is filtered out (restrictions filter objects, not
+  observations); double-counting an observation across the restriction and
+  discretization passes.
+- **Affects:** Conversion (restriction evaluation reports `SourceValueUnparseable`),
+  Diagnostics (no new code — existing `SourceValueUnparseable`); spec §10.4 / §10.6.
+  Refines D-049/D-076; interacts with D-091. Docs-only landing.
 
 ---
 

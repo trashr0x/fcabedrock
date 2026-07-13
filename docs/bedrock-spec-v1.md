@@ -182,6 +182,15 @@ the TOML are taken **verbatim** and never trimmed; only the data-side field valu
 is. The rule is uniform across all matching, so a value never fails to match
 purely because of surrounding spaces in the source file.
 
+**Numeric spec-side entries are the one exception to "verbatim".** A **numeric**
+entry written in the spec — a numeric `restrict_to` value (§10.4), or a numeric
+`free_per_value` `declared_domain` (§10.3), `value_labels` key (§10.8), or
+`scale.order` entry (§12.3) — is **parsed** under `binding.locale` to its numeric
+identity rather than compared as an opaque string, so `90`, `90.0`, and `9e1`
+denote the same value and all zero spellings canonicalize to `0` (D-096). This is
+a value-identity rule, not a whitespace one; surrounding whitespace remains
+insignificant.
+
 ### 5.2 Wide-CSV binding
 
 No additional fields. Attributes bind by `index` or `name`:
@@ -443,11 +452,20 @@ this separation (see decisions.md D-003, D-005).
    `unknown_value_policy = "include"` extensions, and `value_groups`
    `unmatched = "passthrough"` (which discovers one column per observed ungrouped
    value, §11.6). A numeric value that is **present but unparseable** is excluded
-   from calibration (§11.5) — it never influences a cut. Produces a fully-resolved
-   spec; calibrated cuts are captured in the run manifest (§15).
-3. **Plan** — consume a validated, calibrated spec and produce the immutable
-   `ConversionPlan`: the ordered formal-attribute schema with stable IDs, scale
-   instances, restriction predicates, and ordering rules. Pure; reads no data.
+   from calibration (§11.5) — it never influences a cut. Produces a **retained,
+   immutable resolved outcome** — the resolved cuts, observed domains, `include`
+   additions, and pass-through bins — that the Plan phase (and, later, the freeze
+   path and manifest serialization, §15) consumes **without re-deriving** it from
+   data (decisions.md D-093); the calibrated cuts are also captured in the run
+   manifest (§15). The **equal-frequency and percentile-range** cut calibration
+   MUST be **exact and bounded-memory** (§11.5) — its correctness does not depend on
+   holding the whole population in memory.
+3. **Plan** — consume a validated spec together with its **resolved
+   calibrated-state** (phase 2 above — a fully-declared spec supplies it with no
+   data pass, below) and produce the immutable `ConversionPlan`: the ordered
+   formal-attribute schema with stable IDs, scale instances, restriction predicates,
+   and ordering rules. Plan **never** plans from unresolved calibration-dependent
+   state (D-093). Pure; reads no data.
 4. **Emit** — stream objects through the plan, applying restriction, then
    discretization, then scaling, producing the output. `.dat` is single-pass.
    `.cxt` needs the object count and all object names before any incidence row,
@@ -461,6 +479,9 @@ wherever a discretizer consumes one (`identity` / `free_per_value`), only
 the data — §11.4), no `unknown_value_policy = "include"`, and no `value_groups`
 `unmatched = "passthrough"` is fully determined by its own text: Parse → Plan →
 Emit, deterministic from the spec alone, no data pre-pass that affects the schema.
+Such a spec is **already calibration-ready**: it satisfies the **same** resolved
+calibrated-state contract as an auto-calibrated spec and enters the **identical
+Plan input** — one Plan input shape, not a declared-vs-auto split (D-093).
 
 **`convert` auto-calibrates by default** (D-005, D-028): a spec needing
 calibration is calibrated in-line, and the resolved cuts are recorded in the
@@ -661,7 +682,12 @@ own `restrict_to` filter (§10.4) still applies. This is the **filter-only
 attribute** pattern: filter objects by a field without analyzing that field.
 An `include = false` attribute with no `restrict_to` is inert (a harmless
 no-op, allowed during staged spec editing). The attribute is always validated
-syntactically regardless of `include`.
+syntactically regardless of `include`, and its **source binding** is checked on
+the **same terms** as an included one: an out-of-range or unresolvable source
+index that first becomes computable at **Plan** (once the source schema is known)
+is reported as an aggregated `SourceBindingInvalid` (Error, §16.4) — for included
+**and** filter-only attributes alike — and **never** throws (the same posture as
+the wide object-key index range-check, D-083).
 
 ### 10.2 Source bindings
 
@@ -755,6 +781,17 @@ formal-attribute (column) order** for `identity` and `free_per_value` scaled
 nominally (§17 rule 3) — this is what makes a spec-first run reproducible and
 v2-byte-compatible regardless of the order values happen to appear in the data.
 
+**Numeric `free_per_value` domains.** For a numeric `free_per_value` source
+(§11.3) each `declared_domain` entry is **parsed under `binding.locale`** to its
+numeric identity (the §5.1 exception to verbatim strings), so `90`, `90.0`, and
+`9e1` denote one domain member and all zero spellings canonicalize to `0`
+(D-096). An entry that is **unparseable**, **non-finite** (NaN/±∞), or a
+**normalization duplicate** of another entry (two spellings, one numeric
+identity) is `DeclaredDomainInvalid` (Error, spec validate). Declaration order
+still drives column order, read over these normalized identities (§17 rule 3).
+For `identity` (string-only, §10.2) and categorical `free_per_value` the entries
+remain verbatim strings.
+
 If `declared_domain` is absent **or an empty list `[]`**, the Calibrate phase (§7)
 fills it from the observed domain in the data, and the user is warned
 (`ObservedDomainUsed`) because the resulting schema then depends on this specific
@@ -818,8 +855,29 @@ when **at least one** observed raw value for that source matches **at least one*
 entry (the OR within an attribute). For triple input an **absent** predicate
 matches nothing and a **missing** value matches nothing — either way the object
 fails that attribute's restriction. An object that fails **any** attribute's
-restriction is **excluded** (the AND across attributes, §10.1). Wide input is the
-one-value special case: the single cell either matches or it does not.
+restriction is **excluded** (the AND across attributes, §10.1). Under wide
+`dedupe` (§6.1) the rows for a key are grouped **first** and the restriction is
+evaluated existentially over the **merged** object: if any of the merged
+observations matches, the **complete** object survives with **all** its
+observations and crosses (to keep only a single row, use `keep`/`fail` or
+upstream conflict resolution, not `dedupe`). Wide `row_index`/`fail`/`keep` — one
+observation per source per object — is the one-observation special case: the
+single cell either matches or it does not.
+
+**Restriction-path diagnostics.** Evaluating a restriction reads raw values, so it
+reports on them like any other data pass (D-097). On a **numeric** restriction a
+**valid non-match** and a **missing** value are **silent** (a non-match is the
+filter working, not an anomaly); an **unparseable or non-finite** input is a
+**non-match** (it can match no numeric entry) **plus** an aggregated
+`SourceValueUnparseable` at the severity `unknown_value_policy` selects — `skip`
+silent, `warn` Warning, `fail` Error/abort, `include` Warning (§10.6). This is the
+**only** diagnostic path for a **filter-only** attribute (`include = false`), which
+is otherwise discarded before discretization — without it an unparseable filtered
+value would report nothing. An **included-and-restricted** attribute keeps its
+**ordinary** malformed/unknown-value diagnostics even when the restriction excludes
+its object: restrictions **filter objects, not observations**, and each raw
+observation is diagnosed **at most once** (the restriction pass and discretization
+pass never double-count the same cell).
 
 Within one `restrict_to` list every entry must satisfy the attribute's single
 `value_type` (§10.2): a string-fixing source accepts only string entries, a
@@ -922,7 +980,9 @@ at the severity `unknown_value_policy` selects — `skip` → no cross, no diagn
 *categorical* values, so this is the only role `unknown_value_policy` plays; for a
 numeric `free_per_value` **with** an explicit `declared_domain`, a **parseable**
 value not in the domain is instead an ordinary out-of-domain value and follows the
-categorical policy above.
+categorical policy above. This same severity mapping governs an unparseable value
+met on a **restriction** path, including a **filter-only** attribute's — the only
+diagnostic route for a value that never reaches discretization (D-097, §10.4).
 
 ### 10.7 formal_attribute_format
 
@@ -1013,7 +1073,12 @@ discretizer does not force you to strip retained labels (D-049).
 `free_per_value` discretizer). A raw value present in `declared_domain` but
 absent from `value_labels` falls through to the raw value as label. A label in
 `value_labels` for a value not in `declared_domain` is an error
-(`ValueLabelKeyNotInDomain`) — a typo-catcher. Under a discretizer that does not
+(`ValueLabelKeyNotInDomain`) — a typo-catcher. For a **numeric** `free_per_value`,
+`value_labels` keys are parsed under `binding.locale` to the **same normalized
+numeric identity** as the domain (§10.3, D-096): a key whose parsed value is not in
+the domain stays `ValueLabelKeyNotInDomain`, while two keys collapsing to **one**
+numeric identity (e.g. `90` and `90.0`) are `ValueLabelKeyDuplicate` (Error, spec
+validate). Under a discretizer that does not
 consult `value_labels` the labels are dormant, so neither error fires.
 
 **Determinism.** `value_labels` affects only the output formal-attribute
@@ -1160,7 +1225,8 @@ calibrate); final cuts that — after any rounding — are non-finite or not str
 ascending are `CalibrationCutsInvalid` (Error, calibrate). The `equal_frequency`
 **distinct-value guard** (§11.5) does **not** apply to `equal_width`: equal-width
 bins are placed by span, not by count, so equal width tolerates fewer distinct
-values than `bins`.
+values than `bins`. Percentile-range (`percentile_p1_p99`) calibration is subject
+to the same **exact, bounded-memory** obligation as `equal_frequency` (§11.5).
 
 ### 11.5 `equal_frequency`
 
@@ -1206,7 +1272,7 @@ runs under these rules, which apply to both `equal_width` and `equal_frequency`:
 - **Sort:** calibration sorts the surviving values ascending by IEEE-754
   total order (`double` default comparer), a stable, culture-independent order.
 - **Insufficient distinct values:** if the count of distinct surviving values is
-  fewer than `bins`, the planner emits `CalibrationDataInsufficient` (Error) and
+  fewer than `bins`, calibration emits `CalibrationDataInsufficient` (Error) and
   stops, rather than silently producing fewer bins.
 - **Ties:** governed by `tie_policy` (above); the result is fully determined.
 
@@ -1219,13 +1285,24 @@ The resulting numeric cuts remain subject to the post-formula validity check:
 data-calibrated cuts that are **non-finite or not strictly ascending** are
 `CalibrationCutsInvalid` (Error, calibrate).
 
+**Bounded-memory (normative).** Equal-frequency and percentile-range
+(`equal_width` `percentile_p1_p99`, §11.4) calibration MUST be **exact,
+deterministic, and bounded-memory** at **M4** — it is a correctness property, not
+a later performance retrofit. When the calibration population exceeds the
+working-memory budget, the implementation spills/sorts/aggregates (or uses an
+equivalent exact method); the spill and non-spill paths MUST produce
+**byte-identical** cuts and output. **Approximate quantiles are prohibited.** The
+budget itself is an implementation internal — never a TOML field or a fingerprint
+input (decisions.md D-095/D-082); the M8 scaling pass (`roadmap.md` M8) may tune it
+and benchmark algorithms, but boundedness is established here, not there.
+
 The exact quantile-index formula and the rounding precision of `midpoint`
 cut values and their rendered labels are **settled at M4** (the calibration
 milestone) and pinned by golden tests then; they are deliberately not frozen
 here, as they are tuning choices rather than determinism guarantees — but any
-formula that lands is **bounded** by the distinct-gap obligation above and the §7
-auto/frozen byte-equivalence. The rules above are the determinism guarantees and
-are stable now.
+formula that lands is **bounded** by the distinct-gap obligation above, the
+bounded-memory obligation just stated, and the §7 auto/frozen byte-equivalence.
+The rules above are the determinism guarantees and are stable now.
 
 **Examples (informative).**
 
@@ -1492,7 +1569,7 @@ order of bin labels, and applies **only** to **value-bin** discretizers (`identi
 / `free_per_value`) and to **`value_groups`** with `unmatched` `skip` or `other`
 (§11.6): there it is **required** for non-numeric labels — always for
 `value_groups`, whose group labels are strings — and optional for numeric value-bin
-labels (the natural numeric order is used if absent). It **MUST NOT** be present
+labels (the natural numeric **ascending** order is used if absent, D-096). It **MUST NOT** be present
 with a **cut** discretizer (`manual_cuts`, `ordered_cuts`, `equal_width`,
 `equal_frequency`), whose bin order is fixed by the cut geometry (§17 rule 3) — the
 cut discretizer is the single source of order. An `order` over cut bins is
@@ -1502,7 +1579,12 @@ an `order` entry not among the bin/group labels is `OrdinalOrderHasUnknownValue`
 (Error). `order` lists the **raw** bin values or **group labels** (never display
 labels) and must be a **full permutation** of them — a label with no `order` entry
 is likewise `OrdinalOrderMissing`, and for `unmatched = "other"` the synthetic
-`Other` must appear in `order`. In M2 this path executes for `identity` with an
+`Other` must appear in `order`. For a **numeric** value-bin `order`
+(`free_per_value`), entries are parsed under `binding.locale` to the same
+normalized identity as the bins (so `90`, `90.0`, `9e1` are one key); an
+**invalid** (unparseable/non-finite) or **normalization-duplicate** numeric
+`order` entry is `OrderDomainInvalid` (Error, spec validate), while a valid entry
+not among the bins stays `OrdinalOrderHasUnknownValue` (D-096). In M2 this path executes for `identity` with an
 explicit **string** `order` only; numeric value bins (`free_per_value`) and ordinal
 `value_groups` are deferred to M4 (§11), so those cases activate then.
 
@@ -1742,6 +1824,40 @@ carries the attribute's resolved `source` reusing the per-attribute source encod
   (`include = false` + `restrict_to`) contribute their restriction object here — not
   through the included-attribute column encoding.
 
+**M4 discretizer encodings (`shared.attributes[].discretizer`).** Each attribute's
+resolved discretizer is encoded in `shared` under the conventions above (UTF-8 no
+BOM, compact JSON, keys sorted ordinal, `kind` a key, TOML enum spellings, the
+canonical number formatter). The M4 discretizer kinds encode:
+
+- `free_per_value` → `{"kind":"free_per_value"}` (its numeric-vs-string identity
+  rides on `source.value_type`, already in `source`);
+- `equal_width` → `{"bins":<int>,"kind":"equal_width","precision":<precision>,"range":<string>}`,
+  adding `"vmax":<number>,"vmin":<number>` **only** when `range = "manual"`; the
+  `<precision>` value mirrors its two TOML forms — the string `"exact"` or the object
+  `{"round_to":<number>}`;
+- `equal_frequency` → `{"bins":<int>,"cut_placement":<string>,"kind":"equal_frequency","tie_policy":<string>}`;
+- `value_groups` → `{"groups":[…],"kind":"value_groups","unmatched":<string>}`, with
+  `groups` in **declaration order** (significant — first match wins, §11.6 — so it is
+  **not** sorted) and each group `{"label":<string>[,"pattern":<string>][,"values":[…]]}`
+  (group keys sorted `label`/`pattern`/`values`; `pattern`/`values` present **only
+  when authored**; the inner `values` array preserves **authored order, duplicates
+  retained** — the arrays-in-planned-order default, only `restrictions` sort).
+
+**Effective bins, authored kind.** Output fingerprints hash the **effective**
+planned bins/cuts/columns/order — the resolved `bin` objects already in the
+`schema` array — and the **effective** (calibrated / `include`-extended) domain; a
+data-calibrated discretizer's **resolved cuts are not re-encoded** in its
+`discretizer` sub-object (they are already schema `bin` objects, so duplicating
+them would be redundant). That sub-object carries the **authored** kind and
+configuration only. Because it feeds the two **output** fingerprints (via `shared`)
+but **not** `schema_fingerprint` (columns only), an auto discretizer and its
+`calibrate`-frozen `manual_cuts` form share a `schema_fingerprint` and emit
+**byte-identical** contexts (§7, D-088), yet may legitimately carry **different**
+`cxt`/`dat` output fingerprints — sound, because a shared output fingerprint
+implies identical bytes but not the converse. These M4 canonical bytes and their
+SHA-256 vectors are **golden-locked before the first M4 fingerprint is produced**
+(the D-069 → Slice-E precedent). See decisions.md D-094.
+
 **Stored only for fully-frozen specs.** Tooling writes the stored fingerprints
 only when the spec is fully determined by its own text — no observed-domain
 calibration (an absent `declared_domain` where a discretizer consumes it —
@@ -1879,6 +1995,8 @@ exactly one phase — the "Where" column below is the phase-ownership contract
 | `EqualWidthRangeInvalid` | Error | spec validate |
 | `EqualWidthCutsCollapsed` | Error | spec validate |
 | `ValueLabelKeyNotInDomain` | Error | spec validate |
+| `ValueLabelKeyDuplicate` | Error | spec validate |
+| `DeclaredDomainInvalid` | Error | spec validate |
 | `SourceValueTypeInvalid` | Error | spec validate |
 | `RestrictToNumericEntryRequired` | Error | spec validate |
 | `RestrictToRangeInvalid` | Error | spec validate |
@@ -1904,11 +2022,11 @@ exactly one phase — the "Where" column below is the phase-ownership contract
 | `DuplicateObjectKey` | Error, Warning, or Info (per `duplicate_object_policy`) | emit |
 | `ObjectKeyNameDisambiguated` | Warning (aggregated) | emit |
 | `ObjectKeyValueInvalid` | Error | emit |
-| `GroupingStorageFailed` | Error (in-path / escalated), or Warning (cleanup-only) | emit |
+| `GroupingStorageFailed` | Error (in-path / escalated), or Warning (cleanup-only) | calibrate/emit |
 | `SourceValueUnparseable` | Warning or Error (per `unknown_value_policy`; `skip` silent) | calibrate/emit |
 | `QuoteCharNotSupportedV1` | Error | spec validate |
 | `BindingDelimiterQuoteConflict` | Error | spec validate |
-| `SourceBindingInvalid` | Error | spec validate |
+| `SourceBindingInvalid` | Error | spec validate (source-index range-check at plan when the schema first becomes available, interim — D-083) |
 | `OrderedCutsCutNotInDomain` | Error | spec validate |
 | `OrderedCutsNotAscending` | Error | spec validate |
 | `OrderDomainInvalid` | Error | spec validate |
@@ -2021,6 +2139,11 @@ same-output across runs and across machines:
      - if `unknown_value_policy = "include"` appends newly-observed values
        during calibration, those are **appended after** the declared/observed
        values, in first-observation order.
+     - for a **numeric** `free_per_value`, all three orderings above are read over
+       the **normalized numeric identities** (§11.3, D-096), so equivalent spellings
+       (`90` / `90.0` / `9e1`) occupy one position; a normalization-duplicate
+       explicit domain entry is rejected earlier at validate
+       (`DeclaredDomainInvalid`, §10.3).
 4. **Object order in the output**:
    - **Wide** `row_index`, or `column` under `keep` / `fail` / all-unique keys:
      source **row order**.
@@ -2349,12 +2472,15 @@ scale = { kind = "ordinal", direction = "ge" }
 restrict_to = [{ from = 3, to = 9 }]         # TS 3-8
 ```
 
-This single spec captures: keep only objects observed for Bmp5 and only their
-strongly-detected observations within Theiler stages 3–8, then analyze the
-surviving objects along two emitted dimensions — Tissue (grouped into
-Endoderm/Mesoderm) and TheilerStage (four ordinal buckets). `Gene` and `Strength`
-are the two **filter-only** attributes (`include = false` + `restrict_to`): they
-shape *which objects* enter the context without becoming *columns* in it.
+This single spec captures: keep only objects that were **observed for Bmp5**,
+carry **at least one strongly-detected observation**, and have a Theiler stage in
+3–8, then analyze the surviving objects along two emitted dimensions — Tissue
+(grouped into Endoderm/Mesoderm) and TheilerStage (four ordinal buckets). Each
+restriction filters **whole objects, not observations** (§10.4, D-097): a surviving
+object keeps **all** its observations and crosses, not only the matching ones.
+`Gene` and `Strength` are the two **filter-only** attributes (`include = false` +
+`restrict_to`): they shape *which objects* enter the context without becoming
+*columns* in it.
 `TheilerStage` is **emitted and restricted** — it is not filter-only. Note its
 `equal_frequency` cuts calibrate over the **input universe** before `restrict_to`
 filters objects (§7), so the surviving TS 3–8 objects need not span all four
@@ -2491,6 +2617,10 @@ number, e.g. "§21-item-16" in D-051).
 26. **M4 Tier 1 spec-audit additions** → D-088…D-092 (decisions.md); the owning
     sections (§3, §5.3.1, §7, §10.2, §10.3, §10.4, §10.6, §10.7, §11.3, §11.4,
     §11.5, §11.6, §12.3, §14, §16.4, §17, §19.4) are updated in place.
+
+27. **M4 Tier 2 audit additions** → D-093…D-097 (+ D-091 in-place clarifications)
+    (decisions.md); the owning sections (§5.1, §7, §10.1, §10.3, §10.4, §10.6,
+    §11.4, §11.5, §12.3, §14, §16.4, §17, §19.4) are updated in place.
 
 ---
 

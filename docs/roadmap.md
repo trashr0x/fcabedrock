@@ -107,6 +107,20 @@ vertical slices, not waterfall phases — each should leave the system working.
 > diagnostics in the §16.4 registry; the enum members and rename land with their M4
 > check sites. This landing is docs-only — no production code, tests, fixtures, enum
 > members, or output/fingerprint bytes changed. **M4 implementation has not started.**
+>
+> **The pre-M4 Tier 2 implementation-contract audit has landed (docs-only,
+> D-093…D-097 + D-091 in-place clarifications).** A second review — the
+> calibrated-state boundary between Calibrate and Plan (D-093), the exact M4
+> canonical fingerprint encodings and effective-configuration hashing (D-094),
+> bounded-memory calibration with subject-local triple deduplication (D-095), numeric
+> `free_per_value` identity and normalized domain/label/order keys (D-096), and
+> filter-only restriction diagnostics (D-097) — updated `bedrock-spec-v1.md`,
+> `decisions.md`, and `roadmap.md` in place, and clarified D-091's merged-`dedupe`
+> restriction and type-directed migration. It normatively commits two future
+> spec-validate enum members (`DeclaredDomainInvalid`, `ValueLabelKeyDuplicate`,
+> deferred to their M4 sites) and widens `GroupingStorageFailed` to calibrate/emit.
+> This landing is docs-only — no production code, tests, fixtures, enum members, or
+> output/fingerprint bytes changed. **M4 implementation has not started.**
 
 ## Milestones
 
@@ -262,6 +276,21 @@ Auto/frozen calibration is byte-equivalent (D-088); `equal_width` `range = "manu
 stays spec-determined (D-089); `value_groups` gets its regex/validation/ordinal
 contract (D-090).
 
+The **pre-M4 Tier 2 implementation-contract audit** (D-093…D-097, docs-only) fixes
+three further M4 obligations: **bounded-memory calibration** — equal-frequency and
+percentile-range cuts are **exact and bounded-memory at M4** (spill-or-equivalent,
+byte-identical to the in-memory path; approximate quantiles prohibited; M8 only
+tunes budgets and benchmarks, D-095); **restriction/emit observability** — the
+already-registered `NoObjectsEmitted`, `AttributeHasNoCrosses`, and
+`ObjectHasNoCrosses` warnings (§16.4) get their **emit sites at M4** as
+`restrict_to` execution lands (no spec change — already registered); and the
+**calibrated-state contract** — Calibrate produces a Core-owned, immutable resolved
+outcome (cuts, observed domains, `include` additions, pass-through bins) that Plan
+consumes without re-derivation (D-093). Subject-local triple deduplication keeps the
+triple calibration bounded (D-095), and two new spec-validate diagnostics
+(`DeclaredDomainInvalid`, `ValueLabelKeyDuplicate`, D-096) land with their M4
+validate sites.
+
 **Manifest deferral boundary.** Numeric calibrated cuts remain **required**
 manifest data (§15), and all resolved calibration outcomes — cuts, observed
 domains, included values, and pass-through bins — remain in the calibrated
@@ -321,6 +350,11 @@ Windows, Linux, and macOS runtime targets are a **prerequisite for the cross-pla
 release**. Note the split (as in the grouping-backend note below): M8 may tune the
 buffer budget and fan-in, but the layout **safety constants are correctness inputs** —
 they cannot be performance-tuned without revalidation.
+
+**Calibration budgets.** M8 may tune the equal-frequency / percentile calibration
+memory budget and benchmark its spill/aggregate algorithms, but **exact
+bounded-memory calibration already exists at M4** (D-095) — boundedness is a
+correctness input established there, never here.
 
 **Exit:** documented throughput/memory at target scale; no full-matrix
 materialization.
