@@ -1043,6 +1043,204 @@ public sealed class SpecResolverTests
         Assert.Contains(result.Diagnostics, d => d.Code == DiagnosticCode.ValueLabelKeyNotInDomain);
     }
 
+    // --- free_per_value + numeric identity (§11.3 / §10.3 / §10.8 / §12.3, D-061/D-096, Slice B) ---
+
+    private static AttributeSection FreePerValue(
+        string name, int index, SourceValueType? valueType = null,
+        IReadOnlyList<string>? domain = null,
+        IReadOnlyDictionary<string, string>? valueLabels = null,
+        ScaleSection? scale = null) =>
+        DocumentFixtures.Attribute(name, DocumentFixtures.Column(index, valueType),
+            discretizer: new FreePerValueDiscretizerSection(),
+            scale: scale ?? new NominalScaleSection(),
+            declaredDomain: domain, valueLabels: valueLabels);
+
+    [Fact]
+    public void Resolve_WhenFreePerValueNoAuthoredType_ThenStringModeDefault()
+    {
+        // D-061: free_per_value is type-flexible; absent value_type defaults to string.
+        var result = Resolve(DocumentFixtures.Document([FreePerValue("g", 0, domain: ["b", "n"])]));
+
+        Assert.True(result.TryGetValue(out var spec));
+        Assert.Equal(SourceValueType.String, Assert.IsType<FreePerValueDiscretizer>(spec.Attributes[0].Discretizer).ValueType);
+        Assert.Equal(["b", "n"], spec.Attributes[0].DeclaredDomain); // string domain stays verbatim
+    }
+
+    [Theory]
+    [InlineData(SourceValueType.String)]
+    [InlineData(SourceValueType.Number)]
+    public void Resolve_WhenFreePerValueAuthoredType_ThenThatMode(SourceValueType valueType)
+    {
+        var domain = valueType == SourceValueType.Number ? new[] { "90" } : ["b"];
+        var result = Resolve(DocumentFixtures.Document([FreePerValue("v", 0, valueType, domain)]));
+
+        Assert.True(result.TryGetValue(out var spec));
+        Assert.Equal(valueType, Assert.IsType<FreePerValueDiscretizer>(spec.Attributes[0].Discretizer).ValueType);
+    }
+
+    [Fact]
+    public void Resolve_WhenIdentityAuthoredNumber_ThenSourceValueTypeInvalid()
+    {
+        // D-061: identity remains string-fixing — number + identity stays invalid; the numeric
+        // distinct binner is free_per_value.
+        var document = DocumentFixtures.Document([DocumentFixtures.Attribute(
+            "g", DocumentFixtures.Column(0, SourceValueType.Number),
+            discretizer: new IdentityDiscretizerSection(), scale: new NominalScaleSection(), declaredDomain: ["b"])]);
+
+        var result = Resolve(document);
+
+        Assert.False(result.TryGetValue(out _));
+        Assert.Contains(result.Diagnostics, d => d.Code == DiagnosticCode.SourceValueTypeInvalid);
+    }
+
+    [Fact]
+    public void Resolve_WhenNumericFreePerValueDomain_ThenNormalizedToCanonicalKeysInDeclarationOrder()
+    {
+        // §10.3/D-096: numeric domain entries parse to canonical numeric identities under locale;
+        // declaration order is preserved over first occurrence of each identity.
+        var result = Resolve(DocumentFixtures.Document([FreePerValue("v", 0, SourceValueType.Number, ["90.0", "5e0", "-0"])]));
+
+        Assert.True(result.TryGetValue(out var spec));
+        Assert.Equal(["90", "5", "0"], spec.Attributes[0].DeclaredDomain);
+    }
+
+    [Fact]
+    public void Resolve_WhenNumericDomainNormalizationDuplicate_ThenDeclaredDomainInvalid()
+    {
+        var result = Resolve(DocumentFixtures.Document([FreePerValue("v", 0, SourceValueType.Number, ["90", "90.0"])]));
+
+        Assert.False(result.TryGetValue(out _));
+        Assert.Equal("v", Assert.Single(
+            result.Diagnostics, d => d.Code == DiagnosticCode.DeclaredDomainInvalid).Location?.AttributeName);
+    }
+
+    [Theory]
+    [InlineData("abc")]
+    [InlineData("Infinity")]
+    [InlineData("NaN")]
+    public void Resolve_WhenNumericDomainUnparseableOrNonFinite_ThenDeclaredDomainInvalid(string entry)
+    {
+        var result = Resolve(DocumentFixtures.Document([FreePerValue("v", 0, SourceValueType.Number, [entry])]));
+
+        Assert.False(result.TryGetValue(out _));
+        Assert.Contains(result.Diagnostics, d => d.Code == DiagnosticCode.DeclaredDomainInvalid);
+    }
+
+    [Fact]
+    public void Resolve_WhenNumericValueLabelsNormalized_ThenKeyedByCanonicalIdentity()
+    {
+        // §10.8/D-096: numeric value_labels keys normalize to the same canonical identity as the domain.
+        var result = Resolve(DocumentFixtures.Document([FreePerValue("v", 0, SourceValueType.Number, ["90"],
+            new Dictionary<string, string> { ["90.0"] = "ninety" })]));
+
+        Assert.True(result.TryGetValue(out var spec));
+        Assert.True(spec.Attributes[0].ValueLabels.TryGetValue("90", out var label));
+        Assert.Equal("ninety", label);
+    }
+
+    [Fact]
+    public void Resolve_WhenNumericValueLabelsCollapseToOneIdentity_ThenValueLabelKeyDuplicate()
+    {
+        var result = Resolve(DocumentFixtures.Document([FreePerValue("v", 0, SourceValueType.Number, ["90"],
+            new Dictionary<string, string> { ["90"] = "a", ["90.0"] = "b" })]));
+
+        Assert.False(result.TryGetValue(out _));
+        Assert.Contains(result.Diagnostics, d => d.Code == DiagnosticCode.ValueLabelKeyDuplicate);
+    }
+
+    [Fact]
+    public void Resolve_WhenNumericValueLabelKeyNotInNormalizedDomain_ThenValueLabelKeyNotInDomain()
+    {
+        var result = Resolve(DocumentFixtures.Document([FreePerValue("v", 0, SourceValueType.Number, ["5"],
+            new Dictionary<string, string> { ["90"] = "a" })]));
+
+        Assert.False(result.TryGetValue(out _));
+        Assert.Contains(result.Diagnostics, d => d.Code == DiagnosticCode.ValueLabelKeyNotInDomain);
+    }
+
+    [Fact]
+    public void Resolve_WhenStringFreePerValueValueLabelKeyNotInDomain_ThenValueLabelKeyNotInDomain()
+    {
+        // String free_per_value consults value_labels like identity — verbatim membership (§10.8).
+        var result = Resolve(DocumentFixtures.Document([FreePerValue("g", 0, SourceValueType.String, ["b"],
+            new Dictionary<string, string> { ["x"] = "y" })]));
+
+        Assert.False(result.TryGetValue(out _));
+        Assert.Contains(result.Diagnostics, d => d.Code == DiagnosticCode.ValueLabelKeyNotInDomain);
+    }
+
+    [Fact]
+    public void Resolve_WhenNumericOrder_ThenNormalizedToCanonicalOrderOnScale()
+    {
+        // §12.3/D-096: numeric scale.order entries normalize to canonical identities.
+        var scale = new OrdinalScaleSection(OrdinalDirection.Ge, OrdinalBoundary.Inclusive, ["90.0", "5"], DropTop: null);
+        var result = Resolve(DocumentFixtures.Document([FreePerValue("v", 0, SourceValueType.Number, ["5", "90"], scale: scale)]));
+
+        Assert.True(result.TryGetValue(out var spec));
+        Assert.Equal(["90", "5"], Assert.IsType<OrdinalScale>(spec.Attributes[0].Scale).Order);
+    }
+
+    [Fact]
+    public void Resolve_WhenNumericOrderNormalizationDuplicate_ThenOrderDomainInvalid()
+    {
+        var scale = new OrdinalScaleSection(OrdinalDirection.Ge, OrdinalBoundary.Inclusive, ["90", "90.0"], DropTop: null);
+        var result = Resolve(DocumentFixtures.Document([FreePerValue("v", 0, SourceValueType.Number, ["90"], scale: scale)]));
+
+        Assert.False(result.TryGetValue(out _));
+        Assert.Contains(result.Diagnostics, d => d.Code == DiagnosticCode.OrderDomainInvalid);
+    }
+
+    [Fact]
+    public void Resolve_WhenNumericOrderUnparseable_ThenOrderDomainInvalid()
+    {
+        var scale = new OrdinalScaleSection(OrdinalDirection.Ge, OrdinalBoundary.Inclusive, ["abc"], DropTop: null);
+        var result = Resolve(DocumentFixtures.Document([FreePerValue("v", 0, SourceValueType.Number, ["90"], scale: scale)]));
+
+        Assert.False(result.TryGetValue(out _));
+        Assert.Contains(result.Diagnostics, d => d.Code == DiagnosticCode.OrderDomainInvalid);
+    }
+
+    [Fact]
+    public void Resolve_WhenNumericDomainAndLabelErrors_ThenBothAggregateDeterministically()
+    {
+        // P-14: the D-096 seam checks aggregate independently rather than short-circuiting.
+        var result = Resolve(DocumentFixtures.Document([FreePerValue("v", 0, SourceValueType.Number, ["90", "90.0"],
+            new Dictionary<string, string> { ["abc"] = "x" })]));
+
+        Assert.False(result.TryGetValue(out _));
+        Assert.Contains(result.Diagnostics, d => d.Code == DiagnosticCode.DeclaredDomainInvalid);
+        Assert.Contains(result.Diagnostics, d => d.Code == DiagnosticCode.ValueLabelKeyNotInDomain);
+    }
+
+    [Fact]
+    public void Resolve_WhenStringFreePerValueRestrictToOutOfDomain_ThenRestrictToValueNotInDomainWarning()
+    {
+        // §10.4/D-101: the restrict_to domain typo-catcher applies to string free_per_value like
+        // identity (both consult the declared domain). A Warning; resolve still succeeds.
+        var document = DocumentFixtures.Document([DocumentFixtures.Attribute("g", DocumentFixtures.Column(0),
+            discretizer: new FreePerValueDiscretizerSection(), scale: new NominalScaleSection(),
+            declaredDomain: ["b", "n"], restrictTo: [new RestrictToValue("z")])]);
+
+        var result = Resolve(document);
+
+        Assert.True(result.TryGetValue(out _));
+        Assert.Equal("g", Assert.Single(
+            result.Diagnostics, d => d.Code == DiagnosticCode.RestrictToValueNotInDomain).Location?.AttributeName);
+    }
+
+    [Fact]
+    public void Resolve_WhenStringFreePerValueRestrictToInDomain_ThenNoTypoWarning()
+    {
+        var document = DocumentFixtures.Document([DocumentFixtures.Attribute("g", DocumentFixtures.Column(0),
+            discretizer: new FreePerValueDiscretizerSection(), scale: new NominalScaleSection(),
+            declaredDomain: ["b", "n"], restrictTo: [new RestrictToValue("b")])]);
+
+        var result = Resolve(document);
+
+        Assert.True(result.TryGetValue(out _));
+        Assert.DoesNotContain(result.Diagnostics, d => d.Code == DiagnosticCode.RestrictToValueNotInDomain);
+    }
+
     // --- Value-bin ordinal order shape (D-081) ---
 
     private static OrdinalScaleSection OrdinalOrder(IReadOnlyList<string> order) =>

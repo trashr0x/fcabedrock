@@ -261,5 +261,110 @@ public sealed class ResolvedSpecTests
         Assert.Equal(BinResult.Bin(">=30"), resolvedDisc.Discretize("40.5"));
     }
 
+    [Fact]
+    public void Create_WhenFreePerValueParsingCultureMutatedAfterResolution_ThenClassificationUnaffected()
+    {
+        // The numeric free_per_value discretizer is rebuilt with a read-only culture clone, so a
+        // caller mutating the originally-mutable culture cannot change parsing/classification after
+        // resolution (D-098 recursive immutability, P-11) — analogous to the manual-cuts case.
+        var culture = (CultureInfo)CultureInfo.GetCultureInfo("en-US").Clone(); // a mutable clone
+        var discretizer = new FreePerValueDiscretizer(SourceValueType.Number, culture);
+        var spec = new BedrockSpec(SpecFixtures.WideRowIndex(),
+            [new AttributeSpec("v", new ColumnSource(0, SourceValueType.Number), Include: true,
+                discretizer, new NominalScale(), DeclaredDomain: ["40.5"], RestrictTo: [], SpecFixtures.NoLabels,
+                MissingPolicy.Skip, UnknownValuePolicy.Warn)]);
+        var resolved = Create(spec, new SourceSchema(1));
+
+        culture.NumberFormat.NumberDecimalSeparator = ","; // would change "40.5" if it leaked through
+
+        var resolvedDisc = Assert.IsType<FreePerValueDiscretizer>(resolved.Spec.Attributes[0].Discretizer);
+        Assert.True(resolvedDisc.Culture.IsReadOnly);
+        Assert.Equal(BinResult.Bin("40.5"), resolvedDisc.Discretize("40.5")); // still the "." decimal
+    }
+
+    [Fact]
+    public void Create_WhenFreePerValueValueTypeIsUndefinedEnum_ThenThrows()
+    {
+        // A cast can smuggle an undefined SourceValueType into the discretizer; the trust boundary
+        // rejects it (defined-enum-member check, D-098).
+        var discretizer = new FreePerValueDiscretizer((SourceValueType)99, CultureInfo.InvariantCulture);
+        var spec = new BedrockSpec(SpecFixtures.WideRowIndex(),
+            [new AttributeSpec("v", new ColumnSource(0, SourceValueType.Number), Include: true,
+                discretizer, new NominalScale(), DeclaredDomain: ["1"], RestrictTo: [], SpecFixtures.NoLabels,
+                MissingPolicy.Skip, UnknownValuePolicy.Warn)]);
+
+        Assert.Throws<ArgumentException>(() => Create(spec, new SourceSchema(1)));
+    }
+
+    // D-096/D-098: the trust boundary re-checks that numeric free_per_value domain/label/order keys are
+    // canonical numeric identities, so a hand-built non-canonical spec cannot reach the planner/emitter
+    // (where a non-canonical bin would be silently unmatchable). The resolve seam already guarantees it.
+    private static AttributeSpec NumericFreePerValue(
+        IReadOnlyList<string> domain, IReadOnlyList<string>? order = null,
+        IReadOnlyDictionary<string, string>? valueLabels = null)
+    {
+        Scale scale = order is null
+            ? new NominalScale()
+            : new OrdinalScale(OrdinalDirection.Ge, DropTop: false, OrdinalBoundary.Inclusive, order);
+        return new AttributeSpec("v", new ColumnSource(0, SourceValueType.Number), Include: true,
+            new FreePerValueDiscretizer(SourceValueType.Number, CultureInfo.InvariantCulture), scale,
+            domain, RestrictTo: [], valueLabels ?? SpecFixtures.NoLabels, MissingPolicy.Skip, UnknownValuePolicy.Warn);
+    }
+
+    [Theory]
+    [InlineData("bad")]       // unparseable
+    [InlineData("90.0")]      // non-canonical form (canonical is "90")
+    [InlineData("Infinity")]  // non-finite
+    [InlineData("-0")]        // signed zero (canonical is "0")
+    public void Create_WhenNumericFreePerValueDomainKeyNotCanonical_ThenThrows(string key)
+    {
+        var spec = new BedrockSpec(SpecFixtures.WideRowIndex(), [NumericFreePerValue([key])]);
+
+        Assert.Throws<ArgumentException>(() => Create(spec, new SourceSchema(1)));
+    }
+
+    [Fact]
+    public void Create_WhenNumericFreePerValueValueLabelKeyNotCanonical_ThenThrows()
+    {
+        var spec = new BedrockSpec(SpecFixtures.WideRowIndex(),
+            [NumericFreePerValue(["90"], valueLabels: new Dictionary<string, string> { ["90.0"] = "ninety" })]);
+
+        Assert.Throws<ArgumentException>(() => Create(spec, new SourceSchema(1)));
+    }
+
+    [Fact]
+    public void Create_WhenNumericFreePerValueOrderKeyNotCanonical_ThenThrows()
+    {
+        var spec = new BedrockSpec(SpecFixtures.WideRowIndex(), [NumericFreePerValue(["90"], order: ["90.0"])]);
+
+        Assert.Throws<ArgumentException>(() => Create(spec, new SourceSchema(1)));
+    }
+
+    [Fact]
+    public void Create_WhenNumericFreePerValueCanonicalKeys_ThenSucceeds()
+    {
+        var spec = new BedrockSpec(SpecFixtures.WideRowIndex(),
+            [NumericFreePerValue(["90", "0"], order: ["90", "0"], valueLabels: new Dictionary<string, string> { ["90"] = "ninety" })]);
+
+        var resolved = Create(spec, new SourceSchema(1));
+
+        Assert.Equal(["90", "0"], resolved.Spec.Attributes[0].DeclaredDomain);
+    }
+
+    [Fact]
+    public void Create_WhenStringFreePerValueNonNumericKeys_ThenSucceedsVerbatim()
+    {
+        // String free_per_value keys are verbatim strings — never subject to numeric canonicalization.
+        var spec = new BedrockSpec(SpecFixtures.WideRowIndex(),
+            [new AttributeSpec("g", new ColumnSource(0, SourceValueType.String), Include: true,
+                new FreePerValueDiscretizer(SourceValueType.String, CultureInfo.InvariantCulture),
+                new NominalScale(), ["b", "90.0", "n"], RestrictTo: [], SpecFixtures.NoLabels,
+                MissingPolicy.Skip, UnknownValuePolicy.Warn)]);
+
+        var resolved = Create(spec, new SourceSchema(1));
+
+        Assert.Equal(["b", "90.0", "n"], resolved.Spec.Attributes[0].DeclaredDomain);
+    }
+
     private sealed record UnknownObjectKey : ObjectKey;
 }

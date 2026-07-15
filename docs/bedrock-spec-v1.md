@@ -514,11 +514,12 @@ observations. This population is the input universe, evaluated before `restrict_
 > slices. **Slice A** (D-098) implements the discovery-class calibration: filling
 > an absent `declared_domain` under a consuming discretizer (`ObservedDomainUsed`)
 > and `unknown_value_policy = "include"` (§10.6), for the M1 `identity`
-> discretizer. The remaining calibration — the auto discretizers (`equal_width` /
-> `equal_frequency`), numeric `free_per_value`, and `value_groups`
-> `unmatched = "passthrough"` — is still recognized-but-rejected at read
-> (`DiscretizerKindNotYetSupported`, §16.4) until each kind's slice lands, rather
-> than silently producing a data-dependent schema.
+> discretizer; **Slice B** (D-101) extends it to numeric `free_per_value`, whose
+> observed/included values are canonical numeric identities (§11.3/D-096). The
+> remaining calibration — the auto discretizers (`equal_width` / `equal_frequency`)
+> and `value_groups` `unmatched = "passthrough"` — is still recognized-but-rejected
+> at read (`DiscretizerKindNotYetSupported`, §16.4) until each kind's slice lands,
+> rather than silently producing a data-dependent schema.
 
 **`convert` calibrates but never discovers.** Discovery (draft-spec generation
 from data) is the separate `probe` operation (D-003), never performed implicitly
@@ -808,14 +809,14 @@ reader/writer round-trips an authored `[]` verbatim; `calibrate`/freeze may repl
 it with the observed values. For input-independent, spec-first workflows, declare
 the domain explicitly or freeze it with `fcabedrock calibrate`.
 
-> **Observed-domain calibration (M4 Slice A).** The Calibrate phase fills an
+> **Observed-domain calibration (M4 Slice A/B).** The Calibrate phase fills an
 > absent `declared_domain` (omitted or authored `[]`) on an included consuming
 > discretizer from the observed data, warning with `ObservedDomainUsed` (§7); the
 > transitional `ObservedDomainCalibrationNotImplementedV1` plan reject retired at
 > M4 Slice A (D-098, superseding D-071). Cut discretizers ignore `declared_domain`
-> (above) and are unaffected. The `identity` case executes now; the numeric
-> `free_per_value` case joins when that discretizer lands (until then
-> `free_per_value` is recognized-but-rejected at read, D-070).
+> (above) and are unaffected. The `identity` case executes from Slice A; the numeric
+> `free_per_value` case joined at Slice B (D-101), observing canonical numeric
+> identities (§11.3/D-096).
 
 ### 10.4 restrict_to
 
@@ -1588,9 +1589,10 @@ is likewise `OrdinalOrderMissing`, and for `unmatched = "other"` the synthetic
 normalized identity as the bins (so `90`, `90.0`, `9e1` are one key); an
 **invalid** (unparseable/non-finite) or **normalization-duplicate** numeric
 `order` entry is `OrderDomainInvalid` (Error, spec validate), while a valid entry
-not among the bins stays `OrdinalOrderHasUnknownValue` (D-096). In M2 this path executes for `identity` with an
-explicit **string** `order` only; numeric value bins (`free_per_value`) and ordinal
-`value_groups` are deferred to M4 (§11), so those cases activate then.
+not among the bins stays `OrdinalOrderHasUnknownValue` (D-096). In M2 this path executed for `identity` with an
+explicit **string** `order` only; numeric value bins (`free_per_value`) activated at
+M4 Slice B (D-101) — with the natural-numeric-ascending default when `order` is absent
+— and ordinal `value_groups` remains deferred to a later M4 slice (§11).
 
 **`drop_top`** *(default `false`)*. The "top" formal attribute (the one
 true for everything in `direction = "ge"` — i.e., `≥<lowest>`, and `≤<highest>`
@@ -1625,9 +1627,12 @@ authored, per-attribute** `boundary` requesting the straddling combination
 (Error, **spec validate**). The reader/writer preserves whether `boundary` was
 authored or defaulted (§6) — both so the round-trip stays faithful and so this
 check fires only on the authored case. **Over value bins** (`identity` /
-`free_per_value` with an explicit `order`) there is no half-open geometry, so all
-four `direction × boundary` combinations are well-defined and `boundary` is fully
-live; this value-bin ordinal path is implemented at M2.
+`free_per_value` with an authored `order`, or a numeric `free_per_value` with the
+derived natural numeric order) there is no half-open geometry, so all four
+`direction × boundary` combinations are well-defined and `boundary` is fully live;
+this value-bin ordinal path landed at M2 for `identity` (string, explicit order) and
+extended to `free_per_value` at M4 Slice B (string requires an explicit order; numeric
+uses an authored or natural-ascending order, D-101).
 
 ### 12.4 Modelled but not implemented in v1
 
@@ -2075,11 +2080,12 @@ observed-domain calibration landed at M4 Slice A — D-098, so an absent
 phase, §10.3.) They are distinct from the permanent `*NotImplementedV1`
 reservations in §20. Two parse-phase codes are transitional on the same terms:
 `DiscretizerKindNotYetSupported` (a recognized-but-deferred discretizer kind —
-`free_per_value`, `equal_width`, `equal_frequency`, `value_groups` — rejected at
-read with no parameter carrier, D-070; removed as each kind lands at M4) and
-`SpecSurfaceNotYetSupported` (recognized v1 surface the reader does not model
-yet — attribute/template `display_name` / `formal_attribute_format`,
-`[defaults]` `formal_attribute_format`, `value_type = "date"` — a **closed,
+`equal_width`, `equal_frequency`, `value_groups` — rejected at read with no
+parameter carrier, D-070; removed as each kind lands at M4 — `free_per_value` left
+this set at M4 Slice B, D-101) and `SpecSurfaceNotYetSupported` (recognized v1
+surface the reader does not model yet — attribute/template `display_name` /
+`formal_attribute_format`, `[defaults]` `formal_attribute_format`,
+`value_type = "date"` — a **closed,
 per-table** set, never a fallback for unknown keys, D-075; the
 extends/template/matcher entries were retired by their Slice F carriers, D-078;
 the **naming carriers** (`display_name`, `formal_attribute_format`) are assigned

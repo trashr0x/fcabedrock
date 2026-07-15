@@ -179,6 +179,31 @@ public sealed class SpecReaderTests
     }
 
     [Fact]
+    public void Read_WhenFreePerValueDiscretizer_ThenFreePerValueDiscretizerSection()
+    {
+        // §11.3/D-101: free_per_value is now an executable kind with a carrier (no parameters).
+        var document = ReadOk(Attribute("discretizer = { kind = \"free_per_value\" }"));
+
+        Assert.IsType<FreePerValueDiscretizerSection>(document.Attributes[0].Discretizer);
+    }
+
+    [Fact]
+    public void Read_WhenFreePerValueWithNumberSourceAndNumericDomain_ThenSpellingsKeptVerbatim()
+    {
+        // The numeric domain/label spellings stay verbatim in the document (normalized only at the
+        // resolve seam, D-096).
+        var document = ReadOk(Attribute(
+            "discretizer = { kind = \"free_per_value\" }\n" +
+            "declared_domain = [\"90.0\", \"5e0\"]\n" +
+            "value_labels = { \"90.0\" = \"ninety\" }",
+            source: "{ kind = \"column\", index = 0, value_type = \"number\" }"));
+
+        Assert.IsType<FreePerValueDiscretizerSection>(document.Attributes[0].Discretizer);
+        Assert.Equal(["90.0", "5e0"], document.Attributes[0].DeclaredDomain);
+        Assert.Equal(["90.0"], document.Attributes[0].ValueLabels!.Keys);
+    }
+
+    [Fact]
     public void Read_WhenTripleBinding_ThenCarrierFieldsSurvive()
     {
         var document = ReadOk(TomlFixtures.MiniAdultTriples);

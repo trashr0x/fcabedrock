@@ -1,3 +1,4 @@
+using System.Globalization;
 using FcaBedrock.Core.Calibration;
 using FcaBedrock.Core.Discretization;
 using FcaBedrock.Core.Scaling;
@@ -12,6 +13,13 @@ public sealed class CalibratorTests
     private static AttributeSpec Identity(
         string name, int index, IReadOnlyList<string> domain, UnknownValuePolicy policy = UnknownValuePolicy.Warn) =>
         new(name, new ColumnSource(index, SourceValueType.String), Include: true, new IdentityDiscretizer(),
+            new NominalScale(), domain, RestrictTo: [], ConversionFixtures.NoLabels, MissingPolicy.Skip, policy);
+
+    // A numeric free_per_value attribute (D-096): its observed values are canonical numeric identities.
+    private static AttributeSpec NumericFreePerValue(
+        string name, int index, IReadOnlyList<string> domain, UnknownValuePolicy policy = UnknownValuePolicy.Warn) =>
+        new(name, new ColumnSource(index, SourceValueType.Number), Include: true,
+            new FreePerValueDiscretizer(SourceValueType.Number, CultureInfo.InvariantCulture),
             new NominalScale(), domain, RestrictTo: [], ConversionFixtures.NoLabels, MissingPolicy.Skip, policy);
 
     private static async Task<(ResolvedSpec Resolved, WideCsvSource Source)> WidePrep(BedrockSpec spec, string csv)
@@ -82,6 +90,196 @@ public sealed class CalibratorTests
         Assert.True(result.TryGetValue(out var calibrated));
         Assert.Empty(Assert.IsType<IncludeAdditions>(Assert.Single(calibrated.Calibrations)).Values);
         Assert.Contains(result.Diagnostics, d => d.Code == DiagnosticCode.UnknownValuePolicyInclude);
+    }
+
+    // --- numeric free_per_value calibration (canonical numeric identities, D-096/D-101) ---
+
+    [Fact]
+    public async Task CalibrateAsync_WhenNumericFreePerValueAbsentDomain_ThenObservedCanonicalKeysCollapse()
+    {
+        // 90, 90.0, 9e1 collapse to one bin "90" at the position of their first occurrence; every
+        // zero spelling collapses to "0" (D-096). Discovery/first-observation order is raw input order.
+        var spec = new BedrockSpec(ConversionFixtures.Wide(hasHeader: false), [NumericFreePerValue("v", 0, [])]);
+        var (resolved, source) = await WidePrep(spec, "90\n5\n90.0\n-0\n9e1\n0");
+
+        var result = await Calibrator.CalibrateAsync(resolved, source);
+
+        Assert.True(result.TryGetValue(out var calibrated));
+        Assert.Equal(["90", "5", "0"], calibrated.Spec.Attributes[0].DeclaredDomain);
+        Assert.Equal(["90", "5", "0"], Assert.IsType<ObservedDomain>(Assert.Single(calibrated.Calibrations)).Values);
+        Assert.Contains(result.Diagnostics, d => d.Code == DiagnosticCode.ObservedDomainUsed);
+    }
+
+    [Fact]
+    public async Task CalibrateAsync_WhenNumericFreePerValueInclude_ThenAppendsCanonicalNovelKeys()
+    {
+        // The explicit domain is already canonical ("90"); "90.0" is not novel, "5"/"7" are.
+        var spec = new BedrockSpec(ConversionFixtures.Wide(hasHeader: false),
+            [NumericFreePerValue("v", 0, ["90"], UnknownValuePolicy.Include)]);
+        var (resolved, source) = await WidePrep(spec, "90.0\n5\n7\n5\n9e1");
+
+        var result = await Calibrator.CalibrateAsync(resolved, source);
+
+        Assert.True(result.TryGetValue(out var calibrated));
+        Assert.Equal(["90", "5", "7"], calibrated.Spec.Attributes[0].DeclaredDomain);
+        Assert.Equal(["5", "7"], Assert.IsType<IncludeAdditions>(Assert.Single(calibrated.Calibrations)).Values);
+        Assert.Contains(result.Diagnostics, d => d.Code == DiagnosticCode.UnknownValuePolicyInclude);
+    }
+
+    [Fact]
+    public async Task CalibrateAsync_WhenNumericFreePerValueAllUnparseable_ThenEmptyObservedStillWarns()
+    {
+        // Mode-triggered warning fires even at zero discoveries (§7); unparseable values are excluded.
+        var spec = new BedrockSpec(ConversionFixtures.Wide(hasHeader: false), [NumericFreePerValue("v", 0, [])]);
+        var (resolved, source) = await WidePrep(spec, "abc\nxyz");
+
+        var result = await Calibrator.CalibrateAsync(resolved, source);
+
+        Assert.True(result.TryGetValue(out var calibrated));
+        Assert.Empty(calibrated.Spec.Attributes[0].DeclaredDomain);
+        Assert.Contains(result.Diagnostics, d => d.Code == DiagnosticCode.ObservedDomainUsed);
+    }
+
+    [Fact]
+    public async Task CalibrateAsync_WhenNumericFreePerValueUnparseableUnderWarn_ThenAggregatedSourceValueUnparseableWarning()
+    {
+        var spec = new BedrockSpec(ConversionFixtures.Wide(hasHeader: false),
+            [NumericFreePerValue("v", 0, [], UnknownValuePolicy.Warn)]);
+        var (resolved, source) = await WidePrep(spec, "90\nabc\n5\nxyz");
+
+        var result = await Calibrator.CalibrateAsync(resolved, source);
+
+        Assert.True(result.TryGetValue(out var calibrated));
+        Assert.Equal(["90", "5"], calibrated.Spec.Attributes[0].DeclaredDomain); // unparseable excluded
+        var unparseable = Assert.Single(result.Diagnostics, d => d.Code == DiagnosticCode.SourceValueUnparseable);
+        Assert.Equal(DiagnosticSeverity.Warning, unparseable.Severity);
+        Assert.Equal("v", unparseable.Location?.AttributeName);
+    }
+
+    [Fact]
+    public async Task CalibrateAsync_WhenNumericFreePerValueUnparseableUnderFail_ThenErrorAndNoCalibratedResult()
+    {
+        // D-100: the calibrate-phase Error aborts (no calibrated result) before emit.
+        var spec = new BedrockSpec(ConversionFixtures.Wide(hasHeader: false),
+            [NumericFreePerValue("v", 0, [], UnknownValuePolicy.Fail)]);
+        var (resolved, source) = await WidePrep(spec, "90\nabc");
+
+        var result = await Calibrator.CalibrateAsync(resolved, source);
+
+        Assert.False(result.TryGetValue(out _));
+        var unparseable = Assert.Single(result.Diagnostics, d => d.Code == DiagnosticCode.SourceValueUnparseable);
+        Assert.Equal(DiagnosticSeverity.Error, unparseable.Severity);
+    }
+
+    [Fact]
+    public async Task CalibrateAsync_WhenNumericFreePerValueUnparseableUnderSkip_ThenSilent()
+    {
+        var spec = new BedrockSpec(ConversionFixtures.Wide(hasHeader: false),
+            [NumericFreePerValue("v", 0, [], UnknownValuePolicy.Skip)]);
+        var (resolved, source) = await WidePrep(spec, "90\nabc\n5");
+
+        var result = await Calibrator.CalibrateAsync(resolved, source);
+
+        Assert.True(result.TryGetValue(out var calibrated));
+        Assert.Equal(["90", "5"], calibrated.Spec.Attributes[0].DeclaredDomain);
+        Assert.DoesNotContain(result.Diagnostics, d => d.Code == DiagnosticCode.SourceValueUnparseable);
+    }
+
+    [Fact]
+    public async Task CalibrateAsync_WhenNumericFreePerValueUsesLocale_ThenParsesUnderBindingLocale()
+    {
+        // The observed values parse under the binding locale (de-DE: comma decimal) and canonicalize
+        // to the invariant identity (§11.3/D-096).
+        var deBinding = new Binding(SourceShape.Wide, "utf-8", ';', '"', HasHeader: false, "de-DE", "?", new RowIndexObjectKey());
+        var spec = new BedrockSpec(deBinding,
+            [new AttributeSpec("v", new ColumnSource(0, SourceValueType.Number), Include: true,
+                new FreePerValueDiscretizer(SourceValueType.Number, CultureInfo.GetCultureInfo("de-DE")),
+                new NominalScale(), [], RestrictTo: [], ConversionFixtures.NoLabels, MissingPolicy.Skip, UnknownValuePolicy.Warn)]);
+        var (resolved, source) = await WidePrep(spec, "30,5\n40,0");
+
+        var result = await Calibrator.CalibrateAsync(resolved, source);
+
+        Assert.True(result.TryGetValue(out var calibrated));
+        Assert.Equal(["30.5", "40"], calibrated.Spec.Attributes[0].DeclaredDomain);
+    }
+
+    [Fact]
+    public async Task CalibrateAsync_WhenStringFreePerValueAbsentDomain_ThenObservedVerbatimDistinctSpellings()
+    {
+        // String free_per_value observes raw spellings verbatim (no numeric collapse) — like identity.
+        var spec = new BedrockSpec(ConversionFixtures.Wide(hasHeader: false),
+            [new AttributeSpec("g", new ColumnSource(0, SourceValueType.String), Include: true,
+                new FreePerValueDiscretizer(SourceValueType.String, CultureInfo.InvariantCulture),
+                new NominalScale(), [], RestrictTo: [], ConversionFixtures.NoLabels, MissingPolicy.Skip, UnknownValuePolicy.Warn)]);
+        var (resolved, source) = await WidePrep(spec, "b\nn\nb\n90.0");
+
+        var result = await Calibrator.CalibrateAsync(resolved, source);
+
+        Assert.True(result.TryGetValue(out var calibrated));
+        Assert.Equal(["b", "n", "90.0"], calibrated.Spec.Attributes[0].DeclaredDomain); // 90.0 stays a distinct string bin
+        Assert.Contains(result.Diagnostics, d => d.Code == DiagnosticCode.ObservedDomainUsed);
+    }
+
+    // --- numeric free_per_value triple calibration (canonical keys, both orderings) ---
+
+    private static AttributeSpec NumericFreePerValuePredicate(string name, string predicate, IReadOnlyList<string> domain) =>
+        new(name, new PredicateSource(predicate, SourceValueType.Number), Include: true,
+            new FreePerValueDiscretizer(SourceValueType.Number, CultureInfo.InvariantCulture),
+            new NominalScale(), domain, RestrictTo: [], ConversionFixtures.NoLabels, MissingPolicy.Skip, UnknownValuePolicy.Warn);
+
+    [Fact]
+    public async Task CalibrateTripleAsync_WhenNumericFreePerValueAbsentDomain_ThenCanonicalCollapseForBothOrderings()
+    {
+        foreach (var ordering in new[] { TripleOrdering.SubjectGrouped, TripleOrdering.Unordered })
+        {
+            var binding = ConversionFixtures.Triple(ordering);
+            var spec = new BedrockSpec(binding, [NumericFreePerValuePredicate("v", "p", [])]);
+            // 90 first, 90.0 collapses onto it, 5 second → observed ["90", "5"] in first-observation order.
+            var data = ordering == TripleOrdering.SubjectGrouped
+                ? "s0,p,90\ns0,p,90.0\ns1,p,5"
+                : "s0,p,90\ns1,p,90.0\ns0,p,5";
+            var source = ConversionFixtures.TripleSourceOver(data, binding);
+            var resolved = ConversionFixtures.ResolveFor(spec, await source.GetSchemaAsync());
+
+            var result = await Calibrator.CalibrateTripleAsync(resolved, source);
+
+            Assert.True(result.TryGetValue(out var calibrated));
+            Assert.Equal(["90", "5"], calibrated.Spec.Attributes[0].DeclaredDomain);
+        }
+    }
+
+    [Fact]
+    public async Task CalibrateTripleAsync_WhenNumericFreePerValueInclude_ThenAppendsCanonicalNovelKeys()
+    {
+        var binding = ConversionFixtures.Triple(TripleOrdering.SubjectGrouped);
+        var spec = new BedrockSpec(binding,
+            [new AttributeSpec("v", new PredicateSource("p", SourceValueType.Number), Include: true,
+                new FreePerValueDiscretizer(SourceValueType.Number, CultureInfo.InvariantCulture),
+                new NominalScale(), ["90"], RestrictTo: [], ConversionFixtures.NoLabels, MissingPolicy.Skip, UnknownValuePolicy.Include)]);
+        var source = ConversionFixtures.TripleSourceOver("s0,p,90.0\ns0,p,5\ns1,p,9e1", binding);
+        var resolved = ConversionFixtures.ResolveFor(spec, await source.GetSchemaAsync());
+
+        var result = await Calibrator.CalibrateTripleAsync(resolved, source);
+
+        Assert.True(result.TryGetValue(out var calibrated));
+        Assert.Equal(["90", "5"], calibrated.Spec.Attributes[0].DeclaredDomain); // 90.0/9e1 already ≡ 90; 5 is novel
+        Assert.Equal(["5"], Assert.IsType<IncludeAdditions>(Assert.Single(calibrated.Calibrations)).Values);
+    }
+
+    [Fact]
+    public async Task CalibrateTripleAsync_WhenNumericFreePerValueUnparseableUnderWarn_ThenAggregatedSourceValueUnparseable()
+    {
+        var binding = ConversionFixtures.Triple(TripleOrdering.Unordered);
+        var spec = new BedrockSpec(binding, [NumericFreePerValuePredicate("v", "p", [])]);
+        var source = ConversionFixtures.TripleSourceOver("s0,p,90\ns1,p,abc", binding);
+        var resolved = ConversionFixtures.ResolveFor(spec, await source.GetSchemaAsync());
+
+        var result = await Calibrator.CalibrateTripleAsync(resolved, source);
+
+        Assert.True(result.TryGetValue(out var calibrated));
+        Assert.Equal(["90"], calibrated.Spec.Attributes[0].DeclaredDomain);
+        Assert.Contains(result.Diagnostics, d =>
+            d.Code == DiagnosticCode.SourceValueUnparseable && d.Severity == DiagnosticSeverity.Warning);
     }
 
     // --- no-data fast path ---

@@ -2,6 +2,7 @@ using System.Collections.Frozen;
 using System.Collections.Immutable;
 using System.Globalization;
 using FcaBedrock.Core.Discretization;
+using FcaBedrock.Core.Fingerprinting;
 using FcaBedrock.Core.Scaling;
 
 namespace FcaBedrock.Core.Spec;
@@ -233,8 +234,54 @@ public sealed class ResolvedSpec
             }
 
             ValidateDiscretizerEnums(attribute.Discretizer);
+            ValidateNumericFreePerValueKeys(attribute);
             ValidateScaleEnums(attribute.Scale);
             ValidateRestrictEntries(attribute);
+        }
+    }
+
+    // D-096/D-098: a numeric free_per_value's resolved declared_domain, value_labels keys, and
+    // scale.order entries MUST be canonical numeric identities — the resolve seam guarantees this, and
+    // the emitter/planner/fingerprint trust it (emit produces canonical bin keys, so a non-canonical
+    // domain bin would be unmatchable and a non-canonical label key would silently never render). The
+    // trust boundary re-checks it for hand-built graphs (P-10): each key must be a finite number whose
+    // canonical form round-trips to itself. Distinctness stays a plan concern (FormalAttributeCollision),
+    // matching identity. String free_per_value keys are verbatim, so this applies to numeric only.
+    private static void ValidateNumericFreePerValueKeys(AttributeSpec attribute)
+    {
+        if (attribute.Discretizer is not FreePerValueDiscretizer { ValueType: SourceValueType.Number })
+        {
+            return;
+        }
+
+        foreach (var key in attribute.DeclaredDomain)
+        {
+            RequireCanonicalNumeric(key, attribute.Name, "declared_domain");
+        }
+
+        foreach (var key in attribute.ValueLabels.Keys)
+        {
+            RequireCanonicalNumeric(key, attribute.Name, "value_labels");
+        }
+
+        if (attribute.Scale is OrdinalScale { Order: { } order })
+        {
+            foreach (var key in order)
+            {
+                RequireCanonicalNumeric(key, attribute.Name, "scale.order");
+            }
+        }
+    }
+
+    private static void RequireCanonicalNumeric(string key, string attribute, string where)
+    {
+        ArgumentNullException.ThrowIfNull(key);
+        if (!CanonicalNumber.TryParse(key, CultureInfo.InvariantCulture, out var value)
+            || !string.Equals(CanonicalNumber.Format(CanonicalNumber.CanonicalizeZero(value)), key, StringComparison.Ordinal))
+        {
+            throw new ArgumentException(
+                $"numeric free_per_value attribute '{attribute}' has a non-canonical {where} key '{key}'; " +
+                "numeric free_per_value keys must be finite canonical numeric identities (D-096).");
         }
     }
 
@@ -247,6 +294,9 @@ public sealed class ResolvedSpec
                 break;
             case OrderedCutsDiscretizer ordered:
                 RequireDefined(ordered.Ends, "ordered_cuts.Ends");
+                break;
+            case FreePerValueDiscretizer freePerValue:
+                RequireDefined(freePerValue.ValueType, "free_per_value.ValueType");
                 break;
         }
     }
@@ -408,13 +458,15 @@ public sealed class ResolvedSpec
 
     // The M1 discretizers store their snapshots as ImmutableArray from construction, so the
     // only mutable state reachable through the graph is a culture-bearing discretizer's
-    // CultureInfo (read during parsing). Reconstruct those through the factory with a read-only
-    // culture clone so a programmatic caller cannot mutate NumberFormat after resolution and
-    // change classification (D-098 recursive immutability, P-7/P-11). The cultureless kinds
-    // (identity, ordered_cuts) are already fully immutable — reused as-is.
+    // CultureInfo (read during parsing — manual_cuts and, at M4, numeric free_per_value).
+    // Reconstruct those with a read-only culture clone so a programmatic caller cannot mutate
+    // NumberFormat after resolution and change classification (D-098 recursive immutability,
+    // P-7/P-11). The cultureless kinds (identity, ordered_cuts) are already fully immutable —
+    // reused as-is.
     private static Discretizer? SnapshotDiscretizer(Discretizer? discretizer) => discretizer switch
     {
         ManualCutsDiscretizer cuts => ManualCutsDiscretizer.Create(cuts.Cuts, cuts.Ends, ReadOnlyCulture(cuts.Culture)).Value!,
+        FreePerValueDiscretizer freePerValue => new FreePerValueDiscretizer(freePerValue.ValueType, ReadOnlyCulture(freePerValue.Culture)),
         _ => discretizer,
     };
 

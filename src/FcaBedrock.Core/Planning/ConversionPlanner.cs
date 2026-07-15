@@ -1,7 +1,9 @@
 using System.Collections.Frozen;
 using System.Collections.Immutable;
+using System.Globalization;
 using FcaBedrock.Core.Calibration;
 using FcaBedrock.Core.Discretization;
+using FcaBedrock.Core.Fingerprinting;
 using FcaBedrock.Core.Scaling;
 using FcaBedrock.Core.Spec;
 using FcaBedrock.Diagnostics;
@@ -118,6 +120,13 @@ public static class ConversionPlanner
         var source = ResolveAttributeSource(attribute.Name, attribute.Source, schema);
         var scheme = discretizer.DescribeBins(attribute.DeclaredDomain);
         var knownBins = scheme.Labels.ToFrozenSet(StringComparer.Ordinal);
+
+        // §12.3/§17-r2/D-096: a numeric free_per_value value-bin ordinal with no authored
+        // scale.order uses the natural numeric ascending order of its (canonical) domain — the
+        // one value-bin case exempt from the explicit-order requirement (ValidateValueBinOrder
+        // enforces it everywhere else). An authored order is a validated permutation and used
+        // verbatim.
+        scale = DeriveNaturalNumericOrder(discretizer, scale, attribute.DeclaredDomain);
 
         var crossesByBin = new Dictionary<string, List<int>>(StringComparer.Ordinal);
         foreach (var shape in scale.BuildShapes(scheme))
@@ -304,7 +313,54 @@ public static class ConversionPlanner
             {
                 ValidateValueBinOrder(attribute, ordinal, diagnostics);
             }
+
+            // §12.3 / D-096: free_per_value value bins take the same ordinal path. A NUMERIC
+            // free_per_value with an absent scale.order is exempt from OrdinalOrderMissing — it
+            // derives natural numeric ascending order at plan (DeriveNaturalNumericOrder); every
+            // other case (string free_per_value, or a numeric one with an authored order) still
+            // requires an explicit full-permutation order. Domain/order keys are canonical numeric
+            // identities from the seam, so the permutation check compares them ordinally.
+            if (attribute.Discretizer is FreePerValueDiscretizer freePerValue
+                && attribute.Scale is OrdinalScale freeOrdinal
+                && !(freePerValue.ValueType == SourceValueType.Number && freeOrdinal.Order is null))
+            {
+                ValidateValueBinOrder(attribute, freeOrdinal, diagnostics);
+            }
         }
+    }
+
+    // §12.3 / §17-r2 / D-096: the one value-bin-ordinal exemption. When a numeric free_per_value
+    // ordinal authors no scale.order, its bin order is the natural NUMERIC ascending order of its
+    // canonical domain keys — parsed back to their numeric value and sorted (distinct identities,
+    // so the sort is total and deterministic, P-7/P-11). Every other discretizer/scale/order state
+    // is returned unchanged.
+    private static Scale DeriveNaturalNumericOrder(Discretizer discretizer, Scale scale, IReadOnlyList<string> domain)
+    {
+        if (discretizer is not FreePerValueDiscretizer { ValueType: SourceValueType.Number }
+            || scale is not OrdinalScale { Order: null } ordinal)
+        {
+            return scale;
+        }
+
+        var keyed = new (double Value, string Key)[domain.Count];
+        for (var i = 0; i < domain.Count; i++)
+        {
+            // ResolvedSpec.Create validates that every numeric free_per_value domain key is a canonical
+            // numeric identity (D-096/D-098), so parsing them back to sort always succeeds; a failure
+            // here is corrupt Core state (an unvalidated hand-built spec), not user input — throw rather
+            // than silently sort a bad key as 0.
+            if (!CanonicalNumber.TryParse(domain[i], CultureInfo.InvariantCulture, out var value))
+            {
+                throw new InvalidOperationException(
+                    $"numeric free_per_value domain key '{domain[i]}' is not a finite number; " +
+                    "ResolvedSpec.Create validates canonical numeric keys (corrupt Core state).");
+            }
+
+            keyed[i] = (value, domain[i]);
+        }
+
+        Array.Sort(keyed, static (a, b) => a.Value.CompareTo(b.Value));
+        return ordinal with { Order = Array.ConvertAll(keyed, static k => k.Key) };
     }
 
     // §12.3 / D-081: an identity value-bin ordinal must author a scale.order that is

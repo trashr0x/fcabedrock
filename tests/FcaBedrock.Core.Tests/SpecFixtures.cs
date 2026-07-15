@@ -61,6 +61,16 @@ internal static class SpecFixtures
             ManualCutsDiscretizer.Create(cuts, BinEnds.Open, CultureInfo.InvariantCulture).Value!, scale,
             DeclaredDomain: [], RestrictTo: [], NoLabels, missing, UnknownValuePolicy.Warn);
 
+    // A free_per_value attribute (§11.3, D-101). For a numeric source the domain entries are the
+    // canonical numeric identities the seam normalizes to (D-096); tests pass them canonical.
+    public static AttributeSpec FreePerValue(
+        string name, int index, SourceValueType valueType, IReadOnlyList<string> domain, Scale scale,
+        IReadOnlyDictionary<string, string>? valueLabels = null, MissingPolicy missing = MissingPolicy.Skip,
+        UnknownValuePolicy policy = UnknownValuePolicy.Warn) =>
+        new(name, new ColumnSource(index, valueType), Include: true,
+            new FreePerValueDiscretizer(valueType, CultureInfo.InvariantCulture), scale,
+            domain, RestrictTo: [], valueLabels ?? NoLabels, missing, policy);
+
     // An identity value-bin ordinal attribute (§12.3, D-081): an explicit order over
     // the declared domain, paired with an OrdinalScale carrying that order.
     public static AttributeSpec OrdinalValueBins(

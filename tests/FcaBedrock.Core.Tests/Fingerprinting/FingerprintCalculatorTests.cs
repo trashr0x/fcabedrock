@@ -508,6 +508,109 @@ public sealed class FingerprintCalculatorTests
             FingerprintCalculator.ComputeSchemaFingerprint(acb!));
     }
 
+    // --- free_per_value discretizer encoding (D-094 golden-lock, M4 Slice B) --
+    //
+    // The M4 per-kind canonical bytes and their SHA-256 vectors are golden-locked
+    // BEFORE the first M4 fingerprint is produced (§14/D-094). free_per_value adds
+    // no config beyond the kind; its numeric identity rides on source.value_type and
+    // its bins are the effective (canonical numeric) domain.
+
+    private static BedrockSpec NumericFreePerValueSpec() =>
+        new(SpecFixtures.WideRowIndex(), [
+            SpecFixtures.FreePerValue("v", 0, SourceValueType.Number, ["90", "5"], new NominalScale()),
+        ]);
+
+    [Fact]
+    public void BuildSchemaJson_WhenNumericFreePerValue_ThenCanonicalNumericBinsInDomainOrder() =>
+        // The value-bin identities are the canonical numeric keys, in declared_domain order (§17 r3).
+        Assert.Equal(
+            "{\"attributes\":["
+                + "{\"bin\":\"90\",\"name\":\"v\",\"op\":\"\",\"scale\":\"nominal\"},"
+                + "{\"bin\":\"5\",\"name\":\"v\",\"op\":\"\",\"scale\":\"nominal\"}"
+                + "],\"fp_format\":1,\"kind\":\"schema\"}",
+            FingerprintCalculator.BuildSchemaJson(Plan(NumericFreePerValueSpec())));
+
+    [Fact]
+    public void ComputeSchemaFingerprint_WhenNumericFreePerValue_ThenMatchesHardcodedVector() =>
+        // Hash literal computed independently over the pinned canonical bytes above (D-094 lock).
+        Assert.Equal(
+            "sha256:19f9b2826c4bb3b8453ca7b24d3b34e16b381886b0e33408f0b7ccf60e2fa5f3",
+            FingerprintCalculator.ComputeSchemaFingerprint(Plan(NumericFreePerValueSpec())));
+
+    [Fact]
+    public void BuildCxtOutputJson_WhenFreePerValue_ThenDiscretizerEncodesKindOnlyOverEffectiveDomain()
+    {
+        var json = FingerprintCalculator.BuildCxtOutputJson(Plan(NumericFreePerValueSpec()), NumericFreePerValueSpec(), NativeCxt());
+
+        // The discretizer sub-object is kind-only; the effective (canonical) numeric domain rides in
+        // declared_domain, and source.value_type carries the numeric-vs-string identity (D-094).
+        Assert.Contains(
+            "\"declared_domain\":[\"90\",\"5\"],\"discretizer\":{\"kind\":\"free_per_value\"},",
+            json, StringComparison.Ordinal);
+        Assert.Contains("\"source\":{\"column\":0,\"value_type\":\"number\"}", json, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void BuildCxtOutputJson_WhenStringFreePerValue_ThenSameKindOnlyEncodingButStringSource()
+    {
+        var spec = new BedrockSpec(SpecFixtures.WideRowIndex(), [
+            SpecFixtures.FreePerValue("g", 0, SourceValueType.String, ["b", "n"], new NominalScale()),
+        ]);
+        Assert.True(Diag(spec, new SourceSchema(1)).TryGetValue(out var plan));
+
+        var json = FingerprintCalculator.BuildCxtOutputJson(plan!, spec, NativeCxt());
+
+        Assert.Contains(
+            "\"declared_domain\":[\"b\",\"n\"],\"discretizer\":{\"kind\":\"free_per_value\"},",
+            json, StringComparison.Ordinal);
+        Assert.Contains("\"source\":{\"column\":0,\"value_type\":\"string\"}", json, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void BuildDatOutputJson_WhenNumericFreePerValue_ThenPinnedCanonicalBytesContainDiscretizerObject() =>
+        // The {"kind":"free_per_value"} discretizer object rides in `shared`, so it feeds BOTH output
+        // fingerprints (not schema_fingerprint). The complete dat output canonical bytes are pinned
+        // here — the exact-byte lock the schema fingerprint cannot provide (§14/D-094).
+        Assert.Equal(
+            "{\"dat\":{\"base_index\":1,\"empty_line_trailing_space\":false,\"line_endings\":\"lf\","
+                + "\"nonempty_line_trailing_space\":false},\"fp_format\":1,\"kind\":\"dat_output\",\"schema\":"
+                + "[{\"bin\":\"90\",\"name\":\"v\",\"op\":\"\",\"scale\":\"nominal\"},{\"bin\":\"5\",\"name\":\"v\",\"op\":\"\",\"scale\":\"nominal\"}],"
+                + "\"shared\":{\"attributes\":[{\"declared_domain\":[\"90\",\"5\"],\"discretizer\":{\"kind\":\"free_per_value\"},"
+                + "\"missing_policy\":\"skip\",\"name\":\"v\",\"scale\":{\"kind\":\"nominal\"},\"source\":{\"column\":0,\"value_type\":\"number\"},"
+                + "\"unknown_value_policy\":\"warn\"}],\"binding\":{\"delimiter\":\",\",\"encoding\":\"utf-8\",\"has_header\":true,"
+                + "\"locale\":\"invariant\",\"missing_token\":\"?\",\"object_key\":{\"mode\":\"row_index\"},\"quote_char\":\"\\\"\",\"shape\":\"wide\"}}}",
+            FingerprintCalculator.BuildDatOutputJson(Plan(NumericFreePerValueSpec()), NumericFreePerValueSpec(), NativeDat()));
+
+    [Fact]
+    public void ComputeDatOutputFingerprint_WhenNumericFreePerValue_ThenMatchesHardcodedVector() =>
+        // SHA-256 computed independently over the pinned dat bytes above — a change to the
+        // free_per_value discretizer encoding moves this hash (D-094/D-101 output-encoding lock).
+        Assert.Equal(
+            "sha256:247648dc27afaf287d116650c01d71cf8d31860ea485069ef1d530f2d21bde88",
+            ComputeDat(Plan(NumericFreePerValueSpec()), NumericFreePerValueSpec(), NativeDat()));
+
+    // --- existing-kind regression: authored -0.0 manual cut stays -0 (G-6) ----
+
+    [Fact]
+    public void BuildSchemaJson_WhenAuthoredNegativeZeroManualCut_ThenEncodesMinusZeroUnderFpFormat1()
+    {
+        // G-6: the fp_format = 1 encoder is UNTOUCHED — an authored -0.0 manual cut is a valid
+        // current spec whose stored hash embeds "-0"; CanonicalNumber.CanonicalizeZero is NOT applied
+        // to existing-kind authored cuts, so those bytes must not move.
+        var discretizer = ManualCutsDiscretizer.Create([-0.0, 10.0], BinEnds.Open, CultureInfo.InvariantCulture).Value!;
+        var attribute = new AttributeSpec(
+            "v", new ColumnSource(0, SourceValueType.Number), Include: true, discretizer, new NominalScale(),
+            DeclaredDomain: [], RestrictTo: [], SpecFixtures.NoLabels, MissingPolicy.Skip, UnknownValuePolicy.Warn);
+        var spec = new BedrockSpec(SpecFixtures.WideRowIndex(), [attribute]);
+        Assert.True(Diag(spec, new SourceSchema(1)).TryGetValue(out var plan));
+
+        var json = FingerprintCalculator.BuildCxtOutputJson(plan!, spec, NativeCxt());
+
+        // The authored cut renders "-0" in both the schema bin bounds and the manual_cuts sub-object.
+        Assert.Contains("\"lo\":-0,\"lo_open\":false", json, StringComparison.Ordinal);
+        Assert.Contains("\"cuts\":[-0,10]", json, StringComparison.Ordinal);
+    }
+
     // --- Canonical JSON byte rules (D-077 pins 2-4) ---------------------------
 
     [Fact]

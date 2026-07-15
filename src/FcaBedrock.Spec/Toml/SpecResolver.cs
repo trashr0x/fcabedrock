@@ -1,5 +1,6 @@
 using System.Globalization;
 using FcaBedrock.Core.Discretization;
+using FcaBedrock.Core.Fingerprinting;
 using FcaBedrock.Core.Scaling;
 using FcaBedrock.Core.Spec;
 using FcaBedrock.Diagnostics;
@@ -548,18 +549,39 @@ public static class SpecResolver
         var include = section.Include ?? defaults?.Include ?? true;
         var source = ResolveSource(section, label, name, shape, schema, hasHeader, nameBindings, diagnostics);
 
+        // §10.2/D-061: the resolved source value type (authored, else discretizer-implied),
+        // computed once here and shared with discretizer construction and the D-096 numeric
+        // free_per_value normalization — ResolveSource derives it identically for the source.
+        var valueType = ResolveValueType(AuthoredValueType(section.Source), section.Discretizer);
+        var numericFreePerValue = section.Discretizer is FreePerValueDiscretizerSection
+            && valueType == SourceValueType.Number;
+
         Discretizer? discretizer = null;
         Scale? scale = null;
+        IReadOnlyList<string> declaredDomain = section.DeclaredDomain ?? []; // omitted and authored-[] both resolve absent (D-049/D-071)
+        IReadOnlyDictionary<string, string> valueLabels = section.ValueLabels ?? NoLabels;
         if (include)
         {
-            discretizer = ResolveDiscretizer(section.Discretizer, label, culture, diagnostics);
-            scale = ResolveScale(section.Scale, label, defaults, diagnostics);
+            discretizer = ResolveDiscretizer(section.Discretizer, label, culture, valueType, diagnostics);
+
+            // §10.3/§10.8/D-096: a numeric free_per_value's declared_domain and value_labels keys
+            // are the §5.1 exception to verbatim strings — parsed under binding.locale to their
+            // canonical numeric identity, with the invalid/duplicate cases diagnosed here. The
+            // resolved Core graph carries canonical keys; the document keeps the authored spellings
+            // for round-trip (D-096). scale.order is normalized inside ResolveScale.
+            if (numericFreePerValue)
+            {
+                declaredDomain = NormalizeNumericDomain(section.DeclaredDomain, culture, label, diagnostics);
+                valueLabels = NormalizeNumericValueLabels(section.ValueLabels, declaredDomain, culture, label, diagnostics);
+            }
+
+            scale = ResolveScale(section.Scale, label, defaults, numericFreePerValue ? culture : null, diagnostics);
         }
 
         // else: parked with nulls, never an error (§10.9 / D-049) — the authored
         // config stays in the document model for round-trip.
 
-        ValidateAttributeConstraints(section, label, include, defaults, diagnostics);
+        ValidateAttributeConstraints(section, label, include, valueType, defaults, diagnostics);
 
         if (string.IsNullOrEmpty(name) || source is null || (include && (discretizer is null || scale is null)))
         {
@@ -572,9 +594,9 @@ public static class SpecResolver
             include,
             discretizer,
             scale,
-            section.DeclaredDomain ?? [], // omitted and authored-[] both resolve absent; provenance stays in the document (D-049/D-071)
+            declaredDomain,
             section.RestrictTo ?? [],
-            section.ValueLabels ?? NoLabels,
+            valueLabels,
             section.MissingPolicy ?? defaults?.MissingPolicy ?? MissingPolicy.Skip,
             section.UnknownValuePolicy ?? defaults?.UnknownValuePolicy ?? UnknownValuePolicy.Warn);
     }
@@ -719,6 +741,144 @@ public static class SpecResolver
         _ => null,
     };
 
+    // §10.3/§5.1 (D-096): normalize a numeric free_per_value declared_domain to canonical
+    // numeric identities under binding.locale, preserving declaration order (§17 rule 3, over
+    // the first occurrence of each identity). An unparseable, non-finite, or normalization-duplicate
+    // entry is DeclaredDomainInvalid (one per bad entry — spec-validate diagnostics aggregate). An
+    // absent or empty authored domain resolves absent (calibrated later); the canonical list is what
+    // the resolved Core graph and fingerprint carry (the document keeps the authored spellings).
+    private static IReadOnlyList<string> NormalizeNumericDomain(
+        IReadOnlyList<string>? authored, CultureInfo culture, string attribute, List<BedrockDiagnostic> diagnostics)
+    {
+        if (authored is not { Count: > 0 })
+        {
+            return [];
+        }
+
+        var canonical = new List<string>(authored.Count);
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var entry in authored)
+        {
+            if (!CanonicalNumber.TryParse(entry, culture, out var value))
+            {
+                diagnostics.Add(new BedrockDiagnostic(
+                    DiagnosticCode.DeclaredDomainInvalid, DiagnosticSeverity.Error,
+                    $"declared_domain entry '{entry}' on numeric free_per_value attribute '{attribute}' is not a finite number under binding.locale (§10.3).",
+                    new DiagnosticLocation(AttributeName: attribute)));
+                continue;
+            }
+
+            var key = CanonicalNumber.Format(CanonicalNumber.CanonicalizeZero(value));
+            if (!seen.Add(key))
+            {
+                diagnostics.Add(new BedrockDiagnostic(
+                    DiagnosticCode.DeclaredDomainInvalid, DiagnosticSeverity.Error,
+                    $"declared_domain entry '{entry}' on numeric free_per_value attribute '{attribute}' duplicates the numeric identity '{key}' of an earlier entry (§10.3, D-096).",
+                    new DiagnosticLocation(AttributeName: attribute)));
+                continue;
+            }
+
+            canonical.Add(key);
+        }
+
+        return canonical;
+    }
+
+    // §10.8 (D-096): normalize a numeric free_per_value value_labels map to canonical numeric
+    // key identities under binding.locale. Two keys collapsing to one identity are
+    // ValueLabelKeyDuplicate; a key whose (canonical) identity is not in the normalized domain —
+    // including an unparseable key, which names no numeric identity — stays ValueLabelKeyNotInDomain
+    // (the typo-catcher). The resolved dictionary is keyed by canonical identity so the planner
+    // renders bins by the same identity (§11.3/D-092).
+    private static IReadOnlyDictionary<string, string> NormalizeNumericValueLabels(
+        IReadOnlyDictionary<string, string>? authored,
+        IReadOnlyList<string> canonicalDomain,
+        CultureInfo culture,
+        string attribute,
+        List<BedrockDiagnostic> diagnostics)
+    {
+        if (authored is not { Count: > 0 })
+        {
+            return NoLabels;
+        }
+
+        var domain = new HashSet<string>(canonicalDomain, StringComparer.Ordinal);
+        var result = new Dictionary<string, string>(StringComparer.Ordinal);
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var (rawKey, labelValue) in authored)
+        {
+            if (!CanonicalNumber.TryParse(rawKey, culture, out var value))
+            {
+                // Unparseable numeric label key names no domain identity — the typo-catcher.
+                diagnostics.Add(new BedrockDiagnostic(
+                    DiagnosticCode.ValueLabelKeyNotInDomain, DiagnosticSeverity.Error,
+                    $"value_labels key '{rawKey}' on numeric free_per_value attribute '{attribute}' is not a finite number in its declared_domain (§10.8).",
+                    new DiagnosticLocation(AttributeName: attribute)));
+                continue;
+            }
+
+            var key = CanonicalNumber.Format(CanonicalNumber.CanonicalizeZero(value));
+            if (!seen.Add(key))
+            {
+                diagnostics.Add(new BedrockDiagnostic(
+                    DiagnosticCode.ValueLabelKeyDuplicate, DiagnosticSeverity.Error,
+                    $"value_labels keys on attribute '{attribute}' collapse to one numeric identity '{key}' (e.g. '{rawKey}', §10.8, D-096).",
+                    new DiagnosticLocation(AttributeName: attribute)));
+                continue;
+            }
+
+            if (!domain.Contains(key))
+            {
+                diagnostics.Add(new BedrockDiagnostic(
+                    DiagnosticCode.ValueLabelKeyNotInDomain, DiagnosticSeverity.Error,
+                    $"value_labels key '{rawKey}' (numeric identity '{key}') on attribute '{attribute}' is not in its declared_domain (§10.8).",
+                    new DiagnosticLocation(AttributeName: attribute)));
+                continue;
+            }
+
+            result[key] = labelValue;
+        }
+
+        return result;
+    }
+
+    // §12.3 (D-096): normalize a numeric free_per_value scale.order to canonical numeric identities.
+    // An invalid (unparseable/non-finite) or normalization-duplicate entry reuses OrderDomainInvalid
+    // (fired once, matching the string ValidateOrdinalOrderShape structural check); the resulting
+    // canonical order is used only when resolution succeeds. The order/domain permutation check is a
+    // plan-phase concern (OrdinalOrderMissing / OrdinalOrderHasUnknownValue) over these normalized keys.
+    private static IReadOnlyList<string> NormalizeNumericOrder(
+        IReadOnlyList<string> authored, CultureInfo culture, string attribute, List<BedrockDiagnostic> diagnostics)
+    {
+        var canonical = new List<string>(authored.Count);
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var entry in authored)
+        {
+            if (!CanonicalNumber.TryParse(entry, culture, out var value))
+            {
+                diagnostics.Add(new BedrockDiagnostic(
+                    DiagnosticCode.OrderDomainInvalid, DiagnosticSeverity.Error,
+                    $"scale.order entry '{entry}' on numeric free_per_value attribute '{attribute}' is not a finite number under binding.locale (§12.3, D-096).",
+                    new DiagnosticLocation(AttributeName: attribute)));
+                return canonical;
+            }
+
+            var key = CanonicalNumber.Format(CanonicalNumber.CanonicalizeZero(value));
+            if (!seen.Add(key))
+            {
+                diagnostics.Add(new BedrockDiagnostic(
+                    DiagnosticCode.OrderDomainInvalid, DiagnosticSeverity.Error,
+                    $"scale.order entries on attribute '{attribute}' collapse to one numeric identity '{key}' (§12.3, D-096).",
+                    new DiagnosticLocation(AttributeName: attribute)));
+                return canonical;
+            }
+
+            canonical.Add(key);
+        }
+
+        return canonical;
+    }
+
     // The Slice D static attribute checks (D-067). They read the document
     // sections directly — authored-vs-default provenance exists only there
     // (D-060) — and run whether or not the source/discretizer/scale resolved,
@@ -727,6 +887,7 @@ public static class SpecResolver
         AttributeSection section,
         string attribute,
         bool include,
+        SourceValueType valueType,
         DefaultsSection? defaults,
         List<BedrockDiagnostic> diagnostics)
     {
@@ -734,8 +895,8 @@ public static class SpecResolver
         {
             ValidateValueType(section, attribute, diagnostics);
             ValidateOrdinalOverCuts(section, attribute, defaults, diagnostics);
-            ValidateValueLabels(section, attribute, diagnostics);
-            ValidateOrdinalOrderShape(section, attribute, diagnostics);
+            ValidateValueLabels(section, attribute, valueType, diagnostics);
+            ValidateOrdinalOrderShape(section, attribute, valueType, diagnostics);
         }
 
         // restrict_to is live config even when the attribute is excluded (the
@@ -783,17 +944,22 @@ public static class SpecResolver
     // from the planner to the seam, over the document model (D-067 phase ownership):
     // the code is §16.4 spec-validate, and reading the section directly catches a
     // stale key even when a sibling field fails to resolve (ResolveAttribute would
-    // return null). In M2 `section.Discretizer is IdentityDiscretizerSection` is
-    // exactly Discretizer.ConsultsValueLabels — free_per_value is the only other
-    // consulting kind and it is read-rejected before this seam (D-070); it joins
-    // this gate when it lands at M4. Under any other discretizer value_labels is
-    // dormant (§10.8/D-049) — ignored here and in name rendering, never an error.
-    // Include-gated by the caller, so a parked label list never blocks (D-049).
+    // return null). The consulting kinds are exactly Discretizer.ConsultsValueLabels:
+    // identity and free_per_value (§10.8). A numeric free_per_value is handled during
+    // resolution (its keys normalize to canonical identities, D-096) and is skipped here
+    // to avoid a double report; identity and string free_per_value compare verbatim.
+    // Under any other discretizer value_labels is dormant (§10.8/D-049) — ignored here
+    // and in name rendering, never an error. Include-gated by the caller (D-049).
     private static void ValidateValueLabels(
-        AttributeSection section, string attribute, List<BedrockDiagnostic> diagnostics)
+        AttributeSection section, string attribute, SourceValueType valueType, List<BedrockDiagnostic> diagnostics)
     {
+        if (section.Discretizer is FreePerValueDiscretizerSection && valueType == SourceValueType.Number)
+        {
+            return;
+        }
+
         if (section.ValueLabels is not { Count: > 0 } labels
-            || section.Discretizer is not IdentityDiscretizerSection)
+            || section.Discretizer is not (IdentityDiscretizerSection or FreePerValueDiscretizerSection))
         {
             return;
         }
@@ -852,9 +1018,13 @@ public static class SpecResolver
             }
         }
 
+        // §10.4/§10.8 (D-063/D-101): the typo-catcher fires against a live string domain — the
+        // domain-consulting string discretizers are identity and (string) free_per_value; a numeric
+        // free_per_value is number-typed, so the value-type gate above already excludes it. The domain
+        // is verbatim strings here (numeric normalization applies only to numeric free_per_value).
         if (!include
             || valueType != SourceValueType.String
-            || section.Discretizer is not IdentityDiscretizerSection
+            || section.Discretizer is not (IdentityDiscretizerSection or FreePerValueDiscretizerSection)
             || section.DeclaredDomain is not { Count: > 0 } domain)
         {
             return;
@@ -928,8 +1098,16 @@ public static class SpecResolver
     // report. Include-gated by the caller, so a parked order never blocks (D-049),
     // exactly like the ordinal-over-cuts checks.
     private static void ValidateOrdinalOrderShape(
-        AttributeSection section, string attribute, List<BedrockDiagnostic> diagnostics)
+        AttributeSection section, string attribute, SourceValueType valueType, List<BedrockDiagnostic> diagnostics)
     {
+        // A numeric free_per_value order is normalized + validated during resolution
+        // (OrderDomainInvalid over canonical identities, D-096); skip here to avoid a double
+        // report. String free_per_value orders compare verbatim, exactly like identity.
+        if (section.Discretizer is FreePerValueDiscretizerSection && valueType == SourceValueType.Number)
+        {
+            return;
+        }
+
         if (section.Scale is not OrdinalScaleSection { Order: { } order }
             || section.Discretizer is ManualCutsDiscretizerSection or OrderedCutsDiscretizerSection)
         {
@@ -954,12 +1132,18 @@ public static class SpecResolver
         DiscretizerSection? section,
         string attribute,
         CultureInfo culture,
+        SourceValueType valueType,
         List<BedrockDiagnostic> diagnostics)
     {
         switch (section)
         {
             case IdentityDiscretizerSection:
                 return new IdentityDiscretizer();
+
+            case FreePerValueDiscretizerSection:
+                // §11.3/D-061: type-flexible — the resolved value_type decides string-vs-numeric
+                // identity; the culture parses numeric values (unused in string mode).
+                return new FreePerValueDiscretizer(valueType, culture);
 
             case ManualCutsDiscretizerSection manual:
                 // §11.2 defaults; the D-056 factory owns cut validation and its
@@ -983,6 +1167,7 @@ public static class SpecResolver
         ScaleSection? section,
         string attribute,
         DefaultsSection? defaults,
+        CultureInfo? numericFreePerValueCulture,
         List<BedrockDiagnostic> diagnostics)
     {
         switch (section)
@@ -998,12 +1183,20 @@ public static class SpecResolver
                 return null;
 
             case OrdinalScaleSection ordinal:
-                // Omitted fields fill from [defaults] then the hard defaults (D-060(c)).
+                // §12.3/D-096: a numeric free_per_value order is normalized to canonical numeric
+                // identities (OrderDomainInvalid on invalid/duplicate entries); every other order
+                // is used verbatim. An absent order stays null (natural numeric ascending order is
+                // derived at plan for numeric free_per_value; a plan-phase OrdinalOrderMissing
+                // otherwise). Omitted direction/boundary fill from [defaults] then hard defaults
+                // (D-060(c)).
+                var order = numericFreePerValueCulture is { } orderCulture && ordinal.Order is { } authoredOrder
+                    ? NormalizeNumericOrder(authoredOrder, orderCulture, attribute, diagnostics)
+                    : ordinal.Order;
                 return new OrdinalScale(
                     ordinal.Direction ?? defaults?.OrdinalDirection ?? OrdinalDirection.Ge,
                     ordinal.DropTop ?? false,
                     ordinal.Boundary ?? defaults?.OrdinalBoundary ?? OrdinalBoundary.Inclusive,
-                    ordinal.Order);
+                    order);
 
             case DeferredScaleSection deferred:
                 // §12.4 / D-010: resolves into the Core reject-carrier; the planner

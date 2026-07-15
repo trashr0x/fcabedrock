@@ -506,6 +506,10 @@ public static class SpecWriter
                 items.Add(Item("kind", TomlLiteral.FormatString(TomlSpellings.IdentityKind)));
                 break;
 
+            case FreePerValueDiscretizerSection:
+                items.Add(Item("kind", TomlLiteral.FormatString(TomlSpellings.FreePerValueKind)));
+                break;
+
             case ManualCutsDiscretizerSection manual:
                 items.Add(Item("kind", TomlLiteral.FormatString(TomlSpellings.ManualCutsKind)));
                 if (manual.Cuts is { } cuts)

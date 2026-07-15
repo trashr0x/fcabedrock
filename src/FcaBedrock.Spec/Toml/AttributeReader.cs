@@ -157,6 +157,14 @@ internal static class AttributeReader
                 inner.Finish();
                 return identity;
 
+            case TomlSpellings.FreePerValueKind:
+                // §11.3 / D-061: no authored parameters; the value_type (source) decides
+                // string-vs-numeric identity. Numeric domain/label/order keys stay verbatim
+                // in the document and normalize at the seam (D-096).
+                var freePerValue = new FreePerValueDiscretizerSection();
+                inner.Finish();
+                return freePerValue;
+
             case TomlSpellings.ManualCutsKind:
                 var manual = new ManualCutsDiscretizerSection(
                     inner.TakeDoubleArray("cuts"),

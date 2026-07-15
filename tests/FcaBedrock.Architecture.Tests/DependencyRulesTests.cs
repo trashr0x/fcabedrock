@@ -2,7 +2,6 @@ using ArchUnitNET.Loader;
 using ArchUnitNET.xUnitV3;
 using FcaBedrock.Core.Planning;
 using static ArchUnitNET.Fluent.ArchRuleDefinition;
-using static ArchUnitNET.Fluent.Slices.SliceRuleDefinition;
 using ArchModel = ArchUnitNET.Domain.Architecture;
 using Assembly = System.Reflection.Assembly;
 
@@ -63,7 +62,46 @@ public sealed class DependencyRulesTests
     [Fact]
     public void Packages_ShouldBeFreeOfCycles()
     {
-        Slices().Matching("FcaBedrock.(*)").Should().BeFreeOfCycles().Check(Architecture);
+        // The documented invariant (CLAUDE.md, D-039) is that the PACKAGES — the production
+        // assemblies — form no cycles; Core's sub-namespaces (Core.Spec, Core.Discretization,
+        // Core.Fingerprinting, …) are organizational, not independent packages, so intra-Core
+        // edges (e.g. FreePerValueDiscretizer → CanonicalNumber / SourceValueType, both inside
+        // FcaBedrock.Core) are not package cycles. Slices().Matching("FcaBedrock.(*)") sliced by
+        // full namespace, accidentally treating those sub-namespaces as separate packages — a
+        // latent semantic bug corrected here (M4 Slice B / D-101): assign every type to its
+        // production assembly, so each production assembly is exactly one slice.
+        var packages = ProductionPackageSlices();
+
+        // Non-vacuity: prove the slicing produced exactly one slice per loaded production package.
+        var expected = Production
+            .Select(assembly => assembly.GetName().Name)
+            .OfType<string>()
+            .Order(StringComparer.Ordinal);
+        var actual = packages.GetObjects(Architecture)
+            .Select(slice => slice.Description)
+            .Order(StringComparer.Ordinal);
+        Assert.Equal(expected, actual);
+
+        packages.Should().BeFreeOfCycles().Check(Architecture);
+    }
+
+    // One ArchUnitNET slice per production assembly (keyed by assembly name), so BeFreeOfCycles
+    // enforces the package-level acyclicity CLAUDE.md/D-039 document; non-production types (BCL,
+    // dependencies) are ignored.
+    private static ArchUnitNET.Fluent.Slices.GivenSlices ProductionPackageSlices()
+    {
+        var productionNames = Production
+            .Select(assembly => assembly.GetName().Name)
+            .OfType<string>()
+            .ToHashSet(StringComparer.Ordinal);
+
+        var creator = new ArchUnitNET.Fluent.Slices.SliceRuleCreator();
+        creator.SetSliceAssignment(new ArchUnitNET.Fluent.Slices.SliceAssignment(
+            type => productionNames.Contains(type.Assembly.Name)
+                ? ArchUnitNET.Domain.SliceIdentifier.Of(type.Assembly.Name)
+                : ArchUnitNET.Domain.SliceIdentifier.Ignore(),
+            "assigned by production assembly"));
+        return new ArchUnitNET.Fluent.Slices.GivenSlices(creator);
     }
 
     [Fact]

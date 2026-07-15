@@ -71,13 +71,13 @@ public sealed class TomlSpellingsTests
             TomlSpellings.Allowed(TomlSpellings.UnknownValuePolicies));
 
     [Theory]
-    [InlineData("free_per_value", true)]
     [InlineData("equal_width", true)]
     [InlineData("equal_frequency", true)]
     [InlineData("value_groups", true)]
+    [InlineData("free_per_value", false)] // left the deferred set at M4 Slice B (D-101)
     [InlineData("identity", false)]
-    [InlineData("Free_Per_Value", false)]
-    [InlineData("free_per_valu", false)]
+    [InlineData("Equal_Width", false)]
+    [InlineData("equal_widt", false)]
     public void IsIn_WhenProbingDeferredDiscretizerKinds_ThenExactOrdinalMatchOnly(string kind, bool expected) =>
         Assert.Equal(expected, TomlSpellings.IsIn(TomlSpellings.DeferredDiscretizerKinds, kind));
 

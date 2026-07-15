@@ -1,5 +1,7 @@
+using System.Globalization;
 using FcaBedrock.Core.Calibration;
 using FcaBedrock.Core.Discretization;
+using FcaBedrock.Core.Fingerprinting;
 using FcaBedrock.Core.Spec;
 using FcaBedrock.Diagnostics;
 using FcaBedrock.Sources;
@@ -20,6 +22,15 @@ namespace FcaBedrock.Conversion;
 /// returns <see cref="CalibratedSpec.FromFullyDeclared"/> without enumerating rows.
 /// All binding range checks are seam-owned (G-1); the calibrator emits no binding
 /// diagnostics.
+/// </para>
+/// <para>
+/// M4 Slice B (D-101) adds <c>free_per_value</c> to the discovery-class calibration:
+/// a numeric <c>free_per_value</c> observes its values as <b>canonical numeric
+/// identities</b> (§11.3/D-096, so <c>90</c>/<c>90.0</c>/<c>9e1</c> contribute one bin at
+/// their first occurrence and every zero spelling collapses to <c>0</c>), and a
+/// present-but-unparseable/non-finite numeric value is excluded from the population and
+/// reported as an aggregated <c>SourceValueUnparseable</c> at the severity
+/// <c>unknown_value_policy</c> selects — its own per-phase aggregate (D-100/G-4).
 /// </para>
 /// </summary>
 public static class Calibrator
@@ -164,16 +175,17 @@ public static class Calibrator
         }
     }
 
-    // The included attributes needing discovery-class calibration, in spec-attribute
-    // order. Slice A: identity is the only discretizer that consumes the declared domain;
-    // free_per_value joins at slice B. An absent domain calibrates observed (any policy);
-    // an explicit domain under include extends it.
+    // The included attributes needing discovery-class calibration, in spec-attribute order.
+    // The domain-consuming discretizers are identity and free_per_value (D-101); an absent
+    // domain calibrates observed (any policy), an explicit domain under include extends it. A
+    // numeric free_per_value observes canonical numeric identities and tallies unparseable
+    // values (D-096/D-100); every other case observes verbatim strings.
     private static List<CalibrationTarget> BuildTargets(BedrockSpec spec, bool wide)
     {
         var targets = new List<CalibrationTarget>();
         foreach (var attribute in spec.Attributes)
         {
-            if (!attribute.Include || attribute.Discretizer is not IdentityDiscretizer)
+            if (!attribute.Include || attribute.Discretizer is not (IdentityDiscretizer or FreePerValueDiscretizer))
             {
                 continue;
             }
@@ -185,15 +197,22 @@ public static class Calibrator
                 continue;
             }
 
-            var observer = new CalibrationObserver(isInclude: !absentDomain && include);
+            var numeric = attribute.Discretizer is FreePerValueDiscretizer { ValueType: SourceValueType.Number };
+            var culture = attribute.Discretizer is FreePerValueDiscretizer freePerValue
+                ? freePerValue.Culture
+                : CultureInfo.InvariantCulture;
+
+            var observer = new CalibrationObserver(isInclude: !absentDomain && include, numeric, culture);
             if (observer.IsInclude)
             {
+                // The explicit domain is already canonical for a numeric free_per_value (D-096),
+                // so seeding it verbatim matches the canonical keys observed values normalize to.
                 observer.Seed(attribute.DeclaredDomain);
             }
 
             var columnIndex = wide && attribute.Source is ColumnSource column ? column.Index : -1;
             var predicate = !wide && attribute.Source is PredicateSource predicateSource ? predicateSource.Predicate : null;
-            targets.Add(new CalibrationTarget(attribute.Name, observer, columnIndex, predicate));
+            targets.Add(new CalibrationTarget(attribute.Name, observer, columnIndex, predicate, attribute.UnknownValuePolicy));
         }
 
         return targets;
@@ -231,23 +250,66 @@ public static class Calibrator
                     $"Attribute '{target.AttributeName}' had no declared_domain; it was calibrated from {values.Count} observed value(s), so the schema depends on this input (§10.3).",
                     new DiagnosticLocation(AttributeName: target.AttributeName)));
             }
+
+            // §11.5/D-100/G-4: numeric values excluded from the calibration population because they
+            // are present-but-unparseable are reported here as this phase's own aggregated
+            // SourceValueUnparseable, at the severity unknown_value_policy selects (skip silent).
+            var unparseable = target.Observer.Unparseable;
+            if (unparseable.Count > 0 && SeverityFor(target.Policy) is { } severity)
+            {
+                diagnostics.Add(new BedrockDiagnostic(
+                    DiagnosticCode.SourceValueUnparseable, severity,
+                    $"Attribute '{target.AttributeName}' had {unparseable.Count} present-but-unparseable numeric value(s) during calibration (e.g. {unparseable.Sample}); they were excluded from the observed domain (§11.5).",
+                    new DiagnosticLocation(AttributeName: target.AttributeName)));
+            }
         }
 
         var created = CalibratedSpec.Create(resolved, outcomes);
         diagnostics.AddRange(created.Diagnostics);
-        return created.TryGetValue(out var calibrated)
+
+        // A fail-policy unparseable Error (or any Create Error) aborts calibration with no result
+        // (D-095/D-100), even when the outcome assembly itself succeeded.
+        return created.TryGetValue(out var calibrated) && !HasError(diagnostics)
             ? Diagnosed<CalibratedSpec>.Ok(calibrated, diagnostics)
             : Diagnosed<CalibratedSpec>.Failed(diagnostics);
     }
 
-    // One attribute's calibration read location (wide column index or triple predicate) and
-    // its observer.
-    private sealed record CalibrationTarget(string AttributeName, CalibrationObserver Observer, int ColumnIndex, string? Predicate);
+    // §10.6/§16.4: the severity unknown_value_policy assigns an aggregated SourceValueUnparseable —
+    // skip silent (null), fail Error, warn/include Warning (an unparseable value cannot join a
+    // numeric domain, so include behaves as warn, D-097).
+    private static DiagnosticSeverity? SeverityFor(UnknownValuePolicy policy) => policy switch
+    {
+        UnknownValuePolicy.Skip => null,
+        UnknownValuePolicy.Fail => DiagnosticSeverity.Error,
+        _ => DiagnosticSeverity.Warning,
+    };
+
+    private static bool HasError(List<BedrockDiagnostic> diagnostics)
+    {
+        foreach (var diagnostic in diagnostics)
+        {
+            if (diagnostic.Severity is DiagnosticSeverity.Error or DiagnosticSeverity.Fatal)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    // One attribute's calibration read location (wide column index or triple predicate), its
+    // observer, and the unknown_value_policy that severities an unparseable aggregate (D-100).
+    private sealed record CalibrationTarget(
+        string AttributeName, CalibrationObserver Observer, int ColumnIndex, string? Predicate, UnknownValuePolicy Policy);
 
     // Accumulates the distinct non-missing observed values for one attribute in
     // first-observation order (ordinal dedup, P-12). Bounded by the attribute vocabulary —
-    // schema-scale metadata, documented and not budget-gated (P-16, D-095).
-    private sealed class CalibrationObserver(bool isInclude)
+    // schema-scale metadata, documented and not budget-gated (P-16, D-095). In numeric mode
+    // (numeric free_per_value, D-096) each present value is parsed under the injected culture and
+    // reduced to its canonical numeric identity before dedup, so equivalent spellings occupy one
+    // bin at their first occurrence; a present-but-unparseable/non-finite value is excluded and
+    // tallied for a per-phase SourceValueUnparseable aggregate (D-100).
+    private sealed class CalibrationObserver(bool isInclude, bool numeric, CultureInfo culture)
     {
         private readonly HashSet<string> _seen = new(StringComparer.Ordinal);
         private readonly List<string> _values = [];
@@ -256,7 +318,11 @@ public static class Calibrator
 
         public IReadOnlyList<string> Values => _values;
 
+        // Present-but-unparseable numeric observations excluded from the population (§11.5).
+        public DiagnosticTally Unparseable { get; } = new();
+
         // For include mode: seed the declared domain so only genuinely-new values are additions.
+        // The domain is already canonical for a numeric free_per_value (D-096).
         public void Seed(IReadOnlyList<string> domain)
         {
             foreach (var value in domain)
@@ -267,9 +333,30 @@ public static class Calibrator
 
         public void Observe(string? raw)
         {
-            if (raw is not null && _seen.Add(raw))
+            if (raw is null)
             {
-                _values.Add(raw);
+                return; // missing values are handled before calibration; never observed here.
+            }
+
+            string key;
+            if (numeric)
+            {
+                if (!CanonicalNumber.TryParse(raw, culture, out var value))
+                {
+                    Unparseable.Record(raw);
+                    return;
+                }
+
+                key = CanonicalNumber.Format(CanonicalNumber.CanonicalizeZero(value));
+            }
+            else
+            {
+                key = raw;
+            }
+
+            if (_seen.Add(key))
+            {
+                _values.Add(key);
             }
         }
     }

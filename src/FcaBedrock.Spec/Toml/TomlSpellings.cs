@@ -91,13 +91,16 @@ internal static class TomlSpellings
     /// <inheritdoc cref="IdentityKind"/>
     internal const string OrderedCutsKind = "ordered_cuts";
 
+    /// <summary>The <c>free_per_value</c> discretizer kind (§11.3, M4 Slice B / D-101).</summary>
+    internal const string FreePerValueKind = "free_per_value";
+
     /// <summary>
     /// Recognized-but-deferred discretizer kinds (D-070 tier 2): rejected at read
     /// with <c>DiscretizerKindNotYetSupported</c>, no carrier built. All execute
-    /// at M4.
+    /// at M4. <c>free_per_value</c> left this set at Slice B (D-101).
     /// </summary>
     internal static readonly string[] DeferredDiscretizerKinds =
-        ["free_per_value", "equal_width", "equal_frequency", "value_groups"];
+        ["equal_width", "equal_frequency", "value_groups"];
 
     /// <summary>Implemented scale kinds (§12.1–§12.3).</summary>
     internal const string NominalKind = "nominal";

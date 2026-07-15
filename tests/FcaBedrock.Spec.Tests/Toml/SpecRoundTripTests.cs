@@ -1,3 +1,4 @@
+using FcaBedrock.Core.Scaling;
 using FcaBedrock.Core.Spec;
 using FcaBedrock.Spec.Toml;
 
@@ -203,6 +204,41 @@ public sealed class SpecRoundTripTests
         var reread = Read(SpecWriter.Write(document));
 
         Assert.Equal(columns, reread.Binding?.Columns);
+    }
+
+    [Fact]
+    public void RoundTrip_WhenNumericFreePerValue_ThenAuthoredSpellingsSurviveVerbatim()
+    {
+        // §11.3/D-096: the document keeps authored numeric spellings; only the resolved Core graph
+        // normalizes them. The free_per_value carrier, declared_domain, and value_labels keys all
+        // survive read∘write verbatim (a later 90.0 does NOT become 90 in the document).
+        var document = DocumentFixtures.Document(
+        [
+            DocumentFixtures.Attribute("v", DocumentFixtures.Column(0, SourceValueType.Number),
+                discretizer: new FreePerValueDiscretizerSection(), scale: new NominalScaleSection(),
+                declaredDomain: ["90.0", "5e0"],
+                valueLabels: new Dictionary<string, string> { ["90.0"] = "ninety", ["5e0"] = "five" }),
+        ]);
+
+        var reread = Read(SpecWriter.Write(document));
+
+        Assert.IsType<FreePerValueDiscretizerSection>(reread.Attributes[0].Discretizer);
+        Assert.Equal(SourceValueType.Number, Assert.IsType<ColumnSourceSection>(reread.Attributes[0].Source).ValueType);
+        Assert.Equal(["90.0", "5e0"], reread.Attributes[0].DeclaredDomain);
+        Assert.Equal(["90.0", "5e0"], reread.Attributes[0].ValueLabels!.Keys);
+    }
+
+    [Fact]
+    public void RoundTrip_WhenNumericFreePerValueOrdinalOrder_ThenAuthoredOrderSpellingsSurvive()
+    {
+        var scale = new OrdinalScaleSection(OrdinalDirection.Ge, OrdinalBoundary.Inclusive, ["90.0", "5e0"], DropTop: null);
+        var document = DocumentFixtures.Document(
+            [DocumentFixtures.Attribute("v", DocumentFixtures.Column(0, SourceValueType.Number),
+                discretizer: new FreePerValueDiscretizerSection(), scale: scale, declaredDomain: ["90.0", "5e0"])]);
+
+        var reread = Read(SpecWriter.Write(document));
+
+        Assert.Equal(["90.0", "5e0"], Assert.IsType<OrdinalScaleSection>(reread.Attributes[0].Scale).Order);
     }
 
     private static FcaBedrock.Spec.Toml.SpecDocument Read(string toml)

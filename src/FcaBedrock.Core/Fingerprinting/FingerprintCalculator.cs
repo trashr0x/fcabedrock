@@ -306,6 +306,13 @@ public static class FingerprintCalculator
                 builder.Append("{\"kind\":\"identity\"}");
                 break;
 
+            case FreePerValueDiscretizer:
+                // §14/D-094: no config beyond the kind — its numeric-vs-string identity rides
+                // on source.value_type (already in "source"), and its bins/domain are effective
+                // (declared_domain, above). The effective numeric domain carries canonical keys.
+                builder.Append("{\"kind\":\"free_per_value\"}");
+                break;
+
             case ManualCutsDiscretizer manual:
                 builder.Append("{\"cuts\":[");
                 for (var i = 0; i < manual.Cuts.Count; i++)

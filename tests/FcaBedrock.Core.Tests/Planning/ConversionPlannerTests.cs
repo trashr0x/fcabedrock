@@ -623,6 +623,153 @@ public sealed class ConversionPlannerTests
         Assert.Equal(2, Assert.Single(plan.Attributes).MissingFormalAttributeId);
     }
 
+    // --- free_per_value value-bin planning (§11.3 / §12.3 / D-096, M4 Slice B) ---
+
+    [Fact]
+    public void Plan_WhenNumericFreePerValueNominal_ThenOneColumnPerCanonicalDomainKeyInDeclarationOrder()
+    {
+        // §17 r3: the canonical numeric domain keys drive column order and identity; the rendered
+        // label is the canonical number (§10.7/§11.3/D-092).
+        var spec = new BedrockSpec(SpecFixtures.WideRowIndex(),
+            [SpecFixtures.FreePerValue("v", 0, SourceValueType.Number, ["90", "0", "5"], new NominalScale())]);
+
+        Assert.True(Plan(spec, new SourceSchema(1)).TryGetValue(out var plan));
+
+        Assert.Equal(["v-90", "v-0", "v-5"], plan.FormalAttributes.Select(f => f.RenderedName));
+        Assert.Equal(["90", "0", "5"], plan.FormalAttributes.Select(f => f.Identity.BinKey));
+    }
+
+    [Fact]
+    public void Plan_WhenNumericFreePerValueWithValueLabels_ThenRendersLabelKeyedByCanonicalIdentity()
+    {
+        // value_labels keys are canonical numeric identities (D-096); the planner looks them up by
+        // the canonical bin key (§10.8).
+        var spec = new BedrockSpec(SpecFixtures.WideRowIndex(),
+            [SpecFixtures.FreePerValue("v", 0, SourceValueType.Number, ["90", "5"], new NominalScale(),
+                new Dictionary<string, string> { ["90"] = "ninety", ["5"] = "five" })]);
+
+        Assert.True(Plan(spec, new SourceSchema(1)).TryGetValue(out var plan));
+
+        Assert.Equal(["v-ninety", "v-five"], plan.FormalAttributes.Select(f => f.RenderedName));
+    }
+
+    [Fact]
+    public void Plan_WhenNumericFreePerValueOrdinalOmitsOrder_ThenNaturalAscendingOrderNoDiagnostic()
+    {
+        // §12.3/D-096: numeric free_per_value with no scale.order is EXEMPT from OrdinalOrderMissing;
+        // the bin order is the natural numeric ascending order of the (canonical) domain — regardless
+        // of declaration order.
+        var scale = new OrdinalScale(OrdinalDirection.Ge, DropTop: false, OrdinalBoundary.Inclusive, Order: null);
+        var spec = new BedrockSpec(SpecFixtures.WideRowIndex(),
+            [SpecFixtures.FreePerValue("v", 0, SourceValueType.Number, ["90", "0", "5"], scale)]);
+
+        Assert.True(Plan(spec, new SourceSchema(1)).TryGetValue(out var plan));
+
+        // Natural ascending order 0, 5, 90 — not the declaration order 90, 0, 5.
+        Assert.Equal(["v->=0", "v->=5", "v->=90"], plan.FormalAttributes.Select(f => f.RenderedName));
+        Assert.Equal(["0", "5", "90"], plan.FormalAttributes.Select(f => f.Identity.BinKey));
+    }
+
+    [Theory]
+    // §12.3: all four direction × boundary combinations are well-defined over value bins.
+    [InlineData(OrdinalDirection.Ge, OrdinalBoundary.Inclusive, new[] { "v->=0", "v->=5", "v->=90" })]
+    [InlineData(OrdinalDirection.Ge, OrdinalBoundary.Strict, new[] { "v->0", "v->5", "v->90" })]
+    [InlineData(OrdinalDirection.Le, OrdinalBoundary.Inclusive, new[] { "v-<=0", "v-<=5", "v-<=90" })]
+    [InlineData(OrdinalDirection.Le, OrdinalBoundary.Strict, new[] { "v-<0", "v-<5", "v-<90" })]
+    public void Plan_WhenNumericFreePerValueOrdinalNaturalOrder_ThenAllFourDirectionBoundaryCombos(
+        OrdinalDirection direction, OrdinalBoundary boundary, string[] expected)
+    {
+        var scale = new OrdinalScale(direction, DropTop: false, boundary, Order: null);
+        var spec = new BedrockSpec(SpecFixtures.WideRowIndex(),
+            [SpecFixtures.FreePerValue("v", 0, SourceValueType.Number, ["90", "0", "5"], scale)]);
+
+        Assert.True(Plan(spec, new SourceSchema(1)).TryGetValue(out var plan));
+
+        Assert.Equal(expected, plan.FormalAttributes.Select(f => f.RenderedName));
+    }
+
+    [Fact]
+    public void Plan_WhenNumericFreePerValueOrdinalCombos_ThenCrossesByBinMatchGeometry()
+    {
+        // Names alone can't catch a direction/boundary regression in incidence — assert CrossesByBin
+        // (raw bin → crossed formal-attribute ids) for every combination over natural order 0,5,90.
+        var domain = new[] { "90", "0", "5" }; // natural ascending → ids 0(>=/<0), 1(5), 2(90)
+        AssertCrosses(OrdinalDirection.Ge, OrdinalBoundary.Inclusive, domain, zero: [0], five: [0, 1], ninety: [0, 1, 2]);
+        AssertCrosses(OrdinalDirection.Ge, OrdinalBoundary.Strict, domain, zero: [], five: [0], ninety: [0, 1]);
+        AssertCrosses(OrdinalDirection.Le, OrdinalBoundary.Inclusive, domain, zero: [0, 1, 2], five: [1, 2], ninety: [2]);
+        AssertCrosses(OrdinalDirection.Le, OrdinalBoundary.Strict, domain, zero: [1, 2], five: [2], ninety: []);
+    }
+
+    private static void AssertCrosses(
+        OrdinalDirection direction, OrdinalBoundary boundary, IReadOnlyList<string> domain,
+        int[] zero, int[] five, int[] ninety)
+    {
+        var scale = new OrdinalScale(direction, DropTop: false, boundary, Order: null);
+        var spec = new BedrockSpec(SpecFixtures.WideRowIndex(),
+            [SpecFixtures.FreePerValue("v", 0, SourceValueType.Number, domain, scale)]);
+        Assert.True(Plan(spec, new SourceSchema(1)).TryGetValue(out var plan));
+        var v = Assert.Single(plan.Attributes);
+
+        Assert.Equal(zero, v.CrossesByBin.TryGetValue("0", out var z) ? z : []);
+        Assert.Equal(five, v.CrossesByBin.TryGetValue("5", out var f) ? f : []);
+        Assert.Equal(ninety, v.CrossesByBin.TryGetValue("90", out var n) ? n : []);
+    }
+
+    [Fact]
+    public void Plan_WhenNumericFreePerValueNaturalOrderDiverseValues_ThenSortedByNumericValue()
+    {
+        // Natural ordering handles negative, zero, subnormal, fractional, and extreme/exponent values.
+        var scale = new OrdinalScale(OrdinalDirection.Ge, DropTop: false, OrdinalBoundary.Inclusive, Order: null);
+        var domain = new[] { "1E+300", "-5", "0.5", "0", "90", "5E-324" };
+        var spec = new BedrockSpec(SpecFixtures.WideRowIndex(),
+            [SpecFixtures.FreePerValue("v", 0, SourceValueType.Number, domain, scale)]);
+
+        Assert.True(Plan(spec, new SourceSchema(1)).TryGetValue(out var plan));
+
+        // Ascending: -5 < 0 < 5E-324 (smallest subnormal) < 0.5 < 90 < 1E+300.
+        Assert.Equal(
+            ["v->=-5", "v->=0", "v->=5E-324", "v->=0.5", "v->=90", "v->=1E+300"],
+            plan.FormalAttributes.Select(f => f.RenderedName));
+    }
+
+    [Fact]
+    public void Plan_WhenNumericFreePerValueOrdinalAuthorsOrder_ThenAuthoredOrderIsThePermutation()
+    {
+        // An authored (canonical) order is validated as a full permutation and used verbatim (§12.3).
+        var scale = new OrdinalScale(OrdinalDirection.Ge, DropTop: false, OrdinalBoundary.Inclusive, ["90", "5", "0"]);
+        var spec = new BedrockSpec(SpecFixtures.WideRowIndex(),
+            [SpecFixtures.FreePerValue("v", 0, SourceValueType.Number, ["0", "5", "90"], scale)]);
+
+        Assert.True(Plan(spec, new SourceSchema(1)).TryGetValue(out var plan));
+
+        Assert.Equal(["v->=90", "v->=5", "v->=0"], plan.FormalAttributes.Select(f => f.RenderedName));
+    }
+
+    [Fact]
+    public void Plan_WhenStringFreePerValueOrdinalOmitsOrder_ThenReportsOrdinalOrderMissing()
+    {
+        // §12.3: string free_per_value still REQUIRES an explicit order — the natural-order exemption
+        // is numeric-only (D-096). The value-bin ordinal path applies exactly as for identity.
+        var scale = new OrdinalScale(OrdinalDirection.Ge, DropTop: false, OrdinalBoundary.Inclusive, Order: null);
+        var spec = new BedrockSpec(SpecFixtures.WideRowIndex(),
+            [SpecFixtures.FreePerValue("g", 0, SourceValueType.String, ["a", "b"], scale)]);
+
+        AssertFailsWith(Plan(spec, new SourceSchema(1)), DiagnosticCode.OrdinalOrderMissing);
+    }
+
+    [Fact]
+    public void Plan_WhenStringFreePerValueOrdinalAuthorsOrder_ThenValueBinThresholds()
+    {
+        // String free_per_value with an explicit order behaves exactly like identity value bins.
+        var scale = new OrdinalScale(OrdinalDirection.Ge, DropTop: false, OrdinalBoundary.Inclusive, ["a", "b", "c"]);
+        var spec = new BedrockSpec(SpecFixtures.WideRowIndex(),
+            [SpecFixtures.FreePerValue("g", 0, SourceValueType.String, ["a", "b", "c"], scale)]);
+
+        Assert.True(Plan(spec, new SourceSchema(1)).TryGetValue(out var plan));
+
+        Assert.Equal(["g->=a", "g->=b", "g->=c"], plan.FormalAttributes.Select(f => f.RenderedName));
+    }
+
     private static Binding WideWithKey(ObjectKey key) =>
         new(SourceShape.Wide, "utf-8", ',', '"', HasHeader: true, "invariant", "?", key);
 

@@ -31,10 +31,11 @@ public enum DiagnosticCode
     SpecFieldInvalid,
 
     /// <summary>
-    /// A recognized-but-deferred discretizer kind (<c>free_per_value</c>,
-    /// <c>equal_width</c>, <c>equal_frequency</c>, <c>value_groups</c>) was
-    /// authored; no carrier is built and round-trip is not promised. Spec §11 /
-    /// §16.4 (D-070; transitional, removed as each kind lands at M4).
+    /// A recognized-but-deferred discretizer kind (<c>equal_width</c>,
+    /// <c>equal_frequency</c>, <c>value_groups</c>) was authored; no carrier is built
+    /// and round-trip is not promised. <c>free_per_value</c> left this set when it
+    /// landed at M4 Slice B (D-101). Spec §11 / §16.4 (D-070; transitional, removed as
+    /// each kind lands at M4).
     /// </summary>
     DiscretizerKindNotYetSupported,
 
@@ -121,6 +122,23 @@ public enum DiagnosticCode
 
     /// <summary>A <c>value_labels</c> key is not in the declared domain. Spec §10.8.</summary>
     ValueLabelKeyNotInDomain,
+
+    /// <summary>
+    /// A numeric <c>free_per_value</c> <c>declared_domain</c> entry is unparseable,
+    /// non-finite (NaN/±∞), or a normalization duplicate of another entry (two
+    /// spellings, one numeric identity, e.g. <c>90</c> and <c>90.0</c>) — the §5.1
+    /// exception to verbatim strings, parsed under <c>binding.locale</c>. Spec §10.3
+    /// / §16.4 (D-096).
+    /// </summary>
+    DeclaredDomainInvalid,
+
+    /// <summary>
+    /// Two numeric <c>free_per_value</c> <c>value_labels</c> keys collapse to one
+    /// numeric identity after normalization under <c>binding.locale</c> (e.g. <c>90</c>
+    /// and <c>90.0</c>); an out-of-domain key stays <see cref="ValueLabelKeyNotInDomain"/>.
+    /// Spec §10.8 / §16.4 (D-096).
+    /// </summary>
+    ValueLabelKeyDuplicate,
 
     /// <summary><c>manual_cuts</c>/<c>ordered_cuts</c> cuts are not strictly ascending. Spec §11.2 / §11.8.</summary>
     DiscretizerCutsNotAscending,

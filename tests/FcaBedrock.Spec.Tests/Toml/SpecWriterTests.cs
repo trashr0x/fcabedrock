@@ -98,6 +98,24 @@ public sealed class SpecWriterTests
     }
 
     [Fact]
+    public void Write_WhenFreePerValue_ThenKindOnly()
+    {
+        // §11.3/D-101: free_per_value writes as a kind-only inline table (no parameters).
+        var document = DocumentFixtures.Document(
+        [
+            DocumentFixtures.Attribute("v", DocumentFixtures.Column(0, SourceValueType.Number),
+                discretizer: new FreePerValueDiscretizerSection(), scale: new NominalScaleSection(),
+                declaredDomain: ["90.0", "5e0"]),
+        ]);
+
+        var toml = SpecWriter.Write(document);
+
+        Assert.Contains("discretizer = { kind = \"free_per_value\" }", toml, StringComparison.Ordinal);
+        // Authored numeric spellings are written verbatim (normalized only at the resolve seam, D-096).
+        Assert.Contains("declared_domain = [\"90.0\", \"5e0\"]", toml, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Write_WhenRestrictToMixesStringsAndRanges_ThenAllFormsRender()
     {
         var document = DocumentFixtures.Document(

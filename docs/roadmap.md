@@ -138,7 +138,28 @@ vertical slices, not waterfall phases — each should leave the system working.
 > discretizers stay read-rejected and `RestrictToNotImplementedV1` stays active at
 > plan; only the abstract `PendingCalibration` + `CalibrationPending` carrier landed
 > (no concrete pending variants). `dotnet test` is green (873 passed, 1 skipped).
-> **M4 Slice B (free_per_value) is next.**
+>
+> **M4 Slice B — `free_per_value` + numeric identity — is complete (D-101).** The
+> `free_per_value` discretizer is executable and leaves the transitional read-reject
+> set (`DiscretizerKindNotYetSupported` narrows to the remaining three kinds). It is
+> type-flexible (D-061): `value_type = "string"` bins each spelling verbatim,
+> `value_type = "number"` bins the parsed numeric identity (`90`/`90.0`/`9e1` → one
+> bin `90`, every zero spelling → `0`) via the new public `CanonicalNumber` (locale
+> parse, finite-only, scoped positive-zero canonicalization — the `fp_format = 1`
+> encoder and every stored hash byte-for-byte unchanged, G-6). The resolve seam
+> normalizes numeric `declared_domain` / `value_labels` / `scale.order` keys to
+> canonical identities (`DeclaredDomainInvalid`, `ValueLabelKeyDuplicate`) while the
+> document round-trips authored spellings verbatim (D-096); the calibrator extends to
+> numeric observed-domain + `include` calibration over canonical keys with a
+> per-phase `SourceValueUnparseable` (D-100); numeric value-bin ordinals derive
+> natural ascending order when no order is authored, all four `direction × boundary`
+> combinations covered; and the `{"kind":"free_per_value"}` fingerprint is
+> golden-locked (D-094). `equal_width`, `equal_frequency`, `value_groups`, and
+> `restrict_to` stay transitionally rejected. One approved architecture-test
+> correction: `Packages_ShouldBeFreeOfCycles` now slices by production assembly
+> (its documented package-level intent) rather than by full namespace. `dotnet test`
+> is green (996 passed, 1 skipped). **M4 Slice C (`equal_width` + the shared cut
+> engine) is next.**
 
 ## Milestones
 

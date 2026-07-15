@@ -1,3 +1,5 @@
+using System.Globalization;
+using FcaBedrock.Core.Discretization;
 using FcaBedrock.Core.Planning;
 using FcaBedrock.Core.Scaling;
 using FcaBedrock.Core.Spec;
@@ -126,6 +128,62 @@ public sealed class EmitterTests
         Assert.Empty(Assert.Single(objects).CrossedFormalAttributeIds);
         Assert.Contains(diagnostics, d =>
             d.Code == DiagnosticCode.UnknownValueObserved && d.Severity == DiagnosticSeverity.Warning);
+    }
+
+    // --- numeric free_per_value emit (canonicalization + KnownBins gate, §11.3/D-096) ---
+
+    private static AttributeSpec NumericFreePerValue(string name, int index, IReadOnlyList<string> domain) =>
+        new(name, new ColumnSource(index, SourceValueType.Number), Include: true,
+            new FreePerValueDiscretizer(SourceValueType.Number, CultureInfo.InvariantCulture),
+            new NominalScale(), domain, RestrictTo: [], ConversionFixtures.NoLabels, MissingPolicy.Skip, UnknownValuePolicy.Warn);
+
+    [Fact]
+    public async Task EmitAsync_WhenNumericFreePerValue_ThenCanonicalizesAtEmitAndGatesOnDomain()
+    {
+        // 90.0 and 9e1 canonicalize to the "90" bin at emit and cross it; an in-domain "5" crosses its
+        // bin; a parseable-but-out-of-domain "999" is an unknown value (§10.6), so it crosses nothing.
+        var spec = new BedrockSpec(ConversionFixtures.Wide(hasHeader: false), [NumericFreePerValue("v", 0, ["90", "5"])]);
+
+        var (objects, diagnostics) = await RunAsync(spec, "90.0\n5\n9e1\n999", ConversionFixtures.Wide(hasHeader: false));
+
+        Assert.Equal([0], objects[0].CrossedFormalAttributeIds); // 90.0 -> "90" bin (id 0)
+        Assert.Equal([1], objects[1].CrossedFormalAttributeIds); // 5    -> "5" bin (id 1)
+        Assert.Equal([0], objects[2].CrossedFormalAttributeIds); // 9e1  -> "90" bin (id 0)
+        Assert.Empty(objects[3].CrossedFormalAttributeIds);       // 999 out of domain -> unknown, no cross
+        Assert.Contains(diagnostics, d =>
+            d.Code == DiagnosticCode.UnknownValueObserved && d.Severity == DiagnosticSeverity.Warning);
+    }
+
+    [Fact]
+    public async Task EmitAsync_WhenNumericFreePerValueUnparseable_ThenNoCrossAndSourceValueUnparseable()
+    {
+        // A present-but-unparseable numeric is kept, crosses nothing, and reports SourceValueUnparseable (§11.5).
+        var spec = new BedrockSpec(ConversionFixtures.Wide(hasHeader: false), [NumericFreePerValue("v", 0, ["90"])]);
+
+        var (objects, diagnostics) = await RunAsync(spec, "abc", ConversionFixtures.Wide(hasHeader: false));
+
+        Assert.Empty(Assert.Single(objects).CrossedFormalAttributeIds);
+        Assert.Contains(diagnostics, d => d.Code == DiagnosticCode.SourceValueUnparseable);
+    }
+
+    [Fact]
+    public async Task EmitAsync_WhenStringFreePerValue_ThenVerbatimBinsCrossAndAreDeterministic()
+    {
+        // String free_per_value keeps each spelling distinct; a repeat run is byte-identical (P-7).
+        var spec = new BedrockSpec(ConversionFixtures.Wide(hasHeader: false),
+            [new AttributeSpec("g", new ColumnSource(0, SourceValueType.String), Include: true,
+                new FreePerValueDiscretizer(SourceValueType.String, CultureInfo.InvariantCulture),
+                new NominalScale(), ["b", "n"], RestrictTo: [], ConversionFixtures.NoLabels, MissingPolicy.Skip, UnknownValuePolicy.Warn)]);
+
+        var (first, _) = await RunAsync(spec, "b\nn\nb", ConversionFixtures.Wide(hasHeader: false));
+        var (second, _) = await RunAsync(spec, "b\nn\nb", ConversionFixtures.Wide(hasHeader: false));
+
+        Assert.Equal([0], first[0].CrossedFormalAttributeIds); // b -> g-b (id 0)
+        Assert.Equal([1], first[1].CrossedFormalAttributeIds); // n -> g-n (id 1)
+        Assert.Equal([0], first[2].CrossedFormalAttributeIds);
+        Assert.Equal(
+            first.Select(o => o.CrossedFormalAttributeIds),
+            second.Select(o => o.CrossedFormalAttributeIds));
     }
 
     [Fact]

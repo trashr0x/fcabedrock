@@ -167,6 +167,10 @@ superseded or refined. A new entry MUST add its line here.
 - D-099 — Triple structural validity widens to calibrate/emit (refines D-082/D-085/D-095; the G-3 governance item)
 - D-100 — Per-phase `SourceValueUnparseable` aggregation across calibrate and emit (refines D-097; the G-4 governance item)
 
+### M4 Slice B (free_per_value + numeric identity)
+
+- D-101 — `free_per_value` executable: string + numeric identity, `CanonicalNumber`, scoped zero canonicalization, seam-normalized numeric domain/label/order, natural-order default (realizes D-061/D-092/D-096; the G-6/G-8 governance items; corrects the package-cycle architecture test to assembly slices)
+
 Spec-field defaults are recorded in spec §21 items 1–11 (see the final section
 of this file).
 
@@ -3258,6 +3262,92 @@ pattern).
   `calibrate/emit`).
 - **Affects:** Conversion (calibrator aggregation), Diagnostics (no new code); spec §16.4 (no text
   change — the code is already phased `calibrate/emit`). Refines D-097.
+
+---
+
+## M4 Slice B (free_per_value + numeric identity)
+
+### D-101 — `free_per_value` executable: string + numeric identity, `CanonicalNumber`, scoped zero canonicalization, seam-normalized numeric keys, natural-order default
+
+- **Status:** accepted (M4 Slice B; realizes D-061/D-092/D-096; the G-6/G-8 governance items)
+- **Date:** 2026-07-16
+- **Decision:** the `free_per_value` discretizer (§11.3) becomes executable, leaving the transitional
+  read-reject set (`DiscretizerKindNotYetSupported` narrows to `equal_width`/`equal_frequency`/
+  `value_groups`; the enum member stays — G-8). It is **type-flexible** (D-061): with
+  `value_type = "string"` (the default) each raw spelling is its own bin, verbatim; with
+  `value_type = "number"` the bin identity is the **parsed numeric value** — parsed with
+  `binding.locale` (never ambient — P-11), **finite-only**, and rendered by the one canonical §14
+  number rule, so `90`/`90.0`/`9e1` collapse to one bin labelled `90` and every zero spelling
+  (`-0` included) collapses to `0` (D-092/D-096). A present-but-unparseable/non-finite numeric value
+  is `BinResult.Unparseable` (§11.5). `identity` + `value_type = "number"` stays invalid — the numeric
+  distinct binner is `free_per_value` (D-061); there is no second numeric distinct-value spelling.
+  - **`CanonicalNumber` (public, `Core.Fingerprinting`) + scoped zero canonicalization (G-6).** The
+    one §14 number-identity rule is made public: `Format(double)` reproduces the existing invariant
+    shortest encoder **byte-for-byte** — `-0.0` still formats `"-0"`, so the `fp_format = 1` encoder
+    and every stored hash are untouched — `CanonicalizeZero(double)` maps both signed zeros to positive
+    zero, and `TryParse(text, culture, out value)` parses `NumberStyles.Float`, finite-only, without
+    canonicalizing (the caller applies `CanonicalizeZero`). `CanonicalJson.AppendNumber` is left
+    unchanged. Every **new** M4 numeric identity is canonicalized via the type-correct chains
+    (text-sourced `TryParse → CanonicalizeZero → Format`; already-numeric `CanonicalizeZero → Format`);
+    Slice B uses the text-sourced chain for numeric `free_per_value` domain/label/order keys at the
+    seam and observed/emitted values. Authored manual-cut bytes keep their standing `-0` exception
+    (a golden pins it).
+  - **Seam-normalized numeric keys; authored spellings survive in the document (D-096).** A numeric
+    `free_per_value` `declared_domain`, `value_labels` key, and `scale.order` entry is the §5.1
+    exception to verbatim strings: the resolve seam parses each to its canonical numeric identity,
+    and the resolved Core graph carries canonical keys while the **document model round-trips the
+    authored spellings verbatim** (`90.0` stays `90.0` in TOML). New spec-validate diagnostics:
+    `DeclaredDomainInvalid` (a domain entry unparseable, non-finite, or a normalization duplicate) and
+    `ValueLabelKeyDuplicate` (two label keys collapsing to one numeric identity); an out-of-domain
+    label key stays `ValueLabelKeyNotInDomain`, a normalization-duplicate/invalid `order` entry reuses
+    `OrderDomainInvalid`. String `free_per_value` consults `value_labels` verbatim, exactly like
+    `identity`. The seam checks aggregate independently (P-14).
+  - **Calibration (extends Slice A's discovery-class path).** Absent-domain numeric `free_per_value`
+    calibrates its **observed domain** from canonical numeric identities (first-observation order after
+    collapse; `ObservedDomainUsed`), and `unknown_value_policy = "include"` appends novel canonical
+    identities (`UnknownValuePolicyInclude`); the mode-triggered warnings fire at zero discoveries. A
+    present-but-unparseable numeric value read during calibration is excluded from the population and
+    reported as this phase's own aggregated `SourceValueUnparseable` at the severity
+    `unknown_value_policy` selects (D-100/G-4) — under `fail` the calibrate Error aborts with no result.
+  - **Numeric value-bin ordinal natural-order default (§12.3/D-096).** A numeric `free_per_value`
+    ordinal with **no authored `scale.order`** derives natural numeric **ascending** order from its
+    (canonical) domain at plan — the one value-bin case exempt from `OrdinalOrderMissing`; every other
+    value-bin ordinal (string `free_per_value`, or a numeric one with an authored order) still requires
+    an explicit full-permutation order. All four `direction × boundary` combinations are well-defined
+    over value bins.
+  - **Fingerprint (D-094 golden-lock).** The discretizer encodes as `{"kind":"free_per_value"}` — its
+    numeric-vs-string identity rides on `source.value_type` and its bins are the effective (canonical)
+    domain; hand-authored canonical bytes and a pinned SHA-256 vector land in the same slice, before any
+    stored M4 hash. All pre-Slice-B canonical bytes, SHA vectors, and the nine golden fixtures are
+    unchanged.
+- **Why:** M4's first executable discretizer beyond manual cuts needs its numeric identity, seam
+  normalization, calibration, ordinal, and fingerprint contracts pinned so `90`/`90.0` are one bin on
+  every path (determinism, P-7) and a signed zero never leaks into a key, label, or hash — without
+  moving the `fp_format = 1` bytes (G-6).
+- **Rejected:** making `identity` also numeric-flexible (a second numeric distinct-value spelling,
+  P-5/D-061); canonicalizing zero inside `Format` or changing `CanonicalJson.AppendNumber` (would move
+  the standing `-0` bytes, G-6); normalizing the document model's authored spellings (breaks round-trip
+  fidelity, D-081); requiring an explicit order for numeric value bins (natural numeric order is
+  unambiguous, D-096).
+- **Architecture-test correction (approved, operator-directed).** Adding `free_per_value` made
+  `FreePerValueDiscretizer` (`Core.Discretization`) reference `CanonicalNumber` (`Core.Fingerprinting`)
+  and `SourceValueType` (`Core.Spec`), both **inside `FcaBedrock.Core`** — no package cycle, but the
+  `Packages_ShouldBeFreeOfCycles` arch test sliced by full namespace via `Slices().Matching("FcaBedrock.(*)")`,
+  accidentally treating `Core`'s sub-namespaces as separate packages. The documented invariant
+  (AGENTS.md, D-039) is **package/assembly** acyclicity, so the test is corrected to assign each type to
+  its production **assembly** (an explicit `SliceAssignment`), with a non-vacuity assertion that the
+  slice names equal the loaded production package names. A correction of a latent architecture-test
+  semantic bug, not a weakening of the invariant; the production design is exactly as approved (no type
+  moved, no numeric logic duplicated).
+- **Affects:** Core (`Discretization/FreePerValueDiscretizer`, `Fingerprinting/CanonicalNumber`,
+  `Fingerprinting/FingerprintCalculator` — the `free_per_value` case, `Spec/ResolvedSpec` — rebuild +
+  enum-validate, `Planning/ConversionPlanner` — numeric value-bin ordinal), Spec
+  (`FreePerValueDiscretizerSection`, reader/writer/spellings, `SpecResolver` — value-type-flexible
+  resolution + D-096 normalization), Conversion (`Calibrator` — numeric observed/include + per-phase
+  unparseable), Diagnostics (`DeclaredDomainInvalid`, `ValueLabelKeyDuplicate`); tests
+  (`FcaBedrock.Architecture.Tests` — package-slice correction); spec §5.1 / §7 / §10.3 / §10.7 / §10.8 /
+  §11.3 / §12.3 / §16.4 / §17 (transitional-note retirements). Realizes D-061/D-092/D-096; the G-6/G-8
+  governance items.
 
 ---
 

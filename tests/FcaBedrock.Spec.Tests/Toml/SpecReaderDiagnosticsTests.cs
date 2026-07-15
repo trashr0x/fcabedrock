@@ -86,7 +86,6 @@ public sealed class SpecReaderDiagnosticsTests
     }
 
     [Theory]
-    [InlineData("free_per_value")]
     [InlineData("equal_width")]
     [InlineData("equal_frequency")]
     [InlineData("value_groups")]
@@ -94,6 +93,7 @@ public sealed class SpecReaderDiagnosticsTests
     {
         // D-070 tier 2: one actionable diagnostic; the parameter keys are
         // deliberately not walked, so no unknown-key noise follows.
+        // free_per_value left this set at M4 Slice B (D-101) and is now executable.
         var result = SpecReader.Read(Attribute(
             $"discretizer = {{ kind = \"{kind}\", bins = 4, range = \"min_max\" }}"));
 
