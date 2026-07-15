@@ -19,9 +19,6 @@ namespace FcaBedrock.Conversion;
 /// </summary>
 public static class Emitter
 {
-    // Per-attribute sample cap for aggregated diagnostics; bounded metadata (P-16).
-    private const int SampleCap = 3;
-
     /// <summary>
     /// Emits the formal objects for <paramref name="plan"/> over <paramref name="source"/>. Object
     /// names follow <c>plan.ObjectKey</c>: <c>row_index</c> uses the source row index, while a wide
@@ -78,6 +75,10 @@ public static class Emitter
         ICollection<BedrockDiagnostic> diagnostics,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
+        // Preparation ↔ source pairing before any row (D-098): the emit source must be
+        // the one this plan's calibration was prepared against.
+        await SourcePairing.ValidateAsync(plan.Calibrated.Resolution, source, cancellationToken).ConfigureAwait(false);
+
         var count = plan.Attributes.Count;
         var unknown = NewTallies(count);
         var unparseable = NewTallies(count);
@@ -193,6 +194,9 @@ public static class Emitter
         GroupingOptions groupingOptions,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
+        // Preparation ↔ source pairing before any row (D-098).
+        await SourcePairing.ValidateAsync(plan.Calibrated.Resolution, source, cancellationToken).ConfigureAwait(false);
+
         var count = plan.Attributes.Count;
         var unknown = NewTallies(count);
         var unparseable = NewTallies(count);
@@ -378,6 +382,10 @@ public static class Emitter
             throw new InvalidOperationException(
                 "EmitTripleAsync requires a triple plan (plan.Execution must be TripleExecution); a wide plan uses EmitAsync.");
         }
+
+        // Preparation ↔ source pairing before any row (D-098): validated on the raw source,
+        // before it is wrapped for unordered grouping.
+        await SourcePairing.ValidateAsync(plan.Calibrated.Resolution, source, cancellationToken).ConfigureAwait(false);
 
         var count = plan.Attributes.Count;
         var unknown = NewTallies(count);
@@ -574,7 +582,7 @@ public static class Emitter
                 return;
 
             case BinOutcome.Unknown:
-                RecordUnknown(attribute, raw, unknown); // ordered_cuts not-in-order (§11.8)
+                unknown.Record(raw); // ordered_cuts not-in-order (§11.8)
                 return;
 
             case BinOutcome.Bin:
@@ -582,7 +590,7 @@ public static class Emitter
                 if (!attribute.KnownBins.Contains(bin))
                 {
                     // Identity domain mismatch: the bin label is the raw value (§10.6).
-                    RecordUnknown(attribute, bin, unknown);
+                    unknown.Record(bin);
                     return;
                 }
 
@@ -598,20 +606,6 @@ public static class Emitter
 
                 return;
         }
-    }
-
-    // "include" extends the domain during the Calibrate phase, never at emit, so an
-    // unknown reaching emit under that policy is an impossible state (preserved from the
-    // per-row path — P-14). Other policies accrue to the aggregate and surface at flush.
-    private static void RecordUnknown(PlannedAttribute attribute, string value, DiagnosticTally unknown)
-    {
-        if (attribute.UnknownValuePolicy == UnknownValuePolicy.Include)
-        {
-            throw new InvalidOperationException(
-                "unknown_value_policy = \"include\" must be resolved during calibration, not emit.");
-        }
-
-        unknown.Record(value);
     }
 
     private static void Flush(
@@ -666,13 +660,15 @@ public static class Emitter
         }
     }
 
-    // Unknown categorical value severity (§10.6). "include" cannot reach Flush — RecordUnknown
-    // throws first — so it is mapped defensively to warn.
+    // Unknown categorical value severity (§10.6). "include" resolves at calibrate; a
+    // between-pass unknown reaching emit under it degrades to Warning (D-088 include-crash
+    // closure) — the explicit Include → Warning fallback.
     private static DiagnosticSeverity? UnknownSeverity(UnknownValuePolicy policy) => policy switch
     {
         UnknownValuePolicy.Skip => null,
         UnknownValuePolicy.Warn => DiagnosticSeverity.Warning,
         UnknownValuePolicy.Fail => DiagnosticSeverity.Error,
+        UnknownValuePolicy.Include => DiagnosticSeverity.Warning,
         _ => DiagnosticSeverity.Warning,
     };
 
@@ -696,25 +692,5 @@ public static class Emitter
         }
 
         return tallies;
-    }
-
-    // Per-attribute occurrence count plus a bounded first-observed sample (deterministic
-    // given source order). Bounded metadata, never the matrix (P-16).
-    private sealed class DiagnosticTally
-    {
-        private readonly List<string> _sample = [];
-
-        public long Count { get; private set; }
-
-        public string Sample => string.Join(", ", _sample);
-
-        public void Record(string value)
-        {
-            Count++;
-            if (_sample.Count < SampleCap)
-            {
-                _sample.Add(value);
-            }
-        }
     }
 }

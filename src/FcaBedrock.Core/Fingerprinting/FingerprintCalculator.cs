@@ -35,32 +35,38 @@ public static class FingerprintCalculator
     /// <summary>
     /// The <c>cxt_output_fingerprint</c>: schema + shared conversion inputs +
     /// rendered names, label style, <c>bin_label_unicode</c> and the <c>.cxt</c>
-    /// writer settings (§14, D-051).
+    /// writer settings (§14, D-051). The shared inputs are read from the plan's
+    /// calibrated spec (D-094 effective-configuration rule).
     /// <para><b>Precondition:</b> <paramref name="inputs"/>.<see cref="CxtFingerprintInputs.LabelStyle"/>
-    /// must be the style <paramref name="plan"/> was produced with —
+    /// must equal <paramref name="plan"/>.<see cref="ConversionPlan.LabelStyle"/> —
     /// <see cref="FormalAttribute.RenderedName"/> already bakes the style in, so a
-    /// mismatched pair would hash an inconsistent, unreproducible combination.
-    /// <c>SpecFingerprints.ComputeNative</c> guarantees the Native/Native pairing;
-    /// the M7 effective-fingerprint path pairs V2Compat/V2Compat.</para>
+    /// mismatched pair would hash an inconsistent, unreproducible combination. This is
+    /// validated (throws <see cref="ArgumentException"/>) rather than merely documented.</para>
     /// </summary>
-    public static string ComputeCxtOutputFingerprint(ConversionPlan plan, BedrockSpec spec, CxtFingerprintInputs inputs)
+    public static string ComputeCxtOutputFingerprint(ConversionPlan plan, CxtFingerprintInputs inputs)
     {
         ArgumentNullException.ThrowIfNull(plan);
-        ArgumentNullException.ThrowIfNull(spec);
         ArgumentNullException.ThrowIfNull(inputs);
-        return Hash(BuildCxtOutputJson(plan, spec, inputs));
+        if (inputs.LabelStyle != plan.LabelStyle)
+        {
+            throw new ArgumentException(
+                $"inputs.LabelStyle ({inputs.LabelStyle}) must match the plan's LabelStyle ({plan.LabelStyle}) (§14).",
+                nameof(inputs));
+        }
+
+        return Hash(BuildCxtOutputJson(plan, plan.Calibrated.Spec, inputs));
     }
 
     /// <summary>
     /// The <c>dat_output_fingerprint</c>: schema + shared conversion inputs + the
-    /// <c>.dat</c> writer settings. Rendered names never enter (§14, D-051).
+    /// <c>.dat</c> writer settings. Rendered names never enter (§14, D-051). The
+    /// shared inputs are read from the plan's calibrated spec (D-094).
     /// </summary>
-    public static string ComputeDatOutputFingerprint(ConversionPlan plan, BedrockSpec spec, DatFingerprintInputs inputs)
+    public static string ComputeDatOutputFingerprint(ConversionPlan plan, DatFingerprintInputs inputs)
     {
         ArgumentNullException.ThrowIfNull(plan);
-        ArgumentNullException.ThrowIfNull(spec);
         ArgumentNullException.ThrowIfNull(inputs);
-        return Hash(BuildDatOutputJson(plan, spec, inputs));
+        return Hash(BuildDatOutputJson(plan, plan.Calibrated.Spec, inputs));
     }
 
     // The canonical-bytes builders are internal so the D-069 canonical-stability

@@ -1,4 +1,5 @@
 using FcaBedrock.Conversion;
+using FcaBedrock.Core.Calibration;
 using FcaBedrock.Core.Discretization;
 using FcaBedrock.Core.Planning;
 using FcaBedrock.Core.Spec;
@@ -69,20 +70,30 @@ internal static class GoldenConversion
         AssertClean("migrate", migrated.Diagnostics);
         Assert.True(migrated.TryGetValue(out var specDocument), Describe(migrated.Diagnostics));
 
-        var resolved = SpecResolver.Resolve(specDocument);
-        AssertClean("resolve", resolved.Diagnostics);
-        Assert.True(resolved.TryGetValue(out var spec), Describe(resolved.Diagnostics));
+        // Two-stage source bootstrap (G-1): resolve the schema-independent read settings,
+        // open a session, read the schema, resolve schema-aware, then bind the source to the
+        // resolution so calibrate/emit pair by token identity (D-098).
+        var settingsResult = SpecResolver.ResolveReadSettings(specDocument);
+        AssertClean("read-settings", settingsResult.Diagnostics);
+        Assert.True(settingsResult.TryGetValue(out var settings), Describe(settingsResult.Diagnostics));
 
         var dataPath = fixture.DataPath;
         var labelStyle = LabelStyleFor(options);
+        Func<Stream> openStream = () => File.OpenRead(dataPath);
 
-        // The resolved shape decides the source and the emit entrypoint (D-082/D-086).
-        // The triple emitter owns the unordered wrapper (§5.3 / D-082), so it takes the
-        // raw TripleCsvSource; the delegate matches EmitReplay.Begin exactly.
-        if (spec.Binding.Shape == SourceShape.Triple)
+        // The resolved shape decides the session/source and the emit entrypoint (D-082/D-086/G-1).
+        // The triple emitter owns the unordered wrapper (§5.3 / D-082), so it takes the bound
+        // TripleCsvSource; the delegate matches EmitReplay.Begin exactly.
+        if (settings.Shape == SourceShape.Triple)
         {
-            var source = new TripleCsvSource(() => File.OpenRead(dataPath), spec.Binding);
-            var plan = await PlanAsync(spec, source.GetSchemaAsync(), labelStyle);
+            var session = new TripleCsvSession(openStream, settings);
+            var schema = await session.GetSchemaAsync();
+            var resolved = SpecResolver.Resolve(specDocument, schema);
+            AssertClean("resolve", resolved.Diagnostics);
+            Assert.True(resolved.TryGetValue(out var resolvedDoc), Describe(resolved.Diagnostics));
+
+            var source = session.Bind(resolvedDoc.Resolved);
+            var plan = await PlanAsync("calibrate", Calibrator.CalibrateTripleAsync(resolvedDoc.Resolved, source), labelStyle);
 
             // Every active triple golden is subject-interleaved, so the planner must have
             // resolved an unordered execution (§5.3 / D-082) — asserted on every run.
@@ -91,17 +102,25 @@ internal static class GoldenConversion
         }
         else
         {
-            var source = new WideCsvSource(() => File.OpenRead(dataPath), spec.Binding);
-            var plan = await PlanAsync(spec, source.GetSchemaAsync(), labelStyle);
+            var session = new WideCsvSession(openStream, settings);
+            var schema = await session.GetSchemaAsync();
+            var resolved = SpecResolver.Resolve(specDocument, schema);
+            AssertClean("resolve", resolved.Diagnostics);
+            Assert.True(resolved.TryGetValue(out var resolvedDoc), Describe(resolved.Diagnostics));
+
+            var source = session.Bind(resolvedDoc.Resolved);
+            var plan = await PlanAsync("calibrate", Calibrator.CalibrateAsync(resolvedDoc.Resolved, source), labelStyle);
             return new PreparedConversion(plan, sink => Emitter.EmitAsync(plan, source, sink));
         }
     }
 
     private static async Task<ConversionPlan> PlanAsync(
-        BedrockSpec spec, ValueTask<SourceSchema> schemaTask, LabelStyle labelStyle)
+        string calibrateStage, ValueTask<Diagnosed<CalibratedSpec>> calibrateTask, LabelStyle labelStyle)
     {
-        var schema = await schemaTask;
-        var planned = ConversionPlanner.Plan(spec, schema, labelStyle);
+        var calibrated = await calibrateTask;
+        AssertClean(calibrateStage, calibrated.Diagnostics);
+        Assert.True(calibrated.TryGetValue(out var calibratedSpec), Describe(calibrated.Diagnostics));
+        var planned = ConversionPlanner.Plan(calibratedSpec, labelStyle);
         AssertClean("plan", planned.Diagnostics);
         Assert.True(planned.TryGetValue(out var plan));
         return plan;

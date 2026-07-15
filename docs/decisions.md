@@ -161,6 +161,12 @@ superseded or refined. A new entry MUST add its line here.
 - D-096 — Numeric `free_per_value` identity: locale-parsed, zero-canonicalized; normalized domain/label/order keys (refines D-061/D-081/D-092)
 - D-097 — Filter-only restriction diagnostics report unparseable values under `unknown_value_policy` (refines D-049/D-076)
 
+### M4 Slice A (calibration preparation)
+
+- D-098 — M4 preparation contract: two-stage source bootstrap, token-paired provenance, Core-owned calibrated state (realizes D-093; the D-083-reserved schema-aware-resolve move; the G-1 governance item)
+- D-099 — Triple structural validity widens to calibrate/emit (refines D-082/D-085/D-095; the G-3 governance item)
+- D-100 — Per-phase `SourceValueUnparseable` aggregation across calibrate and emit (refines D-097; the G-4 governance item)
+
 Spec-field defaults are recorded in spec §21 items 1–11 (see the final section
 of this file).
 
@@ -3118,6 +3124,140 @@ pattern).
 - **Affects:** Conversion (restriction evaluation reports `SourceValueUnparseable`),
   Diagnostics (no new code — existing `SourceValueUnparseable`); spec §10.4 / §10.6.
   Refines D-049/D-076; interacts with D-091. Docs-only landing.
+
+---
+
+## M4 Slice A (calibration preparation)
+
+### D-098 — M4 preparation contract: two-stage source bootstrap, token-paired provenance, calibrated state
+
+- **Status:** accepted (M4 Slice A; realizes D-093; the D-083-reserved schema-aware-resolve move)
+- **Date:** 2026-07-15
+- **Decision:** M4's Calibrate phase needs one preparation identity threaded from resolve
+  through emit, and a source cannot exist before resolution (a source constructor needs the
+  resolved `Binding`, and name-bound resolution needs the schema). Preparation is therefore a
+  **two-stage bootstrap** over an opaque, validated, recursively-immutable token chain:
+  1. **Read settings first** (schema-independent): `SpecResolver.ResolveReadSettings(document)
+     → Diagnosed<SourceReadSettings>` resolves only the §5.1 scalars (shape, encoding,
+     delimiter, quote, has_header, missing_token, triple ordering) via helpers shared with full
+     resolve (no condition gains a second owner). Prefix gates match full resolve: an authored
+     `extends` throws `ArgumentException` (uncomposed, D-078); a missing/unsupported version is
+     `SpecVersionUnsupported` (Fatal) with no settings — the bootstrap never opens a source for a
+     document whose semantics are unknown. `SourceReadSettings.Create` is the P-10 backstop with
+     an exact exception contract (empty `missingToken` valid; UTF-8 spellings normalize;
+     `delimiter == quoteChar`/non-`"` quote/inconsistent shape-ordering throw).
+  2. **Session** (reads schema, holds no resolved indexes): `WideCsvSession` /
+     `TripleCsvSession(openStream, settings)` expose `GetSchemaAsync` with a pinned lifecycle —
+     the first successful read caches an immutable snapshot; a canceled/failed read (factory
+     exceptions included) caches nothing and the next call retries; `Bind` before a successful
+     read throws; repeated `Bind` is allowed and re-validates.
+  3. **Full resolve against the schema**: `SpecResolver.Resolve(document, schema?) →
+     Diagnosed<ResolvedDocument>` pairs a Spec-owned `ResolvedDocument` (internal constructor, an
+     immutable document snapshot) over the Core-owned **`ResolvedSpec`** — a sealed non-positional
+     class produced only by the validating factory `ResolvedSpec.Create`. `Create` deep-snapshots
+     the spec graph into recursively-immutable storage (`ImmutableArray`/`FrozenDictionary`/
+     `FrozenSet`, no castable mutable backing array on any public property), and is the
+     **validate-once trust boundary** (P-10): it exhaustively re-checks every structural invariant
+     downstream phases trust — schema structure, settings↔binding consistency, locale, source-kind
+     ↔shape, binding-union coherence (the subject-pinned triple key, distinct in-range roles,
+     null triple fields under wide), included discretizer/scale presence, defined enum members,
+     known restriction variants, and each site-typed `ResolvedNameBinding` against both the header
+     and its resolved member — throwing `ArgumentException` on any violation. So the planner's
+     residual range/coherence checks become unreachable-by-construction, and all binding range
+     checks return to their §16.4 spec-validate home (the D-083 "interim at plan" parentheticals
+     retire). Strict factories run only behind the resolver's success gate: on any Error/Fatal the
+     result is `Diagnosed.Failed` with no factory called, so aggregation never throws.
+  4. **Bind**: `session.Bind(resolvedDocument.Resolved)` validates settings + schema value
+     equality and returns the concrete source **carrying the token**. Source provenance is a
+     mechanically-closed three-state Core union on both source interfaces
+     (`SourceProvenance Provenance { get; }`): `TokenProvenance` for bound sources;
+     `DescriptorProvenance(settings, roles)` for direct-constructed production sources (derived
+     from the `Binding` they hold); and the explicit `SourceProvenance.Unvalidated` opt-out —
+     weaker validation is *named*, never silent.
+  5. **Calibrate/Emit pair by provenance before reading any row**: token → `ReferenceEquals` with
+     the resolution (full pairing); descriptor → settings value-equality + role-map equality +
+     ordinal schema-value equality; unvalidated → schema-value only. Mismatch (or an unknown
+     variant) throws `InvalidOperationException` (the D-082 call-contract posture).
+
+  The **Calibrate phase** (`Calibrator.CalibrateAsync`/`CalibrateTripleAsync`, Conversion)
+  produces the Core-owned, immutable **`CalibratedSpec`** — the single Plan input carrying the
+  effective spec, the schema snapshot, and the retained outcomes (D-093). `CalibratedSpec.Create`
+  returns `Diagnosed` (P-14) and enforces per-mode **completeness**: an absent-domain consuming
+  attribute requires exactly one `ObservedDomain` outcome; an explicit-domain consuming attribute
+  under `unknown_value_policy = "include"` requires exactly one `IncludeAdditions` marker (an
+  empty list is the zero-additions marker); a leftover/duplicate/kind-mismatched/unexpected outcome
+  or a null schema is a programmer error (`ArgumentException`). `ConversionPlanner.Plan` re-signs to
+  `Plan(CalibratedSpec, LabelStyle)`; `ConversionPlan` becomes a sealed class with a planner-owned
+  internal constructor carrying its `CalibratedSpec` and `LabelStyle`; the output-fingerprint API
+  reads `plan.Calibrated.Spec` and validates the plan↔spec/style pairing;
+  `SpecFingerprints.ComputeNative(ResolvedDocument, ConversionPlan)` validates
+  `ReferenceEquals(resolved.Resolved, plan.Calibrated.Resolution)` and reads output settings from
+  the document snapshot. Slice A executes only discovery-class calibration (observed domains,
+  `include` additions); the auto-discretizer cut engine and passthrough land in later M4 slices.
+  Construction authority: public validating Core factories + reference-token pairing — a forger
+  can only build a parallel honest chain, not a mixed one; **no production `InternalsVisibleTo`**.
+- **Why:** without one owned, retained, validated preparation, resolve/calibrate/plan/emit/
+  fingerprint could each re-derive or mispair state — breaking determinism (P-7) and the D-093
+  retention boundary. The two-stage bootstrap is the only compilable ordering (sources cannot
+  precede resolution); the opaque token makes pairing structural rather than a header heuristic.
+- **Rejected:** a one-stage bootstrap (sources cannot be built before resolution); header-only
+  pairing (same-header/different-settings mispairing); a mutable calibrated state (castable arrays
+  defeat immutability); production IVT to forge tokens (a mixed pipeline); re-deriving calibration
+  downstream of the calibrator (D-093).
+- **Affects:** Core (`SourceReadSettings`, `ResolvedNameBinding`, `SourceProvenance`,
+  `ResolvedSpec`, `CalibratedSpec`, `AttributeCalibration`, `PendingCalibration`/`CalibrationPending`,
+  `PlannedRestriction`, `ConversionPlan`/`ConversionPlanner`, fingerprint API; immutable
+  discretizer/scale/planner internals), Sources (sessions, `Provenance` member, bound
+  constructors), Spec (`ResolvedDocument`, `Resolve`/`ResolveReadSettings`, seam range checks,
+  `SpecFingerprints.ComputeNative`), Conversion (`Calibrator`, emit pairing guard), Diagnostics
+  (`ObservedDomainUsed`, `UnknownValuePolicyInclude`, `NoFormalAttributes`; −
+  `ObservedDomainCalibrationNotImplementedV1`); spec §7 / §16.4. Realizes D-093; the D-083 move.
+
+### D-099 — Triple structural validity widens to calibrate/emit
+
+- **Status:** accepted (M4 Slice A; refines D-082/D-085/D-095)
+- **Date:** 2026-07-15
+- **Decision:** a triple **calibration** read enforces the same structural validity as emit: a
+  `subject_grouped` read halts on non-contiguity (`TripleSubjectNotContiguous`), and **any**
+  triple calibration read halts on a structurally unusable subject (`ObjectKeyValueInvalid`) —
+  same codes, severities, and identities as emit, an in-path Error yielding no calibrated result
+  (the D-095 `GroupingStorageFailed` precedent). Otherwise a calibrate-only/freeze run would
+  retain outcomes from input the conversion rejects. Deliberate asymmetry, recorded: **wide**
+  calibration does not read or validate the object-key column — the §7 wide population is
+  row-scoped and key validity does not shape it, whereas the triple subject *is* the observation's
+  identity (it scopes the §5.3.1 dedup), so its validity is load-bearing for calibration
+  correctness.
+- **Why:** the pre-M4 spec phased `TripleSubjectNotContiguous`/`ObjectKeyValueInvalid` at emit
+  only; a calibration pass that read the same rows without the same guards could silently retain
+  cuts/domains from structurally-invalid input.
+- **Rejected:** validating triple structure only at emit (a calibrate-only run would retain
+  invalid outcomes); validating the wide object-key column during calibration (the wide population
+  is key-independent — no correctness gain).
+- **Affects:** Conversion (`Calibrator` triple pass), Diagnostics (registry cells only —
+  `TripleSubjectNotContiguous`/`ObjectKeyValueInvalid` phase widens to `calibrate/emit`); spec
+  §16.4. Refines D-082/D-085/D-095.
+
+### D-100 — Per-phase `SourceValueUnparseable` aggregation across calibrate and emit
+
+- **Status:** accepted (M4 Slice A; refines D-097)
+- **Date:** 2026-07-15
+- **Decision:** Calibrate and Emit are independent data-reading passes; each reports its **own**
+  aggregated `SourceValueUnparseable` per attribute (calibrate reports only for the attributes it
+  reads). Under `fail` the calibrate-phase Error aborts before emit, so no double report; under
+  `warn`/`include` a value unparseable in both passes yields one aggregate per phase. D-097's
+  at-most-once rule is per-pass (restriction vs discretization within emit), unchanged. In Slice A
+  the only calibration is discovery-class over `identity` (verbatim string values, never
+  unparseable), so no `SourceValueUnparseable` is emitted at calibrate yet; the rule is recorded
+  here for the numeric-calibration slices (B–D) that first read numeric values during Calibrate.
+- **Why:** the per-phase rule must be pinned before the numeric calibration slices land, so a
+  value unparseable during both calibration and emit reports honestly once per pass rather than
+  being deduplicated across phases (which would hide a calibrate-phase data-quality signal).
+- **Rejected:** a single cross-phase at-most-once rule (would suppress a legitimate calibrate-phase
+  aggregate); a new diagnostic code for the calibrate phase (the aggregation/severity semantics
+  are identical to emit's — reuse `SourceValueUnparseable`, §16.4 already phases it
+  `calibrate/emit`).
+- **Affects:** Conversion (calibrator aggregation), Diagnostics (no new code); spec §16.4 (no text
+  change — the code is already phased `calibrate/emit`). Refines D-097.
 
 ---
 

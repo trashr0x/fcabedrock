@@ -18,6 +18,16 @@ namespace FcaBedrock.Sources;
 /// </summary>
 public interface IRecordSource
 {
+    /// <summary>
+    /// What this source can prove about its preparation (D-098/G-1): a bound source
+    /// carries a <see cref="TokenProvenance"/>, a direct-constructed production source
+    /// a <see cref="DescriptorProvenance"/>, and a descriptor-less adapter/test fake
+    /// the explicit <see cref="SourceProvenance.Unvalidated"/> opt-out. Every
+    /// implementor states its provenance explicitly (no default) — the calibrate/emit
+    /// guard pairs the source to the resolution against this.
+    /// </summary>
+    SourceProvenance Provenance { get; }
+
     /// <summary>Reads source schema metadata (column count, header) without scanning rows.</summary>
     ValueTask<SourceSchema> GetSchemaAsync(CancellationToken cancellationToken = default);
 

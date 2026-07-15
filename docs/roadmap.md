@@ -120,7 +120,25 @@ vertical slices, not waterfall phases — each should leave the system working.
 > spec-validate enum members (`DeclaredDomainInvalid`, `ValueLabelKeyDuplicate`,
 > deferred to their M4 sites) and widens `GroupingStorageFailed` to calibrate/emit.
 > This landing is docs-only — no production code, tests, fixtures, enum members, or
-> output/fingerprint bytes changed. **M4 implementation has not started.**
+> output/fingerprint bytes changed.
+>
+> **M4 Slice A — the calibration-preparation contract — is complete (D-098…D-100).**
+> The two-stage source bootstrap (`ResolveReadSettings` → `WideCsvSession`/
+> `TripleCsvSession` → schema-aware `Resolve → Diagnosed<ResolvedDocument>` →
+> `Bind`), the opaque validated recursively-immutable `ResolvedSpec` token with
+> site-typed name bindings and a three-state `SourceProvenance` union, the
+> Core-owned `CalibratedSpec` (the single `Plan(CalibratedSpec, LabelStyle)` input)
+> with per-mode completeness markers, the `Calibrator` (wide + triple; discovery-class
+> observed-domain and `include` calibration; the G-3 triple structural checks; the
+> pairing guard before any row), the `ConversionPlan` sealed internal-ctor plan
+> carrying its calibrated state + label style, the fingerprint API re-signed over
+> `plan.Calibrated.Spec` (byte-neutral — all pinned hashes and nine goldens
+> unchanged), the include emit-crash closure (P-22), and `NoFormalAttributes` at plan
+> all landed. `ObservedDomainCalibrationNotImplementedV1` retired. The four deferred
+> discretizers stay read-rejected and `RestrictToNotImplementedV1` stays active at
+> plan; only the abstract `PendingCalibration` + `CalibrationPending` carrier landed
+> (no concrete pending variants). `dotnet test` is green (873 passed, 1 skipped).
+> **M4 Slice B (free_per_value) is next.**
 
 ## Milestones
 

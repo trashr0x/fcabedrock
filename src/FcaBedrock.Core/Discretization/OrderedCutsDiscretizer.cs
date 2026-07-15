@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using FcaBedrock.Core.Scaling;
 using FcaBedrock.Diagnostics;
 
@@ -35,10 +36,11 @@ public sealed record OrderedCutsDiscretizer : Discretizer
 
     private OrderedCutsDiscretizer(IReadOnlyList<string> order, IReadOnlyList<string> cuts, BinEnds ends)
     {
-        // Snapshot the caller's lists: mutable inputs must not desync Order/Cuts from the cached
-        // labels and positions after construction (P-10 — validated invariants stay true for life).
-        Order = [.. order];
-        Cuts = [.. cuts];
+        // Snapshot the caller's lists into immutable storage: mutable inputs must not desync
+        // Order/Cuts from the cached labels/positions, and no castable mutable backing array may
+        // survive on the resolved/planned graph (P-10, D-098 recursive immutability).
+        Order = ImmutableArray.CreateRange(order);
+        Cuts = ImmutableArray.CreateRange(cuts);
         Ends = ends;
         _binLabels = CutBinLabels.Build(Cuts, ends);
         _structuralBins = BuildStructuralBins(Cuts, ends);

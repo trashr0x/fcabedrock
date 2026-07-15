@@ -165,7 +165,7 @@ public sealed class GroupingStorageSessionTests
         var source = ConversionFixtures.TripleSourceOver(
             string.Join('\n', Enumerable.Range(0, subjects).Select(i => $"s{i},a0,x")), ConversionFixtures.Triple(TripleOrdering.Unordered));
         var schema = await source.GetSchemaAsync();
-        Assert.True(ConversionPlanner.Plan(spec, schema).TryGetValue(out var plan));
+        Assert.True(ConversionFixtures.PlanFor(spec, schema).TryGetValue(out var plan));
 
         var diagnostics = new List<BedrockDiagnostic>();
         var passIndex = 0;
@@ -238,7 +238,7 @@ public sealed class GroupingStorageSessionTests
             [ConversionFixtures.PredicateNominal("a", "a", ["x", "y"])]);
         var source = ConversionFixtures.TripleSourceOver(data, ConversionFixtures.Triple(TripleOrdering.Unordered));
         var schema = await source.GetSchemaAsync();
-        Assert.True(ConversionPlanner.Plan(spec, schema).TryGetValue(out var plan));
+        Assert.True(ConversionFixtures.PlanFor(spec, schema).TryGetValue(out var plan));
         return (plan, source);
     }
 

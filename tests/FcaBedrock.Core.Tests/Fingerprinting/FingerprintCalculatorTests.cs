@@ -1,11 +1,13 @@
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
+using FcaBedrock.Core.Calibration;
 using FcaBedrock.Core.Discretization;
 using FcaBedrock.Core.Fingerprinting;
 using FcaBedrock.Core.Planning;
 using FcaBedrock.Core.Scaling;
 using FcaBedrock.Core.Spec;
+using FcaBedrock.Diagnostics;
 
 namespace FcaBedrock.Core.Tests.Fingerprinting;
 
@@ -43,10 +45,38 @@ public sealed class FingerprintCalculatorTests
             SpecFixtures.Dichotomic("employed", 3, "t", ["t", "f"]),
         ]);
 
+    // Plans a hand-built spec + schema through the M4 pipeline (resolve token → fully-declared
+    // calibrated state → plan), the way production does (D-098). The fixtures are fully-declared.
+    private static ResolvedSpec Resolve(BedrockSpec spec, SourceSchema schema) =>
+        ResolvedSpec.Create(
+            spec, schema,
+            SourceReadSettings.Create(
+                spec.Binding.Shape, spec.Binding.Encoding, spec.Binding.Delimiter, spec.Binding.QuoteChar,
+                spec.Binding.HasHeader, spec.Binding.MissingToken, spec.Binding.Ordering),
+            []);
+
+    private static Diagnosed<ConversionPlan> Diag(BedrockSpec spec, SourceSchema schema, LabelStyle style = LabelStyle.Native) =>
+        ConversionPlanner.Plan(CalibratedSpec.FromFullyDeclared(Resolve(spec, schema)), style);
+
     private static ConversionPlan Plan(BedrockSpec spec, LabelStyle style = LabelStyle.Native)
     {
-        Assert.True(ConversionPlanner.Plan(spec, new SourceSchema(4), style).TryGetValue(out var plan));
+        Assert.True(Diag(spec, new SourceSchema(4), style).TryGetValue(out var plan));
         return plan!;
+    }
+
+    // The public output-fingerprint API drops the spec arg (it now reads plan.Calibrated.Spec,
+    // D-098); these thin shims keep the existing (plan, spec, inputs) call shape in the tests, so
+    // the pinned bytes/hashes are hashed identically (plan.Calibrated.Spec is the spec's snapshot).
+    private static string ComputeCxt(ConversionPlan plan, BedrockSpec spec, CxtFingerprintInputs inputs)
+    {
+        _ = spec;
+        return FingerprintCalculator.ComputeCxtOutputFingerprint(plan, inputs);
+    }
+
+    private static string ComputeDat(ConversionPlan plan, BedrockSpec spec, DatFingerprintInputs inputs)
+    {
+        _ = spec;
+        return FingerprintCalculator.ComputeDatOutputFingerprint(plan, inputs);
     }
 
     private static CxtFingerprintInputs NativeCxt(
@@ -109,7 +139,7 @@ public sealed class FingerprintCalculatorTests
         // Hash literal computed independently over the pinned canonical bytes
         // {"attributes":[{"bin":"x","name":"a","op":"","scale":"nominal"}],"fp_format":1,"kind":"schema"}
         var spec = new BedrockSpec(SpecFixtures.WideRowIndex(), [SpecFixtures.Nominal("a", 0, ["x"])]);
-        Assert.True(ConversionPlanner.Plan(spec, new SourceSchema(1)).TryGetValue(out var plan));
+        Assert.True(Diag(spec, new SourceSchema(1)).TryGetValue(out var plan));
 
         Assert.Equal(
             "sha256:73104676228a99769adf96a9c468c54cc0b16381fcbc8f539425603675e93b4f",
@@ -126,11 +156,11 @@ public sealed class FingerprintCalculatorTests
             FingerprintCalculator.ComputeSchemaFingerprint(plan),
             FingerprintCalculator.ComputeSchemaFingerprint(Plan(GoldenSpec())));
         Assert.Equal(
-            FingerprintCalculator.ComputeCxtOutputFingerprint(plan, spec, NativeCxt()),
-            FingerprintCalculator.ComputeCxtOutputFingerprint(plan, spec, NativeCxt()));
+            ComputeCxt(plan, spec, NativeCxt()),
+            ComputeCxt(plan, spec, NativeCxt()));
         Assert.Equal(
-            FingerprintCalculator.ComputeDatOutputFingerprint(plan, spec, NativeDat()),
-            FingerprintCalculator.ComputeDatOutputFingerprint(plan, spec, NativeDat()));
+            ComputeDat(plan, spec, NativeDat()),
+            ComputeDat(plan, spec, NativeDat()));
     }
 
     [Fact]
@@ -157,7 +187,7 @@ public sealed class FingerprintCalculatorTests
         var spec = new BedrockSpec(SpecFixtures.WideRowIndex(), [
             SpecFixtures.NumericCuts("v", 0, [10, 20, 30], new NominalScale()),
         ]);
-        Assert.True(ConversionPlanner.Plan(spec, new SourceSchema(1)).TryGetValue(out var plan));
+        Assert.True(Diag(spec, new SourceSchema(1)).TryGetValue(out var plan));
 
         Assert.Equal(
             "{\"attributes\":["
@@ -177,7 +207,7 @@ public sealed class FingerprintCalculatorTests
             "v", new ColumnSource(0, SourceValueType.Number), Include: true, discretizer, new NominalScale(),
             DeclaredDomain: [], RestrictTo: [], SpecFixtures.NoLabels, MissingPolicy.Skip, UnknownValuePolicy.Warn);
         var spec = new BedrockSpec(SpecFixtures.WideRowIndex(), [attribute]);
-        Assert.True(ConversionPlanner.Plan(spec, new SourceSchema(1)).TryGetValue(out var plan));
+        Assert.True(Diag(spec, new SourceSchema(1)).TryGetValue(out var plan));
 
         Assert.Equal(
             "{\"attributes\":["
@@ -195,7 +225,7 @@ public sealed class FingerprintCalculatorTests
             "edu", new ColumnSource(0, SourceValueType.String), Include: true, discretizer, new NominalScale(),
             DeclaredDomain: [], RestrictTo: [], SpecFixtures.NoLabels, MissingPolicy.Skip, UnknownValuePolicy.Warn);
         var spec = new BedrockSpec(SpecFixtures.WideRowIndex(), [attribute]);
-        Assert.True(ConversionPlanner.Plan(spec, new SourceSchema(1)).TryGetValue(out var plan));
+        Assert.True(Diag(spec, new SourceSchema(1)).TryGetValue(out var plan));
 
         Assert.Equal(
             "{\"attributes\":["
@@ -219,11 +249,22 @@ public sealed class FingerprintCalculatorTests
             FingerprintCalculator.ComputeSchemaFingerprint(barePlan),
             FingerprintCalculator.ComputeSchemaFingerprint(labelledPlan));
         Assert.Equal(
-            FingerprintCalculator.ComputeDatOutputFingerprint(barePlan, bare, NativeDat()),
-            FingerprintCalculator.ComputeDatOutputFingerprint(labelledPlan, labelled, NativeDat()));
+            ComputeDat(barePlan, bare, NativeDat()),
+            ComputeDat(labelledPlan, labelled, NativeDat()));
         Assert.NotEqual(
-            FingerprintCalculator.ComputeCxtOutputFingerprint(barePlan, bare, NativeCxt()),
-            FingerprintCalculator.ComputeCxtOutputFingerprint(labelledPlan, labelled, NativeCxt()));
+            ComputeCxt(barePlan, bare, NativeCxt()),
+            ComputeCxt(labelledPlan, labelled, NativeCxt()));
+    }
+
+    [Fact]
+    public void ComputeCxtOutputFingerprint_WhenInputStyleDiffersFromPlan_ThenThrows()
+    {
+        // §14/D-098: the cxt output fingerprint validates that the inputs' label style pairs with the
+        // style the plan's rendered names were baked with, rather than hashing an inconsistent combo.
+        var plan = Plan(GoldenSpec()); // Native
+
+        Assert.Throws<ArgumentException>(() =>
+            FingerprintCalculator.ComputeCxtOutputFingerprint(plan, NativeCxt(style: LabelStyle.V2Compat)));
     }
 
     [Fact]
@@ -240,11 +281,11 @@ public sealed class FingerprintCalculatorTests
             FingerprintCalculator.ComputeSchemaFingerprint(native),
             FingerprintCalculator.ComputeSchemaFingerprint(v2));
         Assert.Equal(
-            FingerprintCalculator.ComputeDatOutputFingerprint(native, spec, NativeDat()),
-            FingerprintCalculator.ComputeDatOutputFingerprint(v2, spec, NativeDat()));
+            ComputeDat(native, spec, NativeDat()),
+            ComputeDat(v2, spec, NativeDat()));
         Assert.NotEqual(
-            FingerprintCalculator.ComputeCxtOutputFingerprint(native, spec, NativeCxt()),
-            FingerprintCalculator.ComputeCxtOutputFingerprint(v2, spec, NativeCxt(style: LabelStyle.V2Compat)));
+            ComputeCxt(native, spec, NativeCxt()),
+            ComputeCxt(v2, spec, NativeCxt(style: LabelStyle.V2Compat)));
     }
 
     [Fact]
@@ -252,15 +293,15 @@ public sealed class FingerprintCalculatorTests
     {
         var spec = GoldenSpec();
         var plan = Plan(spec);
-        var baselineCxt = FingerprintCalculator.ComputeCxtOutputFingerprint(plan, spec, NativeCxt());
-        var baselineDat = FingerprintCalculator.ComputeDatOutputFingerprint(plan, spec, NativeDat());
+        var baselineCxt = ComputeCxt(plan, spec, NativeCxt());
+        var baselineDat = ComputeDat(plan, spec, NativeDat());
 
-        Assert.NotEqual(baselineCxt, FingerprintCalculator.ComputeCxtOutputFingerprint(plan, spec, NativeCxt(trailingNewline: false)));
-        Assert.NotEqual(baselineCxt, FingerprintCalculator.ComputeCxtOutputFingerprint(plan, spec, NativeCxt(unicode: true)));
-        Assert.NotEqual(baselineCxt, FingerprintCalculator.ComputeCxtOutputFingerprint(plan, spec, NativeCxt(lineEnding: LineEnding.Crlf)));
+        Assert.NotEqual(baselineCxt, ComputeCxt(plan, spec, NativeCxt(trailingNewline: false)));
+        Assert.NotEqual(baselineCxt, ComputeCxt(plan, spec, NativeCxt(unicode: true)));
+        Assert.NotEqual(baselineCxt, ComputeCxt(plan, spec, NativeCxt(lineEnding: LineEnding.Crlf)));
 
         // None of those knobs perturbs schema or dat.
-        Assert.Equal(baselineDat, FingerprintCalculator.ComputeDatOutputFingerprint(plan, spec, NativeDat()));
+        Assert.Equal(baselineDat, ComputeDat(plan, spec, NativeDat()));
         Assert.Equal(
             FingerprintCalculator.ComputeSchemaFingerprint(plan),
             FingerprintCalculator.ComputeSchemaFingerprint(plan));
@@ -271,13 +312,13 @@ public sealed class FingerprintCalculatorTests
     {
         var spec = GoldenSpec();
         var plan = Plan(spec);
-        var baseline = FingerprintCalculator.ComputeDatOutputFingerprint(plan, spec, NativeDat());
+        var baseline = ComputeDat(plan, spec, NativeDat());
 
-        Assert.NotEqual(baseline, FingerprintCalculator.ComputeDatOutputFingerprint(plan, spec, NativeDat(baseIndex: 0)));
-        Assert.NotEqual(baseline, FingerprintCalculator.ComputeDatOutputFingerprint(plan, spec, NativeDat(lineEnding: LineEnding.Crlf)));
-        Assert.NotEqual(baseline, FingerprintCalculator.ComputeDatOutputFingerprint(plan, spec, NativeDat(nonemptySpace: true)));
-        Assert.NotEqual(baseline, FingerprintCalculator.ComputeDatOutputFingerprint(plan, spec, NativeDat(emptySpace: true)));
-        Assert.NotEqual(baseline, FingerprintCalculator.ComputeDatOutputFingerprint(plan, spec, NativeDat(trailingNewline: false)));
+        Assert.NotEqual(baseline, ComputeDat(plan, spec, NativeDat(baseIndex: 0)));
+        Assert.NotEqual(baseline, ComputeDat(plan, spec, NativeDat(lineEnding: LineEnding.Crlf)));
+        Assert.NotEqual(baseline, ComputeDat(plan, spec, NativeDat(nonemptySpace: true)));
+        Assert.NotEqual(baseline, ComputeDat(plan, spec, NativeDat(emptySpace: true)));
+        Assert.NotEqual(baseline, ComputeDat(plan, spec, NativeDat(trailingNewline: false)));
     }
 
     [Fact]
@@ -292,11 +333,11 @@ public sealed class FingerprintCalculatorTests
             FingerprintCalculator.ComputeSchemaFingerprint(commaPlan),
             FingerprintCalculator.ComputeSchemaFingerprint(semicolonPlan));
         Assert.NotEqual(
-            FingerprintCalculator.ComputeCxtOutputFingerprint(commaPlan, comma, NativeCxt()),
-            FingerprintCalculator.ComputeCxtOutputFingerprint(semicolonPlan, semicolon, NativeCxt()));
+            ComputeCxt(commaPlan, comma, NativeCxt()),
+            ComputeCxt(semicolonPlan, semicolon, NativeCxt()));
         Assert.NotEqual(
-            FingerprintCalculator.ComputeDatOutputFingerprint(commaPlan, comma, NativeDat()),
-            FingerprintCalculator.ComputeDatOutputFingerprint(semicolonPlan, semicolon, NativeDat()));
+            ComputeDat(commaPlan, comma, NativeDat()),
+            ComputeDat(semicolonPlan, semicolon, NativeDat()));
     }
 
     [Fact]
@@ -305,17 +346,17 @@ public sealed class FingerprintCalculatorTests
         var four = GoldenSpec();
         var three = new BedrockSpec(SpecFixtures.WideRowIndex(), [.. four.Attributes.Take(3)]);
         var fourPlan = Plan(four);
-        Assert.True(ConversionPlanner.Plan(three, new SourceSchema(4)).TryGetValue(out var threePlan));
+        Assert.True(Diag(three, new SourceSchema(4)).TryGetValue(out var threePlan));
 
         Assert.NotEqual(
             FingerprintCalculator.ComputeSchemaFingerprint(fourPlan),
             FingerprintCalculator.ComputeSchemaFingerprint(threePlan!));
         Assert.NotEqual(
-            FingerprintCalculator.ComputeCxtOutputFingerprint(fourPlan, four, NativeCxt()),
-            FingerprintCalculator.ComputeCxtOutputFingerprint(threePlan!, three, NativeCxt()));
+            ComputeCxt(fourPlan, four, NativeCxt()),
+            ComputeCxt(threePlan!, three, NativeCxt()));
         Assert.NotEqual(
-            FingerprintCalculator.ComputeDatOutputFingerprint(fourPlan, four, NativeDat()),
-            FingerprintCalculator.ComputeDatOutputFingerprint(threePlan!, three, NativeDat()));
+            ComputeDat(fourPlan, four, NativeDat()),
+            ComputeDat(threePlan!, three, NativeDat()));
     }
 
     [Fact]
@@ -329,7 +370,7 @@ public sealed class FingerprintCalculatorTests
             ManualCutsDiscretizer.Create([10], BinEnds.Open, CultureInfo.InvariantCulture).Value!, new NominalScale(),
             DeclaredDomain: ["ignored"], RestrictTo: [], SpecFixtures.NoLabels, MissingPolicy.Skip, UnknownValuePolicy.Warn);
         var spec = new BedrockSpec(SpecFixtures.WideRowIndex(), [attribute, SpecFixtures.Excluded("parked", 1)]);
-        Assert.True(ConversionPlanner.Plan(spec, new SourceSchema(2)).TryGetValue(out var plan));
+        Assert.True(Diag(spec, new SourceSchema(2)).TryGetValue(out var plan));
 
         var json = FingerprintCalculator.BuildCxtOutputJson(plan!, spec, NativeCxt());
 
@@ -354,7 +395,11 @@ public sealed class FingerprintCalculatorTests
             "w", new ColumnSource(1, SourceValueType.String), Include: true, new IdentityDiscretizer(), new NominalScale(),
             DeclaredDomain: ["x"], RestrictTo: [], SpecFixtures.NoLabels, MissingPolicy.Skip, UnknownValuePolicy.Include);
         var spec = new BedrockSpec(SpecFixtures.WideRowIndex(), [cuts, included]);
-        Assert.True(ConversionPlanner.Plan(spec, new SourceSchema(2), LabelStyle.V2Compat).TryGetValue(out var plan));
+        // The include attribute is data-dependent (D-098): it takes calibrated state with its
+        // IncludeAdditions marker (zero additions here) rather than the fully-declared fast path.
+        Assert.True(CalibratedSpec.Create(Resolve(spec, new SourceSchema(2)), [new IncludeAdditions("w", [])])
+            .TryGetValue(out var calibrated));
+        Assert.True(ConversionPlanner.Plan(calibrated, LabelStyle.V2Compat).TryGetValue(out var plan));
 
         var json = FingerprintCalculator.BuildCxtOutputJson(
             plan!, spec, new CxtFingerprintInputs(LabelStyle.V2Compat, BinLabelUnicode: false, LineEnding.Crlf, TrailingNewline: true));
@@ -374,7 +419,7 @@ public sealed class FingerprintCalculatorTests
     public void BuildCxtOutputJson_WhenWideColumnKeepKey_ThenEncodesColumnIndexAndPolicy()
     {
         var spec = WideColumnKeySpec(0, DuplicateObjectPolicy.Keep);
-        Assert.True(ConversionPlanner.Plan(spec, new SourceSchema(2)).TryGetValue(out var plan));
+        Assert.True(Diag(spec, new SourceSchema(2)).TryGetValue(out var plan));
 
         var json = FingerprintCalculator.BuildCxtOutputJson(plan, spec, NativeCxt());
 
@@ -402,9 +447,9 @@ public sealed class FingerprintCalculatorTests
     private static (string Cxt, string Dat) WideKeyOutputFingerprints(int keyIndex, DuplicateObjectPolicy policy)
     {
         var spec = WideColumnKeySpec(keyIndex, policy);
-        Assert.True(ConversionPlanner.Plan(spec, new SourceSchema(2)).TryGetValue(out var plan));
-        var cxt = FingerprintCalculator.ComputeCxtOutputFingerprint(plan, spec, NativeCxt());
-        var dat = FingerprintCalculator.ComputeDatOutputFingerprint(plan, spec, NativeDat());
+        Assert.True(Diag(spec, new SourceSchema(2)).TryGetValue(out var plan));
+        var cxt = ComputeCxt(plan, spec, NativeCxt());
+        var dat = ComputeDat(plan, spec, NativeDat());
         return (cxt, dat);
     }
 
@@ -424,7 +469,7 @@ public sealed class FingerprintCalculatorTests
     {
         // The schema identity of a value-bin ordinal column is {raw value, op}, in
         // plan (order) sequence — no encoder change was needed (D-081).
-        Assert.True(ConversionPlanner.Plan(ValueBinOrdinalSpec(["a", "b", "c"]), new SourceSchema(1)).TryGetValue(out var plan));
+        Assert.True(Diag(ValueBinOrdinalSpec(["a", "b", "c"]), new SourceSchema(1)).TryGetValue(out var plan));
 
         Assert.Equal(
             "{\"attributes\":["
@@ -440,7 +485,7 @@ public sealed class FingerprintCalculatorTests
     {
         // AppendScale already encodes the ordinal order/boundary/direction/drop_top;
         // for a value-bin ordinal the order array is the live config in the shared JSON.
-        Assert.True(ConversionPlanner.Plan(ValueBinOrdinalSpec(["a", "b", "c"]), new SourceSchema(1)).TryGetValue(out var plan));
+        Assert.True(Diag(ValueBinOrdinalSpec(["a", "b", "c"]), new SourceSchema(1)).TryGetValue(out var plan));
 
         var json = FingerprintCalculator.BuildCxtOutputJson(plan!, ValueBinOrdinalSpec(["a", "b", "c"]), NativeCxt());
 
@@ -455,8 +500,8 @@ public sealed class FingerprintCalculatorTests
     {
         // Two permutations of the same domain change the column identities/sequence,
         // so the schema fingerprint moves — the order is not inert (D-081).
-        Assert.True(ConversionPlanner.Plan(ValueBinOrdinalSpec(["a", "b", "c"]), new SourceSchema(1)).TryGetValue(out var abc));
-        Assert.True(ConversionPlanner.Plan(ValueBinOrdinalSpec(["a", "c", "b"]), new SourceSchema(1)).TryGetValue(out var acb));
+        Assert.True(Diag(ValueBinOrdinalSpec(["a", "b", "c"]), new SourceSchema(1)).TryGetValue(out var abc));
+        Assert.True(Diag(ValueBinOrdinalSpec(["a", "c", "b"]), new SourceSchema(1)).TryGetValue(out var acb));
 
         Assert.NotEqual(
             FingerprintCalculator.ComputeSchemaFingerprint(abc!),
@@ -544,21 +589,19 @@ public sealed class FingerprintCalculatorTests
     [Fact]
     public void ComputeOutputFingerprints_WhenTripleColumnsDiffer_ThenBothMoveButSameMapMatches()
     {
-        var plan = Plan(GoldenSpec());
+        // The output fingerprints now read the plan's own calibrated spec (D-098/D-094), so each
+        // triple map is exercised through its own plan rather than one plan + varied spec args.
         var a = TripleSpec(new TripleColumns(0, 1, 2));
         var b = TripleSpec(new TripleColumns(2, 1, 0));
+        Assert.True(Diag(a, new SourceSchema(3)).TryGetValue(out var planA));
+        Assert.True(Diag(b, new SourceSchema(3)).TryGetValue(out var planB));
+        Assert.True(Diag(TripleSpec(new TripleColumns(0, 1, 2)), new SourceSchema(3)).TryGetValue(out var planSameMap));
 
         // The resolved role→index map is a shared input, so it moves both formats.
-        Assert.NotEqual(
-            FingerprintCalculator.ComputeCxtOutputFingerprint(plan, a, NativeCxt()),
-            FingerprintCalculator.ComputeCxtOutputFingerprint(plan, b, NativeCxt()));
-        Assert.NotEqual(
-            FingerprintCalculator.ComputeDatOutputFingerprint(plan, a, NativeDat()),
-            FingerprintCalculator.ComputeDatOutputFingerprint(plan, b, NativeDat()));
+        Assert.NotEqual(ComputeCxt(planA, a, NativeCxt()), ComputeCxt(planB, b, NativeCxt()));
+        Assert.NotEqual(ComputeDat(planA, a, NativeDat()), ComputeDat(planB, b, NativeDat()));
 
         // The same map hashes identically (name-bound ≡ index-bound, D-082).
-        Assert.Equal(
-            FingerprintCalculator.ComputeCxtOutputFingerprint(plan, a, NativeCxt()),
-            FingerprintCalculator.ComputeCxtOutputFingerprint(plan, TripleSpec(new TripleColumns(0, 1, 2)), NativeCxt()));
+        Assert.Equal(ComputeCxt(planA, a, NativeCxt()), ComputeCxt(planSameMap, a, NativeCxt()));
     }
 }

@@ -264,14 +264,31 @@ public enum DiagnosticCode
     RestrictToNotImplementedV1,
 
     /// <summary>
-    /// An included <c>identity</c> attribute has an absent <c>declared_domain</c>
-    /// (omitted or authored <c>[]</c>), which needs the observed-domain calibration
-    /// the pipeline does not build yet; the planner rejects it rather than silently
-    /// emitting an empty or data-order-dependent schema. Spec §10.3 (D-071;
-    /// transitional, removed when observed-domain calibration lands — see the
-    /// roadmap backlog).
+    /// A plan produced zero formal attributes — every attribute is excluded (or, at
+    /// M4, filter-only). A degenerate but structurally-valid schema; the run
+    /// proceeds. Warning. Spec §16.4.
     /// </summary>
-    ObservedDomainCalibrationNotImplementedV1,
+    NoFormalAttributes,
+
+    // --- Calibrate (data-dependent schema resolution, D-098/G-1) ---
+
+    /// <summary>
+    /// A consuming discretizer (<c>identity</c> / <c>free_per_value</c>) with an
+    /// absent <c>declared_domain</c> was calibrated from the observed data (any
+    /// observed count, including zero). Warning — the resulting schema depends on
+    /// this specific input; declare the domain or freeze it to make the run
+    /// input-independent. Spec §7 / §10.3 / §16.4 (D-036; replaces the transitional
+    /// <c>ObservedDomainCalibrationNotImplementedV1</c>).
+    /// </summary>
+    ObservedDomainUsed,
+
+    /// <summary>
+    /// <c>unknown_value_policy = "include"</c> calibration extended a consuming
+    /// discretizer's domain with the observed unknown values (any addition count,
+    /// including zero), making <c>schema_fingerprint</c> data-dependent. Warning.
+    /// Spec §7 / §10.6 / §16.4 (D-036).
+    /// </summary>
+    UnknownValuePolicyInclude,
 
     // --- Spec load (stored-fingerprint verification, D-051/D-069/D-077) ---
 

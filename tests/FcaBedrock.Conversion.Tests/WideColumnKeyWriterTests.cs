@@ -46,7 +46,7 @@ public sealed class WideColumnKeyWriterTests
         var spec = new BedrockSpec(binding, [ConversionFixtures.Nominal("a", 1, "x", "y")]);
         var source = ConversionFixtures.SourceOver("P001,x\nP002,y\nP001,x", binding);
         var schema = await source.GetSchemaAsync();
-        Assert.True(ConversionPlanner.Plan(spec, schema).TryGetValue(out var plan));
+        Assert.True(ConversionFixtures.PlanFor(spec, schema).TryGetValue(out var plan));
         return (plan, source);
     }
 }

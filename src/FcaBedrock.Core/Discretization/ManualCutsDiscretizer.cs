@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using System.Globalization;
 using FcaBedrock.Core.Scaling;
 using FcaBedrock.Diagnostics;
@@ -34,9 +35,10 @@ public sealed record ManualCutsDiscretizer : Discretizer
 
     private ManualCutsDiscretizer(IReadOnlyList<double> cuts, BinEnds ends, CultureInfo culture)
     {
-        // Snapshot the caller's list: a mutable input must not desync Cuts from the cached
-        // labels after construction (P-10 — the validated invariants stay true for life).
-        Cuts = [.. cuts];
+        // Snapshot the caller's list into immutable storage: a mutable input must not desync Cuts
+        // from the cached labels after construction, and no castable mutable backing array may
+        // survive on the resolved/planned graph (P-10, D-098 recursive immutability).
+        Cuts = ImmutableArray.CreateRange(cuts);
         Ends = ends;
         Culture = culture;
         _cutLabels = [.. Cuts.Select(FormatCut)];

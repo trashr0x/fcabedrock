@@ -38,7 +38,7 @@ public sealed class EmitterExecutionGuardTests
 
     private static ConversionPlan WidePlan()
     {
-        Assert.True(ConversionPlanner.Plan(
+        Assert.True(ConversionFixtures.PlanFor(
             new BedrockSpec(ConversionFixtures.Wide(), [ConversionFixtures.Nominal("g", 0, "b")]),
             new SourceSchema(1)).TryGetValue(out var plan));
         return plan;
@@ -46,7 +46,7 @@ public sealed class EmitterExecutionGuardTests
 
     private static ConversionPlan TriplePlan()
     {
-        Assert.True(ConversionPlanner.Plan(ConversionFixtures.MushroomTripleSpec(), new SourceSchema(3))
+        Assert.True(ConversionFixtures.PlanFor(ConversionFixtures.MushroomTripleSpec(), new SourceSchema(3))
             .TryGetValue(out var plan));
         return plan;
     }

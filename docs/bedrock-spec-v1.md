@@ -313,7 +313,9 @@ first occurrence of each cleaned key value** (§17 rule 4). Duplicate key values
 governed by `duplicate_object_policy` (§6.1). A `column` object key missing its
 `column`, or naming a column that does not resolve, is `ObjectKeyBindingInvalid`
 (Error, spec validate); a data-derived key that is empty, whitespace-only, or
-contains newline/control characters is `ObjectKeyValueInvalid` (Error, emit).
+contains newline/control characters is `ObjectKeyValueInvalid` (Error). A wide
+object-key cell is validated at **emit**; a triple subject (which also scopes the
+§5.3.1 calibration dedup) is validated at **calibrate/emit** (D-099, §16.4).
 
 > **Wide `column` execution (D-083).** Wide `object_key.mode = "column"` — and with it
 > the `duplicate_object_policy` machinery (§6.1) — executes at M3, sharing the
@@ -508,13 +510,15 @@ observation contributes once (§5.3.1); and **wide** rows are independent
 observations. This population is the input universe, evaluated before `restrict_to`
 (below).
 
-> **Transitional (pre-M4).** The Calibrate phase is implemented at **M4** (the
-> calibration milestone). Until then a spec that would require calibration — an
-> auto discretizer, an absent `declared_domain` under a discretizer that consumes
-> it (`identity` / `free_per_value`), or `value_groups`
-> `unmatched = "passthrough"` — is rejected before emit by the matching
-> transitional diagnostic (§16.4) rather than silently producing a data-dependent
-> schema; `unknown_value_policy = "include"` likewise resolves only at M4 (§10.6).
+> **Transitional (M4 in progress).** The Calibrate phase lands across the M4
+> slices. **Slice A** (D-098) implements the discovery-class calibration: filling
+> an absent `declared_domain` under a consuming discretizer (`ObservedDomainUsed`)
+> and `unknown_value_policy = "include"` (§10.6), for the M1 `identity`
+> discretizer. The remaining calibration — the auto discretizers (`equal_width` /
+> `equal_frequency`), numeric `free_per_value`, and `value_groups`
+> `unmatched = "passthrough"` — is still recognized-but-rejected at read
+> (`DiscretizerKindNotYetSupported`, §16.4) until each kind's slice lands, rather
+> than silently producing a data-dependent schema.
 
 **`convert` calibrates but never discovers.** Discovery (draft-spec generation
 from data) is the separate `probe` operation (D-003), never performed implicitly
@@ -683,11 +687,14 @@ attribute** pattern: filter objects by a field without analyzing that field.
 An `include = false` attribute with no `restrict_to` is inert (a harmless
 no-op, allowed during staged spec editing). The attribute is always validated
 syntactically regardless of `include`, and its **source binding** is checked on
-the **same terms** as an included one: an out-of-range or unresolvable source
-index that first becomes computable at **Plan** (once the source schema is known)
-is reported as an aggregated `SourceBindingInvalid` (Error, §16.4) — for included
-**and** filter-only attributes alike — and **never** throws (the same posture as
-the wide object-key index range-check, D-083).
+the **same terms** as an included one: because the conversion pipeline resolves
+**schema-aware** (the two-stage source bootstrap, D-098), an out-of-range or
+unresolvable source index is reported as an aggregated `SourceBindingInvalid`
+(Error, **spec validate**, §16.4) — for included **and** filter-only attributes
+alike. The resolution trust boundary (`ResolvedSpec.Create`) re-checks it as a
+programmer-error backstop for hand-built graphs, and the planner's residual
+handling is an unreachable-by-construction invariant, never a user-facing
+diagnostic (D-098).
 
 ### 10.2 Source bindings
 
@@ -801,17 +808,14 @@ reader/writer round-trips an authored `[]` verbatim; `calibrate`/freeze may repl
 it with the observed values. For input-independent, spec-first workflows, declare
 the domain explicitly or freeze it with `fcabedrock calibrate`.
 
-> **Rejects absent domains at plan (transitional).** The Calibrate phase that
-> fills an absent domain is not yet built (categorical observed-domain
-> calibration is scheduled for **M4**), so a pre-M4 conversion of an
-> included `identity` attribute with an absent `declared_domain` (omitted or
-> authored `[]`) is **rejected** with `ObservedDomainCalibrationNotImplementedV1`
-> rather than silently emitting an empty or data-order-dependent schema (D-071).
-> The reject is blanket across scales — dichotomic included, since with no domain
-> every observed value is "unknown" and the column never crosses (D-076). Cut
-> discretizers ignore `declared_domain` (above) and are unaffected; the deferred
-> `free_per_value` is already rejected earlier at read (D-070), which owns that
-> case. The code retires at **M4**, when observed-domain calibration lands.
+> **Observed-domain calibration (M4 Slice A).** The Calibrate phase fills an
+> absent `declared_domain` (omitted or authored `[]`) on an included consuming
+> discretizer from the observed data, warning with `ObservedDomainUsed` (§7); the
+> transitional `ObservedDomainCalibrationNotImplementedV1` plan reject retired at
+> M4 Slice A (D-098, superseding D-071). Cut discretizers ignore `declared_domain`
+> (above) and are unaffected. The `identity` case executes now; the numeric
+> `free_per_value` case joins when that discretizer lands (until then
+> `free_per_value` is recognized-but-rejected at read, D-070).
 
 ### 10.4 restrict_to
 
@@ -2009,7 +2013,7 @@ exactly one phase — the "Where" column below is the phase-ownership contract
 | `OrdinalNotAllowedWithValueGroupsPassthrough` | Error | spec validate |
 | `ScaleNotImplementedV1` | Fatal | plan |
 | `ObjectKeyCompositeNotImplementedV1` | Fatal | plan |
-| `ObjectKeyBindingInvalid` | Error | spec validate (wide column-key index range-check at plan, interim — D-083) |
+| `ObjectKeyBindingInvalid` | Error | spec validate |
 | `ObjectKeyModeInvalidForShape` | Error | spec validate |
 | `TripleColumnsNotDistinct` | Error | spec validate |
 | `DateValueTypeNotImplementedV1` | Fatal | plan |
@@ -2018,15 +2022,15 @@ exactly one phase — the "Where" column below is the phase-ownership contract
 | `CalibrationCutsInvalid` | Error | calibrate |
 | `UnknownValueObserved` | Warning or Error (per `unknown_value_policy`) | calibrate/emit |
 | `UnknownValuePolicyInclude` | Warning | calibrate |
-| `TripleSubjectNotContiguous` | Error | emit |
+| `TripleSubjectNotContiguous` | Error | calibrate/emit |
 | `DuplicateObjectKey` | Error, Warning, or Info (per `duplicate_object_policy`) | emit |
 | `ObjectKeyNameDisambiguated` | Warning (aggregated) | emit |
-| `ObjectKeyValueInvalid` | Error | emit |
+| `ObjectKeyValueInvalid` | Error | calibrate/emit |
 | `GroupingStorageFailed` | Error (in-path / escalated), or Warning (cleanup-only) | calibrate/emit |
 | `SourceValueUnparseable` | Warning or Error (per `unknown_value_policy`; `skip` silent) | calibrate/emit |
 | `QuoteCharNotSupportedV1` | Error | spec validate |
 | `BindingDelimiterQuoteConflict` | Error | spec validate |
-| `SourceBindingInvalid` | Error | spec validate (source-index range-check at plan when the schema first becomes available, interim — D-083) |
+| `SourceBindingInvalid` | Error | spec validate |
 | `OrderedCutsCutNotInDomain` | Error | spec validate |
 | `OrderedCutsNotAscending` | Error | spec validate |
 | `OrderDomainInvalid` | Error | spec validate |
@@ -2035,7 +2039,6 @@ exactly one phase — the "Where" column below is the phase-ownership contract
 | `ValueGroupsLabelDuplicate` | Error | spec validate |
 | `ValueGroupsPassthroughDataDependent` | Warning | calibrate |
 | `RestrictToNotImplementedV1` | Error | plan (transitional) |
-| `ObservedDomainCalibrationNotImplementedV1` | Error | plan (transitional) |
 | `TemplateMatcherNotImplementedV1` | Error | spec resolve (transitional) |
 | `SchemaFingerprintStale` | Warning | spec load |
 | `CxtOutputFingerprintStale` | Warning | spec load |
@@ -2059,15 +2062,17 @@ correctly-phased `AttributeHasNoCrosses` (an empty column, emit) and
 filtering, emit). All four still write a structurally-valid (if degenerate)
 output rather than failing.
 
-**Transitional codes.** `RestrictToNotImplementedV1`,
+**Transitional codes.** `RestrictToNotImplementedV1` and
 `TemplateMatcherNotImplementedV1` (owned by spec resolve — templates/matchers
-never resolve into Core, D-078), and `ObservedDomainCalibrationNotImplementedV1`
+never resolve into Core, D-078)
 are emitted only by milestones *before* the feature's implementation milestone
-(restrict_to → M4, templates/matchers → M6, observed-domain calibration → M4;
+(restrict_to → M4, templates/matchers → M6;
 `roadmap.md`); they are removed once the feature lands and are **not** part of the
-v1 end-state set. (`ObjectKeyColumnNotImplementedV1` was one such code; it retired
-when wide `dedupe` landed at M3 Slice F, so `column` object keys now execute for
-every `duplicate_object_policy`.) They are distinct from the permanent `*NotImplementedV1`
+v1 end-state set. (`ObjectKeyColumnNotImplementedV1` retired when wide `dedupe`
+landed at M3 Slice F; `ObservedDomainCalibrationNotImplementedV1` retired when
+observed-domain calibration landed at M4 Slice A — D-098, so an absent
+`declared_domain` under a consuming discretizer is now filled by the Calibrate
+phase, §10.3.) They are distinct from the permanent `*NotImplementedV1`
 reservations in §20. Two parse-phase codes are transitional on the same terms:
 `DiscretizerKindNotYetSupported` (a recognized-but-deferred discretizer kind —
 `free_per_value`, `equal_width`, `equal_frequency`, `value_groups` — rejected at

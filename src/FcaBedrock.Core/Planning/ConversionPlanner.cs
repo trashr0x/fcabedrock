@@ -1,3 +1,6 @@
+using System.Collections.Frozen;
+using System.Collections.Immutable;
+using FcaBedrock.Core.Calibration;
 using FcaBedrock.Core.Discretization;
 using FcaBedrock.Core.Scaling;
 using FcaBedrock.Core.Spec;
@@ -15,15 +18,21 @@ namespace FcaBedrock.Core.Planning;
 public static class ConversionPlanner
 {
     /// <summary>
-    /// Plans the conversion, aggregating all validation/plan diagnostics (P-14).
-    /// <paramref name="labelStyle"/> selects how cut bin labels render in names
-    /// (spec §8/§14); it affects rendered names only, never identity (P-15, D-044).
+    /// Plans the conversion from resolved <b>calibrated state</b> (D-093/D-098): the
+    /// effective spec and its schema come from <paramref name="calibrated"/>, so Plan
+    /// cannot be handed an unrelated schema and "plan an uncalibrated spec" is a
+    /// compile error. Aggregates all plan diagnostics (P-14). <paramref name="labelStyle"/>
+    /// selects how cut bin labels render in names (spec §8/§14); it affects rendered
+    /// names only, never identity (P-15, D-044), and is carried on the plan so the cxt
+    /// output fingerprint pairs with it.
     /// </summary>
     public static Diagnosed<ConversionPlan> Plan(
-        BedrockSpec spec, SourceSchema schema, LabelStyle labelStyle = LabelStyle.Native)
+        CalibratedSpec calibrated, LabelStyle labelStyle = LabelStyle.Native)
     {
-        ArgumentNullException.ThrowIfNull(spec);
-        ArgumentNullException.ThrowIfNull(schema);
+        ArgumentNullException.ThrowIfNull(calibrated);
+
+        var spec = calibrated.Spec;
+        var schema = calibrated.Schema;
 
         var diagnostics = new List<BedrockDiagnostic>();
         ValidateStatic(spec, schema, diagnostics);
@@ -53,8 +62,23 @@ public static class ConversionPlanner
             return Diagnosed<ConversionPlan>.Failed(diagnostics);
         }
 
+        // §16.4: a plan with zero columns (every attribute excluded, or — at M4 —
+        // filter-only) is degenerate but structurally valid; warn, do not fail.
+        if (formalAttributes.Count == 0)
+        {
+            diagnostics.Add(new BedrockDiagnostic(
+                DiagnosticCode.NoFormalAttributes, DiagnosticSeverity.Warning,
+                "The plan produced no formal attributes; every attribute is excluded (§16.4)."));
+        }
+
         var plan = new ConversionPlan(
-            formalAttributes, plannedAttributes, spec.Binding.ObjectKey, ResolveExecution(spec.Binding));
+            [.. formalAttributes],
+            [.. plannedAttributes],
+            ImmutableArray<PlannedRestriction>.Empty,
+            spec.Binding.ObjectKey,
+            ResolveExecution(spec.Binding),
+            calibrated,
+            labelStyle);
         return Diagnosed<ConversionPlan>.Ok(plan, diagnostics);
     }
 
@@ -93,7 +117,7 @@ public static class ConversionPlanner
 
         var source = ResolveAttributeSource(attribute.Name, attribute.Source, schema);
         var scheme = discretizer.DescribeBins(attribute.DeclaredDomain);
-        var knownBins = new HashSet<string>(scheme.Labels, StringComparer.Ordinal);
+        var knownBins = scheme.Labels.ToFrozenSet(StringComparer.Ordinal);
 
         var crossesByBin = new Dictionary<string, List<int>>(StringComparer.Ordinal);
         foreach (var shape in scale.BuildShapes(scheme))
@@ -261,21 +285,11 @@ public static class ConversionPlanner
                     new DiagnosticLocation(AttributeName: attribute.Name)));
             }
 
-            // §10.3 / D-071: an absent domain (omitted or authored []) on the
-            // value-bin discretizer needs the observed-domain calibration the
-            // pipeline does not build yet; planning it would emit an empty or
-            // data-order-dependent schema. Blanket across scales — dichotomic
-            // included, since every observed value would be "unknown" and the
-            // column would never cross (D-076). Cut discretizers ignore the
-            // domain (§10.3) and are unaffected. Removed when calibration lands.
-            if (attribute.Discretizer is IdentityDiscretizer && attribute.DeclaredDomain.Count == 0)
-            {
-                diagnostics.Add(new BedrockDiagnostic(
-                    DiagnosticCode.ObservedDomainCalibrationNotImplementedV1,
-                    DiagnosticSeverity.Error,
-                    $"Attribute '{attribute.Name}' has no declared_domain; observed-domain calibration is not implemented in this milestone — declare the domain explicitly (§10.3).",
-                    new DiagnosticLocation(AttributeName: attribute.Name)));
-            }
+            // §10.3 / D-036: an absent domain (omitted or authored []) on a consuming
+            // discretizer is now filled by the Calibrate phase (ObservedDomainUsed),
+            // so the effective spec Plan receives already carries a resolved domain —
+            // the D-071 transitional plan reject retired at M4. Cut discretizers ignore
+            // the domain (§10.3) and are unaffected.
 
             // §12.3 / D-081: the value-bin ordinal path (identity — the only M2
             // value-bin discretizer, D-070) needs an explicit scale.order that is a
@@ -356,32 +370,34 @@ public static class ConversionPlanner
                 break;
 
             case ColumnObjectKey column when shape == SourceShape.Wide:
-                // Range-check the resolved key index (upper bound) here, not at resolve: the
-                // conversion pipeline resolves schema-less (the schema comes from the source), so the
-                // schema is first available at plan. Negative indices are already rejected at resolve.
-                // This is a binding-level error (ObjectKeyBindingInvalid), distinct from an absent data
-                // cell at emit (ObjectKeyValueInvalid) — the D-085 taxonomy. Interim placement: a future
-                // schema-aware resolve/validate pass may move it back to spec-validate, same code (D-083).
+                // The wide column-key index range check now runs at spec-validate against
+                // the schema the two-stage bootstrap resolves against (G-1/D-098), and the
+                // ResolvedSpec trust boundary re-checks it, so an out-of-range index cannot
+                // reach here from the conversion path. A residual violation is a corrupt
+                // Core state (an unvalidated hand-built spec), not user input — throw.
                 if (column.Index >= schema.ColumnCount)
                 {
-                    diagnostics.Add(new BedrockDiagnostic(
-                        DiagnosticCode.ObjectKeyBindingInvalid, DiagnosticSeverity.Error,
-                        $"object_key column index {column.Index} is out of range for a source with {schema.ColumnCount} columns (§5.4)."));
+                    throw new InvalidOperationException(
+                        $"object_key column index {column.Index} is out of range for a source with {schema.ColumnCount} columns; " +
+                        "the resolve seam and ResolvedSpec.Create validate this (§5.4/D-098).");
                 }
 
                 break;
         }
     }
 
+    // Freezes the per-bin crossing map into recursively-immutable storage (D-098): a
+    // FrozenDictionary whose values are ImmutableArray, so no castable mutable
+    // collection survives on the plan graph.
     private static IReadOnlyDictionary<string, IReadOnlyList<int>> Freeze(Dictionary<string, List<int>> map)
     {
         var frozen = new Dictionary<string, IReadOnlyList<int>>(map.Count, StringComparer.Ordinal);
         foreach (var (bin, ids) in map)
         {
-            frozen[bin] = ids;
+            frozen[bin] = ids.ToImmutableArray();
         }
 
-        return frozen;
+        return frozen.ToFrozenDictionary(StringComparer.Ordinal);
     }
 
     private static bool HasError(List<BedrockDiagnostic> diagnostics)

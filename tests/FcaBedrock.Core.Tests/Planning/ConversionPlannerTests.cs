@@ -1,4 +1,5 @@
 using System.Globalization;
+using FcaBedrock.Core.Calibration;
 using FcaBedrock.Core.Discretization;
 using FcaBedrock.Core.Planning;
 using FcaBedrock.Core.Scaling;
@@ -9,6 +10,21 @@ namespace FcaBedrock.Core.Tests.Planning;
 
 public sealed class ConversionPlannerTests
 {
+    // Plans a hand-built spec + schema the way production does (D-098): resolve the token
+    // (the trust boundary), take the fully-declared calibrated state, then plan. The
+    // fixtures here are all fully-declared, so no data pass is needed.
+    private static Diagnosed<ConversionPlan> Plan(BedrockSpec spec, SourceSchema schema, LabelStyle style = LabelStyle.Native) =>
+        ConversionPlanner.Plan(CalibratedSpec.FromFullyDeclared(Resolve(spec, schema)), style);
+
+    private static ResolvedSpec Resolve(BedrockSpec spec, SourceSchema schema) =>
+        ResolvedSpec.Create(
+            spec,
+            schema,
+            SourceReadSettings.Create(
+                spec.Binding.Shape, spec.Binding.Encoding, spec.Binding.Delimiter, spec.Binding.QuoteChar,
+                spec.Binding.HasHeader, spec.Binding.MissingToken, spec.Binding.Ordering),
+            []);
+
     private static readonly string[] ExpectedMushroomNames =
     [
         "bruises?", "gill-size-broad", "gill-size-narrow", "veil-type-partial",
@@ -18,7 +34,7 @@ public sealed class ConversionPlannerTests
     [Fact]
     public void Plan_WhenMiniMushroom_ThenFormalAttributesMatchV2OrderAndNames()
     {
-        var result = ConversionPlanner.Plan(SpecFixtures.MiniMushroom(), new SourceSchema(5));
+        var result = Plan(SpecFixtures.MiniMushroom(), new SourceSchema(5));
 
         Assert.True(result.TryGetValue(out var plan));
         Assert.Equal(ExpectedMushroomNames, plan.FormalAttributes.Select(f => f.RenderedName).ToArray());
@@ -27,7 +43,7 @@ public sealed class ConversionPlannerTests
     [Fact]
     public void Plan_WhenDichotomic_ThenSingleColumnNamedAttributeOnlyAndCrossesTrueValue()
     {
-        Assert.True(ConversionPlanner.Plan(SpecFixtures.MiniMushroom(), new SourceSchema(5)).TryGetValue(out var plan));
+        Assert.True(Plan(SpecFixtures.MiniMushroom(), new SourceSchema(5)).TryGetValue(out var plan));
 
         var bruises = plan.Attributes.Single(a => a.Name == "bruises?");
         Assert.True(bruises.KnownBins.SetEquals(["t", "f"]));
@@ -38,7 +54,7 @@ public sealed class ConversionPlannerTests
     [Fact]
     public void Plan_WhenNominal_ThenEachBinCrossesItsOwnFormalAttribute()
     {
-        Assert.True(ConversionPlanner.Plan(SpecFixtures.MiniMushroom(), new SourceSchema(5)).TryGetValue(out var plan));
+        Assert.True(Plan(SpecFixtures.MiniMushroom(), new SourceSchema(5)).TryGetValue(out var plan));
 
         var gill = plan.Attributes.Single(a => a.Name == "gill-size");
         Assert.Equal([1], gill.CrossesByBin["b"]);
@@ -51,8 +67,8 @@ public sealed class ConversionPlannerTests
         var spec = new BedrockSpec(SpecFixtures.WideRowIndex(),
             [SpecFixtures.NumericCuts("age", 0, [30, 40, 50], new NominalScale())]);
 
-        Assert.True(ConversionPlanner.Plan(spec, new SourceSchema(1), LabelStyle.Native).TryGetValue(out var native));
-        Assert.True(ConversionPlanner.Plan(spec, new SourceSchema(1), LabelStyle.V2Compat).TryGetValue(out var v2));
+        Assert.True(Plan(spec, new SourceSchema(1), LabelStyle.Native).TryGetValue(out var native));
+        Assert.True(Plan(spec, new SourceSchema(1), LabelStyle.V2Compat).TryGetValue(out var v2));
 
         Assert.Equal(
             ["age-<30", "age-[30, 40)", "age-[40, 50)", "age->=50"],
@@ -77,8 +93,8 @@ public sealed class ConversionPlannerTests
         var spec = new BedrockSpec(SpecFixtures.WideRowIndex(),
             [SpecFixtures.NumericCuts("age", 0, [30, 40, 50], new OrdinalScale(OrdinalDirection.Le))]);
 
-        Assert.True(ConversionPlanner.Plan(spec, new SourceSchema(1), LabelStyle.Native).TryGetValue(out var native));
-        Assert.True(ConversionPlanner.Plan(spec, new SourceSchema(1), LabelStyle.V2Compat).TryGetValue(out var v2));
+        Assert.True(Plan(spec, new SourceSchema(1), LabelStyle.Native).TryGetValue(out var native));
+        Assert.True(Plan(spec, new SourceSchema(1), LabelStyle.V2Compat).TryGetValue(out var v2));
 
         // Threshold labels come from the cuts (no interval), so they are style-independent.
         string[] expected = ["age-<30", "age-<40", "age-<50", "age-all"];
@@ -95,10 +111,25 @@ public sealed class ConversionPlannerTests
     [Fact]
     public void Plan_WhenAttributeExcluded_ThenItProducesNoFormalAttributes()
     {
-        Assert.True(ConversionPlanner.Plan(SpecFixtures.MiniMushroom(), new SourceSchema(5)).TryGetValue(out var plan));
+        Assert.True(Plan(SpecFixtures.MiniMushroom(), new SourceSchema(5)).TryGetValue(out var plan));
 
         Assert.DoesNotContain(plan.Attributes, a => a.Name == "class");
         Assert.All(plan.FormalAttributes, f => Assert.NotEqual("class", f.Identity.AttributeName));
+    }
+
+    [Fact]
+    public void Plan_WhenEveryAttributeExcluded_ThenWarnsNoFormalAttributes()
+    {
+        // §16.4 (D-098): a plan with zero columns is degenerate but structurally valid — a Warning,
+        // not an Error, so the plan still succeeds. Already reachable via an all-excluded spec.
+        var spec = new BedrockSpec(SpecFixtures.WideRowIndex(), [SpecFixtures.Excluded("x", 0)]);
+
+        var result = Plan(spec, new SourceSchema(1));
+
+        Assert.True(result.TryGetValue(out var plan));
+        Assert.Empty(plan.FormalAttributes);
+        Assert.Contains(result.Diagnostics, d => d.Code == DiagnosticCode.NoFormalAttributes);
+        Assert.All(result.Diagnostics, d => Assert.Equal(DiagnosticSeverity.Warning, d.Severity));
     }
 
     [Fact]
@@ -106,8 +137,8 @@ public sealed class ConversionPlannerTests
     {
         var schema = new SourceSchema(5);
 
-        Assert.True(ConversionPlanner.Plan(SpecFixtures.MiniMushroom(), schema).TryGetValue(out var first));
-        Assert.True(ConversionPlanner.Plan(SpecFixtures.MiniMushroom(), schema).TryGetValue(out var second));
+        Assert.True(Plan(SpecFixtures.MiniMushroom(), schema).TryGetValue(out var first));
+        Assert.True(Plan(SpecFixtures.MiniMushroom(), schema).TryGetValue(out var second));
 
         Assert.Equal(
             first.FormalAttributes.Select(f => f.RenderedName),
@@ -125,7 +156,7 @@ public sealed class ConversionPlannerTests
             MissingPolicy.Skip, UnknownValuePolicy.Warn);
         var spec = new BedrockSpec(SpecFixtures.WideRowIndex(), [parked]);
 
-        var result = ConversionPlanner.Plan(spec, new SourceSchema(1));
+        var result = Plan(spec, new SourceSchema(1));
 
         Assert.True(result.TryGetValue(out var plan));
         Assert.False(result.HasErrors);
@@ -145,7 +176,7 @@ public sealed class ConversionPlannerTests
             MissingPolicy.Skip, UnknownValuePolicy.Warn);
         var spec = new BedrockSpec(SpecFixtures.WideRowIndex(), [age]);
 
-        Assert.True(ConversionPlanner.Plan(spec, new SourceSchema(1)).TryGetValue(out var plan));
+        Assert.True(Plan(spec, new SourceSchema(1)).TryGetValue(out var plan));
 
         Assert.Equal(["age-<30", "age->=30"], plan.FormalAttributes.Select(f => f.RenderedName));
     }
@@ -158,7 +189,7 @@ public sealed class ConversionPlannerTests
         var attr = SpecFixtures.Nominal("g", 0, ["b", "n"], new Dictionary<string, string> { ["b"] = "broad" });
         var spec = new BedrockSpec(SpecFixtures.WideRowIndex(), [attr]);
 
-        Assert.True(ConversionPlanner.Plan(spec, new SourceSchema(1)).TryGetValue(out var plan));
+        Assert.True(Plan(spec, new SourceSchema(1)).TryGetValue(out var plan));
         Assert.Equal(["g-broad", "g-n"], plan.FormalAttributes.Select(f => f.RenderedName));
     }
 
@@ -172,7 +203,7 @@ public sealed class ConversionPlannerTests
             SpecFixtures.Nominal("a-b", 1, ["x"]),
         ]);
 
-        var result = ConversionPlanner.Plan(spec, new SourceSchema(2));
+        var result = Plan(spec, new SourceSchema(2));
 
         AssertFailsWith(result, DiagnosticCode.FormalAttributeNameCollision);
         Assert.DoesNotContain(result.Diagnostics, d => d.Code == DiagnosticCode.FormalAttributeCollision);
@@ -183,7 +214,7 @@ public sealed class ConversionPlannerTests
     {
         var spec = new BedrockSpec(SpecFixtures.WideRowIndex(), [SpecFixtures.Nominal("a", 0, ["x", "x"])]);
 
-        AssertFailsWith(ConversionPlanner.Plan(spec, new SourceSchema(1)), DiagnosticCode.FormalAttributeCollision);
+        AssertFailsWith(Plan(spec, new SourceSchema(1)), DiagnosticCode.FormalAttributeCollision);
     }
 
     [Fact]
@@ -194,7 +225,7 @@ public sealed class ConversionPlannerTests
         var spec = new BedrockSpec(SpecFixtures.WideRowIndex(),
             [SpecFixtures.Nominal("a", 0, ["x", "y"], missing: MissingPolicy.AsAttribute)]);
 
-        Assert.True(ConversionPlanner.Plan(spec, new SourceSchema(1)).TryGetValue(out var plan));
+        Assert.True(Plan(spec, new SourceSchema(1)).TryGetValue(out var plan));
 
         Assert.Equal(["a-x", "a-y", "a-missing"], plan.FormalAttributes.Select(f => f.RenderedName));
         Assert.Equal(new FormalAttributeIdentity("a", "nominal", "missing", ""), plan.FormalAttributes[2].Identity);
@@ -210,7 +241,7 @@ public sealed class ConversionPlannerTests
         var spec = new BedrockSpec(SpecFixtures.WideRowIndex(),
             [SpecFixtures.Dichotomic("bruises?", 0, "t", ["t", "f"], missing: MissingPolicy.AsAttribute)]);
 
-        Assert.True(ConversionPlanner.Plan(spec, new SourceSchema(1)).TryGetValue(out var plan));
+        Assert.True(Plan(spec, new SourceSchema(1)).TryGetValue(out var plan));
 
         Assert.Equal(["bruises?", "bruises?-missing"], plan.FormalAttributes.Select(f => f.RenderedName));
         Assert.Equal(1, Assert.Single(plan.Attributes).MissingFormalAttributeId);
@@ -225,7 +256,7 @@ public sealed class ConversionPlannerTests
             [SpecFixtures.NumericCuts("age", 0, [30, 40, 50], new OrdinalScale(OrdinalDirection.Le),
                 missing: MissingPolicy.AsAttribute)]);
 
-        Assert.True(ConversionPlanner.Plan(spec, new SourceSchema(1)).TryGetValue(out var plan));
+        Assert.True(Plan(spec, new SourceSchema(1)).TryGetValue(out var plan));
 
         Assert.Equal(
             ["age-<30", "age-<40", "age-<50", "age-all", "age-missing"],
@@ -244,7 +275,7 @@ public sealed class ConversionPlannerTests
             SpecFixtures.Nominal("b", 1, ["z"]),
         ]);
 
-        Assert.True(ConversionPlanner.Plan(spec, new SourceSchema(2)).TryGetValue(out var plan));
+        Assert.True(Plan(spec, new SourceSchema(2)).TryGetValue(out var plan));
 
         Assert.Equal(["a-x", "a-missing", "b-z"], plan.FormalAttributes.Select(f => f.RenderedName));
         Assert.Equal([2], plan.Attributes.Single(a => a.Name == "b").CrossesByBin["z"]);
@@ -258,7 +289,7 @@ public sealed class ConversionPlannerTests
         var spec = new BedrockSpec(SpecFixtures.WideRowIndex(),
             [SpecFixtures.Nominal("a", 0, ["missing"], missing: MissingPolicy.AsAttribute)]);
 
-        var result = ConversionPlanner.Plan(spec, new SourceSchema(1));
+        var result = Plan(spec, new SourceSchema(1));
 
         AssertFailsWith(result, DiagnosticCode.FormalAttributeNameCollision);
         AssertFailsWith(result, DiagnosticCode.FormalAttributeCollision);
@@ -267,7 +298,7 @@ public sealed class ConversionPlannerTests
     [Fact]
     public void Plan_WhenSkip_ThenMissingFormalAttributeIdIsNull()
     {
-        Assert.True(ConversionPlanner.Plan(SpecFixtures.MiniMushroom(), new SourceSchema(5)).TryGetValue(out var plan));
+        Assert.True(Plan(SpecFixtures.MiniMushroom(), new SourceSchema(5)).TryGetValue(out var plan));
 
         Assert.All(plan.Attributes, a => Assert.Null(a.MissingFormalAttributeId));
     }
@@ -283,7 +314,7 @@ public sealed class ConversionPlannerTests
             SpecFixtures.PredicateNominal("size", "hasSize", ["big", "small"]),
         ]);
 
-        var result = ConversionPlanner.Plan(spec, new SourceSchema(3));
+        var result = Plan(spec, new SourceSchema(3));
 
         Assert.True(result.TryGetValue(out var plan));
         Assert.Equal(
@@ -302,8 +333,8 @@ public sealed class ConversionPlannerTests
         var unordered = new BedrockSpec(SpecFixtures.TripleSubjectGrouped(TripleOrdering.Unordered), attributes);
         var grouped = new BedrockSpec(SpecFixtures.TripleSubjectGrouped(TripleOrdering.SubjectGrouped), attributes);
 
-        var unorderedResult = ConversionPlanner.Plan(unordered, new SourceSchema(3));
-        var groupedResult = ConversionPlanner.Plan(grouped, new SourceSchema(3));
+        var unorderedResult = Plan(unordered, new SourceSchema(3));
+        var groupedResult = Plan(grouped, new SourceSchema(3));
 
         Assert.False(unorderedResult.HasErrors);
         Assert.True(unorderedResult.TryGetValue(out var unorderedPlan));
@@ -317,7 +348,7 @@ public sealed class ConversionPlannerTests
     public void Plan_WhenWide_ThenExecutionIsWide()
     {
         // D-082: the plan carries a shape-specific SourceExecution; a wide source plans the singleton.
-        Assert.True(ConversionPlanner.Plan(SpecFixtures.MiniMushroom(), new SourceSchema(5)).TryGetValue(out var plan));
+        Assert.True(Plan(SpecFixtures.MiniMushroom(), new SourceSchema(5)).TryGetValue(out var plan));
         Assert.Same(WideExecution.Instance, plan.Execution);
     }
 
@@ -330,22 +361,24 @@ public sealed class ConversionPlannerTests
         var spec = new BedrockSpec(SpecFixtures.TripleSubjectGrouped(ordering),
             [SpecFixtures.PredicateNominal("color", "hasColor", ["red", "green"])]);
 
-        Assert.True(ConversionPlanner.Plan(spec, new SourceSchema(3)).TryGetValue(out var plan));
+        Assert.True(Plan(spec, new SourceSchema(3)).TryGetValue(out var plan));
         var triple = Assert.IsType<TripleExecution>(plan.Execution);
         Assert.Equal(ordering, triple.Ordering);
     }
 
     [Fact]
-    public void Plan_WhenTripleBindingHasNoResolvedOrdering_ThenThrowsInvariant()
+    public void Resolve_WhenTripleBindingHasNoResolvedOrdering_ThenThrowsAtTrustBoundary()
     {
-        // D-082: triple ordering is required; a null ordering on a triple binding is a corrupt Core
-        // state, thrown via the invariant path (never a silent SubjectGrouped default that would mask
-        // an invalid binding and could wrongly reject interleaved data).
+        // D-082/D-098: triple ordering is required; a null ordering on a triple binding is a corrupt
+        // Core state. Under the schema-aware pipeline the ResolvedSpec trust boundary rejects it
+        // (ArgumentException) before Plan is reachable — the planner's residual invariant is now
+        // unreachable-by-construction (never a silent SubjectGrouped default that would mask the
+        // invalid binding and could wrongly reject interleaved data).
         var binding = new Binding(SourceShape.Triple, "utf-8", ',', '"', HasHeader: false, "invariant", "?",
             new ColumnObjectKey(0, DuplicateObjectPolicy.Fail), new TripleColumns(0, 1, 2), Ordering: null);
         var spec = new BedrockSpec(binding, [SpecFixtures.PredicateNominal("color", "hasColor", ["red", "green"])]);
 
-        Assert.Throws<InvalidOperationException>(() => ConversionPlanner.Plan(spec, new SourceSchema(3)));
+        Assert.Throws<ArgumentException>(() => Resolve(spec, new SourceSchema(3)));
     }
 
     [Theory]
@@ -361,7 +394,7 @@ public sealed class ConversionPlannerTests
             ["x"], RestrictTo: [], SpecFixtures.NoLabels, MissingPolicy.Skip, UnknownValuePolicy.Warn);
         var spec = new BedrockSpec(SpecFixtures.WideRowIndex(), [attr]);
 
-        var result = ConversionPlanner.Plan(spec, new SourceSchema(1));
+        var result = Plan(spec, new SourceSchema(1));
 
         AssertFailsWith(result, DiagnosticCode.ScaleNotImplementedV1);
         var diagnostic = Assert.Single(result.Diagnostics, d => d.Code == DiagnosticCode.ScaleNotImplementedV1);
@@ -379,7 +412,7 @@ public sealed class ConversionPlannerTests
             ["a"], RestrictTo: [], SpecFixtures.NoLabels, MissingPolicy.Skip, UnknownValuePolicy.Warn);
         var spec = new BedrockSpec(SpecFixtures.WideRowIndex(), [parked, SpecFixtures.Nominal("g", 1, ["b"])]);
 
-        Assert.True(ConversionPlanner.Plan(spec, new SourceSchema(2)).TryGetValue(out var plan));
+        Assert.True(Plan(spec, new SourceSchema(2)).TryGetValue(out var plan));
         Assert.Equal(["g-b"], plan.FormalAttributes.Select(f => f.RenderedName));
     }
 
@@ -391,7 +424,7 @@ public sealed class ConversionPlannerTests
         // §5.4 / D-024/D-064: a permanent v1 reservation, rejected at plan.
         var spec = new BedrockSpec(WideWithKey(new CompositeObjectKey()), [SpecFixtures.Nominal("g", 0, ["b"])]);
 
-        var result = ConversionPlanner.Plan(spec, new SourceSchema(1));
+        var result = Plan(spec, new SourceSchema(1));
 
         AssertFailsWith(result, DiagnosticCode.ObjectKeyCompositeNotImplementedV1);
         var diagnostic = Assert.Single(result.Diagnostics);
@@ -410,25 +443,23 @@ public sealed class ConversionPlannerTests
         var spec = new BedrockSpec(
             WideWithKey(new ColumnObjectKey(0, policy)), [SpecFixtures.Nominal("g", 1, ["b"])]);
 
-        var result = ConversionPlanner.Plan(spec, new SourceSchema(2));
+        var result = Plan(spec, new SourceSchema(2));
 
         Assert.False(result.HasErrors);
         Assert.True(result.TryGetValue(out _));
     }
 
     [Fact]
-    public void Plan_WhenObjectKeyColumnIndexOutOfRange_ThenObjectKeyBindingInvalid()
+    public void Resolve_WhenObjectKeyColumnIndexOutOfRange_ThenThrowsAtTrustBoundary()
     {
-        // D-085 taxonomy: an out-of-range key INDEX is a binding error caught at plan (the conversion
-        // pipeline resolves schema-less, so the resolver's upper-bound check cannot fire) — distinct
-        // from an absent data cell (ObjectKeyValueInvalid at emit). Interim phase placement (D-083).
+        // D-085/D-098: an out-of-range key INDEX is a binding error. The conversion pipeline now
+        // resolves schema-aware (G-1), so the range check is seam-owned — the resolver emits
+        // ObjectKeyBindingInvalid over the document, and the ResolvedSpec trust boundary rejects a
+        // hand-built spec with ArgumentException before Plan (the planner's residual is unreachable).
         var spec = new BedrockSpec(
             WideWithKey(new ColumnObjectKey(5, DuplicateObjectPolicy.Fail)), [SpecFixtures.Nominal("g", 1, ["b"])]);
 
-        var result = ConversionPlanner.Plan(spec, new SourceSchema(2));
-
-        AssertFailsWith(result, DiagnosticCode.ObjectKeyBindingInvalid);
-        Assert.Contains("out of range", Assert.Single(result.Diagnostics).Message, StringComparison.Ordinal);
+        Assert.Throws<ArgumentException>(() => Resolve(spec, new SourceSchema(2)));
     }
 
     [Fact]
@@ -441,7 +472,7 @@ public sealed class ConversionPlannerTests
         var attr = SpecFixtures.Nominal("g", 0, ["b"]) with { RestrictTo = [new RestrictToValue("b")] };
         var spec = new BedrockSpec(WideWithKey(new CompositeObjectKey()), [attr]);
 
-        var result = ConversionPlanner.Plan(spec, new SourceSchema(1));
+        var result = Plan(spec, new SourceSchema(1));
 
         Assert.Contains(result.Diagnostics, d => d.Code == DiagnosticCode.ObjectKeyCompositeNotImplementedV1);
         Assert.Contains(result.Diagnostics, d => d.Code == DiagnosticCode.RestrictToNotImplementedV1);
@@ -455,7 +486,7 @@ public sealed class ConversionPlannerTests
         var attr = SpecFixtures.Nominal("g", 0, ["b"]) with { RestrictTo = [new RestrictToValue("b")] };
         var spec = new BedrockSpec(SpecFixtures.WideRowIndex(), [attr]);
 
-        var result = ConversionPlanner.Plan(spec, new SourceSchema(1));
+        var result = Plan(spec, new SourceSchema(1));
 
         AssertFailsWith(result, DiagnosticCode.RestrictToNotImplementedV1);
     }
@@ -468,35 +499,15 @@ public sealed class ConversionPlannerTests
         var attr = SpecFixtures.Excluded("Gene", 0) with { RestrictTo = [new RestrictToValue("Bmp5")] };
         var spec = new BedrockSpec(SpecFixtures.WideRowIndex(), [attr, SpecFixtures.Nominal("g", 1, ["b"])]);
 
-        var result = ConversionPlanner.Plan(spec, new SourceSchema(2));
+        var result = Plan(spec, new SourceSchema(2));
 
         AssertFailsWith(result, DiagnosticCode.RestrictToNotImplementedV1);
     }
 
-    [Fact]
-    public void Plan_WhenIncludedIdentityHasNoDomain_ThenReportsObservedDomainCalibrationNotImplementedV1()
-    {
-        // §10.3 / D-071: an absent domain needs the observed-domain calibration the
-        // pipeline does not build yet; rejecting beats a silently empty or
-        // data-order-dependent schema.
-        var spec = new BedrockSpec(SpecFixtures.WideRowIndex(), [SpecFixtures.Nominal("g", 0, [])]);
-
-        var result = ConversionPlanner.Plan(spec, new SourceSchema(1));
-
-        AssertFailsWith(result, DiagnosticCode.ObservedDomainCalibrationNotImplementedV1);
-    }
-
-    [Fact]
-    public void Plan_WhenDichotomicIdentityHasNoDomain_ThenReportsObservedDomainCalibrationNotImplementedV1()
-    {
-        // D-071/D-076: the reject is blanket across scales — with no domain every
-        // observed value is "unknown" and the dichotomic column never crosses.
-        var spec = new BedrockSpec(SpecFixtures.WideRowIndex(), [SpecFixtures.Dichotomic("b?", 0, "t", [])]);
-
-        var result = ConversionPlanner.Plan(spec, new SourceSchema(1));
-
-        AssertFailsWith(result, DiagnosticCode.ObservedDomainCalibrationNotImplementedV1);
-    }
+    // Observed-domain calibration of an absent-domain identity attribute (formerly the
+    // transitional ObservedDomainCalibrationNotImplementedV1 plan reject, D-071) now happens in
+    // the Calibrate phase — its coverage lives in CalibratorTests (D-036/D-098). A
+    // FromFullyDeclared plan of such a spec throws (it requires data), so it is not tested here.
 
     [Fact]
     public void Plan_WhenExcludedIdentityHasNoDomain_ThenNoCalibrationDiagnostic()
@@ -508,7 +519,7 @@ public sealed class ConversionPlannerTests
             SpecFixtures.NoLabels, MissingPolicy.Skip, UnknownValuePolicy.Warn);
         var spec = new BedrockSpec(SpecFixtures.WideRowIndex(), [parked, SpecFixtures.Nominal("g", 1, ["b"])]);
 
-        var result = ConversionPlanner.Plan(spec, new SourceSchema(2));
+        var result = Plan(spec, new SourceSchema(2));
 
         Assert.True(result.TryGetValue(out _));
         Assert.Empty(result.Diagnostics);
@@ -522,7 +533,7 @@ public sealed class ConversionPlannerTests
         var spec = new BedrockSpec(SpecFixtures.WideRowIndex(),
             [SpecFixtures.NumericCuts("age", 0, [30.0], new NominalScale())]);
 
-        var result = ConversionPlanner.Plan(spec, new SourceSchema(1));
+        var result = Plan(spec, new SourceSchema(1));
 
         Assert.True(result.TryGetValue(out _));
         Assert.Empty(result.Diagnostics);
@@ -542,7 +553,7 @@ public sealed class ConversionPlannerTests
             [SpecFixtures.OrdinalValueBins("edu", 0, ["Pre-Uni", "Undergrad", "Postgrad"], scale,
                 new Dictionary<string, string> { ["Pre-Uni"] = "PU", ["Undergrad"] = "UG", ["Postgrad"] = "PG" })]);
 
-        Assert.True(ConversionPlanner.Plan(spec, new SourceSchema(1)).TryGetValue(out var plan));
+        Assert.True(Plan(spec, new SourceSchema(1)).TryGetValue(out var plan));
 
         Assert.Equal(["edu-<=PU", "edu-<=UG", "edu-<=PG"], plan.FormalAttributes.Select(f => f.RenderedName));
         Assert.Equal(["Pre-Uni", "Undergrad", "Postgrad"], plan.FormalAttributes.Select(f => f.Identity.BinKey));
@@ -564,7 +575,7 @@ public sealed class ConversionPlannerTests
         var spec = new BedrockSpec(SpecFixtures.WideRowIndex(),
             [SpecFixtures.OrdinalValueBins("edu", 0, ["a", "b"], scale)]);
 
-        AssertFailsWith(ConversionPlanner.Plan(spec, new SourceSchema(1)), DiagnosticCode.OrdinalOrderMissing);
+        AssertFailsWith(Plan(spec, new SourceSchema(1)), DiagnosticCode.OrdinalOrderMissing);
     }
 
     [Fact]
@@ -576,7 +587,7 @@ public sealed class ConversionPlannerTests
         var spec = new BedrockSpec(SpecFixtures.WideRowIndex(),
             [SpecFixtures.OrdinalValueBins("edu", 0, ["a", "b", "c"], scale)]);
 
-        var result = ConversionPlanner.Plan(spec, new SourceSchema(1));
+        var result = Plan(spec, new SourceSchema(1));
 
         AssertFailsWith(result, DiagnosticCode.OrdinalOrderMissing);
         Assert.Contains("c",
@@ -592,7 +603,7 @@ public sealed class ConversionPlannerTests
         var spec = new BedrockSpec(SpecFixtures.WideRowIndex(),
             [SpecFixtures.OrdinalValueBins("edu", 0, ["a"], scale)]);
 
-        var result = ConversionPlanner.Plan(spec, new SourceSchema(1));
+        var result = Plan(spec, new SourceSchema(1));
 
         Assert.Equal(2, result.Diagnostics.Count(d => d.Code == DiagnosticCode.OrdinalOrderHasUnknownValue));
     }
@@ -606,7 +617,7 @@ public sealed class ConversionPlannerTests
         var spec = new BedrockSpec(SpecFixtures.WideRowIndex(),
             [SpecFixtures.OrdinalValueBins("edu", 0, ["a", "b"], scale, missing: MissingPolicy.AsAttribute)]);
 
-        Assert.True(ConversionPlanner.Plan(spec, new SourceSchema(1)).TryGetValue(out var plan));
+        Assert.True(Plan(spec, new SourceSchema(1)).TryGetValue(out var plan));
 
         Assert.Equal(["edu-<=a", "edu-<=b", "edu-missing"], plan.FormalAttributes.Select(f => f.RenderedName));
         Assert.Equal(2, Assert.Single(plan.Attributes).MissingFormalAttributeId);

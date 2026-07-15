@@ -1,3 +1,4 @@
+using FcaBedrock.Core.Calibration;
 using FcaBedrock.Core.Planning;
 using FcaBedrock.Core.Scaling;
 using FcaBedrock.Core.Spec;
@@ -20,10 +21,11 @@ public sealed class SpecReadResolveTests
     {
         var fromToml = ResolveOk(TomlFixtures.MiniMushroom, new SourceSchema(5));
         var fromBuilder = SpecResolver.Resolve(DocumentFixtures.MiniMushroom());
-        Assert.True(fromBuilder.TryGetValue(out var twin));
+        Assert.True(fromBuilder.TryGetValue(out var twinDoc));
+        var twin = twinDoc.Resolved.Spec;
 
-        Assert.True(ConversionPlanner.Plan(fromToml, new SourceSchema(5)).TryGetValue(out var tomlPlan));
-        Assert.True(ConversionPlanner.Plan(twin, new SourceSchema(5)).TryGetValue(out var twinPlan));
+        Assert.True(Plan(fromToml, new SourceSchema(5)).TryGetValue(out var tomlPlan));
+        Assert.True(Plan(twin, new SourceSchema(5)).TryGetValue(out var twinPlan));
 
         Assert.Equal(
             twinPlan.FormalAttributes.Select(f => f.RenderedName),
@@ -35,7 +37,7 @@ public sealed class SpecReadResolveTests
     {
         var spec = ResolveOk(TomlFixtures.MiniAdult, new SourceSchema(6));
 
-        Assert.True(ConversionPlanner.Plan(spec, new SourceSchema(6)).TryGetValue(out var plan));
+        Assert.True(Plan(spec, new SourceSchema(6)).TryGetValue(out var plan));
         Assert.Contains(plan.FormalAttributes, f => f.RenderedName == "age-<30");
         Assert.Contains(plan.FormalAttributes, f => f.RenderedName == "US-citizen");
     }
@@ -51,7 +53,7 @@ public sealed class SpecReadResolveTests
         Assert.Equal(SourceShape.Triple, spec.Binding.Shape);
         Assert.NotEmpty(spec.Attributes);
 
-        var plan = ConversionPlanner.Plan(spec, new SourceSchema(3));
+        var plan = Plan(spec, new SourceSchema(3));
         Assert.False(plan.HasErrors);
         Assert.True(plan.TryGetValue(out _));
     }
@@ -66,7 +68,7 @@ public sealed class SpecReadResolveTests
         Assert.Equal(SourceShape.Triple, spec.Binding.Shape);
         Assert.NotEmpty(spec.Attributes);
 
-        var plan = ConversionPlanner.Plan(spec, new SourceSchema(3));
+        var plan = Plan(spec, new SourceSchema(3));
         Assert.False(plan.HasErrors);
         Assert.True(plan.TryGetValue(out var value));
         Assert.NotEmpty(value.FormalAttributes);
@@ -86,7 +88,7 @@ public sealed class SpecReadResolveTests
         var spec = ResolveOk(toml, new SourceSchema(1));
         Assert.Equal("interordinal", Assert.IsType<UnimplementedScale>(spec.Attributes[0].Scale).Kind);
 
-        var plan = ConversionPlanner.Plan(spec, new SourceSchema(1));
+        var plan = Plan(spec, new SourceSchema(1));
         Assert.True(plan.HasErrors);
         Assert.Contains(plan.Diagnostics, d =>
             d.Code == DiagnosticCode.ScaleNotImplementedV1 && d.Severity == DiagnosticSeverity.Fatal);
@@ -151,8 +153,18 @@ public sealed class SpecReadResolveTests
             string.Join("; ", read.Diagnostics.Select(d => $"{d.Code}: {d.Message}")));
 
         var resolved = SpecResolver.Resolve(document, schema);
-        Assert.True(resolved.TryGetValue(out var spec),
+        Assert.True(resolved.TryGetValue(out var doc),
             string.Join("; ", resolved.Diagnostics.Select(d => $"{d.Code}: {d.Message}")));
-        return spec;
+        return doc.Resolved.Spec;
     }
+
+    // Plans a fully-declared resolved spec + schema the M4 way (D-098).
+    private static Diagnosed<ConversionPlan> Plan(BedrockSpec spec, SourceSchema schema) =>
+        ConversionPlanner.Plan(CalibratedSpec.FromFullyDeclared(
+            ResolvedSpec.Create(
+                spec, schema,
+                SourceReadSettings.Create(
+                    spec.Binding.Shape, spec.Binding.Encoding, spec.Binding.Delimiter, spec.Binding.QuoteChar,
+                    spec.Binding.HasHeader, spec.Binding.MissingToken, spec.Binding.Ordering),
+                [])));
 }

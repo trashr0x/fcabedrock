@@ -1,4 +1,5 @@
 using System.Text;
+using FcaBedrock.Core.Calibration;
 using FcaBedrock.Core.Discretization;
 using FcaBedrock.Core.Planning;
 using FcaBedrock.Core.Scaling;
@@ -41,8 +42,30 @@ public sealed class BedMigratorTests
     private static BedrockSpec ResolveOk(SpecDocument document)
     {
         var resolved = SpecResolver.Resolve(document);
-        Assert.True(resolved.TryGetValue(out var spec), Describe(resolved.Diagnostics));
-        return spec;
+        Assert.True(resolved.TryGetValue(out var doc), Describe(resolved.Diagnostics));
+        return doc.Resolved.Spec;
+    }
+
+    // Plans a fully-declared resolved spec + schema the M4 way (D-098).
+    private static Diagnosed<ConversionPlan> Plan(BedrockSpec spec, SourceSchema schema) =>
+        ConversionPlanner.Plan(CalibratedSpec.FromFullyDeclared(
+            ResolvedSpec.Create(
+                spec, schema,
+                SourceReadSettings.Create(
+                    spec.Binding.Shape, spec.Binding.Encoding, spec.Binding.Delimiter, spec.Binding.QuoteChar,
+                    spec.Binding.HasHeader, spec.Binding.MissingToken, spec.Binding.Ordering),
+                [])));
+
+    // Resolve → fully-declared calibrated state → plan, returning the paired ResolvedDocument and
+    // plan for ComputeNative (whose reference-identity guard holds since the plan's Resolution is
+    // the ResolvedDocument's, D-098).
+    private static (ResolvedDocument Document, ConversionPlan Plan) Prepare(SpecDocument document, SourceSchema schema)
+    {
+        var resolved = SpecResolver.Resolve(document, schema);
+        Assert.True(resolved.TryGetValue(out var resolvedDoc), Describe(resolved.Diagnostics));
+        var planned = ConversionPlanner.Plan(CalibratedSpec.FromFullyDeclared(resolvedDoc.Resolved));
+        Assert.True(planned.TryGetValue(out var plan), Describe(planned.Diagnostics));
+        return (resolvedDoc, plan);
     }
 
     private static string Describe(IReadOnlyList<BedrockDiagnostic> diagnostics) =>
@@ -330,7 +353,7 @@ public sealed class BedMigratorTests
     {
         var spec = ResolveOk(MigrateOk(BedFixtures.MushroomBed));
 
-        Assert.True(ConversionPlanner.Plan(spec, new SourceSchema(5)).TryGetValue(out var plan));
+        Assert.True(Plan(spec, new SourceSchema(5)).TryGetValue(out var plan));
         Assert.Equal(
             [
                 "bruises?", "gill-size-broad", "gill-size-narrow", "veil-type-partial",
@@ -371,8 +394,8 @@ public sealed class BedMigratorTests
         var document = MigrateOk(BedFixtures.MushroomBed);
 
         Assert.True(SpecReader.Read(SpecWriter.Write(document)).TryGetValue(out var reread));
-        Assert.True(ConversionPlanner.Plan(ResolveOk(document), new SourceSchema(5)).TryGetValue(out var direct));
-        Assert.True(ConversionPlanner.Plan(ResolveOk(reread), new SourceSchema(5)).TryGetValue(out var roundTripped));
+        Assert.True(Plan(ResolveOk(document), new SourceSchema(5)).TryGetValue(out var direct));
+        Assert.True(Plan(ResolveOk(reread), new SourceSchema(5)).TryGetValue(out var roundTripped));
         Assert.Equal(
             direct.FormalAttributes.Select(f => (f.RenderedName, f.Identity)),
             roundTripped.FormalAttributes.Select(f => (f.RenderedName, f.Identity)));
@@ -504,16 +527,15 @@ public sealed class BedMigratorTests
     }
 
     [Fact]
-    public void Migrate_WhenWholeDomainIsMissingToken_ThenResolvesButPlanRejectsCalibration()
+    public void Migrate_WhenWholeDomainIsMissingToken_ThenResolvesAndRequiresCalibration()
     {
-        // Degenerate but representable: the domain empties out, resolve succeeds,
-        // and the existing D-071 plan guard owns the empty-domain rejection.
+        // Degenerate but representable: the domain empties out and resolve succeeds. The
+        // absent-domain identity attribute is now data-dependent — the Calibrate phase fills it
+        // (ObservedDomainUsed) rather than the retired D-071 plan reject (D-036/D-098).
         var document = MigrateOk(Bed(new BedAttr("strength", "c", "?")));
         Assert.Equal([], document.Attributes[0].DeclaredDomain);
 
-        var planned = ConversionPlanner.Plan(ResolveOk(document), new SourceSchema(1));
-        Assert.False(planned.TryGetValue(out _));
-        Assert.Contains(planned.Diagnostics, d => d.Code == DiagnosticCode.ObservedDomainCalibrationNotImplementedV1);
+        Assert.True(CalibratedSpec.RequiresData(ResolveOk(document)));
     }
 
     // --- included attributes that cannot transcribe ---------------------------
@@ -689,16 +711,14 @@ public sealed class BedMigratorTests
         // config, and value_labels are all fingerprint-inert, so the two producers
         // collapse to one hash. A diff here means migration changed the resolved
         // plan — not a baseline to edit.
-        var document = MigrateOk(BedFixtures.MushroomBed);
-        var spec = ResolveOk(document);
-        Assert.True(ConversionPlanner.Plan(spec, new SourceSchema(5)).TryGetValue(out var plan));
+        var (resolvedDoc, plan) = Prepare(MigrateOk(BedFixtures.MushroomBed), new SourceSchema(5));
 
         Assert.Equal(
             new ComputedFingerprints(
                 "sha256:6b97a3f3fcd2782781fd2420edde29259848281bfa4e887fc91258e435511f05",
                 "sha256:6e1507c6735d0d4abcd6b146930d43b33a624746bc0d995accd2eed287b5752e",
                 "sha256:2716ab601e2297bd61ee665b8361045ddc2806679498cf819b3464961715a124"),
-            SpecFingerprints.ComputeNative(document, spec, plan));
+            SpecFingerprints.ComputeNative(resolvedDoc, plan));
     }
 
     [Fact]
@@ -755,16 +775,14 @@ public sealed class BedMigratorTests
             include = false
             """;
 
-        var migratedDoc = MigrateOk(BedFixtures.EmploymentOrdinalBed, mode: ScalingMode.Progressive);
-        var migratedSpec = ResolveOk(migratedDoc);
-        Assert.True(ConversionPlanner.Plan(migratedSpec, new SourceSchema(6)).TryGetValue(out var migratedPlan));
+        var (migratedDoc, migratedPlan) = Prepare(
+            MigrateOk(BedFixtures.EmploymentOrdinalBed, mode: ScalingMode.Progressive), new SourceSchema(6));
 
-        Assert.True(SpecReader.Read(twin).TryGetValue(out var twinDoc));
-        var twinSpec = ResolveOk(twinDoc);
-        Assert.True(ConversionPlanner.Plan(twinSpec, new SourceSchema(6)).TryGetValue(out var twinPlan));
+        Assert.True(SpecReader.Read(twin).TryGetValue(out var twinDocument));
+        var (twinDoc, twinPlan) = Prepare(twinDocument, new SourceSchema(6));
 
         Assert.Equal(
-            SpecFingerprints.ComputeNative(twinDoc, twinSpec, twinPlan),
-            SpecFingerprints.ComputeNative(migratedDoc, migratedSpec, migratedPlan));
+            SpecFingerprints.ComputeNative(twinDoc, twinPlan),
+            SpecFingerprints.ComputeNative(migratedDoc, migratedPlan));
     }
 }

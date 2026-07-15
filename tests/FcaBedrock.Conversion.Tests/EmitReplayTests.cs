@@ -165,7 +165,7 @@ public sealed class EmitReplayTests
     {
         var source = ConversionFixtures.SourceOver(csv, binding);
         var schema = await source.GetSchemaAsync();
-        Assert.True(ConversionPlanner.Plan(spec, schema).TryGetValue(out var plan));
+        Assert.True(ConversionFixtures.PlanFor(spec, schema).TryGetValue(out var plan));
         return (plan!, source);
     }
 
@@ -174,7 +174,7 @@ public sealed class EmitReplayTests
     {
         var source = ConversionFixtures.TripleSourceOver(tripleData, ConversionFixtures.Triple());
         var schema = await source.GetSchemaAsync();
-        Assert.True(ConversionPlanner.Plan(spec, schema).TryGetValue(out var plan));
+        Assert.True(ConversionFixtures.PlanFor(spec, schema).TryGetValue(out var plan));
         return (plan!, source);
     }
 

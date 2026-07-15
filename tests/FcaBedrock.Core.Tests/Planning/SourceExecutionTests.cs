@@ -55,48 +55,8 @@ public sealed class SourceExecutionTests
             new TripleExecution(TripleOrdering.Unordered));
     }
 
-    [Fact]
-    public void ConversionPlan_Equality_HoldsAcrossIndependentlyObtainedWideExecutions()
-    {
-        // The Execution member must not break ConversionPlan record equality: hold the other members
-        // fixed (same instances) and vary only the (equal) executions.
-        var (formals, attrs) = EmptyMembers();
-        var key = new RowIndexObjectKey();
-
-        var a = new ConversionPlan(formals, attrs, key, WideExecution.Instance);
-        var b = new ConversionPlan(formals, attrs, key, WideExecution.Instance);
-
-        Assert.Equal(a, b);
-    }
-
-    [Fact]
-    public void ConversionPlan_Equality_HoldsAcrossIndependentlyConstructedTripleExecutions()
-    {
-        var (formals, attrs) = EmptyMembers();
-        var key = new ColumnObjectKey(0, DuplicateObjectPolicy.Fail);
-
-        var a = new ConversionPlan(formals, attrs, key, new TripleExecution(TripleOrdering.Unordered));
-        var b = new ConversionPlan(formals, attrs, key, new TripleExecution(TripleOrdering.Unordered));
-
-        Assert.Equal(a, b);
-    }
-
-    [Fact]
-    public void ConversionPlan_Equality_FailsAcrossDifferentExecutionVariants()
-    {
-        var (formals, attrs) = EmptyMembers();
-        var key = new RowIndexObjectKey();
-
-        var wide = new ConversionPlan(formals, attrs, key, WideExecution.Instance);
-        var triple = new ConversionPlan(formals, attrs, key, new TripleExecution(TripleOrdering.Unordered));
-
-        Assert.NotEqual(wide, triple);
-    }
-
-    private static (IReadOnlyList<FormalAttribute> Formals, IReadOnlyList<PlannedAttribute> Attrs) EmptyMembers()
-    {
-        IReadOnlyList<FormalAttribute> formals = new List<FormalAttribute>();
-        IReadOnlyList<PlannedAttribute> attrs = new List<PlannedAttribute>();
-        return (formals, attrs);
-    }
+    // ConversionPlan is now a sealed reference-identity class (planner-owned internal
+    // constructor, D-098) rather than a positional record, so the former
+    // ConversionPlan_Equality_* record-equality tests no longer apply; SourceExecution's own
+    // value equality is covered by the tests above.
 }

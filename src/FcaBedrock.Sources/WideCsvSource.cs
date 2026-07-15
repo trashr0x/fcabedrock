@@ -15,11 +15,30 @@ namespace FcaBedrock.Sources;
 public sealed class WideCsvSource : IRecordSource
 {
     private readonly Func<Stream> _openStream;
+    private readonly Binding _binding;
     private readonly char _delimiter;
     private readonly bool _hasHeader;
     private readonly string _missingToken;
+    private SourceProvenance? _provenance;
 
+    /// <summary>
+    /// Constructs a direct production source over <paramref name="binding"/>; its
+    /// <see cref="Provenance"/> is a <see cref="DescriptorProvenance"/> derived from the
+    /// binding (D-098).
+    /// </summary>
     public WideCsvSource(Func<Stream> openStream, Binding binding)
+        : this(openStream, binding, provenance: null)
+    {
+    }
+
+    // Session-bound source (D-098 stage 4): carries the resolution token so calibrate/
+    // emit pair by reference identity. Same-assembly-only (WideCsvSession.Bind).
+    internal WideCsvSource(Func<Stream> openStream, Binding binding, ResolvedSpec token)
+        : this(openStream, binding, new TokenProvenance(token))
+    {
+    }
+
+    private WideCsvSource(Func<Stream> openStream, Binding binding, SourceProvenance? provenance)
     {
         ArgumentNullException.ThrowIfNull(openStream);
         ArgumentNullException.ThrowIfNull(binding);
@@ -38,10 +57,23 @@ public sealed class WideCsvSource : IRecordSource
         // dedupe, which now executes. Only a composite object key is a planner reject (Fatal), reached
         // because the pipeline builds the source before it plans.
         _openStream = openStream;
+        _binding = binding;
         _delimiter = binding.Delimiter;
         _hasHeader = binding.HasHeader;
         _missingToken = binding.MissingToken;
+        _provenance = provenance;
     }
+
+    /// <inheritdoc/>
+    // A bound source's token is fixed at construction; a direct source derives its
+    // descriptor lazily from the binding (once) so a fake with an unusual binding never
+    // trips validation unless the guard actually reads Provenance.
+    public SourceProvenance Provenance =>
+        _provenance ??= new DescriptorProvenance(
+            SourceReadSettings.Create(
+                _binding.Shape, _binding.Encoding, _binding.Delimiter, _binding.QuoteChar,
+                _binding.HasHeader, _binding.MissingToken, _binding.Ordering),
+            _binding.TripleColumns);
 
     public async ValueTask<SourceSchema> GetSchemaAsync(CancellationToken cancellationToken = default)
     {

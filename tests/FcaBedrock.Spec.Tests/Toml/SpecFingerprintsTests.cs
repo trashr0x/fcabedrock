@@ -1,3 +1,5 @@
+using System.Collections.Immutable;
+using FcaBedrock.Core.Calibration;
 using FcaBedrock.Core.Discretization;
 using FcaBedrock.Core.Fingerprinting;
 using FcaBedrock.Core.Planning;
@@ -34,15 +36,15 @@ public sealed class SpecFingerprintsTests
     {
         var (document, spec, plan) = Pipeline(TomlFixtures.MiniMushroom, new SourceSchema(5));
 
-        var computed = SpecFingerprints.ComputeNative(document, spec, plan);
+        var computed = ComputeNative(document, spec, plan);
 
         Assert.Equal(FingerprintCalculator.ComputeSchemaFingerprint(plan), computed.SchemaFingerprint);
         Assert.Equal(
-            FingerprintCalculator.ComputeCxtOutputFingerprint(
+            ComputeCxt(
                 plan, spec, new CxtFingerprintInputs(LabelStyle.Native, BinLabelUnicode: false, LineEnding.Lf, TrailingNewline: true)),
             computed.CxtOutputFingerprint);
         Assert.Equal(
-            FingerprintCalculator.ComputeDatOutputFingerprint(
+            ComputeDat(
                 plan, spec, new DatFingerprintInputs(BaseIndex: 1, LineEnding.Lf, NonemptyLineTrailingSpace: false, EmptyLineTrailingSpace: false)),
             computed.DatOutputFingerprint);
     }
@@ -67,14 +69,14 @@ public sealed class SpecFingerprintsTests
             """;
         var (document, spec, plan) = Pipeline(toml, new SourceSchema(1));
 
-        var computed = SpecFingerprints.ComputeNative(document, spec, plan);
+        var computed = ComputeNative(document, spec, plan);
 
         Assert.Equal(
-            FingerprintCalculator.ComputeCxtOutputFingerprint(
+            ComputeCxt(
                 plan, spec, new CxtFingerprintInputs(LabelStyle.Native, BinLabelUnicode: true, LineEnding.Crlf, TrailingNewline: false)),
             computed.CxtOutputFingerprint);
         Assert.Equal(
-            FingerprintCalculator.ComputeDatOutputFingerprint(
+            ComputeDat(
                 plan, spec, new DatFingerprintInputs(BaseIndex: 0, LineEnding.Crlf, NonemptyLineTrailingSpace: true, EmptyLineTrailingSpace: true)),
             computed.DatOutputFingerprint);
     }
@@ -88,10 +90,10 @@ public sealed class SpecFingerprintsTests
         var (document, spec, plan) = Pipeline(MinimalSpec() + "\n[output.dat]\ntrailing_newline = false\n", new SourceSchema(1));
         var (defaultDoc, defaultSpec, defaultPlan) = Pipeline(MinimalSpec(), new SourceSchema(1));
 
-        var computed = SpecFingerprints.ComputeNative(document, spec, plan);
+        var computed = ComputeNative(document, spec, plan);
 
         Assert.Equal(
-            FingerprintCalculator.ComputeDatOutputFingerprint(
+            ComputeDat(
                 plan, spec,
                 new DatFingerprintInputs(BaseIndex: 1, LineEnding.Lf, NonemptyLineTrailingSpace: false, EmptyLineTrailingSpace: false)
                 {
@@ -99,7 +101,7 @@ public sealed class SpecFingerprintsTests
                 }),
             computed.DatOutputFingerprint);
         Assert.NotEqual(
-            SpecFingerprints.ComputeNative(defaultDoc, defaultSpec, defaultPlan).DatOutputFingerprint,
+            ComputeNative(defaultDoc, defaultSpec, defaultPlan).DatOutputFingerprint,
             computed.DatOutputFingerprint);
     }
 
@@ -114,8 +116,8 @@ public sealed class SpecFingerprintsTests
         var (loudDoc, loudSpec, loudPlan) = Pipeline(loud, new SourceSchema(1));
 
         Assert.Equal(
-            SpecFingerprints.ComputeNative(quietDoc, quietSpec, quietPlan),
-            SpecFingerprints.ComputeNative(loudDoc, loudSpec, loudPlan));
+            ComputeNative(quietDoc, quietSpec, quietPlan),
+            ComputeNative(loudDoc, loudSpec, loudPlan));
     }
 
     [Fact]
@@ -141,11 +143,10 @@ public sealed class SpecFingerprintsTests
                 new TripleColumnsSection(new IndexColumnRef(0), new IndexColumnRef(1), new IndexColumnRef(2))),
             defaults: defaultsPolicy is { } p ? new DefaultsSection(null, null, null, p, null, null) : null);
 
-        Assert.True(SpecResolver.Resolve(document).TryGetValue(out var spec));
-        Assert.True(ConversionPlanner.Plan(spec, new SourceSchema(3)).TryGetValue(out var plan));
-        var cxt = FingerprintCalculator.ComputeCxtOutputFingerprint(
+        var (_, spec, plan) = Prepare(document, new SourceSchema(3));
+        var cxt = ComputeCxt(
             plan, spec, new CxtFingerprintInputs(LabelStyle.Native, BinLabelUnicode: false, LineEnding.Lf, TrailingNewline: true));
-        var dat = FingerprintCalculator.ComputeDatOutputFingerprint(
+        var dat = ComputeDat(
             plan, spec, new DatFingerprintInputs(BaseIndex: 1, LineEnding.Lf, NonemptyLineTrailingSpace: false, EmptyLineTrailingSpace: false));
         return (cxt, dat);
     }
@@ -155,14 +156,14 @@ public sealed class SpecFingerprintsTests
     {
         var (document, spec, plan) = Pipeline(TomlFixtures.MiniMushroom, new SourceSchema(5));
 
-        Assert.Empty(SpecFingerprints.VerifyStored(document, SpecFingerprints.ComputeNative(document, spec, plan)));
+        Assert.Empty(VerifyStored(document, ComputeNative(document, spec, plan)));
     }
 
     [Fact]
     public void VerifyStored_WhenAllStoredMatch_ThenSilent()
     {
         var bare = Pipeline(TomlFixtures.MiniMushroom, new SourceSchema(5));
-        var computed = SpecFingerprints.ComputeNative(bare.Document, bare.Spec, bare.Plan);
+        var computed = ComputeNative(bare.Document, bare.Spec, bare.Plan);
 
         var frozen = TomlFixtures.MiniMushroom.Replace(
             "version = 1",
@@ -175,7 +176,7 @@ public sealed class SpecFingerprintsTests
             StringComparison.Ordinal);
         var (document, spec, plan) = Pipeline(frozen, new SourceSchema(5));
 
-        Assert.Empty(SpecFingerprints.VerifyStored(document, SpecFingerprints.ComputeNative(document, spec, plan)));
+        Assert.Empty(VerifyStored(document, ComputeNative(document, spec, plan)));
     }
 
     [Fact]
@@ -191,9 +192,9 @@ public sealed class SpecFingerprintsTests
             """,
             StringComparison.Ordinal);
         var (document, spec, plan) = Pipeline(frozen, new SourceSchema(5));
-        var computed = SpecFingerprints.ComputeNative(document, spec, plan);
+        var computed = ComputeNative(document, spec, plan);
 
-        var diagnostics = SpecFingerprints.VerifyStored(document, computed, "frozen.toml");
+        var diagnostics = VerifyStored(document, computed, "frozen.toml");
 
         Assert.Equal(3, diagnostics.Count);
         Assert.All(diagnostics, d => Assert.Equal(DiagnosticSeverity.Warning, d.Severity));
@@ -219,8 +220,8 @@ public sealed class SpecFingerprintsTests
             StringComparison.Ordinal);
         var (document, spec, plan) = Pipeline(frozen, new SourceSchema(5));
 
-        var diagnostics = SpecFingerprints.VerifyStored(
-            document, SpecFingerprints.ComputeNative(document, spec, plan));
+        var diagnostics = VerifyStored(
+            document, ComputeNative(document, spec, plan));
 
         var diagnostic = Assert.Single(diagnostics);
         Assert.Equal(DiagnosticCode.DatOutputFingerprintStale, diagnostic.Code);
@@ -251,8 +252,8 @@ public sealed class SpecFingerprintsTests
         var composed = ComposedPipeline(TomlFixtures.MiniMushroomDerived, new SourceSchema(5));
 
         Assert.Equal(
-            SpecFingerprints.ComputeNative(flat.Document, flat.Spec, flat.Plan),
-            SpecFingerprints.ComputeNative(composed.Document, composed.Spec, composed.Plan));
+            ComputeNative(flat.Document, flat.Spec, flat.Plan),
+            ComputeNative(composed.Document, composed.Spec, composed.Plan));
     }
 
     [Fact]
@@ -271,7 +272,7 @@ public sealed class SpecFingerprintsTests
             StringComparison.Ordinal);
         var (document, spec, plan) = ComposedPipeline(TomlFixtures.MiniMushroomDerived, new SourceSchema(5), garbageBase);
 
-        Assert.Empty(SpecFingerprints.VerifyStored(document, SpecFingerprints.ComputeNative(document, spec, plan)));
+        Assert.Empty(VerifyStored(document, ComputeNative(document, spec, plan)));
     }
 
     [Fact]
@@ -281,7 +282,7 @@ public sealed class SpecFingerprintsTests
         // verified against the composed plan: frozen values are silent, and a
         // perturbed one raises exactly its warning.
         var bare = ComposedPipeline(TomlFixtures.MiniMushroomDerived, new SourceSchema(5));
-        var computed = SpecFingerprints.ComputeNative(bare.Document, bare.Spec, bare.Plan);
+        var computed = ComputeNative(bare.Document, bare.Spec, bare.Plan);
 
         var frozen = TomlFixtures.MiniMushroomDerived.Replace(
             "version = 1",
@@ -293,13 +294,13 @@ public sealed class SpecFingerprintsTests
             """,
             StringComparison.Ordinal);
         var silent = ComposedPipeline(frozen, new SourceSchema(5));
-        Assert.Empty(SpecFingerprints.VerifyStored(
-            silent.Document, SpecFingerprints.ComputeNative(silent.Document, silent.Spec, silent.Plan)));
+        Assert.Empty(VerifyStored(
+            silent.Document, ComputeNative(silent.Document, silent.Spec, silent.Plan)));
 
         var perturbed = frozen.Replace(computed.SchemaFingerprint, "sha256:0000", StringComparison.Ordinal);
         var stale = ComposedPipeline(perturbed, new SourceSchema(5));
-        var diagnostic = Assert.Single(SpecFingerprints.VerifyStored(
-            stale.Document, SpecFingerprints.ComputeNative(stale.Document, stale.Spec, stale.Plan)));
+        var diagnostic = Assert.Single(VerifyStored(
+            stale.Document, ComputeNative(stale.Document, stale.Spec, stale.Plan)));
         Assert.Equal(DiagnosticCode.SchemaFingerprintStale, diagnostic.Code);
     }
 
@@ -317,7 +318,7 @@ public sealed class SpecFingerprintsTests
                 "sha256:6b97a3f3fcd2782781fd2420edde29259848281bfa4e887fc91258e435511f05",
                 "sha256:6e1507c6735d0d4abcd6b146930d43b33a624746bc0d995accd2eed287b5752e",
                 "sha256:2716ab601e2297bd61ee665b8361045ddc2806679498cf819b3464961715a124"),
-            SpecFingerprints.ComputeNative(document, spec, plan));
+            ComputeNative(document, spec, plan));
     }
 
     [Fact]
@@ -331,7 +332,39 @@ public sealed class SpecFingerprintsTests
                 "sha256:651b257b061eae1a2162982fab8af67816b987075bfbdc27f751248463b6798f",
                 "sha256:fecd0d102ae1dffa272237031e290e1d0429c256d8b31caac0d5ca7237296bf0",
                 "sha256:1a25e5b44a116506a705c3957a9b8a4869d008c44e96b91fb6bf5e56774377c0"),
-            SpecFingerprints.ComputeNative(document, spec, plan));
+            ComputeNative(document, spec, plan));
+    }
+
+    [Fact]
+    public void ComputeNative_WhenPlanIsFromADifferentResolution_ThenThrows()
+    {
+        // §14/D-098: ComputeNative accepts only the paired document/plan — a plan produced from a
+        // different resolution fails the reference-identity guard.
+        var a = Pipeline(TomlFixtures.MiniMushroom, new SourceSchema(5));
+        var b = Pipeline(TomlFixtures.MiniMushroom, new SourceSchema(5)); // a distinct resolution/plan
+
+        Assert.Throws<ArgumentException>(() => SpecFingerprints.ComputeNative(a.Document, b.Plan));
+    }
+
+    [Fact]
+    public void Resolve_WhenOriginalDocumentMutatedAfterResolve_ThenSnapshotAndFingerprintsUnchanged()
+    {
+        // D-098: the ResolvedDocument holds an immutable deep snapshot, so a caller mutating the
+        // original document's reader-produced collections after resolution cannot reach fingerprinting.
+        Assert.True(SpecReader.Read(TomlFixtures.MiniMushroom).TryGetValue(out var document));
+        Assert.True(SpecResolver.Resolve(document, new SourceSchema(5)).TryGetValue(out var resolvedDoc));
+        var plan = ConversionPlanner.Plan(CalibratedSpec.FromFullyDeclared(resolvedDoc.Resolved)).Value!;
+        var before = SpecFingerprints.ComputeNative(resolvedDoc, plan);
+        var snapshotCount = resolvedDoc.Document.Attributes.Count;
+
+        Assert.IsType<ImmutableArray<AttributeSection>>(resolvedDoc.Document.Attributes);
+        if (document.Attributes is List<AttributeSection> mutable)
+        {
+            mutable.Add(mutable[0]);
+        }
+
+        Assert.Equal(snapshotCount, resolvedDoc.Document.Attributes.Count);
+        Assert.Equal(before, SpecFingerprints.ComputeNative(resolvedDoc, plan));
     }
 
     private static string MinimalSpec() => """
@@ -352,25 +385,42 @@ public sealed class SpecFingerprintsTests
     private static ComputedFingerprints ComputeFor(string toml)
     {
         var (document, spec, plan) = Pipeline(toml, new SourceSchema(1));
-        return SpecFingerprints.ComputeNative(document, spec, plan);
+        return ComputeNative(document, spec, plan);
     }
 
-    private static (SpecDocument Document, BedrockSpec Spec, ConversionPlan Plan) Pipeline(
+    // ComputeNative now takes the paired ResolvedDocument (D-098); the plan carries the
+    // CalibratedSpec whose Resolution IS resolvedDoc.Resolved, so the identity guard holds. The
+    // tuple's Document field is the ResolvedDocument; these thin shims keep the prior call shapes.
+    private static ComputedFingerprints ComputeNative(ResolvedDocument document, BedrockSpec spec, ConversionPlan plan)
+    {
+        _ = spec;
+        return SpecFingerprints.ComputeNative(document, plan);
+    }
+
+    private static string ComputeCxt(ConversionPlan plan, BedrockSpec spec, CxtFingerprintInputs inputs)
+    {
+        _ = spec;
+        return FingerprintCalculator.ComputeCxtOutputFingerprint(plan, inputs);
+    }
+
+    private static string ComputeDat(ConversionPlan plan, BedrockSpec spec, DatFingerprintInputs inputs)
+    {
+        _ = spec;
+        return FingerprintCalculator.ComputeDatOutputFingerprint(plan, inputs);
+    }
+
+    private static IReadOnlyList<BedrockDiagnostic> VerifyStored(
+        ResolvedDocument document, ComputedFingerprints computed, string? file = null) =>
+        SpecFingerprints.VerifyStored(document.Document, computed, file);
+
+    private static (ResolvedDocument Document, BedrockSpec Spec, ConversionPlan Plan) Pipeline(
         string toml, SourceSchema schema)
     {
         var read = SpecReader.Read(toml);
         Assert.True(read.TryGetValue(out var document),
             string.Join("; ", read.Diagnostics.Select(d => $"{d.Code}: {d.Message}")));
 
-        var resolved = SpecResolver.Resolve(document, schema);
-        Assert.True(resolved.TryGetValue(out var spec),
-            string.Join("; ", resolved.Diagnostics.Select(d => $"{d.Code}: {d.Message}")));
-
-        var planned = ConversionPlanner.Plan(spec, schema);
-        Assert.True(planned.TryGetValue(out var plan),
-            string.Join("; ", planned.Diagnostics.Select(d => $"{d.Code}: {d.Message}")));
-
-        return (document, spec, plan);
+        return Prepare(document, schema);
     }
 
     /// <summary>
@@ -378,7 +428,7 @@ public sealed class SpecFingerprintsTests
     /// composes it over "mushroom-base.toml", then resolves and plans the
     /// composed document (D-078).
     /// </summary>
-    private static (SpecDocument Document, BedrockSpec Spec, ConversionPlan Plan) ComposedPipeline(
+    private static (ResolvedDocument Document, BedrockSpec Spec, ConversionPlan Plan) ComposedPipeline(
         string derivedToml, SourceSchema schema, string? baseToml = null)
     {
         var read = SpecReader.Read(derivedToml);
@@ -390,15 +440,23 @@ public sealed class SpecFingerprintsTests
         Assert.True(composed.TryGetValue(out var document),
             string.Join("; ", composed.Diagnostics.Select(d => $"{d.Code}: {d.Message}")));
 
+        return Prepare(document, schema);
+    }
+
+    // Resolve → fully-declared calibrated state → plan (the M4 pipeline, D-098). The plan's
+    // Calibrated.Resolution is resolvedDoc.Resolved, so ComputeNative's reference-identity guard holds.
+    private static (ResolvedDocument Document, BedrockSpec Spec, ConversionPlan Plan) Prepare(
+        SpecDocument document, SourceSchema schema)
+    {
         var resolved = SpecResolver.Resolve(document, schema);
-        Assert.True(resolved.TryGetValue(out var spec),
+        Assert.True(resolved.TryGetValue(out var resolvedDoc),
             string.Join("; ", resolved.Diagnostics.Select(d => $"{d.Code}: {d.Message}")));
 
-        var planned = ConversionPlanner.Plan(spec, schema);
+        var planned = ConversionPlanner.Plan(CalibratedSpec.FromFullyDeclared(resolvedDoc.Resolved));
         Assert.True(planned.TryGetValue(out var plan),
             string.Join("; ", planned.Diagnostics.Select(d => $"{d.Code}: {d.Message}")));
 
-        return (document, spec, plan);
+        return (resolvedDoc, resolvedDoc.Resolved.Spec, plan);
     }
 
     private sealed class SingleBaseSource(string toml) : ISpecTextSource

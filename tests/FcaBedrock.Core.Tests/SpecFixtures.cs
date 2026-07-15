@@ -11,6 +11,17 @@ internal static class SpecFixtures
 {
     public static readonly IReadOnlyDictionary<string, string> NoLabels = new Dictionary<string, string>();
 
+    // The read settings for a resolved binding (the descriptor/session pairing shape, D-098).
+    public static SourceReadSettings Settings(Binding binding) =>
+        SourceReadSettings.Create(
+            binding.Shape, binding.Encoding, binding.Delimiter, binding.QuoteChar,
+            binding.HasHeader, binding.MissingToken, binding.Ordering);
+
+    // Builds the resolution token for a hand-built spec + schema (D-098). Name bindings default
+    // to empty (the Core fixtures bind by index/predicate).
+    public static ResolvedSpec Resolve(BedrockSpec spec, SourceSchema schema, IReadOnlyList<ResolvedNameBinding>? nameBindings = null) =>
+        ResolvedSpec.Create(spec, schema, Settings(spec.Binding), nameBindings ?? []);
+
     public static Binding WideRowIndex(char delimiter = ',', bool hasHeader = true) =>
         new(SourceShape.Wide, "utf-8", delimiter, '"', hasHeader, "invariant", "?", new RowIndexObjectKey());
 

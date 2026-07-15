@@ -184,7 +184,7 @@ public sealed class UnorderedTripleEmitterTests
         var orderedSpec = new BedrockSpec(ConversionFixtures.Triple(ordering), spec.Attributes);
         var source = ConversionFixtures.TripleSourceOver(tripleData, ConversionFixtures.Triple(ordering));
         var schema = await source.GetSchemaAsync();
-        Assert.True(ConversionPlanner.Plan(orderedSpec, schema).TryGetValue(out var plan));
+        Assert.True(ConversionFixtures.PlanFor(orderedSpec, schema).TryGetValue(out var plan));
 
         var diagnostics = new List<BedrockDiagnostic>();
         var objects = new List<EmittedObject>();
@@ -200,7 +200,7 @@ public sealed class UnorderedTripleEmitterTests
     {
         var source = ConversionFixtures.TripleSourceOver(data, ConversionFixtures.Triple(TripleOrdering.Unordered));
         var schema = await source.GetSchemaAsync();
-        Assert.True(ConversionPlanner.Plan(spec, schema).TryGetValue(out var plan));
+        Assert.True(ConversionFixtures.PlanFor(spec, schema).TryGetValue(out var plan));
 
         using var stream = new MemoryStream();
         await CxtWriter.WriteAsync(

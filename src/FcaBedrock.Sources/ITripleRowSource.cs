@@ -12,6 +12,12 @@ namespace FcaBedrock.Sources;
 /// </summary>
 public interface ITripleRowSource
 {
+    /// <summary>
+    /// What this source can prove about its preparation (D-098/G-1). See
+    /// <see cref="IRecordSource.Provenance"/> — every implementor states it explicitly.
+    /// </summary>
+    SourceProvenance Provenance { get; }
+
     /// <summary>Reads source schema metadata (column count, header) without scanning rows.</summary>
     ValueTask<SourceSchema> GetSchemaAsync(CancellationToken cancellationToken = default);
 

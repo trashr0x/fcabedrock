@@ -1,8 +1,11 @@
 using System.Globalization;
 using System.Text;
+using FcaBedrock.Core.Calibration;
 using FcaBedrock.Core.Discretization;
+using FcaBedrock.Core.Planning;
 using FcaBedrock.Core.Scaling;
 using FcaBedrock.Core.Spec;
+using FcaBedrock.Diagnostics;
 using FcaBedrock.Sources;
 
 namespace FcaBedrock.Conversion.Tests;
@@ -11,6 +14,23 @@ namespace FcaBedrock.Conversion.Tests;
 // the test is self-contained (the byte-equal golden fixtures live in Golden.Tests).
 internal static class ConversionFixtures
 {
+    // Builds a plan through the M4 pipeline (resolve token → fully-declared calibrated
+    // state → plan) the way production does, so the emit-time provenance guard (D-098)
+    // pairs the plan and a source built over the same binding + schema.
+    public static Diagnosed<ConversionPlan> PlanFor(BedrockSpec spec, SourceSchema schema, LabelStyle style = LabelStyle.Native) =>
+        ConversionPlanner.Plan(CalibratedSpec.FromFullyDeclared(ResolveFor(spec, schema)), style);
+
+    // The resolved token for a hand-built spec + schema (empty name bindings — the
+    // Conversion fixtures bind by index/predicate, never by header name).
+    public static ResolvedSpec ResolveFor(BedrockSpec spec, SourceSchema schema) =>
+        ResolvedSpec.Create(
+            spec,
+            schema,
+            SourceReadSettings.Create(
+                spec.Binding.Shape, spec.Binding.Encoding, spec.Binding.Delimiter, spec.Binding.QuoteChar,
+                spec.Binding.HasHeader, spec.Binding.MissingToken, spec.Binding.Ordering),
+            []);
+
     public const string MushroomCsv =
         "class,bruises?,gill-size,veil-type,ring-number\n" +
         "e,t,b,p,n\n" +

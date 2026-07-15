@@ -46,7 +46,7 @@ public sealed class WideDedupeWriterTests
     {
         var source = ConversionFixtures.SourceOver(csv, spec.Binding);
         var schema = await source.GetSchemaAsync();
-        Assert.True(ConversionPlanner.Plan(spec, schema).TryGetValue(out var plan));
+        Assert.True(ConversionFixtures.PlanFor(spec, schema).TryGetValue(out var plan));
         return plan;
     }
 

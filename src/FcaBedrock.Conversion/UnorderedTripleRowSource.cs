@@ -31,6 +31,9 @@ internal sealed class UnorderedTripleRowSource : ITripleRowSource
         _reports = reports;
     }
 
+    /// <summary>Provenance is a property of the underlying source; grouping does not change it.</summary>
+    public SourceProvenance Provenance => _inner.Provenance;
+
     /// <summary>Schema is a property of the underlying source; grouping does not change it.</summary>
     public ValueTask<SourceSchema> GetSchemaAsync(CancellationToken cancellationToken = default) =>
         _inner.GetSchemaAsync(cancellationToken);

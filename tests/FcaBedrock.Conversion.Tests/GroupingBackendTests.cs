@@ -409,7 +409,7 @@ public sealed class GroupingBackendTests
         var orderedSpec = new BedrockSpec(ConversionFixtures.Triple(ordering), spec.Attributes);
         var source = ConversionFixtures.TripleSourceOver(data, ConversionFixtures.Triple(ordering));
         var schema = await source.GetSchemaAsync();
-        Assert.True(ConversionPlanner.Plan(orderedSpec, schema).TryGetValue(out var plan));
+        Assert.True(ConversionFixtures.PlanFor(orderedSpec, schema).TryGetValue(out var plan));
 
         var diagnostics = new List<BedrockDiagnostic>();
         var objects = new List<EmittedObject>();
@@ -444,7 +444,7 @@ public sealed class GroupingBackendTests
             [ConversionFixtures.PredicateNominal("a", "a", ["x", "y"])]);
         var source = ConversionFixtures.TripleSourceOver(data, ConversionFixtures.Triple(TripleOrdering.Unordered));
         var schema = await source.GetSchemaAsync();
-        Assert.True(ConversionPlanner.Plan(spec, schema).TryGetValue(out var plan));
+        Assert.True(ConversionFixtures.PlanFor(spec, schema).TryGetValue(out var plan));
         return (plan, source);
     }
 

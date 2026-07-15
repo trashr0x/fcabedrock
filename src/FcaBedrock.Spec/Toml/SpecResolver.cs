@@ -28,11 +28,18 @@ public static class SpecResolver
     private static readonly IReadOnlyDictionary<string, string> NoLabels = new Dictionary<string, string>();
 
     /// <summary>
-    /// Resolves <paramref name="document"/>; <paramref name="schema"/> is needed
-    /// only when something binds a column by header name (§10.2/§5.4). When it
-    /// is supplied, direct column indexes are also range-checked against it.
+    /// Resolves <paramref name="document"/> into a paired
+    /// <see cref="ResolvedDocument"/> (D-098/G-1): the resolved
+    /// <see cref="ResolvedSpec"/> token plus an immutable snapshot of the document.
+    /// <paramref name="schema"/> is needed only when something binds a column by
+    /// header name (§10.2/§5.4); when it is supplied, direct column indexes are also
+    /// range-checked against it — the conversion pipeline resolves schema-aware via
+    /// the two-stage source bootstrap, so all binding range checks are seam-owned
+    /// (G-1). Strict factories run only behind the success gate: on any Error/Fatal
+    /// the result is <see cref="Diagnosed{T}.Failed"/> and no strict factory is
+    /// called (round-7 High-1).
     /// </summary>
-    public static Diagnosed<BedrockSpec> Resolve(SpecDocument document, SourceSchema? schema = null)
+    public static Diagnosed<ResolvedDocument> Resolve(SpecDocument document, SourceSchema? schema = null)
     {
         ArgumentNullException.ThrowIfNull(document);
         if (document.Spec?.Extends is { } extends)
@@ -47,6 +54,7 @@ public static class SpecResolver
         }
 
         var diagnostics = new List<BedrockDiagnostic>();
+        var nameBindings = new List<ResolvedNameBinding>();
 
         // §2/§3: unknown versions are refused outright — nothing below is
         // meaningful under unknown semantics.
@@ -55,7 +63,7 @@ public static class SpecResolver
             diagnostics.Add(new BedrockDiagnostic(
                 DiagnosticCode.SpecVersionUnsupported, DiagnosticSeverity.Fatal,
                 "The document declares no [spec] version; a Bedrock spec must declare version = 1 (§2/§3)."));
-            return Diagnosed<BedrockSpec>.Failed(diagnostics);
+            return Diagnosed<ResolvedDocument>.Failed(diagnostics);
         }
 
         if (version != 1)
@@ -63,7 +71,7 @@ public static class SpecResolver
             diagnostics.Add(new BedrockDiagnostic(
                 DiagnosticCode.SpecVersionUnsupported, DiagnosticSeverity.Fatal,
                 $"Spec version {version} is not supported; this implementation supports version 1 (§2/§3)."));
-            return Diagnosed<BedrockSpec>.Failed(diagnostics);
+            return Diagnosed<ResolvedDocument>.Failed(diagnostics);
         }
 
         // §9/D-078: templates/matchers are carried and composed but not applied
@@ -99,7 +107,7 @@ public static class SpecResolver
                 document.Binding is null
                     ? "The document has no [binding] section (§5.1)."
                     : "[binding] declares no shape (§5.1)."));
-            return Diagnosed<BedrockSpec>.Failed(diagnostics);
+            return Diagnosed<ResolvedDocument>.Failed(diagnostics);
         }
 
         var bindingSection = document.Binding;
@@ -115,7 +123,7 @@ public static class SpecResolver
         // before the object key, because the triple object key is the resolved
         // subject column — which may be bound by header name (D-082).
         var tripleColumns = shape == SourceShape.Triple
-            ? ResolveTripleColumns(bindingSection, hasHeader, schema, diagnostics)
+            ? ResolveTripleColumns(bindingSection, hasHeader, schema, nameBindings, diagnostics)
             : null;
         var ordering = shape == SourceShape.Triple
             ? ResolveOrdering(bindingSection, diagnostics)
@@ -129,7 +137,7 @@ public static class SpecResolver
             hasHeader,
             locale,
             bindingSection.MissingToken ?? "?",
-            ResolveObjectKey(bindingSection, shape, tripleColumns?.Subject ?? 0, document.Defaults, schema, diagnostics),
+            ResolveObjectKey(bindingSection, shape, tripleColumns?.Subject ?? 0, document.Defaults, schema, nameBindings, diagnostics),
             tripleColumns,
             ordering);
 
@@ -150,13 +158,90 @@ public static class SpecResolver
                     new DiagnosticLocation(AttributeName: section.Name)));
             }
 
-            if (ResolveAttribute(section, shape, document.Defaults, schema, hasHeader, culture, diagnostics) is { } attribute)
+            if (ResolveAttribute(section, shape, document.Defaults, schema, hasHeader, culture, nameBindings, diagnostics) is { } attribute)
             {
                 attributes.Add(attribute);
             }
         }
 
-        return Finish(new BedrockSpec(binding, attributes), diagnostics);
+        return Finish(new BedrockSpec(binding, attributes), document, schema, nameBindings, diagnostics);
+    }
+
+    /// <summary>
+    /// Stage-1 bootstrap resolution (D-098/G-1): resolves only the §5.1
+    /// schema-independent read settings a source session needs before the schema is
+    /// known, via the same private helpers as full resolution (so no condition gains
+    /// a second owner). Enforces the same prefix gates as <see cref="Resolve"/> — an
+    /// authored <c>extends</c> throws <see cref="ArgumentException"/> (uncomposed), and
+    /// a missing/unsupported version returns <c>SpecVersionUnsupported</c> (Fatal) with
+    /// no settings — so the bootstrap never opens a source for a document whose
+    /// semantics are unknown. Strict factory (<see cref="SourceReadSettings.Create"/>)
+    /// runs only behind the success gate.
+    /// </summary>
+    public static Diagnosed<SourceReadSettings> ResolveReadSettings(SpecDocument document)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+        if (document.Spec?.Extends is { } extends)
+        {
+            throw new ArgumentException(
+                $"The document declares extends = \"{extends}\" and must be composed before resolving; " +
+                "apply SpecComposer.Compose first (§13, D-078).",
+                nameof(document));
+        }
+
+        var diagnostics = new List<BedrockDiagnostic>();
+
+        if (document.Spec?.Version is not { } version)
+        {
+            diagnostics.Add(new BedrockDiagnostic(
+                DiagnosticCode.SpecVersionUnsupported, DiagnosticSeverity.Fatal,
+                "The document declares no [spec] version; a Bedrock spec must declare version = 1 (§2/§3)."));
+            return Diagnosed<SourceReadSettings>.Failed(diagnostics);
+        }
+
+        if (version != 1)
+        {
+            diagnostics.Add(new BedrockDiagnostic(
+                DiagnosticCode.SpecVersionUnsupported, DiagnosticSeverity.Fatal,
+                $"Spec version {version} is not supported; this implementation supports version 1 (§2/§3)."));
+            return Diagnosed<SourceReadSettings>.Failed(diagnostics);
+        }
+
+        if (document.Binding?.Shape is not { } shape)
+        {
+            diagnostics.Add(new BedrockDiagnostic(
+                DiagnosticCode.BindingShapeMissing, DiagnosticSeverity.Error,
+                document.Binding is null
+                    ? "The document has no [binding] section (§5.1)."
+                    : "[binding] declares no shape (§5.1)."));
+            return Diagnosed<SourceReadSettings>.Failed(diagnostics);
+        }
+
+        var bindingSection = document.Binding;
+        ValidateBinding(bindingSection, diagnostics);
+        var hasHeader = bindingSection.HasHeader ?? (shape == SourceShape.Wide);
+        var encoding = ResolveEncoding(bindingSection.Encoding, diagnostics);
+        var ordering = shape == SourceShape.Triple
+            ? ResolveOrdering(bindingSection, diagnostics)
+            : (TripleOrdering?)null;
+
+        foreach (var diagnostic in diagnostics)
+        {
+            if (diagnostic.Severity is DiagnosticSeverity.Error or DiagnosticSeverity.Fatal)
+            {
+                return Diagnosed<SourceReadSettings>.Failed(diagnostics);
+            }
+        }
+
+        var settings = SourceReadSettings.Create(
+            shape,
+            encoding,
+            bindingSection.Delimiter ?? ',',
+            bindingSection.QuoteChar ?? '"',
+            hasHeader,
+            bindingSection.MissingToken ?? "?",
+            ordering);
+        return Diagnosed<SourceReadSettings>.Ok(settings, diagnostics);
     }
 
     // §5.1 (D-054/D-076): the quote check fires on the authored char only (the
@@ -208,6 +293,7 @@ public static class SpecResolver
         int subjectColumn,
         DefaultsSection? defaults,
         SourceSchema? schema,
+        List<ResolvedNameBinding> nameBindings,
         List<BedrockDiagnostic> diagnostics)
     {
         var policy = defaults?.DuplicateObjectPolicy ?? DuplicateObjectPolicy.Fail;
@@ -244,14 +330,14 @@ public static class SpecResolver
             // Columns/aggregate stay document-only (D-064); the planner owns the
             // permanent composite reject (ObjectKeyCompositeNotImplementedV1, Fatal).
             ObjectKeyMode.Composite => new CompositeObjectKey(),
-            _ => ResolveObjectKeyColumn(section.Column, schema, diagnostics) is { } index
+            _ => ResolveObjectKeyColumn(section.Column, schema, nameBindings, diagnostics) is { } index
                 ? new ColumnObjectKey(index, policy)
                 : new RowIndexObjectKey(), // placeholder; the Error fails the result
         };
     }
 
     private static int? ResolveObjectKeyColumn(
-        ColumnRef? column, SourceSchema? schema, List<BedrockDiagnostic> diagnostics)
+        ColumnRef? column, SourceSchema? schema, List<ResolvedNameBinding> nameBindings, List<BedrockDiagnostic> diagnostics)
     {
         switch (column)
         {
@@ -261,9 +347,10 @@ public static class SpecResolver
                     $"object_key column index {byIndex.Index} is negative (§5.4)."));
                 return null;
 
-            // The resolve-time upper-bound check when a schema IS supplied. When resolve runs
-            // schema-less (the conversion pipeline), the planner range-checks the resolved wide key
-            // index against the schema it has instead (ObjectKeyBindingInvalid, D-083 interim).
+            // The upper-bound check is seam-owned (G-1/D-098): the conversion pipeline now
+            // resolves schema-aware via the two-stage bootstrap, so this is the single home
+            // for the wide key-index range check. A schema-less resolve (spec tooling) leaves
+            // the upper bound unchecked; ResolvedSpec.Create is the trust-boundary backstop.
             case IndexColumnRef byIndex when schema is not null && byIndex.Index >= schema.ColumnCount:
                 diagnostics.Add(new BedrockDiagnostic(
                     DiagnosticCode.ObjectKeyBindingInvalid, DiagnosticSeverity.Error,
@@ -278,6 +365,7 @@ public static class SpecResolver
                 var index = ResolveUniqueHeader(header, byName.Name);
                 if (index >= 0)
                 {
+                    nameBindings.Add(new ObjectKeyNameBinding(byName.Name, index));
                     return index;
                 }
 
@@ -329,7 +417,8 @@ public static class SpecResolver
     // non-distinct roles are diagnosed (D-085). Placeholders keep resolution
     // going so sibling problems still surface; any Error fails the result.
     private static TripleColumns ResolveTripleColumns(
-        BindingSection binding, bool hasHeader, SourceSchema? schema, List<BedrockDiagnostic> diagnostics)
+        BindingSection binding, bool hasHeader, SourceSchema? schema,
+        List<ResolvedNameBinding> nameBindings, List<BedrockDiagnostic> diagnostics)
     {
         var section = binding.Columns;
         if (section is null)
@@ -354,9 +443,9 @@ public static class SpecResolver
             return new TripleColumns(0, 1, 2);
         }
 
-        var subject = ResolveRole(section.Subject, "subject", hasHeader, schema, diagnostics);
-        var predicate = ResolveRole(section.Predicate, "predicate", hasHeader, schema, diagnostics);
-        var value = ResolveRole(section.Value, "value", hasHeader, schema, diagnostics);
+        var subject = ResolveRole(section.Subject, TripleRole.Subject, "subject", hasHeader, schema, nameBindings, diagnostics);
+        var predicate = ResolveRole(section.Predicate, TripleRole.Predicate, "predicate", hasHeader, schema, nameBindings, diagnostics);
+        var value = ResolveRole(section.Value, TripleRole.Value, "value", hasHeader, schema, nameBindings, diagnostics);
         if (subject is null || predicate is null || value is null)
         {
             return new TripleColumns(subject ?? 0, predicate ?? 1, value ?? 2);
@@ -374,7 +463,8 @@ public static class SpecResolver
     }
 
     private static int? ResolveRole(
-        ColumnRef role, string name, bool hasHeader, SourceSchema? schema, List<BedrockDiagnostic> diagnostics)
+        ColumnRef role, TripleRole roleKind, string name, bool hasHeader, SourceSchema? schema,
+        List<ResolvedNameBinding> nameBindings, List<BedrockDiagnostic> diagnostics)
     {
         switch (role)
         {
@@ -401,6 +491,7 @@ public static class SpecResolver
                 var resolved = ResolveUniqueHeader(header, byName.Name);
                 if (resolved >= 0)
                 {
+                    nameBindings.Add(new TripleRoleNameBinding(roleKind, byName.Name, resolved));
                     return resolved;
                 }
 
@@ -442,6 +533,7 @@ public static class SpecResolver
         SourceSchema? schema,
         bool hasHeader,
         CultureInfo culture,
+        List<ResolvedNameBinding> nameBindings,
         List<BedrockDiagnostic> diagnostics)
     {
         var name = section.Name;
@@ -454,7 +546,7 @@ public static class SpecResolver
 
         var label = string.IsNullOrEmpty(name) ? "<unnamed>" : name;
         var include = section.Include ?? defaults?.Include ?? true;
-        var source = ResolveSource(section, label, shape, schema, hasHeader, diagnostics);
+        var source = ResolveSource(section, label, name, shape, schema, hasHeader, nameBindings, diagnostics);
 
         Discretizer? discretizer = null;
         Scale? scale = null;
@@ -490,9 +582,11 @@ public static class SpecResolver
     private static SourceBinding? ResolveSource(
         AttributeSection section,
         string attribute,
+        string? attributeName,
         SourceShape shape,
         SourceSchema? schema,
         bool hasHeader,
+        List<ResolvedNameBinding> nameBindings,
         List<BedrockDiagnostic> diagnostics)
     {
         switch (section.Source)
@@ -503,7 +597,7 @@ public static class SpecResolver
                 return null;
 
             case ColumnSourceSection column:
-                if (ResolveColumnIndex(column, attribute, schema, hasHeader, diagnostics) is not { } index)
+                if (ResolveColumnIndex(column, attribute, attributeName, schema, hasHeader, nameBindings, diagnostics) is not { } index)
                 {
                     return null;
                 }
@@ -534,8 +628,10 @@ public static class SpecResolver
     private static int? ResolveColumnIndex(
         ColumnSourceSection column,
         string attribute,
+        string? attributeName,
         SourceSchema? schema,
         bool hasHeader,
+        List<ResolvedNameBinding> nameBindings,
         List<BedrockDiagnostic> diagnostics)
     {
         // §10.2: exactly one of index/name.
@@ -547,8 +643,9 @@ public static class SpecResolver
                 return null;
             }
 
-            // Without a schema the width is unknown; the planner's range check
-            // remains the backstop for that window.
+            // The conversion pipeline resolves schema-aware (G-1/D-098), so this seam
+            // owns the source-index range check. A schema-less resolve (spec tooling)
+            // leaves the width unknown; ResolvedSpec.Create is the trust-boundary backstop.
             if (schema is not null && index >= schema.ColumnCount)
             {
                 AddSourceInvalid(diagnostics, attribute,
@@ -582,6 +679,14 @@ public static class SpecResolver
             var found = ResolveUniqueHeader(header, byName);
             if (found >= 0)
             {
+                // Record the site-typed name binding for the ResolvedSpec trust boundary
+                // (D-098); an empty attribute name is already an AttributeNameMissing error
+                // that fails the success gate, so the binding is never consumed there.
+                if (!string.IsNullOrEmpty(attributeName))
+                {
+                    nameBindings.Add(new AttributeSourceNameBinding(attributeName, byName, found));
+                }
+
                 return found;
             }
 
@@ -982,16 +1087,35 @@ public static class SpecResolver
         return matches switch { 1 => index, 0 => -1, _ => -2 };
     }
 
-    private static Diagnosed<BedrockSpec> Finish(BedrockSpec spec, List<BedrockDiagnostic> diagnostics)
+    // The success gate (round-7 High-1): on any Error/Fatal, fail without calling any
+    // strict factory; only on a clean pass build the read settings, the ResolvedSpec
+    // token (the trust boundary), and the document-paired wrapper. An exception beyond
+    // this gate is an implementation invariant, never a user-input channel.
+    private static Diagnosed<ResolvedDocument> Finish(
+        BedrockSpec spec,
+        SpecDocument document,
+        SourceSchema? schema,
+        List<ResolvedNameBinding> nameBindings,
+        List<BedrockDiagnostic> diagnostics)
     {
         foreach (var diagnostic in diagnostics)
         {
             if (diagnostic.Severity is DiagnosticSeverity.Error or DiagnosticSeverity.Fatal)
             {
-                return Diagnosed<BedrockSpec>.Failed(diagnostics);
+                return Diagnosed<ResolvedDocument>.Failed(diagnostics);
             }
         }
 
-        return Diagnosed<BedrockSpec>.Ok(spec, diagnostics);
+        var settings = SourceReadSettings.Create(
+            spec.Binding.Shape,
+            spec.Binding.Encoding,
+            spec.Binding.Delimiter,
+            spec.Binding.QuoteChar,
+            spec.Binding.HasHeader,
+            spec.Binding.MissingToken,
+            spec.Binding.Ordering);
+        var resolvedSpec = ResolvedSpec.Create(spec, schema, settings, nameBindings);
+        var resolvedDocument = new ResolvedDocument(DocumentSnapshot.Take(document), resolvedSpec);
+        return Diagnosed<ResolvedDocument>.Ok(resolvedDocument, diagnostics);
     }
 }

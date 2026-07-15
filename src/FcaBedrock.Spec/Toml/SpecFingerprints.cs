@@ -1,7 +1,6 @@
 using FcaBedrock.Core.Discretization;
 using FcaBedrock.Core.Fingerprinting;
 using FcaBedrock.Core.Planning;
-using FcaBedrock.Core.Spec;
 using FcaBedrock.Diagnostics;
 
 namespace FcaBedrock.Spec.Toml;
@@ -18,7 +17,8 @@ namespace FcaBedrock.Spec.Toml;
 public static class SpecFingerprints
 {
     /// <summary>
-    /// Computes the three native fingerprints for <paramref name="document"/>:
+    /// Computes the three native fingerprints for the paired
+    /// <paramref name="resolved"/> document/plan:
     /// the §8/§21 output defaults apply where <c>[output]</c> is silent
     /// (<c>lf</c>, <c>trailing_newline = true</c>, <c>base_index = 1</c>, no
     /// trailing spaces, <c>bin_label_unicode = false</c>), the label style is
@@ -30,13 +30,23 @@ public static class SpecFingerprints
     /// native label style this method hashes (see
     /// <see cref="FingerprintCalculator.ComputeCxtOutputFingerprint"/>).</para>
     /// </summary>
-    public static ComputedFingerprints ComputeNative(SpecDocument document, BedrockSpec spec, ConversionPlan plan)
+    public static ComputedFingerprints ComputeNative(ResolvedDocument resolved, ConversionPlan plan)
     {
-        ArgumentNullException.ThrowIfNull(document);
-        ArgumentNullException.ThrowIfNull(spec);
+        ArgumentNullException.ThrowIfNull(resolved);
         ArgumentNullException.ThrowIfNull(plan);
 
-        var output = document.Output;
+        // The document and the plan's spec are structurally bound at their production
+        // site: ComputeNative accepts only the paired wrapper and validates that the
+        // plan was produced from this resolution (D-098). The shared inputs come from
+        // the plan's calibrated (effective) spec, read inside FingerprintCalculator.
+        if (!ReferenceEquals(resolved.Resolved, plan.Calibrated.Resolution))
+        {
+            throw new ArgumentException(
+                "The plan was not produced from this resolution; ComputeNative requires the paired document/plan (§14/D-098).",
+                nameof(plan));
+        }
+
+        var output = resolved.Document.Output;
         var cxt = new CxtFingerprintInputs(
             LabelStyle.Native,
             output?.BinLabelUnicode ?? false,
@@ -53,8 +63,8 @@ public static class SpecFingerprints
 
         return new ComputedFingerprints(
             FingerprintCalculator.ComputeSchemaFingerprint(plan),
-            FingerprintCalculator.ComputeCxtOutputFingerprint(plan, spec, cxt),
-            FingerprintCalculator.ComputeDatOutputFingerprint(plan, spec, dat));
+            FingerprintCalculator.ComputeCxtOutputFingerprint(plan, cxt),
+            FingerprintCalculator.ComputeDatOutputFingerprint(plan, dat));
     }
 
     /// <summary>

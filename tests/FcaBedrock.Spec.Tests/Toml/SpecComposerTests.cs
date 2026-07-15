@@ -1,3 +1,4 @@
+using FcaBedrock.Core.Calibration;
 using FcaBedrock.Core.Planning;
 using FcaBedrock.Core.Spec;
 using FcaBedrock.Diagnostics;
@@ -15,6 +16,25 @@ namespace FcaBedrock.Spec.Tests.Toml;
 /// </summary>
 public sealed class SpecComposerTests
 {
+    // Resolve now returns Diagnosed<ResolvedDocument> (D-098); unwrap to the BedrockSpec for
+    // the composition assertions, and plan the M4 way (fully-declared calibrated state).
+    private static Diagnosed<BedrockSpec> Resolve(SpecDocument document, SourceSchema? schema = null)
+    {
+        var resolved = SpecResolver.Resolve(document, schema);
+        return resolved.TryGetValue(out var doc)
+            ? Diagnosed<BedrockSpec>.Ok(doc.Resolved.Spec, resolved.Diagnostics)
+            : Diagnosed<BedrockSpec>.Failed(resolved.Diagnostics);
+    }
+
+    private static Diagnosed<ConversionPlan> Plan(BedrockSpec spec, SourceSchema schema) =>
+        ConversionPlanner.Plan(CalibratedSpec.FromFullyDeclared(
+            ResolvedSpec.Create(
+                spec, schema,
+                SourceReadSettings.Create(
+                    spec.Binding.Shape, spec.Binding.Encoding, spec.Binding.Delimiter, spec.Binding.QuoteChar,
+                    spec.Binding.HasHeader, spec.Binding.MissingToken, spec.Binding.Ordering),
+                [])));
+
     // --- Chain mechanics ---
 
     [Fact]
@@ -290,7 +310,7 @@ public sealed class SpecComposerTests
             "[[attribute]]\nname = \"a\"\nsource = { kind = \"column\", index = 0 }\ninclude = false\n");
 
         var composed = ComposeOk(root, "derived.toml", source);
-        var resolved = SpecResolver.Resolve(composed);
+        var resolved = Resolve(composed);
 
         Assert.True(resolved.TryGetValue(out var spec));
         Assert.Equal(["a", "keep"], spec.Attributes.Select(a => a.Name)); // position preserved
@@ -313,7 +333,7 @@ public sealed class SpecComposerTests
         var composed = ComposeOk(root, "derived.toml", source);
 
         Assert.Equal(["a", "a"], composed.Attributes.Select(a => a.Name));
-        var resolved = SpecResolver.Resolve(composed);
+        var resolved = Resolve(composed);
         Assert.False(resolved.TryGetValue(out _));
         Assert.Contains(resolved.Diagnostics, d => d.Code == DiagnosticCode.AttributeNameDuplicate);
     }
@@ -375,11 +395,11 @@ public sealed class SpecComposerTests
         var composed = ComposeOk(root, "derived.toml", source);
 
         Assert.Equal(TripleOrdering.Unordered, composed.Binding?.Ordering);
-        Assert.True(SpecResolver.Resolve(composed).TryGetValue(out var spec));
+        Assert.True(Resolve(composed).TryGetValue(out var spec));
         Assert.Equal(SourceShape.Triple, spec.Binding.Shape);
         Assert.NotEmpty(spec.Attributes);
 
-        var plan = ConversionPlanner.Plan(spec, new SourceSchema(3));
+        var plan = Plan(spec, new SourceSchema(3));
         Assert.False(plan.HasErrors);
     }
 

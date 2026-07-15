@@ -1,3 +1,4 @@
+using FcaBedrock.Core.Calibration;
 using FcaBedrock.Core.Discretization;
 using FcaBedrock.Core.Planning;
 using FcaBedrock.Core.Scaling;
@@ -9,12 +10,34 @@ namespace FcaBedrock.Spec.Tests.Toml;
 
 public sealed class SpecResolverTests
 {
+    // Resolve now returns Diagnosed<ResolvedDocument> (D-098); these tests assert over the
+    // resolved BedrockSpec and diagnostics, so this helper unwraps the token's spec. A schema-less
+    // resolve produces a schema-less token (legal for spec tooling); an authored extends still throws.
+    private static Diagnosed<BedrockSpec> Resolve(SpecDocument document, SourceSchema? schema = null)
+    {
+        var resolved = SpecResolver.Resolve(document, schema);
+        return resolved.TryGetValue(out var doc)
+            ? Diagnosed<BedrockSpec>.Ok(doc.Resolved.Spec, resolved.Diagnostics)
+            : Diagnosed<BedrockSpec>.Failed(resolved.Diagnostics);
+    }
+
+    // Plans a resolved spec + schema the M4 way (fully-declared calibrated state, D-098) for the
+    // determinism-bridge tests; these fixtures are fully-declared.
+    private static Diagnosed<ConversionPlan> Plan(BedrockSpec spec, SourceSchema schema) =>
+        ConversionPlanner.Plan(CalibratedSpec.FromFullyDeclared(
+            ResolvedSpec.Create(
+                spec, schema,
+                SourceReadSettings.Create(
+                    spec.Binding.Shape, spec.Binding.Encoding, spec.Binding.Delimiter, spec.Binding.QuoteChar,
+                    spec.Binding.HasHeader, spec.Binding.MissingToken, spec.Binding.Ordering),
+                [])));
+
     // --- Happy paths ---
 
     [Fact]
     public void Resolve_WhenMinimalWideDocument_ThenBindingAndPolicyDefaultsApply()
     {
-        var result = SpecResolver.Resolve(DocumentFixtures.Document([DocumentFixtures.Nominal("g", 0, ["b"])]));
+        var result = Resolve(DocumentFixtures.Document([DocumentFixtures.Nominal("g", 0, ["b"])]));
 
         Assert.True(result.TryGetValue(out var spec));
         Assert.Empty(result.Diagnostics);
@@ -46,7 +69,7 @@ public sealed class SpecResolverTests
         var document = DocumentFixtures.Document(
             [DocumentFixtures.Attribute("x", DocumentFixtures.Column(0))], defaults: defaults);
 
-        var result = SpecResolver.Resolve(document);
+        var result = Resolve(document);
 
         Assert.True(result.TryGetValue(out var spec));
         var x = Assert.Single(spec.Attributes);
@@ -62,7 +85,7 @@ public sealed class SpecResolverTests
             [DocumentFixtures.Attribute("age", DocumentFixtures.NamedColumn("age"),
                 discretizer: new IdentityDiscretizerSection(), scale: new NominalScaleSection())]);
 
-        var result = SpecResolver.Resolve(document, new SourceSchema(2, ["id", "age"]));
+        var result = Resolve(document, new SourceSchema(2, ["id", "age"]));
 
         Assert.True(result.TryGetValue(out var spec));
         Assert.Equal(1, Assert.IsType<ColumnSource>(Assert.Single(spec.Attributes).Source).Index);
@@ -79,7 +102,7 @@ public sealed class SpecResolverTests
             [DocumentFixtures.Attribute("a", DocumentFixtures.Column(0),
                 discretizer: Discretizer(kind), scale: new NominalScaleSection())]);
 
-        var result = SpecResolver.Resolve(document);
+        var result = Resolve(document);
 
         Assert.True(result.TryGetValue(out var spec));
         Assert.Equal(expected, Assert.IsType<ColumnSource>(Assert.Single(spec.Attributes).Source).ValueType);
@@ -95,7 +118,7 @@ public sealed class SpecResolverTests
             [DocumentFixtures.Attribute("a", DocumentFixtures.Column(0, SourceValueType.String),
                 include: false, discretizer: Discretizer("manual_cuts"), scale: new NominalScaleSection())]);
 
-        var result = SpecResolver.Resolve(document);
+        var result = Resolve(document);
 
         Assert.True(result.TryGetValue(out var spec));
         Assert.Empty(result.Diagnostics);
@@ -113,9 +136,9 @@ public sealed class SpecResolverTests
             Include: null, MissingPolicy: null, UnknownValuePolicy: null, DuplicateObjectPolicy: null,
             OrdinalDirection.Le, OrdinalBoundary.Strict);
 
-        Assert.True(SpecResolver.Resolve(DocumentFixtures.Document([ordinal], defaults: defaults))
+        Assert.True(Resolve(DocumentFixtures.Document([ordinal], defaults: defaults))
             .TryGetValue(out var withDefaults));
-        Assert.True(SpecResolver.Resolve(DocumentFixtures.Document([ordinal])).TryGetValue(out var withoutDefaults));
+        Assert.True(Resolve(DocumentFixtures.Document([ordinal])).TryGetValue(out var withoutDefaults));
 
         var filled = Assert.IsType<OrdinalScale>(Assert.Single(withDefaults.Attributes).Scale);
         Assert.Equal(OrdinalDirection.Le, filled.Direction);
@@ -138,7 +161,7 @@ public sealed class SpecResolverTests
             Include: null, MissingPolicy: null, UnknownValuePolicy: null, DuplicateObjectPolicy: null,
             OrdinalDirection.Le, OrdinalBoundary.Strict);
 
-        Assert.True(SpecResolver.Resolve(DocumentFixtures.Document([ordinal], defaults: defaults))
+        Assert.True(Resolve(DocumentFixtures.Document([ordinal], defaults: defaults))
             .TryGetValue(out var spec));
 
         var scale = Assert.IsType<OrdinalScale>(Assert.Single(spec.Attributes).Scale);
@@ -157,7 +180,7 @@ public sealed class SpecResolverTests
         var document = DocumentFixtures.Document(
             binding: DocumentFixtures.WideBinding(objectKey: objectKey), defaults: defaults);
 
-        Assert.True(SpecResolver.Resolve(document).TryGetValue(out var spec));
+        Assert.True(Resolve(document).TryGetValue(out var spec));
 
         var key = Assert.IsType<ColumnObjectKey>(spec.Binding.ObjectKey);
         Assert.Equal(0, key.Index);
@@ -170,7 +193,7 @@ public sealed class SpecResolverTests
         var objectKey = new ObjectKeySection(ObjectKeyMode.Column, new NameColumnRef("id"), Columns: null, Aggregate: null);
         var document = DocumentFixtures.Document(binding: DocumentFixtures.WideBinding(objectKey: objectKey));
 
-        Assert.True(SpecResolver.Resolve(document, new SourceSchema(2, ["id", "age"])).TryGetValue(out var spec));
+        Assert.True(Resolve(document, new SourceSchema(2, ["id", "age"])).TryGetValue(out var spec));
 
         var key = Assert.IsType<ColumnObjectKey>(spec.Binding.ObjectKey);
         Assert.Equal(0, key.Index); // resolved by header name
@@ -189,7 +212,7 @@ public sealed class SpecResolverTests
                 discretizer: Discretizer("identity"), scale: new DichotomicScaleSection(TrueValue: null)),
         ]);
 
-        var result = SpecResolver.Resolve(document);
+        var result = Resolve(document);
 
         Assert.True(result.TryGetValue(out var spec));
         Assert.Empty(result.Diagnostics);
@@ -212,7 +235,7 @@ public sealed class SpecResolverTests
             binding: DocumentFixtures.TripleBinding(
                 new TripleColumnsSection(new IndexColumnRef(1), new IndexColumnRef(2), new IndexColumnRef(3))));
 
-        var result = SpecResolver.Resolve(document);
+        var result = Resolve(document);
 
         Assert.True(result.TryGetValue(out var spec));
         Assert.Empty(result.Diagnostics);
@@ -240,7 +263,7 @@ public sealed class SpecResolverTests
             DocumentFixtures.Nominal("authoredEmpty", 1, domain: []),
         ]);
 
-        Assert.True(SpecResolver.Resolve(document).TryGetValue(out var spec));
+        Assert.True(Resolve(document).TryGetValue(out var spec));
 
         Assert.All(spec.Attributes, a => Assert.Empty(a.DeclaredDomain));
     }
@@ -257,7 +280,7 @@ public sealed class SpecResolverTests
                 discretizer: Discretizer("identity"), scale: new NominalScaleSection(),
                 declaredDomain: ["a", "b"], restrictTo: restrict)]);
 
-        Assert.True(SpecResolver.Resolve(document).TryGetValue(out var spec));
+        Assert.True(Resolve(document).TryGetValue(out var spec));
 
         Assert.Equal(restrict, Assert.Single(spec.Attributes).RestrictTo);
     }
@@ -270,7 +293,7 @@ public sealed class SpecResolverTests
             [DocumentFixtures.Attribute("x", DocumentFixtures.Column(0),
                 discretizer: Discretizer("manual_cuts"), scale: new NominalScaleSection(), restrictTo: restrict)]);
 
-        Assert.True(SpecResolver.Resolve(document).TryGetValue(out var spec));
+        Assert.True(Resolve(document).TryGetValue(out var spec));
 
         Assert.Equal(restrict, Assert.Single(spec.Attributes).RestrictTo);
     }
@@ -285,7 +308,7 @@ public sealed class SpecResolverTests
                 discretizer: new ManualCutsDiscretizerSection([50.0, 30.0], Ends: null),
                 scale: new NominalScaleSection())]);
 
-        var result = SpecResolver.Resolve(document);
+        var result = Resolve(document);
 
         Assert.True(result.HasErrors);
         var diagnostic = Assert.Single(result.Diagnostics, d => d.Code == DiagnosticCode.DiscretizerCutsNotAscending);
@@ -302,7 +325,7 @@ public sealed class SpecResolverTests
         // input to Resolve — compose first (§13, D-078).
         var document = DocumentFixtures.Document(spec: DocumentFixtures.SpecV1(extends: "base.toml"));
 
-        var exception = Assert.Throws<ArgumentException>(() => SpecResolver.Resolve(document));
+        var exception = Assert.Throws<ArgumentException>(() => Resolve(document));
         Assert.Contains("SpecComposer.Compose", exception.Message, StringComparison.Ordinal);
     }
 
@@ -317,7 +340,7 @@ public sealed class SpecResolverTests
                 new MatcherSection(new MatchSection(null, [0, 1]), "t"),
             ]);
 
-        var result = SpecResolver.Resolve(document);
+        var result = Resolve(document);
 
         var diagnostic = Assert.Single(result.Diagnostics);
         Assert.Equal(DiagnosticCode.TemplateMatcherNotImplementedV1, diagnostic.Code);
@@ -340,7 +363,7 @@ public sealed class SpecResolverTests
                 declaredDomain: ["z"]),
         ]);
 
-        var result = SpecResolver.Resolve(document);
+        var result = Resolve(document);
 
         var rejects = result.Diagnostics.Where(d => d.Code == DiagnosticCode.TemplateMatcherNotImplementedV1).ToList();
         Assert.Equal(["a", "c"], rejects.Select(d => d.Location?.AttributeName));
@@ -360,7 +383,7 @@ public sealed class SpecResolverTests
                     new NominalScaleSection(), ["x"], null, null, null, null),
             ]);
 
-        var result = SpecResolver.Resolve(document);
+        var result = Resolve(document);
 
         Assert.True(result.TryGetValue(out var spec));
         Assert.Empty(result.Diagnostics);
@@ -376,7 +399,7 @@ public sealed class SpecResolverTests
             DocumentFixtures.SpecV1(), null, null, null, null,
             [], [new MatcherSection(new MatchSection("^a$", null), "t")], []);
 
-        var result = SpecResolver.Resolve(document);
+        var result = Resolve(document);
 
         Assert.Contains(result.Diagnostics, d => d.Code == DiagnosticCode.TemplateMatcherNotImplementedV1);
         Assert.Contains(result.Diagnostics, d => d.Code == DiagnosticCode.BindingShapeMissing);
@@ -392,7 +415,7 @@ public sealed class SpecResolverTests
 
         foreach (var document in new[] { noSpec, noVersion })
         {
-            var result = SpecResolver.Resolve(document);
+            var result = Resolve(document);
 
             var diagnostic = Assert.Single(result.Diagnostics);
             Assert.Equal(DiagnosticCode.SpecVersionUnsupported, diagnostic.Code);
@@ -404,7 +427,7 @@ public sealed class SpecResolverTests
     [Fact]
     public void Resolve_WhenVersionUnknown_ThenSpecVersionUnsupportedFatal()
     {
-        var result = SpecResolver.Resolve(DocumentFixtures.Document(spec: DocumentFixtures.SpecV1(version: 2)));
+        var result = Resolve(DocumentFixtures.Document(spec: DocumentFixtures.SpecV1(version: 2)));
 
         var diagnostic = Assert.Single(result.Diagnostics);
         Assert.Equal(DiagnosticCode.SpecVersionUnsupported, diagnostic.Code);
@@ -421,7 +444,7 @@ public sealed class SpecResolverTests
 
         foreach (var document in new[] { noBinding, noShape })
         {
-            var result = SpecResolver.Resolve(document);
+            var result = Resolve(document);
 
             Assert.Equal(DiagnosticCode.BindingShapeMissing, Assert.Single(result.Diagnostics).Code);
             Assert.False(result.TryGetValue(out _));
@@ -453,7 +476,7 @@ public sealed class SpecResolverTests
                     discretizer: Discretizer("identity"), scale: new NominalScaleSection())],
                 binding: binding);
 
-            var result = SpecResolver.Resolve(document, schema);
+            var result = Resolve(document, schema);
 
             var diagnostic = Assert.Single(result.Diagnostics);
             Assert.True(DiagnosticCode.SourceBindingInvalid == diagnostic.Code, $"case '{name}': {diagnostic.Message}");
@@ -468,7 +491,7 @@ public sealed class SpecResolverTests
             var document = DocumentFixtures.Document([DocumentFixtures.Attribute(name, DocumentFixtures.Column(0),
                 discretizer: Discretizer("identity"), scale: new NominalScaleSection())]);
 
-            var result = SpecResolver.Resolve(document);
+            var result = Resolve(document);
 
             Assert.Equal(DiagnosticCode.AttributeNameMissing, Assert.Single(result.Diagnostics).Code);
         }
@@ -490,7 +513,7 @@ public sealed class SpecResolverTests
             var document = DocumentFixtures.Document(
                 [DocumentFixtures.Attribute("a", DocumentFixtures.Column(0), discretizer: discretizer, scale: scale)]);
 
-            var result = SpecResolver.Resolve(document);
+            var result = Resolve(document);
 
             var diagnostic = Assert.Single(result.Diagnostics);
             Assert.True(DiagnosticCode.AttributeScalingMissing == diagnostic.Code, $"case '{name}': {diagnostic.Message}");
@@ -502,7 +525,7 @@ public sealed class SpecResolverTests
     {
         var document = DocumentFixtures.Document(binding: DocumentFixtures.WideBinding(locale: "xx-nope"));
 
-        var result = SpecResolver.Resolve(document);
+        var result = Resolve(document);
 
         Assert.Equal(DiagnosticCode.BindingLocaleInvalid, Assert.Single(result.Diagnostics).Code);
         Assert.False(result.TryGetValue(out _));
@@ -526,7 +549,7 @@ public sealed class SpecResolverTests
         {
             var document = DocumentFixtures.Document(binding: DocumentFixtures.WideBinding(objectKey: section));
 
-            var result = SpecResolver.Resolve(document, schema);
+            var result = Resolve(document, schema);
 
             var diagnostic = Assert.Single(result.Diagnostics);
             Assert.True(DiagnosticCode.ObjectKeyBindingInvalid == diagnostic.Code, $"case '{name}': {diagnostic.Message}");
@@ -545,7 +568,7 @@ public sealed class SpecResolverTests
         ],
         binding: DocumentFixtures.WideBinding(locale: "xx-nope"));
 
-        var result = SpecResolver.Resolve(document);
+        var result = Resolve(document);
 
         Assert.True(result.HasErrors);
         Assert.Contains(result.Diagnostics, d => d.Code == DiagnosticCode.BindingLocaleInvalid);
@@ -563,7 +586,7 @@ public sealed class SpecResolverTests
         // other than the standard double quote at the seam.
         var document = DocumentFixtures.Document(binding: DocumentFixtures.WideBinding(quoteChar: '\''));
 
-        var result = SpecResolver.Resolve(document);
+        var result = Resolve(document);
 
         Assert.Equal(DiagnosticCode.QuoteCharNotSupportedV1, Assert.Single(result.Diagnostics).Code);
         Assert.False(result.TryGetValue(out _));
@@ -574,7 +597,7 @@ public sealed class SpecResolverTests
     {
         var document = DocumentFixtures.Document(binding: DocumentFixtures.WideBinding(quoteChar: '"'));
 
-        var result = SpecResolver.Resolve(document);
+        var result = Resolve(document);
 
         Assert.True(result.TryGetValue(out _));
         Assert.Empty(result.Diagnostics);
@@ -587,7 +610,7 @@ public sealed class SpecResolverTests
         // delimiter collides with the defaulted quote.
         var document = DocumentFixtures.Document(binding: DocumentFixtures.WideBinding(delimiter: '"'));
 
-        var result = SpecResolver.Resolve(document);
+        var result = Resolve(document);
 
         Assert.Equal(DiagnosticCode.BindingDelimiterQuoteConflict, Assert.Single(result.Diagnostics).Code);
         Assert.False(result.TryGetValue(out _));
@@ -601,7 +624,7 @@ public sealed class SpecResolverTests
         var document = DocumentFixtures.Document(
             binding: DocumentFixtures.WideBinding(delimiter: '|', quoteChar: '|'));
 
-        var result = SpecResolver.Resolve(document);
+        var result = Resolve(document);
 
         Assert.Contains(result.Diagnostics, d => d.Code == DiagnosticCode.QuoteCharNotSupportedV1);
         Assert.Contains(result.Diagnostics, d => d.Code == DiagnosticCode.BindingDelimiterQuoteConflict);
@@ -621,7 +644,7 @@ public sealed class SpecResolverTests
             [DocumentFixtures.Attribute("a", DocumentFixtures.Column(0, authored),
                 discretizer: Discretizer(kind), scale: new NominalScaleSection(), declaredDomain: ["x"])]);
 
-        var result = SpecResolver.Resolve(document);
+        var result = Resolve(document);
 
         var diagnostic = Assert.Single(result.Diagnostics);
         Assert.Equal(DiagnosticCode.SourceValueTypeInvalid, diagnostic.Code);
@@ -639,7 +662,7 @@ public sealed class SpecResolverTests
             [DocumentFixtures.Attribute("a", DocumentFixtures.Column(0, authored),
                 discretizer: Discretizer(kind), scale: new NominalScaleSection(), declaredDomain: ["x"])]);
 
-        var result = SpecResolver.Resolve(document);
+        var result = Resolve(document);
 
         Assert.True(result.TryGetValue(out _));
         Assert.Empty(result.Diagnostics);
@@ -655,7 +678,7 @@ public sealed class SpecResolverTests
                 discretizer: Discretizer("manual_cuts"), scale: new NominalScaleSection(),
                 restrictTo: [new RestrictToValue("young")])]);
 
-        var result = SpecResolver.Resolve(document);
+        var result = Resolve(document);
 
         var diagnostic = Assert.Single(result.Diagnostics);
         Assert.Equal(DiagnosticCode.RestrictToOnNumericRequiresRange, diagnostic.Code);
@@ -672,7 +695,7 @@ public sealed class SpecResolverTests
                 discretizer: Discretizer("identity"), scale: new NominalScaleSection(),
                 declaredDomain: ["a"], restrictTo: [new RestrictToRange(1, 5)])]);
 
-        var result = SpecResolver.Resolve(document);
+        var result = Resolve(document);
 
         Assert.Equal(DiagnosticCode.SourceValueTypeInvalid, Assert.Single(result.Diagnostics).Code);
     }
@@ -687,7 +710,7 @@ public sealed class SpecResolverTests
             [DocumentFixtures.Attribute("age", DocumentFixtures.Column(0), include: false,
                 discretizer: Discretizer("manual_cuts"), restrictTo: [new RestrictToValue("young")])]);
 
-        var result = SpecResolver.Resolve(document);
+        var result = Resolve(document);
 
         Assert.Equal(DiagnosticCode.RestrictToOnNumericRequiresRange, Assert.Single(result.Diagnostics).Code);
     }
@@ -701,7 +724,7 @@ public sealed class SpecResolverTests
             [DocumentFixtures.Attribute("Gene", DocumentFixtures.Column(0), include: false,
                 restrictTo: [new RestrictToValue("Bmp5")])]);
 
-        var result = SpecResolver.Resolve(document);
+        var result = Resolve(document);
 
         Assert.True(result.TryGetValue(out _));
         Assert.Empty(result.Diagnostics);
@@ -717,7 +740,7 @@ public sealed class SpecResolverTests
                 declaredDomain: ["Bachelors", "Masters"],
                 restrictTo: [new RestrictToValue("Bachelors"), new RestrictToValue("Bachelor")])]);
 
-        var result = SpecResolver.Resolve(document);
+        var result = Resolve(document);
 
         Assert.True(result.TryGetValue(out _));
         var diagnostic = Assert.Single(result.Diagnostics);
@@ -738,7 +761,7 @@ public sealed class SpecResolverTests
                     discretizer: Discretizer("identity"), scale: new NominalScaleSection(),
                     declaredDomain: domain, restrictTo: [new RestrictToValue("x")])]);
 
-            var result = SpecResolver.Resolve(document);
+            var result = Resolve(document);
 
             Assert.True(result.TryGetValue(out _));
             Assert.Empty(result.Diagnostics);
@@ -755,7 +778,7 @@ public sealed class SpecResolverTests
                 discretizer: Discretizer("identity"),
                 declaredDomain: ["Bachelors"], restrictTo: [new RestrictToValue("nope")])]);
 
-        var result = SpecResolver.Resolve(document);
+        var result = Resolve(document);
 
         Assert.True(result.TryGetValue(out _));
         Assert.Empty(result.Diagnostics);
@@ -772,7 +795,7 @@ public sealed class SpecResolverTests
                 discretizer: Discretizer(kind),
                 scale: new OrdinalScaleSection(Direction: null, Boundary: null, Order: ["lo", "hi"], DropTop: null))]);
 
-        var result = SpecResolver.Resolve(document);
+        var result = Resolve(document);
 
         var diagnostic = Assert.Single(result.Diagnostics);
         Assert.Equal(DiagnosticCode.OrdinalOrderNotAllowedWithCuts, diagnostic.Code);
@@ -789,7 +812,7 @@ public sealed class SpecResolverTests
                 discretizer: Discretizer("manual_cuts"),
                 scale: new OrdinalScaleSection(Direction: null, Boundary: null, Order: [], DropTop: null))]);
 
-        var result = SpecResolver.Resolve(document);
+        var result = Resolve(document);
 
         Assert.Equal(DiagnosticCode.OrdinalOrderNotAllowedWithCuts, Assert.Single(result.Diagnostics).Code);
     }
@@ -807,7 +830,7 @@ public sealed class SpecResolverTests
                 discretizer: Discretizer("manual_cuts"),
                 scale: new OrdinalScaleSection(direction, boundary, Order: null, DropTop: null))]);
 
-        var result = SpecResolver.Resolve(document);
+        var result = Resolve(document);
 
         Assert.Equal(DiagnosticCode.OrdinalBoundaryIncompatibleWithCuts, Assert.Single(result.Diagnostics).Code);
     }
@@ -826,7 +849,7 @@ public sealed class SpecResolverTests
                 scale: new OrdinalScaleSection(Direction: null, OrdinalBoundary.Inclusive, Order: null, DropTop: null))],
             defaults: defaults);
 
-        var result = SpecResolver.Resolve(document);
+        var result = Resolve(document);
 
         Assert.Equal(DiagnosticCode.OrdinalBoundaryIncompatibleWithCuts, Assert.Single(result.Diagnostics).Code);
     }
@@ -846,7 +869,7 @@ public sealed class SpecResolverTests
                 scale: new OrdinalScaleSection(OrdinalDirection.Ge, Boundary: null, Order: null, DropTop: null))],
             defaults: defaults);
 
-        var result = SpecResolver.Resolve(document);
+        var result = Resolve(document);
 
         Assert.True(result.TryGetValue(out var spec));
         Assert.Empty(result.Diagnostics);
@@ -866,7 +889,7 @@ public sealed class SpecResolverTests
                 discretizer: Discretizer("manual_cuts"),
                 scale: new OrdinalScaleSection(direction, boundary, Order: null, DropTop: null))]);
 
-        var result = SpecResolver.Resolve(document);
+        var result = Resolve(document);
 
         Assert.True(result.TryGetValue(out _));
         Assert.Empty(result.Diagnostics);
@@ -882,7 +905,7 @@ public sealed class SpecResolverTests
                 discretizer: Discretizer("manual_cuts"),
                 scale: new OrdinalScaleSection(OrdinalDirection.Ge, OrdinalBoundary.Strict, Order: ["x"], DropTop: null))]);
 
-        var result = SpecResolver.Resolve(document);
+        var result = Resolve(document);
 
         Assert.True(result.TryGetValue(out _));
         Assert.Empty(result.Diagnostics);
@@ -899,7 +922,7 @@ public sealed class SpecResolverTests
             new TripleColumnsSection(new IndexColumnRef(0), new IndexColumnRef(1), new IndexColumnRef(2)), objectKey);
         var document = DocumentFixtures.Document(binding: binding);
 
-        var result = SpecResolver.Resolve(document);
+        var result = Resolve(document);
 
         Assert.Equal(DiagnosticCode.ObjectKeyModeInvalidForShape, Assert.Single(result.Diagnostics).Code);
         Assert.False(result.TryGetValue(out _));
@@ -914,7 +937,7 @@ public sealed class SpecResolverTests
         var document = DocumentFixtures.Document(
             [DocumentFixtures.Nominal("dup", 0, ["a"]), DocumentFixtures.Nominal("dup", 1, ["b"])]);
 
-        var result = SpecResolver.Resolve(document);
+        var result = Resolve(document);
 
         Assert.False(result.TryGetValue(out _));
         Assert.Equal("dup", Assert.Single(
@@ -931,7 +954,7 @@ public sealed class SpecResolverTests
             DocumentFixtures.Nominal("dup", 2, ["c"]),
         ]);
 
-        var result = SpecResolver.Resolve(document);
+        var result = Resolve(document);
 
         Assert.Equal(2, result.Diagnostics.Count(d => d.Code == DiagnosticCode.AttributeNameDuplicate));
     }
@@ -950,7 +973,7 @@ public sealed class SpecResolverTests
                 discretizer: new IdentityDiscretizerSection(), scale: new NominalScaleSection(), declaredDomain: ["b"]),
         ]);
 
-        var result = SpecResolver.Resolve(document);
+        var result = Resolve(document);
 
         Assert.Contains(result.Diagnostics, d => d.Code == DiagnosticCode.AttributeNameDuplicate);
         Assert.Contains(result.Diagnostics, d => d.Code == DiagnosticCode.SourceBindingInvalid);
@@ -963,7 +986,7 @@ public sealed class SpecResolverTests
         var document = DocumentFixtures.Document(
             [DocumentFixtures.Nominal("g", 0, ["b", "n"], new Dictionary<string, string> { ["x"] = "broad" })]);
 
-        var result = SpecResolver.Resolve(document);
+        var result = Resolve(document);
 
         Assert.False(result.TryGetValue(out _));
         Assert.Equal("g", Assert.Single(
@@ -981,7 +1004,7 @@ public sealed class SpecResolverTests
                 scale: new NominalScaleSection(),
                 valueLabels: new Dictionary<string, string> { ["old"] = "Old label" })]);
 
-        var result = SpecResolver.Resolve(document);
+        var result = Resolve(document);
 
         Assert.True(result.TryGetValue(out _));
         Assert.DoesNotContain(result.Diagnostics, d => d.Code == DiagnosticCode.ValueLabelKeyNotInDomain);
@@ -997,7 +1020,7 @@ public sealed class SpecResolverTests
                 discretizer: new IdentityDiscretizerSection(), scale: new NominalScaleSection(),
                 declaredDomain: ["b"], valueLabels: new Dictionary<string, string> { ["x"] = "stale" })]);
 
-        var result = SpecResolver.Resolve(document);
+        var result = Resolve(document);
 
         Assert.True(result.TryGetValue(out _));
         Assert.Empty(result.Diagnostics);
@@ -1014,7 +1037,7 @@ public sealed class SpecResolverTests
             DocumentFixtures.Nominal("g", 1, ["b"], new Dictionary<string, string> { ["x"] = "stale" }),
         ]);
 
-        var result = SpecResolver.Resolve(document);
+        var result = Resolve(document);
 
         Assert.Contains(result.Diagnostics, d => d.Code == DiagnosticCode.AttributeNameDuplicate);
         Assert.Contains(result.Diagnostics, d => d.Code == DiagnosticCode.ValueLabelKeyNotInDomain);
@@ -1035,7 +1058,7 @@ public sealed class SpecResolverTests
             [DocumentFixtures.Attribute("edu", DocumentFixtures.Column(0),
                 discretizer: new IdentityDiscretizerSection(), scale: OrdinalOrder(["a", "a"]), declaredDomain: ["a"])]);
 
-        var result = SpecResolver.Resolve(document);
+        var result = Resolve(document);
 
         Assert.False(result.TryGetValue(out _));
         Assert.Contains(result.Diagnostics, d => d.Code == DiagnosticCode.OrderDomainInvalid);
@@ -1048,7 +1071,7 @@ public sealed class SpecResolverTests
             [DocumentFixtures.Attribute("edu", DocumentFixtures.Column(0),
                 discretizer: new IdentityDiscretizerSection(), scale: OrdinalOrder(["a", ""]), declaredDomain: ["a"])]);
 
-        var result = SpecResolver.Resolve(document);
+        var result = Resolve(document);
 
         Assert.Contains(result.Diagnostics, d => d.Code == DiagnosticCode.OrderDomainInvalid);
     }
@@ -1062,7 +1085,7 @@ public sealed class SpecResolverTests
             [DocumentFixtures.Attribute("edu", DocumentFixtures.Column(0), include: false,
                 discretizer: new IdentityDiscretizerSection(), scale: OrdinalOrder(["a", "a"]), declaredDomain: ["a"])]);
 
-        var result = SpecResolver.Resolve(document);
+        var result = Resolve(document);
 
         Assert.True(result.TryGetValue(out _));
         Assert.Empty(result.Diagnostics);
@@ -1078,7 +1101,7 @@ public sealed class SpecResolverTests
                 discretizer: new IdentityDiscretizerSection(), scale: OrdinalOrder(["a", "b", "c"]),
                 declaredDomain: ["a", "b", "c"])]);
 
-        var result = SpecResolver.Resolve(document);
+        var result = Resolve(document);
 
         Assert.True(result.TryGetValue(out _));
         Assert.Empty(result.Diagnostics);
@@ -1089,11 +1112,11 @@ public sealed class SpecResolverTests
     [Fact]
     public void Resolve_WhenResolvedTwice_ThenPlansIdentically()
     {
-        Assert.True(SpecResolver.Resolve(DocumentFixtures.MiniMushroom()).TryGetValue(out var first));
-        Assert.True(SpecResolver.Resolve(DocumentFixtures.MiniMushroom()).TryGetValue(out var second));
+        Assert.True(Resolve(DocumentFixtures.MiniMushroom()).TryGetValue(out var first));
+        Assert.True(Resolve(DocumentFixtures.MiniMushroom()).TryGetValue(out var second));
 
-        Assert.True(ConversionPlanner.Plan(first, new SourceSchema(5)).TryGetValue(out var firstPlan));
-        Assert.True(ConversionPlanner.Plan(second, new SourceSchema(5)).TryGetValue(out var secondPlan));
+        Assert.True(Plan(first, new SourceSchema(5)).TryGetValue(out var firstPlan));
+        Assert.True(Plan(second, new SourceSchema(5)).TryGetValue(out var secondPlan));
 
         Assert.Equal(
             firstPlan.FormalAttributes.Select(f => (f.RenderedName, f.Identity)),
@@ -1105,18 +1128,18 @@ public sealed class SpecResolverTests
     {
         // The hand-built document twin must plan to the exact formal-attribute
         // schema the .bed migration path yields (P-7 — one schema, two producers).
-        var viaDocument = SpecResolver.Resolve(DocumentFixtures.MiniMushroom());
+        var viaDocument = Resolve(DocumentFixtures.MiniMushroom());
         Assert.True(BedReader.Read(BedFixtures.MushroomBed).TryGetValue(out var bedDocument));
         var migrated = BedMigrator.Migrate(
             bedDocument,
             new BindingSection(SourceShape.Wide, Encoding: null, ',', QuoteChar: null, HasHeader: true,
                 Locale: null, MissingToken: null, Ordering: null, Columns: null, ObjectKey: null));
         Assert.True(migrated.TryGetValue(out var bedSpecDocument));
-        Assert.True(SpecResolver.Resolve(bedSpecDocument).TryGetValue(out var viaBed));
+        Assert.True(Resolve(bedSpecDocument).TryGetValue(out var viaBed));
 
         Assert.True(viaDocument.TryGetValue(out var documentSpec));
-        Assert.True(ConversionPlanner.Plan(documentSpec, new SourceSchema(5)).TryGetValue(out var documentPlan));
-        Assert.True(ConversionPlanner.Plan(viaBed, new SourceSchema(5)).TryGetValue(out var bedPlan));
+        Assert.True(Plan(documentSpec, new SourceSchema(5)).TryGetValue(out var documentPlan));
+        Assert.True(Plan(viaBed, new SourceSchema(5)).TryGetValue(out var bedPlan));
 
         Assert.Equal(
             bedPlan.FormalAttributes.Select(f => (f.RenderedName, f.Identity)),
@@ -1134,7 +1157,7 @@ public sealed class SpecResolverTests
                 new TripleColumnsSection(new NameColumnRef("s"), new NameColumnRef("p"), new NameColumnRef("o")),
                 hasHeader: true));
 
-        var result = SpecResolver.Resolve(document, new SourceSchema(3, ["s", "p", "o"]));
+        var result = Resolve(document, new SourceSchema(3, ["s", "p", "o"]));
 
         Assert.True(result.TryGetValue(out var spec));
         Assert.Empty(result.Diagnostics);
@@ -1150,11 +1173,11 @@ public sealed class SpecResolverTests
         // equivalent index bind (both need has_header = true), so the resolved
         // binding — and therefore the output fingerprint — is identical.
         var schema = new SourceSchema(3, ["s", "p", "o"]);
-        var byName = SpecResolver.Resolve(DocumentFixtures.Document([TriplePredicate()],
+        var byName = Resolve(DocumentFixtures.Document([TriplePredicate()],
             binding: DocumentFixtures.TripleBinding(
                 new TripleColumnsSection(new NameColumnRef("s"), new NameColumnRef("p"), new NameColumnRef("o")),
                 hasHeader: true)), schema);
-        var byIndex = SpecResolver.Resolve(DocumentFixtures.Document([TriplePredicate()],
+        var byIndex = Resolve(DocumentFixtures.Document([TriplePredicate()],
             binding: DocumentFixtures.TripleBinding(
                 new TripleColumnsSection(new IndexColumnRef(0), new IndexColumnRef(1), new IndexColumnRef(2)),
                 hasHeader: true)), schema);
@@ -1170,7 +1193,7 @@ public sealed class SpecResolverTests
         var document = DocumentFixtures.Document(binding: DocumentFixtures.TripleBinding(
             new TripleColumnsSection(new IndexColumnRef(0), new IndexColumnRef(1), new IndexColumnRef(0))));
 
-        var result = SpecResolver.Resolve(document);
+        var result = Resolve(document);
 
         Assert.Equal(DiagnosticCode.TripleColumnsNotDistinct, Assert.Single(result.Diagnostics).Code);
         Assert.False(result.TryGetValue(out _));
@@ -1182,7 +1205,7 @@ public sealed class SpecResolverTests
         var document = DocumentFixtures.Document(binding: DocumentFixtures.TripleBinding(
             new TripleColumnsSection(new IndexColumnRef(0), Predicate: null, Value: null)));
 
-        var result = SpecResolver.Resolve(document);
+        var result = Resolve(document);
 
         Assert.Equal(DiagnosticCode.SourceBindingInvalid, Assert.Single(result.Diagnostics).Code);
     }
@@ -1194,7 +1217,7 @@ public sealed class SpecResolverTests
             new TripleColumnsSection(new IndexColumnRef(0), new NameColumnRef("p"), new IndexColumnRef(2)),
             hasHeader: true));
 
-        var result = SpecResolver.Resolve(document, new SourceSchema(3, ["s", "p", "o"]));
+        var result = Resolve(document, new SourceSchema(3, ["s", "p", "o"]));
 
         Assert.Equal(DiagnosticCode.SourceBindingInvalid, Assert.Single(result.Diagnostics).Code);
     }
@@ -1206,7 +1229,7 @@ public sealed class SpecResolverTests
         var document = DocumentFixtures.Document(binding: DocumentFixtures.TripleBinding(
             new TripleColumnsSection(new NameColumnRef("s"), new NameColumnRef("p"), new NameColumnRef("o"))));
 
-        var result = SpecResolver.Resolve(document);
+        var result = Resolve(document);
 
         Assert.False(result.TryGetValue(out _));
         Assert.NotEmpty(result.Diagnostics);
@@ -1221,7 +1244,7 @@ public sealed class SpecResolverTests
             new TripleColumnsSection(new NameColumnRef("s"), new NameColumnRef("p"), new NameColumnRef("o")),
             hasHeader: true));
 
-        var result = SpecResolver.Resolve(document); // schema: null
+        var result = Resolve(document); // schema: null
 
         Assert.False(result.TryGetValue(out _));
         Assert.NotEmpty(result.Diagnostics);
@@ -1235,7 +1258,7 @@ public sealed class SpecResolverTests
             new TripleColumnsSection(new NameColumnRef("s"), new NameColumnRef("p"), new NameColumnRef("x")),
             hasHeader: true));
 
-        var result = SpecResolver.Resolve(document, new SourceSchema(3, ["s", "p", "o"]));
+        var result = Resolve(document, new SourceSchema(3, ["s", "p", "o"]));
 
         Assert.Equal(DiagnosticCode.SourceBindingInvalid, Assert.Single(result.Diagnostics).Code);
     }
@@ -1248,7 +1271,7 @@ public sealed class SpecResolverTests
             new TripleColumnsSection(new NameColumnRef("dup"), new NameColumnRef("p"), new NameColumnRef("o")),
             hasHeader: true));
 
-        var result = SpecResolver.Resolve(document, new SourceSchema(4, ["dup", "dup", "p", "o"]));
+        var result = Resolve(document, new SourceSchema(4, ["dup", "dup", "p", "o"]));
 
         Assert.Equal(DiagnosticCode.SourceBindingInvalid, Assert.Single(result.Diagnostics).Code);
     }
@@ -1259,7 +1282,7 @@ public sealed class SpecResolverTests
         var document = DocumentFixtures.Document(binding: DocumentFixtures.TripleBinding(
             new TripleColumnsSection(new IndexColumnRef(0), new IndexColumnRef(1), new IndexColumnRef(5))));
 
-        var result = SpecResolver.Resolve(document, new SourceSchema(3));
+        var result = Resolve(document, new SourceSchema(3));
 
         Assert.Equal(DiagnosticCode.SourceBindingInvalid, Assert.Single(result.Diagnostics).Code);
     }
@@ -1272,7 +1295,7 @@ public sealed class SpecResolverTests
                 discretizer: new IdentityDiscretizerSection(), scale: new NominalScaleSection())],
             binding: DocumentFixtures.TripleBinding());
 
-        var result = SpecResolver.Resolve(document);
+        var result = Resolve(document);
 
         Assert.Equal(DiagnosticCode.SourceBindingInvalid, Assert.Single(result.Diagnostics).Code);
     }
@@ -1284,7 +1307,7 @@ public sealed class SpecResolverTests
             [DocumentFixtures.Attribute("a", new PredicateSourceSection("p", ValueType: null),
                 discretizer: new IdentityDiscretizerSection(), scale: new NominalScaleSection())]);
 
-        var result = SpecResolver.Resolve(document);
+        var result = Resolve(document);
 
         Assert.Equal(DiagnosticCode.SourceBindingInvalid, Assert.Single(result.Diagnostics).Code);
     }
@@ -1297,7 +1320,7 @@ public sealed class SpecResolverTests
                 discretizer: new IdentityDiscretizerSection(), scale: new NominalScaleSection())],
             binding: DocumentFixtures.TripleBinding());
 
-        var result = SpecResolver.Resolve(document);
+        var result = Resolve(document);
 
         Assert.Equal(DiagnosticCode.SourceBindingInvalid, Assert.Single(result.Diagnostics).Code);
     }
@@ -1309,7 +1332,7 @@ public sealed class SpecResolverTests
             [TriplePredicate()],
             binding: DocumentFixtures.TripleBinding(ordering: null));
 
-        var result = SpecResolver.Resolve(document);
+        var result = Resolve(document);
 
         Assert.Equal(DiagnosticCode.SourceBindingInvalid, Assert.Single(result.Diagnostics).Code);
     }
@@ -1322,7 +1345,7 @@ public sealed class SpecResolverTests
         var objectKey = new ObjectKeySection(ObjectKeyMode.Column, new IndexColumnRef(0), Columns: null, Aggregate: null);
         var document = DocumentFixtures.Document(binding: DocumentFixtures.TripleBinding(objectKey: objectKey));
 
-        var result = SpecResolver.Resolve(document);
+        var result = Resolve(document);
 
         Assert.Equal(DiagnosticCode.ObjectKeyModeInvalidForShape, Assert.Single(result.Diagnostics).Code);
     }
@@ -1332,7 +1355,7 @@ public sealed class SpecResolverTests
     {
         var document = DocumentFixtures.Document([TriplePredicate()], binding: DocumentFixtures.TripleBinding());
 
-        var result = SpecResolver.Resolve(document);
+        var result = Resolve(document);
 
         Assert.True(result.TryGetValue(out var spec));
         Assert.False(spec.Binding.HasHeader);
@@ -1345,7 +1368,7 @@ public sealed class SpecResolverTests
             [DocumentFixtures.Nominal("g", 0, ["b"])],
             binding: DocumentFixtures.WideBinding() with { Encoding = "latin1" });
 
-        var result = SpecResolver.Resolve(document, new SourceSchema(1));
+        var result = Resolve(document, new SourceSchema(1));
 
         Assert.Equal(DiagnosticCode.SourceBindingInvalid, Assert.Single(result.Diagnostics).Code);
         Assert.False(result.TryGetValue(out _));
@@ -1354,10 +1377,10 @@ public sealed class SpecResolverTests
     [Fact]
     public void Resolve_WhenEncodingUpperCaseUtf8_ThenCanonicalizesToUtf8()
     {
-        var authored = SpecResolver.Resolve(DocumentFixtures.Document(
+        var authored = Resolve(DocumentFixtures.Document(
             [DocumentFixtures.Nominal("g", 0, ["b"])],
             binding: DocumentFixtures.WideBinding() with { Encoding = "UTF-8" }), new SourceSchema(1));
-        var unspecified = SpecResolver.Resolve(
+        var unspecified = Resolve(
             DocumentFixtures.Document([DocumentFixtures.Nominal("g", 0, ["b"])]), new SourceSchema(1));
 
         Assert.True(authored.TryGetValue(out var authoredSpec));
@@ -1376,7 +1399,7 @@ public sealed class SpecResolverTests
                 discretizer: new IdentityDiscretizerSection(), scale: new NominalScaleSection(), declaredDomain: ["x"])],
             binding: DocumentFixtures.WideBinding(hasHeader: true));
 
-        var result = SpecResolver.Resolve(document, new SourceSchema(2, ["age", "age"]));
+        var result = Resolve(document, new SourceSchema(2, ["age", "age"]));
 
         Assert.Equal(DiagnosticCode.SourceBindingInvalid, Assert.Single(result.Diagnostics).Code);
         Assert.False(result.TryGetValue(out _));
@@ -1391,7 +1414,7 @@ public sealed class SpecResolverTests
             [DocumentFixtures.Nominal("g", 0, ["b"])],
             binding: DocumentFixtures.WideBinding(hasHeader: true, objectKey: objectKey));
 
-        var result = SpecResolver.Resolve(document, new SourceSchema(3, ["id", "id", "g"]));
+        var result = Resolve(document, new SourceSchema(3, ["id", "id", "g"]));
 
         Assert.Equal(DiagnosticCode.ObjectKeyBindingInvalid, Assert.Single(result.Diagnostics).Code);
         Assert.False(result.TryGetValue(out _));
@@ -1407,7 +1430,7 @@ public sealed class SpecResolverTests
                 discretizer: new ManualCutsDiscretizerSection([30.0], BinEnds.Open), scale: new NominalScaleSection())],
             binding: DocumentFixtures.TripleBinding());
 
-        var result = SpecResolver.Resolve(document);
+        var result = Resolve(document);
 
         Assert.Equal(DiagnosticCode.SourceValueTypeInvalid, Assert.Single(result.Diagnostics).Code);
         Assert.False(result.TryGetValue(out _));
@@ -1423,7 +1446,7 @@ public sealed class SpecResolverTests
                 restrictTo: [new RestrictToValue("high")])],
             binding: DocumentFixtures.TripleBinding());
 
-        var result = SpecResolver.Resolve(document);
+        var result = Resolve(document);
 
         Assert.Equal(DiagnosticCode.RestrictToOnNumericRequiresRange, Assert.Single(result.Diagnostics).Code);
         Assert.False(result.TryGetValue(out _));
