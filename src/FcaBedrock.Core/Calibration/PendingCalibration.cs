@@ -23,6 +23,61 @@ public abstract record PendingCalibration
 }
 
 /// <summary>
+/// The <c>equal_width</c> configuration a data-derived range must resolve (§11.4,
+/// D-089): the authored bin count, range mode, and precision carried into
+/// calibration, so the calibrator reads the population and
+/// <c>CalibratedSpec.Create</c> substitutes the executable
+/// <see cref="EqualWidthDiscretizer"/> over the derived cuts (D-093). Holds only
+/// immutable values.
+/// <para>
+/// <see cref="EqualWidthRange.Manual"/> never pends — it is spec-determined and
+/// resolves straight to an executable discretizer (§7) — so it is rejected here
+/// (P-10: the mis-sequenced state is unrepresentable rather than merely diagnosed).
+/// </para>
+/// </summary>
+public sealed record PendingEqualWidth : PendingCalibration
+{
+    /// <summary>Carries <paramref name="bins"/>/<paramref name="range"/>/<paramref name="precision"/> into calibration.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// <paramref name="range"/> is <see cref="EqualWidthRange.Manual"/> (spec-determined,
+    /// never pending) or undefined, or <paramref name="bins"/> is below 2 — the reader
+    /// owns the authored forms (<c>SpecFieldInvalid</c>, §11.4); these are the P-10 backstops.
+    /// </exception>
+    public PendingEqualWidth(int bins, EqualWidthRange range, CutPrecision precision)
+    {
+        ArgumentNullException.ThrowIfNull(precision);
+        ArgumentOutOfRangeException.ThrowIfLessThan(bins, 2);
+        if (!Enum.IsDefined(range))
+        {
+            throw new ArgumentOutOfRangeException(nameof(range), range, "equal_width range holds an undefined enum value.");
+        }
+
+        if (range == EqualWidthRange.Manual)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(range), range,
+                "equal_width range = \"manual\" is spec-determined and never pends calibration; build it with EqualWidthDiscretizer.CreateManual (§11.4/D-089).");
+        }
+
+        Bins = bins;
+        Range = range;
+        Precision = precision;
+    }
+
+    /// <summary>The authored bin count (≥ 2).</summary>
+    public int Bins { get; }
+
+    /// <summary>The data-derived range mode the calibrator must resolve.</summary>
+    public EqualWidthRange Range { get; }
+
+    /// <summary>The authored (or defaulted) cut rounding, applied to the derived cuts.</summary>
+    public CutPrecision Precision { get; }
+
+    /// <inheritdoc/>
+    public override string Kind => "equal_width";
+}
+
+/// <summary>
 /// The pre-calibration carrier (D-093): a valid <see cref="Discretizer"/> the
 /// resolve seam can place on a resolved attribute, but one that can never plan or
 /// emit. It is the single type <c>CalibratedSpec.Create</c> must replace with an

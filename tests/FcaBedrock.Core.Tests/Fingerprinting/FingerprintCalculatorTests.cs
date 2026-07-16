@@ -589,6 +589,178 @@ public sealed class FingerprintCalculatorTests
             "sha256:247648dc27afaf287d116650c01d71cf8d31860ea485069ef1d530f2d21bde88",
             ComputeDat(Plan(NumericFreePerValueSpec()), NumericFreePerValueSpec(), NativeDat()));
 
+    // --- equal_width discretizer encoding (D-094 golden-lock, M4 Slice C) -----
+    //
+    // The M4 per-kind canonical bytes and their SHA-256 vectors are golden-locked BEFORE the
+    // first M4 fingerprint is produced (§14/D-094). equal_width encodes its AUTHORED config —
+    // bins/range/precision, plus vmin/vmax only under range = "manual". Its RESOLVED cuts are
+    // deliberately absent from the sub-object: they already ride as `bin` objects in the schema
+    // array (asserted below), so re-encoding them would be a second source of truth.
+    //
+    // The two specs below are the D-094 auto-vs-frozen pair in miniature: identical effective
+    // cuts [25, 50, 75], hence an identical schema array — but different authored discretizer
+    // objects, hence different output fingerprints. That asymmetry is the contract, not a bug.
+
+    private const string EqualWidthSchemaArray =
+        """
+        [{"bin":{"hi":25,"hi_open":false,"lo":null,"lo_open":true},"name":"score","op":"","scale":"nominal"},{"bin":{"hi":50,"hi_open":false,"lo":25,"lo_open":false},"name":"score","op":"","scale":"nominal"},{"bin":{"hi":75,"hi_open":false,"lo":50,"lo_open":false},"name":"score","op":"","scale":"nominal"},{"bin":{"hi":null,"hi_open":true,"lo":75,"lo_open":false},"name":"score","op":"","scale":"nominal"}]
+        """;
+
+    // range = "manual", precision = { round_to = 1 }: over [0, 100] with 4 bins the cuts are
+    // 25/50/75 both before and after rounding.
+    private static BedrockSpec EqualWidthManualSpec() =>
+        new(SpecFixtures.WideRowIndex(), [
+            SpecFixtures.EqualWidthManual("score", 0, 4, 0, 100, new NominalScale(), RoundToPrecision.Create(1)),
+        ]);
+
+    // range = "min_max", precision = "exact": the calibrator's derived cuts, substituted into the
+    // executable discretizer by CalibratedSpec.Create — the only way a data-range equal_width
+    // becomes plannable (D-093).
+    private static ConversionPlan EqualWidthMinMaxPlan()
+    {
+        var spec = new BedrockSpec(SpecFixtures.WideRowIndex(), [
+            SpecFixtures.EqualWidthPending("score", 0, 4, new NominalScale()),
+        ]);
+        var calibrated = CalibratedSpec.Create(
+            Resolve(spec, new SourceSchema(1)), [new CalibratedCuts("score", [25, 50, 75])]);
+        Assert.True(calibrated.TryGetValue(out var state));
+        Assert.True(ConversionPlanner.Plan(state!).TryGetValue(out var plan));
+        return plan!;
+    }
+
+    [Fact]
+    public void BuildCxtOutputJson_WhenEqualWidthManual_ThenDiscretizerEncodesAuthoredConfigWithBounds() =>
+        // The pinned manual encoding (§14/D-094). Keys sort ordinal: bins < kind < precision <
+        // range < vmax < vmin; precision mirrors its TOML object form.
+        Assert.Contains(
+            "\"discretizer\":{\"bins\":4,\"kind\":\"equal_width\",\"precision\":{\"round_to\":1},\"range\":\"manual\",\"vmax\":100,\"vmin\":0},",
+            FingerprintCalculator.BuildCxtOutputJson(Plan(EqualWidthManualSpec()), EqualWidthManualSpec(), NativeCxt()),
+            StringComparison.Ordinal);
+
+    [Fact]
+    public void BuildCxtOutputJson_WhenEqualWidthMinMax_ThenDiscretizerOmitsBoundsAndSpellsExactPrecision()
+    {
+        var plan = EqualWidthMinMaxPlan();
+        var json = FingerprintCalculator.BuildCxtOutputJson(plan, plan.Calibrated.Spec, NativeCxt());
+
+        // The pinned data-derived encoding: vmin/vmax are omitted (not authored under a data
+        // range), and "exact" precision is the bare string form.
+        Assert.Contains(
+            "\"discretizer\":{\"bins\":4,\"kind\":\"equal_width\",\"precision\":\"exact\",\"range\":\"min_max\"},",
+            json, StringComparison.Ordinal);
+        Assert.DoesNotContain("\"vmin\"", json, StringComparison.Ordinal);
+        Assert.DoesNotContain("\"vmax\"", json, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void BuildCxtOutputJson_WhenEqualWidth_ThenResolvedCutsAreNotInsideTheDiscretizerObject()
+    {
+        // D-094: the resolved cuts appear ONLY as schema bins. A "cuts" key inside the
+        // equal_width sub-object would be the redundant second source of truth the rule forbids
+        // (manual_cuts legitimately has one — hence the scoped assertion).
+        var plan = EqualWidthMinMaxPlan();
+        var json = FingerprintCalculator.BuildCxtOutputJson(plan, plan.Calibrated.Spec, NativeCxt());
+        var discretizer = json[json.IndexOf("\"discretizer\":", StringComparison.Ordinal)..];
+
+        Assert.DoesNotContain("\"cuts\"", discretizer[..discretizer.IndexOf('}', StringComparison.Ordinal)], StringComparison.Ordinal);
+        Assert.Contains("\"schema\":" + EqualWidthSchemaArray, json, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void BuildSchemaJson_WhenEqualWidthManual_ThenOpenEndedCutBinsInPlanOrder() =>
+        Assert.Equal(
+            "{\"attributes\":" + EqualWidthSchemaArray + ",\"fp_format\":1,\"kind\":\"schema\"}",
+            FingerprintCalculator.BuildSchemaJson(Plan(EqualWidthManualSpec())));
+
+    [Fact]
+    public void ComputeSchemaFingerprint_WhenEqualWidthManual_ThenMatchesHardcodedVector() =>
+        // Hash literal computed independently (an external SHA-256 of the hand-authored bytes
+        // above), never copied from this encoder's output — that is what makes it a lock (D-094).
+        Assert.Equal(
+            "sha256:cd6f9e39b9c79d7a785870401624573c9debf76b95ee6980dd5cda73fc631459",
+            FingerprintCalculator.ComputeSchemaFingerprint(Plan(EqualWidthManualSpec())));
+
+    [Fact]
+    public void BuildDatOutputJson_WhenEqualWidthManual_ThenCompletePinnedCanonicalBytes() =>
+        // The complete dat output bytes: the exact-byte lock the schema fingerprint cannot give,
+        // since the discretizer sub-object rides in `shared` and feeds only the output hashes.
+        Assert.Equal(
+            "{\"dat\":{\"base_index\":1,\"empty_line_trailing_space\":false,\"line_endings\":\"lf\","
+                + "\"nonempty_line_trailing_space\":false},\"fp_format\":1,\"kind\":\"dat_output\",\"schema\":"
+                + EqualWidthSchemaArray
+                + ",\"shared\":{\"attributes\":[{\"declared_domain\":[],\"discretizer\":{\"bins\":4,\"kind\":\"equal_width\","
+                + "\"precision\":{\"round_to\":1},\"range\":\"manual\",\"vmax\":100,\"vmin\":0},\"missing_policy\":\"skip\","
+                + "\"name\":\"score\",\"scale\":{\"kind\":\"nominal\"},\"source\":{\"column\":0,\"value_type\":\"number\"},"
+                + "\"unknown_value_policy\":\"warn\"}],\"binding\":{\"delimiter\":\",\",\"encoding\":\"utf-8\",\"has_header\":true,"
+                + "\"locale\":\"invariant\",\"missing_token\":\"?\",\"object_key\":{\"mode\":\"row_index\"},\"quote_char\":\"\\\"\",\"shape\":\"wide\"}}}",
+            FingerprintCalculator.BuildDatOutputJson(Plan(EqualWidthManualSpec()), EqualWidthManualSpec(), NativeDat()));
+
+    [Fact]
+    public void ComputeDatOutputFingerprint_WhenEqualWidthManual_ThenMatchesHardcodedVector() =>
+        // SHA-256 computed independently over the pinned dat bytes above (D-094 lock).
+        Assert.Equal(
+            "sha256:fe3995b8ffe851732d546d8ce61e46d16d8f893ac3a4f1239f99a0f6cddf37f5",
+            ComputeDat(Plan(EqualWidthManualSpec()), EqualWidthManualSpec(), NativeDat()));
+
+    [Fact]
+    public void BuildDatOutputJson_WhenEqualWidthMinMax_ThenCompletePinnedCanonicalBytes()
+    {
+        // The data-derived form's complete bytes, hand-authored: identical to the manual pin
+        // above except for the authored discretizer sub-object — the one documented difference.
+        var plan = EqualWidthMinMaxPlan();
+
+        Assert.Equal(
+            "{\"dat\":{\"base_index\":1,\"empty_line_trailing_space\":false,\"line_endings\":\"lf\","
+                + "\"nonempty_line_trailing_space\":false},\"fp_format\":1,\"kind\":\"dat_output\",\"schema\":"
+                + EqualWidthSchemaArray
+                + ",\"shared\":{\"attributes\":[{\"declared_domain\":[],\"discretizer\":{\"bins\":4,\"kind\":\"equal_width\","
+                + "\"precision\":\"exact\",\"range\":\"min_max\"},\"missing_policy\":\"skip\","
+                + "\"name\":\"score\",\"scale\":{\"kind\":\"nominal\"},\"source\":{\"column\":0,\"value_type\":\"number\"},"
+                + "\"unknown_value_policy\":\"warn\"}],\"binding\":{\"delimiter\":\",\",\"encoding\":\"utf-8\",\"has_header\":true,"
+                + "\"locale\":\"invariant\",\"missing_token\":\"?\",\"object_key\":{\"mode\":\"row_index\"},\"quote_char\":\"\\\"\",\"shape\":\"wide\"}}}",
+            FingerprintCalculator.BuildDatOutputJson(plan, plan.Calibrated.Spec, NativeDat()));
+    }
+
+    [Fact]
+    public void ComputeDatOutputFingerprint_WhenEqualWidthMinMax_ThenMatchesHardcodedVector() =>
+        // The data-derived twin's own independently-computed vector: same schema bins, different
+        // authored discretizer object, therefore a different output hash (D-094).
+        Assert.Equal(
+            "sha256:c04cb8f7547f76ef2c6584047e97f58551658b3ce660875473906c751866a034",
+            FingerprintCalculator.ComputeDatOutputFingerprint(EqualWidthMinMaxPlan(), NativeDat()));
+
+    [Fact]
+    public void ComputeFingerprints_WhenEqualWidthAutoVsFrozenManualCuts_ThenSchemaEqualAndOutputDiffersOnlyInTheDiscretizer()
+    {
+        // The D-094 one-directional guarantee, isolated: the frozen form (manual_cuts over the
+        // calibrated cuts, open ends) and the auto form share every effective bin — so the schema
+        // fingerprints match — while the output fingerprints differ, and differ ONLY through the
+        // authored discretizer sub-object.
+        var frozen = new BedrockSpec(SpecFixtures.WideRowIndex(), [
+            SpecFixtures.NumericCuts("score", 0, [25, 50, 75], new NominalScale()),
+        ]);
+        var auto = EqualWidthMinMaxPlan();
+        var frozenPlan = Plan(frozen);
+
+        Assert.Equal(
+            FingerprintCalculator.ComputeSchemaFingerprint(frozenPlan),
+            FingerprintCalculator.ComputeSchemaFingerprint(auto));
+        Assert.NotEqual(
+            FingerprintCalculator.ComputeDatOutputFingerprint(frozenPlan, NativeDat()),
+            FingerprintCalculator.ComputeDatOutputFingerprint(auto, NativeDat()));
+
+        // The documented difference, named: swapping just the discretizer sub-object makes the
+        // two output payloads identical, so nothing else moved.
+        var autoJson = FingerprintCalculator.BuildDatOutputJson(auto, auto.Calibrated.Spec, NativeDat());
+        var frozenJson = FingerprintCalculator.BuildDatOutputJson(frozenPlan, frozen, NativeDat());
+        Assert.Equal(
+            frozenJson.Replace(
+                "\"discretizer\":{\"cuts\":[25,50,75],\"ends\":\"open\",\"kind\":\"manual_cuts\"}",
+                "\"discretizer\":{\"bins\":4,\"kind\":\"equal_width\",\"precision\":\"exact\",\"range\":\"min_max\"}",
+                StringComparison.Ordinal),
+            autoJson);
+    }
+
     // --- existing-kind regression: authored -0.0 manual cut stays -0 (G-6) ----
 
     [Fact]

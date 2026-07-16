@@ -3,6 +3,7 @@ using FcaBedrock.Core.Calibration;
 using FcaBedrock.Core.Discretization;
 using FcaBedrock.Core.Scaling;
 using FcaBedrock.Core.Spec;
+using FcaBedrock.Diagnostics;
 
 namespace FcaBedrock.Core.Tests.Calibration;
 
@@ -178,6 +179,168 @@ public sealed class CalibratedSpecTests
         var resolved = Resolve(With(SpecFixtures.Nominal("g", 0, ["b"])), 1);
 
         Assert.Throws<ArgumentException>(() => CalibratedSpec.Create(resolved, [new ObservedDomain("g", ["b"])]));
+    }
+
+    // --- Pending equal_width → executable substitution (M4 Slice C, D-102) ---
+
+    private static BedrockSpec PendingEqualWidthSpec(
+        int bins = 4, CutPrecision? precision = null, EqualWidthRange range = EqualWidthRange.MinMax) =>
+        With(SpecFixtures.EqualWidthPending("score", 0, bins, new NominalScale(), range, precision));
+
+    [Fact]
+    public void RequiresData_WhenPendingEqualWidth_ThenTrue() =>
+        // A data-derived range cannot be planned from the spec text alone (§7/D-089).
+        Assert.True(CalibratedSpec.RequiresData(PendingEqualWidthSpec()));
+
+    [Fact]
+    public void RequiresData_WhenManualEqualWidth_ThenFalse() =>
+        // range = "manual" is spec-determined: it skips Calibrate entirely (§7/§11.4/D-089).
+        Assert.False(CalibratedSpec.RequiresData(
+            With(SpecFixtures.EqualWidthManual("score", 0, 4, 0, 100, new NominalScale()))));
+
+    [Fact]
+    public void FromFullyDeclared_WhenManualEqualWidth_ThenAccepted()
+    {
+        var spec = With(SpecFixtures.EqualWidthManual("score", 0, 4, 0, 100, new NominalScale()));
+
+        var calibrated = CalibratedSpec.FromFullyDeclared(Resolve(spec, 1));
+
+        Assert.Empty(calibrated.Calibrations);
+        Assert.IsType<EqualWidthDiscretizer>(calibrated.Spec.Attributes[0].Discretizer);
+    }
+
+    [Fact]
+    public void FromFullyDeclared_WhenPendingEqualWidth_ThenThrows() =>
+        // The min/max carrier is data-dependent, so the fast path is a mis-sequenced call that
+        // skipped the calibrator (the established RequiresData contract, D-093).
+        Assert.Throws<ArgumentException>(() => CalibratedSpec.FromFullyDeclared(Resolve(PendingEqualWidthSpec(), 1)));
+
+    [Fact]
+    public void Create_WhenPendingEqualWidthGivenCalibratedCuts_ThenExecutableDiscretizerSubstituted()
+    {
+        var resolved = Resolve(PendingEqualWidthSpec(), 1);
+
+        var result = CalibratedSpec.Create(resolved, [new CalibratedCuts("score", [25, 50, 75])]);
+
+        Assert.True(result.TryGetValue(out var calibrated));
+        var discretizer = Assert.IsType<EqualWidthDiscretizer>(calibrated!.Spec.Attributes[0].Discretizer);
+        Assert.Equal([25.0, 50.0, 75.0], discretizer.Cuts);
+
+        // The authored configuration survives the substitution — the fingerprint hashes it (D-094).
+        Assert.Equal(4, discretizer.Bins);
+        Assert.Equal(EqualWidthRange.MinMax, discretizer.Range);
+        Assert.Equal(CutPrecision.Exact, discretizer.Precision);
+        Assert.Null(discretizer.VMin);
+    }
+
+    [Fact]
+    public void Create_WhenPendingEqualWidthSubstituted_ThenNoCalibrationPendingSurvives()
+    {
+        var result = CalibratedSpec.Create(Resolve(PendingEqualWidthSpec(), 1), [new CalibratedCuts("score", [25, 50, 75])]);
+
+        Assert.True(result.TryGetValue(out var calibrated));
+        Assert.DoesNotContain(calibrated!.Spec.Attributes, a => a.Discretizer is CalibrationPending);
+    }
+
+    [Fact]
+    public void Create_WhenPendingEqualWidthCalibrated_ThenOutcomeRetainedInSpecAttributeOrder()
+    {
+        // D-093's retention boundary: the freeze path and the §15 manifest read these outcomes
+        // rather than re-deriving them, so they must come back in a deterministic order.
+        var spec = new BedrockSpec(SpecFixtures.WideRowIndex(), [
+            SpecFixtures.EqualWidthPending("a", 0, 2, new NominalScale()),
+            SpecFixtures.Nominal("g", 1, []),
+            SpecFixtures.EqualWidthPending("z", 2, 2, new NominalScale()),
+        ]);
+
+        var result = CalibratedSpec.Create(Resolve(spec, 3), [
+            new CalibratedCuts("z", [7]),          // supplied out of spec order on purpose
+            new ObservedDomain("g", ["b"]),
+            new CalibratedCuts("a", [3]),
+        ]);
+
+        Assert.True(result.TryGetValue(out var calibrated));
+        Assert.Equal(["a", "g", "z"], calibrated!.Calibrations.Select(c => c.AttributeName));
+        Assert.Equal([3.0], Assert.IsType<CalibratedCuts>(calibrated.Calibrations[0]).Cuts);
+    }
+
+    [Fact]
+    public void Create_WhenCalibratedCutsInvalid_ThenCalibrationCutsInvalidDiagnosticNotException()
+    {
+        // P-14: cut invalidity is a DATA-derived expected failure, so it returns through Diagnosed
+        // for the calibrator to aggregate — it is not a calibrator-contract violation. The list is
+        // correctly sized for bins = 4; only its ordering is wrong.
+        var result = CalibratedSpec.Create(Resolve(PendingEqualWidthSpec(), 1), [new CalibratedCuts("score", [25, 75, 50])]);
+
+        Assert.False(result.IsOk);
+        var diagnostic = Assert.Single(result.Diagnostics);
+        Assert.Equal(DiagnosticCode.CalibrationCutsInvalid, diagnostic.Code);
+        Assert.Equal(DiagnosticSeverity.Error, diagnostic.Severity);
+        Assert.Equal("score", diagnostic.Location?.AttributeName);
+    }
+
+    [Fact]
+    public void Create_WhenCalibratedCutCountDisagreesWithBins_ThenThrows() =>
+        // The contract split: a wrong-SIZED outcome is a calibrator-contract violation (throw),
+        // while wrong-VALUED cuts of the right size are a data error (diagnostic, above). Without
+        // this the state would plan and fingerprint as "bins":4 over a two-bin schema (D-093/P-10).
+        Assert.Throws<ArgumentException>(() =>
+            CalibratedSpec.Create(Resolve(PendingEqualWidthSpec(), 1), [new CalibratedCuts("score", [50])]));
+
+    [Fact]
+    public void Create_WhenPendingPercentileRange_ThenThrowsRatherThanBecomingExecutable()
+    {
+        // G-8/D-102: percentile_p1_p99 is modelled in the Core enum but has no calibration until
+        // Slice D. The reader rejects its spelling; this closes the programmatic route, so
+        // hand-supplied cuts cannot make it plannable, emittable, or fingerprintable ahead of its
+        // slice — the transitional boundary holds at every seam, not just at the reader.
+        var spec = PendingEqualWidthSpec(range: EqualWidthRange.PercentileP1P99);
+
+        Assert.Throws<ArgumentException>(() =>
+            CalibratedSpec.Create(Resolve(spec, 1), [new CalibratedCuts("score", [25, 50, 75])]));
+    }
+
+    [Fact]
+    public void Create_WhenRoundingCollapsesCalibratedCuts_ThenCalibrationCutsInvalid() =>
+        // The rounding-collapse case reaches the same owner: duplicate cuts are not ascending.
+        Assert.Equal(
+            DiagnosticCode.CalibrationCutsInvalid,
+            Assert.Single(CalibratedSpec.Create(
+                Resolve(PendingEqualWidthSpec(precision: RoundToPrecision.Create(1)), 1),
+                [new CalibratedCuts("score", [1, 1, 2])]).Diagnostics).Code);
+
+    [Fact]
+    public void Create_WhenPendingEqualWidthOutcomeMissing_ThenThrows() =>
+        // A leftover pending carrier is a calibrator-contract violation (programmer error), not a
+        // data error — the calibrator is Create's only production caller (D-093).
+        Assert.Throws<ArgumentException>(() => CalibratedSpec.Create(Resolve(PendingEqualWidthSpec(), 1), []));
+
+    [Fact]
+    public void Create_WhenPendingEqualWidthGivenWrongOutcomeKind_ThenThrows() =>
+        Assert.Throws<ArgumentException>(() =>
+            CalibratedSpec.Create(Resolve(PendingEqualWidthSpec(), 1), [new ObservedDomain("score", ["1"])]));
+
+    [Fact]
+    public void Create_WhenManualEqualWidthGivenAnOutcome_ThenThrows() =>
+        // Spec-determined attributes need no outcome; supplying one means the calibrator
+        // calibrated something it should not have.
+        Assert.Throws<ArgumentException>(() => CalibratedSpec.Create(
+            Resolve(With(SpecFixtures.EqualWidthManual("score", 0, 4, 0, 100, new NominalScale())), 1),
+            [new CalibratedCuts("score", [25, 50, 75])]));
+
+    [Fact]
+    public void Create_WhenCalibratedCutsInputMutated_ThenSubstitutedCutsUnaffected()
+    {
+        var cuts = new List<double> { 25, 50, 75 };
+        var result = CalibratedSpec.Create(Resolve(PendingEqualWidthSpec(), 1), [new CalibratedCuts("score", cuts)]);
+        Assert.True(result.TryGetValue(out var calibrated));
+
+        cuts[0] = 999; // the caller keeps its list
+
+        var discretizer = Assert.IsType<EqualWidthDiscretizer>(calibrated!.Spec.Attributes[0].Discretizer);
+        Assert.Equal([25.0, 50.0, 75.0], discretizer.Cuts);
+        AssertImmutableList(discretizer.Cuts);
+        AssertImmutableList(Assert.IsType<CalibratedCuts>(calibrated.Calibrations[0]).Cuts);
     }
 
     // --- Immutability of the effective spec graph (D-098) ---

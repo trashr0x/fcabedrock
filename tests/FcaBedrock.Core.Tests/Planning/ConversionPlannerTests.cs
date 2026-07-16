@@ -108,6 +108,129 @@ public sealed class ConversionPlannerTests
         Assert.Equal([3], age.CrossesByBin[">=50"]);               // crossed by all only
     }
 
+    // --- equal_width plans as open-ended cut bins (M4 Slice C, D-102) ---------
+    //
+    // equal_width behaves structurally like manual_cuts over the same effective cuts (D-093), so
+    // these assert the geometry directly rather than re-testing the shared engine: over [0, 100]
+    // with 4 bins the cuts are 25/50/75.
+
+    private static BedrockSpec EqualWidth(Scale scale, int bins = 4, double vmin = 0, double vmax = 100) =>
+        new(SpecFixtures.WideRowIndex(), [SpecFixtures.EqualWidthManual("score", 0, bins, vmin, vmax, scale)]);
+
+    [Fact]
+    public void Plan_WhenEqualWidthNominal_ThenExactlyBinsColumnsWithOpenEnds()
+    {
+        // §11.4: bins - 1 cuts plus implicit open ends give exactly `bins` bins.
+        Assert.True(Plan(EqualWidth(new NominalScale()), new SourceSchema(1)).TryGetValue(out var plan));
+
+        Assert.Equal(
+            ["score-<25", "score-[25, 50)", "score-[50, 75)", "score->=75"],
+            plan.FormalAttributes.Select(f => f.RenderedName));
+    }
+
+    [Fact]
+    public void Plan_WhenEqualWidthNominalV2Compat_ThenInteriorBinsRenderTheV2Form()
+    {
+        Assert.True(Plan(EqualWidth(new NominalScale()), new SourceSchema(1), LabelStyle.V2Compat).TryGetValue(out var plan));
+
+        Assert.Equal(
+            ["score-<25", "score-25to<50", "score-50to<75", "score->=75"],
+            plan.FormalAttributes.Select(f => f.RenderedName));
+    }
+
+    [Fact]
+    public void Plan_WhenEqualWidthDichotomic_ThenSingleColumnLikeAnyCutDiscretizer()
+    {
+        Assert.True(Plan(EqualWidth(new DichotomicScale("[25, 50)")), new SourceSchema(1)).TryGetValue(out var plan));
+
+        var formal = Assert.Single(plan.FormalAttributes);
+        Assert.Equal("score", formal.RenderedName);
+        Assert.Equal([0], plan.Attributes.Single().CrossesByBin["[25, 50)"]);
+    }
+
+    [Fact]
+    public void Plan_WhenEqualWidthOrdinalLe_ThenThresholdsAtUpperEdgesAndOpenTopRendersAll()
+    {
+        Assert.True(Plan(EqualWidth(new OrdinalScale(OrdinalDirection.Le)), new SourceSchema(1)).TryGetValue(out var plan));
+
+        // le pairs with strict '<' at each bin's upper edge; the open top has no finite edge → `all`.
+        Assert.Equal(
+            ["score-<25", "score-<50", "score-<75", "score-all"],
+            plan.FormalAttributes.Select(f => f.RenderedName));
+
+        var score = plan.Attributes.Single();
+        Assert.Equal([0, 1, 2, 3], score.CrossesByBin["<25"]);
+        Assert.Equal([1, 2, 3], score.CrossesByBin["[25, 50)"]);
+        Assert.Equal([2, 3], score.CrossesByBin["[50, 75)"]);
+        Assert.Equal([3], score.CrossesByBin[">=75"]);
+    }
+
+    [Fact]
+    public void Plan_WhenEqualWidthOrdinalGe_ThenThresholdsAtLowerEdgesAndOpenBottomRendersAll()
+    {
+        Assert.True(Plan(EqualWidth(new OrdinalScale(OrdinalDirection.Ge)), new SourceSchema(1)).TryGetValue(out var plan));
+
+        // ge pairs with inclusive '>=' at each bin's lower edge; the open bottom renders `all` first.
+        Assert.Equal(
+            ["score-all", "score->=25", "score->=50", "score->=75"],
+            plan.FormalAttributes.Select(f => f.RenderedName));
+
+        var score = plan.Attributes.Single();
+        Assert.Equal([0], score.CrossesByBin["<25"]);              // only `all`
+        Assert.Equal([0, 1], score.CrossesByBin["[25, 50)"]);
+        Assert.Equal([0, 1, 2], score.CrossesByBin["[50, 75)"]);
+        Assert.Equal([0, 1, 2, 3], score.CrossesByBin[">=75"]);
+    }
+
+    [Theory]
+    [InlineData(OrdinalDirection.Le)]
+    [InlineData(OrdinalDirection.Ge)]
+    public void Plan_WhenEqualWidthOrdinalDropTop_ThenTheOpenEndAllThresholdIsSuppressed(OrdinalDirection direction)
+    {
+        var spec = EqualWidth(new OrdinalScale(direction, DropTop: true));
+
+        Assert.True(Plan(spec, new SourceSchema(1)).TryGetValue(out var plan));
+
+        Assert.DoesNotContain(plan.FormalAttributes, f => f.RenderedName == "score-all");
+        Assert.Equal(3, plan.FormalAttributes.Count); // one per cut; the tautological `all` is gone
+    }
+
+    [Fact]
+    public void Plan_WhenEqualWidthOrdinalDefaultedBoundary_ThenGeometryPicksTheOperator()
+    {
+        // §12.3/D-060(c): over cut bins a defaulted boundary never selects the operator — the
+        // geometry does. A `ge` + inclusive default renders '>=', and would be identical even if
+        // [defaults].ordinal_boundary said "strict" (which the seam owns, not the planner).
+        Assert.True(Plan(EqualWidth(new OrdinalScale(OrdinalDirection.Ge, DropTop: false, OrdinalBoundary.Inclusive)), new SourceSchema(1))
+            .TryGetValue(out var plan));
+
+        Assert.Contains(plan.FormalAttributes, f => f.RenderedName == "score->=25");
+    }
+
+    [Fact]
+    public void Plan_WhenEqualWidthCalibrated_ThenPlansIdenticallyToTheFrozenManualCutsForm()
+    {
+        // D-088/D-093 at plan level: the calibrated auto form and its frozen manual_cuts twin
+        // produce the same columns, identities, and crosses — structurally, via one cut engine.
+        var pending = new BedrockSpec(SpecFixtures.WideRowIndex(),
+            [SpecFixtures.EqualWidthPending("score", 0, 4, new OrdinalScale(OrdinalDirection.Le))]);
+        var calibrated = CalibratedSpec.Create(Resolve(pending, new SourceSchema(1)), [new CalibratedCuts("score", [25, 50, 75])]);
+        Assert.True(calibrated.TryGetValue(out var state));
+        Assert.True(ConversionPlanner.Plan(state!).TryGetValue(out var auto));
+
+        var frozen = new BedrockSpec(SpecFixtures.WideRowIndex(),
+            [SpecFixtures.NumericCuts("score", 0, [25, 50, 75], new OrdinalScale(OrdinalDirection.Le))]);
+        Assert.True(Plan(frozen, new SourceSchema(1)).TryGetValue(out var frozenPlan));
+
+        Assert.Equal(
+            frozenPlan.FormalAttributes.Select(f => f.RenderedName),
+            auto!.FormalAttributes.Select(f => f.RenderedName));
+        Assert.Equal(
+            frozenPlan.FormalAttributes.Select(f => f.Identity),
+            auto.FormalAttributes.Select(f => f.Identity));
+        Assert.Equal(frozenPlan.Attributes.Single().CrossesByBin, auto.Attributes.Single().CrossesByBin);
+    }
+
     [Fact]
     public void Plan_WhenAttributeExcluded_ThenItProducesNoFormalAttributes()
     {

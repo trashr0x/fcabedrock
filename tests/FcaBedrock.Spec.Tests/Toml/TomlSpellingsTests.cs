@@ -71,15 +71,22 @@ public sealed class TomlSpellingsTests
             TomlSpellings.Allowed(TomlSpellings.UnknownValuePolicies));
 
     [Theory]
-    [InlineData("equal_width", true)]
     [InlineData("equal_frequency", true)]
     [InlineData("value_groups", true)]
     [InlineData("free_per_value", false)] // left the deferred set at M4 Slice B (D-101)
+    [InlineData("equal_width", false)]    // left the deferred set at M4 Slice C (D-102)
     [InlineData("identity", false)]
-    [InlineData("Equal_Width", false)]
-    [InlineData("equal_widt", false)]
+    [InlineData("Equal_Frequency", false)]
+    [InlineData("equal_frequenc", false)]
     public void IsIn_WhenProbingDeferredDiscretizerKinds_ThenExactOrdinalMatchOnly(string kind, bool expected) =>
         Assert.Equal(expected, TomlSpellings.IsIn(TomlSpellings.DeferredDiscretizerKinds, kind));
+
+    [Fact]
+    public void DeferredDiscretizerKinds_WhenSliceCLanded_ThenExactlyEqualFrequencyAndValueGroups() =>
+        // The transitional set narrows kind by kind (D-070) and the member retires with the last
+        // one. Pinning the whole set — not just membership — is what makes an accidental
+        // re-deferral or an early retirement visible (D-102).
+        Assert.Equal(["equal_frequency", "value_groups"], TomlSpellings.DeferredDiscretizerKinds);
 
     [Theory]
     [InlineData("interordinal", true)]

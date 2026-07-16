@@ -146,6 +146,23 @@ public enum DiagnosticCode
     /// <summary>A cut discretizer was given fewer than one cut. Spec §11.2 / §11.8.</summary>
     DiscretizerCutsTooFew,
 
+    /// <summary>
+    /// An <c>equal_width</c> <c>range = "manual"</c> span is unusable: a non-finite
+    /// <c>vmin</c>/<c>vmax</c>, or <c>vmin >= vmax</c>. Every finite increasing range is
+    /// accepted — the sign-aware interpolation cannot overflow one (G-7) — so this owns
+    /// only genuinely unusable authored spans. Spec §11.4 / §16.4 (D-089).
+    /// </summary>
+    EqualWidthRangeInvalid,
+
+    /// <summary>
+    /// An <c>equal_width</c> <c>range = "manual"</c> derives cuts that are not finite and
+    /// strictly ascending once <c>precision</c> is applied — a <c>round_to</c> collapsing
+    /// two cuts onto one value. The spec-validate twin of
+    /// <see cref="CalibrationCutsInvalid"/>, which owns the data-derived case. Spec §11.4
+    /// / §16.4 (D-089).
+    /// </summary>
+    EqualWidthCutsCollapsed,
+
     /// <summary><c>ends = "closed"</c> requires at least two cuts; fewer were given. Spec §11.2 / §11.8.</summary>
     DiscretizerEndsClosedTooFewCuts,
 
@@ -307,6 +324,25 @@ public enum DiagnosticCode
     /// Spec §7 / §10.6 / §16.4 (D-036).
     /// </summary>
     UnknownValuePolicyInclude,
+
+    /// <summary>
+    /// A data-derived calibration population cannot bound its discretizer's
+    /// configuration: an <c>equal_width</c> data range (<c>min_max</c>) with no usable
+    /// spread — no usable numeric values at all, or every value equal, so <c>vmin</c>
+    /// would equal <c>vmax</c>. Error, per attribute, in-path (no calibrated result).
+    /// The <c>equal_frequency</c> distinct-value guard reuses this code at its slice;
+    /// it does <b>not</b> apply to <c>equal_width</c>, whose bins are placed by span,
+    /// not by count (D-089). Spec §7 / §11.4 / §16.4 (D-088/D-089).
+    /// </summary>
+    CalibrationDataInsufficient,
+
+    /// <summary>
+    /// Cuts derived from a calibration population are not finite and strictly ascending
+    /// after any rounding — the calibrate-phase twin of
+    /// <see cref="EqualWidthCutsCollapsed"/>. Error, per attribute (no calibrated
+    /// result). Spec §11.4 / §11.5 / §16.4 (D-088/D-089).
+    /// </summary>
+    CalibrationCutsInvalid,
 
     // --- Spec load (stored-fingerprint verification, D-051/D-069/D-077) ---
 

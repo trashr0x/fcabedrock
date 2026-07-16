@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using FcaBedrock.Core.Discretization;
 using FcaBedrock.Core.Spec;
 using FcaBedrock.Diagnostics;
 
@@ -134,7 +135,7 @@ public sealed class CalibratedSpec
         foreach (var attribute in resolved.Spec.Attributes)
         {
             byAttribute.TryGetValue(attribute.Name, out var outcome);
-            var (effective, used) = Substitute(attribute, outcome);
+            var (effective, used) = Substitute(attribute, outcome, diagnostics);
             effectiveAttributes.Add(effective);
             if (used is not null)
             {
@@ -202,10 +203,12 @@ public sealed class CalibratedSpec
         return false;
     }
 
-    // Applies the effective-domain substitution for one attribute and returns the
-    // outcome it consumed (null when the attribute needs no calibration).
+    // Applies the pending → executable and effective-domain substitutions for one
+    // attribute and returns the outcome it consumed (null when the attribute needs no
+    // calibration). Data-derived cut invalidity is appended to diagnostics (P-14); every
+    // other mismatch is a calibrator-contract violation and throws.
     private static (AttributeSpec Effective, AttributeCalibration? Used) Substitute(
-        AttributeSpec attribute, AttributeCalibration? outcome)
+        AttributeSpec attribute, AttributeCalibration? outcome, List<BedrockDiagnostic> diagnostics)
     {
         if (!attribute.Include)
         {
@@ -214,11 +217,7 @@ public sealed class CalibratedSpec
 
         if (attribute.Discretizer is CalibrationPending pending)
         {
-            // The concrete pending → executable substitution lands with the M4 numeric/
-            // value_groups slices; no auto discretizer is constructible in slice A, so a
-            // CalibrationPending here is a leftover the milestone cannot resolve.
-            throw new ArgumentException(
-                $"attribute '{attribute.Name}' carries an unresolved '{pending.Kind}' calibration that this milestone cannot substitute (D-093).");
+            return SubstitutePending(attribute, pending, outcome, diagnostics);
         }
 
         var consumes = attribute.Discretizer is { } discretizer && ConsumesDomain(discretizer);
@@ -256,6 +255,61 @@ public sealed class CalibratedSpec
         }
 
         return (attribute, null);
+    }
+
+    // Replaces one CalibrationPending carrier with the executable discretizer its outcome
+    // resolves (D-093). Core owns the substitution so Plan and the fingerprints see one
+    // consistent state, and so an auto discretizer and its frozen form share the cut
+    // machinery by construction (D-088). A missing or kind-mismatched outcome is a
+    // calibrator-contract violation (programmer error); invalid calibrated cuts are a
+    // data-derived expected failure and come back as CalibrationCutsInvalid (P-14).
+    private static (AttributeSpec Effective, AttributeCalibration? Used) SubstitutePending(
+        AttributeSpec attribute, CalibrationPending pending, AttributeCalibration? outcome, List<BedrockDiagnostic> diagnostics)
+    {
+        switch (pending.Config)
+        {
+            // §11.4/G-8/D-102: min_max is the only equal_width range this milestone can resolve.
+            // percentile_p1_p99 is modelled in the Core enum but its calibration lands at M4 Slice
+            // D, so it must not become executable by ANY route — substituting hand-supplied cuts
+            // here would plan, emit, and fingerprint a percentile discretizer whose calibration
+            // does not exist yet. The reader rejects the spelling; this closes the programmatic
+            // path, so the transitional boundary holds at every seam rather than only at the
+            // calibrator (which throws on the same condition).
+            case PendingEqualWidth { Range: not EqualWidthRange.MinMax } unsupported:
+                throw new ArgumentException(
+                    $"attribute '{attribute.Name}' carries a pending equal_width calibration with range '{unsupported.Range}', " +
+                    "which this milestone cannot substitute; percentile_p1_p99 lands at M4 Slice D (D-093/D-102).");
+
+            case PendingEqualWidth config:
+            {
+                if (outcome is not CalibratedCuts cuts)
+                {
+                    throw new ArgumentException(
+                        $"attribute '{attribute.Name}' carries a pending '{pending.Kind}' calibration and requires exactly one CalibratedCuts outcome" +
+                        (outcome is null ? ", but none was provided." : $", but a {outcome.GetType().Name} was provided."));
+                }
+
+                var built = EqualWidthDiscretizer.FromCalibratedCuts(config, cuts.Cuts, pending.Culture);
+                foreach (var diagnostic in built.Diagnostics)
+                {
+                    diagnostics.Add(diagnostic.Location is null
+                        ? diagnostic with { Location = new DiagnosticLocation(AttributeName: attribute.Name) }
+                        : diagnostic);
+                }
+
+                // On failure the Error above fails the whole result, so the un-substituted
+                // attribute is never planned; retaining the outcome keeps the report honest.
+                return built.Value is { } discretizer
+                    ? (attribute with { Discretizer = discretizer }, cuts)
+                    : (attribute, cuts);
+            }
+
+            default:
+                // equal_frequency and value_groups passthrough land with their M4 slices; a
+                // pending variant this milestone cannot substitute is a mis-sequenced call.
+                throw new ArgumentException(
+                    $"attribute '{attribute.Name}' carries an unresolved '{pending.Kind}' calibration that this milestone cannot substitute (D-093).");
+        }
     }
 
     private static bool ConsumesDomain(Discretization.Discretizer discretizer) => discretizer.ConsumesDeclaredDomain;

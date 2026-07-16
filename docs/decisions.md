@@ -171,6 +171,10 @@ superseded or refined. A new entry MUST add its line here.
 
 - D-101 — `free_per_value` executable: string + numeric identity, `CanonicalNumber`, scoped zero canonicalization, seam-normalized numeric domain/label/order, natural-order default (realizes D-061/D-092/D-096; the G-6/G-8 governance items; corrects the package-cycle architecture test to assembly slices)
 
+### M4 Slice C (equal_width + the shared cut engine)
+
+- D-102 — `equal_width` executable (`manual` + `min_max`): the shared `NumericCutBins` engine making auto/frozen equivalence structural, the sign-aware overflow-safe cut formula, `CutPrecision`, the `PendingEqualWidth` → executable substitution, and streaming min/max calibration (realizes D-088/D-089/D-093/D-094; the G-5/G-7/G-8 governance items)
+
 Spec-field defaults are recorded in spec §21 items 1–11 (see the final section
 of this file).
 
@@ -3348,6 +3352,129 @@ pattern).
   (`FcaBedrock.Architecture.Tests` — package-slice correction); spec §5.1 / §7 / §10.3 / §10.7 / §10.8 /
   §11.3 / §12.3 / §16.4 / §17 (transitional-note retirements). Realizes D-061/D-092/D-096; the G-6/G-8
   governance items.
+
+---
+
+## M4 Slice C (equal_width + the shared cut engine)
+
+### D-102 — `equal_width` executable: shared `NumericCutBins` engine, sign-aware cut formula, `CutPrecision`, pending→executable substitution, streaming min/max calibration
+
+- **Status:** accepted (M4 Slice C; realizes D-088/D-089/D-093/D-094; the G-5/G-7/G-8 governance items)
+- **Date:** 2026-07-16
+- **Decision:** the `equal_width` discretizer (§11.4) becomes executable in both Slice C range
+  modes, leaving the transitional read-reject set (`DiscretizerKindNotYetSupported` narrows to
+  `equal_frequency`/`value_groups`; the member stays — G-8). It is **number-fixing** (D-061):
+  an absent `value_type` resolves to `number` and an authored `value_type = "string"` is
+  `SourceValueTypeInvalid`. Its bins are always **open-ended** (§11.4), so data outside the
+  calibration span still falls in the first/last bin.
+  - **The shared `NumericCutBins` engine (realizes D-093).** The numeric-cut execution machinery
+    — parsing, finite-only classification, cut membership, bin/cut labels, structural interval
+    bins, and native/v2-compat rendering — is extracted into one internal Core engine that
+    `ManualCutsDiscretizer` and `EqualWidthDiscretizer` both compose (P-17). This is what makes
+    the **D-088 auto/frozen byte-equivalence structural** rather than a property two code paths
+    must independently maintain: the same effective cuts through one engine give the same bins,
+    labels, canonical identities, and crosses. The extraction is **byte- and behaviour-neutral**
+    for `manual_cuts` — the nine golden fixtures, every pinned canonical-byte baseline, every SHA
+    vector, and the authored `-0.0` manual-cut encoding are all unchanged (P-1's stated exception:
+    touching M1 code is justified as D-093-mandated shared machinery, with the goldens as proof).
+  - **Range mode decides the phase (D-089).** `range = "manual"` is spec-determined: the seam
+    calls the strict factory, the cuts come from `vmin`/`vmax` alone, no calibration runs, and the
+    spec stays **fully-frozen-eligible** (§14). A data-derived range resolves to the
+    `CalibrationPending` carrier (D-093) that Calibrate replaces — no parallel unresolved-carrier
+    shape. `range = "percentile_p1_p99"` is modelled in the Core enum but is **not an accepted
+    TOML spelling** until its calibration lands at Slice D, so it is an unrecognized range
+    (`SpecFieldInvalid`, the D-070 tier-3 posture) — never silently mapped to `min_max` (G-8b).
+  - **The cut formula, pinned (G-5/G-7).** For `i = 1 .. bins-1` with `t = (double)i / bins`, the
+    interpolation is **sign-aware**: a same-sign span (or one with a zero bound) uses
+    `vmin + (vmax - vmin) * t`; a span crossing zero uses the convex combination
+    `vmin * (1 - t) + vmax * t`, whose terms are each bounded by their own operand. So **every
+    finite increasing range derives finite cuts** — `[-1.7e308, 1.7e308]` included — where the
+    naive always-`vmax - vmin` form would overflow it, and no range is rejected merely for being
+    wide (G-7). `precision` then rounds (`MidpointRounding.ToEven`, pinned), and every computed cut
+    is **positive-zero canonicalized** (G-6) so a computed `-0` never reaches a bin identity,
+    label, or hash. Derived-cut validity is the backstop on the *result* — a `round_to` collapsing
+    two cuts, or (at the extreme margin of the double range) a span too narrow to hold `bins - 1`
+    distinct representable cuts — never a second range gate, so its message names the outcome
+    rather than assuming rounding caused it. The formula lives in **one place** and behind **one
+    boundary**: the internal `DeriveCuts` is reached only through `CreateManual`, and the
+    Conversion calibrator obtains its data-range cuts by invoking that same public factory over the
+    **observed** span (keeping only its cuts; `CalibratedSpec.Create` then builds the real
+    discretizer, preserving the authored data-derived range and its absent `vmin`/`vmax`). So auto
+    and frozen cuts are the same numbers by construction with **no second copy of the formula and
+    no public surface beyond the approved inventory** (P-4).
+  - **Failure ownership.** Authored: a non-finite or non-increasing manual range is
+    `EqualWidthRangeInvalid`, and cuts that are not finite and strictly ascending after
+    `precision` are `EqualWidthCutsCollapsed` (both Error, spec validate). Data-derived: a
+    population with no usable spread — no usable finite value, or `min == max` — is
+    `CalibrationDataInsufficient`, and invalid calibrated cuts are `CalibrationCutsInvalid` (both
+    Error, calibrate, in-path with no calibrated result). There is deliberately **no
+    distinct-value guard**: equal-width bins are placed by span, not count, so fewer distinct
+    values than `bins` is valid whenever `min < max` (D-089).
+  - **The calibrated-state boundary is total, so the transitional line holds at every seam.**
+    Two conditions are **calibrator-contract violations** rather than data errors, and therefore
+    throw (the D-093 programmer-error posture, P-10): a `CalibratedCuts` outcome whose length is
+    not `bins - 1` (it would build a discretizer whose `Bins` contradicts its own geometry — the
+    fingerprint would encode `"bins":4` beside a schema array of another width), and a pending
+    `equal_width` whose range is not `min_max` (percentile has no calibration until Slice D, so
+    hand-supplied cuts must not make it plannable, emittable, or fingerprintable ahead of its
+    slice — the reader rejects the spelling, and this closes the programmatic route, G-8).
+    `CalibrationCutsInvalid` stays for correctly-sized cuts the *data* could not make ascending.
+  - **Calibration (extends the existing `Calibrator` — no second engine).** `min_max` reads the
+    §7 population (each non-missing value that parses **finite** under `binding.locale`), tracks a
+    **streaming minimum and maximum**, and retains two doubles — never the population, no sort, no
+    spill, no distinct tracking. Because min/max is **order- and count-insensitive**, the triple
+    path needs **no subject-local deduplication** and no grouped second pass: a repeated
+    `(subject, predicate, value)` cannot move a min or a max (this is why D-095's count-sensitive
+    machinery belongs to `equal_frequency`'s slice, not here). Unparseable values are excluded and
+    reported as this phase's own aggregated `SourceValueUnparseable` at the `unknown_value_policy`
+    severity (D-100). Cuts are derived only after the pass completes; `CalibratedSpec.Create`
+    substitutes the executable discretizer and **retains** the `CalibratedCuts` outcome in
+    spec-attribute order (the D-093 retention boundary — the freeze path and the §15 manifest read
+    it rather than re-deriving).
+  - **Fingerprint (D-094 golden-lock).** The discretizer encodes its **authored** configuration —
+    `{"bins":4,"kind":"equal_width","precision":"exact","range":"min_max"}`, adding
+    `"vmax"`/`"vmin"` **only** under `range = "manual"`; `precision` is `"exact"` or
+    `{"round_to":<number>}`. The **resolved cuts are not re-encoded**: they already ride as `bin`
+    objects in the `schema` array. Hand-authored canonical bytes and independently-computed
+    SHA-256 vectors for both forms land in this slice, before any stored M4 hash. The consequence
+    is the pinned D-094 asymmetry: an auto spec and its frozen `manual_cuts` twin share a
+    `schema_fingerprint` and emit byte-identical contexts, yet carry different **output**
+    fingerprints — sound, because a shared output fingerprint implies identical bytes but not the
+    converse.
+- **Why:** `equal_width` is M4's first data-calibrated discretizer, so the boundary it establishes
+  — one cut engine, one formula, one retained outcome — is what makes the auto/frozen guarantee a
+  structural property instead of a coincidence maintained by hand. Pinning the sign-aware formula
+  and the positive-zero canonicalization now keeps cuts identical across machines (P-7/P-11)
+  before any stored hash fossilizes them.
+- **Rejected:** duplicating the interpolation in the calibrator (the exact drift D-093's shared
+  machinery exists to prevent); making the derivation a **public** Core helper so the calibrator
+  could call it directly (it would widen the approved public surface for no capability — reusing
+  the `CreateManual` boundary over the observed span centralizes the formula just as well, P-4);
+  letting `FromCalibratedCuts` accept any ascending cut list (a wrong-sized one silently desyncs
+  `bins` from the geometry); allowing percentile to substitute from hand-supplied cuts (it would
+  make a Slice D mode executable through the public calibrated-state API while the reader still
+  rejects its spelling — one seam disagreeing with another is how transitional lines rot); the
+  naive `vmin + (vmax - vmin) * t` for every span (overflows a wide
+  opposite-sign range that is perfectly valid — G-7); rejecting extreme ranges instead
+  (a finite increasing range is usable by construction); a distinct-value guard for equal_width
+  (span-based binning tolerates sparse data, D-089); re-encoding resolved cuts in the discretizer
+  sub-object (redundant with the schema bins, D-094); subject-local dedup or a grouped second pass
+  for the triple min/max read (count-insensitive — it would buy nothing and cost a pass);
+  canonicalizing zero inside `Format` (would move the standing authored `-0` bytes, G-6);
+  accepting `percentile_p1_p99` now (its calibration is Slice D; a silent map to `min_max` would
+  convert a spelling error into wrong output).
+- **Affects:** Core (`Discretization/NumericCutBins` — new shared engine,
+  `Discretization/EqualWidthDiscretizer`, `Discretization/EqualWidthRange`,
+  `Discretization/CutPrecision`, `Discretization/ManualCutsDiscretizer` — byte-neutral extraction,
+  `Discretization/CutValidation` — shared derived-cut predicate, `Calibration/PendingCalibration`
+  — `PendingEqualWidth`, `Calibration/CalibratedSpec` — the pending→executable substitution,
+  `Spec/ResolvedSpec` — rebuild + validate, `Fingerprinting/FingerprintCalculator` — the
+  `equal_width` case), Spec (`EqualWidthDiscretizerSection`, reader/writer/spellings,
+  `SpecResolver` — number-fixing + range-mode resolution + the cut-kind ordinal gates), Conversion
+  (`Calibrator` — streaming min/max), Diagnostics (`EqualWidthRangeInvalid`,
+  `EqualWidthCutsCollapsed`, `CalibrationDataInsufficient`, `CalibrationCutsInvalid`); spec §7 /
+  §10.2 / §11.4 / §12.3 / §16.4 (transitional-note updates). Realizes D-088/D-089/D-093/D-094; the
+  G-5/G-7/G-8 governance items.
 
 ---
 

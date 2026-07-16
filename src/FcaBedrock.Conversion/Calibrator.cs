@@ -175,39 +175,30 @@ public static class Calibrator
         }
     }
 
-    // The included attributes needing discovery-class calibration, in spec-attribute order.
-    // The domain-consuming discretizers are identity and free_per_value (D-101); an absent
-    // domain calibrates observed (any policy), an explicit domain under include extends it. A
-    // numeric free_per_value observes canonical numeric identities and tallies unparseable
-    // values (D-096/D-100); every other case observes verbatim strings.
+    // The included attributes needing a data pass, in spec-attribute order — two classes:
+    //
+    //  * discovery-class (identity / free_per_value, D-101): an absent domain calibrates its
+    //    observed domain (any policy), an explicit domain under include extends it. A numeric
+    //    free_per_value observes canonical numeric identities and tallies unparseable values
+    //    (D-096/D-100); every other case observes verbatim strings.
+    //  * auto-cut (a CalibrationPending carrier, D-093): equal_width's data-derived range
+    //    observes a streaming min/max over the finite parsed population (§7/§11.4, D-102).
+    //
+    // Cut discretizers ignore declared_domain (§10.3), so the two classes never overlap.
     private static List<CalibrationTarget> BuildTargets(BedrockSpec spec, bool wide)
     {
         var targets = new List<CalibrationTarget>();
         foreach (var attribute in spec.Attributes)
         {
-            if (!attribute.Include || attribute.Discretizer is not (IdentityDiscretizer or FreePerValueDiscretizer))
+            if (!attribute.Include)
             {
                 continue;
             }
 
-            var absentDomain = attribute.DeclaredDomain.Count == 0;
-            var include = attribute.UnknownValuePolicy == UnknownValuePolicy.Include;
-            if (!absentDomain && !include)
+            var observer = BuildObserver(attribute);
+            if (observer is null)
             {
                 continue;
-            }
-
-            var numeric = attribute.Discretizer is FreePerValueDiscretizer { ValueType: SourceValueType.Number };
-            var culture = attribute.Discretizer is FreePerValueDiscretizer freePerValue
-                ? freePerValue.Culture
-                : CultureInfo.InvariantCulture;
-
-            var observer = new CalibrationObserver(isInclude: !absentDomain && include, numeric, culture);
-            if (observer.IsInclude)
-            {
-                // The explicit domain is already canonical for a numeric free_per_value (D-096),
-                // so seeding it verbatim matches the canonical keys observed values normalize to.
-                observer.Seed(attribute.DeclaredDomain);
             }
 
             var columnIndex = wide && attribute.Source is ColumnSource column ? column.Index : -1;
@@ -216,6 +207,59 @@ public static class Calibrator
         }
 
         return targets;
+    }
+
+    // The observer one attribute's calibration needs, or null when it needs no data pass.
+    private static CalibrationObserver? BuildObserver(AttributeSpec attribute)
+    {
+        switch (attribute.Discretizer)
+        {
+            case IdentityDiscretizer or FreePerValueDiscretizer:
+            {
+                var absentDomain = attribute.DeclaredDomain.Count == 0;
+                var include = attribute.UnknownValuePolicy == UnknownValuePolicy.Include;
+                if (!absentDomain && !include)
+                {
+                    return null;
+                }
+
+                var numeric = attribute.Discretizer is FreePerValueDiscretizer { ValueType: SourceValueType.Number };
+                var culture = attribute.Discretizer is FreePerValueDiscretizer freePerValue
+                    ? freePerValue.Culture
+                    : CultureInfo.InvariantCulture;
+
+                var observer = new DomainObserver(isInclude: !absentDomain && include, numeric, culture);
+                if (observer.IsInclude)
+                {
+                    // The explicit domain is already canonical for a numeric free_per_value (D-096),
+                    // so seeding it verbatim matches the canonical keys observed values normalize to.
+                    observer.Seed(attribute.DeclaredDomain);
+                }
+
+                return observer;
+            }
+
+            case CalibrationPending { Config: PendingEqualWidth config } pending:
+                // §11.4/D-089: min_max is the only data-derived range this milestone executes.
+                // percentile_p1_p99 is modelled in Core but has no TOML spelling until its
+                // calibration lands (D-102), so no authored spec can reach this — a hand-built
+                // one that does is a mis-sequenced call, not user input (P-14).
+                if (config.Range != EqualWidthRange.MinMax)
+                {
+                    throw new InvalidOperationException(
+                        $"equal_width range '{config.Range}' calibration is not implemented in this milestone; " +
+                        "percentile_p1_p99 lands at M4 Slice D, and the reader accepts only \"min_max\" and \"manual\" (§11.4/D-089).");
+                }
+
+                return new MinMaxObserver(config, pending.Culture);
+
+            case CalibrationPending pending:
+                throw new InvalidOperationException(
+                    $"'{pending.Kind}' calibration is not implemented in this milestone; it lands with its own M4 slice (D-093).");
+
+            default:
+                return null;
+        }
     }
 
     // Assembles the calibration outcomes and their mode-triggered warnings (spec-attribute
@@ -233,22 +277,15 @@ public static class Calibrator
         var outcomes = new List<AttributeCalibration>(targets.Count);
         foreach (var target in targets)
         {
-            var values = target.Observer.Values;
-            if (target.Observer.IsInclude)
+            switch (target.Observer)
             {
-                outcomes.Add(new IncludeAdditions(target.AttributeName, values));
-                diagnostics.Add(new BedrockDiagnostic(
-                    DiagnosticCode.UnknownValuePolicyInclude, DiagnosticSeverity.Warning,
-                    $"Attribute '{target.AttributeName}' extended its declared_domain with {values.Count} observed value(s) under unknown_value_policy = \"include\"; schema_fingerprint is data-dependent (§10.6).",
-                    new DiagnosticLocation(AttributeName: target.AttributeName)));
-            }
-            else
-            {
-                outcomes.Add(new ObservedDomain(target.AttributeName, values));
-                diagnostics.Add(new BedrockDiagnostic(
-                    DiagnosticCode.ObservedDomainUsed, DiagnosticSeverity.Warning,
-                    $"Attribute '{target.AttributeName}' had no declared_domain; it was calibrated from {values.Count} observed value(s), so the schema depends on this input (§10.3).",
-                    new DiagnosticLocation(AttributeName: target.AttributeName)));
+                case DomainObserver domain:
+                    FinishDomain(target, domain, outcomes, diagnostics);
+                    break;
+
+                case MinMaxObserver minMax:
+                    FinishMinMax(target, minMax, outcomes, diagnostics);
+                    break;
             }
 
             // §11.5/D-100/G-4: numeric values excluded from the calibration population because they
@@ -259,19 +296,100 @@ public static class Calibrator
             {
                 diagnostics.Add(new BedrockDiagnostic(
                     DiagnosticCode.SourceValueUnparseable, severity,
-                    $"Attribute '{target.AttributeName}' had {unparseable.Count} present-but-unparseable numeric value(s) during calibration (e.g. {unparseable.Sample}); they were excluded from the observed domain (§11.5).",
+                    $"Attribute '{target.AttributeName}' had {unparseable.Count} present-but-unparseable numeric value(s) during calibration (e.g. {unparseable.Sample}); they were excluded from the calibration population (§11.5).",
                     new DiagnosticLocation(AttributeName: target.AttributeName)));
             }
+        }
+
+        // An Error here (a fail-policy unparseable, or an attribute whose population could not
+        // bound its cuts) aborts with no calibrated result (D-095/D-100) — and it must abort
+        // BEFORE Create, since a target that produced no outcome would otherwise reach the
+        // completeness boundary as a contract violation rather than the data error it is.
+        if (HasError(diagnostics))
+        {
+            return Diagnosed<CalibratedSpec>.Failed(diagnostics);
         }
 
         var created = CalibratedSpec.Create(resolved, outcomes);
         diagnostics.AddRange(created.Diagnostics);
 
-        // A fail-policy unparseable Error (or any Create Error) aborts calibration with no result
-        // (D-095/D-100), even when the outcome assembly itself succeeded.
         return created.TryGetValue(out var calibrated) && !HasError(diagnostics)
             ? Diagnosed<CalibratedSpec>.Ok(calibrated, diagnostics)
             : Diagnosed<CalibratedSpec>.Failed(diagnostics);
+    }
+
+    // Discovery-class outcomes and their mode-triggered warnings: they fire whenever the mode
+    // executes, zero discoveries included — the data-dependence exists regardless of the count.
+    private static void FinishDomain(
+        CalibrationTarget target, DomainObserver observer, List<AttributeCalibration> outcomes, List<BedrockDiagnostic> diagnostics)
+    {
+        var values = observer.Values;
+        if (observer.IsInclude)
+        {
+            outcomes.Add(new IncludeAdditions(target.AttributeName, values));
+            diagnostics.Add(new BedrockDiagnostic(
+                DiagnosticCode.UnknownValuePolicyInclude, DiagnosticSeverity.Warning,
+                $"Attribute '{target.AttributeName}' extended its declared_domain with {values.Count} observed value(s) under unknown_value_policy = \"include\"; schema_fingerprint is data-dependent (§10.6).",
+                new DiagnosticLocation(AttributeName: target.AttributeName)));
+            return;
+        }
+
+        outcomes.Add(new ObservedDomain(target.AttributeName, values));
+        diagnostics.Add(new BedrockDiagnostic(
+            DiagnosticCode.ObservedDomainUsed, DiagnosticSeverity.Warning,
+            $"Attribute '{target.AttributeName}' had no declared_domain; it was calibrated from {values.Count} observed value(s), so the schema depends on this input (§10.3).",
+            new DiagnosticLocation(AttributeName: target.AttributeName)));
+    }
+
+    // §11.4/D-089/D-102: the equal_width data range resolves once the pass completes. A
+    // population with no usable spread cannot bound the span — no usable numeric values at all,
+    // or every value equal — and is CalibrationDataInsufficient (Error, no calibrated result).
+    // There is deliberately NO distinct-value guard: equal-width bins are placed by span, not by
+    // count, so fewer distinct values than bins is valid as long as min < max.
+    //
+    // The cuts come from Core's ONE derivation boundary — EqualWidthDiscretizer.CreateManual,
+    // invoked over the observed span. That is what makes an auto spec and its calibrate-frozen
+    // manual_cuts form carry the same numbers by construction (D-088) rather than by two copies of
+    // the formula agreeing. Only the cuts are kept: the instance is a throwaway (its range mode is
+    // irrelevant here), and CalibratedSpec.Create builds the real discretizer, which preserves the
+    // authored data-derived range and its absent vmin/vmax (D-094). The span gate above means
+    // CreateManual's own range diagnostic is unreachable, so its only possible failure is a cut
+    // collapse — which this phase owns as CalibrationCutsInvalid (D-088/D-089).
+    private static void FinishMinMax(
+        CalibrationTarget target, MinMaxObserver observer, List<AttributeCalibration> outcomes, List<BedrockDiagnostic> diagnostics)
+    {
+        if (!observer.HasValues)
+        {
+            diagnostics.Add(new BedrockDiagnostic(
+                DiagnosticCode.CalibrationDataInsufficient, DiagnosticSeverity.Error,
+                $"Attribute '{target.AttributeName}' uses equal_width with a data-derived range, but the calibration population has no usable finite numeric value to bound it (§11.4).",
+                new DiagnosticLocation(AttributeName: target.AttributeName)));
+            return;
+        }
+
+        if (observer.Min == observer.Max)
+        {
+            diagnostics.Add(new BedrockDiagnostic(
+                DiagnosticCode.CalibrationDataInsufficient, DiagnosticSeverity.Error,
+                $"Attribute '{target.AttributeName}' uses equal_width with a data-derived range, but every usable value in the calibration population is {CanonicalNumber.Format(CanonicalNumber.CanonicalizeZero(observer.Min))}; the range has no spread (§11.4).",
+                new DiagnosticLocation(AttributeName: target.AttributeName)));
+            return;
+        }
+
+        var derived = EqualWidthDiscretizer.CreateManual(
+            observer.Config.Bins, observer.Min, observer.Max, observer.Config.Precision, observer.Culture);
+        if (!derived.TryGetValue(out var discretizer))
+        {
+            diagnostics.Add(new BedrockDiagnostic(
+                DiagnosticCode.CalibrationCutsInvalid, DiagnosticSeverity.Error,
+                $"Attribute '{target.AttributeName}' uses equal_width with a data-derived range, but the calibrated span " +
+                $"[{CanonicalNumber.Format(observer.Min)}, {CanonicalNumber.Format(observer.Max)}] cannot be divided into " +
+                $"{observer.Config.Bins} distinct bins at this precision (§11.4).",
+                new DiagnosticLocation(AttributeName: target.AttributeName)));
+            return;
+        }
+
+        outcomes.Add(new CalibratedCuts(target.AttributeName, discretizer.Cuts));
     }
 
     // §10.6/§16.4: the severity unknown_value_policy assigns an aggregated SourceValueUnparseable —
@@ -302,14 +420,24 @@ public static class Calibrator
     private sealed record CalibrationTarget(
         string AttributeName, CalibrationObserver Observer, int ColumnIndex, string? Predicate, UnknownValuePolicy Policy);
 
+    // What one attribute accumulates over the calibration pass. Missing values never reach an
+    // observer (they are handled before calibration); a present-but-unparseable/non-finite
+    // numeric value is excluded from the population and tallied for this phase's own aggregated
+    // SourceValueUnparseable (§11.5/D-100).
+    private abstract class CalibrationObserver
+    {
+        public DiagnosticTally Unparseable { get; } = new();
+
+        public abstract void Observe(string? raw);
+    }
+
     // Accumulates the distinct non-missing observed values for one attribute in
     // first-observation order (ordinal dedup, P-12). Bounded by the attribute vocabulary —
     // schema-scale metadata, documented and not budget-gated (P-16, D-095). In numeric mode
     // (numeric free_per_value, D-096) each present value is parsed under the injected culture and
     // reduced to its canonical numeric identity before dedup, so equivalent spellings occupy one
-    // bin at their first occurrence; a present-but-unparseable/non-finite value is excluded and
-    // tallied for a per-phase SourceValueUnparseable aggregate (D-100).
-    private sealed class CalibrationObserver(bool isInclude, bool numeric, CultureInfo culture)
+    // bin at their first occurrence.
+    private sealed class DomainObserver(bool isInclude, bool numeric, CultureInfo culture) : CalibrationObserver
     {
         private readonly HashSet<string> _seen = new(StringComparer.Ordinal);
         private readonly List<string> _values = [];
@@ -317,9 +445,6 @@ public static class Calibrator
         public bool IsInclude { get; } = isInclude;
 
         public IReadOnlyList<string> Values => _values;
-
-        // Present-but-unparseable numeric observations excluded from the population (§11.5).
-        public DiagnosticTally Unparseable { get; } = new();
 
         // For include mode: seed the declared domain so only genuinely-new values are additions.
         // The domain is already canonical for a numeric free_per_value (D-096).
@@ -331,7 +456,7 @@ public static class Calibrator
             }
         }
 
-        public void Observe(string? raw)
+        public override void Observe(string? raw)
         {
             if (raw is null)
             {
@@ -357,6 +482,54 @@ public static class Calibrator
             if (_seen.Add(key))
             {
                 _values.Add(key);
+            }
+        }
+    }
+
+    // The equal_width data range (§7/§11.4): a streaming minimum and maximum over the finite
+    // parsed population. It retains two doubles and never the population — no sort, no spill, no
+    // distinct-value tracking (D-095's bounded-memory rule is satisfied by construction here;
+    // the count-sensitive quantile machinery belongs to equal_frequency's slice). Order-insensitive
+    // and count-insensitive, which is why a triple pass needs no subject-local deduplication: a
+    // repeated (subject, predicate, value) cannot move a min or a max.
+    private sealed class MinMaxObserver(PendingEqualWidth config, CultureInfo culture) : CalibrationObserver
+    {
+        public PendingEqualWidth Config { get; } = config;
+
+        // The resolved parsing culture, carried so cut derivation re-homes onto the same one the
+        // population was read under (P-11).
+        public CultureInfo Culture { get; } = culture;
+
+        public bool HasValues { get; private set; }
+
+        public double Min { get; private set; } = double.PositiveInfinity;
+
+        public double Max { get; private set; } = double.NegativeInfinity;
+
+        public override void Observe(string? raw)
+        {
+            if (raw is null)
+            {
+                return;
+            }
+
+            // §7: a numeric value contributes only when it parses to a FINITE number under
+            // binding.locale; anything else is excluded and never influences a cut (§11.5).
+            if (!CanonicalNumber.TryParse(raw, Culture, out var value))
+            {
+                Unparseable.Record(raw);
+                return;
+            }
+
+            HasValues = true;
+            if (value < Min)
+            {
+                Min = value;
+            }
+
+            if (value > Max)
+            {
+                Max = value;
             }
         }
     }

@@ -1,4 +1,5 @@
 using System.Globalization;
+using FcaBedrock.Core.Calibration;
 using FcaBedrock.Core.Discretization;
 using FcaBedrock.Core.Scaling;
 using FcaBedrock.Core.Spec;
@@ -70,6 +71,25 @@ internal static class SpecFixtures
         new(name, new ColumnSource(index, valueType), Include: true,
             new FreePerValueDiscretizer(valueType, CultureInfo.InvariantCulture), scale,
             domain, RestrictTo: [], valueLabels ?? NoLabels, missing, policy);
+
+    // A spec-determined equal_width attribute (§11.4, D-102): range = "manual", so its cuts
+    // come from vmin/vmax alone and it needs no calibration.
+    public static AttributeSpec EqualWidthManual(
+        string name, int index, int bins, double vmin, double vmax, Scale scale,
+        CutPrecision? precision = null, MissingPolicy missing = MissingPolicy.Skip) =>
+        new(name, new ColumnSource(index, SourceValueType.Number), Include: true,
+            EqualWidthDiscretizer.CreateManual(bins, vmin, vmax, precision ?? CutPrecision.Exact, CultureInfo.InvariantCulture).Value!,
+            scale, DeclaredDomain: [], RestrictTo: [], NoLabels, missing, UnknownValuePolicy.Warn);
+
+    // A data-derived equal_width attribute before calibration: the CalibrationPending carrier
+    // the resolve seam produces, which Calibrate replaces with the executable discretizer (D-093).
+    public static AttributeSpec EqualWidthPending(
+        string name, int index, int bins, Scale scale,
+        EqualWidthRange range = EqualWidthRange.MinMax, CutPrecision? precision = null,
+        UnknownValuePolicy policy = UnknownValuePolicy.Warn) =>
+        new(name, new ColumnSource(index, SourceValueType.Number), Include: true,
+            new CalibrationPending(new PendingEqualWidth(bins, range, precision ?? CutPrecision.Exact), CultureInfo.InvariantCulture),
+            scale, DeclaredDomain: [], RestrictTo: [], NoLabels, MissingPolicy.Skip, policy);
 
     // An identity value-bin ordinal attribute (§12.3, D-081): an explicit order over
     // the declared domain, paired with an OrdinalScale carrying that order.

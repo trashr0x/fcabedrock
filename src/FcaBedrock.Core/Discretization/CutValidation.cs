@@ -118,6 +118,18 @@ internal static class CutValidation
         return diagnostics;
     }
 
+    /// <summary>
+    /// Whether <paramref name="cuts"/> is a usable numeric cut sequence: non-empty,
+    /// every value finite, strictly ascending. The one shared post-derivation validity
+    /// check for <b>computed</b> <c>equal_width</c> cuts (§11.4/§9.1) — the predicate is
+    /// the same wherever they came from; only the diagnostic differs by phase
+    /// (<see cref="DiagnosticCode.EqualWidthCutsCollapsed"/> at spec validate for an
+    /// authored manual range, <see cref="DiagnosticCode.CalibrationCutsInvalid"/> at
+    /// calibrate for a data-derived one, D-088/D-089).
+    /// </summary>
+    public static bool AreUsableCuts(IReadOnlyList<double> cuts) =>
+        cuts.Count >= 1 && cuts.All(double.IsFinite) && StrictlyAscending(cuts);
+
     private static BedrockDiagnostic TooFew(string kind) =>
         new(DiagnosticCode.DiscretizerCutsTooFew, DiagnosticSeverity.Error,
             $"{kind} requires at least one cut.");

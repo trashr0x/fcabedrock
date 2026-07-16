@@ -340,10 +340,57 @@ public static class FingerprintCalculator
                 builder.Append('}');
                 break;
 
+            case EqualWidthDiscretizer equalWidth:
+                // §14/D-094: the AUTHORED configuration only — the resolved cuts are not
+                // re-encoded here (they already ride as `bin` objects in the `schema` array,
+                // so duplicating them would invite a two-source-of-truth drift). vmin/vmax
+                // appear only under range = "manual", which is why an auto spec and its
+                // frozen manual_cuts form share a schema_fingerprint yet may carry different
+                // output fingerprints (sound: same output fingerprint ⇒ same bytes, not the
+                // converse). Keys sort ordinal: bins < kind < precision < range < vmax < vmin.
+                builder.Append("{\"bins\":");
+                CanonicalJson.AppendNumber(builder, equalWidth.Bins);
+                builder.Append(",\"kind\":\"equal_width\",\"precision\":");
+                AppendPrecision(builder, equalWidth.Precision);
+                builder.Append(",\"range\":");
+                CanonicalJson.AppendString(builder, Spell(equalWidth.Range));
+                if (equalWidth.Range == EqualWidthRange.Manual)
+                {
+                    // ResolvedSpec.Create pins vmin/vmax present exactly for manual (D-098).
+                    builder.Append(",\"vmax\":");
+                    CanonicalJson.AppendNumber(builder, equalWidth.VMax!.Value);
+                    builder.Append(",\"vmin\":");
+                    CanonicalJson.AppendNumber(builder, equalWidth.VMin!.Value);
+                }
+
+                builder.Append('}');
+                break;
+
             default:
                 // Deferred kinds reject at read/resolve (D-070) and never reach a
                 // computable plan; hitting this is a programmer error.
                 throw new InvalidOperationException($"Discretizer kind '{discretizer.Kind}' has no fingerprint encoding.");
+        }
+    }
+
+    // §14/D-094: precision mirrors its two TOML forms — the string "exact" or the object
+    // {"round_to":<number>}.
+    private static void AppendPrecision(StringBuilder builder, CutPrecision precision)
+    {
+        switch (precision)
+        {
+            case ExactPrecision:
+                builder.Append("\"exact\"");
+                break;
+
+            case RoundToPrecision roundTo:
+                builder.Append("{\"round_to\":");
+                CanonicalJson.AppendNumber(builder, roundTo.RoundTo);
+                builder.Append('}');
+                break;
+
+            default:
+                throw new InvalidOperationException($"Cut precision {precision.GetType().Name} has no fingerprint encoding.");
         }
     }
 
@@ -544,6 +591,14 @@ public static class FingerprintCalculator
         SourceValueType.String => "string",
         SourceValueType.Number => "number",
         _ => throw new InvalidOperationException($"No fingerprint spelling for value type {valueType}."),
+    };
+
+    private static string Spell(EqualWidthRange range) => range switch
+    {
+        EqualWidthRange.MinMax => "min_max",
+        EqualWidthRange.PercentileP1P99 => "percentile_p1_p99",
+        EqualWidthRange.Manual => "manual",
+        _ => throw new InvalidOperationException($"No fingerprint spelling for equal_width range {range}."),
     };
 
     private static string Spell(BinEnds ends) => ends switch

@@ -242,6 +242,70 @@ public sealed class SpecFingerprintsTests
         Assert.Equal(plain, exponent);
     }
 
+    // --- equal_width manual is fully-frozen-eligible (§14/§11.4, D-089/D-102) --
+
+    private const string EqualWidthManualTemplate = """
+        [spec]
+        version = 1
+
+        [binding]
+        shape = "wide"
+
+        [[attribute]]
+        name = "score"
+        source = { kind = "column", index = 0 }
+        discretizer = { kind = "equal_width", bins = 4, range = "manual", vmin = 0, vmax = 100 }
+        scale = { kind = "nominal" }
+        """;
+
+    [Fact]
+    public void VerifyStored_WhenManualEqualWidthFingerprintsFrozen_ThenSilent()
+    {
+        // §11.4/§14/D-089: a manual range is spec-determined — its cuts come from the spec text
+        // alone, so unlike a data-derived range it IS eligible for stored fingerprints. This is
+        // the stored-fingerprint round-trip: compute, freeze into [spec], re-read, verify silent.
+        var computed = ComputeFor(EqualWidthManualTemplate);
+        var frozen = EqualWidthManualTemplate.Replace(
+            "version = 1",
+            $"""
+            version = 1
+            schema_fingerprint = "{computed.SchemaFingerprint}"
+            cxt_output_fingerprint = "{computed.CxtOutputFingerprint}"
+            dat_output_fingerprint = "{computed.DatOutputFingerprint}"
+            """,
+            StringComparison.Ordinal);
+        var (document, spec, plan) = Pipeline(frozen, new SourceSchema(1));
+
+        Assert.Empty(VerifyStored(document, ComputeNative(document, spec, plan)));
+    }
+
+    [Fact]
+    public void ComputeNative_WhenManualEqualWidthBoundsSpelledDifferently_ThenFingerprintsIdentical()
+    {
+        // The §14 canonical number rule reaches the authored bounds too: 0/0.0 and 100/1e2 are one
+        // spec, exactly as the 30/30.0/3e1 cut golden pins for manual_cuts.
+        var plain = ComputeFor(EqualWidthManualTemplate);
+        var spelled = ComputeFor(EqualWidthManualTemplate.Replace(
+            "vmin = 0, vmax = 100", "vmin = 0.0, vmax = 1e2", StringComparison.Ordinal));
+
+        Assert.Equal(plain, spelled);
+    }
+
+    [Fact]
+    public void ComputeNative_WhenEqualWidthPrecisionDiffers_ThenOutputFingerprintsDiffer()
+    {
+        // precision is authored configuration the discretizer sub-object carries (D-094), so two
+        // otherwise-identical specs that round differently must not hash alike — even when, as
+        // here, the effective cuts happen to coincide.
+        var exact = ComputeFor(EqualWidthManualTemplate);
+        var rounded = ComputeFor(EqualWidthManualTemplate.Replace(
+            "vmax = 100 }", "vmax = 100, precision = { round_to = 1 } }", StringComparison.Ordinal));
+
+        Assert.Equal(exact.SchemaFingerprint, rounded.SchemaFingerprint); // same effective bins
+        Assert.NotEqual(exact.CxtOutputFingerprint, rounded.CxtOutputFingerprint);
+        Assert.NotEqual(exact.DatOutputFingerprint, rounded.DatOutputFingerprint);
+    }
+
     [Fact]
     public void ComputeNative_WhenComposedEqualsFlat_ThenAllThreeFingerprintsIdentical()
     {

@@ -158,8 +158,34 @@ vertical slices, not waterfall phases — each should leave the system working.
 > `restrict_to` stay transitionally rejected. One approved architecture-test
 > correction: `Packages_ShouldBeFreeOfCycles` now slices by production assembly
 > (its documented package-level intent) rather than by full namespace. `dotnet test`
-> is green (996 passed, 1 skipped). **M4 Slice C (`equal_width` + the shared cut
-> engine) is next.**
+> is green (996 passed, 1 skipped).
+>
+> **M4 Slice C — `equal_width` + the shared cut engine — is complete (D-102).** The
+> `equal_width` discretizer is executable in both Slice C range modes and leaves the
+> transitional read-reject set (`DiscretizerKindNotYetSupported` narrows to
+> `equal_frequency`/`value_groups`). Its numeric-cut execution now runs through a new
+> shared **`NumericCutBins`** engine that `manual_cuts` also composes — the extraction
+> that makes the D-088 auto/frozen byte-equivalence **structural** rather than a
+> property two code paths maintain (byte-neutral: all nine goldens, every pinned
+> canonical-byte baseline and SHA vector, and the authored `-0.0` manual-cut encoding
+> are unchanged). `range = "manual"` is spec-determined (cuts from `vmin`/`vmax`, no
+> data pass, fully-frozen-eligible); `range = "min_max"` resolves to the
+> `CalibrationPending` carrier the `Calibrator` fills with a **streaming min/max**
+> (two doubles — never the population; count-insensitive, so the triple path needs no
+> subject-local dedup), and `CalibratedSpec.Create` substitutes the executable
+> discretizer over the retained `CalibratedCuts`. The cut formula is pinned and
+> **sign-aware**, so every finite increasing range — `[-1.7e308, 1.7e308]` included —
+> derives finite cuts (G-7), with `MidpointRounding.ToEven` and positive-zero
+> canonicalization of computed cuts (G-6). Four diagnostics landed
+> (`EqualWidthRangeInvalid`, `EqualWidthCutsCollapsed` at spec validate;
+> `CalibrationDataInsufficient`, `CalibrationCutsInvalid` at calibrate) and both
+> `equal_width` fingerprint encodings are golden-locked with independently-computed
+> SHA-256 vectors (D-094). `range = "percentile_p1_p99"` stays an unrecognized range
+> spelling (`SpecFieldInvalid`) until Slice D — enforced at the reader **and** at the
+> calibrated-state boundary, so percentile cannot become executable by any route;
+> `equal_frequency`, `value_groups`, and `restrict_to` stay transitionally rejected.
+> `dotnet test` is green (1225 passed, 1 skipped). **M4 Slice D (`equal_frequency` +
+> percentile + the bounded quantile engine) is next.**
 
 ## Milestones
 

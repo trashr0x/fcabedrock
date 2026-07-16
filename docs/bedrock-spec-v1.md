@@ -515,11 +515,16 @@ observations. This population is the input universe, evaluated before `restrict_
 > an absent `declared_domain` under a consuming discretizer (`ObservedDomainUsed`)
 > and `unknown_value_policy = "include"` (§10.6), for the M1 `identity`
 > discretizer; **Slice B** (D-101) extends it to numeric `free_per_value`, whose
-> observed/included values are canonical numeric identities (§11.3/D-096). The
-> remaining calibration — the auto discretizers (`equal_width` / `equal_frequency`)
-> and `value_groups` `unmatched = "passthrough"` — is still recognized-but-rejected
-> at read (`DiscretizerKindNotYetSupported`, §16.4) until each kind's slice lands,
-> rather than silently producing a data-dependent schema.
+> observed/included values are canonical numeric identities (§11.3/D-096); **Slice
+> C** (D-102) adds the first auto-discretizer cut calibration — `equal_width` with
+> `range = "min_max"`, a streaming minimum/maximum over the population above (its
+> `range = "manual"` form is spec-determined and skips this phase entirely, §11.4).
+> The remaining calibration — `equal_frequency`, `equal_width`
+> `range = "percentile_p1_p99"` (§11.4), and `value_groups`
+> `unmatched = "passthrough"` — is still recognized-but-rejected at read
+> (`DiscretizerKindNotYetSupported` for the kinds, `SpecFieldInvalid` for the
+> percentile range spelling, §16.4) until each slice lands, rather than silently
+> producing a data-dependent schema.
 
 **`convert` calibrates but never discovers.** Discovery (draft-spec generation
 from data) is the separate `probe` operation (D-003), never performed implicitly
@@ -1231,7 +1236,29 @@ ascending are `CalibrationCutsInvalid` (Error, calibrate). The `equal_frequency`
 **distinct-value guard** (§11.5) does **not** apply to `equal_width`: equal-width
 bins are placed by span, not by count, so equal width tolerates fewer distinct
 values than `bins`. Percentile-range (`percentile_p1_p99`) calibration is subject
-to the same **exact, bounded-memory** obligation as `equal_frequency` (§11.5).
+to the same **exact, bounded-memory** obligation as `equal_frequency` (§11.5);
+`min_max` is not — a streaming minimum and maximum is bounded by construction.
+
+**Cut derivation (normative).** The `bins - 1` cuts are computed in binary64 over
+the resolved span. For `i = 1 … bins - 1` with `t = i / bins`, the interpolation is
+**sign-aware** so that no finite increasing range can overflow: when the span shares
+a sign or has a zero bound (`vmin ≥ 0` or `vmax ≤ 0`) the cut is
+`vmin + (vmax - vmin) * t`; when the span crosses zero (`vmin < 0 < vmax`) it is the
+convex combination `vmin * (1 - t) + vmax * t`. Every finite increasing range
+therefore derives **finite** cuts — `vmin = -1.7e308, vmax = 1.7e308` included — so a
+range is never rejected merely for being wide. `precision = { round_to = r }` then maps
+each cut to the nearest multiple of `r`, **halfway cases to even**; every computed cut
+is canonicalized so a computed negative zero renders `0` (§14/decisions.md D-096).
+The derived-cut validity rules above then apply to the result: they catch a `round_to`
+that collapses two cuts onto one value, and — at the extreme margin of the double
+range — a span too narrow to hold `bins - 1` distinct representable cuts. See
+decisions.md D-102.
+
+> **Transitional (M4 Slice C).** `range = "manual"` and `range = "min_max"` are
+> implemented (D-102). `range = "percentile_p1_p99"` is **not yet an accepted
+> spelling**: it rejects at read as an unrecognized range (`SpecFieldInvalid`,
+> §16.4) until its calibration lands with `equal_frequency`, rather than being
+> silently treated as `min_max`.
 
 ### 11.5 `equal_frequency`
 
@@ -2080,9 +2107,12 @@ observed-domain calibration landed at M4 Slice A — D-098, so an absent
 phase, §10.3.) They are distinct from the permanent `*NotImplementedV1`
 reservations in §20. Two parse-phase codes are transitional on the same terms:
 `DiscretizerKindNotYetSupported` (a recognized-but-deferred discretizer kind —
-`equal_width`, `equal_frequency`, `value_groups` — rejected at read with no
+`equal_frequency`, `value_groups` — rejected at read with no
 parameter carrier, D-070; removed as each kind lands at M4 — `free_per_value` left
-this set at M4 Slice B, D-101) and `SpecSurfaceNotYetSupported` (recognized v1
+this set at M4 Slice B, D-101, and `equal_width` at M4 Slice C, D-102; note that
+`equal_width`'s deferred `range = "percentile_p1_p99"` spelling rejects as
+`SpecFieldInvalid`, not with this code — the *kind* is supported) and
+`SpecSurfaceNotYetSupported` (recognized v1
 surface the reader does not model yet — attribute/template `display_name` /
 `formal_attribute_format`, `[defaults]` `formal_attribute_format`,
 `value_type = "date"` — a **closed,

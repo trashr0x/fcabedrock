@@ -1,4 +1,5 @@
 using System.Text;
+using FcaBedrock.Core.Discretization;
 using FcaBedrock.Core.Spec;
 
 namespace FcaBedrock.Spec.Toml;
@@ -524,6 +525,39 @@ public static class SpecWriter
 
                 break;
 
+            case EqualWidthDiscretizerSection equalWidth:
+                // §11.4 presentation order: kind, bins, range, vmin, vmax, precision. Every
+                // field is written only when authored (D-049 presence tracking), so an omitted
+                // range/precision stays omitted and parse→write→parse is idempotent; vmin/vmax
+                // are authored only under range = "manual" (the reader enforces it).
+                items.Add(Item("kind", TomlLiteral.FormatString(TomlSpellings.EqualWidthKind)));
+                if (equalWidth.Bins is { } bins)
+                {
+                    items.Add(Item("bins", TomlLiteral.FormatLong(bins)));
+                }
+
+                if (equalWidth.Range is { } range)
+                {
+                    items.Add(Item("range", TomlLiteral.FormatString(TomlSpellings.ToToml(TomlSpellings.EqualWidthRanges, range))));
+                }
+
+                if (equalWidth.VMin is { } vmin)
+                {
+                    items.Add(Item("vmin", TomlLiteral.FormatDouble(vmin)));
+                }
+
+                if (equalWidth.VMax is { } vmax)
+                {
+                    items.Add(Item("vmax", TomlLiteral.FormatDouble(vmax)));
+                }
+
+                if (equalWidth.Precision is { } precision)
+                {
+                    items.Add(Item("precision", FormatPrecision(precision)));
+                }
+
+                break;
+
             case OrderedCutsDiscretizerSection ordered:
                 items.Add(Item("kind", TomlLiteral.FormatString(TomlSpellings.OrderedCutsKind)));
                 if (ordered.Order is { } order)
@@ -549,6 +583,15 @@ public static class SpecWriter
 
         return InlineTable(items);
     }
+
+    // §11.4: the two canonical precision forms — the bare string "exact", or the inline
+    // table { round_to = <number> }.
+    private static string FormatPrecision(CutPrecision precision) => precision switch
+    {
+        ExactPrecision => TomlLiteral.FormatString(TomlSpellings.PrecisionExact),
+        RoundToPrecision roundTo => InlineTable([Item(TomlSpellings.RoundToKey, TomlLiteral.FormatDouble(roundTo.RoundTo))]),
+        _ => throw new ArgumentOutOfRangeException(nameof(precision), precision, "Unknown cut precision type."),
+    };
 
     private static string FormatScale(ScaleSection scale)
     {

@@ -1,4 +1,5 @@
 using System.Globalization;
+using FcaBedrock.Core.Calibration;
 using FcaBedrock.Core.Discretization;
 using FcaBedrock.Core.Scaling;
 using FcaBedrock.Core.Spec;
@@ -281,6 +282,72 @@ public sealed class ResolvedSpecTests
         Assert.True(resolvedDisc.Culture.IsReadOnly);
         Assert.Equal(BinResult.Bin("40.5"), resolvedDisc.Discretize("40.5")); // still the "." decimal
     }
+
+    // --- equal_width / pending calibration (M4 Slice C, D-102) ----------------
+
+    private static BedrockSpec EqualWidthSpec(Discretizer discretizer) =>
+        new(SpecFixtures.WideRowIndex(),
+            [new AttributeSpec("score", new ColumnSource(0, SourceValueType.Number), Include: true,
+                discretizer, new NominalScale(), DeclaredDomain: [], RestrictTo: [], SpecFixtures.NoLabels,
+                MissingPolicy.Skip, UnknownValuePolicy.Warn)]);
+
+    [Fact]
+    public void Create_WhenEqualWidthParsingCultureMutatedAfterResolution_ThenClassificationUnaffected()
+    {
+        // The equal_width discretizer is rebuilt over a read-only culture clone, exactly like
+        // manual_cuts and free_per_value — a caller mutating its own culture cannot change which
+        // bin a value lands in after resolution (D-098 recursive immutability, P-11).
+        var culture = (CultureInfo)CultureInfo.GetCultureInfo("en-US").Clone(); // a mutable clone
+        var discretizer = EqualWidthDiscretizer.CreateManual(4, 0, 100, CutPrecision.Exact, culture).Value!;
+        var resolved = Create(EqualWidthSpec(discretizer), new SourceSchema(1));
+
+        culture.NumberFormat.NumberDecimalSeparator = ","; // would break "30.5" if it leaked through
+
+        var resolvedDisc = Assert.IsType<EqualWidthDiscretizer>(resolved.Spec.Attributes[0].Discretizer);
+        Assert.True(resolvedDisc.Culture.IsReadOnly);
+        Assert.Equal(BinResult.Bin("[25, 50)"), resolvedDisc.Discretize("30.5"));
+    }
+
+    [Fact]
+    public void Create_WhenEqualWidthResolved_ThenCutsAreRetainedNotRederivedAndNotCastable()
+    {
+        var discretizer = EqualWidthDiscretizer.CreateManual(4, 0, 100, CutPrecision.Exact, CultureInfo.InvariantCulture).Value!;
+
+        var resolved = Create(EqualWidthSpec(discretizer), new SourceSchema(1));
+
+        var resolvedDisc = Assert.IsType<EqualWidthDiscretizer>(resolved.Spec.Attributes[0].Discretizer);
+        Assert.Equal([25.0, 50.0, 75.0], resolvedDisc.Cuts);
+        Assert.IsNotType<double[]>(resolvedDisc.Cuts);
+        Assert.IsNotType<List<double>>(resolvedDisc.Cuts);
+        Assert.Equal(RoundToPrecision.Create(1), EqualWidthDiscretizer
+            .CreateManual(4, 0, 100, RoundToPrecision.Create(1), CultureInfo.InvariantCulture).Value!.Precision);
+    }
+
+    [Fact]
+    public void Create_WhenCalibrationPendingResolved_ThenCarrierSurvivesOnAReadOnlyCulture()
+    {
+        // The pending carrier must survive resolution intact — it is what Calibrate replaces
+        // (D-093) — with its culture re-homed like any other.
+        var culture = (CultureInfo)CultureInfo.GetCultureInfo("en-US").Clone();
+        var pending = new CalibrationPending(new PendingEqualWidth(4, EqualWidthRange.MinMax, CutPrecision.Exact), culture);
+
+        var resolved = Create(EqualWidthSpec(pending), new SourceSchema(1));
+
+        var carrier = Assert.IsType<CalibrationPending>(resolved.Spec.Attributes[0].Discretizer);
+        Assert.True(carrier.Culture.IsReadOnly);
+        Assert.Equal(new PendingEqualWidth(4, EqualWidthRange.MinMax, CutPrecision.Exact), carrier.Config);
+    }
+
+    // The trust boundary also re-checks equal_width's range/precision/bounds coherence and the
+    // pending union's variants (see ResolvedSpec.ValidateDiscretizerEnums). Those arms are
+    // deliberately unreachable from outside Core and have no negative test, because the states
+    // they reject are UNREPRESENTABLE rather than merely rejected (P-10, asserted directly by
+    // EqualWidthDiscretizerTests.EqualWidthDiscretizer_WhenInspected_ThenNoPublicConstructorOrSetter
+    // and PendingEqualWidth's own guards): every property is get-only so `with` cannot desync
+    // them, the only constructors are the validating factories, and CutPrecision /
+    // PendingCalibration are private-protected-closed unions no out-of-assembly type can extend.
+    // They stay as the P-10 backstop for a future in-assembly caller, matching this file's
+    // existing defensive arms.
 
     [Fact]
     public void Create_WhenFreePerValueValueTypeIsUndefinedEnum_ThenThrows()

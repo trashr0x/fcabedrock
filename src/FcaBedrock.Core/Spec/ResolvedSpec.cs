@@ -1,6 +1,7 @@
 using System.Collections.Frozen;
 using System.Collections.Immutable;
 using System.Globalization;
+using FcaBedrock.Core.Calibration;
 using FcaBedrock.Core.Discretization;
 using FcaBedrock.Core.Fingerprinting;
 using FcaBedrock.Core.Scaling;
@@ -298,6 +299,66 @@ public sealed class ResolvedSpec
             case FreePerValueDiscretizer freePerValue:
                 RequireDefined(freePerValue.ValueType, "free_per_value.ValueType");
                 break;
+            case EqualWidthDiscretizer equalWidth:
+                RequireDefined(equalWidth.Range, "equal_width.Range");
+                RequirePrecision(equalWidth.Precision);
+
+                // §11.4/D-094: vmin/vmax are the authored manual span and exist exactly for
+                // range = "manual" — the fingerprint's omission rule reads this directly, so a
+                // hand-built graph must not desync them from the range mode.
+                var manualRange = equalWidth.Range == EqualWidthRange.Manual;
+                if (manualRange != (equalWidth.VMin is not null) || manualRange != (equalWidth.VMax is not null))
+                {
+                    throw new ArgumentException(
+                        $"equal_width carries vmin/vmax {(manualRange ? "absent under" : "present under a non-manual")} range = \"{equalWidth.Range}\"; " +
+                        "they are present exactly for range = \"manual\" (§11.4).");
+                }
+
+                break;
+            case CalibrationPending pending:
+                RequirePending(pending.Config);
+                break;
+        }
+    }
+
+    // The pending union is mechanically closed, but its variants are freely constructible,
+    // so the trust boundary re-checks each one's enum/union state (P-10). An unknown variant
+    // is rejected rather than silently carried to a calibrator that cannot resolve it.
+    private static void RequirePending(PendingCalibration config)
+    {
+        ArgumentNullException.ThrowIfNull(config);
+        switch (config)
+        {
+            case PendingEqualWidth equalWidth:
+                RequireDefined(equalWidth.Range, "equal_width.Range");
+                RequirePrecision(equalWidth.Precision);
+
+                // The carrier's own constructor rejects it, so this can only be a corrupted
+                // instance; manual is spec-determined and never pends (D-089).
+                if (equalWidth.Range == EqualWidthRange.Manual)
+                {
+                    throw new ArgumentException("a pending equal_width calibration cannot carry range = \"manual\" (§11.4/D-089).");
+                }
+
+                break;
+            default:
+                throw new ArgumentException($"unknown pending calibration variant {config.GetType().Name}.");
+        }
+    }
+
+    private static void RequirePrecision(CutPrecision precision)
+    {
+        ArgumentNullException.ThrowIfNull(precision);
+        switch (precision)
+        {
+            case ExactPrecision:
+                break;
+            case RoundToPrecision roundTo when double.IsFinite(roundTo.RoundTo) && roundTo.RoundTo > 0.0:
+                break;
+            case RoundToPrecision roundTo:
+                throw new ArgumentException($"equal_width precision round_to {roundTo.RoundTo} must be finite and greater than zero (§11.4).");
+            default:
+                throw new ArgumentException($"unknown cut precision variant {precision.GetType().Name}.");
         }
     }
 
@@ -467,6 +528,14 @@ public sealed class ResolvedSpec
     {
         ManualCutsDiscretizer cuts => ManualCutsDiscretizer.Create(cuts.Cuts, cuts.Ends, ReadOnlyCulture(cuts.Culture)).Value!,
         FreePerValueDiscretizer freePerValue => new FreePerValueDiscretizer(freePerValue.ValueType, ReadOnlyCulture(freePerValue.Culture)),
+
+        // Rebuilt over its retained cuts, never re-derived: the cuts ARE the resolved identity
+        // (§11.4/D-093), and re-running the formula here would make the snapshot a second
+        // derivation site.
+        EqualWidthDiscretizer equalWidth => EqualWidthDiscretizer.Rebuild(equalWidth, ReadOnlyCulture(equalWidth.Culture)),
+
+        // The pending config holds only immutable values; only the culture needs re-homing.
+        CalibrationPending pending => new CalibrationPending(pending.Config, ReadOnlyCulture(pending.Culture)),
         _ => discretizer,
     };
 

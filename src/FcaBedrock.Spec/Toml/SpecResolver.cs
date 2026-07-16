@@ -1,4 +1,5 @@
 using System.Globalization;
+using FcaBedrock.Core.Calibration;
 using FcaBedrock.Core.Discretization;
 using FcaBedrock.Core.Fingerprinting;
 using FcaBedrock.Core.Scaling;
@@ -722,13 +723,15 @@ public static class SpecResolver
     }
 
     // Authored value_type wins; otherwise the discretizer kind decides —
-    // manual_cuts is number-fixing, identity/ordered_cuts/none string (D-061).
-    // Include-independent: value_type is a source-level property, so a parked
-    // cut discretizer still types the source — and its live restrict_to (D-076).
-    // Shape-agnostic: both column and predicate sources carry a value_type.
+    // manual_cuts and equal_width are number-fixing (their cuts are numeric),
+    // identity/ordered_cuts/none string (D-061). free_per_value is type-flexible, so it
+    // takes the authored type or the string default. Include-independent: value_type is a
+    // source-level property, so a parked cut discretizer still types the source — and its
+    // live restrict_to (D-076). Shape-agnostic: both column and predicate sources carry
+    // a value_type.
     private static SourceValueType ResolveValueType(SourceValueType? authored, DiscretizerSection? discretizer) =>
         authored
-            ?? (discretizer is ManualCutsDiscretizerSection
+            ?? (discretizer is ManualCutsDiscretizerSection or EqualWidthDiscretizerSection
                 ? SourceValueType.Number
                 : SourceValueType.String);
 
@@ -928,6 +931,8 @@ public static class SpecResolver
                 "declares value_type = \"number\", but ordered_cuts is string-fixing (categories are used verbatim)",
             ManualCutsDiscretizerSection when value == SourceValueType.String =>
                 "declares value_type = \"string\", but manual_cuts is number-fixing (cuts are numeric)",
+            EqualWidthDiscretizerSection when value == SourceValueType.String =>
+                "declares value_type = \"string\", but equal_width is number-fixing (its cuts are numeric)",
             _ => null,
         };
 
@@ -1046,16 +1051,16 @@ public static class SpecResolver
     // of order and operator. Both checks read the document sections — the
     // authored-vs-default boundary provenance exists only there (D-060(c)) —
     // and fire only on active attributes (parked scale config never blocks,
-    // D-049). The deferred cut kinds (equal_width/equal_frequency) are
-    // read-rejected before this seam (D-070).
+    // D-049). equal_width is a cut kind on exactly the same terms (its computed cuts
+    // fix the bin order, §12.3/D-102); the last deferred cut kind (equal_frequency)
+    // is read-rejected before this seam (D-070).
     private static void ValidateOrdinalOverCuts(
         AttributeSection section,
         string attribute,
         DefaultsSection? defaults,
         List<BedrockDiagnostic> diagnostics)
     {
-        if (section.Scale is not OrdinalScaleSection ordinal
-            || section.Discretizer is not (ManualCutsDiscretizerSection or OrderedCutsDiscretizerSection))
+        if (section.Scale is not OrdinalScaleSection ordinal || !IsCutDiscretizer(section.Discretizer))
         {
             return;
         }
@@ -1108,8 +1113,7 @@ public static class SpecResolver
             return;
         }
 
-        if (section.Scale is not OrdinalScaleSection { Order: { } order }
-            || section.Discretizer is ManualCutsDiscretizerSection or OrderedCutsDiscretizerSection)
+        if (section.Scale is not OrdinalScaleSection { Order: { } order } || IsCutDiscretizer(section.Discretizer))
         {
             return;
         }
@@ -1127,6 +1131,13 @@ public static class SpecResolver
             }
         }
     }
+
+    // §12.3/§17 r3: the discretizers whose bins are cut intervals, so the cut geometry —
+    // not scale.order — fixes the bin order. The one place the seam's cut-kind set lives, so
+    // the ordinal-over-cuts checks and the value-bin order check stay exact complements and
+    // never double-report. equal_frequency joins when it lands (D-070).
+    private static bool IsCutDiscretizer(DiscretizerSection? section) =>
+        section is ManualCutsDiscretizerSection or OrderedCutsDiscretizerSection or EqualWidthDiscretizerSection;
 
     private static Discretizer? ResolveDiscretizer(
         DiscretizerSection? section,
@@ -1152,6 +1163,9 @@ public static class SpecResolver
                     ManualCutsDiscretizer.Create(manual.Cuts ?? [], manual.Ends ?? BinEnds.Open, culture),
                     attribute, diagnostics);
 
+            case EqualWidthDiscretizerSection equalWidth:
+                return ResolveEqualWidth(equalWidth, attribute, culture, diagnostics);
+
             case OrderedCutsDiscretizerSection ordered:
                 return Merge(
                     OrderedCutsDiscretizer.Create(ordered.Order ?? [], ordered.Cuts ?? [], ordered.Ends ?? BinEnds.Open),
@@ -1161,6 +1175,49 @@ public static class SpecResolver
                 AddScalingMissing(diagnostics, attribute, "has no discretizer (§10.9)");
                 return null;
         }
+    }
+
+    // §11.4 (D-089/D-102): the range mode decides the phase. "manual" is spec-determined —
+    // the D-056-style factory derives and validates the cuts here, and its diagnostics
+    // (EqualWidthRangeInvalid / EqualWidthCutsCollapsed) merge into this pass. A data-derived
+    // range cannot resolve without data, so it resolves to the CalibrationPending carrier the
+    // Calibrate phase replaces (D-093) — not a second unresolved-discretizer shape.
+    // <para>
+    // The reader owns the field shapes (bins presence/range, the range spelling, the vmin/vmax
+    // presence rules — SpecFieldInvalid, §11.4), so a document that reached this seam carries
+    // them. The guards below are the backstop for a hand-built section that bypassed the
+    // reader: they resolve to the same AttributeScalingMissing the other unbuildable
+    // discretizer carriers use (§10.9) rather than throwing or — worse — dropping the
+    // attribute silently. The strict factories then only ever see valid arguments.
+    // </para>
+    private static Discretizer? ResolveEqualWidth(
+        EqualWidthDiscretizerSection section,
+        string attribute,
+        CultureInfo culture,
+        List<BedrockDiagnostic> diagnostics)
+    {
+        if (section.Bins is not { } authoredBins || authoredBins is < 2 or > int.MaxValue)
+        {
+            AddScalingMissing(diagnostics, attribute, "has an equal_width discretizer with no usable bins count (§11.4)");
+            return null;
+        }
+
+        var bins = (int)authoredBins;
+        var range = section.Range ?? EqualWidthRange.MinMax; // §11.4 default
+        var precision = section.Precision ?? CutPrecision.Exact; // §11.4 default
+
+        if (range == EqualWidthRange.Manual)
+        {
+            if (section.VMin is not { } vmin || section.VMax is not { } vmax)
+            {
+                AddScalingMissing(diagnostics, attribute, "has an equal_width discretizer with range = \"manual\" but no vmin/vmax (§11.4)");
+                return null;
+            }
+
+            return Merge(EqualWidthDiscretizer.CreateManual(bins, vmin, vmax, precision, culture), attribute, diagnostics);
+        }
+
+        return new CalibrationPending(new PendingEqualWidth(bins, range, precision), culture);
     }
 
     private static Scale? ResolveScale(
