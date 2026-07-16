@@ -17,15 +17,32 @@ internal sealed class SpoolWorkspace<TRow>
     private readonly GroupingReports _reports;
     private readonly Dictionary<string, long> _liveRuns = new(StringComparer.Ordinal);
     private readonly Dictionary<string, long> _pendingDeletion = new(StringComparer.Ordinal); // consumed runs whose delete failed (path → size)
+    private readonly int? _maxPendingDeletions;
     private string? _path;
     private int _counter;
 
-    public SpoolWorkspace(GroupingOptions options, IRowCodec<TRow> codec, GroupingReports reports)
+    /// <summary>
+    /// Creates the workspace. <c>maxPendingDeletions</c> optionally caps retained
+    /// failed-deletion entries; exceeding it records an in-path Error and throws (D-103).
+    /// <see langword="null"/> is the emit-path grouping backend's existing, deliberately
+    /// uncapped behavior (P-1: this slice bounds the new quantile engine's workspace usage and
+    /// does not reopen the emit path). The cap exists because the 3T byte rule alone does
+    /// <b>not</b> bound this metadata: with repeated-key runs, live bytes and <c>T</c> grow
+    /// together and never trip the escalation while pending entries grow without bound.
+    /// </summary>
+    public SpoolWorkspace(GroupingOptions options, IRowCodec<TRow> codec, GroupingReports reports, int? maxPendingDeletions = null)
     {
         _options = options;
         _codec = codec;
         _reports = reports;
+        _maxPendingDeletions = maxPendingDeletions;
     }
+
+    /// <summary>Retained failed-deletion entries (bounded by the cap when one is set).</summary>
+    public int PendingDeletionCount => _pendingDeletion.Count;
+
+    /// <summary>Live (undeleted) run handles this workspace has written and not yet dropped.</summary>
+    public int LiveRunCount => _liveRuns.Count;
 
     /// <summary>Whether the workspace directory has been created (i.e. at least one spill happened).</summary>
     public bool Created => _path is not null;
@@ -134,18 +151,38 @@ internal sealed class SpoolWorkspace<TRow>
     public void RecordInPathFailure(GroupingOperation operation, SpoolFailureKind kind, string? pathSample) =>
         _reports.RecordInPathFailure(operation, kind, pathSample);
 
-    /// <summary>Deletes a consumed run via the non-throwing cleanup channel; a failed delete is retained
-    /// for retry at the next batch boundary (a transient failure must not permanently retain the run).</summary>
+    /// <summary>
+    /// Deletes a consumed run via the non-throwing cleanup channel; a failed delete is retained
+    /// for retry at the next batch boundary (a transient failure must not permanently retain the
+    /// run). When a <c>maxPendingDeletions</c> cap is configured and a <b>new</b> failed entry
+    /// would exceed it, the delete channel escalates in-path: an Error is recorded and
+    /// <see cref="GroupingStorageException"/> thrown, halting the caller (D-103). Uncapped —
+    /// the emit path — this method never throws, exactly as before.
+    /// </summary>
     public void DeleteRun(SpoolRunHandle handle)
     {
         if (TryDelete(handle.Path, handle.SizeBytes))
         {
             _pendingDeletion.Remove(handle.Path);
+            _options.Observer?.PendingDeletions(_pendingDeletion.Count);
+            return;
         }
-        else
+
+        // Re-recording an already-pending path grows nothing, so only a genuinely new entry can
+        // breach the cap. Persistently failing storage is broken storage: halt rather than
+        // accumulate bookkeeping without bound.
+        if (_maxPendingDeletions is { } cap && _pendingDeletion.Count >= cap && !_pendingDeletion.ContainsKey(handle.Path))
         {
-            _pendingDeletion[handle.Path] = handle.SizeBytes; // retained for RetryPendingDeletions
+            _reports.RecordInPathFailure(GroupingOperation.CleanupDelete, SpoolFailureKind.DeleteFailed, handle.Path); // record at source, before the throw
+            throw new GroupingStorageException(
+                GroupingOperation.CleanupDelete,
+                SpoolFailureKind.DeleteFailed,
+                handle.Path,
+                $"Spool cleanup fell permanently behind: {_pendingDeletion.Count} consumed run(s) could not be deleted and retrying did not clear them, reaching the retained-deletion maximum of {cap}.");
         }
+
+        _pendingDeletion[handle.Path] = handle.SizeBytes; // retained for RetryPendingDeletions
+        _options.Observer?.PendingDeletions(_pendingDeletion.Count);
     }
 
     /// <summary>Re-attempts every retained failed deletion (called before each merge batch). A now-
@@ -157,6 +194,7 @@ internal sealed class SpoolWorkspace<TRow>
             return;
         }
 
+        // The transient copy is bounded by the dictionary, which the cap bounds when one is set.
         foreach (var (path, size) in _pendingDeletion.ToArray())
         {
             if (TryDelete(path, size))
@@ -164,6 +202,8 @@ internal sealed class SpoolWorkspace<TRow>
                 _pendingDeletion.Remove(path);
             }
         }
+
+        _options.Observer?.PendingDeletions(_pendingDeletion.Count);
     }
 
     /// <summary>

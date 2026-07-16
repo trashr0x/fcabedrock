@@ -5,9 +5,10 @@ namespace FcaBedrock.Spec.Toml;
 /// <summary>
 /// An authored attribute <c>discretizer</c> (§11). Models the executable kinds —
 /// <c>identity</c>, <c>manual_cuts</c>, <c>ordered_cuts</c> (D-070 tier 1),
-/// <c>free_per_value</c> (M4 Slice B, D-101), and <c>equal_width</c> (M4 Slice C,
-/// D-102). The still-deferred kinds (<c>equal_frequency</c>, <c>value_groups</c>)
-/// are recognized-and-rejected by the reader (D-070 tier 2) and gain no carrier yet.
+/// <c>free_per_value</c> (M4 Slice B, D-101), <c>equal_width</c> (M4 Slice C, D-102),
+/// and <c>equal_frequency</c> (M4 Slice D, D-103). The one still-deferred kind
+/// (<c>value_groups</c>) is recognized-and-rejected by the reader (D-070 tier 2) and
+/// gains no carrier yet.
 /// </summary>
 public abstract record DiscretizerSection;
 
@@ -48,6 +49,21 @@ public sealed record EqualWidthDiscretizerSection(
     double? VMin,
     double? VMax,
     CutPrecision? Precision) : DiscretizerSection;
+
+/// <summary>
+/// The <c>equal_frequency</c> discretizer (§11.5): <c>bins</c> bins whose cuts are placed
+/// for approximately equal counts. Always data-calibrated — it authors no span, so there
+/// is no spec-determined mode (§7). Every field is presence-tracked, so an omitted
+/// <c>tie_policy</c> (default <c>"left"</c>) or <c>cut_placement</c> (default
+/// <c>"right_value"</c>) round-trips as omitted (D-049).
+/// </summary>
+/// <param name="Bins">The authored bin count; carried as <c>long?</c> and range-checked to 2..<see cref="int.MaxValue"/> before it becomes an <c>int</c>.</param>
+/// <param name="TiePolicy">The authored side a tied group falls to; null when not authored.</param>
+/// <param name="CutPlacement">The authored placement within the selected gap; null when not authored.</param>
+public sealed record EqualFrequencyDiscretizerSection(
+    long? Bins,
+    TiePolicy? TiePolicy,
+    CutPlacement? CutPlacement) : DiscretizerSection;
 
 /// <summary>The <c>ordered_cuts</c> discretizer (§11.8): categorical bins cut over an ordered domain.</summary>
 /// <param name="Order">The ordered domain; null when not authored.</param>

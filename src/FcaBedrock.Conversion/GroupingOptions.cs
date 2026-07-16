@@ -82,6 +82,13 @@ internal interface IGroupingObserver
     /// <summary>The total live spool bytes on disk, reported before each merge batch (peak ≤ 3T proof).</summary>
     void LiveBytes(long liveBytes);
 
+    /// <summary>
+    /// The workspace's retained failed-deletion entries after a delete attempt or a retry pass
+    /// (the bounded-bookkeeping proof, D-103). Reported by the workspace itself, so it is
+    /// available to every caller; only the calibration workspace caps it (P-1).
+    /// </summary>
+    void PendingDeletions(int count);
+
     /// <summary>The conservative resident accounting at an intake spill (a sanity signal; the accounting is proved by the codec-component tests).</summary>
     void BufferSpilled(long residentBytes);
 }

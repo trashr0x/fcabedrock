@@ -191,9 +191,9 @@ Don't implement first and explain later.
 ## Current status
 
 **M1, M2 (TOML spec format + fingerprinting), and M3 (triple source) complete. M4
-(discretizers beyond manual cuts) is in progress: Slice A — the calibration-preparation
-contract (two-stage source bootstrap, `ResolvedSpec` token, `CalibratedSpec`, the
-`Calibrator` with observed-domain + `include` calibration) — is complete (D-098…D-100).
-Slice B (`free_per_value`) is next.**
+(discretizers beyond manual cuts) is in progress: Slices A–D are complete (D-098…D-103)
+— the calibration-preparation contract, `free_per_value`, `equal_width` + the shared
+cut engine, and `equal_frequency`/`percentile_p1_p99` on the bounded quantile engine.
+Slice E (`value_groups`) is next; `restrict_to` execution follows at Slice F.**
 `docs/roadmap.md` is the live source for current position, test count, and the
 deferred backlog — consult it rather than duplicating the detail here.

@@ -175,6 +175,10 @@ superseded or refined. A new entry MUST add its line here.
 
 - D-102 — `equal_width` executable (`manual` + `min_max`): the shared `NumericCutBins` engine making auto/frozen equivalence structural, the sign-aware overflow-safe cut formula, `CutPrecision`, the `PendingEqualWidth` → executable substitution, and streaming min/max calibration (realizes D-088/D-089/D-093/D-094; the G-5/G-7/G-8 governance items)
 
+### M4 Slice D (equal_frequency + percentile + the bounded quantile engine)
+
+- D-103 — `equal_frequency` + `equal_width` `percentile_p1_p99` executable: exact-rational rank selection, the §11.5 feasibility-precedence amendment, sign-aware midpoint placement, the bounded fixed-capacity quantile accumulator with spill/online consolidation, subject-local triple deduplication, and `CalibrationPopulationTooLarge` (realizes D-088/D-089/D-093/D-094/D-095; the G-5/G-6/G-8/G-13 governance items)
+
 Spec-field defaults are recorded in spec §21 items 1–11 (see the final section
 of this file).
 
@@ -3475,6 +3479,187 @@ pattern).
   `EqualWidthCutsCollapsed`, `CalibrationDataInsufficient`, `CalibrationCutsInvalid`); spec §7 /
   §10.2 / §11.4 / §12.3 / §16.4 (transitional-note updates). Realizes D-088/D-089/D-093/D-094; the
   G-5/G-7/G-8 governance items.
+
+---
+
+## M4 Slice D (equal_frequency + percentile + the bounded quantile engine)
+
+### D-103 — `equal_frequency` + percentile executable: exact-rational ranks, feasibility precedence, sign-aware midpoints, the bounded quantile accumulator, subject-local triple dedup
+
+- **Status:** accepted (M4 Slice D; realizes D-088/D-089/D-093/D-094/D-095; the G-5/G-6/G-8/G-13
+  governance items)
+- **Date:** 2026-07-17
+- **Decision:** the `equal_frequency` discretizer (§11.5) and `equal_width`
+  `range = "percentile_p1_p99"` (§11.4) become executable — M4's **count-sensitive** calibration.
+  `equal_frequency` leaves the transitional read-reject set, narrowing
+  `DiscretizerKindNotYetSupported` to `value_groups` alone (the member stays until that last kind
+  lands — G-8), and percentile leaves the Slice C spelling gap (D-102/G-8b) now that its
+  calibration exists. `equal_frequency` is **number-fixing** (D-061) and, unlike `equal_width`, has
+  **no spec-determined mode**: every configuration draws its cuts from the population, so it always
+  resolves to the `CalibrationPending` carrier (D-093). Its bins are always **open-ended**, and it
+  composes the shared `NumericCutBins` engine — so it needs no ordinal path of its own (cut
+  geometry is the ordering authority, §12.3) and no second cut/render implementation (D-102).
+  - **Exact rank selection, separate from binary64 placement (G-5).** The rank target `N·k/bins` is
+    **never materialized** in floating point: both sides are cross-multiplied into `UInt128`
+    (`C_i·bins` vs `N·k`, each below 2^94, so exact by construction). This is not pedantry — above
+    2^53 a `double` rank target rounds onto a cumulative count and selects the group one too early,
+    which at the v1 target population (7.3M–73M records, D-007) is reachable data, not a corner
+    case. Cut *placement* stays binary64, because a cut is a data value. An exact **group edge**
+    (`N·k = C_i·bins`) separates whole groups, so `tie_policy` does not apply there; only a
+    boundary landing strictly inside a run of equal values has a tie to resolve.
+  - **Feasibility prevails over tie-side preference — a normative §11.5 amendment (G-5).** Honoring
+    `tie_policy` and producing `bins - 1` distinct ascending gaps can be mutually unsatisfiable —
+    not only on collision/saturation but at **both domain edges** (`"right"` on the first group
+    prefers a gap below the domain; `"left"` on the last prefers one above it). §11.5 now pins the
+    precedence: boundaries are allocated in ascending order, each taking the nearest feasible gap
+    within the window `[p+1, m-1-(bins-1-k)]`, which may place a tied group on the **opposite** side
+    of its preference. A clamp is normal resolution and is **never** diagnosed as invalid cuts.
+    Because the window's lower bound forces ascent and its upper bound reserves a gap per later
+    boundary, the §11.5 distinct-gap obligation becomes **total** and cuts are strictly ascending
+    **by construction** — the post-hoc validity check is defense in depth, not the guarantee. Three
+    normative examples land with the amendment (collision; last-group edge; first-group edge).
+  - **Sign-aware midpoint placement (G-5/G-6).** `cut_placement = "midpoint"` uses the same
+    sign-aware split as §11.4's interpolation — `a + (b-a)/2` for a same-sign gap, `(a+b)/2` for one
+    crossing zero — because **neither form alone is safe**: the subtraction overflows an
+    opposite-sign extreme gap and the sum overflows a same-sign one. The two branches must not be
+    folded or reordered. A midpoint that cannot land strictly above `v_g` (adjacent representable
+    doubles) falls back to `v_{g+1}` — membership-identical under half-open geometry, and it keeps
+    the cut inside its own gap so the list's strict ascent survives. Every computed cut is
+    positive-zero canonicalized (G-6); authored existing-kind bytes and `fp_format = 1` are
+    untouched.
+  - **Percentile is exact order statistics (D-089).** `p1`/`p99` are selected by the same `UInt128`
+    comparisons over the same aggregated population — never interpolated between neighbours, never
+    from a sketch, never from a machine-dependent library percentile, any of which would break the
+    D-088 auto/frozen byte-equivalence. `p1 == p99` (or an empty population) is
+    `CalibrationDataInsufficient`. The selected span feeds the **existing Slice C**
+    `CreateManual` derivation over the observed span, so precision applies after span selection and
+    there is no second copy of the interpolation formula (D-102's boundary, reused not widened).
+  - **Exact, bounded-memory accumulation (D-095).** The `QuantileAccumulator` is a
+    **fixed-capacity fill-and-spill** dictionary plus a preallocated sort buffer — both retained,
+    so both charged: `Modeled(capacity) = 384 + capacity·44` on x64 — the slot is dictionary entry
+    24 + bucket 4 + sort-buffer element 16, and the fixed part covers the accumulator object (144),
+    the `Dictionary` object (80), and three array headers (3 × 24), each padded upward.
+    **`FixedBytes` is 384, not the 264 the plan estimated** (see the correction note below); both
+    are correctness constants like `ResidentModel`'s, not perf knobs. The
+    capacity comes from `EnsureCapacity`'s **accepted** (prime-rounded) value, not the request; an
+    overshoot reduces multiplicatively and retries (decrementing would re-round to the same prime
+    and crawl one integer at a time — ~130k probes of multi-megabyte dictionaries at a 64 MiB
+    share). ±0 is folded at **intake**, not merely at placement: the dictionary, `Equals`, and
+    `CompareTo` all treat the two zero spellings as one value — so they aggregate either way and the
+    distinct count is right either way — but *which* spelling survives into the key, the spilled
+    run, and the merged row would otherwise depend on arrival order. Canonicalizing at intake pins
+    the value a cut, label, or hash is derived from. All count arithmetic is `checked`; overflow is
+    the new `CalibrationPopulationTooLarge` (G-13).
+  - **The honest two-tier resource contract.** **Tier 1** (byte-exact): the retained accumulator
+    graph obeys `Σ Modeled(capacity_i) ≤ max(budget, A·FloorBytes)` — the floor arm is stated, not
+    hidden, because a share below one entry cannot be honored. Sizing-probe transients are excluded
+    (the D-082 precedent: the guarantee is over the stable post-sizing graph). **Tier 2**
+    (structurally bounded, *not* byte-modeled): ≤ fan-in readers, ≤ 1 writer, ≤ 1 replay reader, a
+    `PriorityQueue` ≤ fan-in, live run handles ≤ fan-in per accumulator, and pending deletions ≤ a
+    fixed cap. Tier 2 is deliberately **not** given a byte constant: a `FileStream`'s internal
+    strategy/handle graph is runtime-owned, and an "≈ 8 KiB" claim would be unvalidatable.
+  - **Bounded run catalog and bookkeeping.** A spill that would exceed the fan-in first
+    **consolidates online** into one aggregated run, so the catalog never grows with the population.
+    `T_so_far` (the 3T baseline) counts **raw spill payload only** — consolidation output never
+    inflates it. Failed deletions are bounded by a fixed `MaxPendingDeletions = 4 × fan-in`, opt-in
+    to the calibration workspace: the 3T byte rule alone does **not** bound them, because
+    repeated-key runs let live bytes and `T` grow together and never trip the escalation while
+    pending entries grow without bound. Exceeding the cap is an in-path Error — persistently failing
+    storage is broken storage. The emit-path backend keeps its existing uncapped semantics (P-1).
+  - **Release before merge; the consolidated-run two-pass replay.** At intake end a spilled
+    accumulator flushes and **releases both buffers** before any post-intake merge, which then runs
+    sequentially per attribute (online consolidations are the sole in-intake exception, and tier 2
+    accounts for that co-residence). The final merge yields one consolidated ascending
+    count-aggregated run that is walked **twice**: pass 1 for the distinct count `m` and each
+    boundary's preference, pass 2 for the values adjoining the selected gaps. Two passes are
+    structural, not incidental — the feasibility window needs the **global** `m` before the first
+    allocation and the gap-adjacent values after it, neither knowable from one forward walk. The
+    zero-spill path runs the **same** walk over its in-memory buffer, so spill/non-spill identity is
+    structural rather than two algorithms agreeing.
+  - **Calibration population (§7/§5.3.1).** Wide rows stay independent observations — no dedup, no
+    `duplicate_object_policy`, no object-key read (D-099). For triple, `equal_frequency`/percentile
+    are **count-sensitive**, so each distinct cleaned `(subject, predicate, value)` contributes once
+    per subject: `subject_grouped` dedups inline on the raw pass; `unordered` adds a **grouped
+    second pass** (`FirstAppearanceGrouping`) — but only when a count-sensitive need exists, since
+    discovery-class and min/max needs are set-/count-insensitive and would pay a whole read for
+    nothing. Never a third pass, and never a dataset-wide seen set (the very thing D-095 forbids).
+    The dedup key is the **raw cleaned spelling**, not parsed numeric identity: `"90"` and `"90.0"`
+    are distinct observations that both count, and only then aggregate onto the same value.
+    Discovery-class observation stays on the raw stream (§17 rule 3's first-appearance order is raw
+    input order, which grouping would reorder). **Exactly one pass feeds a given observer**: the raw
+    pass owns discovery-class observers always, and count-sensitive observers only under
+    `subject_grouped`, where the inline dedup applies — under `unordered` the grouped pass owns them
+    alone. Feeding them from both would add every raw row's multiplicity on top of the deduped
+    contribution, changing the cuts and double-reporting unparseable values in one phase.
+  - **Fingerprint (D-094 golden-lock).** `equal_frequency` encodes its **authored** configuration
+    with the §11.5 defaults spelled —
+    `{"bins":4,"cut_placement":"right_value","kind":"equal_frequency","tie_policy":"left"}` — and
+    percentile activates
+    `{"bins":4,"kind":"equal_width","precision":"exact","range":"percentile_p1_p99"}`. Calibrated
+    cuts are **not** re-encoded: they ride as `bin` objects in the `schema` array. Hand-authored
+    canonical bytes and independently-computed SHA-256 vectors land in this slice, before any stored
+    hash. The consequence is D-094's pinned asymmetry: an auto spec and its frozen `manual_cuts`
+    twin share a `schema_fingerprint` and emit byte-identical contexts yet carry different **output**
+    fingerprints — sound, because a shared output fingerprint implies identical bytes but not the
+    converse.
+- **`FixedBytes` correction (approved constant, changed deliberately — not silently).** The plan
+  pinned `FixedBytes = 264`, derived as "Dictionary object ≈ 80, three array headers 3×32,
+  accumulator object + references, rounded up" — which budgets ≈ 88 for the accumulator object. The
+  implemented accumulator's object is **144 bytes** (header 16 + 128 of fields: nine references, a
+  `CancellationToken`, two ints, two longs, and a `SpoolRunHandle?`), so the real fixed retained is
+  80 + 3×24 + 144 = **296 > 264**. The constant therefore **under-charged**, which is not a rounding
+  quibble but a broken invariant: D-082's precedent makes `actual retained ≤ modeled` a
+  **correctness** property, and a model that under-charges states a bound it does not hold. It is
+  raised to **384** (each component padded upward: 160 + 96 + 96 = 352 → 384). Raising it is safe in
+  one direction only, which is why it is the right correction: the model charges *more*, so every
+  bound assertion tightens rather than loosens, and `Σ Modeled ≤ max(budget, A·FloorBytes)` still
+  holds by construction (both sides move together). The under-charge was invisible until the tier-1
+  test derived the accumulator object independently rather than only its arrays — which is exactly
+  the failure mode an independent proof exists to catch.
+- **Why:** equal-frequency is the milestone's first calibration whose result depends on **how many**
+  observations carry a value, not merely which occur — which is what forces exact counting, the
+  bounded accumulator, and the triple dedup all at once. Pinning exact-rational ranks and the
+  sign-aware midpoint now keeps cuts identical across machines (P-7/P-11) before any stored hash
+  fossilizes them, and stating the feasibility precedence normatively turns a case where the spec
+  asked for two incompatible things into one defined answer.
+- **Rejected:** a `double` (or `decimal`) rank target (silently selects the wrong order statistic
+  near 2^53 — reachable at v1 scale); applying `tie_policy` at an exact group edge (there is no tie
+  to resolve, and it produces a worse split — `[1,2,3,4]`, `bins = 2`, `"right"` would cut at 2
+  rather than the even 3); a greedy gap allocator without the reservation term (strands later
+  boundaries and drops bins, which §11.5 forbids); diagnosing a feasibility clamp as
+  `CalibrationCutsInvalid` (it is normal resolution — the cuts are valid); one folded midpoint
+  formula (each form overflows exactly the case the other handles); replacing a midpoint that lands
+  *on* `v_{g+1}` (already membership-correct); canonicalizing ±0 only at placement (the merge sorts
+  by total order, so the two spellings would never aggregate and `m` would be wrong); a distinct
+  dictionary per spill (the capacity **is** the budget here, so replacing it buys no bound and costs
+  a re-size); decrement-by-one sizing reduction (re-rounds to the same prime and crawls); an
+  unbounded spill-run catalog (memory proportional to the population — the very thing the model
+  forbids); bounding failed deletions by the 3T byte rule alone (repeated-key runs are the
+  counterexample); a byte constant for tier 2 (unvalidatable — `FileStream` internals are
+  runtime-owned); a grouped second pass for count-insensitive triple needs (a whole read for
+  nothing); a dataset-wide dedup set (unbounded, D-095); deduplicating by parsed numeric identity
+  (§5.3.1 counts distinct cleaned *observations*); a new code for percentile's collapsed span or
+  equal-frequency's distinct-value guard (both are "the data cannot bound these cuts" —
+  `CalibrationDataInsufficient` already owns it, D-067); reusing `CalibrationDataInsufficient` for
+  count overflow (its exact opposite — too much data, not too little); letting `OverflowException`
+  cross the calibrator seam (P-14); re-encoding calibrated cuts in the discretizer sub-object
+  (redundant with the schema bins, D-094); emitting the resolved `tie_policy`/`cut_placement`
+  defaults into authored TOML (D-049 presence tracking — the fingerprint is where the resolved
+  values are load-bearing).
+- **Affects:** Core (`Discretization/TiePolicy`, `Discretization/CutPlacement`,
+  `Discretization/EqualFrequencyDiscretizer`, `Calibration/PendingCalibration` —
+  `PendingEqualFrequency`, `Calibration/CalibratedSpec` — the equal-frequency substitution and the
+  deliberate narrowing of the Slice C percentile guard, `Spec/ResolvedSpec` — rebuild + validate,
+  `Fingerprinting/FingerprintCalculator` — the `equal_frequency` case and the two new spellings),
+  Spec (`EqualFrequencyDiscretizerSection`, reader/writer/spellings — including
+  `percentile_p1_p99` joining the accepted range surface and `DeferredDiscretizerKinds` narrowing to
+  `value_groups`, `SpecResolver` — number-fixing + §11.5 defaults + the cut-kind ordinal gate),
+  Conversion (`QuantileSelection`, `QuantileAccumulator` + `CalibrationBudget`, `ValueCount` +
+  `ValueCountCodec`, `ValueCountMerger`, `ICalibrationObserver`, `Calibrator` — the count-sensitive
+  targets and the triple dedup/grouped pass, `SpoolWorkspace` — the opt-in pending-deletion cap and
+  the `PendingDeletions` observer signal), Diagnostics (`CalibrationPopulationTooLarge`); spec §7 /
+  §11.4 / §11.5 / §16.4. Realizes D-088/D-089/D-093/D-094/D-095; the G-5/G-6/G-8/G-13 governance
+  items.
 
 ---
 

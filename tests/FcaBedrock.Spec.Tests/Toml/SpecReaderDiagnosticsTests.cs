@@ -86,15 +86,14 @@ public sealed class SpecReaderDiagnosticsTests
     }
 
     [Theory]
-    [InlineData("equal_frequency")]
     [InlineData("value_groups")]
     public void Read_WhenDiscretizerKindDeferred_ThenSingleTransitionalRejectWithoutParameterNoise(string kind)
     {
         // D-070 tier 2: one actionable diagnostic; the parameter keys are
         // deliberately not walked, so no unknown-key noise follows.
-        // free_per_value left this set at M4 Slice B (D-101) and equal_width at
-        // Slice C (D-102); both are now executable, so the deferred set is exactly
-        // the two kinds above.
+        // free_per_value left this set at M4 Slice B (D-101), equal_width at
+        // Slice C (D-102), and equal_frequency at Slice D (D-103); all three are
+        // now executable, so value_groups is the only kind left.
         var result = SpecReader.Read(Attribute(
             $"discretizer = {{ kind = \"{kind}\", bins = 4, range = \"min_max\" }}"));
 
@@ -179,7 +178,7 @@ public sealed class SpecReaderDiagnosticsTests
     {
         // D-070 applies inside templates too: there is no parameter carrier for
         // the deferred kinds, so accepting one would silently drop config.
-        var result = SpecReader.Read("[[template]]\nid = \"t\"\ndiscretizer = { kind = \"equal_frequency\", n = 4 }\n");
+        var result = SpecReader.Read("[[template]]\nid = \"t\"\ndiscretizer = { kind = \"value_groups\", n = 4 }\n");
 
         var diagnostic = Assert.Single(result.Diagnostics);
         Assert.Equal(DiagnosticCode.DiscretizerKindNotYetSupported, diagnostic.Code);
@@ -254,7 +253,7 @@ public sealed class SpecReaderDiagnosticsTests
         // deferred discretizer kind together.
         var result = SpecReader.Read(
             "[binding]\nshape = \"wibble\"\nmissing_polcy = \"skip\"\n" +
-            "[[attribute]]\nname = \"a\"\ndiscretizer = { kind = \"equal_frequency\", bins = 4 }\n");
+            "[[attribute]]\nname = \"a\"\ndiscretizer = { kind = \"value_groups\", bins = 4 }\n");
 
         Assert.False(result.IsOk);
         Assert.Equal(3, result.Diagnostics.Count);

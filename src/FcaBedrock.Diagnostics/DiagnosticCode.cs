@@ -344,6 +344,16 @@ public enum DiagnosticCode
     /// </summary>
     CalibrationCutsInvalid,
 
+    /// <summary>
+    /// The calibration population is too large to count exactly: a per-value count, the
+    /// running total, or a merge sum would overflow <see cref="long"/> (spec §16.4,
+    /// D-103/G-13). Error, calibrate, in-path — no calibrated result. A distinct
+    /// condition from <see cref="CalibrationDataInsufficient"/> (too little data) and
+    /// from a storage failure, so it must not masquerade as either (P-14). A
+    /// contract-totality row: unreachable below ~9.2e18 observations.
+    /// </summary>
+    CalibrationPopulationTooLarge,
+
     // --- Spec load (stored-fingerprint verification, D-051/D-069/D-077) ---
 
     /// <summary>

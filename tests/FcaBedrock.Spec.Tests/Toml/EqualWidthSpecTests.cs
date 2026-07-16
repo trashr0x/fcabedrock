@@ -109,19 +109,38 @@ public sealed class EqualWidthSpecTests
         AssertFieldInvalid("{ kind = \"equal_width\", bins = 4, range = \"wibble\" }");
 
     [Fact]
-    public void Read_WhenRangeIsPercentile_ThenSpecFieldInvalidNotDeferredKind()
+    public void Read_WhenRangeIsPercentile_ThenAcceptedAsADataDerivedRange()
     {
-        // G-8b/D-102: percentile_p1_p99 is modelled in the Core enum but has no TOML spelling
-        // until its calibration lands (Slice D). It must be an unrecognized RANGE spelling — never
-        // silently mapped to min_max, never retained as an executable pending mode, and not
-        // DiscretizerKindNotYetSupported (the kind itself IS supported now).
-        var result = SpecReader.Read(Attribute("{ kind = \"equal_width\", bins = 4, range = \"percentile_p1_p99\" }"));
+        // D-103 reverses the D-102/G-8b transitional reject: percentile_p1_p99 was modelled in the
+        // Core enum but kept out of the accepted TOML surface until its calibration existed. Slice
+        // D lands that calibration, so the spelling is now a recognized data-derived range —
+        // carried like min_max, with no vmin/vmax.
+        var section = ReadDiscretizer("{ kind = \"equal_width\", bins = 4, range = \"percentile_p1_p99\" }");
+
+        Assert.Equal(EqualWidthRange.PercentileP1P99, section.Range);
+        Assert.Equal(4, section.Bins);
+        Assert.Null(section.VMin);
+        Assert.Null(section.VMax);
+    }
+
+    [Fact]
+    public void Read_WhenPercentileRangeAuthorsBounds_ThenSpecFieldInvalid() =>
+        // §11.4: vmin/vmax apply only to range = "manual". A percentile span comes from the data,
+        // so authoring bounds alongside it is the same contradiction as authoring them with
+        // min_max — the existing data-derived rule covers the new spelling with no new condition.
+        AssertFieldInvalid("{ kind = \"equal_width\", bins = 4, range = \"percentile_p1_p99\", vmin = 0.0, vmax = 100.0 }");
+
+    [Fact]
+    public void Read_WhenRangeSpellingUnrecognized_ThenSpecFieldInvalidListsEveryAcceptedRange()
+    {
+        // The tier-3 posture stays for genuinely unknown spellings (D-070): a clear parse error
+        // naming the accepted surface, never a silent map to the default.
+        var result = SpecReader.Read(Attribute("{ kind = \"equal_width\", bins = 4, range = \"percentile\" }"));
 
         Assert.False(result.IsOk);
         var diagnostic = Assert.Single(result.Diagnostics);
         Assert.Equal(DiagnosticCode.SpecFieldInvalid, diagnostic.Code);
-        Assert.DoesNotContain(result.Diagnostics, d => d.Code == DiagnosticCode.DiscretizerKindNotYetSupported);
-        Assert.Contains("\"min_max\" or \"manual\"", diagnostic.Message, StringComparison.Ordinal);
+        Assert.Contains("\"min_max\", \"percentile_p1_p99\" or \"manual\"", diagnostic.Message, StringComparison.Ordinal);
     }
 
     [Theory]

@@ -518,13 +518,14 @@ observations. This population is the input universe, evaluated before `restrict_
 > observed/included values are canonical numeric identities (§11.3/D-096); **Slice
 > C** (D-102) adds the first auto-discretizer cut calibration — `equal_width` with
 > `range = "min_max"`, a streaming minimum/maximum over the population above (its
-> `range = "manual"` form is spec-determined and skips this phase entirely, §11.4).
-> The remaining calibration — `equal_frequency`, `equal_width`
-> `range = "percentile_p1_p99"` (§11.4), and `value_groups`
-> `unmatched = "passthrough"` — is still recognized-but-rejected at read
-> (`DiscretizerKindNotYetSupported` for the kinds, `SpecFieldInvalid` for the
-> percentile range spelling, §16.4) until each slice lands, rather than silently
-> producing a data-dependent schema.
+> `range = "manual"` form is spec-determined and skips this phase entirely, §11.4);
+> **Slice D** (D-103) adds the **count-sensitive** calibration — `equal_frequency`
+> (§11.5) and `equal_width` `range = "percentile_p1_p99"` (§11.4) — over the exact,
+> bounded-memory aggregated population, together with the §5.3.1 subject-local
+> deduplication their counts require. The one remaining calibration —
+> `value_groups` `unmatched = "passthrough"` — is still recognized-but-rejected at
+> read (`DiscretizerKindNotYetSupported`, §16.4) until its slice lands, rather than
+> silently producing a data-dependent schema.
 
 **`convert` calibrates but never discovers.** Discovery (draft-spec generation
 from data) is the separate `probe` operation (D-003), never performed implicitly
@@ -1254,11 +1255,19 @@ that collapses two cuts onto one value, and — at the extreme margin of the dou
 range — a span too narrow to hold `bins - 1` distinct representable cuts. See
 decisions.md D-102.
 
-> **Transitional (M4 Slice C).** `range = "manual"` and `range = "min_max"` are
-> implemented (D-102). `range = "percentile_p1_p99"` is **not yet an accepted
-> spelling**: it rejects at read as an unrecognized range (`SpecFieldInvalid`,
-> §16.4) until its calibration lands with `equal_frequency`, rather than being
-> silently treated as `min_max`.
+**Percentile range (normative).** `range = "percentile_p1_p99"` draws its span from
+the **exact order statistics** `p1` and `p99` of the calibration population:
+`p1 = v_i` for the least `i` with `C_i · 100 ≥ N`, and `p99 = v_i` for the least `i`
+with `C_i · 100 ≥ 99 · N`, over the same aggregated ascending `(value, count)`
+population §11.5 defines. The comparisons are exact integer arithmetic; percentile
+positions MUST NOT be interpolated between neighbouring order statistics, taken from
+an approximate-quantile sketch, or delegated to a machine-dependent library
+percentile — any of which would break the §7 auto/frozen byte-equivalence. `p1 = p99`
+(including an empty population) has no usable spread and is
+`CalibrationDataInsufficient` (Error, calibrate). The selected span then feeds the
+cut derivation above unchanged: `precision` applies **after** the span is chosen.
+Unlike `min_max`, percentile is **count-sensitive**, so for triple input it obeys the
+§5.3.1 subject-local deduplication. See decisions.md D-103.
 
 ### 11.5 `equal_frequency`
 
@@ -1317,6 +1326,22 @@ The resulting numeric cuts remain subject to the post-formula validity check:
 data-calibrated cuts that are **non-finite or not strictly ascending** are
 `CalibrationCutsInvalid` (Error, calibrate).
 
+**Feasibility prevails over tie-side preference (normative).** The obligation above
+and `tie_policy` can be mutually unsatisfiable: a preferred gap may be unavailable
+because an earlier boundary already took it, because reserving gaps for the later
+boundaries forbids it, or because it is not a gap at all (`"right"` on the first
+group prefers the gap *below* the whole domain; `"left"` on the last group prefers
+the gap *above* it). In every such case **feasibility wins and `tie_policy` yields**.
+Boundaries are allocated in **ascending target order**, each taking the nearest
+feasible gap within the window `[p + 1, m - 1 - (bins - 1 - k)]` — where `p` is the
+previously selected gap (initially `0`), `m` the distinct-value count, and `k` the
+boundary's 1-based index. The lower bound forces gaps to strictly ascend; the upper
+bound reserves one gap for every later boundary. This may place a tied group on the
+**opposite side** of its policy preference. It is normal resolution, not an error:
+it is never reported as invalid cuts. Since `m ≥ bins` guarantees the window is
+non-empty, `bins - 1` distinct ascending gaps always exist, and the cuts are
+strictly ascending **by construction**.
+
 **Bounded-memory (normative).** Equal-frequency and percentile-range
 (`equal_width` `percentile_p1_p99`, §11.4) calibration MUST be **exact,
 deterministic, and bounded-memory** at **M4** — it is a correctness property, not
@@ -1328,26 +1353,60 @@ budget itself is an implementation internal — never a TOML field or a fingerpr
 input (decisions.md D-095/D-082); the M8 scaling pass (`roadmap.md` M8) may tune it
 and benchmark algorithms, but boundedness is established here, not there.
 
-The exact quantile-index formula and the rounding precision of `midpoint`
-cut values and their rendered labels are **settled at M4** (the calibration
-milestone) and pinned by golden tests then; they are deliberately not frozen
-here, as they are tuning choices rather than determinism guarantees — but any
-formula that lands is **bounded** by the distinct-gap obligation above, the
-bounded-memory obligation just stated, and the §7 auto/frozen byte-equivalence.
-The rules above are the determinism guarantees and are stable now.
+Counting is exact, so it is also **checked**: if a per-value count, the running
+total, or a merge sum would exceed the implementation's integer range, calibration
+stops with `CalibrationPopulationTooLarge` (Error, calibrate; §16.4) and yields no
+calibrated result. It is a distinct condition — too much data to count exactly —
+and MUST NOT be reported as `CalibrationDataInsufficient` (its opposite) or as a
+storage failure. It is a contract-totality rule: no v1-scale workload reaches it
+(decisions.md D-103).
 
-**Examples (informative).**
+**Quantile selection (normative).** Let the aggregated population be distinct
+ascending finite values `v_1 … v_m` with counts `c_i`, cumulative counts `C_i`
+(`C_0 = 0`), and total `N = C_m`; a **gap** `g ∈ 1 … m-1` lies between `v_g` and
+`v_{g+1}`. Boundary `k` (`1 … bins-1`) targets the **exact rational** `N·k / bins`.
+That target MUST NOT be materialized as a floating-point or decimal value: it is
+compared by exact integer cross-multiplication (`C_i · bins` against `N · k`), which
+a `double` rank cannot reproduce once `N` approaches 2^53. The target falls in the
+first group `i` with `C_i · bins ≥ N · k`; the desired gap `d(k)` is:
 
-- `[1, 2, 2, 2, 3, 4]`, `bins = 3`: two target boundaries fall inside the tied
-  `2`-run. `tie_policy = "left"` resolves both to the group's right edge, yet the
-  formula must still yield **two** distinct ascending cuts (the second boundary
-  moves to the next gap) — three bins result, never a collapse to two.
-- `[1, 2, 2, 2, 3]`, `bins = 2`: one boundary lands in the `2`-run.
-  Illustratively, with the default `cut_placement = "right_value"`: `tie_policy =
+- `N·k = C_i·bins` exactly (a **group edge**) → `d(k) = i`, **regardless of
+  `tie_policy`** — the boundary already separates whole groups, so no tie exists;
+- otherwise (strictly inside group `i`) → `d(k) = i` for `"left"`, `d(k) = i - 1`
+  for `"right"`.
+
+The feasibility window above then allocates the actual gap. `cut_placement`
+finally values it: `"right_value"` → `v_{g+1}`; `"midpoint"` → the midpoint of
+`v_g` and `v_{g+1}`, computed **sign-aware** exactly as in §11.4 (`a + (b - a)/2`
+for a same-sign gap or one with a zero bound; `(a + b)/2` for a gap crossing zero),
+so no extreme gap can overflow. If the midpoint cannot land strictly above `v_g` —
+the two values are adjacent representable doubles — the cut is `v_{g+1}`, which is
+membership-identical under the half-open geometry. Every computed cut is
+canonicalized so a computed negative zero renders `0` (§14/decisions.md D-096). See
+decisions.md D-103.
+
+**Examples (normative).** The first two are the §11.5 tie-policy illustrations; the
+last three pin the feasibility precedence. All use the default
+`cut_placement = "right_value"`.
+
+- `[1, 2, 2, 2, 3, 4]`, `bins = 3`, `tie_policy = "left"` → cuts `3, 4`. Two target
+  boundaries fall inside the tied `2`-run; the formula must still yield **two**
+  distinct ascending cuts (the second boundary moves to the next gap) — three bins
+  result, never a collapse to two.
+- `[1, 2, 2, 2, 3]`, `bins = 2`: one boundary lands in the `2`-run. `tie_policy =
   "left"` puts the whole `2`-group in the lower bin (cut at `3`), `"right"` puts it
   in the upper bin (cut at `2`). Either way, converting on the fly and converting
   from the `calibrate`-frozen spec (the auto cut becomes `manual_cuts`) produce
   byte-identical output on this dataset (§7).
+- **Collision** — `[1, 2, 2, 2, 3]`, `bins = 3`, `tie_policy = "left"` → cuts
+  `2, 3`. Both boundaries prefer the `2`-group's right edge; the window pushes the
+  first down to the gap below it so a gap remains for the second, against `"left"`.
+- **Last-group edge** — `[1, 2, 3, 4, 5, 5, 5, 5, 5, 5]`, `bins = 2`,
+  `tie_policy = "left"` → cut `5`. The preferred gap is above the whole domain and
+  therefore not a gap; the tied `5`-group lands **upper** despite `"left"`.
+- **First-group edge** — `[5, 5, 5, 5, 5, 5, 6, 7, 8, 9]`, `bins = 2`,
+  `tie_policy = "right"` → cut `6`. The preferred gap is below the whole domain;
+  the tied `5`-group lands **lower** despite `"right"`.
 
 ### 11.6 `value_groups`
 
@@ -2052,6 +2111,7 @@ exactly one phase — the "Where" column below is the phase-ownership contract
 | `ObservedDomainUsed` | Warning | calibrate |
 | `CalibrationDataInsufficient` | Error | calibrate |
 | `CalibrationCutsInvalid` | Error | calibrate |
+| `CalibrationPopulationTooLarge` | Error | calibrate |
 | `UnknownValueObserved` | Warning or Error (per `unknown_value_policy`) | calibrate/emit |
 | `UnknownValuePolicyInclude` | Warning | calibrate |
 | `TripleSubjectNotContiguous` | Error | calibrate/emit |
@@ -2107,11 +2167,12 @@ observed-domain calibration landed at M4 Slice A — D-098, so an absent
 phase, §10.3.) They are distinct from the permanent `*NotImplementedV1`
 reservations in §20. Two parse-phase codes are transitional on the same terms:
 `DiscretizerKindNotYetSupported` (a recognized-but-deferred discretizer kind —
-`equal_frequency`, `value_groups` — rejected at read with no
+now `value_groups` alone — rejected at read with no
 parameter carrier, D-070; removed as each kind lands at M4 — `free_per_value` left
-this set at M4 Slice B, D-101, and `equal_width` at M4 Slice C, D-102; note that
-`equal_width`'s deferred `range = "percentile_p1_p99"` spelling rejects as
-`SpecFieldInvalid`, not with this code — the *kind* is supported) and
+this set at M4 Slice B, D-101, `equal_width` at M4 Slice C, D-102, and
+`equal_frequency` at M4 Slice D, D-103, which also made `equal_width`'s
+`range = "percentile_p1_p99"` spelling accepted; the code retires with
+`value_groups`, its last owner) and
 `SpecSurfaceNotYetSupported` (recognized v1
 surface the reader does not model yet — attribute/template `display_name` /
 `formal_attribute_format`, `[defaults]` `formal_attribute_format`,

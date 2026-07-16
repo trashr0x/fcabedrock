@@ -184,8 +184,46 @@ vertical slices, not waterfall phases — each should leave the system working.
 > spelling (`SpecFieldInvalid`) until Slice D — enforced at the reader **and** at the
 > calibrated-state boundary, so percentile cannot become executable by any route;
 > `equal_frequency`, `value_groups`, and `restrict_to` stay transitionally rejected.
-> `dotnet test` is green (1225 passed, 1 skipped). **M4 Slice D (`equal_frequency` +
-> percentile + the bounded quantile engine) is next.**
+> `dotnet test` is green (1225 passed, 1 skipped).
+>
+> **M4 Slice D — `equal_frequency` + percentile + the bounded quantile engine — is
+> complete (D-103).** M4's **count-sensitive** calibration: `equal_frequency` (§11.5) and
+> `equal_width` `range = "percentile_p1_p99"` (§11.4) are executable, so `equal_frequency`
+> leaves the transitional read-reject set (`DiscretizerKindNotYetSupported` narrows to
+> **`value_groups` alone**) and percentile leaves the Slice C spelling gap now that its
+> calibration exists. `equal_frequency` is number-fixing and — unlike `equal_width` — has **no
+> spec-determined mode**: every configuration draws its cuts from the population, so it always
+> resolves to the `CalibrationPending` carrier and composes the shared `NumericCutBins` engine
+> (open ends), needing no ordinal path of its own. **Rank selection is exact and separate from
+> binary64 placement**: the target `N·k/bins` is never materialized in floating point but
+> cross-multiplied in `UInt128`, because above 2^53 a `double` rank silently selects the wrong
+> order statistic — reachable at the v1 target population (D-007). The **§11.5 feasibility
+> precedence** is now normative (G-5): honoring `tie_policy` and producing `bins - 1` distinct
+> ascending gaps can be mutually unsatisfiable — on collision and at **both** domain edges — so
+> boundaries take the nearest feasible gap in a monotone window, which may place a tied group on
+> the opposite side of its preference; that is normal resolution, never a diagnostic, and it makes
+> the distinct-gap obligation total with ascent structural. `cut_placement = "midpoint"` reuses
+> §11.4's **sign-aware** split (neither form alone is overflow-safe) with an adjacent-double
+> fallback, and every computed cut is positive-zero canonicalized (G-6 — authored bytes and
+> `fp_format = 1` untouched). Percentile selects **exact order statistics** (never interpolated or
+> sketched) and feeds the existing Slice C derivation, so there is no second copy of the
+> interpolation formula. Exactness is bounded: a **fixed-capacity fill-and-spill**
+> `QuantileAccumulator` (dictionary + charged sort buffer, `Modeled(cap) = 384 + cap·44` on x64)
+> with online consolidation keeping the run catalog ≤ fan-in, a fixed pending-deletion cap the 3T
+> byte rule provably cannot supply, release-before-merge, and a **consolidated-run two-pass replay**
+> the zero-spill path shares — so spill/non-spill byte identity is structural. ±0 folds at intake,
+> so which zero spelling reaches a key, a run, and a cut is pinned rather than left to arrival
+> order (the dictionary and comparer treat both as one value either way). Counting is `checked`;
+> overflow is the
+> one new diagnostic, **`CalibrationPopulationTooLarge`** (G-13). Triple counts obey §5.3.1
+> subject-locally: `subject_grouped` dedups inline, `unordered` adds a grouped second pass **only**
+> when a count-sensitive need exists (never a third pass, never a dataset-wide set). The resource
+> contract is stated honestly in **two tiers** — byte-exact accumulator state; structurally bounded
+> I/O and run metadata, deliberately not byte-modeled because `FileStream` internals are
+> runtime-owned. Both new fingerprint encodings are golden-locked with independently-computed
+> SHA-256 vectors (D-094); every pre-Slice-D canonical byte, SHA vector, and all nine golden
+> fixtures are unchanged. `value_groups` and `restrict_to` stay transitionally rejected.
+> `dotnet test` is green (1520 passed, 1 skipped). **M4 Slice E (`value_groups`) is next.**
 
 ## Milestones
 

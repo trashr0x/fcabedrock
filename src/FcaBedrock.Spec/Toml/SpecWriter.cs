@@ -558,6 +558,30 @@ public static class SpecWriter
 
                 break;
 
+            case EqualFrequencyDiscretizerSection equalFrequency:
+                // §11.5 presentation order: kind, bins, tie_policy, cut_placement. As everywhere
+                // else, a field is written only when authored (D-049 presence tracking), so an
+                // omitted tie_policy/cut_placement stays omitted and parse→write→parse is
+                // idempotent; the resolved defaults are spelled where they are semantically
+                // load-bearing — the §14 fingerprint (D-094) — not injected into the author's text.
+                items.Add(Item("kind", TomlLiteral.FormatString(TomlSpellings.EqualFrequencyKind)));
+                if (equalFrequency.Bins is { } frequencyBins)
+                {
+                    items.Add(Item("bins", TomlLiteral.FormatLong(frequencyBins)));
+                }
+
+                if (equalFrequency.TiePolicy is { } tiePolicy)
+                {
+                    items.Add(Item("tie_policy", TomlLiteral.FormatString(TomlSpellings.ToToml(TomlSpellings.TiePolicies, tiePolicy))));
+                }
+
+                if (equalFrequency.CutPlacement is { } cutPlacement)
+                {
+                    items.Add(Item("cut_placement", TomlLiteral.FormatString(TomlSpellings.ToToml(TomlSpellings.CutPlacements, cutPlacement))));
+                }
+
+                break;
+
             case OrderedCutsDiscretizerSection ordered:
                 items.Add(Item("kind", TomlLiteral.FormatString(TomlSpellings.OrderedCutsKind)));
                 if (ordered.Order is { } order)

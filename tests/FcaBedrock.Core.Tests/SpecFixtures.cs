@@ -91,6 +91,17 @@ internal static class SpecFixtures
             new CalibrationPending(new PendingEqualWidth(bins, range, precision ?? CutPrecision.Exact), CultureInfo.InvariantCulture),
             scale, DeclaredDomain: [], RestrictTo: [], NoLabels, MissingPolicy.Skip, policy);
 
+    // An equal_frequency attribute before calibration: the CalibrationPending carrier the resolve
+    // seam produces, which Calibrate replaces with the executable discretizer (D-093/D-103).
+    // equal_frequency has no spec-determined form — every configuration is data-dependent (§7).
+    public static AttributeSpec EqualFrequencyPending(
+        string name, int index, int bins, Scale scale,
+        TiePolicy tiePolicy = TiePolicy.Left, CutPlacement cutPlacement = CutPlacement.RightValue,
+        CultureInfo? culture = null, UnknownValuePolicy policy = UnknownValuePolicy.Warn) =>
+        new(name, new ColumnSource(index, SourceValueType.Number), Include: true,
+            new CalibrationPending(new PendingEqualFrequency(bins, tiePolicy, cutPlacement), culture ?? CultureInfo.InvariantCulture),
+            scale, DeclaredDomain: [], RestrictTo: [], NoLabels, MissingPolicy.Skip, policy);
+
     // An identity value-bin ordinal attribute (§12.3, D-081): an explicit order over
     // the declared domain, paired with an OrdinalScale carrying that order.
     public static AttributeSpec OrdinalValueBins(

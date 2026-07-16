@@ -176,6 +176,9 @@ internal static class AttributeReader
             case TomlSpellings.EqualWidthKind:
                 return ReadEqualWidth(context, inner, table.Span);
 
+            case TomlSpellings.EqualFrequencyKind:
+                return ReadEqualFrequency(context, inner, table.Span);
+
             case TomlSpellings.OrderedCutsKind:
                 var ordered = new OrderedCutsDiscretizerSection(
                     inner.TakeStringArray("order"),
@@ -219,26 +222,13 @@ internal static class AttributeReader
         // reports its own type error once instead of also being called missing (D-067, one
         // condition → one code).
         var (range, rangeAuthored, rangeValid) = TakeEqualWidthRange(context, inner);
-        var (bins, binsAuthored) = TakeBins(context, inner);
+        var (bins, binsAuthored) = TakeBins(context, inner, TomlSpellings.EqualWidthKind, "§11.4");
         var (vmin, vminAuthored) = TakeBound(context, inner, "vmin");
         var (vmax, vmaxAuthored) = TakeBound(context, inner, "vmax");
         var precision = ReadPrecision(context, inner);
         inner.Finish();
 
-        if (!binsAuthored)
-        {
-            context.Error(
-                DiagnosticCode.SpecFieldInvalid,
-                "equal_width discretizer declares no bins; expected an integer of at least 2 (§11.4).",
-                tableSpan);
-        }
-        else if (bins is { } authoredBins && authoredBins is < 2 or > int.MaxValue)
-        {
-            context.Error(
-                DiagnosticCode.SpecFieldInvalid,
-                $"equal_width discretizer bins {authoredBins} is out of range; expected an integer from 2 to {int.MaxValue} (§11.4).",
-                tableSpan);
-        }
+        ValidateBins(context, TomlSpellings.EqualWidthKind, "§11.4", bins, binsAuthored, tableSpan);
 
         // An unrecognized range spelling already reported; its mode is unknown, so the vmin/vmax
         // rules below cannot be judged and would only add noise.
@@ -270,10 +260,55 @@ internal static class AttributeReader
             bins, rangeAuthored && rangeValid ? range : null, vmin, vmax, precision);
     }
 
+    // §11.5 (D-103): equal_frequency's authored fields. Parse owns the field shapes — bins
+    // presence and its 2..int.MaxValue range, and the tie_policy/cut_placement spellings
+    // (SpecFieldInvalid). There is no range/span surface: equal_frequency draws its cuts from
+    // the population under every configuration (§7), so unlike equal_width it has no
+    // spec-determined mode and no vmin/vmax cross-checks. Independent failures are reported
+    // together — every field is read before the gates run, so a spec with a bad bins AND a bad
+    // tie_policy reports both rather than stopping at the first (P-14).
+    private static DiscretizerSection ReadEqualFrequency(TomlReadContext context, TomlTableCursor inner, SourceSpan tableSpan)
+    {
+        var (bins, binsAuthored) = TakeBins(context, inner, TomlSpellings.EqualFrequencyKind, "§11.5");
+        var tiePolicy = TakeSpelling(context, inner, "tie_policy", TomlSpellings.TiePolicies, "§11.5");
+        var cutPlacement = TakeSpelling(context, inner, "cut_placement", TomlSpellings.CutPlacements, "§11.5");
+        inner.Finish();
+
+        ValidateBins(context, TomlSpellings.EqualFrequencyKind, "§11.5", bins, binsAuthored, tableSpan);
+
+        // The carrier holds only what resolved: an authored-but-unrecognized spelling carries
+        // null (its Error already fails the read), so an omitted field and a rejected one are
+        // indistinguishable downstream — which is correct, since neither can be written back.
+        return new EqualFrequencyDiscretizerSection(bins, tiePolicy, cutPlacement);
+    }
+
+    // The shared bins contract (§11.4/§11.5): authored, an integer, and within 2..int.MaxValue.
+    // The document carrier keeps it `long?` (that is what TOML integers are); this gate is what
+    // makes the seam's narrowing to `int` total.
+    private static void ValidateBins(
+        TomlReadContext context, string kind, string section, long? bins, bool authored, SourceSpan tableSpan)
+    {
+        if (!authored)
+        {
+            context.Error(
+                DiagnosticCode.SpecFieldInvalid,
+                $"{kind} discretizer declares no bins; expected an integer of at least 2 ({section}).",
+                tableSpan);
+        }
+        else if (bins is { } authoredBins && authoredBins is < 2 or > int.MaxValue)
+        {
+            context.Error(
+                DiagnosticCode.SpecFieldInvalid,
+                $"{kind} discretizer bins {authoredBins} is out of range; expected an integer from 2 to {int.MaxValue} ({section}).",
+                tableSpan);
+        }
+    }
+
     // The presence-aware reads. The cursor's typed accessors collapse absent and malformed to
     // null, which the semantic gates above must tell apart; each reports its own type error, so a
     // malformed field is never also reported as missing.
-    private static (long? Value, bool Authored) TakeBins(TomlReadContext context, TomlTableCursor cursor)
+    private static (long? Value, bool Authored) TakeBins(
+        TomlReadContext context, TomlTableCursor cursor, string kind, string section)
     {
         if (cursor.Take("bins") is not { } pair)
         {
@@ -287,9 +322,32 @@ internal static class AttributeReader
 
         context.Error(
             DiagnosticCode.SpecFieldInvalid,
-            "equal_width discretizer key 'bins' expects an integer (§11.4).",
+            $"{kind} discretizer key 'bins' expects an integer ({section}).",
             pair.Value?.Span ?? pair.Span);
         return (null, true);
+    }
+
+    // An optional enum-spelled field: absent → null (the §11.5 default applies at the seam);
+    // authored-and-recognized → its value; authored-and-unrecognized → null after its own Error.
+    private static T? TakeSpelling<T>(
+        TomlReadContext context, TomlTableCursor cursor, string key, (string Text, T Value)[] table, string section)
+        where T : struct
+    {
+        if (cursor.Take(key) is not { } pair)
+        {
+            return null;
+        }
+
+        if (pair.Value is StringValueSyntax { Value: { } text } && TomlSpellings.TryParse(table, text, out var value))
+        {
+            return value;
+        }
+
+        context.Error(
+            DiagnosticCode.SpecFieldInvalid,
+            $"{TomlSpellings.EqualFrequencyKind} discretizer key '{key}' expects {TomlSpellings.Allowed(table)} ({section}).",
+            pair.Value?.Span ?? pair.Span);
+        return null;
     }
 
     private static (double? Value, bool Authored) TakeBound(TomlReadContext context, TomlTableCursor cursor, string key)

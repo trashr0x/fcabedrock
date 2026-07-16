@@ -761,6 +761,217 @@ public sealed class FingerprintCalculatorTests
             autoJson);
     }
 
+    // --- equal_frequency + percentile encodings (D-094 golden-lock, M4 Slice D) --
+    //
+    // The same D-094 gate as Slice C: these bytes and their SHA-256 vectors land BEFORE the first
+    // stored equal_frequency / percentile hash, because that first hash fossilizes them.
+    // equal_frequency encodes its authored bins/tie_policy/cut_placement with the §11.5 defaults
+    // SPELLED (resolution happens at the seam, so the fingerprint never sees "omitted") — and, as
+    // with equal_width, its calibrated cuts ride only as schema bins.
+
+    private const string EqualFrequencySchemaArray =
+        """
+        [{"bin":{"hi":2,"hi_open":false,"lo":null,"lo_open":true},"name":"score","op":"","scale":"nominal"},{"bin":{"hi":3,"hi_open":false,"lo":2,"lo_open":false},"name":"score","op":"","scale":"nominal"},{"bin":{"hi":null,"hi_open":true,"lo":3,"lo_open":false},"name":"score","op":"","scale":"nominal"}]
+        """;
+
+    // The only route to a plannable equal_frequency: a pending carrier whose cuts the calibrator
+    // supplied and CalibratedSpec.Create substituted (D-093).
+    private static ConversionPlan EqualFrequencyPlan(
+        TiePolicy tie = TiePolicy.Left, CutPlacement placement = CutPlacement.RightValue)
+    {
+        var spec = new BedrockSpec(SpecFixtures.WideRowIndex(), [
+            SpecFixtures.EqualFrequencyPending("score", 0, 3, new NominalScale(), tie, placement),
+        ]);
+        var calibrated = CalibratedSpec.Create(
+            Resolve(spec, new SourceSchema(1)), [new CalibratedCuts("score", [2, 3])]);
+        Assert.True(calibrated.TryGetValue(out var state));
+        Assert.True(ConversionPlanner.Plan(state!).TryGetValue(out var plan));
+        return plan!;
+    }
+
+    private static ConversionPlan PercentilePlan()
+    {
+        var spec = new BedrockSpec(SpecFixtures.WideRowIndex(), [
+            SpecFixtures.EqualWidthPending("score", 0, 4, new NominalScale(), EqualWidthRange.PercentileP1P99),
+        ]);
+        var calibrated = CalibratedSpec.Create(
+            Resolve(spec, new SourceSchema(1)), [new CalibratedCuts("score", [25, 50, 75])]);
+        Assert.True(calibrated.TryGetValue(out var state));
+        Assert.True(ConversionPlanner.Plan(state!).TryGetValue(out var plan));
+        return plan!;
+    }
+
+    [Fact]
+    public void BuildCxtOutputJson_WhenEqualFrequency_ThenDiscretizerEncodesTheAuthoredConfigWithDefaultsSpelled()
+    {
+        var plan = EqualFrequencyPlan();
+        var json = FingerprintCalculator.BuildCxtOutputJson(plan, plan.Calibrated.Spec, NativeCxt());
+
+        // The pinned encoding (§14/D-094). Keys sort ordinal: bins < cut_placement < kind <
+        // tie_policy. The resolved defaults are spelled, not omitted.
+        Assert.Contains(
+            "\"discretizer\":{\"bins\":3,\"cut_placement\":\"right_value\",\"kind\":\"equal_frequency\",\"tie_policy\":\"left\"},",
+            json, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void BuildCxtOutputJson_WhenEqualFrequencyConfigVaries_ThenEachSpellingIsEncoded()
+    {
+        // Both enums' every member is reachable in the encoding, so a wrong spelling cannot hide.
+        var plan = EqualFrequencyPlan(TiePolicy.Right, CutPlacement.Midpoint);
+
+        Assert.Contains(
+            "\"discretizer\":{\"bins\":3,\"cut_placement\":\"midpoint\",\"kind\":\"equal_frequency\",\"tie_policy\":\"right\"},",
+            FingerprintCalculator.BuildCxtOutputJson(plan, plan.Calibrated.Spec, NativeCxt()),
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void BuildCxtOutputJson_WhenEqualFrequency_ThenCalibratedCutsAreNotInsideTheDiscretizerObject()
+    {
+        // D-094: the calibrated cuts appear ONLY as schema bins — re-encoding them in the authored
+        // sub-object would be the second source of truth the rule forbids.
+        var plan = EqualFrequencyPlan();
+        var json = FingerprintCalculator.BuildCxtOutputJson(plan, plan.Calibrated.Spec, NativeCxt());
+        var discretizer = json[json.IndexOf("\"discretizer\":", StringComparison.Ordinal)..];
+
+        Assert.DoesNotContain("\"cuts\"", discretizer[..discretizer.IndexOf('}', StringComparison.Ordinal)], StringComparison.Ordinal);
+        Assert.Contains("\"schema\":" + EqualFrequencySchemaArray, json, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void BuildSchemaJson_WhenEqualFrequency_ThenOpenEndedCutBinsInPlanOrder() =>
+        Assert.Equal(
+            "{\"attributes\":" + EqualFrequencySchemaArray + ",\"fp_format\":1,\"kind\":\"schema\"}",
+            FingerprintCalculator.BuildSchemaJson(EqualFrequencyPlan()));
+
+    [Fact]
+    public void ComputeSchemaFingerprint_WhenEqualFrequency_ThenMatchesHardcodedVector() =>
+        // Hash literal computed independently (an external SHA-256 over the hand-authored bytes
+        // above), never copied from this encoder's output — that is what makes it a lock (D-094).
+        Assert.Equal(
+            "sha256:bc7ef3c1e66cb4ca40eb9317de43fd7858c230fcc87da6d802638ba992efb2b0",
+            FingerprintCalculator.ComputeSchemaFingerprint(EqualFrequencyPlan()));
+
+    [Fact]
+    public void BuildDatOutputJson_WhenEqualFrequency_ThenCompletePinnedCanonicalBytes()
+    {
+        var plan = EqualFrequencyPlan();
+
+        Assert.Equal(
+            "{\"dat\":{\"base_index\":1,\"empty_line_trailing_space\":false,\"line_endings\":\"lf\","
+                + "\"nonempty_line_trailing_space\":false},\"fp_format\":1,\"kind\":\"dat_output\",\"schema\":"
+                + EqualFrequencySchemaArray
+                + ",\"shared\":{\"attributes\":[{\"declared_domain\":[],\"discretizer\":{\"bins\":3,"
+                + "\"cut_placement\":\"right_value\",\"kind\":\"equal_frequency\",\"tie_policy\":\"left\"},"
+                + "\"missing_policy\":\"skip\",\"name\":\"score\",\"scale\":{\"kind\":\"nominal\"},"
+                + "\"source\":{\"column\":0,\"value_type\":\"number\"},"
+                + "\"unknown_value_policy\":\"warn\"}],\"binding\":{\"delimiter\":\",\",\"encoding\":\"utf-8\",\"has_header\":true,"
+                + "\"locale\":\"invariant\",\"missing_token\":\"?\",\"object_key\":{\"mode\":\"row_index\"},\"quote_char\":\"\\\"\",\"shape\":\"wide\"}}}",
+            FingerprintCalculator.BuildDatOutputJson(plan, plan.Calibrated.Spec, NativeDat()));
+    }
+
+    [Fact]
+    public void ComputeDatOutputFingerprint_WhenEqualFrequency_ThenMatchesHardcodedVector() =>
+        // Independently computed over the pinned dat bytes above; the hash genuinely covers the
+        // discretizer sub-object, which rides in `shared` and feeds only the output hashes.
+        Assert.Equal(
+            "sha256:a892e17fa5601401f7c29a8c320bca35325dc0a13b5b384245e56fd1b5c9a971",
+            FingerprintCalculator.ComputeDatOutputFingerprint(EqualFrequencyPlan(), NativeDat()));
+
+    [Fact]
+    public void ComputeDatOutputFingerprint_WhenEqualFrequencyConfigVaries_ThenTheHashMoves() =>
+        // Proves the pinned vector above actually covers the discretizer object rather than
+        // hashing around it: the ONLY difference here is the authored tie_policy/cut_placement.
+        Assert.NotEqual(
+            FingerprintCalculator.ComputeDatOutputFingerprint(EqualFrequencyPlan(), NativeDat()),
+            FingerprintCalculator.ComputeDatOutputFingerprint(
+                EqualFrequencyPlan(TiePolicy.Right, CutPlacement.Midpoint), NativeDat()));
+
+    [Fact]
+    public void BuildCxtOutputJson_WhenPercentileRange_ThenDiscretizerSpellsPercentileAndOmitsBounds()
+    {
+        var plan = PercentilePlan();
+        var json = FingerprintCalculator.BuildCxtOutputJson(plan, plan.Calibrated.Spec, NativeCxt());
+
+        // Slice C modelled this spelling but kept it unreachable; Slice D activates it, so its
+        // bytes are pinned here before the first stored percentile hash (D-094).
+        Assert.Contains(
+            "\"discretizer\":{\"bins\":4,\"kind\":\"equal_width\",\"precision\":\"exact\",\"range\":\"percentile_p1_p99\"},",
+            json, StringComparison.Ordinal);
+        Assert.DoesNotContain("\"vmin\"", json, StringComparison.Ordinal);
+        Assert.DoesNotContain("\"vmax\"", json, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void BuildDatOutputJson_WhenPercentileRange_ThenCompletePinnedCanonicalBytes()
+    {
+        var plan = PercentilePlan();
+
+        Assert.Equal(
+            "{\"dat\":{\"base_index\":1,\"empty_line_trailing_space\":false,\"line_endings\":\"lf\","
+                + "\"nonempty_line_trailing_space\":false},\"fp_format\":1,\"kind\":\"dat_output\",\"schema\":"
+                + EqualWidthSchemaArray
+                + ",\"shared\":{\"attributes\":[{\"declared_domain\":[],\"discretizer\":{\"bins\":4,\"kind\":\"equal_width\","
+                + "\"precision\":\"exact\",\"range\":\"percentile_p1_p99\"},\"missing_policy\":\"skip\","
+                + "\"name\":\"score\",\"scale\":{\"kind\":\"nominal\"},\"source\":{\"column\":0,\"value_type\":\"number\"},"
+                + "\"unknown_value_policy\":\"warn\"}],\"binding\":{\"delimiter\":\",\",\"encoding\":\"utf-8\",\"has_header\":true,"
+                + "\"locale\":\"invariant\",\"missing_token\":\"?\",\"object_key\":{\"mode\":\"row_index\"},\"quote_char\":\"\\\"\",\"shape\":\"wide\"}}}",
+            FingerprintCalculator.BuildDatOutputJson(plan, plan.Calibrated.Spec, NativeDat()));
+    }
+
+    [Fact]
+    public void ComputeDatOutputFingerprint_WhenPercentileRange_ThenMatchesHardcodedVector() =>
+        Assert.Equal(
+            "sha256:dc0d9ed4b00f05e9a184482dfaad2b9e34860e5664d4c3e083a4090f1c30cb34",
+            FingerprintCalculator.ComputeDatOutputFingerprint(PercentilePlan(), NativeDat()));
+
+    [Fact]
+    public void ComputeFingerprints_WhenPercentileVsMinMaxOverTheSameCuts_ThenSchemaEqualAndOutputDiffers()
+    {
+        // The range mode is authored configuration, so two data-derived specs that happen to
+        // calibrate to the same cuts share a schema fingerprint but not an output one — the same
+        // D-094 asymmetry as auto-vs-frozen, within the auto family.
+        var percentile = PercentilePlan();
+        var minMax = EqualWidthMinMaxPlan();
+
+        Assert.Equal(
+            FingerprintCalculator.ComputeSchemaFingerprint(minMax),
+            FingerprintCalculator.ComputeSchemaFingerprint(percentile));
+        Assert.NotEqual(
+            FingerprintCalculator.ComputeDatOutputFingerprint(minMax, NativeDat()),
+            FingerprintCalculator.ComputeDatOutputFingerprint(percentile, NativeDat()));
+    }
+
+    [Fact]
+    public void ComputeFingerprints_WhenEqualFrequencyAutoVsFrozenManualCuts_ThenSchemaEqualAndOutputDiffersOnlyInTheDiscretizer()
+    {
+        // The D-088/D-094 pair for equal_frequency: the frozen manual_cuts twin over the same
+        // calibrated cuts shares every effective bin — hence the schema fingerprint — while the
+        // output fingerprints differ ONLY through the authored discretizer sub-object.
+        var frozen = new BedrockSpec(SpecFixtures.WideRowIndex(), [
+            SpecFixtures.NumericCuts("score", 0, [2, 3], new NominalScale()),
+        ]);
+        var auto = EqualFrequencyPlan();
+        var frozenPlan = Plan(frozen);
+
+        Assert.Equal(
+            FingerprintCalculator.ComputeSchemaFingerprint(frozenPlan),
+            FingerprintCalculator.ComputeSchemaFingerprint(auto));
+        Assert.NotEqual(
+            FingerprintCalculator.ComputeDatOutputFingerprint(frozenPlan, NativeDat()),
+            FingerprintCalculator.ComputeDatOutputFingerprint(auto, NativeDat()));
+
+        // The documented difference, isolated: swapping just the discretizer sub-object makes the
+        // two payloads byte-identical, so nothing else moved.
+        Assert.Equal(
+            FingerprintCalculator.BuildDatOutputJson(frozenPlan, frozen, NativeDat()).Replace(
+                "\"discretizer\":{\"cuts\":[2,3],\"ends\":\"open\",\"kind\":\"manual_cuts\"}",
+                "\"discretizer\":{\"bins\":3,\"cut_placement\":\"right_value\",\"kind\":\"equal_frequency\",\"tie_policy\":\"left\"}",
+                StringComparison.Ordinal),
+            FingerprintCalculator.BuildDatOutputJson(auto, auto.Calibrated.Spec, NativeDat()));
+    }
+
     // --- existing-kind regression: authored -0.0 manual cut stays -0 (G-6) ----
 
     [Fact]

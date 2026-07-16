@@ -78,6 +78,57 @@ public sealed record PendingEqualWidth : PendingCalibration
 }
 
 /// <summary>
+/// The <c>equal_frequency</c> configuration calibration must resolve (§11.5, D-088):
+/// the authored bin count, tie policy, and cut placement carried into calibration, so
+/// the calibrator reads the population and <c>CalibratedSpec.Create</c> substitutes the
+/// executable <see cref="EqualFrequencyDiscretizer"/> over the selected cuts (D-093).
+/// Holds only immutable values.
+/// <para>
+/// Unlike <see cref="PendingEqualWidth"/> there is no mode that escapes calibration:
+/// every <c>equal_frequency</c> spec is data-dependent (§7), so this carrier has no
+/// spec-determined counterpart to reject.
+/// </para>
+/// </summary>
+public sealed record PendingEqualFrequency : PendingCalibration
+{
+    /// <summary>Carries <paramref name="bins"/>/<paramref name="tiePolicy"/>/<paramref name="cutPlacement"/> into calibration.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// <paramref name="bins"/> is below 2, or <paramref name="tiePolicy"/> /
+    /// <paramref name="cutPlacement"/> is undefined — the reader owns the authored forms
+    /// (<c>SpecFieldInvalid</c>, §11.5); these are the P-10 backstops.
+    /// </exception>
+    public PendingEqualFrequency(int bins, TiePolicy tiePolicy, CutPlacement cutPlacement)
+    {
+        ArgumentOutOfRangeException.ThrowIfLessThan(bins, 2);
+        if (!Enum.IsDefined(tiePolicy))
+        {
+            throw new ArgumentOutOfRangeException(nameof(tiePolicy), tiePolicy, "equal_frequency tie_policy holds an undefined enum value.");
+        }
+
+        if (!Enum.IsDefined(cutPlacement))
+        {
+            throw new ArgumentOutOfRangeException(nameof(cutPlacement), cutPlacement, "equal_frequency cut_placement holds an undefined enum value.");
+        }
+
+        Bins = bins;
+        TiePolicy = tiePolicy;
+        CutPlacement = cutPlacement;
+    }
+
+    /// <summary>The authored bin count (≥ 2).</summary>
+    public int Bins { get; }
+
+    /// <summary>The authored (or defaulted) tie policy the gap selection applies (§11.5).</summary>
+    public TiePolicy TiePolicy { get; }
+
+    /// <summary>The authored (or defaulted) cut placement within each selected gap (§11.5).</summary>
+    public CutPlacement CutPlacement { get; }
+
+    /// <inheritdoc/>
+    public override string Kind => "equal_frequency";
+}
+
+/// <summary>
 /// The pre-calibration carrier (D-093): a valid <see cref="Discretizer"/> the
 /// resolve seam can place on a resolved attribute, but one that can never plan or
 /// emit. It is the single type <c>CalibratedSpec.Create</c> must replace with an

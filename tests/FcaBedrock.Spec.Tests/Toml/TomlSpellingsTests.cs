@@ -71,22 +71,32 @@ public sealed class TomlSpellingsTests
             TomlSpellings.Allowed(TomlSpellings.UnknownValuePolicies));
 
     [Theory]
-    [InlineData("equal_frequency", true)]
     [InlineData("value_groups", true)]
-    [InlineData("free_per_value", false)] // left the deferred set at M4 Slice B (D-101)
-    [InlineData("equal_width", false)]    // left the deferred set at M4 Slice C (D-102)
+    [InlineData("free_per_value", false)]   // left the deferred set at M4 Slice B (D-101)
+    [InlineData("equal_width", false)]      // left the deferred set at M4 Slice C (D-102)
+    [InlineData("equal_frequency", false)]  // left the deferred set at M4 Slice D (D-103)
     [InlineData("identity", false)]
-    [InlineData("Equal_Frequency", false)]
-    [InlineData("equal_frequenc", false)]
+    [InlineData("Value_Groups", false)]
+    [InlineData("value_group", false)]
     public void IsIn_WhenProbingDeferredDiscretizerKinds_ThenExactOrdinalMatchOnly(string kind, bool expected) =>
         Assert.Equal(expected, TomlSpellings.IsIn(TomlSpellings.DeferredDiscretizerKinds, kind));
 
     [Fact]
-    public void DeferredDiscretizerKinds_WhenSliceCLanded_ThenExactlyEqualFrequencyAndValueGroups() =>
+    public void DeferredDiscretizerKinds_WhenSliceDLanded_ThenExactlyValueGroups() =>
         // The transitional set narrows kind by kind (D-070) and the member retires with the last
         // one. Pinning the whole set — not just membership — is what makes an accidental
-        // re-deferral or an early retirement visible (D-102).
-        Assert.Equal(["equal_frequency", "value_groups"], TomlSpellings.DeferredDiscretizerKinds);
+        // re-deferral or an early retirement visible. After Slice D exactly one kind remains, so
+        // DiscretizerKindNotYetSupported now owns value_groups alone (D-103).
+        Assert.Equal(["value_groups"], TomlSpellings.DeferredDiscretizerKinds);
+
+    [Fact]
+    public void EqualWidthRanges_WhenSliceDLanded_ThenPercentileJoinedTheAcceptedSurface() =>
+        // Slice C modelled percentile_p1_p99 in the Core enum but kept it out of the accepted TOML
+        // surface until its calibration existed (D-102/G-8b). Slice D closes that gap, so the
+        // spelling table now equals the enum — pinned here so neither can drift from the other.
+        Assert.Equal(
+            Enum.GetValues<EqualWidthRange>().Order(),
+            TomlSpellings.EqualWidthRanges.Select(r => r.Value).Order());
 
     [Theory]
     [InlineData("interordinal", true)]

@@ -366,6 +366,22 @@ public static class FingerprintCalculator
                 builder.Append('}');
                 break;
 
+            case EqualFrequencyDiscretizer equalFrequency:
+                // §14/D-094: the AUTHORED configuration only, with the resolved defaults spelled
+                // ("left"/"right_value"). The calibrated cuts are not re-encoded here — they
+                // already ride as `bin` objects in the `schema` array (the same effective-vs-
+                // authored rule as equal_width), which is why an auto spec and its frozen
+                // manual_cuts twin share a schema_fingerprint yet may carry different output
+                // fingerprints. Keys sort ordinal: bins < cut_placement < kind < tie_policy.
+                builder.Append("{\"bins\":");
+                CanonicalJson.AppendNumber(builder, equalFrequency.Bins);
+                builder.Append(",\"cut_placement\":");
+                CanonicalJson.AppendString(builder, Spell(equalFrequency.CutPlacement));
+                builder.Append(",\"kind\":\"equal_frequency\",\"tie_policy\":");
+                CanonicalJson.AppendString(builder, Spell(equalFrequency.TiePolicy));
+                builder.Append('}');
+                break;
+
             default:
                 // Deferred kinds reject at read/resolve (D-070) and never reach a
                 // computable plan; hitting this is a programmer error.
@@ -599,6 +615,20 @@ public static class FingerprintCalculator
         EqualWidthRange.PercentileP1P99 => "percentile_p1_p99",
         EqualWidthRange.Manual => "manual",
         _ => throw new InvalidOperationException($"No fingerprint spelling for equal_width range {range}."),
+    };
+
+    private static string Spell(TiePolicy tiePolicy) => tiePolicy switch
+    {
+        TiePolicy.Left => "left",
+        TiePolicy.Right => "right",
+        _ => throw new InvalidOperationException($"No fingerprint spelling for equal_frequency tie_policy {tiePolicy}."),
+    };
+
+    private static string Spell(CutPlacement cutPlacement) => cutPlacement switch
+    {
+        CutPlacement.RightValue => "right_value",
+        CutPlacement.Midpoint => "midpoint",
+        _ => throw new InvalidOperationException($"No fingerprint spelling for equal_frequency cut_placement {cutPlacement}."),
     };
 
     private static string Spell(BinEnds ends) => ends switch

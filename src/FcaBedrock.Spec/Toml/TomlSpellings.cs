@@ -64,15 +64,25 @@ internal static class TomlSpellings
         [("open", BinEnds.Open), ("closed", BinEnds.Closed)];
 
     /// <summary>
-    /// <c>equal_width.range</c> (§11.4). The table is the <b>accepted TOML surface</b>,
-    /// not the Core enum: <see cref="EqualWidthRange.PercentileP1P99"/> is modelled in
-    /// Core (D-089) but its spelling lands with its calibration at M4 Slice D, so
-    /// <c>"percentile_p1_p99"</c> is an unrecognized range spelling here and rejects with
-    /// <c>SpecFieldInvalid</c> — a clear parse error, never a silent map to
-    /// <c>min_max</c> (D-070 tier 3 / D-102).
+    /// <c>equal_width.range</c> (§11.4). The table is the accepted TOML surface; it now
+    /// equals the Core enum — <c>"percentile_p1_p99"</c> joined at M4 Slice D together
+    /// with its exact bounded-memory calibration (D-103), closing the Slice C
+    /// transitional gap in which the spelling was modelled but unreachable (D-102/G-8).
     /// </summary>
     internal static readonly (string Text, EqualWidthRange Value)[] EqualWidthRanges =
-        [("min_max", EqualWidthRange.MinMax), ("manual", EqualWidthRange.Manual)];
+    [
+        ("min_max", EqualWidthRange.MinMax),
+        ("percentile_p1_p99", EqualWidthRange.PercentileP1P99),
+        ("manual", EqualWidthRange.Manual),
+    ];
+
+    /// <summary><c>equal_frequency.tie_policy</c> (§11.5); defaults to <c>"left"</c>.</summary>
+    internal static readonly (string Text, TiePolicy Value)[] TiePolicies =
+        [("left", TiePolicy.Left), ("right", TiePolicy.Right)];
+
+    /// <summary><c>equal_frequency.cut_placement</c> (§11.5); defaults to <c>"right_value"</c>.</summary>
+    internal static readonly (string Text, CutPlacement Value)[] CutPlacements =
+        [("right_value", CutPlacement.RightValue), ("midpoint", CutPlacement.Midpoint)];
 
     /// <summary>Source <c>value_type</c> (§10.2). <c>"date"</c> is reserved (D-038), not a member.</summary>
     internal static readonly (string Text, SourceValueType Value)[] ValueTypes =
@@ -108,6 +118,9 @@ internal static class TomlSpellings
     /// <summary>The <c>equal_width</c> discretizer kind (§11.4, M4 Slice C / D-102).</summary>
     internal const string EqualWidthKind = "equal_width";
 
+    /// <summary>The <c>equal_frequency</c> discretizer kind (§11.5, M4 Slice D / D-103).</summary>
+    internal const string EqualFrequencyKind = "equal_frequency";
+
     /// <summary>The <c>equal_width.precision = "exact"</c> spelling (§11.4).</summary>
     internal const string PrecisionExact = "exact";
 
@@ -117,11 +130,12 @@ internal static class TomlSpellings
     /// <summary>
     /// Recognized-but-deferred discretizer kinds (D-070 tier 2): rejected at read
     /// with <c>DiscretizerKindNotYetSupported</c>, no carrier built. All execute
-    /// at M4. <c>free_per_value</c> left this set at Slice B (D-101);
-    /// <c>equal_width</c> at Slice C (D-102).
+    /// at M4. <c>free_per_value</c> left this set at Slice B (D-101),
+    /// <c>equal_width</c> at Slice C (D-102), and <c>equal_frequency</c> at Slice D
+    /// (D-103); <c>value_groups</c> is the last member, and the code retires with it.
     /// </summary>
     internal static readonly string[] DeferredDiscretizerKinds =
-        ["equal_frequency", "value_groups"];
+        ["value_groups"];
 
     /// <summary>Implemented scale kinds (§12.1–§12.3).</summary>
     internal const string NominalKind = "nominal";

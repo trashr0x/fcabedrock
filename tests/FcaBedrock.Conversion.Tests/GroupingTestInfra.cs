@@ -76,6 +76,7 @@ internal sealed class RecordingObserver : IGroupingObserver
     public int PeakOpenReaders { get; private set; }
     public long PeakLiveBytes { get; private set; }
     public long PeakResidentBytes { get; private set; }
+    public int PeakPendingDeletions { get; private set; }
     public List<(string Path, long Size, bool Initial)> Written { get; } = [];
     public List<(string Path, long Size)> Deleted { get; } = [];
 
@@ -93,7 +94,66 @@ internal sealed class RecordingObserver : IGroupingObserver
 
     public void LiveBytes(long liveBytes) => PeakLiveBytes = Math.Max(PeakLiveBytes, liveBytes);
 
+    public void PendingDeletions(int count) => PeakPendingDeletions = Math.Max(PeakPendingDeletions, count);
+
     public void BufferSpilled(long residentBytes) => PeakResidentBytes = Math.Max(PeakResidentBytes, residentBytes);
+}
+
+// Extends the spool recording with the calibration engine's own tier-1 (byte-exact accumulator
+// model) and tier-2 (run-catalog) signals, so one object watches both tiers of the D-095/D-103
+// resource contract.
+internal sealed class RecordingCalibrationObserver : ICalibrationObserver
+{
+    private readonly RecordingObserver _spool = new();
+    private int _openReaders;
+
+    public int PeakOpenReaders { get; private set; }
+    public long PeakLiveBytes => _spool.PeakLiveBytes;
+    public int PeakPendingDeletions { get; private set; }
+    public List<(string Path, long Size, bool Initial)> Written => _spool.Written;
+    public List<(string Path, long Size)> Deleted => _spool.Deleted;
+
+    // Tier 1: the accepted capacity + modeled bytes per attribute, and every aggregate report.
+    public List<(string Attribute, int Capacity, long ModeledBytes)> Sized { get; } = [];
+    public List<long> Aggregates { get; } = [];
+
+    // Tier 2: the live-run catalog per attribute, and the peak across all of them.
+    public Dictionary<string, int> LiveRuns { get; } = new(StringComparer.Ordinal);
+    public int PeakLiveRuns { get; private set; }
+
+    public void AccumulatorSized(string attribute, int capacity, long modeledBytes) =>
+        Sized.Add((attribute, capacity, modeledBytes));
+
+    public void AggregateResident(long modeledBytes) => Aggregates.Add(modeledBytes);
+
+    public void RunCatalog(string attribute, int liveRuns)
+    {
+        LiveRuns[attribute] = liveRuns;
+        PeakLiveRuns = Math.Max(PeakLiveRuns, liveRuns);
+    }
+
+    public void RunWritten(string path, long sizeBytes, bool isInitial) => _spool.RunWritten(path, sizeBytes, isInitial);
+
+    public void RunOpenedForRead(string path)
+    {
+        _openReaders++;
+        PeakOpenReaders = Math.Max(PeakOpenReaders, _openReaders);
+        _spool.RunOpenedForRead(path);
+    }
+
+    public void RunClosed(string path)
+    {
+        _openReaders--;
+        _spool.RunClosed(path);
+    }
+
+    public void RunDeleted(string path, long sizeBytes) => _spool.RunDeleted(path, sizeBytes);
+
+    public void LiveBytes(long liveBytes) => _spool.LiveBytes(liveBytes);
+
+    public void PendingDeletions(int count) => PeakPendingDeletions = Math.Max(PeakPendingDeletions, count);
+
+    public void BufferSpilled(long residentBytes) => _spool.BufferSpilled(residentBytes);
 }
 
 // Common synthetic-exception factories mapping to the classifier's kinds.

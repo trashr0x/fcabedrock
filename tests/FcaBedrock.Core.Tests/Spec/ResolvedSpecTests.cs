@@ -338,16 +338,73 @@ public sealed class ResolvedSpecTests
         Assert.Equal(new PendingEqualWidth(4, EqualWidthRange.MinMax, CutPrecision.Exact), carrier.Config);
     }
 
-    // The trust boundary also re-checks equal_width's range/precision/bounds coherence and the
-    // pending union's variants (see ResolvedSpec.ValidateDiscretizerEnums). Those arms are
-    // deliberately unreachable from outside Core and have no negative test, because the states
-    // they reject are UNREPRESENTABLE rather than merely rejected (P-10, asserted directly by
-    // EqualWidthDiscretizerTests.EqualWidthDiscretizer_WhenInspected_ThenNoPublicConstructorOrSetter
-    // and PendingEqualWidth's own guards): every property is get-only so `with` cannot desync
-    // them, the only constructors are the validating factories, and CutPrecision /
-    // PendingCalibration are private-protected-closed unions no out-of-assembly type can extend.
-    // They stay as the P-10 backstop for a future in-assembly caller, matching this file's
-    // existing defensive arms.
+    // The trust boundary also re-checks equal_width's range/precision/bounds coherence, and — at
+    // Slice D — equal_frequency's tie_policy/cut_placement and the pending union's variants (see
+    // ResolvedSpec.ValidateDiscretizerEnums). Those arms are deliberately unreachable from outside
+    // Core and have no negative test, because the states they reject are UNREPRESENTABLE rather
+    // than merely rejected (P-10, asserted directly by
+    // EqualWidthDiscretizerTests.EqualWidthDiscretizer_WhenInspected_ThenNoPublicConstructorOrSetter,
+    // PendingEqualWidth's guards, and PendingEqualFrequencyTests' undefined-enum rejections): every
+    // property is get-only so `with` cannot desync them, the only constructors are the validating
+    // factories, and CutPrecision / PendingCalibration are private-protected-closed unions no
+    // out-of-assembly type can extend. They stay as the P-10 backstop for a future in-assembly
+    // caller, matching this file's existing defensive arms.
+
+    // --- equal_frequency (M4 Slice D, D-103) ----------------------------------
+
+    [Fact]
+    public void Create_WhenPendingEqualFrequencyResolved_ThenCarrierSurvivesOnAReadOnlyCulture()
+    {
+        var culture = (CultureInfo)CultureInfo.GetCultureInfo("en-US").Clone();
+        var pending = new CalibrationPending(
+            new PendingEqualFrequency(3, TiePolicy.Right, CutPlacement.Midpoint), culture);
+
+        var resolved = Create(EqualWidthSpec(pending), new SourceSchema(1));
+
+        var carrier = Assert.IsType<CalibrationPending>(resolved.Spec.Attributes[0].Discretizer);
+        Assert.True(carrier.Culture.IsReadOnly);
+        Assert.Equal(new PendingEqualFrequency(3, TiePolicy.Right, CutPlacement.Midpoint), carrier.Config);
+    }
+
+    [Fact]
+    public void Create_WhenEqualFrequencyResolved_ThenCutsAreRetainedAndNotCastable()
+    {
+        // The calibrated cuts ARE the resolved identity: there is no data here to re-select from,
+        // so the snapshot must carry them rather than re-derive (D-093).
+        var resolved = Create(EqualWidthSpec(EqualFrequency([2, 3])), new SourceSchema(1));
+
+        var discretizer = Assert.IsType<EqualFrequencyDiscretizer>(resolved.Spec.Attributes[0].Discretizer);
+        Assert.Equal([2.0, 3.0], discretizer.Cuts);
+        Assert.Equal(3, discretizer.Bins);
+        Assert.IsNotType<double[]>(discretizer.Cuts);
+        Assert.IsNotType<List<double>>(discretizer.Cuts);
+    }
+
+    [Fact]
+    public void Create_WhenEqualFrequencyParsingCultureMutatedAfterResolution_ThenClassificationUnaffected()
+    {
+        var culture = (CultureInfo)CultureInfo.GetCultureInfo("en-US").Clone();
+        var resolved = Create(EqualWidthSpec(EqualFrequency([25, 50], culture)), new SourceSchema(1));
+
+        culture.NumberFormat.NumberDecimalSeparator = ","; // would break "30.5" if it leaked through
+
+        var discretizer = Assert.IsType<EqualFrequencyDiscretizer>(resolved.Spec.Attributes[0].Discretizer);
+        Assert.True(discretizer.Culture.IsReadOnly);
+        Assert.Equal(BinResult.Bin("[25, 50)"), discretizer.Discretize("30.5"));
+    }
+
+    // Builds an executable equal_frequency the only way production can: through the calibrated-state
+    // substitution over a pending carrier.
+    private static EqualFrequencyDiscretizer EqualFrequency(IReadOnlyList<double> cuts, CultureInfo? culture = null)
+    {
+        var pendingSpec = EqualWidthSpec(new CalibrationPending(
+            new PendingEqualFrequency(cuts.Count + 1, TiePolicy.Left, CutPlacement.RightValue),
+            culture ?? CultureInfo.InvariantCulture));
+        var created = FcaBedrock.Core.Calibration.CalibratedSpec.Create(
+            Create(pendingSpec, new SourceSchema(1)), [new FcaBedrock.Core.Calibration.CalibratedCuts("score", cuts)]);
+        Assert.True(created.TryGetValue(out var calibrated));
+        return Assert.IsType<EqualFrequencyDiscretizer>(calibrated.Spec.Attributes[0].Discretizer);
+    }
 
     [Fact]
     public void Create_WhenFreePerValueValueTypeIsUndefinedEnum_ThenThrows()

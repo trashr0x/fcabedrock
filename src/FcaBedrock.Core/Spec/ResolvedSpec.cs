@@ -315,6 +315,10 @@ public sealed class ResolvedSpec
                 }
 
                 break;
+            case EqualFrequencyDiscretizer equalFrequency:
+                RequireDefined(equalFrequency.TiePolicy, "equal_frequency.TiePolicy");
+                RequireDefined(equalFrequency.CutPlacement, "equal_frequency.CutPlacement");
+                break;
             case CalibrationPending pending:
                 RequirePending(pending.Config);
                 break;
@@ -340,6 +344,10 @@ public sealed class ResolvedSpec
                     throw new ArgumentException("a pending equal_width calibration cannot carry range = \"manual\" (§11.4/D-089).");
                 }
 
+                break;
+            case PendingEqualFrequency equalFrequency:
+                RequireDefined(equalFrequency.TiePolicy, "equal_frequency.TiePolicy");
+                RequireDefined(equalFrequency.CutPlacement, "equal_frequency.CutPlacement");
                 break;
             default:
                 throw new ArgumentException($"unknown pending calibration variant {config.GetType().Name}.");
@@ -533,6 +541,7 @@ public sealed class ResolvedSpec
         // (§11.4/D-093), and re-running the formula here would make the snapshot a second
         // derivation site.
         EqualWidthDiscretizer equalWidth => EqualWidthDiscretizer.Rebuild(equalWidth, ReadOnlyCulture(equalWidth.Culture)),
+        EqualFrequencyDiscretizer equalFrequency => EqualFrequencyDiscretizer.Rebuild(equalFrequency, ReadOnlyCulture(equalFrequency.Culture)),
 
         // The pending config holds only immutable values; only the culture needs re-homing.
         CalibrationPending pending => new CalibrationPending(pending.Config, ReadOnlyCulture(pending.Culture)),

@@ -723,7 +723,7 @@ public static class SpecResolver
     }
 
     // Authored value_type wins; otherwise the discretizer kind decides —
-    // manual_cuts and equal_width are number-fixing (their cuts are numeric),
+    // manual_cuts, equal_width, and equal_frequency are number-fixing (their cuts are numeric),
     // identity/ordered_cuts/none string (D-061). free_per_value is type-flexible, so it
     // takes the authored type or the string default. Include-independent: value_type is a
     // source-level property, so a parked cut discretizer still types the source — and its
@@ -731,7 +731,7 @@ public static class SpecResolver
     // a value_type.
     private static SourceValueType ResolveValueType(SourceValueType? authored, DiscretizerSection? discretizer) =>
         authored
-            ?? (discretizer is ManualCutsDiscretizerSection or EqualWidthDiscretizerSection
+            ?? (discretizer is ManualCutsDiscretizerSection or EqualWidthDiscretizerSection or EqualFrequencyDiscretizerSection
                 ? SourceValueType.Number
                 : SourceValueType.String);
 
@@ -933,6 +933,8 @@ public static class SpecResolver
                 "declares value_type = \"string\", but manual_cuts is number-fixing (cuts are numeric)",
             EqualWidthDiscretizerSection when value == SourceValueType.String =>
                 "declares value_type = \"string\", but equal_width is number-fixing (its cuts are numeric)",
+            EqualFrequencyDiscretizerSection when value == SourceValueType.String =>
+                "declares value_type = \"string\", but equal_frequency is number-fixing (its cuts are numeric)",
             _ => null,
         };
 
@@ -1135,9 +1137,12 @@ public static class SpecResolver
     // §12.3/§17 r3: the discretizers whose bins are cut intervals, so the cut geometry —
     // not scale.order — fixes the bin order. The one place the seam's cut-kind set lives, so
     // the ordinal-over-cuts checks and the value-bin order check stay exact complements and
-    // never double-report. equal_frequency joins when it lands (D-070).
+    // never double-report. equal_frequency joined at Slice D (D-103): its bins are cut
+    // intervals like any other, so it needs no ordinal implementation of its own — the
+    // existing cut geometry is the ordering authority.
     private static bool IsCutDiscretizer(DiscretizerSection? section) =>
-        section is ManualCutsDiscretizerSection or OrderedCutsDiscretizerSection or EqualWidthDiscretizerSection;
+        section is ManualCutsDiscretizerSection or OrderedCutsDiscretizerSection
+            or EqualWidthDiscretizerSection or EqualFrequencyDiscretizerSection;
 
     private static Discretizer? ResolveDiscretizer(
         DiscretizerSection? section,
@@ -1165,6 +1170,9 @@ public static class SpecResolver
 
             case EqualWidthDiscretizerSection equalWidth:
                 return ResolveEqualWidth(equalWidth, attribute, culture, diagnostics);
+
+            case EqualFrequencyDiscretizerSection equalFrequency:
+                return ResolveEqualFrequency(equalFrequency, attribute, culture, diagnostics);
 
             case OrderedCutsDiscretizerSection ordered:
                 return Merge(
@@ -1218,6 +1226,38 @@ public static class SpecResolver
         }
 
         return new CalibrationPending(new PendingEqualWidth(bins, range, precision), culture);
+    }
+
+    // §11.5 (D-088/D-103): equal_frequency is always data-calibrated — its cuts come from the
+    // population under every configuration — so it has no spec-determined mode and always
+    // resolves to the CalibrationPending carrier the Calibrate phase replaces (D-093). The
+    // §11.5 defaults resolve here (tie_policy = "left", cut_placement = "right_value") so the
+    // carrier — and therefore the calibrator and the §14 fingerprint — see one concrete
+    // configuration; the document keeps the authored/omitted distinction (D-049).
+    //
+    // The reader owns the field shapes (bins presence/range, the two spellings —
+    // SpecFieldInvalid, §11.5), so a document that reached this seam carries them. The guard
+    // below is the backstop for a hand-built section that bypassed the reader: it resolves to
+    // the same AttributeScalingMissing the other unbuildable discretizer carriers use (§10.9)
+    // rather than throwing, so the strict carrier constructor only ever sees valid arguments.
+    private static Discretizer? ResolveEqualFrequency(
+        EqualFrequencyDiscretizerSection section,
+        string attribute,
+        CultureInfo culture,
+        List<BedrockDiagnostic> diagnostics)
+    {
+        if (section.Bins is not { } authoredBins || authoredBins is < 2 or > int.MaxValue)
+        {
+            AddScalingMissing(diagnostics, attribute, "has an equal_frequency discretizer with no usable bins count (§11.5)");
+            return null;
+        }
+
+        var config = new PendingEqualFrequency(
+            (int)authoredBins,
+            section.TiePolicy ?? Core.Discretization.TiePolicy.Left,           // §11.5 default
+            section.CutPlacement ?? Core.Discretization.CutPlacement.RightValue); // §11.5 default
+
+        return new CalibrationPending(config, culture);
     }
 
     private static Scale? ResolveScale(

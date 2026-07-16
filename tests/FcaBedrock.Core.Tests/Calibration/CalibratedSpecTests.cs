@@ -287,17 +287,127 @@ public sealed class CalibratedSpecTests
         Assert.Throws<ArgumentException>(() =>
             CalibratedSpec.Create(Resolve(PendingEqualWidthSpec(), 1), [new CalibratedCuts("score", [50])]));
 
+    // --- equal_frequency substitution (M4 Slice D / D-103) --------------------
+
+    private static BedrockSpec PendingEqualFrequencySpec(
+        int bins = 3, TiePolicy tie = TiePolicy.Left, CutPlacement placement = CutPlacement.RightValue) =>
+        With(SpecFixtures.EqualFrequencyPending("score", 0, bins, new NominalScale(), tie, placement));
+
     [Fact]
-    public void Create_WhenPendingPercentileRange_ThenThrowsRatherThanBecomingExecutable()
+    public void RequiresData_WhenPendingEqualFrequency_ThenTrue() =>
+        // Unlike equal_width there is no spec-determined mode: EVERY equal_frequency spec draws
+        // its cuts from the population, so it can never be planned from its own text (§7/§11.5).
+        Assert.True(CalibratedSpec.RequiresData(PendingEqualFrequencySpec()));
+
+    [Fact]
+    public void FromFullyDeclared_WhenEqualFrequency_ThenThrows() =>
+        // The fast path is for specs determined by their own text; calling it here skipped the
+        // calibrator (D-093 programmer-error posture).
+        Assert.Throws<ArgumentException>(() =>
+            CalibratedSpec.FromFullyDeclared(Resolve(PendingEqualFrequencySpec(), 1)));
+
+    [Fact]
+    public void Create_WhenPendingEqualFrequencyGivenCalibratedCuts_ThenExecutableDiscretizerSubstituted()
     {
-        // G-8/D-102: percentile_p1_p99 is modelled in the Core enum but has no calibration until
-        // Slice D. The reader rejects its spelling; this closes the programmatic route, so
-        // hand-supplied cuts cannot make it plannable, emittable, or fingerprintable ahead of its
-        // slice — the transitional boundary holds at every seam, not just at the reader.
+        var resolved = Resolve(PendingEqualFrequencySpec(tie: TiePolicy.Right, placement: CutPlacement.Midpoint), 1);
+
+        var created = CalibratedSpec.Create(resolved, [new CalibratedCuts("score", [2, 3])]);
+
+        Assert.True(created.TryGetValue(out var calibrated));
+        var discretizer = Assert.IsType<EqualFrequencyDiscretizer>(calibrated!.Spec.Attributes[0].Discretizer);
+        Assert.Equal([2.0, 3.0], discretizer.Cuts);
+
+        // The authored configuration survives substitution — the §14 fingerprint encodes it (D-094).
+        Assert.Equal(3, discretizer.Bins);
+        Assert.Equal(TiePolicy.Right, discretizer.TiePolicy);
+        Assert.Equal(CutPlacement.Midpoint, discretizer.CutPlacement);
+
+        // No CalibrationPending survives a successful Create, and the token is carried forward.
+        Assert.DoesNotContain(calibrated.Spec.Attributes, a => a.Discretizer is CalibrationPending);
+        Assert.Same(resolved, calibrated.Resolution);
+    }
+
+    [Fact]
+    public void Create_WhenPendingEqualFrequencyCalibrated_ThenTheOutcomeIsRetained()
+    {
+        var created = CalibratedSpec.Create(
+            Resolve(PendingEqualFrequencySpec(), 1), [new CalibratedCuts("score", [2, 3])]);
+
+        Assert.True(created.TryGetValue(out var calibrated));
+        Assert.Equal([2.0, 3.0], Assert.IsType<CalibratedCuts>(Assert.Single(calibrated!.Calibrations)).Cuts);
+    }
+
+    [Fact]
+    public void Create_WhenPendingEqualFrequencyHasNoOutcome_ThenThrows() =>
+        Assert.Throws<ArgumentException>(() =>
+            CalibratedSpec.Create(Resolve(PendingEqualFrequencySpec(), 1), []));
+
+    [Fact]
+    public void Create_WhenPendingEqualFrequencyGivenTheWrongOutcomeKind_ThenThrows() =>
+        // A domain outcome cannot resolve cuts: a kind-mismatched outcome is a calibrator-contract
+        // violation, not something to diagnose.
+        Assert.Throws<ArgumentException>(() =>
+            CalibratedSpec.Create(Resolve(PendingEqualFrequencySpec(), 1), [new ObservedDomain("score", ["1"])]));
+
+    [Fact]
+    public void Create_WhenPendingEqualFrequencyGivenDuplicateOutcomes_ThenThrows() =>
+        Assert.Throws<ArgumentException>(() =>
+            CalibratedSpec.Create(
+                Resolve(PendingEqualFrequencySpec(), 1),
+                [new CalibratedCuts("score", [2, 3]), new CalibratedCuts("score", [4, 5])]));
+
+    [Fact]
+    public void Create_WhenEqualFrequencyCutCountDisagreesWithBins_ThenThrows() =>
+        Assert.Throws<ArgumentException>(() =>
+            CalibratedSpec.Create(Resolve(PendingEqualFrequencySpec(bins: 3), 1), [new CalibratedCuts("score", [2])]));
+
+    [Fact]
+    public void Create_WhenEqualFrequencyCutsAreInvalid_ThenCalibrationCutsInvalidDiagnosticNotException()
+    {
+        var created = CalibratedSpec.Create(
+            Resolve(PendingEqualFrequencySpec(), 1), [new CalibratedCuts("score", [3, 2])]);
+
+        Assert.False(created.IsOk);
+        Assert.Equal(DiagnosticCode.CalibrationCutsInvalid, Assert.Single(created.Diagnostics).Code);
+    }
+
+    [Fact]
+    public void Create_WhenEqualFrequencyCutsAreSuppliedFromAMutableList_ThenTheGraphSnapshotsThem()
+    {
+        var mutable = new List<double> { 2, 3 };
+        var created = CalibratedSpec.Create(Resolve(PendingEqualFrequencySpec(), 1), [new CalibratedCuts("score", mutable)]);
+        Assert.True(created.TryGetValue(out var calibrated));
+
+        mutable[0] = 99;
+
+        // Caller mutation must not reach planning, emission, or the fingerprint (D-098).
+        var discretizer = Assert.IsType<EqualFrequencyDiscretizer>(calibrated!.Spec.Attributes[0].Discretizer);
+        Assert.Equal([2.0, 3.0], discretizer.Cuts);
+        Assert.Equal([2.0, 3.0], Assert.IsType<CalibratedCuts>(calibrated.Calibrations[0]).Cuts);
+        Assert.IsNotType<List<double>>(discretizer.Cuts);
+        Assert.IsNotType<double[]>(discretizer.Cuts);
+    }
+
+    [Fact]
+    public void Create_WhenPendingPercentileRange_ThenExecutableDiscretizerSubstituted()
+    {
+        // D-103 narrows the D-102/G-8 guard DELIBERATELY: percentile_p1_p99 was rejected here
+        // while it had no calibration, and now that Slice D lands one it substitutes exactly like
+        // min_max. The narrowing is to the two data-derived ranges by name, not to "any non-manual
+        // range" — so a future range mode cannot become executable by merely existing in the enum.
         var spec = PendingEqualWidthSpec(range: EqualWidthRange.PercentileP1P99);
 
-        Assert.Throws<ArgumentException>(() =>
-            CalibratedSpec.Create(Resolve(spec, 1), [new CalibratedCuts("score", [25, 50, 75])]));
+        var created = CalibratedSpec.Create(Resolve(spec, 1), [new CalibratedCuts("score", [25, 50, 75])]);
+
+        Assert.True(created.TryGetValue(out var calibrated));
+        var discretizer = Assert.IsType<EqualWidthDiscretizer>(calibrated.Spec.Attributes[0].Discretizer);
+        Assert.Equal(EqualWidthRange.PercentileP1P99, discretizer.Range);
+        Assert.Equal([25, 50, 75], discretizer.Cuts);
+
+        // The authored data-derived range authors no span, so vmin/vmax stay absent and the §14
+        // fingerprint omits them (D-094).
+        Assert.Null(discretizer.VMin);
+        Assert.Null(discretizer.VMax);
     }
 
     [Fact]
@@ -383,6 +493,12 @@ public sealed class CalibratedSpecTests
                 case OrderedCutsDiscretizer ordered:
                     AssertImmutableList(ordered.Cuts);
                     AssertImmutableList(ordered.Order);
+                    break;
+                case EqualWidthDiscretizer equalWidth:
+                    AssertImmutableList(equalWidth.Cuts);
+                    break;
+                case EqualFrequencyDiscretizer equalFrequency:
+                    AssertImmutableList(equalFrequency.Cuts);
                     break;
             }
 
