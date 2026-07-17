@@ -163,6 +163,11 @@ Standing rules:
   uncommitted changes;
 - **do not commit or rewrite history unless explicitly asked** — the operator
   commits;
+- **never run `git clean`** — any flags, including `-n`/`--dry-run`. Your new
+  task files stay untracked until the operator curates them, so a clean can
+  delete your own work, not just build output; for a clean build use
+  `dotnet clean`, and if `bin`/`obj` directories must be removed by hand,
+  resolve and verify the exact paths first;
 - before editing, run the pre-flight (location) and `git status` (cleanliness);
 - at hand-off, summarize the files your task changed via `git diff main...HEAD`
   (the operator may have already committed some, so `git status` can be clean);
