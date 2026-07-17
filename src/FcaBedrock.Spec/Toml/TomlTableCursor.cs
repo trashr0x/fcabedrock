@@ -58,6 +58,26 @@ internal sealed class TomlTableCursor
         }
     }
 
+    /// <summary>
+    /// Whether <paramref name="key"/> is authored on this table, <b>without</b> consuming it.
+    /// For choosing which shape an inline table is before reading it — the
+    /// <c>restrict_to</c> entry forms <c>{ value = n }</c> and <c>{ from, to }</c> are
+    /// distinguished this way, so a malformed <c>value</c> reports as a bad exact entry
+    /// instead of silently degrading into a valid unrestricted <c>{}</c> range (§10.4).
+    /// </summary>
+    public bool Has(string key)
+    {
+        foreach (var (text, dotted, _) in _items)
+        {
+            if (!dotted && string.Equals(text, key, StringComparison.Ordinal))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     /// <summary>The raw pair for <paramref name="key"/>, marking it consumed; null when not authored.</summary>
     public KeyValueSyntax? Take(string key)
     {

@@ -261,7 +261,52 @@ vertical slices, not waterfall phases — each should leave the system working.
 > computed SHA-256 vectors (D-094); every pre-Slice-E canonical byte, SHA vector, and all nine
 > golden fixtures are unchanged. **`restrict_to` stays transitionally rejected at plan** — it is
 > the only remaining M4 transition. `dotnet test` is green (1772 passed, 1 skipped).
-> **M4 Slice F (`restrict_to` execution + emit observability) is next.**
+>
+> **M4 Slice F — `restrict_to` execution + emit observability — is complete, and with it
+> M4 (D-105).** `restrict_to` **executes**: M4's last transitional code,
+> `RestrictToNotImplementedV1`, is retired, so no M4 transition remains. Exact numeric
+> entries land as the public `RestrictToNumber` — **parsed numeric identity**, not string
+> spelling and not a single-point range, with **no tolerance**: `{ value = 30 }`,
+> `{ value = 30.0 }`, and `{ value = 3e1 }` are one entry, and `-0` ≡ `0` via the seam's
+> zero-canonicalization (G-6 — `CanonicalJson.AppendNumber`, every authored manual-cut
+> byte, and `fp_format = 1` all untouched). Matching is **existential over formed
+> objects** (OR within an attribute, AND across them; missing and absent-predicate match
+> nothing; ordinal strings, locale-parsed numbers, half-open ranges, `{}` = any usable
+> numeric) through **one shared matcher** on all four emit paths, so wide streaming, wide
+> `dedupe`, and both triple orderings cannot drift. Restrictions **filter objects, not
+> observations**: a survivor keeps *all* its crosses. **G-2 sequencing** is now pinned —
+> a non-surviving row is not an object, so it trips no `fail` duplicate and consumes no
+> `keep` name; **`row_index` names stay input positions, never renumbered by filtering**;
+> `dedupe` groups first and its `DuplicateObjectKey` Info is **pre-filter**; triple
+> decides at group close. **D-097** ownership is exact: a filter-only attribute's
+> unparseable numeric is its *only* diagnostic owner (policy severity), while an
+> included-and-restricted attribute's stays with the classification pass — at-most-once
+> per observation per attribute per pass. The three §16.4 warnings registered since M2
+> gained their sites — `NoObjectsEmitted`, `ObjectHasNoCrosses`, `AttributeHasNoCrosses`
+> (aggregated, bounded samples, single-counted through the `.cxt` replay, and suppressed
+> on any **invalid** run — G-12's own predicate: a structural/storage halt that truncates
+> the stream, or a `fail`-policy abort that reads to completion but invalidates the
+> operation) — and empty columns after filtering are **expected**, since §7 fixes the
+> vocabulary before objects are selected. The canonical `restrictions` container joins
+> **both** output fingerprints, carrying `unknown_value_policy` on every object (G-9 —
+> a filter-only `fail` and `warn` spec must not hash alike) and sorting by
+> **UTF-16-ordinal** canonical JSON before UTF-8 encoding (G-10), golden-locked with an
+> independently computed SHA-256; restriction-free specs keep every prior byte and hash.
+> `.bed` migration is **type-directed** (D-091): only a finite token on v2 type `o`
+> becomes a number, under `binding.locale`; an invalid locale reinterprets nothing and
+> mints no migrate diagnostic. **G-12** is now normative (§16.2/§18.1): a run's artifact
+> is valid only if its diagnostics carry no Error/Fatal — **the caller must discard it**
+> otherwise. A structural/storage halt truncates both `.cxt` passes identically (the
+> name-sequence invariant cannot catch it); a `fail`-policy abort instead reads to
+> completion — the aggregated diagnostic needs the whole population — so it leaves a
+> **complete but invalid** artifact rather than a truncated one; either way `.dat` bytes
+> precede any later Error. Writers stay dumb, and transactional publication remains M7. Four diagnostics added, one renamed (`RestrictToOnNumericRequiresRange` →
+> `RestrictToNumericEntryRequired`, **no alias**), one retired — registry **70**
+> (67 + 4 − 1). §19.4 is executable end-to-end. Every pre-Slice-F fingerprint byte and
+> SHA vector, and all nine golden fixtures, are unchanged. `dotnet test` is green
+> (2004 passed, 1 skipped).
+>
+> **M4 is complete. M5 (discovery / `probe`) is next** — no M5 work has started.
 
 ## Milestones
 
@@ -439,10 +484,20 @@ spec/plan; only *additional* non-cut manifest representation of
 discovered/appended/passthrough values is deferred to the manifest layer, without
 re-deriving M4 semantics.
 
-**Exit:** auto-binning calibrates deterministically and byte-identically to its
-frozen form; cuts captured in manifest; `value_groups` (incl. passthrough)
-converts; observed-domain calibration and `unknown_value_policy = "include"`
-resolve; `restrict_to` filters (existential; exact-numeric and range entries).
+**Exit — all met (M4 complete, D-098…D-105):**
+
+- [x] auto-binning calibrates deterministically and byte-identically to its frozen
+      form (D-102/D-103; the shared `NumericCutBins` engine makes it structural);
+- [x] cuts captured in the calibrated state the manifest reads (D-093/D-102/D-103;
+      manifest *serialization* is M7 by design);
+- [x] `value_groups` (incl. passthrough) converts (D-104);
+- [x] observed-domain calibration and `unknown_value_policy = "include"` resolve
+      (D-098; the include emit crash closed with it);
+- [x] `restrict_to` filters — existential, exact-numeric and range entries (D-105).
+
+No M4 transitional diagnostic or guard remains: `ObservedDomainCalibrationNotImplementedV1`
+(Slice A), `DiscretizerKindNotYetSupported` (Slice E), and `RestrictToNotImplementedV1`
+(Slice F) are all retired. Later milestones' transitions are untouched.
 
 ### M5 — Discovery / auto-detect
 

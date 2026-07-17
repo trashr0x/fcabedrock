@@ -68,7 +68,7 @@ public sealed class SpecRoundTripTests
     [Fact]
     public void RoundTrip_WhenRestrictToMixed_ThenEntriesSurviveInOrder()
     {
-        // D-057: every authored form round-trips; execution stays M4.
+        // D-057/D-091: every authored form round-trips, including the exact numeric entry.
         var document = DocumentFixtures.Document(
         [
             DocumentFixtures.Attribute("a", restrictTo:
@@ -77,14 +77,87 @@ public sealed class SpecRoundTripTests
                 new RestrictToRange(10, 20),
                 new RestrictToRange(90, null),
                 new RestrictToRange(null, 5),
+                new RestrictToRange(null, null),
+                new RestrictToNumber(30),
+                new RestrictToNumber(30.5),
             ]),
         ]);
 
         var reread = Read(SpecWriter.Write(document));
 
         Assert.Equal(
-            [new RestrictToValue("Bachelors"), new RestrictToRange(10, 20), new RestrictToRange(90, null), new RestrictToRange(null, 5)],
+            [
+                new RestrictToValue("Bachelors"), new RestrictToRange(10, 20), new RestrictToRange(90, null),
+                new RestrictToRange(null, 5), new RestrictToRange(null, null),
+                new RestrictToNumber(30), new RestrictToNumber(30.5),
+            ],
             reread.Attributes[0].RestrictTo);
+    }
+
+    [Theory]
+    [InlineData("30")]
+    [InlineData("30.0")]
+    [InlineData("3e1")]
+    public void RoundTrip_WhenExactEntrySpelledVariously_ThenAllCanonicalizeToTheWritersForm(string spelling)
+    {
+        // §10.4/D-091 (round-6 High-1): 30 / 30.0 / 3e1 are equivalent inputs that all
+        // canonicalize to the writer's `{ value = 30 }` — and, crucially, the canonical text is
+        // re-readable, so parse → write → parse is stable. This is the one layer where spelling
+        // exists; after parsing they are the same double.
+        var parsed = Read(Attribute($"restrict_to = [{{ value = {spelling} }}]"));
+
+        var toml = SpecWriter.Write(parsed);
+        Assert.Contains("restrict_to = [{ value = 30 }]", toml, StringComparison.Ordinal);
+
+        // …and writing the canonical text again is idempotent.
+        var reread = Read(toml);
+        Assert.Equal([new RestrictToNumber(30)], reread.Attributes[0].RestrictTo);
+        Assert.Equal(toml, SpecWriter.Write(reread));
+    }
+
+    [Fact]
+    public void RoundTrip_WhenATemplateCarriesEveryRestrictForm_ThenAllSurviveInOrder()
+    {
+        // §9/D-057: templates reuse the SAME Core restriction union as attributes, so the exact
+        // numeric entry must transport through the template carrier too — templates are merged by
+        // `extends` today and resolved at M6, so a form that cannot round-trip here would be lost
+        // before it could ever be applied.
+        var document = DocumentFixtures.Document(
+            [DocumentFixtures.Attribute("a")],
+            templates:
+            [
+                new TemplateSection("numeric", true, null, null, null,
+                    [new RestrictToNumber(30), new RestrictToRange(10, 20), new RestrictToRange(null, null), new RestrictToNumber(30)],
+                    null, null, null),
+                new TemplateSection("categorical", true, null, null, null,
+                    [new RestrictToValue("Bmp5")], null, null, null),
+            ]);
+
+        var toml = SpecWriter.Write(document);
+        Assert.Contains(
+            "restrict_to = [{ value = 30 }, { from = 10, to = 20 }, {}, { value = 30 }]",
+            toml, StringComparison.Ordinal);
+
+        var reread = Read(toml);
+        Assert.Equal(
+            [new RestrictToNumber(30), new RestrictToRange(10, 20), new RestrictToRange(null, null), new RestrictToNumber(30)],
+            reread.Templates[0].RestrictTo);
+        Assert.Equal([new RestrictToValue("Bmp5")], reread.Templates[1].RestrictTo);
+    }
+
+    [Fact]
+    public void RoundTrip_WhenRestrictToIsOmittedVersusEmpty_ThenThePresenceDistinctionSurvives()
+    {
+        // D-049 presence tracking: an omitted restrict_to and an authored [] are different
+        // documents (one restricts nothing because it says nothing; the other says "no entries"),
+        // and the writer must not collapse them.
+        var omitted = Read(SpecWriter.Write(DocumentFixtures.Document([DocumentFixtures.Attribute("a")])));
+        Assert.Null(omitted.Attributes[0].RestrictTo);
+
+        var empty = Read(SpecWriter.Write(
+            DocumentFixtures.Document([DocumentFixtures.Attribute("a", restrictTo: [])])));
+        Assert.NotNull(empty.Attributes[0].RestrictTo);
+        Assert.Empty(empty.Attributes[0].RestrictTo!);
     }
 
     [Fact]
@@ -248,4 +321,11 @@ public sealed class SpecRoundTripTests
             string.Join("; ", result.Diagnostics.Select(d => $"{d.Code}: {d.Message}")));
         return document;
     }
+
+    // A minimal one-attribute document carrying `body`, for the tests that must start from
+    // authored TEXT (the only layer where a number's spelling still exists).
+    private static string Attribute(string body) =>
+        "[spec]\nversion = 1\n\n[binding]\nshape = \"wide\"\n\n"
+        + "[[attribute]]\nname = \"a\"\nsource = { kind = \"column\", index = 0 }\n"
+        + body + "\n";
 }

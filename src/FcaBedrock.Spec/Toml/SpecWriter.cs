@@ -724,6 +724,9 @@ public static class SpecWriter
         return InlineTable(items);
     }
 
+    // §10.4/D-091: the canonical presentation of each authored entry form. List order and
+    // duplicates are preserved — they are authoring state, and the writer never sorts (D-075);
+    // only the fingerprint projects a sorted, deduplicated view (§14).
     private static string FormatRestrictTo(IReadOnlyList<RestrictToEntry> entries)
     {
         var items = new List<string>(entries.Count);
@@ -733,6 +736,15 @@ public static class SpecWriter
             {
                 case RestrictToValue value:
                     items.Add(TomlLiteral.FormatString(value.Value));
+                    break;
+
+                case RestrictToNumber number:
+                    // The canonical invariant shortest form, via the same TomlLiteral encoder the
+                    // range bounds and cut lists use — so 30, 30.0, and 3e1 all round-trip to
+                    // { value = 30 }, and a resolved -0 writes as 0 (the seam canonicalized it,
+                    // G-6). The canonical text must be re-readable: the reader's exact-entry shape
+                    // accepts exactly this.
+                    items.Add(InlineTable([Item("value", TomlLiteral.FormatDouble(number.Value))]));
                     break;
 
                 case RestrictToRange range:

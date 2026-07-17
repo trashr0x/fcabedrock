@@ -242,10 +242,11 @@ public static class FingerprintCalculator
     }
 
     // The D-051 shared inputs: the conversion-affecting binding/source settings
-    // and per-attribute discretizer/scale configuration. Included attributes
-    // only — an excluded attribute contributes nothing to output in M2; its
-    // restrict_to joins as a shared input when execution lands at M4 (§14,
-    // D-077). restrict_to is absent entirely until then.
+    // and per-attribute discretizer/scale configuration. The `attributes` array
+    // carries INCLUDED attributes only — an excluded one contributes no column —
+    // while `restrictions` (§14/D-091) carries every restricting attribute,
+    // included or filter-only, because restrict_to shapes which OBJECTS appear.
+    // Keys sort ordinal: attributes < binding < restrictions.
     private static void AppendShared(StringBuilder builder, BedrockSpec spec)
     {
         builder.Append("{\"attributes\":[");
@@ -268,7 +269,160 @@ public static class FingerprintCalculator
 
         builder.Append("],\"binding\":");
         AppendBinding(builder, spec.Binding);
+        AppendRestrictions(builder, spec);
         builder.Append('}');
+    }
+
+    // §14/D-091/G-9/G-10: the `restrictions` container — the one §14 array that is canonically
+    // SORTED rather than left in planned order, because restriction order is semantically
+    // immaterial (they AND together). Present ONLY when some attribute restricts, so every
+    // restriction-free spec keeps its exact pre-Slice-F bytes and hash.
+    //
+    // Sorting and deduplication here are a FINGERPRINT PROJECTION only: the TOML document, the
+    // resolved authored list, the plan, and emit all keep authored order and duplicates. Two
+    // specs differing only in restriction order or in a repeated entry are the same conversion,
+    // so they must hash alike — that is the whole point of sorting.
+    private static void AppendRestrictions(StringBuilder builder, BedrockSpec spec)
+    {
+        List<string>? objects = null;
+        foreach (var attribute in spec.Attributes)
+        {
+            if (attribute.RestrictTo.Count == 0)
+            {
+                continue;
+            }
+
+            (objects ??= []).Add(BuildRestriction(attribute));
+        }
+
+        if (objects is null)
+        {
+            return; // no restriction anywhere → the key is absent entirely (§14)
+        }
+
+        builder.Append(",\"restrictions\":");
+        AppendSortedDistinct(builder, objects);
+    }
+
+    // One restriction object: {"entries":[…],"source":{…},"unknown_value_policy":"…"} — keys
+    // sorted ordinal (entries < source < unknown_value_policy).
+    //
+    // The policy key is G-9. D-097 makes unknown_value_policy LIVE, abort-vs-complete-affecting
+    // configuration on a filter-only attribute (an unparseable filtered value is an Error under
+    // `fail` and a Warning under `warn`), and a filter-only attribute never enters
+    // `shared.attributes` — so without this key two specs that behave differently would hash
+    // identically. It is encoded on EVERY restriction object for one uniform shape; on an
+    // included-and-restricted attribute it therefore also appears in `shared.attributes`. That
+    // redundancy is deliberate: it repeats a value, it does not double-COUNT one (D-035).
+    private static string BuildRestriction(AttributeSpec attribute)
+    {
+        var entries = new List<string>(attribute.RestrictTo.Count);
+        foreach (var entry in attribute.RestrictTo)
+        {
+            entries.Add(BuildRestrictEntry(entry, attribute.Name));
+        }
+
+        var builder = new StringBuilder();
+        builder.Append("{\"entries\":");
+        AppendSortedDistinct(builder, entries);
+        builder.Append(",\"source\":");
+
+        // The D-077 resolved source encoding, verbatim — no new source vocabulary for
+        // restrictions (D-091). A filter-only attribute's source is resolved exactly like an
+        // included one's.
+        AppendSource(builder, attribute);
+        builder.Append(",\"unknown_value_policy\":");
+        CanonicalJson.AppendString(builder, Spell(attribute.UnknownValuePolicy));
+        builder.Append('}');
+        return builder.ToString();
+    }
+
+    private static string BuildRestrictEntry(RestrictToEntry entry, string attributeName)
+    {
+        var builder = new StringBuilder();
+        switch (entry)
+        {
+            case RestrictToValue value:
+                builder.Append("{\"value\":");
+                CanonicalJson.AppendString(builder, value.Value);
+                builder.Append('}');
+                break;
+
+            case RestrictToNumber number:
+                // The §14 formatter, so { value = 30 } / { value = 30.0 } / { value = 3e1 }
+                // produce identical bytes and dedupe to one entry below. The seam already
+                // zero-canonicalized the value, so -0 and 0 converge here too.
+                builder.Append("{\"value\":");
+                CanonicalJson.AppendNumber(builder, number.Value);
+                builder.Append('}');
+                break;
+
+            case RestrictToRange range:
+                // BOTH keys always present, an omitted bound as null — so {} encodes as
+                // {"from":null,"to":null} and is distinguishable from any bounded range.
+                builder.Append("{\"from\":");
+                AppendNullableNumber(builder, range.From);
+                builder.Append(",\"to\":");
+                AppendNullableNumber(builder, range.To);
+                builder.Append('}');
+                break;
+
+            default:
+                // Unreachable: ResolvedSpec.Create rejects unknown variants at the trust
+                // boundary, so a plan cannot exist over one (D-098/D-105).
+                throw new InvalidOperationException(
+                    $"restrict_to entry '{entry.GetType().Name}' on attribute '{attributeName}' has no fingerprint encoding.");
+        }
+
+        return builder.ToString();
+    }
+
+    private static void AppendNullableNumber(StringBuilder builder, double? value)
+    {
+        if (value is { } bound)
+        {
+            CanonicalJson.AppendNumber(builder, bound);
+        }
+        else
+        {
+            builder.Append("null");
+        }
+    }
+
+    // §14/G-10: sorts complete canonical-JSON strings with StringComparer.Ordinal — a UTF-16
+    // code-unit compare over the JSON text, applied BEFORE the whole structure is UTF-8 encoded
+    // (P-12's definition of "ordinal"). This is not the same order as comparing UTF-8 bytes:
+    // the two diverge between a BMP character at or above U+E000 and a supplementary character
+    // (U+E000 is one code unit 0xE000, above U+1F600's lead surrogate 0xD83D — but its UTF-8
+    // lead byte 0xEE sorts below 0xF0). Sorting encoded bytes would therefore produce different
+    // hashes for the same spec; the pinned non-ASCII vector locks this.
+    //
+    // Exact canonical duplicates are removed — canonically-identical entries ARE one entry
+    // (D-091). Overlapping-but-distinct ranges are NOT merged: they are distinct strings, so
+    // they simply both survive. Merging would lose authored intent for no determinism gain.
+    private static void AppendSortedDistinct(StringBuilder builder, List<string> items)
+    {
+        items.Sort(StringComparer.Ordinal);
+        builder.Append('[');
+        var written = 0;
+        for (var i = 0; i < items.Count; i++)
+        {
+            // Sorted, so exact duplicates are adjacent.
+            if (i > 0 && string.Equals(items[i], items[i - 1], StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            if (written > 0)
+            {
+                builder.Append(',');
+            }
+
+            builder.Append(items[i]);
+            written++;
+        }
+
+        builder.Append(']');
     }
 
     private static void AppendSharedAttribute(StringBuilder builder, AttributeSpec attribute)

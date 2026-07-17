@@ -1,3 +1,5 @@
+using System.Globalization;
+using FcaBedrock.Diagnostics;
 using FcaBedrock.Export;
 
 namespace FcaBedrock.Golden.Tests;
@@ -28,6 +30,43 @@ public sealed class GoldenFixtureTests
         var actual = await GoldenConversion.WriteDatAsync(fixture, WriterOptions.V2Compat);
 
         AssertBytesEqual(fixture.ExpectedDatPath, actual);
+    }
+
+    [Fact]
+    public async Task MiniMushroom_WhenConverted_ThenReportsItsEmptyColumnAgainstV2sOwnBytes()
+    {
+        // §7/§16.4/D-105: AttributeHasNoCrosses on a golden is EVIDENCE, not tolerance. v2's own
+        // mini-mushroom.cxt carries eight columns and five incidence rows, and the
+        // veil-type-universal column (id 4) is '.' in every one of them — the fixture's mushrooms
+        // all have a partial veil. So the warning states a fact about the compatibility target,
+        // and this test derives that fact INDEPENDENTLY from the golden bytes rather than from
+        // the emitter, then requires the emitter to agree.
+        var fixture = FixtureCase.Active.Single(f => f.Variant == "mini-mushroom");
+        var text = await File.ReadAllTextAsync(fixture.ExpectedCxtPath);
+        var lines = text.ReplaceLineEndings("\n").Split('\n');
+
+        // Burmeister layout (§18.1): "B", blank, n_objects, n_attributes, blank, names…, rows.
+        var objectCount = int.Parse(lines[2], CultureInfo.InvariantCulture);
+        var attributeCount = int.Parse(lines[3], CultureInfo.InvariantCulture);
+        var names = lines.Skip(5).Take(objectCount + attributeCount).Skip(objectCount).ToArray();
+        var rows = lines.Skip(5 + objectCount + attributeCount).Take(objectCount).ToArray();
+
+        var emptyInGolden = Enumerable.Range(0, attributeCount)
+            .Where(id => rows.All(row => row[id] == '.'))
+            .Select(id => names[id])
+            .ToArray();
+        Assert.Equal(["veil-type-universal"], emptyInGolden);
+
+        // The emitter must report exactly that column, once, as one aggregate.
+        var diagnostics = await GoldenConversion.CollectCxtDiagnosticsAsync(fixture, WriterOptions.V2Compat);
+        var warning = Assert.Single(diagnostics, d => d.Code == DiagnosticCode.AttributeHasNoCrosses);
+        Assert.Equal(DiagnosticSeverity.Warning, warning.Severity);
+        Assert.Contains("1 formal attribute(s)", warning.Message, StringComparison.Ordinal);
+        Assert.Contains("veil-type-universal", warning.Message, StringComparison.Ordinal);
+
+        // Every object crosses something and objects were emitted, so the other two stay silent.
+        Assert.DoesNotContain(diagnostics, d => d.Code == DiagnosticCode.ObjectHasNoCrosses);
+        Assert.DoesNotContain(diagnostics, d => d.Code == DiagnosticCode.NoObjectsEmitted);
     }
 
     [Fact]

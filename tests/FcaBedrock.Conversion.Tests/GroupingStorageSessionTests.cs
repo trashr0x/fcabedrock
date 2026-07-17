@@ -193,7 +193,14 @@ public sealed class GroupingStorageSessionTests
                 () => CountPass2(session.Open(), passIndex++ == 1),
                 WriterOptions.Native,
                 new ThrowOnWriteStream()));
-            countBeforeDisposal = diagnostics.Count;
+
+            // Scoped to the code under test. Pass 1 completes normally before the writer faults
+            // in pass 2, so its ordinary emit aggregates — here the whole-stream observability
+            // warnings (§16.4/D-105), since this fixture leaves a column empty — have already
+            // legitimately landed in the collector. What this test pins is narrower and
+            // unchanged: a STORAGE diagnostic is intercepted on every pass and appended only at
+            // disposal.
+            countBeforeDisposal = diagnostics.Count(d => d.Code == DiagnosticCode.GroupingStorageFailed);
         }
         finally
         {

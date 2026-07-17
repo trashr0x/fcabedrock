@@ -670,4 +670,154 @@ public sealed class CalibratedSpecTests
         Assert.False(list is List<T>, "a reachable list is a castable List<T>");
         Assert.IsType<ImmutableArray<T>>(list);
     }
+
+    // --- restrict_to through the calibrated-state boundary (§10.4/D-091/D-105) ---
+
+    [Fact]
+    public void RequiresData_WhenOnlyRestrictToIsPresent_ThenFalse()
+    {
+        // §7/D-065: restrictions never trigger calibration. Calibration and the column vocabulary
+        // are computed over the INPUT UNIVERSE, before restrict_to selects objects — so a
+        // restriction-only spec is still fully determined by its own text and skips Calibrate.
+        var gene = SpecFixtures.Excluded("Gene", 0) with { RestrictTo = [new RestrictToValue("Bmp5")] };
+        var tissue = SpecFixtures.Nominal("Tissue", 1, ["endoderm"]) with
+        {
+            RestrictTo = [new RestrictToValue("endoderm")],
+        };
+
+        Assert.False(CalibratedSpec.RequiresData(With(gene, tissue)));
+    }
+
+    [Fact]
+    public void FromFullyDeclared_WhenAttributesRestrict_ThenTheEntriesArePreservedExactly()
+    {
+        // Calibration never consumes or rewrites restrict_to: authored order and duplicates
+        // survive to the effective spec verbatim (only the fingerprint projects a sorted,
+        // deduplicated view, §14).
+        var age = SpecFixtures.NumericCuts("age", 0, [30.0], new NominalScale()) with
+        {
+            RestrictTo = [new RestrictToRange(10.0, 20.0), new RestrictToNumber(30.0), new RestrictToRange(10.0, 20.0)],
+        };
+
+        var calibrated = CalibratedSpec.FromFullyDeclared(Resolve(With(age), 1));
+
+        Assert.Equal(
+            [new RestrictToRange(10.0, 20.0), new RestrictToNumber(30.0), new RestrictToRange(10.0, 20.0)],
+            calibrated.Spec.Attributes[0].RestrictTo);
+    }
+
+    [Fact]
+    public void Create_WhenACalibratedAttributeAlsoRestricts_ThenTheEntriesSurviveTheSubstitution()
+    {
+        // The pending → executable substitution rebuilds the attribute; its restrict_to must ride
+        // through untouched. An included-AND-restricted attribute is the case that proves it — the
+        // substitution and the restriction live on the same attribute.
+        var domainless = SpecFixtures.Nominal("g", 0, []) with
+        {
+            RestrictTo = [new RestrictToValue("b")],
+        };
+
+        var result = CalibratedSpec.Create(Resolve(With(domainless), 1), [new ObservedDomain("g", ["b", "c"])]);
+
+        Assert.True(result.TryGetValue(out var calibrated));
+        Assert.Equal(["b", "c"], calibrated.Spec.Attributes[0].DeclaredDomain);      // substituted
+        Assert.Equal([new RestrictToValue("b")], calibrated.Spec.Attributes[0].RestrictTo); // untouched
+    }
+
+    [Fact]
+    public void FromFullyDeclared_WhenRestrictionsPresent_ThenTheirStorageIsNotCastableToAMutableList()
+    {
+        var age = SpecFixtures.NumericCuts("age", 0, [30.0], new NominalScale()) with
+        {
+            RestrictTo = [new RestrictToNumber(30.0)],
+        };
+
+        var calibrated = CalibratedSpec.FromFullyDeclared(Resolve(With(age), 1));
+
+        AssertImmutableList(calibrated.Spec.Attributes[0].RestrictTo);
+    }
+
+    [Theory]
+    [InlineData(double.NaN)]
+    [InlineData(double.PositiveInfinity)]
+    public void FromFullyDeclared_WhenANonFiniteExactValueSurvivedPastTheSeam_ThenThrows(double value)
+    {
+        // The calibrated-state contract's own numeric boundary (D-105): the last gate before
+        // Plan/Emit/fingerprints. Unreachable through an honest chain — ResolvedSpec.Create is
+        // the primary boundary and the only way to mint a token — so this is asserted through a
+        // token whose entries were swapped afterwards, i.e. exactly the hand-built graph the
+        // contract calls programmer error.
+        var resolved = Resolve(With(SpecFixtures.NumericCuts("age", 0, [30.0], new NominalScale())), 1);
+        var tampered = TamperRestrictions(resolved, [new RestrictToNumber(value)]);
+
+        Assert.Throws<ArgumentException>(() => CalibratedSpec.FromFullyDeclared(tampered));
+    }
+
+    [Fact]
+    public void Create_WhenANonFiniteRangeBoundSurvivedPastTheSeam_ThenThrows()
+    {
+        var resolved = Resolve(With(SpecFixtures.Nominal("g", 0, [])), 1);
+        var tampered = TamperRestrictions(resolved, [new RestrictToRange(double.NegativeInfinity, 20.0)]);
+
+        Assert.Throws<ArgumentException>(() => CalibratedSpec.Create(tampered, [new ObservedDomain("g", ["b"])]));
+    }
+
+    [Fact]
+    public void FromFullyDeclared_WhenARestrictionEntryIsNull_ThenThrows()
+    {
+        // The boundary is exhaustive over the three recognized variants, not merely a finiteness
+        // test: waving a null through would surface as a NullReferenceException inside the
+        // emitter's matcher or the fingerprint encoder — far from the cause. Reject at the
+        // boundary, trust the type inward (P-10).
+        var resolved = Resolve(With(SpecFixtures.Nominal("g", 0, ["b"])), 1);
+        var tampered = TamperRestrictions(resolved, [null!]);
+
+        Assert.Throws<ArgumentException>(() => CalibratedSpec.FromFullyDeclared(tampered));
+    }
+
+    [Fact]
+    public void FromFullyDeclared_WhenARestrictionEntryIsAnUnknownVariant_ThenThrows()
+    {
+        // RestrictToEntry is deliberately not mechanically closed (the Spec document model reuses
+        // it, D-057), so an unknown variant is representable and must be rejected explicitly —
+        // the matcher and the fingerprint encoder can only answer it with an "unreachable" throw.
+        var resolved = Resolve(With(SpecFixtures.Nominal("g", 0, ["b"])), 1);
+        var tampered = TamperRestrictions(resolved, [new UnknownRestrictToEntry()]);
+
+        Assert.Throws<ArgumentException>(() => CalibratedSpec.FromFullyDeclared(tampered));
+    }
+
+    [Fact]
+    public void FromFullyDeclared_WhenRestrictionEntriesAreValid_ThenTheBoundaryAcceptsAllThreeVariants()
+    {
+        // The positive half: the exhaustive check must not reject legitimate state.
+        var age = SpecFixtures.NumericCuts("age", 0, [30.0], new NominalScale()) with
+        {
+            RestrictTo = [new RestrictToNumber(30.0), new RestrictToRange(10.0, 20.0), new RestrictToRange(null, null)],
+        };
+        var gene = SpecFixtures.Nominal("Gene", 1, ["Bmp5"]) with { RestrictTo = [new RestrictToValue("Bmp5")] };
+
+        var calibrated = CalibratedSpec.FromFullyDeclared(Resolve(With(age, gene), 2));
+
+        Assert.Equal(3, calibrated.Spec.Attributes[0].RestrictTo.Count);
+        Assert.Single(calibrated.Spec.Attributes[1].RestrictTo);
+    }
+
+    private sealed record UnknownRestrictToEntry : RestrictToEntry;
+
+    // Builds a token whose first attribute carries `entries`, bypassing the seam AND
+    // ResolvedSpec.Create's own check — the only way to reach the calibrated-state boundary with
+    // invalid numeric state, which is the point: it models a caller that hand-built the graph.
+    private static ResolvedSpec TamperRestrictions(ResolvedSpec resolved, IReadOnlyList<RestrictToEntry> entries)
+    {
+        var attributes = resolved.Spec.Attributes.ToArray();
+        attributes[0] = attributes[0] with { RestrictTo = entries };
+        var spec = new BedrockSpec(resolved.Spec.Binding, attributes);
+
+        // Reconstruct the token by reflection: Create would reject this graph (as it should), so
+        // the private constructor is used to model state that only a corrupted chain could hold.
+        var constructor = typeof(ResolvedSpec).GetConstructors(
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic).Single();
+        return (ResolvedSpec)constructor.Invoke([spec, resolved.Schema, resolved.Settings]);
+    }
 }

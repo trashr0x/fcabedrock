@@ -428,18 +428,58 @@ public sealed class ResolvedSpec
         }
     }
 
-    // (f) restriction entries are known variants. Numeric-finiteness validation is
-    // staged to slice F (with RestrictToNumber); slice A only guards the union.
+    // (f) restriction entries are known variants AND their numeric state is finite (D-091/D-105).
+    //
+    // The finiteness check lands HERE, at slice F, and not earlier, by design: the reader can
+    // legitimately produce a non-finite bound or exact value from authored TOML (`nan`/`inf`
+    // parse), and its diagnostic — RestrictToRangeInvalid — only gained a seam site at this
+    // slice. The resolver runs that check first and returns Diagnosed.Failed BEFORE calling any
+    // strict factory (the success gate), so an authored non-finite entry can never reach this
+    // throw; anything that does is a hand-built graph, i.e. genuine programmer error (P-14).
+    // Downstream then trusts finiteness: emit compares parsed values without re-checking, and
+    // the fingerprint's number formatter rejects non-finite outright.
+    //
+    // Value equality/ordering of entries is NOT checked (an empty range, overlapping ranges, and
+    // duplicate entries are all legal — §10.4/D-091); only representability is.
     private static void ValidateRestrictEntries(AttributeSpec attribute)
     {
         foreach (var entry in attribute.RestrictTo)
         {
             ArgumentNullException.ThrowIfNull(entry);
-            if (entry is not (RestrictToValue or RestrictToRange))
+            switch (entry)
             {
-                throw new ArgumentException(
-                    $"attribute '{attribute.Name}' has an unrecognized restrict_to entry '{entry.GetType().Name}'.");
+                case RestrictToValue value:
+                    ArgumentNullException.ThrowIfNull(value.Value, nameof(attribute));
+                    break;
+
+                case RestrictToNumber { Value: var number } when !double.IsFinite(number):
+                    throw new ArgumentException(
+                        $"attribute '{attribute.Name}' has a non-finite exact restrict_to value {number}; " +
+                        "the resolve seam diagnoses this as RestrictToRangeInvalid (§10.4/D-091).");
+
+                case RestrictToNumber:
+                    break;
+
+                case RestrictToRange range:
+                    // Only PROVIDED bounds are constrained; an open end is null, not infinity (§10.4).
+                    RequireFiniteBound(range.From, attribute.Name, "from");
+                    RequireFiniteBound(range.To, attribute.Name, "to");
+                    break;
+
+                default:
+                    throw new ArgumentException(
+                        $"attribute '{attribute.Name}' has an unrecognized restrict_to entry '{entry.GetType().Name}'.");
             }
+        }
+    }
+
+    private static void RequireFiniteBound(double? bound, string attribute, string which)
+    {
+        if (bound is { } value && !double.IsFinite(value))
+        {
+            throw new ArgumentException(
+                $"attribute '{attribute}' has a non-finite restrict_to range '{which}' bound {value}; " +
+                "the resolve seam diagnoses this as RestrictToRangeInvalid (§10.4/D-091).");
         }
     }
 
@@ -568,11 +608,48 @@ public sealed class ResolvedSpec
             Discretizer = SnapshotDiscretizer(attribute.Discretizer),
             Scale = SnapshotScale(attribute.Scale),
             DeclaredDomain = attribute.DeclaredDomain.ToImmutableArray(),
-            RestrictTo = attribute.RestrictTo.ToImmutableArray(),
+            RestrictTo = SnapshotRestrictTo(attribute.RestrictTo),
             ValueLabels = attribute.ValueLabels.Count == 0
                 ? FrozenDictionary<string, string>.Empty
                 : attribute.ValueLabels.ToFrozenDictionary(StringComparer.Ordinal),
         };
+
+    // §10.4/G-6/D-096: the rebuild canonicalizes signed zero on exact values and provided range
+    // bounds, so a resolved spec carries CANONICAL numeric restriction identities by construction
+    // — the same guarantee the boundary already enforces for numeric free_per_value keys
+    // (ValidateNumericFreePerValueKeys), reached by normalizing rather than throwing because
+    // there is nothing to reject: -0.0 and 0.0 are the same value.
+    //
+    // The seam canonicalizes what it resolves, so through the ordinary pipeline this is a no-op.
+    // It matters for a PROGRAMMATIC caller: -0.0 would otherwise survive and, because
+    // CanonicalJson.AppendNumber faithfully formats it "-0" (untouched, G-6 — that is what keeps
+    // authored manual-cut bytes and fp_format = 1 stable), two specs that MATCH identically
+    // (IEEE: 0.0 == -0.0) would produce different canonical bytes and hashes, and would fail to
+    // deduplicate. Same behaviour ⇒ same fingerprint is exactly P-7, so the boundary makes it
+    // structural rather than trusting every caller to pre-canonicalize.
+    private static ImmutableArray<RestrictToEntry> SnapshotRestrictTo(IReadOnlyList<RestrictToEntry> entries)
+    {
+        if (entries.Count == 0)
+        {
+            return ImmutableArray<RestrictToEntry>.Empty;
+        }
+
+        var builder = ImmutableArray.CreateBuilder<RestrictToEntry>(entries.Count);
+        foreach (var entry in entries)
+        {
+            builder.Add(entry switch
+            {
+                RestrictToNumber number => new RestrictToNumber(CanonicalNumber.CanonicalizeZero(number.Value)),
+                RestrictToRange range => new RestrictToRange(CanonicalizeBound(range.From), CanonicalizeBound(range.To)),
+                _ => entry, // string entries carry no numeric identity; the union was validated above
+            });
+        }
+
+        return builder.MoveToImmutable();
+    }
+
+    private static double? CanonicalizeBound(double? bound) =>
+        bound is { } value ? CanonicalNumber.CanonicalizeZero(value) : null;
 
     // The M1 discretizers store their snapshots as ImmutableArray from construction, so the
     // only mutable state reachable through the graph is a culture-bearing discretizer's

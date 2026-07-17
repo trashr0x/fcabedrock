@@ -45,15 +45,32 @@ public static class ConversionPlanner
 
         var formalAttributes = new List<FormalAttribute>();
         var plannedAttributes = new List<PlannedAttribute>();
+        var restrictions = new List<PlannedRestriction>();
         var idByName = new Dictionary<string, int>(StringComparer.Ordinal);
         var idByIdentity = new Dictionary<FormalAttributeIdentity, int>();
 
         foreach (var attribute in spec.Attributes)
         {
+            // §10.4/D-091: restrict_to is include-INDEPENDENT, so this runs before the
+            // include-skip below. A filter-only attribute (include = false + restrict_to)
+            // contributes only here — no PlannedAttribute, no formal column — while an
+            // included-and-restricted attribute contributes both. Restrictions are built in
+            // spec-attribute order (P-7); that order never reorders columns or objects.
+            if (attribute.RestrictTo.Count > 0)
+            {
+                restrictions.Add(new PlannedRestriction(
+                    attribute.Name,
+                    ResolveAttributeSource(attribute.Name, attribute.Source, schema),
+                    ValueTypeOf(attribute.Source),
+                    attribute.RestrictTo,
+                    attribute.UnknownValuePolicy));
+            }
+
             if (!attribute.Include)
             {
-                continue; // excluded attributes contribute nothing; their restrict_to
-                          // is guarded in ValidateStatic until execution lands at M4
+                continue; // §10.9/D-049: excluded attributes contribute no column; their
+                          // parked discretizer/scale/domain stay unread. Their live
+                          // restrict_to was planned above.
             }
 
             PlanAttribute(attribute, schema, labelStyle, formalAttributes, plannedAttributes, idByName, idByIdentity, diagnostics);
@@ -64,19 +81,20 @@ public static class ConversionPlanner
             return Diagnosed<ConversionPlan>.Failed(diagnostics);
         }
 
-        // §16.4: a plan with zero columns (every attribute excluded, or — at M4 —
-        // filter-only) is degenerate but structurally valid; warn, do not fail.
+        // §16.4: a plan with zero columns (every attribute excluded or filter-only) is
+        // degenerate but structurally valid; warn, do not fail. An all-filter-only spec is
+        // the M4 case — it still filters objects, it just emits no columns.
         if (formalAttributes.Count == 0)
         {
             diagnostics.Add(new BedrockDiagnostic(
                 DiagnosticCode.NoFormalAttributes, DiagnosticSeverity.Warning,
-                "The plan produced no formal attributes; every attribute is excluded (§16.4)."));
+                "The plan produced no formal attributes; every attribute is excluded or filter-only (§16.4)."));
         }
 
         var plan = new ConversionPlan(
             [.. formalAttributes],
             [.. plannedAttributes],
-            ImmutableArray<PlannedRestriction>.Empty,
+            [.. restrictions],
             spec.Binding.ObjectKey,
             ResolveExecution(spec.Binding),
             calibrated,
@@ -239,6 +257,19 @@ public static class ConversionPlanner
                 $"Source binding {source.GetType().Name} on attribute '{attributeName}' is not supported."),
         };
 
+    // §10.2/D-061: the attribute's single effective value_type, fixed at the resolve seam and
+    // carried on the resolved source. It selects the restriction's matching mode — string ⇒
+    // ordinal equality, number ⇒ parsed numeric identity (§10.4) — and is read straight off the
+    // source rather than re-derived from the discretizer, because a FILTER-ONLY attribute's
+    // discretizer is parked (D-049) and may be absent entirely.
+    private static SourceValueType ValueTypeOf(SourceBinding source) => source switch
+    {
+        ColumnSource column => column.ValueType,
+        PredicateSource predicate => predicate.ValueType,
+        _ => throw new NotSupportedException(
+            $"Source binding {source.GetType().Name} carries no value type."),
+    };
+
     private static int ResolveColumnIndex(string attributeName, int index, SourceSchema schema)
     {
         if (index < 0 || index >= schema.ColumnCount)
@@ -262,24 +293,12 @@ public static class ConversionPlanner
         // document model (D-080); the planner keeps only its plan-phase checks.
         foreach (var attribute in spec.Attributes)
         {
-            // §10.4 / D-057: restrict_to filters whether or not the attribute is
-            // included (filter-only pattern), so the transitional reject sits
-            // before the include-skip — silently ignoring it would emit
-            // unfiltered output. Removed when execution lands at M4.
-            if (attribute.RestrictTo.Count > 0)
-            {
-                diagnostics.Add(new BedrockDiagnostic(
-                    DiagnosticCode.RestrictToNotImplementedV1,
-                    DiagnosticSeverity.Error,
-                    $"Attribute '{attribute.Name}' carries restrict_to, whose execution is not implemented in this milestone (planned for M4, §10.4).",
-                    new DiagnosticLocation(AttributeName: attribute.Name)));
-            }
-
             if (!attribute.Include)
             {
                 // §10.9 / D-049: include = false is an authoring toggle. Any emitted
                 // config the attribute retains is parked — ignored here, never an
-                // error. (restrict_to stays live and is guarded above.)
+                // error. Its restrict_to stays live: shape-validated at the resolve
+                // seam and planned as a PlannedRestriction above (D-091/D-105).
                 continue;
             }
 

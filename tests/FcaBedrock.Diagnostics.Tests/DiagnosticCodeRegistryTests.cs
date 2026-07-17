@@ -19,51 +19,61 @@ namespace FcaBedrock.Diagnostics.Tests;
 /// </summary>
 public sealed class DiagnosticCodeRegistryTests
 {
-    // The exact M4 Slice E delta (D-104): three codes for value_groups' three genuinely new
-    // conditions — a duplicate authored group label, an ordinal scale over data-discovered
-    // passthrough bins, and the data-dependence of a passthrough calibration.
-    private static readonly string[] SliceEAdditions =
+    // The exact M4 Slice F delta (D-105): one spec-validate code for invalid numeric restriction
+    // entries, and the three emit-observability codes whose sites land with restrict_to execution
+    // (registered in §16.4 since M2, enum members only now — the D-085 rule).
+    private static readonly string[] SliceFAdditions =
     [
+        nameof(DiagnosticCode.RestrictToRangeInvalid),
+        nameof(DiagnosticCode.NoObjectsEmitted),
+        nameof(DiagnosticCode.AttributeHasNoCrosses),
+        nameof(DiagnosticCode.ObjectHasNoCrosses),
+    ];
+
+    // The D-091 rename, landing with its check site (D-085). The old spelling is GONE — no alias,
+    // no obsolete member: "requires a range" stopped being the whole rule once the exact
+    // { value = n } entry existed.
+    private const string RenamedTo = nameof(DiagnosticCode.RestrictToNumericEntryRequired);
+    private const string RenamedFrom = "RestrictToOnNumericRequiresRange";
+
+    // Codes Slice F reuses rather than duplicating: a malformed { value = … } is a malformed field
+    // (SpecFieldInvalid), a numeric entry on a string source is the ordinary value-type mismatch
+    // (SourceValueTypeInvalid), and an unparseable value read for a filter-only restriction is an
+    // unparseable source value at the policy severity (SourceValueUnparseable, D-097). One
+    // condition → one code (D-067).
+    private static readonly string[] ReusedCodes =
+    [
+        nameof(DiagnosticCode.SpecFieldInvalid),
+        nameof(DiagnosticCode.SpecKeyUnrecognized),
+        nameof(DiagnosticCode.SourceValueTypeInvalid),
+        nameof(DiagnosticCode.SourceValueUnparseable),
+        nameof(DiagnosticCode.RestrictToValueNotInDomain),
+        nameof(DiagnosticCode.NoFormalAttributes),
+        nameof(DiagnosticCode.DuplicateObjectKey),
+    ];
+
+    // Slices A–E codes, which must survive Slice F untouched.
+    private static readonly string[] EarlierSliceCodes =
+    [
+        nameof(DiagnosticCode.ObservedDomainUsed),
+        nameof(DiagnosticCode.UnknownValuePolicyInclude),
+        nameof(DiagnosticCode.DeclaredDomainInvalid),
+        nameof(DiagnosticCode.ValueLabelKeyDuplicate),
+        nameof(DiagnosticCode.EqualWidthRangeInvalid),
+        nameof(DiagnosticCode.EqualWidthCutsCollapsed),
+        nameof(DiagnosticCode.CalibrationDataInsufficient),
+        nameof(DiagnosticCode.CalibrationCutsInvalid),
+        nameof(DiagnosticCode.CalibrationPopulationTooLarge),
         nameof(DiagnosticCode.ValueGroupsLabelDuplicate),
         nameof(DiagnosticCode.OrdinalNotAllowedWithValueGroupsPassthrough),
         nameof(DiagnosticCode.ValueGroupsPassthroughDataDependent),
     ];
 
-    // Codes Slice E reuses rather than duplicating: a malformed group/regex/unmatched field is a
-    // malformed field (SpecFieldInvalid), an observed passthrough bin colliding with an authored
-    // label is a formal-attribute collision like any other (FormalAttributeCollision), and an
-    // unmatched value under `skip` is an unknown value (UnknownValueObserved). One condition →
-    // one code (D-067).
-    private static readonly string[] ReusedCodes =
-    [
-        nameof(DiagnosticCode.SpecFieldInvalid),
-        nameof(DiagnosticCode.FormalAttributeCollision),
-        nameof(DiagnosticCode.UnknownValueObserved),
-        nameof(DiagnosticCode.OrdinalOrderMissing),
-        nameof(DiagnosticCode.OrdinalOrderHasUnknownValue),
-        nameof(DiagnosticCode.OrderDomainInvalid),
-        nameof(DiagnosticCode.SourceValueTypeInvalid),
-    ];
-
-    // Slice D's calibration codes, which must survive Slice E untouched.
-    private static readonly string[] SliceDCalibrationCodes =
-    [
-        nameof(DiagnosticCode.CalibrationDataInsufficient),
-        nameof(DiagnosticCode.CalibrationCutsInvalid),
-        nameof(DiagnosticCode.CalibrationPopulationTooLarge),
-        nameof(DiagnosticCode.ObservedDomainUsed),
-        nameof(DiagnosticCode.UnknownValuePolicyInclude),
-    ];
-
-    // Codes the approved M4 plan assigns to LATER slices. Each must stay absent until the slice
-    // that owns its emit site lands, so an early or accidental addition fails here.
+    // Codes still owned by LATER milestones. Each must stay absent until the milestone that owns
+    // its emit site lands, so an early or accidental addition fails here. Completing M4 retires
+    // M4's transitions only — it does not license M5/M6/M7 surface.
     private static readonly string[] NotYetOwned =
     [
-        "RestrictToRangeInvalid",                        // Slice F
-        "RestrictToNumericEntryRequired",                // Slice F (the D-091 rename)
-        "NoObjectsEmitted",                              // Slice F
-        "AttributeHasNoCrosses",                         // Slice F
-        "ObjectHasNoCrosses",                            // Slice F
         "OutputCxtSizeAdvisory",                         // M7
         "DateValueTypeNotImplementedV1",                 // deferred (D-038)
     ];
@@ -74,61 +84,75 @@ public sealed class DiagnosticCodeRegistryTests
     [
         "ObservedDomainCalibrationNotImplementedV1",     // retired at Slice A (D-098)
         "DiscretizerKindNotYetSupported",                // retired at Slice E (D-104)
+        "RestrictToNotImplementedV1",                    // retired at Slice F (D-105) — M4's last
+        RenamedFrom,                                     // renamed at Slice F (D-105); no alias
     ];
 
-    // The registry size after M4 Slice E: 65 members at the Slice D baseline, plus this slice's
-    // three, minus the one transitional code it retires (D-104) — 65 + 3 - 1. Update this number
-    // ONLY together with the slice's decisions.md entry — that deliberate edit is the point
-    // (D-085: a code exists once it has a real emit site, so the enum grows per slice rather than
-    // drifting). Without it the presence/absence assertions below would let an unrelated member in
-    // unnoticed, and the delta would not be locked.
-    private const int MembersAfterSliceE = 67;
+    // The registry size after M4 Slice F: 67 members at the Slice E baseline, plus this slice's
+    // four, minus the one transitional code it retires — 67 + 4 - 1 = 70. The rename is
+    // count-neutral. Update this number ONLY together with the slice's decisions.md entry — that
+    // deliberate edit is the point (D-085: a code exists once it has a real emit site, so the enum
+    // grows per slice rather than drifting). Without it the presence/absence assertions below
+    // would let an unrelated member in unnoticed, and the delta would not be locked.
+    private const int MembersAfterSliceF = 70;
 
     private static readonly string[] Defined = Enum.GetNames<DiagnosticCode>();
 
     [Fact]
-    public void DiagnosticCode_WhenSliceELanded_ThenItsThreeCodesAreDefined() =>
-        Assert.All(SliceEAdditions, name => Assert.Contains(name, Defined));
+    public void DiagnosticCode_WhenSliceFLanded_ThenItsFourCodesAreDefined() =>
+        Assert.All(SliceFAdditions, name => Assert.Contains(name, Defined));
 
     [Fact]
-    public void DiagnosticCode_WhenSliceELanded_ThenTheRegistryIsExactlyPlusThreeMinusOne() =>
+    public void DiagnosticCode_WhenSliceFLanded_ThenTheRegistryIsExactlyPlusFourMinusOne() =>
         // The delta lock. On its own a count proves little; combined with the presence list above
         // and the absence lists below it pins BOTH which codes arrived, that the retirement really
         // happened, and that nothing else moved — which the targeted assertions alone cannot do.
-        Assert.Equal(MembersAfterSliceE, Defined.Length);
+        Assert.Equal(MembersAfterSliceF, Defined.Length);
 
     [Fact]
-    public void DiagnosticCode_WhenSliceELanded_ThenTheReusedCodesRemain() =>
+    public void DiagnosticCode_WhenSliceFLanded_ThenTheReusedCodesRemain() =>
         Assert.All(ReusedCodes, name => Assert.Contains(name, Defined));
 
     [Fact]
-    public void DiagnosticCode_WhenSliceELanded_ThenSliceDCalibrationCodesRemain() =>
-        Assert.All(SliceDCalibrationCodes, name => Assert.Contains(name, Defined));
+    public void DiagnosticCode_WhenSliceFLanded_ThenEarlierSliceCodesRemain() =>
+        Assert.All(EarlierSliceCodes, name => Assert.Contains(name, Defined));
 
     [Fact]
-    public void DiagnosticCode_WhenSliceELanded_ThenNoLaterSliceCodeIsDefinedYet() =>
+    public void DiagnosticCode_WhenSliceFLanded_ThenNoLaterMilestoneCodeIsDefinedYet() =>
         // The D-085 rule made mechanical: a code with no emit site in this milestone must not exist.
         Assert.All(NotYetOwned, name => Assert.DoesNotContain(name, Defined));
 
     [Fact]
-    public void DiagnosticCode_WhenSliceELanded_ThenRetiredTransitionalCodesStayRetired() =>
+    public void DiagnosticCode_WhenSliceFLanded_ThenRetiredTransitionalCodesStayRetired() =>
         Assert.All(Retired, name => Assert.DoesNotContain(name, Defined));
 
     [Fact]
-    public void DiagnosticCode_WhenSliceELanded_ThenTheLastDeferredKindCodeIsGoneButRestrictToRemains()
+    public void DiagnosticCode_WhenSliceFLanded_ThenTheRestrictToRenameIsCompleteWithNoAlias()
     {
-        // The two halves of the Slice E transitional boundary, asserted together because they are
-        // one contract: every discretizer kind is now executable, so DiscretizerKindNotYetSupported
-        // has no owner left and retires (D-070 complete) — while restrict_to execution is still
-        // Slice F, so its transitional reject must stay live (D-057).
-        Assert.DoesNotContain(nameof(DiagnosticCode.RestrictToNotImplementedV1), Retired);
-        Assert.Contains(nameof(DiagnosticCode.RestrictToNotImplementedV1), Defined);
+        // The D-091 rename, in both directions: the new spelling exists and the old one is gone.
+        // Asserted together because they are one contract — keeping an alias would let stale call
+        // sites compile and leave the registry with two names for one condition (D-067).
+        Assert.Contains(RenamedTo, Defined);
+        Assert.DoesNotContain(RenamedFrom, Defined);
+    }
+
+    [Fact]
+    public void DiagnosticCode_WhenSliceFLanded_ThenM4HasNoTransitionalCodeLeftButLaterOnesRemain()
+    {
+        // The two halves of the M4 exit boundary, asserted together because they are one contract.
+        // restrict_to executes, so its transitional reject retires — M4's last (DiscretizerKind…
+        // went at Slice E). Completing M4 does NOT retire later milestones' transitions:
+        // TemplateMatcherNotImplementedV1 still belongs to M6, and SpecSurfaceNotYetSupported keeps
+        // its own owners (the naming carriers → M6, value_type = "date" → D-038).
+        Assert.DoesNotContain("RestrictToNotImplementedV1", Defined);
         Assert.DoesNotContain("DiscretizerKindNotYetSupported", Defined);
 
-        // SpecSurfaceNotYetSupported keeps its own owners (naming carriers → M6, date → D-038),
-        // so it is unaffected by the deferred-KIND retirement.
-        Assert.Contains(nameof(DiagnosticCode.SpecSurfaceNotYetSupported), Defined);
         Assert.Contains(nameof(DiagnosticCode.TemplateMatcherNotImplementedV1), Defined);
+        Assert.Contains(nameof(DiagnosticCode.SpecSurfaceNotYetSupported), Defined);
+
+        // Permanent v1 reservations are not transitional and are unaffected by M4 completing.
+        Assert.Contains(nameof(DiagnosticCode.ScaleNotImplementedV1), Defined);
+        Assert.Contains(nameof(DiagnosticCode.ObjectKeyCompositeNotImplementedV1), Defined);
     }
 
     [Fact]

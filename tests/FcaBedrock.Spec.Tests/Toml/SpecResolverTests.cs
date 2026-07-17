@@ -271,9 +271,9 @@ public sealed class SpecResolverTests
     [Fact]
     public void Resolve_WhenRestrictToStringsOnStringSource_ThenCarriedIntoCore()
     {
-        // D-057: carried as an inert resolved carrier; execution deferral is the
-        // plan-phase reject (RestrictToNotImplementedV1). Entries must match the
-        // attribute's single value_type (D-063), so each carrier test is same-typed.
+        // D-057/D-091: carried verbatim into Core, where the planner turns it into an
+        // executable PlannedRestriction (D-105). Entries must match the attribute's single
+        // value_type (D-063), so each carrier test is same-typed.
         IReadOnlyList<RestrictToEntry> restrict = [new RestrictToValue("a"), new RestrictToValue("b")];
         var document = DocumentFixtures.Document(
             [DocumentFixtures.Attribute("x", DocumentFixtures.Column(0),
@@ -669,7 +669,7 @@ public sealed class SpecResolverTests
     }
 
     [Fact]
-    public void Resolve_WhenNumberSourceHasStringRestrictTo_ThenRestrictToOnNumericRequiresRange()
+    public void Resolve_WhenNumberSourceHasStringRestrictTo_ThenRestrictToNumericEntryRequired()
     {
         // §10.4 (D-063): this code — not SourceValueTypeInvalid — owns the
         // numeric-source/string-entry mismatch.
@@ -681,8 +681,301 @@ public sealed class SpecResolverTests
         var result = Resolve(document);
 
         var diagnostic = Assert.Single(result.Diagnostics);
-        Assert.Equal(DiagnosticCode.RestrictToOnNumericRequiresRange, diagnostic.Code);
+        Assert.Equal(DiagnosticCode.RestrictToNumericEntryRequired, diagnostic.Code);
         Assert.Equal("age", diagnostic.Location?.AttributeName);
+    }
+
+    [Fact]
+    public void Resolve_WhenNumberSourceHasExactNumericRestrictTo_ThenResolvesCleanly()
+    {
+        // §10.4/D-091: the exact { value = n } entry is the numeric form the bare-string reject
+        // above points at — so the same attribute resolves cleanly once it is used.
+        var document = DocumentFixtures.Document(
+            [DocumentFixtures.Attribute("age", DocumentFixtures.Column(0),
+                discretizer: Discretizer("manual_cuts"), scale: new NominalScaleSection(),
+                restrictTo: [new RestrictToNumber(30), new RestrictToRange(10, 20)])]);
+
+        var result = Resolve(document);
+
+        Assert.True(result.TryGetValue(out var spec));
+        Assert.Empty(result.Diagnostics);
+        Assert.Equal([new RestrictToNumber(30), new RestrictToRange(10, 20)], spec.Attributes[0].RestrictTo);
+    }
+
+    [Fact]
+    public void Resolve_WhenStringSourceHasExactNumericRestrictTo_ThenSourceValueTypeInvalid()
+    {
+        // §10.4/§10.2/D-091: a numeric EXACT entry on a string-typed source is the same
+        // value-type mismatch a range is — the §10.2 code owns both directions of "numeric entry
+        // on a string source".
+        var document = DocumentFixtures.Document(
+            [DocumentFixtures.Attribute("edu", DocumentFixtures.Column(0),
+                discretizer: Discretizer("identity"), scale: new NominalScaleSection(),
+                declaredDomain: ["a"], restrictTo: [new RestrictToNumber(30)])]);
+
+        var result = Resolve(document);
+
+        Assert.Equal(DiagnosticCode.SourceValueTypeInvalid, Assert.Single(result.Diagnostics).Code);
+        Assert.False(result.TryGetValue(out _));
+    }
+
+    [Fact]
+    public void Resolve_WhenPredicateNumberSourceHasBareString_ThenRestrictToNumericEntryRequired()
+    {
+        // The rename applies at predicate sources exactly as at column sources — the check is
+        // source-kind agnostic (§10.2).
+        var document = DocumentFixtures.Document(
+            [DocumentFixtures.Attribute("stage", new PredicateSourceSection("Stage", SourceValueType.Number),
+                discretizer: Discretizer("manual_cuts"), scale: new NominalScaleSection(),
+                restrictTo: [new RestrictToValue("early")])],
+            binding: DocumentFixtures.TripleBinding());
+
+        var result = Resolve(document);
+
+        Assert.Equal(DiagnosticCode.RestrictToNumericEntryRequired, Assert.Single(result.Diagnostics).Code);
+    }
+
+    // --- RestrictToRangeInvalid (§10.4/D-091) --------------------------------
+
+    [Theory]
+    [InlineData(double.NaN)]
+    [InlineData(double.PositiveInfinity)]
+    [InlineData(double.NegativeInfinity)]
+    public void Resolve_WhenExactRestrictValueIsNonFinite_ThenRestrictToRangeInvalid(double value)
+    {
+        // A non-finite exact value can match no usable observation, so it is authored nonsense
+        // rather than a filter that happens to keep nothing. Diagnosed on the USER channel —
+        // never an exception — because the reader can legitimately produce it from `nan`/`inf`.
+        var document = DocumentFixtures.Document(
+            [DocumentFixtures.Attribute("age", DocumentFixtures.Column(0),
+                discretizer: Discretizer("manual_cuts"), scale: new NominalScaleSection(),
+                restrictTo: [new RestrictToNumber(value)])]);
+
+        var result = Resolve(document);
+
+        var diagnostic = Assert.Single(result.Diagnostics);
+        Assert.Equal(DiagnosticCode.RestrictToRangeInvalid, diagnostic.Code);
+        Assert.Equal(DiagnosticSeverity.Error, diagnostic.Severity);
+        Assert.Equal("age", diagnostic.Location?.AttributeName);
+        Assert.False(result.TryGetValue(out _));
+    }
+
+    [Theory]
+    [InlineData(20.0, 20.0)]   // equal: half-open [20, 20) matches nothing
+    [InlineData(50.0, 10.0)]   // reversed
+    [InlineData(double.NaN, 20.0)]
+    [InlineData(10.0, double.NaN)]
+    [InlineData(double.NegativeInfinity, 20.0)]
+    [InlineData(10.0, double.PositiveInfinity)]
+    public void Resolve_WhenRangeIsInvalid_ThenRestrictToRangeInvalid(double from, double to)
+    {
+        var document = DocumentFixtures.Document(
+            [DocumentFixtures.Attribute("age", DocumentFixtures.Column(0),
+                discretizer: Discretizer("manual_cuts"), scale: new NominalScaleSection(),
+                restrictTo: [new RestrictToRange(from, to)])]);
+
+        var result = Resolve(document);
+
+        Assert.Equal(DiagnosticCode.RestrictToRangeInvalid, Assert.Single(result.Diagnostics).Code);
+    }
+
+    [Fact]
+    public void Resolve_WhenRangeEndsAreOpen_ThenValidBecauseOpenIsNullNotInfinity()
+    {
+        // §10.4: {} means "any usable numeric value" and one-sided ranges are equally valid — an
+        // omitted bound is open (null), never ±infinity, so the non-finite rule must not catch it.
+        var document = DocumentFixtures.Document(
+            [DocumentFixtures.Attribute("age", DocumentFixtures.Column(0),
+                discretizer: Discretizer("manual_cuts"), scale: new NominalScaleSection(),
+                restrictTo: [new RestrictToRange(null, null), new RestrictToRange(90, null), new RestrictToRange(null, 5)])]);
+
+        var result = Resolve(document);
+
+        Assert.True(result.TryGetValue(out _));
+        Assert.Empty(result.Diagnostics);
+    }
+
+    [Fact]
+    public void Resolve_WhenOneEntryIsBothWronglyTypedAndInvalid_ThenBothCodesCoFire()
+    {
+        // P-14 aggregation, on ONE entry: "numeric entry on a string source" and "that exact
+        // value is not finite" are INDEPENDENT conditions, and both hold here. Reporting only the
+        // first would hide the second edit the author still has to make — the same reasoning that
+        // makes D-076's quote check and delimiter/quote conflict co-fire.
+        var document = DocumentFixtures.Document(
+            [DocumentFixtures.Attribute("edu", DocumentFixtures.Column(0),
+                discretizer: Discretizer("identity"), scale: new NominalScaleSection(),
+                declaredDomain: ["a"], restrictTo: [new RestrictToNumber(double.NaN)])]);
+
+        var result = Resolve(document);
+
+        Assert.Contains(result.Diagnostics, d => d.Code == DiagnosticCode.SourceValueTypeInvalid);
+        Assert.Contains(result.Diagnostics, d => d.Code == DiagnosticCode.RestrictToRangeInvalid);
+        Assert.False(result.TryGetValue(out _));
+    }
+
+    [Fact]
+    public void Resolve_WhenOneRangeEntryIsBothWronglyTypedAndReversed_ThenBothCodesCoFire()
+    {
+        var document = DocumentFixtures.Document(
+            [DocumentFixtures.Attribute("edu", DocumentFixtures.Column(0),
+                discretizer: Discretizer("identity"), scale: new NominalScaleSection(),
+                declaredDomain: ["a"], restrictTo: [new RestrictToRange(20, 10)])]);
+
+        var result = Resolve(document);
+
+        Assert.Contains(result.Diagnostics, d => d.Code == DiagnosticCode.SourceValueTypeInvalid);
+        Assert.Contains(result.Diagnostics, d => d.Code == DiagnosticCode.RestrictToRangeInvalid);
+    }
+
+    [Fact]
+    public void Resolve_WhenAWronglyTypedEntryIsOtherwiseValid_ThenOnlyTheTypeMismatchReports()
+    {
+        // The complement, so the co-firing above is not just "always emit both": a well-formed
+        // range on a string source is wrong for ONE reason only.
+        var document = DocumentFixtures.Document(
+            [DocumentFixtures.Attribute("edu", DocumentFixtures.Column(0),
+                discretizer: Discretizer("identity"), scale: new NominalScaleSection(),
+                declaredDomain: ["a"], restrictTo: [new RestrictToRange(10, 20)])]);
+
+        var result = Resolve(document);
+
+        Assert.Equal(DiagnosticCode.SourceValueTypeInvalid, Assert.Single(result.Diagnostics).Code);
+    }
+
+    [Fact]
+    public void Resolve_WhenSeveralRestrictEntriesAreInvalid_ThenAllAggregateWithoutThrowing()
+    {
+        // P-14 + the round-7 success gate: independent conditions aggregate, the result fails,
+        // and NO strict factory runs — so an authored error never escapes as an exception.
+        var document = DocumentFixtures.Document(
+            [DocumentFixtures.Attribute("age", DocumentFixtures.Column(0),
+                discretizer: Discretizer("manual_cuts"), scale: new NominalScaleSection(),
+                restrictTo:
+                [
+                    new RestrictToNumber(double.NaN),      // RestrictToRangeInvalid
+                    new RestrictToRange(50, 10),           // RestrictToRangeInvalid
+                    new RestrictToValue("young"),          // RestrictToNumericEntryRequired
+                ])]);
+
+        var result = Resolve(document); // must not throw
+
+        Assert.False(result.TryGetValue(out _));
+        Assert.Equal(2, result.Diagnostics.Count(d => d.Code == DiagnosticCode.RestrictToRangeInvalid));
+        Assert.Single(result.Diagnostics, d => d.Code == DiagnosticCode.RestrictToNumericEntryRequired);
+    }
+
+    // --- document snapshot (D-098) -------------------------------------------
+
+    [Fact]
+    public void Resolve_WhenCallerMutatesTheRestrictListAfterwards_ThenTheDocumentSnapshotIsUnaffected()
+    {
+        // D-098: ResolvedDocument holds an immutable deep snapshot, so a caller mutating the list
+        // it passed cannot reach the document the fingerprints read. Discriminating on purpose —
+        // the injected entry is a NUMERIC exact one, so a snapshot that copied only some variants
+        // (or aliased the list) would show it.
+        var authored = new List<RestrictToEntry> { new RestrictToNumber(30) };
+        var document = DocumentFixtures.Document(
+            [DocumentFixtures.Attribute("age", DocumentFixtures.Column(0),
+                discretizer: Discretizer("manual_cuts"), scale: new NominalScaleSection(),
+                restrictTo: authored)]);
+
+        var resolved = SpecResolver.Resolve(document, new SourceSchema(1));
+        Assert.True(resolved.TryGetValue(out var doc),
+            string.Join("; ", resolved.Diagnostics.Select(d => $"{d.Code}: {d.Message}")));
+
+        authored.Add(new RestrictToNumber(99));
+
+        Assert.Equal([new RestrictToNumber(30)], doc!.Document.Attributes[0].RestrictTo);
+        Assert.Equal([new RestrictToNumber(30)], doc.Resolved.Spec.Attributes[0].RestrictTo);
+    }
+
+    [Fact]
+    public void Resolve_WhenSnapshotted_ThenTheRestrictListIsNotCastableToAMutableCollection()
+    {
+        var document = DocumentFixtures.Document(
+            [DocumentFixtures.Attribute("age", DocumentFixtures.Column(0),
+                discretizer: Discretizer("manual_cuts"), scale: new NominalScaleSection(),
+                restrictTo: [new RestrictToNumber(30)])]);
+
+        var resolved = SpecResolver.Resolve(document, new SourceSchema(1));
+        Assert.True(resolved.TryGetValue(out var doc));
+
+        var entries = doc!.Document.Attributes[0].RestrictTo!;
+        Assert.IsNotType<RestrictToEntry[]>(entries);
+        Assert.IsNotType<List<RestrictToEntry>>(entries);
+    }
+
+    // --- G-6 zero canonicalization at the seam -------------------------------
+
+    [Fact]
+    public void Resolve_WhenExactRestrictValueIsNegativeZero_ThenItResolvesAsPositiveZero()
+    {
+        // G-6, at the site that owns it: the seam canonicalizes what it resolves, so an authored
+        // -0 resolves — and therefore matches, plans, and hashes — identically to 0. This is the
+        // "already-numeric" arm of the chain (the value arrives as a TOML double; there is no
+        // text to parse). CanonicalJson.AppendNumber is untouched and still formats -0.0 as "-0",
+        // which is exactly why the canonicalization must happen HERE.
+        var document = DocumentFixtures.Document(
+            [DocumentFixtures.Attribute("age", DocumentFixtures.Column(0),
+                discretizer: Discretizer("manual_cuts"), scale: new NominalScaleSection(),
+                restrictTo: [new RestrictToNumber(-0.0)])]);
+
+        var result = Resolve(document);
+
+        Assert.True(result.TryGetValue(out var spec));
+        var entry = Assert.IsType<RestrictToNumber>(Assert.Single(spec.Attributes[0].RestrictTo));
+        Assert.Equal(0.0, entry.Value);
+        Assert.False(double.IsNegative(entry.Value)); // Assert.Equal cannot tell -0 from 0
+    }
+
+    [Fact]
+    public void Resolve_WhenRangeBoundsAreNegativeZero_ThenTheyResolveAsPositiveZero()
+    {
+        var document = DocumentFixtures.Document(
+            [DocumentFixtures.Attribute("age", DocumentFixtures.Column(0),
+                discretizer: Discretizer("manual_cuts"), scale: new NominalScaleSection(),
+                restrictTo: [new RestrictToRange(-0.0, 5)])]);
+
+        var result = Resolve(document);
+
+        Assert.True(result.TryGetValue(out var spec));
+        var range = Assert.IsType<RestrictToRange>(Assert.Single(spec.Attributes[0].RestrictTo));
+        Assert.False(double.IsNegative(range.From!.Value));
+    }
+
+    [Fact]
+    public void Resolve_WhenRestrictEntriesRepeat_ThenAuthoredOrderAndDuplicatesSurviveResolution()
+    {
+        // Resolved Core state mirrors the document (D-057). Canonical sorting/deduplication is a
+        // FINGERPRINT projection only (§14) and must not rewrite authored state — the plan and
+        // emit see what the author wrote.
+        var document = DocumentFixtures.Document(
+            [DocumentFixtures.Attribute("age", DocumentFixtures.Column(0),
+                discretizer: Discretizer("manual_cuts"), scale: new NominalScaleSection(),
+                restrictTo: [new RestrictToNumber(30), new RestrictToRange(10, 20), new RestrictToNumber(30)])]);
+
+        var result = Resolve(document);
+
+        Assert.True(result.TryGetValue(out var spec));
+        Assert.Equal(
+            [new RestrictToNumber(30), new RestrictToRange(10, 20), new RestrictToNumber(30)],
+            spec.Attributes[0].RestrictTo);
+    }
+
+    [Fact]
+    public void Resolve_WhenFilterOnlyAttributeHasAnInvalidRange_ThenItStillReports()
+    {
+        // §10.1/D-049/D-076: restrict_to is LIVE on an excluded attribute (the filter-only
+        // pattern), so its shape is validated even though the attribute's discretizer/scale/domain
+        // are parked and unread.
+        var document = DocumentFixtures.Document(
+            [DocumentFixtures.Attribute("age", DocumentFixtures.Column(0), include: false,
+                discretizer: Discretizer("manual_cuts"), restrictTo: [new RestrictToRange(50, 10)])]);
+
+        var result = Resolve(document);
+
+        Assert.Equal(DiagnosticCode.RestrictToRangeInvalid, Assert.Single(result.Diagnostics).Code);
     }
 
     [Fact]
@@ -712,7 +1005,7 @@ public sealed class SpecResolverTests
 
         var result = Resolve(document);
 
-        Assert.Equal(DiagnosticCode.RestrictToOnNumericRequiresRange, Assert.Single(result.Diagnostics).Code);
+        Assert.Equal(DiagnosticCode.RestrictToNumericEntryRequired, Assert.Single(result.Diagnostics).Code);
     }
 
     [Fact]
@@ -1635,7 +1928,7 @@ public sealed class SpecResolverTests
     }
 
     [Fact]
-    public void Resolve_WhenPredicateSourceNumericWithBareStringRestrict_ThenRestrictToOnNumericRequiresRange()
+    public void Resolve_WhenPredicateSourceNumericWithBareStringRestrict_ThenRestrictToNumericEntryRequired()
     {
         // §10.4: the numeric-needs-range shape check applies to predicate sources too.
         var document = DocumentFixtures.Document(
@@ -1646,7 +1939,7 @@ public sealed class SpecResolverTests
 
         var result = Resolve(document);
 
-        Assert.Equal(DiagnosticCode.RestrictToOnNumericRequiresRange, Assert.Single(result.Diagnostics).Code);
+        Assert.Equal(DiagnosticCode.RestrictToNumericEntryRequired, Assert.Single(result.Diagnostics).Code);
         Assert.False(result.TryGetValue(out _));
     }
 

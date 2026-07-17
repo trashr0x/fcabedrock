@@ -586,45 +586,158 @@ public sealed class ConversionPlannerTests
     }
 
     [Fact]
-    public void Plan_WhenObjectKeyCompositeAndRestrictToPresent_ThenBothDiagnosticsReport()
+    public void Plan_WhenObjectKeyCompositeAndDeferredScale_ThenBothDiagnosticsReport()
     {
-        // P-14: the object-key guard aggregates with the attribute checks rather
-        // than short-circuiting the static pass. Duplicate names moved to the resolve
-        // seam (D-080), so a still-plan-phase code — RestrictToNotImplementedV1 —
-        // pairs with the object-key reject here.
-        var attr = SpecFixtures.Nominal("g", 0, ["b"]) with { RestrictTo = [new RestrictToValue("b")] };
+        // P-14: the object-key guard aggregates with the attribute checks rather than
+        // short-circuiting the static pass. Duplicate names moved to the resolve seam (D-080)
+        // and restrict_to now EXECUTES (D-105, so it is no longer a plan diagnostic at all),
+        // leaving the deferred-scale reject as the attribute-side plan code that pairs with the
+        // object-key one here.
+        var attr = SpecFixtures.Nominal("g", 0, ["b"]) with { Scale = new UnimplementedScale("interordinal") };
         var spec = new BedrockSpec(WideWithKey(new CompositeObjectKey()), [attr]);
 
         var result = Plan(spec, new SourceSchema(1));
 
         Assert.Contains(result.Diagnostics, d => d.Code == DiagnosticCode.ObjectKeyCompositeNotImplementedV1);
-        Assert.Contains(result.Diagnostics, d => d.Code == DiagnosticCode.RestrictToNotImplementedV1);
+        Assert.Contains(result.Diagnostics, d => d.Code == DiagnosticCode.ScaleNotImplementedV1);
     }
 
     [Fact]
-    public void Plan_WhenRestrictToPresent_ThenReportsRestrictToNotImplementedV1()
+    public void Plan_WhenIncludedAttributeRestricts_ThenPlansBothAColumnAndARestriction()
     {
-        // §10.4 / D-057: never silently ignored — unfiltered output would mismatch
-        // the spec's intent. Transitional until execution lands at M4.
+        // §10.4/D-091/D-105: an included-and-restricted attribute is NOT filter-only — it
+        // contributes its ordinary formal column AND one restriction. The transitional
+        // RestrictToNotImplementedV1 reject retired with this slice.
         var attr = SpecFixtures.Nominal("g", 0, ["b"]) with { RestrictTo = [new RestrictToValue("b")] };
         var spec = new BedrockSpec(SpecFixtures.WideRowIndex(), [attr]);
 
         var result = Plan(spec, new SourceSchema(1));
 
-        AssertFailsWith(result, DiagnosticCode.RestrictToNotImplementedV1);
+        Assert.True(result.TryGetValue(out var plan));
+        Assert.Empty(result.Diagnostics);
+        Assert.Equal("g", Assert.Single(plan.Attributes).Name);
+        Assert.Single(plan.FormalAttributes);
+
+        var restriction = Assert.Single(plan.Restrictions);
+        Assert.Equal("g", restriction.AttributeName);
+        Assert.Equal(SourceValueType.String, restriction.ValueType);
+        Assert.Equal(UnknownValuePolicy.Warn, restriction.UnknownValuePolicy);
+        Assert.Equal(0, Assert.IsType<ColumnAttributeSource>(restriction.Source).Index);
+        Assert.Equal(new RestrictToValue("b"), Assert.Single(restriction.Entries));
     }
 
     [Fact]
-    public void Plan_WhenRestrictToOnExcludedAttribute_ThenStillReportsRestrictToNotImplementedV1()
+    public void Plan_WhenFilterOnlyAttribute_ThenPlansARestrictionButNoColumn()
     {
-        // §10.4 / D-057/D-076: restrict_to filters even on a filter-only attribute;
-        // the guard sits before the include-skip.
+        // §10.4/D-049/D-076/D-105: a filter-only attribute (include = false + restrict_to)
+        // contributes ONLY a restriction — no PlannedAttribute, no formal column — which is
+        // exactly why PlannedRestriction carries its own value type and policy.
         var attr = SpecFixtures.Excluded("Gene", 0) with { RestrictTo = [new RestrictToValue("Bmp5")] };
         var spec = new BedrockSpec(SpecFixtures.WideRowIndex(), [attr, SpecFixtures.Nominal("g", 1, ["b"])]);
 
         var result = Plan(spec, new SourceSchema(2));
 
-        AssertFailsWith(result, DiagnosticCode.RestrictToNotImplementedV1);
+        Assert.True(result.TryGetValue(out var plan));
+        Assert.Empty(result.Diagnostics);
+
+        // The excluded attribute plans no column at all…
+        Assert.Equal("g", Assert.Single(plan.Attributes).Name);
+        Assert.All(plan.FormalAttributes, f => Assert.Equal("g", f.Identity.AttributeName));
+
+        // …but its restriction is planned and live.
+        var restriction = Assert.Single(plan.Restrictions);
+        Assert.Equal("Gene", restriction.AttributeName);
+        Assert.Equal(0, Assert.IsType<ColumnAttributeSource>(restriction.Source).Index);
+        Assert.Equal(new RestrictToValue("Bmp5"), Assert.Single(restriction.Entries));
+    }
+
+    [Fact]
+    public void Plan_WhenSeveralAttributesRestrict_ThenRestrictionsFollowSpecAttributeOrder()
+    {
+        // §17 r1 / P-7: restriction order is spec-attribute order, interleaving filter-only and
+        // included-and-restricted attributes, and independent of which of them plan columns.
+        var gene = SpecFixtures.Excluded("Gene", 0) with { RestrictTo = [new RestrictToValue("Bmp5")] };
+        var tissue = SpecFixtures.Nominal("Tissue", 1, ["endoderm"]);
+        var strength = SpecFixtures.Excluded("Strength", 2) with { RestrictTo = [new RestrictToValue("strong")] };
+        var stage = SpecFixtures.NumericCuts("Stage", 3, [3.0, 9.0], new NominalScale()) with
+        {
+            RestrictTo = [new RestrictToRange(3.0, 9.0)],
+        };
+        var spec = new BedrockSpec(SpecFixtures.WideRowIndex(), [gene, tissue, strength, stage]);
+
+        var result = Plan(spec, new SourceSchema(4));
+
+        Assert.True(result.TryGetValue(out var plan));
+        Assert.Equal(["Gene", "Strength", "Stage"], plan.Restrictions.Select(r => r.AttributeName).ToArray());
+    }
+
+    [Fact]
+    public void Plan_WhenNoAttributeRestricts_ThenRestrictionsIsEmpty()
+    {
+        var result = Plan(SpecFixtures.MiniMushroom(), new SourceSchema(5));
+
+        Assert.True(result.TryGetValue(out var plan));
+        Assert.Empty(plan.Restrictions);
+    }
+
+    [Fact]
+    public void Plan_WhenEveryAttributeIsFilterOnly_ThenNoFormalAttributesWarnsAndRestrictionsSurvive()
+    {
+        // §16.4/D-105: an all-filter-only plan is degenerate but valid — it still filters
+        // objects, it just emits no columns. A Warning, never a failure.
+        var gene = SpecFixtures.Excluded("Gene", 0) with { RestrictTo = [new RestrictToValue("Bmp5")] };
+        var spec = new BedrockSpec(SpecFixtures.WideRowIndex(), [gene]);
+
+        var result = Plan(spec, new SourceSchema(1));
+
+        Assert.True(result.TryGetValue(out var plan));
+        Assert.Empty(plan.FormalAttributes);
+        Assert.Single(plan.Restrictions);
+
+        var diagnostic = Assert.Single(result.Diagnostics);
+        Assert.Equal(DiagnosticCode.NoFormalAttributes, diagnostic.Code);
+        Assert.Equal(DiagnosticSeverity.Warning, diagnostic.Severity);
+    }
+
+    [Fact]
+    public void Plan_WhenTripleAttributeRestricts_ThenRestrictionCarriesThePredicateSelector()
+    {
+        // §10.2/D-082: a triple restriction binds its predicate selector verbatim — matched
+        // against data at emit, never range-checked as a column.
+        var gene = SpecFixtures.PredicateNominal("Gene", "Gene", ["Bmp5"]) with
+        {
+            Include = false,
+            RestrictTo = [new RestrictToValue("Bmp5")],
+        };
+        var tissue = SpecFixtures.PredicateNominal("Tissue", "Tissue", ["endoderm"]);
+        var spec = new BedrockSpec(SpecFixtures.TripleSubjectGrouped(), [gene, tissue]);
+
+        var result = Plan(spec, new SourceSchema(3));
+
+        Assert.True(result.TryGetValue(out var plan));
+        var restriction = Assert.Single(plan.Restrictions);
+        Assert.Equal("Gene", Assert.IsType<PredicateAttributeSource>(restriction.Source).Predicate);
+    }
+
+    [Fact]
+    public void Plan_WhenRestrictionEntriesMutatedAfterPlanning_ThenThePlanIsUnaffected()
+    {
+        // D-098 recursive immutability: the planner snapshots entries into immutable storage, so
+        // a caller-held list cannot reach a plan — and no public IReadOnlyList on the plan is
+        // castable back to a mutable one.
+        var authored = new List<RestrictToEntry> { new RestrictToValue("Bmp5") };
+        var attr = SpecFixtures.Excluded("Gene", 0) with { RestrictTo = authored };
+        var spec = new BedrockSpec(SpecFixtures.WideRowIndex(), [attr]);
+
+        Assert.True(Plan(spec, new SourceSchema(1)).TryGetValue(out var plan));
+        authored.Add(new RestrictToValue("Wnt1"));
+
+        var entries = Assert.Single(plan.Restrictions).Entries;
+        Assert.Equal(new RestrictToValue("Bmp5"), Assert.Single(entries));
+        Assert.IsNotType<RestrictToEntry[]>(entries);
+        Assert.IsNotType<List<RestrictToEntry>>(entries);
+        Assert.IsNotType<RestrictToEntry[]>(plan.Restrictions);
+        Assert.IsNotType<List<PlannedRestriction>>(plan.Restrictions);
     }
 
     // Observed-domain calibration of an absent-domain identity attribute (formerly the

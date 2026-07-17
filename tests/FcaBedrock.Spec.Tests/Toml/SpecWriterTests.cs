@@ -116,7 +116,7 @@ public sealed class SpecWriterTests
     }
 
     [Fact]
-    public void Write_WhenRestrictToMixesStringsAndRanges_ThenAllFormsRender()
+    public void Write_WhenRestrictToMixesEveryForm_ThenAllFormsRenderCanonically()
     {
         var document = DocumentFixtures.Document(
         [
@@ -127,11 +127,43 @@ public sealed class SpecWriterTests
                 new RestrictToRange(90, null),
                 new RestrictToRange(null, 5),
                 new RestrictToRange(null, null),
+                new RestrictToNumber(30),
             ]),
         ]);
 
         Assert.Contains(
-            "restrict_to = [\"Bachelors\", { from = 10, to = 20 }, { from = 90 }, { to = 5 }, {}]",
+            "restrict_to = [\"Bachelors\", { from = 10, to = 20 }, { from = 90 }, { to = 5 }, {}, { value = 30 }]",
+            SpecWriter.Write(document),
+            StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData(30.0, "{ value = 30 }")]     // integral → bare, matching the spec's own cuts = [30] style
+    [InlineData(30.5, "{ value = 30.5 }")]
+    [InlineData(-0.0, "{ value = 0 }")]      // a resolved -0 writes as 0 (G-6)
+    [InlineData(-12.25, "{ value = -12.25 }")]
+    public void Write_WhenExactRestrictEntry_ThenRendersTheCanonicalInvariantShortestNumber(double value, string expected)
+    {
+        var document = DocumentFixtures.Document(
+            [DocumentFixtures.Attribute("a", restrictTo: [new RestrictToNumber(value)])]);
+
+        Assert.Contains($"restrict_to = [{expected}]", SpecWriter.Write(document), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Write_WhenRestrictToRepeatsEntriesOutOfCanonicalOrder_ThenTheAuthoredListIsPreserved()
+    {
+        // The writer never sorts or deduplicates (D-075): order and duplicates are authoring
+        // state. Only the fingerprint projects a canonical view (§14) — and it must not leak back
+        // into the document.
+        var document = DocumentFixtures.Document(
+        [
+            DocumentFixtures.Attribute("a", restrictTo:
+                [new RestrictToNumber(30), new RestrictToRange(10, 20), new RestrictToNumber(30)]),
+        ]);
+
+        Assert.Contains(
+            "restrict_to = [{ value = 30 }, { from = 10, to = 20 }, { value = 30 }]",
             SpecWriter.Write(document),
             StringComparison.Ordinal);
     }

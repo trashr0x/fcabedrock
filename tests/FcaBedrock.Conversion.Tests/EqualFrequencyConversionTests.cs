@@ -547,7 +547,7 @@ public sealed class EqualFrequencyConversionTests
             objects.Add(emitted);
         }
 
-        return (plan, objects, diagnostics);
+        return (plan, objects, ConversionFixtures.DataDiagnostics(diagnostics));
     }
 
     [Fact]

@@ -429,13 +429,141 @@ public sealed class BedMigratorTests
     }
 
     [Fact]
-    public void Migrate_WhenRestrictOnNumericAttribute_ThenCarriedSilentlyAndResolveRejects()
+    public void Migrate_WhenRestrictOnNumericAttribute_ThenExactNumericEntriesAndResolveSucceeds()
     {
-        // Faithful carry: v2 restricted numeric columns by raw-value equality, which
-        // vNext ranges cannot express, so the tokens stay string entries and the
-        // seam's shape check owns the mismatch (D-063) — the migrator stays silent.
+        // §10.4/D-091: v2 restricted numeric columns by raw-value equality, and the exact
+        // { value = n } entry now expresses that faithfully — so a parseable finite token on the
+        // numeric type `o` migrates to a NUMBER, and the spec resolves. (D-079 kept these as
+        // strings only because no exact numeric form existed; D-091 supersedes that.)
         var migrated = BedMigrator.Migrate(
             ReadBed(Bed(new BedAttr("age", "o", "<,30,50,>", Restrict: "30,40"))), WideBinding());
+
+        Assert.True(migrated.TryGetValue(out var document));
+        Assert.Empty(migrated.Diagnostics); // migration stays one-way transcription: no new codes
+        Assert.Equal(
+            [new RestrictToNumber(30.0), new RestrictToNumber(40.0)],
+            document.Attributes[0].RestrictTo);
+
+        var resolved = SpecResolver.Resolve(document);
+        Assert.True(resolved.TryGetValue(out var doc), Describe(resolved.Diagnostics));
+        Assert.Equal(
+            [new RestrictToNumber(30.0), new RestrictToNumber(40.0)],
+            doc.Resolved.Spec.Attributes[0].RestrictTo);
+    }
+
+    [Theory]
+    [InlineData("30", 30.0)]         // integer
+    [InlineData("30.5", 30.5)]       // decimal
+    [InlineData("3e1", 30.0)]        // exponent
+    [InlineData("-0", 0.0)]          // negative zero → positive zero (G-6)
+    [InlineData("-12.25", -12.25)]   // negative
+    public void Migrate_WhenNumericTokenSpelledVariously_ThenParsedAndZeroCanonicalized(string token, double expected)
+    {
+        // §10.4/D-091/G-6: the token is parsed under the effective locale and zero-canonicalized,
+        // so every spelling of a value migrates to one identity. -0 is pinned explicitly: it must
+        // never reach a key, a match, or a hash.
+        var attribute = MigrateOk(Bed(new BedAttr("age", "o", "<,30,50,>", Restrict: token))).Attributes[0];
+
+        var entry = Assert.IsType<RestrictToNumber>(Assert.Single(attribute.RestrictTo!));
+        Assert.Equal(expected, entry.Value);
+
+        // Assert.Equal cannot tell -0.0 from 0.0 (they compare equal), so the sign bit is checked
+        // separately — it is the whole point of the "-0" vector, and it must stay accurate for
+        // genuinely negative values too.
+        Assert.Equal(double.IsNegative(expected), double.IsNegative(entry.Value));
+    }
+
+    [Fact]
+    public void Migrate_WhenNumericTokenUnderDiscriminatingLocale_ThenParsedUnderThatLocaleNotInvariant()
+    {
+        // §5.1/D-091: the token parses under binding.locale — not ambient culture, and not
+        // always invariant. A discriminating vector, so an invariant-hardcoded implementation
+        // fails here: "1.5" is 1.5 under invariant, but under de-DE '.' is not the decimal
+        // separator and NumberStyles.Float allows no group separators, so it does not parse and
+        // the token stays a verbatim string (which the seam then rejects, as any unparseable
+        // token on type `o` does).
+        //
+        // The v2 restrict line is comma-separated, so a de-DE decimal comma cannot be expressed
+        // in one at all — the separator side of the locale is unreachable by construction, and
+        // the decimal-point side is what actually discriminates.
+        const string bed = "<,30,50,>";
+        var invariant = MigrateOk(Bed(new BedAttr("age", "o", bed, Restrict: "1.5"))).Attributes[0];
+        Assert.Equal([new RestrictToNumber(1.5)], invariant.RestrictTo);
+
+        var german = MigrateOk(
+            Bed(new BedAttr("age", "o", bed, Restrict: "1.5")), WideBinding(locale: "de-DE")).Attributes[0];
+        Assert.Equal([new RestrictToValue("1.5")], german.RestrictTo);
+    }
+
+    [Theory]
+    [InlineData("abc")]      // unparseable
+    [InlineData("NaN")]      // parses as a double, but non-finite → CanonicalNumber rejects it
+    [InlineData("Infinity")] // ditto
+    public void Migrate_WhenNumericTypeTokenIsNotAFiniteNumber_ThenStaysVerbatimAndTheSeamRejects(string token)
+    {
+        // §10.4/D-091: an unparseable or non-finite token on type `o` is NOT dropped and NOT
+        // reinterpreted — it stays a verbatim string so the ORDINARY resolve seam owns the
+        // mismatch (RestrictToNumericEntryRequired). The migrator mints no diagnostic of its own.
+        var migrated = BedMigrator.Migrate(
+            ReadBed(Bed(new BedAttr("age", "o", "<,30,50,>", Restrict: token))), WideBinding());
+
+        Assert.True(migrated.TryGetValue(out var document));
+        Assert.Empty(migrated.Diagnostics);
+        Assert.Equal([new RestrictToValue(token)], document.Attributes[0].RestrictTo);
+
+        var resolved = SpecResolver.Resolve(document);
+        Assert.False(resolved.TryGetValue(out _));
+        Assert.Contains(resolved.Diagnostics, d => d.Code == DiagnosticCode.RestrictToNumericEntryRequired);
+    }
+
+    [Fact]
+    public void Migrate_WhenNumericTypeHasBlankRestrictLine_ThenRestrictToStaysUnauthored()
+    {
+        // A blank v2 restrict line means "no filter", so restrict_to stays UNAUTHORED (null) —
+        // not an empty list, and not a list holding one empty-string entry. The
+        // omitted-vs-authored distinction is presence-tracked (D-049) and survives to the writer.
+        var attribute = MigrateOk(Bed(new BedAttr("age", "o", "<,30,50,>"))).Attributes[0];
+
+        Assert.Null(attribute.RestrictTo);
+    }
+
+    [Theory]
+    [InlineData("c")]  // categorical
+    [InlineData("b")]  // dichotomic
+    public void Migrate_WhenNumericLookingTokenOnCategoricalType_ThenStaysAVerbatimString(string type)
+    {
+        // §10.4/D-091: migration is directed by the v2 TYPE, not by whether a token looks
+        // numeric. v2 restricted these by raw-value equality, so reinterpreting "007" as 7 would
+        // silently change which objects survive.
+        var attribute = MigrateOk(Bed(new BedAttr("grade", type, "007,8", Restrict: "007"))).Attributes[0];
+
+        Assert.Equal([new RestrictToValue("007")], attribute.RestrictTo);
+    }
+
+    [Fact]
+    public void Migrate_WhenRestrictTokensRepeatOrCarryWhitespace_ThenOrderAndDuplicatesAndSpacingSurvive()
+    {
+        // Restriction matches RAW values, so tokens are never trimmed — on a categorical
+        // attribute the leading space IS part of the identity. Order and duplicates are
+        // authoring state the document preserves verbatim; only the fingerprint projects a
+        // sorted, deduplicated view (§14), and it must not rewrite what the author wrote.
+        var attribute = MigrateOk(Bed(new BedAttr("grade", "c", "a,b", Restrict: " a,b, a"))).Attributes[0];
+
+        Assert.Equal(
+            [new RestrictToValue(" a"), new RestrictToValue("b"), new RestrictToValue(" a")],
+            attribute.RestrictTo);
+    }
+
+    [Fact]
+    public void Migrate_WhenLocaleIsInvalid_ThenNoTokenIsReinterpretedAndMigrationStillCompletes()
+    {
+        // §5.1/D-091 (round-6 Medium-3): an unresolvable locale must NOT fall back to invariant
+        // (that would parse tokens under a locale the author never asked for), must not throw
+        // (migration is transcription and must complete), and must mint no migrate-phase
+        // diagnostic — full resolution owns BindingLocaleInvalid. Every token stays a string.
+        var migrated = BedMigrator.Migrate(
+            ReadBed(Bed(new BedAttr("age", "o", "<,30,50,>", Restrict: "30,40"))),
+            WideBinding(locale: "not-a-locale"));
 
         Assert.True(migrated.TryGetValue(out var document));
         Assert.Empty(migrated.Diagnostics);
@@ -443,9 +571,24 @@ public sealed class BedMigratorTests
             [new RestrictToValue("30"), new RestrictToValue("40")],
             document.Attributes[0].RestrictTo);
 
+        // The seam owns the locale error, and the now-string entries independently attract the
+        // numeric-source mismatch — one condition, one owner, both reported (P-14).
         var resolved = SpecResolver.Resolve(document);
         Assert.False(resolved.TryGetValue(out _));
-        Assert.Contains(resolved.Diagnostics, d => d.Code == DiagnosticCode.RestrictToOnNumericRequiresRange);
+        Assert.Contains(resolved.Diagnostics, d => d.Code == DiagnosticCode.BindingLocaleInvalid);
+        Assert.Contains(resolved.Diagnostics, d => d.Code == DiagnosticCode.RestrictToNumericEntryRequired);
+    }
+
+    [Fact]
+    public void Migrate_WhenExcludedNumericAttributeRestricts_ThenTheFilterOnlyEntriesStillMigrateNumerically()
+    {
+        // §10.1/D-049/D-076: restrict_to is live, include-independent config — the filter-only
+        // pattern. Its type-directed mapping does not depend on the attribute being emitted.
+        var attribute = MigrateOk(Bed(new BedAttr("age", "o", "<,30,50,>", Restrict: "30", Convert: false)))
+            .Attributes[0];
+
+        Assert.False(attribute.Include);
+        Assert.Equal([new RestrictToNumber(30.0)], attribute.RestrictTo);
     }
 
     // --- missing-token migration (D-068) --------------------------------------

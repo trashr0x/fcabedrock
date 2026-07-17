@@ -1,5 +1,6 @@
 using System.Globalization;
 using FcaBedrock.Core.Discretization;
+using FcaBedrock.Core.Fingerprinting;
 using FcaBedrock.Core.Scaling;
 using FcaBedrock.Core.Spec;
 using FcaBedrock.Diagnostics;
@@ -19,8 +20,12 @@ namespace FcaBedrock.Spec;
 /// failures diagnose here. <c>include = false</c> attributes park their full
 /// config (D-049); unrecoverable parked config degrades to a bare excluded
 /// attribute with a <c>BedParkedConfigDropped</c> Warning, never silently.
-/// The v2 <c>[Restrict To Values]</c> lines become <c>restrict_to</c> string
-/// entries, carried include-independently (§10.1/D-057); a
+/// The v2 <c>[Restrict To Values]</c> lines become <c>restrict_to</c> entries,
+/// carried include-independently (§10.1/D-057) and mapped by v2 <b>type</b>
+/// (D-091): a finite token on the numeric type <c>o</c> becomes an exact
+/// <c>{ value = n }</c> parsed under <c>binding.locale</c>, while every other
+/// token — including a numeric-looking one on a categorical attribute, and an
+/// unparseable one on <c>o</c> — stays a verbatim string. A
 /// <c>[Category Values]</c> entry equal to the effective
 /// <c>binding.missing_token</c> becomes <c>missing_policy = "as_attribute"</c>
 /// (D-068). The discrete-vs-progressive choice for <c>o</c>/<c>n</c> is supplied
@@ -50,11 +55,15 @@ public static class BedMigrator
         // entirely (§5.1), so no category entry can match it.
         var missingToken = binding.MissingToken is { Length: 0 } ? null : binding.MissingToken ?? "?";
 
+        // The effective binding locale for numeric restrict tokens (D-091/D-079). Null means the
+        // authored locale does not resolve — see RestrictCulture.
+        var restrictCulture = RestrictCulture(binding);
+
         var diagnostics = new List<BedrockDiagnostic>();
         var attributes = new List<AttributeSection>(document.AttributeCount);
         for (var i = 0; i < document.AttributeCount; i++)
         {
-            MigrateAttribute(document, i, binding.Shape, missingToken, mode, diagnostics, attributes);
+            MigrateAttribute(document, i, binding.Shape, missingToken, restrictCulture, mode, diagnostics, attributes);
         }
 
         var spec = new SpecSection(
@@ -77,12 +86,13 @@ public static class BedMigrator
         int index,
         SourceShape? shape,
         string? missingToken,
+        CultureInfo? restrictCulture,
         ScalingMode mode,
         List<BedrockDiagnostic> diagnostics,
         List<AttributeSection> attributes)
     {
         var include = document.Convert[index];
-        var mapped = MapConfig(document, index, shape, missingToken, mode);
+        var mapped = MapConfig(document, index, shape, missingToken, restrictCulture, mode);
 
         if (mapped.Section is { } section)
         {
@@ -108,14 +118,14 @@ public static class BedMigrator
             DiagnosticCode.BedParkedConfigDropped,
             $"Excluded attribute '{document.Names[index]}': v2 config was not migrated ({reasons}) — parked bare (include = false).",
             document.Names[index]));
-        attributes.Add(Bare(document, index, shape) with { Include = false });
+        attributes.Add(Bare(document, index, shape, restrictCulture) with { Include = false });
     }
 
     // Maps the v2 config to a full attribute section, include-agnostically; a null
     // Section means the config cannot be transcribed and Diagnostics holds the
     // Error(s). Diagnostics alongside a non-null Section are Warnings.
     private static MappedAttribute MapConfig(
-        BedDocument document, int index, SourceShape? shape, string? missingToken, ScalingMode mode)
+        BedDocument document, int index, SourceShape? shape, string? missingToken, CultureInfo? restrictCulture, ScalingMode mode)
     {
         var name = document.Names[index];
         var type = document.Types[index];
@@ -124,11 +134,11 @@ public static class BedMigrator
 
         return type switch
         {
-            "c" => MapCategorical(document, index, shape, missingToken),
-            "b" => MapDichotomic(document, index, shape, missingToken),
-            "o" => MapNumericCuts(document, index, shape, mode),
+            "c" => MapCategorical(document, index, shape, missingToken, restrictCulture),
+            "b" => MapDichotomic(document, index, shape, missingToken, restrictCulture),
+            "o" => MapNumericCuts(document, index, shape, restrictCulture, mode),
             "n" => new MappedAttribute(
-                Bare(document, index, shape) with
+                Bare(document, index, shape, restrictCulture) with
                 {
                     Discretizer = new OrderedCutsDiscretizerSection(
                         categories, CutTokens(values, out var ends), ends),
@@ -146,11 +156,12 @@ public static class BedMigrator
         };
     }
 
-    private static MappedAttribute MapCategorical(BedDocument document, int index, SourceShape? shape, string? missingToken)
+    private static MappedAttribute MapCategorical(
+        BedDocument document, int index, SourceShape? shape, string? missingToken, CultureInfo? restrictCulture)
     {
         var (domain, labels, missing, warnings) = SplitMissingToken(document, index, missingToken);
         return new MappedAttribute(
-            Bare(document, index, shape) with
+            Bare(document, index, shape, restrictCulture) with
             {
                 Discretizer = new IdentityDiscretizerSection(),
                 Scale = new NominalScaleSection(),
@@ -161,7 +172,8 @@ public static class BedMigrator
             warnings);
     }
 
-    private static MappedAttribute MapDichotomic(BedDocument document, int index, SourceShape? shape, string? missingToken)
+    private static MappedAttribute MapDichotomic(
+        BedDocument document, int index, SourceShape? shape, string? missingToken, CultureInfo? restrictCulture)
     {
         var name = document.Names[index];
         var trueValue = document.Values[index][0];
@@ -177,7 +189,7 @@ public static class BedMigrator
 
         var (domain, labels, missing, warnings) = SplitMissingToken(document, index, missingToken);
         return new MappedAttribute(
-            Bare(document, index, shape) with
+            Bare(document, index, shape, restrictCulture) with
             {
                 Discretizer = new IdentityDiscretizerSection(),
                 Scale = new DichotomicScaleSection(trueValue),
@@ -188,7 +200,8 @@ public static class BedMigrator
             warnings);
     }
 
-    private static MappedAttribute MapNumericCuts(BedDocument document, int index, SourceShape? shape, ScalingMode mode)
+    private static MappedAttribute MapNumericCuts(
+        BedDocument document, int index, SourceShape? shape, CultureInfo? restrictCulture, ScalingMode mode)
     {
         var name = document.Names[index];
         var tokens = CutTokens(document.Values[index], out var ends);
@@ -212,7 +225,7 @@ public static class BedMigrator
         }
 
         return new MappedAttribute(
-            Bare(document, index, shape) with
+            Bare(document, index, shape, restrictCulture) with
             {
                 Discretizer = new ManualCutsDiscretizerSection(cuts, ends),
                 Scale = ScaleFor(mode),
@@ -270,7 +283,7 @@ public static class BedMigrator
     // (§10.1/D-057); everything else unauthored. The full maps build on this via
     // `with`. A wide (or shape-absent) binding binds by positional column; a triple
     // binding binds by predicate name — the v2 attribute name (§19.3/D-086).
-    private static AttributeSection Bare(BedDocument document, int index, SourceShape? shape) =>
+    private static AttributeSection Bare(BedDocument document, int index, SourceShape? shape, CultureInfo? restrictCulture) =>
         new(
             Name: document.Names[index],
             Source: shape == SourceShape.Triple
@@ -282,20 +295,78 @@ public static class BedMigrator
             Discretizer: null,
             Scale: null,
             DeclaredDomain: null,
-            RestrictTo: RestrictEntries(document.RestrictTo[index]),
+            RestrictTo: RestrictEntries(document.RestrictTo[index], document.Types[index], restrictCulture),
             ValueLabels: null,
             MissingPolicy: null,
             UnknownValuePolicy: null);
 
-    // The v2 restrict line: raw values, comma-separated, OR'd within the attribute
-    // (lineage.md). Tokens carry verbatim (no trim — restrict matches raw values);
-    // a blank line means no filter, so restrict_to stays unauthored. Numeric
-    // attributes keep string entries too: v2 restricted by raw-value equality, and
-    // the seam's RestrictToOnNumericRequiresRange owns the shape mismatch (D-063).
-    private static IReadOnlyList<RestrictToEntry>? RestrictEntries(string line) =>
-        line.Trim().Length == 0
-            ? null
-            : line.Split(',').Select(RestrictToEntry (token) => new RestrictToValue(token)).ToList();
+    // The v2 restrict line: raw values, comma-separated, OR'd within the attribute (lineage.md).
+    // Tokens carry verbatim (no trim — restrict matches raw values, and order/duplicates are
+    // authoring state); a blank line means no filter, so restrict_to stays unauthored.
+    //
+    // §10.4/D-091: migration is directed by the v2 attribute TYPE, not by whether a token looks
+    // numeric. Only a token on type `o` (v2's numeric type) is eligible to become an exact
+    // { value = n } entry, parsed under the effective binding locale. Everything else stays a
+    // verbatim string:
+    //   - a numeric-LOOKING token on a categorical/dichotomic/nominal attribute is a string,
+    //     because v2 restricted those by raw-value equality — reinterpreting "007" as 7 would
+    //     silently change which objects survive;
+    //   - an unparseable or non-finite token on type `o` also stays a string, so the ordinary
+    //     resolve seam reports RestrictToNumericEntryRequired rather than the migrator inventing
+    //     a diagnostic or dropping the token.
+    // Migration stays one-way transcription (D-079): it mints no diagnostics of its own here and
+    // never executes a restriction.
+    private static IReadOnlyList<RestrictToEntry>? RestrictEntries(string line, string type, CultureInfo? culture)
+    {
+        if (line.Trim().Length == 0)
+        {
+            return null;
+        }
+
+        var tokens = line.Split(',');
+        var entries = new List<RestrictToEntry>(tokens.Length);
+        foreach (var token in tokens)
+        {
+            // culture is null when the authored locale does not resolve: no token is
+            // reinterpreted at all (RestrictCulture).
+            entries.Add(
+                string.Equals(type, "o", StringComparison.Ordinal)
+                && culture is not null
+                && CanonicalNumber.TryParse(token, culture, out var value)
+                    ? new RestrictToNumber(CanonicalNumber.CanonicalizeZero(value))
+                    : new RestrictToValue(token));
+        }
+
+        return entries;
+    }
+
+    // The locale numeric restrict tokens parse under: binding.locale ?? "invariant", resolved
+    // with the SAME predefined-only rule as the resolve seam (P-7 — a synthesized ICU culture
+    // would make migration OS-dependent).
+    //
+    // §5.1/D-079/D-091: an INVALID authored locale returns null, and the caller then leaves every
+    // token a verbatim string. Deliberately: no invariant fallback (that would parse tokens under
+    // a locale the author did not ask for), no exception (migration is transcription and must
+    // complete), and no migrate-phase diagnostic — full resolution owns BindingLocaleInvalid, and
+    // minting a second code here would give one condition two owners (D-067). The verbatim
+    // strings then attract whatever restriction diagnostics apply independently.
+    private static CultureInfo? RestrictCulture(BindingSection binding)
+    {
+        var locale = binding.Locale ?? "invariant";
+        if (string.Equals(locale, "invariant", StringComparison.OrdinalIgnoreCase))
+        {
+            return CultureInfo.InvariantCulture;
+        }
+
+        try
+        {
+            return CultureInfo.GetCultureInfo(locale, predefinedOnly: true);
+        }
+        catch (CultureNotFoundException)
+        {
+            return null;
+        }
+    }
 
     private static ScaleSection ScaleFor(ScalingMode mode) =>
         mode == ScalingMode.Progressive

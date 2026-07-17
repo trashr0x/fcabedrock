@@ -476,7 +476,7 @@ public sealed class ValueGroupsConversionTests
                 .Select(i => obj.CrossedFormalAttributeIds.Contains(i) ? "X" : ".")));
         }
 
-        return ([.. plan!.FormalAttributes.Select(a => a.RenderedName)], rows, diagnostics);
+        return ([.. plan!.FormalAttributes.Select(a => a.RenderedName)], rows, ConversionFixtures.DataDiagnostics(diagnostics));
     }
 
     [Fact]
@@ -612,7 +612,7 @@ public sealed class ValueGroupsConversionTests
                 .Select(i => obj.CrossedFormalAttributeIds.Contains(i) ? "X" : ".")));
         }
 
-        return ([.. plan!.FormalAttributes.Select(a => a.RenderedName)], rows, diagnostics);
+        return ([.. plan!.FormalAttributes.Select(a => a.RenderedName)], rows, ConversionFixtures.DataDiagnostics(diagnostics));
     }
 
     [Fact]

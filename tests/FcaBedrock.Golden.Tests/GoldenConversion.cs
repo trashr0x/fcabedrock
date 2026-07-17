@@ -42,8 +42,25 @@ internal static class GoldenConversion
             await CxtWriter.WriteAsync(prepared.Plan, session.Open, options, stream);
         }
 
-        Assert.True(diagnostics.Count == 0, Describe(diagnostics));
+        AssertCleanEmit(diagnostics);
         return stream.ToArray();
+    }
+
+    // The .cxt write's collected diagnostics, authoritative (post-disposal), for the tests that
+    // assert on emit observability itself rather than on bytes.
+    public static async Task<IReadOnlyList<BedrockDiagnostic>> CollectCxtDiagnosticsAsync(
+        FixtureCase fixture, WriterOptions options)
+    {
+        var prepared = await PrepareAsync(fixture, options);
+        using var stream = new MemoryStream();
+        var diagnostics = new List<BedrockDiagnostic>();
+
+        using (var session = EmitReplay.Begin(prepared.Emit, diagnostics))
+        {
+            await CxtWriter.WriteAsync(prepared.Plan, session.Open, options, stream);
+        }
+
+        return diagnostics;
     }
 
     public static async Task<byte[]> WriteDatAsync(FixtureCase fixture, WriterOptions options)
@@ -56,7 +73,7 @@ internal static class GoldenConversion
         // authoritative once enumeration completes.
         await DatWriter.WriteAsync(prepared.Emit(diagnostics), DatOptionsFor(fixture, options), stream);
 
-        Assert.True(diagnostics.Count == 0, Describe(diagnostics));
+        AssertCleanEmit(diagnostics);
         return stream.ToArray();
     }
 
@@ -141,11 +158,34 @@ internal static class GoldenConversion
     private static LabelStyle LabelStyleFor(WriterOptions options) =>
         options == WriterOptions.V2Compat ? LabelStyle.V2Compat : LabelStyle.Native;
 
-    // The nine active goldens are all completely clean: no stage may emit any diagnostic
-    // (not even a Warning). A stray one is a real defect, so it fails the run with the
-    // readable list rather than being permitted by TryGetValue/HasErrors.
+    // Every SPEC-side stage of the nine active goldens is completely clean: no diagnostic at all
+    // (not even a Warning). A stray one is a real defect, so it fails the run with the readable
+    // list rather than being permitted by TryGetValue/HasErrors.
     private static void AssertClean(string stage, IReadOnlyList<BedrockDiagnostic> diagnostics) =>
         Assert.True(diagnostics.Count == 0, $"{stage}: {Describe(diagnostics)}");
+
+    // The EMIT stage is clean apart from the whole-stream observability warnings (§16.4/D-105),
+    // which are expected outcomes rather than faults: mini-mushroom's `veil-type-universal`
+    // column is empty in v2's OWN golden bytes (every incidence row carries '.' at that
+    // position), so AttributeHasNoCrosses reporting it is the diagnostic working, not a
+    // regression. The fixtures record what v2 produced and are never edited to silence a
+    // diagnostic (P-9).
+    //
+    // Permitting exactly these three codes — and nothing else — costs no coverage, because
+    // byte-equality is the real gate here and they cannot mask a byte change: a wrongly dropped
+    // cross, a filtered object, or a lost row all move the bytes and fail the comparison
+    // regardless of what was warned. Everything else at emit (unknown/unparseable values,
+    // duplicate keys, storage failures) still fails the run.
+    private static void AssertCleanEmit(IReadOnlyList<BedrockDiagnostic> diagnostics)
+    {
+        var unexpected = diagnostics
+            .Where(d => d.Code is not (
+                DiagnosticCode.AttributeHasNoCrosses
+                or DiagnosticCode.ObjectHasNoCrosses
+                or DiagnosticCode.NoObjectsEmitted))
+            .ToList();
+        Assert.True(unexpected.Count == 0, $"emit: {Describe(unexpected)}");
+    }
 
     private static string Describe(IReadOnlyList<BedrockDiagnostic> diagnostics) =>
         string.Join(Environment.NewLine, diagnostics.Select(d => $"{d.Severity} {d.Code}: {d.Message}"));

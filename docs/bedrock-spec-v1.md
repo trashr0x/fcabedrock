@@ -88,10 +88,11 @@ specs only** (§14) — a spec whose schema is data-dependent (an absent
 a **data-calibrated discretizer configuration**
 (`equal_frequency`, or `equal_width` with a data-derived `range`; `equal_width`
 `range = "manual"` is spec-determined and does **not** disqualify),
-`unknown_value_policy = "include"`, `value_groups` `unmatched = "passthrough"`, or
-any not-yet-executable `restrict_to`) omits the stored fingerprints rather than
+`unknown_value_policy = "include"`, or `value_groups`
+`unmatched = "passthrough"`) omits the stored fingerprints rather than
 storing a value the next
-dataset would invalidate. When present they are verified on load and emitted as
+dataset would invalidate. `restrict_to` does **not** disqualify a spec — its entries
+are authored text, and calibration precedes filtering (§7/§14). When present they are verified on load and emitted as
 warnings if mismatched (`SchemaFingerprintStale`, `CxtOutputFingerprintStale`,
 `DatOutputFingerprintStale`). All are SHA-256 over the plan-derived canonical
 structure described in §14.
@@ -234,7 +235,7 @@ Attributes under triple binding use
 > identity is always the resolved **subject** (§5.4): there is no separate
 > subject-name filter, and an authored `[binding.object_key]` under triple is
 > rejected (`ObjectKeyModeInvalidForShape`). Object filtering is the ordinary
-> `restrict_to` (§10.4), executed at M4.
+> `restrict_to` (§10.4).
 
 ### 5.3.1 Triple multi-value and grouping semantics
 
@@ -468,11 +469,15 @@ this separation (see decisions.md D-003, D-005).
    formal-attribute schema with stable IDs, scale instances, restriction predicates,
    and ordering rules. Plan **never** plans from unresolved calibration-dependent
    state (D-093). Pure; reads no data.
-4. **Emit** — stream objects through the plan, applying restriction, then
-   discretization, then scaling, producing the output. `.dat` is single-pass.
-   `.cxt` needs the object count and all object names before any incidence row,
-   so it uses a replay-or-spool strategy (§18.1) — never materializing the full
-   incidence matrix in Core.
+4. **Emit** — stream objects through the plan, producing the output. Each formed
+   object is **discretized and scaled first**, then the object as a whole is kept or
+   dropped by `restrict_to`; restriction reads the object's **raw values, before
+   discretization** (§10.4), but it selects *objects*, so an included attribute is
+   classified — and reports its ordinary value diagnostics — whether or not the
+   object survives (§10.4/D-097). A surviving object keeps **all** its crosses.
+   `.dat` is single-pass. `.cxt` needs the object count and all object names before
+   any incidence row, so it uses a replay-or-spool strategy (§18.1) — never
+   materializing the full incidence matrix in Core.
 
 **Fully-declared specs skip Calibrate.** A spec with explicit `declared_domain`s
 wherever a discretizer consumes one (`identity` / `free_per_value`), only
@@ -510,8 +515,7 @@ observation contributes once (§5.3.1); and **wide** rows are independent
 observations. This population is the input universe, evaluated before `restrict_to`
 (below).
 
-> **Transitional (M4 in progress).** The Calibrate phase landed across the M4
-> slices and is now **complete**. **Slice A** (D-098) implemented the
+> **How the Calibrate phase landed (M4, complete).** **Slice A** (D-098) implemented the
 > discovery-class calibration: filling an absent `declared_domain` under a
 > consuming discretizer (`ObservedDomainUsed`) and `unknown_value_policy =
 > "include"` (§10.6), for the M1 `identity` discretizer; **Slice B** (D-101)
@@ -525,11 +529,10 @@ observations. This population is the input universe, evaluated before `restrict_
 > bounded-memory aggregated population, together with the §5.3.1 subject-local
 > deduplication their counts require; and **Slice E** (D-104) added the last one,
 > `value_groups` `unmatched = "passthrough"` (§11.6), which discovers one bin per
-> observed ungrouped value on the raw-order pass. Every §11 discretizer kind is now
-> executable. The remaining M4 work is `restrict_to` **execution** (§10.4), which
-> is still rejected at plan with `RestrictToNotImplementedV1` (§16.4); it does not
-> affect this phase, since restriction never shapes the calibration population
-> (below).
+> observed ungrouped value on the raw-order pass. Every §11 discretizer kind is
+> executable. **Slice F** (D-105) then added `restrict_to` execution (§10.4),
+> completing M4; it does not affect this phase, since restriction never shapes the
+> calibration population (below).
 
 **`convert` calibrates but never discovers.** Discovery (draft-spec generation
 from data) is the separate `probe` operation (D-003), never performed implicitly
@@ -894,17 +897,33 @@ its object: restrictions **filter objects, not observations**, and each raw
 observation is diagnosed **at most once** (the restriction pass and discretization
 pass never double-count the same cell).
 
+**Sequencing vs `duplicate_object_policy`.** Restriction is evaluated on each formed
+object's **complete** observation set, and object formation order is unchanged
+(decisions.md D-105). Concretely:
+
+- **Wide `row_index` / `fail` / `keep`** — the row is the formed object. It is
+  classified, then filtered; a **non-surviving row is not an object**, so it triggers
+  no `fail` duplicate check and consumes no `keep` assigned name (§6.1 assigns those in
+  **emission** order). **`row_index` names are input positions and filtering never
+  renumbers them** (§5.4): if row 0 is filtered and row 1 survives, the survivor is
+  still named `1`.
+- **Wide `dedupe`** — grouping and merging **precede** restriction (above), and the
+  aggregated `DuplicateObjectKey` (Info) counts merged rows **pre-filter**: it reports
+  what the *input* contained, so a merged object the restriction later drops is still
+  counted.
+- **Triple** — the subject's group closes, then the restriction decides emission.
+  Structural checks (subject validity, `subject_grouped` contiguity) precede filtering
+  and are independent of it.
+
 Within one `restrict_to` list every entry must satisfy the attribute's single
 `value_type` (§10.2): a string-fixing source accepts only string entries, a
 number-fixing source only **numeric** entries (exact `{ value = n }` or ranges). A
 genuinely mixed string/numeric list is therefore a **validation error**
 (`SourceValueTypeInvalid` / `RestrictToNumericEntryRequired`, below) — no
-single-attribute `value_type` admits both. The **string-list and `{ from, to }`
-range forms parse and round-trip today** (D-057); the **exact `{ value = n }`
-carrier lands at M4** with restriction execution (below).
+single-attribute `value_type` admits both.
 
-**Static validation (M2).** Even though `restrict_to` *execution* is deferred
-(below), its *shape* is validated at parse/validate from M2 onward:
+**Static validation.** A `restrict_to` list's *shape* is validated at parse/validate,
+independently of the data it will later filter:
 
 - a numeric source (`value_type = "number"`, or a numeric-cut discretizer) whose
   `restrict_to` contains a **bare string** entry is `RestrictToNumericEntryRequired`
@@ -918,23 +937,13 @@ carrier lands at M4** with restriction execution (below).
   applies — `identity` / `free_per_value`) is `RestrictToValueNotInDomain`
   (Warning), a typo-catcher.
 
-These are *shape* checks only — no rows are filtered until execution lands at M4.
-**M2** validates the existing string / `{ from, to }` range carrier and its
-type-shape mismatches (`SourceValueTypeInvalid`, the bare-string reject
-`RestrictToNumericEntryRequired`, `RestrictToValueNotInDomain`); the exact
-`{ value = n }` carrier and **all** `RestrictToRangeInvalid` checks — for both
-exact values and ranges — arrive at **M4** (the code does not exist today).
+These are *shape* checks: they reject a list that could never filter meaningfully,
+without reading a row.
 
-> **Execution lands at the restriction milestone (M4).** `restrict_to` is a v1
-> feature, but its *execution* is sequenced after M2. Today the **string-list and
-> `{ from, to }` range forms parse and round-trip** (open, closed, and mixed with
-> strings); the **exact `{ value = n }` carrier and all restriction execution land
-> at M4** — planning/conversion **rejects** any `restrict_to` with
-> `RestrictToNotImplementedV1` until then (`roadmap.md`), never silently ignored.
-> While execution is unimplemented, `restrict_to` does **not** yet enter the output
-> fingerprints and a spec containing any `restrict_to` is not "fully frozen", so
-> tooling stores no fingerprints for it; at M4 it joins **both** output
-> fingerprints via the canonical `restrictions` encoding (§14).
+`restrict_to` enters **both** output fingerprints via the canonical `restrictions`
+container (§14). It does **not** make a spec data-dependent — the entries are authored
+text, and §7 computes calibration and the column vocabulary over the input universe
+*before* restriction selects objects — so a restricting spec can be fully frozen (§14).
 
 ### 10.5 missing_policy
 
@@ -1859,8 +1868,7 @@ bytes:
   the row-shaping settings `schema_fingerprint` deliberately omits —
   `duplicate_object_policy` (which shapes which objects appear and in what order;
   and `restrict_to`, encoded as the canonical `restrictions` container defined
-  below — it joins **both** output fingerprints when its execution lands at M4,
-  and is transitionally absent until then, §10.4); and the conversion-affecting binding/source settings —
+  below, §10.4); and the conversion-affecting binding/source settings —
   binding shape, the **resolved** column/predicate mappings (for triple, the
   resolved role→column-index map; a role bound by header name and the equivalent
   index bind hash identically, §5.3 — the triple `ordering` field is **not** a
@@ -1912,8 +1920,10 @@ planned-order rule above — its arrays are **canonically sorted**, not left in
 planned order, so restriction order is immaterial. Each **restriction object**
 carries the attribute's resolved `source` reusing the per-attribute source encoding
 (`{"predicate":<name>,"value_type":<type>}` or
-`{"column":<index>,"value_type":<type>}`, D-077 — no new source vocabulary) and its
-`entries` array (serialized `{"entries":[…],"source":{…}}`, keys sorted):
+`{"column":<index>,"value_type":<type>}`, D-077 — no new source vocabulary), its
+`entries` array, and the attribute's resolved `unknown_value_policy` (serialized
+`{"entries":[…],"source":{…},"unknown_value_policy":<string>}`, keys sorted
+`entries` < `source` < `unknown_value_policy`):
 
 - string exact `{"value":<string>}`; numeric exact `{"value":<number>}` (the number
   via the canonical formatter above, so `30`, `30.0`, `3e1` encode identically);
@@ -1927,6 +1937,27 @@ carries the attribute's resolved `source` reusing the per-attribute source encod
   canonical JSON with **exact duplicates removed**. Filter-only attributes
   (`include = false` + `restrict_to`) contribute their restriction object here — not
   through the included-attribute column encoding.
+
+**Ordinal here means UTF-16 code units, compared before UTF-8 encoding** (P-12's
+definition; decisions.md D-105). The sort is applied to the canonical JSON **strings**,
+never to their encoded bytes: the two orders diverge between a BMP character at or above
+U+E000 and a supplementary character (U+E000 is one code unit `0xE000`, above U+1F600's
+lead surrogate `0xD83D` — yet its UTF-8 lead byte `0xEE` sorts *below* `0xF0`). Sorting
+encoded bytes would therefore hash the same spec differently.
+
+**The `unknown_value_policy` key** is on **every** restriction object, uniformly.
+`unknown_value_policy` is live, abort-affecting configuration on a **filter-only**
+attribute (§10.4/§10.6: an unparseable filtered value is an Error under `fail` and a
+Warning under `warn`), and a filter-only attribute contributes no entry to
+`attributes` — without the key, two specs that behave differently would hash
+identically. For an included-and-restricted attribute the value therefore appears both
+here and in `attributes`: deliberate encoding redundancy for one uniform object shape,
+not a double-counted input (nothing is summed).
+
+**Canonical sorting and deduplication are a fingerprint projection only.** The TOML
+document, the resolved spec, the plan, and emit all preserve authored order and
+duplicates; only this encoding sorts and collapses them, because restriction order and
+repetition are semantically immaterial (entries OR, restrictions AND).
 
 **M4 discretizer encodings (`shared.attributes[].discretizer`).** Each attribute's
 resolved discretizer is encoded in `shared` under the conventions above (UTF-8 no
@@ -1968,11 +1999,17 @@ calibration (an absent `declared_domain` where a discretizer consumes it —
 `identity` / `free_per_value`), no **data-calibrated discretizer configuration**
 (`equal_frequency`, or `equal_width` with a data-derived `range`;
 `equal_width` `range = "manual"` is spec-determined and does **not** disqualify),
-no `unknown_value_policy = "include"`, no `value_groups` `unmatched = "passthrough"`,
-and no `restrict_to` while its execution is unimplemented. A spec needing any of
-these is data-dependent (or not-yet-executable), so a stored hash would be
-invalidated by the next dataset (or by the feature landing); such runs record the
+no `unknown_value_policy = "include"`, and no `value_groups`
+`unmatched = "passthrough"`. A spec needing any of these is data-dependent, so a
+stored hash would be invalidated by the next dataset; such runs record the
 **effective** fingerprints in the run manifest (§15) instead.
+
+`restrict_to` does **not** disqualify a spec: its entries are authored text, and §7
+computes calibration and the column vocabulary over the input universe *before*
+restriction selects objects — so a restricting spec is fully determined by its own text
+and can be frozen. (This clause previously excluded `restrict_to` only because its
+execution was unimplemented, which would have let a stored hash be invalidated by the
+feature landing; that exclusion retired with M4 Slice F, D-105.)
 
 **Native vs effective fingerprints (CLI overrides).** Fingerprints stored in
 the `[spec]` block describe the spec's **native resolved output settings only**
@@ -2060,6 +2097,29 @@ public enum DiagnosticSeverity { Info, Warning, Error, Fatal }
   (e.g., spec validation fails, but file remains usable).
 - **Fatal**: unrecoverable; the implementation should stop processing.
 
+**Artifact validity (normative).** A conversion's output artifact is valid **only if**
+the run's collected diagnostics contain **no Error and no Fatal**. On any Error/Fatal
+**the caller MUST discard the output**, whatever was written. Writers emit to
+caller-owned sinks and cannot retract bytes (§15/§18.1, P-15), so this is not something
+the writer can enforce for the caller. An invalid run reaches that state one of **two**
+ways, and they leave different bytes on disk:
+
+- a **structural or grouping-storage halt** (an invalid object key, a non-contiguous
+  `subject_grouped` subject, an in-path spool failure) stops the object stream, so both
+  `.cxt` passes truncate **identically** — leaving a structurally well-formed but
+  **truncated** file the object-name-sequence invariant (§18.1) cannot detect, and a
+  `.dat` holding only the rows written before the halt;
+- a **policy abort** (`unknown_value_policy = "fail"` meeting an unparseable value,
+  §10.6/§10.4) does **not** stop enumeration: the aggregated per-attribute diagnostic
+  (§16.4) requires reading the whole population, so the stream **completes**, the Error
+  flushes at the end, and the output is fully written — a **complete but invalid**
+  `.cxt`, and a `.dat` holding every survivor. "Abort" here is Error's operation-failed
+  semantics, not "stop reading rows".
+
+Either way the artifact is invalid and the caller must discard it. For `.cxt` the
+diagnostics are authoritative only **after** the replay session is disposed, which is
+when cross-pass aggregates are flushed. (decisions.md D-105.)
+
 ### 16.3 `DiagnosticLocation`
 
 ```csharp
@@ -2138,7 +2198,6 @@ exactly one phase — the "Where" column below is the phase-ownership contract
 | `OrdinalBoundaryIncompatibleWithCuts` | Error | spec validate |
 | `ValueGroupsLabelDuplicate` | Error | spec validate |
 | `ValueGroupsPassthroughDataDependent` | Warning | calibrate |
-| `RestrictToNotImplementedV1` | Error | plan (transitional) |
 | `TemplateMatcherNotImplementedV1` | Error | spec resolve (transitional) |
 | `SchemaFingerprintStale` | Warning | spec load |
 | `CxtOutputFingerprintStale` | Warning | spec load |
@@ -2162,17 +2221,19 @@ correctly-phased `AttributeHasNoCrosses` (an empty column, emit) and
 filtering, emit). All four still write a structurally-valid (if degenerate)
 output rather than failing.
 
-**Transitional codes.** `RestrictToNotImplementedV1` and
-`TemplateMatcherNotImplementedV1` (owned by spec resolve — templates/matchers
-never resolve into Core, D-078)
-are emitted only by milestones *before* the feature's implementation milestone
-(restrict_to → M4, templates/matchers → M6;
-`roadmap.md`); they are removed once the feature lands and are **not** part of the
+**Transitional codes.** `TemplateMatcherNotImplementedV1` (owned by spec resolve —
+templates/matchers never resolve into Core, D-078)
+is emitted only by milestones *before* the feature's implementation milestone
+(templates/matchers → M6;
+`roadmap.md`); it is removed once the feature lands and is **not** part of the
 v1 end-state set. (`ObjectKeyColumnNotImplementedV1` retired when wide `dedupe`
 landed at M3 Slice F; `ObservedDomainCalibrationNotImplementedV1` retired when
 observed-domain calibration landed at M4 Slice A — D-098, so an absent
 `declared_domain` under a consuming discretizer is now filled by the Calibrate
-phase, §10.3.) They are distinct from the permanent `*NotImplementedV1`
+phase, §10.3; `RestrictToNotImplementedV1` retired when `restrict_to` execution
+landed at M4 Slice F — D-105, **M4's last transitional code**, so a `restrict_to`
+now filters objects rather than rejecting the conversion, §10.4.) They are distinct
+from the permanent `*NotImplementedV1`
 reservations in §20. (`DiscretizerKindNotYetSupported` — a recognized-but-deferred
 discretizer kind rejected at read with no parameter carrier, D-070 — was
 transitional on the same terms and **retired at M4 Slice E**, D-104: the set
@@ -2207,9 +2268,11 @@ count with a bounded sample, never one diagnostic per row, so a malformed column
 at 73M records does not produce 73M diagnostics.
 
 The `DiagnosticCode` enum is the authority for the codes a build can actually
-raise; it grows per slice (P-3), so it currently holds fewer members than this
-registry — the future-phase rows above (the calibrate/emit/export codes and the
-deferred-milestone reservations) join the enum as their emit sites land.
+raise; it grows per slice (P-3), so it holds fewer members than this registry — a
+registry row joins the enum when the milestone owning its site lands (D-085). After M4
+the outstanding rows are `OutputCxtSizeAdvisory` (export, M7) and
+`DateValueTypeNotImplementedV1` (the D-038 date carrier); every other row above is
+live.
 
 ## 17. Determinism rules
 
@@ -2327,11 +2390,31 @@ streams in a single pass.)
 **Object-name sequence invariant (normative).** When the writer replays the object
 stream, the two passes MUST yield the **same object-name sequence** — the same count
 and the same order. The writer checks each pass-2 object's name against the pass-1
-name at its position and fails the write (a structural error; the partial output is
-discarded) on a mismatch, overflow, or shortfall, so a non-deterministic producer
-cannot silently misalign the header names and the incidence rows. (Full producer
-content determinism — that a replay also yields the same *crosses* — is a separate
-determinism property, §17; the writer enforces only name/row alignment.)
+name at its position and fails the write (a structural error; **the caller must discard
+the partial output**, §16.2) on a mismatch, overflow, or shortfall, so a
+non-deterministic producer cannot silently misalign the header names and the incidence
+rows. (Full producer content determinism — that a replay also yields the same
+*crosses* — is a separate determinism property, §17; the writer enforces only name/row
+alignment.)
+
+**What this invariant does not catch.** It compares the two passes against *each other*,
+so it is blind to any failure both passes reproduce identically — of which there are two
+kinds, both leaving an invalid `.cxt` the invariant passes over (§16.2):
+
+- a **structural halt** (an invalid object key, a non-contiguous `subject_grouped`
+  subject, an in-path spool failure) stops the object stream at the same deterministic
+  point in each pass, so the names still align, the write returns, and a structurally
+  well-formed but **truncated** `.cxt` results;
+- a **`fail`-policy abort** (§10.6/§10.4) does **not** truncate at all: the aggregated
+  diagnostic requires reading the whole population (§16.4), so both passes emit the
+  **complete** object sequence, the write returns, and a **complete but invalid** `.cxt`
+  results.
+
+In both cases the only signal is the Error in the run's diagnostics (§16.2), inspected
+after the replay session is disposed. The writer cannot discard the file: the bytes are
+already in a caller-owned sink, and a writer that decided what to publish would no longer
+be a dumb exporter (P-15). Transactional publication belongs to the conversion-run
+abstraction (M7, `roadmap.md`).
 
 ### 18.2 FIMI `.dat`
 
@@ -2604,11 +2687,9 @@ restriction and is excluded. `TheilerStage` could instead pin exact stages —
 `restrict_to = [{ value = 5 }, { value = 6 }]` keeps only TS 5 and 6 (matched by
 parsed numeric identity).
 
-> This example illustrates the v1 **end-state**. Its `value_groups` grouping and its
-> `equal_frequency` calibration are now executable (M4 Slices E and D); the one part
-> still transitional is **`restrict_to` execution**, so a spec like this round-trips
-> and calibrates but is rejected at conversion with `RestrictToNotImplementedV1`
-> (§10.4) until that lands.
+> This example is **executable**: its `value_groups` grouping (M4 Slice E), its
+> `equal_frequency` calibration (Slice D), and its `restrict_to` filtering (Slice F,
+> D-105) all run. Nothing in it is transitional.
 
 ## 20. Modelled-but-not-implemented appendix (v1)
 

@@ -6,9 +6,15 @@ namespace FcaBedrock.Core.Planning;
 /// <summary>
 /// One attribute's executable restriction (§10.4/D-091), planned for every
 /// attribute with a non-empty <c>restrict_to</c> — included or filter-only. Order
-/// is spec-attribute order (deterministic, P-7). The <c>restrict_to</c> execution
-/// engine lands at M4 slice F; slice A only carries the (currently always empty)
-/// list on the plan.
+/// is spec-attribute order (deterministic, P-7); it never reorders formal
+/// attributes or objects.
+/// <para>
+/// A <b>filter-only</b> attribute (<c>include = false</c> + <c>restrict_to</c>)
+/// contributes <em>only</em> this — no <see cref="PlannedAttribute"/> and no formal
+/// column — which is why the value type and policy are carried here rather than
+/// read from a <see cref="PlannedAttribute"/> that may not exist. An
+/// included-and-restricted attribute contributes both.
+/// </para>
 /// </summary>
 public sealed record PlannedRestriction
 {

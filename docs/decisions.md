@@ -150,7 +150,7 @@ superseded or refined. A new entry MUST add its line here.
 - D-088 — Shared auto-calibration invariants + equal-frequency contract (restates D-028)
 - D-089 — Equal-width range-mode contract
 - D-090 — `value_groups` execution contract
-- D-091 — `restrict_to` execution contract: existential matching, exact numeric entries, canonical `restrictions` encoding (refines D-063/D-076/D-079) *(merged-`dedupe` restriction + type-directed migration clarified in place — Tier 2 audit)*
+- D-091 — `restrict_to` execution contract: existential matching, exact numeric entries, canonical `restrictions` encoding (refines D-063/D-076/D-079) *(merged-`dedupe` restriction + type-directed migration clarified in place — Tier 2 audit; `unknown_value_policy` key added in place at Slice F; realized by D-105)*
 - D-092 — Numeric `free_per_value` rendered labels
 
 ### Tier 2 M4 implementation-contract audit (pre-M4)
@@ -182,6 +182,10 @@ superseded or refined. A new entry MUST add its line here.
 ### M4 Slice E (value_groups)
 
 - D-104 — `value_groups` executable (skip/other/passthrough): first-match grouping with pinned regex semantics, authored-presence matchers, raw-order pass-through discovery, ordinal over group labels, and the final `DiscretizerKindNotYetSupported` retirement (realizes D-022/D-055/D-090/D-093/D-094/D-095; the G-8/G-11 governance items; completes D-070)
+
+### M4 Slice F (restrict_to execution + emit observability)
+
+- D-105 — `restrict_to` executable: exact numeric entries, existential object filtering, restriction-vs-duplicate-key sequencing, filter-only diagnostic ownership, the three emit-observability aggregates, the policy-bearing `restrictions` fingerprint container, and the caller-discard output contract (realizes D-021/D-057/D-063/D-076/D-079/D-091/D-097; the G-2/G-6/G-9/G-10/G-12 governance items; retires `RestrictToNotImplementedV1` — **completes M4**)
 
 Spec-field defaults are recorded in spec §21 items 1–11 (see the final section
 of this file).
@@ -2772,8 +2776,11 @@ enum members, and golden activation are the M3 *implementation* that follows.
 
 - **Status:** accepted (pre-M4 Tier 1 audit; docs-only; refines D-063/D-076/D-079).
   Merged-`dedupe` restriction and type-directed migration **clarified in place** by
-  the pre-M4 Tier 2 audit (2026-07-13) — no superseding entry, the D-091 contract is
-  still unimplemented (the correcting-fresh-decision convention).
+  the pre-M4 Tier 2 audit (2026-07-13). The restriction-object encoding gained its
+  **`unknown_value_policy` key** in place at M4 Slice F (2026-07-17, the G-9
+  governance item — see D-105); both amendments use the correcting-fresh-decision
+  convention rather than a superseding entry, because the D-091 contract was still
+  unimplemented when they were made. **Realized by D-105.**
 - **Date:** 2026-07-12
 - **Decision:** the M4 execution semantics, numeric surface, migration mapping, and
   fingerprint encoding for `restrict_to`.
@@ -2810,8 +2817,9 @@ enum members, and golden activation are the M3 *implementation* that follows.
     (§14) — entering **both** output fingerprints, excluded from
     `schema_fingerprint` — present only when non-empty and, as an explicit
     exception to the planned-order rule, **canonically sorted**. Each restriction
-    object is `{"entries":[…],"source":{…}}` reusing the D-077 source encoding
-    (`{"predicate":<name>,"value_type":<type>}` or
+    object is `{"entries":[…],"source":{…},"unknown_value_policy":<string>}` (keys
+    sorted `entries` < `source` < `unknown_value_policy`), reusing the D-077 source
+    encoding (`{"predicate":<name>,"value_type":<type>}` or
     `{"column":<index>,"value_type":<type>}`); entries are `{"value":<string>}`,
     `{"value":<number>}`, or `{"from":<number|null>,"to":<number|null>}` (both range
     keys always present). Entries sort by complete canonical JSON (ordinal) with
@@ -2819,6 +2827,16 @@ enum members, and golden activation are the M3 *implementation* that follows.
     overlapping-but-non-identical ranges **not** merged; restriction objects (AND)
     sort likewise with exact duplicates removed; filter-only attributes contribute
     their object here, not through the included-attribute column encoding.
+    - *In-place amendment (M4 Slice F, G-9).* The `unknown_value_policy` key was
+      **added** to the restriction object after this entry first landed. Reason: D-097
+      makes the policy **live, byte/abort-affecting** configuration on a filter-only
+      attribute (a `fail` spec aborts a run its otherwise-identical `warn` twin
+      completes), and a filter-only attribute never enters `shared.attributes` — so
+      the original two-key object would have hashed two behaviourally different specs
+      identically. It is encoded on **every** restriction object for one uniform
+      shape; for an included-and-restricted attribute the value therefore also appears
+      in `shared.attributes`, which is deliberate encoding redundancy (a value
+      repeated), **not** the D-035 double-*counting* (nothing is summed).
 - **Why:** `restrict_to` was carried and shape-validated (D-057/D-063/D-076/D-079)
   but its execution, numeric surface, and fingerprint encoding were open; M4 needs
   all three pinned before rows are filtered, and reusing the D-077 source encoding
@@ -3799,6 +3817,182 @@ pattern).
   reader/writer/`TomlSpellings`/`DocumentSnapshot`, seam resolution + the two new validations),
   Diagnostics (+3, −1); spec §7 / §11.6 / §12.3 / §16.4 / §19.4 (transitional-note retirements).
   Realizes D-022/D-055/D-090/D-093/D-094/D-095; the G-8/G-11 governance items; completes D-070.
+
+---
+
+## M4 Slice F (restrict_to execution + emit observability)
+
+### D-105 — `restrict_to` executable: exact numeric entries, existential object filtering, sequencing, filter-only diagnostics, emit observability, the policy-bearing `restrictions` container, and caller-discard output
+
+- **Status:** accepted (M4 Slice F; realizes D-091/D-097; the G-2/G-6/G-9/G-10/G-12
+  governance items; **completes M4**)
+- **Date:** 2026-07-17
+- **Decision:** `restrict_to` executes. This is the last M4 transition: the deferred
+  discretizers all landed across Slices A–E, and the restriction reject was the only
+  M4 code left standing.
+  - **Exact numeric entries.** The public Core carrier is
+    `RestrictToNumber(double Value)` — **parsed numeric identity**, not string-spelling
+    equality and not a single-point range: `30`, `30.0`, and `3e1` are one entry, and
+    matching has **no tolerance**. It is deliberately a positional record able to hold a
+    non-finite value, because the Spec document model reuses the Core union (D-057), so
+    the carrier must represent an authored `{ value = nan }` long enough for the
+    **resolve seam** to diagnose it as `RestrictToRangeInvalid` on the user channel — a
+    throwing factory would put an authoring error on the exception channel (P-14). The
+    boundary is layered instead: the seam validates and zero-canonicalizes, and
+    `ResolvedSpec.Create` (plus the calibrated-state factories) **throw** for anything
+    non-finite that survives past it, which only a hand-built graph can produce. The
+    union now has exactly three recognized variants; an unknown one is rejected at the
+    trust boundary rather than silently ignored.
+  - **Zero canonicalization is scoped (G-6).** Restriction exact values and provided
+    range bounds are zero-canonicalized **at the seam** (the already-numeric arm of the
+    D-096 chain) and migrated tokens at the migrator (the text-sourced arm), so an
+    authored `-0` resolves, matches, plans, and hashes identically to `0`.
+    `CanonicalJson.AppendNumber` is **untouched** and still formats `-0.0` as `-0` —
+    which is precisely what keeps every authored manual-cut byte and every stored
+    `fp_format = 1` hash unmoved. Canonicalization at the seam is what makes the
+    untouched encoder safe.
+  - **Matching is existential, over formed objects.** One shared matcher serves all four
+    emit paths, so wide streaming, wide `dedupe`, and both triple orderings cannot drift
+    about what a restriction means: an object passes a restriction when **at least one**
+    of its observations for that source matches **at least one** entry (OR across both),
+    and is emitted only when **every** restriction passes (AND). Missing matches nothing;
+    an absent triple predicate supplies no observation and fails. Strings compare
+    **ordinally** (P-12); numbers parse under `binding.locale` — derived **once per emit**,
+    never ambient — then zero-canonicalize; unparseable/non-finite input is a non-match;
+    ranges are half-open `[from, to)` and `{}` matches any usable numeric value.
+    Restrictions read **cleaned raw values before discretization** and never consult bins.
+  - **Restrictions filter objects, not observations.** A surviving object keeps **all**
+    its crosses, not only the matching ones — so classification runs for every formed
+    object, filtered or not.
+  - **Sequencing vs the object-key policies (G-2).** Restriction is evaluated on each
+    formed object's **complete** observation set; object formation order is unchanged.
+    Wide single-pass: classify → filter → (survivors only) key validity, duplicate
+    policy, name assignment. A non-surviving row **is not an object**, so it trips no
+    `fail` duplicate check and consumes no `keep` assigned name (which are assigned in
+    *emission* order, §6.1). **`row_index` names are input positions and filtering never
+    renumbers them**: if row 0 is filtered and row 1 survives, the survivor is still `1`.
+    Wide `dedupe`: grouping strictly **precedes** filtering — one restriction is evaluated
+    existentially over all merged observations, one match preserves the whole object with
+    every cross, and a non-surviving group is dropped only after grouping and
+    classification; the aggregated `DuplicateObjectKey` (Info) is therefore **pre-filter**
+    (the intake hook observes the raw stream), which is right — it reports what the input
+    contained. Triple: the subject's complete group is the formed object, so emission is
+    decided at group close; contiguity and subject validity are structural, precede
+    filtering, and are independent of it.
+  - **Filter-only diagnostic ownership (D-097).** A filter-only attribute has no
+    discretization pass, so the restriction path is its **only** diagnostic owner: an
+    unparseable/non-finite numeric observation is a non-match **plus** one aggregated
+    `SourceValueUnparseable` at the severity `unknown_value_policy` selects (`skip`
+    silent, `warn` Warning, `fail` Error, `include` Warning). A valid non-match and a
+    missing value are **silent** — a non-match is the filter working. For an
+    **included**-and-restricted attribute the classification pass already owns that
+    diagnostic, so the restriction path stays silent for it: at-most-once is **per raw
+    observation per attribute per pass**. (Two attributes bound to one column each report
+    once — tallies are attribute-owned, which is not double-counting.)
+  - **Emit observability.** The three §16.4 warnings registered since M2 gain their sites
+    (D-085 enum timing): `NoObjectsEmitted` (zero rows), `ObjectHasNoCrosses` (empty
+    rows), and `AttributeHasNoCrosses` (empty columns) — the latter two **aggregated**
+    (count + ≤3 samples, in emission and plan order respectively), tracked over a bounded
+    `bool[]` and a tally, never the matrix (P-16). Only **emitted** objects count. They
+    flush in the pinned order whole-context → rows → columns, and are suppressed on **any
+    invalid run** — the same predicate G-12 uses for the artifact itself: any Error/Fatal
+    among the emit diagnostics. That covers two cases, which differ in whether the stream
+    stops:
+    - a **structural halt or storage failure** stops the object stream, so the aggregates
+      would describe a truncated read (the established §16.4 rule, unchanged);
+    - an **`unknown_value_policy = "fail"` abort** (a filter-only restriction's or an
+      included attribute's) does **not** stop the stream — the aggregated per-attribute
+      diagnostic requires reading the whole population (D-050/D-059), so enumeration
+      completes and the Error flushes at the end — but the run is invalid, so describing
+      the shape of a context the caller must discard (G-12) is noise. This is a
+      deliberate refinement of the approved plan's "restriction-`fail` halt truncates"
+      wording: literal truncation would contradict the aggregation contract and change
+      the pre-Slice-F included-attribute `fail` behaviour, so "abort" is read as §16.2's
+      Error/operation-failed semantics, not "stop reading rows". The §18.1 and §16.2
+      spec text carry this distinction normatively.
+    The warnings route through the ordinary data sink, so the `.cxt` replay session's
+    first-pass claim single-counts them. Empty columns are **expected** after filtering,
+    not a fault:
+    §7 fixes the vocabulary over the input universe before objects are selected.
+  - **The `restrictions` fingerprint container (G-9/G-10).** Present in `shared` only when
+    some attribute restricts — so every restriction-free spec keeps its exact prior bytes
+    and hashes — after `attributes` and `binding`. Each object carries `entries`, the
+    D-077 `source` encoding verbatim, and the resolved `unknown_value_policy` (G-9; see
+    the D-091 in-place amendment for why). Entries and objects are sorted by their
+    complete canonical JSON with **`StringComparer.Ordinal`** — a **UTF-16 code-unit**
+    compare over the JSON strings, applied **before** UTF-8 encoding (G-10) — and exact
+    canonical duplicates removed; overlapping-but-distinct ranges are never merged. This
+    sorting/deduplication is a **fingerprint projection only**: the document, the resolved
+    authored list, the plan, and emit all keep authored order and duplicates.
+  - **Type-directed `.bed` migration (D-091).** Only a restrict token on v2 type `o`
+    migrates numerically, parsed under `binding.locale ?? "invariant"` with the same
+    predefined-only rule as resolution. An unparseable/non-finite token on `o`, and every
+    token on a categorical type, stays a **verbatim string** — v2 restricted those by raw
+    value, so reinterpreting `007` as `7` would silently change which objects survive. An
+    **invalid locale** reinterprets nothing, does not fall back to invariant, does not
+    throw, and mints no migrate-phase diagnostic: full resolution owns
+    `BindingLocaleInvalid` (D-067 — one condition, one owner).
+  - **Caller-discard output contract (G-12), normative.** Writers serialize their inputs
+    to **caller-owned sinks** and remain semantically dumb (P-15); they cannot retract
+    bytes. A run's artifact is valid **only if** the run's collected diagnostics — for
+    `.cxt`, inspected **after `EmitReplaySession` disposal**, which is when the final
+    cross-pass aggregates land — contain no Error/Fatal; otherwise **the caller must
+    discard it**. This is not hypothetical: a *deterministic* halt truncates both `.cxt`
+    passes **identically**, so the object-name-sequence invariant cannot catch it and a
+    structurally well-formed but truncated file can exist alongside an Error; and `.dat`
+    streams rows immediately, so bytes precede any later Error. Transactional publication
+    remains M7's conversion-run abstraction.
+  - **Diagnostics.** Adds `RestrictToRangeInvalid` (Error, spec validate),
+    `NoObjectsEmitted`, `AttributeHasNoCrosses`, `ObjectHasNoCrosses` (Warning, emit);
+    **renames** `RestrictToOnNumericRequiresRange` → `RestrictToNumericEntryRequired`
+    with its check site, **with no alias** (the old name stopped being true once an exact
+    entry existed — keeping both would give one condition two names, D-067); **removes**
+    `RestrictToNotImplementedV1`. Registry: 67 + 4 − 1 = **70** (the rename is
+    count-neutral).
+  - **M4 is complete.** Every v1 discretizer kind executes, every `restrict_to` form
+    executes, and no M4 transitional diagnostic or guard remains. Later milestones'
+    transitions are untouched: `TemplateMatcherNotImplementedV1` (M6),
+    `SpecSurfaceNotYetSupported` (naming carriers → M6, date → D-038), and the permanent
+    v1 reservations all stand. **M5 (`probe`/discovery) is next.**
+- **Why:** `restrict_to` was carried, shape-validated, and fingerprint-specified across
+  D-057/D-063/D-076/D-079/D-091/D-097, but never executed — a spec could express a filter
+  the converter rejected. Executing it closes v1's last silent-output gap in the M4 scope
+  and is what makes the filter-only pattern (§10.4's "keep only objects whose Gene is
+  Bmp5" without a Gene column) real. The sequencing rule (G-2) had to be pinned because
+  §6.1/§10.4 were silent on it and the two orders are observably different (a filtered
+  row tripping `fail`, or consuming a `keep` name, changes the output). The policy key
+  (G-9) had to be added because D-097 turned `unknown_value_policy` into live
+  configuration on attributes that have no other fingerprint carrier. The caller-discard
+  rule (G-12) had to become normative because §18.1's "the partial output is discarded"
+  described something no writer can do.
+- **Rejected:** filtering rows before grouping under `dedupe` (contradicts D-091's
+  group-first clause and would drop an object whose match arrives on a later row);
+  renumbering `row_index` over survivors (§5.4 names are input positions; renumbering
+  would make an object's name depend on the filter); letting a filtered row trip `fail` or
+  consume a `keep` name (it is not an object); making the restriction path report an
+  included attribute's unparseable values (double-counting the same cell, D-097);
+  `UnknownValueObserved` for a valid non-match (a non-match is the filter working, not an
+  anomaly); per-object/per-column observability diagnostics (a storm at target scale —
+  aggregated with bounded samples, §16.4); emitting the observability warnings after a
+  halt (they would describe the halt); a throwing `RestrictToNumber` factory (wrong
+  channel for an authoring error, P-14 — the boundary is layered instead); a
+  `RestrictToOnNumericRequiresRange` alias (one condition, one name); sorting the
+  canonical restriction JSON by UTF-8 bytes (diverges from UTF-16 ordinal above U+E000 —
+  P-12 defines ordinal as a code-unit compare); merging overlapping ranges (loses authored
+  intent, no determinism gain); sorting or deduplicating the authored document/plan to
+  match the fingerprint (the projection is the fingerprint's, not the author's);
+  reinterpreting numeric-looking tokens on categorical `.bed` attributes (changes which
+  objects survive); falling back to invariant on an invalid migrate locale (parses under a
+  locale the author never asked for); making the writers transactional (P-15 — that is
+  M7's run abstraction).
+- **Affects:** Core (`RestrictToNumber`; `ResolvedSpec`/`CalibratedSpec` numeric boundary;
+  `ConversionPlanner` restriction population; `FingerprintCalculator` restrictions
+  container), Conversion (`RestrictionFilter`, `EmitObservability`, `Emitter` on all
+  paths), Spec (reader/writer/resolver exact-entry surface; `BedMigrator` type-directed
+  mapping), Diagnostics (+4, −1, 1 rename → **70**); spec §6.1 / §7 / §10.4 / §14 / §16.2 /
+  §16.4 / §18.1 / §19.4 (G-2/G-9/G-12 edits + transitional-note retirements); roadmap M4
+  exit. Realizes D-021/D-057/D-063/D-076/D-079/D-091/D-097; amends D-091 in place (G-9).
+  **Completes M4.**
 
 ---
 

@@ -45,7 +45,11 @@ public sealed class ConversionPlan
     /// <summary>The per-attribute emit pipelines.</summary>
     public IReadOnlyList<PlannedAttribute> Attributes { get; }
 
-    /// <summary>The executable object-level restrictions (empty until M4 slice F).</summary>
+    /// <summary>
+    /// The executable object-level restrictions, in spec-attribute order — one per
+    /// attribute with a non-empty <c>restrict_to</c>, included or filter-only; empty
+    /// when the spec restricts nothing (§10.4/D-091).
+    /// </summary>
     public IReadOnlyList<PlannedRestriction> Restrictions { get; }
 
     /// <summary>How object names are derived (§5.4).</summary>

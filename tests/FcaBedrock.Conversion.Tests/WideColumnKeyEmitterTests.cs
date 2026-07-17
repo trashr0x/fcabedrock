@@ -215,6 +215,7 @@ public sealed class WideColumnKeyEmitterTests
             objects.Add(emitted);
         }
 
-        return (objects, diagnostics);
+        // Observability warnings are orthogonal here and partitioned out (see DataDiagnostics).
+        return (objects, ConversionFixtures.DataDiagnostics(diagnostics));
     }
 }

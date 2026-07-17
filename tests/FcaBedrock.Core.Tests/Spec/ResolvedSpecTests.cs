@@ -231,6 +231,116 @@ public sealed class ResolvedSpecTests
         Assert.ThrowsAny<ArgumentException>(() => Create(spec, new SourceSchema(1)));
     }
 
+    // --- restrict_to entries (§10.4/D-091/D-105) -----------------------------
+
+    [Fact]
+    public void Create_WhenRestrictToEntryIsAnUnknownVariant_ThenThrows()
+    {
+        // RestrictToEntry is deliberately not mechanically closed — the Spec document model reuses
+        // it (D-057) — so the trust boundary rejects an unrecognized variant explicitly. Silently
+        // carrying one would reach the emitter's matcher, which cannot classify it.
+        var attr = SpecFixtures.Nominal("g", 0, ["b"]) with { RestrictTo = [new UnknownRestrictToEntry()] };
+        var spec = new BedrockSpec(SpecFixtures.WideRowIndex(), [attr]);
+
+        Assert.Throws<ArgumentException>(() => Create(spec, new SourceSchema(1)));
+    }
+
+    [Fact]
+    public void Create_WhenAllThreeRecognizedVariantsPresent_ThenSucceeds()
+    {
+        // The complete M4 union resolves: a string entry on a string source, and exact + range
+        // entries on a number source. (Entry-vs-value_type consistency is the seam's job; this
+        // boundary checks representability.)
+        var gene = SpecFixtures.Nominal("Gene", 0, ["Bmp5"]) with { RestrictTo = [new RestrictToValue("Bmp5")] };
+        var age = SpecFixtures.NumericCuts("age", 1, [30.0], new NominalScale()) with
+        {
+            RestrictTo = [new RestrictToNumber(30.0), new RestrictToRange(10.0, 20.0), new RestrictToRange(null, null)],
+        };
+
+        var resolved = Create(new BedrockSpec(SpecFixtures.WideRowIndex(), [gene, age]), new SourceSchema(2));
+
+        Assert.Equal(3, resolved.Spec.Attributes[1].RestrictTo.Count);
+    }
+
+    [Theory]
+    [InlineData(double.NaN)]
+    [InlineData(double.PositiveInfinity)]
+    [InlineData(double.NegativeInfinity)]
+    public void Create_WhenExactRestrictValueIsNonFinite_ThenThrows(double value)
+    {
+        // D-091/round-6 High-2: the seam diagnoses an authored non-finite value
+        // (RestrictToRangeInvalid) and returns Diagnosed.Failed BEFORE any strict factory runs,
+        // so reaching this boundary with one means a hand-built graph — genuine programmer error.
+        // Downstream then trusts finiteness (the fingerprint's formatter rejects non-finite
+        // outright, and the matcher compares without re-checking).
+        var attr = SpecFixtures.NumericCuts("age", 0, [30.0], new NominalScale()) with
+        {
+            RestrictTo = [new RestrictToNumber(value)],
+        };
+
+        Assert.Throws<ArgumentException>(() => Create(new BedrockSpec(SpecFixtures.WideRowIndex(), [attr]), new SourceSchema(1)));
+    }
+
+    [Theory]
+    [InlineData(double.NaN, null)]
+    [InlineData(null, double.NaN)]
+    [InlineData(double.NegativeInfinity, 20.0)]
+    [InlineData(10.0, double.PositiveInfinity)]
+    public void Create_WhenARangeBoundIsNonFinite_ThenThrows(double? from, double? to)
+    {
+        var attr = SpecFixtures.NumericCuts("age", 0, [30.0], new NominalScale()) with
+        {
+            RestrictTo = [new RestrictToRange(from, to)],
+        };
+
+        Assert.Throws<ArgumentException>(() => Create(new BedrockSpec(SpecFixtures.WideRowIndex(), [attr]), new SourceSchema(1)));
+    }
+
+    [Fact]
+    public void Create_WhenRangeBoundsAreOmitted_ThenSucceedsBecauseOpenIsNullNotInfinity()
+    {
+        // §10.4: an open end is null — NOT ±infinity — so {} and one-sided ranges are valid and
+        // must not be caught by the non-finite check.
+        var attr = SpecFixtures.NumericCuts("age", 0, [30.0], new NominalScale()) with
+        {
+            RestrictTo = [new RestrictToRange(null, null), new RestrictToRange(90.0, null), new RestrictToRange(null, 5.0)],
+        };
+
+        var resolved = Create(new BedrockSpec(SpecFixtures.WideRowIndex(), [attr]), new SourceSchema(1));
+
+        Assert.Equal(3, resolved.Spec.Attributes[0].RestrictTo.Count);
+    }
+
+    [Fact]
+    public void Create_WhenAuthoredRestrictListMutatedAfterwards_ThenTheResolvedSpecIsUnaffected()
+    {
+        // D-098 recursive immutability: Create deep-snapshots the graph, so a caller-held list
+        // cannot reach a resolved spec, a plan, an emit, or a fingerprint afterwards.
+        var authored = new List<RestrictToEntry> { new RestrictToValue("Bmp5") };
+        var attr = SpecFixtures.Nominal("Gene", 0, ["Bmp5"]) with { RestrictTo = authored };
+
+        var resolved = Create(new BedrockSpec(SpecFixtures.WideRowIndex(), [attr]), new SourceSchema(1));
+        authored.Add(new RestrictToValue("Wnt1"));
+
+        Assert.Single(resolved.Spec.Attributes[0].RestrictTo);
+    }
+
+    [Fact]
+    public void Create_WhenInspected_ThenRestrictEntriesAreNotCastableToAMutableCollection()
+    {
+        // The snapshot must be recursively immutable, not merely copied: an IReadOnlyList backed
+        // by a plain array is castable back to T[] and mutable through it (D-098 Critical-2).
+        var attr = SpecFixtures.Nominal("Gene", 0, ["Bmp5"]) with { RestrictTo = [new RestrictToValue("Bmp5")] };
+
+        var resolved = Create(new BedrockSpec(SpecFixtures.WideRowIndex(), [attr]), new SourceSchema(1));
+
+        var entries = resolved.Spec.Attributes[0].RestrictTo;
+        Assert.IsNotType<RestrictToEntry[]>(entries);
+        Assert.IsNotType<List<RestrictToEntry>>(entries);
+    }
+
+    private sealed record UnknownRestrictToEntry : RestrictToEntry;
+
     [Fact]
     public void Create_WhenObjectKeyIsUnknownSubtype_ThenThrows()
     {

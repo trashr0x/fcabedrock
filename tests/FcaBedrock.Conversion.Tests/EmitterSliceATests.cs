@@ -60,11 +60,19 @@ public sealed class EmitterSliceATests
     public async Task Calibrate_ThenPlan_WhenBothPhasesDiagnose_ThenBothSurviveInPhaseOrder()
     {
         // Cross-phase composition (D-098): an absent-domain identity attribute warns at calibrate
-        // (ObservedDomainUsed) and its restrict_to still rejects at plan (RestrictToNotImplementedV1);
-        // appended in phase order, both survive.
+        // (ObservedDomainUsed) while a sibling's deferred scale rejects at plan
+        // (ScaleNotImplementedV1); appended in phase order, both survive.
+        //
+        // The plan-side code was RestrictToNotImplementedV1 until Slice F retired it (D-105);
+        // restrict_to now executes, so it is no longer a plan diagnostic at all. The deferred
+        // scale is a permanent v1 reservation (D-010) and carries the same shape of proof: a
+        // plan-phase diagnostic co-firing with a calibrate-phase one.
         var spec = new BedrockSpec(ConversionFixtures.Wide(hasHeader: false),
-            [Identity("g", 0, []) with { RestrictTo = [new RestrictToValue("a")] }]);
-        var source = ConversionFixtures.SourceOver("a\nb", spec.Binding);
+            [
+                Identity("g", 0, []),
+                Identity("h", 1, ["x"]) with { Scale = new UnimplementedScale("interordinal") },
+            ]);
+        var source = ConversionFixtures.SourceOver("a,x\nb,x", spec.Binding);
         var resolved = ConversionFixtures.ResolveFor(spec, await source.GetSchemaAsync());
 
         var calibrated = await Calibrator.CalibrateAsync(resolved, source);
@@ -75,6 +83,6 @@ public sealed class EmitterSliceATests
         Assert.Collection(
             combined,
             d => Assert.Equal(DiagnosticCode.ObservedDomainUsed, d.Code),
-            d => Assert.Equal(DiagnosticCode.RestrictToNotImplementedV1, d.Code));
+            d => Assert.Equal(DiagnosticCode.ScaleNotImplementedV1, d.Code));
     }
 }

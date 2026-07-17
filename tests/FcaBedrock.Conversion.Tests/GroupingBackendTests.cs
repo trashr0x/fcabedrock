@@ -418,7 +418,8 @@ public sealed class GroupingBackendTests
             objects.Add(emitted);
         }
 
-        return (objects, diagnostics);
+        // Observability warnings are orthogonal here and partitioned out (see DataDiagnostics).
+        return (objects, ConversionFixtures.DataDiagnostics(diagnostics));
     }
 
     private static string Rows(int count, int subjects = 3) =>
@@ -435,7 +436,8 @@ public sealed class GroupingBackendTests
             objects.Add(emitted);
         }
 
-        return (objects, diagnostics);
+        // Observability warnings are orthogonal here and partitioned out (see DataDiagnostics).
+        return (objects, ConversionFixtures.DataDiagnostics(diagnostics));
     }
 
     private static async Task<(ConversionPlan Plan, FcaBedrock.Sources.ITripleRowSource Source)> PrepAsync(string data)

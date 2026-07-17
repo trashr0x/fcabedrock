@@ -298,6 +298,66 @@ public sealed class SpecComposerTests
     }
 
     [Fact]
+    public void Compose_WhenAttributesCarryNumericRestrictions_ThenEveryFormComposesAndResolves()
+    {
+        // §13/D-052/D-091: composition is whole-attribute replacement over the document model, so
+        // the exact numeric entry must survive a fold like any other carrier — a base's inherited
+        // numeric restriction, and a derived override that replaces one.
+        var source = new InMemorySpecTextSource()
+            .Add("base.toml", """
+                [spec]
+                version = 1
+
+                [binding]
+                shape = "wide"
+
+                [[attribute]]
+                name = "age"
+                source = { kind = "column", index = 0 }
+                discretizer = { kind = "manual_cuts", cuts = [30], ends = "open" }
+                scale = { kind = "nominal" }
+                restrict_to = [{ value = 30 }, { from = 10, to = 20 }]
+
+                [[attribute]]
+                name = "stage"
+                source = { kind = "column", index = 1 }
+                discretizer = { kind = "manual_cuts", cuts = [5], ends = "open" }
+                scale = { kind = "nominal" }
+                restrict_to = [{ value = 3e1 }]
+                """);
+        var root = Read("""
+            [spec]
+            version = 1
+            extends = "base.toml"
+
+            [[attribute]]
+            name = "stage"
+            source = { kind = "column", index = 1 }
+            discretizer = { kind = "manual_cuts", cuts = [5], ends = "open" }
+            scale = { kind = "nominal" }
+            restrict_to = [{ from = 3, to = 9 }]
+            """);
+
+        var composed = ComposeOk(root, "derived.toml", source);
+
+        // Inherited verbatim…
+        Assert.Equal(
+            [new RestrictToNumber(30), new RestrictToRange(10, 20)],
+            composed.Attributes[0].RestrictTo);
+
+        // …and replaced wholesale (the base's { value = 3e1 } is gone, not merged).
+        Assert.Equal([new RestrictToRange(3, 9)], composed.Attributes[1].RestrictTo);
+
+        // The composed document still resolves and plans its restrictions.
+        var resolved = SpecResolver.Resolve(composed, new SourceSchema(2));
+        Assert.True(resolved.TryGetValue(out var doc),
+            string.Join("; ", resolved.Diagnostics.Select(d => $"{d.Code}: {d.Message}")));
+        Assert.Equal(
+            [new RestrictToNumber(30), new RestrictToRange(10, 20)],
+            doc!.Resolved.Spec.Attributes[0].RestrictTo);
+    }
+
+    [Fact]
     public void Compose_WhenDerivedSuppressesWithIncludeFalse_ThenComposedAttributeIsExcluded()
     {
         // §13/D-052: suppression repeats name + source (whole-attribute

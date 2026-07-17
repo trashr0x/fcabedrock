@@ -1,3 +1,4 @@
+using FcaBedrock.Core.Spec;
 using FcaBedrock.Diagnostics;
 using FcaBedrock.Spec.Toml;
 
@@ -298,9 +299,76 @@ public sealed class SpecReaderDiagnosticsTests
     [Fact]
     public void Read_WhenRestrictToEntryHasWrongShape_ThenSpecFieldInvalid()
     {
+        // A BARE number is not an approved entry form: numeric exactness is spelled
+        // { value = n } (§10.4), so `[10]` is an invalid entry rather than an exact 10.
         AssertFailsWith(
             SpecReader.Read(Attribute("restrict_to = [10]")),
             DiagnosticCode.SpecFieldInvalid);
+    }
+
+    [Theory]
+    [InlineData("\"thirty\"")]        // string
+    [InlineData("true")]              // boolean
+    [InlineData("[30]")]              // array
+    [InlineData("{ n = 30 }")]        // nested table
+    public void Read_WhenExactRestrictValueIsNotNumeric_ThenSpecFieldInvalid(string value)
+    {
+        // The reported condition must be "this exact entry's value is not a number", raised by
+        // the ordinary numeric accessor — never a leaked factory/parser exception (P-14).
+        AssertFailsWith(
+            SpecReader.Read(Attribute($"restrict_to = [{{ value = {value} }}]")),
+            DiagnosticCode.SpecFieldInvalid);
+    }
+
+    [Fact]
+    public void Read_WhenExactRestrictValueIsMalformed_ThenItDoesNotDegradeIntoAnUnrestrictedRange()
+    {
+        // The silent-widening trap this shape-first reader exists to avoid. Reading
+        // { value = "x" } as a RANGE would take neither `from` nor `to` and yield
+        // RestrictToRange(null, null) — the {} entry, which matches EVERY usable numeric value.
+        // A typo'd filter would then keep every object instead of failing loudly.
+        var result = SpecReader.Read(Attribute("restrict_to = [{ value = \"thirty\" }]"));
+
+        Assert.False(result.IsOk);
+        Assert.Contains(result.Diagnostics, d => d.Code == DiagnosticCode.SpecFieldInvalid);
+
+        // The entry is dropped, not silently turned into a match-everything range.
+        if (result.TryGetValue(out var document))
+        {
+            Assert.DoesNotContain(
+                document.Attributes[0].RestrictTo ?? [],
+                e => e is RestrictToRange { From: null, To: null });
+        }
+    }
+
+    [Fact]
+    public void Read_WhenExactEntryAlsoCarriesRangeKeys_ThenTheStrayKeysAreUnrecognized()
+    {
+        // Shape is chosen by the presence of `value`; `from`/`to` alongside it are then
+        // unconsumed keys, which the cursor's Finish classifies as SpecKeyUnrecognized — the
+        // established owner for a key no reader takes (D-075).
+        AssertFailsWith(
+            SpecReader.Read(Attribute("restrict_to = [{ value = 30, from = 10 }]")),
+            DiagnosticCode.SpecKeyUnrecognized);
+    }
+
+    [Fact]
+    public void Read_WhenRestrictToRangeHasUnknownKey_ThenSpecKeyUnrecognized()
+    {
+        AssertFailsWith(
+            SpecReader.Read(Attribute("restrict_to = [{ from = 10, until = 20 }]")),
+            DiagnosticCode.SpecKeyUnrecognized);
+    }
+
+    [Fact]
+    public void Read_WhenSeveralRestrictEntriesAreMalformed_ThenAllAggregateDeterministically()
+    {
+        // P-14: parse failures aggregate rather than short-circuiting, and never leak an
+        // exception from a strict factory.
+        var result = SpecReader.Read(Attribute("restrict_to = [{ value = \"x\" }, 10, { value = true }]"));
+
+        Assert.False(result.IsOk);
+        Assert.Equal(3, result.Diagnostics.Count(d => d.Code == DiagnosticCode.SpecFieldInvalid));
     }
 
     private static void AssertFailsWith(Diagnosed<FcaBedrock.Spec.Toml.SpecDocument> result, DiagnosticCode code)

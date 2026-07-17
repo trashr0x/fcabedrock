@@ -9,13 +9,41 @@ namespace FcaBedrock.Conversion;
 
 /// <summary>
 /// Streams object records through a <see cref="ConversionPlan"/>, producing one
-/// <see cref="EmittedObject"/> per record (spec §7 step 4). Single-pass and
-/// allocation-streaming: the incidence matrix is never materialized (P-16). All
-/// ordering and naming are already decided by the planner; emit only looks values
-/// up. Data diagnostics (unknown / unparseable values) are <b>aggregated per
-/// attribute</b> — a count with a bounded sample, flushed in plan order after the
-/// stream, never one diagnostic per row (spec §16.4, D-059) — and appended to the
-/// caller-supplied collector.
+/// <see cref="EmittedObject"/> per <b>surviving</b> formed object (spec §7 step 4). Single-pass
+/// and allocation-streaming: the incidence matrix is never materialized (P-16). All ordering and
+/// naming are already decided by the planner; emit only looks values up. Data diagnostics
+/// (unknown / unparseable values) are <b>aggregated per attribute</b> — a count with a bounded
+/// sample, flushed in plan order after the stream, never one diagnostic per row (spec §16.4,
+/// D-059) — and appended to the caller-supplied collector.
+/// <para>
+/// <b>Restriction (§10.4/D-091).</b> Emit applies the plan's <c>restrict_to</c> filters to whole
+/// formed objects: each object is classified first, then filtered, so a surviving object keeps
+/// <b>all</b> its crosses — restrictions filter objects, not observations. Calibration and the
+/// column vocabulary were computed over the input universe <em>before</em> filtering (§7), so
+/// some columns may legitimately end up empty (<c>AttributeHasNoCrosses</c>).
+/// </para>
+/// <para>
+/// <b>Artifact validity (§16.2/§18.1, G-12).</b> This emitter reports failures as diagnostics; it
+/// does not — and cannot — retract bytes a writer has already put into a caller-owned sink. A
+/// run's output is valid <b>only if</b> its collected diagnostics contain no Error or Fatal once
+/// the run is complete (for the <c>.cxt</c> two-pass, only after
+/// <see cref="EmitReplaySession"/> disposal, which is when the final cross-pass aggregates land).
+/// On any Error/Fatal <b>the caller must discard the output</b>. An invalid run reaches that state
+/// two ways, which differ in whether the stream stops:
+/// <list type="bullet">
+/// <item>a <b>structural or grouping-storage halt</b> stops the object stream, so both <c>.cxt</c>
+/// passes truncate identically (the object-name-sequence invariant cannot catch it) and a
+/// <c>.dat</c> holds only the rows before the halt;</item>
+/// <item>an <b>`unknown_value_policy = "fail"` abort</b> does <b>not</b> stop the stream — the
+/// aggregated per-attribute diagnostic (§16.4) is computed over the whole population, so
+/// enumeration completes and the Error flushes at the end, leaving a <em>complete but invalid</em>
+/// artifact. "Abort" is Error's operation-failed semantics (§16.2), not "stop reading rows"; this
+/// preserves the pre-Slice-F included-attribute <c>fail</c> behaviour (D-050/D-059).</item>
+/// </list>
+/// The whole-stream observability warnings are suppressed on both (they would describe an artifact
+/// the caller must discard). Transactional publication is M7's conversion-run abstraction, not a
+/// writer or emitter concern (P-15).
+/// </para>
 /// </summary>
 public static class Emitter
 {
@@ -82,6 +110,9 @@ public static class Emitter
         var count = plan.Attributes.Count;
         var unknown = NewTallies(count);
         var unparseable = NewTallies(count);
+        var restrictions = RestrictionFilter.Create(plan);
+        var matched = restrictions.NewMatchBuffer();
+        var observability = new EmitObservability(plan.FormalAttributes.Count);
 
         var columnKey = plan.ObjectKey as ColumnObjectKey;
         var failSeen = columnKey?.Policy == DuplicateObjectPolicy.Fail ? new HashSet<string>(StringComparer.Ordinal) : null;
@@ -92,10 +123,40 @@ public static class Emitter
 
         await foreach (var record in source.ReadAsync(cancellationToken).ConfigureAwait(false))
         {
+            // §10.4/G-2 sequencing — the row IS the formed object here, so: classify, then filter,
+            // then (only for a survivor) name.
+            //
+            // 1. Classify every included attribute. This runs for EVERY row, filtered or not:
+            //    restrictions filter objects, not observations (D-097), so an included attribute's
+            //    ordinary unparseable/unknown diagnostics are owned here regardless of whether the
+            //    row survives.
+            var crossed = new SortedSet<int>();
+            for (var i = 0; i < count; i++)
+            {
+                Accumulate(plan.Attributes[i], record, crossed, unknown[i], unparseable[i]);
+            }
+
+            // 2. Evaluate every restriction over this row's observations.
+            RestrictionFilter.Reset(matched);
+            restrictions.ObserveWide(record, matched);
+
+            // 3. A non-surviving row is not an object: no key check, no `fail` duplicate check, no
+            //    `keep` name assignment — nothing downstream may observe it. recordIndex still
+            //    advances below, because it is the SOURCE position, not a survivor rank (§5.4).
+            if (!RestrictionFilter.Passes(matched))
+            {
+                recordIndex++;
+                continue;
+            }
+
+            // 4. The row survives, so it becomes an object and takes a name.
             string name;
             if (columnKey is null)
             {
-                name = record.Name; // row_index: the source-assigned row index (unchanged)
+                // row_index: the source-assigned input position, verbatim. Filtering NEVER
+                // renumbers it (§5.4/G-2) — if row 0 is filtered and row 1 survives, the survivor
+                // is still named "1".
+                name = record.Name;
             }
             else
             {
@@ -117,6 +178,8 @@ public static class Emitter
                         if (!failSeen!.Add(key!))
                         {
                             // §6.1: a duplicate key means the key does not identify objects — stop.
+                            // Only survivors are recorded, so a filtered row's key never trips this
+                            // (G-2): it is not an object, so it cannot duplicate one.
                             diagnostics.Add(new BedrockDiagnostic(
                                 DiagnosticCode.DuplicateObjectKey, DiagnosticSeverity.Error,
                                 $"The wide object key '{key}' at record {recordIndex} duplicates an earlier record; duplicate_object_policy = \"fail\" (§6.1).",
@@ -128,6 +191,8 @@ public static class Emitter
                         break;
 
                     case DuplicateObjectPolicy.Keep:
+                        // §6.1: keep names are assigned in EMISSION order, so a filtered row
+                        // consumes no assigned name and produces no suffix or diagnostic (G-2).
                         name = keepNamer!.Assign(key!, recordIndex, out var duplicate, out var disambiguated);
                         if (duplicate)
                         {
@@ -149,13 +214,10 @@ public static class Emitter
                 }
             }
 
-            var crossed = new SortedSet<int>();
-            for (var i = 0; i < count; i++)
-            {
-                Accumulate(plan.Attributes[i], record, crossed, unknown[i], unparseable[i]);
-            }
-
-            yield return new EmittedObject(name, [.. crossed]);
+            // The surviving object keeps ALL its crosses — not only the observations that matched.
+            var emitted = new EmittedObject(name, [.. crossed]);
+            observability.Record(emitted);
+            yield return emitted;
             recordIndex++;
         }
 
@@ -163,11 +225,7 @@ public static class Emitter
         // sequence is deterministic (P-7) and bounded regardless of row count. Reached only on normal
         // completion — a structural yield break above (invalid/duplicate key) skips these, suppressing
         // any pending keep warnings from the partial stream (matching the triple path).
-        for (var i = 0; i < count; i++)
-        {
-            Flush(plan.Attributes[i], unparseable[i], DiagnosticCode.SourceValueUnparseable, UnparseableSeverity, diagnostics);
-            Flush(plan.Attributes[i], unknown[i], DiagnosticCode.UnknownValueObserved, UnknownSeverity, diagnostics);
-        }
+        var aborted = FlushData(plan, unparseable, unknown, restrictions, diagnostics);
 
         // §6.1 keep: repeated cleaned keys aggregate to one DuplicateObjectKey (Warning); name-collision
         // escalations aggregate to one ObjectKeyNameDisambiguated (Warning). Two conditions, two codes.
@@ -175,6 +233,8 @@ public static class Emitter
             "object name(s) reused a cleaned key and were kept as separate objects", "keep", diagnostics);
         FlushPolicyAggregate(keepDisambiguations, DiagnosticCode.ObjectKeyNameDisambiguated, DiagnosticSeverity.Warning,
             "object name(s) were disambiguated to stay unique", "keep", diagnostics);
+
+        observability.Flush(plan, aborted, diagnostics);
     }
 
     /// <summary>
@@ -202,6 +262,9 @@ public static class Emitter
         var unparseable = NewTallies(count);
         var duplicates = new DiagnosticTally();
         var reports = new GroupingReports();
+        var restrictions = RestrictionFilter.Create(plan);
+        var matched = restrictions.NewMatchBuffer();
+        var observability = new EmitObservability(plan.FormalAttributes.Count);
 
         // Group the keyed prefix by cleaned key (first-appearance order); the intake hook tallies
         // duplicates in source order, so no second ordinal seen-set is needed (one key structure, D-083).
@@ -268,36 +331,53 @@ public static class Emitter
                     }
                     else if (!string.Equals(key, currentKey, StringComparison.Ordinal))
                     {
-                        // Key change closes the group; later duplicates merged onto the first (§6.1).
-                        yield return new EmittedObject(currentKey!, [.. crossed]);
+                        // §6.1/§10.4/G-2: the key change closes the merged group — grouping strictly
+                        // precedes filtering, so the restriction is evaluated existentially over ALL
+                        // the merged observations. One match preserves the WHOLE object with all its
+                        // crosses; otherwise the complete group is dropped, after grouping and
+                        // classification, never before.
+                        if (RestrictionFilter.Passes(matched))
+                        {
+                            var closed = new EmittedObject(currentKey!, [.. crossed]);
+                            observability.Record(closed);
+                            yield return closed;
+                        }
+
                         currentKey = key;
                         crossed = new SortedSet<int>();
+                        RestrictionFilter.Reset(matched);
                     }
 
                     for (var i = 0; i < count; i++)
                     {
                         AccumulateDedupe(plan.Attributes[i], row, crossed, unknown[i], unparseable[i]);
                     }
+
+                    restrictions.ObserveWide(row, matched);
                 }
             }
 
             if (!storageFailed && !halted)
             {
-                if (started)
+                if (started && RestrictionFilter.Passes(matched))
                 {
-                    yield return new EmittedObject(currentKey!, [.. crossed]);
+                    var last = new EmittedObject(currentKey!, [.. crossed]);
+                    observability.Record(last);
+                    yield return last;
                 }
 
-                for (var i = 0; i < count; i++)
-                {
-                    Flush(plan.Attributes[i], unparseable[i], DiagnosticCode.SourceValueUnparseable, UnparseableSeverity, diagnostics);
-                    Flush(plan.Attributes[i], unknown[i], DiagnosticCode.UnknownValueObserved, UnknownSeverity, diagnostics);
-                }
+                var aborted = FlushData(plan, unparseable, unknown, restrictions, diagnostics);
 
                 // §6.1 dedupe: repeated cleaned keys aggregate to one DuplicateObjectKey (Info) with a
-                // bounded source-order sample; silent when every key is unique. Flushed on normal completion.
+                // bounded source-order sample; silent when every key is unique. Flushed on normal
+                // completion. The count is PRE-FILTER by construction (G-2): the intake hook observes
+                // the raw stream as it is grouped, so a merged object that restriction later drops has
+                // still already been counted here — the tally reports what the INPUT contained, which
+                // is what a duplicate-key report is for.
                 FlushPolicyAggregate(duplicates, DiagnosticCode.DuplicateObjectKey, DiagnosticSeverity.Info,
                     "record(s) reused a cleaned key and merged onto the first occurrence", "dedupe", diagnostics);
+
+                observability.Flush(plan, aborted, diagnostics);
             }
         }
         finally
@@ -391,6 +471,9 @@ public static class Emitter
         var unknown = NewTallies(count);
         var unparseable = NewTallies(count);
         var byPredicate = IndexByPredicate(plan);
+        var restrictions = RestrictionFilter.Create(plan);
+        var matched = restrictions.NewMatchBuffer();
+        var observability = new EmitObservability(plan.FormalAttributes.Count);
 
         // Ordering selection is emitter-owned (§5.3 / D-082): the unordered wrapper is built here over a
         // fresh per-enumeration reports channel, never by an external selector without an active sink.
@@ -455,7 +538,19 @@ public static class Emitter
                     else if (!string.Equals(subject, currentSubject, StringComparison.Ordinal))
                     {
                         // Close the finished object in first-appearance order, then enforce contiguity.
-                        yield return new EmittedObject(currentSubject!, [.. crossed]);
+                        // §10.4/G-2: the subject's COMPLETE group is the formed object, so the
+                        // restriction decides emission only now — with every predicate/value
+                        // observation for the subject seen. An absent restricted predicate therefore
+                        // never matched, and the object fails. `completed` still records the subject
+                        // either way: contiguity is a STRUCTURAL property of the input, independent of
+                        // whether the object was emitted.
+                        if (RestrictionFilter.Passes(matched))
+                        {
+                            var closed = new EmittedObject(currentSubject!, [.. crossed]);
+                            observability.Record(closed);
+                            yield return closed;
+                        }
+
                         completed.Add(currentSubject!);
 
                         if (completed.Contains(subject))
@@ -472,36 +567,44 @@ public static class Emitter
 
                         currentSubject = subject;
                         crossed = new SortedSet<int>();
+                        RestrictionFilter.Reset(matched);
                     }
 
                     // Route the observation: a present predicate that binds attribute(s) classifies its
                     // value into the object's crosses (null value → present-missing → missing_policy in
                     // Classify). Absent/empty/unknown predicate = no observation; the subject still forms
-                    // its object (empty crosses are legal, §10.1).
-                    if (row.Predicate is { } predicate && byPredicate.TryGetValue(predicate, out var attrs))
+                    // its object (empty crosses are legal, §10.1). Repeated and multi-valued predicates
+                    // union their crosses (§5.3.1/§17 r8) and OR their restriction matches (§10.4).
+                    if (row.Predicate is { } predicate)
                     {
-                        foreach (var i in attrs)
+                        if (byPredicate.TryGetValue(predicate, out var attrs))
                         {
-                            Classify(plan.Attributes[i], row.Value, crossed, unknown[i], unparseable[i]);
+                            foreach (var i in attrs)
+                            {
+                                Classify(plan.Attributes[i], row.Value, crossed, unknown[i], unparseable[i]);
+                            }
                         }
+
+                        // Independent of the classification routing above: a filter-only attribute
+                        // binds a predicate but plans no column, so it has no entry in byPredicate.
+                        restrictions.ObserveTriple(predicate, row.Value, matched);
                     }
                 }
             }
 
             if (!storageFailed && !halted)
             {
-                if (started)
+                if (started && RestrictionFilter.Passes(matched))
                 {
-                    yield return new EmittedObject(currentSubject!, [.. crossed]);
+                    var last = new EmittedObject(currentSubject!, [.. crossed]);
+                    observability.Record(last);
+                    yield return last;
                 }
 
                 // Aggregated data-phase diagnostics, in plan order (P-7). Skipped on any halt above (the
                 // conversion aborted; partial data diagnostics would be noise).
-                for (var i = 0; i < count; i++)
-                {
-                    Flush(plan.Attributes[i], unparseable[i], DiagnosticCode.SourceValueUnparseable, UnparseableSeverity, diagnostics);
-                    Flush(plan.Attributes[i], unknown[i], DiagnosticCode.UnknownValueObserved, UnknownSeverity, diagnostics);
-                }
+                var aborted = FlushData(plan, unparseable, unknown, restrictions, diagnostics);
+                observability.Flush(plan, aborted, diagnostics);
             }
         }
         finally
@@ -608,7 +711,49 @@ public static class Emitter
         }
     }
 
-    private static void Flush(
+    // The one data-diagnostic flush order, shared by all three emit paths so they cannot drift
+    // (P-7 — the diagnostic sequence is part of deterministic output): every planned attribute's
+    // unparseable then unknown aggregate in PLAN order, followed by the filter-only restriction
+    // aggregates in restriction (spec-attribute) order.
+    //
+    // The two groups cannot interleave, and that is structural rather than a choice: a
+    // filter-only attribute plans no column, so it is absent from plan.Attributes entirely, while
+    // an included-and-restricted attribute's unparseable values are owned by its classification
+    // pass in the first group and the restriction path stays silent for it (D-097). Each raw
+    // observation is therefore counted at most once per attribute per pass.
+    //
+    // Called only past each path's halt guard — a structural halt suppresses all of it.
+    //
+    // Returns TRUE when any aggregate flushed at Error/Fatal — i.e. an `unknown_value_policy =
+    // "fail"` abort (§10.6/§10.4/D-097). The caller uses it to suppress the whole-stream
+    // observability aggregates: that is the same rule G-12 states for the artifact itself — any
+    // Error/Fatal invalidates the run — so once the run is invalid, "your context has empty
+    // columns" describes an artifact the caller must discard anyway.
+    //
+    // The `fail` abort deliberately does NOT truncate the stream. These diagnostics are
+    // AGGREGATED (count + bounded sample, §16.4/D-059), which structurally requires reading to
+    // the end, and the included-attribute `fail` path has always completed and reported at the
+    // flush; halting mid-stream would change that established behaviour. "Abort" here is
+    // §16.2's Error semantics — the OPERATION failed — not "stop reading rows".
+    private static bool FlushData(
+        ConversionPlan plan,
+        DiagnosticTally[] unparseable,
+        DiagnosticTally[] unknown,
+        RestrictionFilter restrictions,
+        ICollection<BedrockDiagnostic> diagnostics)
+    {
+        var aborted = false;
+        for (var i = 0; i < plan.Attributes.Count; i++)
+        {
+            aborted |= Flush(plan.Attributes[i], unparseable[i], DiagnosticCode.SourceValueUnparseable, UnparseableSeverity, diagnostics);
+            aborted |= Flush(plan.Attributes[i], unknown[i], DiagnosticCode.UnknownValueObserved, UnknownSeverity, diagnostics);
+        }
+
+        return restrictions.Flush(diagnostics) || aborted;
+    }
+
+    // Returns true when the aggregate flushed at Error/Fatal (the `fail` policy).
+    private static bool Flush(
         PlannedAttribute attribute,
         DiagnosticTally tally,
         DiagnosticCode code,
@@ -617,7 +762,7 @@ public static class Emitter
     {
         if (tally.Count == 0 || severityFor(attribute.UnknownValuePolicy) is not { } severity)
         {
-            return; // no occurrences, or a silent policy (skip)
+            return false; // no occurrences, or a silent policy (skip)
         }
 
         var reason = code == DiagnosticCode.SourceValueUnparseable
@@ -628,6 +773,7 @@ public static class Emitter
             severity,
             $"{tally.Count} value(s) on attribute '{attribute.Name}' {reason} (e.g. {tally.Sample}).",
             new DiagnosticLocation(AttributeName: attribute.Name)));
+        return severity is DiagnosticSeverity.Error or DiagnosticSeverity.Fatal;
     }
 
     // Aggregated object-key policy diagnostic (§6.1, D-083/D-085): one diagnostic with a bounded count +

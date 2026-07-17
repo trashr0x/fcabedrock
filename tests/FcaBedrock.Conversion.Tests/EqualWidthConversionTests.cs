@@ -412,7 +412,7 @@ public sealed class EqualWidthConversionTests
             objects.Add(emitted);
         }
 
-        return (plan, objects, diagnostics);
+        return (plan, objects, ConversionFixtures.DataDiagnostics(diagnostics));
     }
 
     [Fact]
@@ -574,7 +574,7 @@ public sealed class EqualWidthConversionTests
             objects.Add(emitted);
         }
 
-        return (plan, objects, diagnostics);
+        return (plan, objects, ConversionFixtures.DataDiagnostics(diagnostics));
     }
 
     // The same four observations in both orderings: contiguous, and subject-interleaved.

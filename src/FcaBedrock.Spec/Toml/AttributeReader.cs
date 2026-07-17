@@ -740,6 +740,15 @@ internal static class AttributeReader
         }
     }
 
+    // §10.4/D-091: three authored entry forms — a bare string, an exact { value = n }, and a
+    // { from, to } range (of which {} is the valid open/open member). A bare NUMBER is not an
+    // entry form: numeric exactness is spelled { value = n }, so `restrict_to = [30]` is an
+    // invalid entry, not an exact 30.
+    //
+    // Authored list order and duplicates are preserved verbatim in the document model — order is
+    // authoring state, and only the fingerprint projects a canonically sorted, deduplicated view
+    // (§14). Semantic validity (type-vs-source, finiteness, range ordering) belongs to the
+    // resolve seam; this reader owns SHAPE only.
     private static IReadOnlyList<RestrictToEntry>? ReadRestrictTo(TomlReadContext context, TomlTableCursor cursor)
     {
         if (cursor.TakeArray("restrict_to") is not { } array)
@@ -756,16 +765,18 @@ internal static class AttributeReader
                     entries.Add(new RestrictToValue(value));
                     break;
 
-                case InlineTableSyntax range:
-                    var inner = new TomlTableCursor(context, "restrict_to range", range);
-                    entries.Add(new RestrictToRange(inner.TakeDouble("from"), inner.TakeDouble("to")));
-                    inner.Finish();
+                case InlineTableSyntax table:
+                    if (ReadRestrictEntry(context, table) is { } entry)
+                    {
+                        entries.Add(entry);
+                    }
+
                     break;
 
                 case { } node:
                     context.Error(
                         DiagnosticCode.SpecFieldInvalid,
-                        "restrict_to entries are raw-value strings or { from, to } ranges (§10.4).",
+                        "restrict_to entries are raw-value strings, exact { value = n } numbers, or { from, to } ranges (§10.4).",
                         node.Span);
                     break;
 
@@ -775,6 +786,32 @@ internal static class AttributeReader
         }
 
         return entries;
+    }
+
+    // Picks the entry shape from the authored keys BEFORE reading them: an inline table with a
+    // `value` key is an exact entry, anything else is a range. Shape-first matters — reading
+    // { value = "x" } as a range would take neither `from` nor `to`, yielding a valid
+    // unrestricted {} range (which matches every numeric value) plus a stray-key diagnostic.
+    // That is the silent-widening trap: a typo'd filter would keep every object. Choosing by
+    // shape means a malformed `value` is reported as exactly that, and the entry is dropped.
+    private static RestrictToEntry? ReadRestrictEntry(TomlReadContext context, InlineTableSyntax table)
+    {
+        var cursor = new TomlTableCursor(context, "restrict_to entry", table);
+        if (!cursor.Has("value"))
+        {
+            // The range form; {} (neither bound authored) is the valid open/open range.
+            var range = new RestrictToRange(cursor.TakeDouble("from"), cursor.TakeDouble("to"));
+            cursor.Finish();
+            return range;
+        }
+
+        // Integer and float TOML nodes both parse through the one numeric path, so
+        // { value = 30 }, { value = 30.0 }, and { value = 3e1 } are equivalent inputs — all
+        // canonicalizing to the writer's { value = 30 }. A non-numeric `value` is
+        // SpecFieldInvalid (raised by TakeDouble), never a leaked factory/parser exception.
+        var number = cursor.TakeDouble("value");
+        cursor.Finish(); // `from`/`to` alongside `value` are unconsumed → SpecKeyUnrecognized
+        return number is { } exact ? new RestrictToNumber(exact) : null;
     }
 
     private static IReadOnlyDictionary<string, string>? ReadValueLabels(TomlReadContext context, TomlTableCursor cursor)

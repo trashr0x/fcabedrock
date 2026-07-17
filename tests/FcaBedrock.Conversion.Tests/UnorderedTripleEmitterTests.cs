@@ -193,7 +193,8 @@ public sealed class UnorderedTripleEmitterTests
             objects.Add(emitted);
         }
 
-        return (objects, diagnostics);
+        // Observability warnings are orthogonal here and partitioned out (see DataDiagnostics).
+        return (objects, ConversionFixtures.DataDiagnostics(diagnostics));
     }
 
     private static async Task<byte[]> WriteCxtUnorderedAsync(BedrockSpec spec, string data)

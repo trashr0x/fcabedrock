@@ -157,7 +157,7 @@ public sealed class SpecReaderTests
     public void Read_WhenRestrictToMixesAllForms_ThenEntriesCarryInOrder()
     {
         var document = ReadOk(Attribute(
-            "restrict_to = [\"Bachelors\", { from = 10, to = 20 }, { from = 90 }, { to = 5 }, {}]"));
+            "restrict_to = [\"Bachelors\", { from = 10, to = 20 }, { from = 90 }, { to = 5 }, {}, { value = 30 }]"));
 
         var entries = document.Attributes[0].RestrictTo!;
         Assert.Equal("Bachelors", Assert.IsType<RestrictToValue>(entries[0]).Value);
@@ -165,6 +165,46 @@ public sealed class SpecReaderTests
         Assert.Equal(new RestrictToRange(90, null), entries[2]);
         Assert.Equal(new RestrictToRange(null, 5), entries[3]);
         Assert.Equal(new RestrictToRange(null, null), entries[4]);
+        Assert.Equal(new RestrictToNumber(30), entries[5]);
+    }
+
+    [Theory]
+    [InlineData("30")]     // integer node
+    [InlineData("30.0")]   // float node
+    [InlineData("3e1")]    // exponent node
+    [InlineData("+30")]
+    public void Read_WhenExactEntrySpelledVariously_ThenAllParseToOneNumericIdentity(string spelling)
+    {
+        // §10.4/D-091: integers and floats both go through the one numeric path, so these are
+        // equivalent INPUTS — this is the layer where spelling still exists and can diverge
+        // (after parsing they are the same double, so only the reader can prove it).
+        var document = ReadOk(Attribute($"restrict_to = [{{ value = {spelling} }}]"));
+
+        Assert.Equal(new RestrictToNumber(30), Assert.Single(document.Attributes[0].RestrictTo!));
+    }
+
+    [Fact]
+    public void Read_WhenExactEntryIsNegativeZero_ThenTheCarrierKeepsItForTheSeamToCanonicalize()
+    {
+        // The reader transcribes; the SEAM canonicalizes (G-6). Pinned so the layering stays
+        // visible: a reader that silently canonicalized would hide an authored -0 from any
+        // diagnostic that might one day want it.
+        var document = ReadOk(Attribute("restrict_to = [{ value = -0.0 }]"));
+
+        var entry = Assert.IsType<RestrictToNumber>(Assert.Single(document.Attributes[0].RestrictTo!));
+        Assert.True(double.IsNegative(entry.Value));
+    }
+
+    [Fact]
+    public void Read_WhenRestrictToRepeatsEntries_ThenOrderAndDuplicatesArePreserved()
+    {
+        // Authored order and duplicates are document state; only the fingerprint projects a
+        // sorted, deduplicated view (§14) and it must not rewrite the document.
+        var document = ReadOk(Attribute("restrict_to = [{ value = 30 }, { from = 1, to = 2 }, { value = 30 }]"));
+
+        Assert.Equal(
+            [new RestrictToNumber(30), new RestrictToRange(1, 2), new RestrictToNumber(30)],
+            document.Attributes[0].RestrictTo);
     }
 
     [Fact]

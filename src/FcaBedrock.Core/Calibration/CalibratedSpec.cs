@@ -59,6 +59,7 @@ public sealed class CalibratedSpec
                 "FromFullyDeclared was called on a data-dependent spec; run the calibrator instead (D-093).", nameof(resolved));
         }
 
+        RequireValidRestrictions(resolved.Spec, nameof(resolved));
         return new CalibratedSpec(resolved.Spec, resolved, schema, ImmutableArray<AttributeCalibration>.Empty);
     }
 
@@ -91,6 +92,8 @@ public sealed class CalibratedSpec
             throw new ArgumentException(
                 "conversion requires a schema-aware resolution; resolved.Schema is null.", nameof(resolved));
         }
+
+        RequireValidRestrictions(resolved.Spec, nameof(resolved));
 
         var included = new HashSet<string>(StringComparer.Ordinal);
         var known = new HashSet<string>(StringComparer.Ordinal);
@@ -339,6 +342,57 @@ public sealed class CalibratedSpec
         return built.Value is { } discretizer
             ? (attribute with { Discretizer = discretizer }, cuts)
             : (attribute, cuts);
+    }
+
+    // §10.4/D-091/D-105: the calibrated-state re-check of the restriction entry
+    // boundary. Calibration never consumes or rewrites restrict_to — the substitutions above
+    // only touch Discretizer/DeclaredDomain, so each effective attribute carries the token's
+    // already-immutable entry list by reference — but this factory is the last gate before
+    // Plan/Emit/fingerprints, and its contract states that an invalid restriction
+    // entry surviving here throws (programmer error, P-14).
+    //
+    // The check is EXHAUSTIVE over the three recognized variants, not just a finiteness test: a
+    // half-guard that waved a null or an unknown variant through would let corrupt state reach
+    // the emitter's matcher or the fingerprint encoder, which can only answer with a
+    // NullReferenceException or an "unreachable" throw far from the cause. Reject at the
+    // boundary, then trust the type inward (P-10).
+    //
+    // Defence in depth, deliberately: ResolvedSpec.Create is the primary boundary and the only
+    // way to mint a token, so this is unreachable through any honest chain. It is kept because
+    // the assertion is cheap, states the invariant at the boundary that actually feeds the
+    // planner, and would catch a future internal construction path that resolved a restriction
+    // differently.
+    private static void RequireValidRestrictions(BedrockSpec spec, string parameterName)
+    {
+        foreach (var attribute in spec.Attributes)
+        {
+            foreach (var entry in attribute.RestrictTo)
+            {
+                var problem = entry switch
+                {
+                    null => "a null entry",
+                    RestrictToValue { Value: null } => "a string entry with a null value",
+                    RestrictToValue => null,
+                    RestrictToNumber { Value: var value } when !double.IsFinite(value) =>
+                        $"a non-finite exact value ({value})",
+                    RestrictToNumber => null,
+                    RestrictToRange { From: { } from } when !double.IsFinite(from) =>
+                        $"a non-finite range 'from' bound ({from})",
+                    RestrictToRange { To: { } to } when !double.IsFinite(to) =>
+                        $"a non-finite range 'to' bound ({to})",
+                    RestrictToRange => null,
+                    _ => $"an unrecognized entry variant '{entry.GetType().Name}'",
+                };
+
+                if (problem is not null)
+                {
+                    throw new ArgumentException(
+                        $"attribute '{attribute.Name}' carries {problem} in restrict_to; the resolve seam and " +
+                        "ResolvedSpec.Create validate restriction entries before any calibrated state exists (§10.4/D-091).",
+                        parameterName);
+                }
+            }
+        }
     }
 
     private static bool ConsumesDomain(Discretization.Discretizer discretizer) => discretizer.ConsumesDeclaredDomain;

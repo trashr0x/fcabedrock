@@ -596,7 +596,7 @@ public static class SpecResolver
             discretizer,
             scale,
             declaredDomain,
-            section.RestrictTo ?? [],
+            NormalizeRestrictTo(section.RestrictTo),
             valueLabels,
             section.MissingPolicy ?? defaults?.MissingPolicy ?? MissingPolicy.Skip,
             section.UnknownValuePolicy ?? defaults?.UnknownValuePolicy ?? UnknownValuePolicy.Warn);
@@ -1070,15 +1070,19 @@ public static class SpecResolver
         }
     }
 
-    // §10.4 (D-063): shape checks for the still-deferred restrict_to. Entry-type
-    // checks run regardless of include — restrict_to filters even when the
-    // attribute is excluded (filter-only), and a parked numeric-cut discretizer
-    // legitimately types it ("a numeric source … or a numeric-cut discretizer",
-    // §10.4/D-076). The domain typo-catcher fires only against a live domain:
-    // included, string-typed identity with an explicit non-empty declared_domain
-    // (declared_domain is parked when excluded, D-049; the numeric mismatch is
-    // owned by RestrictToOnNumericRequiresRange). Source-kind agnostic: the
-    // value-type shape checks apply to any source carrying a value_type (§10.2).
+    // §10.4 (D-063/D-091): restrict_to validation. Entry-type checks run regardless of
+    // include — restrict_to filters even when the attribute is excluded (filter-only), and a
+    // parked numeric-cut discretizer legitimately types it ("a numeric source … or a
+    // numeric-cut discretizer", §10.4/D-076). The domain typo-catcher fires only against a live
+    // domain: included, string-typed identity/free_per_value with an explicit non-empty
+    // declared_domain (declared_domain is parked when excluded, D-049; the numeric mismatch is
+    // owned by RestrictToNumericEntryRequired). Source-kind agnostic: the value-type shape
+    // checks apply to any source carrying a value_type (§10.2).
+    //
+    // The attribute's single effective value_type is resolved ONCE here under the D-061 matrix
+    // and decides which entry forms are legal: string-fixing accepts only bare strings,
+    // number-fixing only numeric entries (exact or range). No value_type admits both, so a
+    // genuinely mixed list always reports.
     private static void ValidateRestrictTo(
         AttributeSection section,
         string attribute,
@@ -1093,22 +1097,13 @@ public static class SpecResolver
         var valueType = ResolveValueType(AuthoredValueType(source), section.Discretizer);
         foreach (var entry in entries)
         {
-            switch (entry)
-            {
-                case RestrictToValue value when valueType == SourceValueType.Number:
-                    diagnostics.Add(new BedrockDiagnostic(
-                        DiagnosticCode.RestrictToOnNumericRequiresRange, DiagnosticSeverity.Error,
-                        $"Attribute '{attribute}' is number-typed, but restrict_to entry \"{value.Value}\" is a bare string; numeric restriction uses range entries (§10.4).",
-                        new DiagnosticLocation(AttributeName: attribute)));
-                    break;
-
-                case RestrictToRange when valueType == SourceValueType.String:
-                    diagnostics.Add(new BedrockDiagnostic(
-                        DiagnosticCode.SourceValueTypeInvalid, DiagnosticSeverity.Error,
-                        $"Attribute '{attribute}' is string-typed, but restrict_to contains a numeric-range entry (§10.4/§10.2).",
-                        new DiagnosticLocation(AttributeName: attribute)));
-                    break;
-            }
+            // Two INDEPENDENT questions, checked independently so both report when both hold
+            // (P-14 aggregation; the D-076 precedent where the quote check and the
+            // delimiter/quote conflict co-fire). Compatibility with the source's value_type is
+            // one condition; the entry's own validity is another, and an entry can be wrong on
+            // both counts at once — e.g. `{ value = nan }` on a string source.
+            ValidateRestrictEntryCompatibility(entry, valueType, attribute, diagnostics);
+            ValidateRestrictEntryValidity(entry, attribute, diagnostics);
         }
 
         // §10.4/§10.8 (D-063/D-101): the typo-catcher fires against a live string domain — the
@@ -1134,6 +1129,131 @@ public static class SpecResolver
             }
         }
     }
+
+    // §10.2/§10.4: does this entry FORM suit the attribute's single value_type? A string-fixing
+    // source accepts only bare strings; a number-fixing source only numeric entries (exact or
+    // range). The two mismatches have different owners — D-063 gives the numeric-source /
+    // bare-string case its own code rather than folding it into SourceValueTypeInvalid.
+    private static void ValidateRestrictEntryCompatibility(
+        RestrictToEntry entry, SourceValueType valueType, string attribute, List<BedrockDiagnostic> diagnostics)
+    {
+        switch (entry)
+        {
+            case RestrictToValue value when valueType == SourceValueType.Number:
+                diagnostics.Add(new BedrockDiagnostic(
+                    DiagnosticCode.RestrictToNumericEntryRequired, DiagnosticSeverity.Error,
+                    $"Attribute '{attribute}' is number-typed, but restrict_to entry \"{value.Value}\" is a bare string; numeric restriction uses a numeric entry — exact {{ value = n }} or a range (§10.4).",
+                    new DiagnosticLocation(AttributeName: attribute)));
+                break;
+
+            case RestrictToNumber or RestrictToRange when valueType == SourceValueType.String:
+                diagnostics.Add(new BedrockDiagnostic(
+                    DiagnosticCode.SourceValueTypeInvalid, DiagnosticSeverity.Error,
+                    $"Attribute '{attribute}' is string-typed, but restrict_to contains a numeric entry (§10.4/§10.2).",
+                    new DiagnosticLocation(AttributeName: attribute)));
+                break;
+        }
+    }
+
+    // §10.4/D-091: is this entry well-formed in itself, whatever source it sits on? Independent
+    // of the value_type check above — an entry on the wrong source can also be internally
+    // invalid, and silently dropping the second finding would hide a second edit the author has
+    // to make.
+    private static void ValidateRestrictEntryValidity(
+        RestrictToEntry entry, string attribute, List<BedrockDiagnostic> diagnostics)
+    {
+        switch (entry)
+        {
+            // An exact value must be finite: a non-finite one can match no usable observation, so
+            // it is authored nonsense rather than a filter that happens to keep nothing.
+            case RestrictToNumber { Value: var number } when !double.IsFinite(number):
+                diagnostics.Add(new BedrockDiagnostic(
+                    DiagnosticCode.RestrictToRangeInvalid, DiagnosticSeverity.Error,
+                    $"Attribute '{attribute}' has restrict_to entry {{ value = {TomlLiteral.FormatDouble(number)} }}, which is not finite; an exact numeric entry must be a finite number (§10.4).",
+                    new DiagnosticLocation(AttributeName: attribute)));
+                break;
+
+            case RestrictToRange range:
+                ValidateRestrictRange(range, attribute, diagnostics);
+                break;
+        }
+    }
+
+    // §10.4/D-091: a range's PROVIDED bounds must be finite and strictly ordered from < to. An
+    // omitted bound is open (null), not infinity, so {} — neither bound authored — is valid and
+    // means "any usable numeric value"; one-sided ranges are equally valid. from == to is
+    // rejected rather than treated as empty: under the half-open [from, to) convention it can
+    // match nothing, so it is authored nonsense, and from > to likewise. One diagnostic per
+    // offending entry (independent conditions aggregate, P-14).
+    private static void ValidateRestrictRange(
+        RestrictToRange range, string attribute, List<BedrockDiagnostic> diagnostics)
+    {
+        var from = range.From;
+        var to = range.To;
+
+        if (from is { } low && !double.IsFinite(low))
+        {
+            AddRangeInvalid(diagnostics, attribute, $"its 'from' bound {TomlLiteral.FormatDouble(low)} is not finite");
+            return;
+        }
+
+        if (to is { } high && !double.IsFinite(high))
+        {
+            AddRangeInvalid(diagnostics, attribute, $"its 'to' bound {TomlLiteral.FormatDouble(high)} is not finite");
+            return;
+        }
+
+        if (from is { } f && to is { } t && f >= t)
+        {
+            AddRangeInvalid(
+                diagnostics,
+                attribute,
+                f == t
+                    ? $"its bounds are equal ({TomlLiteral.FormatDouble(f)}); a half-open [from, to) range with from == to matches nothing"
+                    : $"its bounds are reversed (from = {TomlLiteral.FormatDouble(f)}, to = {TomlLiteral.FormatDouble(t)}); a range needs from < to");
+        }
+    }
+
+    private static void AddRangeInvalid(List<BedrockDiagnostic> diagnostics, string attribute, string reason) =>
+        diagnostics.Add(new BedrockDiagnostic(
+            DiagnosticCode.RestrictToRangeInvalid, DiagnosticSeverity.Error,
+            $"Attribute '{attribute}' has an invalid restrict_to range: {reason} (§10.4).",
+            new DiagnosticLocation(AttributeName: attribute)));
+
+    // §10.4/G-6/D-096: valid exact values and provided bounds are zero-canonicalized at
+    // resolution, so an authored -0 resolves — and therefore matches, plans, and hashes —
+    // identically to 0. This is the "already-numeric" arm of the pinned chain (the values arrive
+    // as TOML doubles; there is no text to parse), and it is scoped to the new M4 numeric
+    // identities: CanonicalJson.AppendNumber and every authored manual-cut byte are untouched.
+    //
+    // Authored ORDER and DUPLICATES survive verbatim — resolved Core state mirrors the document
+    // (D-057). Canonical sorting/deduplication is a fingerprint projection only (§14) and must
+    // not rewrite what the author wrote. A non-finite value is left as-is: it is already
+    // diagnosed (RestrictToRangeInvalid) and the Error fails the result before any strict
+    // factory sees it.
+    private static IReadOnlyList<RestrictToEntry> NormalizeRestrictTo(IReadOnlyList<RestrictToEntry>? entries)
+    {
+        if (entries is not { Count: > 0 })
+        {
+            return [];
+        }
+
+        var normalized = new List<RestrictToEntry>(entries.Count);
+        foreach (var entry in entries)
+        {
+            normalized.Add(entry switch
+            {
+                RestrictToNumber number => new RestrictToNumber(CanonicalNumber.CanonicalizeZero(number.Value)),
+                RestrictToRange range => new RestrictToRange(CanonicalizeBound(range.From), CanonicalizeBound(range.To)),
+                _ => entry,
+            });
+        }
+
+        return normalized;
+    }
+
+    private static double? CanonicalizeBound(double? bound) =>
+        bound is { } value ? CanonicalNumber.CanonicalizeZero(value) : null;
 
     // §12.3 (D-060): over cut bins the discretizer geometry is the single source
     // of order and operator. Both checks read the document sections — the

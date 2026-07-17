@@ -41,6 +41,31 @@ internal static class ConversionFixtures
 
     public static readonly IReadOnlyDictionary<string, string> NoLabels = new Dictionary<string, string>();
 
+    // The three whole-stream observability warnings (§16.4/D-105). They fire on normal
+    // completion whenever a context has no rows, an empty row, or an empty column — all of
+    // which these deliberately tiny fixtures produce by construction (a one-row fixture over a
+    // two-value domain leaves a column uncrossed; a fixture probing "missing → no cross" emits
+    // an object with no crosses at all). They are expected outcomes, not faults (§7: the column
+    // vocabulary is fixed before any object is filtered), and they are orthogonal to what the
+    // emit suites below assert.
+    private static readonly HashSet<DiagnosticCode> ObservabilityCodes =
+    [
+        DiagnosticCode.NoObjectsEmitted,
+        DiagnosticCode.ObjectHasNoCrosses,
+        DiagnosticCode.AttributeHasNoCrosses,
+    ];
+
+    /// <summary>
+    /// The emit diagnostics <em>excluding</em> the whole-stream observability warnings, so the
+    /// suites keep asserting exact sets (<c>Assert.Empty</c> / <c>Assert.Single</c>) on the
+    /// condition each one is actually about, rather than being weakened to
+    /// "contains at least X". The observability warnings' own behaviour — counts, bounded
+    /// samples, ordering, halt suppression, and replay single-counting — is proven directly in
+    /// <c>EmitObservabilityTests</c>, which is the only suite that should assert on them.
+    /// </summary>
+    public static List<BedrockDiagnostic> DataDiagnostics(IEnumerable<BedrockDiagnostic> diagnostics) =>
+        diagnostics.Where(d => !ObservabilityCodes.Contains(d.Code)).ToList();
+
     public static Binding Wide(char delimiter = ',', bool hasHeader = true, string missingToken = "?") =>
         new(SourceShape.Wide, "utf-8", delimiter, '"', hasHeader, "invariant", missingToken, new RowIndexObjectKey());
 

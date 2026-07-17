@@ -23,8 +23,12 @@ public sealed class EmitReplayTests
             await DrainAsync(session.Open()); // pass 2 (incidence)
         }
 
-        var diagnostic = Assert.Single(diagnostics); // not one-per-pass
-        Assert.Equal(DiagnosticCode.UnknownValueObserved, diagnostic.Code);
+        // Scoped to the code under test: the whole-stream observability warnings (§16.4/D-105)
+        // land in the same collector — this tiny fixture leaves a column empty — and are
+        // single-counted by the same first-pass claim, proven directly in EmitObservabilityTests.
+        // "Exactly one of THIS code" is what keeps the not-one-per-pass teeth.
+        var diagnostic = Assert.Single(diagnostics, d => d.Code == DiagnosticCode.UnknownValueObserved);
+        Assert.Equal(DiagnosticSeverity.Warning, diagnostic.Severity);
     }
 
     [Fact]
@@ -41,8 +45,7 @@ public sealed class EmitReplayTests
             await DrainAsync(session.Open());
         }
 
-        var diagnostic = Assert.Single(diagnostics);
-        Assert.Equal(DiagnosticCode.UnknownValueObserved, diagnostic.Code);
+        Assert.Single(diagnostics, d => d.Code == DiagnosticCode.UnknownValueObserved);
     }
 
     [Fact]
@@ -60,7 +63,7 @@ public sealed class EmitReplayTests
             await DrainAsync(second);
         }
 
-        Assert.Single(diagnostics);
+        Assert.Single(diagnostics, d => d.Code == DiagnosticCode.UnknownValueObserved);
     }
 
     [Fact]

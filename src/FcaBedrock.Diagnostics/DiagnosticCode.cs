@@ -191,19 +191,32 @@ public enum DiagnosticCode
     /// The source's <c>value_type</c> is invalid for the attribute: an authored type
     /// a type-fixing discretizer disallows (<c>identity</c>/<c>ordered_cuts</c> are
     /// string-fixing, <c>manual_cuts</c> number-fixing, D-061), or a string-typed
-    /// source whose <c>restrict_to</c> contains a numeric-range entry (the mirror
-    /// case is <see cref="RestrictToOnNumericRequiresRange"/>). Spec §10.2 / §10.4
-    /// (D-061/D-063).
+    /// source whose <c>restrict_to</c> contains a numeric entry — an exact
+    /// <c>{ value = n }</c> or a range (the mirror case is
+    /// <see cref="RestrictToNumericEntryRequired"/>). Spec §10.2 / §10.4
+    /// (D-061/D-063/D-091).
     /// </summary>
     SourceValueTypeInvalid,
 
     /// <summary>
     /// A number-typed source (authored <c>value_type = "number"</c> or a numeric-cut
     /// discretizer) has a bare-string <c>restrict_to</c> entry; numeric restriction
-    /// uses range entries. This code — not <see cref="SourceValueTypeInvalid"/> —
-    /// owns the numeric-source/string-entry mismatch. Spec §10.4 (D-063).
+    /// uses a <b>numeric entry</b> — an exact <c>{ value = n }</c> or a range. This
+    /// code — not <see cref="SourceValueTypeInvalid"/> — owns the
+    /// numeric-source/string-entry mismatch. Spec §10.4 (D-063; renamed from
+    /// <c>RestrictToOnNumericRequiresRange</c> by D-091 now that the exact numeric
+    /// entry exists, so "requires a range" is no longer the whole rule).
     /// </summary>
-    RestrictToOnNumericRequiresRange,
+    RestrictToNumericEntryRequired,
+
+    /// <summary>
+    /// A <c>restrict_to</c> numeric entry is invalid: an exact <c>{ value = n }</c>
+    /// whose <c>n</c> is non-finite, or a range whose provided bounds are equal,
+    /// reversed, or non-finite. The empty range <c>{}</c> — both bounds omitted — is
+    /// valid and matches any usable numeric value. Error. Spec §10.4 / §16.4
+    /// (D-091).
+    /// </summary>
+    RestrictToRangeInvalid,
 
     /// <summary>
     /// A <c>restrict_to</c> string value is absent from the attribute's explicit
@@ -306,16 +319,8 @@ public enum DiagnosticCode
     ObjectKeyCompositeNotImplementedV1,
 
     /// <summary>
-    /// An attribute carries <c>restrict_to</c>, whose execution is not implemented
-    /// in this milestone; the planner rejects it — included or filter-only — rather
-    /// than silently emitting unfiltered output. Spec §10.4 (D-057/D-063;
-    /// transitional, removed at M4).
-    /// </summary>
-    RestrictToNotImplementedV1,
-
-    /// <summary>
-    /// A plan produced zero formal attributes — every attribute is excluded (or, at
-    /// M4, filter-only). A degenerate but structurally-valid schema; the run
+    /// A plan produced zero formal attributes — every attribute is excluded or
+    /// filter-only. A degenerate but structurally-valid schema; the run
     /// proceeds. Warning. Spec §16.4.
     /// </summary>
     NoFormalAttributes,
@@ -513,4 +518,36 @@ public enum DiagnosticCode
     /// promoted to the worst severity across replay passes. Spec §16.4 (D-082/D-085).
     /// </summary>
     GroupingStorageFailed,
+
+    /// <summary>
+    /// The conversion emitted zero objects — an empty input, or <c>restrict_to</c>
+    /// excluded every object (§10.4). A degenerate but structurally-valid context is
+    /// still written; the run proceeds. Warning, once, on normal completion only — a
+    /// structural halt suppresses it, because "no objects" would then describe the
+    /// halt rather than the data. The row twin of the plan-phase
+    /// <see cref="NoFormalAttributes"/>. Spec §16.4 (D-058: replaces the ambiguous
+    /// whole-context <c>EmptyExtent</c>).
+    /// </summary>
+    NoObjectsEmitted,
+
+    /// <summary>
+    /// One or more planned formal attributes were never crossed by any emitted object —
+    /// an empty <b>column</b>. Expected after <c>restrict_to</c> filtering, since
+    /// calibration and the column vocabulary are computed over the input universe
+    /// <em>before</em> objects are filtered (§7), so a surviving population need not
+    /// span every bin. Warning, <b>aggregated</b>: one diagnostic carrying the count and
+    /// a bounded sample of rendered names in plan order, flushed on normal completion
+    /// only. Spec §7 / §16.4 (D-058: replaces <c>EmptyIntent</c>).
+    /// </summary>
+    AttributeHasNoCrosses,
+
+    /// <summary>
+    /// One or more emitted objects carry no crosses at all — an empty <b>row</b>.
+    /// Legal (§10.1) and still written. Warning, <b>aggregated</b>: one diagnostic
+    /// carrying the count and a bounded sample of object names in emission order,
+    /// flushed on normal completion only. Counts <em>emitted</em> objects only — an
+    /// object <c>restrict_to</c> excluded never had a row to be empty. Spec §16.4
+    /// (D-058).
+    /// </summary>
+    ObjectHasNoCrosses,
 }
