@@ -30,14 +30,10 @@ public enum DiagnosticCode
     /// </summary>
     SpecFieldInvalid,
 
-    /// <summary>
-    /// A recognized-but-deferred discretizer kind (<c>equal_width</c>,
-    /// <c>equal_frequency</c>, <c>value_groups</c>) was authored; no carrier is built
-    /// and round-trip is not promised. <c>free_per_value</c> left this set when it
-    /// landed at M4 Slice B (D-101). Spec §11 / §16.4 (D-070; transitional, removed as
-    /// each kind lands at M4).
-    /// </summary>
-    DiscretizerKindNotYetSupported,
+    // DiscretizerKindNotYetSupported (D-070) retired at M4 Slice E (D-104): every v1
+    // discretizer kind is now executable — free_per_value at Slice B (D-101), equal_width at
+    // Slice C (D-102), equal_frequency at Slice D (D-103), and value_groups, its last owner,
+    // here. An unknown kind spelling stays an ordinary SpecFieldInvalid (D-070 tier 3).
 
     /// <summary>
     /// A recognized v1 surface the reader does not yet model was authored
@@ -233,6 +229,25 @@ public enum DiagnosticCode
     OrdinalBoundaryIncompatibleWithCuts,
 
     /// <summary>
+    /// A <c>value_groups</c> discretizer declares the same group <c>label</c> twice, or —
+    /// under <c>unmatched = "other"</c> — a group whose label collides with the synthetic
+    /// <c>Other</c> bin. Ordinal comparison (P-12), so <c>"Other"</c> collides and
+    /// <c>"other"</c> does not. Error, one per duplicate. Duplicates never surface as
+    /// <c>SpecFieldInvalid</c>; a pass-through value merely <em>observed</em> to equal a label
+    /// is data-dependent and belongs to plan (<c>FormalAttributeCollision</c>).
+    /// Spec §11.6 / §16.4 (D-090).
+    /// </summary>
+    ValueGroupsLabelDuplicate,
+
+    /// <summary>
+    /// An <c>ordinal</c> scale sits over <c>value_groups</c> with
+    /// <c>unmatched = "passthrough"</c>. Ordinal over groups requires an authored
+    /// <c>scale.order</c> that is a full permutation of the group labels, which a
+    /// data-discovered bin set can never be. Error. Spec §11.6 / §12.3 / §16.4 (D-090).
+    /// </summary>
+    OrdinalNotAllowedWithValueGroupsPassthrough,
+
+    /// <summary>
     /// An <c>object_key</c> is not valid under the binding's <c>shape</c>: a
     /// <c>row_index</c> key under <c>shape = "triple"</c>, or <em>any</em> authored
     /// <c>[binding.object_key]</c> under triple (triple identity is always the
@@ -324,6 +339,15 @@ public enum DiagnosticCode
     /// Spec §7 / §10.6 / §16.4 (D-036).
     /// </summary>
     UnknownValuePolicyInclude,
+
+    /// <summary>
+    /// A <c>value_groups</c> discretizer with <c>unmatched = "passthrough"</c> discovered its
+    /// bins from the data (any discovered count, including zero), so the column set depends on
+    /// this specific input. Warning — fires whenever the mode executes, because the
+    /// data-dependence exists regardless of how many bins were found. Spec §7 / §11.6 / §16.4
+    /// (D-055/D-090).
+    /// </summary>
+    ValueGroupsPassthroughDataDependent,
 
     /// <summary>
     /// A data-derived calibration population cannot bound its discretizer's

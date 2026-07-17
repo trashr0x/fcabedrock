@@ -84,6 +84,14 @@ internal static class TomlSpellings
     internal static readonly (string Text, CutPlacement Value)[] CutPlacements =
         [("right_value", CutPlacement.RightValue), ("midpoint", CutPlacement.Midpoint)];
 
+    /// <summary><c>value_groups.unmatched</c> (§11.6); defaults to <c>"skip"</c>.</summary>
+    internal static readonly (string Text, ValueGroupsUnmatched Value)[] ValueGroupsUnmatchedKinds =
+    [
+        ("skip", ValueGroupsUnmatched.Skip),
+        ("other", ValueGroupsUnmatched.Other),
+        ("passthrough", ValueGroupsUnmatched.Passthrough),
+    ];
+
     /// <summary>Source <c>value_type</c> (§10.2). <c>"date"</c> is reserved (D-038), not a member.</summary>
     internal static readonly (string Text, SourceValueType Value)[] ValueTypes =
         [("string", SourceValueType.String), ("number", SourceValueType.Number)];
@@ -121,21 +129,21 @@ internal static class TomlSpellings
     /// <summary>The <c>equal_frequency</c> discretizer kind (§11.5, M4 Slice D / D-103).</summary>
     internal const string EqualFrequencyKind = "equal_frequency";
 
+    /// <summary>The <c>value_groups</c> discretizer kind (§11.6, M4 Slice E / D-104).</summary>
+    internal const string ValueGroupsKind = "value_groups";
+
     /// <summary>The <c>equal_width.precision = "exact"</c> spelling (§11.4).</summary>
     internal const string PrecisionExact = "exact";
 
     /// <summary>The <c>equal_width.precision = { round_to = r }</c> key (§11.4).</summary>
     internal const string RoundToKey = "round_to";
 
-    /// <summary>
-    /// Recognized-but-deferred discretizer kinds (D-070 tier 2): rejected at read
-    /// with <c>DiscretizerKindNotYetSupported</c>, no carrier built. All execute
-    /// at M4. <c>free_per_value</c> left this set at Slice B (D-101),
-    /// <c>equal_width</c> at Slice C (D-102), and <c>equal_frequency</c> at Slice D
-    /// (D-103); <c>value_groups</c> is the last member, and the code retires with it.
-    /// </summary>
-    internal static readonly string[] DeferredDiscretizerKinds =
-        ["value_groups"];
+    // The D-070 tier-2 deferred-discretizer set (and its DiscretizerKindNotYetSupported
+    // reject) retired at M4 Slice E (D-104): every v1 discretizer kind now has a carrier and
+    // executes — free_per_value at Slice B (D-101), equal_width at Slice C (D-102),
+    // equal_frequency at Slice D (D-103), value_groups here. The set is removed rather than
+    // kept empty: an empty tier is dead scaffolding whose dispatch can never fire, and tier 3
+    // (an unknown kind spelling → SpecFieldInvalid) already covers everything else.
 
     /// <summary>Implemented scale kinds (§12.1–§12.3).</summary>
     internal const string NominalKind = "nominal";

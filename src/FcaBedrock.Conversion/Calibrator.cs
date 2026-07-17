@@ -515,6 +515,10 @@ public static class Calibrator
                     case QuantileObserver quantile:
                         FinishQuantile(target, quantile, outcomes, diagnostics);
                         break;
+
+                    case PassthroughObserver passthrough:
+                        FinishPassthrough(target, passthrough, outcomes, diagnostics);
+                        break;
                 }
 
                 // §11.5/D-100/G-4: numeric values excluded from the population because they are
@@ -613,9 +617,12 @@ public static class Calibrator
                 case CalibrationPending { Config: PendingEqualFrequency config } pending:
                     return new QuantileObserver(NewAccumulator(attribute.Name, pending.Culture), percentile: null, equalFrequency: config);
 
+                case CalibrationPending { Config: PendingValueGroupsPassthrough config }:
+                    return new PassthroughObserver(config.Groups);
+
                 case CalibrationPending pending:
-                    // value_groups passthrough lands with its own M4 slice (D-093); equal_width
-                    // range = "manual" is spec-determined and never pends.
+                    // equal_width range = "manual" is spec-determined and never pends, so a
+                    // pending variant with no observer is a corrupted carrier (D-093).
                     throw new InvalidOperationException(
                         $"'{pending.Kind}' calibration is not implemented in this milestone; it lands with its own M4 slice (D-093).");
 
@@ -647,6 +654,28 @@ public static class Calibrator
             diagnostics.Add(new BedrockDiagnostic(
                 DiagnosticCode.ObservedDomainUsed, DiagnosticSeverity.Warning,
                 $"Attribute '{target.AttributeName}' had no declared_domain; it was calibrated from {values.Count} observed value(s), so the schema depends on this input (§10.3).",
+                new DiagnosticLocation(AttributeName: target.AttributeName)));
+        }
+
+        // §11.6/D-055/D-090: the pass-through bins resolve once the pass completes. Like the other
+        // discovery-class outcomes this warning is mode-triggered — it fires whenever passthrough
+        // calibration executes, ZERO discoveries included, because the column set depends on this
+        // input either way. An empty outcome is retained, not skipped: it is the legitimate
+        // zero-discovery completeness marker CalibratedSpec.Create requires, and dropping it would
+        // read as a skipped calibration.
+        //
+        // There is deliberately no data-insufficiency guard: unlike a cut discretizer, whose bins
+        // need a span or enough distinct values, value_groups' declared groups already stand on
+        // their own — discovering no ungrouped value means every value matched a group, which is a
+        // perfectly good outcome, not a failure.
+        private static void FinishPassthrough(
+            CalibrationTarget target, PassthroughObserver observer, List<AttributeCalibration> outcomes, List<BedrockDiagnostic> diagnostics)
+        {
+            var values = observer.Values;
+            outcomes.Add(new PassthroughBins(target.AttributeName, values));
+            diagnostics.Add(new BedrockDiagnostic(
+                DiagnosticCode.ValueGroupsPassthroughDataDependent, DiagnosticSeverity.Warning,
+                $"Attribute '{target.AttributeName}' uses value_groups with unmatched = \"passthrough\"; {values.Count} ungrouped value(s) were discovered and became bins, so the column set depends on this input (§11.6).",
                 new DiagnosticLocation(AttributeName: target.AttributeName)));
         }
 
@@ -868,6 +897,63 @@ public static class Calibrator
             if (_seen.Add(key))
             {
                 _values.Add(key);
+            }
+        }
+    }
+
+    // The value_groups pass-through bin set (§7/§11.6, D-055/D-090/D-095): the distinct raw
+    // spellings that matched NO declared group, in first-observation order.
+    //
+    // Discovery-class, not count-sensitive: a bin either exists or it does not, so how MANY times
+    // a value occurs is irrelevant and the set is idempotent under repetition. That is what keeps
+    // it off the count-sensitive path entirely — no quantile accumulator, no value counts, no
+    // spill runs, no merge or replay, no subject-local triple deduplication, and no contribution
+    // to the budget divisor. Its bound is the attribute vocabulary — schema-scale metadata, the
+    // same documented P-16 carve-out as an observed domain (D-095), not a budget-gated
+    // population.
+    //
+    // Matching is delegated to Core rather than reimplemented: the observer classifies each value
+    // through a ValueGroupsDiscretizer built over the SAME authored groups under the `skip`
+    // policy, whose BinResult answers exactly the question discovery asks — a Bin means some group
+    // claimed the value, an Unknown means none did (§11.6). So calibration and emit cannot drift
+    // about what "unmatched" means: it is literally the same type, matcher, and first-match walk,
+    // with each group's regex compiled once at construction rather than per observed value.
+    //
+    // The probe instance is a throwaway whose own unmatched policy is irrelevant — only its
+    // matched-vs-not answer is read — the same shape as DeriveEqualWidth building a throwaway
+    // CreateManual instance purely for its cuts (D-102). `skip` is the policy that makes "no group
+    // matched" observable; `other`/`passthrough` would bin it and hide the answer.
+    private sealed class PassthroughObserver : CalibrationObserver
+    {
+        private readonly ValueGroupsDiscretizer _probe;
+        private readonly HashSet<string> _seen = new(StringComparer.Ordinal);
+        private readonly List<string> _values = [];
+
+        public PassthroughObserver(IReadOnlyList<ValueGroup> groups) =>
+            // Cannot throw on a resolved spec: the seam diagnoses duplicate labels
+            // (ValueGroupsLabelDuplicate) and the ResolvedSpec trust boundary re-checks them on
+            // the pending carrier, so reaching here with a duplicate is corrupt Core state.
+            _probe = ValueGroupsDiscretizer.Create(groups, ValueGroupsUnmatched.Skip);
+
+        public IReadOnlyList<string> Values => _values;
+
+        public override void Observe(string? raw)
+        {
+            if (raw is null)
+            {
+                return; // missing values are handled before calibration; never a passthrough bin.
+            }
+
+            if (_probe.Discretize(raw).Outcome != BinOutcome.Unknown)
+            {
+                return; // some group claimed it, so it is grouped — not a pass-through bin.
+            }
+
+            // Ordinal dedup (P-12); §17 rule 3 fixes the order as first-observation order, which
+            // for triple input is RAW input order — hence discovery lives on the raw pass.
+            if (_seen.Add(raw))
+            {
+                _values.Add(raw);
             }
         }
     }

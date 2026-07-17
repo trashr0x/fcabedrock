@@ -382,9 +382,42 @@ public static class FingerprintCalculator
                 builder.Append('}');
                 break;
 
+            case ValueGroupsDiscretizer valueGroups:
+                // §14/D-094: the AUTHORED configuration only. `groups` stays in DECLARATION
+                // order — never sorted — because first-match order is semantic (§11.6), which
+                // makes it the §14 arrays-in-planned-order default rather than an exception.
+                // Each group object sorts its keys label < pattern < values, and `pattern` /
+                // `values` appear ONLY when authored, so an omitted `values` and an authored
+                // `values = []` are byte-distinct (G-11). Inner values keep authored order with
+                // duplicates retained — authored config, not a canonicalized set.
+                //
+                // Discovered passthrough bins are deliberately absent: they are effective, not
+                // authored, and already ride as `bin` objects in the `schema` array (the same
+                // effective-vs-authored rule the cut kinds follow). What IS encoded is
+                // "unmatched":"passthrough" — the authored config that made the schema
+                // data-dependent. Top-level keys sort ordinal: groups < kind < unmatched.
+                builder.Append("{\"groups\":[");
+                for (var i = 0; i < valueGroups.Groups.Count; i++)
+                {
+                    if (i > 0)
+                    {
+                        builder.Append(',');
+                    }
+
+                    AppendValueGroup(builder, valueGroups.Groups[i]);
+                }
+
+                builder.Append("],\"kind\":\"value_groups\",\"unmatched\":");
+                CanonicalJson.AppendString(builder, Spell(valueGroups.Unmatched));
+                builder.Append('}');
+                break;
+
             default:
-                // Deferred kinds reject at read/resolve (D-070) and never reach a
-                // computable plan; hitting this is a programmer error.
+                // Unreachable by construction, for two independent reasons — every §11 kind is
+                // encoded above (the deferred-kind tier emptied at M4 Slice E, D-104), and
+                // Discretizer is a closed union within Core, so no external assembly can add one.
+                // The remaining in-assembly variant, CalibrationPending, cannot reach a plan at all
+                // (its plan-time members throw, D-093). Hitting this is a programmer error.
                 throw new InvalidOperationException($"Discretizer kind '{discretizer.Kind}' has no fingerprint encoding.");
         }
     }
@@ -630,6 +663,36 @@ public static class FingerprintCalculator
         CutPlacement.Midpoint => "midpoint",
         _ => throw new InvalidOperationException($"No fingerprint spelling for equal_frequency cut_placement {cutPlacement}."),
     };
+
+    private static string Spell(ValueGroupsUnmatched unmatched) => unmatched switch
+    {
+        ValueGroupsUnmatched.Skip => "skip",
+        ValueGroupsUnmatched.Other => "other",
+        ValueGroupsUnmatched.Passthrough => "passthrough",
+        _ => throw new InvalidOperationException($"No fingerprint spelling for value_groups unmatched {unmatched}."),
+    };
+
+    // §14/D-094: one group object, keys sorted label < pattern < values. Presence — not
+    // emptiness — decides whether `pattern`/`values` appear, so an omitted `values` and an
+    // authored `values = []` encode differently (G-11).
+    private static void AppendValueGroup(StringBuilder builder, ValueGroup group)
+    {
+        builder.Append("{\"label\":");
+        CanonicalJson.AppendString(builder, group.Label);
+        if (group.Pattern is { } pattern)
+        {
+            builder.Append(",\"pattern\":");
+            CanonicalJson.AppendString(builder, pattern);
+        }
+
+        if (group.Values is { } values)
+        {
+            builder.Append(",\"values\":");
+            AppendStringArray(builder, values);
+        }
+
+        builder.Append('}');
+    }
 
     private static string Spell(BinEnds ends) => ends switch
     {

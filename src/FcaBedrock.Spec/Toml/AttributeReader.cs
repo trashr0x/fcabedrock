@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using FcaBedrock.Core.Discretization;
 using FcaBedrock.Core.Spec;
 using FcaBedrock.Diagnostics;
@@ -179,6 +180,9 @@ internal static class AttributeReader
             case TomlSpellings.EqualFrequencyKind:
                 return ReadEqualFrequency(context, inner, table.Span);
 
+            case TomlSpellings.ValueGroupsKind:
+                return ReadValueGroups(context, inner, table.Span);
+
             case TomlSpellings.OrderedCutsKind:
                 var ordered = new OrderedCutsDiscretizerSection(
                     inner.TakeStringArray("order"),
@@ -191,24 +195,263 @@ internal static class AttributeReader
                 return null; // TakeKind reported
 
             default:
-                if (TomlSpellings.IsIn(TomlSpellings.DeferredDiscretizerKinds, kind))
-                {
-                    // D-070 tier 2: recognized by kind name only — no carrier is
-                    // built, no round-trip is promised, and the parameter keys
-                    // are deliberately not walked (no unknown-key noise).
-                    context.Error(
-                        DiagnosticCode.DiscretizerKindNotYetSupported,
-                        $"discretizer kind '{kind}' is a valid v1 discretizer this build does not support yet; it lands at M4 (D-070).",
-                        table.Span);
-                    return null;
-                }
-
+                // D-070 tier 3, now the only tier: every v1 discretizer kind has a carrier as of
+                // M4 Slice E (D-104), so an unrecognized spelling is an ordinary field error.
                 context.Error(
                     DiagnosticCode.SpecFieldInvalid,
                     $"discretizer kind '{kind}' is not recognized (§11).",
                     table.Span);
                 return null;
         }
+    }
+
+    // §11.6 (D-090/D-104): value_groups' authored fields. Parse owns every field shape — the
+    // groups array and each group's label/values/pattern validity (including the regex compile
+    // check and the G-11 matcher predicate) and the unmatched spelling — all as SpecFieldInvalid,
+    // the one code §11.6 assigns; there is deliberately no dedicated regex-error code. The seam
+    // owns what the values IMPLY across groups (ValueGroupsLabelDuplicate,
+    // OrdinalNotAllowedWithValueGroupsPassthrough).
+    //
+    // Every field is read before the gates run, so independent failures report together (P-14):
+    // a spec with a bad group AND a bad unmatched reports both.
+    private static DiscretizerSection ReadValueGroups(TomlReadContext context, TomlTableCursor inner, SourceSpan tableSpan)
+    {
+        var groups = ReadGroups(context, inner, tableSpan);
+        var unmatched = TakeValueGroupsUnmatched(context, inner);
+        inner.Finish();
+
+        // The carrier holds only what resolved: an authored-but-unrecognized unmatched carries
+        // null (its Error already fails the read), exactly like every other malformed field.
+        return new ValueGroupsDiscretizerSection(groups, unmatched);
+    }
+
+    private static IReadOnlyList<ValueGroupSection>? ReadGroups(
+        TomlReadContext context, TomlTableCursor cursor, SourceSpan tableSpan)
+    {
+        if (cursor.Take("groups") is not { } pair)
+        {
+            context.Error(
+                DiagnosticCode.SpecFieldInvalid,
+                "value_groups discretizer declares no groups; expected an array of { label, values/pattern } tables (§11.6).",
+                tableSpan);
+            return null;
+        }
+
+        if (pair.Value is not ArraySyntax array)
+        {
+            context.Error(
+                DiagnosticCode.SpecFieldInvalid,
+                "value_groups discretizer key 'groups' expects an array of { label, values/pattern } tables (§11.6).",
+                pair.Value?.Span ?? pair.Span);
+            return null;
+        }
+
+        // Declaration order is preserved because it is semantic — first match wins (§11.6).
+        var groups = new List<ValueGroupSection>(array.Items.ChildrenCount);
+        foreach (var item in array.Items)
+        {
+            if (item.Value is not InlineTableSyntax table)
+            {
+                if (item.Value is { } node)
+                {
+                    context.Error(
+                        DiagnosticCode.SpecFieldInvalid,
+                        "value_groups groups entries are { label, values/pattern } tables (§11.6).",
+                        node.Span);
+                }
+
+                continue; // a malformed item Tomlyn already reported
+            }
+
+            if (ReadGroup(context, table) is { } group)
+            {
+                groups.Add(group);
+            }
+        }
+
+        return groups;
+    }
+
+    // One group: label present and non-empty; every authored explicit value non-empty; an
+    // authored pattern non-empty and compilable; and at least one usable matcher.
+    //
+    // Each field is read PRESENCE-AWARE (authored-vs-absent, not merely valid-vs-null), the same
+    // discipline equal_width's vmin/vmax follow: the cursor's typed accessors collapse absent and
+    // malformed to null, and the gates below must tell them apart so a malformed field reports its
+    // own type error once instead of also being called missing or matcher-less (D-067, one
+    // condition → one code). A field that failed its own gate returns null for the whole group —
+    // its Error already fails the read, and continuing would only pile on.
+    private static ValueGroupSection? ReadGroup(TomlReadContext context, InlineTableSyntax table)
+    {
+        var inner = new TomlTableCursor(context, "value_groups group", table);
+        var (label, labelAuthored) = TakeGroupString(context, inner, "label");
+        var (values, valuesAuthored) = TakeGroupValues(context, inner);
+        var (pattern, patternAuthored) = TakeGroupString(context, inner, "pattern");
+        inner.Finish();
+
+        // A field authored-but-malformed already reported; its shape is unknown, so the
+        // label/matcher rules below cannot be judged and would only add noise.
+        if ((labelAuthored && label is null) || (valuesAuthored && values is null) || (patternAuthored && pattern is null))
+        {
+            return null;
+        }
+
+        if (!labelAuthored || label!.Length == 0)
+        {
+            context.Error(
+                DiagnosticCode.SpecFieldInvalid,
+                "value_groups group declares no label; every group needs a non-empty label (§11.6).",
+                table.Span);
+            return null;
+        }
+
+        var usableValues = false;
+        if (values is { } authored)
+        {
+            foreach (var value in authored)
+            {
+                if (value.Length == 0)
+                {
+                    context.Error(
+                        DiagnosticCode.SpecFieldInvalid,
+                        $"value_groups group '{label}' declares an empty explicit value; every authored value must be non-empty (§11.6).",
+                        table.Span);
+                    return null;
+                }
+            }
+
+            usableValues = authored.Count > 0;
+        }
+
+        var usablePattern = false;
+        if (pattern is { } authoredPattern)
+        {
+            if (authoredPattern.Length == 0)
+            {
+                context.Error(
+                    DiagnosticCode.SpecFieldInvalid,
+                    $"value_groups group '{label}' declares an empty pattern; an authored pattern must be non-empty (§11.6).",
+                    table.Span);
+                return null;
+            }
+
+            // The compile check at parse (D-090): an uncompilable pattern is ONE SpecFieldInvalid
+            // condition, not a code of its own. Compiled with the same options AND the same
+            // explicit InfiniteMatchTimeout ValueGroup.Create uses — that type is the semantic
+            // authority; this is the parse gate that keeps the strict factory behind a clean
+            // success gate, the same reader-gates/factory-backstops split `bins` and `precision`
+            // already follow. (The timeout cannot change which patterns COMPILE, but matching the
+            // construction exactly is what stops the two sites drifting.)
+            try
+            {
+                _ = new Regex(authoredPattern, RegexOptions.CultureInvariant, Regex.InfiniteMatchTimeout);
+                usablePattern = true;
+            }
+            catch (ArgumentException ex)
+            {
+                context.Error(
+                    DiagnosticCode.SpecFieldInvalid,
+                    $"value_groups group '{label}' declares an invalid regex pattern (§11.6): {ex.Message}",
+                    table.Span);
+                return null;
+            }
+        }
+
+        // G-11: at least one NON-EMPTY explicit value or a non-empty pattern, so `values = []`
+        // alone is invalid while `values = []` alongside a pattern is valid.
+        if (!usableValues && !usablePattern)
+        {
+            context.Error(
+                DiagnosticCode.SpecFieldInvalid,
+                $"value_groups group '{label}' carries no usable matcher; a group needs at least one explicit value or a pattern (§11.6).",
+                table.Span);
+            return null;
+        }
+
+        return new ValueGroupSection(label, values, pattern);
+    }
+
+    private static (string? Value, bool Authored) TakeGroupString(
+        TomlReadContext context, TomlTableCursor cursor, string key)
+    {
+        if (cursor.Take(key) is not { } pair)
+        {
+            return (null, false);
+        }
+
+        if (pair.Value is StringValueSyntax { Value: { } text })
+        {
+            return (text, true);
+        }
+
+        context.Error(
+            DiagnosticCode.SpecFieldInvalid,
+            $"value_groups group key '{key}' expects a string (§11.6).",
+            pair.Value?.Span ?? pair.Span);
+        return (null, true);
+    }
+
+    // An omitted `values` and an authored `values = []` are DIFFERENT authored states the
+    // document must keep apart — the §14 encoding writes `values` only when authored, so the two
+    // are byte-distinct (G-11/D-094) — hence the explicit authored flag rather than "null means
+    // absent". Authored order and duplicates are preserved verbatim.
+    private static (IReadOnlyList<string>? Value, bool Authored) TakeGroupValues(
+        TomlReadContext context, TomlTableCursor cursor)
+    {
+        if (cursor.Take("values") is not { } pair)
+        {
+            return (null, false);
+        }
+
+        if (pair.Value is not ArraySyntax array)
+        {
+            context.Error(
+                DiagnosticCode.SpecFieldInvalid,
+                "value_groups group key 'values' expects an array of strings (§11.6).",
+                pair.Value?.Span ?? pair.Span);
+            return (null, true);
+        }
+
+        var values = new List<string>(array.Items.ChildrenCount);
+        foreach (var item in array.Items)
+        {
+            if (item.Value is StringValueSyntax { Value: { } value })
+            {
+                values.Add(value);
+                continue;
+            }
+
+            if (item.Value is { } node)
+            {
+                context.Error(
+                    DiagnosticCode.SpecFieldInvalid,
+                    "value_groups group 'values' entries must be strings (§11.6).",
+                    node.Span);
+                return (null, true);
+            }
+        }
+
+        return (values, true);
+    }
+
+    private static ValueGroupsUnmatched? TakeValueGroupsUnmatched(TomlReadContext context, TomlTableCursor cursor)
+    {
+        if (cursor.Take("unmatched") is not { } pair)
+        {
+            return null; // §11.6 default ("skip") resolves at the seam, never in the document
+        }
+
+        if (pair.Value is StringValueSyntax { Value: { } text }
+            && TomlSpellings.TryParse(TomlSpellings.ValueGroupsUnmatchedKinds, text, out var value))
+        {
+            return value;
+        }
+
+        context.Error(
+            DiagnosticCode.SpecFieldInvalid,
+            $"value_groups discretizer key 'unmatched' expects {TomlSpellings.Allowed(TomlSpellings.ValueGroupsUnmatchedKinds)} (§11.6).",
+            pair.Value?.Span ?? pair.Span);
+        return null;
     }
 
     // §11.4 (D-089/D-102): equal_width's authored fields. Parse owns the field shapes —

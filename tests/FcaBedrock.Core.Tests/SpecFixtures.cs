@@ -102,6 +102,26 @@ internal static class SpecFixtures
             new CalibrationPending(new PendingEqualFrequency(bins, tiePolicy, cutPlacement), culture ?? CultureInfo.InvariantCulture),
             scale, DeclaredDomain: [], RestrictTo: [], NoLabels, MissingPolicy.Skip, policy);
 
+    // A spec-determined value_groups attribute (§11.6, D-090): skip/other resolve straight to the
+    // executable discretizer — no calibration, because the groups fix the bins.
+    public static AttributeSpec ValueGroups(
+        string name, int index, ValueGroupsUnmatched unmatched, Scale scale, params ValueGroup[] groups) =>
+        new(name, new ColumnSource(index, SourceValueType.String), Include: true,
+            ValueGroupsDiscretizer.Create(groups, unmatched), scale,
+            DeclaredDomain: [], RestrictTo: [], NoLabels, MissingPolicy.Skip, UnknownValuePolicy.Warn);
+
+    // A value_groups passthrough attribute before calibration: the CalibrationPending carrier the
+    // resolve seam produces, which Calibrate replaces with the executable discretizer over the
+    // discovered bins (D-093). Passthrough has no spec-determined form — its bins are data (§7).
+    public static AttributeSpec ValueGroupsPassthrough(
+        string name, int index, Scale scale, params ValueGroup[] groups) =>
+        new(name, new ColumnSource(index, SourceValueType.String), Include: true,
+            new CalibrationPending(new PendingValueGroupsPassthrough(groups), CultureInfo.InvariantCulture), scale,
+            DeclaredDomain: [], RestrictTo: [], NoLabels, MissingPolicy.Skip, UnknownValuePolicy.Warn);
+
+    // The §11.6 group shorthand: explicit values only, which is the common case in these fixtures.
+    public static ValueGroup Group(string label, params string[] values) => ValueGroup.Create(label, values, null);
+
     // An identity value-bin ordinal attribute (§12.3, D-081): an explicit order over
     // the declared domain, paired with an OrdinalScale carrying that order.
     public static AttributeSpec OrdinalValueBins(

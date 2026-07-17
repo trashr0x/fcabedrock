@@ -367,7 +367,7 @@ internal static class TomlFixtures
     /// §19.4 EMAGE trimmed to one attribute: exercises the D-070 recognized-deferred
     /// discretizer reject (value_groups carries no parameters into the document).
     /// </summary>
-    public const string EmageDeferredKind = """
+    public const string EmageValueGroups = """
         [spec]
         version = 1
 

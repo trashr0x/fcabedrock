@@ -60,6 +60,16 @@ internal static class DocumentSnapshot
             Order = ordered.Order?.ToImmutableArray(),
             Cuts = ordered.Cuts?.ToImmutableArray(),
         },
+
+        // §11.6: value_groups nests one list inside another, so the snapshot must be deep — the
+        // outer groups list AND each group's authored values. Copying only the outer list would
+        // leave every inner list caller-owned and mutable. `?.ToImmutableArray()` preserves the
+        // authored-null vs authored-empty distinction the §14 encoding depends on (G-11): null
+        // stays null, and an authored empty list stays an (immutable) empty list.
+        ValueGroupsDiscretizerSection { Groups: { } groups } valueGroups => valueGroups with
+        {
+            Groups = groups.Select(static group => group with { Values = group.Values?.ToImmutableArray() }).ToImmutableArray(),
+        },
         _ => discretizer,
     };
 

@@ -453,6 +453,161 @@ public sealed class CalibratedSpecTests
         AssertImmutableList(Assert.IsType<CalibratedCuts>(calibrated.Calibrations[0]).Cuts);
     }
 
+    // --- value_groups passthrough substitution (M4 Slice E / D-090/D-104) -----
+
+    private static BedrockSpec PassthroughSpec(params ValueGroup[] groups) =>
+        With(SpecFixtures.ValueGroupsPassthrough(
+            "edu", 0, new NominalScale(), groups.Length > 0 ? groups : [SpecFixtures.Group("School", "11th", "HS-grad")]));
+
+    private static ValueGroupsDiscretizer SubstitutedPassthrough(Diagnosed<CalibratedSpec> result)
+    {
+        Assert.True(result.TryGetValue(out var calibrated));
+        return Assert.IsType<ValueGroupsDiscretizer>(calibrated!.Spec.Attributes[0].Discretizer);
+    }
+
+    [Fact]
+    public void Create_WhenPassthroughBinsOutcome_ThenPendingBecomesAnExecutableDiscretizer()
+    {
+        var result = CalibratedSpec.Create(
+            Resolve(PassthroughSpec(), 1), [new PassthroughBins("edu", ["PhD", "Masters"])]);
+
+        var discretizer = SubstitutedPassthrough(result);
+        Assert.Equal(ValueGroupsUnmatched.Passthrough, discretizer.Unmatched);
+        Assert.Equal(["PhD", "Masters"], discretizer.PassthroughBins);
+
+        // The authored groups survive the substitution verbatim, and the discovered bins follow
+        // them in discovery order (§17 rule 3).
+        Assert.Equal(["School"], discretizer.Groups.Select(g => g.Label));
+        Assert.Equal(["School", "PhD", "Masters"], discretizer.DescribeBins([]).Labels);
+    }
+
+    [Fact]
+    public void Create_WhenPassthroughSubstituted_ThenNoCalibrationPendingRemains()
+    {
+        var result = CalibratedSpec.Create(Resolve(PassthroughSpec(), 1), [new PassthroughBins("edu", ["PhD"])]);
+
+        Assert.True(result.TryGetValue(out var calibrated));
+        Assert.All(calibrated!.Spec.Attributes, a => Assert.IsNotType<CalibrationPending>(a.Discretizer));
+    }
+
+    [Fact]
+    public void Create_WhenPassthroughSubstituted_ThenTheOutcomeIsRetainedAndTokenSchemaPreserved()
+    {
+        var resolved = Resolve(PassthroughSpec(), 1);
+
+        var result = CalibratedSpec.Create(resolved, [new PassthroughBins("edu", ["PhD"])]);
+
+        Assert.True(result.TryGetValue(out var calibrated));
+        Assert.Same(resolved, calibrated!.Resolution);
+        Assert.Same(resolved.Schema, calibrated.Schema);
+        var retained = Assert.IsType<PassthroughBins>(Assert.Single(calibrated.Calibrations));
+        Assert.Equal("edu", retained.AttributeName);
+        Assert.Equal(["PhD"], retained.Values);
+    }
+
+    [Fact]
+    public void Create_WhenPassthroughDiscoveredNothing_ThenTheEmptyOutcomeIsAValidCompletenessMarker()
+    {
+        // An empty PassthroughBins is the zero-discovery marker — every value matched a group. It
+        // must substitute (not be treated as a missing outcome) and must be RETAINED, since the
+        // freeze/manifest layer reads these outcomes and a dropped one would read as a skipped
+        // calibration.
+        var result = CalibratedSpec.Create(Resolve(PassthroughSpec(), 1), [new PassthroughBins("edu", [])]);
+
+        var discretizer = SubstitutedPassthrough(result);
+        Assert.Empty(discretizer.PassthroughBins);
+        Assert.Equal(ValueGroupsUnmatched.Passthrough, discretizer.Unmatched);
+        Assert.Empty(Assert.IsType<PassthroughBins>(Assert.Single(SubstitutedCalibrations(result))).Values);
+    }
+
+    private static IReadOnlyList<AttributeCalibration> SubstitutedCalibrations(Diagnosed<CalibratedSpec> result)
+    {
+        Assert.True(result.TryGetValue(out var calibrated));
+        return calibrated!.Calibrations;
+    }
+
+    [Fact]
+    public void Create_WhenPassthroughOutcomeMissing_ThenThrows() =>
+        Assert.Throws<ArgumentException>(() => CalibratedSpec.Create(Resolve(PassthroughSpec(), 1), []));
+
+    [Fact]
+    public void Create_WhenPassthroughOutcomeIsWrongKind_ThenThrows() =>
+        // A CalibratedCuts cannot resolve a passthrough carrier: kind-mismatched outcomes are a
+        // calibrator-contract violation, not a data error (D-093).
+        Assert.Throws<ArgumentException>(() =>
+            CalibratedSpec.Create(Resolve(PassthroughSpec(), 1), [new CalibratedCuts("edu", [1.0])]));
+
+    [Fact]
+    public void Create_WhenPassthroughOutcomeNamesAnUnknownAttribute_ThenThrows() =>
+        Assert.Throws<ArgumentException>(() =>
+            CalibratedSpec.Create(Resolve(PassthroughSpec(), 1), [new PassthroughBins("nope", ["PhD"])]));
+
+    [Fact]
+    public void Create_WhenTwoPassthroughOutcomesForOneAttribute_ThenThrows() =>
+        Assert.Throws<ArgumentException>(() => CalibratedSpec.Create(
+            Resolve(PassthroughSpec(), 1),
+            [new PassthroughBins("edu", ["PhD"]), new PassthroughBins("edu", ["Masters"])]));
+
+    [Fact]
+    public void Create_WhenPassthroughOutcomeNamesAnExcludedAttribute_ThenThrows()
+    {
+        // Excluded attributes are parked config and never calibrate (D-049), so an outcome for one
+        // means the calibrator observed something it should not have.
+        var spec = With(SpecFixtures.ValueGroupsPassthrough("edu", 0, new NominalScale(), SpecFixtures.Group("School", "11th")),
+            SpecFixtures.Excluded("parked", 1));
+
+        Assert.Throws<ArgumentException>(() =>
+            CalibratedSpec.Create(Resolve(spec, 2), [new PassthroughBins("edu", ["PhD"]), new PassthroughBins("parked", ["x"])]));
+    }
+
+    [Fact]
+    public void Create_WhenPassthroughOutcomeGoesToAnAttributeThatNeedsNone_ThenThrows()
+    {
+        // A skip-policy value_groups attribute is spec-determined; handing it a PassthroughBins
+        // means the calibrator mis-paired its outcomes.
+        var spec = With(SpecFixtures.ValueGroups("edu", 0, ValueGroupsUnmatched.Skip, new NominalScale(), SpecFixtures.Group("School", "11th")));
+
+        Assert.Throws<ArgumentException>(() =>
+            CalibratedSpec.Create(Resolve(spec, 1), [new PassthroughBins("edu", ["PhD"])]));
+    }
+
+    [Fact]
+    public void FromFullyDeclared_WhenPassthroughPends_ThenThrowsThroughRequiresData() =>
+        // Passthrough is data-dependent, so the no-data fast path must refuse it rather than
+        // certify an uncalibrated schema (D-093).
+        Assert.Throws<ArgumentException>(() => CalibratedSpec.FromFullyDeclared(Resolve(PassthroughSpec(), 1)));
+
+    [Fact]
+    public void FromFullyDeclared_WhenValueGroupsIsSkipOrOther_ThenStillAccepted()
+    {
+        // The complement of the rule above: skip/other value_groups are fully determined by the
+        // spec text, so they must keep passing through the no-data path (§7).
+        foreach (var unmatched in new[] { ValueGroupsUnmatched.Skip, ValueGroupsUnmatched.Other })
+        {
+            var spec = With(SpecFixtures.ValueGroups("edu", 0, unmatched, new NominalScale(), SpecFixtures.Group("School", "11th")));
+
+            var calibrated = CalibratedSpec.FromFullyDeclared(Resolve(spec, 1));
+
+            Assert.Empty(calibrated.Calibrations);
+            Assert.IsType<ValueGroupsDiscretizer>(calibrated.Spec.Attributes[0].Discretizer);
+        }
+    }
+
+    [Fact]
+    public void Create_WhenPassthroughBinsInputMutated_ThenSubstitutedBinsUnaffected()
+    {
+        var bins = new List<string> { "PhD" };
+        var result = CalibratedSpec.Create(Resolve(PassthroughSpec(), 1), [new PassthroughBins("edu", bins)]);
+        Assert.True(result.TryGetValue(out var calibrated));
+
+        bins.Add("Masters"); // the caller keeps its list
+
+        var discretizer = Assert.IsType<ValueGroupsDiscretizer>(calibrated!.Spec.Attributes[0].Discretizer);
+        Assert.Equal(["PhD"], discretizer.PassthroughBins);
+        AssertImmutableList(discretizer.PassthroughBins);
+        AssertImmutableList(Assert.IsType<PassthroughBins>(calibrated.Calibrations[0]).Values);
+    }
+
     // --- Immutability of the effective spec graph (D-098) ---
 
     [Fact]

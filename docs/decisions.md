@@ -179,6 +179,10 @@ superseded or refined. A new entry MUST add its line here.
 
 - D-103 — `equal_frequency` + `equal_width` `percentile_p1_p99` executable: exact-rational rank selection, the §11.5 feasibility-precedence amendment, sign-aware midpoint placement, the bounded fixed-capacity quantile accumulator with spill/online consolidation, subject-local triple deduplication, and `CalibrationPopulationTooLarge` (realizes D-088/D-089/D-093/D-094/D-095; the G-5/G-6/G-8/G-13 governance items)
 
+### M4 Slice E (value_groups)
+
+- D-104 — `value_groups` executable (skip/other/passthrough): first-match grouping with pinned regex semantics, authored-presence matchers, raw-order pass-through discovery, ordinal over group labels, and the final `DiscretizerKindNotYetSupported` retirement (realizes D-022/D-055/D-090/D-093/D-094/D-095; the G-8/G-11 governance items; completes D-070)
+
 Spec-field defaults are recorded in spec §21 items 1–11 (see the final section
 of this file).
 
@@ -3660,6 +3664,141 @@ pattern).
   the `PendingDeletions` observer signal), Diagnostics (`CalibrationPopulationTooLarge`); spec §7 /
   §11.4 / §11.5 / §16.4. Realizes D-088/D-089/D-093/D-094/D-095; the G-5/G-6/G-8/G-13 governance
   items.
+
+---
+
+## M4 Slice E (value_groups)
+
+### D-104 — `value_groups` executable: first-match grouping, authored-presence matchers, raw-order pass-through discovery, ordinal over group labels, and the final deferred-kind retirement
+
+- **Status:** accepted (M4 Slice E; realizes D-022/D-055/D-090/D-093/D-094/D-095; the G-8/G-11
+  governance items; completes D-070's retirement)
+- **Date:** 2026-07-17
+- **Decision:** the `value_groups` discretizer (§11.6) becomes executable under **all three**
+  `unmatched` policies, and with it **every v1 discretizer kind is executable** — so D-070's
+  transitional read-reject set empties and `DiscretizerKindNotYetSupported` retires with its last
+  owner (G-8).
+  - **Discretization, not domain membership.** `value_groups` is a **value-bin** discretizer whose
+    bin universe is its *groups*, not a `declared_domain` (D-055) — so `declared_domain` and
+    `value_labels` are both **dormant** under it (§10.3/§10.8/D-049): authored, round-tripped,
+    ignored by validation, naming, and the effective-domain fingerprint gate, never an error. Its
+    geometry is ordinary value bins (`CutBins = false`), never cut geometry, and it is
+    **string-fixing** (D-061): an authored `value_type = "number"` is `SourceValueTypeInvalid`.
+  - **Matching, pinned exactly.** A group matches when an explicit value matches **or** its regex
+    matches (OR within a group); groups are walked in **declaration order** and the **first match
+    wins**, which is why the `groups` array is planned-order everywhere — semantic, not
+    presentational. Explicit values compare with **ordinal** equality (P-12). The regex is compiled
+    **once** per group with `RegexOptions.CultureInvariant`, default backtracking, and
+    `Regex.InfiniteMatchTimeout` passed **explicitly** — the constructor overloads that omit a
+    timeout silently inherit the host's ambient `REGEX_DEFAULT_MATCH_TIMEOUT`, which would let the
+    same spec over the same input complete on one machine and throw `RegexMatchTimeoutException` on
+    another (P-7), on the exception channel mid-calibrate/emit rather than the diagnostic one
+    (P-14); "no timeout" is therefore a property the construction must *state*, not one it can
+    inherit. Matching is **partial** (unanchored `IsMatch`) and **case-sensitive** unless the author
+    writes an inline option such as `(?i)`. Nothing is trimmed, case-folded, anchored, or
+    culture-normalized.
+  - **Authored presence survives into Core (G-11).** `ValueGroup.Values` is `null` when `values`
+    was omitted and a list — **possibly empty** — when it was authored, because §14 encodes
+    `values` only when authored and the two must be byte-distinct. Authored order and duplicates
+    are retained: this is authored configuration, not a canonicalized set. The matcher-validity
+    predicate is exactly *at least one non-empty explicit value **or** a non-empty pattern*, so
+    `values = []` alone is invalid while `values = []` alongside a pattern is valid.
+  - **One matcher, two phases.** Calibration discovery and emit classification route through the
+    **same** Core matcher — the calibrator classifies through a `ValueGroupsDiscretizer` built over
+    the authored groups under `skip`, whose `Unknown` outcome *is* "no group claimed it" — so the
+    two phases cannot disagree about what "unmatched" means, and no pattern is recompiled per
+    observed value. (The throwaway-probe shape mirrors the calibrator's existing
+    `CreateManual`-for-its-cuts use, D-102.)
+  - **Pass-through is data-dependent and discovery-class.** `passthrough` cannot be constructed
+    directly (its public factory rejects the policy): it resolves to the `CalibrationPending`
+    carrier `PendingValueGroupsPassthrough`, the Calibrate phase discovers one bin per **distinct
+    observed ungrouped raw value in first-observation order** (§17 rule 3), and
+    `CalibratedSpec.Create` substitutes the executable form over the retained `PassthroughBins`
+    (D-093). Discovery is **set-based and idempotent**, so — unlike the count-sensitive kinds — it
+    needs no `QuantileAccumulator`, value counts, spill runs, merge/replay, or §5.3.1 subject-local
+    deduplication, and it does not enter the count-sensitive budget divisor: its bound is the
+    attribute vocabulary, the documented schema-scale carve-out (P-16/D-095). It therefore reads
+    the **raw** pass only — for both triple orderings — and alone never triggers the grouped second
+    pass; when a count-sensitive attribute coexists and forces that pass, pass-through is fed
+    **only** from the raw one (D-103's one-pass-per-observer rule), never both, never a third.
+  - **Mode-triggered warning, retained empty outcome.** `ValueGroupsPassthroughDataDependent`
+    (Warning, calibrate) fires whenever the mode executes, **zero discoveries included** — the
+    column set depends on this input either way — and an **empty** `PassthroughBins` is retained as
+    the legitimate zero-discovery completeness marker, never dropped (a dropped one would read as a
+    skipped calibration). There is deliberately **no** data-insufficiency guard: discovering no
+    ungrouped value means every value matched a group, which is a good outcome, not a failure.
+  - **Ordinal over group labels.** Ordinal `value_groups` (with `unmatched` `skip`/`other`)
+    requires an explicit `scale.order` that is a **full permutation of the group labels**,
+    including the synthetic `Other` — never `declared_domain`, and never the raw values the groups
+    match. Group labels are strings, so unlike numeric `free_per_value` there is **no** natural
+    order to derive. The universe comes from the discretizer's own `BinLabels`, so one permutation
+    algorithm serves every value-bin kind (P-5). All four `direction × boundary` combinations are
+    live (value bins have no half-open geometry) and `drop_top` keeps its value-bin semantics.
+    `ordinal` + `passthrough` is `OrdinalNotAllowedWithValueGroupsPassthrough` (Error, spec
+    validate): a data-discovered bin set can never be a full authored permutation.
+  - **Diagnostics.** Added: `ValueGroupsLabelDuplicate` (Error, spec validate — a duplicate
+    authored label, or one colliding with the synthetic `Other` under `unmatched = "other"`;
+    ordinal, so `"Other"` collides and `"other"` does not),
+    `OrdinalNotAllowedWithValueGroupsPassthrough` (Error, spec validate),
+    `ValueGroupsPassthroughDataDependent` (Warning, calibrate). Removed:
+    `DiscretizerKindNotYetSupported`. Net **65 + 3 − 1 = 67**. Reused rather than duplicated
+    (D-067): a malformed group/regex/`unmatched` field is `SpecFieldInvalid` (there is deliberately
+    **no** dedicated regex-error code — an uncompilable pattern is one malformed field, checked at
+    parse); an observed pass-through bin colliding with an authored label is the ordinary
+    plan-phase `FormalAttributeCollision` (data-dependent, so not the static duplicate code); an
+    unmatched value under `skip` is `UnknownValueObserved`. Ownership is split so one condition
+    yields one code: the **reader** owns each group's own validity, the **seam** owns the
+    cross-group rules, and resolution declines to build a discretizer over a label conflict
+    *without* reporting it a second time.
+  - **`include` behaves as `warn` under `skip`** (§11.6): an unmatched value is not a domain gap
+    (there is no domain — D-055), so `include` has nothing to extend. This falls out of the
+    `Unknown` outcome plus `ConsumesDeclaredDomain = false` rather than being special-cased: the
+    spec stays fully-declared (no calibration pass), the emitter warns, and **no**
+    `UnknownValuePolicyInclude` and no schema extension occur.
+  - **Fingerprints (§14/D-094).** The authored config only:
+    `{"groups":[…],"kind":"value_groups","unmatched":"skip"}` — `groups` in declaration order
+    (never sorted), each group's keys sorted `label`/`pattern`/`values`, `pattern`/`values` present
+    **only when authored**, inner values in authored order with duplicates retained, and the
+    **resolved** `unmatched` always spelled. **Discovered pass-through bins are not encoded here**
+    — they are effective, not authored, and already ride as `bin` objects in the `schema` array, so
+    re-encoding them would be the second source of truth D-094 forbids; what *is* encoded is
+    `"unmatched":"passthrough"`, the authored config that made the schema data-dependent. Two specs
+    differing only in omitted-vs-authored-empty `values` therefore share a `schema_fingerprint` but
+    carry different **output** fingerprints — D-094's one-directional guarantee, structurally.
+    Golden-locked with independently computed SHA-256 vectors before the first Slice E fingerprint.
+  - **Restriction execution stays Slice F.** `restrict_to` remains transitionally rejected at plan
+    (`RestrictToNotImplementedV1`); §19.4's remaining transitional part is that alone.
+- **Why:** `value_groups` is the M4 grouping discretizer (D-022) and the last deferred kind. Its
+  semantics are almost entirely about *precedence and presence* — which group claims a value, which
+  bin order results, and which authored spellings survive into the fingerprint — so leaving any of
+  them to the implementation would have fossilized an accident: the first stored hash pins the
+  encoding (D-094), and first-match order is observable in output bytes. Pinning the matcher in one
+  place, and routing calibration through it, is what makes discovery and emit provably agree rather
+  than coincidentally agree. Keeping pass-through discovery on the discovery-class path (rather
+  than reusing the quantile engine because both "read data") is what keeps it bounded by the
+  schema, not the population.
+- **Rejected:** a dedicated regex-error diagnostic (`SpecFieldInvalid` already owns malformed
+  fields — D-090/P-14); a public `ValueGroup.Matches` or a production `InternalsVisibleTo` so the
+  calibrator could match directly (the approved public surface is the pinned one, and the
+  discretizer already answers the question through supported API); normalizing an authored
+  `values = []` to null (it is authored state the §14 bytes distinguish — G-11); sorting the
+  `groups` array or the inner `values` (both are semantically ordered authored config); a
+  non-empty-groups requirement (D-090/G-11 make each *group* the unit of validity, and an empty
+  group list is coherent under `other`); rejecting a discovered bin that equals an authored label
+  at construction (it is data-dependent — plan owns it as `FormalAttributeCollision`); routing
+  pass-through through the count-sensitive machinery (its bound is the vocabulary, not the
+  population — D-095); a natural order for ordinal group labels (they are strings; only numeric
+  `free_per_value` has one to derive); reporting both `ValueGroupsLabelDuplicate` and
+  `AttributeScalingMissing` for one duplicate (one condition → one code, D-067); a regex timeout
+  knob, and equally the timeout-omitting `Regex` overloads that quietly inherit one from the host
+  (both make matching machine-dependent — P-7).
+- **Affects:** Core (`ValueGroup`, `ValueGroupsDiscretizer`, `ValueGroupsUnmatched`,
+  `PendingValueGroupsPassthrough`, `CalibratedSpec` substitution, `ResolvedSpec` recognition +
+  validation, `ConversionPlanner` value-bin ordinal universe, `FingerprintCalculator`), Conversion
+  (`Calibrator` pass-through observer), Spec (`ValueGroupsDiscretizerSection` / `ValueGroupSection`,
+  reader/writer/`TomlSpellings`/`DocumentSnapshot`, seam resolution + the two new validations),
+  Diagnostics (+3, −1); spec §7 / §11.6 / §12.3 / §16.4 / §19.4 (transitional-note retirements).
+  Realizes D-022/D-055/D-090/D-093/D-094/D-095; the G-8/G-11 governance items; completes D-070.
 
 ---
 

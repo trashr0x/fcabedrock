@@ -196,9 +196,10 @@ Don't implement first and explain later.
 ## Current status
 
 **M1, M2 (TOML spec format + fingerprinting), and M3 (triple source) complete. M4
-(discretizers beyond manual cuts) is in progress: Slices A–D are complete (D-098…D-103)
+(discretizers beyond manual cuts) is in progress: Slices A–E are complete (D-098…D-104)
 — the calibration-preparation contract, `free_per_value`, `equal_width` + the shared
-cut engine, and `equal_frequency`/`percentile_p1_p99` on the bounded quantile engine.
-Slice E (`value_groups`) is next; `restrict_to` execution follows at Slice F.**
+cut engine, `equal_frequency`/`percentile_p1_p99` on the bounded quantile engine, and
+`value_groups`. **Every v1 discretizer kind is now executable** and the deferred-kind
+reject has retired; `restrict_to` execution is the last M4 transition, at Slice F.**
 `docs/roadmap.md` is the live source for current position, test count, and the
 deferred backlog — consult it rather than duplicating the detail here.

@@ -490,5 +490,117 @@ public sealed class ResolvedSpecTests
         Assert.Equal(["b", "90.0", "n"], resolved.Spec.Attributes[0].DeclaredDomain);
     }
 
+    // --- value_groups (M4 Slice E, D-104) -------------------------------------
+
+    private static BedrockSpec ValueGroupsSpec(Discretizer discretizer) =>
+        new(SpecFixtures.WideRowIndex(),
+        [
+            new AttributeSpec("edu", new ColumnSource(0, SourceValueType.String), Include: true,
+                discretizer, new NominalScale(), DeclaredDomain: [], RestrictTo: [], SpecFixtures.NoLabels,
+                MissingPolicy.Skip, UnknownValuePolicy.Warn),
+        ]);
+
+    private static CalibrationPending PassthroughPending(params ValueGroup[] groups) =>
+        new(new PendingValueGroupsPassthrough(groups), CultureInfo.InvariantCulture);
+
+    [Fact]
+    public void Create_WhenValueGroupsIsExecutable_ThenAcceptedAndReachableUnchanged()
+    {
+        var discretizer = ValueGroupsDiscretizer.Create(
+            [SpecFixtures.Group("School", "11th")], ValueGroupsUnmatched.Other);
+
+        var resolved = Create(ValueGroupsSpec(discretizer), new SourceSchema(1));
+
+        // Cultureless and immutable-by-construction (both factories snapshot the groups and each
+        // group snapshots its own values), so — like identity and ordered_cuts — the trust boundary
+        // reuses the instance rather than rebuilding it: there is no mutable state to re-home.
+        Assert.Same(discretizer, resolved.Spec.Attributes[0].Discretizer);
+    }
+
+    [Fact]
+    public void ValueGroupsDiscretizer_WhenInspected_ThenUndefinedUnmatchedIsUnrepresentableNotMerelyRejected()
+    {
+        // Two complementary guarantees, which together are why no undefined value can reach
+        // matching, planning, emission, or fingerprints:
+        //   (1) the factory rejects an undefined member outright (asserted in
+        //       ValueGroupsDiscretizerTests), and
+        //   (2) Unmatched is get-only — no setter and no `with`-settable init — so a cast value
+        //       cannot be grafted onto an already-built instance the way it can onto a positional
+        //       record. That is what makes the trust boundary's RequireDefined arm defence in
+        //       depth rather than the only line of defence.
+        Assert.Null(typeof(ValueGroupsDiscretizer).GetProperty(nameof(ValueGroupsDiscretizer.Unmatched))!.SetMethod);
+        Assert.Throws<ArgumentException>(() =>
+            ValueGroupsDiscretizer.Create([SpecFixtures.Group("School", "11th")], (ValueGroupsUnmatched)99));
+    }
+
+    [Fact]
+    public void Create_WhenPassthroughPendingCarrier_ThenRecognizedAndRebuiltWithAReadOnlyCulture()
+    {
+        // Without this arm every passthrough spec would throw at the trust boundary as an unknown
+        // pending variant — the deliberate recognition Slice E adds.
+        var resolved = Create(ValueGroupsSpec(PassthroughPending(SpecFixtures.Group("School", "11th"))), new SourceSchema(1));
+
+        var pending = Assert.IsType<CalibrationPending>(resolved.Spec.Attributes[0].Discretizer);
+        Assert.True(pending.Culture.IsReadOnly);
+        var config = Assert.IsType<PendingValueGroupsPassthrough>(pending.Config);
+        Assert.Equal(["School"], config.Groups.Select(g => g.Label));
+    }
+
+    [Fact]
+    public void Create_WhenPassthroughPendingCarriesDuplicateLabels_ThenThrows()
+    {
+        // The carrier is freely constructible and validates no collection rule of its own, so the
+        // trust boundary owns label distinctness for it (§11.6/D-090).
+        var spec = ValueGroupsSpec(PassthroughPending(
+            SpecFixtures.Group("School", "11th"), SpecFixtures.Group("School", "Bachelors")));
+
+        Assert.Throws<ArgumentException>(() => Create(spec, new SourceSchema(1)));
+    }
+
+    [Fact]
+    public void Create_WhenPassthroughPendingCarriesAnOtherLabel_ThenAcceptedBecausePassthroughAddsNoSyntheticBin()
+    {
+        // The Other-collision rule is scoped to unmatched = "other" alone: passthrough adds no
+        // synthetic bin, so "Other" is an ordinary group label there and must not be rejected.
+        var resolved = Create(ValueGroupsSpec(PassthroughPending(SpecFixtures.Group("Other", "11th"))), new SourceSchema(1));
+
+        Assert.IsType<CalibrationPending>(resolved.Spec.Attributes[0].Discretizer);
+    }
+
+    [Fact]
+    public void Create_WhenCallerMutatesGroupsAfterResolution_ThenTheResolvedGraphIsUnaffected()
+    {
+        // The outer group list and each group's inner values are both caller-owned before
+        // construction; neither may survive on the resolved graph (D-098).
+        var values = new List<string> { "11th" };
+        var groups = new List<ValueGroup> { ValueGroup.Create("School", values, null) };
+        var resolved = Create(ValueGroupsSpec(ValueGroupsDiscretizer.Create(groups, ValueGroupsUnmatched.Skip)), new SourceSchema(1));
+
+        groups.Add(SpecFixtures.Group("Undergrad", "Bachelors"));
+        values.Add("HS-grad");
+
+        var discretizer = Assert.IsType<ValueGroupsDiscretizer>(resolved.Spec.Attributes[0].Discretizer);
+        Assert.Equal(["School"], discretizer.Groups.Select(g => g.Label));
+        Assert.Equal(["11th"], discretizer.Groups[0].Values);
+        Assert.Equal(BinOutcome.Unknown, discretizer.Discretize("HS-grad").Outcome);
+    }
+
+    [Fact]
+    public void Create_WhenValueGroupsResolved_ThenAuthoredNullAndAuthoredEmptyValuesBothSurvive()
+    {
+        // The presence distinction must survive the trust boundary intact — the §14 encoding reads
+        // it directly, so collapsing [] to null here would silently change fingerprint bytes (G-11).
+        var omitted = ValueGroup.Create("Pattern", null, "^I[0-9]{2}");
+        var authoredEmpty = ValueGroup.Create("Empty", [], "^J[0-9]{2}");
+        var resolved = Create(
+            ValueGroupsSpec(ValueGroupsDiscretizer.Create([omitted, authoredEmpty], ValueGroupsUnmatched.Skip)),
+            new SourceSchema(1));
+
+        var groups = Assert.IsType<ValueGroupsDiscretizer>(resolved.Spec.Attributes[0].Discretizer).Groups;
+        Assert.Null(groups[0].Values);
+        Assert.NotNull(groups[1].Values);
+        Assert.Empty(groups[1].Values!);
+    }
+
     private sealed record UnknownObjectKey : ObjectKey;
 }

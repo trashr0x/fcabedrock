@@ -582,6 +582,35 @@ public static class SpecWriter
 
                 break;
 
+            case ValueGroupsDiscretizerSection valueGroups:
+                // §11.6 presentation order: kind, groups, unmatched. The groups array keeps
+                // DECLARATION order and each group's values keep AUTHORED order with duplicates —
+                // never canonical-sorted, because first-match order is semantic (§11.6) and the
+                // values are authored config, not a set. As everywhere else a field is written only
+                // when authored (D-049 presence tracking), so an omitted unmatched stays omitted —
+                // injecting the "skip" default into the author's text would change the document,
+                // and the §14 fingerprint (D-094) is where the resolved default is spelled.
+                items.Add(Item("kind", TomlLiteral.FormatString(TomlSpellings.ValueGroupsKind)));
+                if (valueGroups.Groups is { } groups)
+                {
+                    var formatted = new List<string>(groups.Count);
+                    foreach (var group in groups)
+                    {
+                        formatted.Add(FormatValueGroup(group));
+                    }
+
+                    items.Add(Item("groups", Array(formatted)));
+                }
+
+                if (valueGroups.Unmatched is { } unmatched)
+                {
+                    items.Add(Item(
+                        "unmatched",
+                        TomlLiteral.FormatString(TomlSpellings.ToToml(TomlSpellings.ValueGroupsUnmatchedKinds, unmatched))));
+                }
+
+                break;
+
             case OrderedCutsDiscretizerSection ordered:
                 items.Add(Item("kind", TomlLiteral.FormatString(TomlSpellings.OrderedCutsKind)));
                 if (ordered.Order is { } order)
@@ -603,6 +632,31 @@ public static class SpecWriter
 
             default:
                 throw new ArgumentOutOfRangeException(nameof(discretizer), discretizer, "Unknown discretizer section type.");
+        }
+
+        return InlineTable(items);
+    }
+
+    // §11.6: one group — kind-free inline table in presentation order label, values, pattern.
+    // Presence, not emptiness, decides whether values/pattern are written: an omitted `values`
+    // stays omitted and an authored `values = []` writes `values = []`, which is what keeps
+    // parse→write→parse idempotent and the two states byte-distinct downstream (G-11/D-094).
+    private static string FormatValueGroup(ValueGroupSection group)
+    {
+        var items = new List<string>(3);
+        if (group.Label is { } label)
+        {
+            items.Add(Item("label", TomlLiteral.FormatString(label)));
+        }
+
+        if (group.Values is { } values)
+        {
+            items.Add(Item("values", FormatStringArray(values)));
+        }
+
+        if (group.Pattern is { } pattern)
+        {
+            items.Add(Item("pattern", TomlLiteral.FormatString(pattern)));
         }
 
         return InlineTable(items);

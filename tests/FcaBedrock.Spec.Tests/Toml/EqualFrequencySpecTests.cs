@@ -39,14 +39,16 @@ public sealed class EqualFrequencySpecTests
     // --- Reading -------------------------------------------------------------
 
     [Fact]
-    public void Read_WhenKindIsEqualFrequency_ThenNoLongerTheTransitionalReject()
+    public void Read_WhenKindIsEqualFrequency_ThenReadsCleanToItsCarrier()
     {
-        // D-103 reverses the D-070 tier-2 reject: equal_frequency now has a real carrier, so it
-        // must NOT produce DiscretizerKindNotYetSupported any more.
+        // D-103 reversed the D-070 tier-2 reject: equal_frequency has a real carrier, so its kind
+        // alone must not fail the read. The code it once produced retired entirely at Slice E
+        // (D-104) once value_groups — its last owner — landed, so the reject is now unnameable
+        // rather than merely unused; the surviving assertion is that this reads clean.
         var result = SpecReader.Read(Attribute("{ kind = \"equal_frequency\", bins = 4 }"));
 
         Assert.True(result.IsOk);
-        Assert.DoesNotContain(result.Diagnostics, d => d.Code == DiagnosticCode.DiscretizerKindNotYetSupported);
+        Assert.Empty(result.Diagnostics);
     }
 
     [Fact]

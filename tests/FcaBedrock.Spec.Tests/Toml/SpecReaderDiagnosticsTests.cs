@@ -86,21 +86,24 @@ public sealed class SpecReaderDiagnosticsTests
     }
 
     [Theory]
-    [InlineData("value_groups")]
-    public void Read_WhenDiscretizerKindDeferred_ThenSingleTransitionalRejectWithoutParameterNoise(string kind)
+    [InlineData("identity", "")]
+    [InlineData("free_per_value", "")]
+    [InlineData("manual_cuts", ", cuts = [30]")]
+    [InlineData("ordered_cuts", ", order = [\"a\", \"b\"], cuts = [\"b\"]")]
+    [InlineData("equal_width", ", bins = 4")]
+    [InlineData("equal_frequency", ", bins = 4")]
+    [InlineData("value_groups", ", groups = [{ label = \"g\", values = [\"a\"] }]")]
+    public void Read_WhenAnyV1DiscretizerKindIsWellFormed_ThenItReadsCleanToItsCarrier(string kind, string parameters)
     {
-        // D-070 tier 2: one actionable diagnostic; the parameter keys are
-        // deliberately not walked, so no unknown-key noise follows.
-        // free_per_value left this set at M4 Slice B (D-101), equal_width at
-        // Slice C (D-102), and equal_frequency at Slice D (D-103); all three are
-        // now executable, so value_groups is the only kind left.
-        var result = SpecReader.Read(Attribute(
-            $"discretizer = {{ kind = \"{kind}\", bins = 4, range = \"min_max\" }}"));
+        // D-070's tier-2 deferred-kind reject retired entirely at M4 Slice E (D-104): EVERY v1
+        // discretizer kind now has a carrier, so a well-formed one of each must read clean.
+        // Asserting a clean read of each kind — rather than the absence of a code that no longer
+        // exists — is what keeps this test able to fail: re-deferring any kind would break it.
+        var result = SpecReader.Read(Attribute($"discretizer = {{ kind = \"{kind}\"{parameters} }}"));
 
-        var diagnostic = Assert.Single(result.Diagnostics);
-        Assert.Equal(DiagnosticCode.DiscretizerKindNotYetSupported, diagnostic.Code);
-        Assert.Contains(kind, diagnostic.Message, StringComparison.Ordinal);
-        Assert.Equal("a", diagnostic.Location?.AttributeName);
+        Assert.True(result.IsOk, string.Join("; ", result.Diagnostics.Select(d => $"{d.Code}: {d.Message}")));
+        Assert.Empty(result.Diagnostics);
+        Assert.NotNull(result.Value!.Attributes[0].Discretizer);
     }
 
     [Fact]
@@ -174,14 +177,19 @@ public sealed class SpecReaderDiagnosticsTests
     }
 
     [Fact]
-    public void Read_WhenTemplateDiscretizerKindDeferred_ThenDiscretizerKindNotYetSupported()
+    public void Read_WhenTemplateDeclaresValueGroups_ThenItCarriesLikeAnyAttributeDiscretizer()
     {
-        // D-070 applies inside templates too: there is no parameter carrier for
-        // the deferred kinds, so accepting one would silently drop config.
-        var result = SpecReader.Read("[[template]]\nid = \"t\"\ndiscretizer = { kind = \"value_groups\", n = 4 }\n");
+        // A template body is the attribute config surface (§9.1/D-078), so value_groups gains its
+        // carrier there too at Slice E (D-104) — it is no longer rejected for its kind. An unknown
+        // key inside it still gets the ordinary SpecKeyUnrecognized, which is exactly the noise the
+        // old deferred-kind reject suppressed by not walking the parameters at all.
+        var result = SpecReader.Read(
+            "[[template]]\nid = \"t\"\ndiscretizer = { kind = \"value_groups\", " +
+            "groups = [{ label = \"g\", values = [\"a\"] }], n = 4 }\n");
 
         var diagnostic = Assert.Single(result.Diagnostics);
-        Assert.Equal(DiagnosticCode.DiscretizerKindNotYetSupported, diagnostic.Code);
+        Assert.Equal(DiagnosticCode.SpecKeyUnrecognized, diagnostic.Code);
+        Assert.Contains("n", diagnostic.Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -249,17 +257,16 @@ public sealed class SpecReaderDiagnosticsTests
     [Fact]
     public void Read_WhenSeveralProblems_ThenAllAggregateInOnePass()
     {
-        // P-14: one read reports everything — unknown key, bad spelling, and a
-        // deferred discretizer kind together.
+        // P-14: one read reports everything — a bad shape spelling, an unknown key, and an
+        // unrecognized discretizer kind together, each on its own condition.
         var result = SpecReader.Read(
             "[binding]\nshape = \"wibble\"\nmissing_polcy = \"skip\"\n" +
-            "[[attribute]]\nname = \"a\"\ndiscretizer = { kind = \"value_groups\", bins = 4 }\n");
+            "[[attribute]]\nname = \"a\"\ndiscretizer = { kind = \"wibble_bins\" }\n");
 
         Assert.False(result.IsOk);
         Assert.Equal(3, result.Diagnostics.Count);
-        Assert.Contains(result.Diagnostics, d => d.Code == DiagnosticCode.SpecFieldInvalid);
+        Assert.Equal(2, result.Diagnostics.Count(d => d.Code == DiagnosticCode.SpecFieldInvalid));
         Assert.Contains(result.Diagnostics, d => d.Code == DiagnosticCode.SpecKeyUnrecognized);
-        Assert.Contains(result.Diagnostics, d => d.Code == DiagnosticCode.DiscretizerKindNotYetSupported);
     }
 
     [Fact]

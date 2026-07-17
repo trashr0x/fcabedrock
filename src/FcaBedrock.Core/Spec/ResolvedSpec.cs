@@ -319,9 +319,51 @@ public sealed class ResolvedSpec
                 RequireDefined(equalFrequency.TiePolicy, "equal_frequency.TiePolicy");
                 RequireDefined(equalFrequency.CutPlacement, "equal_frequency.CutPlacement");
                 break;
+            case ValueGroupsDiscretizer valueGroups:
+                RequireDefined(valueGroups.Unmatched, "value_groups.Unmatched");
+                RequireGroups(valueGroups.Groups);
+
+                // §11.6/D-090: authored labels must be distinct, and none may collide with the
+                // synthetic Other under unmatched = "other". The factories enforce both, so this
+                // is defence in depth — but a DISCOVERED passthrough bin equal to an authored
+                // label is deliberately NOT checked here: that collision is data-dependent and
+                // belongs to plan (FormalAttributeCollision), not to the trust boundary.
+                RequireDistinctLabels(valueGroups.Groups, valueGroups.Unmatched);
+                break;
             case CalibrationPending pending:
                 RequirePending(pending.Config);
                 break;
+        }
+    }
+
+    // A group is only constructible through its validating factory, so its own matcher validity
+    // holds by construction; what a hand-built graph can still get wrong is the collection —
+    // nulls, and (on the freely-constructible pending carrier) label distinctness.
+    private static void RequireGroups(IReadOnlyList<ValueGroup> groups)
+    {
+        ArgumentNullException.ThrowIfNull(groups);
+        foreach (var group in groups)
+        {
+            ArgumentNullException.ThrowIfNull(group, nameof(groups));
+        }
+    }
+
+    private static void RequireDistinctLabels(IReadOnlyList<ValueGroup> groups, ValueGroupsUnmatched unmatched)
+    {
+        var labels = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var group in groups)
+        {
+            if (!labels.Add(group.Label))
+            {
+                throw new ArgumentException($"value_groups declares the label '{group.Label}' more than once (§11.6).");
+            }
+
+            // Ordinal, like every other identity comparison (P-12): "Other" collides, "other" does not.
+            if (unmatched == ValueGroupsUnmatched.Other && string.Equals(group.Label, "Other", StringComparison.Ordinal))
+            {
+                throw new ArgumentException(
+                    "value_groups declares a group labelled 'Other', which collides with the synthetic bin unmatched = \"other\" adds (§11.6).");
+            }
         }
     }
 
@@ -348,6 +390,13 @@ public sealed class ResolvedSpec
             case PendingEqualFrequency equalFrequency:
                 RequireDefined(equalFrequency.TiePolicy, "equal_frequency.TiePolicy");
                 RequireDefined(equalFrequency.CutPlacement, "equal_frequency.CutPlacement");
+                break;
+            case PendingValueGroupsPassthrough valueGroups:
+                // The carrier snapshots its groups but validates no collection-level rule, so the
+                // trust boundary owns them: passthrough adds no synthetic Other, hence only the
+                // duplicate-label rule applies (§11.6/D-090).
+                RequireGroups(valueGroups.Groups);
+                RequireDistinctLabels(valueGroups.Groups, ValueGroupsUnmatched.Passthrough);
                 break;
             default:
                 throw new ArgumentException($"unknown pending calibration variant {config.GetType().Name}.");
@@ -530,8 +579,10 @@ public sealed class ResolvedSpec
     // CultureInfo (read during parsing — manual_cuts and, at M4, numeric free_per_value).
     // Reconstruct those with a read-only culture clone so a programmatic caller cannot mutate
     // NumberFormat after resolution and change classification (D-098 recursive immutability,
-    // P-7/P-11). The cultureless kinds (identity, ordered_cuts) are already fully immutable —
-    // reused as-is.
+    // P-7/P-11). The cultureless kinds (identity, ordered_cuts, and — at M4 Slice E —
+    // value_groups, whose matching is ordinal + culture-invariant and whose factories snapshot
+    // both the group list and each group's authored values) are already fully immutable and are
+    // reused as-is; re-creating them would allocate without changing a single reachable byte.
     private static Discretizer? SnapshotDiscretizer(Discretizer? discretizer) => discretizer switch
     {
         ManualCutsDiscretizer cuts => ManualCutsDiscretizer.Create(cuts.Cuts, cuts.Ends, ReadOnlyCulture(cuts.Culture)).Value!,
@@ -543,7 +594,9 @@ public sealed class ResolvedSpec
         EqualWidthDiscretizer equalWidth => EqualWidthDiscretizer.Rebuild(equalWidth, ReadOnlyCulture(equalWidth.Culture)),
         EqualFrequencyDiscretizer equalFrequency => EqualFrequencyDiscretizer.Rebuild(equalFrequency, ReadOnlyCulture(equalFrequency.Culture)),
 
-        // The pending config holds only immutable values; only the culture needs re-homing.
+        // The pending config holds only immutable values — including PendingValueGroupsPassthrough,
+        // whose constructor snapshots its groups and whose every ValueGroup snapshots its own
+        // authored values — so only the culture needs re-homing.
         CalibrationPending pending => new CalibrationPending(pending.Config, ReadOnlyCulture(pending.Culture)),
         _ => discretizer,
     };

@@ -900,6 +900,7 @@ public static class SpecResolver
             ValidateOrdinalOverCuts(section, attribute, defaults, diagnostics);
             ValidateValueLabels(section, attribute, valueType, diagnostics);
             ValidateOrdinalOrderShape(section, attribute, valueType, diagnostics);
+            ValidateValueGroups(section, attribute, diagnostics);
         }
 
         // restrict_to is live config even when the attribute is excluded (the
@@ -911,9 +912,12 @@ public static class SpecResolver
     // §10.2 (D-061): a type-fixing discretizer disallows the other authored
     // value_type; only an authored type can conflict — the derived default is
     // the fixed type by construction. Parked (excluded) config never blocks
-    // (D-049), and the flexible deferred kinds are read-rejected before this
-    // seam (D-070). Source-kind agnostic: value_type is a source-level property of
-    // both column and predicate sources (§10.2).
+    // (D-049). Every §11 kind reaches this seam as of M4 Slice E (D-104), so the
+    // switch below is the complete matrix: identity/ordered_cuts/value_groups are
+    // string-fixing, manual_cuts/equal_width/equal_frequency number-fixing, and
+    // free_per_value alone is type-FLEXIBLE — it has no arm because neither
+    // authored type conflicts with it. Source-kind agnostic: value_type is a
+    // source-level property of both column and predicate sources (§10.2).
     private static void ValidateValueType(
         AttributeSection section, string attribute, List<BedrockDiagnostic> diagnostics)
     {
@@ -935,6 +939,8 @@ public static class SpecResolver
                 "declares value_type = \"string\", but equal_width is number-fixing (its cuts are numeric)",
             EqualFrequencyDiscretizerSection when value == SourceValueType.String =>
                 "declares value_type = \"string\", but equal_frequency is number-fixing (its cuts are numeric)",
+            ValueGroupsDiscretizerSection when value == SourceValueType.Number =>
+                "declares value_type = \"number\", but value_groups is string-fixing (groups match raw value spellings)",
             _ => null,
         };
 
@@ -945,6 +951,86 @@ public static class SpecResolver
                 $"Attribute '{attribute}' {problem} (§10.2).",
                 new DiagnosticLocation(AttributeName: attribute)));
         }
+    }
+
+    // §11.6 (D-090): the two value_groups rules the seam owns — the reader owns each group's own
+    // validity, and these are the CROSS-group / cross-field ones it cannot see.
+    //
+    // (a) Authored labels must be distinct, and — under unmatched = "other" — none may collide
+    //     with the synthetic Other bin. Ordinal comparison (P-12): "Other" collides, "other"
+    //     does not. Duplicates own ValueGroupsLabelDuplicate and never surface as
+    //     SpecFieldInvalid (D-090); one diagnostic per duplicate occurrence. A pass-through value
+    //     merely OBSERVED to equal a label is data-dependent and belongs to plan
+    //     (FormalAttributeCollision), not here.
+    // (b) ordinal + passthrough is impossible, not merely unusual: ordinal over groups requires an
+    //     authored scale.order that is a full permutation of the group labels (§12.3), and a
+    //     data-discovered bin set can never be one.
+    //
+    // Include-gated by the caller, so parked config never blocks (D-049).
+    private static void ValidateValueGroups(
+        AttributeSection section, string attribute, List<BedrockDiagnostic> diagnostics)
+    {
+        if (section.Discretizer is not ValueGroupsDiscretizerSection valueGroups)
+        {
+            return;
+        }
+
+        var unmatched = valueGroups.Unmatched ?? ValueGroupsUnmatched.Skip; // §11.6 default
+
+        foreach (var (label, otherCollision) in LabelConflicts(valueGroups))
+        {
+            diagnostics.Add(new BedrockDiagnostic(
+                DiagnosticCode.ValueGroupsLabelDuplicate, DiagnosticSeverity.Error,
+                otherCollision
+                    ? $"Attribute '{attribute}' declares a value_groups group labelled 'Other', which collides with the synthetic bin unmatched = \"other\" adds (§11.6)."
+                    : $"Attribute '{attribute}' declares the value_groups label '{label}' more than once; group labels must be distinct (§11.6).",
+                new DiagnosticLocation(AttributeName: attribute)));
+        }
+
+        if (unmatched == ValueGroupsUnmatched.Passthrough && section.Scale is OrdinalScaleSection)
+        {
+            diagnostics.Add(new BedrockDiagnostic(
+                DiagnosticCode.OrdinalNotAllowedWithValueGroupsPassthrough, DiagnosticSeverity.Error,
+                $"Attribute '{attribute}' uses an ordinal scale over value_groups with unmatched = \"passthrough\"; its bins are discovered from the data, so no authored scale.order can be a full permutation of them (§11.6/§12.3).",
+                new DiagnosticLocation(AttributeName: attribute)));
+        }
+    }
+
+    // The single decision point for the §11.6 label rules, in authored order: one entry per
+    // conflict, flagged as a synthetic-Other collision or a plain duplicate. Two callers with
+    // different jobs share it so they cannot drift (P-5) — ValidateValueGroups turns each entry
+    // into the user-facing ValueGroupsLabelDuplicate, and ResolveValueGroups uses "any conflict"
+    // to decline building the discretizer WITHOUT reporting the same condition a second time
+    // (D-067, one condition → one code). Groups with no usable label are skipped: the reader owns
+    // those (SpecFieldInvalid). Ordinal throughout (P-12).
+    private static List<(string Label, bool OtherCollision)> LabelConflicts(ValueGroupsDiscretizerSection section)
+    {
+        var conflicts = new List<(string, bool)>();
+        if (section.Groups is not { } groups)
+        {
+            return conflicts;
+        }
+
+        var unmatched = section.Unmatched ?? ValueGroupsUnmatched.Skip; // §11.6 default
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var group in groups)
+        {
+            if (group?.Label is not { Length: > 0 } label)
+            {
+                continue;
+            }
+
+            if (!seen.Add(label))
+            {
+                conflicts.Add((label, false));
+            }
+            else if (unmatched == ValueGroupsUnmatched.Other && string.Equals(label, "Other", StringComparison.Ordinal))
+            {
+                conflicts.Add((label, true));
+            }
+        }
+
+        return conflicts;
     }
 
     // §10.8 (D-080): value_labels keys must name a declared_domain value. Re-homed
@@ -1174,6 +1260,9 @@ public static class SpecResolver
             case EqualFrequencyDiscretizerSection equalFrequency:
                 return ResolveEqualFrequency(equalFrequency, attribute, culture, diagnostics);
 
+            case ValueGroupsDiscretizerSection valueGroups:
+                return ResolveValueGroups(valueGroups, attribute, culture, diagnostics);
+
             case OrderedCutsDiscretizerSection ordered:
                 return Merge(
                     OrderedCutsDiscretizer.Create(ordered.Order ?? [], ordered.Cuts ?? [], ordered.Ends ?? BinEnds.Open),
@@ -1258,6 +1347,80 @@ public static class SpecResolver
             section.CutPlacement ?? Core.Discretization.CutPlacement.RightValue); // §11.5 default
 
         return new CalibrationPending(config, culture);
+    }
+
+    // §11.6 (D-090/D-104): the unmatched policy decides the phase. skip/other are
+    // spec-determined and resolve straight to the executable discretizer; passthrough discovers
+    // its bins from the data, so — like a data-derived equal_width range — it resolves to the
+    // CalibrationPending carrier the Calibrate phase replaces (D-093).
+    //
+    // The reader owns every field shape (groups presence, each group's label/values/pattern
+    // validity including the regex compile, the unmatched spelling — SpecFieldInvalid, §11.6) and
+    // ValidateValueGroups owns the cross-group rules (ValueGroupsLabelDuplicate), so a document
+    // that reached a CLEAN resolve carries them all and the strict factories below only ever see
+    // valid arguments (the success-gate sequence). The guards here are the backstop for a
+    // hand-built section that bypassed the reader: they resolve to the same
+    // AttributeScalingMissing the other unbuildable discretizer carriers use (§10.9) rather than
+    // throwing — an authored error must never leave on the exception channel (P-14).
+    private static Discretizer? ResolveValueGroups(
+        ValueGroupsDiscretizerSection section,
+        string attribute,
+        CultureInfo culture,
+        List<BedrockDiagnostic> diagnostics)
+    {
+        if (section.Groups is not { } authored)
+        {
+            AddScalingMissing(diagnostics, attribute, "has a value_groups discretizer with no groups (§11.6)");
+            return null;
+        }
+
+        var unmatched = section.Unmatched ?? ValueGroupsUnmatched.Skip; // §11.6 default
+
+        var groups = new List<ValueGroup>(authored.Count);
+        foreach (var group in authored)
+        {
+            // The reader guarantees a label and a usable matcher on every carried group; a
+            // section that bypassed it is unbuildable, not diagnosable per-field here.
+            if (group.Label is not { Length: > 0 })
+            {
+                AddScalingMissing(diagnostics, attribute, "has a value_groups group with no label (§11.6)");
+                return null;
+            }
+
+            try
+            {
+                // Authored presence flows straight through: a null Values stays null (omitted) and
+                // an authored empty list stays empty (G-11) — Create never normalizes one to the
+                // other, and the pattern text is retained verbatim.
+                groups.Add(ValueGroup.Create(group.Label, group.Values, group.Pattern));
+            }
+            catch (ArgumentException)
+            {
+                // Only reachable from a hand-built section (the reader's gate is equivalent);
+                // report on the diagnostic channel rather than letting the backstop escape.
+                AddScalingMissing(diagnostics, attribute, $"has an invalid value_groups group '{group.Label}' (§11.6)");
+                return null;
+            }
+        }
+
+        // ValidateValueGroups owns the user-facing ValueGroupsLabelDuplicate for exactly this
+        // condition, so decline silently rather than letting the strict factory throw and adding a
+        // SECOND diagnostic for one condition (D-067). The attribute is dropped either way — that
+        // Error fails the resolve — and this is what keeps the strict factories below behind a
+        // clean gate.
+        if (LabelConflicts(section).Count > 0)
+        {
+            return null;
+        }
+
+        if (unmatched == ValueGroupsUnmatched.Passthrough)
+        {
+            // The carrier requires a culture; value_groups never parses a value (matching is
+            // ordinal + culture-invariant), so this one is carried for uniformity, not read.
+            return new CalibrationPending(new PendingValueGroupsPassthrough(groups), culture);
+        }
+
+        return ValueGroupsDiscretizer.Create(groups, unmatched);
     }
 
     private static Scale? ResolveScale(

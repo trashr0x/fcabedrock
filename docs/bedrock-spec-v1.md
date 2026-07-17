@@ -510,22 +510,26 @@ observation contributes once (§5.3.1); and **wide** rows are independent
 observations. This population is the input universe, evaluated before `restrict_to`
 (below).
 
-> **Transitional (M4 in progress).** The Calibrate phase lands across the M4
-> slices. **Slice A** (D-098) implements the discovery-class calibration: filling
-> an absent `declared_domain` under a consuming discretizer (`ObservedDomainUsed`)
-> and `unknown_value_policy = "include"` (§10.6), for the M1 `identity`
-> discretizer; **Slice B** (D-101) extends it to numeric `free_per_value`, whose
-> observed/included values are canonical numeric identities (§11.3/D-096); **Slice
-> C** (D-102) adds the first auto-discretizer cut calibration — `equal_width` with
-> `range = "min_max"`, a streaming minimum/maximum over the population above (its
-> `range = "manual"` form is spec-determined and skips this phase entirely, §11.4);
-> **Slice D** (D-103) adds the **count-sensitive** calibration — `equal_frequency`
-> (§11.5) and `equal_width` `range = "percentile_p1_p99"` (§11.4) — over the exact,
+> **Transitional (M4 in progress).** The Calibrate phase landed across the M4
+> slices and is now **complete**. **Slice A** (D-098) implemented the
+> discovery-class calibration: filling an absent `declared_domain` under a
+> consuming discretizer (`ObservedDomainUsed`) and `unknown_value_policy =
+> "include"` (§10.6), for the M1 `identity` discretizer; **Slice B** (D-101)
+> extended it to numeric `free_per_value`, whose observed/included values are
+> canonical numeric identities (§11.3/D-096); **Slice C** (D-102) added the first
+> auto-discretizer cut calibration — `equal_width` with `range = "min_max"`, a
+> streaming minimum/maximum over the population above (its `range = "manual"` form
+> is spec-determined and skips this phase entirely, §11.4); **Slice D** (D-103)
+> added the **count-sensitive** calibration — `equal_frequency` (§11.5) and
+> `equal_width` `range = "percentile_p1_p99"` (§11.4) — over the exact,
 > bounded-memory aggregated population, together with the §5.3.1 subject-local
-> deduplication their counts require. The one remaining calibration —
-> `value_groups` `unmatched = "passthrough"` — is still recognized-but-rejected at
-> read (`DiscretizerKindNotYetSupported`, §16.4) until its slice lands, rather than
-> silently producing a data-dependent schema.
+> deduplication their counts require; and **Slice E** (D-104) added the last one,
+> `value_groups` `unmatched = "passthrough"` (§11.6), which discovers one bin per
+> observed ungrouped value on the raw-order pass. Every §11 discretizer kind is now
+> executable. The remaining M4 work is `restrict_to` **execution** (§10.4), which
+> is still rejected at plan with `RestrictToNotImplementedV1` (§16.4); it does not
+> affect this phase, since restriction never shapes the calibration population
+> (below).
 
 **`convert` calibrates but never discovers.** Discovery (draft-spec generation
 from data) is the separate `probe` operation (D-003), never performed implicitly
@@ -1678,7 +1682,9 @@ normalized identity as the bins (so `90`, `90.0`, `9e1` are one key); an
 not among the bins stays `OrdinalOrderHasUnknownValue` (D-096). In M2 this path executed for `identity` with an
 explicit **string** `order` only; numeric value bins (`free_per_value`) activated at
 M4 Slice B (D-101) — with the natural-numeric-ascending default when `order` is absent
-— and ordinal `value_groups` remains deferred to a later M4 slice (§11).
+— and ordinal `value_groups` activated at M4 Slice E (D-104), where the permutation
+universe is the **group labels** (plus the synthetic `Other` under `unmatched =
+"other"`), never `declared_domain`, which `value_groups` does not consult (D-055).
 
 **`drop_top`** *(default `false`)*. The "top" formal attribute (the one
 true for everything in `direction = "ge"` — i.e., `≥<lowest>`, and `≤<highest>`
@@ -1713,12 +1719,15 @@ authored, per-attribute** `boundary` requesting the straddling combination
 (Error, **spec validate**). The reader/writer preserves whether `boundary` was
 authored or defaulted (§6) — both so the round-trip stays faithful and so this
 check fires only on the authored case. **Over value bins** (`identity` /
-`free_per_value` with an authored `order`, or a numeric `free_per_value` with the
-derived natural numeric order) there is no half-open geometry, so all four
+`free_per_value` with an authored `order`, a numeric `free_per_value` with the
+derived natural numeric order, or `value_groups` with an authored group-label order)
+there is no half-open geometry, so all four
 `direction × boundary` combinations are well-defined and `boundary` is fully live;
-this value-bin ordinal path landed at M2 for `identity` (string, explicit order) and
+this value-bin ordinal path landed at M2 for `identity` (string, explicit order),
 extended to `free_per_value` at M4 Slice B (string requires an explicit order; numeric
-uses an authored or natural-ascending order, D-101).
+uses an authored or natural-ascending order, D-101), and to `value_groups` at M4
+Slice E (group labels always require an explicit order — they are strings, so there is
+no natural order to derive, D-104).
 
 ### 12.4 Modelled but not implemented in v1
 
@@ -2076,7 +2085,6 @@ exactly one phase — the "Where" column below is the phase-ownership contract
 | `SpecTomlInvalid` | Fatal (parser warnings surface as Warning) | spec parse |
 | `SpecKeyUnrecognized` | Error | spec parse |
 | `SpecFieldInvalid` | Error | spec parse |
-| `DiscretizerKindNotYetSupported` | Error | spec parse (transitional) |
 | `SpecSurfaceNotYetSupported` | Error | spec parse (transitional) |
 | `SpecExtendsCycle` | Fatal | spec resolve |
 | `SpecExtendsNotFound` | Fatal | spec resolve |
@@ -2165,15 +2173,15 @@ landed at M3 Slice F; `ObservedDomainCalibrationNotImplementedV1` retired when
 observed-domain calibration landed at M4 Slice A — D-098, so an absent
 `declared_domain` under a consuming discretizer is now filled by the Calibrate
 phase, §10.3.) They are distinct from the permanent `*NotImplementedV1`
-reservations in §20. Two parse-phase codes are transitional on the same terms:
-`DiscretizerKindNotYetSupported` (a recognized-but-deferred discretizer kind —
-now `value_groups` alone — rejected at read with no
-parameter carrier, D-070; removed as each kind lands at M4 — `free_per_value` left
-this set at M4 Slice B, D-101, `equal_width` at M4 Slice C, D-102, and
-`equal_frequency` at M4 Slice D, D-103, which also made `equal_width`'s
-`range = "percentile_p1_p99"` spelling accepted; the code retires with
-`value_groups`, its last owner) and
-`SpecSurfaceNotYetSupported` (recognized v1
+reservations in §20. (`DiscretizerKindNotYetSupported` — a recognized-but-deferred
+discretizer kind rejected at read with no parameter carrier, D-070 — was
+transitional on the same terms and **retired at M4 Slice E**, D-104: the set
+narrowed as each kind landed (`free_per_value` at Slice B, D-101; `equal_width` at
+Slice C, D-102; `equal_frequency` at Slice D, D-103, which also made `equal_width`'s
+`range = "percentile_p1_p99"` spelling accepted) and emptied with `value_groups`, its
+last owner. Every §11 discretizer kind now has a carrier and executes, so an
+unrecognized kind spelling is an ordinary `SpecFieldInvalid`.) One parse-phase code
+remains transitional: `SpecSurfaceNotYetSupported` (recognized v1
 surface the reader does not model yet — attribute/template `display_name` /
 `formal_attribute_format`, `[defaults]` `formal_attribute_format`,
 `value_type = "date"` — a **closed,
@@ -2596,10 +2604,11 @@ restriction and is excluded. `TheilerStage` could instead pin exact stages —
 `restrict_to = [{ value = 5 }, { value = 6 }]` keeps only TS 5 and 6 (matched by
 parsed numeric identity).
 
-> This example illustrates the v1 **end-state**. `restrict_to` execution (and the
-> `equal_frequency` calibration shown here) land at later milestones (M4); under
-> M2 a spec like this round-trips but is rejected at conversion with
-> `RestrictToNotImplementedV1` (§10.4).
+> This example illustrates the v1 **end-state**. Its `value_groups` grouping and its
+> `equal_frequency` calibration are now executable (M4 Slices E and D); the one part
+> still transitional is **`restrict_to` execution**, so a spec like this round-trips
+> and calibrates but is rejected at conversion with `RestrictToNotImplementedV1`
+> (§10.4) until that lands.
 
 ## 20. Modelled-but-not-implemented appendix (v1)
 

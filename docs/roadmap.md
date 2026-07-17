@@ -223,7 +223,45 @@ vertical slices, not waterfall phases — each should leave the system working.
 > runtime-owned. Both new fingerprint encodings are golden-locked with independently-computed
 > SHA-256 vectors (D-094); every pre-Slice-D canonical byte, SHA vector, and all nine golden
 > fixtures are unchanged. `value_groups` and `restrict_to` stay transitionally rejected.
-> `dotnet test` is green (1520 passed, 1 skipped). **M4 Slice E (`value_groups`) is next.**
+> `dotnet test` is green (1520 passed, 1 skipped).
+>
+> **M4 Slice E — `value_groups` — is complete (D-104).** The grouping discretizer (§11.6) is
+> executable under **all three** `unmatched` policies, and with it **every v1 discretizer kind is
+> executable**: the D-070 deferred-kind set is empty, so `DiscretizerKindNotYetSupported` retires
+> with its last owner and an unrecognized kind spelling is an ordinary `SpecFieldInvalid` (tier 3).
+> `value_groups` is a **value-bin** discretizer whose universe is its *groups* — `declared_domain`
+> and `value_labels` are both dormant under it (D-055/D-049), and it is string-fixing (D-061).
+> Matching is pinned rather than incidental: explicit values compare **ordinally**, the regex is
+> compiled **once** per group as **culture-invariant, partial (unanchored), case-sensitive unless
+> the author writes `(?i)`**, with `InfiniteMatchTimeout` passed **explicitly** — the overloads
+> that omit it inherit the host's ambient `REGEX_DEFAULT_MATCH_TIMEOUT`, which would make the same
+> spec host-dependent and fail on the exception channel (P-7/P-14); a group matches on values
+> **OR** pattern, and
+> among groups the **first declared match wins** — which is why the `groups` array is planned-order
+> in the TOML, the document, and the §14 bytes alike. **Authored presence survives** (G-11): an
+> omitted `values` and an authored `values = []` are distinct all the way to the fingerprint, so
+> two such specs share a `schema_fingerprint` but carry different output fingerprints — D-094's
+> one-directional guarantee made concrete. `unmatched = "passthrough"` is the one data-dependent
+> mode: it resolves to the `CalibrationPending` carrier and the Calibrate phase discovers one bin
+> per distinct ungrouped raw value in **first-observation (raw input) order** (§17 r3), warning
+> `ValueGroupsPassthroughDataDependent` whenever the mode runs — **zero discoveries included** —
+> and retaining an empty outcome as the legitimate completeness marker. Discovery is set-based, so
+> it is **discovery-class, not count-sensitive**: no quantile accumulator, no spill/merge, no
+> subject-local dedup, no budget share — bounded by the attribute vocabulary (P-16). It reads the
+> **raw pass only** for both triple orderings and never triggers the grouped second pass alone;
+> when a count-sensitive attribute forces that pass, pass-through is fed from the raw one only
+> (D-103), never twice, never a third pass — proven by enumeration counts, not by equal bins.
+> Calibration and emit share the **same** Core matcher, so they cannot drift about what "unmatched"
+> means. Ordinal over groups requires an explicit full permutation of the **group labels**
+> (including `Other`) — strings have no natural order to derive — and `ordinal` + `passthrough` is
+> rejected at spec validate. Three diagnostics landed (`ValueGroupsLabelDuplicate`,
+> `OrdinalNotAllowedWithValueGroupsPassthrough` at spec validate;
+> `ValueGroupsPassthroughDataDependent` at calibrate) and one retired, so the registry is **67**
+> (65 + 3 − 1). The `value_groups` fingerprint encoding is golden-locked with independently
+> computed SHA-256 vectors (D-094); every pre-Slice-E canonical byte, SHA vector, and all nine
+> golden fixtures are unchanged. **`restrict_to` stays transitionally rejected at plan** — it is
+> the only remaining M4 transition. `dotnet test` is green (1772 passed, 1 skipped).
+> **M4 Slice F (`restrict_to` execution + emit observability) is next.**
 
 ## Milestones
 

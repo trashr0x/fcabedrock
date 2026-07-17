@@ -70,24 +70,18 @@ public sealed class TomlSpellingsTests
             "\"skip\", \"warn\", \"fail\" or \"include\"",
             TomlSpellings.Allowed(TomlSpellings.UnknownValuePolicies));
 
-    [Theory]
-    [InlineData("value_groups", true)]
-    [InlineData("free_per_value", false)]   // left the deferred set at M4 Slice B (D-101)
-    [InlineData("equal_width", false)]      // left the deferred set at M4 Slice C (D-102)
-    [InlineData("equal_frequency", false)]  // left the deferred set at M4 Slice D (D-103)
-    [InlineData("identity", false)]
-    [InlineData("Value_Groups", false)]
-    [InlineData("value_group", false)]
-    public void IsIn_WhenProbingDeferredDiscretizerKinds_ThenExactOrdinalMatchOnly(string kind, bool expected) =>
-        Assert.Equal(expected, TomlSpellings.IsIn(TomlSpellings.DeferredDiscretizerKinds, kind));
-
     [Fact]
-    public void DeferredDiscretizerKinds_WhenSliceDLanded_ThenExactlyValueGroups() =>
-        // The transitional set narrows kind by kind (D-070) and the member retires with the last
-        // one. Pinning the whole set — not just membership — is what makes an accidental
-        // re-deferral or an early retirement visible. After Slice D exactly one kind remains, so
-        // DiscretizerKindNotYetSupported now owns value_groups alone (D-103).
-        Assert.Equal(["value_groups"], TomlSpellings.DeferredDiscretizerKinds);
+    public void ValueGroupsUnmatchedKinds_WhenSliceELanded_ThenTheTableEqualsTheCoreEnum() =>
+        // The accepted TOML surface and the Core enum must not drift: value_groups accepts exactly
+        // skip/other/passthrough (§11.6), all three executable as of Slice E (D-104) — unlike
+        // equal_width's range, no spelling is modelled-but-unreachable here. The deferred-KIND set
+        // this file used to pin retired with the same slice (D-070 complete, D-104): every v1
+        // discretizer kind now has a carrier, so an unknown spelling is an ordinary
+        // SpecFieldInvalid (tier 3) and there is no tier-2 set left to lock. IsIn's exact-ordinal
+        // contract keeps its live owner in DeferredScaleKinds below.
+        Assert.Equal(
+            Enum.GetValues<ValueGroupsUnmatched>().Order(),
+            TomlSpellings.ValueGroupsUnmatchedKinds.Select(u => u.Value).Order());
 
     [Fact]
     public void EqualWidthRanges_WhenSliceDLanded_ThenPercentileJoinedTheAcceptedSurface() =>

@@ -290,9 +290,25 @@ public sealed class CalibratedSpec
                 return Build(attribute, cuts, diagnostics, EqualFrequencyDiscretizer.FromCalibratedCuts(config, cuts.Cuts, pending.Culture));
             }
 
+            case PendingValueGroupsPassthrough config:
+            {
+                // §11.6/D-090/D-093: the discovered bins are the resolved identity — the authored
+                // groups are preserved verbatim and the bins appended in first-observation order.
+                // Unlike the cut variants there is no data-derived failure mode: any set of
+                // discovered raw spellings (including none) is a valid bin set, so this arm has no
+                // Diagnosed channel. An empty outcome is the legitimate zero-discovery marker and
+                // must NOT be reinterpreted as skip/other.
+                var bins = outcome as PassthroughBins
+                    ?? throw new ArgumentException(
+                        $"attribute '{attribute.Name}' carries a pending value_groups passthrough calibration and requires exactly one PassthroughBins outcome" +
+                        (outcome is null ? ", but none was provided." : $", but a {outcome.GetType().Name} was provided."));
+
+                var discretizer = ValueGroupsDiscretizer.CreatePassthrough(config.Groups, bins.Values);
+                return (attribute with { Discretizer = discretizer }, bins);
+            }
+
             default:
-                // value_groups passthrough lands with its M4 slice; a pending variant this
-                // milestone cannot substitute is a mis-sequenced call.
+                // A pending variant this milestone cannot substitute is a mis-sequenced call.
                 throw new ArgumentException(
                     $"attribute '{attribute.Name}' carries an unresolved '{pending.Kind}' calibration that this milestone cannot substitute (D-093).");
         }

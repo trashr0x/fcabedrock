@@ -1,4 +1,5 @@
 using FcaBedrock.Core.Calibration;
+using FcaBedrock.Core.Discretization;
 using FcaBedrock.Core.Planning;
 using FcaBedrock.Core.Scaling;
 using FcaBedrock.Core.Spec;
@@ -135,15 +136,17 @@ public sealed class SpecReadResolveTests
     }
 
     [Fact]
-    public void ReadResolve_WhenDeferredDiscretizerKind_ThenReadFailsBeforeResolve()
+    public void ReadResolve_WhenValueGroups_ThenReadsAndResolvesToAnExecutableDiscretizer()
     {
-        // D-070: no carrier exists, so the pipeline stops at read — there is no
-        // document to resolve.
-        var result = SpecReader.Read(TomlFixtures.EmageDeferredKind);
+        // The mirror of the old deferred-kind test: D-070's last read-reject retired at Slice E
+        // (D-104), so this same EMAGE-style spec now flows read → resolve and lands an executable
+        // discretizer instead of stopping at read with no document.
+        var spec = ResolveOk(TomlFixtures.EmageValueGroups, new SourceSchema(1));
 
-        Assert.False(result.IsOk);
-        Assert.False(result.TryGetValue(out _));
-        Assert.Contains(result.Diagnostics, d => d.Code == DiagnosticCode.DiscretizerKindNotYetSupported);
+        var attribute = Assert.Single(spec.Attributes);
+        var discretizer = Assert.IsType<ValueGroupsDiscretizer>(attribute.Discretizer);
+        Assert.Equal(ValueGroupsUnmatched.Skip, discretizer.Unmatched);
+        Assert.Equal(["head"], discretizer.Groups.Select(g => g.Label));
     }
 
     private static BedrockSpec ResolveOk(string toml, SourceSchema? schema)

@@ -628,6 +628,245 @@ public sealed class FingerprintCalculatorTests
         return plan!;
     }
 
+    // --- value_groups discretizer encoding (D-094 golden-lock, M4 Slice E) -----
+    //
+    // The M4 per-kind canonical bytes and their SHA-256 vectors are golden-locked BEFORE the first
+    // M4 fingerprint is produced (§14/D-094). value_groups encodes its AUTHORED config: `groups` in
+    // DECLARATION order (never sorted — first-match order is semantic, §11.6), each group's keys
+    // sorted label < pattern < values, `pattern`/`values` present only when authored, and inner
+    // values in authored order with duplicates retained. Discovered passthrough bins are
+    // deliberately absent — they are effective, not authored, and ride as `bin` objects in the
+    // schema array.
+    //
+    // Every hash literal below was computed with an EXTERNAL SHA-256 over the hand-authored bytes,
+    // never copied from this encoder's output; the same external method was first checked against
+    // the already-pinned free_per_value schema vector above, so it is calibrated against a known
+    // answer rather than trusted blind.
+
+    private static BedrockSpec ValueGroupsSpec() =>
+        new(SpecFixtures.WideRowIndex(), [
+            SpecFixtures.ValueGroups("edu", 0, ValueGroupsUnmatched.Skip, new NominalScale(),
+                ValueGroup.Create("School", ["11th", "HS-grad"], null),
+                ValueGroup.Create("ICD-Cardiac", null, "^I[0-9]{2}")),
+        ]);
+
+    private const string ValueGroupsSchemaArray =
+        """
+        [{"bin":"School","name":"edu","op":"","scale":"nominal"},{"bin":"ICD-Cardiac","name":"edu","op":"","scale":"nominal"}]
+        """;
+
+    [Fact]
+    public void BuildCxtOutputJson_WhenValueGroups_ThenTheD094ExampleEncodingExactly() =>
+        // The D-094 worked example, byte for byte: groups in declaration order, group keys sorted
+        // label/pattern/values, and top-level keys sorted groups < kind < unmatched.
+        Assert.Contains(
+            "\"discretizer\":{\"groups\":[{\"label\":\"School\",\"values\":[\"11th\",\"HS-grad\"]},"
+                + "{\"label\":\"ICD-Cardiac\",\"pattern\":\"^I[0-9]{2}\"}],\"kind\":\"value_groups\",\"unmatched\":\"skip\"},",
+            FingerprintCalculator.BuildCxtOutputJson(Plan(ValueGroupsSpec()), ValueGroupsSpec(), NativeCxt()),
+            StringComparison.Ordinal);
+
+    [Fact]
+    public void BuildSchemaJson_WhenValueGroups_ThenValueBinsInGroupDeclarationOrder() =>
+        // §17 rule 3: group declaration order — "ICD-Cardiac" follows "School" because it is
+        // declared second, not because of any sort.
+        Assert.Equal(
+            "{\"attributes\":" + ValueGroupsSchemaArray + ",\"fp_format\":1,\"kind\":\"schema\"}",
+            FingerprintCalculator.BuildSchemaJson(Plan(ValueGroupsSpec())));
+
+    [Fact]
+    public void ComputeSchemaFingerprint_WhenValueGroups_ThenMatchesHardcodedVector() =>
+        Assert.Equal(
+            "sha256:2fa20979a644a00aa51aff2e0dcafc0b58f02e8ec26324505ca8b3a2d5e4edfc",
+            FingerprintCalculator.ComputeSchemaFingerprint(Plan(ValueGroupsSpec())));
+
+    [Fact]
+    public void BuildDatOutputJson_WhenValueGroups_ThenCompletePinnedCanonicalBytes() =>
+        // The COMPLETE dat output bytes containing the value-groups object — the exact-byte lock
+        // the schema fingerprint cannot give (the discretizer object rides in `shared`, so it feeds
+        // the output fingerprints, not schema_fingerprint).
+        Assert.Equal(
+            "{\"dat\":{\"base_index\":1,\"empty_line_trailing_space\":false,\"line_endings\":\"lf\","
+                + "\"nonempty_line_trailing_space\":false},\"fp_format\":1,\"kind\":\"dat_output\",\"schema\":"
+                + ValueGroupsSchemaArray
+                + ",\"shared\":{\"attributes\":[{\"declared_domain\":[],\"discretizer\":{\"groups\":["
+                + "{\"label\":\"School\",\"values\":[\"11th\",\"HS-grad\"]},{\"label\":\"ICD-Cardiac\",\"pattern\":\"^I[0-9]{2}\"}],"
+                + "\"kind\":\"value_groups\",\"unmatched\":\"skip\"},\"missing_policy\":\"skip\",\"name\":\"edu\","
+                + "\"scale\":{\"kind\":\"nominal\"},\"source\":{\"column\":0,\"value_type\":\"string\"},"
+                + "\"unknown_value_policy\":\"warn\"}],\"binding\":{\"delimiter\":\",\",\"encoding\":\"utf-8\",\"has_header\":true,"
+                + "\"locale\":\"invariant\",\"missing_token\":\"?\",\"object_key\":{\"mode\":\"row_index\"},\"quote_char\":\"\\\"\",\"shape\":\"wide\"}}}",
+            FingerprintCalculator.BuildDatOutputJson(Plan(ValueGroupsSpec()), ValueGroupsSpec(), NativeDat()));
+
+    [Fact]
+    public void ComputeDatOutputFingerprint_WhenValueGroups_ThenMatchesHardcodedVector() =>
+        Assert.Equal(
+            "sha256:9f08f6d15a473376f218fd9f76eca40a3ae4a1ee5a8d4e85ed7c23e61af8b845",
+            ComputeDat(Plan(ValueGroupsSpec()), ValueGroupsSpec(), NativeDat()));
+
+    [Fact]
+    public void BuildCxtOutputJson_WhenValueGroups_ThenDeclaredDomainStaysEmptyBecauseItIsDormant() =>
+        // D-055: value_groups does not consume declared_domain, so the effective-domain gate emits
+        // [] — an inert authored domain must not perturb the output fingerprint (D-077).
+        Assert.Contains(
+            "\"declared_domain\":[],\"discretizer\":{\"groups\":",
+            FingerprintCalculator.BuildCxtOutputJson(Plan(ValueGroupsSpec()), ValueGroupsSpec(), NativeCxt()),
+            StringComparison.Ordinal);
+
+    [Fact]
+    public void BuildCxtOutputJson_WhenGroupsDeclaredInAnotherOrder_ThenTheBytesFollowDeclarationOrder()
+    {
+        // The `groups` array is planned-order, never sorted (§14/D-094): reversing the declaration
+        // reverses the bytes. A sorted encoder would produce identical bytes for both and this
+        // would fail — which is the point.
+        var reversed = new BedrockSpec(SpecFixtures.WideRowIndex(), [
+            SpecFixtures.ValueGroups("edu", 0, ValueGroupsUnmatched.Skip, new NominalScale(),
+                ValueGroup.Create("ICD-Cardiac", null, "^I[0-9]{2}"),
+                ValueGroup.Create("School", ["11th", "HS-grad"], null)),
+        ]);
+
+        Assert.Contains(
+            "\"discretizer\":{\"groups\":[{\"label\":\"ICD-Cardiac\",\"pattern\":\"^I[0-9]{2}\"},"
+                + "{\"label\":\"School\",\"values\":[\"11th\",\"HS-grad\"]}],\"kind\":\"value_groups\",\"unmatched\":\"skip\"},",
+            FingerprintCalculator.BuildCxtOutputJson(Plan(reversed), reversed, NativeCxt()),
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void BuildCxtOutputJson_WhenValuesHaveDuplicatesAndUnsortedOrder_ThenRetainedVerbatim()
+    {
+        // Inner values are authored config, not a canonicalized set: authored order kept,
+        // duplicates kept.
+        var spec = new BedrockSpec(SpecFixtures.WideRowIndex(), [
+            SpecFixtures.ValueGroups("edu", 0, ValueGroupsUnmatched.Skip, new NominalScale(),
+                ValueGroup.Create("G", ["b", "a", "b"], null)),
+        ]);
+
+        Assert.Contains(
+            "\"discretizer\":{\"groups\":[{\"label\":\"G\",\"values\":[\"b\",\"a\",\"b\"]}],\"kind\":\"value_groups\",\"unmatched\":\"skip\"},",
+            FingerprintCalculator.BuildCxtOutputJson(Plan(spec), spec, NativeCxt()),
+            StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData(ValueGroupsUnmatched.Skip, "skip")]
+    [InlineData(ValueGroupsUnmatched.Other, "other")]
+    public void BuildCxtOutputJson_WhenUnmatchedResolved_ThenSpelledEvenWhenItWasTheDefault(
+        ValueGroupsUnmatched unmatched, string spelling)
+    {
+        // §14/D-094: the RESOLVED policy is always spelled — the fingerprint encodes effective
+        // configuration, unlike the writer, which preserves the authored/omitted distinction.
+        var spec = new BedrockSpec(SpecFixtures.WideRowIndex(), [
+            SpecFixtures.ValueGroups("edu", 0, unmatched, new NominalScale(), SpecFixtures.Group("G", "a")),
+        ]);
+
+        Assert.Contains(
+            $"\"kind\":\"value_groups\",\"unmatched\":\"{spelling}\"}}",
+            FingerprintCalculator.BuildCxtOutputJson(Plan(spec), spec, NativeCxt()),
+            StringComparison.Ordinal);
+    }
+
+    // --- G-11: omitted `values` vs authored `values = []` ---------------------
+
+    private static BedrockSpec PatternOnlySpec() =>
+        new(SpecFixtures.WideRowIndex(), [
+            SpecFixtures.ValueGroups("edu", 0, ValueGroupsUnmatched.Skip, new NominalScale(),
+                ValueGroup.Create("P", null, "^x")),
+        ]);
+
+    private static BedrockSpec AuthoredEmptyValuesSpec() =>
+        new(SpecFixtures.WideRowIndex(), [
+            SpecFixtures.ValueGroups("edu", 0, ValueGroupsUnmatched.Skip, new NominalScale(),
+                ValueGroup.Create("P", [], "^x")),
+        ]);
+
+    [Fact]
+    public void BuildCxtOutputJson_WhenValuesOmittedVersusAuthoredEmpty_ThenTheBytesDiffer()
+    {
+        // The G-11 lock, with two VALID groups (both carry the same pattern, so both are usable
+        // matchers): authored presence is encoded, so `values` appears only when authored — and an
+        // authored empty list appears as [].
+        var patternOnly = FingerprintCalculator.BuildCxtOutputJson(Plan(PatternOnlySpec()), PatternOnlySpec(), NativeCxt());
+        var authoredEmpty = FingerprintCalculator.BuildCxtOutputJson(Plan(AuthoredEmptyValuesSpec()), AuthoredEmptyValuesSpec(), NativeCxt());
+
+        Assert.Contains("\"groups\":[{\"label\":\"P\",\"pattern\":\"^x\"}]", patternOnly, StringComparison.Ordinal);
+        Assert.Contains("\"groups\":[{\"label\":\"P\",\"pattern\":\"^x\",\"values\":[]}]", authoredEmpty, StringComparison.Ordinal);
+        Assert.NotEqual(patternOnly, authoredEmpty);
+    }
+
+    [Fact]
+    public void Fingerprints_WhenValuesOmittedVersusAuthoredEmpty_ThenSameSchemaButDifferentOutputHashes()
+    {
+        // The D-094 asymmetry made concrete: the two specs have IDENTICAL effective schemas (one
+        // "P" bin each — an empty values list matches nothing, so it changes no bin), hence one
+        // schema_fingerprint; but their authored config differs, and that rides in `shared`, so the
+        // OUTPUT fingerprints differ. Same output fingerprint ⇒ same bytes; not the converse (§14).
+        Assert.Equal(
+            FingerprintCalculator.ComputeSchemaFingerprint(Plan(PatternOnlySpec())),
+            FingerprintCalculator.ComputeSchemaFingerprint(Plan(AuthoredEmptyValuesSpec())));
+
+        Assert.NotEqual(
+            ComputeDat(Plan(PatternOnlySpec()), PatternOnlySpec(), NativeDat()),
+            ComputeDat(Plan(AuthoredEmptyValuesSpec()), AuthoredEmptyValuesSpec(), NativeDat()));
+    }
+
+    // --- Passthrough: authored config vs discovered bins ----------------------
+
+    private static ConversionPlan PassthroughPlan(params string[] discovered)
+    {
+        var spec = new BedrockSpec(SpecFixtures.WideRowIndex(), [
+            SpecFixtures.ValueGroupsPassthrough("edu", 0, new NominalScale(), SpecFixtures.Group("School", "11th")),
+        ]);
+        var calibrated = CalibratedSpec.Create(
+            Resolve(spec, new SourceSchema(1)), [new PassthroughBins("edu", discovered)]);
+        Assert.True(calibrated.TryGetValue(out var state));
+        Assert.True(ConversionPlanner.Plan(state!).TryGetValue(out var plan));
+        return plan!;
+    }
+
+    [Fact]
+    public void BuildCxtOutputJson_WhenPassthrough_ThenAuthoredConfigIsPinnedAndDiscoveredBinsAreNot()
+    {
+        // §14/D-094: "unmatched":"passthrough" IS authored config and is encoded — it is what made
+        // the schema data-dependent. The DISCOVERED bins are not: they already ride as schema bins,
+        // so re-encoding them inside the discretizer would be the second source of truth the rule
+        // forbids.
+        var plan = PassthroughPlan("PhD", "Masters");
+        var json = FingerprintCalculator.BuildCxtOutputJson(plan, plan.Calibrated.Spec, NativeCxt());
+
+        Assert.Contains(
+            "\"discretizer\":{\"groups\":[{\"label\":\"School\",\"values\":[\"11th\"]}],"
+                + "\"kind\":\"value_groups\",\"unmatched\":\"passthrough\"},",
+            json, StringComparison.Ordinal);
+
+        var discretizer = json[json.IndexOf("\"discretizer\":", StringComparison.Ordinal)..];
+        var subObject = discretizer[..discretizer.IndexOf("},\"missing_policy\"", StringComparison.Ordinal)];
+        Assert.DoesNotContain("PhD", subObject, StringComparison.Ordinal);
+        Assert.DoesNotContain("Masters", subObject, StringComparison.Ordinal);
+
+        // ...but they ARE in the effective schema.
+        Assert.Contains("\"bin\":\"PhD\"", json, StringComparison.Ordinal);
+        Assert.Contains("\"bin\":\"Masters\"", json, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ComputeSchemaFingerprint_WhenPassthroughDiscoversDifferentBins_ThenTheSchemaFingerprintMoves()
+    {
+        // The data-dependence, proven rather than asserted: the discovered bins ARE effective
+        // columns, so a different discovery is a different schema.
+        var none = FingerprintCalculator.ComputeSchemaFingerprint(PassthroughPlan());
+        var one = FingerprintCalculator.ComputeSchemaFingerprint(PassthroughPlan("PhD"));
+        var two = FingerprintCalculator.ComputeSchemaFingerprint(PassthroughPlan("PhD", "Masters"));
+
+        Assert.NotEqual(none, one);
+        Assert.NotEqual(one, two);
+    }
+
+    [Fact]
+    public void ComputeSchemaFingerprint_WhenPassthroughDiscoveryOrderDiffers_ThenTheSchemaFingerprintMoves() =>
+        // First-observation order is column order (§17 rule 3), so it is load-bearing for identity.
+        Assert.NotEqual(
+            FingerprintCalculator.ComputeSchemaFingerprint(PassthroughPlan("PhD", "Masters")),
+            FingerprintCalculator.ComputeSchemaFingerprint(PassthroughPlan("Masters", "PhD")));
+
     [Fact]
     public void BuildCxtOutputJson_WhenEqualWidthManual_ThenDiscretizerEncodesAuthoredConfigWithBounds() =>
         // The pinned manual encoding (§14/D-094). Keys sort ordinal: bins < kind < precision <

@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using System.Globalization;
 using FcaBedrock.Core.Discretization;
 using FcaBedrock.Core.Scaling;
@@ -126,6 +127,43 @@ public sealed record PendingEqualFrequency : PendingCalibration
 
     /// <inheritdoc/>
     public override string Kind => "equal_frequency";
+}
+
+/// <summary>
+/// The <c>value_groups</c> <c>unmatched = "passthrough"</c> configuration calibration must
+/// resolve (§11.6, D-055/D-090): the authored groups carried into calibration, so the
+/// calibrator discovers the ungrouped raw values and <c>CalibratedSpec.Create</c> substitutes
+/// the executable <see cref="ValueGroupsDiscretizer"/> over the retained
+/// <see cref="PassthroughBins"/> (D-093).
+/// <para>
+/// Recursively immutable: this constructor snapshots the group list, and each
+/// <see cref="ValueGroup"/> already snapshots its own authored values — so no caller-owned
+/// list survives on the graph. Unlike the numeric carriers there is no bin count or policy to
+/// validate; a group's own validity is <see cref="ValueGroup.Create"/>'s contract, and label
+/// distinctness is checked where the executable form is built (and re-checked at the
+/// <c>ResolvedSpec</c> trust boundary, since this carrier is freely constructible).
+/// </para>
+/// </summary>
+public sealed record PendingValueGroupsPassthrough : PendingCalibration
+{
+    private readonly ImmutableArray<ValueGroup> _groups;
+
+    /// <summary>Carries the authored <paramref name="groups"/> into passthrough calibration.</summary>
+    public PendingValueGroupsPassthrough(IReadOnlyList<ValueGroup> groups)
+    {
+        ArgumentNullException.ThrowIfNull(groups);
+        _groups = groups.ToImmutableArray();
+        foreach (var group in _groups)
+        {
+            ArgumentNullException.ThrowIfNull(group, nameof(groups));
+        }
+    }
+
+    /// <summary>The authored groups in declaration order (first match wins, §11.6).</summary>
+    public IReadOnlyList<ValueGroup> Groups => _groups;
+
+    /// <inheritdoc/>
+    public override string Kind => "value_groups";
 }
 
 /// <summary>

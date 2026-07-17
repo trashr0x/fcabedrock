@@ -183,8 +183,10 @@ public sealed class EqualWidthSpecTests
     [Fact]
     public void Read_WhenDiscretizerHasUnknownKey_ThenSpecKeyUnrecognized()
     {
-        // equal_width now has a real carrier, so its table is walked strictly — unlike the
-        // deferred kinds, whose parameter keys are deliberately not walked (D-070 tier 2).
+        // equal_width has a real carrier, so its table is walked strictly and an unknown key inside
+        // it gets the ordinary SpecKeyUnrecognized. (This once contrasted with the deferred kinds,
+        // whose parameter keys were deliberately not walked — that tier emptied at M4 Slice E,
+        // D-104, so strict walking is now simply what every §11 kind does.)
         var result = SpecReader.Read(Attribute("{ kind = \"equal_width\", bins = 4, wibble = 1 }"));
 
         Assert.False(result.IsOk);

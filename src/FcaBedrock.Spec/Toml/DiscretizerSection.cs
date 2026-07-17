@@ -3,12 +3,12 @@ using FcaBedrock.Core.Discretization;
 namespace FcaBedrock.Spec.Toml;
 
 /// <summary>
-/// An authored attribute <c>discretizer</c> (§11). Models the executable kinds —
+/// An authored attribute <c>discretizer</c> (§11). Models every v1 kind —
 /// <c>identity</c>, <c>manual_cuts</c>, <c>ordered_cuts</c> (D-070 tier 1),
 /// <c>free_per_value</c> (M4 Slice B, D-101), <c>equal_width</c> (M4 Slice C, D-102),
-/// and <c>equal_frequency</c> (M4 Slice D, D-103). The one still-deferred kind
-/// (<c>value_groups</c>) is recognized-and-rejected by the reader (D-070 tier 2) and
-/// gains no carrier yet.
+/// <c>equal_frequency</c> (M4 Slice D, D-103), and <c>value_groups</c> (M4 Slice E,
+/// D-104). With <c>value_groups</c> carried the D-070 deferred-kind tier is empty and
+/// retired; an unknown kind spelling is an ordinary <c>SpecFieldInvalid</c> (tier 3).
 /// </summary>
 public abstract record DiscretizerSection;
 
@@ -64,6 +64,33 @@ public sealed record EqualFrequencyDiscretizerSection(
     long? Bins,
     TiePolicy? TiePolicy,
     CutPlacement? CutPlacement) : DiscretizerSection;
+
+/// <summary>
+/// The <c>value_groups</c> discretizer (§11.6, M4 Slice E / D-090): many-to-one value
+/// grouping in declaration order, first match wins. Both fields are presence-tracked, so an
+/// omitted <c>unmatched</c> (default <c>"skip"</c>) round-trips as omitted (D-049) — the
+/// default resolves at the seam, never in the document.
+/// </summary>
+/// <param name="Groups">The authored groups in declaration order (order is semantic); null when not authored.</param>
+/// <param name="Unmatched">The authored policy for values matching no group; null when not authored.</param>
+public sealed record ValueGroupsDiscretizerSection(
+    IReadOnlyList<ValueGroupSection>? Groups,
+    ValueGroupsUnmatched? Unmatched) : DiscretizerSection;
+
+/// <summary>
+/// One authored <c>value_groups</c> group (§11.6). Every field is an authored-presence
+/// carrier and is <b>not</b> normalized in the document model: <see cref="Values"/> is null
+/// when <c>values</c> was omitted and a list — possibly empty — when authored, which the §14
+/// encoding and the round-trip both depend on (G-11/D-094). Authored value order and
+/// duplicates are preserved verbatim.
+/// </summary>
+/// <param name="Label">The authored group label; null when not authored (diagnosed at parse).</param>
+/// <param name="Values">The authored explicit values; null when omitted, possibly empty when authored.</param>
+/// <param name="Pattern">The authored regex verbatim; null when omitted.</param>
+public sealed record ValueGroupSection(
+    string? Label,
+    IReadOnlyList<string>? Values,
+    string? Pattern);
 
 /// <summary>The <c>ordered_cuts</c> discretizer (§11.8): categorical bins cut over an ordered domain.</summary>
 /// <param name="Order">The ordered domain; null when not authored.</param>

@@ -311,7 +311,8 @@ public static class ConversionPlanner
                 && attribute.Scale is OrdinalScale ordinal
                 && attribute.DeclaredDomain.Count > 0)
             {
-                ValidateValueBinOrder(attribute, ordinal, diagnostics);
+                ValidateValueBinOrder(
+                    attribute, ordinal, attribute.DeclaredDomain, "identity value bins", "declared_domain value", diagnostics);
             }
 
             // §12.3 / D-096: free_per_value value bins take the same ordinal path. A NUMERIC
@@ -324,7 +325,24 @@ public static class ConversionPlanner
                 && attribute.Scale is OrdinalScale freeOrdinal
                 && !(freePerValue.ValueType == SourceValueType.Number && freeOrdinal.Order is null))
             {
-                ValidateValueBinOrder(attribute, freeOrdinal, diagnostics);
+                ValidateValueBinOrder(
+                    attribute, freeOrdinal, attribute.DeclaredDomain, "free_per_value value bins", "declared_domain value", diagnostics);
+            }
+
+            // §12.3 / §11.6 / D-090: value groups take the same value-bin ordinal path, but their
+            // universe is the GROUP LABELS — not declared_domain, which value_groups ignores
+            // entirely (D-055). The labels come from the discretizer's own BinLabels, so `Other`
+            // is included exactly when unmatched = "other" and the permutation rule needs no
+            // second copy of the bin-order logic. ordinal + passthrough is rejected at the seam
+            // (OrdinalNotAllowedWithValueGroupsPassthrough) and so never reaches plan; a hand-built
+            // spec that bypassed the seam degrades to requiring a permutation of the discovered
+            // bins rather than crashing.
+            if (attribute.Discretizer is ValueGroupsDiscretizer valueGroups
+                && attribute.Scale is OrdinalScale groupOrdinal)
+            {
+                ValidateValueBinOrder(
+                    attribute, groupOrdinal, valueGroups.BinLabels(attribute.DeclaredDomain),
+                    "value groups", "group label", diagnostics);
             }
         }
     }
@@ -363,45 +381,54 @@ public static class ConversionPlanner
         return ordinal with { Order = Array.ConvertAll(keyed, static k => k.Key) };
     }
 
-    // §12.3 / D-081: an identity value-bin ordinal must author a scale.order that is
-    // a full permutation of the declared_domain — every domain value gets a threshold
-    // (a value with no order entry is OrdinalOrderMissing; an order entry outside the
-    // domain is OrdinalOrderHasUnknownValue, one per stray entry). The order lists raw
-    // domain values, never display labels. Duplicate/empty order entries are caught
-    // earlier at the resolve seam (OrderDomainInvalid, D-081). Runs on an included,
-    // non-empty-domain identity attribute only (the caller's gate).
+    // §12.3 / D-081 / D-090: a value-bin or value-group ordinal must author a scale.order that
+    // is a full permutation of its bin universe — every bin gets a threshold (a bin with no
+    // order entry is OrdinalOrderMissing; an order entry outside the universe is
+    // OrdinalOrderHasUnknownValue, one per stray entry). The order lists raw bin values or
+    // group labels, never display labels. Duplicate/empty order entries are caught earlier at
+    // the resolve seam (OrderDomainInvalid, D-081).
+    //
+    // The universe is the caller's, because it differs by kind: identity/free_per_value bin the
+    // declared_domain, while value_groups ignores the domain entirely (D-055) and bins its group
+    // labels plus a synthetic Other. Passing it in keeps ONE permutation algorithm over the
+    // effective bin labels rather than a second ordinal implementation per kind (P-5).
     private static void ValidateValueBinOrder(
-        AttributeSpec attribute, OrdinalScale ordinal, List<BedrockDiagnostic> diagnostics)
+        AttributeSpec attribute,
+        OrdinalScale ordinal,
+        IReadOnlyList<string> universe,
+        string what,
+        string member,
+        List<BedrockDiagnostic> diagnostics)
     {
         if (ordinal.Order is not { } order)
         {
             diagnostics.Add(new BedrockDiagnostic(
                 DiagnosticCode.OrdinalOrderMissing, DiagnosticSeverity.Error,
-                $"Attribute '{attribute.Name}' uses an ordinal scale over identity value bins but declares no scale.order; the bin order must be explicit (§12.3).",
+                $"Attribute '{attribute.Name}' uses an ordinal scale over {what} but declares no scale.order; the bin order must be explicit (§12.3).",
                 new DiagnosticLocation(AttributeName: attribute.Name)));
             return;
         }
 
-        var domain = new HashSet<string>(attribute.DeclaredDomain, StringComparer.Ordinal);
+        var bins = new HashSet<string>(universe, StringComparer.Ordinal);
         foreach (var value in order)
         {
-            if (!domain.Contains(value))
+            if (!bins.Contains(value))
             {
                 diagnostics.Add(new BedrockDiagnostic(
                     DiagnosticCode.OrdinalOrderHasUnknownValue, DiagnosticSeverity.Error,
-                    $"scale.order entry '{value}' on attribute '{attribute.Name}' is not in its declared_domain (§12.3).",
+                    $"scale.order entry '{value}' on attribute '{attribute.Name}' is not among its {what} (§12.3).",
                     new DiagnosticLocation(AttributeName: attribute.Name)));
             }
         }
 
         var ordered = new HashSet<string>(order, StringComparer.Ordinal);
-        foreach (var value in attribute.DeclaredDomain)
+        foreach (var value in universe)
         {
             if (!ordered.Contains(value))
             {
                 diagnostics.Add(new BedrockDiagnostic(
                     DiagnosticCode.OrdinalOrderMissing, DiagnosticSeverity.Error,
-                    $"declared_domain value '{value}' on attribute '{attribute.Name}' has no scale.order entry; every value bin needs a threshold (§12.3).",
+                    $"{member} '{value}' on attribute '{attribute.Name}' has no scale.order entry; every bin needs a threshold (§12.3).",
                     new DiagnosticLocation(AttributeName: attribute.Name)));
             }
         }
