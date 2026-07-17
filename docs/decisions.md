@@ -187,6 +187,17 @@ superseded or refined. A new entry MUST add its line here.
 
 - D-105 — `restrict_to` executable: exact numeric entries, existential object filtering, restriction-vs-duplicate-key sequencing, filter-only diagnostic ownership, the three emit-observability aggregates, the policy-bearing `restrictions` fingerprint container, and the caller-discard output contract (realizes D-021/D-057/D-063/D-076/D-079/D-091/D-097; the G-2/G-6/G-9/G-10/G-12 governance items; retires `RestrictToNotImplementedV1` — **completes M4**)
 
+### M5 (discovery / probe) pre-implementation audit
+
+- D-106 — Discovery `probe`: caller-selected shape, no inference, universal `identity` + `nominal`, one set-based observation pass (refines D-003/D-036)
+- D-107 — Draft naming/binding matrix, validity guarantee, content inventory; no stored fingerprints/clock/tool version; caller enrichment
+- D-108 — Retention limit (100,000 default), strictly-greater truncation, prefix + `include` recovery, marker + always-written notes, probe options ownership; legacy retention-cap correction
+- D-109 — The general unbound streaming source session; adapter/engine split; package dependency direction; required P-4 review
+- D-110 — Probe boundedness: per-attribute limit + three aggregate guards, deterministic accounting, hard-failure semantics, no spill machinery, inherited subject-metadata carve-out (refines D-095)
+- D-111 — Probe diagnostic governance: five future codes, two phase widenings, `ProbeSourceReadFailed` scope, cancellation is not a diagnostic, registry 70 → expected 75 (refines D-067/D-085/D-099)
+- D-112 — Probe determinism and cancellation: record-sequence input, no ambient state, byte/diagnostic repeatability, no partial artifact; the M5 verification suite
+- D-113 — Canonical-writer deterministic multiline wrapping for long top-level `declared_domain` arrays; private byte-pinned cutoff (refines D-075)
+
 Spec-field defaults are recorded in spec §21 items 1–11 (see the final section
 of this file).
 
@@ -3993,6 +4004,345 @@ pattern).
   §16.4 / §18.1 / §19.4 (G-2/G-9/G-12 edits + transitional-note retirements); roadmap M4
   exit. Realizes D-021/D-057/D-063/D-076/D-079/D-091/D-097; amends D-091 in place (G-9).
   **Completes M4.**
+
+---
+
+## M5 (discovery / probe) pre-implementation audit
+
+This audit settles the Discovery/`probe` contract before any M5 code lands. Like the
+pre-M4 audits (D-088…D-097), it is **docs-only**: no production code, tests, fixtures,
+enum members, fingerprints, or output bytes change here. The normative contract lives in
+spec §7.1 (with targeted clarifications in §5.1/§14/§16.4/§17); these entries carry the
+rationale. Values deliberately left to the M5 implementation review are named where they
+arise (the public Discovery API surface — a P-4 review; the aggregate-guard defaults and
+accounting constants; the canonical-writer wrapping cutoff) and are **not** pinned here.
+
+### D-106 — Discovery `probe`: caller-selected shape, no inference, universal identity + nominal, one set-based observation pass
+
+- **Status:** accepted (M5 pre-implementation audit; refines D-003/D-036)
+- **Date:** 2026-07-18
+- **Decision:** `probe` is an **optional draft-generation operation outside** the
+  Parse/validate → Calibrate → Plan → Emit pipeline (D-003/D-036; §7's "convert calibrates
+  but never discovers" stands unchanged). The **caller always selects the shape**
+  (`wide` | `triple`); probe performs **no structural inference of any kind** — no delimiter
+  sniffing, header detection, shape detection, or type inference. Every read setting has a
+  caller-overridable default. Most are the §5.1 **common** binding defaults, shared by **both**
+  shapes: delimiter `","`, quote `"` (the only supported quote, D-054), encoding `utf-8`,
+  `missing_token = "?"` (empty token disables token matching; empty cells are always missing),
+  and locale `invariant` (inert at M5 — probe parses no numbers). Only the **shape-specific**
+  defaults differ: `has_header` follows §5.1's shape default (`true` wide, `false` triple), and
+  **triple** additionally defaults `ordering = "unordered"` and roles
+  `subject = 0, predicate = 1, value = 2` (a complete role map supplyable in one addressing
+  mode, §5.3; wide has no ordering/role settings). **`subject_grouped` is explicit-only** —
+  never a default, never inferred. Every discovered attribute is authored as **string-valued `identity` +
+  `nominal`**; no numeric/boolean/ordinal/date inference at M5. Probe observes the source's
+  **cleaned records exactly once, in input order** — one data-record pass ("single pass"
+  means one *record* pass, not structural inference), per-attribute **set-based and
+  idempotent** over cleaned values, with **ordinal** identity (P-12) and **first-observation**
+  domain order (§17 rule 3's principle). Missing values are **not observations** (empty
+  field, or a field equal to the effective `missing_token`). **Triple** probe observes raw
+  `(predicate, value)` pairs; predicates are discovered in **first-appearance order**; an
+  empty/missing predicate is ignored; **no grouped/count-sensitive pass, ever**, and no
+  contiguity requirement under `unordered`. For **structural symmetry with conversion**, a
+  triple probe validates **subject usability under both orderings** (an empty,
+  whitespace-only, control-character, or absent subject halts the probe — otherwise the
+  draft would violate the same-source conversion guarantee, D-107), and an explicitly
+  selected `subject_grouped` probe additionally validates **contiguity**; **wide** probe is
+  row-index based and does **no** object-key validation. Cross-checks: a probed attribute's
+  domain equals Calibrate's observed domain (same values, same order) for the same input,
+  and probe's grouped-input rejection is symmetric with conversion's.
+- **Why:** legacy FcaBedrock already required choosing CSV/TSV, wide/triple, and header
+  handling before autodetection — it was never a zero-configuration sniffer, so requiring
+  the caller to select the shape is continuity, not a new constraint. A conservative base
+  that infers nothing keeps drafts predictable and defers legacy guided detection ("this
+  looks continuous — add ranges?") to future Discovery UX. Pinning "one pass = one record
+  pass" over set-based ordinal observation is what makes probe's and Calibrate's observed
+  domains provably identical rather than coincidentally so.
+- **Rejected:** structural/type inference at M5 (valuable as future guided UX, not the
+  conservative base — P-3); numeric/date/boolean typing now; a grouped second pass or a
+  contiguity requirement under `unordered` (set-based observation needs neither); skipping
+  subject-usability validation (would let a probe author a draft the same-source conversion
+  rejects, D-107).
+- **Affects:** Discovery (future engine), Spec (`SpecWriter` draft authoring); spec §5.1 /
+  §7 (new §7.1) / §17. Refines D-003/D-036; cross-references D-038 (no date inference), D-054
+  (single supported quote), D-061 (`identity` is string-only, so `nominal` over `identity`
+  is the universal draft cell), D-082 (triple structural validity), D-099 (calibrate/probe
+  structural symmetry), D-104 (first-observation-order discovery precedent).
+
+### D-107 — Draft naming/binding matrix, validity guarantee, and content inventory; no stored fingerprints/clock/tool version; caller enrichment
+
+- **Status:** accepted (M5 pre-implementation audit)
+- **Date:** 2026-07-18
+- **Decision:** a **successful** probe produces a draft that (1) contains **at least one
+  attribute**; (2) **rereads** under the strict `SpecReader`; (3) **resolves** against the
+  probed source's schema with no Error/Fatal; (4) **converts the same source under the same
+  effective settings** with no Error/Fatal (warnings and structurally valid degenerate
+  contexts allowed — probe does not itself run conversion; tests enforce this). Probe returns
+  **no draft** (diagnostics only) when no valid draft exists: zero-column wide input, triple
+  input with no usable predicates, structural invalidity (unusable subjects under either
+  ordering; non-contiguous input under explicit `subject_grouped`), or impossible
+  binding/naming. **All-missing columns and header-only sources succeed** (attributes
+  authored, domains omitted; their data-side emptiness surfaces at convert as the existing
+  degenerate-context warnings, §16.4).
+  - **Naming/binding matrix.** **Wide:** a **unique, usable** header cell binds **by name**
+    (preserving reorder protection); a **duplicate, blank, unusable, or headerless** column
+    binds **by physical index**. Fallback names (headerless or unusable header) are
+    `column_<zero-based-index>`. Duplicate names disambiguate deterministically with
+    `#<source-index>`, escalating ordinally `#1`, `#2`, … to the first unused. **Triple:** a
+    usable predicate string is **both** the source selector and the attribute name; an
+    **unusable** predicate (invalid as a §10.1 name) keeps its **exact** source selector but
+    receives the logical name `predicate_<zero-based-first-appearance-ordinal>`;
+    empty/missing predicates are ignored. **No source selector is ever silently changed.**
+    All names satisfy §10.1 validity and §10.2 uniqueness. Every adjustment/disambiguation is
+    diagnosed (aggregated Warning, D-111); plain headerless `column_N` synthesis alone is
+    **not** a warning.
+  - **Content inventory.** The draft contains exactly: `[spec]` (`version = 1` + a
+    deterministic probe `description`); `[binding]` with **every effective read setting
+    authored explicitly even when defaulted** (a self-documenting draft, including the
+    complete triple ordering/role mappings); `[provenance]` with only the deterministic notes
+    of D-108; and per attribute `name`, `source` (with **explicit** `value_type = "string"`),
+    `discretizer = { kind = "identity" }`, `scale = { kind = "nominal" }`, plus the domain
+    per D-108. **Nothing else:** **no stored fingerprints** (a probe draft is never a frozen
+    artifact — even when its explicit domains would make it fully-declared, §14), **no
+    clock/timestamps** (`created_at` never stamped — the D-079 no-clock rule), no tool
+    version, no `[defaults]`, `[output]`, templates, matchers, or object-key section (the
+    defaults are correct: wide `row_index`, triple subject-pinned). The initial Discovery API
+    accepts **no speculative provenance parameters** (P-6); the caller may enrich the returned
+    `SpecDocument` afterwards (it is a public record).
+- **Why:** the four-part guarantee makes "a probe draft is immediately usable" a *tested*
+  property, not a hope — the reread/resolve/convert chain is exactly what a user does next.
+  Binding a unique header by name preserves the reorder protection wide binding already gives;
+  falling back to index everywhere else keeps a draft that resolves — a duplicate or blank
+  header name does not resolve to exactly one column (`SourceBindingInvalid`, §10.2), so
+  binding it by name would make the draft fail its own reread/resolve/convert guarantee. A
+  probe draft is a starting point, so freezing it (fingerprints) or stamping it (clock) would
+  fossilize provenance the user has not yet reviewed.
+- **Rejected:** binding an ambiguous/blank/duplicate header by name (a duplicate or blank name
+  fails resolution — `SourceBindingInvalid`, §10.2 — so the draft would not satisfy its
+  validity guarantee; index binding is the resolvable fallback);
+  renaming a source selector to make it a valid attribute name (would change which
+  predicate/column the draft reads); storing fingerprints or a timestamp in a draft (it is
+  not a frozen artifact — a stored hash would fossilize an unreviewed schema, and a clock
+  read violates D-079/P-13); a no-draft outcome for all-missing/header-only input (the
+  attributes are real; their emptiness is a convert-time signal); speculative provenance
+  parameters on the first API (P-6 — the caller enriches the returned record).
+- **Affects:** Discovery (future engine), Spec (`SpecWriter`, `SpecDocument`); spec §5.2 /
+  §5.3 / §7.1 / §10.1 / §10.2 / §14. Cross-references D-049 (`include`/dormant-config
+  authoring hygiene), D-066 (document model the draft targets), D-071 (absent-domain
+  handling), D-075 (canonical writer / strict reader), D-079 (no-clock rule), D-083 (wide
+  object-key defaults).
+
+### D-108 — Retention limit (100,000 default), strictly-greater truncation, prefix + `include` recovery, marker + always-written notes, probe options ownership; legacy retention-cap correction
+
+- **Status:** accepted (M5 pre-implementation audit)
+- **Date:** 2026-07-18
+- **Decision:** probe retains, **per attribute**, at most the first `limit` **distinct
+  cleaned non-missing** values in first-observation order, allocated as observed (no
+  legacy-style preallocation). The **default limit is 100,000**. **Truncation is strictly
+  greater-than:** an attribute is truncated only when **more than** `limit` distinct values
+  exist; probe then knows only that **at least one more distinct value exists** — never an
+  exact over-limit count (counting distinct requires retaining). A **truncated** attribute
+  authors its retained **prefix** as `declared_domain` (first-observation order) **plus
+  `unknown_value_policy = "include"`**, so converting the draft over the probed source
+  **recovers the complete schema** via existing §10.6 include calibration (include-appended
+  values follow the declared prefix in first-observation order per §17 rule 3, making the
+  resulting column set and order identical to an untruncated probe's). An **untruncated**
+  attribute authors its complete non-empty domain; an **all-missing** attribute authors **no
+  domain** (omitted). Each truncated attribute additionally carries a **deterministic
+  human-readable marker in its `description`**. `[provenance].notes` **always** records the
+  effective per-attribute limit and the number of truncated attributes — **including zero**,
+  so an untruncated draft still explains which limit produced it. Description and notes are
+  **fingerprint-inert** (neither is a fingerprint input, §14). The limit is a **probe option**
+  (M7/M9 may expose it), never a conversion `[binding]` field and never a fingerprint
+  input; the user may re-probe with a higher limit to inspect more values.
+  - **Legacy correction.** The roadmap's prior "v2's 100-distinct-value cap" claim is
+    **incorrect**: verified legacy source shows `MAX_CATS = 100000` was the backend
+    array-allocation/retention bound, while `maxCatsDisplayed = 100` was **only a UI display
+    limit** — all discovered values were retained and usable (Adult 21,648 distinct; Internet
+    Ads up to 781; Mushroom 12; EMAGE gene values ≈ 6,800). **M5 has no presentation/display
+    limit.** The correction lands in `roadmap.md` M5 and `lineage.md` §1.
+- **Why:** the strictly-greater rule plus prefix + `include` is what lets a *truncated* draft
+  still round-trip to the complete schema — the include pass re-appends the tail deterministically,
+  so a 100k-limit draft and an untruncated one converge on the same columns. Writing the notes
+  even at zero truncations means every draft carries its own provenance for which limit produced
+  it. Retaining ≤ `limit` distinct strings per attribute is the honest bound: probe cannot report
+  an exact over-limit count without doing the very retention the limit caps.
+- **Rejected:** a "greater-than-or-equal" boundary (would truncate an at-limit attribute that
+  fits exactly); reporting an exact over-limit distinct count (requires unbounded retention —
+  the thing the limit prevents); omitting the notes when nothing truncates (a draft would not
+  explain its own limit); a machine-readable v1 truncation key (the strict reader rejects
+  unknown keys, D-075) or a writer comment (the canonical writer emits none, D-075); a
+  presentation/display cap like the legacy UI's first-100 limit (a UI concern, not a retention
+  one); making the limit a `[binding]`/fingerprint input (it shapes a draft, not a
+  conversion's identity).
+- **Affects:** Discovery (future engine, probe options), Spec (`SpecWriter`); spec §4 / §7.1 /
+  §10.1 / §10.3 / §10.6 / §17; roadmap M5; lineage §1. Cross-references D-068 (`include`
+  precedent), D-071 (absent/empty `declared_domain`), D-098 (observed-domain + `include`
+  calibration the recovery relies on); spec §10.6 include behavior.
+
+### D-109 — The general unbound streaming source session; adapter/engine split; package dependency direction; required P-4 review
+
+- **Status:** accepted (M5 pre-implementation audit)
+- **Date:** 2026-07-18
+- **Decision:** Discovery consumes a **general unbound streaming source session** whose stable
+  boundary is **ordered schema + streamed cleaned/normalized records + source-shape
+  information + cancellation + source diagnostics** — *not* a stream/file abstraction. The CSV
+  wide/triple **adapters** (built from stream factories + read settings) implement that
+  boundary **outside** the Discovery engine; future SQL/SPARQL sources could implement the
+  same boundary without refactoring, but they are **examples of future adapters, not M5
+  promises** (no connection/query semantics are designed now, none scheduled). Discovery
+  **does not** tokenize, fabricate conversion bindings, open file paths, or reference
+  `FcaBedrock.Conversion`. Allowed references: **Sources, Spec, Core, Diagnostics** —
+  cycle-free under the current graph (Spec references neither Sources nor Discovery). Probe
+  returns `Diagnosed<SpecDocument>`; the **caller** serializes via `SpecWriter` and owns all
+  file output. Exact interface/member names are reserved for the implementation-time
+  **public-API (P-4) review** — the docs record the seam's shape and dependency direction, not
+  signatures.
+- **Why:** an abstraction over *schema + normalized records* (rather than over a byte
+  stream) is what lets an in-memory or future SQL/SPARQL source feed Discovery with no CSV
+  coupling — the determinism guarantee (D-112) must hold over a record sequence, not a file.
+  Keeping Discovery out of `Conversion` and off the filesystem preserves the dependency graph
+  and P-13 purity boundaries.
+- **Rejected:** coupling Discovery to a stream/file type (would block non-file sources and
+  make determinism a file-byte property); letting Discovery reference `Conversion` or open
+  files (breaks the seam and P-13); designing SQL/SPARQL connection/query semantics now (P-3
+  — future adapters, unscheduled); pinning interface signatures in docs (reserved for the P-4
+  review).
+- **Affects:** Discovery (future engine + adapters), Sources (adapter boundary), Spec
+  (`SpecWriter`); spec §7.1; roadmap M5/M7. Cross-references D-075/D-078 (the string-only
+  `ISpecTextSource` host-seam precedent), D-098 (two-stage source bootstrap this reuses).
+
+### D-110 — Probe boundedness: per-attribute limit + three aggregate guards, deterministic accounting, hard-failure semantics, no spill machinery, inherited subject-metadata carve-out
+
+- **Status:** accepted (M5 pre-implementation audit; refines D-095)
+- **Date:** 2026-07-18
+- **Decision:** per-attribute retention is bounded by the D-108 limit. Additionally, three
+  deterministic **aggregate guards**, exposed as advanced probe options: (1) maximum
+  discovered attributes; (2) maximum total retained distinct values; (3) maximum total
+  retained value text. Their **defaults and accounting constants are chosen and pinned during
+  the implementation review** against representative workloads (the motivating arithmetic:
+  1,554 attributes × 100,000 values permits a theoretical 155.4M retained strings) — not
+  invented here. Guards use **deterministic logical accounting, never available machine
+  memory** (P-7/P-11). An **aggregate breach** emits `ProbeLimitExceeded` (D-111) and **no
+  draft**; aggregate pressure **never silently truncates** further attributes — only the
+  per-attribute limit produces a usable, marked, truncated draft (D-108). Probe uses **no
+  spill / count-sensitive calibration machinery** — it is set-based and idempotent (D-106).
+  The seen-subject set that triple contiguity validation needs is the **inherited P-16
+  bounded-metadata carve-out** (the object-names class the converter already retains); probe
+  invents **no fourth aggregate guard** for it.
+- **Why:** probe reads data at the v1 target scale (D-007), so it needs the same bounded-memory
+  discipline as calibration — but because its observation is set-based it needs none of the
+  spill/merge machinery (D-095) that count-sensitive calibration does. Distinguishing a
+  usable, marked truncation (per-attribute) from a hard failure (aggregate breach) keeps a
+  runaway vocabulary from silently producing a partial draft that reads as complete.
+- **Rejected:** memory-figure-based guards (non-deterministic — P-7/P-11); silently truncating
+  attributes under aggregate pressure (a partial draft that reads as complete); reusing the
+  quantile-accumulator/spill machinery (probe is set-based — it would buy nothing, D-095); a
+  fourth aggregate guard for the seen-subject set (already covered by the P-16 carve-out).
+- **Affects:** Discovery (future engine, probe options); spec §7.1 / §16.4; roadmap M5/M8.
+  Refines D-095; cross-references D-007 (target scale), P-16 (bounded-metadata carve-out).
+
+### D-111 — Probe diagnostic governance: five future codes, two phase widenings, `ProbeSourceReadFailed` scope, cancellation is not a diagnostic, registry 70 → expected 75
+
+- **Status:** accepted (M5 pre-implementation audit; refines D-067/D-085/D-099)
+- **Date:** 2026-07-18
+- **Decision:** M5 implementation is **expected** to add **five** diagnostic codes (recorded
+  here future-tense; the live enum stays **70** during this docs landing):
+  `ProbeSourceReadFailed` (Error — a stream/read failure; it **must not absorb structural
+  subject errors**), `ProbeNoAttributesDiscovered` (Error — the D-107 no-valid-draft outcome
+  for empty vocabularies), `ProbeAttributeNameAdjusted` (Warning, aggregated — the D-107
+  naming adjustments; plain `column_N` synthesis alone is not a warning),
+  `ProbeDomainTruncated` (Warning, aggregated — **more than** the per-attribute limit distinct
+  values observed, the strictly-greater-than boundary of D-108; equality never truncates), and
+  `ProbeLimitExceeded` (Error — any aggregate guard breached, no draft, D-110). Additionally,
+  **two existing codes widen their phase cell** to add `probe` (both are `calibrate/emit`
+  today per D-099 — the widening adds `probe`, it does not restate an emit-only baseline):
+  `TripleSubjectNotContiguous | Error | probe/calibrate/emit` and
+  `ObjectKeyValueInvalid | Error | probe/calibrate/emit`. Probe-phase `ObjectKeyValueInvalid`
+  applies to **triple subjects** (both orderings); wide probe gains no object-key validation
+  (D-106). Reusing the existing codes preserves one-condition/one-code ownership (D-067). The
+  widenings add **no** enum member; with the five additions the registry moves **70 → expected
+  75** when M5 implementation lands. **Cancellation is not a diagnostic** (D-112).
+- **Why:** the five codes cover exactly the outcomes probe can produce that a caller must
+  distinguish (read failure, empty vocabulary, name adjustment, per-attribute truncation,
+  aggregate breach); pinning their severities/aggregation before the sites land keeps M5 from
+  inventing an ad-hoc taxonomy. Reusing `TripleSubjectNotContiguous`/`ObjectKeyValueInvalid`
+  rather than minting probe-specific twins keeps one structural condition owned by one code
+  across all three phases (D-067).
+- **Rejected:** probe-specific twins of the two structural codes (one condition, two names —
+  D-067); folding a structural subject error into `ProbeSourceReadFailed` (would hide the
+  distinction between broken storage and invalid data); warning on plain `column_N` synthesis
+  (routine, not an adjustment); a diagnostic for cancellation (D-112 — cancellation leaves no
+  artifact and no diagnostic); editing the enum or `DiagnosticCodeRegistryTests` in this
+  docs-only landing (the sites land with M5).
+- **Affects:** Diagnostics (five future codes; two registry cells widen at M5), Discovery
+  (future engine); spec §16.4. Refines D-067/D-085/D-099.
+
+### D-112 — Probe determinism and cancellation: record-sequence input, no ambient state, byte/diagnostic repeatability, no partial artifact; the M5 verification suite
+
+- **Status:** accepted (M5 pre-implementation audit)
+- **Date:** 2026-07-18
+- **Decision:** probe's input is defined **generically**: the same ordered normalized record
+  sequence + ordered schema + effective source settings + probe options ⇒ an **identical**
+  `SpecDocument`, identical canonical TOML bytes, identical diagnostics, diagnostic
+  **ordering** (first-occurrence), and bounded samples. This is **record-sequence**
+  determinism, not file-byte determinism — it must hold equally for future non-file adapters
+  (D-109). Probe reads **no** clock, ambient culture, environment variable, current directory,
+  random source, or available-memory figure, and writes **no** tool version or timestamp
+  (D-107). **Cancellation propagates with no diagnostic and no partial document — ever.** P-7
+  applies verbatim: the repeatability test ships with the path, in the same commit. The
+  settled M5 test categories (verbatim or a faithful grouped equivalent): (1) repeatable bytes
+  and diagnostics; (2) strict reread, resolve, and same-source conversion; (3)
+  below/equal/above-limit — prefix/include/markers/notes; (4) default/custom/disabled missing
+  tokens; (5) probe-vs-Calibrate ordered-domain cross-check; (6) wide/triple symmetry and
+  grouped validation; (7) headerless/duplicate/blank/unusable naming and binding; (8)
+  empty/header-only/all-missing/no-predicate cases plus unusable-subject rejection under both
+  orderings; (9) every aggregate guard at and beyond its boundary; (10) one cleaned data pass
+  and no grouped/count-sensitive pass; (11) an in-memory non-file session proving no CSV
+  coupling; (12) cancellation/read failure with no partial document; (13)
+  short/wrap-boundary/large/idempotent canonical-writer tests (D-113); (14) a compact
+  ordered-distinct/truncation property test.
+- **Why:** because Discovery's boundary is a record sequence (D-109), determinism must be
+  defined over that sequence, not over file bytes — otherwise a future in-memory or SQL source
+  could not inherit the guarantee. Enumerating the test categories now fixes M5's acceptance
+  contract so the repeatability and no-partial-artifact properties ship with the code (P-7),
+  not after.
+- **Rejected:** file-byte determinism (would not transfer to non-file adapters — D-109);
+  reading any ambient state (a determinism hazard — P-11/D-079); leaving a partial document on
+  cancellation (a half-authored draft is worse than none); deferring the repeatability test
+  (P-7 forbids it for output-producing paths).
+- **Affects:** Discovery (future engine + tests); spec §7.1 / §17. Cross-references P-7, D-004
+  (planner determinism rules), D-079 (no-clock), D-082 (guarantee-over-stable-graph
+  precedent), D-095 (bounded-memory determinism).
+
+### D-113 — Canonical-writer deterministic multiline wrapping for long top-level `declared_domain` arrays; private byte-pinned cutoff
+
+- **Status:** accepted (M5 pre-implementation audit; **refines D-075**)
+- **Date:** 2026-07-18
+- **Decision:** `SpecWriter` remains the **sole** canonical serialization path — there is no
+  probe-specific writer. Long **top-level `declared_domain`** arrays must not render as one
+  unbounded line (the writer joins arrays inline today; a 16-value education domain already
+  yields a 201-character line, and 100,000-value probe domains would be pathological). A
+  top-level `declared_domain` array beyond a fixed cutoff renders **deterministically
+  multiline, one escaped value per line**; **no other array wraps** — cut lists, `scale.order`,
+  `value_groups`, `restrict_to`, and every nested or inline array keep their existing inline
+  rendering. The cutoff is a **private canonical-writer formatting constant**, selected during the implementation
+  review from representative output and then **byte-pinned** in code/tests — **not** a spec
+  field, probe options entry, CLI/UI setting, fingerprint input, or `.editorconfig` concern,
+  and **no numeric value is invented here**. Formatting never alters document semantics or
+  fingerprints (hashes read the plan, never the TOML text, §14). The wrapping cutoff is
+  distinct from the retention limits of D-108/D-110.
+- **Why:** a probe draft is meant to be read and diffed in a text editor; a single
+  hundred-thousand-value line defeats that. Wrapping is a pure serialization concern, so it
+  belongs in the one canonical writer and must be byte-deterministic like everything else it
+  emits — but the cutoff is a formatting constant, not a semantic knob, so it stays private
+  and is pinned by a byte test rather than exposed.
+- **Rejected:** a probe-specific writer (two serialization paths — P-5); a configurable
+  wrapping width (a speculative knob — P-6); inventing the numeric cutoff in the docs
+  (reserved for the implementation review, byte-pinned then); treating wrapping as
+  fingerprint-affecting (hashes read the plan, not the text — §14); conflating the cutoff with
+  the retention limits (unrelated concerns).
+- **Affects:** Spec (`SpecWriter`); spec §2 / §14; roadmap M5. **Refines D-075.**
 
 ---
 

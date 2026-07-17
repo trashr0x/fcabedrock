@@ -50,6 +50,14 @@ Order within the file is informative. Fingerprints are computed over a canonical
 structure derived from the **resolved/calibrated plan**, not over the spec's TOML
 text (§14), so file formatting never affects schema or output identity.
 
+The canonical writer (the one tool that serializes a `SpecDocument`, §14) is
+deterministic. A **planned M5 refinement** (decisions.md D-113) will render a long top-level
+`declared_domain` array **multiline, one escaped value per line**, rather than as a single
+unbounded line, so that large machine-generated domains — for example a `probe` draft's
+`declared_domain` (§7.1) — stay readable and diff-friendly. The wrapping cutoff will be a
+private, byte-pinned formatting constant — never a spec field, a setting, or a fingerprint
+input — and wrapping never changes document semantics or any fingerprint.
+
 A spec MUST declare `version` in `[spec]`. Implementations encountering
 an unknown `version` MUST refuse to load the spec and emit
 `SpecVersionUnsupported`.
@@ -157,7 +165,9 @@ as a header and is available for binding columns/roles by name; if false, every
 record is data. Triple data is typically headerless, hence the `false` default
 there — a `true` default would silently consume the first triple as a header. The
 resolved behaviour is identical across shapes; there is no header heuristic
-(guessing belongs to `probe`, not `convert`). Triple role binding by header **name**
+(guessing belongs to `probe`, not `convert` — and even there only to *future* probe
+tooling: the M5 `probe` base performs **no** structural or type inference, so the
+caller selects the shape and header handling, §7.1). Triple role binding by header **name**
 (§5.3) requires `has_header = true`.
 
 **`locale`** *(default `"invariant"`)*. Governs how raw values parse to numbers
@@ -535,7 +545,7 @@ observations. This population is the input universe, evaluated before `restrict_
 > calibration population (below).
 
 **`convert` calibrates but never discovers.** Discovery (draft-spec generation
-from data) is the separate `probe` operation (D-003), never performed implicitly
+from data) is the separate `probe` operation (§7.1, D-003), never performed implicitly
 by convert. A spec with an absent `declared_domain` under a consuming discretizer
 (`identity` / `free_per_value`) *is* calibrated — the observed domain is filled in
 — but the user is warned (`ObservedDomainUsed`,
@@ -552,6 +562,183 @@ then select objects (the FCA model). A consequence is that after filtering some
 columns may carry no crosses (`AttributeHasNoCrosses`, §16.4) — allowed, not an
 error. (Population-relative calibration — quantiles over only the surviving objects
 — is a recognized future option recorded in decisions.md/roadmap, not a v1 setting.)
+
+### 7.1 Discovery / `probe` (draft-spec generation)
+
+> **Status: settled contract, not yet implemented — M5.** Discovery is the M5
+> milestone; no M5 code exists yet. This section is the normative contract the M5
+> implementation realizes (decisions.md D-106…D-113). It is written in the present
+> tense of the format spec; the roadmap tracks the implementation position.
+
+`probe` is an **optional draft-generation operation** that reads raw data and emits a
+**draft Bedrock spec** the user then curates. It is **outside** the four-phase conversion
+pipeline (§7): `convert` **calibrates but never discovers**, and `probe` is the separate
+operation where discovery happens (D-003/D-036). Probe never runs as a side effect of
+convert, and convert never infers a schema from data.
+
+**The caller selects the shape; probe infers nothing structural.** The caller supplies the
+`shape` (`wide` | `triple`) and any read settings; probe performs **no** delimiter sniffing,
+header detection, shape detection, or value-type inference. This mirrors the legacy tool,
+which likewise required choosing CSV/TSV, wide/triple, and header handling before
+autodetection — it was never a zero-configuration sniffer. Every read setting has a
+**caller-overridable default**. Most are the ordinary §5.1 **common** binding defaults, shared
+by **both** shapes: delimiter `","`, `quote_char = "\""` (the only supported quote, §5.1),
+`encoding = "utf-8"`, `missing_token = "?"` (an empty token disables token-based missing
+detection; empty cells are always missing), and `locale = "invariant"` (inert at M5 — probe
+parses no numbers). Only a few defaults are **shape-specific**:
+
+- `has_header` follows §5.1's shape-specific default — **`true` for wide**, **`false` for
+  triple**.
+- **triple** additionally defaults `ordering = "unordered"` and roles
+  `{ subject = 0, predicate = 1, value = 2 }`; a caller may supply a complete role map in one
+  addressing mode (§5.3). **`ordering = "subject_grouped"` is explicit-only** — never a
+  default and never inferred. (Wide has no `ordering` or role settings.)
+
+**Every discovered attribute is string-valued `identity` + `nominal`.** M5 authors no
+numeric, boolean, ordinal, or date typing. (Guided, *advisory* detection — tooling that
+*suggests* an attribute looks continuous and offers ranges, never silently reinterpreting —
+is recognized future Discovery UX, unassigned to a milestone; header/delimiter sniffing is
+likewise future probe tooling, not M5.)
+
+**Observation semantics.** Probe observes the source's **cleaned records exactly once, in
+input order** — "single pass" means one *record* pass, not structural inference. Observation
+is **per-attribute, set-based and idempotent** over cleaned values, with **ordinal** identity
+(P-12) and **first-observation** domain order (§17 rule 3's principle). **Missing values are
+not observations:** an empty field is always missing, a field equal to the effective
+`missing_token` is missing, and an empty configured token disables token matching. For
+**triple** input probe observes raw `(predicate, value)` pairs; predicates are discovered in
+**first-appearance order**; an empty or missing predicate is ignored; repeated triples are
+idempotent; there is **no grouped or count-sensitive second pass, ever**, and no contiguity
+requirement under `unordered`. A probed attribute's domain equals the Calibrate phase's
+observed domain (same values, same order) for the same input.
+
+**Structural validation is symmetric with conversion.** Every triple probe validates
+**subject usability under both orderings** — an empty, whitespace-only, control-character, or
+absent subject halts the probe (`ObjectKeyValueInvalid`, §16.4) — because otherwise the draft
+could violate the same-source conversion guarantee below. An **explicitly selected**
+`subject_grouped` probe additionally validates **contiguity**
+(`TripleSubjectNotContiguous`). **Wide** probe is row-index based and performs **no**
+object-key validation. The seen-subject set contiguity validation needs is the inherited
+bounded-metadata carve-out (P-16), not a fourth aggregate guard (below).
+
+**Retention and truncation.** Probe retains, **per attribute**, at most the first `limit`
+**distinct cleaned non-missing** values in first-observation order, allocated as observed.
+The **default `limit` is 100,000**. **Truncation is strictly greater-than:** an attribute is
+truncated only when **more than** `limit` distinct values exist; probe then knows only that
+**at least one more distinct value exists** — never an exact over-limit count. A **truncated**
+attribute authors its retained **prefix** as `declared_domain` (first-observation order) plus
+`unknown_value_policy = "include"`, so converting the draft over the probed source **recovers
+the complete schema** through the existing §10.6 include calibration (include-appended values
+follow the declared prefix in first-observation order, §17 rule 3, so the resulting column set
+and order match an untruncated probe's). An **untruncated** attribute authors its complete
+non-empty domain; an **all-missing** attribute authors **no** domain (omitted). Each truncated
+attribute carries a deterministic human-readable **marker in its `description`**, and
+`[provenance].notes` **always** records the effective per-attribute limit and the number of
+truncated attributes — **including zero**, so an untruncated draft still explains which limit
+produced it. Description and notes are fingerprint-inert (§14). `limit` is a probe option,
+never a `[binding]` field and never a fingerprint input; re-probe with a higher
+limit to inspect more values.
+
+**Draft validity guarantee.** A **successful** probe produces a draft that (1) contains **at
+least one attribute**; (2) **rereads** under the strict TOML reader; (3) **resolves** against
+the probed source's schema with no Error/Fatal; (4) **converts the same source under the same
+effective settings** with no Error/Fatal (warnings and structurally valid degenerate contexts
+are allowed — probe does not itself run conversion; tests enforce this). Probe returns **no
+draft** (diagnostics only) when no valid draft exists: zero-column wide input, triple input
+with no usable predicates, structural invalidity (unusable subjects under either ordering;
+non-contiguous input under explicit `subject_grouped`), or impossible binding/naming.
+**All-missing columns and header-only sources succeed** — attributes are authored with their
+domains omitted, and their data-side emptiness surfaces at convert as the ordinary
+degenerate-context warnings (§16.4).
+
+**Naming and source binding.** For **wide** input a **unique, usable** header cell binds **by
+name** (preserving reorder protection); a **duplicate, blank, unusable, or headerless** column
+binds **by physical index**. Fallback names (headerless or unusable header cells) are
+`column_<zero-based-index>`. Duplicate names disambiguate deterministically with
+`#<source-index>`, escalating ordinally `#1`, `#2`, … to the first unused. For **triple**
+input a usable predicate string is **both** the source selector and the attribute name; an
+**unusable** predicate (invalid as a §10.1 name) keeps its **exact** source selector but
+receives the logical name `predicate_<zero-based-first-appearance-ordinal>`; empty or missing
+predicates are ignored. **No source selector is ever silently changed**, and every synthesized
+name satisfies §10.1 validity and §10.2 uniqueness. Every adjustment or disambiguation is
+diagnosed (aggregated Warning, `ProbeAttributeNameAdjusted`); plain headerless `column_N`
+synthesis alone is **not** a warning.
+
+**Draft content inventory.** The generated draft contains exactly:
+
+- `[spec]` — `version = 1` and a deterministic probe `description`.
+- `[binding]` — **every effective read setting, authored explicitly even when defaulted** (a
+  self-documenting draft), including the complete triple ordering and role mappings.
+- `[provenance]` — the deterministic notes above, and nothing else.
+- Per attribute — `name`, `source` (with an **explicit** `value_type = "string"`),
+  `discretizer = { kind = "identity" }`, and `scale = { kind = "nominal" }`, authored
+  explicitly; the complete domain when untruncated and non-empty; the retained prefix plus
+  `unknown_value_policy = "include"` plus the description marker when truncated; the domain
+  omitted when all-missing.
+
+```toml
+[[attribute]]
+name = "education"
+source = { kind = "column", name = "education", value_type = "string" }
+discretizer = { kind = "identity" }
+scale = { kind = "nominal" }
+```
+
+A **truncated** attribute additionally carries the `include` policy and the marker, e.g.
+(a domain truncated after 3 of 4 distinct values):
+
+```toml
+description = "probe: domain truncated after 3 distinct values; more exist."
+declared_domain = ["Bachelors", "HS-grad", "11th"]
+unknown_value_policy = "include"
+```
+
+**Nothing else** is authored: **no stored fingerprints** (a probe draft is never a frozen
+artifact — even when its explicit domains would make it fully-declared, §14), **no
+clock/timestamps** (`created_at` is never stamped — the no-clock rule), no tool version, no
+`[defaults]`, `[output]`, templates, matchers, or `[binding.object_key]` section (the defaults
+are correct: wide `row_index`, triple subject-pinned). The initial Discovery API accepts **no
+speculative provenance parameters**; the caller may enrich the returned `SpecDocument`
+afterwards (it is a public record).
+
+**The Discovery source seam.** Discovery consumes a **general unbound streaming source
+session** whose stable boundary is **ordered schema + streamed cleaned/normalized records +
+source-shape information + cancellation + source diagnostics** — *not* a stream or file
+abstraction. The CSV wide/triple **adapters** implement that boundary **outside** the
+Discovery engine; a future SQL or SPARQL source could implement the same boundary without
+refactoring, but such adapters are **examples of future work, not M5 promises**. Discovery
+does **not** tokenize, fabricate conversion bindings, open file paths, or reference
+`FcaBedrock.Conversion`; it references only `Sources`, `Spec`, `Core`, and `Diagnostics`.
+Probe returns `Diagnosed<SpecDocument>`, and the **caller** serializes it via the canonical
+writer (§14) and owns all file output. (Exact public interface and member names are reserved
+for the implementation-time public-API review, P-4.)
+
+```text
+CSV adapter ───┐
+Triple adapter ┼─> unbound source session ─> Discovery
+Future SQL ────┘
+```
+
+**Boundedness.** Per-attribute retention is bounded by `limit` above. Three additional
+deterministic **aggregate guards** (advanced probe options) bound a probe as a whole: maximum
+discovered attributes, maximum total retained distinct values, and maximum total retained
+value text. Their defaults and accounting constants are pinned during implementation review
+against representative workloads (the motivating figure: 1,554 attributes × 100,000 values
+permits a theoretical 155.4M retained strings). Guards use **deterministic logical accounting,
+never available machine memory**. An aggregate breach emits `ProbeLimitExceeded` and yields
+**no draft**; aggregate pressure **never silently truncates** further attributes — only the
+per-attribute `limit` produces a usable, marked, truncated draft. Probe uses **no
+spill/count-sensitive calibration machinery** (it is set-based and idempotent).
+
+**Determinism and cancellation.** Probe's input is defined **generically**: the same ordered
+normalized record sequence + ordered schema + effective source settings + probe options ⇒ an
+**identical** `SpecDocument`, identical canonical TOML bytes, identical diagnostics,
+first-occurrence diagnostic ordering, and identical bounded samples. This is
+**record-sequence** determinism (§17), not file-byte determinism, so it holds equally for
+future non-file adapters. Probe reads **no** clock, ambient culture, environment variable,
+current directory, random source, or available-memory figure. **Cancellation propagates with
+no diagnostic and no partial document — ever.** As for every output-producing path, the
+repeatability test ships with the implementation (P-7).
 
 ## 8. The `[output]` block
 
@@ -2011,6 +2198,12 @@ and can be frozen. (This clause previously excluded `restrict_to` only because i
 execution was unimplemented, which would have let a stored hash be invalidated by the
 feature landing; that exclusion retired with M4 Slice F, D-105.)
 
+**A `probe` draft never stores fingerprints.** A draft generated by Discovery (§7.1) is a
+starting point for curation, not a frozen artifact, so tooling writes **none** of the three
+stored fingerprints into it — even when its explicit domains would otherwise make it
+fully-frozen-eligible. Freezing a draft (via `fcabedrock calibrate`, or by an authoring pass
+that stores hashes) is a deliberate later step, after the user has reviewed it.
+
 **Native vs effective fingerprints (CLI overrides).** Fingerprints stored in
 the `[spec]` block describe the spec's **native resolved output settings only**
 — what the spec produces with no CLI overrides. A CLI override such as
@@ -2182,10 +2375,10 @@ exactly one phase — the "Where" column below is the phase-ownership contract
 | `CalibrationPopulationTooLarge` | Error | calibrate |
 | `UnknownValueObserved` | Warning or Error (per `unknown_value_policy`) | calibrate/emit |
 | `UnknownValuePolicyInclude` | Warning | calibrate |
-| `TripleSubjectNotContiguous` | Error | calibrate/emit |
+| `TripleSubjectNotContiguous` | Error | probe/calibrate/emit |
 | `DuplicateObjectKey` | Error, Warning, or Info (per `duplicate_object_policy`) | emit |
 | `ObjectKeyNameDisambiguated` | Warning (aggregated) | emit |
-| `ObjectKeyValueInvalid` | Error | calibrate/emit |
+| `ObjectKeyValueInvalid` | Error | probe/calibrate/emit |
 | `GroupingStorageFailed` | Error (in-path / escalated), or Warning (cleanup-only) | calibrate/emit |
 | `SourceValueUnparseable` | Warning or Error (per `unknown_value_policy`; `skip` silent) | calibrate/emit |
 | `QuoteCharNotSupportedV1` | Error | spec validate |
@@ -2213,6 +2406,11 @@ exactly one phase — the "Where" column below is the phase-ownership contract
 | `BedAttributeConfigInvalid` | Error | migrate (v2) |
 | `BedParkedConfigDropped` | Warning | migrate (v2) |
 | `BedMissingTokenLabelDropped` | Warning | migrate (v2) |
+| `ProbeSourceReadFailed` | Error | probe |
+| `ProbeNoAttributesDiscovered` | Error | probe |
+| `ProbeAttributeNameAdjusted` | Warning (aggregated) | probe |
+| `ProbeDomainTruncated` | Warning (aggregated) | probe |
+| `ProbeLimitExceeded` | Error | probe |
 
 `EmptyExtent` / `EmptyIntent` were dropped in favor of the unambiguous,
 correctly-phased `AttributeHasNoCrosses` (an empty column, emit) and
@@ -2261,6 +2459,19 @@ so only transcription failures own codes here; a migrated spec then flows throug
 the ordinary parse/resolve/validate/plan phases above. `BedDateTypeNotSupported`
 retires if the date carrier lands (D-038).
 
+**The `probe` phase (M5, future).** Discovery / `probe` (§7.1) is a draft-generation
+operation outside the §7 conversion pipeline. Its five codes above —
+`ProbeSourceReadFailed`, `ProbeNoAttributesDiscovered`, `ProbeAttributeNameAdjusted`,
+`ProbeDomainTruncated`, `ProbeLimitExceeded` — and the **`probe`** phase-ownership added to
+`TripleSubjectNotContiguous` and `ObjectKeyValueInvalid` (both previously `calibrate/emit`,
+now `probe/calibrate/emit`) are the M5 registry contract; their **sites land with the M5
+implementation** (decisions.md D-111), and none is in the live enum yet (see the enum-count
+note below). `ProbeSourceReadFailed` is a stream/read failure only and MUST NOT absorb a
+structural subject error (that stays `ObjectKeyValueInvalid` / `TripleSubjectNotContiguous`);
+`ProbeAttributeNameAdjusted` and `ProbeDomainTruncated` are aggregated (count + bounded
+sample), and plain headerless `column_N` synthesis alone is not a warning. Cancellation is
+**not** a diagnostic — a canceled probe leaves no document and no diagnostic (§7.1, D-112).
+
 **Aggregation.** Data-phase diagnostics that can fire per value or per object —
 `SourceValueUnparseable`, `UnknownValueObserved`, `AttributeHasNoCrosses`,
 `ObjectHasNoCrosses` — are emitted **aggregated**: a per-attribute (or per-source)
@@ -2270,9 +2481,13 @@ at 73M records does not produce 73M diagnostics.
 The `DiagnosticCode` enum is the authority for the codes a build can actually
 raise; it grows per slice (P-3), so it holds fewer members than this registry — a
 registry row joins the enum when the milestone owning its site lands (D-085). After M4
-the outstanding rows are `OutputCxtSizeAdvisory` (export, M7) and
-`DateValueTypeNotImplementedV1` (the D-038 date carrier); every other row above is
-live.
+the enum has **70** members. The outstanding rows are `OutputCxtSizeAdvisory` (export, M7),
+`DateValueTypeNotImplementedV1` (the D-038 date carrier), and the **five `probe` rows**
+(`ProbeSourceReadFailed`, `ProbeNoAttributesDiscovered`, `ProbeAttributeNameAdjusted`,
+`ProbeDomainTruncated`, `ProbeLimitExceeded`) — each joining the enum when its own milestone
+lands. The five `probe` rows land together at **M5**, taking the enum to an expected **75**
+(the two phase widenings above add no member); `OutputCxtSizeAdvisory` and
+`DateValueTypeNotImplementedV1` land later at their own milestones. Every other row is live.
 
 ## 17. Determinism rules
 

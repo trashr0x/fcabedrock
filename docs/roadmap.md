@@ -307,6 +307,22 @@ vertical slices, not waterfall phases — each should leave the system working.
 > (2004 passed, 1 skipped).
 >
 > **M4 is complete. M5 (discovery / `probe`) is next** — no M5 work has started.
+>
+> **The pre-M5 Discovery audit has landed (docs-only, D-106…D-113).** A review pass settled
+> the `probe` contract before any M5 code: the caller-selected shape with no structural/type
+> inference and universal `identity` + `nominal` (D-106); the draft naming/binding matrix,
+> validity guarantee, and content inventory (D-107); the 100,000 retention limit with
+> strictly-greater truncation and prefix + `include` recovery (D-108); the general unbound
+> source session and adapter/engine split (D-109); probe boundedness (D-110); the diagnostic
+> governance — five future codes plus two phase widenings (D-111); determinism/cancellation
+> and the verification suite (D-112); and canonical-writer multiline wrapping (D-113). It
+> updated `bedrock-spec-v1.md` (new §7.1 plus §2/§5.1/§14/§16.4/§17), `decisions.md`,
+> `roadmap.md`, and `lineage.md` in place, and corrected the legacy value-retention history
+> (the backend retained up to 100,000 distinct values per attribute; the UI displayed only the
+> first 100). This landing is **docs-only** — no production code,
+> tests, fixtures, enum members (the registry stays **70**; the five `probe` codes are
+> future, → **75** at M5), or output/fingerprint bytes changed. **M5 implementation has not
+> started.**
 
 ## Milestones
 
@@ -499,11 +515,48 @@ No M4 transitional diagnostic or guard remains: `ObservedDomainCalibrationNotImp
 (Slice A), `DiscretizerKindNotYetSupported` (Slice E), and `RestrictToNotImplementedV1`
 (Slice F) are all retired. Later milestones' transitions are untouched.
 
-### M5 — Discovery / auto-detect
+### M5 — Discovery / `probe`
 
-Single-pass probe producing a draft TOML spec; v2's 100-distinct-value cap as a
-config knob with a "truncated" marker; defaults to `identity` + `nominal`.
-**Exit:** `probe` produces an editable draft spec from raw data.
+An **optional** draft-spec generation operation, **outside** the convert pipeline
+(D-003/D-036/D-106; spec §7.1). The **caller selects the shape** (`wide` | `triple`) and
+read settings; probe infers nothing structural — no delimiter, header, shape, or type
+detection. It reads the source's cleaned records **exactly once, in input order** (one
+data-record pass, set-based and idempotent over cleaned values) and authors every discovered
+attribute as string-valued `identity` + `nominal` (D-106). Guided, *advisory* type detection
+("this looks continuous — add ranges?") is recognized **future Discovery UX**, unassigned to
+a milestone — not part of the conservative M5 base.
+
+**Retention.** A per-attribute distinct-value retention **`limit`** (a probe option;
+default **100,000**) with **strictly-greater-than** truncation: a truncated attribute authors
+its retained prefix as `declared_domain` plus `unknown_value_policy = "include"` — so
+converting the draft recovers the complete schema (spec §10.6/§17) — and a deterministic
+marker in its `description`; `[provenance].notes` always records the effective limit and the
+truncated-attribute count, **including zero** (D-108). M5 has **no presentation/display
+limit** — this corrects the earlier "v2's 100-distinct-value cap" note: the legacy backend
+retained up to 100,000 distinct values per attribute, while the UI displayed only the first
+100 (lineage §1; the exact legacy identifiers are recorded as audit evidence in decisions.md
+D-108). Three deterministic aggregate guards bound a probe
+as a whole (defaults pinned at implementation review), breaching to `ProbeLimitExceeded` with
+no draft; the accounting is logical, never machine memory (D-110).
+
+**Draft validity** (D-107): a successful draft contains at least one attribute, rereads under
+the strict reader, resolves against the source schema, and **converts the same source under
+the same settings** with no Error/Fatal (warnings and degenerate contexts allowed). Probe
+returns `Diagnosed<SpecDocument>` over a **general unbound source session** (schema +
+normalized records + cancellation), which the CSV wide/triple adapters implement; the
+**caller** serializes via `SpecWriter` and owns file output (D-109). The canonical writer
+gains deterministic multiline wrapping for long top-level `declared_domain` arrays (D-113).
+Five diagnostics land with
+their sites (`ProbeSourceReadFailed`, `ProbeNoAttributesDiscovered`,
+`ProbeAttributeNameAdjusted`, `ProbeDomainTruncated`, `ProbeLimitExceeded`), and
+`TripleSubjectNotContiguous` / `ObjectKeyValueInvalid` widen to `probe/calibrate/emit` —
+registry **70 → 75** (D-111). The public Discovery API surface is fixed at an
+implementation-time P-4 review.
+
+**Exit:** `probe` produces an editable draft spec from raw data — deterministic over the
+record sequence (D-112), immediately usable (reread → resolve → convert the same source), one
+cleaned data pass with no grouped/count-sensitive pass, and correct end-to-end on the mini-*
+fixtures.
 
 ### M6 — Templates + matchers
 
@@ -520,8 +573,11 @@ round-trip and drive rendered names.
 ### M7 — CLI
 
 `convert`, `validate`, `plan` (dry-run plan inspection), `stats` (context
-statistics without writing), `calibrate`, `migrate` (.bed → TOML),
-`fingerprint`. `--v2-compat`, `--sample`, compression flags as they land.
+statistics without writing), `calibrate`, `probe` (draft-spec generation, §7.1),
+`migrate` (.bed → TOML), `fingerprint`. `--v2-compat`, `--sample`, compression flags
+as they land. M5 supplies the `probe` API/library behavior; **M7 exposes it on the CLI**
+(and M9 in the UI) — the milestone does not add new discovery semantics, only a command
+surface over M5's.
 **Exit:** Core is dogfoodable end-to-end without a UI; `plan`/`validate` give a
 fast spec-authoring loop.
 
@@ -552,6 +608,11 @@ memory budget and benchmark its spill/aggregate algorithms, but **exact
 bounded-memory calibration already exists at M4** (D-095) — boundedness is a
 correctness input established there, never here.
 
+**Probe boundedness.** Likewise, `probe`'s per-attribute retention limit and its three
+aggregate guards are **correctness inputs established at M5** (D-110) — deterministic logical
+accounting, never machine memory. M8 may tune the guard **defaults** against real 7.3M–73M
+distributions, but never establishes probe boundedness or its determinism.
+
 **Exit:** documented throughput/memory at target scale; no full-matrix
 materialization.
 
@@ -581,9 +642,12 @@ Modelled in the spec where noted, so adding them later isn't a format break.
   §20. Future enhancement.
 - **Post-context reductions** — clarify / reduce / minimum-support, in a
   sibling `FcaBedrock.Reduce` tool (D-025). Min-support flagged by the thesis.
-- **Direct DB / SPARQL adapters** — thesis future work; new `Sources` adapters
-  behind the existing `IObjectRecordStream` abstraction. (SPARQL2FCA may inform
-  this — see `docs/lineage.md` once that source is folded in.)
+- **Direct DB / SPARQL adapters** — thesis future work; new `Sources` adapters that fit the
+  two complementary source seams: the bound `IObjectRecordStream` for **conversion** (an
+  adapter built for a resolved spec) and the unbound streaming source session for
+  **Discovery / `probe`** (schema + normalized records, D-109) — a future adapter implements
+  both, and neither refactors the other. (SPARQL2FCA may inform this — see `docs/lineage.md`
+  once that source is folded in.)
 - **XLSX input** — separate `FcaBedrock.Sources.Excel`; defer unless painful.
 - **JSONL / NDJSON input** — modern 3-column analog; consider modelling
   `shape = "jsonl"` in the binding even before implementing the reader.

@@ -66,6 +66,16 @@ exports `.cxt` / `.dat`.
 - Output: `.cxt` (Burmeister) and `.dat` (FIMI), CRLF, with v2's specific byte
   layout. These are the M1 golden fixtures.
 
+**Value-retention capacity (corrects a common misreading).** v2 retained **all** discovered
+values per attribute, not 100. The legacy backend retained up to **100,000** distinct values
+per attribute, while the UI displayed only the first **100** — two separate limits that are
+easy to conflate. All discovered values were retained and usable — Adult 21,648 distinct,
+Internet Ads up to 781, Mushroom 12, EMAGE gene values ≈ 6,800 — so the earlier "v2 kept only
+100 distinct values" note (since corrected in `roadmap.md` M5) was wrong. vNext's M5 `probe`
+accordingly uses a large per-attribute retention limit (default 100,000) and has **no**
+presentation/display cap. (The exact legacy identifiers are recorded as audit evidence in
+decisions.md D-108.)
+
 **`.bed` format:** parallel arrays under bracketed headers
 (`[Number of Attributes]`, `[Attributes]`, `[Attribute Categories]`,
 `[Category Values]`, `[Convert Attribute]`, `[Attribute Type]`,
@@ -131,7 +141,9 @@ treated as a design signal for a future SPARQL adapter, not as a v1 requirement.
   query for goalkeepers, their birth country, team, team's country, and stadium
   capacity, with `FILTER`s on capacity and population. This is the concrete
   shape of the thesis's "direct triple-store adapter" future work, and the
-  template for a vNext `Sources` SPARQL adapter behind `IObjectRecordStream`.
+  template for a vNext `Sources` SPARQL adapter — one that fits both source seams: the
+  bound `IObjectRecordStream` for **conversion** and the unbound streaming source session
+  **Discovery / `probe`** consumes (schema + normalized records, D-109).
 - **An explicit `Ordinal` attribute type** in the type enum. This matches v2's
   own `n` (ordinal) type — both treat ordinal as first-class rather than a
   continuous sub-mode. In vNext's model this is the `ordinal` scale over an
@@ -177,8 +189,10 @@ The three predecessors agree on the substance and differ only in rigor:
   scaling — appears in embryo in SPARQL2FCA's separate `ScalingType` enum and
   is made the architectural spine of vNext (D-002).
 - The SPARQL adapter is deferred (D-007 scope is CSV/triples first) but its
-  shape is now concrete: a `SELECT` result set is just another
-  `IObjectRecordStream`, so it slots in without disturbing Core/Conversion.
+  shape is now concrete: a `SELECT` result set is just another `IObjectRecordStream` for
+  **conversion**, and the same adapter can expose the unbound streaming source session
+  **Discovery / `probe`** consumes (D-109) — two complementary seams — so it slots in
+  without disturbing Core/Conversion.
 - SPARQL2FCA's binning was prototype-grade rather than specification-grade (§3);
   vNext's principled implementations are validated against the *intent*
   documented in the thesis, not against the prototype's behaviour.
