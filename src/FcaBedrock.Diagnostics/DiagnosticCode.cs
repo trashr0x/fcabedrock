@@ -550,4 +550,53 @@ public enum DiagnosticCode
     /// (D-058).
     /// </summary>
     ObjectHasNoCrosses,
+
+    // --- Probe (discovery) ---
+
+    /// <summary>
+    /// A stream or read failure while a <c>probe</c> acquired a source's schema or records.
+    /// Error, no draft — even when records were already observed, since a partially-read source
+    /// would author a draft that silently understates the data. <b>Scope is storage, not
+    /// content</b>: it MUST NOT absorb a structural subject error, which stays
+    /// <see cref="ObjectKeyValueInvalid"/> / <see cref="TripleSubjectNotContiguous"/>, and it is
+    /// never raised for cancellation, which leaves no diagnostic at all. Spec §7.1 / §16.4
+    /// (D-111/D-112).
+    /// </summary>
+    ProbeSourceReadFailed,
+
+    /// <summary>
+    /// A <c>probe</c> found nothing to author an attribute from — a wide source with zero
+    /// columns. Error and no draft, because a draft must contain at least one attribute
+    /// (D-107). Distinct from an empty <em>domain</em>: an all-missing column is a real
+    /// attribute and succeeds with its domain omitted. Spec §7.1 / §16.4 (D-107/D-111).
+    /// </summary>
+    ProbeNoAttributesDiscovered,
+
+    /// <summary>
+    /// A <c>probe</c> synthesized an attribute name from a blank or §10.1-unusable header, or
+    /// disambiguated one against an already-taken name. Warning, <b>aggregated</b> (count plus a
+    /// bounded sample in physical source order); the source selector is never changed, only the
+    /// logical name. Plain headerless <c>column_N</c> synthesis alone is routine and is
+    /// <b>not</b> warned. Spec §7.1 / §10.1 / §16.4 (D-107/D-111).
+    /// </summary>
+    ProbeAttributeNameAdjusted,
+
+    /// <summary>
+    /// A <c>probe</c> observed <b>more than</b> the per-attribute retention limit of distinct
+    /// values, so the attribute authors its retained prefix plus
+    /// <c>unknown_value_policy = "include"</c> and a description marker. Warning,
+    /// <b>aggregated</b>. Strictly greater-than: a domain that fits the limit exactly is
+    /// complete and never truncates. Spec §7.1 / §10.3 / §10.6 / §16.4 (D-108/D-111).
+    /// </summary>
+    ProbeDomainTruncated,
+
+    /// <summary>
+    /// A <c>probe</c> breached one of the three aggregate boundedness guards — maximum
+    /// discovered attributes, maximum total retained distinct values, or maximum total retained
+    /// value text. Error and <b>no draft</b>: aggregate pressure never silently truncates a
+    /// further attribute, because a partial draft would read as a complete one. Only the
+    /// per-attribute limit produces a usable, marked, truncated draft. Spec §7.1 / §16.4
+    /// (D-110/D-111).
+    /// </summary>
+    ProbeLimitExceeded,
 }

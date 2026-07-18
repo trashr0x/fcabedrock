@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Common test config (IsTestProject, the zero-tests guard, xunit.v3, the
+       Xunit global using) is inherited from tests/Directory.Build.props. -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\FcaBedrock.Discovery\FcaBedrock.Discovery.csproj" />
+    <!-- Test-only, and deliberately NOT a production dependency (D-109 forbids it): the
+         D-107 draft guarantee's fourth leg is "the same source converts cleanly", and the
+         D-112 category-5 cross-check pins a probed domain equal to Calibrate's observed
+         one. Both are claims ABOUT Conversion, so only the tests may reference it. Mirrors
+         the Conversion.Tests -> Export precedent. No Export reference: the convert leg is
+         proven by draining the emit stream, so no writer is involved. -->
+    <ProjectReference Include="..\..\src\FcaBedrock.Conversion\FcaBedrock.Conversion.csproj" />
+  </ItemGroup>
+
+  <!-- The wide v2 data fixtures, copied next to the test assembly for the end-to-end
+       mini-mushroom / mini-adult probes. Data only: this suite reads no .bed, .cxt, or
+       .dat, and never writes a fixture (P-9). -->
+  <ItemGroup>
+    <Content Include="$(RepoRoot)fixtures\v2\**\*.data" Link="fixtures\v2\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" Visible="false" />
+  </ItemGroup>
+
+</Project>

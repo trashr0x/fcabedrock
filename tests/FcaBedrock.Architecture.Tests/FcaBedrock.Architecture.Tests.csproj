@@ -17,6 +17,7 @@
     <ProjectReference Include="..\..\src\FcaBedrock.Conversion\FcaBedrock.Conversion.csproj" />
     <ProjectReference Include="..\..\src\FcaBedrock.Export\FcaBedrock.Export.csproj" />
     <ProjectReference Include="..\..\src\FcaBedrock.Spec\FcaBedrock.Spec.csproj" />
+    <ProjectReference Include="..\..\src\FcaBedrock.Discovery\FcaBedrock.Discovery.csproj" />
   </ItemGroup>
 
 </Project>

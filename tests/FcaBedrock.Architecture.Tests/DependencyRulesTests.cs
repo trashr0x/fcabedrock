@@ -117,6 +117,59 @@ public sealed class DependencyRulesTests
     }
 
     [Fact]
+    public void Discovery_ShouldOnlyDependOnSourcesSpecCoreAndDiagnostics()
+    {
+        // D-109 pins Discovery's allowed reference set to {Sources, Spec, Core, Diagnostics}. The
+        // two it must NOT reach are the ones it would be most tempting to: Conversion (whose
+        // private domain observer has exactly the semantics probe needs — so probe re-implements
+        // them and a cross-check test pins the two equal) and Export (the caller owns all output).
+        var forbidden = ProductionExcept(
+            "FcaBedrock.Discovery", "FcaBedrock.Sources", "FcaBedrock.Spec",
+            "FcaBedrock.Core", "FcaBedrock.Diagnostics");
+
+        // Non-vacuity, in both directions: the rule must have real subjects AND real targets.
+        // Forgetting the csproj ProjectReference would silently exempt Discovery from this rule
+        // and from the cycle check, which is precisely the failure a green vacuous test hides.
+        Assert.NotEmpty(Discovery());
+        Assert.NotEmpty(forbidden);
+
+        Types().That().ResideInAssembly(Asm("FcaBedrock.Discovery"))
+            .Should().NotDependOnAny(Types().That().ResideInAssembly(forbidden[0], forbidden[1..]))
+            .Check(Architecture);
+    }
+
+    [Fact]
+    public void Discovery_ShouldNotDependOnSystemIoBeyondTheTwoClassificationExceptions()
+    {
+        // Discovery performs no I/O - it classifies failures crossing the source-session seam
+        // (M5-IP-008); D-109's ban on opening paths/streams/files remains absolute.
+        //
+        // So the allowlist is exactly two EXCEPTION TYPES, named in catch clauses. Everything
+        // else in System.IO — Stream, File, Path, Directory, readers/writers, pipelines,
+        // compression — stays forbidden, because the caller and the session own I/O. Core's
+        // blanket System.IO ban above is unchanged and stricter.
+        //
+        // ArchUnitNET does not reliably surface catch-handler metadata, so a green result here
+        // is necessary but not sufficient: ProbeReadFailureTests drives every admitted family
+        // AND counterexamples that must NOT be absorbed, which is what actually proves the
+        // filter is narrow.
+        Assert.NotEmpty(Discovery());
+
+        // NotDependOnAnyTypesThat (not NotDependOnAny) is load-bearing here: the latter
+        // intersects with types MODELLED in the architecture, and the BCL is not loaded, so it
+        // would pass vacuously against any System.IO use whatsoever. This form filters the
+        // subject's actual dependency targets, which is what Core's rule above does. The
+        // allowlist rides in the predicate because `.And()` after a target filter starts a new
+        // rule rather than narrowing the target set.
+        Types().That().ResideInAssembly(Asm("FcaBedrock.Discovery"))
+            .Should().NotDependOnAnyTypesThat().FollowCustomPredicate(
+                type => type.FullName.StartsWith("System.IO.", StringComparison.Ordinal)
+                    && type.FullName is not ("System.IO.IOException" or "System.IO.InvalidDataException"),
+                "reside in System.IO other than the two classification-only exception types")
+            .Check(Architecture);
+    }
+
+    [Fact]
     public void SourceExecutionHierarchy_ShouldResideInCore()
     {
         // D-082: the shape-specific execution hierarchy (SourceExecution + variants) is Core-only
@@ -125,6 +178,11 @@ public sealed class DependencyRulesTests
             .Should().ResideInAssembly(Asm("FcaBedrock.Core"))
             .Check(Architecture);
     }
+
+    // The Discovery types the two rules above are asserted over; empty would mean the package is
+    // absent from this project's output (a missing ProjectReference), not that it is clean.
+    private static IReadOnlyList<System.Type> Discovery() =>
+        [.. Asm("FcaBedrock.Discovery").GetTypes()];
 
     private static Assembly Asm(string simpleName) =>
         Production.Single(a => a.GetName().Name == simpleName);

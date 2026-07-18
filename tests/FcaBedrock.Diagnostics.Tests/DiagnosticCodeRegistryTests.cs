@@ -69,9 +69,22 @@ public sealed class DiagnosticCodeRegistryTests
         nameof(DiagnosticCode.ValueGroupsPassthroughDataDependent),
     ];
 
+    // The exact M5 Slice C delta (D-111): the five `probe` codes, all five with a live WIDE emit
+    // site in the same slice that registers them — no half-registered code, and no code waiting
+    // for the triple half. The two structural widenings (TripleSubjectNotContiguous,
+    // ObjectKeyValueInvalid gaining the `probe` phase) add no member and belong to Slice D.
+    private static readonly string[] M5SliceCAdditions =
+    [
+        nameof(DiagnosticCode.ProbeSourceReadFailed),
+        nameof(DiagnosticCode.ProbeNoAttributesDiscovered),
+        nameof(DiagnosticCode.ProbeAttributeNameAdjusted),
+        nameof(DiagnosticCode.ProbeDomainTruncated),
+        nameof(DiagnosticCode.ProbeLimitExceeded),
+    ];
+
     // Codes still owned by LATER milestones. Each must stay absent until the milestone that owns
     // its emit site lands, so an early or accidental addition fails here. Completing M4 retires
-    // M4's transitions only — it does not license M5/M6/M7 surface.
+    // M4's transitions only — it does not license M6/M7 surface.
     private static readonly string[] NotYetOwned =
     [
         "OutputCxtSizeAdvisory",                         // M7
@@ -88,13 +101,13 @@ public sealed class DiagnosticCodeRegistryTests
         RenamedFrom,                                     // renamed at Slice F (D-105); no alias
     ];
 
-    // The registry size after M4 Slice F: 67 members at the Slice E baseline, plus this slice's
-    // four, minus the one transitional code it retires — 67 + 4 - 1 = 70. The rename is
-    // count-neutral. Update this number ONLY together with the slice's decisions.md entry — that
-    // deliberate edit is the point (D-085: a code exists once it has a real emit site, so the enum
-    // grows per slice rather than drifting). Without it the presence/absence assertions below
-    // would let an unrelated member in unnoticed, and the delta would not be locked.
-    private const int MembersAfterSliceF = 70;
+    // The registry size after M5 Slice C: 70 members at the M4 Slice F baseline plus the five
+    // probe codes, retiring none — 70 + 5 = 75, the figure §16.4/D-111 anticipated for M5.
+    // Update this number ONLY together with the slice's decisions.md entry — that deliberate edit
+    // is the point (D-085: a code exists once it has a real emit site, so the enum grows per
+    // slice rather than drifting). Without it the presence/absence assertions below would let an
+    // unrelated member in unnoticed, and the delta would not be locked.
+    private const int MembersAfterM5SliceC = 75;
 
     private static readonly string[] Defined = Enum.GetNames<DiagnosticCode>();
 
@@ -103,11 +116,15 @@ public sealed class DiagnosticCodeRegistryTests
         Assert.All(SliceFAdditions, name => Assert.Contains(name, Defined));
 
     [Fact]
-    public void DiagnosticCode_WhenSliceFLanded_ThenTheRegistryIsExactlyPlusFourMinusOne() =>
-        // The delta lock. On its own a count proves little; combined with the presence list above
-        // and the absence lists below it pins BOTH which codes arrived, that the retirement really
-        // happened, and that nothing else moved — which the targeted assertions alone cannot do.
-        Assert.Equal(MembersAfterSliceF, Defined.Length);
+    public void DiagnosticCode_WhenM5SliceCLanded_ThenItsFiveProbeCodesAreDefined() =>
+        Assert.All(M5SliceCAdditions, name => Assert.Contains(name, Defined));
+
+    [Fact]
+    public void DiagnosticCode_WhenM5SliceCLanded_ThenTheRegistryIsExactlySeventyFive() =>
+        // The delta lock. On its own a count proves little; combined with the presence lists above
+        // and the absence lists below it pins BOTH which codes arrived, that earlier retirements
+        // really stuck, and that nothing else moved — which the targeted assertions alone cannot do.
+        Assert.Equal(MembersAfterM5SliceC, Defined.Length);
 
     [Fact]
     public void DiagnosticCode_WhenSliceFLanded_ThenTheReusedCodesRemain() =>
