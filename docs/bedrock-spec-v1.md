@@ -51,10 +51,10 @@ structure derived from the **resolved/calibrated plan**, not over the spec's TOM
 text (§14), so file formatting never affects schema or output identity.
 
 The canonical writer (the one tool that serializes a `SpecDocument`, §14) is
-deterministic. A **planned M5 refinement** (decisions.md D-113) will render a long top-level
+deterministic. It renders a long top-level
 `declared_domain` array **multiline, one escaped value per line**, rather than as a single
 unbounded line, so that large machine-generated domains — for example a `probe` draft's
-`declared_domain` (§7.1) — stay readable and diff-friendly. The wrapping cutoff will be a
+`declared_domain` (§7.1) — stay readable and diff-friendly (decisions.md D-113). The wrapping cutoff is a
 private, byte-pinned formatting constant — never a spec field, a setting, or a fingerprint
 input — and wrapping never changes document semantics or any fingerprint.
 
