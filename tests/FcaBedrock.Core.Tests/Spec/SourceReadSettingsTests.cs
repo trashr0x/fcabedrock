@@ -77,4 +77,98 @@ public sealed class SourceReadSettingsTests
     [Fact]
     public void Equals_WhenMissingTokenDiffers_ThenNotEqual() =>
         Assert.NotEqual(Wide(missingToken: "?"), Wide(missingToken: "NA"));
+
+    // --- CreateWide / CreateTriple: the §5.1/§7.1 delimited-source defaults (M5-IP-004) ---
+
+    [Fact]
+    public void CreateWide_WhenNoArguments_ThenExposesTheSection51WideDefaults()
+    {
+        var settings = SourceReadSettings.CreateWide();
+
+        Assert.Equal(SourceShape.Wide, settings.Shape);
+        Assert.Equal("utf-8", settings.Encoding);
+        Assert.Equal(',', settings.Delimiter);
+        Assert.Equal('"', settings.QuoteChar);
+        Assert.True(settings.HasHeader);
+        Assert.Equal("?", settings.MissingToken);
+        Assert.Null(settings.Ordering);
+    }
+
+    [Fact]
+    public void CreateTriple_WhenNoArguments_ThenExposesTheSection51TripleDefaults()
+    {
+        var settings = SourceReadSettings.CreateTriple();
+
+        Assert.Equal(SourceShape.Triple, settings.Shape);
+        Assert.Equal("utf-8", settings.Encoding);
+        Assert.Equal(',', settings.Delimiter);
+        Assert.Equal('"', settings.QuoteChar);
+        // The shape-specific default: a triple source has no header unless asked (D-082).
+        Assert.False(settings.HasHeader);
+        Assert.Equal("?", settings.MissingToken);
+        Assert.Equal(TripleOrdering.Unordered, settings.Ordering);
+    }
+
+    [Fact]
+    public void CreateWide_WhenOverridden_ThenHonorsEveryArgument()
+    {
+        var settings = SourceReadSettings.CreateWide("utf8", '\t', '"', hasHeader: false, missingToken: "NA");
+
+        Assert.Equal('\t', settings.Delimiter);
+        Assert.False(settings.HasHeader);
+        Assert.Equal("NA", settings.MissingToken);
+        Assert.Equal("utf-8", settings.Encoding);
+    }
+
+    [Fact]
+    public void CreateTriple_WhenOverridden_ThenHonorsEveryArgument()
+    {
+        var settings = SourceReadSettings.CreateTriple(
+            "UTF-8", '\t', '"', hasHeader: true, missingToken: "", TripleOrdering.SubjectGrouped);
+
+        Assert.Equal('\t', settings.Delimiter);
+        Assert.True(settings.HasHeader);
+        Assert.Equal("", settings.MissingToken);
+        Assert.Equal(TripleOrdering.SubjectGrouped, settings.Ordering);
+    }
+
+    [Fact]
+    public void CreateWide_WhenDefaulted_ThenValueEqualsTheEquivalentCreate() =>
+        // The conveniences are exactly Create with the §5.1 defaults filled in — no second
+        // normalization path, so value equality (and the hash) cannot drift between them.
+        Assert.Equal(
+            SourceReadSettings.Create(SourceShape.Wide, "utf-8", ',', '"', true, "?", ordering: null),
+            SourceReadSettings.CreateWide());
+
+    [Fact]
+    public void CreateTriple_WhenDefaulted_ThenValueEqualsTheEquivalentCreate() =>
+        Assert.Equal(
+            SourceReadSettings.Create(SourceShape.Triple, "utf-8", ',', '"', false, "?", TripleOrdering.Unordered),
+            SourceReadSettings.CreateTriple());
+
+    [Fact]
+    public void CreateWide_WhenEncodingUnsupported_ThenThrowsArgumentException() =>
+        // Validation has one owner: the conveniences delegate to Create, so its exact exception
+        // contract reaches them unchanged.
+        Assert.Throws<ArgumentException>(() => SourceReadSettings.CreateWide(encoding: "latin-1"));
+
+    [Fact]
+    public void CreateWide_WhenDelimiterEqualsQuote_ThenThrowsArgumentException() =>
+        Assert.Throws<ArgumentException>(() => SourceReadSettings.CreateWide(delimiter: '"'));
+
+    [Fact]
+    public void CreateWide_WhenQuoteNotStandard_ThenThrowsNotSupported() =>
+        Assert.Throws<NotSupportedException>(() => SourceReadSettings.CreateWide(quoteChar: '\''));
+
+    [Fact]
+    public void CreateWide_WhenNullMissingToken_ThenThrowsArgumentNull() =>
+        Assert.Throws<ArgumentNullException>(() => SourceReadSettings.CreateWide(missingToken: null!));
+
+    [Fact]
+    public void CreateTriple_WhenNullEncoding_ThenThrowsArgumentNull() =>
+        Assert.Throws<ArgumentNullException>(() => SourceReadSettings.CreateTriple(encoding: null!));
+
+    [Fact]
+    public void CreateWide_WhenMissingTokenEmpty_ThenValid() =>
+        Assert.Equal("", SourceReadSettings.CreateWide(missingToken: "").MissingToken);
 }

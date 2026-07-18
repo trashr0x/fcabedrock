@@ -1,8 +1,16 @@
+using FcaBedrock.Core.Spec;
+
 namespace FcaBedrock.Conversion;
 
 /// <summary>
-/// Object-name usability, shared across the Conversion layer so the emit halt and the
+/// Object-name usability for the Conversion layer, so the emit halt and the
 /// <c>unordered</c> grouping boundary agree on exactly one definition (D-085).
+/// <para>
+/// The definition itself now lives in Core as <see cref="ObjectNameValidity"/>: probe
+/// (Discovery) must apply the <em>identical</em> predicate, or a draft could accept a
+/// subject the conversion it promises then rejects (M5-IP-007). This type is the
+/// Conversion-local name for that one authority — it forwards, never re-implements.
+/// </para>
 /// </summary>
 internal static class ObjectNames
 {
@@ -14,21 +22,5 @@ internal static class ObjectNames
     /// conversion at its <c>ObjectKeyValueInvalid</c> emit site; the grouping layer only uses this to
     /// bound its reorder at the first such row (it never raises the diagnostic itself).
     /// </summary>
-    public static bool IsUsable(string? name)
-    {
-        if (string.IsNullOrWhiteSpace(name))
-        {
-            return false;
-        }
-
-        foreach (var ch in name)
-        {
-            if (char.IsControl(ch))
-            {
-                return false;
-            }
-        }
-
-        return true;
-    }
+    public static bool IsUsable(string? name) => ObjectNameValidity.IsUsable(name);
 }

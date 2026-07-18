@@ -16,8 +16,16 @@ namespace FcaBedrock.Sources;
 /// call re-validating and returning a fresh bound source over the same replayable
 /// stream factory.
 /// </para>
+/// <para>
+/// <b>Unbound reads.</b> As an <see cref="IWideSourceSession"/> the session also streams
+/// records <em>without</em> a spec (D-109), which is what lets Discovery observe a source it
+/// has no binding for yet. Unbound and bound reads run the same
+/// <see cref="CsvReadPipeline"/>, so they yield identical cleaned records from identical
+/// bytes. Read settings stay here, on the concrete CSV session, rather than on the
+/// source-neutral seam (M5-IP-002).
+/// </para>
 /// </summary>
-public sealed class WideCsvSession
+public sealed class WideCsvSession : IWideSourceSession
 {
     private readonly Func<Stream> _openStream;
     private readonly SourceReadSettings _settings;
@@ -47,6 +55,16 @@ public sealed class WideCsvSession
         _settings = settings;
     }
 
+    /// <inheritdoc/>
+    public SourceShape Shape => _settings.Shape;
+
+    /// <summary>
+    /// The immutable read settings this session tokenizes with. Delimited-source detail, so it
+    /// lives here rather than on <see cref="ISourceSession"/> — a non-delimited adapter has no
+    /// delimiter, quote, or header to report (M5-IP-002).
+    /// </summary>
+    public SourceReadSettings ReadSettings => _settings;
+
     /// <summary>Reads (and caches) the source schema — column count and, when present, header names.</summary>
     public async ValueTask<SourceSchema> GetSchemaAsync(CancellationToken cancellationToken = default)
     {
@@ -55,11 +73,21 @@ public sealed class WideCsvSession
             return cached;
         }
 
-        var schema = await CsvSourceSchema.ReadAsync(
+        var schema = await CsvReadPipeline.ReadSchemaAsync(
             _openStream, _settings.Delimiter, _settings.HasHeader, cancellationToken).ConfigureAwait(false);
         _schema = schema;
         return schema;
     }
+
+    /// <summary>
+    /// Streams the cleaned object records without any spec (D-109). Independent of
+    /// <see cref="GetSchemaAsync"/> and of <see cref="Bind"/>: it needs no schema read first,
+    /// caches nothing, and each call reopens the stream factory and re-reads from the start,
+    /// so the sequence is replayable.
+    /// </summary>
+    public IAsyncEnumerable<ObjectRecord> ReadAsync(CancellationToken cancellationToken = default) =>
+        CsvReadPipeline.ReadRecordsAsync(
+            _openStream, _settings.Delimiter, _settings.HasHeader, _settings.MissingToken, cancellationToken);
 
     /// <summary>
     /// Binds the session to <paramref name="resolved"/>, validating that its settings

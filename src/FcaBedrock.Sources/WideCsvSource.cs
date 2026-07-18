@@ -1,7 +1,4 @@
-using System.Globalization;
-using System.Runtime.CompilerServices;
 using FcaBedrock.Core.Spec;
-using nietras.SeparatedValues;
 
 namespace FcaBedrock.Sources;
 
@@ -75,66 +72,10 @@ public sealed class WideCsvSource : IRecordSource
                 _binding.HasHeader, _binding.MissingToken, _binding.Ordering),
             _binding.TripleColumns);
 
-    public async ValueTask<SourceSchema> GetSchemaAsync(CancellationToken cancellationToken = default)
-    {
-        await Task.Yield();
-        cancellationToken.ThrowIfCancellationRequested();
+    public ValueTask<SourceSchema> GetSchemaAsync(CancellationToken cancellationToken = default) =>
+        CsvReadPipeline.ReadSchemaAsync(_openStream, _delimiter, _hasHeader, cancellationToken);
 
-        using var reader = OpenReader();
-        if (reader.HasHeader)
-        {
-            var names = reader.Header.ColNames;
-            return new SourceSchema(names.Count, [.. names]);
-        }
-
-        foreach (var row in reader)
-        {
-            return new SourceSchema(row.ColCount);
-        }
-
-        return new SourceSchema(0);
-    }
-
-    public async IAsyncEnumerable<ObjectRecord> ReadAsync(
-        [EnumeratorCancellation] CancellationToken cancellationToken = default)
-    {
-        await Task.Yield();
-
-        using var reader = OpenReader();
-        var rowIndex = 0;
-        foreach (var row in reader)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-
-            var fields = new string?[row.ColCount];
-            for (var i = 0; i < row.ColCount; i++)
-            {
-                fields[i] = Normalize(row[i].ToString());
-            }
-
-            yield return new ObjectRecord(rowIndex.ToString(CultureInfo.InvariantCulture), fields);
-            rowIndex++;
-        }
-    }
-
-    private SepReader OpenReader() =>
-        Sep.New(_delimiter)
-            // Trim = Outer trims an UNQUOTED field's surrounding whitespace before unescape, while
-            // preserving whitespace INSIDE a quoted field — exactly spec §5.1. Sep still owns
-            // tokenization/unescape, so the D-041 integration contract is unchanged.
-            // DisableColCountCheck lets a short/ragged row through (like TripleCsvSource) rather than
-            // throwing across the Sources/Conversion seam: an absent mapped cell then surfaces as data
-            // — an absent key column is ObjectKeyValueInvalid at emit, an absent attribute cell is
-            // missing (§5.4/§16.4, D-085). This is narrow raggedness tolerance, not a parsing redesign.
-            .Reader(o => o with { HasHeader = _hasHeader, Unescape = true, Trim = SepTrim.Outer, DisableColCountCheck = true })
-            .From(_openStream());
-
-    // The value is already quote-aware-trimmed by Sep (§5.1), so missing detection is a direct
-    // comparison: an empty value (unquoted blank or quoted "") or one equal to the verbatim
-    // missing_token. A quoted value with deliberate interior whitespace is preserved and is not
-    // missing unless it equals the token exactly.
-    private string? Normalize(string value) =>
-        value.Length == 0 || string.Equals(value, _missingToken, StringComparison.Ordinal)
-            ? null
-            : value;
+    public IAsyncEnumerable<ObjectRecord> ReadAsync(CancellationToken cancellationToken = default) =>
+        CsvReadPipeline.ReadRecordsAsync(
+            _openStream, _delimiter, _hasHeader, _missingToken, cancellationToken);
 }

@@ -4,6 +4,10 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\FcaBedrock.Spec\FcaBedrock.Spec.csproj" />
+    <!-- Test-only (production Spec does not, and must not, reference Sources): §10.2's
+         duplicate-header binding rule is only meaningful over a schema read from real bytes,
+         which is what Toml/HeaderBindingTests exercises. -->
+    <ProjectReference Include="..\..\src\FcaBedrock.Sources\FcaBedrock.Sources.csproj" />
   </ItemGroup>
 
   <!-- The real mini-dates v2 .bed, copied next to the test assembly so the

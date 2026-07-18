@@ -99,6 +99,32 @@ public sealed class SourceReadSettings
             shape, normalizedEncoding, delimiter, quoteChar, hasHeader, missingToken, ordering);
     }
 
+    /// <summary>
+    /// Builds wide read settings from the §5.1 delimited-source defaults, overriding only
+    /// what the caller states. A convenience over <see cref="Create"/> — which remains the
+    /// single owner of validation, normalization, and the exception contract — for callers
+    /// that describe a CSV/TSV source directly instead of resolving one from a spec document
+    /// (M5-IP-004). There is no <c>ordering</c> parameter: it is null for a wide shape by
+    /// <see cref="Create"/>'s own rule.
+    /// </summary>
+    public static SourceReadSettings CreateWide(
+        string encoding = "utf-8", char delimiter = ',', char quoteChar = '"',
+        bool hasHeader = true, string missingToken = "?") =>
+        Create(SourceShape.Wide, encoding, delimiter, quoteChar, hasHeader, missingToken, ordering: null);
+
+    /// <summary>
+    /// Builds triple read settings from the §5.1/§7.1 delimited-source defaults, overriding
+    /// only what the caller states — the triple twin of <see cref="CreateWide"/>. Note the
+    /// shape-specific default: <c>hasHeader</c> is <see langword="false"/> for a triple
+    /// source (§5.1, D-082), and <c>ordering</c> is required, defaulting to
+    /// <see cref="TripleOrdering.Unordered"/>.
+    /// </summary>
+    public static SourceReadSettings CreateTriple(
+        string encoding = "utf-8", char delimiter = ',', char quoteChar = '"',
+        bool hasHeader = false, string missingToken = "?",
+        TripleOrdering ordering = TripleOrdering.Unordered) =>
+        Create(SourceShape.Triple, encoding, delimiter, quoteChar, hasHeader, missingToken, ordering);
+
     /// <inheritdoc/>
     public override bool Equals(object? obj) =>
         obj is SourceReadSettings other

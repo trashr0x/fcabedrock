@@ -1,6 +1,4 @@
-using System.Runtime.CompilerServices;
 using FcaBedrock.Core.Spec;
-using nietras.SeparatedValues;
 
 namespace FcaBedrock.Sources;
 
@@ -72,66 +70,10 @@ public sealed class TripleCsvSource : ITripleRowSource
                 _binding.HasHeader, _binding.MissingToken, _binding.Ordering),
             _binding.TripleColumns);
 
-    public async ValueTask<SourceSchema> GetSchemaAsync(CancellationToken cancellationToken = default)
-    {
-        await Task.Yield();
-        cancellationToken.ThrowIfCancellationRequested();
+    public ValueTask<SourceSchema> GetSchemaAsync(CancellationToken cancellationToken = default) =>
+        CsvReadPipeline.ReadSchemaAsync(_openStream, _delimiter, _hasHeader, cancellationToken);
 
-        using var reader = OpenReader();
-        if (reader.HasHeader)
-        {
-            var names = reader.Header.ColNames;
-            return new SourceSchema(names.Count, [.. names]);
-        }
-
-        foreach (var row in reader)
-        {
-            return new SourceSchema(row.ColCount);
-        }
-
-        return new SourceSchema(0);
-    }
-
-    public async IAsyncEnumerable<TripleRow> ReadRowsAsync(
-        [EnumeratorCancellation] CancellationToken cancellationToken = default)
-    {
-        await Task.Yield();
-
-        using var reader = OpenReader();
-        var recordIndex = 0;
-        foreach (var row in reader)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-
-            // Extract the three role fields into strings before yielding: Sep's row is a ref
-            // struct and must not be captured across the yield (mirrors WideCsvSource).
-            var count = row.ColCount;
-            var subject = _columns.Subject < count ? Normalize(row[_columns.Subject].ToString()) : null;
-            var predicate = _columns.Predicate < count ? Normalize(row[_columns.Predicate].ToString()) : null;
-            var value = _columns.Value < count ? Normalize(row[_columns.Value].ToString()) : null;
-
-            yield return new TripleRow(recordIndex, subject, predicate, value);
-            recordIndex++;
-        }
-    }
-
-    private SepReader OpenReader() =>
-        Sep.New(_delimiter)
-            // SepTrim.Outer trims an UNQUOTED field's surrounding whitespace before unescape while
-            // preserving whitespace INSIDE a quoted field — spec §5.1, applied uniformly to all
-            // three roles. DisableColCountCheck lets a short/ragged row through so an absent role
-            // degrades to null (a data problem the Conversion layer diagnoses — D-082), rather than
-            // Sep throwing across the seam. Sep still owns tokenization/unescape (the D-041 contract).
-            .Reader(o => o with { HasHeader = _hasHeader, Unescape = true, Trim = SepTrim.Outer, DisableColCountCheck = true })
-            .From(_openStream());
-
-    // Already quote-aware-trimmed by Sep (§5.1): an empty cell (unquoted blank or quoted "") or
-    // one equal to the verbatim missing_token normalizes to null, uniformly across subject,
-    // predicate, and value (D-082). A short row's absent role is handled by the caller (→ null),
-    // so this is a value-shaped normalization only. Quoted interior whitespace is preserved and
-    // is not missing unless it equals the token exactly.
-    private string? Normalize(string value) =>
-        value.Length == 0 || string.Equals(value, _missingToken, StringComparison.Ordinal)
-            ? null
-            : value;
+    public IAsyncEnumerable<TripleRow> ReadRowsAsync(CancellationToken cancellationToken = default) =>
+        CsvReadPipeline.ReadTripleRowsAsync(
+            _openStream, _delimiter, _hasHeader, _missingToken, _columns, cancellationToken);
 }
