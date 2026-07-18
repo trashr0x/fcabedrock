@@ -44,25 +44,19 @@ internal static class ProbeDraft
         var attributes = new List<AttributeSection>(columns.Count);
         foreach (var column in columns)
         {
-            attributes.Add(Attribute(column, domainOf(column.Index), options.ValueRetentionLimit));
+            attributes.Add(Attribute(
+                column.Name,
+                // The selector the naming matrix chose: a unique usable header binds by name,
+                // everything else by physical index.
+                column.BindByName is { } headerName
+                    ? new ColumnSourceSection(Index: null, Name: headerName, ValueType: SourceValueType.String)
+                    : new ColumnSourceSection(Index: column.Index, Name: null, ValueType: SourceValueType.String),
+                domainOf(column.Index),
+                options.ValueRetentionLimit));
         }
 
-        return new SpecDocument(
-            Spec: new SpecSection(
-                Version: 1,
-                SchemaFingerprint: null,
-                CxtOutputFingerprint: null,
-                DatOutputFingerprint: null,
-                Extends: null,
-                Description: Description),
-            Provenance: new ProvenanceSection(
-                Author: null,
-                CreatedAt: null,
-                SourceUrl: null,
-                SourceHash: null,
-                DerivedFrom: null,
-                Notes: Notes(options.ValueRetentionLimit, truncatedCount)),
-            Binding: new BindingSection(
+        return Document(
+            new BindingSection(
                 Shape: readSettings.Shape,
                 Encoding: readSettings.Encoding,
                 Delimiter: readSettings.Delimiter,
@@ -75,12 +69,117 @@ internal static class ProbeDraft
                 Ordering: null,
                 Columns: null,
                 ObjectKey: null),
+            options,
+            truncatedCount,
+            attributes);
+    }
+
+    /// <summary>
+    /// Builds the triple draft from the planned predicates and their observed domains, over the
+    /// <paramref name="binding"/> the role-map preflight already validated — the same instance,
+    /// so what was checked and what is authored cannot drift.
+    /// </summary>
+    public static SpecDocument BuildTriple(
+        BindingSection binding,
+        ProbeOptions options,
+        IReadOnlyList<DiscoveredPredicate> predicates,
+        Func<string, RetainedDomain> domainOf,
+        int truncatedCount)
+    {
+        var attributes = new List<AttributeSection>(predicates.Count);
+        foreach (var predicate in predicates)
+        {
+            attributes.Add(Attribute(
+                predicate.Name,
+                // The EXACT predicate text, always — a triple selector is the string the data
+                // spells, so rewriting it would point the attribute at a predicate that does not
+                // exist (§7.1). When the name had to be synthesized, only the name moved.
+                new PredicateSourceSection(Name: predicate.Predicate, ValueType: SourceValueType.String),
+                domainOf(predicate.Predicate),
+                options.ValueRetentionLimit));
+        }
+
+        return Document(binding, options, truncatedCount, attributes);
+    }
+
+    /// <summary>
+    /// The binding-only document the triple role-map preflight resolves (M5-IP-CX-001): the exact
+    /// <c>[binding]</c> the draft will author, and no attributes at all.
+    /// <para>
+    /// Discovery deliberately duplicates none of §5.3's validation. It hands the authored binding
+    /// to the one owner of those rules — <c>SpecResolver</c> — before a single row is read, so an
+    /// invalid role map fails with the <em>same</em> <c>spec validate</c> diagnostics a user would
+    /// see from <c>validate</c>, forwarded rather than re-emitted (D-067). The preflight doubles
+    /// as up-front proof of the D-107 resolve leg for the binding half of the draft.
+    /// </para>
+    /// </summary>
+    public static SpecDocument BindingOnly(BindingSection binding) =>
+        Document(binding, options: null, truncatedCount: 0, attributes: []);
+
+    /// <summary>
+    /// The shared document shell — the D-107 inventory's fixed parts. <paramref name="options"/>
+    /// is null only for the preflight document, which is never returned to a caller and so needs
+    /// no provenance notes.
+    /// </summary>
+    private static SpecDocument Document(
+        BindingSection binding,
+        ProbeOptions? options,
+        int truncatedCount,
+        IReadOnlyList<AttributeSection> attributes) =>
+        new(
+            Spec: new SpecSection(
+                Version: 1,
+                SchemaFingerprint: null,
+                CxtOutputFingerprint: null,
+                DatOutputFingerprint: null,
+                Extends: null,
+                Description: Description),
+            Provenance: options is null
+                ? null
+                : new ProvenanceSection(
+                    Author: null,
+                    CreatedAt: null,
+                    SourceUrl: null,
+                    SourceHash: null,
+                    DerivedFrom: null,
+                    Notes: Notes(options.ValueRetentionLimit, truncatedCount)),
+            Binding: binding,
             Defaults: null,
             Output: null,
             Templates: [],
             Matchers: [],
             Attributes: attributes);
-    }
+
+    /// <summary>
+    /// The <c>[binding]</c> of a triple draft: every effective read setting explicitly authored,
+    /// plus the caller's role map in the caller's own addressing mode.
+    /// <para>
+    /// <b>The role map is authored as supplied, not as resolved.</b> A name-addressed map stays
+    /// name-addressed and an index-addressed one stays index-addressed, spelled exactly as the
+    /// caller wrote it; the resolved indices are read machinery for this one pass, not a rewrite
+    /// of the document (M5-IP-003). An omitted map is not "absent" in the draft — it is authored
+    /// explicitly as 0/1/2, because a self-documenting draft states what it read (D-107).
+    /// </para>
+    /// <para>
+    /// <c>ordering</c> is whatever the caller selected, never inferred from the data:
+    /// <c>subject_grouped</c> is explicit-only (§7.1), so observing contiguous subjects must not
+    /// promote an <c>unordered</c> probe. No <c>[binding.object_key]</c> is authored — the triple
+    /// default is already the subject.
+    /// </para>
+    /// </summary>
+    public static BindingSection TripleBinding(
+        SourceReadSettings readSettings, ProbeOptions options, TripleColumnsSection columns) =>
+        new(
+            Shape: readSettings.Shape,
+            Encoding: readSettings.Encoding,
+            Delimiter: readSettings.Delimiter,
+            QuoteChar: readSettings.QuoteChar,
+            HasHeader: readSettings.HasHeader,
+            Locale: options.Locale,
+            MissingToken: readSettings.MissingToken,
+            Ordering: readSettings.Ordering,
+            Columns: columns,
+            ObjectKey: null);
 
     /// <summary>
     /// The always-written <c>[provenance].notes</c> (D-108) — written even at zero truncations,
@@ -102,15 +201,18 @@ internal static class ProbeDraft
             CultureInfo.InvariantCulture,
             $"probe: domain truncated after {limit} distinct values; more exist.");
 
-    private static AttributeSection Attribute(DiscoveredColumn column, RetainedDomain domain, int limit) =>
+    // One attribute, shared by both shapes: they differ only in which selector carrier addresses
+    // the source, so everything else — the explicit value_type, identity + nominal, the domain,
+    // and the truncation pair — is authored identically. That symmetry is a requirement, not a
+    // convenience (D-106), so it is structural here rather than maintained in two places.
+    private static AttributeSection Attribute(
+        string name, SourceSection source, RetainedDomain domain, int limit) =>
         new(
-            Name: column.Name,
-            // The selector the naming matrix chose, with an EXPLICIT value_type: M5 authors no
-            // typing, and `string` is the only type `identity` accepts (§10.2, D-061), but
-            // writing it keeps the draft self-documenting rather than default-dependent.
-            Source: column.BindByName is { } headerName
-                ? new ColumnSourceSection(Index: null, Name: headerName, ValueType: SourceValueType.String)
-                : new ColumnSourceSection(Index: column.Index, Name: null, ValueType: SourceValueType.String),
+            Name: name,
+            // An EXPLICIT value_type: M5 authors no typing, and `string` is the only type
+            // `identity` accepts (§10.2, D-061), but writing it keeps the draft self-documenting
+            // rather than default-dependent.
+            Source: source,
             Description: domain.Truncated ? TruncationMarker(limit) : null,
             Include: null,
             Template: null,

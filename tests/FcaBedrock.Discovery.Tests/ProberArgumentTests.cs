@@ -1,4 +1,5 @@
 using FcaBedrock.Core.Spec;
+using FcaBedrock.Spec.Toml;
 
 namespace FcaBedrock.Discovery.Tests;
 
@@ -67,6 +68,73 @@ public sealed class ProberArgumentTests
         // The positive side of the guard: a matched pair simply works, so the checks above
         // cannot be passing for an unrelated reason.
         var result = await Prober.ProbeAsync(ProbeFixtures.Fake(new SourceSchema(1, ["a"]), ["x"]), Wide);
+
+        Assert.True(result.IsOk, ProbeFixtures.Describe(result.Diagnostics));
+        Assert.Empty(result.Diagnostics);
+    }
+
+    // --- The triple entry point, under the same rules -------------------------------
+
+    [Fact]
+    public void ProbeTripleAsync_WhenSessionNull_ThenThrowsArgumentNullSynchronously() =>
+        Assert.Throws<ArgumentNullException>("session", () => Ignore(Prober.ProbeTripleAsync(null!, Triple)));
+
+    [Fact]
+    public void ProbeTripleAsync_WhenReadSettingsNull_ThenThrowsArgumentNullSynchronously() =>
+        Assert.Throws<ArgumentNullException>(
+            "readSettings", () => Ignore(Prober.ProbeTripleAsync(TripleProbeFixtures.Fake(), null!)));
+
+    [Fact]
+    public void ProbeTripleAsync_WhenSettingsAreWideShaped_ThenThrowsArgumentException()
+    {
+        var ex = Assert.Throws<ArgumentException>(
+            () => Ignore(Prober.ProbeTripleAsync(TripleProbeFixtures.Fake(), Wide)));
+
+        Assert.Equal("readSettings", ex.ParamName);
+    }
+
+    [Fact]
+    public void ProbeTripleAsync_WhenSessionReportsWideShape_ThenThrowsArgumentException()
+    {
+        var session = new TripleProbeFixtures.FakeTripleSession(new SourceSchema(3), [])
+        {
+            Shape = SourceShape.Wide,
+        };
+
+        var ex = Assert.Throws<ArgumentException>(() => Ignore(Prober.ProbeTripleAsync(session, Triple)));
+        Assert.Equal("session", ex.ParamName);
+    }
+
+    [Fact]
+    public async Task ProbeTripleAsync_WhenOptionsNull_ThenUsesTheDefaults()
+    {
+        var result = await Prober.ProbeTripleAsync(
+            TripleProbeFixtures.Fake(("s", "p", "v")), Triple, columns: null, options: null);
+
+        Assert.Equal(
+            ProbeDraftExpectations.NotesFor(ProbeOptions.Default.ValueRetentionLimit, 0),
+            ProbeFixtures.Draft(result).Provenance!.Notes);
+    }
+
+    [Fact]
+    public async Task ProbeTripleAsync_WhenColumnsNull_ThenReadsAndAuthorsTheDefaultRoles()
+    {
+        // Omission is a default, not an absence: the read uses 0/1/2 and the draft SAYS 0/1/2,
+        // so a reread does not depend on the reader knowing §5.3's default (D-107).
+        var session = TripleProbeFixtures.Fake(("s", "p", "v"));
+
+        var draft = ProbeFixtures.Draft(await Prober.ProbeTripleAsync(session, Triple, columns: null));
+
+        Assert.Equal(new TripleColumns(0, 1, 2), Assert.Single(session.RolesRead));
+        Assert.Equal(
+            new TripleColumnsSection(new IndexColumnRef(0), new IndexColumnRef(1), new IndexColumnRef(2)),
+            draft.Binding!.Columns);
+    }
+
+    [Fact]
+    public async Task ProbeTripleAsync_WhenShapesAgree_ThenNoDiagnosticReportsAShapeProblem()
+    {
+        var result = await Prober.ProbeTripleAsync(TripleProbeFixtures.Fake(("s", "p", "v")), Triple);
 
         Assert.True(result.IsOk, ProbeFixtures.Describe(result.Diagnostics));
         Assert.Empty(result.Diagnostics);

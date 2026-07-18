@@ -155,10 +155,19 @@ internal static class AttributeNaming
     private static string FallbackName(int index) =>
         string.Create(CultureInfo.InvariantCulture, $"column_{index}");
 
-    // The D-107 ladder: the candidate itself, then `#<source-index>`, then ordinal `#1`, `#2`, …
-    // to the first unused. Escalation is bounded — at most one more step than there are assigned
-    // names — and depends only on the schema, so the same schema always yields the same names.
-    private static string FirstUnused(string candidate, int sourceIndex, HashSet<string> used)
+    /// <summary>
+    /// The D-107 disambiguation ladder: the candidate itself, then <c>#&lt;source-index&gt;</c>,
+    /// then ordinal <c>#1</c>, <c>#2</c>, … to the first unused. Escalation is bounded — at most
+    /// one more step than there are assigned names — and depends only on the source's own
+    /// ordering, so the same input always yields the same names.
+    /// <para>
+    /// Shared with <see cref="PredicateNaming"/> rather than re-derived there: the two shapes
+    /// disagree about what a <em>candidate</em> is (a header cell vs a predicate string) but not
+    /// about how a taken name escalates, and a second ladder would be a second thing to keep
+    /// symmetric.
+    /// </para>
+    /// </summary>
+    public static string FirstUnused(string candidate, int sourceIndex, HashSet<string> used)
     {
         if (!used.Contains(candidate))
         {

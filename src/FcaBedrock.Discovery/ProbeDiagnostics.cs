@@ -40,6 +40,47 @@ internal static class ProbeDiagnostics
             "The probe discovered no attributes: the wide source has zero columns; no draft was produced (§7.1).");
 
     /// <summary>
+    /// The triple face of the same outcome: the pass completed but every row's predicate was
+    /// missing, so there is no vocabulary to author. The <b>same code</b> as the wide case
+    /// deliberately — one condition ("nothing to author"), one code (D-067/D-111) — differing
+    /// only in the message that names why.
+    /// </summary>
+    public static BedrockDiagnostic NoPredicatesDiscovered() =>
+        new(DiagnosticCode.ProbeNoAttributesDiscovered, DiagnosticSeverity.Error,
+            "The probe discovered no attributes: the triple source has no present predicates; no draft was produced (§7.1).");
+
+    /// <summary>
+    /// A triple subject that cannot name an object (§5.4). Reuses the existing structural code
+    /// rather than a probe-specific twin, with the <b>same</b> condition, severity, and
+    /// record-index location the calibrate/emit sites use (D-111's phase widening): one
+    /// structural condition owned by one code across all three phases.
+    /// <para>
+    /// Halts the probe with no draft. This must never arrive as
+    /// <see cref="SourceReadFailed"/> — invalid data and broken storage are different problems
+    /// with different remedies (D-111).
+    /// </para>
+    /// </summary>
+    public static BedrockDiagnostic SubjectUnusable(int recordIndex) =>
+        new(DiagnosticCode.ObjectKeyValueInvalid, DiagnosticSeverity.Error,
+            string.Create(
+                CultureInfo.InvariantCulture,
+                $"The triple subject at record {recordIndex} is empty, whitespace-only, a missing token, or contains a control character; it cannot name an object (§5.4)."),
+            new DiagnosticLocation(RecordIndex: recordIndex));
+
+    /// <summary>
+    /// A subject recurring after an intervening subject under an <b>explicitly selected</b>
+    /// <c>subject_grouped</c> ordering (§5.3) — the probe-phase site of the second widened
+    /// structural code, again matching the conversion sites exactly. Never raised under
+    /// <c>unordered</c>, where interleaved subjects are legal and no grouping pass exists.
+    /// </summary>
+    public static BedrockDiagnostic SubjectNotContiguous(string subject, int recordIndex) =>
+        new(DiagnosticCode.TripleSubjectNotContiguous, DiagnosticSeverity.Error,
+            string.Create(
+                CultureInfo.InvariantCulture,
+                $"Triple subject '{subject}' recurs at record {recordIndex} after an intervening subject; ordering = \"subject_grouped\" requires contiguous subjects (§5.3)."),
+            new DiagnosticLocation(RecordIndex: recordIndex));
+
+    /// <summary>
     /// The aggregated naming warning (D-107): names that had to be synthesized from an unusable
     /// header or disambiguated against an already-taken name. Routine headerless
     /// <c>column_N</c> synthesis is <b>not</b> counted here (D-111).

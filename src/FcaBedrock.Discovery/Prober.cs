@@ -31,6 +31,14 @@ namespace FcaBedrock.Discovery;
 public static class Prober
 {
     /// <summary>
+    /// The §5.3 default triple role map, authored explicitly when the caller supplies none. Held
+    /// as one shared immutable instance: every part of a <see cref="TripleColumnsSection"/> is a
+    /// record, so there is nothing to copy per call.
+    /// </summary>
+    private static readonly TripleColumnsSection DefaultRoles =
+        new(new IndexColumnRef(0), new IndexColumnRef(1), new IndexColumnRef(2));
+
+    /// <summary>
     /// Probes a wide source, returning a draft spec with its warnings, or diagnostics alone
     /// when no valid draft exists.
     /// <para>
@@ -70,6 +78,56 @@ public static class Prober
         }
 
         return ProbeWideAsync(session, readSettings, options ?? ProbeOptions.Default, cancellationToken);
+    }
+
+    /// <summary>
+    /// Probes a triple (subject–predicate–value) source, returning a draft spec with its
+    /// warnings, or diagnostics alone when no valid draft exists.
+    /// <para>
+    /// Same errors-are-values posture as <see cref="ProbeAsync"/>: null arguments and a
+    /// session/settings pair that is not both triple are programmer errors and throw. An invalid
+    /// <paramref name="columns"/> map is <b>not</b> one of those — a role map is authored spec
+    /// content, so it is diagnosed, not thrown. It is checked by resolving the exact
+    /// <c>[binding]</c> this probe would author <em>before</em> any row is read, and the
+    /// resolver's own §5.3 diagnostics are forwarded unchanged (M5-IP-CX-001): probe re-validates
+    /// nothing and mints no code of its own, so a bad role map reads identically here and from
+    /// <c>validate</c>.
+    /// </para>
+    /// <para>
+    /// <b>Structural validity is checked, not assumed.</b> An unusable subject halts the probe
+    /// under either ordering, and an explicitly selected <c>subject_grouped</c> additionally
+    /// requires contiguity — because a draft that its own same-source conversion would reject is
+    /// not a draft (D-106/D-107). There is no grouping or counting pass: the rows are read once,
+    /// in input order.
+    /// </para>
+    /// </summary>
+    /// <param name="session">The unbound triple source. Never bound; its rows are read exactly once.</param>
+    /// <param name="readSettings">The effective read settings the draft authors verbatim into <c>[binding]</c>, including the ordering.</param>
+    /// <param name="columns">A complete role map in one addressing mode (§5.3), authored into the draft as supplied; null means <c>{ subject = 0, predicate = 1, value = 2 }</c>, authored explicitly.</param>
+    /// <param name="options">Retention limit, boundedness guards, and locale; null means <see cref="ProbeOptions.Default"/>.</param>
+    /// <param name="cancellationToken">Cancels the probe.</param>
+    public static ValueTask<Diagnosed<SpecDocument>> ProbeTripleAsync(
+        ITripleSourceSession session,
+        SourceReadSettings readSettings,
+        TripleColumnsSection? columns = null,
+        ProbeOptions? options = null,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(session);
+        ArgumentNullException.ThrowIfNull(readSettings);
+
+        if (session.Shape != SourceShape.Triple)
+        {
+            throw new ArgumentException("ProbeTripleAsync requires a triple source session.", nameof(session));
+        }
+
+        if (readSettings.Shape != SourceShape.Triple)
+        {
+            throw new ArgumentException("ProbeTripleAsync requires triple read settings.", nameof(readSettings));
+        }
+
+        return ProbeTripleCoreAsync(
+            session, readSettings, columns ?? DefaultRoles, options ?? ProbeOptions.Default, cancellationToken);
     }
 
     private static async ValueTask<Diagnosed<SpecDocument>> ProbeWideAsync(
@@ -152,6 +210,100 @@ public static class Prober
         }
 
         var draft = ProbeDraft.Build(readSettings, options, columns, observation.Domain, truncated.Count);
+        return Diagnosed<SpecDocument>.Ok(draft, warnings);
+    }
+
+    private static async ValueTask<Diagnosed<SpecDocument>> ProbeTripleCoreAsync(
+        ITripleSourceSession session,
+        SourceReadSettings readSettings,
+        TripleColumnsSection columns,
+        ProbeOptions options,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        SourceSchema schema;
+        try
+        {
+            // Metadata, not a data pass — and needed before the preflight, because a name-addressed
+            // role map resolves against this header and an index-addressed one is range-checked
+            // against this column count.
+            schema = await session.GetSchemaAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (SourceReadException ex) { return Failed(ProbeDiagnostics.SourceReadFailed(ex)); }
+        catch (IOException ex) { return Failed(ProbeDiagnostics.SourceReadFailed(ex)); }
+        catch (UnauthorizedAccessException ex) { return Failed(ProbeDiagnostics.SourceReadFailed(ex)); }
+        catch (ObjectDisposedException ex) { return Failed(ProbeDiagnostics.SourceReadFailed(ex)); }
+        catch (DecoderFallbackException ex) { return Failed(ProbeDiagnostics.SourceReadFailed(ex)); }
+        catch (InvalidDataException ex) { return Failed(ProbeDiagnostics.SourceReadFailed(ex)); }
+
+        // The binding this probe will author, built once and used for both the preflight and the
+        // draft — so what was validated and what is written are the same object, not two
+        // constructions that could drift.
+        var binding = ProbeDraft.TripleBinding(readSettings, options, columns);
+
+        // The M5-IP-CX-001 role-map preflight, BEFORE any row is read. Discovery does not
+        // re-implement §5.3: it asks the resolver, which owns those rules, and forwards whatever
+        // it says. A partial, mixed-mode, negative, out-of-range, non-distinct, headerless-name,
+        // missing, or ambiguous map fails here — with no enumeration started, so a bad map costs
+        // no read at all.
+        var preflight = SpecResolver.Resolve(ProbeDraft.BindingOnly(binding), schema);
+        if (!preflight.TryGetValue(out var resolved))
+        {
+            // Forwarded unchanged and in order: relabelling these as probe-phase, or wrapping them
+            // in a probe code, would give one condition two owners (D-067/D-111).
+            return Diagnosed<SpecDocument>.Failed(preflight.Diagnostics);
+        }
+
+        // Resolved indices drive the read; the draft still authors the caller's own addressing.
+        var roles = resolved.Resolved.Spec.Binding.TripleColumns!;
+
+        var observation = new TripleObservation(
+            options, subjectGrouped: readSettings.Ordering is TripleOrdering.SubjectGrouped);
+        if (await ObserveTripleAsync(session, roles, observation, cancellationToken).ConfigureAwait(false) is { } failure)
+        {
+            return Failed(failure);
+        }
+
+        // Unlike wide, whose attributes are known from the schema, triple's vocabulary is only
+        // known once the pass has finished — so the empty case is decided here rather than up front.
+        if (observation.Predicates.Count == 0)
+        {
+            return Failed(ProbeDiagnostics.NoPredicatesDiscovered());
+        }
+
+        var predicates = PredicateNaming.Plan(observation.Predicates);
+        var warnings = new List<BedrockDiagnostic>();
+
+        // Flushed at end of pass in predicate first-appearance order — the same fixed shape as
+        // wide's physical-column order, so counts and bounded samples depend only on the record
+        // sequence (D-112).
+        var adjusted = new ProbeTally();
+        var truncated = new ProbeTally();
+        foreach (var predicate in predicates)
+        {
+            if (predicate.NameAdjusted)
+            {
+                adjusted.Record(predicate.Name);
+            }
+
+            if (observation.Domain(predicate.Predicate).Truncated)
+            {
+                truncated.Record(predicate.Name);
+            }
+        }
+
+        if (adjusted.Any)
+        {
+            warnings.Add(ProbeDiagnostics.AttributeNameAdjusted(adjusted));
+        }
+
+        if (truncated.Any)
+        {
+            warnings.Add(ProbeDiagnostics.DomainTruncated(truncated, options.ValueRetentionLimit));
+        }
+
+        var draft = ProbeDraft.BuildTriple(binding, options, predicates, observation.Domain, truncated.Count);
         return Diagnosed<SpecDocument>.Ok(draft, warnings);
     }
 
@@ -249,6 +401,75 @@ public static class Prober
         try
         {
             return (session.ReadAsync(cancellationToken).GetAsyncEnumerator(cancellationToken), null);
+        }
+        catch (SourceReadException ex) { return (null, ProbeDiagnostics.SourceReadFailed(ex)); }
+        catch (IOException ex) { return (null, ProbeDiagnostics.SourceReadFailed(ex)); }
+        catch (UnauthorizedAccessException ex) { return (null, ProbeDiagnostics.SourceReadFailed(ex)); }
+        catch (ObjectDisposedException ex) { return (null, ProbeDiagnostics.SourceReadFailed(ex)); }
+        catch (DecoderFallbackException ex) { return (null, ProbeDiagnostics.SourceReadFailed(ex)); }
+        catch (InvalidDataException ex) { return (null, ProbeDiagnostics.SourceReadFailed(ex)); }
+    }
+
+    /// <summary>
+    /// The triple twin of <see cref="ObserveAsync"/>: one enumeration, the same four guarded
+    /// provider-owned calls, and the same rule that observation happens outside the catch
+    /// boundary — a structural subject problem is data, not a read failure, and must not be
+    /// classified as one (D-111).
+    /// </summary>
+    private static async ValueTask<BedrockDiagnostic?> ObserveTripleAsync(
+        ITripleSourceSession session,
+        TripleColumns roles,
+        TripleObservation observation,
+        CancellationToken cancellationToken)
+    {
+        var (rows, openFailure) = OpenRows(session, roles, cancellationToken);
+        if (rows is null)
+        {
+            return openFailure;
+        }
+
+        await using var _ = rows.ConfigureAwait(false);
+        while (true)
+        {
+            bool moved;
+            var row = default(TripleRow);
+            try
+            {
+                moved = await rows.MoveNextAsync().ConfigureAwait(false);
+                if (moved)
+                {
+                    row = rows.Current;
+                }
+            }
+            catch (SourceReadException ex) { return ProbeDiagnostics.SourceReadFailed(ex); }
+            catch (IOException ex) { return ProbeDiagnostics.SourceReadFailed(ex); }
+            catch (UnauthorizedAccessException ex) { return ProbeDiagnostics.SourceReadFailed(ex); }
+            catch (ObjectDisposedException ex) { return ProbeDiagnostics.SourceReadFailed(ex); }
+            catch (DecoderFallbackException ex) { return ProbeDiagnostics.SourceReadFailed(ex); }
+            catch (InvalidDataException ex) { return ProbeDiagnostics.SourceReadFailed(ex); }
+
+            if (!moved)
+            {
+                return null;
+            }
+
+            if (observation.Observe(row) is { } halt)
+            {
+                return halt;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Opens the row stream under the resolved role map, guarding the two acquisition calls that
+    /// run before the first <c>MoveNextAsync</c>. Exactly one enumeration is ever opened.
+    /// </summary>
+    private static (IAsyncEnumerator<TripleRow>? Rows, BedrockDiagnostic? Failure) OpenRows(
+        ITripleSourceSession session, TripleColumns roles, CancellationToken cancellationToken)
+    {
+        try
+        {
+            return (session.ReadRowsAsync(roles, cancellationToken).GetAsyncEnumerator(cancellationToken), null);
         }
         catch (SourceReadException ex) { return (null, ProbeDiagnostics.SourceReadFailed(ex)); }
         catch (IOException ex) { return (null, ProbeDiagnostics.SourceReadFailed(ex)); }

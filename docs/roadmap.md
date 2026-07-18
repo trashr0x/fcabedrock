@@ -321,8 +321,56 @@ vertical slices, not waterfall phases — each should leave the system working.
 > (the backend retained up to 100,000 distinct values per attribute; the UI displayed only the
 > first 100). This landing is **docs-only** — no production code,
 > tests, fixtures, enum members (the registry stays **70**; the five `probe` codes are
-> future, → **75** at M5), or output/fingerprint bytes changed. **M5 implementation has not
-> started.**
+> future, → **75** at M5), or output/fingerprint bytes changed.
+>
+> **M5 — Discovery / `probe` — is complete (Slices A–D).** `probe` produces an editable draft
+> spec from raw data in **both** shapes: deterministic over the record sequence, immediately
+> usable (reread → resolve → convert the same source), from **one** cleaned data pass with no
+> grouped or count-sensitive pass, and correct end-to-end on the `mini-*` fixtures in both
+> shapes. The whole milestone realizes D-106…D-113 with **no** new decision entry.
+>
+> **Slice A** landed D-113's canonical-writer multiline `declared_domain` wrapping — a private,
+> byte-pinned **100-code-unit** cutoff measured over the complete escaped line, applying to
+> `[[attribute]]` and `[[template]]` alike and to no other array — with zero edits to any
+> pre-existing expectation. **Slice B** landed the D-109 unbound source seam: `ISourceSession` /
+> `IWideSourceSession` / `ITripleSourceSession` over cleaned records, the typed
+> `SourceReadException` channel, per-read triple roles that never enter session identity or
+> `Bind`, the `CreateWide`/`CreateTriple` defaults factories, the Core-hoisted
+> `ObjectNameValidity.IsUsable` that Conversion now delegates to (M5-IP-007), and the
+> **both-shape header-tolerant open** that finally makes §10.2's duplicate/blank-header semantics
+> reachable (M5-IP-011 — behaviour-neutral for unique headers, header cells never
+> missing-normalized). **Slice C** landed the `FcaBedrock.Discovery` package as a complete wide
+> vertical: `Prober.ProbeAsync`, `ProbeOptions` (retention limit **100,000** plus the three D-110
+> aggregate guards at **10,000 / 2,000,000 / 50,000,000**, logical accounting only), the wide
+> naming/binding matrix, retention with prefix + `include` recovery, and the **five** probe
+> diagnostics with live wide sites — registry **70 → 75**.
+>
+> **Slice D** completes M5 with the triple vertical. `Prober.ProbeTripleAsync` reads the rows
+> once through the resolved roles, after the **M5-IP-CX-001 binding-only preflight**: Discovery
+> builds the exact `[binding]` the draft would author and hands it to `SpecResolver` **before a
+> single row is read**, so an invalid role map fails with the resolver's own §5.3 diagnostics
+> **forwarded unchanged** — single ownership by construction (D-067), no re-validation in
+> Discovery, no §16.4 cell moved, no new code. Predicates are discovered in **first-appearance
+> order**; a §10.1-unusable predicate keeps its **exact** selector and takes the
+> `predicate_<n>` fallback (with the same deterministic ladder wide uses when a real predicate
+> already spells that name), and every adjustment rides one aggregated warning. The draft
+> **preserves the caller's addressing mode verbatim** — all-index stays all-index, all-name stays
+> all-name, an omitted map is authored explicitly as 0/1/2 — while the resolved indices remain
+> read machinery only; `ordering` is authored as selected and `subject_grouped` is never
+> inferred from observed contiguity. The two widened structural codes gained their **probe-phase
+> sites**: `ObjectKeyValueInvalid` for subject usability under **both** orderings and
+> `TripleSubjectNotContiguous` under an explicitly selected `subject_grouped` (judged over every
+> valid-subject row, including ones whose predicate probe ignores), both asserted **equal to the
+> calibrator's own diagnostics** over the same source rather than merely similar. Slice D adds
+> **no enum member** — the registry stays **75** — and the complete public Discovery surface is
+> still exactly `Prober` (two methods) and `ProbeOptions`. Production Discovery references only
+> Sources, Spec, Core, and Diagnostics, performs no I/O, and touches `System.IO` solely to
+> classify `IOException` / `InvalidDataException` crossing the session seam (M5-IP-CX-002).
+> Every golden `.cxt`/`.dat`, pinned fingerprint and SHA vector, fixture byte, and pre-existing
+> canonical-TOML expectation is unchanged. `dotnet test` is green (2593 tests: 2592 passed, one
+> platform-gated confidentiality test skipped off its OS).
+>
+> **M6 (templates + matchers) is next** — no M6 work has started.
 
 ## Milestones
 

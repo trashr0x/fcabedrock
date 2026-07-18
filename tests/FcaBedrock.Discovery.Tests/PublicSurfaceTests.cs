@@ -7,11 +7,9 @@ using FcaBedrock.Spec.Toml;
 namespace FcaBedrock.Discovery.Tests;
 
 /// <summary>
-/// The P-4 lock on Discovery's public surface. This slice ships the <b>wide</b> probe vertical
-/// and nothing else, so the inventory is deliberately tiny — and
-/// <c>ProbeTripleAsync</c> is <b>absent</b>, not stubbed or rejected: an absent method is an
-/// honest "not yet", whereas a stub that throws would be surface a caller could bind to and a
-/// transitional diagnostic nobody wants.
+/// The P-4 lock on Discovery's public surface. M5 is now complete — both shapes probe — and the
+/// inventory is still exactly two types and two methods: the triple vertical added an entry
+/// point, not an engine type, a result type, a role resolver, or an observer hook.
 /// <para>
 /// Asserted as an exact inventory rather than "contains": a spot check would let an
 /// accidentally-public engine, observer, tally, or draft type slip out, and a public type is far
@@ -31,21 +29,46 @@ public sealed class PublicSurfaceTests
     }
 
     [Fact]
-    public void Prober_WhenInspected_ThenExposesOnlyProbeAsync()
+    public void Prober_WhenInspected_ThenExposesOnlyTheTwoShapeEntryPoints()
     {
+        // One method per record shape, mirroring CalibrateAsync/CalibrateTripleAsync (P-5) —
+        // deliberately not a single method over a session union, for which this codebase has no
+        // precedent. Nothing else: no overloads taking a path, a stream, or provenance.
         var methods = typeof(Prober)
             .GetMethods(BindingFlags.Public | BindingFlags.Static | BindingFlags.DeclaredOnly)
             .Select(m => m.Name)
             .Order(StringComparer.Ordinal);
 
-        Assert.Equal(["ProbeAsync"], methods);
+        Assert.Equal(["ProbeAsync", "ProbeTripleAsync"], methods);
     }
 
     [Fact]
-    public void Prober_WhenInspected_ThenProbeTripleAsyncIsAbsent() =>
-        // Slice D's surface, stated as an absence so an early landing fails here rather than
-        // shipping a half-milestone API.
-        Assert.Null(typeof(Prober).GetMethod("ProbeTripleAsync"));
+    public void ProbeTripleAsync_WhenInspected_ThenHasTheSettledSignature()
+    {
+        var method = typeof(Prober).GetMethod("ProbeTripleAsync")!;
+        var parameters = method.GetParameters();
+
+        Assert.Equal(typeof(ValueTask<Diagnosed<SpecDocument>>), method.ReturnType);
+        Assert.Equal(
+            [
+                typeof(ITripleSourceSession), typeof(SourceReadSettings), typeof(TripleColumnsSection),
+                typeof(ProbeOptions), typeof(CancellationToken),
+            ],
+            parameters.Select(p => p.ParameterType));
+        Assert.Equal(
+            ["session", "readSettings", "columns", "options", "cancellationToken"],
+            parameters.Select(p => p.Name));
+
+        // The role map is optional because §5.3 supplies a default (0/1/2); the session and the
+        // settings are not, for the same reason as the wide entry point.
+        Assert.False(parameters[0].IsOptional);
+        Assert.False(parameters[1].IsOptional);
+        Assert.True(parameters[2].IsOptional);
+        Assert.True(parameters[3].IsOptional);
+        Assert.True(parameters[4].IsOptional);
+        Assert.Null(parameters[2].DefaultValue);
+        Assert.Null(parameters[3].DefaultValue);
+    }
 
     [Fact]
     public void ProbeAsync_WhenInspected_ThenHasTheSettledSignature()
