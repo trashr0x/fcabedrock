@@ -14,23 +14,25 @@ zero or more formal attributes. Every legacy attribute "type" is a
 
 ## Status
 
-Under active development. **M1 and M2 are complete.** M1 built the full pipeline
-— v2 `.bed` spec reader, wide CSV/TSV source, planner, streaming emitter,
-`.cxt`/`.dat` writers — reproducing FcaBedrock v2 byte-for-byte on the
-mini-mushroom and mini-adult fixture families (under `--v2-compat`). M2 added the
-TOML Bedrock spec format with reader/writer, the three plan-derived fingerprints,
-spec composition (`extends`), and the one-way `.bed` → TOML migrator.
+Under active development. **M1–M5 are complete.** The pipeline reproduces
+FcaBedrock v2 byte-for-byte on the mini-mushroom and mini-adult fixture families
+(under `--v2-compat`).
 
-What works today vs what is designed but not yet implemented:
+Implemented today:
 
-- **Today (M1 + M2):** wide CSV/TSV input; v2 `.bed` specs **and** the native
-  TOML spec format (round-trip, `extends`, fingerprints, `.bed` → TOML
-  migration); deterministic `.cxt`/`.dat` output, with a `--v2-compat` preset.
-- **M3 and beyond:** subject–predicate–value triple input (M3), auto-binning
-  discretizers (M4), discovery, templates, the full CLI, benchmarks, and a
-  desktop UI.
+- **Input:** wide CSV/TSV **and** subject–predicate–value triple sources.
+- **Specs:** legacy `.bed` **and** the native TOML format — round-trip,
+  composition (`extends`), the three plan-derived fingerprints, and one-way
+  `.bed` → TOML migration.
+- **Conversion:** every v1 discretizer kind, calibration, and `restrict_to`.
+- **Output:** deterministic `.cxt`/`.dat`, with a `--v2-compat` preset.
+- **Discovery:** `probe` draft-spec generation for both wide and triple sources,
+  as a **library API** — the `probe` *command* arrives with the CLI at M7.
 
-`docs/roadmap.md` is the live source for the current position.
+**M6 (templates + matchers) is next**, followed by the CLI (M7), a scaling and
+benchmark pass (M8), and the desktop UI (M9).
+
+`docs/roadmap.md` is the live source for the detailed current position.
 
 ## Documentation
 

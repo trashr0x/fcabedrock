@@ -101,12 +101,42 @@ internal static class ProbeDiagnostics
                 CultureInfo.InvariantCulture,
                 $"The probe truncated {tally.Count} attribute domain(s) after {limit} distinct values (e.g. {tally.Sample}); each authors its retained prefix with unknown_value_policy = \"include\" (§7.1)."));
 
-    /// <summary>Guard 1 — more schema columns than the probe may discover (D-110).</summary>
+    /// <summary>
+    /// Guard 1, <b>wide</b> — more schema columns than the probe may discover (D-110). The count
+    /// is <em>exact</em>: a wide source's attributes are its schema columns, known in full before
+    /// any record is read, so the message can state the real total and a caller can raise the
+    /// maximum to it in one step.
+    /// </summary>
     public static BedrockDiagnostic AttributeLimitExceeded(int columnCount, int max) =>
         new(DiagnosticCode.ProbeLimitExceeded, DiagnosticSeverity.Error,
             string.Create(
                 CultureInfo.InvariantCulture,
                 $"The probe would discover {columnCount} attributes, above the maximum of {max}; no draft was produced (§7.1)."));
+
+    /// <summary>
+    /// Guard 1, <b>triple</b> — more distinct predicates than the probe may discover (D-110).
+    /// <para>
+    /// <b>Deliberately not the exact-count message above.</b> A triple vocabulary is discovered as
+    /// it is read, and the guard stops the pass at the <em>first</em> predicate past the maximum —
+    /// so at that moment the probe knows only that more than <c>max</c> distinct predicates exist,
+    /// never how many. Reporting <c>max + 1</c> through the wide wording would read as a complete
+    /// total: a source with 10,000 predicates would say "would discover 4", inviting a retry at 4
+    /// that fails identically. Counting the real total would mean reading on — the very work the
+    /// guard exists to prevent — so the honest bound is the only thing probe may claim, exactly as
+    /// D-108 lets a truncated domain claim "at least one more distinct value exists" and no more.
+    /// </para>
+    /// <para>
+    /// The comparison is worded against the <em>maximum</em> rather than as "more than {max}
+    /// predicates", which keeps one deterministic sentence correct at every positive maximum —
+    /// including <c>max = 1</c>, where a count-led phrasing would read "more than 1 distinct
+    /// predicates". Pluralization branching would buy nothing but a second string to keep true.
+    /// </para>
+    /// </summary>
+    public static BedrockDiagnostic DynamicAttributeLimitExceeded(int max) =>
+        new(DiagnosticCode.ProbeLimitExceeded, DiagnosticSeverity.Error,
+            string.Create(
+                CultureInfo.InvariantCulture,
+                $"The probe encountered more distinct predicates than the configured maximum of {max} discovered attributes; observation stopped at the first excess predicate and no draft was produced (§7.1)."));
 
     /// <summary>Guard 2 — total retained distinct values across attributes (D-110).</summary>
     public static BedrockDiagnostic ValueLimitExceeded(long max) =>

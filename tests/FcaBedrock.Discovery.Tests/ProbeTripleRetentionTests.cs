@@ -118,18 +118,32 @@ public sealed class ProbeTripleRetentionTests
     }
 
     [Fact]
-    public async Task ProbeTriple_WhenAFurtherPredicateAppears_ThenTheAttributeGuardBreaches()
+    public async Task ProbeTriple_WhenAFurtherPredicateAppears_ThenTheGuardBreachesWithAnHonestBound()
     {
         // Unlike wide, this cannot be decided from the schema: the vocabulary is only known as it
         // is read, so the guard is charged at discovery and fails on the first predicate past it.
+        //
+        // Twelve distinct predicates against a maximum of three, deliberately — because the
+        // message must NOT name a total. Probe stops at the fourth, so four is all it ever counts;
+        // saying "would discover 4" would read as the complete vocabulary and invite a retry at 4
+        // that fails identically, while counting the real twelve would mean reading on, which is
+        // the work the guard exists to prevent. The bound is the only honest claim (D-110).
+        var rows = string.Concat(Enumerable.Range(0, 12).Select(i => $"s,p{i},{i}\n"));
+
         var result = await TripleProbeFixtures.ProbeTripleCsvAsync(
-            "s,p,1\ns,q,2\ns,r,3\ns,t,4\n", options: ProbeOptions.Create(maxDiscoveredAttributes: 3));
+            rows, options: ProbeOptions.Create(maxDiscoveredAttributes: 3));
 
         AssertLimitExceeded(result);
-        Assert.Contains(
-            "would discover 4 attributes, above the maximum of 3",
-            result.Diagnostics[0].Message,
-            StringComparison.Ordinal);
+        Assert.Equal(
+            "The probe encountered more distinct predicates than the configured maximum of 3 "
+            + "discovered attributes; observation stopped at the first excess predicate and no "
+            + "draft was produced (§7.1).",
+            result.Diagnostics[0].Message);
+
+        // The specific misreading this wording exists to prevent, stated directly: no exact-count
+        // phrasing borrowed from the wide guard, and no claim that four is the total.
+        Assert.DoesNotContain("would discover", result.Diagnostics[0].Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("4", result.Diagnostics[0].Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -170,7 +184,10 @@ public sealed class ProbeTripleRetentionTests
             "s,p,1\ns,\"q\"\"x\",2\ns,r,3\n", options: ProbeOptions.Create(maxDiscoveredAttributes: 2));
 
         AssertLimitExceeded(result);
-        Assert.Contains("would discover 3 attributes", result.Diagnostics[0].Message, StringComparison.Ordinal);
+        Assert.Contains(
+            "more distinct predicates than the configured maximum of 2",
+            result.Diagnostics[0].Message,
+            StringComparison.Ordinal);
     }
 
     [Fact]
@@ -269,7 +286,12 @@ public sealed class ProbeTripleRetentionTests
             options: ProbeOptions.Create(maxDiscoveredAttributes: 1, maxTotalRetainedValues: 1L));
 
         AssertLimitExceeded(result);
-        Assert.Contains("would discover 2 attributes", result.Diagnostics[0].Message, StringComparison.Ordinal);
+        // Also the max = 1 grammar case: the message reads correctly without pluralization
+        // branching, because it compares against the maximum rather than leading with a count.
+        Assert.Contains(
+            "more distinct predicates than the configured maximum of 1",
+            result.Diagnostics[0].Message,
+            StringComparison.Ordinal);
     }
 
     [Fact]

@@ -565,10 +565,10 @@ error. (Population-relative calibration — quantiles over only the surviving ob
 
 ### 7.1 Discovery / `probe` (draft-spec generation)
 
-> **Status: settled contract, not yet implemented — M5.** Discovery is the M5
-> milestone; no M5 code exists yet. This section is the normative contract the M5
-> implementation realizes (decisions.md D-106…D-113). It is written in the present
-> tense of the format spec; the roadmap tracks the implementation position.
+> **Status: implemented — M5 complete.** Discovery landed across M5 Slices A–D, for
+> both the wide and triple shapes. This section remains the normative contract the
+> implementation realizes (decisions.md D-106…D-113); the roadmap tracks the
+> implementation position and test count.
 
 `probe` is an **optional draft-generation operation** that reads raw data and emits a
 **draft Bedrock spec** the user then curates. It is **outside** the four-phase conversion
@@ -2459,14 +2459,15 @@ so only transcription failures own codes here; a migrated spec then flows throug
 the ordinary parse/resolve/validate/plan phases above. `BedDateTypeNotSupported`
 retires if the date carrier lands (D-038).
 
-**The `probe` phase (M5, future).** Discovery / `probe` (§7.1) is a draft-generation
+**The `probe` phase (M5, implemented).** Discovery / `probe` (§7.1) is a draft-generation
 operation outside the §7 conversion pipeline. Its five codes above —
 `ProbeSourceReadFailed`, `ProbeNoAttributesDiscovered`, `ProbeAttributeNameAdjusted`,
 `ProbeDomainTruncated`, `ProbeLimitExceeded` — and the **`probe`** phase-ownership added to
 `TripleSubjectNotContiguous` and `ObjectKeyValueInvalid` (both previously `calibrate/emit`,
-now `probe/calibrate/emit`) are the M5 registry contract; their **sites land with the M5
-implementation** (decisions.md D-111), and none is in the live enum yet (see the enum-count
-note below). `ProbeSourceReadFailed` is a stream/read failure only and MUST NOT absorb a
+now `probe/calibrate/emit`) were the M5 registry contract; **all seven sites are now live**
+(decisions.md D-111) — the five `Probe*` codes on both shapes, and the two structural codes
+at their probe-phase sites on the triple path — with the ownership and semantics below
+unchanged. `ProbeSourceReadFailed` is a stream/read failure only and MUST NOT absorb a
 structural subject error (that stays `ObjectKeyValueInvalid` / `TripleSubjectNotContiguous`);
 `ProbeAttributeNameAdjusted` and `ProbeDomainTruncated` are aggregated (count + bounded
 sample), and plain headerless `column_N` synthesis alone is not a warning. Cancellation is
@@ -2480,14 +2481,11 @@ at 73M records does not produce 73M diagnostics.
 
 The `DiagnosticCode` enum is the authority for the codes a build can actually
 raise; it grows per slice (P-3), so it holds fewer members than this registry — a
-registry row joins the enum when the milestone owning its site lands (D-085). After M4
-the enum has **70** members. The outstanding rows are `OutputCxtSizeAdvisory` (export, M7),
-`DateValueTypeNotImplementedV1` (the D-038 date carrier), and the **five `probe` rows**
-(`ProbeSourceReadFailed`, `ProbeNoAttributesDiscovered`, `ProbeAttributeNameAdjusted`,
-`ProbeDomainTruncated`, `ProbeLimitExceeded`) — each joining the enum when its own milestone
-lands. The five `probe` rows land together at **M5**, taking the enum to an expected **75**
-(the two phase widenings above add no member); `OutputCxtSizeAdvisory` and
-`DateValueTypeNotImplementedV1` land later at their own milestones. Every other row is live.
+registry row joins the enum when the milestone owning its site lands (D-085). After M5
+the enum has **75** members: the five `probe` rows joined together when M5 landed (the two
+phase widenings above added no member). Two rows remain outstanding —
+`OutputCxtSizeAdvisory` (export, M7) and `DateValueTypeNotImplementedV1` (the D-038 date
+carrier) — each joining the enum when its own milestone lands. Every other row is live.
 
 ## 17. Determinism rules
 

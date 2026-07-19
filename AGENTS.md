@@ -195,12 +195,12 @@ Don't implement first and explain later.
 
 ## Current status
 
-**M1, M2 (TOML spec format + fingerprinting), M3 (triple source), and M4 (discretizers
-beyond manual cuts) are complete.** M4 landed across Slices A–F (D-098…D-105): the
-calibration-preparation contract, `free_per_value`, `equal_width` + the shared cut
-engine, `equal_frequency`/`percentile_p1_p99` on the bounded quantile engine,
-`value_groups`, and `restrict_to` execution. **Every v1 discretizer kind and every
-`restrict_to` form is executable, and no M4 transitional diagnostic remains.** **M5
-(discovery / `probe`) is next.**
+**M1–M5 are complete.** M4 (discretizers beyond manual cuts) landed across Slices A–F
+(D-098…D-105), so **every v1 discretizer kind and every `restrict_to` form is executable,
+and no M4 transitional diagnostic remains.** **M5 (discovery / `probe`) landed across
+Slices A–D** (realizing D-106…D-113): the canonical-writer `declared_domain` wrapping, the
+unbound source-session seam, and the `FcaBedrock.Discovery` package — **both wide and triple
+probing are implemented**, and the diagnostic registry is **75**. **M6 (templates +
+matchers) is next.**
 `docs/roadmap.md` is the live source for current position, test count, and the
 deferred backlog — consult it rather than duplicating the detail here.

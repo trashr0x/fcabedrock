@@ -94,10 +94,13 @@ internal sealed class TripleObservation(ProbeOptions options, bool subjectGroupe
             // Guard 1, charged as attributes are discovered rather than counted up front, and
             // charged BEFORE the value is retained so the guard precedence is
             // attributes → values → text (D-110). Equality is legal; only exceeding breaches.
+            //
+            // The DYNAMIC message, not wide's exact-count one: stopping right here is what keeps
+            // the guard bounded, and it is also exactly what leaves the source's real predicate
+            // count unknown — so the diagnostic claims only the bound it can justify.
             if (_predicates.Count == options.MaxDiscoveredAttributes)
             {
-                return ProbeDiagnostics.AttributeLimitExceeded(
-                    _predicates.Count + 1, options.MaxDiscoveredAttributes);
+                return ProbeDiagnostics.DynamicAttributeLimitExceeded(options.MaxDiscoveredAttributes);
             }
 
             domain = new RetainedDomain(options.ValueRetentionLimit);
