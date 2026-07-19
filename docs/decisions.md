@@ -108,7 +108,7 @@ superseded or refined. A new entry MUST add its line here.
 
 ### Tier 1 spec audit (pre-M2)
 
-- D-060 — Ordinal-over-cuts validation contract
+- D-060 — Ordinal-over-cuts validation contract *((c) authored-boundary provenance extended to template/matcher-supplied fields by D-114)*
 - D-061 — `value_type` matrix: `free_per_value` flexible, `identity` string-only
 - D-062 — Cross-attribute restrict not modelled in v1; drop the diagnostic
 - D-063 — `restrict_to`: M2 validates shape, M4 executes; diagnostic ownership *(exact numeric form added + diagnostic renamed by D-091)*
@@ -127,11 +127,11 @@ superseded or refined. A new entry MUST add its line here.
 
 ### M2 implementation (slices)
 
-- D-074 — `as_attribute` missing-column position uniform across scale kinds (appendix to D-068)
+- D-074 — `as_attribute` missing-column position uniform across scale kinds (appendix to D-068) *(default-path rendering; an explicit `formal_attribute_format` renders the missing column too — D-117)*
 - D-075 — Slice C TOML reader/writer contract: strictness, parse codes, canonical form
 - D-076 — Slice D seam/plan validation contract details (appends D-067) *(exact numeric form added + diagnostic renamed by D-091)*
 - D-077 — Slice E fingerprint encoding/verification contract details (appends D-069)
-- D-078 — Slice F composition/carrier contract details (realizes D-027/D-052; refines D-067/D-075)
+- D-078 — Slice F composition/carrier contract details (realizes D-027/D-052; refines D-067/D-075) *(pattern semantics and template application settled by D-114/D-115/D-118)*
 - D-079 — Slice G `.bed` migrator contract: document-model target, Diagnosed surfaces (realizes D-009/D-049/D-057/D-068) *(numeric restrict migration refined by D-091)*
 - D-080 — `AttributeNameDuplicate` / `ValueLabelKeyNotInDomain` re-homed to the resolve seam (realizes D-067; supersedes its "not re-homed" parenthetical)
 - D-081 — Value-bin ordinal path (Slice H): identity + explicit order (realizes the D-047-deferred path; refines D-060)
@@ -197,6 +197,15 @@ superseded or refined. A new entry MUST add its line here.
 - D-111 — Probe diagnostic governance: five future codes, two phase widenings, `ProbeSourceReadFailed` scope, cancellation is not a diagnostic, registry 70 → expected 75 (refines D-067/D-085/D-099)
 - D-112 — Probe determinism and cancellation: record-sequence input, no ambient state, byte/diagnostic repeatability, no partial artifact; the M5 verification suite
 - D-113 — Canonical-writer deterministic multiline wrapping for long top-level `declared_domain` arrays; private byte-pinned cutoff (refines D-075)
+
+### M6 (templates + matchers) pre-implementation audit
+
+- D-114 — Template/matcher resolution: field-wise layering in declaration order, whole-value compounds, authored provenance, closed flat template surface (refines D-060(c); realizes D-078's deferred application clauses)
+- D-115 — Matcher selector contracts: whole-logical-name regex, resolved zero-based inclusive index range, exactly one selector (realizes D-078's "M6 owns pattern semantics")
+- D-116 — M6 diagnostic matrix: permanent conditions, per-effective-attribute granularity, deterministic order, transitional retirements (refines D-067)
+- D-117 — Naming: closed placeholder grammar, single-pass rendering, authored and rendered validity (refines D-037(a)/D-074/D-092)
+- D-118 — M6 application site and architecture: resolver-seam application, template/matcher-free Core, planner-owned naming (makes D-078's Core boundary permanent)
+- D-119 — M6 exit restated: one self-contained Ads spec, no attribute synthesis; the verification floor
 
 Spec-field defaults are recorded in spec §21 items 1–11 (see the final section
 of this file).
@@ -1266,7 +1275,11 @@ feature, so they are recorded here. They refine, not reverse, earlier decisions.
 
 ### D-060 — Ordinal-over-cuts validation contract
 
-- **Status:** accepted
+- **Status:** accepted; (c)'s authored-vs-defaulted boundary provenance is
+  extended by D-114 — a `boundary` arriving as a **winning field from an applied
+  template or matcher** counts as explicitly authored, exactly as if it had been
+  written on the attribute. A `[defaults]`-inherited boundary remains defaulted,
+  as recorded here.
 - **Date:** 2026-06-30
 - **Decision:** three linked rules for ordinal scales over cut discretizers.
   (a) `scale.order` is a **value-bin** field only (`identity` / `free_per_value`):
@@ -1665,7 +1678,11 @@ built; they refine, not reverse, D-009 / D-049 / D-050…D-065.
 
 ### D-074 — `as_attribute` missing-column position uniform across scale kinds (appendix to D-068)
 
-- **Status:** accepted (appends D-068; lands with M2 Slice B)
+- **Status:** accepted (appends D-068; lands with M2 Slice B); the rendered-name
+  clause describes the **default** naming path — under an explicit
+  `formal_attribute_format` the missing column renders through that format like
+  every other formal attribute the logical attribute emits (D-117). Its
+  **position** and canonical identity are unchanged.
 - **Date:** 2026-07-04
 - **Decision:** the `{column}-missing` column appends **after the scale's columns
   for every scale kind** — D-068 named nominal (after the value bins) and
@@ -1919,7 +1936,11 @@ built; they refine, not reverse, D-009 / D-049 / D-050…D-065.
 
 ### D-078 — Slice F composition/carrier contract details
 
-- **Status:** accepted (realizes D-027/D-052; refines D-067/D-075)
+- **Status:** accepted (realizes D-027/D-052; refines D-067/D-075); the clauses
+  this entry deferred to M6 — pattern semantics and validation (arity, regex
+  syntax), template resolution precedence, within-file duplicate ids, and the
+  shared-config-record question — are settled by D-114/D-115/D-116/D-118. Its
+  carrier, composition, and "templates never resolve into Core" contracts stand.
 - **Date:** 2026-07-05
 - **Decision:** Slice F ships §13 `extends` composition and the
   template/matcher document carriers; the contracts the earlier decisions left
@@ -4343,6 +4364,577 @@ accounting constants; the canonical-writer wrapping cutoff) and are **not** pinn
   fingerprint-affecting (hashes read the plan, not the text — §14); conflating the cutoff with
   the retention limits (unrelated concerns).
 - **Affects:** Spec (`SpecWriter`); spec §2 / §14; roadmap M5. **Refines D-075.**
+
+---
+
+## M6 (templates + matchers) pre-implementation audit
+
+This audit settles the M6 template/matcher, selector, naming, diagnostic, and
+architecture contract before any M6 code lands. Like the pre-M4 and pre-M5 audits
+(D-088…D-097, D-106…D-113) it is **docs-only**: no production code, tests,
+fixtures, enum members, fingerprints, or output bytes change here. The findings
+were adjudicated with the operator and Codex over the **2026-07-19 pre-M6
+pressure test**; the normative contract lives in spec §9 (with targeted
+clarifications in §6/§10.1/§10.7/§12.3/§13/§16.4), and these entries carry the
+rationale. Values deliberately left to the M6 implementation review are named
+where they arise — the public diagnostic **enum names** and their final §16.4
+registry rows, and the public naming surface (a P-4 review) — and are **not**
+pinned here.
+
+### D-114 — Template/matcher resolution: field-wise layering in declaration order, whole-value compounds, authored provenance, closed flat template surface
+
+- **Status:** accepted (M6 pre-implementation audit; refines D-060(c); realizes
+  D-078's deferred application clauses)
+- **Date:** 2026-07-19
+- **Decision:** applying a template is **deterministic syntactic sugar for
+  ordinary per-attribute configuration** — it must behave exactly as though the
+  same fields had been written on every affected attribute. The algebra:
+  - **Precedence is §9.2's five tiers, unchanged:** built-ins < `[defaults]` <
+    matching templates in declaration order < the attribute's directly named
+    `template` < explicit attribute fields. This was already normative; the
+    roadmap's four-term shorthand ("defaults < templates < matchers <
+    per-attribute overrides") read a directly named template as *below* matchers
+    and is corrected to cross-reference §9.2. **No normative change** — a direct
+    reference is more specific than a pattern, so it wins.
+  - **Every matching matcher participates, and templates layer field-wise.**
+    All matchers whose selector matches an attribute take part, in declaration
+    order; for a field authored by more than one matching template, the **last
+    matching template that authors that field wins**. A later matching template
+    that **omits** a field never erases a value an earlier one supplied.
+  - **Presence, not value, drives the override.** Omission inherits; an explicit
+    `false`, an authored empty collection, or a value equal to its own default
+    still overrides a lower tier (the presence-tracked model of D-049/D-071).
+  - **Compound fields are whole values.** `discretizer`, `scale`,
+    `declared_domain`, `restrict_to`, `value_labels`, and the naming fields
+    `display_name` / `formal_attribute_format` are replaced **entire** across
+    precedence tiers — never deep-merged per leaf or per map key. This follows
+    §13 rule 1's whole-value nested `[binding]` tables (D-078), not `[output]`'s
+    per-leaf merge: a half-merged `scale` is exactly the incoherent hybrid that
+    reasoning rejected.
+  - **A winning template/matcher field counts as explicitly authored** for
+    validation and provenance. Templates cannot make otherwise-invalid
+    configuration valid, nor suppress its established diagnostic. Consequently a
+    template-supplied `boundary = "strict"` with `direction = "ge"` over manual
+    cut bins is invalid and reports `OrdinalBoundaryIncompatibleWithCuts`, just
+    as the equivalent explicit attribute would — extending D-060(c)'s
+    "explicitly authored, **per-attribute**" wording to any tier.
+  - **Ordinal defaults fill last and stay defaulted.**
+    `[defaults].ordinal_direction` / `ordinal_boundary` fill an omitted
+    `direction` / `boundary` **only after** the winning effective scale is
+    selected, retaining **defaulted**, not authored, provenance — so a defaulted
+    boundary still never selects the operator over cut bins and never trips that
+    check (D-060(c) unchanged for that path).
+  - **A replaced value is semantically irrelevant** — it contributes neither
+    behaviour nor validation.
+  - **Application covers every attribute, including `include = false`.** D-049
+    dormancy is preserved: emitted shaping stays dormant while excluded, while
+    live restriction/filter configuration still operates (§10.4/D-076).
+  - **The effective attribute is then validated exactly like its equivalent flat
+    declaration**, by the existing condition owners — no §16.4 code changes phase
+    and no condition gains a second owner.
+  - **Closed, flat v1 template surface.** A `[[template]]` body may carry exactly
+    `include`, `discretizer`, `scale`, `declared_domain`, `restrict_to`,
+    `value_labels`, `missing_policy`, `unknown_value_policy`, `display_name`, and
+    `formal_attribute_format`. `name`, `source`, `description`, and `template`
+    are **not** legal there; a `template` key inside `[[template]]` remains the
+    existing wrong-table-key error (`SpecKeyUnrecognized`, D-075/D-078). **v1
+    templates cannot reference or inherit from another template** — no template
+    graph, parent lookup, chain precedence, or cycle diagnostics. Template
+    inheritance may be reconsidered after v1 only if a concrete caller justifies
+    reopening the grammar and a graph-resolution contract (P-3).
+  - **Equivalence.** Semantically equivalent flat, materialized,
+    template/matcher-authored, and `extends`-composed specs resolve to the same
+    effective attributes, the same plan, the same three fingerprints, and
+    byte-identical output.
+- **Why:** §9.2 said "Matchers run in declaration order; the last match wins for
+  any given attribute" beside a tier list reading "Matcher templates (in
+  declaration order)" — the first sentence reads as whole-template *selection*,
+  the second as *layering*, and the two diverge observably: a partial
+  `missing_policy`-only template applied over a scaling template either composes
+  a valid two-column context (layering) or fails `AttributeScalingMissing`
+  (selection). Two competent implementers would have shipped incompatible
+  resolvers. Layering harmonizes both sentences, matches the tier model, and is
+  what makes partial templates composable — the property that makes bulk editing
+  useful. The rest of the algebra (granularity, presence, provenance, dormancy)
+  was equally unstated and equally observable in columns, diagnostics, and
+  fingerprints; the governing principle that settles every case at once is that
+  configuration arriving through a template behaves as though written on the
+  attribute.
+- **Rejected:** whole-template selection (v2's Repeat-To copied whole
+  configurations, which argues for it, but it forecloses partial-template
+  composition and would force the tier list's plural into a singular); per-leaf
+  merging inside `scale`/`discretizer`/`value_labels` (composes incoherent
+  hybrids — the D-078 argument); letting omission clear an earlier value (no
+  presence state can express "erase", and it would make declaration order
+  destructive); treating template-supplied config as *defaulted* (a
+  template-authored `strict` boundary would be silently discarded and the
+  geometry would render a different operator — a silent wrong-output path);
+  nested templates (`extends` already composes specs and matchers already share
+  one template — no v1 caller, P-3); skipping excluded attributes (a
+  template-supplied `restrict_to` is live on a filter-only attribute, §10.4/
+  D-076).
+- **Affects:** spec §6 / §9.1 / §9.2 / §12.3 / §13; Spec (`SpecResolver`
+  application step at M6), Core (effective per-attribute configuration only).
+  Refines D-060(c); realizes D-078's deferred application clauses; pairs with
+  D-115…D-119. Docs-only landing.
+
+### D-115 — Matcher selector contracts: whole-logical-name regex, resolved zero-based inclusive index range, exactly one selector
+
+- **Status:** accepted (M6 pre-implementation audit; realizes D-078's "M6 owns
+  pattern semantics and validation")
+- **Date:** 2026-07-19
+- **Decision:** a matcher **configures already-declared logical attributes**; it
+  never synthesizes attributes, discovers source data, or inspects rows (D-119).
+  Its two selectors:
+  - **`name_regex` targets the complete logical `attribute.name`** — never a
+    source header, predicate text, `display_name`, or a rendered formal name.
+  - **Matching is whole-name:** the pattern must match the entire logical name.
+    Explicit anchors stay legal but are redundant when they express the same
+    boundary. This **deliberately diverges** from `value_groups.pattern`
+    (§11.6/D-090/D-104), which is partial/unanchored — a selector is an identity
+    test over a configuration-bounded name set, whereas a value pattern is a
+    content search over data. The divergence is recorded here so the two regex
+    surfaces are not "harmonized" later by accident.
+  - **Engine:** .NET regex with `RegexOptions.CultureInvariant`, **case-sensitive
+    by default**, authored inline options (e.g. `(?i)`) honored, and
+    `Regex.InfiniteMatchTimeout` passed **explicitly** — the constructor
+    overloads that omit a timeout inherit the host's ambient
+    `REGEX_DEFAULT_MATCH_TIMEOUT`, which would make the same spec host-dependent
+    on the exception channel (the identical D-104 reasoning, P-7/P-14). Each
+    pattern is **compiled once** and reused across attribute names.
+  - **Pattern validity:** non-empty and compilable. An empty or uncompilable
+    pattern is `SpecFieldInvalid` at spec parse; there is **no dedicated
+    regex-error code** (the §11.6 stance).
+  - **`source_index_range = [lo, hi]` is inclusive and zero-based**, over the
+    **resolved physical wide-source index** — the same index space as
+    `attribute.source.index` (§10.2).
+  - It is evaluated **after ordinary header/schema binding**, so a name-bound
+    source participates normally. Failing to supply a schema for a name-bound
+    source remains the existing source-binding failure (`SourceBindingInvalid`);
+    **no matcher-specific duplicate condition is introduced.** There is no
+    circularity, because `source` can never arrive from a template (the closed
+    field list, D-114) — binding always precedes application.
+  - **Every declared logical attribute bound to an in-range physical index
+    matches**, including several logical attributes bound to one physical column
+    (D-033's source repeat). A range never synthesizes attributes.
+  - **Shape:** exactly two TOML integers satisfying `0 ≤ lo ≤ hi`. Wrong arity,
+    a non-integer, a negative endpoint, or reversed endpoints are
+    `SpecFieldInvalid` at parse.
+  - **Over-coverage is legal.** An endpoint beyond the available source width
+    simply has no attribute to match — the Internet-Ads idiom of writing a
+    generous range stays valid. A wholly unmatched matcher warns (D-116); it does
+    not error.
+  - **A range is incompatible with `shape = "triple"`** (predicate sources have
+    no column index) and is an **Error at spec resolve, one per incompatible
+    matcher** (D-116 owns the condition and its name).
+  - **Exactly one selector per matcher.** A `match` table authors `name_regex`
+    **or** `source_index_range`; **both or neither** is `SpecFieldInvalid` at
+    parse. A matcher must also reference a template — a missing `template` key is
+    `SpecFieldInvalid` at parse.
+  - **Cost:** approximately attributes × matchers, two integer comparisons per
+    attribute for a range. Selector evaluation is a one-time
+    configuration/schema-bounded resolution step; **no data row is read** to
+    evaluate a selector, and no matcher state enters Core, calibration, or
+    per-row emission (D-118).
+- **Why:** §9.2 offered one hand-anchored example and an "inclusive" comment,
+  and §10.1 promised "full regex matching" — which reads either as whole-string
+  matching or as full regex *syntax*. Under the partial reading, `feature_\d+`
+  matches `xfeature_12x` as well as `feature_12`, so the template silently
+  configures an attribute the author never named. The matched string is
+  schema-affecting configuration, so its match rule is normative surface, not
+  implementation freedom. `source_index_range` was undefined beyond the happy
+  path on every axis that changes which attributes get configured: index space,
+  name-bound sources, triple, endpoint validation, authored arity, and whether
+  two selectors mean AND, OR, or an error.
+- **Rejected:** partial/substring selector matching (§11.6 consistency argues for
+  it, but accidental-substring application is the costlier silent error, and
+  §10.1 already promised whole-name); culture-sensitive matching (P-12); a finite
+  wall-clock match timeout (machine-speed dependent — a worse determinism hazard
+  than a slow pattern, and matching runs over a config-bounded name set);
+  `RegexOptions.NonBacktracking` (silently narrows the regex language relative to
+  `value_groups`); one-based or half-open ranges; clamping a range to the source
+  width; erroring on over-coverage (breaks the generous-range idiom);
+  authored-`source.index`-only matching (would silently never match a name-bound
+  column); a matcher-specific schemaless failure condition (name binding already
+  needs the schema — one condition, one owner); AND or OR semantics for two
+  authored selectors (ambiguous; exactly one is the clear contract).
+- **Affects:** spec §9.2 / §10.1; Spec (`SpecResolver` selector evaluation at
+  M6), Diagnostics (existing `SpecFieldInvalid` sites; the triple-incompatibility
+  condition per D-116). Realizes D-078's deferred pattern semantics; pairs with
+  D-114/D-116/D-118. Docs-only landing.
+
+### D-116 — M6 diagnostic matrix: permanent conditions, per-effective-attribute granularity, deterministic order, transitional retirements
+
+- **Status:** accepted (M6 pre-implementation audit; refines D-067)
+- **Date:** 2026-07-19
+- **Decision:** every new invalid state M6 introduces gets an owner — phase,
+  severity, and granularity — before any site exists.
+  - **Static authored shape stays parse-owned under the existing
+    `SpecFieldInvalid`; no new parse code is minted.** That set is: an invalid
+    template-`id` grammar (§10.1's `[A-Za-z_][A-Za-z0-9_-]*`), a matcher with no
+    `template` reference, an empty or uncompilable `name_regex`, a malformed
+    `source_index_range` (arity, non-integer, negative, reversed), both-or-neither
+    selector, and the D-117 naming-shape rejections (format-grammar violations,
+    the empty format, and CR/LF or emptiness where D-117 forbids it).
+  - **Seven new permanent conditions**, recorded by condition/phase/severity/
+    granularity. **Their public enum names and their final §16.4 registry rows
+    are deliberately deferred to the M6 implementation-surface review (P-4)** —
+    this landing mints no code name and adds no named registry row:
+    1. a `[[template]]` without `id` — **spec resolve**, Error, one per template;
+    2. a **duplicate** template `id` in the composed document — **spec resolve**,
+       Error, one per extra declaration in composed template order (the
+       `AttributeNameDuplicate` granularity, D-080). This closes D-078's
+       "within-file duplicate ids … unvalidated until M6";
+    3. an **unknown template reference** — **spec resolve**, Error, one per
+       referencing matcher or attribute site; an attribute site carries the
+       `AttributeName` location, and a matcher/template diagnostic identifies its
+       declaration and id/reference deterministically;
+    4. `source_index_range` under `shape = "triple"` — **spec resolve**, Error,
+       one per incompatible matcher (D-115);
+    5. a matcher selecting **zero attributes** — **spec resolve**, Warning, one
+       per matcher (the `RestrictToValueNotInDomain` typo-catcher pattern);
+    6. a **fully-shadowed** matcher — **spec resolve**, Warning, one per matcher;
+    7. an **invalid rendered formal-attribute name** (empty, or containing CR or
+       LF) — **plan**, Error, per affected logical attribute, alongside
+       `FormalAttributeNameCollision` (D-117).
+  - **"Fully shadowed" is a merge-level determination** (defined normatively in
+    §9.2): a matcher that selects at least one attribute but, on **every**
+    selected attribute, has **every field its template authors** overridden by a
+    higher-precedence source — a later matching template authoring the same
+    field, the attribute's directly named template, or an explicit attribute
+    field. It is **independent of `include = false` dormancy (D-049)**: a matcher
+    whose fields *win* on an excluded attribute is **not** fully shadowed, even
+    though the winning configuration is dormant while the attribute is excluded.
+  - **Applied templates are validated through their effective attributes**, under
+    the established owners and codes of the equivalent flat configuration.
+    **Structured validation diagnostics are one per affected effective attribute,
+    in attribute declaration order — never a per-template aggregate**: an invalid
+    effective attribute can be assembled from several matching templates plus
+    higher tiers, so the attribute is the only sound owner. A message **may**
+    identify all contributing template/matcher sites, and a future CLI/UI may
+    group identical diagnostics for presentation without changing the structured
+    diagnostic contract.
+  - **An unused template is semantically dormant.** Parse-level shape and
+    format-grammar checks still fire on its authored body, but effective
+    combinations such as missing scaling or an incomplete scale are validated
+    **only if the template applies**. §9.2's inertness sentence becomes end-state
+    normative text rather than M2-transitional framing.
+  - **Deterministic ordering.** Resolve-family order is: template identity →
+    matcher reference/shape compatibility → attribute references →
+    effective-attribute validation → zero-match/fully-shadowed warnings, with
+    declaration or logical-attribute order preserved **within** each family.
+    Parse diagnostics retain reader source-position order.
+  - **Retirement schedule — at the M6 implementation, not at this landing.**
+    `TemplateMatcherNotImplementedV1` is **removed entirely** when the
+    application path lands. The **naming portion** of
+    `SpecSurfaceNotYetSupported` retires when the `display_name` /
+    `formal_attribute_format` carriers land; that code then carries **only**
+    `value_type = "date"` until the D-038 carrier. Both §16.4 rows and both enum
+    members stay live until then, so the registry is unchanged by this landing.
+- **Why:** D-067's regime — each code owned by exactly one phase, one condition
+  one code, aggregating seams — is the project's diagnostic contract, and
+  retrofitting owners after sites exist is precisely the drift D-080 had to clean
+  up. Every row above is a state a hand-authored M6 spec can reach, and several
+  (a fully shadowed matcher, an unused template's invalid body) would otherwise
+  be silent. The registry count and its lock test also move at M6, so the
+  schedule has to be settled before the slice is planned.
+- **Rejected:** per-`(template, condition)` aggregation with a bounded attribute
+  sample (attractive at Internet-Ads scale, but unsound in general — an invalid
+  effective attribute can draw from several templates plus higher tiers, so no
+  single template owns it; presentation-layer grouping solves the noise without
+  weakening the structured contract); silence for a fully-shadowed matcher (the
+  natural probe-draft-plus-matcher journey would then produce byte-identical
+  output with no signal at all); an Error for a zero-match matcher (a pattern may
+  legitimately over-cover, D-115); validating an unused template as a
+  hypothetical attribute (it has no `source` and no attribute context —
+  dormancy is the D-049 precedent); minting enum names or final registry rows in
+  a docs-only landing (they would strand members no site raises — P-3 and D-085's
+  enum-timing rule); a dedicated regex-error or format-error code (`SpecFieldInvalid`
+  already owns malformed fields — D-090/P-14).
+- **Affects:** spec §9.2 / §16.4; Diagnostics (seven conditions at M6, names at
+  the P-4 review; two retirements at M6). Refines D-067; closes D-078's deferred
+  duplicate-id validation; pairs with D-114/D-115/D-117. Docs-only landing — the
+  registry stays **75** and no enum member changes here.
+
+### D-117 — Naming: closed placeholder grammar, single-pass rendering, authored and rendered validity
+
+- **Status:** accepted (M6 pre-implementation audit; refines D-037(a)/D-074/D-092)
+- **Date:** 2026-07-19
+- **Decision:** `formal_attribute_format` gets a grammar, and rendered names get
+  a validity rule.
+  - **Closed, case-sensitive placeholder set — exactly §10.7's documented five:**
+    `{name}`, `{column}` (the documented **alias** of `{name}`),
+    `{display_name}`, `{value}`, and `{scale_op}`. No other placeholder exists;
+    in particular there is **no `{scale}`**.
+  - **Escaping and substitution.** `{{` renders a literal `{` and `}}` renders a
+    literal `}`. Parsing and substitution are a **single left-to-right pass**:
+    text substituted from `name`, `display_name`, a value, or a label is **never
+    rescanned** as format syntax or brace escaping. This is required for
+    determinism, because §10.1 explicitly allows a `name` to contain brace-like
+    text.
+  - **Three distinct validity rules** — deliberately separate, because
+    conflating them would reject valid formats:
+    1. an authored **`display_name`** must be **non-empty** and contain **neither
+       CR nor LF**;
+    2. the **`formal_attribute_format` string as a whole** must be **non-empty** —
+       the empty format, an unknown placeholder, an empty placeholder, and an
+       unmatched or malformed brace are each `SpecFieldInvalid` at spec parse;
+    3. **literal text within a format** must contain **neither CR nor LF**, but
+       **may be empty** — so `"{name}"`, `"{value}"`, and `"{name}{value}"`,
+       whose literal spans are empty, are **valid**. No non-empty requirement
+       attaches to a literal segment.
+
+    No dedicated format diagnostic is introduced; all of the above are
+    `SpecFieldInvalid`.
+  - **Checked wherever the format is authored** — `[defaults]`, `[[template]]`,
+    and `[[attribute]]` — **including unused templates and excluded attributes**:
+    shape is parse's concern and dormancy is semantic (the D-049 split, exactly
+    as `value_groups` patterns already behave).
+  - **An explicit format is a total override** for **every** formal attribute the
+    logical attribute emits, **including its missing-value column** — which
+    therefore renders through the format, with `{value}` resolving to the literal
+    `missing` per §10.7's table, instead of the default literal
+    `{column}-missing`. This extends D-074, whose rendered-name clause describes
+    the **default** path; the missing column's **position** and canonical
+    identity are unchanged. Without an explicit format the scale-specific
+    defaults of §10.7/D-037(a) continue to apply.
+  - **`{value}` uses `value_labels` whenever labels are live**
+    (`Discretizer.ConsultsValueLabels`, D-049) — including, for a **dichotomic**
+    scale, the **labelled** `true_value` rather than the raw authored value (so
+    `true_value = "t"` with label `bruised` renders `{column}-{value}` as
+    `bruises?-bruised`). Under a discretizer that does not consult labels the raw
+    bin label falls out correctly.
+  - **Rendered-name validity — a plan-time backstop.** After final substitution
+    every rendered formal-attribute name must be **non-empty** and contain
+    **neither CR nor LF**. Violation is a permanent **plan Error** alongside
+    `FormalAttributeNameCollision`, reported per affected logical attribute
+    (D-116). The backstop is load-bearing beyond the M6 surface: it also covers
+    CR/LF arriving from **raw values, calibrated domains, and `value_labels`** —
+    a route reachable before M6. **The shared plan fails**, deliberately blocking
+    `.dat` emission as well as `.cxt`, consistent with existing formal-name
+    collision behaviour even though `.dat` serializes no names.
+  - **Exporters never sanitize**, replace, escape, or independently validate a
+    name (P-15).
+  - **No broader character policy.** Only *empty*, *CR*, and *LF* are settled for
+    v1; no wider C0/Unicode-control prohibition is adopted by this entry.
+  - **Fingerprint reach.** A naming change moves rendered `.cxt` names, `.cxt`
+    bytes, and `cxt_output_fingerprint` **only**; canonical schema identity,
+    `.dat` bytes, and `dat_output_fingerprint` never move on naming alone
+    (§14/D-035/D-051). A naming setting that does not change a rendered name is
+    byte- and hash-neutral.
+- **Why:** §10.7 listed five placeholders and resolved `{value}` per
+  formal-attribute kind, but never defined the *grammar* — whether the set is
+  closed, whether an unknown or case-variant placeholder is an error or literal
+  text, how to write a literal brace, whether substitution recurses, whether an
+  empty format is legal — and every one of those answers changes `.cxt` bytes and
+  `cxt_output_fingerprint`. Separately, nothing constrained `display_name` or the
+  *rendered* name at all: `.cxt` is a line-oriented format (§18.1) whose writer is
+  dumb by law (P-15), so a rendered name containing a newline adds a phantom line
+  — the attribute count and the name block disagree and every downstream consumer
+  misparses — with no diagnostic, since the canonical fingerprint encoding escapes
+  control characters happily (D-077). M6 is what first lets author-controlled text
+  reach rendered names, so the fence belongs here.
+- **Rejected:** treating an unknown placeholder as literal text (turns every typo
+  into a silent rendered-name change or a confusing collision, where a closed set
+  fails fast at parse); a case-insensitive set; backslash escaping (`{{`/`}}` is
+  the conventional choice that keeps every literal writable); recursive or
+  multi-pass substitution (a brace-bearing `name` would re-expand — a determinism
+  hole §10.1 makes reachable); **requiring literal segments to be non-empty**
+  (that would reject `"{name}"` and every adjacent-placeholder format — the
+  non-empty rule belongs to the whole format string and to `display_name`, not to
+  a literal span); the raw, unlabelled dichotomic `{value}` (§10.8's whole purpose
+  is that labels are how raw values appear in formal-attribute names); constraining
+  only the inputs (raw values can inject CR/LF — an RFC 4180 quoted field may
+  legally contain a line break — so an input-only rule is insufficient);
+  constraining only the rendered name (an authored multiline `display_name`
+  deserves a parse-time error, not a late plan failure); letting the exporter
+  sanitize (P-15); adding `{scale}` or dropping `{name}` (neither is defined by
+  §10.7 — an undefined-but-legal placeholder would let two conforming
+  implementations emit different bytes, and dropping a documented one would reject
+  valid specs).
+- **Affects:** spec §10.1 / §10.7 (its conditions register through D-116); Spec
+  (the naming carriers at M6), Core (`ConversionPlanner` rendering and the
+  validity guard), Export (unchanged — P-15). Refines D-037(a)/D-074/D-092;
+  pairs with D-116/D-118. Docs-only landing.
+
+### D-118 — M6 application site and architecture: resolver-seam application, template/matcher-free Core, planner-owned naming
+
+- **Status:** accepted (M6 pre-implementation audit; makes D-078's "templates
+  never resolve into Core" permanent)
+- **Date:** 2026-07-19
+- **Decision:** where M6 runs, and what crosses each package boundary.
+  - **Application site.** Template/matcher application is a step **inside
+    `SpecResolver.Resolve`** — after `extends` composition and after the source
+    binding a selector needs, and **before** effective-attribute validation and
+    Core construction. The resolver applies the D-114/D-115 precedence and
+    provenance rules, constructs the equivalent flat effective attributes, and
+    invokes the **same** validation owners as explicit configuration, so no §16.4
+    code moves phase and no condition gains a second owner.
+  - **Composition is unchanged.** `SpecComposer` remains an **authored
+    document→document** transformation (D-078): it does not materialize matcher
+    results and does not change the canonical round-trip surface. Same-`id`
+    template replacement under `extends` is **late-bound** — an inherited base
+    matcher resolves against the **composed winning** template; base and derived
+    matchers otherwise retain composed order (§13 rules 3–4). This documents what
+    compose-then-resolve already produces; no merge rule changes.
+  - **Core never learns templates.** `BedrockSpec` / `ResolvedSpec` /
+    `AttributeSpec` carry only effective per-attribute configuration and resolved
+    naming inputs. Template ids, matcher selectors, compiled regexes, ranges, and
+    precedence syntax **never enter Core**, and `ConversionPlanner` needs no new
+    guard.
+  - **New public document surface** (the P-4 review list; internal layouts stay
+    free): `display_name` and `formal_attribute_format` on `AttributeSection` and
+    `TemplateSection`, plus `formal_attribute_format` on `DefaultsSection`, with
+    the corresponding `SpecSurfaceNotYetSupported` retirements (D-116) and
+    canonical-writer emission in spec presentation order (D-075). Core's public
+    naming addition is limited to the resolved values `ConversionPlanner`
+    consumes.
+  - **The planner owns final name rendering and the validity guard**, including
+    applying an explicit total format to the missing-value formal attribute
+    (D-117). **Exporters remain decision-free serializers** (P-15).
+  - **No fingerprint-encoder change and no `fp_format` bump.** Template/matcher
+    syntax is never a fingerprint input; fingerprints consume only the resolved
+    plan, and naming reaches only the existing `rendered_names` array in the
+    `cxt` block (D-069/D-077). Resolved-equivalent inline, materialized,
+    matcher-driven, flat, and composed specs therefore hash identically.
+  - **Boundedness.** Matcher evaluation uses configuration and schema metadata
+    only, costs approximately attributes × matchers, compiles each regex once,
+    and **never opens or scans source rows** (§7 phase 1). Resolve stays callable
+    with no source open, and no matcher work occurs during Calibrate or per-row
+    emission.
+- **Why:** D-078 deliberately deferred the shared config record to "when M6
+  applies templates", D-067/D-080 made the seam the enforced validation entry
+  point, and P-4 requires the public shape first. Left unpinned, the obvious
+  failure modes are template state leaking into `ResolvedSpec`, validation running
+  *before* application (checking authored rather than effective configuration),
+  and matching acquiring a data dependency — each of which would quietly undo an
+  accepted decision rather than announce itself.
+- **Rejected:** applying templates during **composition** (composition runs per
+  `extends` step and yields an *authored-surface* document the writer
+  round-trips; an applied document is no longer authored surface — it would change
+  what `SpecWriter` emits and what the flat-file `AttributeNameDuplicate`-style
+  diagnostics see — and application needs the *composed* matcher list anyway, so
+  it is inherently resolve-time); a Core reject-carrier or any template/matcher
+  type in Core (speculative surface removed again at M6 — P-3); validating
+  authored rather than effective configuration; reading data rows to evaluate a
+  selector (§7 phase 1); a fingerprint-encoder change for template syntax (only
+  resolved semantics are inputs — §9.2/§14).
+- **Affects:** Spec (`SpecResolver` application step, document naming carriers),
+  Core (resolved naming inputs, `ConversionPlanner` rendering + guard), Export
+  (unchanged); spec §7 / §9.2 / §13. Makes D-078's Core boundary permanent;
+  realizes D-066/D-067 at the M6 seam; pairs with D-114…D-117. Docs-only landing.
+
+### D-119 — M6 exit restated: one self-contained Ads spec, no attribute synthesis; the verification floor
+
+- **Status:** accepted (M6 pre-implementation audit)
+- **Date:** 2026-07-19
+- **Decision:**
+  - **The exit is restated; the "<50 lines of TOML" gate is withdrawn.** §2
+    requires at least one `[[attribute]]` with `name` + `source` per logical
+    attribute, and matchers **configure** rather than create — so roughly 1,500
+    boolean columns cost roughly 4,700 lines of declaration under *any*
+    conforming spec. The old gate could not be met by anything the format allows,
+    by two orders of magnitude.
+  - **The accepted exit artifact is one self-contained spec** carrying the
+    complete generated attribute inventory plus a template/matcher expressing the
+    repeated boolean scaling policy **once** over the already-declared
+    attributes, converting end-to-end. **The exit measures elimination of
+    repetitive per-attribute manual curation, not total file length.**
+  - **Matchers configure declared attributes only** — they never synthesize
+    attributes, never perform implicit discovery, and never inspect data rows.
+    **Attribute synthesis from a source schema is rejected:** it would violate
+    §2's cardinality rule, make the column set depend on the source header/width
+    (breaking §14's "fully determined by its own text" and the spec-first
+    workflow), and blur D-003's discovery boundary — and its only proposed caller
+    was this exit criterion (P-3).
+  - **Curation from an M5 probe draft.** A draft authors `discretizer` and
+    `scale` explicitly on **every** attribute (D-107), and explicit per-attribute
+    fields are tier 5 — above matcher templates at tier 3 — so a matcher laid
+    over an uncurated draft is fully shadowed and changes nothing. A curation
+    tool must therefore either **remove or replace** the shadowing explicit
+    fields, or **materialize** the boolean configuration into every selected
+    attribute as v2's "Repeat To" did. Both are valid one-file representations,
+    and the fully-shadowed Warning (D-116) makes the uncurated case visible
+    rather than silent.
+  - **Declarative ≡ materialized.** Equivalent declarative and materialized specs
+    must resolve to the same plan, fingerprints, and output, so a future editor
+    may materialize a bulk edit rather than preserve matcher syntax.
+  - **Multi-file `extends` composition remains optional**, not the default
+    workflow, and **no minimal/bare probe mode is required** — D-107's
+    self-documenting draft is unchanged.
+  - **v2's index-range "Repeat To" is authoring precedent, not a ruling on
+    selector semantics** — it is no argument against persistent `name_regex`
+    selection; D-115 settles both selectors on their own merits.
+  - **The verification floor** — the M6 completion gate. It is a gate, not a
+    prescribed test-file layout, and each behaviour ships with its verification in
+    the same slice (P-7):
+    1. every precedence tier pair; multiple matching templates; authored presence
+       (explicit `false`, authored `[]`, authored-equals-default); whole-value
+       compound replacement; boundary and ordinal-defaults provenance, including
+       the template-supplied straddling-boundary Error; excluded attributes
+       (dormancy plus live `restrict_to`); and the directly-named-template versus
+       matcher-template tier scenario;
+    2. inline ≡ materialized ≡ template/matcher ≡ flat ≡ composed equivalence —
+       identical resolved attributes, plans, all three fingerprints, and bytes —
+       including base/derived matcher order and same-`id` late retargeting;
+    3. regex whole-name targeting, case/culture/inline-option behaviour, escaping,
+       and invalid patterns; inclusive range endpoints, repeated source bindings,
+       name-bound binding, legal over-coverage, malformed ranges, zero matches,
+       and triple rejection;
+    4. missing, invalid, and duplicate template ids; unknown references;
+       unused-template dormancy; per-effective-attribute granularity, location,
+       and severity; the deterministic family ordering including both warnings;
+       and diagnostic determinism (same spec ⇒ same ordered diagnostics);
+    5. exact rendered names for nominal, dichotomic, ordinal, and missing columns
+       across `[defaults]`, template, and explicit sources; live `value_labels`
+       including the labelled dichotomic `{value}`; numeric rendering (D-092);
+       **all five placeholders — `{name}` included, `{scale}` absent**; brace
+       escaping; total overrides; malformed formats; invalid final names; and
+       collisions;
+    6. the fingerprint/byte neutrality-and-change matrix below, including an
+       **effect-changing** `[defaults].formal_attribute_format` case;
+    7. round-trip of every new authored carrier and presence state through
+       canonical write→read→write, including authored-equals-default values and
+       template naming keys;
+    8. all existing golden, canonical-fingerprint, native-conformance, and
+       diagnostic-registry locks green, with the transitional retirements
+       asserted;
+    9. the accepted one-file Internet-Ads workflow end-to-end, without repetitive
+       manual edits;
+    10. the document→resolver→Core boundary: template/matcher-free Core,
+        planner-owned naming, dumb exporters, schema-only bounded matcher
+        resolution, and no source-row inspection;
+    11. each behaviour landing with its verification in the same slice (P-7).
+  - **The neutrality/change matrix.** Adding a valid **unused** `[[template]]`, a
+    matcher that **matches nothing**, or a `display_name` **no format
+    references** leaves all three fingerprints and both outputs unchanged (the
+    unmatched matcher adds only its Warning). Inline configuration and the same
+    configuration via template+matcher are identical, as are a flat spec and its
+    equivalent `extends` split. An **effect-changing** `formal_attribute_format`
+    — per-attribute or from `[defaults]` — changes `cxt_output_fingerprint` and
+    `.cxt` bytes **only**. A template-supplied **semantic** change that adds a
+    formal column (e.g. `missing_policy = "as_attribute"`) moves all three
+    fingerprints and both outputs, through the resolved plan, exactly as the
+    equivalent flat edit would. Existing pre-M6 canonical JSON/SHA pins, native
+    conformance outputs, and v2 golden bytes are unaffected, because no existing
+    fixture uses the M6 surface.
+- **Why:** this is the milestone's own exit condition, and as written it could
+  not be honestly met — which also made the largest scope fork in M6 (bulk-edit
+  configuration versus schema-driven attribute creation) look open when it is
+  not. Restating the exit as a curation-delta claim keeps the honest promise
+  (roughly 1,500 attributes configured without roughly 1,500 manual edits) while
+  leaving §2, §14, and D-003 intact. Agreeing the verification floor now prevents
+  the exit being declared on untested precedence (P-7/P-21).
+- **Rejected:** keeping the "<50 lines" gate (unmeetable — the arithmetic is
+  exact); matchers synthesizing attributes from the source schema (§2/§14/D-003,
+  and P-3 — this exit was its only proposed caller); adding a probe "bare/minimal
+  draft" mode to feed the demonstration (reopens D-107 and the public Discovery
+  contract, and is unnecessary once curation may materialize or de-shadow);
+  treating the exit as satisfied only by a two-file `extends` split (composition
+  is optional — the accepted artifact is one self-contained spec).
+- **Affects:** `roadmap.md` M6 (exit wording + the §9.2 precedence
+  cross-reference), spec §9.2; the M6 implementation slices' test plan.
+  Pairs with D-114…D-118. Docs-only landing.
 
 ---
 

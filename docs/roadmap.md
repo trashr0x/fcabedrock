@@ -371,6 +371,26 @@ vertical slices, not waterfall phases — each should leave the system working.
 > platform-gated confidentiality test skipped off its OS).
 >
 > **M6 (templates + matchers) is next** — no M6 work has started.
+>
+> **The pre-M6 contract is settled (docs-only, D-114…D-119).** A pressure test over
+> the M6 surface (2026-07-19), adjudicated with the operator and Codex, closed every
+> open question before any M6 code: template/matcher resolution — field-wise layering
+> in declaration order, presence-based override, whole-value compounds, authored
+> provenance for winning template fields, and the closed flat template surface with no
+> nesting (D-114); the two matcher selectors — whole-logical-name `name_regex` and the
+> inclusive zero-based resolved `source_index_range`, exactly one per matcher (D-115);
+> the diagnostic matrix — seven new permanent conditions by phase/severity/granularity,
+> per-effective-attribute granularity, the deterministic family ordering, and the
+> transitional retirement schedule (D-116); naming — the closed five-placeholder
+> grammar, single-pass rendering, and the authored/rendered validity rules (D-117); the
+> application site and architecture — resolver-seam application, template/matcher-free
+> Core, planner-owned naming (D-118); and the **restated M6 exit** plus the verification
+> floor (D-119). It updated `bedrock-spec-v1.md` (§6/§9.1/§9.2/§10.1/§10.7/§12.3/§13/
+> §16.4), `decisions.md`, and `roadmap.md` in place. This landing is **docs-only** — no
+> production code, tests, fixtures, or enum members (the registry stays **75**; the M6
+> conditions' public names and their §16.4 rows land with the M6 implementation-surface
+> review), and no output or fingerprint bytes changed. **M6 implementation has not
+> started.**
 
 ## Milestones
 
@@ -608,15 +628,40 @@ fixtures.
 
 ### M6 — Templates + matchers
 
-The bulk-edit model in `Spec` (defaults < templates < matchers < per-attribute
-overrides; last-match-wins). Replaces v2 "Repeat-To". Also lands the
+The bulk-edit model in `Spec`. Resolution precedence is the **five tiers of spec
+§9.2** — built-ins < `[defaults]` < matching templates in declaration order < the
+attribute's directly named `template` < explicit attribute fields — with matching
+templates layering **field-wise** within the matcher tier (D-114); the spec is
+normative, and this section does not restate it. Replaces v2 "Repeat-To". Also lands the
 **naming-fidelity carriers** deferred from M2 — `display_name` and
 `formal_attribute_format` on attributes/templates (and `[defaults]
 .formal_attribute_format`), until now recognized-but-rejected at read
 (`SpecSurfaceNotYetSupported`, §16.4).
-**Exit:** the Internet-Ads dataset (1554 booleans) expressible in <50 lines of
-TOML; resolution precedence tested; `display_name` / `formal_attribute_format`
-round-trip and drive rendered names.
+
+The **pre-M6 contract audit** (D-114…D-119, docs-only) settled the milestone's
+semantics before any code: the merge algebra and closed flat template surface
+(D-114), both selector contracts (D-115), the diagnostic matrix and retirement
+schedule (D-116), the naming grammar and rendered-name validity (D-117), and the
+resolver-seam application site with a template/matcher-free Core (D-118).
+
+**Exit:** a **single self-contained** Internet-Ads-style spec — the complete
+generated attribute inventory (roughly 1,500 repetitive boolean feature columns)
+plus one template/matcher expressing the repeated boolean scaling policy over
+those already-declared attributes — converts end-to-end. The exit measures
+**elimination of repetitive per-attribute manual curation, not total file
+length**; the earlier "<50 lines of TOML" gate is **withdrawn** as unmeetable
+(§2 requires an `[[attribute]]` per logical attribute, and matchers configure
+rather than create — D-119). Matchers configure declared attributes only.
+Equivalent declarative (template/matcher) and materialized (explicit
+per-attribute) forms must resolve to identical plans, fingerprints, and bytes.
+Resolution precedence is tested per the §9.2 contract, and `display_name` /
+`formal_attribute_format` round-trip and drive rendered names. The full
+completion gate — precedence tier pairs, representation equivalence, selector
+semantics, diagnostic identity/ordering, exact rendered-name tables across all
+five placeholders, the fingerprint neutrality/change matrix, round-trip,
+unchanged existing locks, the one-file Ads workflow, and the architecture
+boundary — is the D-119 verification floor, each item landing with its slice
+(P-7).
 
 ### M7 — CLI
 

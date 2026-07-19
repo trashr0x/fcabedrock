@@ -382,14 +382,18 @@ default).
 
 `ordinal_direction` and `ordinal_boundary` supply the defaults for an `ordinal`
 scale (§12.3) that omits `direction` / `boundary`; a per-attribute `scale` field
-wins (§9 precedence). **`direction`** applies to **all** ordinal scales — for cut-bin
-scales it selects which bin edge each threshold sits on (`le` → upper, `ge` → lower).
+wins (§9 precedence). They fill an omitted `direction` / `boundary` **only after
+the winning effective scale has been selected** (§9.2), so they never participate
+in the template/matcher merge itself. **`direction`** applies to **all** ordinal
+scales — for cut-bin scales it selects which bin edge each threshold sits on
+(`le` → upper, `ge` → lower).
 **`boundary`** selects the operator only for **value-bin** ordinal scales (where all
 four `direction × boundary` combinations are live); for **cut-bin** scales the
 operator is fixed by the cut geometry, so a **defaulted** `boundary` never selects it
 and never trips `OrdinalBoundaryIncompatibleWithCuts` (§12.3) — only an
-explicitly-authored straddling `boundary` does. Authored-vs-default provenance is
-preserved by the reader/writer.
+explicitly-authored straddling `boundary` does, whether authored on the attribute
+or arriving as a winning field from an applied template or matcher (§9.2, §12.3).
+Authored-vs-default provenance is preserved by the reader/writer.
 
 ### 6.1 Duplicate object keys
 
@@ -799,9 +803,7 @@ v2 reproduction is one switch, not a scattering of legacy defaults.
 
 ### 9.1 `[[template]]`
 
-Reusable attribute configurations referenced by name. Templates may
-contain any `[[attribute]]` field except `name`, `source`, and
-`description` (those are always per-attribute).
+Reusable attribute configurations referenced by name.
 
 ```toml
 [[template]]
@@ -811,11 +813,35 @@ scale          = { kind = "dichotomic", true_value = "Yes" }
 declared_domain = ["Yes", "No"]
 ```
 
+**Eligible fields (closed).** A `[[template]]` body may carry exactly these
+`[[attribute]]` fields, and no others:
+
+`include`, `discretizer`, `scale`, `declared_domain`, `restrict_to`,
+`value_labels`, `missing_policy`, `unknown_value_policy`, `display_name`,
+`formal_attribute_format`.
+
+`name`, `source`, `description`, and `template` are **not** legal inside
+`[[template]]`: the first three are always per-attribute identity, and the fourth
+is excluded because **v1 templates are flat**.
+
+**No template nesting.** A template MUST NOT reference or inherit from another
+template. There is no template graph, parent lookup, chain precedence, or cycle
+diagnostic in v1; `extends` already composes specs (§13) and a matcher already
+shares one template across many attributes. A `template` key inside
+`[[template]]` is the ordinary wrong-table-key error (`SpecKeyUnrecognized`), the
+same response any non-eligible key gets there. Template inheritance is a post-v1
+question requiring a concrete caller (decisions.md D-114).
+
+**Template identity.** `id` is **required**, MUST be unique across the composed
+document (§13), and MUST match the stricter `[A-Za-z_][A-Za-z0-9_-]*` form of
+§10.1 because it is referenced by name. A malformed `id` is a static shape
+failure (`SpecFieldInvalid`, spec parse); a missing `id` and a duplicate `id` are
+resolve-phase Errors (§16.4).
+
 ### 9.2 `[[matcher]]`
 
 Applies a template to attributes matched by a pattern. Used as the
-replacement for v2's "Repeat-To" feature. Matchers run in declaration
-order; the last match wins for any given attribute.
+replacement for v2's "Repeat-To" feature.
 
 ```toml
 [[matcher]]
@@ -827,6 +853,54 @@ match    = { source_index_range = [10, 1553] }   # for v2 Internet-Ads-style dat
 template = "boolean_yes_no"
 ```
 
+A matcher **configures already-declared logical attributes**. It never
+synthesizes an attribute, never performs discovery, and never inspects data rows:
+§2 requires an `[[attribute]]` block per logical attribute, and matcher
+application only supplies configuration to attributes that already exist.
+
+#### Selectors
+
+A `match` table authors **exactly one** selector — `name_regex` **or**
+`source_index_range`. Authoring both, or neither, is `SpecFieldInvalid` (Error,
+spec parse). A matcher MUST also reference a template; a missing `template` key
+is likewise `SpecFieldInvalid`.
+
+**`name_regex`** selects on the complete logical `attribute.name` (§10.1) — never
+a source header, predicate text, `display_name`, or a rendered formal-attribute
+name. The pattern MUST match the **whole** logical name; explicit anchors remain
+legal but are redundant when they express that same boundary. Matching uses .NET
+regex with `RegexOptions.CultureInvariant`, is **case-sensitive** by default,
+honors authored inline options (e.g. `(?i)`), and passes
+`Regex.InfiniteMatchTimeout` explicitly — a finite, machine-speed-dependent
+timeout would make the same spec host-dependent, and `RegexOptions.NonBacktracking`
+is not adopted because it would silently narrow the regex language relative to
+`value_groups`. Each pattern is compiled once and reused across attribute names.
+An authored pattern MUST be non-empty and compilable; an empty or uncompilable
+pattern is `SpecFieldInvalid` (Error, spec parse) — there is no dedicated
+regex-error code, exactly as for `value_groups.pattern` (§11.6).
+
+> **Deliberate divergence from §11.6.** `value_groups.pattern` is **partial**
+> (unanchored `IsMatch`) because it searches *data values*; `name_regex` is
+> **whole-name** because it is an identity test over a configuration-bounded set
+> of names. The two are not to be "harmonized" later by accident.
+
+**`source_index_range = [lo, hi]`** selects on the **resolved physical
+wide-source column index** — inclusive on both ends, **zero-based**, the same
+index space as `source.index` (§10.2). It is evaluated **after** ordinary
+header/schema binding, so a name-bound source participates normally; a name-bound
+source with no schema supplied fails the existing source-binding condition
+(`SourceBindingInvalid`, §10.2) rather than any matcher-specific one. **Every**
+declared logical attribute bound to an in-range index matches, including several
+logical attributes bound to the same physical column (§10.2). The range MUST be
+exactly two TOML integers satisfying `0 ≤ lo ≤ hi`; wrong arity, a non-integer, a
+negative endpoint, or reversed endpoints are `SpecFieldInvalid` (Error, spec
+parse). An endpoint **beyond the source width is legal over-coverage** — a
+generous range simply has no further attributes to match. `source_index_range` is
+**incompatible with `shape = "triple"`** (a predicate source has no column index)
+and is an Error at spec resolve, one per incompatible matcher (§16.4).
+
+#### Resolution order
+
 **Resolution order** (lowest to highest precedence) for an attribute's
 final config:
 
@@ -836,19 +910,93 @@ final config:
 4. Per-attribute `template = "..."` reference
 5. Per-attribute explicit fields
 
+**Layering within tier 3.** **Every** matcher whose selector matches an attribute
+participates, in declaration order. Matching templates layer **field-wise**: for a
+field authored by more than one matching template, the **last matching template
+that authors that field** wins. A later matching template that **omits** a field
+never erases a value an earlier one supplied.
+
+**Merge granularity and provenance.** Template/matcher application is
+deterministic syntactic sugar for the equivalent explicit per-attribute
+configuration, so:
+
+- **Top-level fields layer by authored presence.** Omission inherits from the
+  tier below; an explicit `false`, an authored empty collection (e.g.
+  `declared_domain = []`, §10.3), or a value equal to its own default still
+  overrides a lower tier. Presence, not value, drives the merge.
+- **Compound fields are whole values.** `discretizer`, `scale`,
+  `declared_domain`, `restrict_to`, `value_labels`, `display_name`, and
+  `formal_attribute_format` are replaced **entire** across precedence tiers; they
+  never deep-merge their internal leaves or map entries. (This matches §13 rule 1's
+  whole-value nested `[binding]` tables, not `[output]`'s per-leaf merge.)
+- **A winning template/matcher field counts as explicitly authored** for
+  validation and provenance. A template cannot make otherwise-invalid
+  configuration valid, nor suppress its established diagnostic — so a
+  template-supplied `boundary = "strict"` with `direction = "ge"` over cut bins
+  is invalid and reports `OrdinalBoundaryIncompatibleWithCuts` (§12.3), exactly
+  as the equivalent explicit attribute would.
+- **`[defaults].ordinal_direction` / `ordinal_boundary` fill last.** They fill an
+  omitted `direction` / `boundary` only **after** the winning effective scale has
+  been selected, and the filled value retains **defaulted**, not authored,
+  provenance (§6, §12.3).
+- **A replaced value is semantically irrelevant** — a lower-tier value that a
+  higher tier replaces contributes neither behaviour nor validation.
+- **Application covers every attribute, including `include = false`.** Emitted
+  shaping supplied through a template stays **dormant** while the attribute is
+  excluded, and a template-supplied `restrict_to` is **live** on a filter-only
+  attribute, exactly as authored configuration is (§10.4, §10.9).
+- **The effective attribute is then validated exactly like its equivalent flat
+  declaration**, by the same condition owners (§16.4).
+
+#### Diagnostics for matchers
+
+A matcher that selects **zero attributes** produces one Warning — a typo-catcher,
+not an error, since a pattern or range may legitimately over-cover.
+
+A matcher is **fully shadowed** when it selects at least one attribute and, on
+**every** selected attribute, **every field its template authors** is overridden
+by a higher-precedence source — a later matching template authoring the same
+field, the attribute's directly named template, or an explicit attribute field.
+A fully-shadowed matcher produces one Warning. The determination is made at the
+**merge** level over authored fields only, and is **independent of `include =
+false` dormancy**: a matcher whose fields *win* on an excluded attribute is *not*
+fully shadowed, even though the winning configuration is dormant while the
+attribute is excluded.
+
+Both warnings are ordered by matcher declaration order and neither affects
+fingerprints or output. The full M6 diagnostic matrix — template identity,
+unknown references, shape incompatibility, per-effective-attribute granularity,
+and the deterministic family ordering — is §16.4.
+
+#### Boundedness
+
+Matcher evaluation is a **one-time, configuration- and schema-bounded**
+resolution step: approximately attributes × matchers, with two integer
+comparisons per attribute for a range and one compiled regex per `name_regex`
+matcher. It reads **no data rows** (§7 phase 1), and no template or matcher
+syntax enters Core, calibration, or per-row emission.
+
+#### Fingerprints and equivalence
+
 The resolved (post-merge) per-attribute config is what feeds into the
 schema fingerprint. Source-file template references and matcher rules
 are not part of the fingerprint themselves.
 
-> **Resolution lands at M6; M2 carries them through.** Templates and matchers are
-> **parsed, preserved, and merged under `extends`** in M2 (so a spec using them
-> round-trips through the TOML reader/writer), but they are **not applied**. Any
-> spec that actually *uses* them — a present `[[matcher]]`, or an `[[attribute]]`
-> with a `template = "..."` reference — fails **spec resolution** (the
-> document→Core resolve seam, D-067/D-078; templates never resolve into Core, so
-> the seam owns the reject) with `TemplateMatcherNotImplementedV1`, and therefore
-> cannot convert, until matcher resolution is implemented at M6 (`roadmap.md`).
-> An unreferenced `[[template]]` block round-trips and converts without error.
+It follows that semantically equivalent **flat**, **materialized** (the same
+configuration written out on every attribute), **template/matcher-authored**, and
+**`extends`-composed** specs resolve to the same effective attributes, the same
+plan, the same three fingerprints, and byte-identical `.cxt` / `.dat` output.
+Adding a valid unused `[[template]]`, or a matcher that matches nothing, changes
+no fingerprint and no output byte (the unmatched matcher adds only its Warning).
+
+#### Unused templates are dormant
+
+An **unused** `[[template]]` — unreferenced by any attribute and selected into by
+no matcher — is **semantically dormant**: it round-trips and converts without
+error. Parse-level shape checks and the §10.7 naming-format grammar still apply
+to its authored body, but effective-semantic combinations (missing scaling, an
+incomplete scale) are validated **only if the template applies** to some
+attribute.
 
 ## 10. The `[[attribute]]` block
 
@@ -871,15 +1019,21 @@ template     = "..."                         # optional template id to inherit f
 newlines and the TOML key-quoting character `"`. Real-world data files
 use names like `"bruises?"`, `"feature.1"`, `"days@home"`; the spec
 accepts these as-is so it can round-trip through `.bed` migration and
-other external sources without renaming. Matchers use full regex
-matching against this string. Template `id` fields (§9.1) use the
+other external sources without renaming. A matcher's `name_regex` selects on
+this string, and on the whole of it — see §9.2 for the exact matching contract.
+Template `id` fields (§9.1) use the
 stricter `[A-Za-z_][A-Za-z0-9_-]*` form because they're referenced by
 code.
 
 **`source`** *(required)*. See §10.2.
 
 **`display_name`** *(optional)*. Used in `formal_attribute_format`'s
-`{display_name}` placeholder. Defaults to `name`.
+`{display_name}` placeholder. Defaults to `name`. An **authored**
+`display_name` MUST be non-empty and MUST contain neither CR nor LF; a violation
+is `SpecFieldInvalid` (Error, spec parse). The reason is structural: a
+`display_name` can reach a rendered formal-attribute name, and `.cxt` is
+line-oriented (§18.1), so a newline there would corrupt the file's structure
+(§10.7).
 
 **`include`** *(boolean, default per `[defaults]` or `true`)*. If `false`,
 the attribute generates no formal attributes and emits no incidence — but its
@@ -1208,7 +1362,11 @@ does *not* set `formal_attribute_format` explicitly:
 - `missing_policy = "as_attribute"` adds `{column}-missing`
 
 An explicit `formal_attribute_format` **overrides the scale default entirely**
-and applies to every formal attribute that attribute produces:
+and applies to **every** formal attribute that attribute produces — **including
+its `missing_policy = "as_attribute"` column**, which then renders through the
+format (with `{value}` resolving to the literal `missing`, per the table below)
+instead of the default `{column}-missing`. The missing column's *position* and
+canonical identity are unaffected (§10.5, §14):
 
 ```toml
 formal_attribute_format = "{column}-{value}"     # explicit nominal-style
@@ -1222,7 +1380,9 @@ explicitly. Because the override is total, M1 byte-equality relies on the
 dichotomic default being `{column}` alone (no explicit format in the v2-derived
 specs).
 
-Template placeholders:
+**Template placeholders — a closed, case-sensitive set.** These five are the
+*only* placeholders; there are no others, and the set is not extensible by a
+conforming implementation:
 
 - `{name}` — the attribute's `name` field
 - `{column}` — same as `name` (alias for clarity in wide-CSV context)
@@ -1232,6 +1392,33 @@ Template placeholders:
 - `{scale_op}` — for ordinal scales, the inequality operator (`>=`, `<=`,
   `<`, `>`, or Unicode per §8); empty for non-ordinal scales
 
+**Grammar (normative).** `{{` renders a literal `{` and `}}` renders a literal
+`}`. Parsing and substitution are a **single left-to-right pass**: text
+substituted in from `name`, `display_name`, a raw value, or a `value_labels`
+label is **never rescanned** as format syntax or brace escaping. (This is
+required for determinism — §10.1 explicitly permits a `name` containing
+brace-like text.) So `"{{{column}}}-{value}"` renders literal braces around the
+column name.
+
+**Static validity (all `SpecFieldInvalid`, Error, spec parse).** There is no
+dedicated format diagnostic:
+
+- an **unknown** placeholder (including a case variant such as `{Value}`), an
+  **empty** placeholder `{}`, and an **unmatched or malformed** brace;
+- an **empty format string** — `formal_attribute_format = ""` is rejected rather
+  than rendering every formal attribute as the empty name;
+- **CR or LF in the format's literal text.**
+
+**Literal text may be empty.** The non-empty requirement above applies to the
+format string *as a whole*, never to an individual literal span, so
+`"{name}"`, `"{value}"`, and `"{name}{value}"` — whose literal spans between and
+around the placeholders are empty — are perfectly valid.
+
+These checks apply **wherever the format is authored** — `[defaults]`,
+`[[template]]`, and `[[attribute]]` — including inside an **unused** template and
+on an **excluded** attribute: authored *shape* is the parser's concern, while
+dormancy is semantic (§9.2, §10.9).
+
 **`{value}` resolution by formal-attribute kind** (so a custom
 `formal_attribute_format` that uses `{value}` is well-defined everywhere):
 
@@ -1239,7 +1426,7 @@ Template placeholders:
 | --- | --- |
 | `nominal` bin | the bin label (category value or cut-bin label) |
 | `ordinal` threshold | the threshold label (`{scale_op}` carries the operator) |
-| `dichotomic` (the single column) | the scale's `true_value` (the default format omits it) |
+| `dichotomic` (the single column) | the scale's `true_value` — **via `value_labels` when labels are live** (§10.8); the default format omits it |
 | `missing_policy = "as_attribute"` column | the literal `missing` |
 
 For a **numeric** `free_per_value` bin (a `value_type = "number"` value-bin,
@@ -1247,12 +1434,41 @@ For a **numeric** `free_per_value` bin (a `value_type = "number"` value-bin,
 with the §14 invariant, shortest round-trippable formatting — so `90`, `90.0`, and
 `9e1` share one bin rendered `90`.
 
+`{value}` consults `value_labels` wherever labels are **live** (§10.8) — that is,
+under `identity` / `free_per_value`. For a **dichotomic** scale this means the
+**labelled** `true_value`, not necessarily the raw authored one: with
+`true_value = "t"`, `value_labels = { t = "bruised" }`, and
+`formal_attribute_format = "{column}-{value}"`, the attribute `bruises?` renders
+`bruises?-bruised`. Under a discretizer that does not consult labels, the raw bin
+label is used.
+
 If two formal attributes render to the same name under the chosen format (e.g. a
 real category value `missing` colliding with the missing column), the planner
 emits `FormalAttributeNameCollision` (§10.2).
 
+**Rendered-name validity (normative).** After final substitution, **every**
+rendered formal-attribute name MUST be **non-empty** and MUST contain **neither
+CR nor LF**. A violation is an Error at **plan**, reported per affected logical
+attribute, alongside `FormalAttributeNameCollision` (§16.4). The rule exists
+because `.cxt` is line-oriented (§18.1) and its writer is deliberately dumb
+(P-15): a newline inside a rendered name would add a phantom line, so the
+declared attribute count and the name block would disagree and every consumer
+would misparse — silently, since the canonical fingerprint encoding escapes
+control characters happily (§14).
+
+This backstop is **not** limited to the naming surface: it also catches CR/LF and
+emptiness arriving through raw values, calibrated domains, and `value_labels`, so
+it covers routes that exist independently of `formal_attribute_format`. Because
+the plan is shared, an invalid rendered name **fails the whole plan and therefore
+blocks `.dat` emission as well as `.cxt`** — consistent with existing
+formal-name-collision behavior, even though `.dat` serializes no names. Exporters
+never sanitize, replace, escape, or independently validate a name (P-15). No
+broader C0/Unicode-control prohibition is adopted in v1: only *empty*, *CR*, and
+*LF* are constrained here.
+
 This setting affects `cxt_output_fingerprint` only — not `schema_fingerprint`, and
-not `dat_output_fingerprint` (`.dat` carries numeric IDs, no names).
+not `dat_output_fingerprint` (`.dat` carries numeric IDs, no names). A naming
+setting that does not change any rendered name is byte- and hash-neutral.
 
 ### 10.8 value_labels
 
@@ -1910,9 +2126,16 @@ defaulted** `boundary` (including one inherited from `[defaults].ordinal_boundar
 §6) does **not** request an operator — the geometry renders it (`<` for `le`, `>=`
 for `ge`), *regardless of the defaulted value* (so `[defaults].ordinal_boundary =
 "strict"` does not turn a `ge` cut threshold into `>`). Only an **explicitly
-authored, per-attribute** `boundary` requesting the straddling combination
-(`le`+inclusive or `ge`+strict) is invalid → `OrdinalBoundaryIncompatibleWithCuts`
-(Error, **spec validate**). The reader/writer preserves whether `boundary` was
+authored** `boundary` requesting the straddling combination (`le`+inclusive or
+`ge`+strict) is invalid → `OrdinalBoundaryIncompatibleWithCuts`
+(Error, **spec validate**). "Explicitly authored" means authored **on the
+attribute, or arriving as a winning field from an applied template or matcher**
+(§9.2): configuration applied through a template behaves exactly as though it had
+been written on the attribute, so a template-supplied `ge` + `strict` over cut
+bins trips this check just as an explicit one does. A boundary **filled from
+`[defaults].ordinal_boundary`** after the effective scale is selected remains
+**defaulted, not authored**, never selects the operator over cut bins, and never
+trips this check. The reader/writer preserves whether `boundary` was
 authored or defaulted (§6) — both so the round-trip stays faithful and so this
 check fires only on the authored case. **Over value bins** (`identity` /
 `free_per_value` with an authored `order`, a numeric `free_per_value` with the
@@ -1967,11 +2190,12 @@ The base spec is loaded and merged with the current spec. Merge semantics:
 3. `[[template]]` entries from both are concatenated. If two templates
    share an `id`, the current spec's wins: it replaces the base's entry **in
    place** (base position kept, mirroring rule 5). This is **carrier
-   composition only** — how the document lists merge — not template
-   resolution precedence, which is M6's (§9.2, D-078).
+   composition only** — how the document lists merge — and is distinct from
+   template resolution precedence, which §9.2 defines over the **composed**
+   document.
 4. `[[matcher]]` entries from both are concatenated. Order: base
-   matchers, then current matchers (so current matchers take precedence
-   per the last-match-wins rule in §9.2).
+   matchers, then current matchers (so a current matcher's template layers over
+   a base matcher's for any field both author — §9.2).
 5. `[[attribute]]` entries merge by `name`, **position-preserving**: a base
    attribute keeps its original position; a derived attribute with the same
    `name` replaces it **in place** (whole-attribute replacement, no field-level
@@ -1999,6 +2223,15 @@ Multi-level `extends` is allowed (a chain); the merge above is applied at **each
 step, base-most first. A referenced base spec that cannot be found is
 `SpecExtendsNotFound` (Fatal); cycles MUST be detected and rejected with
 `SpecExtendsCycle` (Fatal).
+
+**Template references are late-bound.** Because composition (rule 3) completes
+before §9.2 resolution runs, a same-`id` template replacement is resolved
+**late**: an **inherited base matcher** — and an inherited attribute's
+`template = "..."` reference — resolves against the **composed winning**
+template, not the base's original body. Base and derived matchers otherwise
+retain their composed order (rule 4). This is a consequence of compose-then-
+resolve, not an additional merge rule: overriding a template by `id` in a derived
+spec re-targets every reference to it, throughout the composed document.
 
 Fingerprints are computed over the *resolved* (fully merged) plan, not the source
 files, so a derived spec and an equivalent flat spec fingerprint identically. Any
@@ -2451,6 +2684,68 @@ to **M6** with the naming-fidelity work, and the `value_type = "date"` entry
 retires when the D-038 carrier lands and hands over to the permanent plan-phase
 `DateValueTypeNotImplementedV1` — so this row **persists past M2 exit** carrying
 those still-deferred surfaces).
+
+**M6 retirement schedule (settled; effective at the M6 implementation, not
+before).** The M6 template/matcher and naming contract is settled
+(decisions.md D-114…D-119), and with it the fate of both remaining
+template/naming transitionals. When the M6 application path lands,
+`TemplateMatcherNotImplementedV1` is **removed entirely**. When the naming
+carriers land, the `display_name` / `formal_attribute_format` portion of
+`SpecSurfaceNotYetSupported` retires and that code carries **only**
+`value_type = "date"` until the D-038 carrier hands over to
+`DateValueTypeNotImplementedV1`. Until those slices land, **both rows above stay
+in this table and both enum members stay live** — settling the schedule changes
+no code and no count.
+
+**New permanent M6 conditions (by condition, not yet by name).** M6 introduces
+the invalid states below. Their **public `DiagnosticCode` names and their rows in
+the table above are deliberately deferred to the M6 implementation-surface review
+(P-4)**, following this registry's standing rule that a code joins the enum with
+its emit site; what is settled now is each condition's **owner phase, severity,
+and granularity** (decisions.md D-116):
+
+| Condition | Where | Severity | Granularity |
+| --- | --- | --- | --- |
+| `[[template]]` without an `id` | spec resolve | Error | one per template |
+| duplicate template `id` in the composed document | spec resolve | Error | one per extra declaration, in composed template order |
+| reference to an unknown template `id` | spec resolve | Error | one per referencing matcher or attribute site |
+| `source_index_range` under `shape = "triple"` | spec resolve | Error | one per incompatible matcher |
+| matcher selecting zero attributes | spec resolve | Warning | one per matcher |
+| fully-shadowed matcher (§9.2) | spec resolve | Warning | one per matcher |
+| invalid rendered formal-attribute name (empty, or containing CR/LF) | plan | Error | one per affected logical attribute |
+
+An unknown-reference diagnostic on an **attribute** carries the `AttributeName`
+location; a matcher- or template-scoped diagnostic identifies its declaration and
+its `id`/reference deterministically. The rendered-name Error sits alongside
+`FormalAttributeNameCollision` at plan (§10.7).
+
+**M6 static shape reuses `SpecFieldInvalid`** — no new parse-phase code is added
+for: an invalid template-`id` grammar (§9.1), a matcher with no `template`
+reference, an empty or uncompilable `name_regex`, a malformed
+`source_index_range` (wrong arity, non-integer, negative, or reversed), both or
+neither matcher selector, and the §10.7 naming-shape failures (unknown/empty
+placeholder, unmatched or malformed brace, empty format string, CR/LF in format
+literal text, and an empty or CR/LF-bearing `display_name`).
+
+**Granularity and ordering for applied templates.** An effective attribute
+assembled from templates is validated by the **existing** condition owners, and
+its structured diagnostics are emitted **one per affected effective attribute, in
+attribute declaration order** — never collapsed into a per-template aggregate,
+because one invalid effective attribute may draw on several matching templates
+plus higher precedence tiers, so the attribute is the only sound owner. A message
+**may** name every contributing template/matcher site, and a CLI or UI **may**
+group identical diagnostics for presentation, without changing the structured
+diagnostic contract. Within the resolve phase the deterministic family order is:
+
+1. template identity (missing / duplicate `id`);
+2. matcher reference and shape compatibility;
+3. attribute template references;
+4. effective-attribute validation;
+5. zero-match and fully-shadowed matcher warnings,
+
+with declaration order (matchers, templates) or logical-attribute order preserved
+**within** each family. Parse-phase diagnostics retain reader source-position
+order.
 
 **The `migrate (v2)` phase** is the one-way `.bed` → TOML migration (D-009/D-079),
 a tooling phase outside the §7 processing pipeline. The migrator carries what the
