@@ -520,6 +520,127 @@ public sealed class SpecFingerprintsTests
         AssertSameFingerprints(baseline, withTemplate);
     }
 
+    // --- The template/matcher identity axes (§9.2/D-119, M6 Slice B) ---
+
+    [Fact]
+    public void ComputeNative_WhenAMatcherMatchesNothing_ThenAllThreeAreUnchanged()
+    {
+        // §9.2/D-119's neutrality row: an unmatched matcher adds ONLY its Warning. Since
+        // fingerprints hash resolved semantics, matcher syntax that configures nothing
+        // cannot reach a single hash byte.
+        var baseline = ComputeFor(MinimalSpec());
+        var withMatcher = ComputeFor(MinimalSpec()
+            + "\n[[template]]\nid = \"t\"\nmissing_policy = \"as_attribute\"\n"
+            + "\n[[matcher]]\nmatch = { name_regex = \"^zz.*$\" }\ntemplate = \"t\"\n");
+
+        AssertSameFingerprints(baseline, withMatcher);
+    }
+
+    [Fact]
+    public void ComputeNative_WhenAMatcherIsFullyShadowed_ThenAllThreeAreUnchanged()
+    {
+        // The other Warning-only row: the matcher SELECTS the attribute, but every field
+        // its template authors loses to the attribute's explicit ones — so the resolved
+        // configuration, and therefore every hash, is exactly the template-free spec's.
+        var baseline = ComputeFor(MinimalSpec());
+        var shadowed = ComputeFor(MinimalSpec()
+            + "\n[[template]]\nid = \"t\"\ndiscretizer = { kind = \"identity\" }\nscale = { kind = \"nominal\" }\n"
+            + "declared_domain = [\"other\"]\n"
+            + "\n[[matcher]]\nmatch = { name_regex = \"^a$\" }\ntemplate = \"t\"\n");
+
+        AssertSameFingerprints(baseline, shadowed);
+    }
+
+    [Fact]
+    public void ComputeNative_WhenConfigArrivesViaTemplateOrInline_ThenAllThreeAgree()
+    {
+        // §9.2's equivalence claim at the fingerprint API: inline configuration and the
+        // same configuration delivered by template+matcher are one resolved spec. The two
+        // documents are written independently, so this compares two specs rather than a
+        // spec with itself.
+        var inline = ComputeFor("""
+            [spec]
+            version = 1
+
+            [binding]
+            shape = "wide"
+
+            [[attribute]]
+            name = "a"
+            source = { kind = "column", index = 0 }
+            discretizer = { kind = "identity" }
+            scale = { kind = "nominal" }
+            declared_domain = ["x"]
+            missing_policy = "as_attribute"
+            """);
+
+        var viaTemplate = ComputeFor("""
+            [spec]
+            version = 1
+
+            [binding]
+            shape = "wide"
+
+            [[template]]
+            id = "t"
+            discretizer = { kind = "identity" }
+            scale = { kind = "nominal" }
+            declared_domain = ["x"]
+            missing_policy = "as_attribute"
+
+            [[matcher]]
+            match = { name_regex = "^a$" }
+            template = "t"
+
+            [[attribute]]
+            name = "a"
+            source = { kind = "column", index = 0 }
+            """);
+
+        AssertSameFingerprints(inline, viaTemplate);
+    }
+
+    [Fact]
+    public void ComputeNative_WhenATemplateAddsAColumn_ThenAllThreeMoveLikeTheFlatEdit()
+    {
+        // The CHANGE row, and the proof that the neutrality rows above are a property of
+        // resolved semantics rather than of templates being ignored: a template-supplied
+        // missing_policy = "as_attribute" plans one extra formal attribute, so it moves
+        // the schema and BOTH output fingerprints — exactly as the flat edit would.
+        var baseline = ComputeFor(MinimalSpec());
+        var withColumn = ComputeFor(MinimalSpec()
+            + "\n[[template]]\nid = \"t\"\nmissing_policy = \"as_attribute\"\n"
+            + "\n[[matcher]]\nmatch = { name_regex = \"^a$\" }\ntemplate = \"t\"\n");
+
+        Assert.NotEqual(baseline.SchemaFingerprint, withColumn.SchemaFingerprint);
+        Assert.NotEqual(baseline.CxtOutputFingerprint, withColumn.CxtOutputFingerprint);
+        Assert.NotEqual(baseline.DatOutputFingerprint, withColumn.DatOutputFingerprint);
+
+        AssertSameFingerprints(withColumn, ComputeFor(Naming("missing_policy = \"as_attribute\"")));
+    }
+
+    [Fact]
+    public void ComputeNative_WhenTemplatesAreSplitAcrossExtends_ThenAllThreeMatchTheFlatSpec()
+    {
+        // §13/§14: fingerprints are computed over the RESOLVED plan, not the source files,
+        // so a derived spec and its equivalent flat spec hash identically — here with the
+        // template and matcher inherited rather than authored locally.
+        const string templateAndMatcher =
+            "[[template]]\nid = \"t\"\ndiscretizer = { kind = \"identity\" }\nscale = { kind = \"nominal\" }\n"
+            + "declared_domain = [\"x\"]\nmissing_policy = \"as_attribute\"\n\n"
+            + "[[matcher]]\nmatch = { name_regex = \"^a$\" }\ntemplate = \"t\"\n";
+        const string attribute = "[[attribute]]\nname = \"a\"\nsource = { kind = \"column\", index = 0 }\n";
+
+        var flat = ComputeFor("[spec]\nversion = 1\n\n[binding]\nshape = \"wide\"\n\n" + templateAndMatcher + "\n" + attribute);
+
+        var (document, spec, plan) = ComposedPipeline(
+            "[spec]\nversion = 1\nextends = \"mushroom-base.toml\"\n\n" + attribute,
+            new SourceSchema(1),
+            "[spec]\nversion = 1\n\n[binding]\nshape = \"wide\"\n\n" + templateAndMatcher);
+
+        AssertSameFingerprints(flat, ComputeNative(document, spec, plan));
+    }
+
     // MinimalSpec's last line is the attribute's declared_domain, so naming keys append to
     // that same [[attribute]] table.
     private static string Naming(string keys) => MinimalSpec() + "\n" + keys + "\n";

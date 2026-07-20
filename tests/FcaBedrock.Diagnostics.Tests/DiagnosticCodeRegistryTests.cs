@@ -94,22 +94,32 @@ public sealed class DiagnosticCodeRegistryTests
         nameof(DiagnosticCode.FormalAttributeNameInvalid),
     ];
 
+    // The exact M6 Slice B delta (D-121): the SIX spec-resolve codes template/matcher application
+    // needs, each landing with a live emit site in SpecResolver. Two are Errors on template
+    // identity, one covers every unknown reference (matcher and attribute sites alike), one is the
+    // triple/range shape incompatibility, and two are the matcher Warnings.
+    //
+    // The static authored-shape failures deliberately mint NOTHING: an invalid template id, a
+    // missing matcher template, both-or-neither selector, an uncompilable name_regex, and a
+    // malformed source_index_range are all the ordinary parse-phase SpecFieldInvalid
+    // (§16.4/D-116) — which is why this delta is six members and not eleven.
+    private static readonly string[] M6SliceBAdditions =
+    [
+        nameof(DiagnosticCode.TemplateIdMissing),
+        nameof(DiagnosticCode.TemplateIdDuplicate),
+        nameof(DiagnosticCode.TemplateReferenceUnknown),
+        nameof(DiagnosticCode.MatcherSelectorInvalidForShape),
+        nameof(DiagnosticCode.MatcherSelectsNoAttributes),
+        nameof(DiagnosticCode.MatcherFullyShadowed),
+    ];
+
     // Codes still owned by LATER milestones. Each must stay absent until the milestone that owns
-    // its emit site lands, so an early or accidental addition fails here. Completing M4 retires
-    // M4's transitions only — it does not license M6/M7 surface. The six M6 RESOLVE codes belong
-    // to Slice B (template/matcher application): Slice A carries and renders naming, but template
-    // and matcher USE is still rejected, so registering one here would strand exactly the
-    // site-less member D-085's timing rule forbids.
+    // its emit site lands, so an early or accidental addition fails here. Landing template/matcher
+    // application retires M6's own transition only — it does not license M7 or D-038 surface.
     private static readonly string[] NotYetOwned =
     [
         "OutputCxtSizeAdvisory",                         // M7
         "DateValueTypeNotImplementedV1",                 // deferred (D-038)
-        "TemplateIdMissing",                             // M6 Slice B
-        "TemplateIdDuplicate",                           // M6 Slice B
-        "TemplateReferenceUnknown",                      // M6 Slice B
-        "MatcherSelectorInvalidForShape",                // M6 Slice B
-        "MatcherSelectsNoAttributes",                    // M6 Slice B
-        "MatcherFullyShadowed",                          // M6 Slice B
     ];
 
     // Transitional codes that RETIRED, each with the slice that retired it. A later slice must not
@@ -120,17 +130,18 @@ public sealed class DiagnosticCodeRegistryTests
         "DiscretizerKindNotYetSupported",                // retired at Slice E (D-104)
         "RestrictToNotImplementedV1",                    // retired at Slice F (D-105) — M4's last
         RenamedFrom,                                     // renamed at Slice F (D-105); no alias
+        "TemplateMatcherNotImplementedV1",               // retired at M6 Slice B (D-121) — M6's last
     ];
 
-    // The registry size after M6 Slice A: 75 members at the M5 baseline plus
-    // FormalAttributeNameInvalid, retiring none — 75 + 1 = 76. (SpecSurfaceNotYetSupported
-    // NARROWS here rather than retiring: its naming-key owners are gone, but value_type =
-    // "date" keeps the member live, so the count does not move for it.)
+    // The registry size after M6 Slice B: 76 members after Slice A, plus the six resolve codes,
+    // minus the retired TemplateMatcherNotImplementedV1 — 76 + 6 - 1 = 81, the M6-exit registry.
+    // (SpecSurfaceNotYetSupported stays live throughout: Slice A narrowed it to value_type =
+    // "date" rather than retiring it, so it never moved the count.)
     // Update this number ONLY together with the slice's decisions.md entry — that deliberate edit
     // is the point (D-085: a code exists once it has a real emit site, so the enum grows per
     // slice rather than drifting). Without it the presence/absence assertions below would let an
     // unrelated member in unnoticed, and the delta would not be locked.
-    private const int MembersAfterM6SliceA = 76;
+    private const int MembersAfterM6SliceB = 81;
 
     private static readonly string[] Defined = Enum.GetNames<DiagnosticCode>();
 
@@ -147,22 +158,28 @@ public sealed class DiagnosticCodeRegistryTests
         Assert.All(M6SliceAAdditions, name => Assert.Contains(name, Defined));
 
     [Fact]
-    public void DiagnosticCode_WhenM6SliceALanded_ThenTheRegistryIsExactlySeventySix() =>
+    public void DiagnosticCode_WhenM6SliceBLanded_ThenItsSixResolveCodesAreDefined() =>
+        Assert.All(M6SliceBAdditions, name => Assert.Contains(name, Defined));
+
+    [Fact]
+    public void DiagnosticCode_WhenM6SliceBLanded_ThenTheRegistryIsExactlyEightyOne() =>
         // The delta lock. On its own a count proves little; combined with the presence lists above
         // and the absence lists below it pins BOTH which codes arrived, that earlier retirements
         // really stuck, and that nothing else moved — which the targeted assertions alone cannot do.
-        Assert.Equal(MembersAfterM6SliceA, Defined.Length);
+        Assert.Equal(MembersAfterM6SliceB, Defined.Length);
 
     [Fact]
-    public void DiagnosticCode_WhenM6SliceALanded_ThenBothM6TransitionalsAreStillLive()
+    public void DiagnosticCode_WhenM6SliceBLanded_ThenNoM6TransitionalRemainsButDateStillDoes()
     {
-        // The Slice A transition boundary, asserted as one contract. Naming EXECUTES now, but:
-        // template/matcher application is Slice B, so its transitional reject must still exist;
-        // and SpecSurfaceNotYetSupported narrows to value_type = "date" rather than retiring, so
-        // its member stays too. A slice that removed either here would be running ahead of its
-        // decision entry.
-        Assert.Contains(nameof(DiagnosticCode.TemplateMatcherNotImplementedV1), Defined);
+        // The M6 transition boundary, asserted as one contract. Template/matcher application
+        // EXECUTES now, so its transitional reject is gone and no M6 transitional remains. But
+        // SpecSurfaceNotYetSupported is NOT an M6 transitional any more: Slice A narrowed it to
+        // its one surviving owner, the value-level value_type = "date" reject, which hands over
+        // to DateValueTypeNotImplementedV1 only when the D-038 carrier lands. Removing it here
+        // would run ahead of that decision.
+        Assert.DoesNotContain("TemplateMatcherNotImplementedV1", Defined);
         Assert.Contains(nameof(DiagnosticCode.SpecSurfaceNotYetSupported), Defined);
+        Assert.DoesNotContain("DateValueTypeNotImplementedV1", Defined);
     }
 
     [Fact]
@@ -193,20 +210,21 @@ public sealed class DiagnosticCodeRegistryTests
     }
 
     [Fact]
-    public void DiagnosticCode_WhenSliceFLanded_ThenM4HasNoTransitionalCodeLeftButLaterOnesRemain()
+    public void DiagnosticCode_WhenM6SliceBLanded_ThenEveryMilestoneTransitionalIsRetired()
     {
-        // The two halves of the M4 exit boundary, asserted together because they are one contract.
-        // restrict_to executes, so its transitional reject retires — M4's last (DiscretizerKind…
-        // went at Slice E). Completing M4 does NOT retire later milestones' transitions:
-        // TemplateMatcherNotImplementedV1 still belongs to M6, and SpecSurfaceNotYetSupported keeps
-        // its own owners (the naming carriers → M6, value_type = "date" → D-038).
+        // The cumulative transitional ledger, asserted as one contract. M4's three went at their
+        // own slices (DiscretizerKind… at E, RestrictTo… at F), and M6's last one goes here — so
+        // no milestone transitional survives.
         Assert.DoesNotContain("RestrictToNotImplementedV1", Defined);
         Assert.DoesNotContain("DiscretizerKindNotYetSupported", Defined);
+        Assert.DoesNotContain("TemplateMatcherNotImplementedV1", Defined);
 
-        Assert.Contains(nameof(DiagnosticCode.TemplateMatcherNotImplementedV1), Defined);
+        // SpecSurfaceNotYetSupported is the one survivor and is NOT a milestone transitional:
+        // it now carries a single value-level reject (value_type = "date") that hands over to
+        // DateValueTypeNotImplementedV1 with the deferred D-038 carrier.
         Assert.Contains(nameof(DiagnosticCode.SpecSurfaceNotYetSupported), Defined);
 
-        // Permanent v1 reservations are not transitional and are unaffected by M4 completing.
+        // Permanent v1 reservations are not transitional and are unaffected by any of this.
         Assert.Contains(nameof(DiagnosticCode.ScaleNotImplementedV1), Defined);
         Assert.Contains(nameof(DiagnosticCode.ObjectKeyCompositeNotImplementedV1), Defined);
     }

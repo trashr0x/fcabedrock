@@ -27,12 +27,37 @@ internal static class SpecSectionReaders
         return section;
     }
 
+    /// <summary>
+    /// Reads one <c>[[matcher]]</c> (§9.2), including its static shape: a matcher
+    /// MUST reference a template and MUST author exactly one selector. These are
+    /// authored-shape rules, so they are parse-owned under the ordinary
+    /// <c>SpecFieldInvalid</c> — §9.2/D-116 mint no matcher-specific parse code.
+    /// They fire even on a matcher that will go on to select nothing, exactly as the
+    /// naming-format grammar fires inside an unused template (§10.7).
+    /// </summary>
     public static MatcherSection ReadMatcher(TomlReadContext context, TableSyntaxBase table)
     {
         var cursor = new TomlTableCursor(context, "[[matcher]]", table);
-        var section = new MatcherSection(
-            ReadMatch(context, cursor),
-            cursor.TakeString("template"));
+
+        // The table header, for the two conditions whose cause is an ABSENT key and so
+        // have no span of their own.
+        var anchor = table.Name?.Span ?? table.Span;
+
+        var match = ReadMatch(context, cursor, anchor);
+
+        // Has before Take: TakeString already reports a non-string value, so checking
+        // authorship separately is what keeps a malformed template from also reporting
+        // as a missing one (one condition, one diagnostic — D-067).
+        var templateAuthored = cursor.Has("template");
+        var section = new MatcherSection(match, cursor.TakeString("template"));
+        if (!templateAuthored)
+        {
+            context.Error(
+                DiagnosticCode.SpecFieldInvalid,
+                "[[matcher]] declares no template; a matcher must reference a [[template]] id (§9.2).",
+                anchor);
+        }
+
         cursor.Finish();
         return section;
     }
@@ -136,22 +161,163 @@ internal static class SpecSectionReaders
         return section;
     }
 
-    private static MatchSection? ReadMatch(TomlReadContext context, TomlTableCursor cursor)
+    /// <summary>
+    /// Reads a matcher's <c>match</c> table and enforces §9.2's <b>exactly one
+    /// selector</b> rule. Both selectors, or neither, is <c>SpecFieldInvalid</c> —
+    /// AND/OR semantics for two authored selectors would be ambiguous, so one is the
+    /// clear contract (D-115).
+    /// </summary>
+    private static MatchSection? ReadMatch(TomlReadContext context, TomlTableCursor cursor, SourceSpan anchor)
     {
+        var authored = cursor.Has("match");
         if (cursor.TakeInlineTable("match") is not { } table)
         {
+            if (!authored)
+            {
+                context.Error(
+                    DiagnosticCode.SpecFieldInvalid,
+                    "[[matcher]] declares no match table; a matcher authors exactly one selector — name_regex or source_index_range (§9.2).",
+                    anchor);
+            }
+
+            return null; // an authored-but-malformed `match` was already reported by TakeInlineTable
+        }
+
+        var inner = new TomlTableCursor(context, "matcher match", table);
+
+        // Authorship decides the arity rule; validity is checked only for the single
+        // authored selector, so a both/neither document reports exactly one condition
+        // rather than cascading into per-selector complaints as well.
+        var regexAuthored = inner.Has("name_regex");
+        var rangeAuthored = inner.Has("source_index_range");
+
+        if (regexAuthored == rangeAuthored)
+        {
+            context.Error(
+                DiagnosticCode.SpecFieldInvalid,
+                regexAuthored
+                    ? "matcher match authors both name_regex and source_index_range; exactly one selector is allowed (§9.2)."
+                    : "matcher match authors no selector; a matcher authors exactly one of name_regex or source_index_range (§9.2).",
+                table.Span);
+
+            // Consume both so Finish does not ALSO report them as unrecognized keys —
+            // the arity is the condition, and the keys themselves are recognized surface.
+            _ = inner.Take("name_regex");
+            _ = inner.Take("source_index_range");
+            inner.Finish();
             return null;
         }
 
-        // Pattern semantics (arity, regex syntax) are M6 territory — the match
-        // is carried verbatim at authored shape (D-078).
-        var inner = new TomlTableCursor(context, "matcher match", table);
         var section = new MatchSection(
-            inner.TakeString("name_regex"),
-            inner.TakeLongArray("source_index_range"));
+            regexAuthored ? ReadNameRegex(context, inner) : null,
+            rangeAuthored ? ReadSourceIndexRange(context, inner) : null);
         inner.Finish();
         return section;
     }
+
+    /// <summary>
+    /// Reads and gates a <c>name_regex</c> (§9.2/D-115): non-empty and compilable
+    /// <b>in the wrapped whole-name form that actually executes</b>
+    /// (<see cref="MatcherSelectors.TryCompileWholeName"/>), so a pattern cannot pass
+    /// parse and then fail — or match differently — at evaluation. An uncompilable
+    /// pattern is one <c>SpecFieldInvalid</c>, not a regex-error code of its own: the
+    /// same stance <c>value_groups.pattern</c> takes (§11.6/D-090).
+    /// </summary>
+    private static string? ReadNameRegex(TomlReadContext context, TomlTableCursor cursor)
+    {
+        if (cursor.Take("name_regex") is not { } pair)
+        {
+            return null; // unreachable: the caller checked authorship
+        }
+
+        if (pair.Value is not StringValueSyntax { Value: { } pattern })
+        {
+            context.Error(
+                DiagnosticCode.SpecFieldInvalid,
+                "matcher match key 'name_regex' expects a string (§9.2).",
+                pair.Value?.Span ?? pair.Span);
+            return null;
+        }
+
+        if (!MatcherSelectors.TryCompileWholeName(pattern, out _, out var error))
+        {
+            context.Error(
+                DiagnosticCode.SpecFieldInvalid,
+                $"matcher match name_regex is not a usable pattern (§9.2): {error}.",
+                pair.Value.Span);
+            return null;
+        }
+
+        return pattern;
+    }
+
+    /// <summary>
+    /// Reads and gates a <c>source_index_range</c> (§9.2/D-115): <b>exactly two</b>
+    /// TOML integers satisfying <c>0 ≤ lo ≤ hi</c>. Wrong arity, a non-integer, a
+    /// negative endpoint, and reversed endpoints are each <c>SpecFieldInvalid</c>.
+    /// <para>
+    /// An endpoint beyond the source width is <b>not</b> checked here and never is:
+    /// over-coverage is legal (§9.2) — the Internet-Ads idiom writes a generous range
+    /// — and it simply has no further attribute to match.
+    /// </para>
+    /// <para>
+    /// Parsed element-wise rather than through <c>TakeLongArray</c> so one malformed
+    /// range reports once: the shared helper reports each non-integer element and then
+    /// returns a short list, which would report the arity a second time.
+    /// </para>
+    /// </summary>
+    private static IReadOnlyList<long>? ReadSourceIndexRange(TomlReadContext context, TomlTableCursor cursor)
+    {
+        if (cursor.Take("source_index_range") is not { } pair)
+        {
+            return null; // unreachable: the caller checked authorship
+        }
+
+        if (pair.Value is not ArraySyntax array)
+        {
+            Invalid(context, pair.Value?.Span ?? pair.Span, "expects an array of exactly two integers [lo, hi]");
+            return null;
+        }
+
+        var endpoints = new List<long>(2);
+        foreach (var item in array.Items)
+        {
+            if (item.Value is not IntegerValueSyntax integer)
+            {
+                Invalid(context, item.Value?.Span ?? array.Span, "expects integer endpoints");
+                return null;
+            }
+
+            endpoints.Add(integer.Value);
+        }
+
+        if (endpoints.Count != 2)
+        {
+            Invalid(context, array.Span, $"expects exactly two endpoints [lo, hi], but {endpoints.Count} were authored");
+            return null;
+        }
+
+        if (endpoints[0] < 0)
+        {
+            Invalid(context, array.Span, $"has a negative lower endpoint {endpoints[0]}; source indexes are zero-based");
+            return null;
+        }
+
+        if (endpoints[0] > endpoints[1])
+        {
+            Invalid(context, array.Span,
+                $"has reversed endpoints (lo = {endpoints[0]}, hi = {endpoints[1]}); the range is inclusive and needs lo <= hi");
+            return null;
+        }
+
+        return endpoints;
+    }
+
+    private static void Invalid(TomlReadContext context, SourceSpan span, string problem) =>
+        context.Error(
+            DiagnosticCode.SpecFieldInvalid,
+            $"matcher match key 'source_index_range' {problem} (§9.2).",
+            span);
 
     private static TripleColumnsSection? ReadTripleColumns(TomlReadContext context, TomlTableCursor cursor)
     {

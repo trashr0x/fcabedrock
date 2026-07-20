@@ -433,8 +433,10 @@ public sealed class SpecComposerTests
     [Fact]
     public void Compose_WhenMatchersInBoth_ThenBaseThenDerivedOrder()
     {
-        // §13 rule 4: concatenation, base first — derived precedence comes from
-        // §9.2 last-match-wins when M6 applies them.
+        // §13 rule 4: concatenation, base first — which is what gives a derived matcher
+        // precedence under §9.2's field-wise last-match-wins. The resolved consequence is
+        // asserted in Compose_WhenBaseAndDerivedMatchersBothApply_…; this pins the carrier
+        // order it depends on.
         var composed = ComposeBaseDerived();
 
         Assert.Equal(["^base", "^derived"], composed.Matchers.Select(m => m.Match?.NameRegex));
@@ -673,6 +675,122 @@ public sealed class SpecComposerTests
         var template = Assert.Single(composed.Templates);
         Assert.Equal("{value}", template.FormalAttributeFormat);
         Assert.Null(template.DisplayName);
+    }
+
+    // --- Composed template/matcher application, resolver-visible (M6 Slice B, D-121) ---
+
+    [Fact]
+    public void Compose_WhenTemplatesAndMatchersAreInherited_ThenResolvedAttributesEqualTheFlatSpec()
+    {
+        // §9.2/§13: composition is authored-document→authored-document and application is
+        // resolve-time, so an `extends` split and its flat equivalent must resolve to the
+        // SAME effective attributes. Both sides are built independently — one file versus
+        // two — rather than deriving one from the other.
+        const string attributes =
+            "[[attribute]]\nname = \"feature_1\"\nsource = { kind = \"column\", index = 0 }\n\n"
+            + "[[attribute]]\nname = \"feature_2\"\nsource = { kind = \"column\", index = 1 }\n";
+        const string templateAndMatcher =
+            "[[template]]\nid = \"flag\"\ndiscretizer = { kind = \"identity\" }\n"
+            + "scale = { kind = \"dichotomic\", true_value = \"1\" }\ndeclared_domain = [\"1\", \"0\"]\n\n"
+            + "[[matcher]]\nmatch = { name_regex = \"^feature_\\\\d+$\" }\ntemplate = \"flag\"\n";
+
+        var flat = Read("[spec]\nversion = 1\n\n[binding]\nshape = \"wide\"\nhas_header = false\n\n"
+            + templateAndMatcher + "\n" + attributes);
+
+        var source = new InMemorySpecTextSource().Add("base.toml",
+            "[spec]\nversion = 1\n\n[binding]\nshape = \"wide\"\nhas_header = false\n\n" + templateAndMatcher);
+        var composed = ComposeOk(
+            Read("[spec]\nversion = 1\nextends = \"base.toml\"\n\n" + attributes),
+            "derived.toml", source);
+
+        Assert.Equal(Describe(ResolveOk(flat)), Describe(ResolveOk(composed)));
+    }
+
+    [Fact]
+    public void Compose_WhenBaseAndDerivedMatchersBothApply_ThenDerivedLayersOverBase()
+    {
+        // §13 rule 4: base matchers precede derived ones in composed order, so for a field
+        // BOTH author the derived matcher's template wins under §9.2's field-wise
+        // last-author-wins — while a field only the base authors survives untouched.
+        var source = new InMemorySpecTextSource().Add("base.toml",
+            "[spec]\nversion = 1\n\n[binding]\nshape = \"wide\"\nhas_header = false\n\n"
+            + "[[template]]\nid = \"b\"\ndiscretizer = { kind = \"identity\" }\nscale = { kind = \"nominal\" }\n"
+            + "declared_domain = [\"x\"]\nmissing_policy = \"as_attribute\"\n\n"
+            + "[[matcher]]\nmatch = { name_regex = \"^a$\" }\ntemplate = \"b\"\n\n"
+            + "[[attribute]]\nname = \"a\"\nsource = { kind = \"column\", index = 0 }\n");
+        var composed = ComposeOk(
+            Read("[spec]\nversion = 1\nextends = \"base.toml\"\n\n"
+                + "[[template]]\nid = \"d\"\nmissing_policy = \"skip\"\n\n"
+                + "[[matcher]]\nmatch = { name_regex = \"^a$\" }\ntemplate = \"d\"\n"),
+            "derived.toml", source);
+
+        var attribute = Assert.Single(ResolveOk(composed).Attributes);
+        Assert.Equal(MissingPolicy.Skip, attribute.MissingPolicy); // derived matcher won the shared field
+        Assert.Equal(["x"], attribute.DeclaredDomain);             // the base-only field survived
+    }
+
+    [Fact]
+    public void Compose_WhenADerivedTemplateReplacesABaseIdInPlace_ThenTheInheritedMatcherRetargets()
+    {
+        // §13's late-binding consequence: composition (rule 3) completes before §9.2
+        // resolution runs, so replacing a template by `id` re-targets every reference to
+        // it — including an INHERITED base matcher that never mentions the derived file.
+        var source = new InMemorySpecTextSource().Add("base.toml",
+            "[spec]\nversion = 1\n\n[binding]\nshape = \"wide\"\nhas_header = false\n\n"
+            + "[[template]]\nid = \"t\"\ndiscretizer = { kind = \"identity\" }\nscale = { kind = \"nominal\" }\n"
+            + "declared_domain = [\"base\"]\n\n"
+            + "[[matcher]]\nmatch = { name_regex = \"^a$\" }\ntemplate = \"t\"\n\n"
+            + "[[attribute]]\nname = \"a\"\nsource = { kind = \"column\", index = 0 }\n");
+        var composed = ComposeOk(
+            Read("[spec]\nversion = 1\nextends = \"base.toml\"\n\n"
+                + "[[template]]\nid = \"t\"\ndiscretizer = { kind = \"identity\" }\nscale = { kind = \"nominal\" }\n"
+                + "declared_domain = [\"derived\"]\n"),
+            "derived.toml", source);
+
+        var attribute = Assert.Single(ResolveOk(composed).Attributes);
+        Assert.Equal(["derived"], attribute.DeclaredDomain);
+
+        // The replacement really was in place — one template, at the base position.
+        Assert.Equal("t", Assert.Single(composed.Templates).Id);
+    }
+
+    /// <summary>
+    /// A deterministic structural description of the resolved attributes — the
+    /// resolver-visible half of §9.2's equivalence claim.
+    /// <para>
+    /// Spelled out rather than comparing <see cref="AttributeSpec"/> records directly:
+    /// record equality compares each member with <c>EqualityComparer&lt;T&gt;.Default</c>,
+    /// and the collection members are typed as interfaces, so two structurally identical
+    /// domains held in different arrays compare UNEQUAL. Expanding them here compares
+    /// what the contract is actually about, and prints a readable diff when it fails.
+    /// </para>
+    /// <para>
+    /// Plan, fingerprint, and output-byte equivalence belong to the native pipeline suite
+    /// in Golden.Tests, which owns the whole chain; duplicating it here would need the
+    /// Conversion/Export references Spec.Tests deliberately does not have.
+    /// </para>
+    /// </summary>
+    private static string[] Describe(BedrockSpec spec) =>
+        [.. spec.Attributes.Select(a => string.Join(" | ",
+            a.Name,
+            a.Source,
+            $"include={a.Include}",
+            $"discretizer={a.Discretizer}",
+            $"scale={a.Scale}",
+            $"domain=[{string.Join(",", a.DeclaredDomain)}]",
+            $"restrict=[{string.Join(",", a.RestrictTo)}]",
+            $"labels=[{string.Join(",", a.ValueLabels.OrderBy(p => p.Key, StringComparer.Ordinal).Select(p => $"{p.Key}={p.Value}"))}]",
+            $"missing={a.MissingPolicy}",
+            $"unknown={a.UnknownValuePolicy}",
+            $"display={a.DisplayName}",
+            $"format={a.NameFormat?.Text ?? "<none>"}"))];
+
+    private static BedrockSpec ResolveOk(SpecDocument document)
+    {
+        var result = Resolve(document);
+        Assert.True(result.TryGetValue(out var spec),
+            string.Join("; ", result.Diagnostics.Select(d => $"{d.Code}: {d.Message}")));
+        return spec;
     }
 
     // A base/derived pair differing only in their [defaults] bodies, over one resolvable

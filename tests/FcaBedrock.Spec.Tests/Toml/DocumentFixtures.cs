@@ -66,6 +66,35 @@ internal static class DocumentFixtures
         Attribute(name, Column(index), discretizer: new IdentityDiscretizerSection(),
             scale: new NominalScaleSection(), declaredDomain: domain, valueLabels: valueLabels);
 
+    // A [[template]] authoring only the fields a test cares about (§9.1's closed ten).
+    // Every omitted field stays null — "not authored" — which is exactly what the §9.2
+    // merge reads, so a template built here layers the same way an authored one does.
+    public static TemplateSection Template(
+        string? id = "t",
+        bool? include = null,
+        DiscretizerSection? discretizer = null,
+        ScaleSection? scale = null,
+        IReadOnlyList<string>? declaredDomain = null,
+        IReadOnlyList<RestrictToEntry>? restrictTo = null,
+        IReadOnlyDictionary<string, string>? valueLabels = null,
+        MissingPolicy? missingPolicy = null,
+        UnknownValuePolicy? unknownValuePolicy = null,
+        string? displayName = null,
+        string? formalAttributeFormat = null) =>
+        new(id, include, discretizer, scale, declaredDomain, restrictTo, valueLabels,
+            missingPolicy, unknownValuePolicy)
+        {
+            DisplayName = displayName,
+            FormalAttributeFormat = formalAttributeFormat,
+        };
+
+    // A [[matcher]] with exactly one selector (§9.2) — the arity the reader enforces.
+    public static MatcherSection Matcher(
+        string? nameRegex = null,
+        IReadOnlyList<long>? sourceIndexRange = null,
+        string? template = "t") =>
+        new(new MatchSection(nameRegex, sourceIndexRange), template);
+
     public static ColumnSourceSection Column(int index, SourceValueType? valueType = null) =>
         new(index, Name: null, valueType);
 

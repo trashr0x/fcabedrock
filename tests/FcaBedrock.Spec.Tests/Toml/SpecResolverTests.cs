@@ -329,59 +329,120 @@ public sealed class SpecResolverTests
         Assert.Contains("SpecComposer.Compose", exception.Message, StringComparison.Ordinal);
     }
 
+    // --- M6 Slice B: template identity, references, and the family ordering (D-121) ---
+
     [Fact]
-    public void Resolve_WhenMatcherPresent_ThenTemplateMatcherNotImplementedAggregated()
+    public void Resolve_WhenMatchersApplyTemplates_ThenTheyResolveCleanly()
     {
+        // The headline Slice B change: a matcher no longer rejects — it applies. The
+        // attribute below authors name + source only; every scaling field arrives
+        // through the template the matcher selects onto it.
         var document = DocumentFixtures.Document(
-            [DocumentFixtures.Nominal("g", 0, ["b"])],
-            matchers:
-            [
-                new MatcherSection(new MatchSection("^a$", null), "t"),
-                new MatcherSection(new MatchSection(null, [0, 1]), "t"),
-            ]);
+            [DocumentFixtures.Attribute("feature_1", DocumentFixtures.Column(0))],
+            templates: [DocumentFixtures.Template("flag", discretizer: new IdentityDiscretizerSection(),
+                scale: new NominalScaleSection(), declaredDomain: ["1", "0"])],
+            matchers: [DocumentFixtures.Matcher(nameRegex: "^feature_\\d+$", template: "flag")]);
 
         var result = Resolve(document);
 
-        var diagnostic = Assert.Single(result.Diagnostics);
-        Assert.Equal(DiagnosticCode.TemplateMatcherNotImplementedV1, diagnostic.Code);
-        Assert.Equal(DiagnosticSeverity.Error, diagnostic.Severity);
-        Assert.Contains("2 [[matcher]] entries", diagnostic.Message, StringComparison.Ordinal);
-        Assert.False(result.TryGetValue(out _));
+        Assert.True(result.TryGetValue(out var spec));
+        Assert.Empty(result.Diagnostics);
+        var attribute = Assert.Single(spec.Attributes);
+        Assert.IsType<IdentityDiscretizer>(attribute.Discretizer);
+        Assert.IsType<NominalScale>(attribute.Scale);
+        Assert.Equal(["1", "0"], attribute.DeclaredDomain);
     }
 
     [Fact]
-    public void Resolve_WhenAttributesReferenceTemplates_ThenOneRejectPerAttribute()
+    public void Resolve_WhenTemplateIdsAreMissingOrDuplicated_ThenIdentityErrorsReportInComposedOrder()
     {
-        var document = DocumentFixtures.Document(
-        [
-            DocumentFixtures.Attribute("a", DocumentFixtures.Column(0), template: "boolean_yes_no",
-                discretizer: new IdentityDiscretizerSection(), scale: new NominalScaleSection(),
-                declaredDomain: ["x"]),
-            DocumentFixtures.Nominal("b", 1, ["y"]),
-            DocumentFixtures.Attribute("c", DocumentFixtures.Column(2), template: "other",
-                discretizer: new IdentityDiscretizerSection(), scale: new NominalScaleSection(),
-                declaredDomain: ["z"]),
-        ]);
-
-        var result = Resolve(document);
-
-        var rejects = result.Diagnostics.Where(d => d.Code == DiagnosticCode.TemplateMatcherNotImplementedV1).ToList();
-        Assert.Equal(["a", "c"], rejects.Select(d => d.Location?.AttributeName));
-        Assert.False(result.TryGetValue(out _));
-    }
-
-    [Fact]
-    public void Resolve_WhenOnlyUnreferencedTemplates_ThenResolvesCleanly()
-    {
-        // §9: an unreferenced [[template]] block is inert — it resolves (and
-        // converts) without error; only *use* rejects before M6.
+        // §9.1: id is required and unique across the COMPOSED document. One Error per
+        // id-less template and one per EXTRA declaration — the first declaration is not
+        // itself an error, so three templates sharing an id yield two diagnostics.
         var document = DocumentFixtures.Document(
             [DocumentFixtures.Nominal("g", 0, ["b"])],
             templates:
             [
-                new TemplateSection("unused", null, new IdentityDiscretizerSection(),
-                    new NominalScaleSection(), ["x"], null, null, null, null),
+                DocumentFixtures.Template("t"),
+                DocumentFixtures.Template(null),
+                DocumentFixtures.Template("t"),
+                DocumentFixtures.Template("t"),
             ]);
+
+        var result = Resolve(document);
+
+        Assert.False(result.TryGetValue(out _));
+        Assert.Equal(
+            [DiagnosticCode.TemplateIdMissing, DiagnosticCode.TemplateIdDuplicate, DiagnosticCode.TemplateIdDuplicate],
+            result.Diagnostics.Select(d => d.Code));
+        Assert.All(result.Diagnostics, d => Assert.Equal(DiagnosticSeverity.Error, d.Severity));
+
+        // Deterministic identity: composed declaration ordinals, 1-based, in order.
+        Assert.Contains("#2", result.Diagnostics[0].Message, StringComparison.Ordinal);
+        Assert.Contains("#3", result.Diagnostics[1].Message, StringComparison.Ordinal);
+        Assert.Contains("#4", result.Diagnostics[2].Message, StringComparison.Ordinal);
+        Assert.Contains("\"t\"", result.Diagnostics[2].Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Resolve_WhenADuplicateIdIsDeclared_ThenTheFirstDeclarationStillResolvesReferences()
+    {
+        // Aggregation over cascade: the duplicate is an Error, but keeping the FIRST
+        // declaration as the lookup means a referencing attribute reports its own real
+        // problem rather than a spurious unknown-reference pile-up (P-14).
+        var document = DocumentFixtures.Document(
+            [DocumentFixtures.Attribute("a", DocumentFixtures.Column(0), template: "t")],
+            templates: [DocumentFixtures.Template("t", scale: new NominalScaleSection()), DocumentFixtures.Template("t")]);
+
+        var result = Resolve(document);
+
+        Assert.False(result.TryGetValue(out _));
+        Assert.Equal([DiagnosticCode.TemplateIdDuplicate, DiagnosticCode.AttributeScalingMissing],
+            result.Diagnostics.Select(d => d.Code));
+        Assert.DoesNotContain(result.Diagnostics, d => d.Code == DiagnosticCode.TemplateReferenceUnknown);
+    }
+
+    [Fact]
+    public void Resolve_WhenReferencesAreUnknown_ThenOnePerSiteWithDeterministicIdentity()
+    {
+        // §16.4 families 2 and 3: matcher sites first (declaration order), then attribute
+        // sites (declaration order) carrying the AttributeName location. One per SITE.
+        var document = DocumentFixtures.Document(
+            [
+                DocumentFixtures.Attribute("a", DocumentFixtures.Column(0), template: "nope",
+                    discretizer: new IdentityDiscretizerSection(), scale: new NominalScaleSection(), declaredDomain: ["x"]),
+                DocumentFixtures.Nominal("b", 1, ["y"]),
+                DocumentFixtures.Attribute("c", DocumentFixtures.Column(2), template: "other",
+                    discretizer: new IdentityDiscretizerSection(), scale: new NominalScaleSection(), declaredDomain: ["z"]),
+            ],
+            matchers: [DocumentFixtures.Matcher(nameRegex: "^b$", template: "absent")]);
+
+        var result = Resolve(document);
+
+        Assert.False(result.TryGetValue(out _));
+        var unknown = result.Diagnostics.Where(d => d.Code == DiagnosticCode.TemplateReferenceUnknown).ToList();
+        Assert.Equal(3, unknown.Count);
+
+        // Matcher site (family 2) precedes both attribute sites (family 3), and carries no
+        // AttributeName — it belongs to a matcher, not an attribute.
+        Assert.Null(unknown[0].Location?.AttributeName);
+        Assert.Contains("#1", unknown[0].Message, StringComparison.Ordinal);
+        Assert.Contains("\"absent\"", unknown[0].Message, StringComparison.Ordinal);
+
+        Assert.Equal(["a", "c"], unknown[1..].Select(d => d.Location?.AttributeName));
+        Assert.Contains("\"nope\"", unknown[1].Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Resolve_WhenATemplateIsUnused_ThenItIsSemanticallyDormant()
+    {
+        // §9.2: an unused template is inert. Its body here would be a broken ATTRIBUTE
+        // (a dichotomic scale with no true_value, and no discretizer), but it applies to
+        // nothing, so it is never validated as a hypothetical attribute — parse-level
+        // shape checks are the only thing that ever ran on it.
+        var document = DocumentFixtures.Document(
+            [DocumentFixtures.Nominal("g", 0, ["b"])],
+            templates: [DocumentFixtures.Template("unused", scale: new DichotomicScaleSection(null))]);
 
         var result = Resolve(document);
 
@@ -391,18 +452,275 @@ public sealed class SpecResolverTests
     }
 
     [Fact]
-    public void Resolve_WhenMatcherPresentAndBindingShapeMissing_ThenBothReport()
+    public void Resolve_WhenTemplateIdentityFailsAndBindingShapeMissing_ThenBothReport()
     {
-        // P-14 aggregation: the template/matcher reject precedes the shape
-        // gate's early return, so both surface in one pass.
+        // §16.4: family 1 is emitted BEFORE the shape gate, so a shape-less document still
+        // reports its template-identity errors — the aggregation the retired transitional
+        // reject used to provide (P-14). Families 2–5 do not run: matcher shape
+        // compatibility has no shape to judge against.
         var document = new SpecDocument(
             DocumentFixtures.SpecV1(), null, null, null, null,
-            [], [new MatcherSection(new MatchSection("^a$", null), "t")], []);
+            [DocumentFixtures.Template(null)],
+            [DocumentFixtures.Matcher(sourceIndexRange: [0, 1], template: "absent")],
+            []);
 
         var result = Resolve(document);
 
-        Assert.Contains(result.Diagnostics, d => d.Code == DiagnosticCode.TemplateMatcherNotImplementedV1);
-        Assert.Contains(result.Diagnostics, d => d.Code == DiagnosticCode.BindingShapeMissing);
+        Assert.Equal([DiagnosticCode.TemplateIdMissing, DiagnosticCode.BindingShapeMissing],
+            result.Diagnostics.Select(d => d.Code));
+    }
+
+    [Fact]
+    public void Resolve_WhenEveryFamilyReports_ThenTheyAppearInTheDeterministicFamilyOrder()
+    {
+        // §16.4's family order, asserted as an exact SEQUENCE because order is the
+        // contract — an unordered membership check would pass on any permutation. One
+        // diagnostic per family, so the sequence is unambiguous:
+        //
+        //   1 template identity → [binding-section, established prefix] → 2 matcher
+        //   references/shape → 3 attribute references → 4 effective validation →
+        //   5 matcher warnings.
+        var document = DocumentFixtures.Document(
+            [DocumentFixtures.Attribute("a", DocumentFixtures.Column(0), template: "nope",
+                discretizer: new IdentityDiscretizerSection())],
+            binding: DocumentFixtures.WideBinding(quoteChar: '\''),
+            templates: [DocumentFixtures.Template(null)],
+            matchers: [DocumentFixtures.Matcher(nameRegex: "^zz$", template: "absent")]);
+
+        var result = Resolve(document);
+
+        Assert.False(result.TryGetValue(out _));
+        Assert.Equal(
+            [
+                DiagnosticCode.TemplateIdMissing,             // family 1
+                DiagnosticCode.QuoteCharNotSupportedV1,       // binding-section prefix
+                DiagnosticCode.TemplateReferenceUnknown,      // family 2 (matcher site)
+                DiagnosticCode.TemplateReferenceUnknown,      // family 3 (attribute site)
+                DiagnosticCode.AttributeScalingMissing,       // family 4
+                DiagnosticCode.MatcherSelectsNoAttributes,    // family 5
+            ],
+            result.Diagnostics.Select(d => d.Code));
+
+        // The two same-code entries really are the two different sites.
+        Assert.Null(result.Diagnostics[2].Location?.AttributeName);
+        Assert.Equal("a", result.Diagnostics[3].Location?.AttributeName);
+    }
+
+    [Fact]
+    public void Resolve_WhenBothWarningKindsFire_ThenTheyInterleaveByMatcherDeclarationOrder()
+    {
+        // §16.4/D-116: family 5 is ONE traversal in matcher declaration order, so the two
+        // warning kinds interleave by matcher rather than grouping by code. Shadowed,
+        // zero-match, shadowed must come out in exactly that order — which is precisely
+        // what a two-pass "all zero-match, then all shadowed" implementation gets wrong.
+        var document = DocumentFixtures.Document(
+            [DocumentFixtures.Nominal("a", 0, ["x"]) with
+            {
+                MissingPolicy = MissingPolicy.Skip,
+                UnknownValuePolicy = UnknownValuePolicy.Skip,
+            }],
+            templates:
+            [
+                DocumentFixtures.Template("t1", missingPolicy: MissingPolicy.AsAttribute),
+                DocumentFixtures.Template("t3", unknownValuePolicy: UnknownValuePolicy.Warn),
+            ],
+            matchers:
+            [
+                DocumentFixtures.Matcher(nameRegex: "^a$", template: "t1"),
+                DocumentFixtures.Matcher(nameRegex: "^zz$", template: "t1"),
+                DocumentFixtures.Matcher(nameRegex: "^a$", template: "t3"),
+            ]);
+
+        var result = Resolve(document);
+
+        // Warnings only: the document still resolves successfully and carries a value.
+        Assert.True(result.TryGetValue(out var spec), string.Join("; ", result.Diagnostics.Select(d => d.Message)));
+        Assert.Single(spec.Attributes);
+        Assert.Equal(
+            [
+                DiagnosticCode.MatcherFullyShadowed,
+                DiagnosticCode.MatcherSelectsNoAttributes,
+                DiagnosticCode.MatcherFullyShadowed,
+            ],
+            result.Diagnostics.Select(d => d.Code));
+        Assert.All(result.Diagnostics, d => Assert.Equal(DiagnosticSeverity.Warning, d.Severity));
+
+        // Each warning names its own matcher, so the interleaving is anchored to the
+        // declaration ordinals rather than merely to a plausible code sequence.
+        Assert.Contains("#1", result.Diagnostics[0].Message, StringComparison.Ordinal);
+        Assert.Contains("#2", result.Diagnostics[1].Message, StringComparison.Ordinal);
+        Assert.Contains("#3", result.Diagnostics[2].Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Resolve_WhenAnEarlierMatcherLosesToALaterOne_ThenOnlyTheEarlierIsFullyShadowed()
+    {
+        // Shadowing WITHIN tier 3 — the duplicate-matcher case. Both templates author the
+        // same single field, so §9.2's field-wise last-author-wins means matcher #2 takes
+        // it and matcher #1 contributes nothing at all. That is the definition of fully
+        // shadowed, so #1 warns and #2 must stay silent.
+        //
+        // Distinct from the explicit- and named-tier cases above: here the higher-precedence
+        // source is a LATER MATCHER, not tier 4 or 5. A winner-map regression that still
+        // produces the right final value but attributes the win to the wrong matcher would
+        // pass every value-only assertion and fail here.
+        var document = DocumentFixtures.Document(
+            [DocumentFixtures.Nominal("a", 0, ["x"])],
+            templates:
+            [
+                DocumentFixtures.Template("first", missingPolicy: MissingPolicy.AsAttribute),
+                DocumentFixtures.Template("second", missingPolicy: MissingPolicy.Skip),
+            ],
+            matchers:
+            [
+                DocumentFixtures.Matcher(nameRegex: "^a$", template: "first"),
+                DocumentFixtures.Matcher(nameRegex: "^a$", template: "second"),
+            ]);
+
+        var result = Resolve(document);
+
+        // Warning-only: resolution still succeeds and carries a value, with the LATER
+        // matcher's field winning.
+        Assert.True(result.TryGetValue(out var spec), string.Join("; ", result.Diagnostics.Select(d => d.Message)));
+        Assert.Equal(MissingPolicy.Skip, Assert.Single(spec.Attributes).MissingPolicy);
+
+        // Exactly one warning, for matcher #1 — named by ordinal AND reference (§16.4).
+        var warning = Assert.Single(result.Diagnostics);
+        Assert.Equal(DiagnosticCode.MatcherFullyShadowed, warning.Code);
+        Assert.Equal(DiagnosticSeverity.Warning, warning.Severity);
+        Assert.Contains("#1", warning.Message, StringComparison.Ordinal);
+        Assert.Contains("\"first\"", warning.Message, StringComparison.Ordinal);
+
+        // The winner is silent: no second warning mentioning matcher #2 or its template.
+        Assert.DoesNotContain("#2", warning.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("\"second\"", warning.Message, StringComparison.Ordinal);
+
+        // P-7 for this shape specifically: the ordered signature repeats exactly.
+        Assert.Equal(
+            SpecResolver.Resolve(document).Diagnostics.Select(d => (d.Code, d.Severity, d.Message)),
+            SpecResolver.Resolve(document).Diagnostics.Select(d => (d.Code, d.Severity, d.Message)));
+    }
+
+    [Fact]
+    public void Resolve_WhenAMatcherLosesToTheNamedTemplate_ThenItIsFullyShadowed()
+    {
+        // Shadowing by tier 4 rather than tier 5 — the "higher-precedence source" the
+        // §9.2 definition names includes the attribute's directly named template.
+        var document = DocumentFixtures.Document(
+            [DocumentFixtures.Attribute("a", DocumentFixtures.Column(0), template: "named",
+                discretizer: new IdentityDiscretizerSection(), scale: new NominalScaleSection(), declaredDomain: ["x"])],
+            templates:
+            [
+                DocumentFixtures.Template("named", missingPolicy: MissingPolicy.Skip),
+                DocumentFixtures.Template("matched", missingPolicy: MissingPolicy.AsAttribute),
+            ],
+            matchers: [DocumentFixtures.Matcher(nameRegex: "^a$", template: "matched")]);
+
+        var result = Resolve(document);
+
+        Assert.True(result.TryGetValue(out _));
+        Assert.Equal(DiagnosticCode.MatcherFullyShadowed, Assert.Single(result.Diagnostics).Code);
+    }
+
+    [Fact]
+    public void Resolve_WhenAMatcherFieldWinsOnAnExcludedAttribute_ThenItIsNotShadowed()
+    {
+        // §9.2/D-116: shadowing is a MERGE-level determination, deliberately independent
+        // of D-049 dormancy. The template's field wins the merge here, so the matcher is
+        // doing something — even though the winning configuration is dormant while the
+        // attribute is excluded. Warning would be wrong; silence is the contract.
+        var document = DocumentFixtures.Document(
+            [DocumentFixtures.Attribute("a", DocumentFixtures.Column(0), include: false)],
+            templates: [DocumentFixtures.Template("t", missingPolicy: MissingPolicy.AsAttribute)],
+            matchers: [DocumentFixtures.Matcher(nameRegex: "^a$")]);
+
+        var result = Resolve(document);
+
+        Assert.True(result.TryGetValue(out _));
+        Assert.Empty(result.Diagnostics);
+    }
+
+    [Fact]
+    public void Resolve_WhenAMatcherWinsOnOneOfSeveralSelectedAttributes_ThenItIsNotShadowed()
+    {
+        // "Fully" is load-bearing: shadowing requires EVERY authored field to lose on
+        // EVERY selected attribute. Winning on one attribute out of two is enough to
+        // stay silent.
+        var document = DocumentFixtures.Document(
+            [
+                DocumentFixtures.Nominal("a", 0, ["x"]) with { MissingPolicy = MissingPolicy.Skip },
+                DocumentFixtures.Nominal("b", 1, ["x"]),
+            ],
+            templates: [DocumentFixtures.Template("t", missingPolicy: MissingPolicy.AsAttribute)],
+            matchers: [DocumentFixtures.Matcher(nameRegex: "^[ab]$")]);
+
+        var result = Resolve(document);
+
+        Assert.True(result.TryGetValue(out var spec));
+        Assert.Empty(result.Diagnostics);
+        Assert.Equal([MissingPolicy.Skip, MissingPolicy.AsAttribute], spec.Attributes.Select(a => a.MissingPolicy));
+    }
+
+    [Fact]
+    public void Resolve_WhenARangeMatcherMeetsTriple_ThenItBothErrorsAndWarns()
+    {
+        // The two conditions are independent and both hold: the selector is incompatible
+        // with the shape (Error, family 2), AND it selected zero attributes (Warning,
+        // family 5). The zero-match warning is selector-driven and is not suppressed by
+        // an adjacent Error on the same matcher, so family 5 stays one uniform traversal
+        // with no special cases (D-121).
+        var document = DocumentFixtures.Document(
+            [DocumentFixtures.Attribute("age", new PredicateSourceSection("age", null),
+                discretizer: new IdentityDiscretizerSection(), scale: new NominalScaleSection(), declaredDomain: ["x"])],
+            binding: DocumentFixtures.TripleBinding(),
+            templates: [DocumentFixtures.Template("t", missingPolicy: MissingPolicy.AsAttribute)],
+            matchers: [DocumentFixtures.Matcher(sourceIndexRange: [0, 4])]);
+
+        var result = Resolve(document);
+
+        Assert.False(result.TryGetValue(out _));
+        Assert.Equal(
+            [DiagnosticCode.MatcherSelectorInvalidForShape, DiagnosticCode.MatcherSelectsNoAttributes],
+            result.Diagnostics.Select(d => d.Code));
+    }
+
+    [Fact]
+    public void Resolve_WhenTheSameDocumentIsResolvedTwice_ThenTheOrderedDiagnosticsAreIdentical()
+    {
+        // P-7 over the whole M6 diagnostic surface: identity, references, effective
+        // validation, and both warning kinds, compared on the full structured tuple —
+        // code, severity, location, and message — not merely on codes.
+        var document = DocumentFixtures.Document(
+            [
+                DocumentFixtures.Attribute("a", DocumentFixtures.Column(0), template: "nope",
+                    discretizer: new IdentityDiscretizerSection(), scale: new NominalScaleSection(), declaredDomain: ["x"]),
+                DocumentFixtures.Nominal("b", 1, ["y"]) with { MissingPolicy = MissingPolicy.Skip },
+            ],
+            templates:
+            [
+                DocumentFixtures.Template("t", missingPolicy: MissingPolicy.AsAttribute),
+                DocumentFixtures.Template(null),
+                DocumentFixtures.Template("t"),
+            ],
+            matchers:
+            [
+                DocumentFixtures.Matcher(nameRegex: "^b$"),
+                DocumentFixtures.Matcher(nameRegex: "^zz$"),
+            ]);
+
+        static (DiagnosticCode, DiagnosticSeverity, DiagnosticLocation?, string)[] Signature(SpecDocument d) =>
+            [.. SpecResolver.Resolve(d).Diagnostics.Select(x => (x.Code, x.Severity, x.Location, x.Message))];
+
+        Assert.Equal(Signature(document), Signature(document));
+
+        // Non-vacuity: the signature must actually cover the M6 families, or "identical"
+        // would be a claim about an empty list.
+        var codes = Signature(document).Select(s => s.Item1).ToList();
+        Assert.Contains(DiagnosticCode.TemplateIdMissing, codes);
+        Assert.Contains(DiagnosticCode.TemplateIdDuplicate, codes);
+        Assert.Contains(DiagnosticCode.TemplateReferenceUnknown, codes);
+        Assert.Contains(DiagnosticCode.MatcherFullyShadowed, codes);
+        Assert.Contains(DiagnosticCode.MatcherSelectsNoAttributes, codes);
     }
 
     // --- Failures ---

@@ -2625,7 +2625,12 @@ exactly one phase — the "Where" column below is the phase-ownership contract
 | `OrdinalBoundaryIncompatibleWithCuts` | Error | spec validate |
 | `ValueGroupsLabelDuplicate` | Error | spec validate |
 | `ValueGroupsPassthroughDataDependent` | Warning | calibrate |
-| `TemplateMatcherNotImplementedV1` | Error | spec resolve (transitional) |
+| `TemplateIdMissing` | Error | spec resolve |
+| `TemplateIdDuplicate` | Error | spec resolve |
+| `TemplateReferenceUnknown` | Error | spec resolve |
+| `MatcherSelectorInvalidForShape` | Error | spec resolve |
+| `MatcherSelectsNoAttributes` | Warning | spec resolve |
+| `MatcherFullyShadowed` | Warning | spec resolve |
 | `SchemaFingerprintStale` | Warning | spec load |
 | `CxtOutputFingerprintStale` | Warning | spec load |
 | `DatOutputFingerprintStale` | Warning | spec load |
@@ -2653,12 +2658,14 @@ correctly-phased `AttributeHasNoCrosses` (an empty column, emit) and
 filtering, emit). All four still write a structurally-valid (if degenerate)
 output rather than failing.
 
-**Transitional codes.** `TemplateMatcherNotImplementedV1` (owned by spec resolve —
-templates/matchers never resolve into Core, D-078)
-is emitted only by milestones *before* the feature's implementation milestone
-(templates/matchers → M6;
-`roadmap.md`); it is removed once the feature lands and is **not** part of the
-v1 end-state set. (`ObjectKeyColumnNotImplementedV1` retired when wide `dedupe`
+**Transitional codes.** A transitional code is emitted only by milestones *before*
+the feature's implementation milestone; it is removed once the feature lands and is
+**not** part of the v1 end-state set. **No milestone transitional remains.**
+(`TemplateMatcherNotImplementedV1` — owned by spec resolve, since templates and
+matchers never resolve into Core (D-078) — retired at **M6 Slice B** (D-121) when
+the application path landed: templates and matchers now execute, so the six named
+spec-resolve rows above replaced the single reject.
+`ObjectKeyColumnNotImplementedV1` retired when wide `dedupe`
 landed at M3 Slice F; `ObservedDomainCalibrationNotImplementedV1` retired when
 observed-domain calibration landed at M4 Slice A — D-098, so an absent
 `declared_domain` under a consuming discretizer is now filled by the Calibrate
@@ -2685,33 +2692,32 @@ per-table deferred-**key** sets are gone entirely, so the surviving owner is a
 when the D-038 date carrier lands and hands over to the permanent plan-phase
 `DateValueTypeNotImplementedV1`.
 
-**M6 retirement schedule.** The M6 template/matcher and naming contract is settled
-(decisions.md D-114…D-119). **The naming half has landed (M6 Slice A, D-120):**
-the `display_name` / `formal_attribute_format` portion of
-`SpecSurfaceNotYetSupported` has retired, and that code now carries **only**
+**M6 retirement schedule — complete.** The M6 template/matcher and naming contract
+(decisions.md D-114…D-119) has landed in full. **The naming half landed at M6
+Slice A (D-120):** the `display_name` / `formal_attribute_format` portion of
+`SpecSurfaceNotYetSupported` retired, and that code now carries **only**
 `value_type = "date"` until the D-038 carrier hands over to
-`DateValueTypeNotImplementedV1`. `TemplateMatcherNotImplementedV1` is **still
-live** and is **removed entirely** when the application path lands (M6 Slice B) —
-its row above stays in this table and its enum member stays live until then.
+`DateValueTypeNotImplementedV1`. **The application half landed at M6 Slice B
+(D-121):** `TemplateMatcherNotImplementedV1` is **removed entirely** — member,
+emit sites, and registry row — so **no M6 transitional remains**.
 
-**New permanent M6 conditions.** M6 introduces the invalid states below. The
-seventh has **landed with its emit site** at M6 Slice A as
-`FormalAttributeNameInvalid` (named in the table above, D-120). The remaining six
-are **spec-resolve** conditions belonging to template/matcher application: their
-public `DiagnosticCode` names and their rows in the table above land with
-**M6 Slice B**, following this registry's standing rule that a code joins the enum
-with its emit site (D-085). What is settled for all seven is each condition's
-**owner phase, severity, and granularity** (decisions.md D-116):
+**The permanent M6 conditions — all seven named and live.** M6 introduced the
+invalid states below. The seventh landed with its emit site at M6 Slice A as
+`FormalAttributeNameInvalid` (D-120); the remaining six landed as **spec-resolve**
+conditions with template/matcher application at M6 Slice B (D-121), each named in
+the table above, following this registry's standing rule that a code joins the
+enum with its emit site (D-085). Each condition's **owner phase, severity, and
+granularity** is as settled in decisions.md D-116:
 
-| Condition | Where | Severity | Granularity |
-| --- | --- | --- | --- |
-| `[[template]]` without an `id` | spec resolve | Error | one per template |
-| duplicate template `id` in the composed document | spec resolve | Error | one per extra declaration, in composed template order |
-| reference to an unknown template `id` | spec resolve | Error | one per referencing matcher or attribute site |
-| `source_index_range` under `shape = "triple"` | spec resolve | Error | one per incompatible matcher |
-| matcher selecting zero attributes | spec resolve | Warning | one per matcher |
-| fully-shadowed matcher (§9.2) | spec resolve | Warning | one per matcher |
-| invalid rendered formal-attribute name (empty, or containing CR/LF) — **landed as `FormalAttributeNameInvalid`** | plan | Error | one per affected logical attribute |
+| Condition | Code | Where | Severity | Granularity |
+| --- | --- | --- | --- | --- |
+| `[[template]]` without an `id` | `TemplateIdMissing` | spec resolve | Error | one per template, in composed template order |
+| duplicate template `id` in the composed document | `TemplateIdDuplicate` | spec resolve | Error | one per extra declaration, in composed template order |
+| reference to an unknown template `id` | `TemplateReferenceUnknown` | spec resolve | Error | one per referencing matcher or attribute site |
+| `source_index_range` under `shape = "triple"` | `MatcherSelectorInvalidForShape` | spec resolve | Error | one per incompatible matcher |
+| matcher selecting zero attributes | `MatcherSelectsNoAttributes` | spec resolve | Warning | one per matcher |
+| fully-shadowed matcher (§9.2) | `MatcherFullyShadowed` | spec resolve | Warning | one per matcher |
+| invalid rendered formal-attribute name (empty, or containing CR/LF) | `FormalAttributeNameInvalid` | plan | Error | one per affected logical attribute |
 
 `FormalAttributeNameInvalid` is **aggregated per logical attribute**: its message
 carries the offending-name count plus a bounded sample of at most three rendered
@@ -2721,8 +2727,15 @@ two machines emit byte-identical messages (§17).
 
 An unknown-reference diagnostic on an **attribute** carries the `AttributeName`
 location; a matcher- or template-scoped diagnostic identifies its declaration and
-its `id`/reference deterministically. The rendered-name Error sits alongside
-`FormalAttributeNameCollision` at plan (§10.7).
+its `id`/reference deterministically (by 1-based composed declaration ordinal). The
+rendered-name Error sits alongside `FormalAttributeNameCollision` at plan (§10.7).
+
+The two matcher **Warnings** are selector- and merge-level facts, so neither is
+suppressed by an Error elsewhere on the same matcher: a matcher whose template
+reference is unknown, or whose range is incompatible with `shape = "triple"`, still
+reports `MatcherSelectsNoAttributes` when its selector chose nothing. A matcher
+qualifies for **at most one** of the two, since `MatcherFullyShadowed` requires at
+least one selected attribute.
 
 **M6 static shape reuses `SpecFieldInvalid`** — no new parse-phase code is added
 for: an invalid template-`id` grammar (§9.1), a matcher with no `template`
@@ -2782,13 +2795,11 @@ at 73M records does not produce 73M diagnostics.
 The `DiagnosticCode` enum is the authority for the codes a build can actually
 raise; it grows per slice (P-3), so it holds fewer members than this registry — a
 registry row joins the enum when the milestone owning its site lands (D-085). After
-**M6 Slice A** the enum has **76** members: 75 at the M5 baseline plus
-`FormalAttributeNameInvalid`, retiring none (`SpecSurfaceNotYetSupported` narrowed
-to `value_type = "date"` rather than retiring, so the count did not move for it).
-Two rows remain outstanding — `OutputCxtSizeAdvisory` (export, M7) and
-`DateValueTypeNotImplementedV1` (the D-038 date carrier) — each joining the enum
-when its own milestone lands, alongside the six spec-resolve M6 conditions above
-(M6 Slice B). Every other row is live.
+**M6 Slice B** the enum has **81** members: 76 after Slice A, plus the six
+spec-resolve conditions above, minus the retired `TemplateMatcherNotImplementedV1`
+(76 + 6 − 1). Exactly two rows remain outstanding — `OutputCxtSizeAdvisory`
+(export, M7) and `DateValueTypeNotImplementedV1` (the D-038 date carrier) — each
+joining the enum when its own milestone lands. Every other row is live.
 
 ## 17. Determinism rules
 

@@ -5,14 +5,20 @@ namespace FcaBedrock.Spec.Toml;
 /// <summary>
 /// One authored <c>[[attribute]]</c> (§10), presence-tracked (D-066). Flat by
 /// design: <see cref="TemplateSection"/> mirrors the config fields rather than
-/// sharing a record — extraction earns its keep when M6 applies templates
-/// (D-078, P-3). The naming carriers landed with M6 Slice A (D-120).
+/// sharing a record — the merge reads the two independently, field by field, so
+/// a shared config record would buy nothing (D-078/D-121, P-3).
+/// <para>
+/// From M6 Slice B this type is also the <b>effective</b> attribute: template
+/// application produces one of these per declared attribute, so every validation
+/// owner sees a template-configured attribute in exactly the shape a flat
+/// declaration would present (D-121).
+/// </para>
 /// </summary>
 /// <param name="Name">Logical attribute name (§10.1); required — absent is <c>AttributeNameMissing</c> at resolve.</param>
 /// <param name="Source">Where the raw value comes from (§10.2).</param>
 /// <param name="Description">Free-text description (§10.1).</param>
 /// <param name="Include">Whether the attribute emits formal attributes (§10.1); null falls back to <c>[defaults].include</c> then true.</param>
-/// <param name="Template">Referenced <c>[[template]]</c> id (§9.1); carried, but a reference fails resolve until M6 Slice B (D-078/D-120).</param>
+/// <param name="Template">Referenced <c>[[template]]</c> id (§9.2 tier 4) — it beats every matcher template and loses to explicit fields; an unknown id is <c>TemplateReferenceUnknown</c> at resolve (D-114/D-121).</param>
 /// <param name="Discretizer">Raw value → bin label (§11); required when included (§10.9).</param>
 /// <param name="Scale">Bin label → formal attribute(s) (§12); required when included (§10.9).</param>
 /// <param name="DeclaredDomain">Schema-bearing raw values (§10.3). Null = omitted, empty = authored <c>[]</c> — both resolve as absent, but the authored form round-trips verbatim (D-049/D-071 provenance).</param>

@@ -63,7 +63,7 @@ internal static class AttributeReader
     {
         var cursor = new TomlTableCursor(context, "[[template]]", table);
         var section = new TemplateSection(
-            cursor.TakeString("id"),
+            ReadTemplateId(context, cursor),
             cursor.TakeBool("include"),
             ReadDiscretizer(context, cursor, owner: "template"),
             ReadScale(context, cursor, owner: "template"),
@@ -78,6 +78,71 @@ internal static class AttributeReader
         };
         cursor.Finish();
         return section;
+    }
+
+    /// <summary>
+    /// Reads a <c>[[template]]</c> <c>id</c> (§9.1) and checks its grammar: an
+    /// authored id must match <c>[A-Za-z_][A-Za-z0-9_-]*</c> — the stricter §10.1
+    /// form — because it is referenced by name from matchers and attributes rather
+    /// than being free-text like an attribute <c>name</c>.
+    /// <para>
+    /// Only a <em>malformed</em> id is a parse failure. An <b>omitted</b> id is not:
+    /// it is <c>TemplateIdMissing</c> at resolve (§9.1/§16.4), because "this template
+    /// is unreachable" is a document-level condition, not a field shape. A rejected
+    /// value carries null, exactly like any other malformed field; its Error already
+    /// fails the read, so it never reaches the resolver's template table.
+    /// </para>
+    /// </summary>
+    private static string? ReadTemplateId(TomlReadContext context, TomlTableCursor cursor)
+    {
+        if (cursor.Take("id") is not { } pair)
+        {
+            return null; // omitted — a resolve-phase condition, not a parse one
+        }
+
+        if (pair.Value is not StringValueSyntax { Value: { } text })
+        {
+            context.Error(
+                DiagnosticCode.SpecFieldInvalid,
+                "[[template]] key 'id' expects a string (§9.1).",
+                pair.Value?.Span ?? pair.Span);
+            return null;
+        }
+
+        if (!IsTemplateId(text))
+        {
+            context.Error(
+                DiagnosticCode.SpecFieldInvalid,
+                $"[[template]] id '{text}' is not a valid template id; ids are referenced by name and must match " +
+                "[A-Za-z_][A-Za-z0-9_-]* (§9.1/§10.1).",
+                pair.Value.Span);
+            return null;
+        }
+
+        return text;
+    }
+
+    // §9.1/§10.1: [A-Za-z_][A-Za-z0-9_-]* — ASCII only and ordinal by construction
+    // (P-12); an empty id fails the leading-character rule rather than needing its own
+    // branch. Hand-written rather than a Regex: the grammar is four character classes,
+    // and this way it cannot inherit an ambient match timeout (D-115's concern).
+    private static bool IsTemplateId(string text)
+    {
+        if (text.Length == 0 || !(char.IsAsciiLetter(text[0]) || text[0] == '_'))
+        {
+            return false;
+        }
+
+        for (var i = 1; i < text.Length; i++)
+        {
+            var c = text[i];
+            if (!char.IsAsciiLetterOrDigit(c) && c != '_' && c != '-')
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /// <summary>

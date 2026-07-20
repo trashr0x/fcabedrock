@@ -14,8 +14,8 @@ namespace FcaBedrock.Spec.Toml;
 /// <param name="Binding">The <c>[binding]</c> section (§5); null when absent.</param>
 /// <param name="Defaults">The <c>[defaults]</c> section (§6); null when absent.</param>
 /// <param name="Output">The <c>[output]</c> section (§8); carried inert — writers take options from the caller.</param>
-/// <param name="Templates">The <c>[[template]]</c> array (§9.1), in authored order; empty when none. Carried, composed, and (from M6 Slice A) naming-validated, but never applied before M6 Slice B (D-078/D-120).</param>
-/// <param name="Matchers">The <c>[[matcher]]</c> array (§9.2), in authored order; empty when none. A present matcher fails resolve until M6 Slice B (D-078/D-120).</param>
+/// <param name="Templates">The <c>[[template]]</c> array (§9.1), in composed order; empty when none. Applied at the resolve seam from M6 Slice B (D-121); an unused one is dormant.</param>
+/// <param name="Matchers">The <c>[[matcher]]</c> array (§9.2), in composed order (§13 rule 4: base then derived); empty when none. Evaluated at the resolve seam from M6 Slice B (D-121).</param>
 /// <param name="Attributes">The <c>[[attribute]]</c> array (§10), in authored order; empty when none.</param>
 public sealed record SpecDocument(
     SpecSection? Spec,

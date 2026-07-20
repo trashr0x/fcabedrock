@@ -155,8 +155,9 @@ public sealed class SpecReaderDiagnosticsTests
     public void Read_WhenTemplateAuthorsNamingKeys_ThenBothAreCarriedNotRejected()
     {
         // §9.1: a template body is the attribute config surface, so the naming keys carry
-        // there on the same terms — even though template APPLICATION stays rejected at
-        // resolve until Slice B.
+        // and validate there on exactly the same terms as on an attribute — including
+        // inside a template nothing references, since shape is parse's concern while
+        // semantic dormancy is the resolver's (§10.7/D-049).
         var result = SpecReader.Read(
             "[[template]]\nid = \"t\"\ndisplay_name = \"Boolean\"\nformal_attribute_format = \"{column}-{value}\"\n");
 
@@ -211,6 +212,54 @@ public sealed class SpecReaderDiagnosticsTests
     }
 
     [Theory]
+    [InlineData("\"\"")]                      // empty
+    [InlineData("\"1st\"")]                   // leading digit
+    [InlineData("\"-lead\"")]                 // leading hyphen
+    [InlineData("\"has space\"")]
+    [InlineData("\"has.dot\"")]
+    [InlineData("\"café\"")]                  // non-ASCII
+    [InlineData("7")]                         // not a string at all
+    public void Read_WhenTemplateIdIsMalformed_ThenSpecFieldInvalidAtParse(string id)
+    {
+        // §9.1: unlike an attribute `name` (free text, §10.1), a template `id` is
+        // referenced BY NAME from matchers and attributes, so it takes the stricter
+        // [A-Za-z_][A-Za-z0-9_-]* form. A malformed id is static authored shape and so is
+        // parse-owned under the ordinary SpecFieldInvalid — no id-specific parse code.
+        var result = SpecReader.Read($"[[template]]\nid = {id}\n");
+
+        Assert.False(result.TryGetValue(out _));
+        Assert.Equal(DiagnosticCode.SpecFieldInvalid, Assert.Single(result.Diagnostics).Code);
+    }
+
+    [Theory]
+    [InlineData("t")]
+    [InlineData("_leading_underscore")]
+    [InlineData("boolean_yes_no")]
+    [InlineData("term-flag")]
+    [InlineData("A1")]
+    public void Read_WhenTemplateIdIsWellFormed_ThenItIsAccepted(string id)
+    {
+        // The permissive half of the same grammar, so the rule is pinned in both
+        // directions rather than only rejecting.
+        var result = SpecReader.Read($"[[template]]\nid = \"{id}\"\n");
+
+        Assert.True(result.TryGetValue(out var document));
+        Assert.Equal(id, Assert.Single(document.Templates).Id);
+    }
+
+    [Fact]
+    public void Read_WhenTemplateIdIsOmitted_ThenParseIsSilentAndItBecomesAResolveCondition()
+    {
+        // §9.1 splits the two deliberately: a malformed id is a field SHAPE failure
+        // (parse), while an omitted one is "this template is unreachable" — a
+        // document-level condition the resolver owns as TemplateIdMissing (§16.4).
+        var result = SpecReader.Read("[[template]]\ninclude = true\n");
+
+        Assert.True(result.TryGetValue(out var document));
+        Assert.Null(Assert.Single(document.Templates).Id);
+    }
+
+    [Theory]
     [InlineData("name = \"a\"")]
     [InlineData("source = { kind = \"column\", index = 0 }")]
     [InlineData("description = \"per-attribute only\"")]
@@ -243,11 +292,28 @@ public sealed class SpecReaderDiagnosticsTests
     [Fact]
     public void Read_WhenMatcherHasUnknownKey_ThenSpecKeyUnrecognized()
     {
+        // The unknown key is still its own condition — asserted here alongside the two
+        // shape failures this matcher genuinely also has, since `pattern` is not a
+        // selector: it authors no `match` table and no `template` (§9.2, M6 Slice B).
+        // Distinct conditions aggregate rather than masking one another (P-14).
         var result = SpecReader.Read("[[matcher]]\npattern = \"x\"\n");
 
-        var diagnostic = Assert.Single(result.Diagnostics);
-        Assert.Equal(DiagnosticCode.SpecKeyUnrecognized, diagnostic.Code);
-        Assert.Contains("pattern", diagnostic.Message, StringComparison.Ordinal);
+        var unrecognized = Assert.Single(result.Diagnostics, d => d.Code == DiagnosticCode.SpecKeyUnrecognized);
+        Assert.Contains("pattern", unrecognized.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Read_WhenMatcherDeclaresNoSelectorOrTemplate_ThenBothShapeFailuresReport()
+    {
+        // §9.2's two static requirements, checked independently so a matcher missing both
+        // tells its author about both in one read (P-14). Anchored at the table header,
+        // since an ABSENT key has no span of its own.
+        var result = SpecReader.Read("[[matcher]]\n");
+
+        Assert.Equal(2, result.Diagnostics.Count);
+        Assert.All(result.Diagnostics, d => Assert.Equal(DiagnosticCode.SpecFieldInvalid, d.Code));
+        Assert.Contains(result.Diagnostics, d => d.Message.Contains("no match table", StringComparison.Ordinal));
+        Assert.Contains(result.Diagnostics, d => d.Message.Contains("no template", StringComparison.Ordinal));
     }
 
     [Theory]

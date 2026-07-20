@@ -429,7 +429,42 @@ vertical slices, not waterfall phases — each should leave the system working.
 > existing spec authors the naming surface. `dotnet test` is green (2720 tests: 2719
 > passed, one platform-gated confidentiality test skipped off its OS).
 >
-> **M6 Slice B (template/matcher application at the resolver seam) is next.**
+> **M6 Slice B — template/matcher application at the resolver seam — is complete
+> (D-121).** Templates and matchers **execute**: the §9.2 five-tier, field-wise,
+> presence-based merge runs entirely inside `SpecResolver.Resolve`, after composition
+> and source addressing and before effective-attribute validation, so an equivalent
+> flat, materialized, template/matcher-authored, or `extends`-composed spec resolves to
+> the same attributes, plan, three fingerprints, and byte-identical `.cxt`/`.dat`.
+> Application is a document→document fold producing an **effective `AttributeSection`**
+> — the same type a flat spec produces — which is what makes provenance automatic
+> rather than a parallel model: a template-won `boundary` simply *is* a non-null
+> authored field, so `OrdinalBoundaryIncompatibleWithCuts` fires on it exactly as on an
+> explicit one, while `[defaults]` stays **below** the fold and keeps defaulted
+> provenance. Both selectors execute through **one** schema-bounded addressing pass:
+> `SourceAddressing` resolves every attribute's source once, so a
+> `source_index_range` can select on the resolved physical index while its
+> `SourceBindingInvalid` is still emitted **exactly once**, in the attribute's ordinary
+> slot — the refactor is behaviour-neutral for every template-free spec. Value typing
+> stays **post**-application (a template-supplied numeric-cut discretizer types a
+> bare-string `restrict_to` and trips `RestrictToNumericEntryRequired`, matching the
+> flat form), and `name_regex` compiles through one wrapped whole-name construction
+> (`\A(?:…)\z`, `CultureInvariant`, explicit `InfiniteMatchTimeout`) shared by the parse
+> gate and evaluation, so a pattern cannot parse and then match differently. Resolve
+> diagnostics are assembled in **five families** — identity → [binding prefix] →
+> matcher references/shape → attribute references → effective validation → warnings —
+> with family 1 ahead of the shape gate; the two matcher Warnings come from **one**
+> declaration-order traversal, so they interleave by matcher rather than grouping by
+> code. Six diagnostics added, one retired — registry **76 → 81**, the M6-exit count —
+> and with `TemplateMatcherNotImplementedV1` gone **no M6 transitional remains**
+> (`SpecSurfaceNotYetSupported` survives with its one non-M6 owner, `value_type =
+> "date"`). Core gains nothing and is held template/matcher-free by a new ArchUnitNET
+> name rule; no fingerprint-encoder, `fp_format`, exporter, or production-reference
+> change. Every v2 fixture, golden `.cxt`/`.dat`, canonical byte, and SHA pin is
+> unchanged. `dotnet test` is green (2822 tests: 2821 passed, one platform-gated
+> confidentiality test skipped off its OS).
+>
+> **M6 Slice C (the one-file Internet-Ads exit workflow) is next.** M6 is **not** yet
+> complete: the D-119 exit demonstration is Slice C's.
 
 ## Milestones
 

@@ -143,7 +143,7 @@ public static class SpecComposer
             MergeDefaults(baseDocument.Defaults, derived.Defaults),
             MergeOutput(baseDocument.Output, derived.Output),
             MergeTemplates(baseDocument.Templates, derived.Templates),
-            [.. baseDocument.Matchers, .. derived.Matchers], // §13 rule 4: base then derived (last-match-wins precedence at M6 Slice B)
+            [.. baseDocument.Matchers, .. derived.Matchers], // §13 rule 4: base then derived — the order §9.2's field-wise last-match-wins reads at resolve
             MergeAttributes(baseDocument.Attributes, derived.Attributes));
 
     private static BindingSection? MergeBinding(BindingSection? baseSection, BindingSection? derived)

@@ -211,6 +211,10 @@ superseded or refined. A new entry MUST add its line here.
 
 - D-120 — Naming executable: additive document/Core carriers, the `NameFormat` grammar owner, `FormalAttributeNameInvalid` with a pinned sample representation, centralized parse ordering, and the `MergeDefaults` extension (realizes D-116(7)/D-117/D-118; retires the naming half of `SpecSurfaceNotYetSupported`)
 
+### M6 Slice B (template/matcher application at the resolver seam)
+
+- D-121 — Templates and matchers executable: the six spec-resolve codes, single-owner source addressing with once-emitted binding diagnostics, the wrapped whole-name regex, the effective-section fold with post-application typing, five-family diagnostic assembly, one matcher-order warning traversal, and the retirement of `TemplateMatcherNotImplementedV1` (realizes D-114/D-115/D-116(1–6)/D-118; no M6 transitional remains)
+
 Spec-field defaults are recorded in spec §21 items 1–11 (see the final section
 of this file).
 
@@ -5055,6 +5059,128 @@ pinned here.
   spec §10.1 / §10.7 / §16.4. Realizes D-116(7)/D-117/D-118; pairs with
   D-114…D-119. Export unchanged (P-15); no fingerprint-encoder or `fp_format`
   change; no production project reference changed.
+
+## M6 Slice B (template/matcher application at the resolver seam)
+
+### D-121 — Templates and matchers executable: the six resolve codes, single-owner source addressing, the wrapped whole-name regex, the effective-section fold, family assembly, and the last M6 retirement
+
+- **Status:** accepted (M6 Slice B implementation; realizes D-114/D-115/D-116(1–6)/D-118)
+- **Date:** 2026-07-20
+- **Decision:** templates and matchers **execute**. The implementation-surface
+  choices D-114…D-118 deferred to this slice:
+  - **Six permanent `DiagnosticCode` members**, all spec-resolve, adjacent to the
+    other spec-resolve members: `TemplateIdMissing`, `TemplateIdDuplicate`,
+    `TemplateReferenceUnknown`, `MatcherSelectorInvalidForShape`,
+    `MatcherSelectsNoAttributes`, `MatcherFullyShadowed`. One code covers **both**
+    unknown-reference sites (matcher and attribute) because it is one condition with
+    two locations, not two conditions (D-067). Every static authored-shape failure —
+    an invalid template `id`, a missing matcher `template`, both-or-neither selector,
+    an empty or uncompilable `name_regex`, a malformed `source_index_range` — reuses
+    the parse-phase `SpecFieldInvalid` and mints nothing (D-116). Registry
+    76 + 6 − 1 = **81**.
+  - **One authoritative source-addressing pass.** A `source_index_range` selects on
+    the **resolved physical column index**, so addressing must precede application —
+    but the resulting `SourceBindingInvalid` must still be reported **exactly once**,
+    in the attribute's ordinary validation slot. The new internal `SourceAddressing`
+    runs once per resolve, after binding resolution and before matcher application,
+    and yields per attribute either an addressed source or the single diagnostic
+    explaining why not. `ResolveAttribute` **consumes** that result: it no longer
+    resolves a source and never emits a second binding diagnostic, so a name-bound
+    source with no schema plus an index-range matcher yields one diagnostic, not two.
+    Splitting "address the source" from "report and consume it" is what makes both
+    obligations true at once, and the refactor is behaviour-neutral for every
+    template-free spec (message text, location, order, resolved name bindings, plans,
+    fingerprints, and bytes all unchanged).
+  - **Value typing stays post-application.** The addressing pass captures only the
+    **authored** `source.value_type`; the D-061 derivation (authored ?? the type the
+    discretizer fixes) runs in `ResolveAttribute` over the **effective** section,
+    because the effective discretizer can arrive from a template. Addressing is
+    source-only and pre-merge; typing is discretizer-dependent and post-merge — two
+    steps, one owner each. Concretely, a template-supplied `manual_cuts` types a
+    bare-string `restrict_to` and trips `RestrictToNumericEntryRequired`, exactly as
+    the flat equivalent does.
+  - **One wrapped whole-name regex construction**, in the internal `MatcherSelectors`,
+    shared by the parse gate and selector evaluation so a pattern cannot parse
+    successfully and then fail — or match differently — when evaluated (P-5):
+    `new Regex(@"\A(?:" + pattern + @")\z", RegexOptions.CultureInvariant,
+    Regex.InfiniteMatchTimeout)`. The **non-capturing** group is load-bearing rather
+    than cosmetic: bare anchors around an alternation would bind as `\Aa|b\z` —
+    "starts with a, or ends with b" — instead of whole-name "a or b", and a
+    non-capturing group shifts no backreference number. `CultureInvariant` (P-12) and
+    the **explicit** `InfiniteMatchTimeout` follow D-104's `value_groups` precedent;
+    `NonBacktracking` stays unadopted (D-115).
+  - **Application is a document→document fold** inside `SpecResolver.Resolve`,
+    producing an effective `AttributeSection` — the same type a flat spec produces —
+    over which every existing validation owner then runs unchanged. Provenance is
+    therefore **automatic** rather than a parallel model: a template-won `boundary`
+    simply *is* a non-null `Scale.Boundary`, which is already what "authored" means to
+    `ValidateOrdinalOverCuts`. Tiers 1–2 deliberately stay **below** the fold, where
+    the resolver already applies them: materializing `[defaults]` into the effective
+    section would turn defaulted values into authored ones and silently convert a
+    legal defaulted `ordinal_boundary` into an `OrdinalBoundaryIncompatibleWithCuts`
+    Error (§6/§12.3).
+  - **Five-family diagnostic assembly.** Each family is collected into its own list
+    and concatenated at the end, so the deterministic order is a property of
+    `Resolve` rather than of where each helper happens to append: template identity →
+    the established binding-section prefix → matcher references/shape compatibility →
+    attribute template references → effective-attribute validation (including the
+    once-emitted addressing diagnostics) → matcher warnings. Family 1 precedes the
+    shape gate, so a shape-less document still reports template identity — the
+    aggregation the retired transitional reject used to provide.
+  - **One matcher-order warning traversal.** Family 5 is a single pass over matchers
+    in declaration order, so the two warning kinds **interleave by matcher** rather
+    than grouping by code, and a matcher qualifies for at most one. Per-field winners
+    are recorded during the merge walk itself — at the moment the winner is chosen —
+    so the shadow map cannot drift from the merge it describes. A matcher with an
+    Error (unknown reference, or a range under `shape = "triple"`) **still** reports
+    `MatcherSelectsNoAttributes` when its selector chose nothing: both warnings are
+    selector- and merge-level facts, D-116 makes the zero-match warning explicitly
+    independent of whether the template resolves, and suppressing it would be a
+    special case in what is otherwise one uniform traversal.
+  - **Core boundary and retirement.** Core gains nothing; the new
+    `Core_ShouldRemainTemplateAndMatcherFree` architecture rule (ArchUnitNET) asserts
+    no Core type is *named* for a template or a matcher — deliberately a name rule,
+    because the reference rules already forbid Core→Spec and would stay green while
+    someone re-implemented a template table inside Core.
+    `TemplateMatcherNotImplementedV1` is removed entirely — member, both emit sites,
+    and §16.4 row — so **no M6 transitional remains**;
+    `SpecSurfaceNotYetSupported` stays live with its one non-M6 owner,
+    `value_type = "date"`.
+- **Why:** D-114…D-118 settled the *semantics* and deliberately minted no enum name
+  and no public shape — those are the implementation-surface choices P-4 requires be
+  designed before code, and this entry records the ones actually taken. Three are
+  load-bearing beyond their local scope. The addressing pass is called out because
+  the naive implementation — resolving the source once for the matcher and again for
+  the attribute — is invisible until it produces a duplicate diagnostic on exactly
+  the spec D-115 discusses. The post-application typing split is called out because
+  deriving the value type where it *used* to be derived silently ignores a
+  template-supplied discretizer, producing a spec that validates differently from its
+  own flat equivalent. And the fold's decision to leave `[defaults]` below it is what
+  keeps the authored-vs-defaulted boundary provenance D-060(c) depends on.
+- **Rejected:** a matcher-specific schemaless-binding condition (D-115 — name binding
+  already needs the schema; one condition, one owner); separate enum members for the
+  matcher and attribute unknown-reference sites (one condition, two locations);
+  minting a parse-phase code for matcher/template shape (D-116 assigns all of it to
+  `SpecFieldInvalid`); materializing `[defaults]` into the effective section (would
+  destroy defaulted provenance, above); deriving the effective value type in the
+  addressing pass (would ignore a template-supplied discretizer); a second pass to
+  compute shadowing from the finished effective sections (the merge already knows the
+  winner, and re-deriving it invites drift); suppressing `MatcherSelectsNoAttributes`
+  on a matcher that also errored (D-116 makes the warning independent of template
+  resolution, and a special case would make the single traversal conditional);
+  reporting arity and per-selector validity together for a both/neither `match` table
+  (one authoring mistake, one diagnostic); applying templates during composition
+  (D-118 — composition yields authored surface the writer round-trips);
+  `RegexOptions.NonBacktracking` or a finite match timeout (D-115).
+- **Affects:** Diagnostics (six members added, `TemplateMatcherNotImplementedV1`
+  removed; registry 81); Spec (`AttributeReader` template-id grammar,
+  `SpecSectionReaders` matcher shape, the new internal `MatcherSelectors` /
+  `SourceAddressing` / `TemplateApplication`, `SpecResolver` family assembly and
+  effective-section resolution); Architecture tests (the Core name rule); spec
+  §9.1 / §9.2 / §16.4. Realizes D-114/D-115/D-116(1–6)/D-118; pairs with
+  D-119/D-120. Core, Conversion, Export, `CanonicalJson`, `FingerprintCalculator`,
+  and `fp_format` unchanged; no production project reference changed; every v2
+  fixture, golden, canonical byte, and SHA pin unchanged.
 
 ---
 

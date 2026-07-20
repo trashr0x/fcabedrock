@@ -179,6 +179,41 @@ public sealed class DependencyRulesTests
             .Check(Architecture);
     }
 
+    [Fact]
+    public void Core_ShouldRemainTemplateAndMatcherFree()
+    {
+        // D-118/D-121: template ids, matcher selectors, compiled regexes, ranges, and
+        // precedence syntax all die at the resolve seam. Core receives only effective
+        // per-attribute configuration, which is exactly why an equivalent flat,
+        // materialized, matcher-driven, or extends-composed spec produces the identical
+        // Core graph — and therefore the identical plan, fingerprints, and bytes.
+        //
+        // A NAME-based rule rather than a reference-based one, deliberately:
+        // Core_ShouldOnlyDependOnDiagnostics already proves Core cannot reference Spec at
+        // all, so the reference rules would stay green while someone re-implemented a
+        // TemplateTable or MatcherEvaluation INSIDE Core. That is the drift D-118 makes
+        // permanent, and a type name is the observable signal for it.
+        // Non-vacuity in both directions. A "no type matches" rule is worthless if the
+        // predicate matches nothing anywhere, so: Core must have real types to inspect,
+        // AND the same predicate must genuinely fire on the assembly that legitimately
+        // owns this vocabulary — Spec, where the sections and the application internals
+        // live. Without the second assertion a typo in the predicate would pass forever.
+        Assert.NotEmpty(Asm("FcaBedrock.Core").GetTypes());
+        Assert.Contains(Asm("FcaBedrock.Spec").GetTypes(), IsTemplateOrMatcherNamed);
+
+        Types().That().ResideInAssembly(Asm("FcaBedrock.Core"))
+            .And().FollowCustomPredicate(
+                type => IsTemplateOrMatcherNamed(type.Name),
+                "is named for a template or a matcher")
+            .Should().NotExist()
+            .Check(Architecture);
+    }
+
+    private static bool IsTemplateOrMatcherNamed(System.Type type) => IsTemplateOrMatcherNamed(type.Name);
+
+    private static bool IsTemplateOrMatcherNamed(string name) =>
+        name.Contains("Template", StringComparison.Ordinal) || name.Contains("Matcher", StringComparison.Ordinal);
+
     // The Discovery types the two rules above are asserted over; empty would mean the package is
     // absent from this project's output (a missing ProjectReference), not that it is clean.
     private static IReadOnlyList<System.Type> Discovery() =>

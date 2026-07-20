@@ -55,81 +55,70 @@ public static class SpecResolver
                 nameof(document));
         }
 
-        var diagnostics = new List<BedrockDiagnostic>();
         var nameBindings = new List<ResolvedNameBinding>();
 
         // §2/§3: unknown versions are refused outright — nothing below is
         // meaningful under unknown semantics.
         if (document.Spec?.Version is not { } version)
         {
-            diagnostics.Add(new BedrockDiagnostic(
+            return Diagnosed<ResolvedDocument>.Failed([new BedrockDiagnostic(
                 DiagnosticCode.SpecVersionUnsupported, DiagnosticSeverity.Fatal,
-                "The document declares no [spec] version; a Bedrock spec must declare version = 1 (§2/§3)."));
-            return Diagnosed<ResolvedDocument>.Failed(diagnostics);
+                "The document declares no [spec] version; a Bedrock spec must declare version = 1 (§2/§3).")]);
         }
 
         if (version != 1)
         {
-            diagnostics.Add(new BedrockDiagnostic(
+            return Diagnosed<ResolvedDocument>.Failed([new BedrockDiagnostic(
                 DiagnosticCode.SpecVersionUnsupported, DiagnosticSeverity.Fatal,
-                $"Spec version {version} is not supported; this implementation supports version 1 (§2/§3)."));
-            return Diagnosed<ResolvedDocument>.Failed(diagnostics);
+                $"Spec version {version} is not supported; this implementation supports version 1 (§2/§3).")]);
         }
 
-        // §9/D-078: templates/matchers are carried and composed but not applied
-        // before M6 Slice B; a document that *uses* them must fail here — they never
-        // resolve into Core, so a silent pass would drop schema-changing config.
-        // Checked before the shape gate so they aggregate on shape-less and
-        // triple documents too. Unreferenced [[template]] blocks are inert (their
-        // naming keys are parse-validated from M6 Slice A but stay inert, D-120).
-        if (document.Matchers.Count > 0)
-        {
-            diagnostics.Add(new BedrockDiagnostic(
-                DiagnosticCode.TemplateMatcherNotImplementedV1, DiagnosticSeverity.Error,
-                $"The document declares {document.Matchers.Count} [[matcher]] entr{(document.Matchers.Count == 1 ? "y" : "ies")}; " +
-                "matcher resolution lands at M6 Slice B (§9, D-078)."));
-        }
+        // §16.4: resolve diagnostics are assembled in FAMILIES, each collected into its
+        // own list and concatenated at the end, so the deterministic order is a property
+        // of this method rather than of where each helper happens to append (D-116/D-121):
+        //
+        //   1 template identity → [binding-section, unchanged] → 2 matcher reference and
+        //   selector/shape compatibility → 3 attribute template references →
+        //   4 effective-attribute validation → 5 matcher warnings
+        //
+        // with declaration order preserved within each family.
 
-        foreach (var attribute in document.Attributes)
-        {
-            if (attribute.Template is { } templateRef)
-            {
-                diagnostics.Add(new BedrockDiagnostic(
-                    DiagnosticCode.TemplateMatcherNotImplementedV1, DiagnosticSeverity.Error,
-                    $"The attribute references template = \"{templateRef}\"; template resolution lands at M6 Slice B (§9, D-078).",
-                    new DiagnosticLocation(AttributeName: attribute.Name)));
-            }
-        }
+        // Family 1 — template identity, before the shape gate so a shape-less document
+        // still reports it (the aggregation the transitional reject used to provide).
+        var identity = new List<BedrockDiagnostic>();
+        var templates = TemplateTable.Build(document.Templates, identity);
 
         // §5.1: shape is the one binding field with no default; without it nothing
-        // downstream is buildable.
+        // downstream is buildable — including matcher shape compatibility, which is why
+        // families 2–5 do not run here.
         if (document.Binding?.Shape is not { } shape)
         {
-            diagnostics.Add(new BedrockDiagnostic(
+            identity.Add(new BedrockDiagnostic(
                 DiagnosticCode.BindingShapeMissing, DiagnosticSeverity.Error,
                 document.Binding is null
                     ? "The document has no [binding] section (§5.1)."
                     : "[binding] declares no shape (§5.1)."));
-            return Diagnosed<ResolvedDocument>.Failed(diagnostics);
+            return Diagnosed<ResolvedDocument>.Failed(identity);
         }
 
+        var bindingDiagnostics = new List<BedrockDiagnostic>();
         var bindingSection = document.Binding;
-        ValidateBinding(bindingSection, diagnostics);
+        ValidateBinding(bindingSection, bindingDiagnostics);
         // §5.1: has_header defaults are shape-specific — wide true, triple false
         // (triple data is typically headerless; a true default would eat row 1).
         var hasHeader = bindingSection.HasHeader ?? (shape == SourceShape.Wide);
         var locale = bindingSection.Locale ?? "invariant";
-        var culture = ResolveCulture(locale, diagnostics);
-        var encoding = ResolveEncoding(bindingSection.Encoding, diagnostics);
+        var culture = ResolveCulture(locale, bindingDiagnostics);
+        var encoding = ResolveEncoding(bindingSection.Encoding, bindingDiagnostics);
 
         // §5.3/§5.4 sequencing: the triple role→index map (and ordering) resolve
         // before the object key, because the triple object key is the resolved
         // subject column — which may be bound by header name (D-082).
         var tripleColumns = shape == SourceShape.Triple
-            ? ResolveTripleColumns(bindingSection, hasHeader, schema, nameBindings, diagnostics)
+            ? ResolveTripleColumns(bindingSection, hasHeader, schema, nameBindings, bindingDiagnostics)
             : null;
         var ordering = shape == SourceShape.Triple
-            ? ResolveOrdering(bindingSection, diagnostics)
+            ? ResolveOrdering(bindingSection, bindingDiagnostics)
             : (TripleOrdering?)null;
 
         var binding = new Binding(
@@ -140,34 +129,117 @@ public static class SpecResolver
             hasHeader,
             locale,
             bindingSection.MissingToken ?? "?",
-            ResolveObjectKey(bindingSection, shape, tripleColumns?.Subject ?? 0, document.Defaults, schema, nameBindings, diagnostics),
+            ResolveObjectKey(bindingSection, shape, tripleColumns?.Subject ?? 0, document.Defaults, schema, nameBindings, bindingDiagnostics),
             tripleColumns,
             ordering);
 
+        // §10.2/§9.2 (D-121): address every attribute's source ONCE, after binding
+        // resolution and before matcher application — a source_index_range selects on the
+        // resolved physical index, so addressing must precede selection, while its
+        // SourceBindingInvalid still belongs in the attribute's family-4 slot below.
+        var addressed = SourceAddressing.Address(document.Attributes, shape, schema, hasHeader, nameBindings);
+
+        // Family 2 — matcher reference and selector/shape compatibility, matcher
+        // declaration order. Fills `matching`: per attribute, the templates that apply.
+        var matcherDiagnostics = new List<BedrockDiagnostic>();
+        var matching = new List<MatchedTemplate>[document.Attributes.Count];
+        for (var i = 0; i < matching.Length; i++)
+        {
+            matching[i] = [];
+        }
+
+        var matchers = TemplateApplication.Evaluate(
+            document.Matchers, document.Attributes, addressed, templates, shape, matching, matcherDiagnostics);
+
+        // Family 3 — attribute template references, attribute declaration order.
+        var referenceDiagnostics = new List<BedrockDiagnostic>();
+        var namedTemplates = ResolveNamedTemplates(document.Attributes, templates, referenceDiagnostics);
+
+        // Family 4 — effective-attribute validation, attribute declaration order. Every
+        // check below runs over the EFFECTIVE section, so a template-supplied field is
+        // validated exactly as the equivalent flat declaration would be (D-114/D-116).
+        var attributeDiagnostics = new List<BedrockDiagnostic>();
         var attributes = new List<AttributeSpec>(document.Attributes.Count);
         var seenNames = new HashSet<string>(StringComparer.Ordinal);
-        foreach (var section in document.Attributes)
+        for (var i = 0; i < document.Attributes.Count; i++)
         {
+            var section = document.Attributes[i];
+
             // §10.2 (D-080): duplicate authored names reject at the seam, over the
             // document model — a duplicate whose sibling field fails to resolve still
             // surfaces (ResolveAttribute would drop the broken one and hide the clash).
             // Empty names are owned by AttributeNameMissing, so they are skipped here;
-            // one diagnostic per extra occurrence. Applies to both shapes.
+            // one diagnostic per extra occurrence. Applies to both shapes. Read from the
+            // authored section, since `name` can never arrive from a template (§9.1).
             if (!string.IsNullOrEmpty(section.Name) && !seenNames.Add(section.Name))
             {
-                diagnostics.Add(new BedrockDiagnostic(
+                attributeDiagnostics.Add(new BedrockDiagnostic(
                     DiagnosticCode.AttributeNameDuplicate, DiagnosticSeverity.Error,
                     $"Attribute name '{section.Name}' is declared more than once.",
                     new DiagnosticLocation(AttributeName: section.Name)));
             }
 
-            if (ResolveAttribute(section, shape, document.Defaults, schema, hasHeader, culture, nameBindings, diagnostics) is { } attribute)
+            // Applied to EVERY declared attribute — included, excluded, and filter-only
+            // alike (§9.2/D-114) — which is also what makes the family-5 shadow map
+            // complete: a field winning on an excluded attribute still counts as a win.
+            var effective = TemplateApplication.Apply(section, namedTemplates[i], matching[i], matchers);
+
+            if (ResolveAttribute(effective, addressed[i], document.Defaults, culture, attributeDiagnostics) is { } attribute)
             {
                 attributes.Add(attribute);
             }
         }
 
+        // Family 5 — the two matcher warnings, one traversal in declaration order.
+        var warnings = new List<BedrockDiagnostic>();
+        TemplateApplication.AddWarnings(matchers, warnings);
+
+        var diagnostics = new List<BedrockDiagnostic>(
+            identity.Count + bindingDiagnostics.Count + matcherDiagnostics.Count
+            + referenceDiagnostics.Count + attributeDiagnostics.Count + warnings.Count);
+        diagnostics.AddRange(identity);
+        diagnostics.AddRange(bindingDiagnostics);
+        diagnostics.AddRange(matcherDiagnostics);
+        diagnostics.AddRange(referenceDiagnostics);
+        diagnostics.AddRange(attributeDiagnostics);
+        diagnostics.AddRange(warnings);
+
         return Finish(new BedrockSpec(binding, attributes), document, schema, nameBindings, diagnostics);
+    }
+
+    /// <summary>
+    /// Family 3 (§16.4): resolves each attribute's directly named <c>template</c>
+    /// (§9.2 tier 4), reporting one <c>TemplateReferenceUnknown</c> per referencing
+    /// attribute in declaration order, with the <c>AttributeName</c> location. An
+    /// unknown reference contributes nothing to the merge — it is an Error, not a
+    /// silent no-op.
+    /// </summary>
+    private static TemplateSection?[] ResolveNamedTemplates(
+        IReadOnlyList<AttributeSection> attributes,
+        TemplateTable templates,
+        List<BedrockDiagnostic> diagnostics)
+    {
+        var named = new TemplateSection?[attributes.Count];
+        for (var i = 0; i < attributes.Count; i++)
+        {
+            var section = attributes[i];
+            if (section.Template is not { } reference)
+            {
+                continue;
+            }
+
+            named[i] = templates.Find(reference);
+            if (named[i] is null)
+            {
+                var label = string.IsNullOrEmpty(section.Name) ? "<unnamed>" : section.Name;
+                diagnostics.Add(new BedrockDiagnostic(
+                    DiagnosticCode.TemplateReferenceUnknown, DiagnosticSeverity.Error,
+                    $"Attribute '{label}' references template \"{reference}\", which no [[template]] declares (§9.1/§9.2).",
+                    new DiagnosticLocation(AttributeName: section.Name)));
+            }
+        }
+
+        return named;
     }
 
     /// <summary>
@@ -365,7 +437,7 @@ public static class SpecResolver
 
             case NameColumnRef byName when schema?.Header is { } header:
                 // §5.4/§10.2: the key column name must resolve to exactly one column.
-                var index = ResolveUniqueHeader(header, byName.Name);
+                var index = SourceAddressing.ResolveUniqueHeader(header, byName.Name);
                 if (index >= 0)
                 {
                     nameBindings.Add(new ObjectKeyNameBinding(byName.Name, index));
@@ -491,7 +563,7 @@ public static class SpecResolver
             case NameColumnRef byName when schema?.Header is { } header:
                 // §5.3/§10.2: a name must resolve to exactly one column — no match
                 // and a duplicate match are both invalid.
-                var resolved = ResolveUniqueHeader(header, byName.Name);
+                var resolved = SourceAddressing.ResolveUniqueHeader(header, byName.Name);
                 if (resolved >= 0)
                 {
                     nameBindings.Add(new TripleRoleNameBinding(roleKind, byName.Name, resolved));
@@ -529,14 +601,19 @@ public static class SpecResolver
         return TripleOrdering.Unordered; // placeholder; the Error fails the result
     }
 
+    /// <summary>
+    /// Resolves one <b>effective</b> attribute (§9.2): <paramref name="section"/> has
+    /// already had templates applied, so every check here sees exactly what the
+    /// equivalent flat declaration would present. Its source arrives pre-addressed from
+    /// the single-owner pass (D-121) — this method neither re-resolves a source nor
+    /// emits a second binding diagnostic; it only splices the one already recorded into
+    /// this attribute's slot, at the position it has always occupied.
+    /// </summary>
     private static AttributeSpec? ResolveAttribute(
         AttributeSection section,
-        SourceShape shape,
+        AddressedAttribute addressed,
         DefaultsSection? defaults,
-        SourceSchema? schema,
-        bool hasHeader,
         CultureInfo culture,
-        List<ResolvedNameBinding> nameBindings,
         List<BedrockDiagnostic> diagnostics)
     {
         var name = section.Name;
@@ -549,11 +626,19 @@ public static class SpecResolver
 
         var label = string.IsNullOrEmpty(name) ? "<unnamed>" : name;
         var include = section.Include ?? defaults?.Include ?? true;
-        var source = ResolveSource(section, label, name, shape, schema, hasHeader, nameBindings, diagnostics);
 
-        // §10.2/D-061: the resolved source value type (authored, else discretizer-implied),
-        // computed once here and shared with discretizer construction and the D-096 numeric
-        // free_per_value normalization — ResolveSource derives it identically for the source.
+        if (addressed.Diagnostic is { } bindingDiagnostic)
+        {
+            diagnostics.Add(bindingDiagnostic);
+        }
+
+        var source = BuildSource(addressed.Source, section.Discretizer);
+
+        // §10.2/D-061: the EFFECTIVE source value type — authored, else fixed by the
+        // effective discretizer, which may itself have arrived from a template. Derived
+        // here rather than in the addressing pass precisely because it depends on the
+        // post-application discretizer (D-121): addressing is source-only and runs before
+        // the merge, typing is discretizer-dependent and runs after it.
         var valueType = ResolveValueType(AuthoredValueType(section.Source), section.Discretizer);
         var numericFreePerValue = section.Discretizer is FreePerValueDiscretizerSection
             && valueType == SourceValueType.Number;
@@ -602,11 +687,12 @@ public static class SpecResolver
             section.MissingPolicy ?? defaults?.MissingPolicy ?? MissingPolicy.Skip,
             section.UnknownValuePolicy ?? defaults?.UnknownValuePolicy ?? UnknownValuePolicy.Warn)
         {
-            // §10.1/§10.7: the two naming inputs Core consumes. Explicit attribute field,
-            // else [defaults] for the format (§9.2 tiers 5 and 2); the template tiers are
-            // inert until application lands. An absent display_name defaults to the name,
-            // and an absent format leaves the scale-specific defaults in charge — which is
-            // what every pre-M6 spec resolves to, byte-for-byte unchanged.
+            // §10.1/§10.7: the two naming inputs Core consumes. `section` is the EFFECTIVE
+            // attribute, so a template-supplied display_name or format has already won its
+            // tier here and reads exactly like an explicit one (§9.2 tiers 3–5); the
+            // `?? defaults` fall-back below is tier 2. An absent display_name defaults to
+            // the name, and an absent format leaves the scale-specific defaults in charge —
+            // which is what every template-free spec resolves to, byte-for-byte unchanged.
             DisplayName = section.DisplayName ?? name,
             NameFormat = ParseEffectiveFormat(section.FormalAttributeFormat ?? defaults?.FormalAttributeFormat),
         };
@@ -636,125 +722,18 @@ public static class SpecResolver
         return parsed;
     }
 
-    private static SourceBinding? ResolveSource(
-        AttributeSection section,
-        string attribute,
-        string? attributeName,
-        SourceShape shape,
-        SourceSchema? schema,
-        bool hasHeader,
-        List<ResolvedNameBinding> nameBindings,
-        List<BedrockDiagnostic> diagnostics)
+    // §10.2/D-061/D-121: pairs the already-addressed source with the EFFECTIVE value
+    // type. Addressing decided *which* column or predicate (before application, since a
+    // matcher range selects on the resolved index); this decides how its raw values
+    // parse, which depends on the effective discretizer and therefore has to happen
+    // after. Null when the source could not be addressed — its one SourceBindingInvalid
+    // was already recorded by the pass and fails the result.
+    private static SourceBinding? BuildSource(AddressedSource? addressed, DiscretizerSection? discretizer) => addressed switch
     {
-        switch (section.Source)
-        {
-            // §10.2: source kind must match the binding shape.
-            case ColumnSourceSection when shape == SourceShape.Triple:
-                AddSourceInvalid(diagnostics, attribute, "has a column source, which requires a wide binding");
-                return null;
-
-            case ColumnSourceSection column:
-                if (ResolveColumnIndex(column, attribute, attributeName, schema, hasHeader, nameBindings, diagnostics) is not { } index)
-                {
-                    return null;
-                }
-
-                return new ColumnSource(index, ResolveValueType(column.ValueType, section.Discretizer));
-
-            case PredicateSourceSection when shape != SourceShape.Triple:
-                AddSourceInvalid(diagnostics, attribute, "has a predicate source, which requires a triple binding");
-                return null;
-
-            case PredicateSourceSection predicate:
-                // The predicate is a data selector, not a header name — no schema
-                // resolution; it only must be a non-empty string (§5.3/§10.2).
-                if (predicate.Name is not { Length: > 0 } predicateName)
-                {
-                    AddSourceInvalid(diagnostics, attribute, "has a predicate source with no name");
-                    return null;
-                }
-
-                return new PredicateSource(predicateName, ResolveValueType(predicate.ValueType, section.Discretizer));
-
-            default:
-                AddSourceInvalid(diagnostics, attribute, "declares no source");
-                return null;
-        }
-    }
-
-    private static int? ResolveColumnIndex(
-        ColumnSourceSection column,
-        string attribute,
-        string? attributeName,
-        SourceSchema? schema,
-        bool hasHeader,
-        List<ResolvedNameBinding> nameBindings,
-        List<BedrockDiagnostic> diagnostics)
-    {
-        // §10.2: exactly one of index/name.
-        if (column is { Index: { } index, Name: null })
-        {
-            if (index < 0)
-            {
-                AddSourceInvalid(diagnostics, attribute, $"declares negative source index {index}");
-                return null;
-            }
-
-            // The conversion pipeline resolves schema-aware (G-1/D-098), so this seam
-            // owns the source-index range check. A schema-less resolve (spec tooling)
-            // leaves the width unknown; ResolvedSpec.Create is the trust-boundary backstop.
-            if (schema is not null && index >= schema.ColumnCount)
-            {
-                AddSourceInvalid(diagnostics, attribute,
-                    $"declares source index {index}, which is out of range for a source with {schema.ColumnCount} columns");
-                return null;
-            }
-
-            return index;
-        }
-
-        string problem;
-        if (column.Index is not null)
-        {
-            problem = "declares both a source index and a source name; exactly one is allowed";
-        }
-        else if (column.Name is not { } byName)
-        {
-            problem = "declares neither a source index nor a source name";
-        }
-        else if (!hasHeader)
-        {
-            problem = $"binds source name '{byName}' but the binding declares has_header = false";
-        }
-        else if (schema?.Header is not { } header)
-        {
-            problem = $"binds source name '{byName}' but no header schema was supplied";
-        }
-        else
-        {
-            // §10.2: a source name must resolve to exactly one column.
-            var found = ResolveUniqueHeader(header, byName);
-            if (found >= 0)
-            {
-                // Record the site-typed name binding for the ResolvedSpec trust boundary
-                // (D-098); an empty attribute name is already an AttributeNameMissing error
-                // that fails the success gate, so the binding is never consumed there.
-                if (!string.IsNullOrEmpty(attributeName))
-                {
-                    nameBindings.Add(new AttributeSourceNameBinding(attributeName, byName, found));
-                }
-
-                return found;
-            }
-
-            problem = found == -1
-                ? $"binds source name '{byName}', which is not in the source header"
-                : $"binds source name '{byName}', which matches multiple source header columns; it must resolve to exactly one";
-        }
-
-        AddSourceInvalid(diagnostics, attribute, problem);
-        return null;
-    }
+        AddressedColumn column => new ColumnSource(column.Index, ResolveValueType(column.AuthoredValueType, discretizer)),
+        AddressedPredicate predicate => new PredicateSource(predicate.Name, ResolveValueType(predicate.AuthoredValueType, discretizer)),
+        _ => null,
+    };
 
     // Authored value_type wins; otherwise the discretizer kind decides —
     // manual_cuts, equal_width, and equal_frequency are number-fixing (their cuts are numeric),
@@ -1638,12 +1617,6 @@ public static class SpecResolver
         return result.Value;
     }
 
-    private static void AddSourceInvalid(List<BedrockDiagnostic> diagnostics, string attribute, string problem) =>
-        diagnostics.Add(new BedrockDiagnostic(
-            DiagnosticCode.SourceBindingInvalid, DiagnosticSeverity.Error,
-            $"Attribute '{attribute}' {problem} (§10.2).",
-            new DiagnosticLocation(AttributeName: attribute)));
-
     // §10.2/§5.3 (D-085): SourceBindingInvalid also owns binding-level problems
     // (the triple columns table, ordering, encoding) that belong to no attribute;
     // the caller-supplied message names the binding concern and its § reference,
@@ -1669,29 +1642,6 @@ public static class SpecResolver
         }
 
         return -1;
-    }
-
-    // §10.2/§5.3: a header name must resolve to exactly one column. Returns the sole
-    // index, -1 when no header matches, or -2 when several do — the -2 case is the
-    // duplicate-matching-header reject shared by wide sources, wide column object
-    // keys, and triple roles (ordinal compare, P-12).
-    private static int ResolveUniqueHeader(IReadOnlyList<string> header, string name)
-    {
-        var matches = 0;
-        var index = -1;
-        for (var i = 0; i < header.Count; i++)
-        {
-            if (string.Equals(header[i], name, StringComparison.Ordinal))
-            {
-                matches++;
-                if (index < 0)
-                {
-                    index = i;
-                }
-            }
-        }
-
-        return matches switch { 1 => index, 0 => -1, _ => -2 };
     }
 
     // The success gate (round-7 High-1): on any Error/Fatal, fail without calling any

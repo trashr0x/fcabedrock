@@ -75,16 +75,61 @@ public enum DiagnosticCode
     SpecExtendsCycle,
 
     /// <summary>
-    /// The document <em>uses</em> templates/matchers — a <c>[[matcher]]</c> entry is
-    /// present (one aggregated diagnostic per document), or an attribute references a
-    /// <c>template</c> (one per attribute) — and resolution is not implemented; the
-    /// resolve seam rejects rather than silently ignoring schema-changing config.
-    /// Unreferenced <c>[[template]]</c> blocks are inert and resolve cleanly — and
-    /// from M6 Slice A their naming keys are parse-validated and carried, though
-    /// still never applied. Spec §9 / §16.4 (D-078; transitional, removed when the
-    /// application path lands at M6 Slice B — D-116/D-120).
+    /// A <c>[[template]]</c> declares no <c>id</c> (§9.1): <c>id</c> is required, because
+    /// a template is only reachable by name. One per template, in composed template
+    /// order. A <em>malformed</em> id is instead a parse-phase <c>SpecFieldInvalid</c>.
+    /// Error, spec resolve. Spec §9.1 / §16.4 (D-114/D-116/D-121).
     /// </summary>
-    TemplateMatcherNotImplementedV1,
+    TemplateIdMissing,
+
+    /// <summary>
+    /// Two <c>[[template]]</c> entries in the composed document (§13) declare the same
+    /// <c>id</c>; ids must be unique because they are referenced by name. One per
+    /// <em>extra</em> declaration, in composed template order — the
+    /// <c>AttributeNameDuplicate</c> granularity. Error, spec resolve. Spec §9.1 /
+    /// §13 / §16.4 (D-114/D-116/D-121).
+    /// </summary>
+    TemplateIdDuplicate,
+
+    /// <summary>
+    /// A <c>[[matcher]]</c> or an <c>[[attribute]]</c> references a <c>template</c> id no
+    /// <c>[[template]]</c> declares. One per referencing <em>site</em>: matcher sites in
+    /// matcher declaration order, attribute sites in attribute declaration order carrying
+    /// the <c>AttributeName</c> location. The unknown reference contributes no
+    /// configuration. Error, spec resolve. Spec §9.1 / §9.2 / §16.4 (D-116/D-121).
+    /// </summary>
+    TemplateReferenceUnknown,
+
+    /// <summary>
+    /// A <c>[[matcher]]</c> authors <c>source_index_range</c> under
+    /// <c>shape = "triple"</c>, where a predicate source has no column index (§9.2).
+    /// One per incompatible matcher, in declaration order. A <c>name_regex</c> matcher
+    /// stays legal under triple. Error, spec resolve. Spec §9.2 / §16.4
+    /// (D-115/D-116/D-121).
+    /// </summary>
+    MatcherSelectorInvalidForShape,
+
+    /// <summary>
+    /// A <c>[[matcher]]</c>'s selector matches no declared logical attribute — the
+    /// typo-catcher, not an error, since a pattern or range may legitimately over-cover
+    /// (§9.2/D-115). Selector-driven: it is independent of whether the referenced
+    /// template resolves, so an adjacent Error on the same matcher does not suppress it.
+    /// One per matcher, interleaved with <see cref="MatcherFullyShadowed"/> by matcher
+    /// declaration order. Warning, spec resolve. Spec §9.2 / §16.4 (D-116/D-121).
+    /// </summary>
+    MatcherSelectsNoAttributes,
+
+    /// <summary>
+    /// A <c>[[matcher]]</c> selects at least one attribute but, on <em>every</em>
+    /// selected attribute, <em>every</em> field its template authors is overridden by a
+    /// higher-precedence source (§9.2) — so the matcher changes nothing. The
+    /// determination is made at the <b>merge</b> level and is independent of
+    /// <c>include = false</c> dormancy: a field that wins on an excluded attribute
+    /// prevents this warning. One per matcher, interleaved with
+    /// <see cref="MatcherSelectsNoAttributes"/> by matcher declaration order. Warning,
+    /// spec resolve. Spec §9.2 / §16.4 (D-116/D-119/D-121).
+    /// </summary>
+    MatcherFullyShadowed,
 
     /// <summary>The document has no <c>[binding]</c> or no <c>shape</c>. Spec §5.1 (D-067).</summary>
     BindingShapeMissing,
