@@ -6,9 +6,9 @@ namespace FcaBedrock.Spec.Tests.Toml;
 
 /// <summary>
 /// Reader diagnostics tests (D-075): every parse-phase code with positions,
-/// the D-070 three-tier discretizer dispatch, the closed per-table
-/// deferred-surface set (positives per field, near-miss negatives), and
-/// whole-read aggregation.
+/// the D-070 three-tier discretizer dispatch, the retired deferred-surface set
+/// (a clean read per naming key per owning table, plus the near-miss negatives
+/// that must stay <c>SpecKeyUnrecognized</c>), and whole-read aggregation.
 /// </summary>
 public sealed class SpecReaderDiagnosticsTests
 {
@@ -124,43 +124,90 @@ public sealed class SpecReaderDiagnosticsTests
             DiagnosticCode.SpecFieldInvalid);
     }
 
-    [Theory]
-    [InlineData("[defaults]\nformal_attribute_format = \"{value}\"\n", "formal_attribute_format")]
-    public void Read_WhenDeferredSurfaceAuthored_ThenSpecSurfaceNotYetSupported(string toml, string field)
+    [Fact]
+    public void Read_WhenDefaultsAuthorsNameFormat_ThenItIsCarriedNotRejected()
     {
-        // Slice F retired extends/template/matcher from this set (D-078); the
-        // remaining entries belong to the naming-fidelity slice.
-        var result = SpecReader.Read(toml);
+        // D-120: the [defaults] half of the retired deferred set. Asserting a clean read
+        // AND the carried value — rather than the absence of a code that no longer has
+        // this owner — is what keeps the retirement lock able to fail (the substitution
+        // Slice E made when the deferred-discretizer set retired, D-104).
+        var result = SpecReader.Read("[defaults]\nformal_attribute_format = \"{value}\"\n");
 
-        var diagnostic = Assert.Single(result.Diagnostics);
-        Assert.Equal(DiagnosticCode.SpecSurfaceNotYetSupported, diagnostic.Code);
-        Assert.Contains(field, diagnostic.Message, StringComparison.Ordinal);
+        Assert.True(result.IsOk, string.Join("; ", result.Diagnostics.Select(d => $"{d.Code}: {d.Message}")));
+        Assert.Empty(result.Diagnostics);
+        Assert.Equal("{value}", result.Value!.Defaults!.FormalAttributeFormat);
+    }
+
+    [Fact]
+    public void Read_WhenAttributeAuthorsNamingKeys_ThenBothAreCarriedNotRejected()
+    {
+        var result = SpecReader.Read(
+            Attribute("display_name = \"Education\"\nformal_attribute_format = \"{display_name}::{value}\""));
+
+        Assert.True(result.IsOk, string.Join("; ", result.Diagnostics.Select(d => $"{d.Code}: {d.Message}")));
+        Assert.Empty(result.Diagnostics);
+        var attribute = result.Value!.Attributes[0];
+        Assert.Equal("Education", attribute.DisplayName);
+        Assert.Equal("{display_name}::{value}", attribute.FormalAttributeFormat);
+    }
+
+    [Fact]
+    public void Read_WhenTemplateAuthorsNamingKeys_ThenBothAreCarriedNotRejected()
+    {
+        // §9.1: a template body is the attribute config surface, so the naming keys carry
+        // there on the same terms — even though template APPLICATION stays rejected at
+        // resolve until Slice B.
+        var result = SpecReader.Read(
+            "[[template]]\nid = \"t\"\ndisplay_name = \"Boolean\"\nformal_attribute_format = \"{column}-{value}\"\n");
+
+        Assert.True(result.IsOk, string.Join("; ", result.Diagnostics.Select(d => $"{d.Code}: {d.Message}")));
+        Assert.Empty(result.Diagnostics);
+        var template = result.Value!.Templates[0];
+        Assert.Equal("Boolean", template.DisplayName);
+        Assert.Equal("{column}-{value}", template.FormalAttributeFormat);
     }
 
     [Theory]
-    [InlineData("display_name = \"Education\"")]
-    [InlineData("formal_attribute_format = \"{value}\"")]
-    public void Read_WhenDeferredAttributeKeyAuthored_ThenSpecSurfaceNotYetSupported(string line)
+    [InlineData("display_name = \"\"")]                              // §10.1: an authored one must be non-empty
+    [InlineData("display_name = \"one\\ntwo\"")]                     // §10.1: no CR/LF — .cxt is line-oriented
+    [InlineData("display_name = 7")]                                 // wrong type
+    [InlineData("formal_attribute_format = \"\"")]                   // §10.7: the whole format must be non-empty
+    [InlineData("formal_attribute_format = \"{Value}\"")]            // case variant of a closed-set placeholder
+    [InlineData("formal_attribute_format = \"{scale}\"")]            // there is no {scale}
+    [InlineData("formal_attribute_format = \"{}\"")]                 // empty placeholder
+    [InlineData("formal_attribute_format = \"{name\"")]              // unmatched {
+    [InlineData("formal_attribute_format = \"name}\"")]              // unmatched }
+    [InlineData("formal_attribute_format = \"a\\nb{name}\"")]        // CR/LF in literal text
+    [InlineData("formal_attribute_format = 7")]                      // wrong type
+    public void Read_WhenNamingKeyMalformed_ThenSpecFieldInvalid(string line)
     {
+        // §10.7/§16.4: every naming-shape failure is the ordinary SpecFieldInvalid —
+        // D-116 deliberately mints no format-specific or display-name-specific code.
         var result = SpecReader.Read(Attribute(line));
 
         var diagnostic = Assert.Single(result.Diagnostics);
-        Assert.Equal(DiagnosticCode.SpecSurfaceNotYetSupported, diagnostic.Code);
+        Assert.Equal(DiagnosticCode.SpecFieldInvalid, diagnostic.Code);
         Assert.Equal("a", diagnostic.Location?.AttributeName);
     }
 
-    [Theory]
-    [InlineData("display_name = \"Boolean\"")]
-    [InlineData("formal_attribute_format = \"{value}\"")]
-    public void Read_WhenDeferredKeyInsideTemplate_ThenSpecSurfaceNotYetSupported(string line)
+    [Fact]
+    public void Read_WhenExcludedAttributeAuthorsBadFormat_ThenStillSpecFieldInvalid()
     {
-        // §9.1: a template may carry any attribute config field, so the
-        // naming-deferred keys reject inside [[template]] exactly as on an
-        // attribute (D-078).
-        var result = SpecReader.Read($"[[template]]\nid = \"t\"\n{line}\n");
+        // §10.7: checked wherever authored, INCLUDING on an excluded attribute — authored
+        // shape is the parser's concern while dormancy is semantic (the D-049 split).
+        var result = SpecReader.Read(Attribute("include = false\nformal_attribute_format = \"{nope}\""));
 
-        var diagnostic = Assert.Single(result.Diagnostics);
-        Assert.Equal(DiagnosticCode.SpecSurfaceNotYetSupported, diagnostic.Code);
+        Assert.Equal(DiagnosticCode.SpecFieldInvalid, Assert.Single(result.Diagnostics).Code);
+    }
+
+    [Fact]
+    public void Read_WhenUnusedTemplateAuthorsBadFormat_ThenStillSpecFieldInvalid()
+    {
+        // §9.2/§10.7: an unused template is semantically dormant, but parse-level shape
+        // checks and the naming-format grammar still apply to its authored body.
+        var result = SpecReader.Read("[[template]]\nid = \"t\"\nformal_attribute_format = \"{nope}\"\n");
+
+        Assert.Equal(DiagnosticCode.SpecFieldInvalid, Assert.Single(result.Diagnostics).Code);
     }
 
     [Theory]
@@ -222,12 +269,13 @@ public sealed class SpecReaderDiagnosticsTests
     }
 
     [Theory]
-    [InlineData("display_nam = \"x\"")] // typo of a deferred key
-    [InlineData("extends = \"base.toml\"")] // deferred key, wrong table
-    public void Read_WhenNearMissOfDeferredSurface_ThenSpecKeyUnrecognizedNotTheTransitionalCode(string line)
+    [InlineData("display_nam = \"x\"")] // typo of a naming key
+    [InlineData("formal_attribute_formatt = \"{value}\"")]
+    [InlineData("extends = \"base.toml\"")] // real key, wrong table
+    public void Read_WhenNearMissOfANamingKey_ThenSpecKeyUnrecognized(string line)
     {
-        // D-075: the deferred-surface set is closed and per-table — it must never
-        // absorb typo-like unknown keys.
+        // D-075: the allow-list is exactly what a reader consumes, so a near-miss stays an
+        // unknown key rather than being absorbed by the naming surface it resembles.
         var result = SpecReader.Read(Attribute(line));
 
         var diagnostic = Assert.Single(result.Diagnostics);
@@ -268,6 +316,173 @@ public sealed class SpecReaderDiagnosticsTests
         Assert.Equal(3, result.Diagnostics.Count);
         Assert.Equal(2, result.Diagnostics.Count(d => d.Code == DiagnosticCode.SpecFieldInvalid));
         Assert.Contains(result.Diagnostics, d => d.Code == DiagnosticCode.SpecKeyUnrecognized);
+    }
+
+    [Fact]
+    public void Read_WhenProblemsAreAuthoredAgainstTraversalOrder_ThenTheyReportInSourcePositionOrder()
+    {
+        // D-116/D-120: the semantic pass reports in SOURCE-POSITION order, applied once at
+        // the SpecReader boundary rather than left as an artifact of traversal. Here the
+        // bad keys are authored in reverse READER order — the reader takes name/source/
+        // display_name/description before it ever reaches missing_policy — so a
+        // traversal-ordered result would report line 8 before line 6. Position wins.
+        var result = SpecReader.Read(
+            "[spec]\nversion = 1\n\n[[attribute]]\nname = \"a\"\n"
+            + "missing_policy = \"nope\"\n"                       // line 6
+            + "source = { kind = \"column\", index = 0 }\n"
+            + "display_name = \"\"\n");                           // line 8
+
+        Assert.Equal([6, 8], result.Diagnostics.Select(d => d.Location?.Line ?? 0).ToArray());
+    }
+
+    [Fact]
+    public void Read_WhenTwoProblemsShareOneSpan_ThenBothReportInEmissionOrder()
+    {
+        // The equal-position case reached through the PUBLIC surface: both of these
+        // anchor on the same inline-table span, so only the emission-ordinal tie-break
+        // decides their order. Asserted on the exact message sequence — asserting that
+        // the positions are sorted would be a tautology, since swapping two diagnostics
+        // at one position leaves the position list identical.
+        var result = SpecReader.Read(Attribute("discretizer = { kind = \"equal_width\", vmin = 1, vmax = 2 }"));
+
+        var spans = result.Diagnostics.Select(d => (d.Location?.Line, d.Location?.Column)).Distinct().ToArray();
+        Assert.Single(spans); // precondition: every diagnostic really is at one position
+        Assert.Equal(
+            ["declares no bins", "declares vmin/vmax"],
+            result.Diagnostics.Select(d => d.Message.Contains("declares no bins", StringComparison.Ordinal)
+                ? "declares no bins"
+                : "declares vmin/vmax").ToArray());
+    }
+
+    // --- The ordering policy itself (SpecReader.SortSemantic) ---
+    //
+    // Exercised directly with constructed diagnostics, because two of its guarantees
+    // cannot be reached or observed through Read: TomlReadContext always attaches a span,
+    // so the span-less branch has no authored input at all, and a two-element equal-position
+    // case would survive even an unstable sort. A test that cannot fail is not a lock.
+
+    [Fact]
+    public void SortSemantic_WhenADiagnosticHasNoLocation_ThenItSortsFirst()
+    {
+        // Span-less (document-level) diagnostics compare as line 0, column 0 and therefore
+        // lead, whatever their emission position.
+        var diagnostics = new List<BedrockDiagnostic>
+        {
+            At("located-late", 5, 2),
+            Unlocated("document-level"),
+            At("located-early", 1, 1),
+        };
+
+        SpecReader.SortSemantic(diagnostics, 0);
+
+        Assert.Null(diagnostics[0].Location); // precondition made explicit: it really has none
+        Assert.Equal(["document-level", "located-early", "located-late"], Messages(diagnostics));
+    }
+
+    [Fact]
+    public void SortSemantic_WhenSeveralDiagnosticsHaveNoLocation_ThenTheyLeadInEmissionOrder()
+    {
+        var diagnostics = new List<BedrockDiagnostic>
+        {
+            Unlocated("second"),
+            At("located", 1, 1),
+            Unlocated("first"),
+        };
+
+        SpecReader.SortSemantic(diagnostics, 0);
+
+        // "second"/"first" name their EMISSION order, not their sorted order — so a
+        // content-based reordering would be visible here.
+        Assert.Equal(["second", "first", "located"], Messages(diagnostics));
+    }
+
+    [Fact]
+    public void SortSemantic_WhenManyDiagnosticsShareOnePosition_ThenEmissionOrderSurvivesExactly()
+    {
+        // The emission ordinal is part of the comparison, not a convention — which makes
+        // the order total, so it does not depend on the sort's stability. Twenty elements
+        // is past the threshold where .NET's introsort stops being an insertion sort, so
+        // dropping the tie-break would visibly reorder these rather than happening to work.
+        // The messages descend, so any content-driven reordering is also visible.
+        var diagnostics = new List<BedrockDiagnostic>();
+        for (var i = 0; i < 20; i++)
+        {
+            diagnostics.Add(At($"m{19 - i:D2}", 7, 3));
+        }
+
+        var emitted = Messages(diagnostics);
+        SpecReader.SortSemantic(diagnostics, 0);
+
+        Assert.Equal(emitted, Messages(diagnostics));
+        Assert.Equal("m19", diagnostics[0].Message);
+        Assert.Equal("m00", diagnostics[^1].Message);
+    }
+
+    [Fact]
+    public void SortSemantic_WhenPositionsDiffer_ThenLineThenColumnAscending()
+    {
+        var diagnostics = new List<BedrockDiagnostic>
+        {
+            At("l9c1", 9, 1),
+            At("l2c9", 2, 9),
+            At("l2c1", 2, 1),
+            At("l9c0", 9, 0),
+        };
+
+        SpecReader.SortSemantic(diagnostics, 0);
+
+        Assert.Equal(["l2c1", "l2c9", "l9c0", "l9c1"], Messages(diagnostics));
+    }
+
+    [Fact]
+    public void SortSemantic_WhenAppliedFromAnOffset_ThenEarlierDiagnosticsKeepTheirPlace()
+    {
+        // The phase boundary: the sort is scoped to the semantic range, so phase-1 parser
+        // warnings stay ahead of every semantic diagnostic no matter where they sit.
+        var diagnostics = new List<BedrockDiagnostic>
+        {
+            At("parser-warning-late", 99, 1),
+            At("semantic-late", 5, 1),
+            At("semantic-early", 2, 1),
+        };
+
+        SpecReader.SortSemantic(diagnostics, from: 1);
+
+        Assert.Equal(["parser-warning-late", "semantic-early", "semantic-late"], Messages(diagnostics));
+    }
+
+    private static BedrockDiagnostic At(string message, int line, int column) =>
+        new(DiagnosticCode.SpecFieldInvalid, DiagnosticSeverity.Error, message, new DiagnosticLocation(Line: line, Column: column));
+
+    private static BedrockDiagnostic Unlocated(string message) =>
+        new(DiagnosticCode.SpecFieldInvalid, DiagnosticSeverity.Error, message);
+
+    private static string[] Messages(List<BedrockDiagnostic> diagnostics) =>
+        diagnostics.Select(d => d.Message).ToArray();
+
+    [Fact]
+    public void Read_WhenReadTwice_ThenTheOrderedDiagnosticListIsIdentical()
+    {
+        // P-7 at the parse boundary: same document ⇒ same ordered diagnostics, so tooling
+        // that prints or hashes them cannot see run-to-run drift.
+        const string Toml =
+            "[binding]\nshape = \"wibble\"\nmissing_polcy = \"skip\"\n"
+            + "[[attribute]]\nname = \"a\"\ndisplay_name = \"\"\nformal_attribute_format = \"{nope}\"\n";
+
+        Assert.Equal(
+            SpecReader.Read(Toml).Diagnostics.Select(d => (d.Code, d.Location?.Line, d.Location?.Column)).ToArray(),
+            SpecReader.Read(Toml).Diagnostics.Select(d => (d.Code, d.Location?.Line, d.Location?.Column)).ToArray());
+    }
+
+    [Fact]
+    public void Read_WhenTomlSyntaxIsBroken_ThenTheSemanticPassNeverRuns()
+    {
+        // The phase boundary the ordering policy must not disturb (D-075): syntax errors
+        // are TERMINAL, so no semantic diagnostic is produced to be sorted alongside them.
+        var result = SpecReader.Read("[spec\nversion = 1\ndisplay_name = \"\"\n");
+
+        Assert.False(result.IsOk);
+        Assert.All(result.Diagnostics, d => Assert.Equal(DiagnosticCode.SpecTomlInvalid, d.Code));
     }
 
     [Fact]

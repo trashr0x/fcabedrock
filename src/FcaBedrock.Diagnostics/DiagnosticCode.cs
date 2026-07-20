@@ -36,11 +36,16 @@ public enum DiagnosticCode
     // here. An unknown kind spelling stays an ordinary SpecFieldInvalid (D-070 tier 3).
 
     /// <summary>
-    /// A recognized v1 surface the reader does not yet model was authored
-    /// (<c>display_name</c>, <c>formal_attribute_format</c>,
-    /// <c>value_type = "date"</c>). Closed, per-table set — never a fallback for
-    /// unknown keys. Transitional intra-M2 scaffolding, retired as slices land
-    /// their carriers (D-075; extends/template/matcher retired by Slice F, D-078).
+    /// A recognized v1 surface the reader does not yet model was authored. As of
+    /// M6 Slice A this is <b>exactly one</b> condition — <c>value_type = "date"</c>
+    /// — and it is a <em>value-level</em> reject inside the source reader, not a
+    /// key: the closed per-table deferred-<em>key</em> sets are gone, retired with
+    /// the carriers they were waiting for (extends/template/matcher at M2 Slice F,
+    /// D-078; the naming keys <c>display_name</c> / <c>formal_attribute_format</c>
+    /// at M6 Slice A, D-120). Never a fallback for unknown keys — those are
+    /// <see cref="SpecKeyUnrecognized"/>. Transitional: this code retires when the
+    /// D-038 date carrier lands and hands over to the permanent plan-phase
+    /// <c>DateValueTypeNotImplementedV1</c> (not yet an enum member — D-085).
     /// </summary>
     SpecSurfaceNotYetSupported,
 
@@ -74,8 +79,10 @@ public enum DiagnosticCode
     /// present (one aggregated diagnostic per document), or an attribute references a
     /// <c>template</c> (one per attribute) — and resolution is not implemented; the
     /// resolve seam rejects rather than silently ignoring schema-changing config.
-    /// Unreferenced <c>[[template]]</c> blocks are inert and resolve cleanly.
-    /// Spec §9 / §16.4 (D-078; transitional, removed at M6).
+    /// Unreferenced <c>[[template]]</c> blocks are inert and resolve cleanly — and
+    /// from M6 Slice A their naming keys are parse-validated and carried, though
+    /// still never applied. Spec §9 / §16.4 (D-078; transitional, removed when the
+    /// application path lands at M6 Slice B — D-116/D-120).
     /// </summary>
     TemplateMatcherNotImplementedV1,
 
@@ -287,6 +294,19 @@ public enum DiagnosticCode
     /// Spec §10.2 / §14.
     /// </summary>
     FormalAttributeNameCollision,
+
+    /// <summary>
+    /// A rendered formal-attribute name is empty, or contains CR or LF. One
+    /// aggregated Error per affected logical attribute (the count plus at most
+    /// three quoted, escaped samples in render order), alongside
+    /// <see cref="FormalAttributeNameCollision"/>. The shared plan fails, so
+    /// <c>.dat</c> emission is blocked as well as <c>.cxt</c>: a newline inside a
+    /// name would add a phantom line to the line-oriented <c>.cxt</c>, and
+    /// exporters never sanitize (P-15). Load-bearing beyond the M6 naming surface
+    /// — it also catches CR/LF arriving from raw values, calibrated domains, and
+    /// <c>value_labels</c>. Spec §10.7 / §16.4 (D-116/D-117).
+    /// </summary>
+    FormalAttributeNameInvalid,
 
     /// <summary>
     /// A value-bin ordinal scale (<c>identity</c> — the only M2 value-bin

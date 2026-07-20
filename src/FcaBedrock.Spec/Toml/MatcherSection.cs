@@ -5,7 +5,8 @@ namespace FcaBedrock.Spec.Toml;
 /// template to attributes matched by a pattern. M2 carries and composes
 /// matchers (§13 rule 4: base entries then derived, preserving §9.2's
 /// last-match-wins precedence) but never applies them — a present matcher
-/// fails resolve with <c>TemplateMatcherNotImplementedV1</c> until M6 (D-078).
+/// fails resolve with <c>TemplateMatcherNotImplementedV1</c> until the
+/// application path lands at M6 Slice B (D-078/D-120).
 /// </summary>
 /// <param name="Match">The authored <c>match</c> pattern table.</param>
 /// <param name="Template">Id of the <c>[[template]]</c> to apply (§9.2).</param>
@@ -13,7 +14,8 @@ public sealed record MatcherSection(MatchSection? Match, string? Template);
 
 /// <summary>
 /// The authored <c>match</c> pattern of a <c>[[matcher]]</c> (§9.2). Carried
-/// verbatim; M6 owns pattern semantics and validation (arity, regex syntax).
+/// verbatim; M6 Slice B owns pattern semantics and validation (arity, regex
+/// syntax — D-115).
 /// </summary>
 /// <param name="NameRegex">Regular expression matched against attribute names.</param>
 /// <param name="SourceIndexRange">Inclusive source-column index range, authored as a two-element array; carried at authored arity (D-078).</param>

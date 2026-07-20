@@ -314,6 +314,51 @@ public sealed class SpecRoundTripTests
         Assert.Equal(["90.0", "5e0"], Assert.IsType<OrdinalScaleSection>(reread.Attributes[0].Scale).Order);
     }
 
+    [Fact]
+    public void RoundTrip_WhenNamingKeysAuthoredOnAllThreeOwners_ThenEachSurvivesVerbatim()
+    {
+        // D-119 floor item 7 over the new carriers: [defaults], [[template]], and
+        // [[attribute]] each keep their authored naming values through a full cycle,
+        // including the {{…}} escape and the {column} alias — the authored SPELLING
+        // round-trips, never a normalized equivalent (D-075).
+        var toml =
+            "[spec]\nversion = 1\n\n[binding]\nshape = \"wide\"\n\n"
+            + "[defaults]\nformal_attribute_format = \"{value}\"\n\n"
+            + "[[template]]\nid = \"t\"\ndisplay_name = \"T\"\nformal_attribute_format = \"{name}\"\n\n"
+            + "[[attribute]]\nname = \"a\"\nsource = { kind = \"column\", index = 0 }\n"
+            + "display_name = \"A\"\nformal_attribute_format = \"{{{column}}}-{value}\"\n";
+
+        var reread = Read(SpecWriter.Write(Read(toml)));
+
+        Assert.Equal("{value}", reread.Defaults!.FormalAttributeFormat);
+        Assert.Equal("T", reread.Templates[0].DisplayName);
+        Assert.Equal("{name}", reread.Templates[0].FormalAttributeFormat);
+        Assert.Equal("A", reread.Attributes[0].DisplayName);
+        Assert.Equal("{{{column}}}-{value}", reread.Attributes[0].FormalAttributeFormat);
+    }
+
+    [Fact]
+    public void RoundTrip_WhenNamingKeysOmitted_ThenTheyStayOmitted()
+    {
+        // The other half of presence tracking: an omitted key must not acquire a value on
+        // the way through, which is what keeps every naming-free spec byte-identical.
+        var reread = Read(SpecWriter.Write(DocumentFixtures.Document([DocumentFixtures.Nominal("a", 0)])));
+
+        Assert.Null(reread.Attributes[0].DisplayName);
+        Assert.Null(reread.Attributes[0].FormalAttributeFormat);
+    }
+
+    [Fact]
+    public void RoundTrip_WhenFormatEqualsTheScaleDefaultRendering_ThenItIsStillAuthored()
+    {
+        // Authored-equals-default presence (D-049) for the naming surface: an explicit
+        // "{column}-{value}" on a nominal attribute renders exactly what the default would,
+        // yet it is authored state and must survive rather than be optimized away.
+        var reread = Read(Attribute("formal_attribute_format = \"{column}-{value}\""));
+
+        Assert.Equal("{column}-{value}", reread.Attributes[0].FormalAttributeFormat);
+    }
+
     private static FcaBedrock.Spec.Toml.SpecDocument Read(string toml)
     {
         var result = SpecReader.Read(toml);

@@ -30,4 +30,22 @@ public sealed record AttributeSpec(
     IReadOnlyList<RestrictToEntry> RestrictTo,
     IReadOnlyDictionary<string, string> ValueLabels,
     MissingPolicy MissingPolicy,
-    UnknownValuePolicy UnknownValuePolicy);
+    UnknownValuePolicy UnknownValuePolicy)
+{
+    /// <summary>
+    /// The resolved display name behind <c>{display_name}</c> (§10.1/§10.7),
+    /// defaulting to <see cref="Name"/>. Non-empty and CR/LF-free: the reader
+    /// enforces it on the authored path and <c>ResolvedSpec.Create</c> backstops
+    /// hand-built graphs. Additive and non-positional, so every construction site
+    /// that predates naming stays valid and unchanged (D-087's precedent).
+    /// </summary>
+    public string DisplayName { get; init; } = Name;
+
+    /// <summary>
+    /// The effective post-precedence <c>formal_attribute_format</c> (§10.7), or
+    /// <see langword="null"/> when the scale-specific defaults apply — which is
+    /// the normal case, and the state every pre-M6 spec resolves to. Template and
+    /// matcher syntax never reaches Core; only this resolved value does (D-118).
+    /// </summary>
+    public NameFormat? NameFormat { get; init; }
+}

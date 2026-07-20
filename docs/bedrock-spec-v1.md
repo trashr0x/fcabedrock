@@ -2592,6 +2592,7 @@ exactly one phase — the "Where" column below is the phase-ownership contract
 | `RestrictToValueNotInDomain` | Warning | spec validate |
 | `FormalAttributeCollision` | Error | plan |
 | `FormalAttributeNameCollision` | Error | plan |
+| `FormalAttributeNameInvalid` | Error | plan |
 | `OrdinalOrderMissing` | Error | plan |
 | `OrdinalOrderHasUnknownValue` | Error | plan |
 | `OrdinalOrderNotAllowedWithCuts` | Error | spec validate |
@@ -2673,36 +2674,34 @@ Slice C, D-102; `equal_frequency` at Slice D, D-103, which also made `equal_widt
 `range = "percentile_p1_p99"` spelling accepted) and emptied with `value_groups`, its
 last owner. Every §11 discretizer kind now has a carrier and executes, so an
 unrecognized kind spelling is an ordinary `SpecFieldInvalid`.) One parse-phase code
-remains transitional: `SpecSurfaceNotYetSupported` (recognized v1
-surface the reader does not model yet — attribute/template `display_name` /
-`formal_attribute_format`, `[defaults]` `formal_attribute_format`,
-`value_type = "date"` — a **closed,
-per-table** set, never a fallback for unknown keys, D-075; the
-extends/template/matcher entries were retired by their Slice F carriers, D-078;
-the **naming carriers** (`display_name`, `formal_attribute_format`) are assigned
-to **M6** with the naming-fidelity work, and the `value_type = "date"` entry
-retires when the D-038 carrier lands and hands over to the permanent plan-phase
-`DateValueTypeNotImplementedV1` — so this row **persists past M2 exit** carrying
-those still-deferred surfaces).
+remains transitional: `SpecSurfaceNotYetSupported`, now carrying **exactly one**
+recognized-but-unmodelled surface — **`value_type = "date"`**. The
+extends/template/matcher entries were retired by their Slice F carriers (D-078),
+and the **naming carriers** (`display_name`, `formal_attribute_format` on
+`[[attribute]]`/`[[template]]`, `formal_attribute_format` on `[defaults]`) retired
+at **M6 Slice A** when they gained real carriers (D-120) — with them the closed
+per-table deferred-**key** sets are gone entirely, so the surviving owner is a
+*value-level* reject inside the source reader rather than a key. The row retires
+when the D-038 date carrier lands and hands over to the permanent plan-phase
+`DateValueTypeNotImplementedV1`.
 
-**M6 retirement schedule (settled; effective at the M6 implementation, not
-before).** The M6 template/matcher and naming contract is settled
-(decisions.md D-114…D-119), and with it the fate of both remaining
-template/naming transitionals. When the M6 application path lands,
-`TemplateMatcherNotImplementedV1` is **removed entirely**. When the naming
-carriers land, the `display_name` / `formal_attribute_format` portion of
-`SpecSurfaceNotYetSupported` retires and that code carries **only**
+**M6 retirement schedule.** The M6 template/matcher and naming contract is settled
+(decisions.md D-114…D-119). **The naming half has landed (M6 Slice A, D-120):**
+the `display_name` / `formal_attribute_format` portion of
+`SpecSurfaceNotYetSupported` has retired, and that code now carries **only**
 `value_type = "date"` until the D-038 carrier hands over to
-`DateValueTypeNotImplementedV1`. Until those slices land, **both rows above stay
-in this table and both enum members stay live** — settling the schedule changes
-no code and no count.
+`DateValueTypeNotImplementedV1`. `TemplateMatcherNotImplementedV1` is **still
+live** and is **removed entirely** when the application path lands (M6 Slice B) —
+its row above stays in this table and its enum member stays live until then.
 
-**New permanent M6 conditions (by condition, not yet by name).** M6 introduces
-the invalid states below. Their **public `DiagnosticCode` names and their rows in
-the table above are deliberately deferred to the M6 implementation-surface review
-(P-4)**, following this registry's standing rule that a code joins the enum with
-its emit site; what is settled now is each condition's **owner phase, severity,
-and granularity** (decisions.md D-116):
+**New permanent M6 conditions.** M6 introduces the invalid states below. The
+seventh has **landed with its emit site** at M6 Slice A as
+`FormalAttributeNameInvalid` (named in the table above, D-120). The remaining six
+are **spec-resolve** conditions belonging to template/matcher application: their
+public `DiagnosticCode` names and their rows in the table above land with
+**M6 Slice B**, following this registry's standing rule that a code joins the enum
+with its emit site (D-085). What is settled for all seven is each condition's
+**owner phase, severity, and granularity** (decisions.md D-116):
 
 | Condition | Where | Severity | Granularity |
 | --- | --- | --- | --- |
@@ -2712,7 +2711,13 @@ and granularity** (decisions.md D-116):
 | `source_index_range` under `shape = "triple"` | spec resolve | Error | one per incompatible matcher |
 | matcher selecting zero attributes | spec resolve | Warning | one per matcher |
 | fully-shadowed matcher (§9.2) | spec resolve | Warning | one per matcher |
-| invalid rendered formal-attribute name (empty, or containing CR/LF) | plan | Error | one per affected logical attribute |
+| invalid rendered formal-attribute name (empty, or containing CR/LF) — **landed as `FormalAttributeNameInvalid`** | plan | Error | one per affected logical attribute |
+
+`FormalAttributeNameInvalid` is **aggregated per logical attribute**: its message
+carries the offending-name count plus a bounded sample of at most three rendered
+names in render order, each quoted and escaped (backslash, double quote, CR, LF),
+with a `(+N more)` tail when truncated — a pinned representation, so two runs and
+two machines emit byte-identical messages (§17).
 
 An unknown-reference diagnostic on an **attribute** carries the `AttributeName`
 location; a matcher- or template-scoped diagnostic identifies its declaration and
@@ -2776,11 +2781,14 @@ at 73M records does not produce 73M diagnostics.
 
 The `DiagnosticCode` enum is the authority for the codes a build can actually
 raise; it grows per slice (P-3), so it holds fewer members than this registry — a
-registry row joins the enum when the milestone owning its site lands (D-085). After M5
-the enum has **75** members: the five `probe` rows joined together when M5 landed (the two
-phase widenings above added no member). Two rows remain outstanding —
-`OutputCxtSizeAdvisory` (export, M7) and `DateValueTypeNotImplementedV1` (the D-038 date
-carrier) — each joining the enum when its own milestone lands. Every other row is live.
+registry row joins the enum when the milestone owning its site lands (D-085). After
+**M6 Slice A** the enum has **76** members: 75 at the M5 baseline plus
+`FormalAttributeNameInvalid`, retiring none (`SpecSurfaceNotYetSupported` narrowed
+to `value_type = "date"` rather than retiring, so the count did not move for it).
+Two rows remain outstanding — `OutputCxtSizeAdvisory` (export, M7) and
+`DateValueTypeNotImplementedV1` (the D-038 date carrier) — each joining the enum
+when its own milestone lands, alongside the six spec-resolve M6 conditions above
+(M6 Slice B). Every other row is live.
 
 ## 17. Determinism rules
 

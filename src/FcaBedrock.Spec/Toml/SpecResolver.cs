@@ -77,16 +77,17 @@ public static class SpecResolver
         }
 
         // §9/D-078: templates/matchers are carried and composed but not applied
-        // before M6; a document that *uses* them must fail here — they never
+        // before M6 Slice B; a document that *uses* them must fail here — they never
         // resolve into Core, so a silent pass would drop schema-changing config.
         // Checked before the shape gate so they aggregate on shape-less and
-        // triple documents too. Unreferenced [[template]] blocks are inert.
+        // triple documents too. Unreferenced [[template]] blocks are inert (their
+        // naming keys are parse-validated from M6 Slice A but stay inert, D-120).
         if (document.Matchers.Count > 0)
         {
             diagnostics.Add(new BedrockDiagnostic(
                 DiagnosticCode.TemplateMatcherNotImplementedV1, DiagnosticSeverity.Error,
                 $"The document declares {document.Matchers.Count} [[matcher]] entr{(document.Matchers.Count == 1 ? "y" : "ies")}; " +
-                "matcher resolution lands at M6 (§9, D-078)."));
+                "matcher resolution lands at M6 Slice B (§9, D-078)."));
         }
 
         foreach (var attribute in document.Attributes)
@@ -95,7 +96,7 @@ public static class SpecResolver
             {
                 diagnostics.Add(new BedrockDiagnostic(
                     DiagnosticCode.TemplateMatcherNotImplementedV1, DiagnosticSeverity.Error,
-                    $"The attribute references template = \"{templateRef}\"; template resolution lands at M6 (§9, D-078).",
+                    $"The attribute references template = \"{templateRef}\"; template resolution lands at M6 Slice B (§9, D-078).",
                     new DiagnosticLocation(AttributeName: attribute.Name)));
             }
         }
@@ -599,7 +600,40 @@ public static class SpecResolver
             NormalizeRestrictTo(section.RestrictTo),
             valueLabels,
             section.MissingPolicy ?? defaults?.MissingPolicy ?? MissingPolicy.Skip,
-            section.UnknownValuePolicy ?? defaults?.UnknownValuePolicy ?? UnknownValuePolicy.Warn);
+            section.UnknownValuePolicy ?? defaults?.UnknownValuePolicy ?? UnknownValuePolicy.Warn)
+        {
+            // §10.1/§10.7: the two naming inputs Core consumes. Explicit attribute field,
+            // else [defaults] for the format (§9.2 tiers 5 and 2); the template tiers are
+            // inert until application lands. An absent display_name defaults to the name,
+            // and an absent format leaves the scale-specific defaults in charge — which is
+            // what every pre-M6 spec resolves to, byte-for-byte unchanged.
+            DisplayName = section.DisplayName ?? name,
+            NameFormat = ParseEffectiveFormat(section.FormalAttributeFormat ?? defaults?.FormalAttributeFormat),
+        };
+    }
+
+    // The effective format, reparsed for Core. Every authored format was validated at
+    // parse against this same grammar owner (AttributeReader.ReadNameFormat), so a
+    // failure here means the document did not come through the reader — a programmer
+    // error on a hand-built document, not authored input, and therefore the exception
+    // channel rather than a diagnostic (P-14; there is no resolve-phase condition for it,
+    // and giving SpecFieldInvalid a second phase would break D-067's one-code-one-phase
+    // rule). Same reader-gate/factory-backstop split the discretizer factories follow.
+    private static NameFormat? ParseEffectiveFormat(string? format)
+    {
+        if (format is null)
+        {
+            return null;
+        }
+
+        if (!NameFormat.TryCreate(format, out var parsed, out var error))
+        {
+            throw new InvalidOperationException(
+                $"formal_attribute_format \"{format}\" is invalid ({error}); " +
+                "SpecReader validates every authored format at parse (§10.7, corrupt document state).");
+        }
+
+        return parsed;
     }
 
     private static SourceBinding? ResolveSource(

@@ -1,6 +1,7 @@
 using System.Collections.Frozen;
 using System.Collections.Immutable;
 using System.Globalization;
+using System.Text;
 using FcaBedrock.Core.Calibration;
 using FcaBedrock.Core.Discretization;
 using FcaBedrock.Core.Fingerprinting;
@@ -146,10 +147,16 @@ public static class ConversionPlanner
         // verbatim.
         scale = DeriveNaturalNumericOrder(discretizer, scale, attribute.DeclaredDomain);
 
+        // §10.7/D-117: the rendered-name backstop collects offenders in RENDER order
+        // (the order this attribute's formal attributes are planned) so the sample list
+        // is deterministic, and reports once for the whole logical attribute.
+        var invalidNames = new List<string>();
+
         var crossesByBin = new Dictionary<string, List<int>>(StringComparer.Ordinal);
         foreach (var shape in scale.BuildShapes(scheme))
         {
-            var name = RenderName(attribute, shape, discretizer, labelStyle);
+            var name = RenderName(attribute, shape, discretizer, scale, labelStyle);
+            RecordIfInvalid(name, invalidNames);
             var identity = new FormalAttributeIdentity(attribute.Name, scale.Kind, shape.BinKey, shape.ScaleOp);
             var id = AddFormalAttribute(name, identity, shape.Bin, formalAttributes, idByName, idByIdentity, diagnostics);
 
@@ -168,13 +175,28 @@ public static class ConversionPlanner
         // §10.5 / D-068 / D-074: the missing column appends after the scale's columns
         // (uniformly across scale kinds); its bin key is the literal "missing" with an
         // empty operator (§14). The rendered name bypasses value_labels and label
-        // style — "missing" is not a raw value.
+        // style — "missing" is not a raw value. §10.7/D-117: an explicit format is a
+        // TOTAL override, so it renders this column too ({value} = the literal
+        // "missing", {scale_op} empty) instead of the default "{column}-missing"; the
+        // column's position and canonical identity are unaffected.
         int? missingId = null;
         if (attribute.MissingPolicy == MissingPolicy.AsAttribute)
         {
+            var missingName = attribute.NameFormat is { } missingFormat
+                ? missingFormat.Render(attribute.Name, attribute.DisplayName, "missing", "")
+                : $"{attribute.Name}-missing";
+            RecordIfInvalid(missingName, invalidNames);
             var identity = new FormalAttributeIdentity(attribute.Name, scale.Kind, "missing", "");
             missingId = AddFormalAttribute(
-                $"{attribute.Name}-missing", identity, new ValueBin("missing"), formalAttributes, idByName, idByIdentity, diagnostics);
+                missingName, identity, new ValueBin("missing"), formalAttributes, idByName, idByIdentity, diagnostics);
+        }
+
+        // Reported after the attribute's columns are registered, so ids and any
+        // collision diagnostics stay exactly what a valid run would produce (P-7); the
+        // Error fails the shared plan either way, blocking .dat as well as .cxt (§10.7).
+        if (invalidNames.Count > 0)
+        {
+            diagnostics.Add(InvalidRenderedNames(attribute.Name, invalidNames));
         }
 
         plannedAttributes.Add(new PlannedAttribute(
@@ -221,27 +243,115 @@ public static class ConversionPlanner
     }
 
     private static string RenderName(
-        AttributeSpec attribute, Scaling.FormalAttributeShape shape, Discretizer discretizer, LabelStyle labelStyle)
+        AttributeSpec attribute,
+        Scaling.FormalAttributeShape shape,
+        Discretizer discretizer,
+        Scale scale,
+        LabelStyle labelStyle)
     {
-        // Scale-specific default naming (§10.7). An explicit formal_attribute_format
-        // override is not modelled until it has a caller (a later slice / M2 TOML).
+        if (attribute.NameFormat is { } format)
+        {
+            // §10.7/D-117: an explicit format overrides the scale default ENTIRELY, for
+            // every formal attribute the logical attribute emits. {scale_op} is the
+            // planned operator (empty for non-ordinal shapes).
+            return format.Render(attribute.Name, attribute.DisplayName, RenderValue(attribute, shape, discretizer, scale, labelStyle), shape.ScaleOp);
+        }
+
+        // Scale-specific default naming (§10.7) — byte-identical to the pre-M6 path,
+        // which every existing spec and golden still takes (no fixture authors a format).
         if (shape.ValueLabel is null)
         {
             return attribute.Name; // dichotomic: column alone
         }
 
-        // value_labels (display names) win where set — but only for discretizers
-        // that consult them (§10.8 / D-049). Under a cut discretizer the labels are
-        // dormant, so the discretizer renders the canonical bin label for the style
-        // (cut bins → v2-compat form) and a label keyed to a bin string is ignored.
-        var display = discretizer.ConsultsValueLabels
-            && attribute.ValueLabels.TryGetValue(shape.ValueLabel, out var label)
-            ? label
-            : discretizer.RenderBinLabel(shape.ValueLabel, labelStyle);
-
+        var display = RenderValue(attribute, shape, discretizer, scale, labelStyle);
         return shape.ScaleOp.Length == 0
             ? $"{attribute.Name}-{display}"               // nominal
             : $"{attribute.Name}-{shape.ScaleOp}{display}"; // ordinal
+    }
+
+    // The value side of a name (§10.7's {value} table), shared by the default and
+    // explicit paths so the two cannot disagree about what a value renders as.
+    //
+    // value_labels (display names) win where set — but only for discretizers that
+    // consult them (§10.8 / D-049). Under a cut discretizer the labels are dormant, so
+    // the discretizer renders the canonical bin label for the style (cut bins →
+    // v2-compat form; numeric free_per_value → its D-092 identity) and a label keyed to
+    // a bin string is ignored.
+    //
+    // A dichotomic shape carries no value label of its own (the default name is the
+    // column alone), so {value} resolves to the scale's true_value — through
+    // value_labels when they are live, which is the labelled-dichotomic case §10.7
+    // spells out: true_value = "t" labelled "bruised" renders "bruises?-bruised".
+    private static string RenderValue(
+        AttributeSpec attribute,
+        Scaling.FormalAttributeShape shape,
+        Discretizer discretizer,
+        Scale scale,
+        LabelStyle labelStyle)
+    {
+        var raw = shape.ValueLabel ?? (scale as DichotomicScale)?.TrueValue ?? "";
+        return discretizer.ConsultsValueLabels && attribute.ValueLabels.TryGetValue(raw, out var label)
+            ? label
+            : discretizer.RenderBinLabel(raw, labelStyle);
+    }
+
+    // §10.7/D-117: after final substitution — on the default path too, because raw
+    // values, calibrated domains, and value_labels can inject CR/LF independently of
+    // any authored format.
+    private static void RecordIfInvalid(string name, List<string> invalidNames)
+    {
+        if (name.Length == 0 || name.AsSpan().IndexOfAny('\r', '\n') >= 0)
+        {
+            invalidNames.Add(name);
+        }
+    }
+
+    // One aggregated Error per affected logical attribute (D-116 granularity), with a
+    // deterministic representation: the count, then at most three offenders in render
+    // order, each quoted and escaped, then the truncation tail. Pinned so two runs on
+    // two machines produce byte-identical messages (P-7).
+    private static BedrockDiagnostic InvalidRenderedNames(string attributeName, List<string> invalidNames)
+    {
+        const int sampleLimit = 3;
+        var shown = Math.Min(sampleLimit, invalidNames.Count);
+        var samples = new string[shown];
+        for (var i = 0; i < shown; i++)
+        {
+            samples[i] = QuoteSample(invalidNames[i]);
+        }
+
+        var truncated = invalidNames.Count > sampleLimit
+            ? $" (+{invalidNames.Count - sampleLimit} more)"
+            : "";
+        return new BedrockDiagnostic(
+            DiagnosticCode.FormalAttributeNameInvalid,
+            DiagnosticSeverity.Error,
+            $"Attribute '{attributeName}' renders {invalidNames.Count} invalid formal-attribute name(s) — " +
+            $"empty or containing CR/LF: {string.Join(", ", samples)}{truncated} (§10.7).",
+            new DiagnosticLocation(AttributeName: attributeName));
+    }
+
+    // Exactly four escapes — backslash, double quote, CR, LF — and no other transform,
+    // so an empty name is visible as "" and a newline is legible rather than breaking
+    // the diagnostic across lines. Built char by char so the escapes cannot be applied
+    // in the wrong order (a naive replace chain would double-escape backslashes).
+    private static string QuoteSample(string name)
+    {
+        var quoted = new StringBuilder(name.Length + 2).Append('"');
+        foreach (var character in name)
+        {
+            switch (character)
+            {
+                case '\\': quoted.Append(@"\\"); break;
+                case '"': quoted.Append("\\\""); break;
+                case '\r': quoted.Append(@"\r"); break;
+                case '\n': quoted.Append(@"\n"); break;
+                default: quoted.Append(character); break;
+            }
+        }
+
+        return quoted.Append('"').ToString();
     }
 
     // §10.2 / D-082: a wide attribute resolves to a range-checked column index; a triple

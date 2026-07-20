@@ -37,8 +37,12 @@ internal static class AttributeReader
                 ReadRestrictTo(context, cursor),
                 ReadValueLabels(context, cursor),
                 cursor.TakeEnum("missing_policy", TomlSpellings.MissingPolicies),
-                cursor.TakeEnum("unknown_value_policy", TomlSpellings.UnknownValuePolicies));
-            cursor.Finish(TomlSpellings.AttributeDeferredKeys);
+                cursor.TakeEnum("unknown_value_policy", TomlSpellings.UnknownValuePolicies))
+            {
+                DisplayName = ReadDisplayName(context, cursor),
+                FormalAttributeFormat = ReadNameFormat(context, cursor),
+            };
+            cursor.Finish();
             return section;
         }
         finally
@@ -51,8 +55,9 @@ internal static class AttributeReader
     /// Reads one <c>[[template]]</c> (§9.1). The identity fields
     /// <c>name</c>/<c>source</c>/<c>description</c> are always per-attribute, so
     /// here they are simply not taken and fall to <c>SpecKeyUnrecognized</c>
-    /// (the D-075 listed-name-in-the-wrong-table stance); the naming-deferred
-    /// keys stay <c>SpecSurfaceNotYetSupported</c> exactly as on attributes.
+    /// (the D-075 listed-name-in-the-wrong-table stance); the naming keys are read
+    /// and shape-checked exactly as on an attribute, including inside an unused
+    /// template (§10.7 — shape is parse's, dormancy is semantic).
     /// </summary>
     public static TemplateSection ReadTemplate(TomlReadContext context, TableSyntaxBase table)
     {
@@ -66,9 +71,94 @@ internal static class AttributeReader
             ReadRestrictTo(context, cursor),
             ReadValueLabels(context, cursor),
             cursor.TakeEnum("missing_policy", TomlSpellings.MissingPolicies),
-            cursor.TakeEnum("unknown_value_policy", TomlSpellings.UnknownValuePolicies));
-        cursor.Finish(TomlSpellings.AttributeDeferredKeys);
+            cursor.TakeEnum("unknown_value_policy", TomlSpellings.UnknownValuePolicies))
+        {
+            DisplayName = ReadDisplayName(context, cursor),
+            FormalAttributeFormat = ReadNameFormat(context, cursor),
+        };
+        cursor.Finish();
         return section;
+    }
+
+    /// <summary>
+    /// Reads an authored <c>display_name</c> (§10.1): a string that must be
+    /// non-empty and contain neither CR nor LF. The reason is structural, not
+    /// stylistic — a display name can reach a rendered formal-attribute name, and
+    /// <c>.cxt</c> is line-oriented (§18.1), so a newline would add a phantom line
+    /// (D-117). A rejected value carries null, exactly like any other malformed
+    /// field; its Error already fails the read.
+    /// </summary>
+    public static string? ReadDisplayName(TomlReadContext context, TomlTableCursor cursor)
+    {
+        if (cursor.Take("display_name") is not { } pair)
+        {
+            return null;
+        }
+
+        if (pair.Value is not StringValueSyntax { Value: { } text })
+        {
+            context.Error(
+                DiagnosticCode.SpecFieldInvalid,
+                "display_name expects a string (§10.1).",
+                pair.Value?.Span ?? pair.Span);
+            return null;
+        }
+
+        if (text.Length == 0)
+        {
+            context.Error(
+                DiagnosticCode.SpecFieldInvalid,
+                "display_name is empty; an authored display_name must be non-empty (it defaults to the attribute name, §10.1).",
+                pair.Value.Span);
+            return null;
+        }
+
+        if (text.AsSpan().IndexOfAny('\r', '\n') >= 0)
+        {
+            context.Error(
+                DiagnosticCode.SpecFieldInvalid,
+                "display_name contains a CR or LF; it can reach a rendered formal-attribute name, and .cxt is line-oriented (§10.1/§18.1).",
+                pair.Value.Span);
+            return null;
+        }
+
+        return text;
+    }
+
+    /// <summary>
+    /// Reads an authored <c>formal_attribute_format</c> (§10.7) and validates it
+    /// against the one grammar owner, <c>NameFormat.TryCreate</c> — so the reader
+    /// and the planner can never disagree about which formats are legal (P-5).
+    /// Every §10.7 shape failure is the ordinary <c>SpecFieldInvalid</c>; §10.7
+    /// deliberately mints no format-specific code. The document keeps the authored
+    /// string verbatim for round-trip; the resolver reparses the effective one.
+    /// </summary>
+    public static string? ReadNameFormat(TomlReadContext context, TomlTableCursor cursor)
+    {
+        if (cursor.Take("formal_attribute_format") is not { } pair)
+        {
+            return null;
+        }
+
+        if (pair.Value is not StringValueSyntax { Value: { } text })
+        {
+            context.Error(
+                DiagnosticCode.SpecFieldInvalid,
+                "formal_attribute_format expects a string (§10.7).",
+                pair.Value?.Span ?? pair.Span);
+            return null;
+        }
+
+        if (!NameFormat.TryCreate(text, out _, out var error))
+        {
+            context.Error(
+                DiagnosticCode.SpecFieldInvalid,
+                $"formal_attribute_format is invalid: {error} (§10.7).",
+                pair.Value.Span);
+            return null;
+        }
+
+        return text;
     }
 
     private static SourceSection? ReadSource(TomlReadContext context, TomlTableCursor cursor)

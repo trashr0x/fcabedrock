@@ -8,16 +8,16 @@ namespace FcaBedrock.Spec.Toml;
 /// (a section body or an inline table). Section readers take their known keys
 /// through the typed accessors — each type-checks the CST node and raises
 /// <c>SpecFieldInvalid</c> on mismatch — and then call
-/// <see cref="Finish"/>, which classifies every unconsumed key: a member of the
-/// closed deferred-surface set (D-075) raises the transitional
-/// <c>SpecSurfaceNotYetSupported</c>; anything else raises
-/// <c>SpecKeyUnrecognized</c>. The allow-list is therefore exactly the set of
-/// keys a reader takes — there is no separate list to drift.
+/// <see cref="Finish"/>, which raises <c>SpecKeyUnrecognized</c> for every
+/// unconsumed key. The allow-list is therefore exactly the set of keys a reader
+/// takes — there is no separate list to drift. (The closed D-075 deferred-key
+/// sets retired with the M6 Slice A naming carriers, D-120; the one surviving
+/// <c>SpecSurfaceNotYetSupported</c> owner is the value-level
+/// <c>value_type = "date"</c> reject, which is not a key and never came through
+/// here.)
 /// </summary>
 internal sealed class TomlTableCursor
 {
-    private static readonly string[] NoDeferredKeys = [];
-
     private readonly TomlReadContext _context;
     private readonly string _label;
     private readonly List<(string Key, bool Dotted, KeyValueSyntax Node)> _items = [];
@@ -376,36 +376,23 @@ internal sealed class TomlTableCursor
     }
 
     /// <summary>
-    /// Classifies every key no reader consumed: a member of
-    /// <paramref name="deferredKeys"/> (the table's closed D-075 set) raises the
-    /// transitional <c>SpecSurfaceNotYetSupported</c>; anything else raises
-    /// <c>SpecKeyUnrecognized</c>.
+    /// Raises <c>SpecKeyUnrecognized</c> for every key no reader consumed, so the
+    /// allow-list is exactly the set of keys a reader takes — there is no separate
+    /// list to drift.
     /// </summary>
-    public void Finish(string[]? deferredKeys = null)
+    public void Finish()
     {
-        deferredKeys ??= NoDeferredKeys;
-        foreach (var (key, dotted, node) in _items)
+        foreach (var (key, _, node) in _items)
         {
             if (_consumed.Contains(key))
             {
                 continue;
             }
 
-            var span = node.Key?.Span ?? node.Span;
-            if (!dotted && TomlSpellings.IsIn(deferredKeys, key))
-            {
-                _context.Error(
-                    DiagnosticCode.SpecSurfaceNotYetSupported,
-                    $"{_label} key '{key}' is recognized v1 surface not yet supported by this build; it will land in a later M2 slice (D-075).",
-                    span);
-            }
-            else
-            {
-                _context.Error(
-                    DiagnosticCode.SpecKeyUnrecognized,
-                    $"{_label} key '{key}' is not recognized.",
-                    span);
-            }
+            _context.Error(
+                DiagnosticCode.SpecKeyUnrecognized,
+                $"{_label} key '{key}' is not recognized.",
+                node.Key?.Span ?? node.Span);
         }
     }
 

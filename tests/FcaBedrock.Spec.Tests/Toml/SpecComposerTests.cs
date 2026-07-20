@@ -586,6 +586,111 @@ public sealed class SpecComposerTests
         declared_domain = ["q"]
         """;
 
+    // --- The naming carriers across composition (D-120) ---
+
+    [Fact]
+    public void Compose_WhenBaseDefaultsAuthorsNameFormat_ThenADerivedDefaultsAuthoringOtherFieldsPreservesIt()
+    {
+        // §13 rule 2 is a PER-FIELD merge, so a new [defaults] field must be carried
+        // explicitly in MergeDefaults — and this is the case that would silently regress
+        // otherwise: the derived [defaults] EXISTS and authors something else, so the base's
+        // format is only preserved if the merge names it.
+        var composed = ComposeNaming(
+            baseDefaults: "formal_attribute_format = \"{column}-{value}\"",
+            derivedDefaults: "missing_policy = \"skip\"");
+
+        Assert.Equal("{column}-{value}", composed.Defaults!.FormalAttributeFormat);
+        Assert.Equal(MissingPolicy.Skip, composed.Defaults.MissingPolicy);
+    }
+
+    [Fact]
+    public void Compose_WhenDerivedDefaultsAuthorsNameFormat_ThenItOverridesTheBase()
+    {
+        var composed = ComposeNaming(
+            baseDefaults: "formal_attribute_format = \"{column}-{value}\"",
+            derivedDefaults: "formal_attribute_format = \"{value}\"");
+
+        Assert.Equal("{value}", composed.Defaults!.FormalAttributeFormat);
+    }
+
+    [Fact]
+    public void Compose_WhenDerivedHasNoDefaultsAtAll_ThenTheBaseFormatIsInherited()
+    {
+        var composed = ComposeNaming(baseDefaults: "formal_attribute_format = \"{value}\"", derivedDefaults: null);
+
+        Assert.Equal("{value}", composed.Defaults!.FormalAttributeFormat);
+    }
+
+    [Fact]
+    public void Compose_WhenBaseDefaultsFormatIsInherited_ThenItReachesTheResolvedAttributes()
+    {
+        // The resolver-visible end of the same contract: an inherited [defaults] format is
+        // not merely carried in the document — it becomes the attribute's effective format,
+        // exactly as a flat spec authoring it directly would.
+        var composed = ComposeNaming(
+            baseDefaults: "formal_attribute_format = \"{value}\"",
+            derivedDefaults: "missing_policy = \"skip\"");
+
+        Assert.True(Resolve(composed, new SourceSchema(1)).TryGetValue(out var spec));
+        Assert.Equal("{value}", spec!.Attributes[0].NameFormat?.Text);
+    }
+
+    [Fact]
+    public void Compose_WhenDerivedAttributeOverridesABaseOne_ThenTheNamingKeysTravelWithTheSection()
+    {
+        // §13 rule 5 is a WHOLE-SECTION replacement, so the new init properties ride along
+        // automatically — and, symmetrically, the base's naming keys are dropped rather than
+        // inherited field-wise. Both halves are the contract, which is why no composer change
+        // was needed for attributes and templates.
+        var source = new InMemorySpecTextSource().Add("base.toml",
+            "[spec]\nversion = 1\n\n[binding]\nshape = \"wide\"\n\n"
+            + "[[attribute]]\nname = \"a\"\nsource = { kind = \"column\", index = 0 }\n"
+            + "display_name = \"Base\"\nformal_attribute_format = \"{name}\"\n");
+        var derived = Read(
+            "[spec]\nversion = 1\nextends = \"base.toml\"\n\n"
+            + "[[attribute]]\nname = \"a\"\nsource = { kind = \"column\", index = 0 }\n"
+            + "display_name = \"Derived\"\n");
+
+        var composed = ComposeOk(derived, "derived.toml", source);
+
+        Assert.Equal("Derived", composed.Attributes[0].DisplayName);
+        Assert.Null(composed.Attributes[0].FormalAttributeFormat); // the derived section wins entire
+    }
+
+    [Fact]
+    public void Compose_WhenDerivedTemplateReplacesABaseOne_ThenTheNamingKeysTravelWithTheSection()
+    {
+        // §13 rule 3: the same whole-section semantics for templates.
+        var source = new InMemorySpecTextSource().Add("base.toml",
+            "[spec]\nversion = 1\n\n[binding]\nshape = \"wide\"\n\n"
+            + "[[template]]\nid = \"t\"\ndisplay_name = \"Base\"\nformal_attribute_format = \"{name}\"\n");
+        var derived = Read(
+            "[spec]\nversion = 1\nextends = \"base.toml\"\n\n"
+            + "[[template]]\nid = \"t\"\nformal_attribute_format = \"{value}\"\n");
+
+        var composed = ComposeOk(derived, "derived.toml", source);
+
+        var template = Assert.Single(composed.Templates);
+        Assert.Equal("{value}", template.FormalAttributeFormat);
+        Assert.Null(template.DisplayName);
+    }
+
+    // A base/derived pair differing only in their [defaults] bodies, over one resolvable
+    // attribute — the smallest document that isolates the per-field defaults merge.
+    private static SpecDocument ComposeNaming(string baseDefaults, string? derivedDefaults)
+    {
+        var source = new InMemorySpecTextSource().Add("base.toml",
+            "[spec]\nversion = 1\n\n[binding]\nshape = \"wide\"\n\n"
+            + $"[defaults]\n{baseDefaults}\n\n"
+            + "[[attribute]]\nname = \"a\"\nsource = { kind = \"column\", index = 0 }\n"
+            + "discretizer = { kind = \"identity\" }\nscale = { kind = \"nominal\" }\ndeclared_domain = [\"x\"]\n");
+        var derived = Read(
+            "[spec]\nversion = 1\nextends = \"base.toml\"\n"
+            + (derivedDefaults is null ? string.Empty : $"\n[defaults]\n{derivedDefaults}\n"));
+
+        return ComposeOk(derived, "derived.toml", source);
+    }
+
     private static SpecDocument ComposeBaseDerived() =>
         ComposeOk(Read(DerivedToml), "derived.toml", new InMemorySpecTextSource().Add("base.toml", BaseToml));
 

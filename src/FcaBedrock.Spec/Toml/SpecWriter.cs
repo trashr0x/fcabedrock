@@ -238,6 +238,12 @@ public static class SpecWriter
             builder.Key("duplicate_object_policy", TomlLiteral.FormatString(TomlSpellings.ToToml(TomlSpellings.DuplicateObjectPolicies, duplicate)));
         }
 
+        // §6 presentation order: after duplicate_object_policy, before the ordinal defaults.
+        if (defaults.FormalAttributeFormat is { } format)
+        {
+            builder.Key("formal_attribute_format", TomlLiteral.FormatString(format));
+        }
+
         if (defaults.OrdinalDirection is { } direction)
         {
             builder.Key("ordinal_direction", TomlLiteral.FormatString(TomlSpellings.ToToml(TomlSpellings.Directions, direction)));
@@ -321,6 +327,11 @@ public static class SpecWriter
             builder.Key("id", TomlLiteral.FormatString(id));
         }
 
+        if (template.DisplayName is { } displayName)
+        {
+            builder.Key("display_name", TomlLiteral.FormatString(displayName));
+        }
+
         if (template.Include is { } include)
         {
             builder.Key("include", TomlLiteral.FormatBool(include));
@@ -344,6 +355,11 @@ public static class SpecWriter
         if (template.UnknownValuePolicy is { } unknown)
         {
             builder.Key("unknown_value_policy", TomlLiteral.FormatString(TomlSpellings.ToToml(TomlSpellings.UnknownValuePolicies, unknown)));
+        }
+
+        if (template.FormalAttributeFormat is { } format)
+        {
+            builder.Key("formal_attribute_format", TomlLiteral.FormatString(format));
         }
 
         if (template.ValueLabels is { } labels)
@@ -400,6 +416,12 @@ public static class SpecWriter
             builder.Key("source", FormatSource(source));
         }
 
+        // §10.1 example position: display_name sits between source and description.
+        if (attribute.DisplayName is { } displayName)
+        {
+            builder.Key("display_name", TomlLiteral.FormatString(displayName));
+        }
+
         if (attribute.Description is { } description)
         {
             builder.Key("description", TomlLiteral.FormatString(description));
@@ -433,6 +455,14 @@ public static class SpecWriter
         if (attribute.UnknownValuePolicy is { } unknown)
         {
             builder.Key("unknown_value_policy", TomlLiteral.FormatString(TomlSpellings.ToToml(TomlSpellings.UnknownValuePolicies, unknown)));
+        }
+
+        // §-order: formal_attribute_format (§10.7) between unknown_value_policy (§10.6)
+        // and value_labels (§10.8). D-113 wrapping stays declared_domain-only — a format
+        // is one short string, never a long array.
+        if (attribute.FormalAttributeFormat is { } format)
+        {
+            builder.Key("formal_attribute_format", TomlLiteral.FormatString(format));
         }
 
         if (attribute.ValueLabels is { } labels)

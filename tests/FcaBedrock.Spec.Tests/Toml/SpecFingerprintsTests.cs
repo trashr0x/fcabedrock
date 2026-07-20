@@ -446,6 +446,91 @@ public sealed class SpecFingerprintsTests
         declared_domain = ["x"]
         """;
 
+    // --- The naming identity axes (§10.7/D-117/D-119) ---
+
+    [Fact]
+    public void ComputeNative_WhenFormatChangesARenderedName_ThenOnlyTheCxtFingerprintMoves()
+    {
+        // D-117's fingerprint reach, at the fingerprint API: naming reaches identity ONLY
+        // through the existing rendered_names array in the cxt block. Canonical schema
+        // identity and .dat (which serializes no names) must not move — which is also why
+        // no encoder change and no fp_format bump were needed.
+        var baseline = ComputeFor(MinimalSpec());
+        var formatted = ComputeFor(Naming("formal_attribute_format = \"{value}\""));
+
+        Assert.NotEqual(baseline.CxtOutputFingerprint, formatted.CxtOutputFingerprint);
+        Assert.Equal(baseline.SchemaFingerprint, formatted.SchemaFingerprint);
+        Assert.Equal(baseline.DatOutputFingerprint, formatted.DatOutputFingerprint);
+    }
+
+    [Fact]
+    public void ComputeNative_WhenFormatRendersIdentically_ThenAllThreeAreUnchanged()
+    {
+        // "A naming setting that does not change a rendered name is byte- and hash-neutral"
+        // (§10.7): an explicit "{column}-{value}" on a nominal attribute reproduces the
+        // scale default exactly, so nothing moves even though the document differs.
+        var baseline = ComputeFor(MinimalSpec());
+        var explicitDefault = ComputeFor(Naming("formal_attribute_format = \"{column}-{value}\""));
+
+        AssertSameFingerprints(baseline, explicitDefault);
+    }
+
+    [Fact]
+    public void ComputeNative_WhenDisplayNameIsUnreferenced_ThenAllThreeAreUnchanged()
+    {
+        // D-119's neutrality row: a display_name no format references is fully inert.
+        var baseline = ComputeFor(MinimalSpec());
+        var withDisplay = ComputeFor(Naming("display_name = \"Alpha\""));
+
+        AssertSameFingerprints(baseline, withDisplay);
+    }
+
+    [Fact]
+    public void ComputeNative_WhenDisplayNameIsReferenced_ThenOnlyTheCxtFingerprintMoves()
+    {
+        var referenced = ComputeFor(Naming("display_name = \"Alpha\"\nformal_attribute_format = \"{display_name}-{value}\""));
+        var unreferenced = ComputeFor(Naming("formal_attribute_format = \"{display_name}-{value}\""));
+
+        Assert.NotEqual(unreferenced.CxtOutputFingerprint, referenced.CxtOutputFingerprint);
+        Assert.Equal(unreferenced.SchemaFingerprint, referenced.SchemaFingerprint);
+        Assert.Equal(unreferenced.DatOutputFingerprint, referenced.DatOutputFingerprint);
+    }
+
+    [Fact]
+    public void ComputeNative_WhenTheFormatComesFromDefaults_ThenItMatchesTheAttributeAuthoredForm()
+    {
+        // Tier 2 and tier 5 are different AUTHORING routes to one effective configuration,
+        // and fingerprints hash resolved semantics — so the two must agree on all three.
+        var viaDefaults = ComputeFor(
+            MinimalSpec().Replace("[binding]", "[defaults]\nformal_attribute_format = \"{value}\"\n\n[binding]", StringComparison.Ordinal));
+        var viaAttribute = ComputeFor(Naming("formal_attribute_format = \"{value}\""));
+
+        AssertSameFingerprints(viaDefaults, viaAttribute);
+    }
+
+    [Fact]
+    public void ComputeNative_WhenAnUnusedTemplateAuthorsNaming_ThenAllThreeAreUnchanged()
+    {
+        // §9.2: an unused template is semantically dormant — it round-trips and converts
+        // without touching a single hash, even carrying naming keys.
+        var baseline = ComputeFor(MinimalSpec());
+        var withTemplate = ComputeFor(
+            MinimalSpec() + "\n[[template]]\nid = \"t\"\ndisplay_name = \"T\"\nformal_attribute_format = \"{value}\"\n");
+
+        AssertSameFingerprints(baseline, withTemplate);
+    }
+
+    // MinimalSpec's last line is the attribute's declared_domain, so naming keys append to
+    // that same [[attribute]] table.
+    private static string Naming(string keys) => MinimalSpec() + "\n" + keys + "\n";
+
+    private static void AssertSameFingerprints(ComputedFingerprints expected, ComputedFingerprints actual)
+    {
+        Assert.Equal(expected.SchemaFingerprint, actual.SchemaFingerprint);
+        Assert.Equal(expected.CxtOutputFingerprint, actual.CxtOutputFingerprint);
+        Assert.Equal(expected.DatOutputFingerprint, actual.DatOutputFingerprint);
+    }
+
     private static ComputedFingerprints ComputeFor(string toml)
     {
         var (document, spec, plan) = Pipeline(toml, new SourceSchema(1));

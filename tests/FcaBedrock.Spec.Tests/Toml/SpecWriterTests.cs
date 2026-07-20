@@ -1,3 +1,4 @@
+using FcaBedrock.Core.Scaling;
 using FcaBedrock.Core.Spec;
 using FcaBedrock.Spec.Toml;
 
@@ -332,6 +333,121 @@ public sealed class SpecWriterTests
                 "source = { kind = \"column\", index = 0 }",
                 "template = \"boolean_yes_no\""),
             SpecWriter.Write(document));
+    }
+
+    [Fact]
+    public void Write_WhenAttributeAuthorsNamingKeys_ThenTheyEmitInSpecPresentationOrder()
+    {
+        // §10.1/§10.7 presentation order (D-075/D-120): display_name takes the §10.1
+        // example position between source and description; formal_attribute_format sits
+        // in §-order between unknown_value_policy (§10.6) and value_labels (§10.8). The
+        // canonical key order is the writer's, never the record's field order — which is
+        // exactly why the new carriers could be added non-positionally.
+        var document = DocumentFixtures.Document(
+        [
+            DocumentFixtures.Nominal("odor", 0, domain: ["a"], valueLabels: new Dictionary<string, string> { ["a"] = "almond" }) with
+            {
+                Description = "smells",
+                Include = true,
+                MissingPolicy = MissingPolicy.AsAttribute,
+                UnknownValuePolicy = UnknownValuePolicy.Warn,
+                DisplayName = "Odor",
+                FormalAttributeFormat = "{display_name}-{value}",
+            },
+        ]);
+
+        Assert.Equal(
+            Lines(
+                "[spec]",
+                "version = 1",
+                "",
+                "[binding]",
+                "shape = \"wide\"",
+                "",
+                "[[attribute]]",
+                "name = \"odor\"",
+                "source = { kind = \"column\", index = 0 }",
+                "display_name = \"Odor\"",
+                "description = \"smells\"",
+                "include = true",
+                "declared_domain = [\"a\"]",
+                "missing_policy = \"as_attribute\"",
+                "unknown_value_policy = \"warn\"",
+                "formal_attribute_format = \"{display_name}-{value}\"",
+                "value_labels = { a = \"almond\" }",
+                "discretizer = { kind = \"identity\" }",
+                "scale = { kind = \"nominal\" }"),
+            SpecWriter.Write(document));
+    }
+
+    [Fact]
+    public void Write_WhenTemplateAuthorsNamingKeys_ThenTheyMirrorTheAttributeOrder()
+    {
+        // §9.1: a template body mirrors the attribute key order minus the identity fields,
+        // with id leading — so display_name follows id, and the format keeps its place
+        // before value_labels.
+        var document = DocumentFixtures.Document(
+            templates:
+            [
+                new TemplateSection("t", Include: true, Discretizer: null, Scale: null, DeclaredDomain: null,
+                    RestrictTo: null, ValueLabels: null, MissingPolicy: null, UnknownValuePolicy: null)
+                {
+                    DisplayName = "Boolean",
+                    FormalAttributeFormat = "{column}-{value}",
+                },
+            ]);
+
+        Assert.Equal(
+            Lines(
+                "[spec]",
+                "version = 1",
+                "",
+                "[binding]",
+                "shape = \"wide\"",
+                "",
+                "[[template]]",
+                "id = \"t\"",
+                "display_name = \"Boolean\"",
+                "include = true",
+                "formal_attribute_format = \"{column}-{value}\""),
+            SpecWriter.Write(document));
+    }
+
+    [Fact]
+    public void Write_WhenDefaultsAuthorsNameFormat_ThenItSitsBetweenDuplicatePolicyAndOrdinalDefaults()
+    {
+        // §6 presentation order: after duplicate_object_policy, before ordinal_direction.
+        var document = DocumentFixtures.Document(
+            defaults: new DefaultsSection(null, null, null, DuplicateObjectPolicy.Fail, OrdinalDirection.Le, null)
+            {
+                FormalAttributeFormat = "{value}",
+            });
+
+        Assert.Equal(
+            Lines(
+                "[spec]",
+                "version = 1",
+                "",
+                "[binding]",
+                "shape = \"wide\"",
+                "",
+                "[defaults]",
+                "duplicate_object_policy = \"fail\"",
+                "formal_attribute_format = \"{value}\"",
+                "ordinal_direction = \"le\""),
+            SpecWriter.Write(document));
+    }
+
+    [Fact]
+    public void Write_WhenNamingKeysOmitted_ThenNeitherEmits()
+    {
+        // Presence tracking (D-049): omitted stays omitted, so no existing spec gains a
+        // key it never authored — which is why every golden and pinned vector is
+        // byte-unchanged across this slice.
+        var text = SpecWriter.Write(DocumentFixtures.Document([DocumentFixtures.Nominal("odor", 0)]));
+
+        Assert.DoesNotContain("display_name", text, StringComparison.Ordinal);
+        Assert.DoesNotContain("formal_attribute_format", text, StringComparison.Ordinal);
     }
 
     [Fact]

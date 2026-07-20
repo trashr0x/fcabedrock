@@ -207,6 +207,10 @@ superseded or refined. A new entry MUST add its line here.
 - D-118 — M6 application site and architecture: resolver-seam application, template/matcher-free Core, planner-owned naming (makes D-078's Core boundary permanent)
 - D-119 — M6 exit restated: one self-contained Ads spec, no attribute synthesis; the verification floor
 
+### M6 Slice A (naming: carriers, grammar, rendering, plan guard)
+
+- D-120 — Naming executable: additive document/Core carriers, the `NameFormat` grammar owner, `FormalAttributeNameInvalid` with a pinned sample representation, centralized parse ordering, and the `MergeDefaults` extension (realizes D-116(7)/D-117/D-118; retires the naming half of `SpecSurfaceNotYetSupported`)
+
 Spec-field defaults are recorded in spec §21 items 1–11 (see the final section
 of this file).
 
@@ -4935,6 +4939,122 @@ pinned here.
 - **Affects:** `roadmap.md` M6 (exit wording + the §9.2 precedence
   cross-reference), spec §9.2; the M6 implementation slices' test plan.
   Pairs with D-114…D-118. Docs-only landing.
+
+## M6 Slice A (naming: carriers, grammar, rendering, plan guard)
+
+### D-120 — Naming executable: additive carriers, the `NameFormat` grammar owner, `FormalAttributeNameInvalid`, centralized parse ordering, and the `MergeDefaults` extension
+
+- **Status:** accepted (M6 Slice A implementation; realizes D-116(7)/D-117/D-118)
+- **Date:** 2026-07-20
+- **Decision:** `display_name` and `formal_attribute_format` become **executable**
+  on attributes and `[defaults]`, and are carried and parse-validated on
+  templates. The implementation-surface choices D-116/D-117 deferred to this slice:
+  - **Additive, non-positional carriers.** `AttributeSection` and
+    `TemplateSection` gain `DisplayName` / `FormalAttributeFormat`, and
+    `DefaultsSection` gains `FormalAttributeFormat`, all as
+    `public string? { get; init; }` — the D-087 precedent. Every existing
+    positional constructor, construction site, and record deconstruction is
+    untouched, and the canonical key order stays owned by `SpecWriter` rather
+    than by record field order. Presence is the existing convention: null =
+    omitted, non-null = authored; empty display names and empty formats do not
+    survive parse, so no new presence machinery exists.
+  - **One grammar owner:** the new public `FcaBedrock.Core.Spec.NameFormat`
+    (`Text`, `static TryCreate`, no public constructor; token model and
+    rendering internal to Core). The Spec reader validates every authored format
+    through it and the planner renders through it, so the two cannot disagree
+    about which formats are legal or what they produce (P-5). Parsing is one
+    left-to-right pass into literal/placeholder tokens and rendering walks those
+    tokens, which makes "substituted text is never rescanned" **structural**
+    rather than a property two code paths maintain.
+  - **Core's naming surface** is exactly two additive `init` properties on
+    `AttributeSpec`: `DisplayName` (defaulting to `Name`, so every pre-M6
+    construction site stays valid unchanged) and `NameFormat?` (null = the
+    scale-specific defaults). Nothing else crosses into Core — no template ids,
+    selectors, ranges, or precedence syntax (D-118). `ResolvedSpec.Create`
+    backstops `DisplayName` non-null/non-empty for hand-built graphs; the format
+    needs no re-check, because `NameFormat` cannot be constructed except through
+    its validating factory (P-10).
+  - **One new diagnostic: `FormalAttributeNameInvalid`** (Error, plan) — the
+    seventh D-116 condition, the only one whose site exists at Slice A. Its
+    representation is **pinned**: one aggregated diagnostic per affected logical
+    attribute in plan order with `AttributeName` location, carrying the offending
+    count and at most three samples **in render order**, each wrapped in double
+    quotes with exactly four escapes (`\`→`\\`, `"`→`\"`, CR→`\r`, LF→`\n`) and a
+    `(+N more)` tail only when truncated. Byte-identical messages across runs and
+    machines are the point (P-7). Invalid names still register in the id maps, so
+    ids and collision reporting stay exactly what a valid run would produce, and
+    the shared plan fails — blocking `.dat` as well as `.cxt` (§10.7).
+  - **Centralized parse ordering.** D-116's "parse diagnostics retain reader
+    source-position order" is pinned as **one policy at the `SpecReader`
+    boundary**: the collected semantic diagnostics are ordered once by
+    `(Line, Column, emission ordinal)`. Including the ordinal in the comparison
+    makes the order **total**, so equal-position diagnostics keep their relative
+    order independently of sort stability, and span-less document-level
+    diagnostics sort first in emission order. Individual readers own no ordering
+    and future readers inherit the policy automatically. Phase separation is
+    untouched: TOML syntax errors stay terminal, and phase-1 parser warnings stay
+    ahead of every semantic diagnostic. The helper is **`internal` rather than
+    private, as a deliberate test seam** (P-6): the span-less branch is defensive —
+    `TomlReadContext` always attaches a span, so no authored document reaches it
+    through `Read` — and a two-element equal-position case survives even an
+    unstable sort, so both guarantees are exercised directly with constructed
+    diagnostics rather than by a test that cannot fail. Production behaviour is
+    unchanged; `Read` remains the only caller.
+  - **`SpecComposer.MergeDefaults` gains the format explicitly.**
+    `[[attribute]]`/`[[template]]` composition is whole-section replacement
+    (§13 rules 3/5), so the new init properties ride along with no composer
+    change; `[defaults]` composes **per field** (rule 2), so a base-supplied
+    format would silently vanish the moment a derived `[defaults]` authored
+    anything else. The `derived ?? base` line is the D-087 `MergeDat` precedent.
+  - **Retirement.** The closed D-075 deferred-**key** sets
+    (`DefaultsDeferredKeys` / `AttributeDeferredKeys`) are **deleted**, along with
+    `TomlTableCursor.Finish`'s now-unreachable deferred-key parameter and branch —
+    an empty set is dead scaffolding whose dispatch can never fire, exactly the
+    reasoning that removed the D-070 deferred-kind set at M4 Slice E.
+    `SpecSurfaceNotYetSupported` stays live with its one remaining owner, the
+    **value-level** `value_type = "date"` reject. `TemplateMatcherNotImplementedV1`
+    is **untouched** — template and matcher *use* is still rejected until Slice B.
+    Registry **75 → 76**.
+  - **Fingerprint boundary unchanged.** Naming reaches identity only through the
+    existing planned `rendered_names` input, so `CanonicalJson`,
+    `FingerprintCalculator`'s field shapes, and `fp_format = 1` are untouched
+    (D-118). An effect-changing format moves `cxt_output_fingerprint` and `.cxt`
+    bytes only; a `display_name` no format references, and a format that renders
+    identically, are fully neutral.
+- **Why:** D-116/D-117 settled the *semantics* and deliberately minted no enum
+  name, no public shape, and no registry row — those are implementation-surface
+  choices P-4 requires be designed before code, and this entry records the ones
+  actually taken. Two are load-bearing beyond their local scope. The parse-ordering
+  policy is centralized because ordering that emerges from traversal is not a
+  contract: it changes silently whenever a reader's field order is edited, and
+  D-116 promised source-position order to users. The `MergeDefaults` line is
+  called out because it is the one place the new surface does **not** come for
+  free — attribute and template composition carries init properties
+  automatically, which makes the `[defaults]` exception easy to miss and
+  invisible until a composed spec quietly renders different names.
+- **Rejected:** positional record parameters for the new carriers (would break
+  every existing construction site and deconstruction for no gain — D-087
+  settled this pattern); a dedicated format or display-name diagnostic code
+  (§10.7/D-116 assign every naming-shape failure to `SpecFieldInvalid`; a new
+  code would give one condition two owners); a resolve-phase diagnostic for an
+  invalid *effective* format (every authored format is parse-validated, so a
+  failure there is a hand-built document — a programmer error, and reusing
+  `SpecFieldInvalid` would give it a second phase against D-067); value equality
+  on `NameFormat` (unlisted public behaviour beyond the approved surface, and
+  reference equality is unobservable while every pre-M6 spec resolves to null);
+  keeping the deferred-key sets empty "for symmetry" (dead dispatch, M4 Slice E's
+  precedent); sanitizing an invalid rendered name in the exporter (P-15 — writers
+  serialize an already-decided result); sorting the invalid-name samples (render
+  order is the order the planner actually emits those columns, so it is the order
+  an author can act on).
+- **Affects:** Diagnostics (`FormalAttributeNameInvalid`; registry 76); Core
+  (`NameFormat`, `AttributeSpec` naming properties, `ResolvedSpec` backstop,
+  `ConversionPlanner` rendering + guard); Spec (the three section carriers,
+  `AttributeReader`, `SpecSectionReaders`, `SpecReader` ordering, `TomlSpellings`,
+  `TomlTableCursor`, `SpecWriter`, `SpecComposer.MergeDefaults`, `SpecResolver`);
+  spec §10.1 / §10.7 / §16.4. Realizes D-116(7)/D-117/D-118; pairs with
+  D-114…D-119. Export unchanged (P-15); no fingerprint-encoder or `fp_format`
+  change; no production project reference changed.
 
 ---
 

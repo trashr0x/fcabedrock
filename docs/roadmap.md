@@ -389,8 +389,47 @@ vertical slices, not waterfall phases — each should leave the system working.
 > §16.4), `decisions.md`, and `roadmap.md` in place. This landing is **docs-only** — no
 > production code, tests, fixtures, or enum members (the registry stays **75**; the M6
 > conditions' public names and their §16.4 rows land with the M6 implementation-surface
-> review), and no output or fingerprint bytes changed. **M6 implementation has not
-> started.**
+> review), and no output or fingerprint bytes changed.
+>
+> **M6 Slice A — naming: carriers, grammar, rendering, the plan guard, and parse
+> ordering — is complete (D-120).** `display_name` and `formal_attribute_format`
+> **execute**: they are carried, parse-validated, and canonically written on
+> `[[attribute]]`, `[[template]]`, and `[defaults]` (additive non-positional `init`
+> properties, so no existing constructor or deconstruction moved — the D-087 pattern),
+> they compose correctly across `extends` (the per-field `MergeDefaults` carries the
+> format explicitly, where whole-section attribute/template replacement carries the new
+> properties for free), and they drive rendered names on attributes and `[defaults]`.
+> Template-supplied naming is **carried and validated but inert** — template/matcher
+> *use* stays rejected until Slice B, so `TemplateMatcherNotImplementedV1` is untouched.
+> The §10.7 grammar has one owner, the new public **`NameFormat`** in Core (closed
+> case-sensitive five-placeholder set with the `{column}` alias, `{{`/`}}` escaping, one
+> left-to-right parse into tokens that rendering walks — so "substituted text is never
+> rescanned" is structural, not a property two paths maintain), consumed by both the Spec
+> reader and the planner. An explicit format is a **total override**, the missing column
+> included (`{value}` = the literal `missing`), and `{value}` resolves through live
+> `value_labels` — including the labelled dichotomic `true_value` and D-092 numeric
+> identities. The permanent plan-time backstop **`FormalAttributeNameInvalid`** (Error,
+> one aggregated diagnostic per affected logical attribute, count + ≤3 quoted/escaped
+> samples in render order with a `(+N more)` tail) fails the **shared** plan, blocking
+> `.dat` as well as `.cxt`; it is load-bearing beyond the M6 surface, since CR/LF can
+> arrive from raw values, calibrated domains, and `value_labels` on the **default** path
+> too (the empty-name half is format-reachable only — a default-rendered `f1-` is valid).
+> Exporters never sanitize (P-15). Semantic parse diagnostics gained a **centralized
+> source-position ordering** at the `SpecReader` boundary — `(Line, Column, emission
+> ordinal)`, total by construction, span-less first — leaving the terminal
+> syntax-vs-semantic phasing untouched. The closed D-075 deferred-**key** sets retired
+> with their carriers (and `TomlTableCursor.Finish`'s now-dead parameter with them), so
+> `SpecSurfaceNotYetSupported` narrows to its one remaining owner, the value-level
+> `value_type = "date"`. One diagnostic added, none retired — registry **75 → 76**. No
+> fingerprint-encoder or `fp_format` change: naming reaches identity only through the
+> existing `rendered_names` input, so an effect-changing format moves
+> `cxt_output_fingerprint` and `.cxt` bytes **only**, while an unreferenced
+> `display_name` and a render-identical format are fully neutral. Every pre-M6 canonical
+> byte, SHA vector, pinned fingerprint, and all nine golden fixtures are unchanged — no
+> existing spec authors the naming surface. `dotnet test` is green (2720 tests: 2719
+> passed, one platform-gated confidentiality test skipped off its OS).
+>
+> **M6 Slice B (template/matcher application at the resolver seam) is next.**
 
 ## Milestones
 

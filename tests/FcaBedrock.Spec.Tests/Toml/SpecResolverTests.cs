@@ -1943,6 +1943,108 @@ public sealed class SpecResolverTests
         Assert.False(result.TryGetValue(out _));
     }
 
+    // --- Effective naming (§10.1/§10.7, D-120) ---
+
+    [Fact]
+    public void Resolve_WhenNoNamingAuthored_ThenDisplayNameIsTheNameAndFormatIsAbsent()
+    {
+        // The state every pre-M6 spec resolves to: no format means the scale-specific
+        // defaults stay in charge, and display_name defaults to name.
+        Assert.True(Resolve(DocumentFixtures.Document([DocumentFixtures.Nominal("g", 0, ["b"])])).TryGetValue(out var spec));
+
+        Assert.Equal("g", spec!.Attributes[0].DisplayName);
+        Assert.Null(spec.Attributes[0].NameFormat);
+    }
+
+    [Fact]
+    public void Resolve_WhenDisplayNameAuthored_ThenItIsCarriedToCore()
+    {
+        var document = DocumentFixtures.Document(
+            [DocumentFixtures.Nominal("g", 0, ["b"]) with { DisplayName = "Gill" }]);
+
+        Assert.True(Resolve(document).TryGetValue(out var spec));
+        Assert.Equal("Gill", spec!.Attributes[0].DisplayName);
+    }
+
+    [Fact]
+    public void Resolve_WhenOnlyDefaultsAuthorsTheFormat_ThenEveryAttributeTakesIt()
+    {
+        // §9.2 tier 2: [defaults] supplies the format to attributes that omit their own.
+        var document = DocumentFixtures.Document(
+            [DocumentFixtures.Nominal("a", 0, ["x"]), DocumentFixtures.Nominal("b", 1, ["y"])],
+            defaults: new DefaultsSection(null, null, null, null, null, null) { FormalAttributeFormat = "{value}" });
+
+        Assert.True(Resolve(document, new SourceSchema(2)).TryGetValue(out var spec));
+        Assert.All(spec!.Attributes, a => Assert.Equal("{value}", a.NameFormat?.Text));
+    }
+
+    [Fact]
+    public void Resolve_WhenAttributeAndDefaultsBothAuthorTheFormat_ThenTheAttributeWins()
+    {
+        // §9.2: explicit per-attribute fields (tier 5) beat [defaults] (tier 2), and the
+        // whole value is replaced — formats never merge (the D-114 compound rule).
+        var document = DocumentFixtures.Document(
+            [
+                DocumentFixtures.Nominal("a", 0, ["x"]) with { FormalAttributeFormat = "{name}!{value}" },
+                DocumentFixtures.Nominal("b", 1, ["y"]),
+            ],
+            defaults: new DefaultsSection(null, null, null, null, null, null) { FormalAttributeFormat = "{value}" });
+
+        Assert.True(Resolve(document, new SourceSchema(2)).TryGetValue(out var spec));
+        Assert.Equal("{name}!{value}", spec!.Attributes[0].NameFormat?.Text);
+        Assert.Equal("{value}", spec.Attributes[1].NameFormat?.Text);
+    }
+
+    [Fact]
+    public void Resolve_WhenAnUnusedTemplateAuthorsNaming_ThenItIsInertUntilApplicationLands()
+    {
+        // The Slice A boundary: template naming is CARRIED and parse-validated, but a
+        // template contributes nothing to a resolved attribute yet. The absence of leakage
+        // is the point — an unreferenced template must not silently name anything.
+        var document = DocumentFixtures.Document(
+            [DocumentFixtures.Nominal("a", 0, ["x"])],
+            templates:
+            [
+                new TemplateSection("t", null, null, null, null, null, null, null, null)
+                {
+                    DisplayName = "FromTemplate",
+                    FormalAttributeFormat = "{value}",
+                },
+            ]);
+
+        Assert.True(Resolve(document).TryGetValue(out var spec));
+        Assert.Equal("a", spec!.Attributes[0].DisplayName);
+        Assert.Null(spec.Attributes[0].NameFormat);
+    }
+
+    [Fact]
+    public void Resolve_WhenExcludedAttributeAuthorsNaming_ThenItStillResolvesOntoTheSpec()
+    {
+        // D-049: an excluded attribute plans no column, so its naming is dormant — but the
+        // resolved carrier is populated rather than dropped, exactly as its parked
+        // discretizer/scale are.
+        var document = DocumentFixtures.Document(
+            [DocumentFixtures.Attribute("a", include: false) with { DisplayName = "A", FormalAttributeFormat = "{value}" }]);
+
+        Assert.True(Resolve(document).TryGetValue(out var spec));
+        Assert.Equal("A", spec!.Attributes[0].DisplayName);
+        Assert.Equal("{value}", spec.Attributes[0].NameFormat?.Text);
+    }
+
+    [Fact]
+    public void Resolve_WhenTheDocumentWasHandBuiltWithAnInvalidFormat_ThenItThrows()
+    {
+        // The reader validates every authored format, so reaching the resolver with an
+        // invalid one means the document never came through SpecReader — a programmer error
+        // on the exception channel, not authored input (P-14). There is no resolve-phase
+        // condition for it, and giving SpecFieldInvalid a second phase would break D-067's
+        // one-code-one-phase rule.
+        var document = DocumentFixtures.Document(
+            [DocumentFixtures.Nominal("a", 0, ["x"]) with { FormalAttributeFormat = "{nope}" }]);
+
+        Assert.Throws<InvalidOperationException>(() => SpecResolver.Resolve(document));
+    }
+
     // A fully-resolvable triple predicate attribute (identity + nominal).
     private static AttributeSection TriplePredicate(string name = "a", string predicate = "p") =>
         DocumentFixtures.Attribute(name, new PredicateSourceSection(predicate, ValueType: null),

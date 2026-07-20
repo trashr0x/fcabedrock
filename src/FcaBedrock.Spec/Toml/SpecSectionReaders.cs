@@ -5,9 +5,11 @@ namespace FcaBedrock.Spec.Toml;
 
 /// <summary>
 /// Readers for the non-attribute sections: each takes its known keys through a
-/// <see cref="TomlTableCursor"/> and finishes with the section's closed
-/// deferred-surface set (D-075). Possibly-invalid values are document territory
-/// (D-066) — nothing here validates semantics.
+/// <see cref="TomlTableCursor"/> and finishes, so every unconsumed key is
+/// <c>SpecKeyUnrecognized</c> (the closed D-075 deferred-key sets retired with
+/// their carriers at M6 Slice A, D-120). Possibly-invalid values are document
+/// territory (D-066) — nothing here validates semantics, with the one exception
+/// of authored shape the grammar owns (<c>formal_attribute_format</c>, §10.7).
 /// </summary>
 internal static class SpecSectionReaders
 {
@@ -89,8 +91,13 @@ internal static class SpecSectionReaders
             cursor.TakeEnum("unknown_value_policy", TomlSpellings.UnknownValuePolicies),
             cursor.TakeEnum("duplicate_object_policy", TomlSpellings.DuplicateObjectPolicies),
             cursor.TakeEnum("ordinal_direction", TomlSpellings.Directions),
-            cursor.TakeEnum("ordinal_boundary", TomlSpellings.Boundaries));
-        cursor.Finish(TomlSpellings.DefaultsDeferredKeys);
+            cursor.TakeEnum("ordinal_boundary", TomlSpellings.Boundaries))
+        {
+            // §6/§10.7: the spec-wide naming override, validated by the same grammar
+            // owner the attribute and template keys use (D-120).
+            FormalAttributeFormat = AttributeReader.ReadNameFormat(context, cursor),
+        };
+        cursor.Finish();
         return section;
     }
 

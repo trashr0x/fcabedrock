@@ -8,14 +8,16 @@ namespace FcaBedrock.Spec.Toml;
 /// Parses authored Bedrock-spec TOML into a presence-tracked
 /// <see cref="SpecDocument"/> (D-066/D-075). Strict over the v1 vocabulary:
 /// unknown keys and tables fail the read (<c>SpecKeyUnrecognized</c>) so a
-/// write never silently drops authored content; recognized-but-unmodelled v1
-/// surface fails with the transitional <c>SpecSurfaceNotYetSupported</c>; wrong
-/// shapes fail with <c>SpecFieldInvalid</c>. The reader enforces parse shape
+/// write never silently drops authored content; the one recognized-but-unmodelled
+/// v1 surface left, <c>value_type = "date"</c>, fails with the transitional
+/// <c>SpecSurfaceNotYetSupported</c>; wrong shapes fail with
+/// <c>SpecFieldInvalid</c>. The reader enforces parse shape
 /// only — possibly-invalid <em>values</em> land in the document for the
 /// resolve/validate seam to judge (D-066/D-067). Diagnostics aggregate in two
 /// phases (P-14): all TOML-level errors together (<c>SpecTomlInvalid</c>,
 /// terminal — a broken tree would cascade garbage), then all semantic issues
-/// from one whole-document walk.
+/// from one whole-document walk, ordered by source position before
+/// <see cref="Read"/> returns (<see cref="SortSemantic"/>, D-116/D-120).
 /// </summary>
 public static class SpecReader
 {
@@ -52,6 +54,11 @@ public static class SpecReader
         {
             return Diagnosed<SpecDocument>.Failed(context.Diagnostics);
         }
+
+        // Everything the semantic walk adds from here sorts by source position before
+        // Read returns (SortSemantic); phase-1 parser warnings keep their place ahead
+        // of it, so the two phases never interleave.
+        var semanticFrom = context.Diagnostics.Count;
 
         SpecSection? spec = null;
         ProvenanceSection? provenance = null;
@@ -174,7 +181,68 @@ public static class SpecReader
             : null;
 
         var document = new SpecDocument(spec, provenance, binding, defaults, output, templates, matchers, attributes);
+        SortSemantic(context.Diagnostics, semanticFrom);
         return Finish(document, context.Diagnostics);
+    }
+
+    /// <summary>
+    /// The one source-position ordering policy for phase-2 diagnostics (D-116), applied
+    /// once at the boundary rather than scattered among readers: individual readers emit
+    /// in whatever order traversal produces, and the collected result is ordered here by
+    /// <c>(Line, Column, emission ordinal)</c>. Future readers inherit it automatically.
+    /// <para>
+    /// The emission ordinal is part of the comparison, not merely a tie-break convention,
+    /// which makes the order <b>total</b> — so equal-position diagnostics keep their
+    /// relative order regardless of the underlying sort's stability, and two reads of one
+    /// document produce identical ordered lists (P-7). Diagnostics with no span (document
+    /// level) compare as line 0, column 0 and therefore come first, in emission order.
+    /// </para>
+    /// <para>
+    /// Scoped to <paramref name="from"/> onward so the phase separation is untouched:
+    /// TOML syntax errors are terminal and never reach here, and phase-1 parser warnings
+    /// stay ahead of every semantic diagnostic.
+    /// </para>
+    /// <para>
+    /// <b>Internal rather than private as a deliberate test seam</b> (P-6): the
+    /// span-less branch is defensive — <see cref="TomlReadContext"/> always attaches a
+    /// span, so no authored document can reach it through <see cref="Read"/> — and the
+    /// equal-position tie-break is invisible from the outside when the sort happens to be
+    /// stable anyway. Both are load-bearing ordering guarantees, so they are exercised
+    /// directly with constructed diagnostics rather than left to a test that cannot fail.
+    /// Production behaviour is unchanged: <see cref="Read"/> remains the only caller.
+    /// </para>
+    /// </summary>
+    internal static void SortSemantic(List<BedrockDiagnostic> diagnostics, int from)
+    {
+        var count = diagnostics.Count - from;
+        if (count < 2)
+        {
+            return;
+        }
+
+        var keyed = new (int Line, int Column, int Ordinal, BedrockDiagnostic Diagnostic)[count];
+        for (var i = 0; i < count; i++)
+        {
+            var diagnostic = diagnostics[from + i];
+            keyed[i] = (diagnostic.Location?.Line ?? 0, diagnostic.Location?.Column ?? 0, i, diagnostic);
+        }
+
+        Array.Sort(keyed, static (left, right) =>
+        {
+            var byLine = left.Line.CompareTo(right.Line);
+            if (byLine != 0)
+            {
+                return byLine;
+            }
+
+            var byColumn = left.Column.CompareTo(right.Column);
+            return byColumn != 0 ? byColumn : left.Ordinal.CompareTo(right.Ordinal);
+        });
+
+        for (var i = 0; i < count; i++)
+        {
+            diagnostics[from + i] = keyed[i].Diagnostic;
+        }
     }
 
     private static Diagnosed<SpecDocument> Finish(SpecDocument document, List<BedrockDiagnostic> diagnostics)

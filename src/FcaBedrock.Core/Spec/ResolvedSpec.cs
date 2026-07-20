@@ -196,6 +196,18 @@ public sealed class ResolvedSpec
             RequireDefined(attribute.MissingPolicy, "attribute.MissingPolicy");
             RequireDefined(attribute.UnknownValuePolicy, "attribute.UnknownValuePolicy");
 
+            // §10.1/§10.7: {display_name} must render something, and a CR/LF there would
+            // corrupt the line-oriented .cxt. The reader rejects both on the authored path
+            // (SpecFieldInvalid), so this is the hand-built-graph backstop (P-10) — never a
+            // user-facing route. The format itself needs no re-check: NameFormat cannot be
+            // constructed except through its validating factory.
+            ArgumentNullException.ThrowIfNull(attribute.DisplayName);
+            if (attribute.DisplayName.Length == 0)
+            {
+                throw new ArgumentException(
+                    $"attribute '{attribute.Name}' has an empty display name; it defaults to the attribute name (§10.1).");
+            }
+
             // (b) source kind ⇔ binding shape.
             switch (attribute.Source)
             {

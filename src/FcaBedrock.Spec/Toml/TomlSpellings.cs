@@ -7,10 +7,12 @@ namespace FcaBedrock.Spec.Toml;
 /// <summary>
 /// Single source of truth for the TOML surface's vocabulary: one spelling table
 /// per enum, consumed in both directions by the reader and the writer so the two
-/// can never drift (P-5); the kind names behind the D-070 three-tier dispatch;
-/// and the closed, per-table deferred-surface sets behind the transitional
-/// <c>SpecSurfaceNotYetSupported</c> reject (D-075) — never a fallback for
-/// unknown keys.
+/// can never drift (P-5), plus the kind names behind the D-070 dispatch. It no
+/// longer holds any deferred-surface set: the closed per-table D-075 sets retired
+/// with the carriers they were waiting for (extends/template/matcher at M2
+/// Slice F, D-078; the naming keys at M6 Slice A, D-120), leaving
+/// <c>SpecSurfaceNotYetSupported</c> with one value-level owner in
+/// <see cref="AttributeReader"/> — <c>value_type = "date"</c>.
 /// </summary>
 internal static class TomlSpellings
 {
@@ -161,25 +163,14 @@ internal static class TomlSpellings
     internal static readonly string[] DeferredScaleKinds =
         ["interordinal", "biordinal", "contranominal"];
 
-    // --- Deferred v1 surface (D-075): closed, per-owning-table sets ---
-    //
-    // Each entry is a recognized v1 concept the document model does not yet
-    // carry; the reader rejects it with the transitional
-    // SpecSurfaceNotYetSupported so nothing known is silently dropped. The sets
-    // are exact: near-miss keys and a listed name in the wrong table fall to
-    // SpecKeyUnrecognized. Entries retire as slices land their carriers —
-    // Slice F retired extends/template/matcher (D-078); the remaining entries
-    // belong to the naming-fidelity slice.
-
-    /// <summary><c>[defaults]</c> keys deferred to the naming-fidelity slice.</summary>
-    internal static readonly string[] DefaultsDeferredKeys = ["formal_attribute_format"];
-
-    /// <summary>
-    /// <c>[[attribute]]</c> keys deferred to the naming-fidelity slice; also the
-    /// deferred set for <c>[[template]]</c> bodies, which carry the same config
-    /// surface (§9.1, D-078).
-    /// </summary>
-    internal static readonly string[] AttributeDeferredKeys = ["display_name", "formal_attribute_format"];
+    // The D-075 deferred-surface sets (DefaultsDeferredKeys / AttributeDeferredKeys) are
+    // GONE as of M6 Slice A (D-120): display_name and formal_attribute_format have real
+    // carriers on [defaults], [[attribute]], and [[template]] alike, so nothing remains
+    // for the key-level SpecSurfaceNotYetSupported reject to hold — and, exactly as with
+    // the D-070 deferred-kind set retired at M4 Slice E, an empty set is dead scaffolding
+    // whose dispatch can never fire. The code itself stays live with its one remaining
+    // owner, `value_type = "date"` (AttributeReader.ReadValueType), until the D-038
+    // carrier lands; that site is a value-level reject, not a deferred key.
 
     /// <summary>Parses <paramref name="text"/> against a spelling table; exact (ordinal) match only.</summary>
     internal static bool TryParse<T>((string Text, T Value)[] table, string text, out T value)

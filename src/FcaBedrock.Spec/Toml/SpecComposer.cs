@@ -143,7 +143,7 @@ public static class SpecComposer
             MergeDefaults(baseDocument.Defaults, derived.Defaults),
             MergeOutput(baseDocument.Output, derived.Output),
             MergeTemplates(baseDocument.Templates, derived.Templates),
-            [.. baseDocument.Matchers, .. derived.Matchers], // §13 rule 4: base then derived (last-match-wins precedence at M6)
+            [.. baseDocument.Matchers, .. derived.Matchers], // §13 rule 4: base then derived (last-match-wins precedence at M6 Slice B)
             MergeAttributes(baseDocument.Attributes, derived.Attributes));
 
     private static BindingSection? MergeBinding(BindingSection? baseSection, BindingSection? derived)
@@ -183,7 +183,15 @@ public static class SpecComposer
             derived.UnknownValuePolicy ?? baseSection.UnknownValuePolicy,
             derived.DuplicateObjectPolicy ?? baseSection.DuplicateObjectPolicy,
             derived.OrdinalDirection ?? baseSection.OrdinalDirection,
-            derived.OrdinalBoundary ?? baseSection.OrdinalBoundary);
+            derived.OrdinalBoundary ?? baseSection.OrdinalBoundary)
+        {
+            // §13 rule 2 is a PER-FIELD merge, so a new [defaults] field has to be
+            // carried explicitly — unlike [[attribute]]/[[template]], whose whole-section
+            // replacement (rules 3/5) carries new init properties for free. Without this
+            // line a base-supplied format would vanish the moment a derived [defaults]
+            // authored any other field (the D-087 MergeDat precedent, D-120).
+            FormalAttributeFormat = derived.FormalAttributeFormat ?? baseSection.FormalAttributeFormat,
+        };
     }
 
     private static OutputSection? MergeOutput(OutputSection? baseSection, OutputSection? derived)

@@ -85,10 +85,31 @@ public sealed class DiagnosticCodeRegistryTests
     // Codes still owned by LATER milestones. Each must stay absent until the milestone that owns
     // its emit site lands, so an early or accidental addition fails here. Completing M4 retires
     // M4's transitions only — it does not license M6/M7 surface.
+    // The exact M6 Slice A delta (D-120): ONE plan-phase code for an invalid rendered
+    // formal-attribute name, landing with its emit site in ConversionPlanner. The naming
+    // carriers themselves mint no code — every §10.1/§10.7 shape failure reuses
+    // SpecFieldInvalid (D-116) — which is why this delta is one member and not several.
+    private static readonly string[] M6SliceAAdditions =
+    [
+        nameof(DiagnosticCode.FormalAttributeNameInvalid),
+    ];
+
+    // Codes still owned by LATER milestones. Each must stay absent until the milestone that owns
+    // its emit site lands, so an early or accidental addition fails here. Completing M4 retires
+    // M4's transitions only — it does not license M6/M7 surface. The six M6 RESOLVE codes belong
+    // to Slice B (template/matcher application): Slice A carries and renders naming, but template
+    // and matcher USE is still rejected, so registering one here would strand exactly the
+    // site-less member D-085's timing rule forbids.
     private static readonly string[] NotYetOwned =
     [
         "OutputCxtSizeAdvisory",                         // M7
         "DateValueTypeNotImplementedV1",                 // deferred (D-038)
+        "TemplateIdMissing",                             // M6 Slice B
+        "TemplateIdDuplicate",                           // M6 Slice B
+        "TemplateReferenceUnknown",                      // M6 Slice B
+        "MatcherSelectorInvalidForShape",                // M6 Slice B
+        "MatcherSelectsNoAttributes",                    // M6 Slice B
+        "MatcherFullyShadowed",                          // M6 Slice B
     ];
 
     // Transitional codes that RETIRED, each with the slice that retired it. A later slice must not
@@ -101,13 +122,15 @@ public sealed class DiagnosticCodeRegistryTests
         RenamedFrom,                                     // renamed at Slice F (D-105); no alias
     ];
 
-    // The registry size after M5 Slice C: 70 members at the M4 Slice F baseline plus the five
-    // probe codes, retiring none — 70 + 5 = 75, the figure §16.4/D-111 anticipated for M5.
+    // The registry size after M6 Slice A: 75 members at the M5 baseline plus
+    // FormalAttributeNameInvalid, retiring none — 75 + 1 = 76. (SpecSurfaceNotYetSupported
+    // NARROWS here rather than retiring: its naming-key owners are gone, but value_type =
+    // "date" keeps the member live, so the count does not move for it.)
     // Update this number ONLY together with the slice's decisions.md entry — that deliberate edit
     // is the point (D-085: a code exists once it has a real emit site, so the enum grows per
     // slice rather than drifting). Without it the presence/absence assertions below would let an
     // unrelated member in unnoticed, and the delta would not be locked.
-    private const int MembersAfterM5SliceC = 75;
+    private const int MembersAfterM6SliceA = 76;
 
     private static readonly string[] Defined = Enum.GetNames<DiagnosticCode>();
 
@@ -120,11 +143,27 @@ public sealed class DiagnosticCodeRegistryTests
         Assert.All(M5SliceCAdditions, name => Assert.Contains(name, Defined));
 
     [Fact]
-    public void DiagnosticCode_WhenM5SliceCLanded_ThenTheRegistryIsExactlySeventyFive() =>
+    public void DiagnosticCode_WhenM6SliceALanded_ThenItsOneCodeIsDefined() =>
+        Assert.All(M6SliceAAdditions, name => Assert.Contains(name, Defined));
+
+    [Fact]
+    public void DiagnosticCode_WhenM6SliceALanded_ThenTheRegistryIsExactlySeventySix() =>
         // The delta lock. On its own a count proves little; combined with the presence lists above
         // and the absence lists below it pins BOTH which codes arrived, that earlier retirements
         // really stuck, and that nothing else moved — which the targeted assertions alone cannot do.
-        Assert.Equal(MembersAfterM5SliceC, Defined.Length);
+        Assert.Equal(MembersAfterM6SliceA, Defined.Length);
+
+    [Fact]
+    public void DiagnosticCode_WhenM6SliceALanded_ThenBothM6TransitionalsAreStillLive()
+    {
+        // The Slice A transition boundary, asserted as one contract. Naming EXECUTES now, but:
+        // template/matcher application is Slice B, so its transitional reject must still exist;
+        // and SpecSurfaceNotYetSupported narrows to value_type = "date" rather than retiring, so
+        // its member stays too. A slice that removed either here would be running ahead of its
+        // decision entry.
+        Assert.Contains(nameof(DiagnosticCode.TemplateMatcherNotImplementedV1), Defined);
+        Assert.Contains(nameof(DiagnosticCode.SpecSurfaceNotYetSupported), Defined);
+    }
 
     [Fact]
     public void DiagnosticCode_WhenSliceFLanded_ThenTheReusedCodesRemain() =>

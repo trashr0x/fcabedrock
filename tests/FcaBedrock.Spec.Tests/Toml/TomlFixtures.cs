@@ -213,6 +213,7 @@ internal static class TomlFixtures
         missing_policy = "skip"
         unknown_value_policy = "warn"
         duplicate_object_policy = "dedupe"
+        formal_attribute_format = "{column}-{value}"
         ordinal_direction = "le"
         ordinal_boundary = "strict"
 
@@ -238,10 +239,12 @@ internal static class TomlFixtures
 
         [[template]]
         id = "deferred_scale"
+        display_name = "Deferred"
         include = true
         restrict_to = ["Yes"]
         missing_policy = "skip"
         unknown_value_policy = "warn"
+        formal_attribute_format = "{display_name}::{value}"
         value_labels = { y = "yes" }
         scale = { kind = "contranominal" }
 
@@ -256,12 +259,14 @@ internal static class TomlFixtures
         [[attribute]]
         name = "bruises?"
         source = { kind = "column", name = "bruises?", value_type = "string" }
+        display_name = "Bruises"
         description = "weird name, bound by header"
         include = true
         declared_domain = ["t", "f"]
         value_labels = { t = "true", f = "false", "x y" = "spaced" }
         missing_policy = "as_attribute"
         unknown_value_policy = "include"
+        formal_attribute_format = "{{{display_name}}}-{value}"
         discretizer = { kind = "identity" }
         scale = { kind = "dichotomic", true_value = "t" }
 
