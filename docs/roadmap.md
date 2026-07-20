@@ -336,9 +336,9 @@ vertical slices, not waterfall phases — each should leave the system working.
 > `IWideSourceSession` / `ITripleSourceSession` over cleaned records, the typed
 > `SourceReadException` channel, per-read triple roles that never enter session identity or
 > `Bind`, the `CreateWide`/`CreateTriple` defaults factories, the Core-hoisted
-> `ObjectNameValidity.IsUsable` that Conversion now delegates to (M5-IP-007), and the
+> `ObjectNameValidity.IsUsable` that Conversion now delegates to, and the
 > **both-shape header-tolerant open** that finally makes §10.2's duplicate/blank-header semantics
-> reachable (M5-IP-011 — behaviour-neutral for unique headers, header cells never
+> reachable (behaviour-neutral for unique headers, header cells never
 > missing-normalized). **Slice C** landed the `FcaBedrock.Discovery` package as a complete wide
 > vertical: `Prober.ProbeAsync`, `ProbeOptions` (retention limit **100,000** plus the three D-110
 > aggregate guards at **10,000 / 2,000,000 / 50,000,000**, logical accounting only), the wide
@@ -346,7 +346,7 @@ vertical slices, not waterfall phases — each should leave the system working.
 > diagnostics with live wide sites — registry **70 → 75**.
 >
 > **Slice D** completes M5 with the triple vertical. `Prober.ProbeTripleAsync` reads the rows
-> once through the resolved roles, after the **M5-IP-CX-001 binding-only preflight**: Discovery
+> once through the resolved roles, after the **binding-only role-map preflight**: Discovery
 > builds the exact `[binding]` the draft would author and hands it to `SpecResolver` **before a
 > single row is read**, so an invalid role map fails with the resolver's own §5.3 diagnostics
 > **forwarded unchanged** — single ownership by construction (D-067), no re-validation in
@@ -365,7 +365,7 @@ vertical slices, not waterfall phases — each should leave the system working.
 > **no enum member** — the registry stays **75** — and the complete public Discovery surface is
 > still exactly `Prober` (two methods) and `ProbeOptions`. Production Discovery references only
 > Sources, Spec, Core, and Diagnostics, performs no I/O, and touches `System.IO` solely to
-> classify `IOException` / `InvalidDataException` crossing the session seam (M5-IP-CX-002).
+> classify `IOException` / `InvalidDataException` crossing the session seam.
 > Every golden `.cxt`/`.dat`, pinned fingerprint and SHA vector, fixture byte, and pre-existing
 > canonical-TOML expectation is unchanged. `dotnet test` is green (2593 tests: 2592 passed, one
 > platform-gated confidentiality test skipped off its OS).
@@ -463,8 +463,48 @@ vertical slices, not waterfall phases — each should leave the system working.
 > unchanged. `dotnet test` is green (2822 tests: 2821 passed, one platform-gated
 > confidentiality test skipped off its OS).
 >
-> **M6 Slice C (the one-file Internet-Ads exit workflow) is next.** M6 is **not** yet
-> complete: the D-119 exit demonstration is Slice C's.
+> **M6 Slice C — the one-file Internet-Ads exit workflow — is complete, and with it
+> M6 (D-119).** The accepted exit is demonstrated end-to-end by a new behaviour-organized
+> `InternetAdsExitTests` suite in `FcaBedrock.Golden.Tests`, over a **deterministic,
+> synthetic corpus that mirrors the complete raw `ad.data` layout** — 1,559 headerless
+> columns (numeric `height`/`width`/`aratio` at 0–2 with representative `?` missing cells;
+> binary `local` at 3; **exactly 1,554** binary term columns at 4–1557 with a few `?`; the
+> `ad.`/`nonad.` class at 1558) — with **no UCI data row copied** and no clock, random,
+> culture, or platform-newline input; the generated row width and index partition are
+> asserted from the re-split text, and every exit spec authors the pinned Kushmerick/UCI
+> `[provenance]` (`source_url` + `notes`), fingerprint-inert but asserted present. One
+> self-contained **declarative** spec — the full 1,559-attribute inventory plus one
+> `term_flag` template and one `source_index_range = [4, 1557]` matcher — resolves,
+> calibrates, plans, and converts with no Error/Fatal and **no matcher warning**; the
+> matcher configures **exactly** the 1,554 terms (indexes 0–3 and 1558 keep their own
+> configuration, nothing is synthesized from source width), proven load-bearing because
+> removing it fails the bare terms with `AttributeScalingMissing`. The declarative form
+> **equals its independently built materialized twin** on effective attributes, the full
+> plan, all three fingerprints, and byte-identical `.cxt`/`.dat`; a one-term change makes
+> the same projections diverge (the sensitivity anchor). The **uncurated probe-style** form
+> proves all three template-authored fields lose on every selected term (effective nominal +
+> observed domain, not the template's dichotomic), emits **exactly one
+> `MatcherFullyShadowed`**, and is byte/fingerprint/plan/effective-attribute neutral versus
+> the same document without template/matcher; the two **de-shadow** curations (matcher-won
+> versus materialized) converge on identical plans, fingerprints, and bytes. A **real
+> `Prober.ProbeAsync`** draft — verified to carry 1,559 string identity+nominal attributes
+> with their complete observed domains — is curated (template/matcher added, the three
+> fields stripped from 4–1557, provenance attached) and carried through the actual
+> resolve → calibrate → plan → emit → native `.cxt`/`.dat` export as one continuous
+> document; the whole workflow is repeatable, with byte-identical artifacts and identical
+> ordered diagnostics. `FcaBedrock.Golden.Tests` gains a single **test-only**
+> `ProjectReference` to `FcaBedrock.Discovery` to drive that probe; **no production
+> reference changed**, and Discovery still references only Sources, Spec, Core, and
+> Diagnostics. Registry stays **81**, no M6 transitional exists
+> (`TemplateMatcherNotImplementedV1` absent, `SpecSurfaceNotYetSupported` date-only), and
+> every v2 fixture, golden `.cxt`/`.dat`, canonical byte, SHA pin, and architecture rule is
+> unchanged. Slice C adds **no decision entry** (D-119/D-120/D-121 already govern) and makes
+> no spec or `AGENTS.md` edit; the only production-file edits are comment-only retirement of
+> historical review-traceability identifiers. `dotnet test` is green (**2835 tests: 2834
+> passed, 0 failed, one platform-gated confidentiality test —
+> `SpoolConfidentialityTests.CreateWorkspace_OnUnix_SetsMode700` — skipped off its OS**).
+>
+> **M6 is complete; M7 (CLI) is next** — no M7 work has started.
 
 ## Milestones
 

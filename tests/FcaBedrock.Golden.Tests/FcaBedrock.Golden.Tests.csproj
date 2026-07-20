@@ -11,6 +11,11 @@
     <ProjectReference Include="..\..\src\FcaBedrock.Sources\FcaBedrock.Sources.csproj" />
     <ProjectReference Include="..\..\src\FcaBedrock.Conversion\FcaBedrock.Conversion.csproj" />
     <ProjectReference Include="..\..\src\FcaBedrock.Export\FcaBedrock.Export.csproj" />
+    <!-- Test-only: InternetAdsExitTests runs the real Discovery probe engine for the M6
+         exit's probe -> curate -> convert journey (D-119). A test-project dependency only —
+         no production package references Discovery, and Discovery still references neither
+         Conversion nor Export (Discovery_ShouldOnlyDependOnSourcesSpecCoreAndDiagnostics). -->
+    <ProjectReference Include="..\..\src\FcaBedrock.Discovery\FcaBedrock.Discovery.csproj" />
   </ItemGroup>
 
   <!-- User-supplied v2 golden fixtures, copied next to the test assembly so tests

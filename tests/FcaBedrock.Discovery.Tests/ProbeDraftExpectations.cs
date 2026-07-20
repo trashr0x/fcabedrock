@@ -2,7 +2,7 @@ using System.Globalization;
 
 namespace FcaBedrock.Discovery.Tests;
 
-// The three settled draft strings (M5-IP-009), spelled out here INDEPENDENTLY of the
+// The three settled draft strings, spelled out here INDEPENDENTLY of the
 // production constants. Asserting against `ProbeDraft.Description` would only prove the code
 // equals itself; these are byte contracts, so the test states the bytes.
 internal static class ProbeDraftExpectations

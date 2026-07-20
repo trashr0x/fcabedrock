@@ -103,8 +103,8 @@ public sealed class SourceReadSettings
     /// Builds wide read settings from the §5.1 delimited-source defaults, overriding only
     /// what the caller states. A convenience over <see cref="Create"/> — which remains the
     /// single owner of validation, normalization, and the exception contract — for callers
-    /// that describe a CSV/TSV source directly instead of resolving one from a spec document
-    /// (M5-IP-004). There is no <c>ordering</c> parameter: it is null for a wide shape by
+    /// that describe a CSV/TSV source directly instead of resolving one from a spec document.
+    /// There is no <c>ordering</c> parameter: it is null for a wide shape by
     /// <see cref="Create"/>'s own rule.
     /// </summary>
     public static SourceReadSettings CreateWide(

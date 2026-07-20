@@ -3,7 +3,7 @@ using FcaBedrock.Core.Spec;
 namespace FcaBedrock.Core.Tests.Spec;
 
 // The D-085 data-derived object-name predicate, hoisted to Core so probe and calibrate/emit
-// share one authority (M5-IP-007). Usable = non-null, not empty/whitespace-only, no control
+// share one authority. Usable = non-null, not empty/whitespace-only, no control
 // characters.
 public sealed class ObjectNameValidityTests
 {

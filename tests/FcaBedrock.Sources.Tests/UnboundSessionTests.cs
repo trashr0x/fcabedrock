@@ -7,7 +7,7 @@ namespace FcaBedrock.Sources.Tests;
 
 // The D-109 unbound source-session seam: streaming cleaned records with no spec, no binding,
 // and no CSV concept on the interface. Covers the seam shape, unbound-vs-bound parity, per-read
-// triple roles, replayability, cancellation, and the typed read-failure channel (M5-IP-002/003/008).
+// triple roles, replayability, cancellation, and the typed read-failure channel.
 public sealed class UnboundSessionTests
 {
     private static Func<Stream> Opener(string text) => () => new MemoryStream(Encoding.UTF8.GetBytes(text));
@@ -84,7 +84,7 @@ public sealed class UnboundSessionTests
 
     [Fact]
     public void Seam_DoesNotExposeReadSettings() =>
-        // Source-neutrality is the point of the seam (M5-IP-002): a future SQL/SPARQL adapter has
+        // Source-neutrality is the point of the seam: a future SQL/SPARQL adapter has
         // no delimiter/quote/header to report, so read settings must not be reachable through it.
         Assert.Null(typeof(ISourceSession).GetProperty(nameof(WideCsvSession.ReadSettings)));
 
@@ -154,7 +154,7 @@ public sealed class UnboundSessionTests
     public async Task TripleUnbound_RoleMapIsPerReadAndNeverSessionIdentity()
     {
         // The same session read under two different maps, then bound under a third — proving roles
-        // are an argument, not state, and that an unbound read constrains no later Bind (M5-IP-003).
+        // are an argument, not state, and that an unbound read constrains no later Bind.
         var session = TripleSession("v0,p,s0\n");
         var schema = await session.GetSchemaAsync();
 
@@ -396,7 +396,7 @@ public sealed class UnboundSessionTests
         Assert.Equal(["a", "b"], schema.Header);
     }
 
-    // --- 7. The typed read-failure channel (M5-IP-008) ---
+    // --- 7. The typed read-failure channel ---
 
     [Fact]
     public async Task WideUnbound_WhenRowExceedsSepsLimit_ThenSourceReadExceptionWithInnerCause()
@@ -478,7 +478,7 @@ public sealed class UnboundSessionTests
     {
         // The counterexample that keeps the normalization honest: only Sep's OWN failure becomes
         // SourceReadException. A misbehaving stream surfaces as itself, so Slice 3 cannot
-        // mistranslate a contract violation into ProbeSourceReadFailed (M5-IP-008).
+        // mistranslate a contract violation into ProbeSourceReadFailed.
         var session = new WideCsvSession(() => new UnreadableStream(), SourceReadSettings.CreateWide());
 
         var thrown = await Assert.ThrowsAsync<NotSupportedException>(() => DrainAsync(session.ReadAsync()));

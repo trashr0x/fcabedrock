@@ -3,7 +3,7 @@ using FcaBedrock.Core.Spec;
 
 namespace FcaBedrock.Sources.Tests;
 
-// Header tolerance for BOTH shapes (M5-IP-011). Sep's own header mode throws ArgumentException
+// Header tolerance for BOTH shapes. Sep's own header mode throws ArgumentException
 // on a duplicate or multiply-blank header name, which made §5.3/§10.2 — where such a header is
 // legal and binds by index — unreachable. The header is now consumed as the first parsed record,
 // realizing that already-normative behavior. Unique-header and headerless behavior is unchanged;

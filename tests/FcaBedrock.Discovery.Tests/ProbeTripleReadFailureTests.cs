@@ -7,7 +7,7 @@ using FcaBedrock.Spec.Toml;
 namespace FcaBedrock.Discovery.Tests;
 
 /// <summary>
-/// The M5-IP-008 failure boundary and the D-112 cancellation posture, for the triple engine:
+/// The read-failure boundary and the D-112 cancellation posture, for the triple engine:
 /// which exceptions become <c>ProbeSourceReadFailed</c>, which propagate as the bugs they are,
 /// and why cancellation is neither.
 /// <para>
@@ -16,7 +16,7 @@ namespace FcaBedrock.Discovery.Tests;
 /// pair — so it needs its own coverage rather than inheriting the wide suite's. The
 /// counterexamples matter most: a catch-all would convert genuine bugs into polite diagnostics a
 /// caller would try to handle (P-14), and ArchUnitNET does not reliably surface catch-handler
-/// metadata, so behaviour is the enforcement (M5-IP-CX-002).
+/// metadata, so behaviour is the enforcement.
 /// </para>
 /// </summary>
 public sealed class ProbeTripleReadFailureTests

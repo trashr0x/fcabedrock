@@ -6,7 +6,7 @@ namespace FcaBedrock.Discovery.Tests;
 
 /// <summary>
 /// The <see cref="ProbeOptions"/> contract: the pinned defaults (D-108/D-110), the exact
-/// exception taxonomy of its validating factory (P-10/M5-IP-004), and — the one that would
+/// exception taxonomy of its validating factory (P-10), and — the one that would
 /// otherwise rot silently — that its locale predicate agrees with the resolve seam's.
 /// </summary>
 public sealed class ProbeOptionsTests
@@ -80,7 +80,7 @@ public sealed class ProbeOptionsTests
 
     [Fact]
     public void Create_WhenLimitsAreMutuallyAbsurd_ThenStillSucceeds() =>
-        // No cross-limit validation (M5-IP-005): a per-attribute limit far above the aggregate
+        // No cross-limit validation: a per-attribute limit far above the aggregate
         // guards is legal — the guards simply bite first. Rejecting it would invent a rule the
         // decisions do not have.
         Assert.Equal(
@@ -121,7 +121,7 @@ public sealed class ProbeOptionsTests
     public void Create_WhenGivenALocale_ThenAcceptsExactlyWhatTheResolveSeamAccepts(string locale)
     {
         // The reason this test exists: ProbeOptions duplicates SpecResolver's locale predicate
-        // rather than sharing a public helper (M5-IP-004), so nothing structural stops the two
+        // rather than sharing a public helper, so nothing structural stops the two
         // from drifting. If they drifted, probe could return a draft whose own `binding.locale`
         // fails to resolve — breaking the D-107 guarantee on a field the caller chose. This
         // makes that drift a test failure instead of a runtime surprise.

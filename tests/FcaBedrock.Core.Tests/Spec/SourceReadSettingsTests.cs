@@ -78,7 +78,7 @@ public sealed class SourceReadSettingsTests
     public void Equals_WhenMissingTokenDiffers_ThenNotEqual() =>
         Assert.NotEqual(Wide(missingToken: "?"), Wide(missingToken: "NA"));
 
-    // --- CreateWide / CreateTriple: the §5.1/§7.1 delimited-source defaults (M5-IP-004) ---
+    // --- CreateWide / CreateTriple: the §5.1/§7.1 delimited-source defaults ---
 
     [Fact]
     public void CreateWide_WhenNoArguments_ThenExposesTheSection51WideDefaults()

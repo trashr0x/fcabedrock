@@ -5,7 +5,7 @@ using FcaBedrock.Spec.Toml;
 namespace FcaBedrock.Discovery.Tests;
 
 /// <summary>
-/// The M5-IP-CX-001 binding-only role-map preflight: before a single row is read, Discovery
+/// The binding-only role-map preflight: before a single row is read, Discovery
 /// resolves the exact <c>[binding]</c> the draft would author and forwards whatever the resolver
 /// says.
 /// <para>
@@ -66,7 +66,7 @@ public sealed class ProbeTripleRoleMapTests
     {
         // The heart of "addressing mode is preserved": names resolve to indices for THIS read,
         // and the document still says names. The resolved map is read machinery, not a rewrite of
-        // what the caller authored (M5-IP-003).
+        // what the caller authored.
         var session = new TripleProbeFixtures.FakeTripleSession(
             new SourceSchema(3, ["val", "pred", "subj"]), TripleProbeFixtures.Rows(("s", "p", "v")));
         var columns = TripleProbeFixtures.Names("subj", "pred", "val");

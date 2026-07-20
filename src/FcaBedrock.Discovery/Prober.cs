@@ -89,7 +89,7 @@ public static class Prober
     /// <paramref name="columns"/> map is <b>not</b> one of those — a role map is authored spec
     /// content, so it is diagnosed, not thrown. It is checked by resolving the exact
     /// <c>[binding]</c> this probe would author <em>before</em> any row is read, and the
-    /// resolver's own §5.3 diagnostics are forwarded unchanged (M5-IP-CX-001): probe re-validates
+    /// resolver's own §5.3 diagnostics are forwarded unchanged: probe re-validates
     /// nothing and mints no code of its own, so a bad role map reads identically here and from
     /// <c>validate</c>.
     /// </para>
@@ -242,7 +242,7 @@ public static class Prober
         // constructions that could drift.
         var binding = ProbeDraft.TripleBinding(readSettings, options, columns);
 
-        // The M5-IP-CX-001 role-map preflight, BEFORE any row is read. Discovery does not
+        // The binding-only role-map preflight, BEFORE any row is read. Discovery does not
         // re-implement §5.3: it asks the resolver, which owns those rules, and forwards whatever
         // it says. A partial, mixed-mode, negative, out-of-range, non-distinct, headerless-name,
         // missing, or ambiguous map fails here — with no enumeration started, so a bad map costs
@@ -353,7 +353,7 @@ public static class Prober
                 }
             }
 
-            // The complete M5-IP-008 set, written as explicit narrow clauses: expected
+            // The complete provider/read-failure set, written as explicit narrow clauses: expected
             // provider/read failures become a diagnostic, and everything else keeps its own
             // identity. In particular OperationCanceledException matches none of these and
             // propagates unwrapped (D-111/D-112), and NotSupportedException is absent by design —

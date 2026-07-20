@@ -6,7 +6,7 @@ namespace FcaBedrock.Sources.Tests;
 // The seam's source-neutrality, proven structurally: these sessions are implemented over
 // in-memory record lists with no stream, file, delimiter, encoding, or Sep anywhere. If the
 // seam ever grew a delimited-source concept, this file would stop compiling — which is the
-// point (D-109/M5-IP-002). It is also the shape a future SQL/SPARQL adapter would take, and
+// point (D-109). It is also the shape a future SQL/SPARQL adapter would take, and
 // the shape Slice 3's probe tests will drive the engine with.
 public sealed class InMemorySourceSessionTests
 {

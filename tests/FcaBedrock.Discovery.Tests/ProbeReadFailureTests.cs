@@ -8,7 +8,7 @@ using FcaBedrock.Spec.Toml;
 namespace FcaBedrock.Discovery.Tests;
 
 /// <summary>
-/// The M5-IP-008 failure boundary: which exceptions become <c>ProbeSourceReadFailed</c>, and —
+/// The read-failure boundary: which exceptions become <c>ProbeSourceReadFailed</c>, and —
 /// just as load-bearing — which do not.
 /// <para>
 /// A catch-all would be the easy implementation and the wrong one: it converts genuine bugs
@@ -17,7 +17,7 @@ namespace FcaBedrock.Discovery.Tests;
 /// of expected provider/read failures, and the counterexamples below are what prove the filter
 /// is actually narrow rather than merely described as narrow. They also cover what an
 /// architecture rule cannot see: ArchUnitNET does not reliably surface catch-handler metadata,
-/// so behaviour is the enforcement (M5-IP-CX-002).
+/// so behaviour is the enforcement.
 /// </para>
 /// </summary>
 public sealed class ProbeReadFailureTests
@@ -197,7 +197,7 @@ public sealed class ProbeReadFailureTests
     // region, so an engine defect propagates rather than becoming a polite diagnostic — is not
     // expressible as a test here: ObjectRecord is sealed, so no record can be built whose
     // accessor throws, and nothing in the observation body can raise an admitted exception type.
-    // It is verified by direct inspection of the catch boundary instead (M5-IP-CX-002's posture).
+    // It is verified by direct inspection of the catch boundary instead.
 
     [Fact]
     public async Task Probe_WhenCanceledAtAcquisition_ThenCancellationStillWins()
@@ -384,7 +384,7 @@ public sealed class ProbeReadFailureTests
     }
 
     // A readable-in-name-only stream: the tokenizer's own read call fails with an IOException,
-    // which is exactly the "storage misbehaved" class M5-IP-008 admits.
+    // which is exactly the "storage misbehaved" class the read-failure boundary admits.
     private sealed class UnreadableStream : Stream
     {
         public override bool CanRead => true;

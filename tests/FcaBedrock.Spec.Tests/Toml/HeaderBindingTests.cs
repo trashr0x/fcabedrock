@@ -6,7 +6,7 @@ using FcaBedrock.Spec.Toml;
 
 namespace FcaBedrock.Spec.Tests.Toml;
 
-// §10.2's duplicate-header rule, finally exercised over a REAL read (M5-IP-011). Until the
+// §10.2's duplicate-header rule, finally exercised over a REAL read. Until the
 // header-tolerant open landed, a duplicate or multiply-blank header threw inside the tokenizer
 // at reader construction, so the spec-specified outcomes below were unreachable: index binding
 // could not succeed, and the name-ambiguity SourceBindingInvalid could not be reached from

@@ -2,7 +2,7 @@ namespace FcaBedrock.Sources;
 
 /// <summary>
 /// An <b>expected</b> failure to read a source, normalized by the adapter into one
-/// source-neutral type (M5-IP-008). It is the unbound seam's failure channel: the seam
+/// source-neutral type. It is the unbound seam's failure channel: the seam
 /// hands back records, so a provider-specific read failure has nowhere else to surface,
 /// and a consumer must be able to recognize one without knowing which adapter produced it
 /// — Discovery must never catch a Sep type to learn that a CSV row was unreadable.

@@ -5,7 +5,7 @@ namespace FcaBedrock.Core.Spec;
 /// object key (§5.4 / §18.1 / D-085). One authority, so every phase that reads such a
 /// name agrees on exactly one definition: Discovery's <c>probe</c>, the Conversion
 /// calibrate/emit halt, and the <c>unordered</c> grouping boundary cannot drift about
-/// which subjects a source admits (M5-IP-007).
+/// which subjects a source admits.
 /// <para>
 /// This is <b>not</b> §10.1 attribute-name validity — a different predicate over a
 /// different alphabet, owned elsewhere. Do not conflate the two.

@@ -19,7 +19,7 @@ namespace FcaBedrock.Sources;
 /// structural rather than a property four files maintain (the D-102 posture).
 /// </para>
 /// <para>
-/// <b>Header tolerance (M5-IP-011).</b> Sep is always opened in its <em>headerless</em> mode
+/// <b>Header tolerance.</b> Sep is always opened in its <em>headerless</em> mode
 /// and the header, when the settings declare one, is consumed here as the first parsed
 /// record. Sep's own header mode throws <see cref="ArgumentException"/> on a duplicate or
 /// multiply-blank header name, which made §5.3/§10.2 — where such a header is legal, binds by
@@ -149,8 +149,8 @@ internal static class CsvReadPipeline
 
     // Sep signals its row/buffer ceiling ("Buffer or row has reached maximum supported length of
     // 16777216", also raised for an unterminated quote) as a NotSupportedException. That is an
-    // expected provider read failure, normalized HERE so no consumer needs to know Sep exists
-    // (M5-IP-008). Nothing else is caught: cancellation, argument/state errors, and every other
+    // expected provider read failure, normalized HERE so no consumer needs to know Sep exists.
+    // Nothing else is caught: cancellation, argument/state errors, and every other
     // framework exception propagate as themselves (P-14).
     private static bool Advance(SepReader reader)
     {
@@ -170,7 +170,7 @@ internal static class CsvReadPipeline
     // call is not enough to answer that: Sep reads through the caller's stream, so a stream whose
     // Read throws NotSupportedException (a non-readable stream, say) surfaces through the very
     // same call. Wrapping that would disguise a programmer/contract error as an expected read
-    // failure — exactly what M5-IP-008 forbids — and would later mistranslate into
+    // failure — exactly what the typed read-failure channel forbids — and would later mistranslate into
     // ProbeSourceReadFailed. So normalize only failures thrown from within Sep itself.
     //
     // Verified against pinned Sep 0.15.0: the limit failure's TargetSite is

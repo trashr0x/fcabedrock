@@ -8,7 +8,7 @@ namespace FcaBedrock.Conversion;
 /// <para>
 /// The definition itself now lives in Core as <see cref="ObjectNameValidity"/>: probe
 /// (Discovery) must apply the <em>identical</em> predicate, or a draft could accept a
-/// subject the conversion it promises then rejects (M5-IP-007). This type is the
+/// subject the conversion it promises then rejects. This type is the
 /// Conversion-local name for that one authority — it forwards, never re-implements.
 /// </para>
 /// </summary>

@@ -22,7 +22,7 @@ namespace FcaBedrock.Sources;
 /// has no binding for yet. Unbound and bound reads run the same
 /// <see cref="CsvReadPipeline"/>, so they yield identical cleaned records from identical
 /// bytes. Read settings stay here, on the concrete CSV session, rather than on the
-/// source-neutral seam (M5-IP-002).
+/// source-neutral seam.
 /// </para>
 /// </summary>
 public sealed class WideCsvSession : IWideSourceSession
@@ -61,7 +61,7 @@ public sealed class WideCsvSession : IWideSourceSession
     /// <summary>
     /// The immutable read settings this session tokenizes with. Delimited-source detail, so it
     /// lives here rather than on <see cref="ISourceSession"/> — a non-delimited adapter has no
-    /// delimiter, quote, or header to report (M5-IP-002).
+    /// delimiter, quote, or header to report.
     /// </summary>
     public SourceReadSettings ReadSettings => _settings;
 

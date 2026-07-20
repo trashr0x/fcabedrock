@@ -12,7 +12,7 @@ namespace FcaBedrock.Sources;
 /// provenance, or conversion source; no CSV-specific concept. A future SQL/SPARQL adapter has
 /// no delimiter, quote, or header to describe, so those live on the concrete CSV sessions
 /// (<see cref="WideCsvSession.ReadSettings"/> / <see cref="TripleCsvSession.ReadSettings"/>)
-/// and reach a caller through the caller, never through this interface (M5-IP-002). Consumers
+/// and reach a caller through the caller, never through this interface. Consumers
 /// therefore depend on <em>records</em>, which is what makes discovery determinism a property
 /// of the record sequence rather than of any file's bytes (D-112).
 /// </para>
@@ -76,7 +76,7 @@ public interface ITripleSourceSession : ISourceSession
     /// <b>Roles are a per-read argument, not session identity.</b> They index the ordered
     /// <see cref="ISourceSession.GetSchemaAsync"/> schema — schema-relative, hence portable to
     /// a non-delimited adapter — so the same session may be read under different role maps,
-    /// and doing so constrains no later binding (M5-IP-003). This seam neither infers nor
+    /// and doing so constrains no later binding. This seam neither infers nor
     /// resolves roles from header names: a caller supplies an already-resolved map.
     /// </para>
     /// </summary>

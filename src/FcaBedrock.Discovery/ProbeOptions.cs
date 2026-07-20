@@ -116,7 +116,7 @@ public sealed class ProbeOptions
 
     // The predicate SpecResolver applies to binding.locale, deliberately duplicated rather than
     // hoisted into a shared public helper: neither package should grow a locale API for one
-    // internal agreement (M5-IP-004). A cross-check test pins the two against each other, so
+    // internal agreement. A cross-check test pins the two against each other, so
     // drift fails a test rather than silently producing a draft that cannot resolve itself.
     // predefinedOnly matters — under ICU, GetCultureInfo synthesizes a culture for almost any
     // well-formed tag, which would make acceptance OS-dependent (P-7/P-11).

@@ -141,8 +141,8 @@ public sealed class DependencyRulesTests
     [Fact]
     public void Discovery_ShouldNotDependOnSystemIoBeyondTheTwoClassificationExceptions()
     {
-        // Discovery performs no I/O - it classifies failures crossing the source-session seam
-        // (M5-IP-008); D-109's ban on opening paths/streams/files remains absolute.
+        // Discovery performs no I/O - it classifies failures crossing the source-session seam;
+        // D-109's ban on opening paths/streams/files remains absolute.
         //
         // So the allowlist is exactly two EXCEPTION TYPES, named in catch clauses. Everything
         // else in System.IO — Stream, File, Path, Directory, readers/writers, pipelines,

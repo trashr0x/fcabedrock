@@ -15,8 +15,7 @@ namespace FcaBedrock.Sources;
 /// rows without a spec (D-109), taking the role map <em>per read</em>. Roles therefore never
 /// enter session identity: reading under one map neither constrains nor is constrained by a
 /// later <see cref="Bind"/> under another, which keeps the D-098 bound flow — where a session
-/// is constructed before its authored role map is even resolvable — exactly as it was
-/// (M5-IP-003).
+/// is constructed before its authored role map is even resolvable — exactly as it was.
 /// </para>
 /// </summary>
 public sealed class TripleCsvSession : ITripleSourceSession
@@ -54,7 +53,7 @@ public sealed class TripleCsvSession : ITripleSourceSession
 
     /// <summary>
     /// The immutable read settings this session tokenizes with — delimited-source detail, kept
-    /// off the source-neutral seam (M5-IP-002).
+    /// off the source-neutral seam.
     /// </summary>
     public SourceReadSettings ReadSettings => _settings;
 
