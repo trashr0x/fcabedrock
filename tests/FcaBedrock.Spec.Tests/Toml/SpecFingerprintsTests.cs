@@ -242,6 +242,111 @@ public sealed class SpecFingerprintsTests
         Assert.Equal(plain, exponent);
     }
 
+    // --- restrict_to presence versus emptiness (§10.4/§14, D-105/D-114) -------
+
+    private static string NumericAttribute(string extraKeys = "") =>
+        CutSpellingTemplate.Replace("{CUT}", "30", StringComparison.Ordinal) + extraKeys;
+
+    [Fact]
+    public void ComputeNative_WhenRestrictToIsAuthoredEmpty_ThenAllThreeMatchTheOmittedTwin()
+    {
+        // §14/D-105: the `restrictions` container is present only when some attribute actually
+        // restricts, so an authored `restrict_to = []` — which restricts nothing — must leave
+        // every hash exactly where the omitted form leaves it. The Spec-seam proof that the two
+        // presence states converge on one resolved identity.
+        var omitted = ComputeFor(NumericAttribute());
+        var authoredEmpty = ComputeFor(NumericAttribute("\nrestrict_to = []\n"));
+
+        AssertSameFingerprints(omitted, authoredEmpty);
+    }
+
+    [Fact]
+    public void ComputeNative_WhenRestrictToIsTheUnboundedRangeEntry_ThenOnlyTheOutputFingerprintsMove()
+    {
+        // The discriminating contrast: `[{}]` is ONE entry — the full usable-numeric range
+        // (§10.4/D-091) — not an empty list. It populates the container and therefore moves both
+        // output fingerprints, while `[]` above moves none. Columns are unchanged either way, so
+        // the schema hash is shared (§14: restrictions select rows, not columns).
+        var authoredEmpty = ComputeFor(NumericAttribute("\nrestrict_to = []\n"));
+        var unbounded = ComputeFor(NumericAttribute("\nrestrict_to = [{}]\n"));
+
+        Assert.Equal(authoredEmpty.SchemaFingerprint, unbounded.SchemaFingerprint);
+        Assert.NotEqual(authoredEmpty.CxtOutputFingerprint, unbounded.CxtOutputFingerprint);
+        Assert.NotEqual(authoredEmpty.DatOutputFingerprint, unbounded.DatOutputFingerprint);
+    }
+
+    // --- value_labels presence versus emptiness (§10.8/§14, D-077) ------------
+
+    [Fact]
+    public void ComputeNative_WhenValueLabelsIsAuthoredEmpty_ThenRenderedNamesAndAllThreeMatchTheOmittedTwin()
+    {
+        // §10.8/D-077: labels reach identity only through the `rendered_names` array, and an
+        // empty map renders every name from the raw value — so `value_labels = {}` and an omitted
+        // map converge on the same names and therefore on all three hashes. The names are
+        // asserted alongside the hashes so the convergence is shown, not merely hashed.
+        var omitted = Pipeline(MinimalSpec(), new SourceSchema(1));
+        var authoredEmpty = Pipeline(Naming("value_labels = {}"), new SourceSchema(1));
+
+        Assert.Equal(
+            omitted.Plan.FormalAttributes.Select(a => a.RenderedName),
+            authoredEmpty.Plan.FormalAttributes.Select(a => a.RenderedName));
+        AssertSameFingerprints(
+            ComputeNative(omitted.Document, omitted.Spec, omitted.Plan),
+            ComputeNative(authoredEmpty.Document, authoredEmpty.Spec, authoredEmpty.Plan));
+    }
+
+    // --- stored-fingerprint state: absent versus present-but-wrong (D-077) ---
+
+    [Fact]
+    public void VerifyStored_WhenStoredFieldsAreEmptyStrings_ThenAllThreeReadAsStale()
+    {
+        // D-077: verification compares the full stored string ordinally. An empty string is
+        // PRESENT — the reader hands back "" as a non-null string — so it is stale, not absent.
+        // Only an unwritten field is the silent absent state (VerifyStored_WhenNoStoredFingerprints).
+        var frozen = TomlFixtures.MiniMushroom.Replace(
+            "version = 1",
+            """
+            version = 1
+            schema_fingerprint = ""
+            cxt_output_fingerprint = ""
+            dat_output_fingerprint = ""
+            """,
+            StringComparison.Ordinal);
+        var (document, spec, plan) = Pipeline(frozen, new SourceSchema(5));
+
+        var diagnostics = VerifyStored(document, ComputeNative(document, spec, plan));
+
+        Assert.Equal(3, diagnostics.Count);
+        Assert.All(diagnostics, d => Assert.Equal(DiagnosticSeverity.Warning, d.Severity));
+        Assert.Collection(
+            diagnostics,
+            d => Assert.Equal(DiagnosticCode.SchemaFingerprintStale, d.Code),
+            d => Assert.Equal(DiagnosticCode.CxtOutputFingerprintStale, d.Code),
+            d => Assert.Equal(DiagnosticCode.DatOutputFingerprintStale, d.Code));
+    }
+
+    [Fact]
+    public void VerifyStored_WhenAStoredValueIsMalformed_ThenMerelyStaleAndNeverInvalidatesTheRun()
+    {
+        // D-077: there is deliberately NO parse-time format validation — a value that is not even
+        // a "sha256:" string simply reads as stale. And stale is Warning-only, so a malformed
+        // stored fingerprint never invalidates the run (§16.2/G-12: only Error/Fatal do).
+        var frozen = TomlFixtures.MiniMushroom.Replace(
+            "version = 1",
+            """
+            version = 1
+            schema_fingerprint = "not-a-fingerprint"
+            """,
+            StringComparison.Ordinal);
+        var (document, spec, plan) = Pipeline(frozen, new SourceSchema(5));
+
+        var diagnostics = VerifyStored(document, ComputeNative(document, spec, plan));
+
+        Assert.Equal(DiagnosticCode.SchemaFingerprintStale, Assert.Single(diagnostics).Code);
+        Assert.DoesNotContain(
+            diagnostics, d => d.Severity is DiagnosticSeverity.Error or DiagnosticSeverity.Fatal);
+    }
+
     // --- equal_width manual is fully-frozen-eligible (§14/§11.4, D-089/D-102) --
 
     private const string EqualWidthManualTemplate = """

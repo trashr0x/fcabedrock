@@ -16,6 +16,22 @@ namespace FcaBedrock.Conversion.Tests;
 /// </summary>
 public sealed class RestrictionEmitterTests
 {
+    // --- presence versus emptiness (§10.4) ----------------------------------
+
+    [Fact]
+    public async Task Emit_WhenTheRestrictionListIsEmpty_ThenNothingIsFilteredOut()
+    {
+        // §10.4: "empty or absent ⇒ no filter". This pins the planner's non-empty guard against
+        // the opposite reading — existential matching over ZERO entries is vacuously FALSE, which
+        // would silently exclude every object rather than admitting them all. An authored
+        // `restrict_to = []` reaches Core as exactly this state (see SpecResolverTests).
+        var spec = Wide(Filter("Gene", 0), ConversionFixtures.Nominal("t", 1, "x"));
+
+        var objects = await EmitAsync(spec, "Bmp5,x\nWnt1,x\nShh,x");
+
+        Assert.Equal(["0", "1", "2"], objects.Select(o => o.Name));
+    }
+
     // --- string matching (§10.4/P-12) ---------------------------------------
 
     [Fact]

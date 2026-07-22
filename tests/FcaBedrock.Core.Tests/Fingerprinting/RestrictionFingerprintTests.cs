@@ -149,6 +149,44 @@ public sealed class RestrictionFingerprintTests
     }
 
     [Fact]
+    public void BuildDatOutputJson_WhenNoAttributeRestricts_ThenTheContainerIsAbsentEntirely()
+    {
+        // The .dat twin of the omission rule above. The container feeds BOTH output fingerprints
+        // (§14), so "absent, not an empty array" has to hold on both sides — otherwise a
+        // restriction-free spec would keep its .cxt hash while its .dat hash moved.
+        var json = Dat(new BedrockSpec(SpecFixtures.WideRowIndex(), [SpecFixtures.Nominal("a", 0, ["x"])]));
+
+        Assert.DoesNotContain("restrictions", json, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ComputeOutputFingerprints_WhenTheOnlyEntryIsTheUnboundedRange_ThenBothOutputsMoveButSchemaDoesNot()
+    {
+        // `{}` is ONE entry — the full usable-numeric range (§10.4/D-091) — not an empty list.
+        // So it populates the container and moves both output fingerprints, which is exactly the
+        // contrast that makes the absent/empty omission rule above meaningful rather than
+        // vacuous. Columns are untouched, so the schema hash is shared.
+        var unrestricted = new BedrockSpec(SpecFixtures.WideRowIndex(),
+            [SpecFixtures.NumericCuts("age", 0, [30], new NominalScale())]);
+        var unbounded = new BedrockSpec(SpecFixtures.WideRowIndex(), [
+            SpecFixtures.NumericCuts("age", 0, [30], new NominalScale()) with
+            {
+                RestrictTo = [new RestrictToRange(null, null)],
+            },
+        ]);
+
+        Assert.Equal(
+            FingerprintCalculator.ComputeSchemaFingerprint(Plan(unrestricted, 1)),
+            FingerprintCalculator.ComputeSchemaFingerprint(Plan(unbounded, 1)));
+        Assert.NotEqual(
+            FingerprintCalculator.ComputeCxtOutputFingerprint(Plan(unrestricted, 1), NativeCxt()),
+            FingerprintCalculator.ComputeCxtOutputFingerprint(Plan(unbounded, 1), NativeCxt()));
+        Assert.NotEqual(
+            FingerprintCalculator.ComputeDatOutputFingerprint(Plan(unrestricted, 1), NativeDat()),
+            FingerprintCalculator.ComputeDatOutputFingerprint(Plan(unbounded, 1), NativeDat()));
+    }
+
+    [Fact]
     public void ComputeSchemaFingerprint_WhenRestrictionsChange_ThenItIsUnaffected()
     {
         // §14: restrict_to changes which ROWS appear, not which COLUMNS exist — so it is excluded

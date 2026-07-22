@@ -286,6 +286,30 @@ public sealed class SpecResolverTests
     }
 
     [Fact]
+    public void Resolve_WhenRestrictToAuthoredEmpty_ThenNoFilterYetTheDocumentKeepsThePresence()
+    {
+        // §10.4: "empty or absent ⇒ no filter", so an authored [] and an omitted restrict_to
+        // converge on the SAME resolved Core state — while the document snapshot keeps them
+        // distinguishable, which is what round-trip fidelity (D-049) and §14's
+        // present-only-when-non-empty `restrictions` container both rely on.
+        var attribute = DocumentFixtures.Attribute("x", DocumentFixtures.Column(0),
+            discretizer: Discretizer("identity"), scale: new NominalScaleSection(), declaredDomain: ["a"]);
+
+        var authoredEmpty = SpecResolver.Resolve(
+            DocumentFixtures.Document([attribute with { RestrictTo = [] }]), new SourceSchema(1));
+        var omitted = SpecResolver.Resolve(DocumentFixtures.Document([attribute]), new SourceSchema(1));
+
+        Assert.True(authoredEmpty.TryGetValue(out var empty));
+        Assert.True(omitted.TryGetValue(out var absent));
+
+        Assert.Empty(Assert.Single(empty!.Resolved.Spec.Attributes).RestrictTo);
+        Assert.Empty(Assert.Single(absent!.Resolved.Spec.Attributes).RestrictTo);
+
+        Assert.NotNull(empty.Document.Attributes[0].RestrictTo);
+        Assert.Null(absent.Document.Attributes[0].RestrictTo);
+    }
+
+    [Fact]
     public void Resolve_WhenRestrictToRangesOnNumberSource_ThenCarriedIntoCore()
     {
         IReadOnlyList<RestrictToEntry> restrict = [new RestrictToRange(1, To: null), new RestrictToRange(null, 5)];

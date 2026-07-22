@@ -161,6 +161,21 @@ public sealed class SpecRoundTripTests
     }
 
     [Fact]
+    public void RoundTrip_WhenValueLabelsIsOmittedVersusEmpty_ThenThePresenceDistinctionSurvives()
+    {
+        // The value_labels mirror of the test above (D-049): an omitted map and an authored {}
+        // are different documents, and the canonical writer must not collapse them — even though
+        // the two converge on identical rendered names and identical fingerprints (D-077).
+        var omitted = Read(SpecWriter.Write(DocumentFixtures.Document([DocumentFixtures.Attribute("a")])));
+        Assert.Null(omitted.Attributes[0].ValueLabels);
+
+        var empty = Read(SpecWriter.Write(DocumentFixtures.Document(
+            [DocumentFixtures.Attribute("a", valueLabels: new Dictionary<string, string>())])));
+        Assert.NotNull(empty.Attributes[0].ValueLabels);
+        Assert.Empty(empty.Attributes[0].ValueLabels!);
+    }
+
+    [Fact]
     public void RoundTrip_WhenValueLabelsHaveWeirdKeys_ThenOrderAndKeysSurvive()
     {
         var document = DocumentFixtures.Document(

@@ -95,6 +95,21 @@ public sealed class ValueGroupsConversionTests
     }
 
     [Fact]
+    public async Task CalibrateAsync_WhenGroupsEmptyAndPassthrough_ThenEveryDistinctValueBecomesABin()
+    {
+        // §11.6/D-104's empty-groups form at the degenerate end of pass-through: with no group
+        // able to claim anything, discovery is exactly the distinct observed values in
+        // first-observation order (§17 rule 3). The input repeats and is unsorted, so only genuine
+        // first-observation order reproduces the expectation.
+        var spec = new BedrockSpec(ConversionFixtures.Wide(hasHeader: false), [Passthrough("edu", 0)]);
+
+        var result = await CalibrateWideAsync(spec, "PhD\n11th\nPhD\nMasters");
+
+        Assert.Equal(["PhD", "11th", "Masters"], BinsOf(Ok(result), "edu"));
+        Assert.Equal(DiagnosticCode.ValueGroupsPassthroughDataDependent, Assert.Single(result.Diagnostics).Code);
+    }
+
+    [Fact]
     public async Task CalibrateAsync_WhenPassthroughAndPatternGroup_ThenPatternMatchesAreGroupedNotDiscovered()
     {
         // Discovery routes through the same Core matcher emit uses, so a regex group claims its
@@ -556,6 +571,43 @@ public sealed class ValueGroupsConversionTests
     }
 
     [Fact]
+    public async Task EmitAsync_WhenGroupsEmptyAndSkip_ThenNoColumnExistsAndEveryValueIsUnknown()
+    {
+        // §11.6/D-104: an empty group list under `skip` recognizes nothing, so `edu` contributes
+        // no column and every observed value is unknown. The companion attribute keeps the context
+        // non-degenerate, so the assertion is about `edu` producing nothing rather than about an
+        // empty plan.
+        var spec = new BedrockSpec(ConversionFixtures.Wide(hasHeader: false), [
+            Groups("edu", 0, ValueGroupsUnmatched.Skip, new NominalScale(), UnknownValuePolicy.Warn, MissingPolicy.Skip),
+            ConversionFixtures.Nominal("t", 1, "x"),
+        ]);
+
+        var (names, rows, diagnostics) = await EmitAsync(spec, "11th,x\nPhD,x");
+
+        Assert.Equal(["t-x"], names);
+        Assert.Equal(["X", "X"], rows);
+        var warning = Assert.Single(diagnostics);
+        Assert.Equal(DiagnosticCode.UnknownValueObserved, warning.Code);
+        Assert.Equal("edu", warning.Location?.AttributeName);
+    }
+
+    [Fact]
+    public async Task EmitAsync_WhenGroupsEmptyAndOther_ThenEveryUsableValueCrossesTheOtherColumn()
+    {
+        // The complement, and why D-104 called an empty group list "coherent under `other`": the
+        // synthetic bin is the whole universe, so one column collects every usable value. Missing
+        // is still handled before the discretizer (§10.5) and must not fall into `Other`.
+        var spec = new BedrockSpec(ConversionFixtures.Wide(hasHeader: false),
+            [Groups("edu", 0, ValueGroupsUnmatched.Other, new NominalScale(), UnknownValuePolicy.Warn, MissingPolicy.Skip)]);
+
+        var (names, rows, diagnostics) = await EmitAsync(spec, "11th\nPhD\n?");
+
+        Assert.Equal(["edu-Other"], names);
+        Assert.Equal(["X", "X", "."], rows);
+        Assert.Empty(diagnostics);
+    }
+
+    [Fact]
     public async Task EmitAsync_WhenFirstMatchWins_ThenTheEarlierGroupClaimsTheValue()
     {
         var spec = new BedrockSpec(ConversionFixtures.Wide(hasHeader: false),
@@ -625,6 +677,21 @@ public sealed class ValueGroupsConversionTests
         Assert.Equal(["edu-School", "edu-PhD", "edu-Masters"], names);
         Assert.Equal(["X..", ".X.", "..X"], rows);
         Assert.Empty(diagnostics); // every value bins, so nothing is unknown at emit
+    }
+
+    [Fact]
+    public async Task Emit_WhenGroupsEmptyAndCalibratedPassthrough_ThenTheDiscoveredBinsAreTheWholeColumnSet()
+    {
+        // Calibrate → plan → emit end-to-end for the empty-groups pass-through: with no declared
+        // groups the discovered bins ARE the column set, in first-observation order, and every
+        // value bins (so nothing is unknown at emit).
+        var spec = new BedrockSpec(ConversionFixtures.Wide(hasHeader: false), [Passthrough("edu", 0)]);
+
+        var (names, rows, diagnostics) = await CalibrateAndEmitAsync(spec, "PhD\n11th\nPhD");
+
+        Assert.Equal(["edu-PhD", "edu-11th"], names);
+        Assert.Equal(["X.", ".X", "X."], rows);
+        Assert.Empty(diagnostics);
     }
 
     [Fact]

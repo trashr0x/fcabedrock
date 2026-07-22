@@ -30,6 +30,11 @@ public sealed class ValueGroupsPlanningTests
                 SpecFixtures.Group("Postgrad", "Masters", "PhD")),
         ]);
 
+    // The D-104 empty-groups form: `groups = []` is coherent configuration, not an error. Its bin
+    // universe is empty under `skip` and exactly the synthetic `Other` under `other`.
+    private static BedrockSpec EmptyGroupsSpec(ValueGroupsUnmatched unmatched, Scale scale) =>
+        new(SpecFixtures.WideRowIndex(), [SpecFixtures.ValueGroups("edu", 0, unmatched, scale)]);
+
     private static OrdinalScale Ordinal(
         IReadOnlyList<string>? order,
         OrdinalDirection direction = OrdinalDirection.Ge,
@@ -74,6 +79,35 @@ public sealed class ValueGroupsPlanningTests
 
         Assert.Equal([("", "School"), ("", "Undergrad"), ("", "Postgrad"), ("", "Other")], Identities(plan));
         Assert.Equal([3], CrossesOf(plan, "Other"));
+    }
+
+    // --- nominal: the empty-groups universe (§11.6/D-104) ---------------------
+
+    [Fact]
+    public void Plan_WhenGroupsEmptyAndOther_ThenTheSyntheticOtherIsTheOnlyColumn()
+    {
+        // D-104 rejected a non-empty-groups requirement precisely because "an empty group list is
+        // coherent under `other`": every usable value is unmatched, so `Other` is the whole
+        // universe and the attribute plans exactly one column.
+        var plan = Ok(Plan(EmptyGroupsSpec(ValueGroupsUnmatched.Other, new NominalScale())));
+
+        Assert.Equal([("", "Other")], Identities(plan));
+        Assert.Equal([0], CrossesOf(plan, "Other"));
+    }
+
+    [Fact]
+    public void Plan_WhenGroupsEmptyAndSkip_ThenZeroColumnsAndOnlyTheNoFormalAttributesWarning()
+    {
+        // The other half: under `skip` an empty group list recognizes nothing, so the attribute
+        // contributes no column. That is a legal degenerate plan (§10.1/D-058) — one Warning, not
+        // an Error, and the plan still succeeds.
+        var result = Plan(EmptyGroupsSpec(ValueGroupsUnmatched.Skip, new NominalScale()));
+        var plan = Ok(result);
+
+        Assert.Empty(plan.FormalAttributes);
+        var diagnostic = Assert.Single(result.Diagnostics);
+        Assert.Equal(DiagnosticCode.NoFormalAttributes, diagnostic.Code);
+        Assert.Equal(DiagnosticSeverity.Warning, diagnostic.Severity);
     }
 
     // --- dichotomic -----------------------------------------------------------
@@ -212,6 +246,54 @@ public sealed class ValueGroupsPlanningTests
         Assert.False(result.IsOk);
         Assert.Equal(3, result.Diagnostics.Count(d => d.Code == DiagnosticCode.OrdinalOrderHasUnknownValue));
         Assert.Equal(3, result.Diagnostics.Count(d => d.Code == DiagnosticCode.OrdinalOrderMissing));
+    }
+
+    // --- ordinal: the empty-groups permutation boundary (§12.3/D-104) ----------
+    //
+    // The permutation rule is stated over the discretizer's own bin universe, so an EMPTY
+    // universe and an authored `order = []` are the degenerate-but-complete case, while the same
+    // empty order over a one-bin universe is genuinely incomplete. Pinning both sides keeps
+    // "empty order" from being read as "no order".
+
+    [Fact]
+    public void Plan_WhenGroupsEmptyAndSkipWithEmptyOrder_ThenValid()
+    {
+        // groups = [] under `skip`: the bin universe is empty and [] is its only full
+        // permutation, so the order is complete — no OrdinalOrderMissing (which is the
+        // *omitted*-order condition) and no stray-entry error. The attribute plans zero columns,
+        // accounted for by the NoFormalAttributes Warning alone.
+        var result = Plan(EmptyGroupsSpec(ValueGroupsUnmatched.Skip, Ordinal([])));
+        var plan = Ok(result);
+
+        Assert.Empty(plan.FormalAttributes);
+        Assert.DoesNotContain(result.Diagnostics, d => d.Code == DiagnosticCode.OrdinalOrderMissing);
+        Assert.DoesNotContain(result.Diagnostics, d => d.Code == DiagnosticCode.OrdinalOrderHasUnknownValue);
+        Assert.Equal(DiagnosticCode.NoFormalAttributes, Assert.Single(result.Diagnostics).Code);
+    }
+
+    [Fact]
+    public void Plan_WhenGroupsEmptyAndOtherWithEmptyOrder_ThenOrdinalOrderMissing()
+    {
+        // The discriminating complement: under `other` the universe is ["Other"], so [] is one
+        // entry short. An empty order is complete only against an empty universe.
+        var result = Plan(EmptyGroupsSpec(ValueGroupsUnmatched.Other, Ordinal([])));
+
+        Assert.False(result.IsOk);
+        var diagnostic = Assert.Single(result.Diagnostics);
+        Assert.Equal(DiagnosticCode.OrdinalOrderMissing, diagnostic.Code);
+        Assert.Equal(DiagnosticSeverity.Error, diagnostic.Severity);
+        Assert.Contains("Other", diagnostic.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Plan_WhenGroupsEmptyAndOtherWithOrderOfOther_ThenTheSingleOtherThreshold()
+    {
+        // …and the repair: naming the synthetic bin makes the order a full permutation, giving
+        // the one ordinal threshold column over `Other`.
+        var plan = Ok(Plan(EmptyGroupsSpec(ValueGroupsUnmatched.Other, Ordinal(["Other"]))));
+
+        Assert.Equal([(">=", "Other")], Identities(plan));
+        Assert.Equal([0], CrossesOf(plan, "Other"));
     }
 
     // --- ordinal: direction × boundary over value bins -------------------------

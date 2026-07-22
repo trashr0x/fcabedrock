@@ -1959,6 +1959,11 @@ there is no dedicated regex-error code (an uncompilable pattern is one
 { label = "Degree", pattern = "^(Bachelor|Master)$" }
 ```
 
+**Empty `groups`.** `groups` is required but MAY be an empty array (D-104). An empty
+array declares no explicit groups; every usable value is therefore unmatched and
+follows the selected `unmatched` policy. The group-validity rules above apply only to
+entries that are present.
+
 **Labels must be unique.** Authored group labels must be distinct, and — when
 `unmatched = "other"` — an authored group whose label collides with the synthetic
 `Other` bin is likewise a duplicate. A duplicate authored label is

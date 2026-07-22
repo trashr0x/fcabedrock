@@ -205,6 +205,7 @@ public sealed class EqualWidthDiscretizerTests
                 new PendingEqualWidth(4, EqualWidthRange.MinMax, CutPrecision.Exact), cuts, CultureInfo.InvariantCulture)));
 
     [Theory]
+    [InlineData(new double[] { })]                            // none at all — `bins >= 2` makes [] always wrong
     [InlineData(new[] { 25.0 })]                              // too few
     [InlineData(new[] { 25.0, 50.0 })]                        // too few
     [InlineData(new[] { 10.0, 25.0, 50.0, 75.0 })]            // too many

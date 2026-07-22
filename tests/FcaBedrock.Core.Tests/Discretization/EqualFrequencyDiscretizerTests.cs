@@ -100,6 +100,19 @@ public sealed class EqualFrequencyDiscretizerTests
         Assert.Contains("exactly 2 calibrated cuts", ex.Message, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void Create_WhenTheCutListIsEmpty_ThenThrows()
+    {
+        // The zero end of the same guard, pinned explicitly: `bins >= 2` is enforced at the
+        // pending carrier, so an EMPTY calibrated-cuts outcome is always the wrong size and can
+        // never yield a usable discretizer. An empty cut list is therefore never a legitimate
+        // zero-discovery outcome — unlike the empty observed-domain / include-additions /
+        // passthrough-bins outcomes, which are retained as completeness markers (D-098/D-104).
+        var ex = Assert.Throws<ArgumentException>(() => CreateWith([], bins: 3));
+
+        Assert.Contains("exactly 2 calibrated cuts", ex.Message, StringComparison.Ordinal);
+    }
+
     [Theory]
     [InlineData(new[] { 3.0, 2.0 })]                       // descending
     [InlineData(new[] { 2.0, 2.0 })]                       // not strictly ascending

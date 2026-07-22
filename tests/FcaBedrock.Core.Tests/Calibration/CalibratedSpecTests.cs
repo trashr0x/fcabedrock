@@ -287,6 +287,16 @@ public sealed class CalibratedSpecTests
         Assert.Throws<ArgumentException>(() =>
             CalibratedSpec.Create(Resolve(PendingEqualWidthSpec(), 1), [new CalibratedCuts("score", [50])]));
 
+    [Fact]
+    public void Create_WhenEqualWidthCalibratedCutsAreEmpty_ThenThrows() =>
+        // The zero end of the size guard, at the calibrated-state boundary. `bins >= 2` is
+        // enforced at the pending carrier, so an EMPTY cuts outcome is always the wrong size —
+        // an empty cut list is never a legitimate zero-discovery outcome, unlike the empty
+        // observed-domain / include-additions / passthrough-bins outcomes retained elsewhere in
+        // this file as completeness markers (D-098/D-104).
+        Assert.Throws<ArgumentException>(() =>
+            CalibratedSpec.Create(Resolve(PendingEqualWidthSpec(), 1), [new CalibratedCuts("score", [])]));
+
     // --- equal_frequency substitution (M4 Slice D / D-103) --------------------
 
     private static BedrockSpec PendingEqualFrequencySpec(
@@ -360,6 +370,14 @@ public sealed class CalibratedSpecTests
     public void Create_WhenEqualFrequencyCutCountDisagreesWithBins_ThenThrows() =>
         Assert.Throws<ArgumentException>(() =>
             CalibratedSpec.Create(Resolve(PendingEqualFrequencySpec(bins: 3), 1), [new CalibratedCuts("score", [2])]));
+
+    [Fact]
+    public void Create_WhenEqualFrequencyCalibratedCutsAreEmpty_ThenThrows() =>
+        // The equal_frequency sibling of the empty-cuts backstop above: every configuration draws
+        // its cuts from the population (§11.5), and `bins >= 2` makes [] always the wrong size, so
+        // an empty outcome can never become an executable discretizer by this route either.
+        Assert.Throws<ArgumentException>(() =>
+            CalibratedSpec.Create(Resolve(PendingEqualFrequencySpec(bins: 3), 1), [new CalibratedCuts("score", [])]));
 
     [Fact]
     public void Create_WhenEqualFrequencyCutsAreInvalid_ThenCalibrationCutsInvalidDiagnosticNotException()

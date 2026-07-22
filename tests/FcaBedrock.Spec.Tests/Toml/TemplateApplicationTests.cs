@@ -209,6 +209,78 @@ public sealed class TemplateApplicationTests
     }
 
     [Fact]
+    public void Apply_WhenALaterTemplateOmitsRestrictTo_ThenItInheritsTheEarlierList()
+    {
+        // The presence rule for restrict_to specifically: omission INHERITS (§9.2/D-114). The
+        // second template authors a DIFFERENT field, so its application is proven rather than
+        // assumed — a template that never applied at all would otherwise pass this test too.
+        var attribute = ResolveSingle(With(
+            DocumentFixtures.Nominal("a", 0, ["x"]),
+            [
+                DocumentFixtures.Template("first", restrictTo: [new RestrictToValue("keep")]),
+                DocumentFixtures.Template("second", missingPolicy: MissingPolicy.AsAttribute),
+            ],
+            [MatchAll("first"), MatchAll("second")]));
+
+        Assert.Equal([new RestrictToValue("keep")], attribute.RestrictTo);
+        Assert.Equal(MissingPolicy.AsAttribute, attribute.MissingPolicy);
+    }
+
+    [Fact]
+    public void Apply_WhenAHigherTierAuthorsAnEmptyRestrictTo_ThenItClearsThePopulatedOne()
+    {
+        // §9.2/D-114: an authored empty collection is a presence state, so it OVERRIDES — and
+        // §10.4's "empty or absent ⇒ no filter" then makes the resolved attribute filter nothing.
+        var attribute = ResolveSingle(With(
+            DocumentFixtures.Nominal("a", 0, ["x"]),
+            [
+                DocumentFixtures.Template("first", restrictTo: [new RestrictToValue("keep")]),
+                DocumentFixtures.Template("second", restrictTo: []),
+            ],
+            [MatchAll("first"), MatchAll("second")]));
+
+        Assert.Empty(attribute.RestrictTo);
+    }
+
+    [Fact]
+    public void Apply_WhenALaterTemplateOmitsValueLabels_ThenItInheritsTheEarlierMap()
+    {
+        // The same presence rule for the label map. The keys stay inside the declared domain so
+        // no ValueLabelKeyNotInDomain noise enters the assertion, and the second template again
+        // authors another field so its application is proven.
+        var attribute = ResolveSingle(With(
+            Bare(),
+            [
+                DocumentFixtures.Template("first", discretizer: new IdentityDiscretizerSection(),
+                    scale: new NominalScaleSection(), declaredDomain: ["x"],
+                    valueLabels: new Dictionary<string, string> { ["x"] = "ex" }),
+                DocumentFixtures.Template("second", missingPolicy: MissingPolicy.AsAttribute),
+            ],
+            [MatchAll("first"), MatchAll("second")]));
+
+        Assert.Equal(new Dictionary<string, string> { ["x"] = "ex" }, attribute.ValueLabels);
+        Assert.Equal(MissingPolicy.AsAttribute, attribute.MissingPolicy);
+    }
+
+    [Fact]
+    public void Apply_WhenAHigherTierAuthorsAnEmptyValueLabels_ThenItClearsThePopulatedMap()
+    {
+        // An authored `{}` is a whole value like any other compound (D-114): it replaces the
+        // earlier map entirely rather than being read as "nothing to say".
+        var attribute = ResolveSingle(With(
+            Bare(),
+            [
+                DocumentFixtures.Template("first", discretizer: new IdentityDiscretizerSection(),
+                    scale: new NominalScaleSection(), declaredDomain: ["x"],
+                    valueLabels: new Dictionary<string, string> { ["x"] = "ex" }),
+                DocumentFixtures.Template("second", valueLabels: new Dictionary<string, string>()),
+            ],
+            [MatchAll("first"), MatchAll("second")]));
+
+        Assert.Empty(attribute.ValueLabels);
+    }
+
+    [Fact]
     public void Apply_WhenAHigherTierAuthorsItsOwnDefaultValue_ThenItStillOverrides()
     {
         // Authored-equals-default still overrides: the merge cannot see values, only

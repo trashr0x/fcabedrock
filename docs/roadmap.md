@@ -826,6 +826,27 @@ the later public release. The **M7 implementation/distribution landing must docu
 the exact global-tool route in user documentation before M7 exit**, and
 public-release docs must lead with the standalone route.
 
+**Mandatory master-plan inputs from the presence/emptiness audit.** Three
+presence-versus-emptiness obligations are settled contract but **not yet implemented**;
+they are inputs the M7 implementation master plan must carry, not work the preceding
+safe docs/tests hardening slice performed:
+
+- Preserve **omitted versus authored-empty `declared_domain`** through calibration
+  requirement, outcome selection, fully-frozen eligibility, freeze rewriting, and
+  manifest generation. An authored `[]` is complete; an **omitted** domain requests
+  `ObservedDomain` calibration (D-122 part 15).
+- Enforce **ordinal full-permutation semantics for a complete empty string-bin
+  universe**: an omitted `scale.order` is `OrdinalOrderMissing`, while `order = []` is
+  the valid empty permutation. This corrects the current identity-only empty-domain
+  validation skip.
+- Preserve **legal empty `ObservedDomain`, `IncludeAdditions`, and `PassthroughBins`
+  outcomes** through freeze and manifest serialization as **explicit empty arrays**.
+  Empty **calibrated cuts** remain unsuccessful (`bins >= 2` makes `[]` always the
+  wrong size).
+
+The M7 implementation master plan MUST assign each item to an implementation slice and
+to acceptance tests.
+
 **Exit:** the full **argv-boundary verification floor** is green — every command
 through argv, all nine active goldens through the real CLI path, manifest/exit/
 diagnostic byte locks, publication/rollback/overwrite/collision, freeze and

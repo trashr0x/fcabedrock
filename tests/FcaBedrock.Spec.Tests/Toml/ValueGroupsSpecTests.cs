@@ -136,6 +136,20 @@ public sealed class ValueGroupsSpecTests
     }
 
     [Fact]
+    public void Read_WhenGroupsAuthoredEmpty_ThenItCarriesANonNullEmptyList()
+    {
+        // §11.6/D-104: `groups` is required but MAY be an empty array — it declares no explicit
+        // groups, so every usable value is unmatched and follows the `unmatched` policy. The
+        // carrier must therefore be an EMPTY list, never null: null is the omitted-key state the
+        // parse gate rejects (Read_WhenGroupsOmitted_ThenSpecFieldInvalid), and collapsing the two
+        // would turn a coherent spec into a parse error.
+        var section = ReadDiscretizer("{ kind = \"value_groups\", groups = [] }");
+
+        Assert.NotNull(section.Groups);
+        Assert.Empty(section.Groups!);
+    }
+
+    [Fact]
     public void Read_WhenValuesHaveDuplicatesAndUnsortedOrder_ThenPreservedVerbatim() =>
         // Authored configuration, not a canonicalized set (§14).
         Assert.Equal(
@@ -314,6 +328,14 @@ public sealed class ValueGroupsSpecTests
             WriteDiscretizerLine(Attribute("{ kind = \"value_groups\", groups = [{ label = \"C\", values = [], pattern = \"^I\" }] }")));
 
     [Fact]
+    public void Write_WhenGroupsAuthoredEmpty_ThenWritesTheEmptyArrayRatherThanOmittingTheKey() =>
+        // The writer's half of the D-104 empty-groups rule: omitting the key would produce a
+        // document the strict reader rejects, so an authored [] must survive the write.
+        Assert.Equal(
+            "discretizer = { kind = \"value_groups\", groups = [], unmatched = \"other\" }",
+            WriteDiscretizerLine(Attribute("{ kind = \"value_groups\", groups = [], unmatched = \"other\" }")));
+
+    [Fact]
     public void Write_WhenGroupsUnsorted_ThenDeclarationOrderIsNotCanonicalSorted() =>
         // Declaration order is semantic (first match wins), so the writer must not sort it.
         Assert.Equal(
@@ -328,6 +350,7 @@ public sealed class ValueGroupsSpecTests
     [InlineData("{ kind = \"value_groups\", groups = [{ label = \"C\", pattern = \"^I[0-9]{2}\" }], unmatched = \"skip\" }")]
     [InlineData("{ kind = \"value_groups\", groups = [{ label = \"C\", values = [], pattern = \"^I\" }], unmatched = \"other\" }")]
     [InlineData("{ kind = \"value_groups\", groups = [{ label = \"C\", values = [\"b\", \"a\", \"b\"] }], unmatched = \"passthrough\" }")]
+    [InlineData("{ kind = \"value_groups\", groups = [], unmatched = \"other\" }")]
     public void ParseWriteParse_WhenAuthored_ThenIdempotentAndPresencePreserved(string discretizer)
     {
         var first = SpecWriter.Write(ReadOk(Attribute(discretizer)));
@@ -435,6 +458,35 @@ public sealed class ValueGroupsSpecTests
         Assert.Equal("value_groups", pending.Kind);
         var config = Assert.IsType<PendingValueGroupsPassthrough>(pending.Config);
         Assert.Equal(["School"], config.Groups.Select(g => g.Label));
+    }
+
+    [Theory]
+    [InlineData("skip", ValueGroupsUnmatched.Skip)]
+    [InlineData("other", ValueGroupsUnmatched.Other)]
+    public void Resolve_WhenGroupsAuthoredEmpty_ThenAnExecutableDiscretizerWithNoGroups(
+        string spelling, ValueGroupsUnmatched expected)
+    {
+        // D-104 rejected a non-empty-groups requirement: each *group* is the unit of validity, and
+        // an empty group list is coherent — under `skip` nothing is recognized, under `other`
+        // everything falls into the synthetic bin. Neither is an error at the seam.
+        var discretizer = Assert.IsType<ValueGroupsDiscretizer>(
+            ResolveDiscretizer(Attribute($"{{ kind = \"value_groups\", groups = [], unmatched = \"{spelling}\" }}")));
+
+        Assert.Equal(expected, discretizer.Unmatched);
+        Assert.Empty(discretizer.Groups);
+    }
+
+    [Fact]
+    public void Resolve_WhenGroupsAuthoredEmptyAndPassthrough_ThenThePendingCarrierWithNoGroups()
+    {
+        // The empty-groups form is data-dependent in exactly the same way as any other
+        // passthrough: it resolves to the pending carrier, and every usable value is eligible for
+        // discovery because no group can claim one.
+        var pending = Assert.IsType<CalibrationPending>(
+            ResolveDiscretizer(Attribute("{ kind = \"value_groups\", groups = [], unmatched = \"passthrough\" }")));
+
+        Assert.Equal("value_groups", pending.Kind);
+        Assert.Empty(Assert.IsType<PendingValueGroupsPassthrough>(pending.Config).Groups);
     }
 
     [Fact]
