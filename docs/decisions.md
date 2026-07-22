@@ -52,7 +52,7 @@ superseded or refined. A new entry MUST add its line here.
 - D-023 — `value_labels` (raw value → display label)
 - D-024 — Object grouping by composite key (deferred to v1.1)
 - D-025 — Post-context reductions live in a sibling tool
-- D-026 — Reproducibility: provenance block + run manifest
+- D-026 — Reproducibility: provenance block + run manifest *(per-run manifest schema and complete calibration representation refined by D-122)*
 - D-027 — Spec composition via `extends`
 - D-028 — Calibration on-the-fly by default; `calibrate` to freeze
 
@@ -122,7 +122,7 @@ superseded or refined. A new entry MUST add its line here.
 - D-068 — `missing_policy = "as_attribute"` scheduled into M2 *(migrator branch realized by D-079)*
 - D-069 — Canonical fingerprint encoding, pinned (appendix to D-053)
 - D-070 — Minimal M2 discretizer-carrier scope; three-tier kind response
-- D-071 — Absent/empty `declared_domain`: M2 interim reject until calibrate
+- D-071 — Absent/empty `declared_domain`: M2 interim reject until calibrate *(authored-empty reading revised by D-122)*
 - D-072 — Basic triple TOML carrier in M2; conversion deferred to M3 *(conversion realized by D-082)*
 
 ### M2 implementation (slices)
@@ -131,7 +131,7 @@ superseded or refined. A new entry MUST add its line here.
 - D-075 — Slice C TOML reader/writer contract: strictness, parse codes, canonical form
 - D-076 — Slice D seam/plan validation contract details (appends D-067) *(exact numeric form added + diagnostic renamed by D-091)*
 - D-077 — Slice E fingerprint encoding/verification contract details (appends D-069)
-- D-078 — Slice F composition/carrier contract details (realizes D-027/D-052; refines D-067/D-075) *(pattern semantics and template application settled by D-114/D-115/D-118)*
+- D-078 — Slice F composition/carrier contract details (realizes D-027/D-052; refines D-067/D-075) *(pattern semantics and template application settled by D-114/D-115/D-118; extends canonical file identity settled by D-122)*
 - D-079 — Slice G `.bed` migrator contract: document-model target, Diagnosed surfaces (realizes D-009/D-049/D-057/D-068) *(numeric restrict migration refined by D-091)*
 - D-080 — `AttributeNameDuplicate` / `ValueLabelKeyNotInDomain` re-homed to the resolve seam (realizes D-067; supersedes its "not re-homed" parenthetical)
 - D-081 — Value-bin ordinal path (Slice H): identity + explicit order (realizes the D-047-deferred path; refines D-060)
@@ -147,7 +147,7 @@ superseded or refined. A new entry MUST add its line here.
 
 ### Tier 1 M4 spec audit (pre-M4)
 
-- D-088 — Shared auto-calibration invariants + equal-frequency contract (restates D-028)
+- D-088 — Shared auto-calibration invariants + equal-frequency contract (restates D-028) *(freeze generalized to all four calibration outcomes by D-122)*
 - D-089 — Equal-width range-mode contract
 - D-090 — `value_groups` execution contract
 - D-091 — `restrict_to` execution contract: existential matching, exact numeric entries, canonical `restrictions` encoding (refines D-063/D-076/D-079) *(merged-`dedupe` restriction + type-directed migration clarified in place — Tier 2 audit; `unknown_value_policy` key added in place at Slice F; realized by D-105)*
@@ -214,6 +214,10 @@ superseded or refined. A new entry MUST add its line here.
 ### M6 Slice B (template/matcher application at the resolver seam)
 
 - D-121 — Templates and matchers executable: the six spec-resolve codes, single-owner source addressing with once-emitted binding diagnostics, the wrapped whole-name regex, the effective-section fold with post-application typing, five-family diagnostic assembly, one matcher-order warning traversal, and the retirement of `TemplateMatcherNotImplementedV1` (realizes D-114/D-115/D-116(1–6)/D-118; no M6 transitional remains)
+
+### M7 (CLI) pre-implementation adjudication
+
+- D-122 — M7 CLI contract: eight commands, process/exit/signal model, safe rendering, publication transaction, per-run manifest, full calibration freeze, authored-empty domain semantics, per-command semantics, non-goals, distribution, and the argv-boundary exit floor (revises D-071's empty-domain reading; refines D-026/D-078/D-088; realizes D-005's plan/validate face, D-028's command face, D-067's validate caller, D-077's M7 write gate)
 
 Spec-field defaults are recorded in spec §21 items 1–11 (see the final section
 of this file).
@@ -468,16 +472,20 @@ of this file).
 
 ### D-026 — Reproducibility: provenance block + run manifest
 
-- **Status:** accepted
+- **Status:** accepted *(manifest schema refined by D-122)*
 - **Decision:** specs carry an optional `[provenance]` block (author, source
-  URL/hash, lineage). Each `convert` emits a `<output>.manifest.toml` sidecar
-  with tool version, spec/input/output hashes, command line, and any
-  on-the-fly-calibrated cuts.
+  URL/hash, lineage). **By default, each `convert` run emits** one
+  **`BASE.manifest.toml`** sidecar *(refined by D-122: ordered `[[run.outputs]]`
+  entries for every committed artifact)*; **`--no-manifest` suppresses it**. It
+  carries tool version, spec/input hashes, per-artifact hashes, command line, and
+  the **complete retained calibration** *(refined by D-122/§15: ordered
+  `[[run.calibrations]]` covering all four outcome kinds; originally recorded
+  auto-calibrated cuts only)*.
 - **Why:** the thesis frames Bedrock files as a reproducible record of how data
   was appropriated. Citing a manifest is sufficient for a reproducibility
   audit. Auto-discretizer calibration is captured so on-the-fly runs stay
   reproducible without forcing a separate `calibrate` step.
-- **Affects:** Spec, Cli, spec §4 ("The [provenance] block") / §15 ("Run manifest").
+- **Affects:** Spec, Cli, spec §4 ("The [provenance] block") / §15 ("Run manifest"). D-122.
 
 ### D-027 — Spec composition via `extends`
 
@@ -1627,6 +1635,9 @@ built; they refine, not reverse, D-009 / D-049 / D-050…D-065.
 
 - **Status:** accepted (sequences §10.3 for M2; refines D-036; refined by D-076 —
   retirement is "when observed-domain calibration lands", not a fixed milestone)
+  *(authored-empty reading revised by D-122: an authored `[]` is a complete fixed
+  empty domain — zero declared value bins — not absent; only omission requests
+  calibration)*
 - **Date:** 2026-07-03
 - **Decision:** omitted `declared_domain` **and** an explicit empty `[]` both
   resolve as **absent** (§10.3), and the reader/writer **round-trips the authored
@@ -1653,10 +1664,16 @@ built; they refine, not reverse, D-009 / D-049 / D-050…D-065.
   calibrating in M2 (Calibrate is not built — a latent, undocumented
   data-dependence); collapsing omitted and `[]` at read time (loses authored
   provenance, D-049).
+- **D-122 revision (2026-07-22):** the `[]`-resolves-as-absent half of this
+  decision is revised — an authored `[]` is complete (a fixed empty domain with
+  zero declared value bins; `unknown_value_policy = "include"` may still extend it
+  and `missing_policy = "as_attribute"` may still add its missing column). The
+  verbatim round-trip rule and the historical M2 transitional mechanics recorded
+  here stand as history.
 - **Affects:** Spec (reader/writer), Core (planner guard), Diagnostics; spec §7 /
   §10.3; diagnostic `ObservedDomainCalibrationNotImplementedV1` (transitional,
   removed when observed-domain calibration lands — see the roadmap backlog and
-  D-076). Refines D-036; pairs with D-070.
+  D-076). Refines D-036; pairs with D-070. Revised by D-122.
 
 ### D-072 — Basic triple TOML carrier in M2; conversion deferred to M3
 
@@ -5181,6 +5198,300 @@ pinned here.
   D-119/D-120. Core, Conversion, Export, `CanonicalJson`, `FingerprintCalculator`,
   and `fp_format` unchanged; no production project reference changed; every v2
   fixture, golden, canonical byte, and SHA pin unchanged.
+
+---
+
+## M7 (CLI) pre-implementation adjudication
+
+### D-122 — M7 CLI contract: commands, process model, publication, manifest, freeze, authored-empty domains, per-command semantics, non-goals, distribution, and the exit floor
+
+- **Status:** accepted (M7 pre-implementation adjudication; **revises D-071**;
+  refines D-026/D-078/D-088; realizes the CLI faces of D-005/D-028/D-067/D-077)
+- **Date:** 2026-07-22
+- **Decision:** the complete M7 CLI contract is settled **before any M7 code**, in
+  fifteen parts.
+
+  **1. Command inventory and shared grammar.** M7 ships **eight** commands:
+  `convert`, `validate`, `plan`, `stats`, `calibrate`, `probe`, `migrate`,
+  `fingerprint`. SPEC and DATA are **positional operands**; every other choice is a
+  **named option**. `--help` and `--version` write **stdout** and exit **0**; the
+  version text is the **same string** the manifest records as `tool_version` (§15).
+  `plan --stats` does not exist — `stats` is a standalone command (part 10), never a
+  plan flag.
+
+  **2. Process contract.** Exit codes are fixed: **0** success (warnings and Info
+  included — they never move it off 0), **1** any Error/Fatal diagnostic or a
+  host/runtime/publication failure (a missing input file is 1, not 2), **2** usage,
+  **3** cooperative cancellation, **4** unexpected internal fault. Ordinary
+  host/environment failures — a missing or unreadable input, permissions, an output
+  or publication failure — are **CLI-owned, code-less** errors on stderr with exit 1;
+  they never grow `DiagnosticCode`. Existing phase-owned conditions such as
+  `SpecExtendsNotFound` remain registry diagnostics (§16.4). **Signals:** the first
+  Ctrl+C/SIGINT (and SIGTERM where the platform supports it) requests **cooperative,
+  diagnostic-free** cancellation — cleanup runs, no committed run results, exit 3. A
+  **repeated** interrupt restores immediate platform termination; only uncommitted
+  residue may remain.
+
+  **3. Rendering.** Each diagnostic renders as **one deterministic stderr line** in
+  the **sparse labelled** form:
+
+  ```text
+  file="adult.csv" attribute="education" record=3: warning UnknownValueObserved: escaped-message
+  warning NoObjectsEmitted: escaped-message
+  error: escaped-host-message
+  ```
+
+  Only **populated** location fields appear, in the fixed order `file`, `line`,
+  `column`, `attribute`, `record`; string-valued fields render as **JSON string
+  literals**, integer fields as **invariant** integers; severity is **lowercase**;
+  all control characters and literal backslashes in messages and string locations use
+  **JSON string escaping** (messages carry no surrounding quotes). When **no** field
+  is populated the location prefix is omitted entirely — including the leading `: `
+  — so the line begins at the severity. Code-less host errors render `error: <escaped
+  message>`. Diagnostics go to **stderr**, primary results to **stdout**; the
+  library's diagnostic order is preserved and **M7 performs no additional grouping**
+  (§16.4's permission to group stands; M7 declines it). Output is **plain and
+  terminal-independent**: no color, no progress meter, no machine-readable mode.
+  **Color and progress are committed follow-ups and machine diagnostics an
+  anticipated later requirement**, so M7 MUST **centralize** diagnostic presentation
+  and progress observation such that adding them later needs no run-orchestration
+  refactoring. M7 defines no flag or schema for any of them.
+
+  **4. Input/output policy.** Neither SPEC nor DATA accepts `-`: there is **no stdin
+  source** and no implicit spooling or synthetic composition base. Report commands
+  write their primary result to **stdout**. `probe`, `migrate`, `calibrate`, and
+  `fingerprint --write` **require** `--out VALUE`, where VALUE is a **distinct file
+  path or the literal `-`**; `convert` never publishes an artifact to stdout.
+  **In-place writing is forbidden.** Writing commands **refuse an existing target by
+  default**; `--force` authorizes replacing an **existing distinct destination
+  only**. Any canonical-identity **input/output or output/output collision fails even
+  with `--force`**, and the complete target set is preflighted **before** any staging.
+
+  **5. Convert publication and input stability.** `convert` requires
+  `--out BASE --format cxt|dat|both`; the ruled extensions are appended to BASE, with
+  **no default and no inference** from an extension. Publication stages every artifact
+  on the **destination filesystem**, validates/flushes/hashes, then commits files
+  **atomically one by one** with **best-effort rollback**. For a **manifest-bearing**
+  run the manifest publishes **last** and is the run's **public commit marker**; under
+  **`--no-manifest`**, implementation-private transaction state marks the run
+  incomplete until the complete requested artifact set commits and disappears **only**
+  on success — so incomplete-run detection is identical either way. Failed, cancelled,
+  or invalid runs **leave no committed run**: a failure before the commit phase exposes
+  nothing new, and a commit-phase failure rolls back best-effort — any surviving
+  residue remains **uncommitted** and is detected, reported, and safely cleaned on a
+  later collision. The contract claims **no cross-file atomicity**. **Input
+  stability:** every complete data pass hashes the **raw bytes it consumes inline**
+  (never a separate hash-only read); a replay pass whose hash differs from the first
+  fails the run **before any commit**, as a **code-less host error** that publishes
+  nothing. A genuinely single-pass run records that pass's hash under an explicit
+  **stable-input precondition**. The policy is centralized and applies equally to
+  **multi-pass report commands** (`stats`), where a mismatch fails the report
+  identically even though no commit was attempted. M7 exposes **no toggle**; M8
+  measures the cost; any later opt-out needs its own explicit ruling and **never**
+  activates by file size.
+
+  **6. Manifest.** **By default, each `convert` run emits exactly one
+  `BASE.manifest.toml`; `--no-manifest` suppresses that audit sidecar only** (never
+  two manifests, never a manifest per artifact). Section order is `[run]` →
+  `[[run.outputs]]` → conditional `[[run.spec_files]]` (root-to-base) → ordered
+  `[[run.calibrations]]`. `[[run.outputs]]` entries appear in canonical **format
+  order** (cxt before dat) carrying `format`, `path`, `hash`. `[[run.spec_files]]`
+  entries exist **only** for an `extends` chain and carry their fields in the fixed
+  order **`path`, then `hash`**. `[[run.calibrations]]` entries carry `attribute`,
+  `kind` ∈ {`cuts`, `observed_domain`, `include_additions`, `passthrough_bins`}, and
+  that kind's variant-specific fields — **one entry per calibrated attribute, which
+  retains exactly one outcome** (the closed `AttributeCalibration` union) — in
+  **spec-attribute order**, with legitimate zero-discovery outcomes as **explicit
+  empty arrays**. **Array wrapping: only long non-cut calibration `values` arrays use
+  the D-113 deterministic wrapping; `command_line`, `cuts`, and every other array
+  remain inline.** Manifest bytes are canonical (§15): UTF-8 without BOM, LF, the
+  fixed order above, the **same canonical TOML literal conventions as the spec
+  writer** (D-075/D-113), and **no comments emitted**. `timestamp` is whole-second
+  RFC 3339 UTC from an **injected clock**; `command_line` is the argv array verbatim;
+  `tool_version` is the shared version string. Only `timestamp` and `command_line`
+  are audit-variable.
+
+  **7. Size advisory.** `OutputCxtSizeAdvisory` is the **exact final serialized
+  `.cxt` size in UTF-8 bytes**, projected **after** the writer's object-name/count
+  pass and **before any output bytes** (§8). It is **CXT-only** (a `.dat`-only run
+  emits none), `0` disables it, and it stays an **export**-phase diagnostic. It joins
+  the enum **at its real M7 emit site** (81 → 82), and — changing a warning, never
+  bytes — remains a non-input to all three fingerprints (D-077). This also resolves
+  the roadmap's 2026-06-26 deferred `.cxt` size/diagnostics item.
+
+  **8. Runtime options.** `--temp-dir PATH` is exposed on the **grouping-capable**
+  commands — **`convert`, `plan`, `stats`, `calibrate`, `fingerprint`** (each may
+  calibrate and/or emit); `probe` has no spill machinery (D-110) and
+  `validate`/`migrate` never read data rows. It is **runtime-only**, byte- and
+  fingerprint-neutral, and needs only a **minimal public byte-neutral Conversion
+  capability**. Memory budget and merge fan-in stay **internal** pending M8
+  measurement.
+
+  **9. Ownership.** The run/publication coordinator is **CLI-internal** for M7; **no
+  production package references `Cli`** (an architecture lock). A **P-4
+  public-surface extraction review** is required before any M9 reuse.
+  `EmitReplaySession` remains public and supported — nothing is deprecated before a
+  proven replacement exists.
+
+  **10. Per-command semantics.**
+  - **`validate SPEC [DATA]`** — without DATA, the existing no-schema resolution
+    behavior applies **verbatim**; with DATA it reads **only enough for authoritative
+    schema acquisition** (the header, or the first record when headerless). It does
+    not plan, does not verify stored fingerprints, and writes nothing.
+  - **`plan SPEC DATA`** — DATA is **required for every plan**; rows are read only
+    when calibration requires them, and "dry run" means **no artifact publication**,
+    not no source access. Stdout is **detailed fixed plain text in plan order**: index,
+    canonical identity, rendered name, source/scale/bin detail, calibration and
+    restriction summaries, then the **three native fingerprints**. No artifact, no
+    manifest, no machine document; stale-fingerprint warnings stay stderr diagnostics.
+  - **`stats SPEC DATA`** — DATA required; the full pipeline plus **one bounded
+    emit-counting pass**; exactly six fields — `objects`, `formal_attributes`,
+    `crosses`, `density` (an exact ratio with fixed six-decimal invariant rendering),
+    `crossless_objects`, `empty_attributes`. When `objects × formal_attributes` is
+    zero it prints exactly **`density = n/a (0 cells)`** and retains the other five
+    fields. It writes no files and no manifest.
+  - **`calibrate`** — freezes **every** data-dependent outcome by its kind's mapping:
+    **automatic cuts → `manual_cuts`**; **observed domain → an explicit
+    `declared_domain`**, an **empty** outcome freezing as **`declared_domain = []`**;
+    **`unknown_value_policy = "include"` additions → folded into the
+    `declared_domain`** (appended after the declared values) with the policy rewritten
+    to fixed **`"warn"`**; **`value_groups` `unmatched = "passthrough"` bins → ordered
+    singleton groups** (`{ label = <value>, values = [<value>] }`) with `unmatched`
+    rewritten to fixed **`"skip"`**. Declaration/first-observation order is preserved
+    (§17 rule 3) and numeric entries use the **D-096/D-101 canonical numeric
+    spellings**. The result is **fully frozen** with all **three native stored
+    fingerprints** written, is **byte-idempotent** when rerun on its own output, and
+    warns on stale input hashes while correcting them in the output. An `extends`
+    chain is **flattened** to one standalone frozen spec. Reconverting the calibration
+    input from the frozen spec is **byte-identical in both native and `--v2-compat`**
+    modes.
+  - **`fingerprint SPEC DATA`** — DATA always required; reports the three computed
+    **native** hashes plus each stored field's `match`/`stale`/`absent` state.
+    `--write --out NEW_SPEC` writes a corrected canonical copy **only** for a spec
+    meeting the fully-frozen gate; it **preserves the root's `extends`** and changes
+    only the stored fingerprint fields semantically. It takes **no `--v2-compat`**
+    (D-011 keeps that flag convert-only) and never stores effective override hashes.
+  - **`probe`** — `fcabedrock probe DATA --shape wide|triple --out PATH|-` plus
+    `[--delimiter CHAR] [--header true|false] [--missing-token TOKEN]
+    [--locale TAG|invariant] [--limit N]`, and triple-only
+    `[--ordering subject_grouped|unordered]
+    [--subject N|NAME --predicate N|NAME --value N|NAME]`. The three role options are
+    supplied **together**, in **one addressing mode** (all zero-based indices or all
+    header names); name addressing requires `--header true`. Defaults mirror §5.1/§5.3;
+    `--limit` defaults to 100,000. The **three aggregate guards remain pinned
+    public-API defaults with no CLI flags** (§7.1).
+  - **`migrate`** — `fcabedrock migrate BED --out PATH|-` plus
+    `[--shape wide|triple]` (default wide), `[--delimiter CHAR] [--header true|false]
+    [--locale TAG|invariant] [--missing-token TOKEN]
+    [--scaling discrete|progressive]` (default **discrete**, D-045); wide-only
+    `[--object-key row_index|column]` with `--object-key-column N|NAME` **required
+    exactly when** `--object-key column` and invalid otherwise; triple-only role
+    options **identical to probe's** (together, one mode, names need `--header true`,
+    indices zero-based). The invoked `.bed` path is recorded automatically as
+    `derived_from`. Fixed one-value v1 facts (encoding, quote character) get no flags
+    (P-6).
+
+  **11. Extends canonical identity.** The file-backed host resolves **actual
+  filesystem identity** where available — which unifies supported symlink/hardlink
+  aliases as well as `.`/`..` and case spellings of one file. Otherwise it falls back
+  to comparing **normalized full paths** under the actual volume/platform comparison
+  behavior; the fallback makes **no link-alias guarantee** beyond what the host
+  filesystem exposes. Authored references stay **referrer-relative and relative-only**;
+  `..` is legal, and an absolute reference keeps the existing not-found outcome.
+  Identity keys are internal: they never affect output bytes, fingerprints, or the
+  manifest.
+
+  **12. Non-goals.** M7 ships **no sampling, no compressed artifacts, and no
+  arbitrary output-setting overrides**; unknown flags are **usage errors** (exit 2).
+  Each excluded feature may return only through its own contract decision.
+  `--v2-compat` remains the **sole settled conversion override** and stays
+  convert-only (D-011). No color, progress, or machine-mode flag exists in M7.
+
+  **13. Distribution.** M7 ships as a **.NET global tool**, validated on **x64**, with
+  a documented Windows sequence (`winget install Microsoft.DotNet.SDK.10`, then
+  `dotnet tool install --global FcaBedrock.Cli`) plus equivalent guidance for the
+  other supported platforms. This is **explicitly temporary technical-preview
+  distribution**. The later public release MUST provide a **standalone/self-contained
+  route requiring no prior .NET knowledge**; the global tool may coexist. M8 owns
+  broader platform/architecture validation. **Documentation ownership:** this
+  docs-only landing touches no README/user documentation; the **M7
+  implementation/distribution landing MUST document the exact global-tool
+  installation route in user documentation before M7 exit**, and the later
+  public-release documentation MUST lead with the standalone route.
+
+  **14. Exit floor.** M7 closes only when the full **argv-boundary** floor is green:
+  every command exercised through argv; **all nine active goldens** reproduced through
+  the real CLI path; manifest/exit/diagnostic **byte locks** — including manifest byte
+  locks covering **all four `[[run.calibrations]]` kinds**, empty arrays,
+  Unicode/control escaping, long values and D-113 wrapping, argv, timestamps, **and
+  both no-chain and multilevel-chain `[[run.spec_files]]` paths** — plus
+  rendering-grammar locks for **every location-field combination**;
+  publication/rollback/overwrite/collision cases; calibrate/fingerprint freeze and
+  idempotence covering **every freeze mapping, the empty-outcome `[]` freeze, and the
+  authored-empty `[]` combinations with `unknown_value_policy = "include"` and
+  `missing_policy = "as_attribute"`**; probe/migrate cases covering **triple role
+  index-mode and name-mode successes plus mixed-mode and partial-role usage failures,
+  and the wide object-key conditional grammar** (`--object-key-column` present exactly
+  with `--object-key column`); advisory threshold cases; extends identity and cycle
+  cases; signal cases; input-stability mismatch cases; a **global-tool
+  pack/install/uninstall/`--version` smoke in an isolated tool path**; and
+  **representative excluded flags** (`--sample`, `--gzip`, machine/color/progress
+  spellings) returning **usage exit 2**. Every existing golden, canonical-TOML, SHA,
+  registry, and architecture lock stays green; the normal suite stays fast; large
+  benchmarks and release validation remain M8.
+
+  **15. Authored-empty domain semantics (revises D-071).** An **omitted**
+  `declared_domain` requests observed-domain calibration. **Any authored domain is
+  complete, including `declared_domain = []`**, which denotes a **fixed empty
+  domain**: **zero declared value bins**. An authored `[]` suppresses observed-domain
+  discovery, but `unknown_value_policy = "include"` may still extend the domain with
+  observed values and `missing_policy = "as_attribute"` may still add the missing
+  column — so `[]` **does not by itself guarantee zero formal attributes**. This holds
+  through every resolution tier: a template-supplied `[]` is likewise
+  authored-complete (D-114 whole-value layering). `probe` **omits** `declared_domain`
+  for an attribute whose observations were all missing — it never authors `[]`;
+  `calibrate` freezes an empty observed outcome **as `[]`**. The fully-frozen gate
+  (§3/§14) therefore reads "**omitted** `declared_domain` under a consuming
+  discretizer", so an authored `[]` no longer disqualifies. Current code (D-098)
+  treats an authored `[]` as absent — a **recorded spec-vs-code gap** until M7
+  implementation.
+- **Why:** this is the adjudicated pre-implementation contract for M7 — a Fable
+  audit, an independent Codex review, and explicit rulings by Constantinos
+  Orphanides, reaching full consensus on 2026-07-22 across 33 findings and four
+  response-round refinements, plus the docs-plan review rulings on authored-empty
+  domains, the exact stderr grammar, and the `[[run.calibrations]]` manifest shape.
+  Landing it **before** any M7 code prevents implementation-driven contract drift on
+  surfaces that are observable and byte-tested from their first commit — exit codes,
+  diagnostic bytes, manifest bytes, publication guarantees, freeze output — and
+  mirrors the docs-first precedent of D-088…D-092 and D-114…D-119. Concrete parser,
+  DI/logging/hosting, serializer, terminal, and transaction-mechanism choices stay
+  implementation-plan work; nothing here selects a library.
+- **Rejected:** inferring the output format from an `--out` extension (an
+  extensionless base would silently mean two artifacts); one manifest per artifact
+  (two divergent run records for one run); inline calibration maps keyed by
+  attribute name (dynamic attribute names as schema keys, and unbounded single lines
+  for large domains); registry codes for ordinary host failures (the registry is phase-owned
+  and grows only with real emit sites); stdin SPEC/DATA with implicit spooling (a
+  huge private copy, and no stable referrer base for `extends`); in-place spec
+  rewriting even with `--force` (canonical serialization drops comments); a
+  set-atomic rename promise for sibling files (not achievable with ordinary renames);
+  optional DATA for `plan` (the settled `CalibratedSpec` seam rejects a schema-less
+  resolution); a `plan --stats` duplicate of the `stats` command; `--v2-compat` on
+  `fingerprint` (D-011 keeps it convert-only); a POSIX-style two-code exit model
+  (cancellation and internal faults become indistinguishable); immediate termination
+  on the first signal (no cleanup, committed-run ambiguity); snapshot- or lock-based
+  input stability (host-specific and unenforceable); a standalone-only M7
+  distribution (premature for a dogfood milestone); the thin roadmap exit; retaining
+  `[]`-as-absent (D-071's reading, which leaves an empty observed domain with no
+  frozen representation); and a weaker `--no-manifest` crash guarantee.
+- **Affects:** `Cli` (future package); `Conversion` (a byte-neutral runtime-options
+  capability); `Export` (the advisory site); `Spec` (freeze/write gates,
+  empty-domain resolution); `Core` (Calibrate-phase empty-domain semantics, freeze
+  outcomes); `Diagnostics` (registry 81 → 82 at the advisory's emit site); spec §§3,
+  7, 7.1, 8, 10.3, 10.6, 11.6, 13, 14, 15, 16, 17, 18.1; D-026 and D-071 refinement
+  notes; roadmap M7/M8/M9 and the deferred backlog; `AGENTS.md` status. README and
+  user installation documentation are **deferred to the M7 implementation landing**
+  (part 13).
 
 ---
 

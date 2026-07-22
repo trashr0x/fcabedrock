@@ -91,8 +91,10 @@ everything that affects the `.dat` byte-level output. `.dat` carries numeric IDs
 not names, so rendered names do not enter it. Controls `.dat` byte equality.
 
 All three fingerprints SHOULD be written by tooling on save **for fully-frozen
-specs only** (§14) — a spec whose schema is data-dependent (an absent
-`declared_domain` where a discretizer consumes it (`identity` / `free_per_value`),
+specs only** (§14) — a spec whose schema is data-dependent (an **omitted**
+`declared_domain` where a discretizer consumes it (`identity` / `free_per_value`) —
+an **authored** domain, including an explicit empty `[]`, is complete and does
+**not** disqualify (D-122) —
 a **data-calibrated discretizer configuration**
 (`equal_frequency`, or `equal_width` with a data-derived `range`; `equal_width`
 `range = "manual"` is spec-determined and does **not** disqualify),
@@ -104,6 +106,13 @@ are authored text, and calibration precedes filtering (§7/§14). When present t
 warnings if mismatched (`SchemaFingerprintStale`, `CxtOutputFingerprintStale`,
 `DatOutputFingerprintStale`). All are SHA-256 over the plan-derived canonical
 structure described in §14.
+
+The M7 commands own **writing** these fields: `fcabedrock calibrate` writes them on
+freeze, and `fcabedrock fingerprint --write` refreshes a fully frozen copy (§14,
+D-122). On an `extends` chain the stored fields belong to the derived/root file
+(§13 rule 8) — `calibrate` writes a flattened standalone spec, while
+`fingerprint --write` **preserves the root's `extends`** and changes only these
+stored fields semantically.
 
 **`extends`** *(optional, relative path)*. See §13.
 
@@ -463,7 +472,7 @@ this separation (see decisions.md D-003, D-005).
    binding by column *index* needs no schema at all. It does not scan object
    records or values. Produces a validated spec or aggregated diagnostics.
 2. **Calibrate** — the only phase that reads data to resolve *data-dependent
-   schema elements*: absent `declared_domain`s that a discretizer consumes
+   schema elements*: **omitted** `declared_domain`s that a discretizer consumes
    (`identity` / `free_per_value`; observed-domain discovery),
    auto-discretizer cuts (`equal_width`, `equal_frequency`),
    `unknown_value_policy = "include"` extensions, and `value_groups`
@@ -493,8 +502,9 @@ this separation (see decisions.md D-003, D-005).
    any incidence row, so it uses a replay-or-spool strategy (§18.1) — never
    materializing the full incidence matrix in Core.
 
-**Fully-declared specs skip Calibrate.** A spec with explicit `declared_domain`s
-wherever a discretizer consumes one (`identity` / `free_per_value`), only
+**Fully-declared specs skip Calibrate.** A spec with an **authored**
+`declared_domain` (including an explicit empty `[]`, D-122) wherever a discretizer
+consumes one (`identity` / `free_per_value`), only
 `manual_cuts` / `identity` / `value_groups` / `free_per_value` discretizers
 (and `equal_width` with `range = "manual"`, whose cuts are fixed by the spec, not
 the data — §11.4), no `unknown_value_policy = "include"`, and no `value_groups`
@@ -506,18 +516,30 @@ Plan input** — one Plan input shape, not a declared-vs-auto split (D-093).
 
 **`convert` auto-calibrates by default** (D-005, D-028): a spec needing
 calibration is calibrated in-line, and the resolved cuts are recorded in the
-manifest so the run stays reproducible without a separate step. `fcabedrock
-calibrate` freezes calibration into the spec (auto cuts become `manual_cuts`)
-for version-controlled reproducibility.
+manifest so the run stays reproducible without a separate step.
 
-**Auto and frozen calibration are byte-equivalent.** For **both** auto
-discretizers — `equal_width` and `equal_frequency` — converting on the fly and
-converting with the `calibrate`-frozen spec MUST produce **byte-identical** `.cxt`
-and `.dat` on the **calibration dataset**. This makes the D-028 guarantee explicit
-at the output-byte level: freezing changes *when* the cuts are resolved, never
-*which* cuts. Only **audit metadata** is exempt and need not match — the run
-manifest (§15), the recorded command line, spec-file hashes, and calibration
-diagnostics.
+`fcabedrock calibrate` freezes **every** data-dependent outcome into the spec
+(D-122, generalizing D-088): automatic cuts become `manual_cuts`; an observed domain
+becomes an explicit `declared_domain` — an **empty** observed outcome freezes as
+`declared_domain = []`, a fixed empty domain (D-122); `unknown_value_policy =
+"include"` additions are folded into the domain and the policy becomes fixed
+`"warn"`; `value_groups` `unmatched = "passthrough"` bins become ordered singleton
+groups and `unmatched` becomes fixed `"skip"`. Declaration/first-observation order is
+preserved (§17 rule 3) and numeric entries use the canonical numeric spellings
+(§11.3, D-096/D-101). The frozen result satisfies the fully-frozen gate (§14):
+calibrate writes all three native stored fingerprints, and recalibrating its own
+output is **byte-idempotent**. On an `extends` chain, calibrate writes one standalone
+flattened frozen spec (§13/§14, D-122).
+
+**Auto and frozen calibration are byte-equivalent.** For **every** freeze mapping
+above — auto cuts (`equal_width`, `equal_frequency`), observed domains, `include`
+additions, and pass-through bins — converting on the fly and converting with the
+`calibrate`-frozen spec MUST produce **byte-identical** `.cxt` and `.dat` on the
+**calibration dataset**, in **both native and `--v2-compat`** modes (D-122). This
+makes the D-028 guarantee explicit at the output-byte level: freezing changes *when*
+a data-dependent decision is resolved, never *which* decision. Only **audit
+metadata** is exempt and need not match — the run manifest (§15), the recorded
+command line, spec-file hashes, and calibration diagnostics.
 
 **Calibration population.** Every calibration — auto-discretizer cuts or an
 observed domain — is computed over one well-defined population: each record
@@ -550,7 +572,7 @@ observations. This population is the input universe, evaluated before `restrict_
 
 **`convert` calibrates but never discovers.** Discovery (draft-spec generation
 from data) is the separate `probe` operation (§7.1, D-003), never performed implicitly
-by convert. A spec with an absent `declared_domain` under a consuming discretizer
+by convert. A spec with an **omitted** `declared_domain` under a consuming discretizer
 (`identity` / `free_per_value`) *is* calibrated — the observed domain is filled in
 — but the user is warned (`ObservedDomainUsed`,
 Warning) because the resulting formal-attribute schema then depends on this
@@ -723,6 +745,10 @@ Triple adapter ┼─> unbound source session ─> Discovery
 Future SQL ────┘
 ```
 
+An attribute whose observations were **all missing** yields **no** `declared_domain` in
+the draft — the field is **omitted**, so converting the draft calibrates it; probe never
+authors `[]`, which since D-122 denotes a **fixed empty domain** (§10.3).
+
 **Boundedness.** Per-attribute retention is bounded by `limit` above. Three additional
 deterministic **aggregate guards** (advanced probe options) bound a probe as a whole: maximum
 discovered attributes, maximum total retained distinct values, and maximum total retained
@@ -732,7 +758,10 @@ permits a theoretical 155.4M retained strings). Guards use **deterministic logic
 never available machine memory**. An aggregate breach emits `ProbeLimitExceeded` and yields
 **no draft**; aggregate pressure **never silently truncates** further attributes — only the
 per-attribute `limit` produces a usable, marked, truncated draft. Probe uses **no
-spill/count-sensitive calibration machinery** (it is set-based and idempotent).
+spill/count-sensitive calibration machinery** (it is set-based and idempotent). At the CLI
+(M7, D-122) `probe` exposes the shape, the ordinary §5.1 read settings, locale, and the
+retention `--limit` only; the three aggregate guards remain **pinned public-API defaults
+with no CLI flags**.
 
 **Determinism and cancellation.** Probe's input is defined **generically**: the same ordered
 normalized record sequence + ordered schema + effective source settings + probe options ⇒ an
@@ -776,11 +805,19 @@ Unicode operators (`<30`, `[30, 40)`, `≥50`). ASCII default chosen for
 ConExp compatibility — ConExp is Java/2009-era and not all installations
 handle UTF-8 reliably.
 
-**`size_advisory_bytes`**. The convert pipeline computes a projected
-`.cxt` size before emit (`n_objects × n_formal_attributes` characters
-plus name overhead) and emits `OutputCxtSizeAdvisory` (Warning) if the
-estimate exceeds this threshold. Default 1 GB is conservative; ConExp
-struggles well below this. Set to `0` to disable.
+**`size_advisory_bytes`**. During `.cxt` export, after the writer's
+object-name/count pass completes and **before any output bytes** (header, names, or
+incidence rows) are written, the pipeline computes the **exact final serialized
+`.cxt` size in UTF-8 bytes** under the resolved writer options — the `B` header and
+blank lines, the decimal count lines, every object name and rendered
+formal-attribute name, each configured line ending, the M-character incidence rows,
+and the trailing-newline rule — and emits `OutputCxtSizeAdvisory` (Warning, export
+phase) when the projection is **at or above** the threshold. The projection counts
+**encoded bytes, not characters** (a non-ASCII name and CRLF line endings count at
+their real width). A `.dat`-only run emits no advisory. Default 1 GB is
+conservative; ConExp struggles well below this. Set to `0` to disable. The advisory
+changes a warning, never output bytes, so it remains a non-input to all three
+fingerprints (D-077/D-122).
 
 **`.dat` trailing space.** vNext's native `.dat` output has **no** trailing
 space after the last item id on a line (`nonempty_line_trailing_space = false`)
@@ -1154,17 +1191,27 @@ still drives column order, read over these normalized identities (§17 rule 3).
 For `identity` (string-only, §10.2) and categorical `free_per_value` the entries
 remain verbatim strings.
 
-If `declared_domain` is absent **or an empty list `[]`**, the Calibrate phase (§7)
-fills it from the observed domain in the data, and the user is warned
-(`ObservedDomainUsed`) because the resulting schema then depends on this specific
-input. An empty `[]` is treated as **absent** — *not* as "zero columns"; only a
-**non-empty** explicit list drives column order (§17 rule 3). The TOML
-reader/writer round-trips an authored `[]` verbatim; `calibrate`/freeze may replace
-it with the observed values. For input-independent, spec-first workflows, declare
-the domain explicitly or freeze it with `fcabedrock calibrate`.
+If `declared_domain` is **omitted**, the Calibrate phase (§7) fills it from the
+observed domain in the data, and the user is warned (`ObservedDomainUsed`) because
+the resulting schema then depends on this specific input. Any **authored** domain is
+complete: an explicit empty list `[]` denotes a **fixed empty domain** — **zero
+declared value bins**, not a calibration request (D-122, revising D-071's earlier
+empty-as-absent reading). An authored `[]` suppresses observed-domain discovery, but
+it does **not by itself guarantee zero formal attributes**: `unknown_value_policy =
+"include"` may still extend the domain with observed values (§10.6), and
+`missing_policy = "as_attribute"` may still add the missing column (§10.5). This
+holds through every resolution tier: a template-supplied `[]` is likewise
+authored-complete (§9.2, D-114). The TOML reader/writer round-trips an authored `[]`
+verbatim; `fcabedrock calibrate` freezes an **omitted** domain to the observed values
+as an explicit `declared_domain` — and an empty observed outcome freezes as `[]`
+(§7, D-122). For input-independent, spec-first workflows, declare the domain
+explicitly or freeze it with `fcabedrock calibrate`.
 
 > **Observed-domain calibration (M4 Slice A/B).** The Calibrate phase fills an
-> absent `declared_domain` (omitted or authored `[]`) on an included consuming
+> absent `declared_domain` (omitted or authored `[]` — *the authored-`[]` half of
+> this historical note is revised by D-122: an authored `[]` is a complete fixed
+> empty domain, so only an omitted domain is calibrated; the current code still
+> treats `[]` as absent until M7*) on an included consuming
 > discretizer from the observed data, warning with `ObservedDomainUsed` (§7); the
 > transitional `ObservedDomainCalibrationNotImplementedV1` plan reject retired at
 > M4 Slice A (D-098, superseding D-071). Cut discretizers ignore `declared_domain`
@@ -1331,6 +1378,9 @@ recompute the fingerprint after calibration and emit `UnknownValuePolicyInclude`
 (Warning) so the data-dependence is visible. Like all Calibrate-phase resolution,
 `include` is implemented at **M4** (§7). The `UnknownValueObserved`
 severity follows the policy: `warn` → Warning, `fail` → Error.
+`fcabedrock calibrate` freezes `include` by folding the observed additions into an
+explicit `declared_domain` (appended after the declared values, first-observation
+order, §17 rule 3) and rewriting the policy to fixed `"warn"` (§7, D-122).
 
 **Numeric attributes.** For a **numeric-typed** source — a cut-based discretizer
 (where `declared_domain` is ignored, §10.3) **or** a numeric `free_per_value` — a
@@ -1880,7 +1930,9 @@ Anchor (`^…$`) for full-string matching. Authored inline options are honored �
   data-dependent: it resolves in the Calibrate phase (§7), emits
   `ValueGroupsPassthroughDataDependent` (Warning), and — like the other
   data-dependent cases — means tooling stores no fingerprints for the spec unless
-  it is frozen (§14).
+  it is frozen (§14). `fcabedrock calibrate` freezes `passthrough` by appending each
+  discovered bin as a singleton group (`{ label = <value>, values = [<value>] }`) in
+  first-observation order and rewriting `unmatched` to fixed `"skip"` (§7, D-122).
 
 A value matching multiple groups falls into the first matching group in
 declaration order; this is part of the planner's deterministic resolution
@@ -2224,6 +2276,16 @@ step, base-most first. A referenced base spec that cannot be found is
 `SpecExtendsNotFound` (Fatal); cycles MUST be detected and rejected with
 `SpecExtendsCycle` (Fatal).
 
+Cycle detection compares **canonical file identities** owned by the host source
+(D-078): the M7 file-backed host resolves **actual filesystem identity** where
+available — unifying supported symlink/hardlink aliases as well as `.`/`..` and case
+spellings of one file — and otherwise falls back to normalized full paths compared
+with the actual volume/platform behavior; the fallback makes **no link-alias
+guarantee** beyond what the host filesystem exposes (D-122). Identity keys are
+internal — never output bytes, fingerprint inputs, or manifest content. Authored
+references remain relative-only; an absolute reference stays the existing not-found
+outcome.
+
 **Template references are late-bound.** Because composition (rule 3) completes
 before §9.2 resolution runs, a same-`id` template replacement is resolved
 **late**: an **inherited base matcher** — and an inherited attribute's
@@ -2237,6 +2299,10 @@ Fingerprints are computed over the *resolved* (fully merged) plan, not the sourc
 files, so a derived spec and an equivalent flat spec fingerprint identically. Any
 fingerprint fields stored in a **base** spec's `[spec]` block are ignored when
 resolving a derived spec and recomputed for the resolved result.
+
+**Writing commands treat a chain by purpose** (D-122): `calibrate` writes one
+standalone flattened spec with `extends` consumed; `fingerprint --write` preserves
+the root's `extends` and changes only its stored fingerprint fields semantically.
 
 ## 14. Fingerprints
 
@@ -2415,8 +2481,10 @@ SHA-256 vectors are **golden-locked before the first M4 fingerprint is produced*
 
 **Stored only for fully-frozen specs.** Tooling writes the stored fingerprints
 only when the spec is fully determined by its own text — no observed-domain
-calibration (an absent `declared_domain` where a discretizer consumes it —
-`identity` / `free_per_value`), no **data-calibrated discretizer configuration**
+calibration (an **omitted** `declared_domain` where a discretizer consumes it —
+`identity` / `free_per_value`; an **authored** domain, including an explicit `[]`,
+is complete and frozen-eligible, D-122), no **data-calibrated discretizer
+configuration**
 (`equal_frequency`, or `equal_width` with a data-derived `range`;
 `equal_width` `range = "manual"` is spec-determined and does **not** disqualify),
 no `unknown_value_policy = "include"`, and no `value_groups`
@@ -2437,6 +2505,20 @@ stored fingerprints into it — even when its explicit domains would otherwise m
 fully-frozen-eligible. Freezing a draft (via `fcabedrock calibrate`, or by an authoring pass
 that stores hashes) is a deliberate later step, after the user has reviewed it.
 
+**Writing the stored fingerprints (M7 commands, D-122).** `fcabedrock calibrate`
+produces a fully frozen spec and writes all three native fingerprints; rerunning it
+on its own output is **byte-idempotent**, and stale stored values in the input warn
+(`*FingerprintStale`) and are corrected in the output. `fcabedrock fingerprint SPEC
+DATA` recomputes and reports the three native values with each stored field's
+`match`/`stale`/`absent` state, and `--write --out NEW_SPEC` writes a corrected
+canonical copy — **only** for a spec meeting the fully-frozen gate above. Both
+commands share one semantic gate and write path; **neither writes in place**. On an
+`extends` chain, calibrate flattens, while fingerprint-write preserves the root's
+`extends` and changes only the stored fingerprint fields semantically (§13).
+Effective override hashes are never stored in a spec (they remain manifest facts,
+below), and `fingerprint` takes no `--v2-compat` (D-011 keeps that flag
+convert-only).
+
 **Native vs effective fingerprints (CLI overrides).** Fingerprints stored in
 the `[spec]` block describe the spec's **native resolved output settings only**
 — what the spec produces with no CLI overrides. A CLI override such as
@@ -2455,45 +2537,108 @@ settings; a spec that fails resolve or plan reports those failures instead
 
 ## 15. Run manifest
 
-When `convert` runs, a sidecar `<output>.manifest.toml` is emitted **by default**,
-containing:
+When `convert --out BASE` runs, a sidecar **`BASE.manifest.toml`** is emitted **by
+default** — **one manifest per run**, whatever `--format` selected. For a
+manifest-bearing run the manifest publishes **last** and is the run's **public commit
+marker** (§16.2, D-122): staged residue without it is uncommitted. `--no-manifest`
+suppresses this audit sidecar **only** — implementation-private transaction state
+then marks the run incomplete until the complete requested artifact set commits,
+disappears only on success, and preserves identical incomplete-run detection
+(D-122). Failed, cancelled, or invalid runs **leave no committed run**; commit-phase
+failures roll back best-effort, and surviving residue remains uncommitted and is
+detected, reported, and safely cleaned on a later collision.
 
 ```toml
 [run]
 tool_version           = "fcabedrock-vnext 1.0.0"
-timestamp              = 2026-05-09T12:34:56Z   # recorded; not a fingerprint input
-command_line           = ["fcabedrock", "convert", "--spec", "foo.toml", ...]  # recorded; not a fingerprint input
-spec_path              = "foo.toml"
-spec_file_hash         = "sha256:..."           # raw TOML bytes of the spec file
+timestamp              = 2026-07-22T12:34:56Z
+command_line           = ["fcabedrock", "convert", "adult.toml", "adult.csv", "--out", "adult", "--format", "both"]
+spec_path              = "adult.toml"
+spec_file_hash         = "sha256:..."
 schema_fingerprint     = "sha256:..."
-cxt_output_fingerprint = "sha256:..."           # present if a .cxt was written
-dat_output_fingerprint = "sha256:..."           # present if a .dat was written
-input_path             = "data.csv"
+cxt_output_fingerprint = "sha256:..."
+dat_output_fingerprint = "sha256:..."
+input_path             = "adult.csv"
 input_hash             = "sha256:..."
-output_path            = "ctx.dat"
-output_hash            = "sha256:..."
 
-# For an `extends` chain, every spec file in the chain is recorded:
-# [[run.spec_files]]
-# path = "analysis.toml"   ; hash = "sha256:..."
-# [[run.spec_files]]
-# path = "base/emage.toml" ; hash = "sha256:..."
+[[run.outputs]]
+format = "cxt"
+path   = "adult.cxt"
+hash   = "sha256:..."
 
-[run.calibration]
-# Only present if any auto-discretizer ran
-"age" = { discretizer = "equal_frequency", cuts = [38.0, 49.0, 52.0] }
+[[run.outputs]]
+format = "dat"
+path   = "adult.dat"
+hash   = "sha256:..."
+
+[[run.calibrations]]
+attribute   = "age"
+kind        = "cuts"
+discretizer = "equal_frequency"
+cuts        = [38, 49, 52]
+
+[[run.calibrations]]
+attribute = "education"
+kind      = "observed_domain"
+values    = ["Bachelors", "HS-grad"]
+
+[[run.calibrations]]
+attribute = "workclass"
+kind      = "include_additions"
+values    = ["Assoc"]
+
+[[run.calibrations]]
+attribute = "industry"
+kind      = "passthrough_bins"
+values    = ["Self-emp"]
 ```
 
-The manifest is **written by default** on every `convert`. It captures everything
-needed to reproduce the conversion exactly, including any auto-calibrated cuts and
-— for an `extends` chain — the path and raw hash of every spec file involved. The
-output fingerprints recorded here are the **effective** ones (after any CLI
-overrides such as `--v2-compat`), so they may differ from the spec-stored native
-values (§14); only the format(s) actually written are recorded. `spec_file_hash`
-is the raw TOML bytes, distinct from the canonical, plan-derived
-`schema_fingerprint`. `timestamp` and `command_line` are recorded for the audit
-trail but are not fingerprint inputs. Citing a manifest in a paper is sufficient
-for reproducibility audits.
+The manifest captures everything needed to reproduce the conversion exactly.
+`timestamp` and `command_line` are the audit fields, recorded for the audit trail and
+**not** fingerprint inputs. The per-format fingerprint fields are present **iff** that
+format was written, and are the **effective** values (after any CLI override such as
+`--v2-compat`), so they may differ from the spec-stored native values (§14).
+`spec_file_hash` is the raw TOML bytes, distinct from the canonical, plan-derived
+`schema_fingerprint`. `input_hash` is the raw input bytes — every complete pass hashes
+them inline and a replay hash must match before commit (§17, D-122).
+
+**`[[run.spec_files]]`** is present **only** when the spec is an `extends` chain (the
+example above has none). It sits between `[[run.outputs]]` and `[[run.calibrations]]`,
+carries one entry per chain file **root-first, then bases**, and each entry lists its
+fields in the fixed order **`path`, then `hash`**.
+
+**Path semantics.** `spec_path` and `input_path` are the **verbatim command
+operands**. Each `[[run.outputs]] path` is the **invoked output-base spelling plus the
+ruled extension** (§8/D-122), never normalized. Chain entries record the root operand
+spelling and each authored referrer-relative `extends` spelling with its raw file
+hash — canonical filesystem identity keys (§13) never enter the manifest.
+
+**`[[run.calibrations]]`** is present **iff** any calibration outcome was retained. It
+holds **one entry per calibrated attribute, which retains exactly one outcome** (the
+closed `AttributeCalibration` union): `attribute`, `kind` ∈ {`cuts`,
+`observed_domain`, `include_additions`, `passthrough_bins`}, and that kind's
+variant-specific fields, in **spec-attribute order**, with legitimate zero-discovery
+outcomes as explicit empty arrays (e.g. `values = []`). It records **all four**
+retained outcome kinds completely (D-122; this resolves the roadmap's M4 manifest
+deferral). **Array wrapping:** only long non-cut `values` arrays use the D-113
+deterministic wrapping; `command_line`, `cuts`, and every other array remain inline.
+
+**Serialization.** Manifest bytes are canonical and fully determined: UTF-8 without
+BOM, LF line endings, the fixed field and section order shown, and the **same
+canonical TOML literal conventions as the spec writer** (D-075/D-113) — basic
+double-quoted strings with the pinned escape set, invariant shortest round-trippable
+numbers (an integral cut renders `38`, never `38.0`), `key = value` with single
+spaces, arrays in the documented single-line style with only long non-cut calibration
+`values` arrays wrapping per D-113, and **no comments**. `timestamp` is whole-second
+RFC 3339 UTC from an injected clock; `command_line` is the argv array verbatim;
+`tool_version` is the single version string `--version` prints. Only `timestamp` and
+`command_line` are audit-variable; every other field is a deterministic fact of the
+run — a path spelling varies only when its **source** varies: the argv operands for
+`spec_path`/`input_path`/output paths, the authored referrer-relative `extends`
+spellings for chain entries. Concrete serializer ownership stays an
+implementation-plan choice.
+
+Citing a manifest in a paper is sufficient for reproducibility audits.
 
 ## 16. Diagnostics
 
@@ -2546,6 +2691,15 @@ Either way the artifact is invalid and the caller must discard it. For `.cxt` th
 diagnostics are authoritative only **after** the replay session is disposed, which is
 when cross-pass aggregates are flushed. (decisions.md D-105.)
 
+The M7 CLI realizes this discard through **staged publication**: artifacts stage on
+the destination filesystem; a failed, cancelled, or invalid run **leaves no committed
+run**; files commit atomically one-by-one with best-effort rollback; for a
+manifest-bearing run the manifest publishes **last** as the public commit marker, and
+under `--no-manifest` implementation-private transaction state preserves the same
+incomplete-run detection (§15, D-122). **Exit codes:** 0 success (warnings included),
+1 any Error/Fatal diagnostic or a host/runtime/publication failure, 2 usage, 3
+cooperative cancellation, 4 unexpected internal fault (D-122).
+
 ### 16.3 `DiagnosticLocation`
 
 ```csharp
@@ -2563,7 +2717,11 @@ Any subset of fields may be populated.
 
 Every distinct condition has its own `DiagnosticCode`; each code is owned by
 exactly one phase — the "Where" column below is the phase-ownership contract
-(decisions.md D-067). v1's initial set:
+(decisions.md D-067). The registry covers **pipeline** conditions only: ordinary
+host/environment failures (a missing or unreadable input, permissions, an output or
+publication failure) are **CLI-owned, code-less** errors on stderr with exit 1, and
+never join this registry (D-122). Existing phase-owned conditions such as
+`SpecExtendsNotFound` remain registry diagnostics. v1's initial set:
 
 | Code | Severity | Where |
 | --- | --- | --- |
@@ -2753,7 +2911,15 @@ because one invalid effective attribute may draw on several matching templates
 plus higher precedence tiers, so the attribute is the only sound owner. A message
 **may** name every contributing template/matcher site, and a CLI or UI **may**
 group identical diagnostics for presentation, without changing the structured
-diagnostic contract. Within the resolve phase the deterministic family order is:
+diagnostic contract. The M7 CLI renders each diagnostic as **one deterministic
+stderr line** in the sparse labelled form `file="…" line=N column=N attribute="…"
+record=N: severity Code: escaped-message` — only populated location fields, in that
+order; string fields as JSON string literals, integers invariant; lowercase
+severity; all control characters and literal backslashes escaped; no location prefix
+when no field is populated (`warning NoObjectsEmitted: …`); code-less host errors
+render `error: escaped-message`. Library order is preserved and M7 does **no**
+additional grouping (D-122). Within the resolve phase the deterministic family order
+is:
 
 1. template identity (missing / duplicate `id`);
 2. matcher reference and shape compatibility;
@@ -2804,7 +2970,13 @@ joining the enum when its own milestone lands. Every other row is live.
 ## 17. Determinism rules
 
 The following rules are normative and ensure same-spec + same-input ⇒
-same-output across runs and across machines:
+same-output across runs and across machines.
+
+The "same normalized input" precondition is **verified** by the M7 host: every
+complete data pass hashes the raw bytes it consumes **inline**, and a replay whose
+hash differs from the first pass fails the run **before any commit** (a code-less
+host error; nothing publishes). A genuinely single-pass run records that pass's hash
+under an explicit **stable-input precondition** (D-122).
 
 1. **Spec attribute order** = order of appearance of `[[attribute]]`
    blocks in the resolved (post-`extends`) spec.
@@ -2940,8 +3112,9 @@ kinds, both leaving an invalid `.cxt` the invariant passes over (§16.2):
 In both cases the only signal is the Error in the run's diagnostics (§16.2), inspected
 after the replay session is disposed. The writer cannot discard the file: the bytes are
 already in a caller-owned sink, and a writer that decided what to publish would no longer
-be a dumb exporter (P-15). Transactional publication belongs to the conversion-run
-abstraction (M7, `roadmap.md`).
+be a dumb exporter (P-15). Transactional publication belongs to the **M7
+conversion-run host**: staged artifacts, per-file atomic commits, manifest-last
+public commit marker (§15/§16.2, D-122).
 
 ### 18.2 FIMI `.dat`
 

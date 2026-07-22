@@ -504,7 +504,15 @@ vertical slices, not waterfall phases — each should leave the system working.
 > passed, 0 failed, one platform-gated confidentiality test —
 > `SpoolConfidentialityTests.CreateWorkspace_OnUnix_SetsMode700` — skipped off its OS**).
 >
-> **M6 is complete; M7 (CLI) is next** — no M7 work has started.
+> **M6 is complete. The M7 (CLI) pre-implementation contract is fully adjudicated and
+> landed docs-only (D-122)** — 33 findings ruled and consented (audit: Fable;
+> independent review: Codex; adjudication: Constantinos Orphanides, 2026-07-22), plus
+> the docs-plan review rulings (authored-empty domains, the exact stderr grammar, the
+> `[[run.calibrations]]` manifest shape). Eight commands, the process/publication/
+> manifest/freeze contracts, non-goals, distribution, and the argv-boundary exit floor
+> are settled; spec §§3/7/8/10/11/13/14/15/16/17/18 carry the normative corrections.
+> **No M7 implementation has started** — the next step is the separately commissioned
+> implementation master plan with its own review cycle.
 
 ## Milestones
 
@@ -680,7 +688,8 @@ manifest data (§15), and all resolved calibration outcomes — cuts, observed
 domains, included values, and pass-through bins — remain in the calibrated
 spec/plan; only *additional* non-cut manifest representation of
 discovered/appended/passthrough values is deferred to the manifest layer, without
-re-deriving M4 semantics.
+re-deriving M4 semantics. (Resolved at M7: D-122/§15's `[[run.calibrations]]` records
+all four retained outcome kinds completely.)
 
 **Exit — all met (M4 complete, D-098…D-105):**
 
@@ -779,14 +788,52 @@ boundary — is the D-119 verification floor, each item landing with its slice
 
 ### M7 — CLI
 
-`convert`, `validate`, `plan` (dry-run plan inspection), `stats` (context
-statistics without writing), `calibrate`, `probe` (draft-spec generation, §7.1),
-`migrate` (.bed → TOML), `fingerprint`. `--v2-compat`, `--sample`, compression flags
-as they land. M5 supplies the `probe` API/library behavior; **M7 exposes it on the CLI**
-(and M9 in the UI) — the milestone does not add new discovery semantics, only a command
-surface over M5's.
-**Exit:** Core is dogfoodable end-to-end without a UI; `plan`/`validate` give a
-fast spec-authoring loop.
+**Eight commands:** `convert`, `validate`, `plan` (dry-run plan inspection), `stats`
+(context statistics without writing), `calibrate`, `probe` (draft-spec generation,
+§7.1), `migrate` (.bed → TOML), `fingerprint`. M5 supplies the `probe` API/library
+behavior; **M7 exposes it on the CLI** (and M9 in the UI) — the milestone adds no new
+discovery semantics, only a command surface over M5's.
+
+**The shared contract is settled (D-122; normative text in spec §§3/7/7.1/8/10.3/10.6/
+11.6/13/14/15/16/17/18.1).** SPEC and DATA are positional, everything else named;
+`--help`/`--version` on stdout, exit 0. Exit codes are 0/1/2/3/4, with warnings
+staying 0 and host/environment failures CLI-owned and code-less. Diagnostics render as
+one deterministic sparse-labelled stderr line each, results on stdout; no stdin source;
+writing commands require an explicit `--out` and refuse existing targets without
+`--force`. Publication stages, commits per file atomically, and rolls back best-effort
+— a **default-on** `BASE.manifest.toml` per run with `[[run.outputs]]` and
+`[[run.calibrations]]` publishes last as the public commit marker, while
+`--no-manifest` suppresses the audit sidecar only and implementation-private
+transaction state preserves incomplete-run detection. Every complete pass hashes its
+raw input inline (the input-stability gate). `--temp-dir` is exposed on `convert`,
+`plan`, `stats`, `calibrate`, and `fingerprint`; the run coordinator stays
+CLI-internal.
+
+**Committed follow-ups and non-goals.** Color and progress are **committed** later
+features and machine-readable diagnostics an anticipated later requirement — M7 ships
+none of them but **centralizes** presentation and progress observation so they land
+without run-orchestration refactoring. Sampling, compressed artifacts, and arbitrary
+output-setting overrides are **excluded** (unknown flags are usage errors); each
+returns only through its own contract decision, and `--v2-compat` remains the sole
+settled conversion override. The grouping memory budget and merge fan-in stay internal
+pending M8 measurement.
+
+**Distribution.** A .NET global tool validated on x64, installed via the documented
+`winget install Microsoft.DotNet.SDK.10` then `dotnet tool install --global
+FcaBedrock.Cli` route (with equivalent platform guidance) — **explicitly temporary
+technical-preview distribution**. A standalone/self-contained route is committed for
+the later public release. The **M7 implementation/distribution landing must document
+the exact global-tool route in user documentation before M7 exit**, and
+public-release docs must lead with the standalone route.
+
+**Exit:** the full **argv-boundary verification floor** is green — every command
+through argv, all nine active goldens through the real CLI path, manifest/exit/
+diagnostic byte locks, publication/rollback/overwrite/collision, freeze and
+idempotence, probe/migrate grammars, advisory, extends identity, signals, and
+input-stability cases, with every existing golden/canonical/SHA/registry/architecture
+lock still green and the normal suite still fast (exact list: D-122 §14; large
+benchmarks and release validation stay M8). Core is then dogfoodable end-to-end
+without a UI, and `plan`/`validate` give a fast spec-authoring loop.
 
 ### M8 — First scaling / benchmark pass
 
@@ -820,6 +867,14 @@ aggregate guards are **correctness inputs established at M5** (D-110) — determ
 accounting, never machine memory. M8 may tune the guard **defaults** against real 7.3M–73M
 distributions, but never establishes probe boundedness or its determinism.
 
+**M7 cost and packaging boundaries.** M8 also **measures** the cost of M7's inline
+per-pass input-stability hashing (D-122; any later opt-out needs its own explicit
+ruling and never activates by file size) and of manifest hashing; tunes the grouping
+memory budget and merge fan-in and the probe-guard defaults (above); and owns the
+**standalone/self-contained public-release packaging gate** together with the broader
+platform/architecture validation that M7's x64 global-tool dogfood route
+deliberately does not claim (D-122).
+
 **Exit:** documented throughput/memory at target scale; no full-matrix
 materialization.
 
@@ -827,6 +882,12 @@ materialization.
 
 Parallel-able from M5 onward; does not gate the CLI track. MVVM over the same
 Core. Progress reporting + cancellation already plumbed from M1.
+
+**Gate:** M7's run/publication coordinator is CLI-internal by decision (D-122), so a
+**P-4 public-surface extraction review** MUST happen **before** any Desktop reuse of
+it; no production package may reference `Cli`, and `EmitReplaySession` remains the
+supported public bracket until a proven replacement exists.
+
 **Exit:** load → inspect → edit spec → export, on Windows/macOS/Linux.
 
 ## Deferred backlog (not v1)
@@ -861,8 +922,22 @@ Modelled in the spec where noted, so adding them later isn't a format break.
 - **Multi-level taxonomic value hierarchies** — value_groups is single-level in
   v1; multi-level (Bachelors → Uni-Degree → Education with per-analysis
   granularity) is a real design exercise, deferred until single-level ships.
-- **Sampling / compressed output / memory-budget knob** — streaming filters and
-  writer wrappers; additive, land opportunistically (likely around M7/M8).
+- **Sampling / compressed output / arbitrary output-setting overrides** — streaming
+  filters and writer wrappers. **Explicitly excluded from M7** (D-122): sampling
+  changes rows and fingerprints, compression changes artifact/hash/advisory
+  semantics, and arbitrary overrides expand the native-vs-effective fingerprint
+  rules — so each returns only through **its own contract decision**, never as an
+  opportunistic flag. Unknown flags are usage errors meanwhile.
+- **Memory-budget / merge-fan-in knob** — the grouping backend's budget and fan-in
+  stay internal through M7 and are tuned (not exposed) at M8; `--temp-dir` is the
+  one runtime placement knob M7 exposes, byte- and fingerprint-neutral (D-122).
+- **Color and progress output** — **committed** follow-up capabilities, deliberately
+  not in M7. M7 ships plain terminal-independent output but centralizes diagnostic
+  presentation and progress observation so these land without run-orchestration
+  refactoring; exact flags and any terminal library remain undecided (D-122).
+- **Machine-readable diagnostics** — an **anticipated later** requirement (a second
+  stable output contract), against a real caller. Same centralization applies; no
+  M7 flag or schema (D-122).
 - **TCA (triadic FCA)** — out of scope for the foreseeable.
 
 ## Notes for whoever picks this up
@@ -878,18 +953,25 @@ Modelled in the spec where noted, so adding them later isn't a format break.
   let UI work block converter progress.
 - The 2026-06-26 review deferred three tightening items: cut validation (now D-056,
   landed in M2), a `.cxt` size/diagnostics item to M7, and an allocation item to
-  M8. The latter two are tracked here pending their own `decisions.md` entries when
-  M7/M8 are picked up.
+  M8. The `.cxt` size half is now **resolved by D-122 §7** — the advisory is the exact
+  final serialized `.cxt` UTF-8 byte projection, computed after the name/count pass and
+  before any output bytes, joining the registry as member 82 at its M7 emit site (spec
+  §8). The allocation item remains tracked here pending its own `decisions.md` entry
+  when M8 is picked up.
 - Conversion run/session API (M7): M3 Slice F promoted the interim replay helper to the
   public `EmitReplaySession` (`EmitReplay.Begin`) — it brackets one conversion attempt,
   collects data diagnostics once, and aggregates grouping storage failures across the
-  `.cxt` two-pass, flushing the finals at disposal (P-16). Revisit at M7, when CLI
-  orchestration can own a real conversion-run abstraction that emits once and serializes
-  separately; the session may be superseded by that API.
+  `.cxt` two-pass, flushing the finals at disposal (P-16). **D-122 settles the M7
+  answer:** the run/publication coordinator is **CLI-internal**, nothing references
+  `Cli`, and `EmitReplaySession` is **retained** as the public bracket — it is not
+  superseded at M7. A P-4 public-surface extraction review is required before M9 reuse.
 - Grouping backend knobs (M7/M8): `GroupingOptions` (in-memory budget, merge fan-in,
   temp root) is **internal** — never a spec/TOML/fingerprint input (the storage strategy
-  never changes bytes). Exposing a memory-budget/temp knob is an M7 concern; tuning the
-  provisional budget/fan-in defaults against real 7.3M–73M distributions is M8 (P-19).
+  never changes bytes). **D-122 settles the M7 exposure:** a runtime-only `--temp-dir`
+  on `convert`, `plan`, `stats`, `calibrate`, and `fingerprint` (byte- and
+  fingerprint-neutral, over a minimal public byte-neutral Conversion capability), with
+  the memory budget and fan-in staying internal; tuning those provisional defaults
+  against real 7.3M–73M distributions is M8 (P-19).
 - Phase alignment for `AttributeNameDuplicate` (noted at the Slice F review,
   2026-07-05): **done at the M2 exit review (D-080).** The check — and its twin
   `ValueLabelKeyNotInDomain` — were re-homed from `ConversionPlanner` to the

@@ -195,12 +195,12 @@ Don't implement first and explain later.
 
 ## Current status
 
-**M1–M5 are complete.** M4 (discretizers beyond manual cuts) landed across Slices A–F
-(D-098…D-105), so **every v1 discretizer kind and every `restrict_to` form is executable,
-and no M4 transitional diagnostic remains.** **M5 (discovery / `probe`) landed across
-Slices A–D** (realizing D-106…D-113): the canonical-writer `declared_domain` wrapping, the
-unbound source-session seam, and the `FcaBedrock.Discovery` package — **both wide and triple
-probing are implemented**, and the diagnostic registry is **75**. **M6 (templates +
-matchers) is next.**
+**M1–M6 are complete.** M6 (templates + matchers + naming) landed across Slices A–C
+(D-120/D-121 and the D-119 exit workflow): every template/matcher and naming carrier is
+executable, no transitional diagnostic remains for M1–M6, and the diagnostic registry is
+**81**. **M7 (CLI) is next**: its pre-implementation contract is fully adjudicated and
+landed docs-only as **D-122** (eight commands, process/publication/manifest/freeze
+contracts, authored-empty domain semantics, exit floor); no M7 implementation has started
+— the next step is the separately commissioned implementation master plan.
 `docs/roadmap.md` is the live source for current position, test count, and the
 deferred backlog — consult it rather than duplicating the detail here.
