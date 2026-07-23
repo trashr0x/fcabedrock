@@ -645,7 +645,10 @@ public static class SpecResolver
 
         Discretizer? discretizer = null;
         Scale? scale = null;
-        IReadOnlyList<string> declaredDomain = section.DeclaredDomain ?? []; // omitted and authored-[] both resolve absent (D-049/D-071)
+        // Presence preserved (D-122 §15, revising D-071): null = omitted (calibrated where a
+        // discretizer consumes it), any non-null list incl. [] is authored-complete. The
+        // document keeps the authored form verbatim for round-trip (D-049 provenance).
+        IReadOnlyList<string>? declaredDomain = section.DeclaredDomain;
         IReadOnlyDictionary<string, string> valueLabels = section.ValueLabels ?? NoLabels;
         if (include)
         {
@@ -659,7 +662,7 @@ public static class SpecResolver
             if (numericFreePerValue)
             {
                 declaredDomain = NormalizeNumericDomain(section.DeclaredDomain, culture, label, diagnostics);
-                valueLabels = NormalizeNumericValueLabels(section.ValueLabels, declaredDomain, culture, label, diagnostics);
+                valueLabels = NormalizeNumericValueLabels(section.ValueLabels, declaredDomain ?? [], culture, label, diagnostics);
             }
 
             scale = ResolveScale(section.Scale, label, defaults, numericFreePerValue ? culture : null, diagnostics);
@@ -760,15 +763,22 @@ public static class SpecResolver
     // §10.3/§5.1 (D-096): normalize a numeric free_per_value declared_domain to canonical
     // numeric identities under binding.locale, preserving declaration order (§17 rule 3, over
     // the first occurrence of each identity). An unparseable, non-finite, or normalization-duplicate
-    // entry is DeclaredDomainInvalid (one per bad entry — spec-validate diagnostics aggregate). An
-    // absent or empty authored domain resolves absent (calibrated later); the canonical list is what
-    // the resolved Core graph and fingerprint carry (the document keeps the authored spellings).
-    private static IReadOnlyList<string> NormalizeNumericDomain(
+    // entry is DeclaredDomainInvalid (one per bad entry — spec-validate diagnostics aggregate).
+    // Presence is preserved (D-122 §15): an omitted domain resolves to null (calibrated later),
+    // an authored [] resolves to the empty list (authored-complete), and otherwise the canonical
+    // list is what the resolved Core graph and fingerprint carry (the document keeps the authored
+    // spellings for round-trip).
+    private static IReadOnlyList<string>? NormalizeNumericDomain(
         IReadOnlyList<string>? authored, CultureInfo culture, string attribute, List<BedrockDiagnostic> diagnostics)
     {
-        if (authored is not { Count: > 0 })
+        if (authored is null)
         {
-            return [];
+            return null; // omitted → calibrated later
+        }
+
+        if (authored.Count == 0)
+        {
+            return []; // authored [] → a complete fixed empty domain
         }
 
         var canonical = new List<string>(authored.Count);

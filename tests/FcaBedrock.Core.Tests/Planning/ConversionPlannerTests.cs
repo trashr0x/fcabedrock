@@ -859,6 +859,123 @@ public sealed class ConversionPlannerTests
         Assert.Equal(2, Assert.Single(plan.Attributes).MissingFormalAttributeId);
     }
 
+    // --- empty-universe value-bin ordinal (D-122 §15 / REG-PRES-002) ---
+    // An authored declared_domain = [] is a complete empty universe. It is NOT exempt from the
+    // permutation rule: an omitted order is OrdinalOrderMissing and order = [] is the valid empty
+    // permutation. Removing the former non-empty-domain shortcut brings identity to the parity the
+    // free_per_value/value_groups blocks already had. The numeric natural-order exemption is undisturbed.
+
+    [Fact]
+    public void Plan_WhenIdentityOrdinalOverEmptyUniverseOmitsOrder_ThenOrdinalOrderMissing()
+    {
+        var scale = new OrdinalScale(OrdinalDirection.Ge, DropTop: false, OrdinalBoundary.Inclusive, Order: null);
+        var spec = new BedrockSpec(SpecFixtures.WideRowIndex(),
+            [SpecFixtures.OrdinalValueBins("edu", 0, [], scale)]);
+
+        AssertFailsWith(Plan(spec, new SourceSchema(1)), DiagnosticCode.OrdinalOrderMissing);
+    }
+
+    [Fact]
+    public void Plan_WhenIdentityOrdinalOverEmptyUniverseAuthorsEmptyOrder_ThenValidEmptyPermutationZeroColumns()
+    {
+        // order = [] is the one permutation of the empty universe: no missing, no stray, zero columns.
+        var scale = new OrdinalScale(OrdinalDirection.Ge, DropTop: false, OrdinalBoundary.Inclusive, Order: []);
+        var spec = new BedrockSpec(SpecFixtures.WideRowIndex(),
+            [SpecFixtures.OrdinalValueBins("edu", 0, [], scale)]);
+
+        var result = Plan(spec, new SourceSchema(1));
+
+        Assert.True(result.TryGetValue(out var plan));
+        Assert.Empty(plan.FormalAttributes);
+        Assert.DoesNotContain(result.Diagnostics, d =>
+            d.Code is DiagnosticCode.OrdinalOrderMissing or DiagnosticCode.OrdinalOrderHasUnknownValue);
+    }
+
+    [Fact]
+    public void Plan_WhenIdentityOrdinalOverEmptyUniverseHasStrayOrder_ThenOrdinalOrderHasUnknownValuePerEntry()
+    {
+        var scale = new OrdinalScale(OrdinalDirection.Ge, DropTop: false, OrdinalBoundary.Inclusive, ["x", "y"]);
+        var spec = new BedrockSpec(SpecFixtures.WideRowIndex(),
+            [SpecFixtures.OrdinalValueBins("edu", 0, [], scale)]);
+
+        var result = Plan(spec, new SourceSchema(1));
+
+        Assert.Equal(2, result.Diagnostics.Count(d => d.Code == DiagnosticCode.OrdinalOrderHasUnknownValue));
+    }
+
+    [Fact]
+    public void Plan_WhenStringFreePerValueOrdinalOverEmptyUniverseOmitsOrder_ThenOrdinalOrderMissing()
+    {
+        // String free_per_value has no natural order to derive, so — like identity — the empty
+        // universe still requires an explicit order = [] (§12.3/D-061).
+        var scale = new OrdinalScale(OrdinalDirection.Ge, DropTop: false, OrdinalBoundary.Inclusive, Order: null);
+        var spec = new BedrockSpec(SpecFixtures.WideRowIndex(),
+            [SpecFixtures.FreePerValue("g", 0, SourceValueType.String, [], scale)]);
+
+        AssertFailsWith(Plan(spec, new SourceSchema(1)), DiagnosticCode.OrdinalOrderMissing);
+    }
+
+    [Fact]
+    public void Plan_WhenStringFreePerValueOrdinalOverEmptyUniverseAuthorsEmptyOrder_ThenValidEmptyPermutation()
+    {
+        var scale = new OrdinalScale(OrdinalDirection.Ge, DropTop: false, OrdinalBoundary.Inclusive, Order: []);
+        var spec = new BedrockSpec(SpecFixtures.WideRowIndex(),
+            [SpecFixtures.FreePerValue("g", 0, SourceValueType.String, [], scale)]);
+
+        var result = Plan(spec, new SourceSchema(1));
+
+        Assert.True(result.TryGetValue(out var plan));
+        Assert.Empty(plan.FormalAttributes);
+        Assert.DoesNotContain(result.Diagnostics, d =>
+            d.Code is DiagnosticCode.OrdinalOrderMissing or DiagnosticCode.OrdinalOrderHasUnknownValue);
+    }
+
+    [Fact]
+    public void Plan_WhenNumericFreePerValueOrdinalOverEmptyDomainOmitsOrder_ThenNaturalOrderEmptyNoDiagnostic()
+    {
+        // The numeric natural-order derivation still applies over an empty authored domain: it yields
+        // the empty order and stays valid (no OrdinalOrderMissing) — REG-PRES-002 does not disturb it.
+        var scale = new OrdinalScale(OrdinalDirection.Ge, DropTop: false, OrdinalBoundary.Inclusive, Order: null);
+        var spec = new BedrockSpec(SpecFixtures.WideRowIndex(),
+            [SpecFixtures.FreePerValue("v", 0, SourceValueType.Number, [], scale)]);
+
+        var result = Plan(spec, new SourceSchema(1));
+
+        Assert.True(result.TryGetValue(out var plan));
+        Assert.Empty(plan.FormalAttributes);
+        Assert.DoesNotContain(result.Diagnostics, d => d.Code == DiagnosticCode.OrdinalOrderMissing);
+    }
+
+    // --- authored empty domain, non-ordinal (D-122 §15) ---
+
+    [Fact]
+    public void Plan_WhenIdentityNominalOverAuthoredEmptyDomain_ThenZeroColumnsAndNoFormalAttributes()
+    {
+        // An authored [] is a complete fixed empty domain: zero value bins, hence zero columns and
+        // the degenerate NoFormalAttributes warning (§16.4) — not calibrated, not an error.
+        var spec = new BedrockSpec(SpecFixtures.WideRowIndex(),
+            [SpecFixtures.Nominal("g", 0, [])]);
+
+        var result = Plan(spec, new SourceSchema(1));
+
+        Assert.True(result.TryGetValue(out var plan));
+        Assert.Empty(plan.FormalAttributes);
+        Assert.Contains(result.Diagnostics, d => d.Code == DiagnosticCode.NoFormalAttributes);
+    }
+
+    [Fact]
+    public void Plan_WhenIdentityNominalOverAuthoredEmptyDomainWithAsAttribute_ThenOnlyMissingColumn()
+    {
+        // [] adds no value columns, but missing_policy = "as_attribute" still appends the missing
+        // column — so [] does not by itself guarantee zero formal attributes (D-122 §15).
+        var spec = new BedrockSpec(SpecFixtures.WideRowIndex(),
+            [SpecFixtures.Nominal("g", 0, [], missing: MissingPolicy.AsAttribute)]);
+
+        Assert.True(Plan(spec, new SourceSchema(1)).TryGetValue(out var plan));
+
+        Assert.Equal(["g-missing"], plan.FormalAttributes.Select(f => f.RenderedName));
+    }
+
     // --- free_per_value value-bin planning (§11.3 / §12.3 / D-096, M4 Slice B) ---
 
     [Fact]

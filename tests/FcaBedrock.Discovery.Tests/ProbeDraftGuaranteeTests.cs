@@ -250,7 +250,9 @@ public sealed class ProbeDraftGuaranteeTests
         var calibrated = await Calibrator.CalibrateAsync(resolved.Resolved, session.Bind(resolved.Resolved));
 
         Assert.True(calibrated.TryGetValue(out var spec), ProbeFixtures.Describe(calibrated.Diagnostics));
-        return spec.Spec.Attributes.Single(a => a.Name == "col").DeclaredDomain;
+        var domain = spec.Spec.Attributes.Single(a => a.Name == "col").DeclaredDomain;
+        Assert.NotNull(domain); // Calibrate discovered the omitted domain (§7/D-098)
+        return domain;
     }
 
     // The formal-attribute names a draft plans over a source, which is the observable form of

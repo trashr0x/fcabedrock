@@ -777,7 +777,7 @@ public sealed class SpecComposerTests
             $"include={a.Include}",
             $"discretizer={a.Discretizer}",
             $"scale={a.Scale}",
-            $"domain=[{string.Join(",", a.DeclaredDomain)}]",
+            $"domain=[{string.Join(",", a.DeclaredDomain ?? [])}]",
             $"restrict=[{string.Join(",", a.RestrictTo)}]",
             $"labels=[{string.Join(",", a.ValueLabels.OrderBy(p => p.Key, StringComparer.Ordinal).Select(p => $"{p.Key}={p.Value}"))}]",
             $"missing={a.MissingPolicy}",

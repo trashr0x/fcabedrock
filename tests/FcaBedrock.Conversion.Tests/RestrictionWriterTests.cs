@@ -110,7 +110,7 @@ public sealed class RestrictionWriterTests
         var spec = new BedrockSpec(ConversionFixtures.Wide(hasHeader: false),
         [
             Filter("Gene", 0, new RestrictToValue("Bmp5")),
-            ConversionFixtures.Nominal("tissue", 1) with { DeclaredDomain = [] }, // absent → calibrated
+            ConversionFixtures.Nominal("tissue", 1) with { DeclaredDomain = null }, // omitted → calibrated
         ]);
         var source = ConversionFixtures.SourceOver("Bmp5,endoderm\nWnt1,mesoderm", spec.Binding);
         var resolved = ConversionFixtures.ResolveFor(spec, await source.GetSchemaAsync());

@@ -66,18 +66,18 @@ public sealed class CalibratedSpec
     /// <summary>
     /// Assembles the effective spec from the authored spec plus the
     /// calibrator-produced outcomes (D-093). Core owns the substitution so Plan and
-    /// the fingerprints see one consistent state: an absent consumed domain plus its
+    /// the fingerprints see one consistent state: an omitted (null) consumed domain plus its
     /// <see cref="ObservedDomain"/> becomes the effective domain, and
-    /// <see cref="IncludeAdditions"/> are appended to an explicit domain. Returns
+    /// <see cref="IncludeAdditions"/> are appended to an authored domain (incl. <c>[]</c>). Returns
     /// <see cref="Diagnosed{T}"/> — data-derived cut invalidity comes back as Error
     /// diagnostics so the calibrator can aggregate them (none in slice A). Throws
     /// <see cref="ArgumentException"/> only for calibrator-contract mismatches
     /// (programmer error): an outcome naming an unknown/excluded attribute, a
     /// kind-mismatched/duplicate/unexpected outcome, a leftover
     /// <see cref="CalibrationPending"/>, or a required completeness marker that is
-    /// missing. Completeness is required per calibration mode: an absent-domain
+    /// missing. Completeness is required per calibration mode: an omitted-domain (null)
     /// consuming attribute must carry exactly one <see cref="ObservedDomain"/> (never
-    /// co-occurring with <see cref="IncludeAdditions"/>), and an explicit-domain
+    /// co-occurring with <see cref="IncludeAdditions"/>), and an authored-domain (incl. <c>[]</c>)
     /// consuming attribute under <c>unknown_value_policy = "include"</c> must carry
     /// exactly one <see cref="IncludeAdditions"/> marker (an empty list is the
     /// zero-additions marker).
@@ -174,8 +174,9 @@ public sealed class CalibratedSpec
     /// <summary>
     /// True when <paramref name="spec"/> needs a data-reading calibration pass (§7):
     /// any included attribute with a <see cref="CalibrationPending"/> discretizer, a
-    /// consuming discretizer with an absent domain, or a consuming discretizer under
-    /// <c>unknown_value_policy = "include"</c>. Excluded attributes and
+    /// consuming discretizer with an omitted (null) domain, or a consuming discretizer under
+    /// <c>unknown_value_policy = "include"</c>. An authored <c>[]</c> is complete and never
+    /// counts on its own (D-122 §15). Excluded attributes and
     /// <c>restrict_to</c> never count.
     /// </summary>
     public static bool RequiresData(BedrockSpec spec)
@@ -195,7 +196,7 @@ public sealed class CalibratedSpec
 
             if (attribute.Discretizer is { } discretizer && ConsumesDomain(discretizer))
             {
-                if (attribute.DeclaredDomain.Count == 0
+                if (attribute.DeclaredDomain is null
                     || attribute.UnknownValuePolicy == UnknownValuePolicy.Include)
                 {
                     return true;
@@ -225,28 +226,33 @@ public sealed class CalibratedSpec
 
         var consumes = attribute.Discretizer is { } discretizer && ConsumesDomain(discretizer);
 
-        // Absent consumed domain → filled from the observed domain (complete population).
-        if (consumes && attribute.DeclaredDomain.Count == 0)
+        // Omitted (null) consumed domain → filled from the observed domain (complete population).
+        // An authored [] is NOT omitted — it is a complete fixed empty domain (D-122 §15) and
+        // falls through to the include check / no-calibration path below.
+        if (consumes && attribute.DeclaredDomain is null)
         {
             if (outcome is not ObservedDomain observed)
             {
                 throw new ArgumentException(
-                    $"attribute '{attribute.Name}' has an absent consumed domain and requires exactly one ObservedDomain outcome.");
+                    $"attribute '{attribute.Name}' has an omitted consumed domain and requires exactly one ObservedDomain outcome.");
             }
 
             return (attribute with { DeclaredDomain = observed.Values }, observed);
         }
 
-        // Explicit consumed domain under include → the domain plus the observed additions.
+        // Authored consumed domain (incl. []) under include → the domain plus the observed
+        // additions. The omitted-domain branch above already returned on null and this branch
+        // requires `consumes`, so the domain is non-null here; an authored [] contributes no
+        // declared values, so the effective domain is exactly the additions (D-122 §15).
         if (consumes && attribute.UnknownValuePolicy == UnknownValuePolicy.Include)
         {
             if (outcome is not IncludeAdditions additions)
             {
                 throw new ArgumentException(
-                    $"attribute '{attribute.Name}' has an explicit domain under unknown_value_policy = \"include\" and requires exactly one IncludeAdditions outcome.");
+                    $"attribute '{attribute.Name}' has an authored domain under unknown_value_policy = \"include\" and requires exactly one IncludeAdditions outcome.");
             }
 
-            var effectiveDomain = attribute.DeclaredDomain.Concat(additions.Values).ToImmutableArray();
+            var effectiveDomain = (attribute.DeclaredDomain ?? []).Concat(additions.Values).ToImmutableArray();
             return (attribute with { DeclaredDomain = effectiveDomain }, additions);
         }
 

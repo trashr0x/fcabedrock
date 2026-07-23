@@ -136,8 +136,11 @@ public static class ConversionPlanner
         var scale = attribute.Scale
             ?? throw new InvalidOperationException($"Included attribute '{attribute.Name}' has no scale.");
 
+        // A consuming discretizer's effective domain is non-null here (calibration filled an
+        // omitted one before plan); a cut discretizer ignores it. Coalescing is byte-neutral.
+        var declaredDomain = attribute.DeclaredDomain ?? [];
         var source = ResolveAttributeSource(attribute.Name, attribute.Source, schema);
-        var scheme = discretizer.DescribeBins(attribute.DeclaredDomain);
+        var scheme = discretizer.DescribeBins(declaredDomain);
         var knownBins = scheme.Labels.ToFrozenSet(StringComparer.Ordinal);
 
         // §12.3/§17-r2/D-096: a numeric free_per_value value-bin ordinal with no authored
@@ -145,7 +148,7 @@ public static class ConversionPlanner
         // one value-bin case exempt from the explicit-order requirement (ValidateValueBinOrder
         // enforces it everywhere else). An authored order is a validated permutation and used
         // verbatim.
-        scale = DeriveNaturalNumericOrder(discretizer, scale, attribute.DeclaredDomain);
+        scale = DeriveNaturalNumericOrder(discretizer, scale, declaredDomain);
 
         // §10.7/D-117: the rendered-name backstop collects offenders in RENDER order
         // (the order this attribute's formal attributes are planned) so the sample list
@@ -423,25 +426,29 @@ public static class ConversionPlanner
                     new DiagnosticLocation(AttributeName: attribute.Name)));
             }
 
-            // §10.3 / D-036: an absent domain (omitted or authored []) on a consuming
-            // discretizer is now filled by the Calibrate phase (ObservedDomainUsed),
-            // so the effective spec Plan receives already carries a resolved domain —
-            // the D-071 transitional plan reject retired at M4. Cut discretizers ignore
-            // the domain (§10.3) and are unaffected.
+            // §10.3 / D-036 / D-122 §15: an OMITTED domain on a consuming discretizer is
+            // filled by the Calibrate phase (ObservedDomainUsed), so the effective spec Plan
+            // receives already carries a resolved domain — the D-071 transitional plan reject
+            // retired at M4. An authored [] is a complete fixed empty domain that calibration
+            // leaves untouched. Cut discretizers ignore the domain (§10.3) and are unaffected.
 
-            // §12.3 / D-081: the value-bin ordinal path (identity — the only M2
-            // value-bin discretizer, D-070) needs an explicit scale.order that is a
-            // full permutation of the declared_domain, or it would silently ignore the
-            // authored order/boundary. Membership is checked only for a non-empty
-            // domain — an absent domain is already rejected by D-071 above, so
-            // re-reporting here would double up (cut discretizers ignore the domain and
-            // never take this path — their order is OrdinalOrderNotAllowedWithCuts).
+            // The effective bin universe. A consuming discretizer's domain is non-null here
+            // (calibration filled an omitted one before plan); a cut discretizer's is ignored.
+            // An authored [] is a genuine empty universe — not coalesced away — so the ordinal
+            // checks below still apply to it (D-122 §15 / REG-PRES-002).
+            var declaredDomain = attribute.DeclaredDomain ?? [];
+
+            // §12.3 / D-081 / D-122 §15: identity value bins need an explicit scale.order that is
+            // a full permutation of the declared_domain, or they would silently ignore the
+            // authored order/boundary. A complete empty universe (an authored []) is NOT exempt:
+            // an omitted order there is OrdinalOrderMissing and order = [] is the valid empty
+            // permutation. Cut discretizers ignore the domain and never take this path — their
+            // order is OrdinalOrderNotAllowedWithCuts.
             if (attribute.Discretizer is IdentityDiscretizer
-                && attribute.Scale is OrdinalScale ordinal
-                && attribute.DeclaredDomain.Count > 0)
+                && attribute.Scale is OrdinalScale ordinal)
             {
                 ValidateValueBinOrder(
-                    attribute, ordinal, attribute.DeclaredDomain, "identity value bins", "declared_domain value", diagnostics);
+                    attribute, ordinal, declaredDomain, "identity value bins", "declared_domain value", diagnostics);
             }
 
             // §12.3 / D-096: free_per_value value bins take the same ordinal path. A NUMERIC
@@ -455,7 +462,7 @@ public static class ConversionPlanner
                 && !(freePerValue.ValueType == SourceValueType.Number && freeOrdinal.Order is null))
             {
                 ValidateValueBinOrder(
-                    attribute, freeOrdinal, attribute.DeclaredDomain, "free_per_value value bins", "declared_domain value", diagnostics);
+                    attribute, freeOrdinal, declaredDomain, "free_per_value value bins", "declared_domain value", diagnostics);
             }
 
             // §12.3 / §11.6 / D-090: value groups take the same value-bin ordinal path, but their
@@ -470,7 +477,7 @@ public static class ConversionPlanner
                 && attribute.Scale is OrdinalScale groupOrdinal)
             {
                 ValidateValueBinOrder(
-                    attribute, groupOrdinal, valueGroups.BinLabels(attribute.DeclaredDomain),
+                    attribute, groupOrdinal, valueGroups.BinLabels(declaredDomain),
                     "value groups", "group label", diagnostics);
             }
         }

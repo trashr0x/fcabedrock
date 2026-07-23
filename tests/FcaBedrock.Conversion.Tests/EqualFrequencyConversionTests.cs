@@ -255,7 +255,7 @@ public sealed class EqualFrequencyConversionTests
 
         Assert.True(result.TryGetValue(out var calibrated));
         Assert.DoesNotContain(result.Diagnostics, d => d.Code == DiagnosticCode.ObservedDomainUsed);
-        Assert.Empty(calibrated!.Spec.Attributes[0].DeclaredDomain);
+        Assert.Empty(calibrated!.Spec.Attributes[0].DeclaredDomain ?? []); // cut discretizer consumes no domain
         Assert.IsType<CalibratedCuts>(Assert.Single(calibrated.Calibrations));
     }
 
@@ -523,7 +523,7 @@ public sealed class EqualFrequencyConversionTests
         // An observed domain is set-idempotent, so it does not need a subject's rows together —
         // running the grouped pass anyway would cost a whole read for nothing.
         var spec = Triple(TripleOrdering.Unordered,
-            ConversionFixtures.PredicateNominal("g", "g", []));
+            ConversionFixtures.PredicateNominal("g", "g", null));
 
         Assert.Equal(1, await CountTriplePassesAsync(spec, "s0,g,x\ns1,g,y\ns0,g,x"));
     }

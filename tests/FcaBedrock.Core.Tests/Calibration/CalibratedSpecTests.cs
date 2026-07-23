@@ -33,9 +33,9 @@ public sealed class CalibratedSpecTests
     [Fact]
     public void FromFullyDeclared_WhenSpecRequiresData_ThenThrows()
     {
-        // An absent-domain identity attribute is data-dependent; calling the fast path is a
+        // An omitted-domain identity attribute is data-dependent; calling the fast path is a
         // mis-sequenced call that skipped the calibrator (D-093 programmer-error posture).
-        var resolved = Resolve(With(SpecFixtures.Nominal("g", 0, [])), 1);
+        var resolved = Resolve(With(SpecFixtures.Nominal("g", 0, null)), 1);
 
         Assert.Throws<ArgumentException>(() => CalibratedSpec.FromFullyDeclared(resolved));
     }
@@ -43,8 +43,19 @@ public sealed class CalibratedSpecTests
     // --- RequiresData ---
 
     [Fact]
-    public void RequiresData_WhenAbsentDomainIdentity_ThenTrue() =>
-        Assert.True(CalibratedSpec.RequiresData(With(SpecFixtures.Nominal("g", 0, []))));
+    public void RequiresData_WhenOmittedDomainIdentity_ThenTrue() =>
+        Assert.True(CalibratedSpec.RequiresData(With(SpecFixtures.Nominal("g", 0, null))));
+
+    [Fact]
+    public void RequiresData_WhenAuthoredEmptyDomainIdentityUnderWarn_ThenFalse() =>
+        // D-122 §15: an authored [] is a complete fixed empty domain — it requests no calibration.
+        Assert.False(CalibratedSpec.RequiresData(With(SpecFixtures.Nominal("g", 0, []))));
+
+    [Fact]
+    public void RequiresData_WhenAuthoredEmptyDomainIdentityUnderInclude_ThenTrue() =>
+        // include still reads data to discover additions, even over an authored [] (D-122 §15).
+        Assert.True(CalibratedSpec.RequiresData(
+            With(SpecFixtures.Nominal("g", 0, []) with { UnknownValuePolicy = UnknownValuePolicy.Include })));
 
     [Fact]
     public void RequiresData_WhenExplicitDomainIdentityUnderInclude_ThenTrue() =>
@@ -77,9 +88,9 @@ public sealed class CalibratedSpecTests
     // --- Create: observed domain ---
 
     [Fact]
-    public void Create_WhenAbsentDomainGivenObservedDomain_ThenEffectiveDomainIsObserved()
+    public void Create_WhenOmittedDomainGivenObservedDomain_ThenEffectiveDomainIsObserved()
     {
-        var resolved = Resolve(With(SpecFixtures.Nominal("g", 0, [])), 1);
+        var resolved = Resolve(With(SpecFixtures.Nominal("g", 0, null)), 1);
 
         Assert.True(CalibratedSpec.Create(resolved, [new ObservedDomain("g", ["b", "n"])]).TryGetValue(out var calibrated));
         Assert.Equal(["b", "n"], calibrated.Spec.Attributes[0].DeclaredDomain);
@@ -87,30 +98,65 @@ public sealed class CalibratedSpecTests
     }
 
     [Fact]
-    public void Create_WhenAbsentDomainWithEmptyObservedDomain_ThenLegalAndEmptyEffectiveDomain()
+    public void Create_WhenOmittedDomainWithEmptyObservedDomain_ThenLegalAndEmptyEffectiveDomain()
     {
         // An empty observed domain is legal (§10.1/§10.3): the attribute yields zero columns.
-        var resolved = Resolve(With(SpecFixtures.Nominal("g", 0, [])), 1);
+        var resolved = Resolve(With(SpecFixtures.Nominal("g", 0, null)), 1);
 
         Assert.True(CalibratedSpec.Create(resolved, [new ObservedDomain("g", [])]).TryGetValue(out var calibrated));
-        Assert.Empty(calibrated.Spec.Attributes[0].DeclaredDomain);
+        var domain = calibrated.Spec.Attributes[0].DeclaredDomain;
+        Assert.NotNull(domain); // an omitted domain is filled to a concrete (here empty) list, not left null
+        Assert.Empty(domain);
     }
 
     [Fact]
-    public void Create_WhenAbsentDomainOutcomeMissing_ThenThrows()
+    public void Create_WhenOmittedDomainOutcomeMissing_ThenThrows()
     {
-        var resolved = Resolve(With(SpecFixtures.Nominal("g", 0, [])), 1);
+        var resolved = Resolve(With(SpecFixtures.Nominal("g", 0, null)), 1);
 
         Assert.Throws<ArgumentException>(() => CalibratedSpec.Create(resolved, []));
     }
 
     [Fact]
-    public void Create_WhenAbsentDomainGivenIncludeAdditions_ThenThrows()
+    public void Create_WhenOmittedDomainGivenIncludeAdditions_ThenThrows()
     {
         // ObservedDomain represents the complete population and never co-occurs with IncludeAdditions.
-        var resolved = Resolve(With(SpecFixtures.Nominal("g", 0, [])), 1);
+        var resolved = Resolve(With(SpecFixtures.Nominal("g", 0, null)), 1);
 
         Assert.Throws<ArgumentException>(() => CalibratedSpec.Create(resolved, [new IncludeAdditions("g", ["b"])]));
+    }
+
+    // --- Create: authored empty domain (D-122 §15) ---
+
+    [Fact]
+    public void Create_WhenAuthoredEmptyDomainUnderWarn_ThenNoOutcomeNeededAndDomainStaysEmpty()
+    {
+        // An authored [] is complete: it needs no outcome (providing one throws), and with none the
+        // effective domain stays the authored empty universe (zero value bins).
+        var resolved = Resolve(With(SpecFixtures.Nominal("g", 0, [])), 1);
+
+        Assert.Throws<ArgumentException>(() => CalibratedSpec.Create(resolved, [new ObservedDomain("g", ["b"])]));
+
+        Assert.True(CalibratedSpec.Create(resolved, []).TryGetValue(out var calibrated));
+        var domain = calibrated.Spec.Attributes[0].DeclaredDomain;
+        Assert.NotNull(domain);
+        Assert.Empty(domain);
+        Assert.Empty(calibrated.Calibrations);
+    }
+
+    [Fact]
+    public void Create_WhenAuthoredEmptyDomainUnderInclude_ThenRequiresIncludeAdditionsNeverObserved()
+    {
+        // Authored [] under include takes the IncludeAdditions path, never ObservedDomain: the empty
+        // domain contributes nothing, so the effective domain is exactly the additions (D-122 §15).
+        var resolved = Resolve(
+            With(SpecFixtures.Nominal("g", 0, []) with { UnknownValuePolicy = UnknownValuePolicy.Include }), 1);
+
+        Assert.Throws<ArgumentException>(() => CalibratedSpec.Create(resolved, [new ObservedDomain("g", ["b"])]));
+
+        Assert.True(CalibratedSpec.Create(resolved, [new IncludeAdditions("g", ["b", "n"])]).TryGetValue(out var calibrated));
+        Assert.Equal(["b", "n"], calibrated.Spec.Attributes[0].DeclaredDomain);
+        Assert.IsType<IncludeAdditions>(Assert.Single(calibrated.Calibrations));
     }
 
     // --- Create: include additions ---
@@ -147,7 +193,7 @@ public sealed class CalibratedSpecTests
     [Fact]
     public void Create_WhenDuplicateOutcomeForOneAttribute_ThenThrows()
     {
-        var resolved = Resolve(With(SpecFixtures.Nominal("g", 0, [])), 1);
+        var resolved = Resolve(With(SpecFixtures.Nominal("g", 0, null)), 1);
 
         Assert.Throws<ArgumentException>(() =>
             CalibratedSpec.Create(resolved, [new ObservedDomain("g", ["b"]), new ObservedDomain("g", ["n"])]));
@@ -156,7 +202,7 @@ public sealed class CalibratedSpecTests
     [Fact]
     public void Create_WhenOutcomeNamesUnknownAttribute_ThenThrows()
     {
-        var resolved = Resolve(With(SpecFixtures.Nominal("g", 0, [])), 1);
+        var resolved = Resolve(With(SpecFixtures.Nominal("g", 0, null)), 1);
 
         Assert.Throws<ArgumentException>(() =>
             CalibratedSpec.Create(resolved, [new ObservedDomain("g", ["b"]), new ObservedDomain("nope", ["x"])]));
@@ -249,7 +295,7 @@ public sealed class CalibratedSpecTests
         // rather than re-deriving them, so they must come back in a deterministic order.
         var spec = new BedrockSpec(SpecFixtures.WideRowIndex(), [
             SpecFixtures.EqualWidthPending("a", 0, 2, new NominalScale()),
-            SpecFixtures.Nominal("g", 1, []),
+            SpecFixtures.Nominal("g", 1, null),
             SpecFixtures.EqualWidthPending("z", 2, 2, new NominalScale()),
         ]);
 
@@ -656,7 +702,11 @@ public sealed class CalibratedSpecTests
 
         foreach (var attribute in calibrated.Spec.Attributes)
         {
-            AssertImmutableList(attribute.DeclaredDomain);
+            if (attribute.DeclaredDomain is { } declaredDomain)
+            {
+                AssertImmutableList(declaredDomain);
+            }
+
             AssertImmutableList(attribute.RestrictTo);
             switch (attribute.Discretizer)
             {
@@ -730,7 +780,7 @@ public sealed class CalibratedSpecTests
         // The pending → executable substitution rebuilds the attribute; its restrict_to must ride
         // through untouched. An included-AND-restricted attribute is the case that proves it — the
         // substitution and the restriction live on the same attribute.
-        var domainless = SpecFixtures.Nominal("g", 0, []) with
+        var domainless = SpecFixtures.Nominal("g", 0, null) with
         {
             RestrictTo = [new RestrictToValue("b")],
         };
@@ -774,7 +824,7 @@ public sealed class CalibratedSpecTests
     [Fact]
     public void Create_WhenANonFiniteRangeBoundSurvivedPastTheSeam_ThenThrows()
     {
-        var resolved = Resolve(With(SpecFixtures.Nominal("g", 0, [])), 1);
+        var resolved = Resolve(With(SpecFixtures.Nominal("g", 0, null)), 1);
         var tampered = TamperRestrictions(resolved, [new RestrictToRange(double.NegativeInfinity, 20.0)]);
 
         Assert.Throws<ArgumentException>(() => CalibratedSpec.Create(tampered, [new ObservedDomain("g", ["b"])]));

@@ -118,7 +118,7 @@ internal static class ConversionFixtures
         new(() => new MemoryStream(Encoding.UTF8.GetBytes(text)), binding);
 
     public static AttributeSpec PredicateNominal(
-        string name, string predicate, IReadOnlyList<string> domain,
+        string name, string predicate, IReadOnlyList<string>? domain,
         IReadOnlyDictionary<string, string>? labels = null, MissingPolicy missing = MissingPolicy.Skip) =>
         new(name, new PredicateSource(predicate, SourceValueType.String), Include: true, new IdentityDiscretizer(), new NominalScale(),
             domain, RestrictTo: [], labels ?? NoLabels, missing, UnknownValuePolicy.Warn);

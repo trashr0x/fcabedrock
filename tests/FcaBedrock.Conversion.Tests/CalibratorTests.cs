@@ -11,13 +11,13 @@ namespace FcaBedrock.Conversion.Tests;
 public sealed class CalibratorTests
 {
     private static AttributeSpec Identity(
-        string name, int index, IReadOnlyList<string> domain, UnknownValuePolicy policy = UnknownValuePolicy.Warn) =>
+        string name, int index, IReadOnlyList<string>? domain, UnknownValuePolicy policy = UnknownValuePolicy.Warn) =>
         new(name, new ColumnSource(index, SourceValueType.String), Include: true, new IdentityDiscretizer(),
             new NominalScale(), domain, RestrictTo: [], ConversionFixtures.NoLabels, MissingPolicy.Skip, policy);
 
     // A numeric free_per_value attribute (D-096): its observed values are canonical numeric identities.
     private static AttributeSpec NumericFreePerValue(
-        string name, int index, IReadOnlyList<string> domain, UnknownValuePolicy policy = UnknownValuePolicy.Warn) =>
+        string name, int index, IReadOnlyList<string>? domain, UnknownValuePolicy policy = UnknownValuePolicy.Warn) =>
         new(name, new ColumnSource(index, SourceValueType.Number), Include: true,
             new FreePerValueDiscretizer(SourceValueType.Number, CultureInfo.InvariantCulture),
             new NominalScale(), domain, RestrictTo: [], ConversionFixtures.NoLabels, MissingPolicy.Skip, policy);
@@ -34,7 +34,7 @@ public sealed class CalibratorTests
     [Fact]
     public async Task CalibrateAsync_WhenAbsentDomain_ThenObservedInFirstAppearanceOrderAndWarns()
     {
-        var spec = new BedrockSpec(ConversionFixtures.Wide(hasHeader: false), [Identity("g", 0, [])]);
+        var spec = new BedrockSpec(ConversionFixtures.Wide(hasHeader: false), [Identity("g", 0, null)]);
         var (resolved, source) = await WidePrep(spec, "a\nb\na\nc");
 
         var result = await Calibrator.CalibrateAsync(resolved, source);
@@ -51,14 +51,54 @@ public sealed class CalibratorTests
     [Fact]
     public async Task CalibrateAsync_WhenAbsentDomainAndAllMissing_ThenEmptyObservedDomainStillWarns()
     {
-        var spec = new BedrockSpec(ConversionFixtures.Wide(hasHeader: false), [Identity("g", 0, [])]);
+        var spec = new BedrockSpec(ConversionFixtures.Wide(hasHeader: false), [Identity("g", 0, null)]);
         var (resolved, source) = await WidePrep(spec, "?\n?");
 
         var result = await Calibrator.CalibrateAsync(resolved, source);
 
         Assert.True(result.TryGetValue(out var calibrated));
-        Assert.Empty(calibrated.Spec.Attributes[0].DeclaredDomain);
+        var domain = calibrated.Spec.Attributes[0].DeclaredDomain;
+        Assert.NotNull(domain); // calibration filled the omitted domain, empty here (all values missing)
+        Assert.Empty(domain);
         Assert.Contains(result.Diagnostics, d => d.Code == DiagnosticCode.ObservedDomainUsed);
+    }
+
+    // --- authored empty domain (D-122 §15): [] is complete, distinct from omission ---
+
+    [Fact]
+    public async Task CalibrateAsync_WhenAuthoredEmptyDomainUnderWarn_ThenNoObservedCalibration()
+    {
+        // An authored [] is a complete fixed empty domain: no observed-domain discovery, no
+        // outcome, no ObservedDomainUsed — the effective domain stays the empty universe.
+        var spec = new BedrockSpec(ConversionFixtures.Wide(hasHeader: false), [Identity("g", 0, [])]);
+        var (resolved, source) = await WidePrep(spec, "a\nb\na");
+
+        var result = await Calibrator.CalibrateAsync(resolved, source);
+
+        Assert.True(result.TryGetValue(out var calibrated));
+        var domain = calibrated.Spec.Attributes[0].DeclaredDomain;
+        Assert.NotNull(domain);
+        Assert.Empty(domain);
+        Assert.Empty(calibrated.Calibrations);
+        Assert.DoesNotContain(result.Diagnostics, d => d.Code == DiagnosticCode.ObservedDomainUsed);
+    }
+
+    [Fact]
+    public async Task CalibrateAsync_WhenAuthoredEmptyDomainUnderInclude_ThenAdditionsOnly()
+    {
+        // Authored [] under include: the empty domain seeds nothing, so every observed value is an
+        // addition — an IncludeAdditions outcome, never ObservedDomain (D-122 §15).
+        var spec = new BedrockSpec(ConversionFixtures.Wide(hasHeader: false),
+            [Identity("g", 0, [], UnknownValuePolicy.Include)]);
+        var (resolved, source) = await WidePrep(spec, "a\nb\na\nc");
+
+        var result = await Calibrator.CalibrateAsync(resolved, source);
+
+        Assert.True(result.TryGetValue(out var calibrated));
+        Assert.Equal(["a", "b", "c"], calibrated.Spec.Attributes[0].DeclaredDomain);
+        Assert.Equal(["a", "b", "c"], Assert.IsType<IncludeAdditions>(Assert.Single(calibrated.Calibrations)).Values);
+        Assert.DoesNotContain(result.Diagnostics, d => d.Code == DiagnosticCode.ObservedDomainUsed);
+        Assert.Contains(result.Diagnostics, d => d.Code == DiagnosticCode.UnknownValuePolicyInclude);
     }
 
     // --- include-additions calibration (wide) ---
@@ -99,7 +139,7 @@ public sealed class CalibratorTests
     {
         // 90, 90.0, 9e1 collapse to one bin "90" at the position of their first occurrence; every
         // zero spelling collapses to "0" (D-096). Discovery/first-observation order is raw input order.
-        var spec = new BedrockSpec(ConversionFixtures.Wide(hasHeader: false), [NumericFreePerValue("v", 0, [])]);
+        var spec = new BedrockSpec(ConversionFixtures.Wide(hasHeader: false), [NumericFreePerValue("v", 0, null)]);
         var (resolved, source) = await WidePrep(spec, "90\n5\n90.0\n-0\n9e1\n0");
 
         var result = await Calibrator.CalibrateAsync(resolved, source);
@@ -130,13 +170,15 @@ public sealed class CalibratorTests
     public async Task CalibrateAsync_WhenNumericFreePerValueAllUnparseable_ThenEmptyObservedStillWarns()
     {
         // Mode-triggered warning fires even at zero discoveries (§7); unparseable values are excluded.
-        var spec = new BedrockSpec(ConversionFixtures.Wide(hasHeader: false), [NumericFreePerValue("v", 0, [])]);
+        var spec = new BedrockSpec(ConversionFixtures.Wide(hasHeader: false), [NumericFreePerValue("v", 0, null)]);
         var (resolved, source) = await WidePrep(spec, "abc\nxyz");
 
         var result = await Calibrator.CalibrateAsync(resolved, source);
 
         Assert.True(result.TryGetValue(out var calibrated));
-        Assert.Empty(calibrated.Spec.Attributes[0].DeclaredDomain);
+        var domain = calibrated.Spec.Attributes[0].DeclaredDomain;
+        Assert.NotNull(domain); // calibration filled the omitted domain, empty here (all values unparseable)
+        Assert.Empty(domain);
         Assert.Contains(result.Diagnostics, d => d.Code == DiagnosticCode.ObservedDomainUsed);
     }
 
@@ -144,7 +186,7 @@ public sealed class CalibratorTests
     public async Task CalibrateAsync_WhenNumericFreePerValueUnparseableUnderWarn_ThenAggregatedSourceValueUnparseableWarning()
     {
         var spec = new BedrockSpec(ConversionFixtures.Wide(hasHeader: false),
-            [NumericFreePerValue("v", 0, [], UnknownValuePolicy.Warn)]);
+            [NumericFreePerValue("v", 0, null, UnknownValuePolicy.Warn)]);
         var (resolved, source) = await WidePrep(spec, "90\nabc\n5\nxyz");
 
         var result = await Calibrator.CalibrateAsync(resolved, source);
@@ -161,7 +203,7 @@ public sealed class CalibratorTests
     {
         // D-100: the calibrate-phase Error aborts (no calibrated result) before emit.
         var spec = new BedrockSpec(ConversionFixtures.Wide(hasHeader: false),
-            [NumericFreePerValue("v", 0, [], UnknownValuePolicy.Fail)]);
+            [NumericFreePerValue("v", 0, null, UnknownValuePolicy.Fail)]);
         var (resolved, source) = await WidePrep(spec, "90\nabc");
 
         var result = await Calibrator.CalibrateAsync(resolved, source);
@@ -175,7 +217,7 @@ public sealed class CalibratorTests
     public async Task CalibrateAsync_WhenNumericFreePerValueUnparseableUnderSkip_ThenSilent()
     {
         var spec = new BedrockSpec(ConversionFixtures.Wide(hasHeader: false),
-            [NumericFreePerValue("v", 0, [], UnknownValuePolicy.Skip)]);
+            [NumericFreePerValue("v", 0, null, UnknownValuePolicy.Skip)]);
         var (resolved, source) = await WidePrep(spec, "90\nabc\n5");
 
         var result = await Calibrator.CalibrateAsync(resolved, source);
@@ -194,7 +236,7 @@ public sealed class CalibratorTests
         var spec = new BedrockSpec(deBinding,
             [new AttributeSpec("v", new ColumnSource(0, SourceValueType.Number), Include: true,
                 new FreePerValueDiscretizer(SourceValueType.Number, CultureInfo.GetCultureInfo("de-DE")),
-                new NominalScale(), [], RestrictTo: [], ConversionFixtures.NoLabels, MissingPolicy.Skip, UnknownValuePolicy.Warn)]);
+                new NominalScale(), null, RestrictTo: [], ConversionFixtures.NoLabels, MissingPolicy.Skip, UnknownValuePolicy.Warn)]);
         var (resolved, source) = await WidePrep(spec, "30,5\n40,0");
 
         var result = await Calibrator.CalibrateAsync(resolved, source);
@@ -210,7 +252,7 @@ public sealed class CalibratorTests
         var spec = new BedrockSpec(ConversionFixtures.Wide(hasHeader: false),
             [new AttributeSpec("g", new ColumnSource(0, SourceValueType.String), Include: true,
                 new FreePerValueDiscretizer(SourceValueType.String, CultureInfo.InvariantCulture),
-                new NominalScale(), [], RestrictTo: [], ConversionFixtures.NoLabels, MissingPolicy.Skip, UnknownValuePolicy.Warn)]);
+                new NominalScale(), null, RestrictTo: [], ConversionFixtures.NoLabels, MissingPolicy.Skip, UnknownValuePolicy.Warn)]);
         var (resolved, source) = await WidePrep(spec, "b\nn\nb\n90.0");
 
         var result = await Calibrator.CalibrateAsync(resolved, source);
@@ -222,7 +264,7 @@ public sealed class CalibratorTests
 
     // --- numeric free_per_value triple calibration (canonical keys, both orderings) ---
 
-    private static AttributeSpec NumericFreePerValuePredicate(string name, string predicate, IReadOnlyList<string> domain) =>
+    private static AttributeSpec NumericFreePerValuePredicate(string name, string predicate, IReadOnlyList<string>? domain) =>
         new(name, new PredicateSource(predicate, SourceValueType.Number), Include: true,
             new FreePerValueDiscretizer(SourceValueType.Number, CultureInfo.InvariantCulture),
             new NominalScale(), domain, RestrictTo: [], ConversionFixtures.NoLabels, MissingPolicy.Skip, UnknownValuePolicy.Warn);
@@ -233,7 +275,7 @@ public sealed class CalibratorTests
         foreach (var ordering in new[] { TripleOrdering.SubjectGrouped, TripleOrdering.Unordered })
         {
             var binding = ConversionFixtures.Triple(ordering);
-            var spec = new BedrockSpec(binding, [NumericFreePerValuePredicate("v", "p", [])]);
+            var spec = new BedrockSpec(binding, [NumericFreePerValuePredicate("v", "p", null)]);
             // 90 first, 90.0 collapses onto it, 5 second → observed ["90", "5"] in first-observation order.
             var data = ordering == TripleOrdering.SubjectGrouped
                 ? "s0,p,90\ns0,p,90.0\ns1,p,5"
@@ -270,7 +312,7 @@ public sealed class CalibratorTests
     public async Task CalibrateTripleAsync_WhenNumericFreePerValueUnparseableUnderWarn_ThenAggregatedSourceValueUnparseable()
     {
         var binding = ConversionFixtures.Triple(TripleOrdering.Unordered);
-        var spec = new BedrockSpec(binding, [NumericFreePerValuePredicate("v", "p", [])]);
+        var spec = new BedrockSpec(binding, [NumericFreePerValuePredicate("v", "p", null)]);
         var source = ConversionFixtures.TripleSourceOver("s0,p,90\ns1,p,abc", binding);
         var resolved = ConversionFixtures.ResolveFor(spec, await source.GetSchemaAsync());
 
@@ -303,7 +345,7 @@ public sealed class CalibratorTests
     public async Task CalibrateAsync_WhenMultipleAbsentDomains_ThenWarningsInSpecAttributeOrder()
     {
         var spec = new BedrockSpec(ConversionFixtures.Wide(hasHeader: false),
-            [Identity("first", 0, []), Identity("second", 1, [])]);
+            [Identity("first", 0, null), Identity("second", 1, null)]);
         var (resolved, source) = await WidePrep(spec, "a,x\nb,y");
 
         var result = await Calibrator.CalibrateAsync(resolved, source);
@@ -319,7 +361,7 @@ public sealed class CalibratorTests
     public async Task CalibrateAsync_WhenCancelled_ThenPropagatesOperationCanceled()
     {
         // Cancellation propagates; it is never converted to a diagnostic (P-14).
-        var spec = new BedrockSpec(ConversionFixtures.Wide(hasHeader: false), [Identity("g", 0, [])]);
+        var spec = new BedrockSpec(ConversionFixtures.Wide(hasHeader: false), [Identity("g", 0, null)]);
         var (resolved, source) = await WidePrep(spec, "a\nb");
         using var cts = new CancellationTokenSource();
         cts.Cancel();
@@ -335,7 +377,7 @@ public sealed class CalibratorTests
     {
         // Same header/arity but a different missing_token — the descriptor settings mismatch is caught
         // before any row is read (D-098).
-        var spec = new BedrockSpec(ConversionFixtures.Wide(hasHeader: false), [Identity("g", 0, [])]);
+        var spec = new BedrockSpec(ConversionFixtures.Wide(hasHeader: false), [Identity("g", 0, null)]);
         var resolved = ConversionFixtures.ResolveFor(spec, new SourceSchema(1));
         var mismatched = ConversionFixtures.SourceOver("a\nb", ConversionFixtures.Wide(hasHeader: false, missingToken: "NA"));
 
@@ -347,7 +389,7 @@ public sealed class CalibratorTests
     public async Task CalibrateAsync_WhenBoundSourceMatchesResolution_ThenTokenPairingSucceeds()
     {
         // A session-bound source carries the resolution token; the guard pairs by reference identity.
-        var spec = new BedrockSpec(ConversionFixtures.Wide(hasHeader: false), [Identity("g", 0, [])]);
+        var spec = new BedrockSpec(ConversionFixtures.Wide(hasHeader: false), [Identity("g", 0, null)]);
         var settings = SpecReadSettingsFor(spec.Binding);
         var session = new WideCsvSession(() => Stream("a\nb"), settings);
         var schema = await session.GetSchemaAsync();
@@ -370,7 +412,7 @@ public sealed class CalibratorTests
             var binding = ConversionFixtures.Triple(ordering);
             var spec = new BedrockSpec(binding,
                 [new AttributeSpec("g", new PredicateSource("p", SourceValueType.String), Include: true,
-                    new IdentityDiscretizer(), new NominalScale(), [], RestrictTo: [], ConversionFixtures.NoLabels,
+                    new IdentityDiscretizer(), new NominalScale(), null, RestrictTo: [], ConversionFixtures.NoLabels,
                     MissingPolicy.Skip, UnknownValuePolicy.Warn)]);
             // subject_grouped needs contiguous subjects; both observe raw value order a, b, c.
             var data = ordering == TripleOrdering.SubjectGrouped
@@ -392,7 +434,7 @@ public sealed class CalibratorTests
         var binding = ConversionFixtures.Triple(TripleOrdering.SubjectGrouped);
         var spec = new BedrockSpec(binding,
             [new AttributeSpec("g", new PredicateSource("p", SourceValueType.String), Include: true,
-                new IdentityDiscretizer(), new NominalScale(), [], RestrictTo: [], ConversionFixtures.NoLabels,
+                new IdentityDiscretizer(), new NominalScale(), null, RestrictTo: [], ConversionFixtures.NoLabels,
                 MissingPolicy.Skip, UnknownValuePolicy.Warn)]);
         var source = ConversionFixtures.TripleSourceOver("s0,p,a\ns1,p,b\ns0,p,c", binding);
         var resolved = ConversionFixtures.ResolveFor(spec, await source.GetSchemaAsync());
@@ -409,7 +451,7 @@ public sealed class CalibratorTests
         var binding = ConversionFixtures.Triple(TripleOrdering.Unordered);
         var spec = new BedrockSpec(binding,
             [new AttributeSpec("g", new PredicateSource("p", SourceValueType.String), Include: true,
-                new IdentityDiscretizer(), new NominalScale(), [], RestrictTo: [], ConversionFixtures.NoLabels,
+                new IdentityDiscretizer(), new NominalScale(), null, RestrictTo: [], ConversionFixtures.NoLabels,
                 MissingPolicy.Skip, UnknownValuePolicy.Warn)]);
         // The second row's subject is the missing token → unusable.
         var source = ConversionFixtures.TripleSourceOver("s0,p,a\n?,p,b", binding);

@@ -191,11 +191,12 @@ public sealed class TemplateApplicationTests
     }
 
     [Fact]
-    public void Apply_WhenAHigherTierAuthorsAnEmptyDomain_ThenItOverridesAPopulatedOne()
+    public void Apply_WhenAHigherTierAuthorsAnEmptyDomain_ThenItOverridesToAnAuthoredCompleteEmpty()
     {
-        // §10.3's authored `[]` is a presence state distinct from omission (D-071): it
-        // overrides the earlier domain, and then RESOLVES as absent (calibrated later) —
-        // which is why the resolved domain is empty rather than ["x"].
+        // §10.3's authored `[]` is a presence state distinct from omission (D-114 whole-value
+        // layering): the higher-tier template's [] overrides the earlier ["x"], and — under
+        // D-122 §15 — resolves as authored-complete (a fixed empty domain, NOT omitted/calibrated),
+        // so the resolved domain is a non-null empty list rather than ["x"] or null.
         var attribute = ResolveSingle(With(
             Bare(),
             [
@@ -205,6 +206,7 @@ public sealed class TemplateApplicationTests
             ],
             [MatchAll("a"), MatchAll("b")]));
 
+        Assert.NotNull(attribute.DeclaredDomain);
         Assert.Empty(attribute.DeclaredDomain);
     }
 

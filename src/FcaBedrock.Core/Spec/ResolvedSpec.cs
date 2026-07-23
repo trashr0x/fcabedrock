@@ -267,7 +267,7 @@ public sealed class ResolvedSpec
             return;
         }
 
-        foreach (var key in attribute.DeclaredDomain)
+        foreach (var key in attribute.DeclaredDomain ?? [])
         {
             RequireCanonicalNumeric(key, attribute.Name, "declared_domain");
         }
@@ -619,7 +619,9 @@ public sealed class ResolvedSpec
         {
             Discretizer = SnapshotDiscretizer(attribute.Discretizer),
             Scale = SnapshotScale(attribute.Scale),
-            DeclaredDomain = attribute.DeclaredDomain.ToImmutableArray(),
+            // Presence is load-bearing (D-122 §15): an omitted (null) domain stays null so the
+            // Calibrate phase still fills it; an authored [] stays a fixed empty domain.
+            DeclaredDomain = attribute.DeclaredDomain is { } declaredDomain ? declaredDomain.ToImmutableArray() : null,
             RestrictTo = SnapshotRestrictTo(attribute.RestrictTo),
             ValueLabels = attribute.ValueLabels.Count == 0
                 ? FrozenDictionary<string, string>.Empty

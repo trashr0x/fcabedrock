@@ -21,7 +21,7 @@ namespace FcaBedrock.Spec.Toml;
 /// <param name="Template">Referenced <c>[[template]]</c> id (§9.2 tier 4) — it beats every matcher template and loses to explicit fields; an unknown id is <c>TemplateReferenceUnknown</c> at resolve (D-114/D-121).</param>
 /// <param name="Discretizer">Raw value → bin label (§11); required when included (§10.9).</param>
 /// <param name="Scale">Bin label → formal attribute(s) (§12); required when included (§10.9).</param>
-/// <param name="DeclaredDomain">Schema-bearing raw values (§10.3). Null = omitted, empty = authored <c>[]</c> — both resolve as absent, but the authored form round-trips verbatim (D-049/D-071 provenance).</param>
+/// <param name="DeclaredDomain">Schema-bearing raw values (§10.3). <see langword="null"/> = omitted at this layer; any non-null list, including <c>[]</c>, is authored-complete. After §9.2 layering, only an omitted effective domain requests observed-domain calibration when consumed; an authored <c>[]</c> is a fixed empty domain. The authored form round-trips verbatim (D-049 provenance; D-122 §15, revising D-071).</param>
 /// <param name="RestrictTo">Object-level raw-value filter (§10.4); the Core union is reused — authored and resolved shapes coincide (D-057).</param>
 /// <param name="ValueLabels">Raw value → display label (§10.8).</param>
 /// <param name="MissingPolicy">Missing-value policy (§10.5); null falls back to <c>[defaults]</c> then skip.</param>

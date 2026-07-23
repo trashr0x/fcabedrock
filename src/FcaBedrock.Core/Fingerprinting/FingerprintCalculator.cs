@@ -434,9 +434,11 @@ public static class FingerprintCalculator
             ?? throw new InvalidOperationException($"Included attribute '{attribute.Name}' has no scale.");
 
         // Effective domain only: cut discretizers ignore declared_domain (§10.3),
-        // so an inert authored domain must not perturb the hash (D-077).
+        // so an inert authored domain must not perturb the hash (D-077). A consuming
+        // discretizer's effective domain is non-null here — calibration filled an omitted
+        // one, and an authored [] hashes as the empty array it is (D-122 §15).
         builder.Append("{\"declared_domain\":");
-        AppendStringArray(builder, discretizer.ConsumesDeclaredDomain ? attribute.DeclaredDomain : []);
+        AppendStringArray(builder, discretizer.ConsumesDeclaredDomain ? attribute.DeclaredDomain ?? [] : []);
         builder.Append(",\"discretizer\":");
         AppendDiscretizer(builder, discretizer);
         builder.Append(",\"missing_policy\":");

@@ -670,15 +670,22 @@ public sealed class BedMigratorTests
     }
 
     [Fact]
-    public void Migrate_WhenWholeDomainIsMissingToken_ThenResolvesAndRequiresCalibration()
+    public void Migrate_WhenWholeDomainIsMissingToken_ThenResolvesAuthoredCompleteEmptyDomain()
     {
-        // Degenerate but representable: the domain empties out and resolve succeeds. The
-        // absent-domain identity attribute is now data-dependent — the Calibrate phase fills it
-        // (ObservedDomainUsed) rather than the retired D-071 plan reject (D-036/D-098).
+        // Degenerate but representable: the [Category Values] hold only the effective missing token,
+        // so the migrated spec authors declared_domain = [] with missing_policy = "as_attribute"
+        // (D-068). Under D-122 §15 that [] is a complete fixed empty domain — the more faithful
+        // migration (v2 emitted only the missing column) — so it requests NO observed-domain
+        // calibration and plans the missing column alone. Migration is never changed to omission.
         var document = MigrateOk(Bed(new BedAttr("strength", "c", "?")));
-        Assert.Equal([], document.Attributes[0].DeclaredDomain);
+        Assert.Equal([], document.Attributes[0].DeclaredDomain); // migration bytes preserved
 
-        Assert.True(CalibratedSpec.RequiresData(ResolveOk(document)));
+        var spec = ResolveOk(document);
+        Assert.False(CalibratedSpec.RequiresData(spec));
+
+        // The empty domain contributes no value columns; only the as_attribute missing column plans.
+        Assert.True(Plan(spec, new SourceSchema(1)).TryGetValue(out var plan));
+        Assert.Equal(["strength-missing"], plan.FormalAttributes.Select(f => f.RenderedName));
     }
 
     // --- included attributes that cannot transcribe ---------------------------

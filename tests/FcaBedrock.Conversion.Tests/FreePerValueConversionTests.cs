@@ -11,7 +11,7 @@ namespace FcaBedrock.Conversion.Tests;
 // identity is one bin across observed domain, plan, and emit (§11.3/§10.7/D-096/D-101).
 public sealed class FreePerValueConversionTests
 {
-    private static AttributeSpec NumericFreePerValue(string name, int index, IReadOnlyList<string> domain, Scale scale) =>
+    private static AttributeSpec NumericFreePerValue(string name, int index, IReadOnlyList<string>? domain, Scale scale) =>
         new(name, new ColumnSource(index, SourceValueType.Number), Include: true,
             new FreePerValueDiscretizer(SourceValueType.Number, CultureInfo.InvariantCulture),
             scale, domain, RestrictTo: [], ConversionFixtures.NoLabels, MissingPolicy.Skip, UnknownValuePolicy.Warn);
@@ -42,7 +42,7 @@ public sealed class FreePerValueConversionTests
     [Fact]
     public async Task CalibratePlanEmit_WhenNumericFreePerValueNominal_ThenObservedCanonicalColumnsAndCrosses()
     {
-        var spec = new BedrockSpec(ConversionFixtures.Wide(hasHeader: false), [NumericFreePerValue("v", 0, [], new NominalScale())]);
+        var spec = new BedrockSpec(ConversionFixtures.Wide(hasHeader: false), [NumericFreePerValue("v", 0, null, new NominalScale())]);
 
         var (plan, objects, diagnostics) = await CalibratePlanEmit(spec, "90.0\n5\n9e1\n90");
 
@@ -61,7 +61,7 @@ public sealed class FreePerValueConversionTests
         // The observed-domain calibration is byte-equivalent to freezing it into an explicit domain
         // (the observed-domain analogue of the D-088 auto/frozen equivalence): same columns, same crosses.
         const string csv = "90.0\n5\n9e1\n90";
-        var auto = new BedrockSpec(ConversionFixtures.Wide(hasHeader: false), [NumericFreePerValue("v", 0, [], new NominalScale())]);
+        var auto = new BedrockSpec(ConversionFixtures.Wide(hasHeader: false), [NumericFreePerValue("v", 0, null, new NominalScale())]);
         var (autoPlan, autoObjects, _) = await CalibratePlanEmit(auto, csv);
 
         // Freeze: the observed canonical domain declared explicitly.
@@ -82,7 +82,7 @@ public sealed class FreePerValueConversionTests
         // §12.3/D-096: numeric free_per_value ordinal with no authored order derives natural ascending
         // order from the observed (canonical) domain, regardless of first-observation order.
         var scale = new OrdinalScale(OrdinalDirection.Ge, DropTop: false, OrdinalBoundary.Inclusive, Order: null);
-        var spec = new BedrockSpec(ConversionFixtures.Wide(hasHeader: false), [NumericFreePerValue("v", 0, [], scale)]);
+        var spec = new BedrockSpec(ConversionFixtures.Wide(hasHeader: false), [NumericFreePerValue("v", 0, null, scale)]);
 
         var (plan, objects, _) = await CalibratePlanEmit(spec, "90\n5\n0");
 
@@ -96,7 +96,7 @@ public sealed class FreePerValueConversionTests
     [Fact]
     public async Task CalibratePlanEmit_WhenRepeated_ThenDeterministic()
     {
-        var spec = new BedrockSpec(ConversionFixtures.Wide(hasHeader: false), [NumericFreePerValue("v", 0, [], new NominalScale())]);
+        var spec = new BedrockSpec(ConversionFixtures.Wide(hasHeader: false), [NumericFreePerValue("v", 0, null, new NominalScale())]);
 
         var (firstPlan, firstObjects, _) = await CalibratePlanEmit(spec, "90.0\n5\n9e1");
         var (secondPlan, secondObjects, _) = await CalibratePlanEmit(spec, "90.0\n5\n9e1");

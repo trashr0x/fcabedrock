@@ -19,7 +19,7 @@ namespace FcaBedrock.Spec.Toml;
 /// <param name="Include">Whether matched attributes emit formal attributes (§10.1).</param>
 /// <param name="Discretizer">Raw value → bin label (§11).</param>
 /// <param name="Scale">Bin label → formal attribute(s) (§12).</param>
-/// <param name="DeclaredDomain">Schema-bearing raw values (§10.3); null = omitted, empty = authored <c>[]</c> (D-049/D-071 provenance).</param>
+/// <param name="DeclaredDomain">Schema-bearing raw values (§10.3). <see langword="null"/> = omitted; any non-null list, including <c>[]</c>, is an authored-complete whole value under D-114 layering (D-049 provenance; D-122 §15, revising D-071).</param>
 /// <param name="RestrictTo">Object-level raw-value filter (§10.4).</param>
 /// <param name="ValueLabels">Raw value → display label (§10.8).</param>
 /// <param name="MissingPolicy">Missing-value policy (§10.5).</param>

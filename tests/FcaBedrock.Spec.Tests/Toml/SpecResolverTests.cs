@@ -253,10 +253,11 @@ public sealed class SpecResolverTests
     }
 
     [Fact]
-    public void Resolve_WhenDeclaredDomainOmittedOrAuthoredEmpty_ThenBothResolveEmpty()
+    public void Resolve_WhenDeclaredDomainOmittedVersusAuthoredEmpty_ThenPresenceSurvives()
     {
-        // D-049/D-071: omitted and authored-[] coincide in Core; the authored form is
-        // document provenance, kept for round-trip, not a resolved distinction.
+        // D-122 §15 (revising D-071): omission and an authored [] are distinct in Core — an omitted
+        // domain resolves to null (calibrated where a discretizer consumes it), an authored [] to the
+        // empty list (a complete fixed empty domain). The document keeps the authored form for round-trip.
         var document = DocumentFixtures.Document(
         [
             DocumentFixtures.Nominal("omitted", 0, domain: null),
@@ -265,7 +266,10 @@ public sealed class SpecResolverTests
 
         Assert.True(Resolve(document).TryGetValue(out var spec));
 
-        Assert.All(spec.Attributes, a => Assert.Empty(a.DeclaredDomain));
+        Assert.Null(spec.Attributes[0].DeclaredDomain);
+        var authoredEmpty = spec.Attributes[1].DeclaredDomain;
+        Assert.NotNull(authoredEmpty);
+        Assert.Empty(authoredEmpty);
     }
 
     [Fact]
@@ -1737,6 +1741,27 @@ public sealed class SpecResolverTests
 
         Assert.True(result.TryGetValue(out var spec));
         Assert.Equal(["90", "5", "0"], spec.Attributes[0].DeclaredDomain);
+    }
+
+    [Fact]
+    public void Resolve_WhenNumericFreePerValueDomainOmittedVersusAuthoredEmpty_ThenPresenceSurvivesNormalization()
+    {
+        // D-122 §15 through the numeric-normalization branch (NormalizeNumericDomain): omission and an
+        // authored [] stay distinct in Core even where the numeric seam runs. An omitted numeric domain
+        // resolves to null and still requests calibration; an authored [] resolves to a non-null empty
+        // list (a complete fixed empty domain), mints no DeclaredDomainInvalid, and requests none.
+        var omitted = Resolve(DocumentFixtures.Document([FreePerValue("v", 0, SourceValueType.Number, domain: null)]));
+        Assert.True(omitted.TryGetValue(out var omittedSpec));
+        Assert.Null(omittedSpec.Attributes[0].DeclaredDomain);
+        Assert.True(CalibratedSpec.RequiresData(omittedSpec));
+
+        var authoredEmpty = Resolve(DocumentFixtures.Document([FreePerValue("v", 0, SourceValueType.Number, domain: [])]));
+        Assert.True(authoredEmpty.TryGetValue(out var authoredEmptySpec));
+        var domain = authoredEmptySpec.Attributes[0].DeclaredDomain;
+        Assert.NotNull(domain);
+        Assert.Empty(domain);
+        Assert.DoesNotContain(authoredEmpty.Diagnostics, d => d.Code == DiagnosticCode.DeclaredDomainInvalid);
+        Assert.False(CalibratedSpec.RequiresData(authoredEmptySpec));
     }
 
     [Fact]

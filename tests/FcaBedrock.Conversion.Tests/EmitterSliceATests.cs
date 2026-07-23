@@ -10,7 +10,7 @@ namespace FcaBedrock.Conversion.Tests;
 public sealed class EmitterSliceATests
 {
     private static AttributeSpec Identity(
-        string name, int index, IReadOnlyList<string> domain, UnknownValuePolicy policy = UnknownValuePolicy.Warn) =>
+        string name, int index, IReadOnlyList<string>? domain, UnknownValuePolicy policy = UnknownValuePolicy.Warn) =>
         new(name, new ColumnSource(index, SourceValueType.String), Include: true, new IdentityDiscretizer(),
             new NominalScale(), domain, RestrictTo: [], ConversionFixtures.NoLabels, MissingPolicy.Skip, policy);
 
@@ -69,7 +69,7 @@ public sealed class EmitterSliceATests
         // plan-phase diagnostic co-firing with a calibrate-phase one.
         var spec = new BedrockSpec(ConversionFixtures.Wide(hasHeader: false),
             [
-                Identity("g", 0, []),
+                Identity("g", 0, null),
                 Identity("h", 1, ["x"]) with { Scale = new UnimplementedScale("interordinal") },
             ]);
         var source = ConversionFixtures.SourceOver("a,x\nb,x", spec.Binding);

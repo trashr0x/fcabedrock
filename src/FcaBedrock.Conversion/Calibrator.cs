@@ -585,7 +585,10 @@ public static class Calibrator
             {
                 case IdentityDiscretizer or FreePerValueDiscretizer:
                 {
-                    var absentDomain = attribute.DeclaredDomain.Count == 0;
+                    // Omitted (null) domain requests observed-domain calibration; an authored
+                    // domain — including [] — is complete and only reads data under include
+                    // (D-122 §15). So an authored [] under warn builds no observer.
+                    var absentDomain = attribute.DeclaredDomain is null;
                     var include = attribute.UnknownValuePolicy == UnknownValuePolicy.Include;
                     if (!absentDomain && !include)
                     {
@@ -600,9 +603,12 @@ public static class Calibrator
                     var observer = new DomainObserver(isInclude: !absentDomain && include, numeric, culture);
                     if (observer.IsInclude)
                     {
-                        // The explicit domain is already canonical for a numeric free_per_value (D-096),
-                        // so seeding it verbatim matches the canonical keys observed values normalize to.
-                        observer.Seed(attribute.DeclaredDomain);
+                        // IsInclude ⟹ !absentDomain ⟹ the domain is non-null (an authored list,
+                        // possibly []). The explicit domain is already canonical for a numeric
+                        // free_per_value (D-096), so seeding it verbatim matches the canonical keys
+                        // observed values normalize to; an authored [] seeds nothing, so every
+                        // observed value becomes an addition (D-122 §15).
+                        observer.Seed(attribute.DeclaredDomain ?? []);
                     }
 
                     return observer;

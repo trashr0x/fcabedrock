@@ -282,7 +282,7 @@ public sealed class ProbeTripleGuaranteeTests
 
     // Calibrate's observed domains for the draft's own attributes, reached by stripping the
     // authored declared_domain so the Calibrate phase must discover them (§7 / D-098).
-    private static async Task<IReadOnlyDictionary<string, IReadOnlyList<string>>> CalibratedDomainsAsync(
+    private static async Task<IReadOnlyDictionary<string, IReadOnlyList<string>?>> CalibratedDomainsAsync(
         SpecDocument draft, Func<Stream> open)
     {
         var stripped = draft with
