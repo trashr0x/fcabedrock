@@ -63,6 +63,47 @@ public static class Calibrator
         ResolvedSpec resolved, ITripleRowSource source, CancellationToken cancellationToken = default) =>
         CalibrateTripleAsync(resolved, source, GroupingOptions.Default, observer: null, cancellationToken);
 
+    /// <summary>
+    /// Calibrates a wide resolved spec over its source under an explicit
+    /// <see cref="ConversionRuntimeOptions"/> — the public <c>--temp-dir</c> capability (D-123 point
+    /// 11). Identical in every observable respect to
+    /// <see cref="CalibrateAsync(ResolvedSpec, IRecordSource, CancellationToken)"/> except that a
+    /// non-null <see cref="ConversionRuntimeOptions.TempDirectory"/> chooses the spool workspace root;
+    /// it never changes the calibrated result, diagnostics, ordering, or any fingerprint (D-082). The
+    /// null <paramref name="runtimeOptions"/> check is eager (it is required to map the options); all
+    /// existing argument validation, the fully-declared no-data fast path, source pairing, pass
+    /// counts, cancellation, storage-failure mapping, cleanup, and diagnostic order are preserved by
+    /// delegating to the internal overload unchanged.
+    /// </summary>
+    public static ValueTask<Diagnosed<CalibratedSpec>> CalibrateAsync(
+        ResolvedSpec resolved,
+        IRecordSource source,
+        ConversionRuntimeOptions runtimeOptions,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(runtimeOptions);
+        return CalibrateAsync(resolved, source, runtimeOptions.ToGroupingOptions(), observer: null, cancellationToken);
+    }
+
+    /// <summary>
+    /// Calibrates a triple resolved spec over its source under an explicit
+    /// <see cref="ConversionRuntimeOptions"/>. As
+    /// <see cref="CalibrateTripleAsync(ResolvedSpec, ITripleRowSource, CancellationToken)"/>, with the
+    /// temp-directory capability applied to spool storage placement only — byte- and
+    /// fingerprint-neutral (D-082, D-123 point 11). Rejects a null <paramref name="runtimeOptions"/>
+    /// eagerly; all G-3 structural checks, pass counts, cancellation, cleanup, and diagnostic order
+    /// are preserved by the internal overload.
+    /// </summary>
+    public static ValueTask<Diagnosed<CalibratedSpec>> CalibrateTripleAsync(
+        ResolvedSpec resolved,
+        ITripleRowSource source,
+        ConversionRuntimeOptions runtimeOptions,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(runtimeOptions);
+        return CalibrateTripleAsync(resolved, source, runtimeOptions.ToGroupingOptions(), observer: null, cancellationToken);
+    }
+
     // The spill-forcing / accounting test seams (P-6), mirroring the emitter's internal
     // overloads: production always takes the public entry points above.
     internal static async ValueTask<Diagnosed<CalibratedSpec>> CalibrateAsync(

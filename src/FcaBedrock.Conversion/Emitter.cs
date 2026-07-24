@@ -67,6 +67,28 @@ public static class Emitter
         CancellationToken cancellationToken = default) =>
         EmitAsync(plan, source, diagnostics, GroupingOptions.Default, cancellationToken);
 
+    /// <summary>
+    /// Emits the formal objects for a wide <paramref name="plan"/> under an explicit
+    /// <see cref="ConversionRuntimeOptions"/> — the public <c>--temp-dir</c> capability (D-123 point
+    /// 11). Identical to
+    /// <see cref="EmitAsync(ConversionPlan, IRecordSource, ICollection{BedrockDiagnostic}, CancellationToken)"/>
+    /// except that a non-null <see cref="ConversionRuntimeOptions.TempDirectory"/> chooses the dedupe
+    /// spool workspace root; it never changes emitted objects, crosses, diagnostics, ordering, or
+    /// output bytes (D-082). The null <paramref name="runtimeOptions"/> check is eager, and delegating
+    /// to the internal (non-iterator) wide overload keeps the existing plan/source/diagnostics and
+    /// plan-variant guards eager exactly as today.
+    /// </summary>
+    public static IAsyncEnumerable<EmittedObject> EmitAsync(
+        ConversionPlan plan,
+        IRecordSource source,
+        ICollection<BedrockDiagnostic> diagnostics,
+        ConversionRuntimeOptions runtimeOptions,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(runtimeOptions);
+        return EmitAsync(plan, source, diagnostics, runtimeOptions.ToGroupingOptions(), cancellationToken);
+    }
+
     // Internal overload: the grouping budget/fan-in is a spill-forcing test seam for the dedupe path
     // (P-6); production uses GroupingOptions.Default. Non-iterator, so the guards + dispatch run eagerly.
     internal static IAsyncEnumerable<EmittedObject> EmitAsync(
@@ -441,6 +463,28 @@ public static class Emitter
         ICollection<BedrockDiagnostic> diagnostics,
         CancellationToken cancellationToken = default) =>
         EmitTripleAsync(plan, source, diagnostics, GroupingOptions.Default, cancellationToken);
+
+    /// <summary>
+    /// Emits the formal objects for a triple <paramref name="plan"/> under an explicit
+    /// <see cref="ConversionRuntimeOptions"/> — the public <c>--temp-dir</c> capability (D-123 point
+    /// 11). As
+    /// <see cref="EmitTripleAsync(ConversionPlan, ITripleRowSource, ICollection{BedrockDiagnostic}, CancellationToken)"/>,
+    /// with the temp-directory capability applied to the <c>unordered</c> grouping spool placement
+    /// only — byte- and fingerprint-neutral (D-082). The null <paramref name="runtimeOptions"/> check
+    /// is eager; the existing plan/source/diagnostics and plan-variant guards live in the internal
+    /// async iterator, so — as today for the triple path — they run when enumeration advances, not at
+    /// call time.
+    /// </summary>
+    public static IAsyncEnumerable<EmittedObject> EmitTripleAsync(
+        ConversionPlan plan,
+        ITripleRowSource source,
+        ICollection<BedrockDiagnostic> diagnostics,
+        ConversionRuntimeOptions runtimeOptions,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(runtimeOptions);
+        return EmitTripleAsync(plan, source, diagnostics, runtimeOptions.ToGroupingOptions(), cancellationToken);
+    }
 
     // Internal overload: the grouping budget/fan-in is a test seam for forcing spills (P-6); production
     // uses GroupingOptions.Default.
