@@ -219,6 +219,10 @@ superseded or refined. A new entry MUST add its line here.
 
 - D-122 — M7 CLI contract: eight commands, process/exit/signal model, safe rendering, publication transaction, per-run manifest, full calibration freeze, authored-empty domain semantics, per-command semantics, non-goals, distribution, and the argv-boundary exit floor (revises D-071's empty-domain reading; refines D-026/D-078/D-088; realizes D-005's plan/validate face, D-028's command face, D-067's validate caller, D-077's M7 write gate)
 
+### M7 (CLI) implementation
+
+- D-123 — M7 implementation architecture and public surfaces: the CLI package/global-tool boundary and one-way dependency, the CLI-internal coordinator + hand-rolled parser, centralized diagnostic/progress presentation, the complete audit argv (actual argv[0]), the input-open seam, the shared filesystem-identity service, the staged-publication transaction (create-new record, rename-aside backups, manifest-last/`--no-manifest` parity, validated recovery), the single-file `--force` matrix, the Spec-owned run manifest, the paired `SpecFreezer`, the `ConversionRuntimeOptions` temp-dir capability, the landed S1 presence nullability, and the landed S2 `.cxt` size advisory with registry 81 → 82 (lands the D-122 implementation architecture; realizes CX-M7P-001…012 and FBL-M7P-001/002; S3–S11 code is scheduled, not yet present)
+
 Spec-field defaults are recorded in spec §21 items 1–11 (see the final section
 of this file).
 
@@ -5492,6 +5496,157 @@ pinned here.
   notes; roadmap M7/M8/M9 and the deferred backlog; `AGENTS.md` status. README and
   user installation documentation are **deferred to the M7 implementation landing**
   (part 13).
+
+---
+
+### D-123 — M7 implementation architecture and public surfaces: CLI boundary, parser, presentation, audit argv, filesystem identity, publication transaction, run manifest, freeze pairing, runtime options, and the CXT size advisory (registry 81 → 82)
+
+- **Status:** accepted (M7 implementation; lands with M7 Slice B / S2; realizes the
+  D-122 implementation architecture; refines D-085's registry-timing rule)
+- **Date:** 2026-07-24
+- **Decision:** M7's implementation architecture and every new public surface are
+  settled here; the CLI host is built to this shape across slices S1–S11. Only the
+  surfaces marked **(landed)** exist as code today — S1's presence carrier and this
+  slice's advisory (S2); the rest is the **ruled architecture** later slices implement
+  without re-litigation. It records the concrete parser/serializer/transaction-mechanism
+  ownership D-122 explicitly left to the implementation plan, on the single durable entry
+  CX-M7P-011 ruled, landing no later than the registry move.
+
+  **1. Package boundary and dependency direction.** M7 ships one new package,
+  `FcaBedrock.Cli` — a .NET global tool (`PackAsTool`, `ToolCommandName = fcabedrock`,
+  `PackageId = FcaBedrock.Cli`) that references all seven production packages. **No
+  production package references `Cli`** — a one-way dependency enforced by an architecture
+  lock (point 13). Every CLI component is `internal`; a P-4 public-surface extraction
+  review gates any M9 reuse; `EmitReplaySession` stays public.
+
+  **2. Coordination and parsing.** The run/publication coordinator is plain static
+  CLI-internal composition — no DI container, no hosting, no logging framework — and
+  **adds no new parser/hosting/logging dependency**: a hand-rolled declarative parser (a
+  data-driven command table of positional operands + `--name VALUE`) owns the byte-locked
+  usage text. `System.CommandLine` was rejected because its help/usage/implicit bytes sit
+  inside M7's byte-locked stdout/stderr and would drift with upgrades (the D-075 hazard).
+
+  **3. Centralized presentation.** All diagnostics and progress flow through one
+  CLI-internal renderer (the D-122 part 3 grammar, byte-exact) plus a no-op progress
+  observer, so the committed color/progress/machine-mode follow-ups become later renderer
+  implementations rather than run-orchestration refactors.
+
+  **4. Audit argv.** The manifest `command_line` is the **complete process command-line
+  array including its actual argv[0]** (`Environment.GetCommandLineArgs()`), captured
+  **separately** from the parser's ordinary arguments and written **verbatim**
+  (CX-M7P-007/012). A non-`fcabedrock` argv[0] (e.g. a full host executable path) is
+  preserved unchanged; parsing continues over the ordinary args. `command_line` and
+  `timestamp` are the only audit-variable manifest fields.
+
+  **5. Input-open seam.** A CLI-internal input-opening seam — production opens real files;
+  argv tests inject stable or pass-specific streams — makes input-stability behavior
+  deterministically testable without timing races (CX-M7P-008). It is no public API and no
+  user option.
+
+  **6. Filesystem identity.** One shared CLI-internal identity service resolves **actual
+  OS filesystem identity** for existing files where available (Windows `FILE_ID_INFO`;
+  Unix `dev`/`ino`), unifying supported symlink **and hardlink** aliases; normalized full
+  paths are the **fallback only**. It is consumed by both the file-backed `extends` host
+  and publication collision checks, adds **no dependency**, and its identity keys never
+  reach output bytes, fingerprints, or the manifest (CX-M7P-004).
+
+  **7. Publication transaction.** Writing is a staged transaction (CX-M7P-002/003): a
+  complete **preflight** resolves the target set and fails any input/output or
+  output/output identity collision even with `--force`; a unique **create-new transaction
+  record** (`<BASE>.fcabedrock-transaction-<token>.toml` — `fcabedrock` spelled in full,
+  never `fb`) owns and lists the run's private stage/backup siblings; artifacts stage and
+  flush on the destination filesystem; forced replacement first **renames each existing
+  target aside** to a backup (a cheap same-directory, same-filesystem metadata rename,
+  never a copy or rehash); commit is per-file atomic rename in canonical format order with
+  the **manifest last** as the public commit marker (under `--no-manifest`, the equivalent
+  commit point is the complete requested artifact set), and backups plus the record are
+  removed only at that commit point. Failure/cancellation restores renamed-aside targets,
+  deletes stages, and best-effort-removes commits; **validated recovery** cleans only files
+  a transaction record lists and **never deletes unknown lookalikes** — those are reported
+  as a collision. No cross-file atomicity is claimed. The single-file writers
+  (`probe`/`migrate`/`calibrate`/`fingerprint --write`) reuse the same
+  preflight+stage+backup+atomic-rename matrix, refuse an existing target without `--force`,
+  preserve the old target on failure/cancellation, and treat **`--force --out -` as usage
+  exit 2** (CX-M7P-005); `--out -` bypasses publication.
+
+  **8. Run manifest.** `FcaBedrock.Spec` owns the public `RunManifest` model
+  (`RunSection`, `RunOutput`, `SpecFileEntry`, and calibration entries built directly from
+  the retained `AttributeCalibration` union — no re-derivation, D-093) and
+  `RunManifestWriter.Write(RunManifest) → string`, implemented on the **same
+  Spec-internal canonical TOML literal/wrapping machinery as the spec writer** (D-075/
+  D-113), so no second canonical-TOML emitter exists (P-5). The CLI composes the model and
+  never formats TOML itself.
+
+  **9. Freeze pairing.** The public **`SpecFreezer.Freeze(ResolvedDocument resolved,
+  CalibratedSpec calibrated) → SpecDocument`** is the **paired** carrier (CX-M7P-001): it
+  verifies `ReferenceEquals(resolved.Resolved, calibrated.Resolution)` and throws
+  `ArgumentException` on mismatch (the `SpecFingerprints.ComputeNative` posture, P-14), so
+  template/matcher-won values invisible in the composed document are read from the
+  effective resolved state before calibration additions are appended.
+
+  **10. Presence carrier (landed, S1).** `AttributeSpec.DeclaredDomain` is the nullable
+  presence carrier — `null` = omitted (requests observed-domain calibration); any non-null
+  list including `[]` = authored-complete. This is S1's only public change and is already
+  merged.
+
+  **11. Conversion runtime options (scheduled, S3).** A public `ConversionRuntimeOptions`
+  (single member `TempDirectory`) plus public `Calibrator`/`Emitter` overloads map to the
+  internal `GroupingOptions(tempDirectory:)`, giving `--temp-dir` a minimal, byte- and
+  fingerprint-neutral public capability; memory budget and merge fan-in stay internal
+  pending M8 (P-6).
+
+  **12. CXT size advisory (landed, this slice, S2).** `CxtWriter.WriteAsync` gains the
+  additive public overload `(…, ICollection<BedrockDiagnostic> diagnostics, long
+  sizeAdvisoryBytes)`; the existing overload delegates with the advisory disabled and stays
+  byte-identical. After the pass-1 name/count collection and **before any output byte**,
+  the writer projects the **exact** final serialized `.cxt` size in UTF-8 bytes (encoded
+  bytes, not characters, under checked 64-bit arithmetic) and appends `OutputCxtSizeAdvisory`
+  (Warning, export) when it is **at or above** a positive threshold; exactly `0` disables,
+  and a negative threshold throws `ArgumentOutOfRangeException`. The advisory changes a
+  warning only — never output bytes, never a fingerprint (D-077), and `size_advisory_bytes`
+  is not a fingerprint input. `OutputCxtSizeAdvisory` is M7's **only** new diagnostic code
+  (registry **81 → 82**); ordinary host/publication failures remain CLI-owned, code-less
+  errors (D-122 part 2), so the registry does not grow for them.
+
+  **13. Architecture lock.** `FcaBedrock.Architecture.Tests` gains a **test-only**
+  `ProjectReference` to `FcaBedrock.Cli` so the assembly loader sees the Cli assembly; the
+  non-vacuity assertion requires all **eight** production assemblies loaded, and no
+  production dependency on Cli is created (CX-M7P-006).
+
+  **14. Ruled command behaviors.** Triple `migrate` always authors
+  `ordering = "unordered"` — no `--ordering` flag (FBL-M7P-001); `fingerprint --write
+  --out -` writes **only** the corrected canonical spec on stdout and suppresses the normal
+  report, while file targets keep report-on-stdout plus spec-in-file (FBL-M7P-002).
+
+- **Why:** `AGENTS.md` requires a decision entry for real architectural decisions; P-4
+  requires public shapes to be designed before implementation; and the registry lock's own
+  convention requires the 81 → 82 count change to land **with** its decision entry. D-122
+  deliberately left concrete parser, serializer, and transaction-mechanism ownership to the
+  implementation plan; recording them here — on one durable entry, landing no later than the
+  registry move — keeps the audit trail intact precisely where M7 adds its largest new host
+  surface. The 14 consensus rulings (CX-M7P-001…012, FBL-M7P-001/002) are integrated so a
+  later reader sees what was chosen and why without reconstructing it from the review
+  register.
+- **Rejected:** `System.CommandLine` (library-owned help/usage bytes inside a byte-locked
+  surface, drifting with upgrades — the D-075 hazard); a second canonical-TOML emitter in
+  the CLI (P-5 — the one emitter stays in Spec); a raw-document-plus-unpaired-outcome
+  freezer (loses template/matcher-won values and permits cross-run mixing — CX-M7P-001);
+  path/symlink-only identity (misses the hardlink aliases normative §13 names — CX-M7P-004);
+  overwrite-then-delete forced replacement (a false commit marker and a destroyed prior run —
+  CX-M7P-002); fixed-suffix residue recognition without ownership proof (CX-M7P-003); a
+  synthesized constant `fcabedrock` argv[0] (not the verbatim audit value — CX-M7P-012);
+  exposing grouping budget/fan-in as a test seam (P-6); and several narrow decision entries
+  in place of one (a fragmented audit trail — CX-M7P-011).
+- **Affects:** `Diagnostics` (registry 81 → 82 — **landed** this slice); `Export` (the
+  `CxtWriter` advisory overload — **landed** this slice); `Core` (nullable
+  `AttributeSpec.DeclaredDomain` — **landed** S1); `Conversion` (`ConversionRuntimeOptions`
+  + overloads — scheduled S3); `Spec` (`SpecFreezer`, `RunManifest`/`RunManifestWriter`,
+  file-backed `ISpecTextSource` — scheduled S4–S10); `Cli` (the new package: parser,
+  handlers, publication, identity, rendering, packaging — scheduled S6–S11);
+  `tests/FcaBedrock.Architecture.Tests` (test-only Cli reference — scheduled S6);
+  `docs/roadmap.md`, `AGENTS.md`, README/user docs (status and install route — scheduled
+  S11). This entry records the architecture; it implements only S1 and S2, and does not
+  reopen D-122 or any consensus ruling.
 
 ---
 

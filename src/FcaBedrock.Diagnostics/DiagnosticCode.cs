@@ -616,6 +616,20 @@ public enum DiagnosticCode
     /// </summary>
     ObjectHasNoCrosses,
 
+    // --- Export ---
+
+    /// <summary>
+    /// The exact final serialized <c>.cxt</c> size in UTF-8 bytes — projected after the writer's
+    /// object-name/count pass and <b>before any output byte</b> — is at or above the configured
+    /// <c>[output.cxt] size_advisory_bytes</c> threshold (§8). The projection counts <em>encoded
+    /// bytes</em> (a non-ASCII name or a CRLF line ending counts at its real width), never
+    /// characters. Warning, owned by the <b>export</b> phase and raised at the <c>.cxt</c> emit
+    /// site; a <c>.dat</c>-only run raises none. A threshold of exactly <c>0</c> disables it.
+    /// Changing a warning only — never output bytes — it stays a non-input to all three
+    /// fingerprints (D-077). Spec §8 / §16.4 / §18.1 (D-085 enum timing; D-122 part 7 / D-123).
+    /// </summary>
+    OutputCxtSizeAdvisory,
+
     // --- Probe (discovery) ---
 
     /// <summary>

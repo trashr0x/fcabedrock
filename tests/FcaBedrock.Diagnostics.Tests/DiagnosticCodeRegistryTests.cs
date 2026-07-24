@@ -113,12 +113,22 @@ public sealed class DiagnosticCodeRegistryTests
         nameof(DiagnosticCode.MatcherFullyShadowed),
     ];
 
-    // Codes still owned by LATER milestones. Each must stay absent until the milestone that owns
-    // its emit site lands, so an early or accidental addition fails here. Landing template/matcher
-    // application retires M6's own transition only — it does not license M7 or D-038 surface.
+    // The exact M7 Slice B delta (D-123): ONE export-phase code, OutputCxtSizeAdvisory, landing with
+    // its real .cxt emit site in CxtWriter (81 → 82). It is M7's ONLY new diagnostic member —
+    // ordinary host/publication failures stay CLI-owned, code-less errors (D-122 part 2), so the
+    // registry does not grow for them.
+    private static readonly string[] M7SliceBAdditions =
+    [
+        nameof(DiagnosticCode.OutputCxtSizeAdvisory),
+    ];
+
+    // Codes still owned by a LATER, not-yet-implemented surface. Each must stay absent until the
+    // milestone that owns its emit site lands, so an early or accidental addition fails here. M7
+    // Slice B landed OutputCxtSizeAdvisory at its real export emit site (above; D-123), so the only
+    // remaining not-yet-owned code is the deferred D-038 date carrier, which joins the registry when
+    // its plan-phase DateValueTypeNotImplementedV1 site lands.
     private static readonly string[] NotYetOwned =
     [
-        "OutputCxtSizeAdvisory",                         // M7
         "DateValueTypeNotImplementedV1",                 // deferred (D-038)
     ];
 
@@ -133,15 +143,16 @@ public sealed class DiagnosticCodeRegistryTests
         "TemplateMatcherNotImplementedV1",               // retired at M6 Slice B (D-121) — M6's last
     ];
 
-    // The registry size after M6 Slice B: 76 members after Slice A, plus the six resolve codes,
-    // minus the retired TemplateMatcherNotImplementedV1 — 76 + 6 - 1 = 81, the M6-exit registry.
-    // (SpecSurfaceNotYetSupported stays live throughout: Slice A narrowed it to value_type =
+    // The registry size after M7 Slice B: 81 at the M6 exit (76 after M6 Slice A, plus the six
+    // resolve codes, minus the retired TemplateMatcherNotImplementedV1 = 81), plus
+    // OutputCxtSizeAdvisory at its real export emit site (D-123) — 81 + 1 = 82.
+    // (SpecSurfaceNotYetSupported stays live throughout: M6 Slice A narrowed it to value_type =
     // "date" rather than retiring it, so it never moved the count.)
     // Update this number ONLY together with the slice's decisions.md entry — that deliberate edit
     // is the point (D-085: a code exists once it has a real emit site, so the enum grows per
     // slice rather than drifting). Without it the presence/absence assertions below would let an
     // unrelated member in unnoticed, and the delta would not be locked.
-    private const int MembersAfterM6SliceB = 81;
+    private const int MembersAfterM7SliceB = 82;
 
     private static readonly string[] Defined = Enum.GetNames<DiagnosticCode>();
 
@@ -162,11 +173,15 @@ public sealed class DiagnosticCodeRegistryTests
         Assert.All(M6SliceBAdditions, name => Assert.Contains(name, Defined));
 
     [Fact]
-    public void DiagnosticCode_WhenM6SliceBLanded_ThenTheRegistryIsExactlyEightyOne() =>
+    public void DiagnosticCode_WhenM7SliceBLanded_ThenItsOneExportCodeIsDefined() =>
+        Assert.All(M7SliceBAdditions, name => Assert.Contains(name, Defined));
+
+    [Fact]
+    public void DiagnosticCode_WhenM7SliceBLanded_ThenTheRegistryIsExactlyEightyTwo() =>
         // The delta lock. On its own a count proves little; combined with the presence lists above
         // and the absence lists below it pins BOTH which codes arrived, that earlier retirements
         // really stuck, and that nothing else moved — which the targeted assertions alone cannot do.
-        Assert.Equal(MembersAfterM6SliceB, Defined.Length);
+        Assert.Equal(MembersAfterM7SliceB, Defined.Length);
 
     [Fact]
     public void DiagnosticCode_WhenM6SliceBLanded_ThenNoM6TransitionalRemainsButDateStillDoes()
@@ -191,8 +206,10 @@ public sealed class DiagnosticCodeRegistryTests
         Assert.All(EarlierSliceCodes, name => Assert.Contains(name, Defined));
 
     [Fact]
-    public void DiagnosticCode_WhenSliceFLanded_ThenNoLaterMilestoneCodeIsDefinedYet() =>
-        // The D-085 rule made mechanical: a code with no emit site in this milestone must not exist.
+    public void DiagnosticCode_WhenM7SliceBLanded_ThenOnlyTheDeferredDateCodeRemainsUnowned() =>
+        // The D-085 rule made mechanical: a code with no emit site yet must not exist. M7 Slice B
+        // landed OutputCxtSizeAdvisory, so the sole remaining not-yet-owned code is the deferred
+        // D-038 date carrier (DateValueTypeNotImplementedV1).
         Assert.All(NotYetOwned, name => Assert.DoesNotContain(name, Defined));
 
     [Fact]

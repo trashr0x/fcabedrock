@@ -429,7 +429,9 @@ public sealed class InternetAdsExitTests
     {
         var defined = Enum.GetNames<DiagnosticCode>();
 
-        Assert.Equal(81, defined.Length);
+        // 81 at the M6 exit, plus OutputCxtSizeAdvisory landed at its M7 Slice B export emit site
+        // (D-123) — the one ruled registry move, 81 → 82. The M6 contract below is unchanged.
+        Assert.Equal(82, defined.Length);
 
         foreach (var code in new[]
                  {
