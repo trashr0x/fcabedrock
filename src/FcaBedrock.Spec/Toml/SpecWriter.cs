@@ -842,15 +842,13 @@ public static class SpecWriter
     };
 
     /// <summary>
-    /// Renders a top-level <c>declared_domain</c> array (D-113): inline while the
-    /// complete line fits <see cref="DeclaredDomainInlineLineLimit"/>, otherwise
-    /// deterministically multiline — one escaped value per line at a two-space
-    /// indent, a trailing comma on every value line, and an unindented closing
-    /// bracket. A single over-long value wraps but is never split; an authored
-    /// empty array stays inline as <c>[]</c>. No other array wraps: cut lists,
-    /// <c>scale.order</c>, <c>value_groups</c>, <c>restrict_to</c>, and every
-    /// nested or inline array keep <see cref="Array"/>'s inline rendering.
-    /// Formatting only — semantics and fingerprints are untouched (§14).
+    /// Renders a top-level <c>declared_domain</c> array (D-113) through the
+    /// shared <see cref="TomlArrays.Wrappable"/> rule: inline while the complete
+    /// line fits the pinned cutoff, otherwise deterministically multiline. No
+    /// other array in spec output wraps: cut lists, <c>scale.order</c>,
+    /// <c>value_groups</c>, <c>restrict_to</c>, and every nested or inline array
+    /// keep <see cref="Array"/>'s inline rendering. Formatting only — semantics
+    /// and fingerprints are untouched (§14).
     /// </summary>
     private static string FormatDeclaredDomain(IReadOnlyList<string> values)
     {
@@ -860,22 +858,7 @@ public static class SpecWriter
             items.Add(TomlLiteral.FormatString(value));
         }
 
-        // Measured over the line the writer would actually emit — Item is the same
-        // helper that renders `key = value`, so the cutoff cannot drift from the
-        // rendering it governs. The transient inline string is a cold-path cost.
-        var inline = Array(items);
-        if (Item(DeclaredDomainKey, inline).Length <= DeclaredDomainInlineLineLimit)
-        {
-            return inline;
-        }
-
-        var wrapped = new StringBuilder("[\n");
-        foreach (var item in items)
-        {
-            wrapped.Append("  ").Append(item).Append(",\n");
-        }
-
-        return wrapped.Append(']').ToString();
+        return TomlArrays.Wrappable(DeclaredDomainKey, items);
     }
 
     private static string FormatStringArray(IReadOnlyList<string> values)
@@ -913,21 +896,9 @@ public static class SpecWriter
 
     private const string DeclaredDomainKey = "declared_domain";
 
-    /// <summary>
-    /// The length, in UTF-16 code units, of the longest complete
-    /// <c>declared_domain</c> line the writer emits inline (D-113) — key, spaces,
-    /// equals sign, brackets, quotes, commas, separators, and escape sequences,
-    /// excluding the terminating LF. A line of this length or shorter stays
-    /// inline; a longer one wraps. A private canonical-writer formatting
-    /// constant, byte-pinned by test: never a spec field, probe option, CLI/UI
-    /// setting, or fingerprint input. UTF-16 code units (not display cells,
-    /// graphemes, or UTF-8 bytes) keep the measurement machine-independent (P-7).
-    /// </summary>
-    private const int DeclaredDomainInlineLineLimit = 100;
-
     private static string Item(string key, string value) => $"{key} = {value}";
 
-    private static string Array(List<string> items) => items.Count == 0 ? "[]" : $"[{string.Join(", ", items)}]";
+    private static string Array(List<string> items) => TomlArrays.Inline(items);
 
     private static string InlineTable(List<string> items) => items.Count == 0 ? "{}" : $"{{ {string.Join(", ", items)} }}";
 
