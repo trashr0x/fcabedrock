@@ -23,13 +23,46 @@ public sealed class DependencyRulesTests
     private static readonly ArchModel Architecture =
         new ArchLoader().LoadAssemblies(Production).Build();
 
-    [Fact]
-    public void Architecture_ShouldIncludeProductionAssemblies()
-    {
-        var names = Production.Select(a => a.GetName().Name).ToList();
+    // The complete production set as of M7. Every rule below is expressed over Production,
+    // so an assembly missing from the test's output directory would silently narrow — or
+    // vacuously satisfy — the rules rather than fail. Asserting the EXACT set is what makes
+    // that impossible (CX-M7P-006).
+    private static readonly string[] ExpectedProduction =
+    [
+        "FcaBedrock.Cli",
+        "FcaBedrock.Conversion",
+        "FcaBedrock.Core",
+        "FcaBedrock.Diagnostics",
+        "FcaBedrock.Discovery",
+        "FcaBedrock.Export",
+        "FcaBedrock.Sources",
+        "FcaBedrock.Spec",
+    ];
 
-        Assert.Contains("FcaBedrock.Core", names);
-        Assert.Contains("FcaBedrock.Diagnostics", names);
+    [Fact]
+    public void Architecture_ShouldIncludeExactlyTheEightProductionAssemblies()
+    {
+        var names = Production.Select(a => a.GetName().Name).OfType<string>().Order(StringComparer.Ordinal);
+
+        Assert.Equal(ExpectedProduction, names);
+    }
+
+    [Fact]
+    public void Cli_ShouldNotBeReferencedByAnyProductionPackage()
+    {
+        // D-122 part 9 / D-123 part 1: the CLI depends on every library and no library
+        // depends on the CLI. The run/publication coordinator stays CLI-internal until a
+        // P-4 extraction review says otherwise.
+        var others = ProductionExcept("FcaBedrock.Cli");
+
+        // Non-vacuity in both directions: Cli must have real types to be depended ON, and
+        // the other assemblies must have real types to do the depending.
+        Assert.NotEmpty(Asm("FcaBedrock.Cli").GetTypes());
+        Assert.Equal(ExpectedProduction.Length - 1, others.Length);
+
+        Types().That().ResideInAssembly(others[0], others[1..])
+            .Should().NotDependOnAny(Types().That().ResideInAssembly(Asm("FcaBedrock.Cli")))
+            .Check(Architecture);
     }
 
     [Fact]

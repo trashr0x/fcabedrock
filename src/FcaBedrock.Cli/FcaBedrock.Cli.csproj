@@ -1,0 +1,41 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The `fcabedrock` command (D-122 part 13 / D-123 part 1): a .NET global tool,
+       explicitly a temporary technical-preview distribution. This package references
+       every production package and NO production package references it (the one-way
+       dependency asserted by FcaBedrock.Architecture.Tests).
+
+       InvariantGlobalization is deliberately NOT enabled: binding.locale accepts BCP-47
+       tags and SpecResolver resolves them with predefinedOnly: true, which needs ICU. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>fcabedrock</ToolCommandName>
+    <PackageId>FcaBedrock.Cli</PackageId>
+    <Description>Formal Concept Analysis preprocessing - the fcabedrock command.</Description>
+    <!-- Required, not optional: .editorconfig makes SYSLIB1054 a warning (and warnings
+         are errors), so OS file identity must go through the LibraryImport source
+         generator, whose marshalling stubs need unsafe code — verified by build:
+         removing this line fails with SYSLIB1062 + CS0227. No unsafe code is hand-written
+         anywhere in this package. -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\FcaBedrock.Diagnostics\FcaBedrock.Diagnostics.csproj" />
+    <ProjectReference Include="..\FcaBedrock.Core\FcaBedrock.Core.csproj" />
+    <ProjectReference Include="..\FcaBedrock.Sources\FcaBedrock.Sources.csproj" />
+    <ProjectReference Include="..\FcaBedrock.Spec\FcaBedrock.Spec.csproj" />
+    <ProjectReference Include="..\FcaBedrock.Conversion\FcaBedrock.Conversion.csproj" />
+    <ProjectReference Include="..\FcaBedrock.Export\FcaBedrock.Export.csproj" />
+    <ProjectReference Include="..\FcaBedrock.Discovery\FcaBedrock.Discovery.csproj" />
+  </ItemGroup>
+
+  <!-- Every CLI component is internal (D-123 part 1). The argv-boundary tests drive
+       CliHost directly, so they need friend access; this is the only assembly granted
+       it, and no production package gains InternalsVisibleTo (the D-098 posture). -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="FcaBedrock.Cli.Tests" />
+  </ItemGroup>
+
+</Project>

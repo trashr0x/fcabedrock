@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Common test config (IsTestProject, the zero-tests guard, xunit.v3, the
+       Xunit global using) is inherited from tests/Directory.Build.props. -->
+
+  <!-- The CLI grants InternalsVisibleTo to this assembly only: every CLI component is
+       internal, and the argv-boundary tests drive CliHost directly. -->
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\FcaBedrock.Cli\FcaBedrock.Cli.csproj" />
+  </ItemGroup>
+
+  <!-- User-supplied v2 golden fixtures, copied next to the test assembly so tests read
+       them via AppContext.BaseDirectory (the established Golden.Tests rule). -->
+  <ItemGroup>
+    <Content Include="$(RepoRoot)fixtures\v2\**\*" Exclude="$(RepoRoot)fixtures\v2\**\*.md" Link="fixtures\v2\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" Visible="false" />
+  </ItemGroup>
+
+  <!-- The CLI project file itself, as text. PackAsTool, ToolCommandName, PackageId, the
+       reference set, and the absence of InvariantGlobalization are build-time facts with
+       no runtime surface, so CliProjectContractTests asserts them against the real file
+       rather than against a restatement of it. -->
+  <ItemGroup>
+    <Content Include="$(RepoRoot)src\FcaBedrock.Cli\FcaBedrock.Cli.csproj" Link="project\FcaBedrock.Cli.csproj.txt" CopyToOutputDirectory="PreserveNewest" Visible="false" />
+  </ItemGroup>
+
+</Project>

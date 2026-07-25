@@ -1,5 +1,6 @@
 <Solution>
   <Folder Name="/src/">
+    <Project Path="src/FcaBedrock.Cli/FcaBedrock.Cli.csproj" />
     <Project Path="src/FcaBedrock.Conversion/FcaBedrock.Conversion.csproj" />
     <Project Path="src/FcaBedrock.Core/FcaBedrock.Core.csproj" />
     <Project Path="src/FcaBedrock.Diagnostics/FcaBedrock.Diagnostics.csproj" />
@@ -10,6 +11,7 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/FcaBedrock.Architecture.Tests/FcaBedrock.Architecture.Tests.csproj" />
+    <Project Path="tests/FcaBedrock.Cli.Tests/FcaBedrock.Cli.Tests.csproj" />
     <Project Path="tests/FcaBedrock.Conversion.Tests/FcaBedrock.Conversion.Tests.csproj" />
     <Project Path="tests/FcaBedrock.Core.Tests/FcaBedrock.Core.Tests.csproj" />
     <Project Path="tests/FcaBedrock.Diagnostics.Tests/FcaBedrock.Diagnostics.Tests.csproj" />
