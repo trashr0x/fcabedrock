@@ -85,15 +85,15 @@ public sealed class CliHostTests
         Assert.StartsWith($"error: unknown option '{flag}'", harness.StdErr, StringComparison.Ordinal);
     }
 
+    // The commands whose grammar is settled but whose behaviour is still to come. `plan`,
+    // `stats`, and `fingerprint` left this list when their handlers landed; the remaining four
+    // leave it with their own slices.
     public static TheoryData<string[], string> LaterSliceCommands() => new()
     {
         { ["convert", "s.toml", "d.csv", "--out", "b", "--format", "cxt"], "convert" },
-        { ["plan", "s.toml", "d.csv"], "plan" },
-        { ["stats", "s.toml", "d.csv"], "stats" },
         { ["calibrate", "s.toml", "d.csv", "--out", "o.toml"], "calibrate" },
         { ["probe", "d.csv", "--shape", "wide", "--out", "o.toml"], "probe" },
         { ["migrate", "x.bed", "--out", "o.toml"], "migrate" },
-        { ["fingerprint", "s.toml", "d.csv"], "fingerprint" },
     };
 
     [Theory]

@@ -152,7 +152,7 @@ internal static class CommandTable
             [new CliPositional("SPEC", Required: true), new CliPositional("DATA", Required: true)],
             [new CliOption("--temp-dir", OptionValueKind.Text, "DIR")],
             ["DATA is required for every plan; rows are read only when calibration requires them."],
-            Handler: null),
+            PlanCommand.RunAsync),
 
         new CliCommand(
             "stats",
@@ -160,7 +160,7 @@ internal static class CommandTable
             [new CliPositional("SPEC", Required: true), new CliPositional("DATA", Required: true)],
             [new CliOption("--temp-dir", OptionValueKind.Text, "DIR")],
             [],
-            Handler: null),
+            StatsCommand.RunAsync),
 
         new CliCommand(
             "calibrate",
@@ -243,7 +243,7 @@ internal static class CommandTable
                 "--out and --force are valid only with --write, and --write requires --out.",
                 "There is no --v2-compat: v2 byte compatibility is a convert-only override.",
             ],
-            Handler: null),
+            FingerprintCommand.RunAsync),
     ];
 
     /// <summary>The command named <paramref name="name"/>, or null when there is no such command.</summary>
