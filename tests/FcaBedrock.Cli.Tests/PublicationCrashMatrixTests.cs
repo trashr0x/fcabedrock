@@ -304,15 +304,9 @@ public sealed class PublicationCrashMatrixTests
         {
             // The files that can authorize cleaning up everything else: the record, the pending
             // record it is published from, and the intent descriptor that authorizes THAT.
-            //
-            // A quarantine name is the first half of a removal — the object under it was proved
-            // owned before the rename that put it there (CX-M7H-040). The record is removed last,
-            // so every earlier quarantine coexists with it; the only one that can stand alone is
-            // the record's own, which is still exactly the record and is read as such.
             if (name.Contains(".fcabedrock-transaction-", StringComparison.Ordinal)
                 || name.Contains(".fcabedrock-pending-", StringComparison.Ordinal)
-                || name.Contains(".fcabedrock-intent-", StringComparison.Ordinal)
-                || name.Contains(".fcabedrock-q-", StringComparison.Ordinal))
+                || name.Contains(".fcabedrock-intent-", StringComparison.Ordinal))
             {
                 hasAuthority = true;
                 continue;

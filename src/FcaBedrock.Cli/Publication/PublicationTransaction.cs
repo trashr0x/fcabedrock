@@ -731,8 +731,6 @@ internal sealed class PublicationTransaction
     private string PendingRecordPath =>
         Path.Combine(_directory, PublicationTargets.PendingRecordName(_baseFileName, _token));
 
-    private RemovalScope Scope => new(_files, _directory, _baseFileName, _token);
-
     private IEnumerable<TransactionFileEntry> BackupEntries
     {
         get
@@ -867,12 +865,12 @@ internal sealed class PublicationTransaction
         var record = TransactionRecord.Create(token, baseFileName, entries);
 
         // Every control path this transaction can ever own — its record, its markers, its evidence,
-        // its stages and backups, and the quarantine name each removal uses — is a function of the
-        // base, the role, and the token, so the complete set is resolvable here and is
-        // collision-checked before a single file is created. (The stage claim is the one exception:
-        // its name carries the 128-bit identity digest of an object that does not exist yet. It
-        // cannot be resolved in advance and, by the same construction, cannot name a pre-existing
-        // file — and its own create-new refuses an occupant rather than replacing it.)
+        // and its stages and backups — is a function of the base, the role, and the token, so the
+        // complete set is resolvable here and is collision-checked before a single file is created.
+        // (The stage claim is the one exception: its name carries the 128-bit identity digest of an
+        // object that does not exist yet. It cannot be resolved in advance and, by the same
+        // construction, cannot name a pre-existing file — and its own create-new refuses an occupant
+        // rather than replacing it.)
         if (ControlCollision(identity, directory, record, token, participants, inputs))
         {
             return new PublicationRefused(PublicationMessages.RecordFailed(baseOperand));
@@ -998,7 +996,7 @@ internal sealed class PublicationTransaction
     private bool MatchesObject(string path, RemovalProof proof) =>
         proof(_identityFactory().KeyFor(path), ReadControl(_files, path));
 
-    private bool Remove(string path, RemovalProof proof) => RemoveOwned(Scope, path, proof, Guard());
+    private bool Remove(string path, RemovalProof proof) => RemoveOwned(_files, path, proof, Guard());
 
     // A record publication that never completed. The pending object goes only when it is provably
     // the object this run created there — whatever state its bytes are in — so an occupant that
@@ -2017,7 +2015,6 @@ internal sealed class PublicationTransaction
         // naming it and stays, whatever its length or its bytes (CX-M7H-018/037).
         if (residue is { Prior: null, Intent: { } intent })
         {
-            var scope = new RemovalScope(files, directory, intent.Described.BaseFileName, intent.Token);
             var pendingIsOurs = new RemovalProof((identity, _) => string.Equals(
                 IdentityEvidence.Of(
                     intent.Token, PublicationTargets.RecordRole, intent.Described.BaseFileName, identity),
@@ -2031,8 +2028,8 @@ internal sealed class PublicationTransaction
                 ControlDocument.IntentRole,
                 intent.Described.Digest));
 
-            return RemoveOwned(scope, intent.PendingPath, pendingIsOurs, guard)
-                && RemoveOwned(scope, intent.Path, descriptorIsOurs, guard);
+            return RemoveOwned(files, intent.PendingPath, pendingIsOurs, guard)
+                && RemoveOwned(files, intent.Path, descriptorIsOurs, guard);
         }
 
         if (residue.Prior is not { } prior)
@@ -2111,7 +2108,7 @@ internal sealed class PublicationTransaction
         {
             var isStage = string.Equals(entry.Role, PublicationTargets.StageRole, StringComparison.Ordinal);
             complete &= RemoveOwned(
-                view.Scope,
+                view.Files,
                 view.Record.PathOf(view.Directory, entry),
                 isStage ? view.StageObject(entry.TargetFileName) : view.BackedUpObject(entry.TargetFileName),
                 guard);
@@ -2172,7 +2169,7 @@ internal sealed class PublicationTransaction
             if (decision.Owns && !forward)
             {
                 complete &= RemoveOwned(
-                    view.Scope, finalPath, view.PublishedObject(decision.TargetFileName), guard);
+                    view.Files, finalPath, view.PublishedObject(decision.TargetFileName), guard);
             }
 
             var present = view.Exists(finalPath);
@@ -2204,7 +2201,7 @@ internal sealed class PublicationTransaction
                 if (decision.BackupPresent && decision.BackupIsExpected)
                 {
                     complete &= RemoveOwned(
-                        view.Scope, backupPath, view.BackedUpObject(decision.TargetFileName), guard);
+                        view.Files, backupPath, view.BackedUpObject(decision.TargetFileName), guard);
                 }
 
                 continue;
@@ -2250,7 +2247,7 @@ internal sealed class PublicationTransaction
             }
 
             complete &= RemoveOwned(
-                view.Scope,
+                view.Files,
                 view.Record.PathOf(view.Directory, entry),
                 view.StageObject(entry.TargetFileName),
                 guard);
@@ -2325,13 +2322,13 @@ internal sealed class PublicationTransaction
     /// </para>
     /// </summary>
     private static bool RemoveOwned(
-        RemovalScope scope, string path, RemovalProof isExpected, RecoveryGuard guard)
+        IPublicationFileSystem files, string path, RemovalProof isExpected, RecoveryGuard guard)
     {
         guard.ThrowIfCancelled();
 
         // Nothing there is nothing to do. This is an optimization, not a check: an object that
         // appears between here and the removal is one the removal's own proof will refuse.
-        if (!Exists(scope.Files, path))
+        if (!Exists(files, path))
         {
             return true;
         }
@@ -2343,7 +2340,7 @@ internal sealed class PublicationTransaction
 
         try
         {
-            return scope.Files.Remove(path, isExpected);
+            return files.Remove(path, isExpected);
         }
         catch (Exception exception) when (IsEnvironmentFailure(exception))
         {
@@ -2449,10 +2446,6 @@ internal sealed class PublicationTransaction
         }
     }
 
-    /// <summary>Everything a removal needs to name its own quarantine.</summary>
-    private sealed record RemovalScope(
-        IPublicationFileSystem Files, string Directory, string BaseFileName, string Token);
-
     /// <summary>What one target's cleanup will do, decided before anything moves.</summary>
     private sealed record TargetDecision(
         string TargetFileName,
@@ -2493,8 +2486,6 @@ internal sealed class PublicationTransaction
         public TransactionRecord Record => record;
 
         public bool Staged => staged;
-
-        public RemovalScope Scope => new(files, directory, record.BaseFileName, token);
 
         public bool Exists(string path) => PublicationTransaction.Exists(files, path);
 
@@ -2590,7 +2581,7 @@ internal sealed class PublicationTransaction
 
             // And a resumed run asks the same question of the bytes: exactly this transaction's
             // marker for exactly this phase, or nothing happens to it (ruling 3).
-            return RemoveOwned(Scope, path, ControlIs(ControlDocument.RoleOf(phase)), guard);
+            return RemoveOwned(files, path, ControlIs(ControlDocument.RoleOf(phase)), guard);
         }
 
         public bool RemoveEvidence(PublicationTargetKind kind, string targetFileName, RecoveryGuard guard)
@@ -2602,7 +2593,7 @@ internal sealed class PublicationTransaction
             // and must agree with the record. A raced-in occupant at that name — one whose presence
             // refused the publishing rename — can prove neither (CX-M7H-038).
             return RemoveOwned(
-                Scope,
+                files,
                 path,
                 (_, bytes) => bytes is not null && IsOurEvidence(bytes, targetFileName),
                 guard);
@@ -2631,7 +2622,7 @@ internal sealed class PublicationTransaction
             }
 
             return RemoveOwned(
-                Scope,
+                files,
                 Path.Combine(directory, PublicationTargets.StageClaimName(record.BaseFileName, kind, token, digest)),
                 (_, bytes) => ControlDocument.Matches(
                     bytes,
@@ -2646,7 +2637,7 @@ internal sealed class PublicationTransaction
         public bool RemoveIntent(RecoveryGuard guard) =>
             intentFileName is not { } name
             || RemoveOwned(
-                Scope, Path.Combine(directory, name), ControlIs(ControlDocument.IntentRole), guard);
+                files, Path.Combine(directory, name), ControlIs(ControlDocument.IntentRole), guard);
 
         private RemovalProof ControlIs(string role) => (_, bytes) =>
             ControlDocument.Matches(bytes, token, record.BaseFileName, role, record.Digest);
@@ -2665,7 +2656,7 @@ internal sealed class PublicationTransaction
             }
 
             return RemoveOwned(
-                Scope,
+                files,
                 path,
                 (identity, _) => Is(identity, PublicationTargets.RecordRole, record.BaseFileName, digest),
                 guard);
@@ -2680,7 +2671,7 @@ internal sealed class PublicationTransaction
         {
             var bytes = record.ToBytes();
             return RemoveOwned(
-                Scope,
+                files,
                 Path.Combine(directory, PublicationTargets.RecordName(record.BaseFileName, token)),
                 (_, actual) => actual is not null && actual.AsSpan().SequenceEqual(bytes),
                 guard);

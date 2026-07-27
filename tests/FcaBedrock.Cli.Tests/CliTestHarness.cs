@@ -210,9 +210,8 @@ internal sealed class RecordingPublicationFileSystem : IPublicationFileSystem
     /// <see cref="FailKind"/> — how a test reaches one specific control-file removal whose
     /// position in the run it cannot count.
     /// <para>
-    /// A removal is no longer one call: the proved object is renamed into the transaction's own
-    /// quarantine name and unlinked from there (CX-M7H-040), so this fails whichever of the two
-    /// steps names the file — the quarantine rename out of it, or a delete of it directly.
+    /// A removal is one seam call, <c>Remove(path, proof)</c>, so this fails that call by the name
+    /// of the object it would have removed.
     /// </para>
     /// </summary>
     public string? FailDeletePrefix { get; set; }
@@ -457,16 +456,6 @@ internal sealed class RecordingPublicationFileSystem : IPublicationFileSystem
         }
 
         if (string.Equals(kind, "Delete", StringComparison.Ordinal) && Matches(FailDeletePrefix, name))
-        {
-            throw FailWith();
-        }
-
-        // The rename INTO quarantine is the first half of a removal, so naming the object being
-        // removed reaches it there as well as at the unlink that follows.
-        if (string.Equals(kind, "Move", StringComparison.Ordinal)
-            && destination is not null
-            && destination.Contains(".fcabedrock-q-", StringComparison.Ordinal)
-            && Matches(FailDeletePrefix, name))
         {
             throw FailWith();
         }
