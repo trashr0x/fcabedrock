@@ -4,6 +4,18 @@ using FcaBedrock.Spec.Toml;
 namespace FcaBedrock.Cli;
 
 /// <summary>
+/// One file of the composed spec, as the run manifest needs it (§15 <c>[[run.spec_files]]</c>).
+/// </summary>
+/// <param name="FullPath">The resolved path — used for filesystem identity, never serialized.</param>
+/// <param name="Spelling">
+/// The authored spelling: the verbatim SPEC operand for the root, or the authored
+/// referrer-relative <c>extends</c> reference for a base. Canonical identity keys and normalized
+/// paths never enter the manifest (§13/§15).
+/// </param>
+/// <param name="Hash">The prefixed hash of the file's exact raw bytes.</param>
+internal sealed record SpecChainFile(string FullPath, string Spelling, string Hash);
+
+/// <summary>
 /// The file-backed <see cref="ISpecTextSource"/> — the host work D-078 reserved for M7,
 /// realizing §13 / D-122 part 11.
 /// <para>
@@ -30,6 +42,13 @@ namespace FcaBedrock.Cli;
 /// takes the established not-found outcome (D-122 part 11), as does a base that cannot be
 /// read. Authored path text is never normalized or rewritten here.
 /// </para>
+/// <para>
+/// <b>Every file it loads is retained as a §15 chain fact</b> — the authored spelling, the
+/// raw-bytes hash, and the resolved path — in load order, which is root-first-then-bases. The
+/// hash covers the bytes <em>as read</em>, byte-order mark and original line endings included,
+/// and is taken from the very read that produced the text: the run manifest never costs a
+/// second open, and a chain file is never re-read merely to hash it (D-122 part 5).
+/// </para>
 /// </summary>
 internal sealed class FileSpecTextSource : ISpecTextSource
 {
@@ -40,6 +59,8 @@ internal sealed class FileSpecTextSource : ISpecTextSource
     private readonly FileIdentity _identity;
     private readonly Dictionary<FileIdentityKey, string> _canonicalKeys = [];
     private readonly Dictionary<string, string> _resolutionPaths = new(StringComparer.Ordinal);
+    private readonly List<SpecChainFile> _chain = [];
+    private readonly HashSet<string> _recorded = new(StringComparer.Ordinal);
 
     /// <summary>Creates a host reading through <paramref name="open"/> and identifying through <paramref name="identity"/>.</summary>
     public FileSpecTextSource(Func<string, Stream> open, FileIdentity identity)
@@ -75,7 +96,21 @@ internal sealed class FileSpecTextSource : ISpecTextSource
     public string ReadText(string path)
     {
         ArgumentNullException.ThrowIfNull(path);
+        return ReadAs(path, path);
+    }
 
+    /// <summary>
+    /// Every file loaded through this host, in load order — the root first, then each base as
+    /// the chain was walked, which is exactly §15's <c>[[run.spec_files]]</c> order. A single
+    /// file leaves one entry, and the caller decides that no chain means no section.
+    /// </summary>
+    public IReadOnlyList<SpecChainFile> Chain => _chain;
+
+    // One read serves both the text and the hash; `spelling` is what the manifest records, so
+    // it is the caller's authored form — the SPEC operand for the root, the authored
+    // referrer-relative reference for a base — never the resolved path.
+    private string ReadAs(string path, string spelling)
+    {
         byte[] bytes;
         using (var stream = _open(path))
         using (var buffer = new MemoryStream())
@@ -84,7 +119,17 @@ internal sealed class FileSpecTextSource : ISpecTextSource
             bytes = buffer.ToArray();
         }
 
-        return Decode(bytes);
+        var text = Decode(bytes);
+
+        // Recorded only after a successful decode: a file that is not a readable spec is not a
+        // chain fact. The hash is over the raw bytes, before the byte-order mark is consumed.
+        var fullPath = Path.GetFullPath(path);
+        if (_recorded.Add(fullPath))
+        {
+            _chain.Add(new SpecChainFile(fullPath, spelling, ContentHash.Of(bytes)));
+        }
+
+        return text;
     }
 
     // Strict decoding, spelled out here because the convenient overloads are all permissive:
@@ -144,7 +189,9 @@ internal sealed class FileSpecTextSource : ISpecTextSource
         string toml;
         try
         {
-            toml = ReadText(resolved);
+            // The authored reference is what §15 records, so the chain entry carries `reference`
+            // verbatim while the read itself uses the resolved path.
+            toml = ReadAs(resolved, reference);
         }
         catch (PathTooLongException)
         {

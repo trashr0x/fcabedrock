@@ -4,8 +4,9 @@ using System.Text;
 namespace FcaBedrock.Cli;
 
 /// <summary>
-/// The CLI's own JSON string escaping, used only by <see cref="DiagnosticRenderer"/>
-/// for the §16.4 stderr grammar.
+/// The CLI's own JSON string escaping: the §16.4 stderr grammar
+/// (<see cref="DiagnosticRenderer"/>) and the private publication transaction record, which
+/// needs one unambiguous way to write a file name it can later reconstruct exactly.
 /// <para>
 /// <b>Deliberately not Core's <c>CanonicalJson</c>.</b> That one is a frozen hash
 /// contract (D-053/D-069/D-077): every fingerprint in the repository is pinned to its

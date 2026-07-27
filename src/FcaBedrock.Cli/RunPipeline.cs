@@ -27,9 +27,16 @@ internal sealed record PipelineHostFailure(string Message, IReadOnlyList<Bedrock
     : PipelineOutcome(Diagnostics);
 
 /// <summary>
-/// The state the read-only data commands share once preparation succeeded. Deliberately
-/// small: it holds what <c>plan</c>, <c>stats</c>, and <c>fingerprint</c> actually read, not
-/// everything the pipeline happened to build.
+/// The state one prepared run carries: what <c>plan</c>, <c>stats</c>, and <c>fingerprint</c>
+/// read, plus the facts <c>convert</c> additionally needs to emit, fingerprint the effective
+/// output, and compose a manifest.
+/// <para>
+/// <b>It is one run's state or nothing.</b> Every member here comes from the same preparation —
+/// the same resolution token, the same calibrated state, the same bound source — and the two
+/// derived plans are produced from <see cref="Calibrated"/> by <see cref="PlanEffective"/>, so a
+/// document, a calibration, a plan, a source, or a fingerprint from a different run cannot be
+/// paired with these (D-098).
+/// </para>
 /// </summary>
 internal sealed class PreparedRun
 {
@@ -43,24 +50,65 @@ internal sealed class PreparedRun
     /// <summary>The root's canonical key — the <c>file</c> location stale warnings carry.</summary>
     public required string RootKey { get; init; }
 
+    /// <summary>
+    /// The composed document paired with its resolution token — the effective state the native
+    /// fingerprints were computed over.
+    /// </summary>
+    public required ResolvedDocument Resolved { get; init; }
+
+    /// <summary>
+    /// The calibrated state both plans are produced from, and the owner of the retained
+    /// calibration outcomes the run manifest serializes without re-derivation (D-093).
+    /// </summary>
+    public required CalibratedSpec Calibrated { get; init; }
+
+    /// <summary>The resolved source shape — the D-087 v2-compat <c>.dat</c> final newline reads it.</summary>
+    public required SourceShape Shape { get; init; }
+
     /// <summary>The native plan (<see cref="LabelStyle.Native"/>), planned once.</summary>
     public required ConversionPlan Plan { get; init; }
 
     /// <summary>The three native fingerprints computed from the paired resolved document and plan.</summary>
     public required ComputedFingerprints Fingerprints { get; init; }
 
+    /// <summary>The resolved §8 <c>[output]</c> settings, before any CLI override.</summary>
+    public required OutputSettings Output { get; init; }
+
     /// <summary>
-    /// The shape-bound emit delegate. Its shape was decided where the source was built, so a
-    /// wide plan can never be handed to the triple entrypoint (the
+    /// Every spec file this run loaded, in root-first-then-bases order, with its authored
+    /// spelling and raw-bytes hash (§15 <c>[[run.spec_files]]</c>).
+    /// </summary>
+    public required IReadOnlyList<SpecChainFile> SpecChain { get; init; }
+
+    /// <summary>
+    /// Binds a plan to the shape-bound source. The shape was decided where the source was built,
+    /// so a wide plan can never be handed to the triple entrypoint (the
     /// <c>GoldenConversion.PreparedConversion</c> shape).
     /// </summary>
-    public required Func<ICollection<BedrockDiagnostic>, IAsyncEnumerable<EmittedObject>> Emit { get; init; }
+    public required Func<ConversionPlan, Func<ICollection<BedrockDiagnostic>, IAsyncEnumerable<EmittedObject>>> EmitWith
+    {
+        get;
+        init;
+    }
+
+    /// <summary>The emit delegate for the native plan — what the report commands enumerate.</summary>
+    public Func<ICollection<BedrockDiagnostic>, IAsyncEnumerable<EmittedObject>> Emit => EmitWith(Plan);
 
     /// <summary>The input-stability tracker, re-checked after any further pass.</summary>
     public required InputHashTracker Input { get; init; }
 
-    /// <summary>The DATA operand, verbatim — the host-failure messages name it.</summary>
+    /// <summary>The SPEC operand, verbatim — §15 records it as authored.</summary>
+    public required string SpecPath { get; init; }
+
+    /// <summary>The DATA operand, verbatim — the host-failure messages name it, and §15 records it.</summary>
     public required string DataPath { get; init; }
+
+    /// <summary>
+    /// Plans this run's <em>same</em> calibrated state under <paramref name="style"/> — the only
+    /// way a second plan is produced, which is what keeps the native/effective pair exact
+    /// (D-044/D-077). Planning is pure, so the second plan costs no data pass.
+    /// </summary>
+    public Diagnosed<ConversionPlan> PlanEffective(LabelStyle style) => ConversionPlanner.Plan(Calibrated, style);
 }
 
 /// <summary>
@@ -262,12 +310,20 @@ internal static class RunPipeline
         {
             RootDocument = rootDocument,
             RootKey = rootKey,
+            Resolved = resolvedDocument,
+            Calibrated = calibratedSpec,
+            Shape = readSettings.Shape,
             Plan = plan,
             Fingerprints = fingerprints,
-            Emit = triple
-                ? sink => Emitter.EmitTripleAsync(plan, tripleSource!, sink, runtimeOptions, cancellation)
-                : sink => Emitter.EmitAsync(plan, wideSource!, sink, runtimeOptions, cancellation),
+            Output = OutputSettings.Native(resolvedDocument.Document),
+            SpecChain = host.Chain,
+            EmitWith = triple
+                ? effective => sink =>
+                    Emitter.EmitTripleAsync(effective, tripleSource!, sink, runtimeOptions, cancellation)
+                : effective => sink =>
+                    Emitter.EmitAsync(effective, wideSource!, sink, runtimeOptions, cancellation),
             Input = input,
+            SpecPath = specPath,
             DataPath = dataPath,
         };
 

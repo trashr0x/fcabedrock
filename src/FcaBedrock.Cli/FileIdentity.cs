@@ -61,6 +61,24 @@ internal readonly struct FileIdentityKey : IEquatable<FileIdentityKey>
     /// <summary>True when this key came from the operating system rather than the path fallback.</summary>
     public bool IsOperatingSystemIdentity => _canonicalPath is null;
 
+    /// <summary>
+    /// The operating system's own identity components, when this key has them.
+    /// <para>
+    /// The only consumer is <see cref="FcaBedrock.Cli.Publication.IdentityEvidence"/>, which
+    /// digests them so a transaction can prove — durably, across a crash — that the file at a
+    /// target path is the very object it staged. A path-fallback key deliberately answers
+    /// <see langword="false"/>: it identifies a <em>name</em>, and a name proves nothing about the
+    /// object occupying it.
+    /// </para>
+    /// </summary>
+    internal bool TryGetOperatingSystemIdentity(out ulong volume, out ulong low, out ulong high)
+    {
+        volume = _volume;
+        low = _low;
+        high = _high;
+        return _canonicalPath is null;
+    }
+
     public static bool operator ==(FileIdentityKey left, FileIdentityKey right) => left.Equals(right);
 
     public static bool operator !=(FileIdentityKey left, FileIdentityKey right) => !left.Equals(right);

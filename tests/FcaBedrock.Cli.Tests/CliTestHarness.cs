@@ -1,4 +1,5 @@
 using System.Text;
+using FcaBedrock.Cli.Publication;
 
 namespace FcaBedrock.Cli.Tests;
 
@@ -65,6 +66,12 @@ internal sealed class CliTestHarness
     /// <summary>Every path the CLI asked to open, in order — one entry per open, not per distinct path.</summary>
     public List<string> Opened { get; } = [];
 
+    /// <summary>
+    /// The publication filesystem the run uses. It is the real one, wrapped so a test can watch
+    /// the exact sequence of operations and fail any single boundary.
+    /// </summary>
+    public RecordingPublicationFileSystem PublicationFiles { get; } = new();
+
     public TestClock Clock { get; } = new();
 
     public TestSignalSource Signals { get; } = new();
@@ -87,6 +94,7 @@ internal sealed class CliTestHarness
         ToolVersion = ToolVersion,
         AuditArgv = AuditArgv,
         OpenInput = Open,
+        PublicationFiles = PublicationFiles,
         Progress = Progress,
     };
 
@@ -141,6 +149,521 @@ internal sealed class ThrowingWriter(bool failOnWrite, bool failOnFlush) : TextW
         }
 
         _accepted.Flush();
+    }
+}
+
+/// <summary>
+/// The real publication filesystem with two test affordances: it records every operation in
+/// order, and it can be told to fail one boundary — the Nth operation of a given kind, optionally
+/// only for a chosen file name.
+/// <para>
+/// It delegates to the production implementation rather than simulating a filesystem, so a test
+/// that injects a commit failure still observes the real bytes, the real renames, and the real
+/// residue afterwards.
+/// </para>
+/// </summary>
+internal sealed class RecordingPublicationFileSystem : IPublicationFileSystem
+{
+    private readonly IPublicationFileSystem _real = PublicationFileSystem.Instance;
+    private readonly Dictionary<string, int> _counts = new(StringComparer.Ordinal);
+
+    /// <summary>Every mutating or observing operation, as <c>kind:fileName</c>, in order.</summary>
+    public List<string> Operations { get; } = [];
+
+    /// <summary>The operation kind to fail — <c>CreateNew</c>, <c>Flush</c>, <c>Move</c>, or <c>Delete</c>.</summary>
+    public string? FailKind { get; set; }
+
+    /// <summary>When set, only operations whose (source) file name matches this are counted and failed.</summary>
+    public string? FailName { get; set; }
+
+    /// <summary>
+    /// As <see cref="FailName"/>, but matched as a prefix — how a test names a control file or a
+    /// stage whose token it cannot predict.
+    /// </summary>
+    public string? FailNamePrefix { get; set; }
+
+    /// <summary>When set, only moves whose destination file name matches this are counted and failed.</summary>
+    public string? FailMoveTo { get; set; }
+
+    /// <summary>Which matching occurrence to fail, counting from 1.</summary>
+    public int FailOccurrence { get; set; } = 1;
+
+    /// <summary>
+    /// Fail <b>every</b> matching occurrence rather than only <see cref="FailOccurrence"/>. A
+    /// commit rename and the rollback restore that follows it share a destination, so failing one
+    /// occurrence exercises only the commit — the interesting case is when the restore fails too.
+    /// </summary>
+    public bool FailEveryMatch { get; set; }
+
+    /// <summary>The exception a matching injected failure raises; an I/O failure by default.</summary>
+    public Func<Exception> FailWith { get; set; } = static () => new IOException("injected failure");
+
+    /// <summary>
+    /// Fails creation of any file whose name starts with this, independently of
+    /// <see cref="FailKind"/> — so a commit failure and a phase-marker failure can be injected in
+    /// the same run.
+    /// </summary>
+    public string? FailCreateNewPrefix { get; set; }
+
+    /// <summary>
+    /// Fails <b>removal</b> of any file whose name starts with this, independently of
+    /// <see cref="FailKind"/> — how a test reaches one specific control-file removal whose
+    /// position in the run it cannot count.
+    /// <para>
+    /// A removal is no longer one call: the proved object is renamed into the transaction's own
+    /// quarantine name and unlinked from there (CX-M7H-040), so this fails whichever of the two
+    /// steps names the file — the quarantine rename out of it, or a delete of it directly.
+    /// </para>
+    /// </summary>
+    public string? FailDeletePrefix { get; set; }
+
+    /// <summary>The exception a failing stream write raises; an I/O failure by default.</summary>
+    public Func<Exception> FailStreamWith { get; set; } =
+        static () => new IOException("there is not enough space on the disk.");
+
+    /// <summary>Invoked immediately after a successful move to <see cref="CancelAfterMoveTo"/>.</summary>
+    public Action? CancelAfterMove { get; set; }
+
+    /// <summary>The exact destination file name whose successful move triggers <see cref="CancelAfterMove"/>.</summary>
+    public string? CancelAfterMoveTo { get; set; }
+
+    /// <summary>
+    /// The destination file-name <b>prefix</b> whose successful move triggers
+    /// <see cref="CancelAfterMove"/> — how a test names a backup, whose token is unpredictable.
+    /// </summary>
+    public string? CancelAfterMoveToPrefix { get; set; }
+
+    /// <summary>The created file-name prefix whose stream fails on its first write.</summary>
+    public string? FailStreamWritePrefix { get; set; }
+
+    /// <summary>The created file-name prefix whose stream fails when it is closed.</summary>
+    public string? FailStreamClosePrefix { get; set; }
+
+    /// <summary>The exception a failing stream close raises; an I/O failure by default.</summary>
+    public Func<Exception> FailStreamCloseWith { get; set; } =
+        static () => new IOException("the file could not be closed.");
+
+    /// <summary>
+    /// The operation to run <see cref="Mutate"/> immediately <b>before</b>, in the folded
+    /// <c>kind:fileName</c> form used in <see cref="Operations"/>.
+    /// <para>
+    /// This is how a test creates a genuine race: something else changes the location between the
+    /// transaction's last look and its next move — a target that appears, one that disappears, one
+    /// replaced by a different object — and the run must survive it without destroying anything it
+    /// does not own (CX-M7H-024).
+    /// </para>
+    /// </summary>
+    public string? MutateBefore { get; set; }
+
+    /// <summary>What to do at <see cref="MutateBefore"/>; it runs at most once.</summary>
+    public Action? Mutate { get; set; }
+
+    /// <summary>
+    /// As <see cref="Mutate"/>, but handed the <b>unfolded</b> operation — so a test can place a
+    /// race at a path whose token this run generated and has not written anywhere yet.
+    /// <para>
+    /// That is a deliberately stronger adversary than the filesystem affords: it learns the name at
+    /// the instant of the call rather than by reading the directory. It is what keeps a refused
+    /// acquisition testable now that nothing durable precedes it (CX-M7H-036/037).
+    /// </para>
+    /// </summary>
+    public Action<string>? MutateWith { get; set; }
+
+    /// <summary>
+    /// The exception a residue READ raises, and which operation raises it — how a test reaches the
+    /// classification path's own failure families (CX-M7H-035). The name is matched as a prefix, so
+    /// a test can name a control file whose token it cannot predict.
+    /// </summary>
+    public Func<Exception>? FailReadWith { get; set; }
+
+    /// <summary>The read operation to fail: <c>EnumerateFiles</c>, <c>ReadBounded</c>, or <c>Exists</c>.</summary>
+    public string? FailReadKind { get; set; }
+
+    /// <summary>When set, only reads whose file name starts with this are failed.</summary>
+    public string? FailReadNamePrefix { get; set; }
+
+    /// <summary>
+    /// Report no identity for a created stage, as a host with no filesystem-identity capability
+    /// does. Everything else stays real, so the run meets exactly the situation such a host
+    /// creates: it can still create the file, but it can prove nothing about what it created.
+    /// </summary>
+    public bool SuppressStageIdentity { get; set; }
+
+    /// <summary>
+    /// The same capability absence for <b>control</b> creations — the pending transaction record
+    /// and each pending evidence file — so the root of the transaction can be shown to fail closed
+    /// rather than publishing something it cannot prove (CX-M7H-044).
+    /// </summary>
+    public bool SuppressControlIdentity { get; set; }
+
+    /// <summary>
+    /// The operation to simulate a crash after, as the <c>kind:fileName</c> form used in
+    /// <see cref="Operations"/>. The real operation completes, and every later operation then
+    /// fails — which is what the on-disk state looks like when the process simply disappears:
+    /// nothing that follows, including rollback, can change anything.
+    /// </summary>
+    public string? CrashAfter { get; set; }
+
+    /// <summary>True once <see cref="CrashAfter"/> fired.</summary>
+    public bool Crashed { get; private set; }
+
+    /// <inheritdoc/>
+    public bool Exists(string path)
+    {
+        var name = Path.GetFileName(path);
+        Observe("Exists:" + name);
+        FailRead("Exists", name);
+        return _real.Exists(path);
+    }
+
+    /// <inheritdoc/>
+    public CreatedFile CreateNew(string path)
+    {
+        var name = Path.GetFileName(path);
+        Fail("CreateNew", path, label: "CreateNew");
+        var file = _real.CreateNew(path);
+        if (SuppressControlIdentity)
+        {
+            file = file with { Identity = null };
+        }
+
+        CrashIfRequested($"CreateNew:{name}");
+        return file with { Content = Wrap(file.Content, name) };
+    }
+
+    /// <inheritdoc/>
+    public CreatedFile CreateNewConfidential(string path)
+    {
+        var name = Path.GetFileName(path);
+
+        // Recorded under its own label so a test can prove WHICH creation the transaction asked
+        // for — the confidentiality boundary is a property of the call, not of the bytes
+        // (CX-M7H-017). The injectable failure kind stays `CreateNew` so failure injection is
+        // unaffected by the distinction.
+        Fail("CreateNew", path, label: "Confidential");
+        var stage = _real.CreateNewConfidential(path);
+        if (SuppressStageIdentity)
+        {
+            stage = stage with { Identity = null };
+        }
+
+        StageIdentities[name] = stage.Identity;
+        CrashIfRequested($"Confidential:{name}");
+        return stage with { Content = Wrap(stage.Content, name) };
+    }
+
+    /// <summary>
+    /// The identity each confidential creation reported, by stage file name — how a test proves
+    /// the evidence a run publishes describes the object that creation produced.
+    /// </summary>
+    public Dictionary<string, FileIdentityKey?> StageIdentities { get; } = new(StringComparer.Ordinal);
+
+    // Every created stream is wrapped, so a crash can be placed at a genuine STREAM boundary —
+    // partial write, flush, close — and not merely at the filesystem-seam calls around it
+    // (CX-M7H-012).
+    private Stream Wrap(Stream stream, string name) =>
+        new FaultyStream(
+            stream,
+            this,
+            name,
+            Matches(FailStreamWritePrefix, name),
+            Matches(FailStreamClosePrefix, name));
+
+    private static bool Matches(string? prefix, string name) =>
+        prefix is not null && name.StartsWith(prefix, StringComparison.Ordinal);
+
+    /// <inheritdoc/>
+    public void Flush(Stream stream)
+    {
+        Fail("Flush", string.Empty);
+        _real.Flush(stream);
+        CrashIfRequested("Flush:");
+    }
+
+    /// <inheritdoc/>
+    public void Move(string source, string destination)
+    {
+        var target = Path.GetFileName(destination);
+        Fail("Move", source, target);
+        _real.Move(source, destination);
+        CrashIfRequested($"Move:{Path.GetFileName(source)}->{target}");
+
+        if (string.Equals(CancelAfterMoveTo, target, StringComparison.Ordinal) || Matches(CancelAfterMoveToPrefix, target))
+        {
+            CancelAfterMove?.Invoke();
+        }
+    }
+
+    /// <inheritdoc/>
+    public bool Remove(string path, RemovalProof isExpected)
+    {
+        // Recorded and raced as `Delete:<name>` — this IS the deletion boundary, and the mutation
+        // hook runs before the real removal opens anything, which is exactly the same-operation
+        // substitution CX-M7H-040 is about. Production must then refuse the replacement, because
+        // its proof is taken from the handle it deletes through rather than from an earlier look.
+        Fail("Delete", path);
+        var removed = _real.Remove(path, isExpected);
+        CrashIfRequested($"Delete:{Path.GetFileName(path)}");
+        return removed;
+    }
+
+    /// <inheritdoc/>
+    public IReadOnlyList<string> EnumerateFiles(string directory, string namePrefix)
+    {
+        Observe("EnumerateFiles:" + namePrefix);
+        FailRead("EnumerateFiles", namePrefix);
+        return _real.EnumerateFiles(directory, namePrefix);
+    }
+
+    /// <inheritdoc/>
+    public byte[]? ReadBounded(string path, int maxBytes)
+    {
+        var name = Path.GetFileName(path);
+        Observe("ReadBounded:" + name);
+        FailRead("ReadBounded", name);
+        return _real.ReadBounded(path, maxBytes);
+    }
+
+    private void FailRead(string kind, string name)
+    {
+        if (FailReadWith is { } failure
+            && string.Equals(FailReadKind, kind, StringComparison.Ordinal)
+            && (FailReadNamePrefix is null || name.StartsWith(FailReadNamePrefix, StringComparison.Ordinal)))
+        {
+            throw failure();
+        }
+    }
+
+    private void Fail(string kind, string path, string? destination = null, string? label = null)
+    {
+        // Once the simulated crash has fired, nothing else reaches the disk — the process is
+        // conceptually gone, so even rollback cannot run.
+        if (Crashed)
+        {
+            throw new IOException("the process crashed");
+        }
+
+        var name = Path.GetFileName(path);
+        var recorded = label ?? kind;
+        var operation = destination is null ? $"{recorded}:{name}" : $"{recorded}:{name}->{destination}";
+        Operations.Add(operation);
+        MutateIfRequested(operation);
+
+        // Independent of FailKind, so a marker-creation failure can be combined with a commit
+        // failure in one run.
+        if (string.Equals(kind, "CreateNew", StringComparison.Ordinal) && Matches(FailCreateNewPrefix, name))
+        {
+            throw FailWith();
+        }
+
+        if (string.Equals(kind, "Delete", StringComparison.Ordinal) && Matches(FailDeletePrefix, name))
+        {
+            throw FailWith();
+        }
+
+        // The rename INTO quarantine is the first half of a removal, so naming the object being
+        // removed reaches it there as well as at the unlink that follows.
+        if (string.Equals(kind, "Move", StringComparison.Ordinal)
+            && destination is not null
+            && destination.Contains(".fcabedrock-q-", StringComparison.Ordinal)
+            && Matches(FailDeletePrefix, name))
+        {
+            throw FailWith();
+        }
+
+        if (!string.Equals(FailKind, kind, StringComparison.Ordinal)
+            || (FailName is not null && !string.Equals(FailName, name, StringComparison.Ordinal))
+            || (FailNamePrefix is not null && !Matches(FailNamePrefix, name))
+            || (FailMoveTo is not null && !string.Equals(FailMoveTo, destination, StringComparison.Ordinal)))
+        {
+            return;
+        }
+
+        _counts.TryGetValue(kind, out var seen);
+        _counts[kind] = ++seen;
+        if (FailEveryMatch || seen == FailOccurrence)
+        {
+            throw FailWith();
+        }
+    }
+
+    /// <summary>
+    /// <paramref name="operation"/> with every run token folded to <c>T</c>, so a transition can
+    /// be named — and asserted, and crashed after — without the test knowing an unpredictable
+    /// value.
+    /// </summary>
+    public static string Fold(string operation)
+    {
+        var folded = new StringBuilder(operation.Length);
+        for (var i = 0; i < operation.Length;)
+        {
+            if (i + PublicationTargets.TokenLength <= operation.Length
+                && PublicationTargets.IsToken(operation.Substring(i, PublicationTargets.TokenLength)))
+            {
+                folded.Append('T');
+                i += PublicationTargets.TokenLength;
+                continue;
+            }
+
+            folded.Append(operation[i++]);
+        }
+
+        return folded.ToString();
+    }
+
+    /// <summary>
+    /// Records a stream-level boundary — a first write, a flush, a close — and crashes after it if
+    /// asked. These are transitions of their own: a record or a stage stops being empty and starts
+    /// being partial at exactly one of them (CX-M7H-012).
+    /// </summary>
+    internal void Observe(string operation)
+    {
+        Operations.Add(operation);
+        MutateIfRequested(operation);
+        CrashIfRequested(operation);
+    }
+
+    // Fires once: a race is something that happens at one instant, and re-running it at every
+    // later matching operation would be a different scenario.
+    private void MutateIfRequested(string operation)
+    {
+        if (!string.Equals(MutateBefore, Fold(operation), StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        var mutate = Mutate;
+        var mutateWith = MutateWith;
+        Mutate = null;
+        MutateWith = null;
+        mutate?.Invoke();
+        mutateWith?.Invoke(operation);
+    }
+
+    // Called after the real operation succeeded, so the directory holds exactly the state an
+    // abrupt termination at that instant would leave.
+    internal void CrashIfRequested(string operation)
+    {
+        if (string.Equals(CrashAfter, Fold(operation), StringComparison.Ordinal))
+        {
+            Crashed = true;
+        }
+    }
+}
+
+/// <summary>
+/// A destination stream that can fail the way a full disk or a revoked handle does — on the first
+/// write, or only when the buffered bytes are finally closed out — and that reports its own write,
+/// flush, and close boundaries so a crash can be placed at one of them.
+/// <para>
+/// Once the owning filesystem has crashed, every operation on the stream fails too: a process that
+/// disappeared cannot finish writing a file it had open.
+/// </para>
+/// </summary>
+internal sealed class FaultyStream(
+    Stream inner, RecordingPublicationFileSystem owner, string name, bool failWrite, bool failClose) : Stream
+{
+    private bool _written;
+
+    public override bool CanRead => false;
+
+    public override bool CanSeek => false;
+
+    public override bool CanWrite => true;
+
+    public override long Length => inner.Length;
+
+    public override long Position
+    {
+        get => inner.Position;
+        set => inner.Position = value;
+    }
+
+    public override void Flush()
+    {
+        Refuse();
+        inner.Flush();
+        owner.Observe($"StreamFlush:{name}");
+    }
+
+    public override int Read(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+
+    public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+
+    public override void SetLength(long value) => throw new NotSupportedException();
+
+    public override void Write(byte[] buffer, int offset, int count)
+    {
+        Refuse();
+        if (failWrite)
+        {
+            throw owner.FailStreamWith();
+        }
+
+        inner.Write(buffer, offset, count);
+        Observe();
+    }
+
+    public override void Write(ReadOnlySpan<byte> buffer)
+    {
+        Refuse();
+        if (failWrite)
+        {
+            throw owner.FailStreamWith();
+        }
+
+        inner.Write(buffer);
+        Observe();
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            var crashed = owner.Crashed;
+
+            // A crashed process stops WRITING but does not keep its handles: the operating system
+            // reclaims them. Releasing here is what makes the simulation faithful — otherwise the
+            // stage or record would stay locked and the retry would fail to clean it up for a
+            // reason no real crash produces.
+            try
+            {
+                inner.Dispose();
+            }
+            catch (IOException)
+            {
+            }
+
+            if (!crashed)
+            {
+                owner.Observe($"StreamClose:{name}");
+                if (failClose)
+                {
+                    throw owner.FailStreamCloseWith();
+                }
+            }
+        }
+
+        base.Dispose(disposing);
+    }
+
+    // The FIRST write is the interesting boundary: it is where a record or a stage stops being
+    // empty and starts being partial.
+    private void Observe()
+    {
+        if (!_written)
+        {
+            _written = true;
+            owner.Observe($"StreamWrite:{name}");
+        }
+    }
+
+    private void Refuse()
+    {
+        if (owner.Crashed)
+        {
+            throw new IOException("the process crashed");
+        }
     }
 }
 

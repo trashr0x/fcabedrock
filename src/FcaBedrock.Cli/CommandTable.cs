@@ -100,11 +100,11 @@ internal sealed record CliCommand(
 /// The eight settled commands (D-122 part 1) as data. This table is the single source
 /// for the parser, the conditional rules, and the byte-locked usage/help text.
 /// <para>
-/// <b>Only <c>validate</c> executes in this slice.</b> The other seven parse under their
-/// complete final grammar — so the grammar is settled and tested once, at the argv
-/// boundary — and then report a deterministic code-less host error and exit 1 without
-/// doing any work. That is temporary shell behaviour, not an output contract: each
-/// command's handler arrives with its own slice (S7–S10).
+/// <b><c>validate</c>, <c>plan</c>, <c>stats</c>, <c>fingerprint</c>, and <c>convert</c>
+/// execute.</b> The remaining three parse under their complete final grammar — so the grammar
+/// is settled and tested once, at the argv boundary — and then report a deterministic code-less
+/// host error and exit 1 without doing any work. That is temporary shell behaviour, not an
+/// output contract: each command's handler arrives with its own slice (S9–S10).
 /// </para>
 /// </summary>
 internal static class CommandTable
@@ -134,7 +134,7 @@ internal static class CommandTable
                 "--out names a base; the ruled extension is appended, and there is no default or inferred format.",
                 "--force authorizes replacing an existing distinct destination.",
             ],
-            Handler: null),
+            ConvertCommand.RunAsync),
 
         new CliCommand(
             "validate",

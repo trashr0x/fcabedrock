@@ -1,4 +1,5 @@
 using System.Text;
+using FcaBedrock.Cli.Publication;
 
 namespace FcaBedrock.Cli;
 
@@ -33,6 +34,7 @@ internal static class Program
                 // has to come from here; parsing continues over `args` alone.
                 AuditArgv = [.. Environment.GetCommandLineArgs()],
                 OpenInput = CliEnvironment.OpenFile,
+                PublicationFiles = PublicationFileSystem.Instance,
             };
 
             exitCode = await CliHost.RunAsync(args, environment).ConfigureAwait(false);

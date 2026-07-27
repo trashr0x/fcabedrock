@@ -632,7 +632,6 @@ public sealed class RunPipelineTests
     }
 
     [Theory]
-    [InlineData("convert", "--out", "out", "--format", "cxt")]
     [InlineData("calibrate", "--out", "-")]
     public async Task Pipeline_WhenALaterSlicesCommandRuns_ThenItIsStillDeferredAndOpensNothing(
         string command, params string[] options)
@@ -675,7 +674,7 @@ public sealed class RunPipelineTests
     }
 
     [Fact]
-    public void CommandTable_ThenExactlyTheThreeReportCommandsGainedAHandler()
+    public void CommandTable_ThenExactlyTheImplementedCommandsHaveAHandler()
     {
         // The wiring is the whole production change to the table; every other command must
         // still be waiting for its own slice.
@@ -684,7 +683,7 @@ public sealed class RunPipelineTests
             .Select(command => command.Name)
             .Order(StringComparer.Ordinal);
 
-        Assert.Equal(["fingerprint", "plan", "stats", "validate"], handled);
+        Assert.Equal(["convert", "fingerprint", "plan", "stats", "validate"], handled);
         Assert.All(ReportCommands, name => Assert.NotNull(CommandTable.Find(name)!.Handler));
     }
 

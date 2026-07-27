@@ -86,11 +86,10 @@ public sealed class CliHostTests
     }
 
     // The commands whose grammar is settled but whose behaviour is still to come. `plan`,
-    // `stats`, and `fingerprint` left this list when their handlers landed; the remaining four
-    // leave it with their own slices.
+    // `stats`, `fingerprint`, and now `convert` left this list when their handlers landed; the
+    // remaining three leave it with their own slices.
     public static TheoryData<string[], string> LaterSliceCommands() => new()
     {
-        { ["convert", "s.toml", "d.csv", "--out", "b", "--format", "cxt"], "convert" },
         { ["calibrate", "s.toml", "d.csv", "--out", "o.toml"], "calibrate" },
         { ["probe", "d.csv", "--shape", "wide", "--out", "o.toml"], "probe" },
         { ["migrate", "x.bed", "--out", "o.toml"], "migrate" },

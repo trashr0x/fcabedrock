@@ -1,3 +1,5 @@
+using FcaBedrock.Cli.Publication;
+
 namespace FcaBedrock.Cli;
 
 /// <summary>
@@ -79,6 +81,13 @@ internal sealed class CliEnvironment
     /// base, and the data source. It is no public API and no user option.
     /// </summary>
     public required Func<string, Stream> OpenInput { get; init; }
+
+    /// <summary>
+    /// Every filesystem operation publication performs. Production is the real filesystem;
+    /// direct tests substitute one that fails a chosen boundary, which is how each commit,
+    /// backup, restore, and recovery step is proven rather than assumed (D-123 point 7).
+    /// </summary>
+    public IPublicationFileSystem PublicationFiles { get; init; } = PublicationFileSystem.Instance;
 
     /// <summary>Progress observation; the no-op observer in production.</summary>
     public IProgressObserver Progress { get; init; } = NoProgressObserver.Instance;
