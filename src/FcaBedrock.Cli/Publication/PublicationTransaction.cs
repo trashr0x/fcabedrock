@@ -237,7 +237,7 @@ internal sealed class PublicationTransaction
         {
             return Inspect(files, identityFactory, baseOperand, finalKinds, inputs, force, cancellation);
         }
-        catch (Exception exception) when (IsPublicationFailure(exception))
+        catch (Exception exception) when (FailureFamily.IsPublicationFailure(exception))
         {
             // An unusable output LOCATION — an operand that is not a path at all, a missing or
             // unreadable directory. This is the one boundary where an ArgumentException or a
@@ -286,13 +286,13 @@ internal sealed class PublicationTransaction
         {
             file = _files.CreateNew(pending);
         }
-        catch (Exception exception) when (IsEnvironmentFailure(exception))
+        catch (Exception exception) when (FailureFamily.IsEnvironmentFailure(exception))
         {
             // Refused. Nothing durable was written naming this path, and nothing will be: the
             // occupant is preserved by this run and by every later one (CX-M7H-037).
             return new PublicationFailure(PublicationMessages.RecordFailed(_baseSpelling));
         }
-        catch (Exception exception) when (IsContractFault(exception))
+        catch (Exception exception) when (FailureFamily.IsContractFault(exception))
         {
             throw new PublicationFaultException(exception);
         }
@@ -402,13 +402,13 @@ internal sealed class PublicationTransaction
             // residue, so it gets an actual access boundary rather than only an opaque name.
             stage = _files.CreateNewConfidential(stagePath);
         }
-        catch (Exception exception) when (IsEnvironmentFailure(exception))
+        catch (Exception exception) when (FailureFamily.IsEnvironmentFailure(exception))
         {
             // Refused. Nothing durable was written naming this path, and nothing will be: the
             // occupant is preserved by this run and by every later one (CX-M7H-036).
             return new PublicationFailure(PublicationMessages.StageFailed(target.Spelling));
         }
-        catch (Exception exception) when (IsContractFault(exception))
+        catch (Exception exception) when (FailureFamily.IsContractFault(exception))
         {
             throw new PublicationFaultException(exception);
         }
@@ -478,7 +478,7 @@ internal sealed class PublicationTransaction
                     _files.Flush(content);
                     _hashes[kind] = hashing.Complete();
                 }
-                catch (Exception exception) when (IsEnvironmentFailure(exception))
+                catch (Exception exception) when (FailureFamily.IsEnvironmentFailure(exception))
                 {
                     failed = true;
                 }
@@ -1048,11 +1048,11 @@ internal sealed class PublicationTransaction
         {
             file = _files.CreateNew(pending);
         }
-        catch (Exception exception) when (IsEnvironmentFailure(exception))
+        catch (Exception exception) when (FailureFamily.IsEnvironmentFailure(exception))
         {
             return false;
         }
-        catch (Exception exception) when (IsContractFault(exception))
+        catch (Exception exception) when (FailureFamily.IsContractFault(exception))
         {
             throw new PublicationFaultException(exception);
         }
@@ -1103,11 +1103,11 @@ internal sealed class PublicationTransaction
                 stream.Write(bytes, 0, bytes.Length);
                 _files.Flush(stream);
             }
-            catch (Exception exception) when (IsEnvironmentFailure(exception))
+            catch (Exception exception) when (FailureFamily.IsEnvironmentFailure(exception))
             {
                 failed = true;
             }
-            catch (Exception exception) when (IsContractFault(exception))
+            catch (Exception exception) when (FailureFamily.IsContractFault(exception))
             {
                 throw new PublicationFaultException(exception);
             }
@@ -1130,11 +1130,11 @@ internal sealed class PublicationTransaction
             stream.Dispose();
             return true;
         }
-        catch (Exception exception) when (IsEnvironmentFailure(exception))
+        catch (Exception exception) when (FailureFamily.IsEnvironmentFailure(exception))
         {
             return false;
         }
-        catch (Exception exception) when (IsContractFault(exception))
+        catch (Exception exception) when (FailureFamily.IsContractFault(exception))
         {
             throw new PublicationFaultException(exception);
         }
@@ -1150,7 +1150,7 @@ internal sealed class PublicationTransaction
         {
             stream.Dispose();
         }
-        catch (Exception exception) when (IsEnvironmentFailure(exception) || IsContractFault(exception))
+        catch (Exception exception) when (FailureFamily.IsEnvironmentFailure(exception) || FailureFamily.IsContractFault(exception))
         {
         }
     }
@@ -1199,11 +1199,11 @@ internal sealed class PublicationTransaction
         {
             file = _files.CreateNew(path);
         }
-        catch (Exception exception) when (IsEnvironmentFailure(exception))
+        catch (Exception exception) when (FailureFamily.IsEnvironmentFailure(exception))
         {
             return false;
         }
-        catch (Exception exception) when (IsContractFault(exception))
+        catch (Exception exception) when (FailureFamily.IsContractFault(exception))
         {
             throw new PublicationFaultException(exception);
         }
@@ -1984,7 +1984,7 @@ internal sealed class PublicationTransaction
         {
             return Guarded(() => files.ReadBounded(path, PublicationTargets.MaxRecordBytes));
         }
-        catch (Exception exception) when (IsEnvironmentFailure(exception))
+        catch (Exception exception) when (FailureFamily.IsEnvironmentFailure(exception))
         {
             return null;
         }
@@ -2342,11 +2342,11 @@ internal sealed class PublicationTransaction
         {
             return files.Remove(path, isExpected);
         }
-        catch (Exception exception) when (IsEnvironmentFailure(exception))
+        catch (Exception exception) when (FailureFamily.IsEnvironmentFailure(exception))
         {
             return false;
         }
-        catch (Exception exception) when (IsContractFault(exception))
+        catch (Exception exception) when (FailureFamily.IsContractFault(exception))
         {
             throw new PublicationFaultException(exception);
         }
@@ -2358,7 +2358,7 @@ internal sealed class PublicationTransaction
         {
             return Guarded(() => files.Exists(path));
         }
-        catch (Exception exception) when (IsEnvironmentFailure(exception))
+        catch (Exception exception) when (FailureFamily.IsEnvironmentFailure(exception))
         {
             // An unanswerable existence question is read as "present": that can only make the run
             // refuse or preserve residue, never overwrite or delete something.
@@ -2379,56 +2379,15 @@ internal sealed class PublicationTransaction
             action();
             return true;
         }
-        catch (Exception exception) when (IsEnvironmentFailure(exception))
+        catch (Exception exception) when (FailureFamily.IsEnvironmentFailure(exception))
         {
             return false;
         }
-        catch (Exception exception) when (IsContractFault(exception))
+        catch (Exception exception) when (FailureFamily.IsContractFault(exception))
         {
             throw new PublicationFaultException(exception);
         }
     }
-
-    /// <summary>
-    /// The broad family an unusable output <b>operand</b> can raise. Admitted at exactly one
-    /// boundary — preflight's own path resolution — where an <see cref="ArgumentException"/> or
-    /// <see cref="NotSupportedException"/> genuinely describes what the user typed. Everywhere
-    /// else the same types are contract defects and must reach the unexpected-fault exit (P-14,
-    /// CX-M7H-041).
-    /// </summary>
-    internal static bool IsPublicationFailure(Exception exception) =>
-        exception is IOException
-            or UnauthorizedAccessException
-            or NotSupportedException
-            or ObjectDisposedException
-            or ArgumentException;
-
-    /// <summary>
-    /// The failures that are genuinely the <b>environment's</b>: the disk filled, the handle was
-    /// revoked, access was withdrawn, the file is not there.
-    /// <para>
-    /// Deliberately narrow (CX-M7H-015/021/041). It governs every publication-filesystem call the
-    /// transaction makes — create, confidential create, flush, rename, delete, bounded read — and
-    /// every already-open stream it owns: artifact stages, the transaction record, its evidence,
-    /// and the phase markers. At each of those, an <see cref="ArgumentException"/> means an invalid
-    /// range or a path this code composed wrongly, and an <see cref="ObjectDisposedException"/>
-    /// means a closed stream or a disposed seam. Those are product bugs; disguising one as an
-    /// environment failure would send the user to check disk space.
-    /// </para>
-    /// </summary>
-    internal static bool IsEnvironmentFailure(Exception exception) =>
-        exception is IOException or UnauthorizedAccessException;
-
-    /// <summary>
-    /// The contract and state defects a publication boundary can raise (CX-M7H-034/035/041): a
-    /// write to a disposed stream, an invalid range, an unsupported operation. They are product
-    /// bugs, so they are tagged at their origin and reach the sanitized unexpected-fault exit
-    /// rather than being read as a full disk, an unusable output operand, or — for
-    /// <see cref="ObjectDisposedException"/>, which the host otherwise attributes to its own
-    /// writers — a failure of standard output.
-    /// </summary>
-    internal static bool IsContractFault(Exception exception) =>
-        exception is ObjectDisposedException or ArgumentException or NotSupportedException;
 
     // Every seam READ goes through here. A genuine I/O or permission failure stays an ordinary
     // publication failure for the caller to classify; a contract defect is tagged at its origin
@@ -2440,7 +2399,7 @@ internal sealed class PublicationTransaction
         {
             return operation();
         }
-        catch (Exception exception) when (IsContractFault(exception))
+        catch (Exception exception) when (FailureFamily.IsContractFault(exception))
         {
             throw new PublicationFaultException(exception);
         }

@@ -3,49 +3,6 @@ using System.Security.Cryptography;
 namespace FcaBedrock.Cli.Publication;
 
 /// <summary>
-/// Marks a failure as having come from the <b>output</b> side (CX-M7H-006).
-/// <para>
-/// An exporter writes a staged artifact while enumerating the data source, so one
-/// <see cref="IOException"/> escaping that call could equally mean "the source could not be read"
-/// or "the stage could not be written" — and the two get opposite messages, one naming the DATA
-/// operand and one naming the output. Tagging the failure where it happens is what keeps a full
-/// disk from being reported as a broken input file.
-/// </para>
-/// <para>It never escapes the CLI: publication converts it to a sanitized code-less host error.</para>
-/// </summary>
-internal sealed class PublicationStreamException : Exception
-{
-    /// <summary>Wraps <paramref name="inner"/>, the failure the output stream actually raised.</summary>
-    public PublicationStreamException(Exception inner)
-        : base("The publication output stream failed.", inner)
-    {
-    }
-}
-
-/// <summary>
-/// Marks a failure as a <b>contract or state defect at a publication boundary</b> (CX-M7H-034/035).
-/// <para>
-/// An <see cref="ObjectDisposedException"/>, <see cref="ArgumentException"/>, or
-/// <see cref="NotSupportedException"/> raised by an already-open publication stream — or by an
-/// internal residue read — is a product bug, not an environment failure, and belongs on the
-/// sanitized unexpected-fault exit. Two of those types would otherwise be indistinguishable from
-/// something else: the host maps a bare <see cref="ObjectDisposedException"/> to "cannot write to
-/// standard output", and preflight maps a bare <see cref="ArgumentException"/> to "the output
-/// operand is not a usable path". Wrapping at the origin is what keeps both of those readings for
-/// the cases they are actually about.
-/// </para>
-/// <para>It never escapes the CLI as itself: the host renders one fixed sanitized line.</para>
-/// </summary>
-internal sealed class PublicationFaultException : Exception
-{
-    /// <summary>Wraps <paramref name="inner"/>, the contract defect the boundary actually raised.</summary>
-    public PublicationFaultException(Exception inner)
-        : base("A publication boundary violated its contract.", inner)
-    {
-    }
-}
-
-/// <summary>
 /// A write-only pass-through that feeds every byte an exporter emits into one incremental
 /// SHA-256, so a staged artifact's hash is a by-product of writing it (D-122 part 5).
 /// <para>
@@ -131,11 +88,11 @@ internal sealed class HashingWriteStream : Stream
         {
             await _inner.FlushAsync(cancellationToken).ConfigureAwait(false);
         }
-        catch (Exception exception) when (PublicationTransaction.IsEnvironmentFailure(exception))
+        catch (Exception exception) when (FailureFamily.IsEnvironmentFailure(exception))
         {
             throw new PublicationStreamException(exception);
         }
-        catch (Exception exception) when (PublicationTransaction.IsContractFault(exception))
+        catch (Exception exception) when (FailureFamily.IsContractFault(exception))
         {
             throw new PublicationFaultException(exception);
         }
@@ -169,11 +126,11 @@ internal sealed class HashingWriteStream : Stream
         {
             _inner.Write(buffer);
         }
-        catch (Exception exception) when (PublicationTransaction.IsEnvironmentFailure(exception))
+        catch (Exception exception) when (FailureFamily.IsEnvironmentFailure(exception))
         {
             throw new PublicationStreamException(exception);
         }
-        catch (Exception exception) when (PublicationTransaction.IsContractFault(exception))
+        catch (Exception exception) when (FailureFamily.IsContractFault(exception))
         {
             throw new PublicationFaultException(exception);
         }
@@ -203,11 +160,11 @@ internal sealed class HashingWriteStream : Stream
         {
             await _inner.WriteAsync(buffer, cancellationToken).ConfigureAwait(false);
         }
-        catch (Exception exception) when (PublicationTransaction.IsEnvironmentFailure(exception))
+        catch (Exception exception) when (FailureFamily.IsEnvironmentFailure(exception))
         {
             throw new PublicationStreamException(exception);
         }
-        catch (Exception exception) when (PublicationTransaction.IsContractFault(exception))
+        catch (Exception exception) when (FailureFamily.IsContractFault(exception))
         {
             throw new PublicationFaultException(exception);
         }
@@ -249,11 +206,11 @@ internal sealed class HashingWriteStream : Stream
         {
             write();
         }
-        catch (Exception exception) when (PublicationTransaction.IsEnvironmentFailure(exception))
+        catch (Exception exception) when (FailureFamily.IsEnvironmentFailure(exception))
         {
             throw new PublicationStreamException(exception);
         }
-        catch (Exception exception) when (PublicationTransaction.IsContractFault(exception))
+        catch (Exception exception) when (FailureFamily.IsContractFault(exception))
         {
             throw new PublicationFaultException(exception);
         }

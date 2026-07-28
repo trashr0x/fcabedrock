@@ -118,7 +118,7 @@ internal static class ConvertCommand
         {
             inputs = [new PublicationInput(run.DataPath, Path.GetFullPath(run.DataPath))];
         }
-        catch (Exception exception) when (PublicationTransaction.IsPublicationFailure(exception))
+        catch (Exception exception) when (FailureFamily.IsPublicationFailure(exception))
         {
             return RunPipeline.HostFailure(
                 environment, diagnostics, RunPipeline.DataReadMessage(run.DataPath), cancellation);
