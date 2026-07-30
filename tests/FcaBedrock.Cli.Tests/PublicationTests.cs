@@ -170,7 +170,7 @@ public sealed class PublicationTests
         Assert.Equal(0, await run.ConvertAsync("--format", "both"));
 
         // Acquisition first, acknowledgement second, all the way down: the pending record, then the
-        // zero-byte intent descriptor that names the object that creation produced; then each stage
+        // intent descriptor that names the object that creation produced; then each stage
         // and, immediately after, the claim that names ITS created object; then each target's
         // evidence; and only once all of that is durable does the staged marker appear, the fact
         // that makes forward recovery sound.
@@ -212,8 +212,8 @@ public sealed class PublicationTests
 
         Assert.Equal(0, await run.ConvertAsync("--format", "cxt"));
 
-        // Every marker is a create-new empty file in the transaction's own namespace, and all of
-        // them go with the record at the end.
+        // Every marker is a create-new control file in the transaction's own namespace carrying
+        // the canonical body for its own phase, and all of them go with the record at the end.
         Assert.Contains(
             run.Harness.PublicationFiles.Operations,
             operation => operation.Contains(".fcabedrock-staged-", StringComparison.Ordinal));

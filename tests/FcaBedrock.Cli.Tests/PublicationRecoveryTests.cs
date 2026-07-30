@@ -120,10 +120,10 @@ public sealed class PublicationRecoveryTests
     }
 
     [Fact]
-    public async Task Publication_WhenAnIntentDescriptorIsNotEmpty_ThenItIsRefusedAndLeftUntouched()
+    public async Task Publication_WhenAnIntentDescriptorsBodyIsNotCanonical_ThenItIsRefusedAndLeftUntouched()
     {
-        // The descriptor is content-free by construction; that is exactly why removing one can
-        // never destroy anything. A file carrying bytes under that name is not one of ours.
+        // The descriptor is authoritative only through its exact canonical body, which is why
+        // removing one destroys nothing else: other bytes under that name are not ours.
         using var run = ConvertRun.Wide();
         var intent = WriteIntent(run.Directory, "out", Token, [("stage", "out.cxt")]);
         await File.WriteAllTextAsync(intent, "not ours");
@@ -1081,10 +1081,10 @@ public sealed class PublicationRecoveryTests
     [InlineData("staged")]
     [InlineData("rollback")]
     [InlineData("committed")]
-    public async Task Publication_WhenAPhaseMarkerIsNotEmpty_ThenRecoveryRefusesAndPreservesIt(string phase)
+    public async Task Publication_WhenAPhaseMarkersBodyIsNotCanonical_ThenRecoveryRefusesAndPreservesIt(string phase)
     {
-        // CX-M7H-029. A marker's existence is its entire meaning, so a genuine one carries no
-        // bytes. A file with the right name and arbitrary contents must neither select a recovery
+        // CX-M7H-029, superseded: a genuine marker carries the canonical body for its own phase,
+        // so a file with the right name and any other contents must neither select a recovery
         // direction nor be deleted as control residue.
         using var run = ConvertRun.Wide();
         var residue = Residue.Create(run.Directory, "out", Token);
@@ -1111,11 +1111,11 @@ public sealed class PublicationRecoveryTests
     }
 
     [Fact]
-    public async Task Publication_WhenAStageClaimIsNotEmpty_ThenRecoveryRefusesAndPreservesIt()
+    public async Task Publication_WhenAStageClaimsBodyIsNotCanonical_ThenRecoveryRefusesAndPreservesIt()
     {
-        // The claim is content-free for the same reason the phase markers are: its existence is the
-        // whole signal, so a file carrying bytes under that name is not this transaction's state.
-        // It must neither prove ownership of the stage beside it nor be deleted as control residue.
+        // The claim is authoritative only through its exact canonical body, which binds this
+        // transaction, this target kind, and the acknowledged stage identity. Other bytes under
+        // that name prove nothing: they neither authorize the stage beside it nor are removed.
         using var run = ConvertRun.Wide();
         var residue = Residue.Create(run.Directory, "out", Token);
         residue.WriteRecord([("stage", "out.cxt")]);
@@ -1412,9 +1412,9 @@ public sealed class PublicationRecoveryTests
 
     // ---- helpers ------------------------------------------------------------------------------------
 
-    // A valid intent descriptor for the record `files` describes: zero bytes, and a name carrying
-    // the shape, the digest of that record's own bytes, and the identity of the pending object it
-    // acknowledges — which for a hand-built descriptor is whatever object the test put there.
+    // A valid intent descriptor for the record `files` describes: the canonical intent body, and
+    // a name carrying the shape, the digest of that record's bytes, and the identity of the
+    // pending object it acknowledges — for a hand-built descriptor, whatever the test put there.
     private static string WriteIntent(
         string directory,
         string baseName,

@@ -539,7 +539,7 @@ public sealed class PublicationOwnershipTests
     public async Task Publication_WhenAnEmptyOccupantRefusesAControlCreate_ThenNoRunEverRemovesIt(
         string control, string glob, bool rollback)
     {
-        // The empty-occupant race, at every content-free-role control. The create-new is refused,
+        // The empty-occupant race, at every role-only control. The create-new is refused,
         // so nothing successful and nothing durable names the occupant.
         //
         // A zero-byte control could not answer this: an empty file at the name is exactly what the
@@ -1408,8 +1408,8 @@ public sealed class PublicationOwnershipTests
         harness.PublicationFiles.FailNamePrefix = prefix;
     }
 
-    // A zero-byte intent descriptor whose name states the record shape, that record's own digest,
-    // and the identity it claims for the pending object it acknowledges.
+    // An intent descriptor carrying the canonical intent body, whose name states the record
+    // shape, that record's own digest, and the identity it claims for the pending object.
     private static string WriteIntent(
         string directory,
         string baseName,
