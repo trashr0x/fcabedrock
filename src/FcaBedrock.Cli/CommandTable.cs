@@ -100,11 +100,12 @@ internal sealed record CliCommand(
 /// The eight settled commands (D-122 part 1) as data. This table is the single source
 /// for the parser, the conditional rules, and the byte-locked usage/help text.
 /// <para>
-/// <b><c>validate</c>, <c>plan</c>, <c>stats</c>, <c>fingerprint</c>, and <c>convert</c>
-/// execute.</b> The remaining three parse under their complete final grammar — so the grammar
-/// is settled and tested once, at the argv boundary — and then report a deterministic code-less
-/// host error and exit 1 without doing any work. That is temporary shell behaviour, not an
-/// output contract: each command's handler arrives with its own slice (S9–S10).
+/// <b><c>validate</c>, <c>plan</c>, <c>stats</c>, <c>fingerprint</c>, <c>convert</c>,
+/// <c>probe</c>, and <c>migrate</c> execute.</b> Only <c>calibrate</c> still parses under its
+/// complete final grammar — so the grammar is settled and tested once, at the argv boundary —
+/// and then reports a deterministic code-less host error and exit 1 without doing any work.
+/// That is temporary shell behaviour, not an output contract: its handler arrives with its
+/// own slice (S10).
 /// </para>
 /// </summary>
 internal static class CommandTable
@@ -198,7 +199,7 @@ internal static class CommandTable
                     + " all zero-based indices, or all header names, and names require --header true.",
                 "--out - writes to stdout; --force is a file-target option and is rejected with --out -.",
             ],
-            Handler: null),
+            ProbeCommand.RunAsync),
 
         new CliCommand(
             "migrate",
@@ -227,7 +228,7 @@ internal static class CommandTable
                 "Triple output always authors ordering = \"unordered\"; there is no --ordering option.",
                 "--out - writes to stdout; --force is a file-target option and is rejected with --out -.",
             ],
-            Handler: null),
+            MigrateCommand.RunAsync),
 
         new CliCommand(
             "fingerprint",

@@ -655,35 +655,17 @@ public sealed class RunPipelineTests
         Assert.Empty(harness.Opened);
     }
 
-    [Theory]
-    [InlineData("probe", "--shape", "wide", "--out", "-")]
-    [InlineData("migrate", "--out", "-")]
-    public async Task Pipeline_WhenASingleOperandCommandRuns_ThenItIsStillDeferredAndOpensNothing(
-        string command, params string[] options)
-    {
-        using var temp = TempDirectory.Create();
-        var harness = new CliTestHarness();
-        string[] argv = [command, temp.Write("data.csv", CliFixtures.WideData), .. options];
-
-        var exit = await harness.RunAsync(argv);
-
-        Assert.Equal(1, exit);
-        Assert.Equal(
-            DiagnosticRenderer.RenderHostError($"the '{command}' command is not implemented yet."), harness.StdErr);
-        Assert.Empty(harness.Opened);
-    }
-
     [Fact]
     public void CommandTable_ThenExactlyTheImplementedCommandsHaveAHandler()
     {
-        // The wiring is the whole production change to the table; every other command must
-        // still be waiting for its own slice.
+        // The wiring is the whole production change to the table; calibrate must still be
+        // waiting for its own slice.
         var handled = CommandTable.Commands
             .Where(command => command.Handler is not null)
             .Select(command => command.Name)
             .Order(StringComparer.Ordinal);
 
-        Assert.Equal(["convert", "fingerprint", "plan", "stats", "validate"], handled);
+        Assert.Equal(["convert", "fingerprint", "migrate", "plan", "probe", "stats", "validate"], handled);
         Assert.All(ReportCommands, name => Assert.NotNull(CommandTable.Find(name)!.Handler));
     }
 

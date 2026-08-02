@@ -52,9 +52,6 @@ internal sealed record SpecChainFile(string FullPath, string Spelling, string Ha
 /// </summary>
 internal sealed class FileSpecTextSource : ISpecTextSource
 {
-    // throwOnInvalidBytes: an ill-formed sequence must fail the read, not become U+FFFD.
-    private static readonly UTF8Encoding StrictUtf8 = new(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true);
-
     private readonly Func<string, Stream> _open;
     private readonly FileIdentity _identity;
     private readonly Dictionary<FileIdentityKey, string> _canonicalKeys = [];
@@ -119,7 +116,7 @@ internal sealed class FileSpecTextSource : ISpecTextSource
             bytes = buffer.ToArray();
         }
 
-        var text = Decode(bytes);
+        var text = SpecTextDecoding.Decode(bytes);
 
         // Recorded only after a successful decode: a file that is not a readable spec is not a
         // chain fact. The hash is over the raw bytes, before the byte-order mark is consumed.
@@ -131,26 +128,6 @@ internal sealed class FileSpecTextSource : ISpecTextSource
 
         return text;
     }
-
-    // Strict decoding, spelled out here because the convenient overloads are all permissive:
-    // StreamReader's BOM detection also recognizes UTF-16 and UTF-32, and the one-argument
-    // UTF8Encoding replaces invalid bytes instead of rejecting them.
-    private static string Decode(byte[] bytes)
-    {
-        if (StartsWith(bytes, [0x00, 0x00, 0xFE, 0xFF])
-            || StartsWith(bytes, [0xFF, 0xFE, 0x00, 0x00])
-            || StartsWith(bytes, [0xFE, 0xFF])
-            || StartsWith(bytes, [0xFF, 0xFE]))
-        {
-            throw new InvalidDataException("The spec is not UTF-8: it carries a UTF-16 or UTF-32 byte-order mark.");
-        }
-
-        var offset = StartsWith(bytes, [0xEF, 0xBB, 0xBF]) ? 3 : 0;
-        return StrictUtf8.GetString(bytes, offset, bytes.Length - offset);
-    }
-
-    private static bool StartsWith(byte[] bytes, ReadOnlySpan<byte> prefix) =>
-        bytes.AsSpan().StartsWith(prefix);
 
     /// <inheritdoc/>
     public SpecSourceText? Load(string reference, string referrerKey)
