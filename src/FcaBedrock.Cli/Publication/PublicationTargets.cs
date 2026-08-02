@@ -2,7 +2,7 @@ using System.Security.Cryptography;
 
 namespace FcaBedrock.Cli.Publication;
 
-/// <summary>Which artifact a target holds. The declaration order is the canonical commit order.</summary>
+/// <summary>Which artifact a target holds; the first three fix the canonical commit order.</summary>
 internal enum PublicationTargetKind
 {
     /// <summary>The Burmeister <c>.cxt</c> context (§18.1).</summary>
@@ -13,6 +13,35 @@ internal enum PublicationTargetKind
 
     /// <summary>The run manifest (§15) — committed last, the run's public commit marker.</summary>
     Manifest,
+
+    /// <summary>
+    /// One arbitrary file, published at the <c>--out</c> operand exactly as it was spelled
+    /// (D-122 part 4, D-123 point 7): its extension is the empty string because the operand
+    /// already names the file, so nothing is appended and nothing is trimmed. It is deliberately
+    /// outside <see cref="PublicationTargets.CommitOrder"/> and
+    /// <see cref="PublicationTargets.BackupOrder"/>, whose contents fix the artifacts family's
+    /// six shape-code bit positions.
+    /// </summary>
+    Single,
+}
+
+/// <summary>
+/// Which semantic family a target — and so a whole transaction — belongs to (D-123 point 7).
+/// <para>
+/// Both families share one publication authority, record format, and recovery routine, but a
+/// caller may complete only its <b>own</b>: at one exact output base a convert record and a
+/// single-file record are both parseable, and each names files the other command never asked to
+/// write. Classification therefore takes the caller's expected family, and a valid foreign one is
+/// refused and preserved byte-for-byte rather than recovered.
+/// </para>
+/// </summary>
+internal enum PublicationFamily
+{
+    /// <summary>The convert family: <c>.cxt</c>, <c>.dat</c>, and the run manifest.</summary>
+    Artifacts,
+
+    /// <summary>The single-file family: exactly one arbitrary path.</summary>
+    Single,
 }
 
 /// <summary>
@@ -136,6 +165,20 @@ internal static class PublicationTargets
     internal static readonly PublicationTargetKind[] BackupOrder =
         [PublicationTargetKind.Manifest, PublicationTargetKind.Cxt, PublicationTargetKind.Dat];
 
+    /// <summary>
+    /// Every kind, for mapping between a kind and a name. Deliberately <b>not</b> an ordering:
+    /// <see cref="CommitOrder"/> and <see cref="BackupOrder"/> are the artifacts family's alone.
+    /// The artifacts kinds come first, so a lookup by extension cannot be shadowed — theirs are
+    /// non-empty and distinct, and only <see cref="PublicationTargetKind.Single"/>'s is empty.
+    /// </summary>
+    internal static readonly PublicationTargetKind[] AllKinds =
+        [PublicationTargetKind.Cxt, PublicationTargetKind.Dat, PublicationTargetKind.Manifest,
+            PublicationTargetKind.Single];
+
+    /// <summary>The family <paramref name="kind"/> belongs to — the one authority on the question.</summary>
+    public static PublicationFamily FamilyOf(PublicationTargetKind kind) =>
+        kind == PublicationTargetKind.Single ? PublicationFamily.Single : PublicationFamily.Artifacts;
+
     /// <summary>A fresh, unpredictable run token: 16 cryptographically random bytes as lowercase hex.</summary>
     public static string NewToken() => Convert.ToHexStringLower(RandomNumberGenerator.GetBytes(16));
 
@@ -145,6 +188,7 @@ internal static class PublicationTargets
         PublicationTargetKind.Cxt => ".cxt",
         PublicationTargetKind.Dat => ".dat",
         PublicationTargetKind.Manifest => ".manifest.toml",
+        PublicationTargetKind.Single => string.Empty,
         _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, "Unknown publication target kind."),
     };
 
@@ -232,9 +276,10 @@ internal static class PublicationTargets
     /// <summary>
     /// The intent descriptor's file name (CX-M7H-018/037): the control file created immediately
     /// <em>after</em> the pending record, whose name confines it to this base and classifies it as
-    /// this run's descriptor — carrying the run token, the six-bit record shape, the 128-bit digest
-    /// of the exact record bytes that shape produces, and the identity digest of the object the
-    /// pending record's create-new actually produced.
+    /// this run's descriptor — carrying the run token, the whole one-byte record shape (the two
+    /// families take disjoint ranges of it, so the family bit rides in this name like any other),
+    /// the 128-bit digest of the exact record bytes that shape produces, and the identity digest of
+    /// the object the pending record's create-new actually produced.
     /// <para>
     /// <b>The name classifies; it does not prove.</b> Ownership rests on the descriptor's exact
     /// canonical bytes (<see cref="ControlDocument"/>), which bind the token, the base, the
@@ -348,7 +393,7 @@ internal static class PublicationTargets
             return null;
         }
 
-        foreach (var kind in CommitOrder)
+        foreach (var kind in AllKinds)
         {
             if (KindCode(kind) == rest[0])
             {
@@ -379,6 +424,7 @@ internal static class PublicationTargets
         PublicationTargetKind.Cxt => 'c',
         PublicationTargetKind.Dat => 'd',
         PublicationTargetKind.Manifest => 'm',
+        PublicationTargetKind.Single => 's',
         _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, "Unknown publication target kind."),
     };
 
@@ -473,7 +519,7 @@ internal static class PublicationTargets
             return null;
         }
 
-        foreach (var kind in CommitOrder)
+        foreach (var kind in AllKinds)
         {
             if (KindCode(kind) == rest[0])
             {
@@ -489,8 +535,9 @@ internal static class PublicationTargets
 
     /// <summary>
     /// True when <paramref name="fileName"/> claims this run's private namespace — the record or a
-    /// phase marker for <paramref name="baseFileName"/>, or a stage/backup sibling of one of its
-    /// three canonical targets — <b>whatever follows the marker</b>.
+    /// phase marker for <paramref name="baseFileName"/>, or a stage/backup sibling of a canonical
+    /// target admitted by either family — <b>whatever follows the marker</b>. A single-file target
+    /// <em>is</em> the base file name, so its siblings arrive by the marker test, not the loop.
     /// <para>
     /// Deliberately broader than the well-formed grammar: a file called
     /// <c>adult.cxt.fcabedrock-stage-nonsense</c> is claiming the namespace even though no run

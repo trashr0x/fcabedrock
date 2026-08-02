@@ -248,6 +248,33 @@ internal sealed class PublicationTransaction
     }
 
     /// <summary>
+    /// The same preflight for one arbitrary file (D-122 part 4, D-123 point 7): the target is the
+    /// <c>--out PATH</c> operand exactly as given, because
+    /// <see cref="PublicationTargetKind.Single"/>'s extension is empty. The <b>same</b>
+    /// transaction, record format, and recovery routine as <see cref="Preflight"/> — not a sibling
+    /// protocol — differing only in the target set and the family it may complete.
+    /// </summary>
+    public static PublicationPreparation PreflightSingle(
+        IPublicationFileSystem files, Func<FileIdentity> identityFactory, string outPath,
+        IReadOnlyList<PublicationInput> inputs, bool force, CancellationToken cancellation)
+    {
+        ArgumentNullException.ThrowIfNull(files);
+        ArgumentNullException.ThrowIfNull(identityFactory);
+        ArgumentNullException.ThrowIfNull(outPath);
+        ArgumentNullException.ThrowIfNull(inputs);
+
+        try
+        {
+            return InspectSingle(files, identityFactory, outPath, inputs, force, cancellation);
+        }
+        catch (Exception exception) when (FailureFamily.IsPublicationFailure(exception))
+        {
+            // The same one boundary where the broad family describes the user's own operand.
+            return new PublicationRefused(PublicationMessages.RecordFailed(outPath));
+        }
+    }
+
+    /// <summary>
     /// Creates the transaction's root: the pending record, the <b>intent descriptor</b> that
     /// acknowledges it, and then the record itself.
     /// <para>
@@ -754,8 +781,6 @@ internal sealed class PublicationTransaction
         bool force,
         CancellationToken cancellation)
     {
-        cancellation.ThrowIfCancellationRequested();
-
         var directory = PublicationTargets.Directory(baseOperand);
         var baseFileName = PublicationTargets.BaseFileName(baseOperand);
 
@@ -773,39 +798,13 @@ internal sealed class PublicationTransaction
             manifestIsFinal |= kind == PublicationTargetKind.Manifest;
         }
 
-        // Residue is validated in full before a single byte moves, so a malformed record, an
-        // impossible transaction shape or state, or an unknown lookalike refuses the run with the
-        // location exactly as it was found. Discovery needs an identity service of its own: a
-        // case-variant spelling of this base names the same physical files on a case-insensitive
-        // directory, and residue discovery cannot see cannot be recovered (CX-M7H-016).
-        if (!TryClassifyResidue(files, identityFactory, directory, baseFileName, out var residue))
+        if (PrepareLocation(
+                files, identityFactory, baseOperand, directory, baseFileName,
+                PublicationFamily.Artifacts, targets, inputs, cancellation, out var identity) is { } refusal)
         {
-            return new PublicationRefused(PublicationMessages.UnknownResidue(baseOperand));
+            return refusal;
         }
 
-        cancellation.ThrowIfCancellationRequested();
-
-        if (!residue.IsEmpty)
-        {
-            // Nothing recovery would delete, move, or replace may be one of THIS run's inputs.
-            // The fresh collision check below runs after recovery, which is too late to protect a
-            // DATA or SPEC file that recovery itself would remove (CX-M7H-023).
-            if (PriorCollision(files, identityFactory(), directory, baseOperand, residue, inputs, targets) is { } collision)
-            {
-                return new PublicationRefused(collision);
-            }
-
-            // A validated prior transaction is completed FIRST — it belongs to that run, not this
-            // one — and only then does this run look at the location it will actually publish into.
-            if (!Recover(files, identityFactory, directory, residue, new RecoveryGuard(identityFactory, inputs, cancellation)))
-            {
-                return new PublicationRefused(PublicationMessages.RecoveryFailed(baseOperand));
-            }
-        }
-
-        // A fresh identity service: recovery may have restored a target, and a memoized
-        // "this path does not exist" fallback would answer for the location as it was before.
-        var identity = identityFactory();
         var manifest = targets[PublicationTargetKind.Manifest];
 
         // Any existing manifest is a marker hazard for a run that publishes artifacts it will not
@@ -878,31 +877,10 @@ internal sealed class PublicationTransaction
 
         // What each backup-bearing target IS, at the one moment the collision check approved it.
         var preflightIdentity = new Dictionary<string, string>(StringComparer.Ordinal);
-        foreach (var entry in entries)
+        if (!TryPreflightIdentity(identity, directory, token, entries, preflightIdentity, out var unprovable))
         {
-            if (!string.Equals(entry.Role, PublicationTargets.BackupRole, StringComparison.Ordinal))
-            {
-                continue;
-            }
-
-            var evidence = IdentityEvidence.Of(
-                token,
-                PublicationTargets.BackupRole,
-                entry.TargetFileName,
-                identity.KeyFor(TransactionRecord.TargetPathOf(directory, entry)));
-
-            // A participant that exists, that this run would rename aside, and that this host
-            // cannot identify can never be committed over — Seal and Commit both refuse it. Knowing
-            // that HERE is knowing it before a record, a stage, a claim, or one pass of conversion
-            // work exists, so the refusal belongs here rather than after the whole output set has
-            // been written and the last-good outputs renamed away (CX-M7H-042).
-            if (!IdentityEvidence.IsIdentity(evidence))
-            {
-                return new PublicationRefused(
-                    PublicationMessages.CommitFailed(SpellingOfName(entry.TargetFileName, targets)));
-            }
-
-            preflightIdentity[entry.TargetFileName] = evidence;
+            return new PublicationRefused(
+                PublicationMessages.CommitFailed(SpellingOfName(unprovable, targets)));
         }
 
         cancellation.ThrowIfCancellationRequested();
@@ -919,6 +897,146 @@ internal sealed class PublicationTransaction
             finals,
             targets,
             preflightIdentity));
+    }
+
+    // The single-file tail: one target, so no manifest to demote and no selection to make — the
+    // record reserves one stage and, when something is there, the backup rollback restores from.
+    private static PublicationPreparation InspectSingle(
+        IPublicationFileSystem files, Func<FileIdentity> identityFactory, string outPath,
+        IReadOnlyList<PublicationInput> inputs, bool force, CancellationToken cancellation)
+    {
+        var directory = PublicationTargets.Directory(outPath);
+        var baseFileName = PublicationTargets.BaseFileName(outPath);
+        var target = PublicationTargets.Target(outPath, PublicationTargetKind.Single);
+        var targets = new Dictionary<PublicationTargetKind, PublicationTarget>
+            { [PublicationTargetKind.Single] = target };
+        var finals = new List<PublicationTarget> { target };
+        if (PrepareLocation(
+                files, identityFactory, outPath, directory, baseFileName,
+                PublicationFamily.Single, targets, inputs, cancellation, out var identity) is { } refusal)
+        {
+            return refusal;
+        }
+
+        if (Collisions(identity, finals, inputs) is { } collision)
+        {
+            return new PublicationRefused(collision);
+        }
+
+        var exists = Exists(files, target.FullPath);
+        if (exists && !force)
+        {
+            return new PublicationRefused(PublicationMessages.ExistingTarget(target.Spelling));
+        }
+
+        var entries = new List<TransactionFileEntry>();
+        if (exists)
+        {
+            entries.Add(new TransactionFileEntry(PublicationTargets.BackupRole, target.FileName));
+        }
+
+        entries.Add(new TransactionFileEntry(PublicationTargets.StageRole, target.FileName));
+        var token = PublicationTargets.NewToken();
+        var record = TransactionRecord.Create(token, baseFileName, entries);
+        if (ControlCollision(identity, directory, record, token, finals, inputs))
+        {
+            return new PublicationRefused(PublicationMessages.RecordFailed(outPath));
+        }
+
+        var preflightIdentity = new Dictionary<string, string>(StringComparer.Ordinal);
+        if (!TryPreflightIdentity(identity, directory, token, entries, preflightIdentity, out var unprovable))
+        {
+            return new PublicationRefused(PublicationMessages.CommitFailed(SpellingOfName(unprovable, targets)));
+        }
+
+        cancellation.ThrowIfCancellationRequested();
+        return new PublicationReady(new PublicationTransaction(
+            files, identityFactory, inputs, directory, outPath, baseFileName, token, record, finals,
+            targets, preflightIdentity));
+    }
+
+    /// <summary>
+    /// Everything both preflights do before they look at the location they will publish into:
+    /// validate the residue, protect the run's own inputs from recovery, complete a prior
+    /// transaction of <paramref name="expectedFamily"/>, and hand back a fresh identity service.
+    /// Answers the refusal, or <see langword="null"/> when the location is ready.
+    /// <b>The expected family is authority, not an inference:</b> at one exact base a convert and
+    /// a single-file record are both well formed, and each names files the other command never
+    /// asked to write, so a valid foreign record is refused as unknown residue before any state is
+    /// assembled, any collision is evaluated, or <see cref="Recover"/> runs — preserved as found.
+    /// </summary>
+    private static PublicationPreparation? PrepareLocation(
+        IPublicationFileSystem files, Func<FileIdentity> identityFactory, string baseOperand,
+        string directory, string baseFileName, PublicationFamily expectedFamily,
+        IReadOnlyDictionary<PublicationTargetKind, PublicationTarget> targets,
+        IReadOnlyList<PublicationInput> inputs, CancellationToken cancellation,
+        out FileIdentity identity)
+    {
+        cancellation.ThrowIfCancellationRequested();
+        identity = identityFactory();
+        // Residue is validated in full before a single byte moves, so a malformed record, an
+        // impossible shape or state, a foreign family, or an unknown lookalike refuses the run with
+        // the location exactly as found. Discovery takes its own identity service: residue it
+        // cannot see cannot be recovered, and case variants alias on some directories (CX-M7H-016).
+        if (!TryClassifyResidue(files, identityFactory, directory, baseFileName, expectedFamily, out var residue))
+        {
+            return new PublicationRefused(PublicationMessages.UnknownResidue(baseOperand));
+        }
+
+        cancellation.ThrowIfCancellationRequested();
+        if (residue.IsEmpty)
+        {
+            return null;
+        }
+
+        // Nothing recovery would delete, move, or replace may be one of THIS run's inputs; the
+        // fresh check later runs after recovery, too late to protect one it removes (CX-M7H-023).
+        if (PriorCollision(files, identity, directory, baseOperand, residue, inputs, targets) is { } collision)
+        {
+            return new PublicationRefused(collision);
+        }
+
+        // A validated prior transaction is completed FIRST — it belongs to that run, not this one.
+        if (!Recover(files, identityFactory, directory, residue, new RecoveryGuard(identityFactory, inputs, cancellation)))
+        {
+            return new PublicationRefused(PublicationMessages.RecoveryFailed(baseOperand));
+        }
+
+        // Recovery may have restored a target, and a memoized "does not exist" would still say so.
+        identity = identityFactory();
+        return null;
+    }
+
+    // What each backup-bearing target IS, at the one moment the collision check approved it. False
+    // names the target whose identity the host could not supply: it can never be committed over,
+    // and knowing that here is knowing it before any record, stage, or claim exists (CX-M7H-042).
+    private static bool TryPreflightIdentity(
+        FileIdentity identity, string directory, string token,
+        IReadOnlyList<TransactionFileEntry> entries, Dictionary<string, string> preflightIdentity,
+        out string unprovable)
+    {
+        foreach (var entry in entries)
+        {
+            if (!string.Equals(entry.Role, PublicationTargets.BackupRole, StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            var evidence = IdentityEvidence.Of(
+                token, PublicationTargets.BackupRole, entry.TargetFileName,
+                identity.KeyFor(TransactionRecord.TargetPathOf(directory, entry)));
+
+            if (!IdentityEvidence.IsIdentity(evidence))
+            {
+                unprovable = entry.TargetFileName;
+                return false;
+            }
+
+            preflightIdentity[entry.TargetFileName] = evidence;
+        }
+
+        unprovable = string.Empty;
+        return true;
     }
 
     private static string IntentNameOf(
@@ -1381,7 +1499,7 @@ internal sealed class PublicationTransaction
 
     private static PublicationTargetKind KindOfTarget(string targetFileName, string baseFileName)
     {
-        foreach (var kind in PublicationTargets.CommitOrder)
+        foreach (var kind in PublicationTargets.AllKinds)
         {
             if (string.Equals(targetFileName, baseFileName + PublicationTargets.Extension(kind), StringComparison.Ordinal))
             {
@@ -1498,6 +1616,7 @@ internal sealed class PublicationTransaction
         Func<FileIdentity> identityFactory,
         string directory,
         string baseFileName,
+        PublicationFamily expectedFamily,
         out DiscoveredResidue residue)
     {
         residue = DiscoveredResidue.None;
@@ -1547,6 +1666,14 @@ internal sealed class PublicationTransaction
                 return false;
             }
 
+            // Valid, and still not this caller's to complete. A record of the other family at this
+            // exact base names files this command never asked to write, so it is refused here —
+            // before any state is assembled — and preserved byte-for-byte with everything it owns.
+            if (parsed.Family != expectedFamily)
+            {
+                return false;
+            }
+
             record = parsed;
         }
 
@@ -1569,6 +1696,12 @@ internal sealed class PublicationTransaction
             // hand-authored name cannot satisfy both without running this serializer.
             if (TransactionRecord.FromShape(claim.Token, claimed, claim.Shape) is not { } described
                 || !string.Equals(described.Digest, claim.Digest, StringComparison.Ordinal))
+            {
+                return false;
+            }
+
+            // And the same authority check for a descriptor that never became a record.
+            if (described.Family != expectedFamily)
             {
                 return false;
             }

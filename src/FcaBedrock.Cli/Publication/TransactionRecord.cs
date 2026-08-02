@@ -15,7 +15,8 @@ namespace FcaBedrock.Cli.Publication;
 /// <param name="Role">
 /// <see cref="PublicationTargets.StageRole"/> or <see cref="PublicationTargets.BackupRole"/>.
 /// </param>
-/// <param name="TargetFileName">One of the three canonical target file names for this base.</param>
+/// <param name="TargetFileName">One of this base's three artifacts targets, or, in the single-file
+/// family, the base file name itself — nothing else parses, so no path can be injected.</param>
 internal sealed record TransactionFileEntry(string Role, string TargetFileName);
 
 /// <summary>
@@ -42,8 +43,15 @@ internal sealed record TransactionFileEntry(string Role, string TargetFileName);
 /// </summary>
 internal sealed class TransactionRecord
 {
+    /// <summary>The bit separating the families in a shape code — the first the artifacts family,
+    /// which uses the six low bits, can never set (D-123 point 7).</summary>
+    internal const int FamilyBit = 0x40;
+
     private const string VersionLine = "version = 1";
     private const string FileHeader = "[[file]]";
+
+    private const int SingleStageBit = 1;
+    private const int SingleBackupBit = 1 << 1;
 
     private TransactionRecord(string token, string baseFileName, IReadOnlyList<TransactionFileEntry> files)
     {
@@ -120,16 +128,44 @@ internal sealed class TransactionRecord
         new(token, baseFileName, files);
 
     /// <summary>
-    /// The six-bit code naming this record's shape: which targets it stages, and which it backs
-    /// up. It is what the pre-record intent descriptor carries (CX-M7H-018) — the entry
-    /// <em>order</em> needs no encoding, because a transaction only ever writes one arrangement:
-    /// backups in <see cref="PublicationTargets.BackupOrder"/>, then stages in
-    /// <see cref="PublicationTargets.CommitOrder"/>.
+    /// Which family this record belongs to, derived from its own entries — never stored, so no
+    /// record's emitted text changes and no version moves (D-123 point 7). It is total: a
+    /// single-file target's file name <em>is</em> the base file name and an artifact target's
+    /// never can be, and <see cref="IsReachable"/> rejects a record that mixes them or names
+    /// neither — so every record that parses has the family of its first entry.
+    /// </summary>
+    public PublicationFamily Family =>
+        Files.Count > 0 && KindOf(Files[0].TargetFileName, BaseFileName) is { } kind
+            ? PublicationTargets.FamilyOf(kind)
+            : PublicationFamily.Artifacts;
+
+    /// <summary>
+    /// The code naming this record's shape: which targets it stages, and which it backs up. It is
+    /// what the pre-record intent descriptor carries (CX-M7H-018) — the entry <em>order</em> needs
+    /// no encoding, because each family only ever writes one arrangement: an artifacts transaction
+    /// writes backups in <see cref="PublicationTargets.BackupOrder"/>, then stages in
+    /// <see cref="PublicationTargets.CommitOrder"/>; a single-file one writes its one optional
+    /// backup, then its required stage.
+    /// The families occupy <b>disjoint</b> ranges: artifacts shapes are the six legacy bits
+    /// <c>0x00</c>–<c>0x3F</c>, unmoved, and a single-file shape sets <see cref="FamilyBit"/> plus
+    /// its own two, so only <c>0x41</c> and <c>0x43</c> are reachable there.
     /// </summary>
     public int ShapeCode
     {
         get
         {
+            if (Family == PublicationFamily.Single)
+            {
+                var single = FamilyBit;
+                foreach (var entry in Files)
+                {
+                    var stage = string.Equals(entry.Role, PublicationTargets.StageRole, StringComparison.Ordinal);
+                    single |= stage ? SingleStageBit : SingleBackupBit;
+                }
+
+                return single;
+            }
+
             var code = 0;
             foreach (var entry in Files)
             {
@@ -185,6 +221,15 @@ internal sealed class TransactionRecord
         ArgumentNullException.ThrowIfNull(token);
         ArgumentNullException.ThrowIfNull(baseFileName);
 
+        // Disjoint ranges, so the family bit selects the decoding; IsReachable gates both.
+        if (shape >= 0 && (shape & FamilyBit) != 0)
+        {
+            var single = SingleShape(baseFileName, shape);
+            return single is not null && IsReachable(single, baseFileName)
+                ? new TransactionRecord(token, baseFileName, single)
+                : null;
+        }
+
         var order = PublicationTargets.CommitOrder;
         if (shape < 0 || shape >= 1 << (order.Length * 2))
         {
@@ -211,6 +256,29 @@ internal sealed class TransactionRecord
         }
 
         return IsReachable(files, baseFileName) ? new TransactionRecord(token, baseFileName, files) : null;
+    }
+
+    // Any bit outside this family's own three describes nothing this code writes.
+    private static List<TransactionFileEntry>? SingleShape(string baseFileName, int shape)
+    {
+        if ((shape & ~(FamilyBit | SingleStageBit | SingleBackupBit)) != 0)
+        {
+            return null;
+        }
+
+        var target = baseFileName + PublicationTargets.Extension(PublicationTargetKind.Single);
+        var files = new List<TransactionFileEntry>();
+        if ((shape & SingleBackupBit) != 0)
+        {
+            files.Add(new TransactionFileEntry(PublicationTargets.BackupRole, target));
+        }
+
+        if ((shape & SingleStageBit) != 0)
+        {
+            files.Add(new TransactionFileEntry(PublicationTargets.StageRole, target));
+        }
+
+        return files;
     }
 
     /// <summary>
@@ -292,11 +360,13 @@ internal sealed class TransactionRecord
     /// Whether <paramref name="files"/> is a shape production could have written for
     /// <paramref name="baseFileName"/> (CX-M7H-003).
     /// <para>
-    /// Preflight builds exactly one arrangement: backups first — the manifest ahead of the
-    /// artifacts it certifies — then stages in canonical commit order; it always stages at least
-    /// one of <c>.cxt</c>/<c>.dat</c>; and it backs up only a target it is about to replace, or
-    /// the old manifest it is demoting. Anything else is unreachable, so it is not authority to
-    /// delete or move a file, however well spelled it is.
+    /// Preflight builds exactly one arrangement per family: backups first — for the artifacts
+    /// family the manifest ahead of what it certifies — then stages in canonical order. Anything
+    /// else is unreachable, so it is not authority to delete or move a file, however well spelled
+    /// it is. <b>A record never mixes families</b>, and each has its own narrower clause: neither
+    /// relaxes the other, and <see cref="PublicationTargetKind.Single"/> is deliberately outside
+    /// <see cref="PublicationTargets.CommitOrder"/> and <see cref="PublicationTargets.BackupOrder"/>,
+    /// so the artifacts ordering rules cannot express its shapes and are not asked to.
     /// </para>
     /// </summary>
     private static bool IsReachable(IReadOnlyList<TransactionFileEntry> files, string baseFileName)
@@ -304,6 +374,7 @@ internal sealed class TransactionRecord
         var stages = new List<PublicationTargetKind>();
         var backups = new List<PublicationTargetKind>();
         var seenStage = false;
+        PublicationFamily? family = null;
 
         foreach (var entry in files)
         {
@@ -311,6 +382,15 @@ internal sealed class TransactionRecord
             {
                 return false;
             }
+
+            // One transaction publishes one family; rejecting a mixed record makes Family total.
+            var entryFamily = PublicationTargets.FamilyOf(kind);
+            if (family is { } claimed && claimed != entryFamily)
+            {
+                return false;
+            }
+
+            family = entryFamily;
 
             if (string.Equals(entry.Role, PublicationTargets.StageRole, StringComparison.Ordinal))
             {
@@ -326,6 +406,13 @@ internal sealed class TransactionRecord
             }
 
             backups.Add(kind);
+        }
+
+        if (family == PublicationFamily.Single)
+        {
+            // One stage for the one target, optionally preceded by its one backup. A backup with
+            // no stage, two stages, or two backups is unreachable — encoded, only 0x41 and 0x43.
+            return stages.Count == 1 && backups.Count <= 1;
         }
 
         // A transaction publishes something, and never the manifest alone: --format selects at
@@ -356,7 +443,7 @@ internal sealed class TransactionRecord
 
     private static PublicationTargetKind? KindOf(string targetFileName, string baseFileName)
     {
-        foreach (var kind in PublicationTargets.CommitOrder)
+        foreach (var kind in PublicationTargets.AllKinds)
         {
             if (string.Equals(targetFileName, baseFileName + PublicationTargets.Extension(kind), StringComparison.Ordinal))
             {

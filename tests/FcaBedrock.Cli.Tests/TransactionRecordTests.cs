@@ -18,6 +18,18 @@ public sealed class TransactionRecordTests
     private const string Token = "0123456789abcdef0123456789abcdef";
     private const string Base = "out";
 
+    // The legacy artifacts record for one staged `.cxt`, recorded from the protected baseline
+    // before the single-file family existed: the text is authored here rather than produced by
+    // Format(), and the digest was computed independently over these exact bytes — SHA-256, first
+    // 16 bytes, lowercase hex — rather than read back from Digest.
+    private const string LegacyStageRecordText =
+        "version = 1\ntoken = \"0123456789abcdef0123456789abcdef\"\nbase = \"out\"\n\n"
+        + "[[file]]\nrole = \"stage\"\ntarget = \"out.cxt\"\n";
+
+    private const string LegacyStageRecordDigest = "d07769a8e5a667f81d09b944110b58b2";
+
+    private const string LegacyIdentity = "aaaaaaaabbbbbbbbccccccccdddddddd";
+
     [Fact]
     public void Format_WhenTheRecordHasEntries_ThenItIsTheDocumentedText()
     {
@@ -291,9 +303,11 @@ public sealed class TransactionRecordTests
         + "stage:out.cxt|stage:out.dat|stage:out.manifest.toml")]
     public void FromShape_WhenAShapeIsReachable_ThenItReproducesTheRecordItDescribes(string shape)
     {
-        // The intent descriptor carries six bits, and this is why that is enough: the entry ORDER
-        // is not a degree of freedom — a transaction writes backups in canonical order, then stages
-        // in canonical order, and nothing else.
+        // These rows are the legacy artifacts family, whose shapes are the six low bits of the
+        // intent descriptor (the single-file 0x41/0x43 shapes have their own methods below), and
+        // this is why six bits are enough: the entry ORDER is not a degree of freedom — a
+        // transaction writes backups in canonical order, then stages in canonical order, and
+        // nothing else.
         var record = TransactionRecord.Create(Token, Base, Entries(shape));
 
         var decoded = TransactionRecord.FromShape(Token, Base, record.ShapeCode);
@@ -315,6 +329,122 @@ public sealed class TransactionRecordTests
     [InlineData(0x10)]
     public void FromShape_WhenAShapeIsUnreachable_ThenThereIsNoRecord(int shape) =>
         Assert.Null(TransactionRecord.FromShape(Token, Base, shape));
+
+    // ---- the single-file family (D-123 point 7) --------------------------------------------------
+
+    [Theory]
+    [InlineData("stage:out")]
+    [InlineData("backup:out|stage:out")]
+    public void TryParse_WhenTheEntriesAreASingleFileShapeProductionWrites_ThenItIsAccepted(string shape) =>
+        Assert.NotNull(Parse(shape));
+
+    // A backup with no stage, a backup after its stage, and two of either role: one target admits
+    // one stage and one backup, because one create-new produces one object.
+    [Theory]
+    [InlineData("backup:out")]
+    [InlineData("stage:out|backup:out")]
+    [InlineData("stage:out|stage:out")]
+    [InlineData("backup:out|backup:out")]
+    public void TryParse_WhenASingleFileRecordCouldNotHaveBeenWritten_ThenItIsNotARecord(string shape) =>
+        Assert.Null(Parse(shape));
+
+    // One transaction publishes one family, so a mixed record describes no run at all — and
+    // rejecting it is what makes Family total for every record that does parse.
+    [Theory]
+    [InlineData("stage:out|stage:out.cxt")]
+    [InlineData("backup:out.manifest.toml|stage:out")]
+    [InlineData("backup:out|stage:out.cxt")]
+    public void TryParse_WhenARecordMixesTheSingleFileAndArtifactFamilies_ThenItIsNotARecord(string shape) =>
+        Assert.Null(Parse(shape));
+
+    [Theory]
+    [InlineData("stage:out.cxt", false)]
+    [InlineData("backup:out.manifest.toml|backup:out.cxt|stage:out.cxt|stage:out.manifest.toml", false)]
+    [InlineData("stage:out", true)]
+    [InlineData("backup:out|stage:out", true)]
+    public void Family_WhenARecordIsParsed_ThenItIsTheFamilyItsEntriesDescribe(string shape, bool single) =>
+        Assert.Equal(
+            single ? PublicationFamily.Single : PublicationFamily.Artifacts,
+            Assert.IsType<TransactionRecord>(Parse(shape)).Family);
+
+    [Theory]
+    [InlineData(0x41, "stage:out")]
+    [InlineData(0x43, "backup:out|stage:out")]
+    public void FromShape_WhenASingleFileShapeIsReachable_ThenItReproducesTheRecordItDescribes(
+        int shape, string expected)
+    {
+        var decoded = Assert.IsType<TransactionRecord>(TransactionRecord.FromShape(Token, Base, shape));
+
+        Assert.Equal(TransactionRecord.Create(Token, Base, Entries(expected)).Files, decoded.Files);
+        Assert.Equal(shape, decoded.ShapeCode);
+    }
+
+    // Nothing selected; a backup with no stage; an artifacts bit borrowed into a single-file
+    // shape; and an unused high bit, in either family.
+    [Theory]
+    [InlineData(0x40)]
+    [InlineData(0x42)]
+    [InlineData(0x44)]
+    [InlineData(0x81)]
+    [InlineData(0xC1)]
+    public void FromShape_WhenASingleFileShapeIsUnreachable_ThenThereIsNoRecord(int shape) =>
+        Assert.Null(TransactionRecord.FromShape(Token, Base, shape));
+
+    [Fact]
+    public void ShapeCode_WhenAnArtifactRecordIsEncoded_ThenEveryBitPositionIsUnchanged()
+    {
+        // Each legacy bit against a literal. The single-file family is a disjoint range above
+        // these, so adding it may not move one of them.
+        Assert.Equal(0x01, Shape("stage:out.cxt"));
+        Assert.Equal(0x02, Shape("stage:out.dat"));
+        Assert.Equal(0x04, Shape("stage:out.manifest.toml"));
+        Assert.Equal(0x08, Shape("backup:out.cxt"));
+        Assert.Equal(0x10, Shape("backup:out.dat"));
+        Assert.Equal(0x20, Shape("backup:out.manifest.toml"));
+        Assert.Equal(0x3F, Shape("backup:out.manifest.toml|backup:out.cxt|backup:out.dat|"
+            + "stage:out.cxt|stage:out.dat|stage:out.manifest.toml"));
+    }
+
+    [Fact]
+    public void EvidenceNames_WhenTheKindIsSingleFile_ThenItIsReadBackAsItsOwnKind()
+    {
+        Assert.Equal(
+            $"out.fcabedrock-e-s-{Token}",
+            PublicationTargets.EvidenceName(Base, PublicationTargetKind.Single, Token));
+        Assert.Equal(
+            (PublicationTargetKind.Single, Token),
+            PublicationTargets.EvidenceOf($"out.fcabedrock-e-s-{Token}", Base));
+        Assert.Equal(
+            (PublicationTargetKind.Single, Token, LegacyIdentity),
+            PublicationTargets.StageClaimOf($"out.fcabedrock-sc-s-{Token}-{LegacyIdentity}", Base));
+
+        // An unknown code still refuses, and a single-file target's spelling IS the operand.
+        Assert.Null(PublicationTargets.EvidenceOf($"out.fcabedrock-e-x-{Token}", Base));
+        Assert.Null(PublicationTargets.StageClaimOf($"out.fcabedrock-sc-x-{Token}-{LegacyIdentity}", Base));
+        Assert.Equal(string.Empty, PublicationTargets.Extension(PublicationTargetKind.Single));
+    }
+
+    [Fact]
+    public void Record_WhenALegacySingleArtifactStageIsFormatted_ThenItsTextIsExactlyTheLiteralLegacyBytes()
+    {
+        var record = TransactionRecord.Create(Token, Base, [new TransactionFileEntry("stage", "out.cxt")]);
+
+        Assert.Equal(LegacyStageRecordText, record.Format());
+        Assert.Equal(LegacyStageRecordDigest, record.Digest);
+    }
+
+    // Built from the literal shape byte and the literal digest, so a changed ShapeCode or Format
+    // cannot follow it.
+    [Fact]
+    public void IntentName_WhenALegacySingleArtifactIsStaged_ThenTheShapeByteIsTheLiteralZeroOne() =>
+        Assert.Equal(
+            $"out.fcabedrock-intent-{Token}-01-{LegacyStageRecordDigest}-{LegacyIdentity}",
+            PublicationTargets.IntentName(Base, Token, 0x01, LegacyStageRecordDigest, LegacyIdentity));
+
+    private static TransactionRecord? Parse(string shape) =>
+        TransactionRecord.TryParse(TransactionRecord.Create(Token, Base, Entries(shape)).ToBytes(), Token, Base);
+
+    private static int Shape(string shape) => TransactionRecord.Create(Token, Base, Entries(shape)).ShapeCode;
 
     [Fact]
     public void Digest_WhenTheRecordChanges_ThenSoDoesItsDigest()
