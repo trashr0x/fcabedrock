@@ -162,19 +162,7 @@ internal static class CliHost
         var name = invocation.Command.Name;
         environment.Progress.CommandStarted(name);
 
-        int exitCode;
-        if (invocation.Command.Handler is { } handler)
-        {
-            exitCode = await handler(invocation, environment).ConfigureAwait(false);
-        }
-        else
-        {
-            // The command's grammar is settled and fully parsed, but its behaviour lands
-            // in a later slice. Saying so plainly — and doing nothing — is the honest
-            // shell behaviour; it is temporary, not an output contract.
-            Write(environment.Error, DiagnosticRenderer.RenderHostError($"the '{name}' command is not implemented yet."));
-            exitCode = 1;
-        }
+        var exitCode = await invocation.Command.Handler(invocation, environment).ConfigureAwait(false);
 
         environment.Progress.CommandCompleted(name, exitCode);
         return exitCode;

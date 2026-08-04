@@ -64,7 +64,9 @@ internal static class MigrateCommand
         if (!read.TryGetValue(out var bed))
         {
             return await SingleFileOutput
-                .DeliverAsync(environment, invocation, null, diagnostics, cancellation).ConfigureAwait(false);
+                .DeliverAsync(
+                    environment, invocation, null, diagnostics,
+                    additionalInputs: [], committedReport: null, cancellation).ConfigureAwait(false);
         }
 
         // derived_from is the invoked operand exactly as typed — never normalized, never made
@@ -74,7 +76,9 @@ internal static class MigrateCommand
 
         var document = migrated.TryGetValue(out var value) ? value : null;
         return await SingleFileOutput
-            .DeliverAsync(environment, invocation, document, diagnostics, cancellation).ConfigureAwait(false);
+            .DeliverAsync(
+                environment, invocation, document, diagnostics,
+                additionalInputs: [], committedReport: null, cancellation).ConfigureAwait(false);
     }
 
     // Presence-faithful: a field is authored only when argv supplied it. Encoding and the quote

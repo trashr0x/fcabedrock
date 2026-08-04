@@ -54,7 +54,9 @@ internal static class ProbeCommand
 
         var draft = probed.TryGetValue(out var document) ? document : null;
         return await SingleFileOutput
-            .DeliverAsync(environment, invocation, draft, probed.Diagnostics, cancellation)
+            .DeliverAsync(
+                environment, invocation, draft, probed.Diagnostics,
+                additionalInputs: [], committedReport: null, cancellation)
             .ConfigureAwait(false);
     }
 

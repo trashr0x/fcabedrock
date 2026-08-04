@@ -65,21 +65,21 @@ internal delegate Task<int> CommandHandler(CommandInvocation invocation, CliEnvi
 
 /// <summary>
 /// One command: its operands, its options, the conditional rules worth stating in usage
-/// text, and — once its slice lands — its handler.
+/// text, and its handler.
 /// </summary>
 /// <param name="Name">The command word.</param>
 /// <param name="Summary">One line, shown in <c>--help</c>.</param>
 /// <param name="Positionals">Operands, in order.</param>
 /// <param name="Options">Options, in usage order.</param>
 /// <param name="Notes">Conditional-grammar notes the signature alone cannot express.</param>
-/// <param name="Handler">The implementation, or <see langword="null"/> until its slice lands.</param>
+/// <param name="Handler">The implementation.</param>
 internal sealed record CliCommand(
     string Name,
     string Summary,
     IReadOnlyList<CliPositional> Positionals,
     IReadOnlyList<CliOption> Options,
     IReadOnlyList<string> Notes,
-    CommandHandler? Handler)
+    CommandHandler Handler)
 {
     /// <summary>The option descriptor for <paramref name="name"/>, or null when this command has no such option.</summary>
     public CliOption? Option(string name)
@@ -100,12 +100,8 @@ internal sealed record CliCommand(
 /// The eight settled commands (D-122 part 1) as data. This table is the single source
 /// for the parser, the conditional rules, and the byte-locked usage/help text.
 /// <para>
-/// <b><c>validate</c>, <c>plan</c>, <c>stats</c>, <c>fingerprint</c>, <c>convert</c>,
-/// <c>probe</c>, and <c>migrate</c> execute.</b> Only <c>calibrate</c> still parses under its
-/// complete final grammar — so the grammar is settled and tested once, at the argv boundary —
-/// and then reports a deterministic code-less host error and exit 1 without doing any work.
-/// That is temporary shell behaviour, not an output contract: its handler arrives with its
-/// own slice (S10).
+/// <b>All eight execute.</b> Every row supplies a handler, and the type system says so: a
+/// future row omitting one is a compile error rather than a runtime message.
 /// </para>
 /// </summary>
 internal static class CommandTable
@@ -173,7 +169,7 @@ internal static class CommandTable
                 new CliOption("--temp-dir", OptionValueKind.Text, "DIR"),
             ],
             ["--out - writes to stdout; --force is a file-target option and is rejected with --out -."],
-            Handler: null),
+            CalibrateCommand.RunAsync),
 
         new CliCommand(
             "probe",

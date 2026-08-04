@@ -1,5 +1,3 @@
-using FcaBedrock.Cli.Commands;
-
 namespace FcaBedrock.Cli.Tests;
 
 /// <summary>
@@ -211,59 +209,6 @@ public sealed class FingerprintCommandTests
         Assert.DoesNotContain('﻿', report);
         Assert.EndsWith("\n", report, StringComparison.Ordinal);
         Assert.Equal(3, report.Split('\n').Length - 1);
-    }
-
-    // ---- the deferred write mode -------------------------------------------------------------------
-
-    [Theory]
-    [InlineData("new.toml")]
-    [InlineData("-")]
-    public async Task Fingerprint_WhenWriteModeIsRequested_ThenItIsDeferredWithoutTouchingAnything(string target)
-    {
-        // Parse-valid, and deliberately inert until S10: no report, no input opened, no output
-        // target created, and a deterministic code-less error.
-        using var temp = TempDirectory.Create();
-        var spec = temp.Write("spec.toml", CliFixtures.IndexBoundSpec);
-        var data = temp.Write("data.csv", CliFixtures.WideData);
-        var outTarget = target == "-" ? "-" : temp.Resolve(target);
-        var harness = new CliTestHarness();
-
-        var exit = await harness.RunAsync("fingerprint", spec, data, "--write", "--out", outTarget);
-
-        Assert.Equal(1, exit);
-        Assert.Equal(string.Empty, harness.StdOut);
-        Assert.Equal(
-            DiagnosticRenderer.RenderHostError(FingerprintCommand.WriteNotImplementedMessage), harness.StdErr);
-        Assert.Empty(harness.Opened);
-
-        if (target != "-")
-        {
-            Assert.False(File.Exists(outTarget));
-        }
-
-        Assert.Equal(
-            [Path.GetFileName(data), Path.GetFileName(spec)],
-            Directory.GetFiles(temp.Path).Select(Path.GetFileName).Order(StringComparer.Ordinal));
-    }
-
-    [Fact]
-    public async Task Fingerprint_WhenWriteIsRequestedWithForce_ThenItIsStillDeferredAndTheTargetSurvives()
-    {
-        using var temp = TempDirectory.Create();
-        var existing = temp.Write("new.toml", "# untouched\n");
-        var harness = new CliTestHarness();
-
-        var exit = await harness.RunAsync(
-            "fingerprint",
-            temp.Write("spec.toml", CliFixtures.IndexBoundSpec),
-            temp.Write("data.csv", CliFixtures.WideData),
-            "--write",
-            "--out",
-            existing,
-            "--force");
-
-        Assert.Equal(1, exit);
-        Assert.Equal("# untouched\n", await File.ReadAllTextAsync(existing, TestContext.Current.CancellationToken));
     }
 
     // ---- the excluded override ------------------------------------------------------------------------

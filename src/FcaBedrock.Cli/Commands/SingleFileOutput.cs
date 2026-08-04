@@ -23,6 +23,12 @@ namespace FcaBedrock.Cli.Commands;
 /// output. Past the commit point no cancellation check runs at all: a signal arriving then must
 /// not report a published file as cancelled.
 /// </para>
+/// <para>
+/// A caller that owes stdout a report after its file commits supplies it as the committed
+/// payload; <c>null</c> means the file target stays stdout-empty. It is written here, after the
+/// commit and after the diagnostics, so "reported if and only if committed" is one straight-line
+/// block rather than a property each handler has to preserve (D-123 point 14).
+/// </para>
 /// </summary>
 internal static class SingleFileOutput
 {
@@ -46,6 +52,8 @@ internal static class SingleFileOutput
         CommandInvocation invocation,
         SpecDocument? document,
         IReadOnlyList<BedrockDiagnostic> diagnostics,
+        IReadOnlyList<PublicationInput> additionalInputs,
+        string? committedReport,
         CancellationToken cancellation)
     {
         ArgumentNullException.ThrowIfNull(environment);
@@ -71,7 +79,8 @@ internal static class SingleFileOutput
             return 1;
         }
 
-        return await PublishAsync(environment, invocation, spelling, document!, diagnostics, cancellation)
+        return await PublishAsync(
+                environment, invocation, spelling, document!, diagnostics, additionalInputs, committedReport, cancellation)
             .ConfigureAwait(false);
     }
 
@@ -101,19 +110,28 @@ internal static class SingleFileOutput
         string spelling,
         SpecDocument document,
         IReadOnlyList<BedrockDiagnostic> diagnostics,
+        IReadOnlyList<PublicationInput> additionalInputs,
+        string? committedReport,
         CancellationToken cancellation)
     {
         var bytes = Utf8NoBom.GetBytes(SpecWriter.Write(document));
 
-        // Both single-file commands take exactly one operand — probe's DATA, migrate's BED — and
-        // it is the one file the run read, so it is what the identity-collision check compares the
-        // target against (D-122 part 4). The parser requires it, so it is present.
-        var input = invocation.Operand(0)!;
-
+        // EVERY operand a single-file command consumed is a file the run read, so every one is an
+        // input the identity-collision check compares the target against (D-122 part 4): probe's
+        // DATA, migrate's BED, calibrate's and fingerprint's SPEC and DATA alike. The rule is total
+        // over the command table rather than a per-command guess, so it cannot be forgotten. The
+        // caller adds anything it resolved itself — a composed extends chain, whose base paths are
+        // referrer-relative and must not be re-derived against the process working directory.
         List<PublicationInput> inputs;
         try
         {
-            inputs = [new PublicationInput(input, Path.GetFullPath(input))];
+            inputs = new List<PublicationInput>(invocation.Operands.Count + additionalInputs.Count);
+            foreach (var operand in invocation.Operands)
+            {
+                inputs.Add(new PublicationInput(operand, Path.GetFullPath(operand)));
+            }
+
+            inputs.AddRange(additionalInputs);
         }
         catch (Exception exception) when (FailureFamily.IsPublicationFailure(exception))
         {
@@ -195,8 +213,14 @@ internal static class SingleFileOutput
         }
 
         // Committed. Only now do Info and Warning reach stderr, once and in library order, and no
-        // cancellation check runs after this point. Stdout stays empty on a file target.
+        // cancellation check runs after this point. Stdout stays empty on a file target unless the
+        // caller owed it a post-commit report.
         DiagnosticRenderer.Write(environment.Error, diagnostics);
+        if (committedReport is not null)
+        {
+            environment.Out.Write(committedReport);
+        }
+
         return 0;
     }
 

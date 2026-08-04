@@ -85,33 +85,6 @@ public sealed class CliHostTests
         Assert.StartsWith($"error: unknown option '{flag}'", harness.StdErr, StringComparison.Ordinal);
     }
 
-    // The commands whose grammar is settled but whose behaviour is still to come. `plan`,
-    // `stats`, `fingerprint`, `convert`, and now `probe` and `migrate` left this list when their
-    // handlers landed; `calibrate` leaves it with its own slice.
-    public static TheoryData<string[], string> LaterSliceCommands() => new()
-    {
-        { ["calibrate", "s.toml", "d.csv", "--out", "o.toml"], "calibrate" },
-    };
-
-    [Theory]
-    [MemberData(nameof(LaterSliceCommands))]
-    public async Task RunAsync_WhenALaterSliceCommandIsInvoked_ThenItParsesAndReportsWithoutDoingAnyWork(
-        string[] argv, string command)
-    {
-        // The grammar is settled and accepted; the behaviour lands in a later slice. The
-        // operands above name files that do not exist, and the run must not try to touch
-        // them — so nothing is opened and the failure is the honest "not implemented",
-        // not a missing-file error.
-        var harness = new CliTestHarness();
-
-        var exit = await harness.RunAsync(argv);
-
-        Assert.Equal(1, exit);
-        Assert.Equal(string.Empty, harness.StdOut);
-        Assert.Equal($"error: the '{command}' command is not implemented yet.\n", harness.StdErr);
-        Assert.Empty(harness.Opened);
-    }
-
     [Fact]
     public async Task RunAsync_WhenACommandRuns_ThenProgressIsObservedAroundIt()
     {
