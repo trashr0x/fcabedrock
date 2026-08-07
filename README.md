@@ -14,7 +14,7 @@ zero or more formal attributes. Every legacy attribute "type" is a
 
 ## Status
 
-Under active development. **M1–M5 are complete.** The pipeline reproduces
+Under active development. **M1–M7 are complete.** The pipeline reproduces
 FcaBedrock v2 byte-for-byte on the mini-mushroom and mini-adult fixture families
 (under `--v2-compat`).
 
@@ -22,17 +22,67 @@ Implemented today:
 
 - **Input:** wide CSV/TSV **and** subject–predicate–value triple sources.
 - **Specs:** legacy `.bed` **and** the native TOML format — round-trip,
-  composition (`extends`), the three plan-derived fingerprints, and one-way
-  `.bed` → TOML migration.
+  composition (`extends`), templates and matchers, the three plan-derived
+  fingerprints, and one-way `.bed` → TOML migration.
 - **Conversion:** every v1 discretizer kind, calibration, and `restrict_to`.
 - **Output:** deterministic `.cxt`/`.dat`, with a `--v2-compat` preset.
 - **Discovery:** `probe` draft-spec generation for both wide and triple sources,
-  as a **library API** — the `probe` *command* arrives with the CLI at M7.
+  as a library API **and** as the `probe` command.
+- **CLI:** the `fcabedrock` command, shipping all eight commands — `convert`,
+  `validate`, `plan`, `stats`, `calibrate`, `probe`, `migrate` and
+  `fingerprint` — with the run manifest, the publication transaction, and the
+  freeze engine.
 
-**M6 (templates + matchers) is next**, followed by the CLI (M7), a scaling and
-benchmark pass (M8), and the desktop UI (M9).
+**M8 (a scaling and benchmark pass) is next**, followed by the desktop UI (M9).
 
 `docs/roadmap.md` is the live source for the detailed current position.
+
+## Installation
+
+`FcaBedrock.Cli` is a **technical preview**. It is **not yet published to a
+public NuGet feed**, so the global-tool command below applies only once the
+package is available on a NuGet source you have configured.
+
+Install the .NET 10 SDK first. On Windows:
+
+```text
+winget install Microsoft.DotNet.SDK.10
+```
+
+On other platforms, install the .NET 10 SDK by the method your platform
+documents.
+
+Then, once the package is available on a configured NuGet source:
+
+```text
+dotnet tool install --global FcaBedrock.Cli
+```
+
+Until it is published, install it from a local pack of this repository — the
+same package the installed-tool smoke test installs under `--tool-path`:
+
+```text
+dotnet pack src/FcaBedrock.Cli/FcaBedrock.Cli.csproj -c Release -o <dir>
+dotnet tool install --global --add-source <dir> FcaBedrock.Cli
+```
+
+Check the installation, and read the full grammar:
+
+```text
+fcabedrock --version
+fcabedrock --help
+```
+
+To remove it:
+
+```text
+dotnet tool uninstall --global FcaBedrock.Cli
+```
+
+The preview is validated on **x64**, with Windows as the primary host; broader
+platform validation is an M8 task. The global tool is explicitly a **temporary**
+technical-preview distribution — a standalone, self-contained route is committed
+for the public release.
 
 ## Documentation
 

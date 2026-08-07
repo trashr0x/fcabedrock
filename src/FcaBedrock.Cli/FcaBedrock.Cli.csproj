@@ -19,6 +19,11 @@
          removing this line fails with SYSLIB1062 + CS0227. No unsafe code is hand-written
          anywhere in this package. -->
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <!-- The package carries its OWN readme, not the repository's: the root README
+         is repository-facing (a `## Status` section this slice rewrites, and path
+         references that mean nothing to a package-only reader), so a purpose-built
+         `README.md` beside this file is packed to the package root instead. -->
+    <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
 
   <ItemGroup>
@@ -29,6 +34,13 @@
     <ProjectReference Include="..\FcaBedrock.Conversion\FcaBedrock.Conversion.csproj" />
     <ProjectReference Include="..\FcaBedrock.Export\FcaBedrock.Export.csproj" />
     <ProjectReference Include="..\FcaBedrock.Discovery\FcaBedrock.Discovery.csproj" />
+  </ItemGroup>
+
+  <!-- `Update`, not `Include`: the SDK's default `None` glob already carries this
+       README, so `Include` would duplicate the item (NETSDK1022), while omitting the
+       item entirely would fail the pack (NU5039). Both failures are loud. -->
+  <ItemGroup>
+    <None Update="README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 
   <!-- Every CLI component is internal (D-123 part 1). The argv-boundary tests drive

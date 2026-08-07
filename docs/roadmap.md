@@ -504,15 +504,26 @@ vertical slices, not waterfall phases — each should leave the system working.
 > passed, 0 failed, one platform-gated confidentiality test —
 > `SpoolConfidentialityTests.CreateWorkspace_OnUnix_SetsMode700` — skipped off its OS**).
 >
-> **M6 is complete. The M7 (CLI) pre-implementation contract is fully adjudicated and
-> landed docs-only (D-122)** — 33 findings ruled and consented (audit: Fable;
-> independent review: Codex; adjudication: Constantinos Orphanides, 2026-07-22), plus
-> the docs-plan review rulings (authored-empty domains, the exact stderr grammar, the
-> `[[run.calibrations]]` manifest shape). Eight commands, the process/publication/
-> manifest/freeze contracts, non-goals, distribution, and the argv-boundary exit floor
-> are settled; spec §§3/7/8/10/11/13/14/15/16/17/18 carry the normative corrections.
-> **No M7 implementation has started** — the next step is the separately commissioned
-> implementation master plan with its own review cycle.
+> **M7 is complete, and with it M1–M7.** The CLI landed across **eleven slices, A–K
+> (master-plan steps S1–S11)**, under **D-122** — the adjudicated pre-implementation
+> contract, 33 findings ruled and consented (audit: Fable; independent review: Codex;
+> adjudication: Constantinos Orphanides, 2026-07-22), plus the docs-plan review rulings
+> (authored-empty domains, the exact stderr grammar, the `[[run.calibrations]]` manifest
+> shape) — and **D-123**, the implementation decisions. The `fcabedrock` global tool
+> ships all eight commands (`convert`, `validate`, `plan`, `stats`, `calibrate`, `probe`,
+> `migrate`, `fingerprint`) with the process/publication/manifest/freeze contracts,
+> filesystem identity, injected signals, the input-stability gate, and the argv-boundary
+> exit floor; spec §§3/7/8/10/11/13/14/15/16/17/18 carry the normative corrections. The
+> diagnostic registry is **82** (`OutputCxtSizeAdvisory` joined at Slice B) and **no M7
+> transitional diagnostic remains**. **Slice K** closes the milestone with the tool
+> package itself: a purpose-built packed README and `PackageReadmeFile`, five always-on
+> package assertions, and one environment-gated installed-tool smoke
+> (`FCABEDROCK_TOOL_SMOKE=1`) that installs the packed tool from a local `<clear />` feed
+> under an isolated `--tool-path`, converts, checks the manifest, and uninstalls.
+> `FcaBedrock.Cli.Tests` measures **1,263 tests: 1,257 passed, 0 failed, 6 skipped** with
+> the gate unset, and **1,258 passed, 5 skipped** with it set; the full-solution figures,
+> the complete 19-row exit checklist, and the skip inventory are in the **M7 exit block**
+> below. **M8 (the first scaling/benchmark pass) is next**, then M9.
 
 ## Milestones
 
@@ -847,14 +858,104 @@ safe docs/tests hardening slice performed:
 The M7 implementation master plan MUST assign each item to an implementation slice and
 to acceptance tests.
 
-**Exit:** the full **argv-boundary verification floor** is green — every command
-through argv, all nine active goldens through the real CLI path, manifest/exit/
-diagnostic byte locks, publication/rollback/overwrite/collision, freeze and
-idempotence, probe/migrate grammars, advisory, extends identity, signals, and
-input-stability cases, with every existing golden/canonical/SHA/registry/architecture
-lock still green and the normal suite still fast (exact list: D-122 §14; large
-benchmarks and release validation stay M8). Core is then dogfoodable end-to-end
-without a UI, and `plan`/`validate` give a fast spec-authoring loop.
+**Exit — all met (M7 complete, D-122/D-123; slices A–K / S1–S11):**
+
+- [x] **1.** every command exercised through argv — `Cli.Tests` green end to end, with the
+      eight-handler command-table lock
+      (`RunPipelineTests.CommandTable_ThenExactlyTheImplementedCommandsHaveAHandler`);
+- [x] **2.** all nine active goldens reproduced through the real CLI path —
+      `GoldenArgvFloorTests`, with `FcaBedrock.Golden.Tests` at 85;
+- [x] **3.** manifest byte locks — all four `[[run.calibrations]]` kinds, empty arrays,
+      Unicode/control escaping, long values and D-113 wrapping, argv, timestamps, and both
+      the no-chain and multilevel-chain `[[run.spec_files]]` paths —
+      `RunManifestWriterTests`, `ConvertManifestTests`;
+- [x] **4.** exit and diagnostic byte locks plus rendering-grammar locks for every
+      location-field combination — `DiagnosticRendererTests`;
+- [x] **5.** publication, overwrite and collision cases — `PublicationTests`,
+      `SingleFilePublicationTests`, `PublicationOwnershipTests`,
+      `PublicationFamilyBoundaryTests`;
+- [x] **6.** rollback and incomplete-run recovery cases — `PublicationRecoveryTests`,
+      `PublicationCrashMatrixTests`, `TransactionRecordTests`;
+- [x] **7.** `calibrate` freeze and idempotence over every freeze mapping, the
+      empty-outcome `[]` freeze, and the authored-empty `[]` combinations with
+      `unknown_value_policy = "include"` and `missing_policy = "as_attribute"` —
+      `SpecFreezerTests`, `CalibrateCommandTests`;
+- [x] **8.** `fingerprint` freeze, `--write` and idempotence — `FingerprintCommandTests`,
+      `FingerprintWriteTests`;
+- [x] **9.** `probe`/`migrate` grammars — triple role index-mode and name-mode successes
+      plus mixed-mode and partial-role usage failures, and the wide object-key conditional
+      grammar — `ProbeCommandTests`, `MigrateCommandTests`;
+- [x] **10.** advisory threshold cases — `Export.Tests.CxtSizeAdvisoryTests`, with
+      `OutputCxtSizeAdvisory` live and the registry at **82**;
+- [x] **11.** extends identity and cycle cases — `FileIdentityTests`,
+      `FileSpecTextSourceTests` (their symbolic-link twins are named skips on a host
+      without the privilege, listed below);
+- [x] **12.** signal cases — `SignalSourceTests` plus the injected `ISignalSource` cases
+      across the command suites;
+- [x] **13.** input-stability mismatch cases — `RunPipelineTests` (CX-M7P-008),
+      `InputHashTests`, `ConvertHashingTests`;
+- [x] **14.** a global-tool pack/install/uninstall/`--version` smoke in an isolated tool
+      path — `ToolSmokeTests` (environment-gated) plus `ToolPackTests` (always on) —
+      **Slice K**;
+- [x] **15.** representative excluded flags (`--sample`, `--gzip`, machine/color/progress
+      spellings) returning usage exit 2 — `CommandLineParserTests`, `UsageTextTests`;
+- [x] **16.** every existing golden, canonical-TOML, SHA, registry and architecture lock
+      still green — G3 (Architecture 10), G4 (Golden 85, including the second registry-82
+      lock), G5 (Diagnostics 29), G6 (Spec 858), *and* G7, the only gate that also runs the
+      other lock owners: `Core.Tests` (`FingerprintCalculatorTests`,
+      `RestrictionFingerprintTests`), `Export.Tests` (writer bytes + `CxtSizeAdvisoryTests`),
+      `Conversion.Tests`, `Sources.Tests`, `Discovery.Tests`, `Cli.Tests`;
+- [x] **17.** the normal suite stays fast — G2 (`Cli.Tests`) **42.2 s** wall, 40.2 s run;
+      G7 (whole solution) **51.2 s** wall, 46.0 s run;
+- [x] **18.** the exact global-tool route documented in user documentation before exit —
+      `README.md` `## Installation` plus the packed `src/FcaBedrock.Cli/README.md` —
+      **Slice K**;
+- [x] **19.** M7 status retired everywhere it was claimed — this block, plus `README.md`
+      `## Status`, `AGENTS.md` `## Current status`, this milestone's current-position
+      block, and the two stale spec tails (§10.3, §16.4) — **Slice K**.
+
+**Measured at exit** (Windows 11, .NET SDK 10.0.302, x64): `FcaBedrock.Cli.Tests`
+**1,263 / 1,257 passed / 0 failed / 6 skipped** with `FCABEDROCK_TOOL_SMOKE` unset, and
+**1,263 / 1,258 / 0 / 5** with it set to `1`; the whole solution
+**4,274 / 4,267 / 0 / 7** unset. The six CLI skips are the five platform/filesystem cases
+— `FileIdentityTests.KeyFor_WhenASymbolicLinkAliasesTheFile_ThenTheKeysUnify`, its
+`…AndIdentityIsUnavailable_ThenTheFallbackStillUnifiesThem` twin,
+`FileSpecTextSourceTests.Compose_WhenACycleIsSpelledThroughASymbolicLink_ThenItIsStillDetected`,
+`SingleFilePublicationTests.Publish_WhenTheTargetIsASymbolicLinkAliasOfTheInput_ThenItIsRefusedEvenWithForce`,
+`PublicationTests.Publication_WhenAStageSurvivesAsResidue_ThenItIsReadableOnlyByItsOwner`
+— plus the gated
+`ToolSmokeTests.InstalledTool_WhenTheSmokeGateIsSet_ThenItPacksInstallsConvertsAndUninstalls`;
+the solution's seventh is
+`Conversion.Tests.SpoolConfidentialityTests.CreateWorkspace_OnUnix_SetsMode700`.
+
+**Slice K packaging note.** The CLI project sets `PackageReadmeFile` and packs a
+purpose-built `src/FcaBedrock.Cli/README.md` to the package root (`None Update`, so the
+SDK's default glob is not duplicated). `ToolPackTests` asserts the packed contents
+directly — the exact eleven-assembly set, `DotnetToolSettings.xml`/`deps.json`/
+`runtimeconfig.json`, the nuspec identity including a `repository commit` equal to the
+checkout's actual `git rev-parse HEAD`, the readme element and its byte-for-byte equality
+with the authored file, and one version across the file name, the nuspec and
+`ToolVersion.Current`. Nothing pins whole-package bytes, the GUID-named core-properties
+part, `_rels/.rels` or entry order, because those differ between two packs of identical
+sources. The gated smoke installs that package from a local `<clear />` feed under an
+isolated `--tool-path`, with no global install and no network or machine feed.
+
+**CX-M7P-010 — presence versus emptiness, three evidence families.**
+
+1. A template- or matcher-supplied `declared_domain = []` stays authored-complete through
+   every resolution tier — `TemplateApplicationTests.cs:194`, `SpecResolverTests.cs:256`,
+   `CalibratedSpecTests.cs:50,55,132,148`, `ConversionPlannerTests.cs:952,967`,
+   `SpecFreezerTests.cs:175,475`.
+2. Real-argv `probe` over all-missing observations **omits** the key rather than authoring
+   `[]` — `ProbeCommandTests.Probe_WhenEveryObservationIsMissing_ThenTheDraftOmitsDeclaredDomain`
+   (`:247`), with library parity at `ProbeShapeParityTests.cs:135`.
+3. Authored-empty × `include` × `as_attribute` carried through calibration, freeze, output,
+   manifest, fingerprint, and native + v2 replay — `CalibrateCommandTests.cs:233-324,327`,
+   `SpecFreezerTests.cs:475`, `RunManifestWriterTests.cs:292-302,738`,
+   `ConvertManifestTests.cs:180-190`, `FingerprintCalculatorTests.cs:782,796`.
+
+Core is dogfoodable end-to-end without a UI, and `plan`/`validate` give a fast
+spec-authoring loop. Large benchmarks and release validation stay M8.
 
 ### M8 — First scaling / benchmark pass
 

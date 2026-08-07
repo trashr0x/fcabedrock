@@ -1208,11 +1208,10 @@ as an explicit `declared_domain` — and an empty observed outcome freezes as `[
 explicitly or freeze it with `fcabedrock calibrate`.
 
 > **Observed-domain calibration (M4 Slice A/B).** The Calibrate phase fills an
-> absent `declared_domain` (omitted or authored `[]` — *the authored-`[]` half of
-> this historical note is revised by D-122: an authored `[]` is a complete fixed
-> empty domain, so only an omitted domain is calibrated; the current code still
-> treats `[]` as absent until M7*) on an included consuming
-> discretizer from the observed data, warning with `ObservedDomainUsed` (§7); the
+> **omitted** `declared_domain` on an included consuming
+> discretizer from the observed data, warning with `ObservedDomainUsed` (§7). An
+> authored `[]` is a complete fixed empty domain and is never calibrated (D-122;
+> implemented at M7 Slice A). The
 > transitional `ObservedDomainCalibrationNotImplementedV1` plan reject retired at
 > M4 Slice A (D-098, superseding D-071). Cut discretizers ignore `declared_domain`
 > (above) and are unaffected. The `identity` case executes from Slice A; the numeric
@@ -2966,11 +2965,10 @@ at 73M records does not produce 73M diagnostics.
 The `DiagnosticCode` enum is the authority for the codes a build can actually
 raise; it grows per slice (P-3), so it holds fewer members than this registry — a
 registry row joins the enum when the milestone owning its site lands (D-085). After
-**M6 Slice B** the enum has **81** members: 76 after Slice A, plus the six
-spec-resolve conditions above, minus the retired `TemplateMatcherNotImplementedV1`
-(76 + 6 − 1). Exactly two rows remain outstanding — `OutputCxtSizeAdvisory`
-(export, M7) and `DateValueTypeNotImplementedV1` (the D-038 date carrier) — each
-joining the enum when its own milestone lands. Every other row is live.
+**M7 Slice B** the enum has **82** members: 81 after M6 Slice B, plus
+`OutputCxtSizeAdvisory` at its export emit site (D-123). Exactly one row remains
+outstanding — `DateValueTypeNotImplementedV1` (the D-038 date carrier) — joining
+the enum when its own milestone lands. Every other row is live.
 
 ## 17. Determinism rules
 

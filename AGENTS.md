@@ -195,12 +195,11 @@ Don't implement first and explain later.
 
 ## Current status
 
-**M1–M6 are complete.** M6 (templates + matchers + naming) landed across Slices A–C
-(D-120/D-121 and the D-119 exit workflow): every template/matcher and naming carrier is
-executable, no transitional diagnostic remains for M1–M6, and the diagnostic registry is
-**81**. **M7 (CLI) is next**: its pre-implementation contract is fully adjudicated and
-landed docs-only as **D-122** (eight commands, process/publication/manifest/freeze
-contracts, authored-empty domain semantics, exit floor); no M7 implementation has started
-— the next step is the separately commissioned implementation master plan.
+**M1–M7 are complete.** M7 (CLI) landed across Slices A–K (master-plan steps S1–S11)
+under **D-122** (the adjudicated pre-implementation contract) and **D-123** (the
+implementation decisions): the `fcabedrock` global tool with all eight commands, the
+publication transaction, the run manifest, the freeze engine, filesystem identity, and
+the argv-boundary exit floor. The diagnostic registry is **82**, and no M7 transitional
+diagnostic remains. **M8 (the first scaling/benchmark pass) is next**, then M9.
 `docs/roadmap.md` is the live source for current position, test count, and the
 deferred backlog — consult it rather than duplicating the detail here.
