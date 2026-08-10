@@ -20,7 +20,7 @@
          anywhere in this package. -->
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <!-- The package carries its OWN readme, not the repository's: the root README
-         is repository-facing (a `## Status` section this slice rewrites, and path
+         is repository-facing (a `## Status` section Slice K rewrote, and path
          references that mean nothing to a package-only reader), so a purpose-built
          `README.md` beside this file is packed to the package root instead. -->
     <PackageReadmeFile>README.md</PackageReadmeFile>

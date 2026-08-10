@@ -14,7 +14,7 @@ public sealed record OutputSection(
     CxtOutputSection? Cxt,
     DatOutputSection? Dat);
 
-/// <summary>Authored <c>[output.cxt]</c> options (§8); carried inert in this slice.</summary>
+/// <summary>Authored <c>[output.cxt]</c> options (§8); consumed at M7 through <c>OutputSettings.Native</c> (D-122/D-123).</summary>
 /// <param name="LineEndings">Line-ending convention.</param>
 /// <param name="TrailingNewline">Whether the file ends with a newline.</param>
 /// <param name="SizeAdvisoryBytes">Advisory size threshold for the <c>.cxt</c> warning (§8).</param>
@@ -23,7 +23,7 @@ public sealed record CxtOutputSection(
     bool? TrailingNewline,
     long? SizeAdvisoryBytes);
 
-/// <summary>Authored <c>[output.dat]</c> options (§8); carried inert in this slice.</summary>
+/// <summary>Authored <c>[output.dat]</c> options (§8); consumed at M7 through <c>OutputSettings.Native</c> (D-122/D-123).</summary>
 /// <param name="LineEndings">Line-ending convention.</param>
 /// <param name="BaseIndex">First formal-attribute id (§8/§17).</param>
 /// <param name="NonemptyLineTrailingSpace">Whether non-empty lines end with a space (v2 quirk, §8).</param>

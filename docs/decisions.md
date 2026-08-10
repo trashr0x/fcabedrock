@@ -221,7 +221,7 @@ superseded or refined. A new entry MUST add its line here.
 
 ### M7 (CLI) implementation
 
-- D-123 — M7 implementation architecture and public surfaces: the CLI package/global-tool boundary and one-way dependency, the CLI-internal coordinator + hand-rolled parser, centralized diagnostic/progress presentation, the complete audit argv (actual argv[0]), the input-open seam, the shared filesystem-identity service, the staged-publication transaction (create-new record, rename-aside backups, manifest-last/`--no-manifest` parity, validated recovery), the single-file `--force` matrix, the Spec-owned run manifest, the paired `SpecFreezer`, the `ConversionRuntimeOptions` temp-dir capability, the landed S1 presence nullability, and the landed S2 `.cxt` size advisory with registry 81 → 82 (lands the D-122 implementation architecture; realizes CX-M7P-001…012 and FBL-M7P-001/002; S3–S11 code is scheduled, not yet present)
+- D-123 — M7 implementation architecture and public surfaces: the CLI package/global-tool boundary and one-way dependency, the CLI-internal coordinator + hand-rolled parser, centralized diagnostic/progress presentation, the complete audit argv (actual argv[0]), the input-open seam, the shared filesystem-identity service, the staged-publication transaction (create-new record, rename-aside backups, manifest-last/`--no-manifest` parity, validated recovery), the single-file `--force` matrix, the Spec-owned run manifest, the paired `SpecFreezer`, the `ConversionRuntimeOptions` temp-dir capability, the landed S1 presence nullability, and the landed S2 `.cxt` size advisory with registry 81 → 82 (lands the D-122 implementation architecture; realizes CX-M7P-001…012 and FBL-M7P-001/002; S3–S11 were scheduled at entry time and have since landed)
 
 Spec-field defaults are recorded in spec §21 items 1–11 (see the final section
 of this file).
@@ -5458,7 +5458,7 @@ pinned here.
   (§3/§14) therefore reads "**omitted** `declared_domain` under a consuming
   discretizer", so an authored `[]` no longer disqualifies. Current code (D-098)
   treats an authored `[]` as absent — a **recorded spec-vs-code gap** until M7
-  implementation.
+  implementation. *(closed at M7 S1 — D-123 point 10)*
 - **Why:** this is the adjudicated pre-implementation contract for M7 — a Fable
   audit, an independent Codex review, and explicit rulings by Constantinos
   Orphanides, reaching full consensus on 2026-07-22 across 33 findings and four
@@ -5503,6 +5503,8 @@ pinned here.
 
 - **Status:** accepted (M7 implementation; lands with M7 Slice B / S2; realizes the
   D-122 implementation architecture; refines D-085's registry-timing rule)
+  *(landing complete: S1–S11 all landed by M7 Slice K, merged 2026-08-08; the roadmap
+  M7 exit block is the landed record)*
 - **Date:** 2026-07-24
 - **Decision:** M7's implementation architecture and every new public surface are
   settled here; the CLI host is built to this shape across slices S1–S11. Only the

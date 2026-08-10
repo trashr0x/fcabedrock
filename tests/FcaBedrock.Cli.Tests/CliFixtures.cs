@@ -1,9 +1,9 @@
 namespace FcaBedrock.Cli.Tests;
 
 /// <summary>
-/// Small hand-authored specs and data sources for the argv-boundary tests. They are
-/// deliberately tiny: this slice tests the CLI shell and the validate vertical, not
-/// conversion semantics, which the library suites already own.
+/// Small hand-authored specs and data sources for the argv-boundary tests. They serve
+/// all eight command suites and are deliberately tiny: these tests exercise the CLI
+/// shell, not conversion semantics, which the library suites already own.
 /// </summary>
 internal static class CliFixtures
 {

@@ -4,7 +4,13 @@ Milestones, current position, and the deferred-items backlog. Update the
 "current position" marker as work progresses. Milestones are incremental
 vertical slices, not waterfall phases — each should leave the system working.
 
-## Current position
+## Current position and milestone history
+
+**Now:** M1–M7 are complete. The `fcabedrock` global tool ships all eight commands over
+the publication transaction, the run manifest, and the freeze engine (D-122/D-123), with
+the diagnostic registry at 82. **M8 — the first scaling/benchmark pass — is next**, then
+M9. The milestone blocks below are the append-only history; the M7 and M8 sections carry
+the live detail.
 
 > **M1 complete — mini-mushroom + mini-adult reproduced byte-for-byte.** The whole
 > pipeline runs end-to-end and matches v2 on both families: `.bed` reader
@@ -833,14 +839,15 @@ pending M8 measurement.
 `winget install Microsoft.DotNet.SDK.10` then `dotnet tool install --global
 FcaBedrock.Cli` route (with equivalent platform guidance) — **explicitly temporary
 technical-preview distribution**. A standalone/self-contained route is committed for
-the later public release. The **M7 implementation/distribution landing must document
-the exact global-tool route in user documentation before M7 exit**, and
+the later public release. The **M7 implementation/distribution landing documented the
+exact global-tool route in user documentation before M7 exit** (exit item 18), and
 public-release docs must lead with the standalone route.
 
-**Mandatory master-plan inputs from the presence/emptiness audit.** Three
-presence-versus-emptiness obligations are settled contract but **not yet implemented**;
-they are inputs the M7 implementation master plan must carry, not work the preceding
-safe docs/tests hardening slice performed:
+**Presence/emptiness obligations carried into the M7 master plan (all landed).** Three
+presence-versus-emptiness obligations were settled contract and not yet implemented at
+M7 planning time; they were inputs the M7 implementation master plan carried, not work
+the preceding safe docs/tests hardening slice performed. All three landed — the
+evidence families recorded below are where:
 
 - Preserve **omitted versus authored-empty `declared_domain`** through calibration
   requirement, outcome selection, fully-frozen eligibility, freeze rewriting, and
@@ -855,8 +862,8 @@ safe docs/tests hardening slice performed:
   Empty **calibrated cuts** remain unsuccessful (`bins >= 2` makes `[]` always the
   wrong size).
 
-The M7 implementation master plan MUST assign each item to an implementation slice and
-to acceptance tests.
+The M7 implementation master plan assigned each item to an implementation slice and to
+acceptance tests.
 
 **Exit — all met (M7 complete, D-122/D-123; slices A–K / S1–S11):**
 
@@ -892,7 +899,7 @@ to acceptance tests.
       without the privilege, listed below);
 - [x] **12.** signal cases — `SignalSourceTests` plus the injected `ISignalSource` cases
       across the command suites;
-- [x] **13.** input-stability mismatch cases — `RunPipelineTests` (CX-M7P-008),
+- [x] **13.** input-stability mismatch cases — `RunPipelineTests` (D-123 point 5),
       `InputHashTests`, `ConvertHashingTests`;
 - [x] **14.** a global-tool pack/install/uninstall/`--version` smoke in an isolated tool
       path — `ToolSmokeTests` (environment-gated) plus `ToolPackTests` (always on) —
@@ -940,19 +947,34 @@ part, `_rels/.rels` or entry order, because those differ between two packs of id
 sources. The gated smoke installs that package from a local `<clear />` feed under an
 isolated `--tool-path`, with no global install and no network or machine feed.
 
-**CX-M7P-010 — presence versus emptiness, three evidence families.**
+**Presence versus emptiness — three landed evidence families (D-122 part 15).**
 
 1. A template- or matcher-supplied `declared_domain = []` stays authored-complete through
-   every resolution tier — `TemplateApplicationTests.cs:194`, `SpecResolverTests.cs:256`,
-   `CalibratedSpecTests.cs:50,55,132,148`, `ConversionPlannerTests.cs:952,967`,
-   `SpecFreezerTests.cs:175,475`.
+   every resolution tier —
+   `TemplateApplicationTests.Apply_WhenAHigherTierAuthorsAnEmptyDomain_ThenItOverridesToAnAuthoredCompleteEmpty`,
+   `SpecResolverTests.Resolve_WhenDeclaredDomainOmittedVersusAuthoredEmpty_ThenPresenceSurvives`,
+   `CalibratedSpecTests.RequiresData_WhenAuthoredEmptyDomainIdentityUnderWarn_ThenFalse`,
+   `CalibratedSpecTests.RequiresData_WhenAuthoredEmptyDomainIdentityUnderInclude_ThenTrue`,
+   `CalibratedSpecTests.Create_WhenAuthoredEmptyDomainUnderWarn_ThenNoOutcomeNeededAndDomainStaysEmpty`,
+   `CalibratedSpecTests.Create_WhenAuthoredEmptyDomainUnderInclude_ThenRequiresIncludeAdditionsNeverObserved`,
+   `ConversionPlannerTests.Plan_WhenIdentityNominalOverAuthoredEmptyDomain_ThenZeroColumnsAndNoFormalAttributes`,
+   `ConversionPlannerTests.Plan_WhenIdentityNominalOverAuthoredEmptyDomainWithAsAttribute_ThenOnlyMissingColumn`,
+   `SpecFreezerTests.Freeze_WhenObservedDomainEmpty_ThenAuthoredEmptyArray`,
+   `SpecFreezerTests.Freeze_WhenAuthoredEmptyDomainCombinations_ThenFrozenFullyFrozenAndPreserved`.
 2. Real-argv `probe` over all-missing observations **omits** the key rather than authoring
-   `[]` — `ProbeCommandTests.Probe_WhenEveryObservationIsMissing_ThenTheDraftOmitsDeclaredDomain`
-   (`:247`), with library parity at `ProbeShapeParityTests.cs:135`.
+   `[]` — `ProbeCommandTests.Probe_WhenEveryObservationIsMissing_ThenTheDraftOmitsDeclaredDomain`,
+   with library parity at
+   `ProbeShapeParityTests.Drafts_WhenAnAttributeIsAllMissing_ThenBothOmitTheDomain`.
 3. Authored-empty × `include` × `as_attribute` carried through calibration, freeze, output,
-   manifest, fingerprint, and native + v2 replay — `CalibrateCommandTests.cs:233-324,327`,
-   `SpecFreezerTests.cs:475`, `RunManifestWriterTests.cs:292-302,738`,
-   `ConvertManifestTests.cs:180-190`, `FingerprintCalculatorTests.cs:782,796`.
+   manifest, fingerprint, and native + v2 replay —
+   `CalibrateCommandTests.Calibrate_WhenTheAuthoredEmptyDomainCombinesWithPolicies_ThenTheFrozenSpecIsFullyFrozenAndPreserved`,
+   `CalibrateCommandTests.Calibrate_WhenTheAuthoredEmptyDomainIsAsAttribute_ThenTheMissingColumnSurvivesTheFreeze`,
+   `SpecFreezerTests.Freeze_WhenAuthoredEmptyDomainCombinations_ThenFrozenFullyFrozenAndPreserved`,
+   `RunManifestWriterTests.Write_WhenAllFourCalibrationKinds_ThenExactCanonicalDocument`,
+   `RunManifestWriterTests.Write_WhenValuesAreEmptyOrShort_ThenInline`,
+   `ConvertManifestTests.Manifest_WhenAnOutcomeDiscoveredNothing_ThenItIsAnExplicitEmptyArray`,
+   `FingerprintCalculatorTests.BuildCxtOutputJson_WhenValuesOmittedVersusAuthoredEmpty_ThenTheBytesDiffer`,
+   `FingerprintCalculatorTests.Fingerprints_WhenValuesOmittedVersusAuthoredEmpty_ThenSameSchemaButDifferentOutputHashes`.
 
 Core is dogfoodable end-to-end without a UI, and `plan`/`validate` give a fast
 spec-authoring loop. Large benchmarks and release validation stay M8.

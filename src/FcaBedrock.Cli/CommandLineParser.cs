@@ -162,8 +162,8 @@ internal static class CommandLineParser
     private static bool IsOptionToken(string token) => token.Length > 1 && token[0] == '-';
 
     // Every non-text kind carries its real value contract, so an invalid option is a usage
-    // error here rather than an exception (or an invalid generated spec) in a later slice's
-    // handler. Accepted values are never rewritten: the supplied spelling survives verbatim.
+    // error here rather than an exception (or an invalid generated spec) in the handler.
+    // Accepted values are never rewritten: the supplied spelling survives verbatim.
     private static string? Validate(CliOption option, string value) => option.Kind switch
     {
         OptionValueKind.Enumerated when !Contains(option.AllowedValues, value) =>
@@ -204,7 +204,7 @@ internal static class CommandLineParser
         int.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out _);
 
     // The retention limit reaches ProbeOptions.Create, whose validated boundary is 1 (D-108),
-    // so zero is a caller mistake to report here — not an exception in a later slice.
+    // so zero is a caller mistake to report here — not an exception in ProbeOptions.Create.
     private static bool IsPositiveInteger(string value) =>
         int.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out var parsed) && parsed >= 1;
 

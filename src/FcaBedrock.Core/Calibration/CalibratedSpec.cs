@@ -70,7 +70,9 @@ public sealed class CalibratedSpec
     /// <see cref="ObservedDomain"/> becomes the effective domain, and
     /// <see cref="IncludeAdditions"/> are appended to an authored domain (incl. <c>[]</c>). Returns
     /// <see cref="Diagnosed{T}"/> — data-derived cut invalidity comes back as Error
-    /// diagnostics so the calibrator can aggregate them (none in slice A). Throws
+    /// diagnostics so the calibrator can aggregate them (none at M4 Slice A; the
+    /// cut-calibrated discretizers that produce them landed at M4 Slices C/D —
+    /// D-102/D-103). Throws
     /// <see cref="ArgumentException"/> only for calibrator-contract mismatches
     /// (programmer error): an outcome naming an unknown/excluded attribute, a
     /// kind-mismatched/duplicate/unexpected outcome, a leftover
