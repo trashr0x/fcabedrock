@@ -7,7 +7,7 @@ internal sealed record PublicationInput(string Spelling, string FullPath);
 
 /// <summary>
 /// A validated intent descriptor: the control file whose exact canonical bytes authorize removing
-/// exactly one pending record object — the one whose identity its name repeats (CX-M7H-018/037).
+/// exactly one pending record object — the one whose identity its name repeats.
 /// </summary>
 internal sealed record IntentClaim(
     string Token, string Path, string PendingPath, string PendingIdentity, TransactionRecord Described);
@@ -17,7 +17,7 @@ internal sealed record IntentClaim(
 /// <para>
 /// <c>StageClaims</c> maps a target file name to the identity digest its stage claim carries — the
 /// durable statement that this transaction's create-new produced <em>that object</em> at that
-/// private path, which a derived name alone can never say (CX-M7H-036).
+/// private path, which a derived name alone can never say.
 /// </para>
 /// </summary>
 internal sealed record DiscoveredTransaction(
@@ -91,7 +91,7 @@ internal static class PublicationMessages
 }
 
 /// <summary>
-/// The staged publication transaction (D-122 parts 4–6, D-123 point 7; CX-M7P-002/003/004).
+/// The staged publication transaction (D-122 parts 4–6, D-123 point 7).
 /// <para>
 /// <b>Nothing content-bearing is mutated unless the transaction can prove, at that instant, which
 /// exact object it is about to touch.</b> That is the whole design in one sentence. A derived
@@ -101,7 +101,7 @@ internal static class PublicationMessages
 /// record object that may precede it; each <em>stage claim</em> is written only <b>after</b> its
 /// create-new succeeded and names the identity of the object that creation produced; and per-target
 /// <em>identity evidence</em> names the exact filesystem objects — the staged one and the backed-up
-/// one (CX-M7H-018/019/023/024/031/036/037/038).
+/// one.
 /// </para>
 /// <para>
 /// <b>A private name classifies and confines a control; it never proves one.</b> The descriptor,
@@ -110,13 +110,13 @@ internal static class PublicationMessages
 /// authoritative record's digest, the exact role or phase, and — for a claim — the stage identity
 /// it acknowledges. Discovery and removal both require those exact bytes, so an empty, partial,
 /// refused, invalid, or substituted object at any of those names is preserved and authorizes no
-/// mutation (CX-M7H-046, superseding CX-M7H-029's zero-byte mechanism).
+/// mutation. This supersedes the earlier zero-byte mechanism.
 /// </para>
 /// <para>
 /// <b>A refused acquisition creates nothing.</b> Where a create-new or a publishing rename is
 /// refused, the occupant that refused it is exactly the object this transaction did <em>not</em>
 /// create — so no durable state naming it is written, none is left behind by a failed withdrawal,
-/// and neither this run's rollback nor any later recovery may remove it (CX-M7H-036/037/038).
+/// and neither this run's rollback nor any later recovery may remove it.
 /// </para>
 /// <para>
 /// <b>Durable phase, not filesystem guesswork.</b> Recovery cannot read intent out of file
@@ -124,27 +124,27 @@ internal static class PublicationMessages
 /// a pre-existing file <c>--force</c> has not renamed aside yet, while after staging completes
 /// the very same shape means a commit rename consumed the stage. The transaction therefore records
 /// how far it got with create-new marker files, each holding the exact canonical bytes for its
-/// phase: the transition happened when that body is there, and not otherwise (CX-M7H-001/002/010).
+/// phase: the transition happened when that body is there, and not otherwise.
 /// </para>
 /// <para>
 /// <b>Preflight settles everything before anything new moves.</b> Residue is validated in full;
 /// nothing recovery would touch may be an input; a single prior transaction is completed; and only
 /// <em>then</em> are identities reacquired and the complete current-run collision, existing-target,
 /// and control-path checks run — so a recovery that restores a target cannot slip an aliased output
-/// past the one identity check (CX-M7H-007/013/023). A participant this run would rename aside but
+/// past the one identity check. A participant this run would rename aside but
 /// cannot identify is refused <em>there</em>, before a record, a stage, or one pass of conversion
-/// work exists (CX-M7H-042).
+/// work exists.
 /// </para>
 /// <para>
 /// <b>Then: record, stage, seal, back up, commit.</b> Forced replacement renames each existing
 /// target aside to a transaction-owned backup — a same-directory metadata rename, never a copy and
 /// never a rehash — and an old public manifest marker is demoted <em>before</em> any artifact it
-/// could certify is published, including when a <c>--no-manifest</c> run merely introduces one
-/// (CX-M7H-005). Commit is per-file non-overwriting atomic rename in canonical order, manifest
-/// last, with the host token observed and both sides of every rename verified
-/// (CX-M7H-004/022/024/032/033); a rename whose result is not the object it moved is put straight
+/// could certify is published, including when a <c>--no-manifest</c> run merely introduces one.
+/// Commit is per-file non-overwriting atomic rename in canonical order, manifest
+/// last, with the host token observed and both sides of every rename verified;
+/// a rename whose result is not the object it moved is put straight
 /// back, so no unowned file is ever left at a published path — least of all at the manifest, which
-/// <em>is</em> the run's public commit marker (CX-M7H-045). No cross-file atomicity is claimed.
+/// <em>is</em> the run's public commit marker. No cross-file atomicity is claimed.
 /// </para>
 /// </summary>
 internal sealed class PublicationTransaction
@@ -208,16 +208,16 @@ internal sealed class PublicationTransaction
     /// </summary>
     /// <param name="files">The injected filesystem.</param>
     /// <param name="identityFactory">
-    /// Produces the shared filesystem-identity service (CX-M7P-004). It is a factory rather than an
+    /// Produces the shared filesystem-identity service. It is a factory rather than an
     /// instance because identity is memoized per path — including the canonical-path fallback for a
     /// path that does not exist — so every check that must see the location as it is <b>now</b>
-    /// takes a fresh service (CX-M7H-007/023/024).
+    /// takes a fresh service.
     /// </param>
     /// <param name="baseOperand">The verbatim <c>--out BASE</c> operand.</param>
     /// <param name="finalKinds">The selected artifacts, in canonical order.</param>
     /// <param name="inputs">Every file this run reads: DATA, the root spec, and each loaded base.</param>
     /// <param name="force">Whether <c>--force</c> authorizes replacing an existing distinct target.</param>
-    /// <param name="cancellation">The exact host token (CX-M7H-022).</param>
+    /// <param name="cancellation">The exact host token.</param>
     public static PublicationPreparation Preflight(
         IPublicationFileSystem files,
         Func<FileIdentity> identityFactory,
@@ -242,7 +242,7 @@ internal sealed class PublicationTransaction
             // An unusable output LOCATION — an operand that is not a path at all, a missing or
             // unreadable directory. This is the one boundary where an ArgumentException or a
             // NotSupportedException genuinely describes the user's operand rather than an internal
-            // defect, which is why the broad family is admitted only here (CX-M7H-041).
+            // defect, which is why the broad family is admitted only here.
             return new PublicationRefused(PublicationMessages.RecordFailed(baseOperand));
         }
     }
@@ -278,7 +278,7 @@ internal sealed class PublicationTransaction
     /// Creates the transaction's root: the pending record, the <b>intent descriptor</b> that
     /// acknowledges it, and then the record itself.
     /// <para>
-    /// <b>Acquisition first, acknowledgement second</b> (CX-M7H-037). The pending record is
+    /// <b>Acquisition first, acknowledgement second</b>. The pending record is
     /// created before anything names its path, so a create-new that is <em>refused</em> leaves no
     /// durable state at all and the occupant that refused it can never be removed by this run or
     /// any later one. Only once the object exists is the descriptor written, naming the identity
@@ -293,11 +293,11 @@ internal sealed class PublicationTransaction
     /// <para>
     /// <b>Atomic by construction.</b> The record's bytes are written, flushed, and closed under the
     /// pending name and the finished record is published with a single rename, so the discoverable
-    /// record name never holds an empty or partial encoding (CX-M7H-012/018).
+    /// record name never holds an empty or partial encoding.
     /// </para>
     /// <para>
     /// <b>The record is the root of every later authority, so its own publication is proved on both
-    /// sides</b> (CX-M7H-044). The pending object is re-proved immediately before the publishing
+    /// sides</b>. The pending object is re-proved immediately before the publishing
     /// rename, and the rename's result is proved to be that same object carrying those same bytes
     /// before the descriptor is dropped, before a stage exists, and before the transaction counts
     /// as begun.
@@ -316,7 +316,7 @@ internal sealed class PublicationTransaction
         catch (Exception exception) when (FailureFamily.IsEnvironmentFailure(exception))
         {
             // Refused. Nothing durable was written naming this path, and nothing will be: the
-            // occupant is preserved by this run and by every later one (CX-M7H-037).
+            // occupant is preserved by this run and by every later one.
             return new PublicationFailure(PublicationMessages.RecordFailed(_baseSpelling));
         }
         catch (Exception exception) when (FailureFamily.IsContractFault(exception))
@@ -331,7 +331,7 @@ internal sealed class PublicationTransaction
         // A host that cannot identify what it just created cannot bind the record to it, so the
         // root of the transaction fails closed rather than publishing an authority it cannot prove.
         //
-        // And it does not take the object back out either (CX-M7H-047). Removal is bound to the
+        // And it does not take the object back out either. Removal is bound to the
         // exact object the create returned; where the seam cannot name that object, there is no
         // proof to remove it by — and "it is zero bytes" is the same path-and-length guess this
         // protocol removed everywhere else. The pending record is left exactly as it is, which is
@@ -359,7 +359,7 @@ internal sealed class PublicationTransaction
         // Deliberately NOT inside a broad catch: the stream operations are classified by the
         // narrow family inside WriteControl, so a contract defect on the already-open record
         // stream reaches the sanitized unexpected-fault exit instead of being reported as an
-        // environment failure (CX-M7H-021).
+        // environment failure.
         if (!WriteControl(file.Content, bytes)
             || !TryMutate(() => _files.Move(pending, RecordPath)))
         {
@@ -368,8 +368,8 @@ internal sealed class PublicationTransaction
         }
 
         // The rename's RESULT. A different object substituted inside that boundary would otherwise
-        // be accepted as this transaction's authority, published over, and finally deleted as owned
-        // (CX-M7H-044). It is put back where the rename took it from and nothing is begun.
+        // be accepted as this transaction's authority, published over, and finally deleted as owned.
+        // It is put back where the rename took it from and nothing is begun.
         if (!MatchesObject(RecordPath, isTheRecord))
         {
             TryMutate(() => _files.Move(RecordPath, pending));
@@ -390,20 +390,20 @@ internal sealed class PublicationTransaction
     /// filesystem, written by <paramref name="write"/> through the inline hasher, flushed to disk,
     /// and only then finalized. The identity of the object created is captured from its own open
     /// handle — before a byte is written and before the writer is ever invoked — and is the
-    /// evidence rollback and recovery later use to prove what this transaction published
-    /// (CX-M7H-019/024).
+    /// evidence rollback and recovery later use to prove what this transaction
+    /// published.
     /// <para>
-    /// <b>Nothing durable names the stage path until the acquisition has succeeded</b>
-    /// (CX-M7H-036). A refused create-new therefore leaves the occupant that refused it with no
+    /// <b>Nothing durable names the stage path until the acquisition has succeeded.</b>
+    /// A refused create-new therefore leaves the occupant that refused it with no
     /// claim, no evidence, and no other statement that this transaction created it — so neither
     /// this rollback nor any later recovery may remove it. Only once the object exists is the stage
     /// claim written, and its exact canonical bytes — token, base, record digest, this role with
     /// its target kind, and that object's identity — are what discovery and removal require. A
     /// claim that is empty, partial, or substituted proves nothing: it authorizes no mutation of
-    /// the stage beside it and is itself preserved (CX-M7H-046).
+    /// the stage beside it and is itself preserved.
     /// </para>
     /// <para>
-    /// <b>A stage this host cannot identify is refused before the writer runs</b> (CX-M7H-043). Such
+    /// <b>A stage this host cannot identify is refused before the writer runs</b>. Such
     /// a stage can never be proved at commit, so writing it — and then renaming every last-good
     /// output aside for a run that cannot possibly publish — is avoidable work and an avoidable
     /// outage.
@@ -412,7 +412,7 @@ internal sealed class PublicationTransaction
     /// <b>Failure origin is preserved.</b> Creating, writing, flushing, or closing the stage is an
     /// <em>output</em> failure and becomes <see cref="PublicationMessages.StageFailed"/>; anything
     /// else <paramref name="write"/> raises — a source read failure, a cancellation, a contract
-    /// defect — is rethrown untouched for the caller to classify (CX-M7H-006/015).
+    /// defect — is rethrown untouched for the caller to classify.
     /// </para>
     /// </summary>
     public async Task<PublicationFailure?> StageAsync(PublicationTargetKind kind, Func<Stream, Task> write)
@@ -432,7 +432,7 @@ internal sealed class PublicationTransaction
         catch (Exception exception) when (FailureFamily.IsEnvironmentFailure(exception))
         {
             // Refused. Nothing durable was written naming this path, and nothing will be: the
-            // occupant is preserved by this run and by every later one (CX-M7H-036).
+            // occupant is preserved by this run and by every later one.
             return new PublicationFailure(PublicationMessages.StageFailed(target.Spelling));
         }
         catch (Exception exception) when (FailureFamily.IsContractFault(exception))
@@ -445,11 +445,11 @@ internal sealed class PublicationTransaction
 
         if (!IdentityEvidence.IsIdentity(digest))
         {
-            // Known unpublishable before one record is read or one byte is written (CX-M7H-043) —
+            // Known unpublishable before one record is read or one byte is written —
             // so the writer is never invoked, DATA is never enumerated for it, and no target is
             // renamed aside.
             //
-            // The stage is also left exactly where it is (CX-M7H-047). Removal is bound to the
+            // The stage is also left exactly where it is. Removal is bound to the
             // exact object the create returned, and this is precisely the host that cannot name
             // that object; "it is zero bytes" is a length, not a proof, and this protocol does not
             // reclaim on one. It stays beside its record as unacknowledged state under the
@@ -467,7 +467,7 @@ internal sealed class PublicationTransaction
         // acquisition produced. The name keeps it unpredictable; the body is what discovery and
         // removal require exactly, so an empty object that refuses this create-new — or one that
         // later replaces the claim outright — is neither believed as authority over the stage
-        // beside it nor removed as this transaction's residue (CX-M7H-046).
+        // beside it nor removed as this transaction's residue.
         if (!CreateControlFile(claim, ClaimDocument(kind, digest)))
         {
             CloseQuietly(stage.Content);
@@ -476,7 +476,7 @@ internal sealed class PublicationTransaction
         }
 
         // Acquisition succeeded and is now durably proved. A path whose create-new failed is never
-        // recorded, so rollback and recovery never remove its occupant (CX-M7H-031/036).
+        // recorded, so rollback and recovery never remove its occupant.
         _stageIdentity[kind] = digest;
         _stageClaims[target.FileName] = digest;
 
@@ -488,7 +488,7 @@ internal sealed class PublicationTransaction
             // The exporter enumerates the SOURCE while writing the stage, so the two failure
             // origins meet here. Only the tagged one is an output failure; everything else —
             // a source read, a cancellation, a contract defect — belongs to the caller and is
-            // rethrown untouched (CX-M7H-006).
+            // rethrown untouched.
             try
             {
                 await write(hashing).ConfigureAwait(false);
@@ -541,7 +541,7 @@ internal sealed class PublicationTransaction
     /// must carry usable stage identity: this runs after <see cref="Begin"/> and staging, so a
     /// failure rolls back this run's own private residue, but it is <em>before</em> any final
     /// target is touched, so the externally observable target set is unchanged and no residue is
-    /// left (CX-M7H-019/024/043).
+    /// left.
     /// </para>
     /// </summary>
     public PublicationFailure? Seal(CancellationToken cancellation)
@@ -573,7 +573,7 @@ internal sealed class PublicationTransaction
 
             // Independent of the staging-time check, and taken from the durable evidence rather
             // than from memory: a selected target whose sealed evidence cannot name its staged
-            // object must never reach the staged marker, let alone a backup rename (CX-M7H-043).
+            // object must never reach the staged marker, let alone a backup rename.
             if (HasStageEntry(targetFileName)
                 && (!_evidence.TryGetValue(targetFileName, out var sealedEvidence)
                     || !IdentityEvidence.IsIdentity(sealedEvidence.Stage)))
@@ -608,19 +608,19 @@ internal sealed class PublicationTransaction
     /// <paramref name="cancellation"/> is observed before <b>every</b> pre-commit transition and
     /// never after the last one: a signal that arrives while backups or earlier renames are still
     /// running must roll the run back and exit 3, while one that arrives after the commit point
-    /// leaves the published run standing (CX-M7H-004).
+    /// leaves the published run standing.
     /// </para>
     /// <para>
     /// <b>Every transition is verified on both sides, and a rename that produced the wrong object is
     /// undone.</b> A backup-bearing target must still be the very object preflight approved, and
-    /// after it is renamed aside the backup must hold that same object (CX-M7H-033). A target about
+    /// after it is renamed aside the backup must hold that same object. A target about
     /// to receive a stage must still be absent; the stage must still be the exact object this
-    /// transaction created and sealed, and after the rename the published final must be that object
-    /// (CX-M7H-032). Where a rename's result is <em>not</em> what it moved, that exact object is
+    /// transaction created and sealed, and after the rename the published final must be that object.
+    /// Where a rename's result is <em>not</em> what it moved, that exact object is
     /// renamed straight back: it is not this transaction's to delete, and leaving it at a published
     /// path would mean a failed run had put an unrelated file where its output belongs — at the
     /// manifest, the path that <em>is</em> the public commit marker, it would certify a run that
-    /// never happened (CX-M7H-045).
+    /// never happened.
     /// </para>
     /// </summary>
     public PublicationFailure? Commit(CancellationToken cancellation)
@@ -652,7 +652,7 @@ internal sealed class PublicationTransaction
             }
 
             // The interval between the check and the rename is irreducible, so the rename's RESULT
-            // is checked too — and, unlike before, its result is undone (CX-M7H-033/045): the
+            // is checked too — and, unlike before, its result is undone: the
             // object that actually moved is put back at the public path it came from, so a failed
             // forced replacement never leaves a user's file stranded under a private name.
             if (!Matches(backupPath, PublicationTargets.BackupRole, entry.TargetFileName, expected))
@@ -680,7 +680,7 @@ internal sealed class PublicationTransaction
 
             // The stage must still be the exact object this transaction created, wrote, hashed, and
             // sealed. Renaming whatever occupies that path would publish bytes the manifest does
-            // not describe — a successful run certifying a file it never wrote (CX-M7H-032).
+            // not describe — a successful run certifying a file it never wrote.
             var sealedStage = _evidence.TryGetValue(target.FileName, out var evidence) ? evidence.Stage : null;
             if (sealedStage is null
                 || !IdentityEvidence.IsIdentity(sealedStage)
@@ -697,7 +697,7 @@ internal sealed class PublicationTransaction
             // And the published final must be that same object before the next artifact — or the
             // manifest, last — can commit. If it is not, the object that landed there is put back
             // at the stage path it was taken from: preserved, out of the public namespace, and
-            // recognizable to the rollback that follows (CX-M7H-045).
+            // recognizable to the rollback that follows.
             if (!Matches(target.FullPath, PublicationTargets.StageRole, target.FileName, sealedStage))
             {
                 if (!TryMutate(() => _files.Move(target.FullPath, StagePath(target.FileName))))
@@ -723,7 +723,7 @@ internal sealed class PublicationTransaction
     /// <summary>
     /// Undoes everything this transaction did. Rollback intent is made <b>durable first</b>, so a
     /// crash part-way through is resumed as a rollback by the next run rather than being
-    /// reinterpreted as a commit from file presence (CX-M7H-002/010); the work itself is the same
+    /// reinterpreted as a commit from file presence; the work itself is the same
     /// idempotent routine recovery uses, so an in-process rollback and a resumed one cannot drift.
     /// </summary>
     public void Rollback()
@@ -738,8 +738,8 @@ internal sealed class PublicationTransaction
 
         _rolledBack = true;
 
-        // The durable rollback phase GATES the destructive work; it is not an annotation on it
-        // (CX-M7H-010). Rolling back without it can leave every stage consumed and every final
+        // The durable rollback phase GATES the destructive work; it is not an annotation on it.
+        // Rolling back without it can leave every stage consumed and every final
         // populated — the shape a completed commit leaves — with `staged` as the only durable
         // fact, and the next run would then finish that failed run forward.
         //
