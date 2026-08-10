@@ -161,7 +161,7 @@ public static class RunManifestWriter
     // The three non-cut kinds share one payload shape: `kind` then `values`, the
     // one manifest field the D-113 wrapping applies to. A legitimate
     // zero-discovery outcome therefore serializes as an explicit `values = []`
-    // (D-122 part 15 / REG-PRES-007), which the shared rule renders inline.
+    // (D-122 part 15), which the shared rule renders inline.
     private static void WriteValues(StringBuilder text, string kind, IReadOnlyList<string> values)
     {
         Key(text, "kind", TomlLiteral.FormatString(kind));

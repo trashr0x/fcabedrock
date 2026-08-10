@@ -435,7 +435,7 @@ public static class ConversionPlanner
             // The effective bin universe. A consuming discretizer's domain is non-null here
             // (calibration filled an omitted one before plan); a cut discretizer's is ignored.
             // An authored [] is a genuine empty universe — not coalesced away — so the ordinal
-            // checks below still apply to it (D-122 §15 / REG-PRES-002).
+            // checks below still apply to it (D-122 §15).
             var declaredDomain = attribute.DeclaredDomain ?? [];
 
             // §12.3 / D-081 / D-122 §15: identity value bins need an explicit scale.order that is

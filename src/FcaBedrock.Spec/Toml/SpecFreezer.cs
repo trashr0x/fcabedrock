@@ -21,7 +21,7 @@ namespace FcaBedrock.Spec.Toml;
 /// matcher-won base value (an <c>include</c> prefix domain, a <c>value_groups</c>
 /// group set) is invisible there. Those effective values are therefore read from the
 /// paired <see cref="CalibratedSpec.Spec"/>, the effective resolved state, before the
-/// retained additions are appended (D-123 point 9 / CX-M7P-001). Templates and
+/// retained additions are appended (D-123 point 9). Templates and
 /// matchers are <b>retained</b>, not stripped: the returned document is flattened only
 /// in that the paired resolved snapshot is already <c>extends</c>-free (the resolver
 /// rejects an un-composed document), so no root <c>extends</c> survives.
@@ -65,12 +65,12 @@ public static class SpecFreezer
 
         // Pairing is by reference identity of the resolution token (D-098): the same guard
         // ComputeNative enforces, so a document can never be frozen against a calibration of
-        // some other resolution (CX-M7P-001). A mismatch is a programmer error, not a diagnostic.
+        // some other resolution. A mismatch is a programmer error, not a diagnostic.
         if (!ReferenceEquals(resolved.Resolved, calibrated.Resolution))
         {
             throw new ArgumentException(
                 "The calibrated state was not produced from this resolution; Freeze requires the paired " +
-                "resolved document and calibrated spec (D-123 point 9 / CX-M7P-001).",
+                "resolved document and calibrated spec (D-123 point 9).",
                 nameof(calibrated));
         }
 
@@ -127,7 +127,7 @@ public static class SpecFreezer
             // empty outcome becomes an authored [] (a fixed empty domain), never a re-omitted null.
             // When the effective winning policy is include, the observed domain has captured the whole
             // population, so include is folded to warn — otherwise the frozen attribute would still be
-            // data-dependent (D-122 part 10, CX-M7D-001).
+            // data-dependent (D-122 part 10).
             ObservedDomain observed => FreezeObservedDomain(section, name, observed, effective),
 
             // include additions → the effective final domain (prefix ++ additions, already assembled
@@ -152,7 +152,7 @@ public static class SpecFreezer
                 $"Attribute '{name}' carries an unrecognized calibration outcome '{outcome.GetType().Name}'."),
         };
 
-    // §10.6/D-122 part 10 (CX-M7D-001): an omitted consumed domain fills from the observed domain
+    // §10.6/D-122 part 10: an omitted consumed domain fills from the observed domain
     // (the whole population, retained first-observation order). When the paired EFFECTIVE winning
     // policy is include, that population is already complete, so include has nothing left to add and
     // is folded to warn — exactly as the IncludeAdditions path does — otherwise the frozen attribute

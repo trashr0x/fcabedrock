@@ -124,7 +124,7 @@ public sealed record RunCalibration
         // calibrated-cut list is not one: every auto-cut configuration has at least
         // two bins, and the calibrated-state boundary rejects a cut count other than
         // bins - 1 (D-102). Admitting it here would mint an audit entry for a run
-        // that cannot exist and would blur the REG-PRES-007 line between a
+        // that cannot exist and would blur the line between a
         // legitimate zero-discovery non-cut outcome and an unsuccessful cut
         // calibration — so the state is unrepresentable rather than serialized.
         if (outcome is CalibratedCuts { Cuts.Count: 0 })
@@ -186,7 +186,7 @@ public sealed record RunSection
     /// </param>
     /// <param name="commandLine">
     /// The complete process command-line array <b>including its actual
-    /// argv[0]</b>, preserved verbatim (D-123 point 4, CX-M7P-007/012).
+    /// argv[0]</b>, preserved verbatim (D-123 point 4).
     /// </param>
     /// <param name="specPath">The verbatim SPEC command operand.</param>
     /// <param name="specFileHash">The root spec's raw TOML bytes hash.</param>
