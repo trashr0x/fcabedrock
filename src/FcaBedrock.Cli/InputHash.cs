@@ -3,7 +3,7 @@ using System.Security.Cryptography;
 namespace FcaBedrock.Cli;
 
 /// <summary>
-/// The one input-stability policy (D-122 part 5 / CX-M7P-008 / §17): every complete data
+/// The one input-stability policy (D-122 part 5 / §17): every complete data
 /// pass hashes the <b>raw bytes it consumes, inline</b>, and every completed pass must agree
 /// with the first.
 /// <para>

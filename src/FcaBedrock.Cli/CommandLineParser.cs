@@ -412,7 +412,7 @@ internal static class CommandLineParser
         return null;
     }
 
-    // CX-M7P-005: --force authorizes replacing an existing FILE. With --out - there is no
+    // --force authorizes replacing an existing FILE. With --out - there is no
     // file to replace, so the combination is a usage error rather than a silent no-op.
     private static UsageFailure? CheckForceAgainstStdout(CliCommand command, Dictionary<string, string?> options)
     {

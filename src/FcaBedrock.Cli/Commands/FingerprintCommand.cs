@@ -43,7 +43,7 @@ namespace FcaBedrock.Cli.Commands;
 /// <c>stored=</c> states describe what the user's file said on entry. A <b>file</b> target
 /// commits the corrected spec and then writes that report to stdout; <c>--out -</c> writes only
 /// the corrected spec and suppresses the report entirely, because the stdout path is never handed
-/// a committed payload (D-123 point 14 / FBL-M7P-002).
+/// a committed payload (D-123 point 14).
 /// </para>
 /// </summary>
 internal static class FingerprintCommand

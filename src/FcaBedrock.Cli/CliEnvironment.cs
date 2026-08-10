@@ -64,8 +64,8 @@ internal sealed class CliEnvironment
     public required string ToolVersion { get; init; }
 
     /// <summary>
-    /// The <b>complete</b> process command-line array including its actual argv[0]
-    /// (CX-M7P-007/012), captured separately from the parser's ordinary arguments and
+    /// The <b>complete</b> process command-line array including its actual argv[0],
+    /// captured separately from the parser's ordinary arguments and
     /// recorded verbatim by the run manifest. A non-<c>fcabedrock</c> argv[0] — a full
     /// host-executable path, a shim — is preserved unchanged: <c>command_line</c> is an
     /// audit record of what the process actually received, and synthesizing a constant
@@ -74,7 +74,7 @@ internal sealed class CliEnvironment
     public required IReadOnlyList<string> AuditArgv { get; init; }
 
     /// <summary>
-    /// Opens a named input for reading (CX-M7P-008). Production opens the real file;
+    /// Opens a named input for reading. Production opens the real file;
     /// argv tests return pass-specific streams, which is what makes input behaviour —
     /// including, later, input-stability replay — deterministic rather than racy. Every
     /// file the CLI <em>reads</em> goes through here: the root spec, each <c>extends</c>

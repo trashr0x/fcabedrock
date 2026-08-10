@@ -29,8 +29,8 @@ internal static class Program
                 Signals = signals,
                 ToolVersion = ToolVersion.Current,
 
-                // The COMPLETE process command line, argv[0] included and verbatim
-                // (CX-M7P-012). Main's `args` never carries argv[0], so the audit value
+                // The COMPLETE process command line, argv[0] included and verbatim.
+                // Main's `args` never carries argv[0], so the audit value
                 // has to come from here; parsing continues over `args` alone.
                 AuditArgv = [.. Environment.GetCommandLineArgs()],
                 OpenInput = CliEnvironment.OpenFile,

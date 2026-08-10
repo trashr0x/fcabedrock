@@ -122,7 +122,7 @@ internal interface IFileIdentityProbe
 }
 
 /// <summary>
-/// The shared filesystem-identity service (CX-M7P-004 / D-123 part 6): OS identity for
+/// The shared filesystem-identity service (D-123 part 6): OS identity for
 /// existing files where the platform exposes it, one canonical path only as a fallback. It
 /// is consumed by the file-backed <c>extends</c> host now and by publication collision
 /// checks later, so "is this the same file?" has one answer in the whole CLI.

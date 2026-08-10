@@ -186,7 +186,7 @@ internal static class PlanReport
 
     // §15's kinds, verbatim, so one vocabulary describes a retained outcome wherever it is
     // reported. A legitimately empty outcome renders `values=[]` explicitly — the zero-discovery
-    // marker is data, not an omission (D-104/REG-PRES-007).
+    // marker is data, not an omission (D-104).
     private static void AppendCalibration(StringBuilder builder, int index, AttributeCalibration calibration)
     {
         builder.Append("calibration ");
