@@ -58,7 +58,7 @@ public sealed class ProbeTripleStructureTests
         { "whitespace only", "   " },
         { "tab only", "\t" },
         { "carries a newline", "a\nb" },
-        { "carries a control character", "ab" },
+        { "carries a control character", "a\u0001b" },
     };
 
     [Theory]

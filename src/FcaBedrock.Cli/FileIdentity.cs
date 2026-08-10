@@ -230,7 +230,7 @@ internal sealed class FileIdentity
 
     private string RealSpelling(string directory, string name)
     {
-        var cacheKey = directory + " " + name;
+        var cacheKey = directory + "\0" + name;
         if (_realSpellings.TryGetValue(cacheKey, out var cached))
         {
             return cached;
