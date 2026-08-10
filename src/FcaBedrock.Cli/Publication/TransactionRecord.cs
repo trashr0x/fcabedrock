@@ -9,7 +9,7 @@ namespace FcaBedrock.Cli.Publication;
 /// The private path is <b>not stored</b> — it is recomputed from the target, the role, and the
 /// run token (<see cref="PublicationTargets.PrivateName"/>). A record therefore cannot name a
 /// path at all; it can only select from the fixed set of names this code could have produced
-/// for this base in this directory, which is what makes recovery provably safe (CX-M7P-003).
+/// for this base in this directory, which is what makes recovery provably safe.
 /// </para>
 /// </summary>
 /// <param name="Role">
@@ -141,7 +141,7 @@ internal sealed class TransactionRecord
 
     /// <summary>
     /// The code naming this record's shape: which targets it stages, and which it backs up. It is
-    /// what the pre-record intent descriptor carries (CX-M7H-018) — the entry <em>order</em> needs
+    /// what the pre-record intent descriptor carries — the entry <em>order</em> needs
     /// no encoding, because each family only ever writes one arrangement: an artifacts transaction
     /// writes backups in <see cref="PublicationTargets.BackupOrder"/>, then stages in
     /// <see cref="PublicationTargets.CommitOrder"/>; a single-file one writes its one optional
@@ -358,7 +358,7 @@ internal sealed class TransactionRecord
 
     /// <summary>
     /// Whether <paramref name="files"/> is a shape production could have written for
-    /// <paramref name="baseFileName"/> (CX-M7H-003).
+    /// <paramref name="baseFileName"/>.
     /// <para>
     /// Preflight builds exactly one arrangement per family: backups first — for the artifacts
     /// family the manifest ahead of what it certifies — then stages in canonical order. Anything

@@ -144,7 +144,7 @@ internal static class ConvertCommand
 
             // The exact host token reaches residue classification, validated recovery, and every
             // mutation boundary inside it: a signal must stop the run before it begins a new
-            // transaction, not merely before the first write (CX-M7H-022).
+            // transaction, not merely before the first write.
             cancellation);
 
         if (preparation is not PublicationReady(var transaction))
@@ -179,11 +179,10 @@ internal static class ConvertCommand
                 catch (PublicationFaultException)
                 {
                     // A contract defect met while undoing does not get to REPLACE the outcome that
-                    // sent the run here. An exact-host-token cancellation is exit 3 by contract
-                    // (CX-M7H-004/022), and letting a rollback-time fault escape from inside this
-                    // handler would silently promote it to exit 4 (CX-M7H-041). The original
-                    // exception is rethrown below; where it is itself a fault, the classification
-                    // is the same either way.
+                    // sent the run here. An exact-host-token cancellation is exit 3 by contract,
+                    // and letting a rollback-time fault escape from inside this handler would
+                    // silently promote it to exit 4. The original exception is rethrown below;
+                    // where it is itself a fault, the classification is the same either way.
                 }
             }
 
@@ -205,7 +204,7 @@ internal static class ConvertCommand
         var cancellation = environment.Signals.Token;
 
         // A signal that arrived during preparation stops the run here: after it, no new
-        // transaction begins at all (CX-M7H-022).
+        // transaction begins at all.
         cancellation.ThrowIfCancellationRequested();
 
         if (transaction.Begin() is { } started)

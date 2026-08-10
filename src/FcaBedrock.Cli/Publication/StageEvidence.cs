@@ -5,7 +5,7 @@ using System.Text;
 namespace FcaBedrock.Cli.Publication;
 
 /// <summary>
-/// The identity digest of one filesystem object, as the transaction records it (CX-M7H-019/024).
+/// The identity digest of one filesystem object, as the transaction records it.
 /// <para>
 /// <b>Why a digest and not the identity itself.</b> A raw volume/inode triple is an internal key
 /// that must never surface (§13, D-122 part 11); a salted digest proves the same equality without
@@ -59,7 +59,7 @@ internal static class IdentityEvidence
 
 /// <summary>
 /// One target's durable identity evidence: which object this transaction renamed aside as a
-/// backup, and which object it staged (CX-M7H-019/023/024).
+/// backup, and which object it staged.
 /// <para>
 /// <b>Why it exists.</b> A derived file name identifies a <em>path</em>. Rollback and recovery
 /// must delete a published final only when it is the very object this transaction staged, and

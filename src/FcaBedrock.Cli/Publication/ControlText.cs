@@ -11,13 +11,13 @@ namespace FcaBedrock.Cli.Publication;
 /// create-new, and afterwards nothing distinguishes it from the control this run would have made
 /// there — so a resumed run removed it on a length. Nor could it survive an empty object simply
 /// <em>replacing</em> an acknowledged claim, which would then be believed as authority over the
-/// stage beside it (CX-M7H-046). Binding the run token, the base, the authoritative record's
+/// stage beside it. Binding the run token, the base, the authoritative record's
 /// digest, the exact role, and — for a claim — the identity it acknowledges into fixed bytes makes
 /// the question answerable: discovery and removal require <b>these exact bytes</b>, and an occupant
 /// that is empty, partial, or bound to anything else is preserved.
 /// </para>
 /// <para>
-/// This supersedes CX-M7H-029's zero-byte mechanism. It is a statement about the transaction, not
+/// This supersedes the earlier zero-byte mechanism. It is a statement about the transaction, not
 /// about the object, so it is no stronger than the authoritative record's own byte proof — an actor
 /// who can copy the record can copy this too. It is exactly strong enough for what it must decide,
 /// and no weaker than the proof the record already relies on.

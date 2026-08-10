@@ -104,7 +104,7 @@ internal sealed record PublicationTarget(PublicationTargetKind Kind, string Spel
 /// marker, and the transaction record are each a fixed function of the base file name, the
 /// target, the role, and the run's token — which is what lets a discovered record prove
 /// ownership: it can only name files this function could have produced for <em>this</em> base, in
-/// <em>this</em> directory (CX-M7P-003).
+/// <em>this</em> directory.
 /// </para>
 /// <para><c>fcabedrock</c> is spelled in full everywhere; the <c>fb</c> abbreviation is forbidden.</para>
 /// </summary>
@@ -240,7 +240,7 @@ internal static class PublicationTargets
         baseFileName + TransactionInfix + token + RecordExtension;
 
     /// <summary>
-    /// The name the record is written under before it is published (CX-M7H-012).
+    /// The name the record is written under before it is published.
     /// <para>
     /// The record's discoverable name must never hold empty or partial bytes: a crash between
     /// creating that file and finishing it would leave something a later run correctly refuses to
@@ -274,7 +274,7 @@ internal static class PublicationTargets
     }
 
     /// <summary>
-    /// The intent descriptor's file name (CX-M7H-018/037): the control file created immediately
+    /// The intent descriptor's file name: the control file created immediately
     /// <em>after</em> the pending record, whose name confines it to this base and classifies it as
     /// this run's descriptor — carrying the run token, the whole one-byte record shape (the two
     /// families take disjoint ranges of it, so the family bit rides in this name like any other),
@@ -332,7 +332,7 @@ internal static class PublicationTargets
     }
 
     /// <summary>
-    /// One target's durable identity evidence (CX-M7H-019/024). The name is a function of the
+    /// One target's durable identity evidence. The name is a function of the
     /// base, the artifact kind, and the run token <b>only</b> — never of a runtime identity value
     /// — so every control path a transaction will ever own is resolvable before it begins.
     /// </summary>
@@ -344,7 +344,7 @@ internal static class PublicationTargets
         baseFileName + EvidencePendingInfix + KindCode(kind) + "-" + token;
 
     /// <summary>
-    /// The <b>stage claim</b> for one artifact (CX-M7H-031/036/046): the control file created
+    /// The <b>stage claim</b> for one artifact: the control file created
     /// immediately <em>after</em> the stage object exists. Its name confines it to this base and
     /// classifies it as this run's claim for this artifact kind, and repeats the identity digest of
     /// the object that creation actually produced.
@@ -354,16 +354,14 @@ internal static class PublicationTargets
     /// authoritative record's digest, this role <em>with its target kind</em>, and that same stage
     /// identity — so name and body must agree. Discovery and removal both require those exact
     /// bytes: an empty, partial, refused, invalid, or substituted object at this name is preserved,
-    /// authorizes no mutation of the stage beside it, and is not removed as this run's residue
-    /// (CX-M7H-046).
+    /// authorizes no mutation of the stage beside it, and is not removed as this run's residue.
     /// </para>
     /// <para>
     /// <b>The order is the other half.</b> A record entry only <em>predicts</em> a private path,
     /// and the published evidence arrives later, after the artifact is written. A claim written
     /// <em>before</em> the attempt would survive a refused create-new and go on to authorize
     /// deleting the occupant that refused it. Written after, it says exactly one thing: this
-    /// transaction created <b>that object</b> there. A refused acquisition writes no claim at all
-    /// (CX-M7H-036).
+    /// transaction created <b>that object</b> there. A refused acquisition writes no claim at all.
     /// </para>
     /// </summary>
     public static string StageClaimName(
@@ -554,7 +552,7 @@ internal static class PublicationTargets
     /// Discovery passes <see cref="StringComparison.OrdinalIgnoreCase"/> to gather a superset that
     /// can include a case variant of this base, because on a case-insensitive directory those name
     /// the same physical files. Whether such an entry really is this run's namespace is then
-    /// decided by filesystem identity, never by the comparison (CX-M7H-016).
+    /// decided by filesystem identity, never by the comparison.
     /// </para>
     /// </summary>
     public static bool IsPrivateName(string fileName, string baseFileName, StringComparison comparison)

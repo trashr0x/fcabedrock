@@ -31,7 +31,7 @@ internal static partial class FileIdentityInterop
     /// Opens <paramref name="fullPath"/> for an <b>identity-bound removal</b>: read access to prove
     /// what the object is, <c>DELETE</c> access to remove it through this very handle, and no
     /// sharing at all — so between the proof and the removal nobody can rename the name away,
-    /// delete the object, or put a different one there (CX-M7H-040).
+    /// delete the object, or put a different one there.
     /// <para>
     /// Returns null when nothing is at that path. Deletion is <em>not</em> requested here: the
     /// disposition is set only after the caller has proved the object, so a handle opened on
@@ -97,7 +97,7 @@ internal static partial class FileIdentityInterop
     /// The handle route is not an optimization: a file created <see cref="FileShare.None"/> — as
     /// every data-bearing stage is — cannot be identified through its path while it is held, and
     /// identifying it after the close would describe whatever occupies the name by then rather
-    /// than the object that was created (CX-M7H-019/024).
+    /// than the object that was created.
     /// </para>
     /// </summary>
     internal static FileIdentityKey? TryGetIdentity(SafeFileHandle handle)

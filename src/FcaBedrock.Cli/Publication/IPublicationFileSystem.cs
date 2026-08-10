@@ -13,10 +13,10 @@ namespace FcaBedrock.Cli.Publication;
 /// before a single byte is written. It cannot be obtained afterwards from the path: the file is
 /// held <see cref="FileShare.None"/>, so a second open is refused, and observing after the close
 /// would open a window in which the answer describes whatever now occupies the name rather than
-/// the object this transaction created (CX-M7H-019/024).
+/// the object this transaction created.
 /// </para>
 /// <para>
-/// <b>Successful creation is what creates ownership</b> (CX-M7H-036/037/038/044). A derived
+/// <b>Successful creation is what creates ownership</b>. A derived
 /// private name predicts a path; only this value says which object now sits at it. Every control
 /// file the transaction later publishes, verifies, or removes is bound to the identity reported
 /// here, so a create-new that was <em>refused</em> — and therefore reported nothing — can never
@@ -60,8 +60,8 @@ internal interface IPublicationFileSystem
     /// Creates <paramref name="path"/> for writing, <b>failing when it already exists</b>, and
     /// reports the identity of the object it created. The create-new semantics are load-bearing:
     /// a stage, a backup, and the transaction record may never silently replace something already
-    /// there (CX-M7P-003), and the reported identity is what makes a <em>successful</em> creation
-    /// — rather than a derived name — the thing that confers ownership (CX-M7H-037/044).
+    /// there, and the reported identity is what makes a <em>successful</em> creation
+    /// — rather than a derived name — the thing that confers ownership.
     /// <para>
     /// For <b>control</b> files only — the transaction record and its phase markers. They carry
     /// file names already visible in the directory listing and no converted data.
@@ -71,7 +71,7 @@ internal interface IPublicationFileSystem
 
     /// <summary>
     /// Creates <paramref name="path"/> as <see cref="CreateNew"/> does, but restricted to the
-    /// owner (CX-M7H-017/019/020).
+    /// owner.
     /// <para>
     /// Used for every <b>data-bearing</b> stage. A staged artifact holds converted user data and
     /// may survive a crash as recovery residue, so an unpredictable name is not enough: a name is
@@ -92,13 +92,13 @@ internal interface IPublicationFileSystem
     /// <summary>
     /// Renames <paramref name="source"/> to <paramref name="destination"/> <b>without
     /// overwriting</b>. Every commit, backup, and restore is one of these: a same-directory,
-    /// same-filesystem metadata rename, never a copy and never a rehash (CX-M7P-002).
+    /// same-filesystem metadata rename, never a copy and never a rehash.
     /// </summary>
     void Move(string source, string destination);
 
     /// <summary>
     /// Removes the object at <paramref name="path"/> — and <b>only</b> the object
-    /// <paramref name="isExpected"/> accepts (CX-M7H-040).
+    /// <paramref name="isExpected"/> accepts.
     /// <para>
     /// <c>unlink</c> names a path, not a file, and a delete leaves no result whose identity could
     /// be checked afterwards, so an ownership proof taken <em>before</em> a path-based delete can
@@ -135,7 +135,7 @@ internal interface IPublicationFileSystem
     /// <para>
     /// Case-insensitive on purpose, and only here: on a case-insensitive directory
     /// <c>OUT.fcabedrock-…</c> and <c>out.fcabedrock-…</c> name the same files, and residue that
-    /// discovery cannot see is residue a later run can act on destructively (CX-M7H-016). This
+    /// discovery cannot see is residue a later run can act on destructively. This
     /// yields a deliberate <em>superset</em>; whether a case-variant entry really belongs to this
     /// run's namespace is then settled by actual filesystem identity, not by the comparison used
     /// here.
@@ -216,7 +216,7 @@ internal sealed class PublicationFileSystem : IPublicationFileSystem
     // The object is opened with DELETE access and NO sharing, so from the instant it is proved to
     // the instant it is unlinked nothing else can rename the name away, delete the object, or put
     // a different one there; the deletion is then requested against that handle rather than
-    // against the path. There is no interval at all (CX-M7H-040).
+    // against the path. There is no interval at all.
     [SupportedOSPlatform("windows")]
     private static bool RemoveWindows(string path, RemovalProof isExpected)
     {
@@ -307,7 +307,7 @@ internal sealed class PublicationFileSystem : IPublicationFileSystem
         // Enumerated with no wildcard and filtered here rather than through the platform's own
         // pattern matching, whose case behaviour varies with the host. The filter is deliberately
         // case-INSENSITIVE so no residue can hide from discovery; membership is decided afterwards
-        // by filesystem identity (CX-M7H-016).
+        // by filesystem identity.
         foreach (var path in Directory.EnumerateFiles(directory))
         {
             if (Path.GetFileName(path).StartsWith(namePrefix, StringComparison.OrdinalIgnoreCase))

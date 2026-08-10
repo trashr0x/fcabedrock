@@ -1,7 +1,7 @@
 namespace FcaBedrock.Cli.Publication;
 
 /// <summary>
-/// Marks a failure as having come from the <b>output</b> side (CX-M7H-006).
+/// Marks a failure as having come from the <b>output</b> side.
 /// <para>
 /// An exporter writes a staged artifact while enumerating the data source, so one
 /// <see cref="IOException"/> escaping that call could equally mean "the source could not be read"
@@ -21,7 +21,7 @@ internal sealed class PublicationStreamException : Exception
 }
 
 /// <summary>
-/// Marks a failure as a <b>contract or state defect at a publication boundary</b> (CX-M7H-034/035).
+/// Marks a failure as a <b>contract or state defect at a publication boundary</b>.
 /// <para>
 /// An <see cref="ObjectDisposedException"/>, <see cref="ArgumentException"/>, or
 /// <see cref="NotSupportedException"/> raised by an already-open publication stream — or by an
@@ -63,8 +63,7 @@ internal static class FailureFamily
     /// The broad family an unusable output <b>operand</b> can raise. Admitted at exactly one
     /// boundary — preflight's own path resolution — where an <see cref="ArgumentException"/> or
     /// <see cref="NotSupportedException"/> genuinely describes what the user typed. Everywhere
-    /// else the same types are contract defects and must reach the unexpected-fault exit (P-14,
-    /// CX-M7H-041).
+    /// else the same types are contract defects and must reach the unexpected-fault exit (P-14).
     /// </summary>
     internal static bool IsPublicationFailure(Exception exception) =>
         exception is IOException
@@ -77,7 +76,7 @@ internal static class FailureFamily
     /// The failures that are genuinely the <b>environment's</b>: the disk filled, the handle was
     /// revoked, access was withdrawn, the file is not there.
     /// <para>
-    /// Deliberately narrow (CX-M7H-015/021/041). It governs every publication-filesystem call the
+    /// Deliberately narrow. It governs every publication-filesystem call the
     /// transaction makes — create, confidential create, flush, rename, delete, bounded read — and
     /// every already-open stream it owns: artifact stages, the transaction record, its evidence,
     /// and the phase markers. At each of those, an <see cref="ArgumentException"/> means an invalid
@@ -90,7 +89,7 @@ internal static class FailureFamily
         exception is IOException or UnauthorizedAccessException;
 
     /// <summary>
-    /// The contract and state defects a publication boundary can raise (CX-M7H-034/035/041): a
+    /// The contract and state defects a publication boundary can raise: a
     /// write to a disposed stream, an invalid range, an unsupported operation. They are product
     /// bugs, so they are tagged at their origin and reach the sanitized unexpected-fault exit
     /// rather than being read as a full disk, an unusable output operand, or — for
