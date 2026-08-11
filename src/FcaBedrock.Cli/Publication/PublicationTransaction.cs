@@ -2145,7 +2145,7 @@ internal sealed class PublicationTransaction
         // is the only thing that authorizes removing that pending file, and it authorizes removing
         // exactly one thing: the object whose identity its own name states — the object this
         // transaction's create-new produced. A file that refused that create-new has no descriptor
-        // naming it and stays, whatever its length or its bytes (CX-M7H-018/037).
+        // naming it and stays, whatever its length or its bytes.
         if (residue is { Prior: null, Intent: { } intent })
         {
             var pendingIsOurs = new RemovalProof((identity, _) => string.Equals(
@@ -2187,10 +2187,10 @@ internal sealed class PublicationTransaction
             return Clear(view, guard);
         }
 
-        // The DURABLE PHASE decides the direction, never the file layout (CX-M7H-027). Committed
+        // The DURABLE PHASE decides the direction, never the file layout. Committed
         // always finishes forward and RollingBack always finishes backward — a durable rollback
         // intent is the whole point of the marker, and letting an ownership inference override it
-        // would restore the hazard CX-M7H-002/010 closed. Only the ambiguous Staged phase, where
+        // would restore the hazard the phase-body rule closed. Only the ambiguous Staged phase, where
         // the run may have stopped on either side of its commit point, asks what the files prove.
         var forward = prior.Phase switch
         {
@@ -2207,7 +2207,7 @@ internal sealed class PublicationTransaction
     /// this transaction's own published object, and every backup-only participant — the demoted
     /// old manifest — is in the state a crossed commit point leaves it, namely absent.
     /// <para>
-    /// The aggregate is what matters (CX-M7H-025). Judging only the targets that carry stages
+    /// The aggregate is what matters. Judging only the targets that carry stages
     /// would let a run whose new artifact is published <em>and</em> whose old public marker has
     /// been restored count as committed; forward cleanup would then remove every private control
     /// and leave that marker apparently certifying bytes from a different run.
@@ -2232,8 +2232,8 @@ internal sealed class PublicationTransaction
 
     // Preparing: remove every owned private entry and the control files, and never touch a final.
     // A stage path goes only when this transaction can prove which object it created there: the
-    // record predicted the name, but a create-new collision means the occupant is someone else's
-    // (CX-M7H-031/036).
+    // record predicted the name, but a create-new collision means the occupant is someone
+    // else's.
     private static bool Clear(TransactionView view, RecoveryGuard guard)
     {
         var complete = true;
@@ -2257,24 +2257,24 @@ internal sealed class PublicationTransaction
     /// <b>Every decision is taken from the state as found, before anything moves — and proved
     /// again at the moment it acts.</b> Going <b>forward</b>, the backups are superseded and are
     /// dropped. Going <b>backward</b>, each target is returned to the state preflight found it in,
-    /// and the restoring rename's own result is proved before any evidence can be discarded
-    /// (CX-M7H-039). Either way it acts only on objects the transaction can prove are its own: a
+    /// and the restoring rename's own result is proved before any evidence can be discarded.
+    /// Either way it acts only on objects the transaction can prove are its own: a
     /// final is deleted only when it is the very object this transaction staged, and a backup is
     /// deleted or renamed home only when it is the very object this transaction renamed aside. A
     /// file it cannot prove is preserved and the cleanup reports itself incomplete, which keeps the
-    /// record in place for a later attempt rather than destroying something unowned
-    /// (CX-M7H-019/024/026/030/031/040).
+    /// record in place for a later attempt rather than destroying something
+    /// unowned.
     /// </para>
     /// <para>
     /// The two passes are not redundant. The first is what keeps a decision from being taken
     /// against evidence a later step in the same pass already destroyed; the second is what keeps
     /// a proof from being <em>reused</em> after another target's mutation, during which the
-    /// filesystem can have changed underneath it (CX-M7H-030).
+    /// filesystem can have changed underneath it.
     /// </para>
     /// <para>
     /// <paramref name="hazard"/> is set when a commit rename put an object this transaction cannot
     /// identify at a published path and could not put it back. Nothing may then erase the private
-    /// state that lets a later run classify what is there (CX-M7H-045).
+    /// state that lets a later run classify what is there.
     /// </para>
     /// </summary>
     private static bool Finish(TransactionView view, bool forward, RecoveryGuard guard, bool hazard)
@@ -2313,7 +2313,7 @@ internal sealed class PublicationTransaction
             // either the object its own rejected commit rename put there and could not take back,
             // or one that appeared during the run; it is never deleted, but erasing the private
             // state that lets a later run recognize it would leave a failed run wearing a success
-            // marker with nothing to classify it (CX-M7H-045). This is the durable form of that
+            // marker with nothing to classify it. This is the durable form of that
             // rule: a resumed rollback reaches it from the files alone.
             if (!forward && !decision.HasBackup && present && view.IsManifest(decision.TargetFileName))
             {
@@ -2330,7 +2330,7 @@ internal sealed class PublicationTransaction
             if (forward)
             {
                 // A superseded backup is still an object, and the evidence says which one. Only
-                // that object may be dropped (CX-M7H-026).
+                // that object may be dropped.
                 if (decision.BackupPresent && decision.BackupIsExpected)
                 {
                     complete &= RemoveOwned(
@@ -2358,7 +2358,7 @@ internal sealed class PublicationTransaction
                 && TryMutate(() => view.Files.Move(backupPath, finalPath));
 
             // And the restoring rename's RESULT, before anything can discard the evidence that
-            // makes this state recognizable (CX-M7H-039). A different object substituted inside
+            // makes this state recognizable. A different object substituted inside
             // that boundary is put back rather than published as the restored prior target.
             if (restored && !view.IsBackedUpObjectAt(decision.TargetFileName, finalPath))
             {
@@ -2371,7 +2371,7 @@ internal sealed class PublicationTransaction
 
         // 3. The stages last, so an interruption cannot leave a decision half-taken against
         //    evidence that is already gone — and only where this transaction can prove which
-        //    object it created at that private path (CX-M7H-031/036).
+        //    object it created at that private path.
         foreach (var entry in view.Record.Files)
         {
             if (!string.Equals(entry.Role, PublicationTargets.StageRole, StringComparison.Ordinal))
@@ -2391,7 +2391,7 @@ internal sealed class PublicationTransaction
 
     /// <summary>
     /// Removes the transaction's control files, most advanced first, and <b>stops at the first
-    /// deletion that fails</b> (CX-M7H-028).
+    /// deletion that fails</b>.
     /// <para>
     /// Descending order is what keeps an interrupted cleanup at a <em>less</em> advanced phase:
     /// removing <c>staged</c> first would transiently leave <c>committed</c> alone, a combination
@@ -2407,7 +2407,7 @@ internal sealed class PublicationTransaction
     /// role-specific documents, evidence and the record their own encodings. A raced-in occupant at
     /// any of those names refused this transaction's create-new or rename — and an empty, partial,
     /// or substituted object proves nothing whatever its length — so it is preserved and the
-    /// cleanup reports itself incomplete (CX-M7H-038/040/046).
+    /// cleanup reports itself incomplete.
     /// </para>
     /// </summary>
     private static bool RemoveControl(TransactionView view, RecoveryGuard guard)
@@ -2438,7 +2438,7 @@ internal sealed class PublicationTransaction
 
     /// <summary>
     /// Removes the object at <paramref name="path"/> — and <b>only</b> the object
-    /// <paramref name="isExpected"/> accepts (CX-M7H-040).
+    /// <paramref name="isExpected"/> accepts.
     /// <para>
     /// The proof is not taken here and then acted on somewhere else: it is evaluated by the removal
     /// primitive against the identity and bytes of the object it has <em>open</em>. A file that
@@ -2450,7 +2450,7 @@ internal sealed class PublicationTransaction
     /// </para>
     /// <para>
     /// The gate in front of it is unchanged: the exact host token, then a fresh check that this
-    /// path is not one of the run's own inputs (CX-M7H-022/023). Returns true when the path no
+    /// path is not one of the run's own inputs. Returns true when the path no
     /// longer holds that object — removed, or never there.
     /// </para>
     /// </summary>
@@ -2504,7 +2504,7 @@ internal sealed class PublicationTransaction
     // ObjectDisposedException, an ArgumentException, or a NotSupportedException from a create,
     // rename, or delete of a path this code derived is a contract or state defect with no
     // user-facing reading at all, and is tagged at its origin so it reaches the sanitized
-    // unexpected-fault exit rather than being blamed on the user's output location (CX-M7H-041).
+    // unexpected-fault exit rather than being blamed on the user's output location.
     private static bool TryMutate(Action action)
     {
         try
@@ -2523,8 +2523,8 @@ internal sealed class PublicationTransaction
     }
 
     // Every seam READ goes through here. A genuine I/O or permission failure stays an ordinary
-    // publication failure for the caller to classify; a contract defect is tagged at its origin
-    // (CX-M7H-035), so an internal misuse of the residue seam can never be reported as the user's
+    // publication failure for the caller to classify; a contract defect is tagged at its origin,
+    // so an internal misuse of the residue seam can never be reported as the user's
     // output location being unusable.
     private static T Guarded<T>(Func<T> operation)
     {
@@ -2554,7 +2554,7 @@ internal sealed class PublicationTransaction
     /// <para>
     /// Each is stated as a proof over an <em>object</em> — its identity and its bytes — rather than
     /// over a path, because that is exactly what the removal primitive can observe through the very
-    /// handle it deletes through (CX-M7H-040). The path-shaped forms are decisions, not
+    /// handle it deletes through. The path-shaped forms are decisions, not
     /// authorizations.
     /// </para>
     /// </summary>
@@ -2601,7 +2601,7 @@ internal sealed class PublicationTransaction
 
         /// <summary>
         /// Whether an object is the one this transaction created at
-        /// <paramref name="targetFileName"/>'s <b>stage</b> path (CX-M7H-031/036).
+        /// <paramref name="targetFileName"/>'s <b>stage</b> path.
         /// <para>
         /// A record entry <em>predicts</em> a private name; it does not prove the create-new
         /// succeeded. The stage claim does: it is written only after acquisition succeeded and
@@ -2665,14 +2665,14 @@ internal sealed class PublicationTransaction
             var path = Path.Combine(directory, PublicationTargets.MarkerName(record.BaseFileName, phase, token));
 
             // In process the transaction knows exactly which markers its create-new produced. One
-            // it never created is not its own, whatever occupies that name (CX-M7H-038).
+            // it never created is not its own, whatever occupies that name.
             if (marked is not null && !marked.Contains(phase))
             {
                 return !Exists(path);
             }
 
             // And a resumed run asks the same question of the bytes: exactly this transaction's
-            // marker for exactly this phase, or nothing happens to it (ruling 3).
+            // marker for exactly this phase, or nothing happens to it.
             return RemoveOwned(files, path, ControlIs(ControlDocument.RoleOf(phase)), guard);
         }
 
@@ -2683,7 +2683,7 @@ internal sealed class PublicationTransaction
             // The authoritative evidence arrives by a rename whose result this run proved, and it
             // is self-validating besides: the bytes must be this run's own evidence for this target
             // and must agree with the record. A raced-in occupant at that name — one whose presence
-            // refused the publishing rename — can prove neither (CX-M7H-038).
+            // refused the publishing rename — can prove neither.
             return RemoveOwned(
                 files,
                 path,
@@ -2695,7 +2695,7 @@ internal sealed class PublicationTransaction
         /// A pending evidence file is removed in process by the run that created it, against the
         /// identity that creation reported. A resumed run has no such statement — nothing durable
         /// names that object — so it preserves whatever is there and reports the cleanup
-        /// incomplete, rather than inferring ownership from the name or the bytes (CX-M7H-037).
+        /// incomplete, rather than inferring ownership from the name or the bytes.
         /// </summary>
         public bool RemovePendingEvidence(PublicationTargetKind kind) =>
             !Exists(Path.Combine(directory, PublicationTargets.EvidencePendingName(record.BaseFileName, kind, token)));
@@ -2704,7 +2704,7 @@ internal sealed class PublicationTransaction
         /// A stage claim goes only when the object at its name is exactly this transaction's claim
         /// for this target kind and this acknowledged identity — proved, like every removal, from
         /// the handle the deletion acts through. An object substituted at that name inside the
-        /// removal itself fails that proof and survives (CX-M7H-046).
+        /// removal itself fails that proof and survives.
         /// </summary>
         public bool RemoveStageClaim(PublicationTargetKind kind, string targetFileName, RecoveryGuard guard)
         {
@@ -2737,7 +2737,7 @@ internal sealed class PublicationTransaction
         /// <summary>
         /// The pending record, once the authoritative one exists. Its acknowledgement — the intent
         /// descriptor — is what names the object, so a run that no longer has one removes nothing
-        /// and says the cleanup is incomplete (CX-M7H-037).
+        /// and says the cleanup is incomplete.
         /// </summary>
         public bool RemovePendingRecord(RecoveryGuard guard)
         {
@@ -2785,7 +2785,7 @@ internal sealed class PublicationTransaction
 
     /// <summary>
     /// The gate every recovery mutation passes: the exact host token, and a fresh check that the
-    /// path is not one of this run's inputs (CX-M7H-022/023).
+    /// path is not one of this run's inputs.
     /// </summary>
     private sealed class RecoveryGuard(
         Func<FileIdentity> identityFactory, IReadOnlyList<PublicationInput> inputs, CancellationToken cancellation)
