@@ -809,12 +809,12 @@ internal sealed class PublicationTransaction
 
         // Any existing manifest is a marker hazard for a run that publishes artifacts it will not
         // describe: leaving it visible beside new output lets it appear to certify a file from a
-        // different run, whether that output replaced something or is brand new (CX-M7H-005).
+        // different run, whether that output replaced something or is brand new.
         var demotesManifest = !manifestIsFinal && Exists(files, manifest.FullPath);
 
         // A demoted marker is renamed aside and then deleted, so it is every bit as much a
         // mutated participant as a replaced artifact — and `--force` never authorizes destroying
-        // an input. It joins the collision set BEFORE any of it happens (CX-M7H-013).
+        // an input. It joins the collision set BEFORE any of it happens.
         var participants = new List<PublicationTarget>(finals);
         if (demotesManifest)
         {
@@ -977,7 +977,7 @@ internal sealed class PublicationTransaction
         // Residue is validated in full before a single byte moves, so a malformed record, an
         // impossible shape or state, a foreign family, or an unknown lookalike refuses the run with
         // the location exactly as found. Discovery takes its own identity service: residue it
-        // cannot see cannot be recovered, and case variants alias on some directories (CX-M7H-016).
+        // cannot see cannot be recovered, and case variants alias on some directories.
         if (!TryClassifyResidue(files, identityFactory, directory, baseFileName, expectedFamily, out var residue))
         {
             return new PublicationRefused(PublicationMessages.UnknownResidue(baseOperand));
@@ -990,7 +990,7 @@ internal sealed class PublicationTransaction
         }
 
         // Nothing recovery would delete, move, or replace may be one of THIS run's inputs; the
-        // fresh check later runs after recovery, too late to protect one it removes (CX-M7H-023).
+        // fresh check later runs after recovery, too late to protect one it removes.
         if (PriorCollision(files, identity, directory, baseOperand, residue, inputs, targets) is { } collision)
         {
             return new PublicationRefused(collision);
@@ -1009,7 +1009,7 @@ internal sealed class PublicationTransaction
 
     // What each backup-bearing target IS, at the one moment the collision check approved it. False
     // names the target whose identity the host could not supply: it can never be committed over,
-    // and knowing that here is knowing it before any record, stage, or claim exists (CX-M7H-042).
+    // and knowing that here is knowing it before any record, stage, or claim exists.
     private static bool TryPreflightIdentity(
         FileIdentity identity, string directory, string token,
         IReadOnlyList<TransactionFileEntry> entries, Dictionary<string, string> preflightIdentity,
@@ -1095,7 +1095,7 @@ internal sealed class PublicationTransaction
     /// The proof that an object is the one this transaction created in <paramref name="role"/> for
     /// <paramref name="targetFileName"/>. It is stated over the object — its identity and its
     /// bytes — rather than over a path, because that is what the removal primitive can observe
-    /// through the very handle it deletes through (CX-M7H-040).
+    /// through the very handle it deletes through.
     /// </summary>
     private RemovalProof IdentityIs(string role, string targetFileName, string digest) =>
         (identity, _) => string.Equals(
@@ -1118,7 +1118,7 @@ internal sealed class PublicationTransaction
 
     // A record publication that never completed. The pending object goes only when it is provably
     // the object this run created there — whatever state its bytes are in — so an occupant that
-    // refused the create-new is preserved (CX-M7H-037).
+    // refused the create-new is preserved.
     private void AbandonPending(string pending, RemovalProof isPendingObject)
     {
         Remove(pending, isPendingObject);
@@ -1142,7 +1142,7 @@ internal sealed class PublicationTransaction
     /// authoritative by one non-overwriting rename, so the discoverable name never holds a partial
     /// encoding.
     /// <para>
-    /// <b>Both sides of that rename are proved</b> (CX-M7H-038/044). A refused create-new leaves no
+    /// <b>Both sides of that rename are proved</b>. A refused create-new leaves no
     /// evidence and no claim on the occupant; a rename that lands a different object at the
     /// authoritative name is undone rather than accepted, so cleanup can never remove an evidence
     /// file this transaction did not publish.
@@ -1209,8 +1209,8 @@ internal sealed class PublicationTransaction
     // Writes a control document to an already-open stream. The narrow predicate is deliberate: at
     // a write call an ArgumentException means the caller passed an invalid range and an
     // ObjectDisposedException means it wrote to a closed stream — contract defects that must reach
-    // the sanitized unexpected-fault exit rather than be disguised as an environment failure
-    // (CX-M7H-015/021).
+    // the sanitized unexpected-fault exit rather than be disguised as an environment
+    // failure.
     private bool WriteControl(Stream stream, byte[] bytes)
     {
         var failed = false;
@@ -1261,7 +1261,7 @@ internal sealed class PublicationTransaction
     // Closing on the way out of a failure: the original exception is the one that matters, so a
     // deferred failure here — of either family — is absorbed rather than replacing it. Letting a
     // contract fault out of this path would overwrite a tagged fault with an untagged one, and the
-    // host would then read it as its own writer failing (CX-M7H-034).
+    // host would then read it as its own writer failing.
     private static void CloseQuietly(Stream stream)
     {
         try
@@ -1275,8 +1275,8 @@ internal sealed class PublicationTransaction
 
     // Creates a phase marker. Best-effort by design for the phases where the LESS advanced
     // interpretation is the safe one; the rollback phase is not one of those, and its caller
-    // treats a failure as "do not start" (CX-M7H-010). A marker whose create-new was refused is
-    // NOT recorded, so cleanup never removes the occupant that refused it (CX-M7H-038).
+    // treats a failure as "do not start". A marker whose create-new was refused is
+    // NOT recorded, so cleanup never removes the occupant that refused it.
     private bool Mark(TransactionPhase phase)
     {
         var path = Path.Combine(_directory, PublicationTargets.MarkerName(_baseFileName, phase, _token));
@@ -1303,7 +1303,7 @@ internal sealed class PublicationTransaction
     // stage claim — created and then given the exact canonical bytes that make it authoritative;
     // its name only confines and classifies it. Acquisition failures are the environment family,
     // and failures on the already-open stream are judged the same way, so a contract defect at
-    // either boundary still reaches the sanitized unexpected-fault exit (CX-M7H-021/041).
+    // either boundary still reaches the sanitized unexpected-fault exit.
     //
     // A create-new that was REFUSED leaves nothing and touches nothing. One that succeeded and then
     // could not be made durable is this run's own object — proved by the identity its own creation
@@ -1361,7 +1361,7 @@ internal sealed class PublicationTransaction
     }
 
     // A fresh observation, never a memoized one: the question is what the file at this path IS
-    // right now, and the answer must not be one taken before the last mutation (CX-M7H-024).
+    // right now, and the answer must not be one taken before the last mutation.
     private bool Matches(string path, string role, string targetFileName, string expected) =>
         IdentityEvidence.IsIdentity(expected)
         && string.Equals(
@@ -1512,7 +1512,7 @@ internal sealed class PublicationTransaction
 
     /// <summary>
     /// True when nothing a prior transaction's recovery would delete, move, or replace is one of
-    /// this run's inputs (CX-M7H-023). Read-only: it mutates nothing and, on a match, the run
+    /// this run's inputs. Read-only: it mutates nothing and, on a match, the run
     /// refuses with the location exactly as it was found.
     /// </summary>
     private static string? PriorCollision(
@@ -1601,14 +1601,14 @@ internal sealed class PublicationTransaction
     /// in case belongs to this namespace exactly when the containing directory says the two
     /// spellings are one file; that is measured with the shared identity service rather than
     /// assumed either way, so case variants unify where the filesystem unifies them and stay
-    /// distinct where it does not (CX-M7H-016). Two different spellings both bearing residue is
+    /// distinct where it does not. Two different spellings both bearing residue is
     /// ambiguous and is refused.
     /// </para>
     /// <para>
     /// <b>The whole state is validated, not just the record.</b> The intent descriptor, the stage
     /// claims, the phase markers, the evidence, the stages, the backups, and the finals must
     /// together describe a state production can reach; an impossible one authorizes nothing and is
-    /// left byte-identical (CX-M7H-011/019/029).
+    /// left byte-identical.
     /// </para>
     /// </summary>
     private static bool TryClassifyResidue(
@@ -1708,7 +1708,7 @@ internal sealed class PublicationTransaction
 
             // And its BODY must be the canonical descriptor for that transaction. An empty file, a
             // partial write, or a different role is not this control — it is neither trusted nor
-            // removed (ruling 3, superseding the zero-byte mechanism).
+            // removed — the exact-bytes rule superseding the earlier zero-byte mechanism.
             if (!ControlDocument.Matches(
                     ReadControl(files, path),
                     claim.Token,
@@ -1782,11 +1782,11 @@ internal sealed class PublicationTransaction
         {
             // A stage claim's name carries the identity digest of the object its create-new
             // produced, so it cannot be predicted into `owned` — it is recognized by grammar and
-            // then bound to this record's token (CX-M7H-036). Its BODY must then be exactly this
+            // then bound to this record's token. Its BODY must then be exactly this
             // transaction's claim for this target kind and this identity: name, record, kind and
             // acknowledged identity all agreeing. An empty, partial, or substituted object at that
             // name is none of those, so it is neither believed as authority over the stage beside
-            // it nor removed — the run refuses with the location as it was found (CX-M7H-046).
+            // it nor removed — the run refuses with the location as it was found.
             if (PublicationTargets.StageClaimOf(name, claimed) is { } stageClaim)
             {
                 if (record is null
@@ -1844,7 +1844,7 @@ internal sealed class PublicationTransaction
             // A genuine phase marker carries the canonical body for THIS transaction and THIS
             // phase. A file with the right name and any other contents — empty included — is not
             // transaction state: it must neither select a recovery direction nor be removed as
-            // control residue (ruling 3, superseding CX-M7H-029's zero-byte mechanism).
+            // control residue — the exact-bytes rule superseding the earlier zero-byte mechanism.
             if (record is null
                 || !ControlDocument.Matches(
                     ReadControl(files, path),
@@ -1966,7 +1966,7 @@ internal sealed class PublicationTransaction
 
     /// <summary>
     /// Whether the files on disk are a layout <paramref name="phase"/> can actually produce
-    /// (CX-M7H-011/019). Phase markers and evidence are small, discoverable files, not
+    /// Phase markers and evidence are small, discoverable files, not
     /// authenticated authority, so a state no run reaches must authorize no cleanup at all.
     /// <para>
     /// The refusals are exactly the tuples that could otherwise send a destructive step at a file
@@ -2013,7 +2013,7 @@ internal sealed class PublicationTransaction
 
             // A surviving backup must still be the object this transaction renamed aside. Where
             // the file at that path is a different object, no phase authorizes acting on it —
-            // forward cleanup least of all (CX-M7H-026).
+            // forward cleanup least of all.
             if (backupPresent && !view.BackupIsExpected(targetFileName))
             {
                 return false;
@@ -2026,7 +2026,7 @@ internal sealed class PublicationTransaction
 
             // Committed means every stage was consumed by its rename and every selected final is
             // published — and provably so, since a transaction whose stage or backup identity
-            // cannot be established never reaches a backup rename at all (CX-M7H-042/043).
+            // cannot be established never reaches a backup rename at all.
             if (hasStage && !view.Owns(targetFileName))
             {
                 return false;
@@ -2038,7 +2038,7 @@ internal sealed class PublicationTransaction
             }
         }
 
-        // The aggregate a per-target pass cannot see (CX-M7H-025): a Staged transaction whose
+        // The aggregate a per-target pass cannot see: a Staged transaction whose
         // staged outputs are all its own published objects, beside a demoted old manifest that is
         // visible again. Production reaches neither cleanup tail that way — a completed rollback
         // would have removed those published artifacts, and a crossed commit point leaves the old
