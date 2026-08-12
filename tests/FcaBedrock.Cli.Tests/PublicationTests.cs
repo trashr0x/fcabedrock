@@ -136,7 +136,7 @@ public sealed class PublicationTests
     [Fact]
     public async Task Publication_WhenTheDataIsAHardLinkAliasOfATarget_ThenItIsRefusedEvenWithForce()
     {
-        // Path comparison cannot see this; actual filesystem identity can (CX-M7P-004).
+        // Path comparison cannot see this; actual filesystem identity can.
         using var run = ConvertRun.Wide();
         if (!PlatformLinks.TryCreateHardLink(run.Target(".cxt"), run.Data, out var reason))
         {
@@ -177,9 +177,9 @@ public sealed class PublicationTests
         //
         // The order is the ownership model itself. A descriptor or a claim written BEFORE the
         // acquisition it describes would survive a refusal and go on to authorize removing the very
-        // occupant that refused it (CX-M7H-036/037). Both the record and the evidence are created
+        // occupant that refused it. Both the record and the evidence are created
         // under a pending name and published by rename, so no discoverable authoritative name ever
-        // holds partial bytes (CX-M7H-012/018).
+        // holds partial bytes.
         var creates = run.Harness.PublicationFiles.Operations
             .Where(operation =>
                 operation.StartsWith("CreateNew:", StringComparison.Ordinal)
@@ -190,7 +190,7 @@ public sealed class PublicationTests
         // Each stage's CLAIM follows its own acquisition and precedes the writer, and each stage's
         // evidence is published as that stage closes. The order is load-bearing: a claim written
         // before the create-new would survive a refusal and go on to authorize deleting the very
-        // occupant that refused it (CX-M7H-031/036).
+        // occupant that refused it.
         Assert.Equal(
             [
                 "pending", "intent",
@@ -223,7 +223,7 @@ public sealed class PublicationTests
     [Fact]
     public void Publication_WhenAPrivateNameIsFormed_ThenFcabedrockIsSpelledInFull()
     {
-        // CX-M7P-003 forbids the `fb` abbreviation outright.
+        // The `fb` abbreviation is forbidden outright.
         Assert.Equal("out.cxt.fcabedrock-stage-abc", PublicationTargets.PrivateName("out.cxt", "stage", "abc"));
         Assert.Equal("out.cxt.fcabedrock-backup-abc", PublicationTargets.PrivateName("out.cxt", "backup", "abc"));
         Assert.Equal("out.fcabedrock-transaction-abc.toml", PublicationTargets.RecordName("out", "abc"));
@@ -308,8 +308,7 @@ public sealed class PublicationTests
         // descriptor as the record publishes, then the superseded backups, then the markers
         // most-advanced-first, then each target's evidence and stage claim, and the record last of
         // all. Each is an identity-bound removal — the proof is taken from the handle the deletion
-        // acts through — so none of them can destroy a file that appeared at the name in between
-        // (CX-M7H-040).
+        // acts through — so none of them can destroy a file that appeared at the name in between.
         Assert.Equal(
             [
                 "out.fcabedrock-intent-T-3f-T-T",
@@ -442,7 +441,7 @@ public sealed class PublicationTests
     [Fact]
     public async Task Publication_WhenAPreStageCrashLeftAPreExistingFinal_ThenThatFinalIsNeverTouched()
     {
-        // CX-M7H-001. The record lists three stages; none was created. Only `out.cxt` exists, and
+        // The record lists three stages; none was created. Only `out.cxt` exists, and
         // it is a file the interrupted run had not yet renamed aside — not something it published.
         // Without a durable phase, "no stage, present target" would read as a partial commit and
         // delete it.
@@ -616,7 +615,7 @@ public sealed class PublicationTests
     [Fact]
     public async Task Publication_WhenARollbackWasInterrupted_ThenTheRetryFinishesItInsteadOfCommittingForward()
     {
-        // CX-M7H-002. The interrupted run committed its new CXT, then failed and began rolling
+        // The interrupted run committed its new CXT, then failed and began rolling
         // back: it restored the old DAT and manifest but could not delete the new CXT. Every
         // stage is now gone and every final path is populated — the exact shape a completed
         // commit leaves. Only the durable rollback marker distinguishes them.
@@ -694,7 +693,7 @@ public sealed class PublicationTests
     [Fact]
     public async Task Publication_WhenANoManifestRunWouldLeaveAnOldMarker_ThenItIsRefusedWithoutForce()
     {
-        // CX-M7H-005. Only the old manifest exists; the requested artifact is brand new. Publishing
+        // Only the old manifest exists; the requested artifact is brand new. Publishing
         // it would leave a public marker beside output it does not describe.
         using var run = ConvertRun.Wide();
         await File.WriteAllTextAsync(run.Target(".manifest.toml"), "the old marker");
@@ -751,7 +750,7 @@ public sealed class PublicationTests
     public async Task Publication_WhenTheSignalArrivesBeforeTheCommitPoint_ThenTheRunRollsBackAndExitsThree(
         string afterMoveTo, string format)
     {
-        // CX-M7H-004. A first signal delivered while backups or earlier renames are still running
+        // A first signal delivered while backups or earlier renames are still running
         // must not be ignored until the whole irreversible sequence has finished.
         using var run = ConvertRun.Wide();
         Assert.Equal(0, await run.ConvertAsync("--format", "both"));
@@ -803,7 +802,7 @@ public sealed class PublicationTests
     public async Task Publication_WhenAStageWriteFails_ThenItIsReportedAsAnOutputFailureNotADataFailure(
         string target, string format)
     {
-        // CX-M7H-006. A full disk is an output problem. Reporting it against the DATA operand
+        // A full disk is an output problem. Reporting it against the DATA operand
         // would send the user to investigate a file that is perfectly fine.
         using var run = ConvertRun.Wide();
         run.Harness.PublicationFiles.FailStreamWritePrefix = StageOf(target);
@@ -845,7 +844,7 @@ public sealed class PublicationTests
     public async Task Publication_WhenAStageWriteRaisesAContractDefect_ThenItIsAnInternalFaultNotAnOutputFailure(
         string target, string format)
     {
-        // CX-M7H-015. Failure ORIGIN and failure FAMILY are separate questions. A genuine I/O
+        // Failure ORIGIN and failure FAMILY are separate questions. A genuine I/O
         // failure on the output is exit 1 and names the output; a broken call contract inside the
         // writer is a product defect and must stay on the sanitized exit-4 path, so it is never
         // mistaken for a full disk.
@@ -899,7 +898,7 @@ public sealed class PublicationTests
     [Fact]
     public async Task Publication_WhenRecoveryWouldRestoreAnAliasOfTheData_ThenItIsRefusedBeforeAnyMutation()
     {
-        // CX-M7H-023. Recovery is about to rename a backup that is a hard link to the DATA file.
+        // Recovery is about to rename a backup that is a hard link to the DATA file.
         // The fresh collision check after recovery would catch the result — but only after the
         // input had already been moved, which is exactly what the gate before recovery prevents.
         using var run = ConvertRun.Wide();
@@ -937,7 +936,7 @@ public sealed class PublicationTests
     [Fact]
     public async Task Publication_WhenRecoveryRestoresAnAliasOfAnotherTarget_ThenTheFollowingPreflightStillRefuses()
     {
-        // CX-M7H-007. At the first look `out.cxt` does not exist, so no collision is visible, and
+        // At the first look `out.cxt` does not exist, so no collision is visible, and
         // a memoized "this path does not exist" answer would still say so afterwards. Recovery
         // restores a backup that is hard-linked to `out.dat`, and the reacquired identity is what
         // sees that the two selected outputs are now one file.
@@ -978,7 +977,7 @@ public sealed class PublicationTests
     [InlineData("Flush")]
     public async Task Publication_WhenRollbackIntentCannotBeMadeDurable_ThenNoRollbackWorkBegins(string failing)
     {
-        // CX-M7H-010. The commit publishes the new CXT and then fails; rollback is entered, but
+        // The commit publishes the new CXT and then fails; rollback is entered, but
         // its marker cannot be made durable. Rolling back anyway could restore the old DAT and
         // manifest while leaving the new CXT — no stages, all finals populated, `staged` the only
         // durable fact — which the next run would finish FORWARD, discarding the old CXT backup.
@@ -1027,7 +1026,7 @@ public sealed class PublicationTests
     [Fact]
     public async Task Publication_WhenACommittedMarkerSitsOverASurvivingStage_ThenRecoveryRefusesAndTouchesNothing()
     {
-        // CX-M7H-011. Committed means every stage was renamed to its final. A committed marker
+        // Committed means every stage was renamed to its final. A committed marker
         // beside a surviving stage and a missing final is a state no run reaches, so it authorizes
         // no cleanup at all — otherwise recovery would delete both the stage and the old backup
         // and leave nothing published.
@@ -1110,7 +1109,7 @@ public sealed class PublicationTests
     public async Task Publication_WhenAPendingRecordHasNoIntentDescriptor_ThenItIsRefusedAndLeftUntouched(
         string content)
     {
-        // CX-M7H-018. A pending name carries 128 bits of this code's own randomness, but the
+        // A pending name carries 128 bits of this code's own randomness, but the
         // grammar is public: a file wearing that name proves nothing about who wrote it. Only the
         // intent descriptor authorizes removing one — including when the bytes look exactly like
         // an interrupted record, which is precisely the case name-and-token reasoning got wrong.
@@ -1158,7 +1157,7 @@ public sealed class PublicationTests
     [Fact]
     public async Task Publication_WhenTheDemotedManifestIsTheDataFile_ThenItIsRefusedEvenWithForce()
     {
-        // CX-M7H-013. A --no-manifest --force run renames the old manifest aside and deletes it.
+        // A --no-manifest --force run renames the old manifest aside and deletes it.
         // That makes it a mutated participant, and --force never authorizes destroying an input —
         // so it must be in the collision preflight, not discovered afterwards.
         using var temp = TempDirectory.Create();
@@ -1238,7 +1237,7 @@ public sealed class PublicationTests
     [Fact]
     public async Task Publication_WhenPriorResidueUsesAnotherCase_ThenItIsRecoveredBeforeTheNewRun()
     {
-        // CX-M7H-016. On a case-insensitive directory `OUT` and `out` name the same physical
+        // On a case-insensitive directory `OUT` and `out` name the same physical
         // files. Residue this run cannot see is residue it can publish beside — and that a later
         // run spelled the other way can then delete as its own.
         using var run = ConvertRun.Wide();
@@ -1305,7 +1304,7 @@ public sealed class PublicationTests
     [Fact]
     public async Task Publication_WhenAStageIsCreated_ThenItIsRequestedThroughTheConfidentialPath()
     {
-        // CX-M7H-017. The boundary is a property of the CALL, so it is asserted on the call: every
+        // The boundary is a property of the CALL, so it is asserted on the call: every
         // data-bearing stage asks for a confidential creation, while control files — whose names
         // are already visible in the directory listing — do not.
         using var run = ConvertRun.Wide();
@@ -1351,7 +1350,7 @@ public sealed class PublicationTests
     [Fact]
     public async Task Publication_WhenAStageSurvivesAsResidue_ThenItsWindowsAclIsOwnerOnly()
     {
-        // CX-M7H-020. `FileShare.None` guards only a live handle, and crash residue is exactly the
+        // `FileShare.None` guards only a live handle, and crash residue is exactly the
         // case where no handle is left — so the boundary that matters is the file's own DACL,
         // established at creation and protected from inheritance, as the spool workspace does.
         Assert.SkipUnless(OperatingSystem.IsWindows(), "Windows DACL — asserted on Windows.");

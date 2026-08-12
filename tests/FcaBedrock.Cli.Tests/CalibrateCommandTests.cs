@@ -682,7 +682,7 @@ public sealed class CalibrateCommandTests
         Assert.DoesNotContain(Directory.GetFiles(temp.Path), Residue);
     }
 
-    // ---- deferred diagnostic ordering and cancellation (CX-M7I-P002) ------------------------------
+    // ---- deferred diagnostic ordering and cancellation --------------------------------------------
 
     [Fact]
     public async Task Calibrate_WhenAWarningIsProducedAndTheFileCommits_ThenTheWarningIsRenderedOnceAfterCommitAndExitIsZero()

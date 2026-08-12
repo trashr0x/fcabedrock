@@ -4,8 +4,7 @@ using FcaBedrock.Cli.Publication;
 namespace FcaBedrock.Cli.Tests;
 
 /// <summary>
-/// The private transaction record's format and — the part that matters — its validation
-/// (CX-M7P-003).
+/// The private transaction record's format and — the part that matters — its validation.
 /// <para>
 /// The record is the only thing that authorizes recovery to delete, move, or replace a file, so
 /// these cases push at exactly that: a record is believed only when re-formatting what was parsed
@@ -92,7 +91,7 @@ public sealed class TransactionRecordTests
     public void TryParse_WhenTheRecordSelectsNothing_ThenItIsNotAReachableTransaction()
     {
         // Canonically spelled, and still impossible: a transaction always publishes at least one
-        // artifact, so an empty selection is authority no run could have written (CX-M7H-003).
+        // artifact, so an empty selection is authority no run could have written.
         Assert.Null(TransactionRecord.TryParse(
             TransactionRecord.Create(Token, Base, []).ToBytes(), Token, Base));
     }
@@ -466,7 +465,7 @@ public sealed class TransactionRecordTests
     {
         // The descriptor names four things, and the fourth is what makes it an acknowledgement
         // rather than a prediction: the identity of the object the pending record's create-new
-        // actually produced (CX-M7H-037).
+        // actually produced.
         const string Identity = "aaaaaaaabbbbbbbbccccccccdddddddd";
         var record = TransactionRecord.Create(Token, Base, [new TransactionFileEntry("stage", "out.cxt")]);
         var name = PublicationTargets.IntentName(Base, Token, record.ShapeCode, record.Digest, Identity);

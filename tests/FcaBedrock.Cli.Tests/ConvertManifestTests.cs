@@ -33,7 +33,7 @@ public sealed class ConvertManifestTests
         using var run = ConvertRun.Wide();
 
         // A non-`fcabedrock` argv[0], a control character, a non-ASCII member, and an empty one:
-        // command_line is an audit record of what the process received, verbatim (CX-M7P-012).
+        // command_line is an audit record of what the process received, verbatim.
         run.Harness.AuditArgv = ["C:\\tools\\fcabedrock.exe", "convert", "a\tb", "é中", string.Empty];
         run.Harness.ToolVersion = "fcabedrock-vnext 9.9.9-test";
         run.Harness.Clock.UtcNow = new DateTimeOffset(2026, 7, 25, 12, 34, 56, TimeSpan.Zero);
@@ -166,7 +166,7 @@ public sealed class ConvertManifestTests
     [Fact]
     public async Task Manifest_WhenAnOutcomeDiscoveredNothing_ThenItIsAnExplicitEmptyArray()
     {
-        // REG-PRES-007: a legitimate zero-discovery outcome is recorded, not dropped — the
+        // A legitimate zero-discovery outcome is recorded, not dropped — the
         // difference between "calibrated and found nothing" and "never calibrated".
         using var run = ConvertRun.Wide(CliFixtures.PlanEmptyOutcomesSpec, CliFixtures.PlanEmptyOutcomesData);
 

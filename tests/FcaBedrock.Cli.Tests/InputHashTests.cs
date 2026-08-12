@@ -4,7 +4,7 @@ using System.Text;
 namespace FcaBedrock.Cli.Tests;
 
 /// <summary>
-/// The input-stability policy at its own seam (D-122 part 5 / CX-M7P-008). The digest is
+/// The input-stability policy at its own seam (D-122 part 5). The digest is
 /// always checked against an <b>independent</b> <see cref="SHA256"/> over the exact bytes the
 /// stream handed out — never against another run of the same code.
 /// </summary>

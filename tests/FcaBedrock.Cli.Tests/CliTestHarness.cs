@@ -249,7 +249,7 @@ internal sealed class RecordingPublicationFileSystem : IPublicationFileSystem
     /// This is how a test creates a genuine race: something else changes the location between the
     /// transaction's last look and its next move — a target that appears, one that disappears, one
     /// replaced by a different object — and the run must survive it without destroying anything it
-    /// does not own (CX-M7H-024).
+    /// does not own.
     /// </para>
     /// </summary>
     public string? MutateBefore { get; set; }
@@ -263,14 +263,14 @@ internal sealed class RecordingPublicationFileSystem : IPublicationFileSystem
     /// <para>
     /// That is a deliberately stronger adversary than the filesystem affords: it learns the name at
     /// the instant of the call rather than by reading the directory. It is what keeps a refused
-    /// acquisition testable now that nothing durable precedes it (CX-M7H-036/037).
+    /// acquisition testable now that nothing durable precedes it.
     /// </para>
     /// </summary>
     public Action<string>? MutateWith { get; set; }
 
     /// <summary>
     /// The exception a residue READ raises, and which operation raises it — how a test reaches the
-    /// classification path's own failure families (CX-M7H-035). The name is matched as a prefix, so
+    /// classification path's own failure families. The name is matched as a prefix, so
     /// a test can name a control file whose token it cannot predict.
     /// </summary>
     public Func<Exception>? FailReadWith { get; set; }
@@ -291,7 +291,7 @@ internal sealed class RecordingPublicationFileSystem : IPublicationFileSystem
     /// <summary>
     /// The same capability absence for <b>control</b> creations — the pending transaction record
     /// and each pending evidence file — so the root of the transaction can be shown to fail closed
-    /// rather than publishing something it cannot prove (CX-M7H-044).
+    /// rather than publishing something it cannot prove.
     /// </summary>
     public bool SuppressControlIdentity { get; set; }
 
@@ -336,8 +336,8 @@ internal sealed class RecordingPublicationFileSystem : IPublicationFileSystem
         var name = Path.GetFileName(path);
 
         // Recorded under its own label so a test can prove WHICH creation the transaction asked
-        // for — the confidentiality boundary is a property of the call, not of the bytes
-        // (CX-M7H-017). The injectable failure kind stays `CreateNew` so failure injection is
+        // for — the confidentiality boundary is a property of the call, not of the bytes.
+        // The injectable failure kind stays `CreateNew` so failure injection is
         // unaffected by the distinction.
         Fail("CreateNew", path, label: "Confidential");
         var stage = _real.CreateNewConfidential(path);
@@ -358,8 +358,7 @@ internal sealed class RecordingPublicationFileSystem : IPublicationFileSystem
     public Dictionary<string, FileIdentityKey?> StageIdentities { get; } = new(StringComparer.Ordinal);
 
     // Every created stream is wrapped, so a crash can be placed at a genuine STREAM boundary —
-    // partial write, flush, close — and not merely at the filesystem-seam calls around it
-    // (CX-M7H-012).
+    // partial write, flush, close — and not merely at the filesystem-seam calls around it.
     private Stream Wrap(Stream stream, string name) =>
         new FaultyStream(
             stream,
@@ -398,7 +397,7 @@ internal sealed class RecordingPublicationFileSystem : IPublicationFileSystem
     {
         // Recorded and raced as `Delete:<name>` — this IS the deletion boundary, and the mutation
         // hook runs before the real removal opens anything, which is exactly the same-operation
-        // substitution CX-M7H-040 is about. Production must then refuse the replacement, because
+        // substitution this rule is about. Production must then refuse the replacement, because
         // its proof is taken from the handle it deletes through rather than from an earlier look.
         Fail("Delete", path);
         var removed = _real.Remove(path, isExpected);
@@ -503,7 +502,7 @@ internal sealed class RecordingPublicationFileSystem : IPublicationFileSystem
     /// <summary>
     /// Records a stream-level boundary — a first write, a flush, a close — and crashes after it if
     /// asked. These are transitions of their own: a record or a stage stops being empty and starts
-    /// being partial at exactly one of them (CX-M7H-012).
+    /// being partial at exactly one of them.
     /// </summary>
     internal void Observe(string operation)
     {

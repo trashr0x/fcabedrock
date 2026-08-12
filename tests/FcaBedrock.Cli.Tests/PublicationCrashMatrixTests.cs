@@ -3,7 +3,7 @@ using System.Text;
 namespace FcaBedrock.Cli.Tests;
 
 /// <summary>
-/// The crash/retry transition matrix (CX-M7H-008): for <b>every</b> material filesystem
+/// The crash/retry transition matrix: for <b>every</b> material filesystem
 /// transition a publication performs, stop the run immediately after it and prove that a plain
 /// retry converges.
 /// <para>
@@ -56,7 +56,7 @@ public sealed class PublicationCrashMatrixTests
     [Fact]
     public async Task Publication_WhenOnlySomeTargetsPreExistAndTheRunCrashesEverywhere_ThenARetryConverges()
     {
-        // The CX-M7H-001 shape generalized: a subset pre-exists, so a crash before staging leaves
+        // The pre-existing-final shape generalized: a subset pre-exists, so a crash before staging leaves
         // "some finals present, no stages" — the state that must never read as a partial commit.
         await AssertConvergesAtEveryTransitionAsync(
             format: "both", manifest: true, preexisting: true, force: true, only: ".cxt");
@@ -69,7 +69,7 @@ public sealed class PublicationCrashMatrixTests
     public async Task Publication_WhenARollbackCrashesAtEveryTransition_ThenARetryFinishesIt(
         string format, bool manifest, string failCommitTo)
     {
-        // CX-M7H-014. A successful run never rolls back, so a matrix derived from one cannot reach
+        // A successful run never rolls back, so a matrix derived from one cannot reach
         // a single rollback transition. This one drives a real rollback — a forced replacement
         // whose commit fails part-way — and stops at every step of the undo: deleting a stage,
         // deleting the artifact it had already published, renaming each backup home, and clearing
@@ -196,7 +196,7 @@ public sealed class PublicationCrashMatrixTests
                 $"the crash after '{transitions[index]}' never fired");
 
             // The interruption state is inspected BEFORE the retry, so a retry cannot conceal an
-            // unsafe intermediate state by publishing over it (CX-M7H-014).
+            // unsafe intermediate state by publishing over it.
             AssertRecoverableInterruption(scenario, old, format, manifest, transitions[index], index, transitions.Count);
 
             // The retry is an ordinary invocation — no residue knowledge, no special flags beyond
@@ -221,7 +221,7 @@ public sealed class PublicationCrashMatrixTests
     /// interruption between a successful create-new and the durable statement that acknowledges it
     /// leaves a state in which "this run created that object" and "an object was already there and
     /// refused this run" are the same bytes under the same name. Nothing on disk distinguishes
-    /// them, so nothing is removed on a guess (CX-M7H-036/037): the previous set stays exactly as
+    /// them, so nothing is removed on a guess: the previous set stays exactly as
     /// it was, the record survives so the state is classifiable, and every retry reports the same
     /// sanitized refusal.
     /// </para>
@@ -365,7 +365,7 @@ public sealed class PublicationCrashMatrixTests
                 || operation.StartsWith("Delete:", StringComparison.Ordinal)
 
                 // Stream boundaries too: a record or a stage stops being empty and starts being
-                // partial at a write, and becomes durable at a flush or a close (CX-M7H-012).
+                // partial at a write, and becomes durable at a flush or a close.
                 || operation.StartsWith("StreamWrite:", StringComparison.Ordinal)
                 || operation.StartsWith("StreamFlush:", StringComparison.Ordinal)
                 || operation.StartsWith("StreamClose:", StringComparison.Ordinal))

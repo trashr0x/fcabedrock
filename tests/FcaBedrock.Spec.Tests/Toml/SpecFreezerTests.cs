@@ -189,7 +189,7 @@ public sealed class SpecFreezerTests
         Assert.Empty(domain);
     }
 
-    // CX-M7D-001: an omitted domain plus include calibrates to an ObservedDomain outcome (the
+    // An omitted domain plus include calibrates to an ObservedDomain outcome (the
     // omitted-domain branch wins), so the freeze must also fold include → warn — read from the
     // EFFECTIVE policy, whatever tier supplied it — or the frozen attribute stays data-dependent.
 

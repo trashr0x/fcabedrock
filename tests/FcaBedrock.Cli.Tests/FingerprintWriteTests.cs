@@ -96,7 +96,7 @@ public sealed class FingerprintWriteTests
     [Fact]
     public async Task FingerprintWrite_WhenOutIsStdout_ThenStdoutIsExactlyTheCorrectedSpecAndTheReportIsSuppressed()
     {
-        // FBL-M7P-002's suppression clause, and it holds STRUCTURALLY: the stdout path is never
+        // The suppression clause holds STRUCTURALLY: the stdout path is never
         // handed the committed payload at all.
         using var temp = TempDirectory.Create();
         var spec = temp.Write("spec.toml", CliFixtures.FrozenSpec);

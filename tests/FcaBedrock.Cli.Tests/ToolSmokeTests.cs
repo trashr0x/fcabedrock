@@ -171,7 +171,7 @@ public sealed class ToolSmokeTests(ToolPackage package)
         // else — and only then are the EXPECTED files hashed and compared to its values.
         CheckOutputs(lines, Path.GetDirectoryName(target)!, expected);
 
-        // (7) argv[0] survived the shim verbatim (CX-M7P-012): the audit records the real entry
+        // (7) argv[0] survived the shim verbatim: the audit records the real entry
         // assembly under this tool path, never the bare command token.
         var commandLine = Assert.Single(
             lines, line => line.StartsWith("command_line = [", StringComparison.Ordinal));

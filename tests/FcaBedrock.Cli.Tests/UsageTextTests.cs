@@ -171,7 +171,7 @@ public sealed class UsageTextTests
     public void Help_WhenRendered_ThenEveryEnumeratedOptionAdvertisesExactlyItsAcceptedValues()
     {
         // The advertised form is derived from the accepted set, so help cannot name a value
-        // the parser rejects, or omit one it accepts (CX-M7F-011).
+        // the parser rejects, or omit one it accepts.
         foreach (var command in CommandTable.Commands)
         {
             foreach (var option in command.Options)
@@ -204,7 +204,7 @@ public sealed class UsageTextTests
     [Fact]
     public void Help_WhenRendered_ThenMigrateAdvertisesNoOrdering()
     {
-        // FBL-M7P-001: triple migrate always authors ordering = "unordered"; the option
+        // Triple migrate always authors ordering = "unordered"; the option
         // must not exist, and must not be advertised. (probe's --ordering is real, so this
         // is asserted on migrate's own block.)
         Assert.Null(CommandTable.Find("migrate")!.Option("--ordering"));

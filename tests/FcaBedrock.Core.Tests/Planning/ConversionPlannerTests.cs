@@ -859,7 +859,7 @@ public sealed class ConversionPlannerTests
         Assert.Equal(2, Assert.Single(plan.Attributes).MissingFormalAttributeId);
     }
 
-    // --- empty-universe value-bin ordinal (D-122 §15 / REG-PRES-002) ---
+    // --- empty-universe value-bin ordinal (D-122 §15) ---
     // An authored declared_domain = [] is a complete empty universe. It is NOT exempt from the
     // permutation rule: an omitted order is OrdinalOrderMissing and order = [] is the valid empty
     // permutation. Removing the former non-empty-domain shortcut brings identity to the parity the
@@ -934,7 +934,7 @@ public sealed class ConversionPlannerTests
     public void Plan_WhenNumericFreePerValueOrdinalOverEmptyDomainOmitsOrder_ThenNaturalOrderEmptyNoDiagnostic()
     {
         // The numeric natural-order derivation still applies over an empty authored domain: it yields
-        // the empty order and stays valid (no OrdinalOrderMissing) — REG-PRES-002 does not disturb it.
+        // the empty order and stays valid (no OrdinalOrderMissing) — the authored-empty rule does not disturb it.
         var scale = new OrdinalScale(OrdinalDirection.Ge, DropTop: false, OrdinalBoundary.Inclusive, Order: null);
         var spec = new BedrockSpec(SpecFixtures.WideRowIndex(),
             [SpecFixtures.FreePerValue("v", 0, SourceValueType.Number, [], scale)]);

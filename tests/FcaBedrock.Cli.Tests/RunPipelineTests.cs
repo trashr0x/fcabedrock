@@ -713,7 +713,7 @@ public sealed class RunPipelineTests
     }
 
     // Serves the spec from memory and the DATA from a per-open script, so successive passes can
-    // differ deterministically — no file mutation, no timing race (CX-M7P-008). The last entry
+    // differ deterministically — no file mutation, no timing race. The last entry
     // repeats once the script runs out.
     private static Func<string, Stream> PassIndexed(
         string specPath, string specText, string dataPath, params string[] dataPasses)

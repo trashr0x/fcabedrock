@@ -1,7 +1,7 @@
 namespace FcaBedrock.Cli.Tests;
 
 /// <summary>
-/// Native stored verification versus effective emission, locked causally (CX-M7H-009).
+/// Native stored verification versus effective emission, locked causally.
 /// <para>
 /// The two are deliberately separate authorities: the <b>stored</b> <c>[spec]</c> fields are
 /// always verified against the <b>native</b> fingerprints — a CLI byte override is not a property

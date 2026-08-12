@@ -4,7 +4,7 @@ using FcaBedrock.Cli.Publication;
 namespace FcaBedrock.Cli.Tests;
 
 /// <summary>
-/// The exact-object protocol (CX-M7H-036 through CX-M7H-045): a derived private name predicts a
+/// The exact-object protocol: a derived private name predicts a
 /// <em>path</em>, and only a successful create-new, a verified rename result, or a durable identity
 /// digest says which <em>object</em> is at it.
 /// <para>
@@ -19,7 +19,7 @@ public sealed class PublicationOwnershipTests
 {
     private const string Keep = "keep me";
 
-    // ---- CX-M7H-036: a refused stage acquisition writes nothing that names the occupant ----------
+    // ---- a refused stage acquisition writes nothing that names the occupant ----------------------
 
     [Fact]
     public async Task Publication_WhenAStageAcquisitionIsRefused_ThenNoDurableStateNamesTheOccupant()
@@ -63,7 +63,7 @@ public sealed class PublicationOwnershipTests
         // create-new" — the two histories leave the same bytes at the same name. Ownership is not
         // inferred from the length, the name, or the token: nothing is removed, the record survives
         // so the state stays classifiable, and the run says plainly that it cannot finish the
-        // clean-up (CX-M7H-036). The previous set is intact throughout.
+        // clean-up. The previous set is intact throughout.
         using var run = ConvertRun.Wide();
         Assert.Equal(0, await run.ConvertAsync("--format", "cxt"));
         var before = run.Snapshot();
@@ -114,7 +114,7 @@ public sealed class PublicationOwnershipTests
         Assert.False(File.Exists(run.Target(".cxt")));
     }
 
-    // ---- CX-M7H-037: pending control acquisitions -------------------------------------------------
+    // ---- pending control acquisitions -------------------------------------------------------------
 
     [Fact]
     public async Task Publication_WhenThePendingRecordPathIsOccupied_ThenTheOccupantIsPreserved()
@@ -158,7 +158,7 @@ public sealed class PublicationOwnershipTests
 
     // An occupant that is EXACTLY the document the descriptor's own digest names — the sharpest
     // form of "grammar and prefix knowledge are not proof". Nothing about its content is wrong;
-    // only its identity is (CX-M7H-037).
+    // only its identity is.
     [InlineData(null)]
     public async Task Publication_WhenASurvivingIntentDoesNotNameTheOccupant_ThenItIsPreserved(string? content)
     {
@@ -216,7 +216,7 @@ public sealed class PublicationOwnershipTests
         Assert.Equal(Keep, await File.ReadAllTextAsync(occupant));
     }
 
-    // ---- CX-M7H-038: authoritative evidence and phase markers -------------------------------------
+    // ---- authoritative evidence and phase markers -------------------------------------------------
 
     [Fact]
     public async Task Publication_WhenTheAuthoritativeEvidencePathIsOccupied_ThenTheOccupantIsPreserved()
@@ -260,7 +260,7 @@ public sealed class PublicationOwnershipTests
     [InlineData("rollback")]
     public async Task Publication_WhenAPhaseMarkerPathIsOccupied_ThenTheOccupantSurvivesTheRollback(string phase)
     {
-        // `staged` stops the seal; `rollback` stops the rollback from starting at all (CX-M7H-010).
+        // `staged` stops the seal; `rollback` stops the rollback from starting at all.
         // Either way the occupant is preserved.
         using var run = ConvertRun.Wide();
         if (string.Equals(phase, "rollback", StringComparison.Ordinal))
@@ -281,7 +281,7 @@ public sealed class PublicationOwnershipTests
         Assert.False(File.Exists(run.Target(".cxt")));
     }
 
-    // ---- CX-M7H-046: the stage claim is authoritative by its exact content ------------------------
+    // ---- the stage claim is authoritative by its exact content ------------------------------------
 
     [Theory]
     [InlineData(false)]
@@ -635,7 +635,7 @@ public sealed class PublicationOwnershipTests
         Assert.True(File.Exists(run.Target(".cxt")));
     }
 
-    // ---- CX-M7H-047: an object the host cannot name is never reclaimed ----------------------------
+    // ---- an object the host cannot name is never reclaimed ----------------------------------------
 
     [Fact]
     public async Task Publication_WhenThePendingRecordCannotBeIdentified_ThenItIsNeverReclaimed()
@@ -799,7 +799,7 @@ public sealed class PublicationOwnershipTests
         }
     }
 
-    // ---- CX-M7H-039: the restoring rename's own result --------------------------------------------
+    // ---- the restoring rename's own result --------------------------------------------------------
 
     [Theory]
     [InlineData(false)]
@@ -860,7 +860,7 @@ public sealed class PublicationOwnershipTests
         Assert.NotEmpty(oldCxt);
     }
 
-    // ---- CX-M7H-040: nothing is deleted where it stands -------------------------------------------
+    // ---- nothing is deleted where it stands -------------------------------------------------------
 
     [Theory]
 
@@ -964,7 +964,7 @@ public sealed class PublicationOwnershipTests
         Assert.True(File.Exists(backup), "the aliased input was deleted rather than preserved");
     }
 
-    // ---- CX-M7H-041: origin-aware failure taxonomy at every mutation seam -------------------------
+    // ---- origin-aware failure taxonomy at every mutation seam -------------------------------------
 
     [Theory]
 
@@ -1079,7 +1079,7 @@ public sealed class PublicationOwnershipTests
         Assert.False(File.Exists(run.Target(".cxt")));
     }
 
-    // ---- CX-M7H-042: a forced participant that cannot be identified ------------------------------
+    // ---- a forced participant that cannot be identified ------------------------------------------
 
     [Theory]
     [InlineData(".cxt")]
@@ -1120,7 +1120,7 @@ public sealed class PublicationOwnershipTests
         Assert.Equal("the old one", File.ReadAllText(basePath + extension));
     }
 
-    // ---- CX-M7H-043: a stage that can never be proved is never written ---------------------------
+    // ---- a stage that can never be proved is never written ---------------------------------------
 
     [Fact]
     public async Task Publication_WhenAStageReportsNoIdentity_ThenNoWriterPassAndNoBackupRenameRun()
@@ -1155,13 +1155,13 @@ public sealed class PublicationOwnershipTests
                 && operation.Contains(".fcabedrock-backup-", StringComparison.Ordinal));
 
         // Byte-identical. The object the host could not name stays beside its record rather than
-        // being reclaimed on a length (CX-M7H-047).
+        // being reclaimed on a length.
         AssertSameFiles(before, run.Snapshot());
         Assert.Contains(
             run.Residue(), name => name.Contains("out.cxt.fcabedrock-stage-", StringComparison.Ordinal));
     }
 
-    // ---- CX-M7H-044: the record's own publication -------------------------------------------------
+    // ---- the record's own publication -------------------------------------------------------------
 
     [Fact]
     public async Task Publication_WhenThePendingRecordIsSubstitutedInsideItsPublish_ThenNothingBegins()
@@ -1215,11 +1215,11 @@ public sealed class PublicationOwnershipTests
         Assert.False(File.Exists(run.Target(".cxt")));
 
         // The pending object the host could not name is the only thing left, and it is left
-        // untouched: no descriptor was ever written, so nothing names it (CX-M7H-047).
+        // untouched: no descriptor was ever written, so nothing names it.
         Assert.Single(run.Residue(), name => name.Contains(".fcabedrock-pending-", StringComparison.Ordinal));
     }
 
-    // ---- CX-M7H-045: the public commit marker's own rename ----------------------------------------
+    // ---- the public commit marker's own rename ----------------------------------------------------
 
     [Theory]
     [InlineData(false, false)]

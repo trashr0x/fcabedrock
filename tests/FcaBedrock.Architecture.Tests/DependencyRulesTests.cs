@@ -26,7 +26,7 @@ public sealed class DependencyRulesTests
     // The complete production set as of M7. Every rule below is expressed over Production,
     // so an assembly missing from the test's output directory would silently narrow — or
     // vacuously satisfy — the rules rather than fail. Asserting the EXACT set is what makes
-    // that impossible (CX-M7P-006).
+    // that impossible.
     private static readonly string[] ExpectedProduction =
     [
         "FcaBedrock.Cli",

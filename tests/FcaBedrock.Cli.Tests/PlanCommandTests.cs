@@ -137,7 +137,7 @@ public sealed class PlanCommandTests
     public async Task Plan_WhenCalibrationOutcomesAreEmpty_ThenEachIsReportedExplicitly()
     {
         // A legitimately empty outcome is data, not an omission: it is the zero-discovery
-        // marker (D-104/REG-PRES-007) and must be visible as `values=[]`.
+        // marker (D-104) and must be visible as `values=[]`.
         using var temp = TempDirectory.Create();
         var spec = temp.Write("spec.toml", CliFixtures.PlanEmptyOutcomesSpec);
         var data = temp.Write("data.csv", CliFixtures.PlanEmptyOutcomesData);

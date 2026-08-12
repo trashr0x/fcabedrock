@@ -241,7 +241,7 @@ public sealed class RunManifestWriterTests
             new RunCalibration(new ObservedDomain("education", ["Bachelors", "HS-grad"]), null),
 
             // The legitimate zero-discovery outcomes of every empty-capable kind
-            // (D-122 part 15 / REG-PRES-007) serialize as an explicit empty array.
+            // (D-122 part 15) serialize as an explicit empty array.
             new RunCalibration(new ObservedDomain("empty_observed", []), null),
             new RunCalibration(new IncludeAdditions("empty_include", []), null),
             new RunCalibration(new PassthroughBins("empty_passthrough", []), null),

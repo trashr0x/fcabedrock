@@ -4,7 +4,7 @@ namespace FcaBedrock.Cli.Tests;
 /// The injected environment facts themselves. The audit argv has no consumer until the run
 /// manifest lands (S5's writer is already byte-locked against it), so its carrier is pinned
 /// here: the value must survive the boundary verbatim, including an argv[0] that is not
-/// simply <c>fcabedrock</c> (CX-M7P-012).
+/// simply <c>fcabedrock</c>.
 /// </summary>
 public sealed class CliEnvironmentTests
 {

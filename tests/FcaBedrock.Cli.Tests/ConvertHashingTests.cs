@@ -71,7 +71,7 @@ public sealed class ConvertHashingTests
     public void WriteHashing_WhenTheInnerWriteFails_ThenItIsTaggedAsAnOutputFailureAndNothingIsHashed()
     {
         // The tag is what lets the caller tell "the output could not be written" from "the source
-        // could not be read" at a boundary where both are in flight (CX-M7H-006). The original
+        // could not be read" at a boundary where both are in flight. The original
         // failure is preserved inside it, and nothing the write did not accept is hashed.
         var hashing = new HashingWriteStream(new FailingStream());
 
@@ -92,7 +92,7 @@ public sealed class ConvertHashingTests
     [Fact]
     public void WriteHashing_WhenTheInnerWriteRaisesAContractDefect_ThenItIsNotTaggedAsAnOutputFailure()
     {
-        // CX-M7H-015/034. At a write call, a plain ArgumentException means the writer passed an
+        // At a write call, a plain ArgumentException means the writer passed an
         // invalid range — a product bug, not a full disk. Tagging it as an output failure would
         // report "cannot write the output" and send the user to check permissions for a defect in
         // this code; it is tagged as a CONTRACT fault instead, which is what carries it to the
@@ -109,7 +109,7 @@ public sealed class ConvertHashingTests
         // Writing to a disposed stream, or calling an unsupported operation, are the same class of
         // defect: the caller broke the contract, and the run must not report a disk problem — nor,
         // for the disposed case, a failure of standard output, which is what an untagged
-        // ObjectDisposedException would become at the host boundary (CX-M7H-034).
+        // ObjectDisposedException would become at the host boundary.
         var disposed = Assert.Throws<PublicationFaultException>(
             () => new HashingWriteStream(new FailingStream(static () => new ObjectDisposedException("stage")))
                 .Write(Bytes("hello"), 0, 5));
@@ -331,7 +331,7 @@ public sealed class ConvertHashingTests
     }
 
     // Serves the spec from memory and the DATA from a per-open script, so successive passes can
-    // differ deterministically — no file mutation, no timing race (CX-M7P-008).
+    // differ deterministically — no file mutation, no timing race.
     private static Func<string, Stream> PassIndexed(
         string specPath, string specText, params string[] dataPasses)
     {
