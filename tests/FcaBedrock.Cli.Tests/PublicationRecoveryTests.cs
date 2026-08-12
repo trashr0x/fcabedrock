@@ -4,8 +4,7 @@ using FcaBedrock.Cli.Publication;
 namespace FcaBedrock.Cli.Tests;
 
 /// <summary>
-/// What a transaction may and may not touch, and how it proves it (CX-M7H-018/019/020/021/022/
-/// 023/024).
+/// What a transaction may and may not touch, and how it proves it.
 /// <para>
 /// Every case here pushes at one question: <b>does this transaction own this file?</b> A pending
 /// record is owned only when its intent descriptor says so; a final is owned only when the durable
@@ -56,7 +55,7 @@ public sealed class PublicationRecoveryTests
     {
         // The other side of the same boundary. A descriptor whose body did not land whole is not a
         // descriptor: it proves nothing, so it is neither trusted nor removed, and the run says so
-        // — every time, having changed nothing (ruling 1).
+        // — every time, having changed nothing.
         using var run = ConvertRun.Wide();
         run.Harness.PublicationFiles.CrashAfter =
             $"CreateNew:out.fcabedrock-intent-T-{CxtAndManifestShape}-T-T";
@@ -85,7 +84,7 @@ public sealed class PublicationRecoveryTests
     [InlineData("Move:out.fcabedrock-pending-T->out.fcabedrock-transaction-T.toml")]
     public async Task Publication_WhenRecordCreationIsInterrupted_ThenARetryConvergesWithoutHelp(string transition)
     {
-        // CX-M7H-012/018. Partway through the record's bytes, at its close, and immediately after
+        // Partway through the record's bytes, at its close, and immediately after
         // the rename that publishes it: each leaves a different residue, and none blocks the base.
         using var run = ConvertRun.Wide();
         run.Harness.PublicationFiles.CrashAfter = transition;
@@ -213,7 +212,7 @@ public sealed class PublicationRecoveryTests
         // The intent descriptor and the stage claims are deliberately NOT here: each carries the
         // identity digest of an object that does not exist until the acquisition it acknowledges
         // has succeeded, so neither can be resolved in advance — and by the same construction
-        // neither can name a pre-existing file (CX-M7H-036/037).
+        // neither can name a pre-existing file.
         Assert.DoesNotContain(
             probe.Names, name => name.StartsWith("out.fcabedrock-intent-", StringComparison.Ordinal));
         Assert.DoesNotContain(
@@ -255,7 +254,7 @@ public sealed class PublicationRecoveryTests
         // derived path — but a name is not a statement that this transaction's create-new produced
         // the object at it, and nothing else names one. The interrupted run could have proved it
         // from the identity its own creation reported; a resumed one cannot, so it removes nothing
-        // and reports that it could not finish (CX-M7H-037).
+        // and reports that it could not finish.
         using var run = ConvertRun.Wide();
         var residue = Residue.Create(run.Directory, "out", Token);
         residue.WriteRecord([("stage", "out.cxt")]);
@@ -381,7 +380,7 @@ public sealed class PublicationRecoveryTests
     public async Task Publication_WhenTheBackupIsNotTheObjectItRenamedAside_ThenItIsNeitherMovedNorDeleted(
         bool committed)
     {
-        // CX-M7H-026. A substituted backup is an object this transaction never renamed aside —
+        // A substituted backup is an object this transaction never renamed aside —
         // whichever direction cleanup would take. Backward it must not be moved home; forward it
         // must not be dropped as superseded residue. The layout authorizes neither, so the run
         // refuses before mutation and every file stays exactly as it was.
@@ -424,7 +423,7 @@ public sealed class PublicationRecoveryTests
     [Fact]
     public async Task Publication_WhenTheHostReportsNoStageIdentity_ThenNothingIsPublished()
     {
-        // CX-M7H-032. The commit point may be crossed only when the object about to become public
+        // The commit point may be crossed only when the object about to become public
         // is provably the one this transaction wrote and hashed. A host that cannot identify it
         // supplies no such proof, so publication fails closed rather than certifying bytes it
         // cannot recognize — and it fails before anything becomes visible.
@@ -441,7 +440,7 @@ public sealed class PublicationRecoveryTests
         Assert.False(File.Exists(run.Target(".dat")));
 
         // The object that host created is left exactly where it is: removal is bound to the exact
-        // created object, and this is precisely the host that cannot name one (CX-M7H-047). What
+        // created object, and this is precisely the host that cannot name one. What
         // survives is classifiable — a record, and the stage beside it.
         var residue = run.Residue();
         Assert.Contains(residue, name => name.Contains(".fcabedrock-transaction-", StringComparison.Ordinal));
@@ -467,7 +466,7 @@ public sealed class PublicationRecoveryTests
 
         // Every public byte of the previous run, unchanged — the failure lands before the first
         // backup rename. The transaction's own residue stays too: the object the host could not
-        // name is never reclaimed on a length (CX-M7H-047).
+        // name is never reclaimed on a length.
         foreach (var (name, bytes) in before)
         {
             Assert.Equal(bytes, await File.ReadAllBytesAsync(Path.Combine(run.Directory, name)));
@@ -484,7 +483,7 @@ public sealed class PublicationRecoveryTests
     [InlineData(true)]
     public async Task Publication_WhenAStageOnlyTargetHasBothItsStageAndItsFinal_ThenRecoveryRefuses(bool rollingBack)
     {
-        // CX-M7H-019. The commit rename is non-overwriting and consumes the stage, so this pair
+        // The commit rename is non-overwriting and consumes the stage, so this pair
         // cannot both exist. Reading it as rollback-owned would delete a file no run published.
         using var run = ConvertRun.Wide();
         var residue = Residue.Create(run.Directory, "out", Token);
@@ -598,7 +597,7 @@ public sealed class PublicationRecoveryTests
     [Fact]
     public async Task Publication_WhenATargetAppearsBeforeItsCommitRename_ThenItIsPreservedAndNothingIsPublished()
     {
-        // CX-M7H-024. Preflight found nothing here, so the record reserved no backup — and a
+        // Preflight found nothing here, so the record reserved no backup — and a
         // rollback that read "no backup entry" as "this must be mine" would delete a file this run
         // never touched.
         using var run = ConvertRun.Wide();
@@ -727,7 +726,7 @@ public sealed class PublicationRecoveryTests
         // Here the path is repopulated with a different object after the stage is closed, so the
         // file the commit rename moves is not the one this run staged. It is not deleted — it is
         // not this transaction's — and it is not left at the published path either: the rename that
-        // put it there is reversed, so a failed run publishes nothing at all (CX-M7H-032/045).
+        // put it there is reversed, so a failed run publishes nothing at all.
         using var run = ConvertRun.Wide();
         run.Harness.PublicationFiles.MutateBefore = "Move:out.cxt.fcabedrock-stage-T->out.cxt";
         run.Harness.PublicationFiles.Mutate = () =>
@@ -755,7 +754,7 @@ public sealed class PublicationRecoveryTests
     [Fact]
     public async Task Publication_WhenTheSignalArrivesAfterResidueDiscovery_ThenNoTransactionBegins()
     {
-        // CX-M7H-022. The prior transaction is left exactly as it was, and — the point of the
+        // The prior transaction is left exactly as it was, and — the point of the
         // check — this run creates no record, no stage, and no descriptor of its own.
         using var run = ConvertRun.Wide();
         var residue = Residue.Create(run.Directory, "out", Token);
@@ -852,7 +851,7 @@ public sealed class PublicationRecoveryTests
     [InlineData("out.fcabedrock-staged-", false)]
     public async Task Publication_WhenAControlStreamFails_ThenTheFamilyDecidesTheExitCode(string prefix, bool contract)
     {
-        // CX-M7H-015/021. Failure ORIGIN and failure FAMILY are separate questions, at every
+        // Failure ORIGIN and failure FAMILY are separate questions, at every
         // control-file boundary as much as at an artifact's: a genuine I/O failure is an ordinary
         // environment problem, while a broken call contract is a product defect that must not be
         // disguised as one.
@@ -910,8 +909,8 @@ public sealed class PublicationRecoveryTests
         // BEFORE that rename the object is under a pending name that nothing durable acknowledges.
         // The run that created it could prove it from the identity its own creation reported; a
         // resumed one cannot, and it will not infer ownership from the name or the bytes. So it
-        // removes nothing, keeps the record, and says the clean-up cannot finish — every time
-        // (CX-M7H-037). This is the cost of the rule, and it is deliberate: the alternative is
+        // removes nothing, keeps the record, and says the clean-up cannot finish — every time.
+        // This is the cost of the rule, and it is deliberate: the alternative is
         // deleting an object that may never have been ours.
         using var run = ConvertRun.Wide();
         run.Harness.PublicationFiles.CrashAfter = transition;
@@ -988,7 +987,7 @@ public sealed class PublicationRecoveryTests
     [Fact]
     public async Task Publication_WhenARollbackMarkedRunLooksFullyCommitted_ThenItStillRollsBack()
     {
-        // CX-M7H-027. Every staged final is this transaction's own published object and every old
+        // Every staged final is this transaction's own published object and every old
         // backup is intact — the exact shape a completed commit leaves. The durable rollback marker
         // is the only thing that says otherwise, and it decides: a layout inference must never
         // reclassify a failed run as a successful one and discard its last-good backups.
@@ -1016,7 +1015,7 @@ public sealed class PublicationRecoveryTests
     [Fact]
     public async Task Publication_WhenAStagedRunLeftAnOldMarkerBesideItsNewArtifact_ThenRecoveryRefuses()
     {
-        // CX-M7H-025. Each row is individually plausible — the CXT is this run's own published
+        // Each row is individually plausible — the CXT is this run's own published
         // object, the demoted manifest is back at its public path — but together they are a state
         // no run reaches. Treating it as committed would strip every private control and leave an
         // old marker certifying an artifact from a different run.
@@ -1083,7 +1082,7 @@ public sealed class PublicationRecoveryTests
     [InlineData("committed")]
     public async Task Publication_WhenAPhaseMarkersBodyIsNotCanonical_ThenRecoveryRefusesAndPreservesIt(string phase)
     {
-        // CX-M7H-029, superseded: a genuine marker carries the canonical body for its own phase,
+        // Superseded zero-byte mechanism: a genuine marker carries the canonical body for its own phase,
         // so a file with the right name and any other contents must neither select a recovery
         // direction nor be deleted as control residue.
         using var run = ConvertRun.Wide();
@@ -1134,7 +1133,7 @@ public sealed class PublicationRecoveryTests
     [Fact]
     public async Task Publication_WhenTheCommittedMarkerCannotBeDeleted_ThenTheStateStaysClassifiable()
     {
-        // CX-M7H-028. Descending cleanup is only half the guarantee: continuing past a committed
+        // Descending cleanup is only half the guarantee: continuing past a committed
         // marker that could not be removed would delete the staged marker and the evidence beneath
         // it, leaving `committed` with no `staged` — a state the next run rightly refuses and could
         // never repair. Stopping at the first failure keeps the run recoverable.
@@ -1173,7 +1172,7 @@ public sealed class PublicationRecoveryTests
     [Fact]
     public async Task Publication_WhenALaterTargetIsSubstitutedMidRollback_ThenItIsNotDeletedOnAStaleProof()
     {
-        // CX-M7H-030. Both finals match their stage evidence when the decision pass runs. The DAT
+        // Both finals match their stage evidence when the decision pass runs. The DAT
         // is then replaced while the CXT is being deleted — so the answer captured earlier is no
         // longer true of the object at that path, and acting on it would delete an unrelated file.
         using var run = ConvertRun.Wide();
@@ -1211,7 +1210,7 @@ public sealed class PublicationRecoveryTests
     [Fact]
     public async Task Publication_WhenAFileOccupiesAStagePath_ThenItIsPreservedAndNeverClaimed()
     {
-        // CX-M7H-031. The record predicts every private name before the file exists. Create-new
+        // The record predicts every private name before the file exists. Create-new
         // refuses to overwrite an occupant — and rollback must not then delete the very collision
         // that refusal protected.
         using var run = ConvertRun.Wide();
@@ -1240,7 +1239,7 @@ public sealed class PublicationRecoveryTests
     [Fact]
     public async Task Publication_WhenAStageIsSubstitutedBeforeItsCommit_ThenTheRunCannotPublishIt()
     {
-        // CX-M7H-032. The manifest certifies the SHA-256 of the bytes this run wrote. Renaming
+        // The manifest certifies the SHA-256 of the bytes this run wrote. Renaming
         // whatever occupies the stage path would publish something else under that hash — on an
         // otherwise entirely successful run, leaving no residue to reveal it.
         using var run = ConvertRun.Wide();
@@ -1261,7 +1260,7 @@ public sealed class PublicationRecoveryTests
 
         // The impostor is preserved — it is not this transaction's to delete — but it is never
         // certified and never left at a published path: no artifact and no manifest becomes public,
-        // and the object is put back where the rename took it from (CX-M7H-045).
+        // and the object is put back where the rename took it from.
         Assert.False(File.Exists(run.Target(".cxt")));
         Assert.False(File.Exists(run.Target(".dat")));
         Assert.False(File.Exists(run.Target(".manifest.toml")));
@@ -1275,7 +1274,7 @@ public sealed class PublicationRecoveryTests
     [InlineData(true)]
     public async Task Publication_WhenTheTargetIsReplacedAtTheBackupRename_ThenNothingIsPublished(bool alias)
     {
-        // CX-M7H-033. The identity check and the rename cannot be one atomic act, so the rename's
+        // The identity check and the rename cannot be one atomic act, so the rename's
         // RESULT is checked too: a replacement that slipped into that interval is not the object
         // preflight approved, publication stops before any artifact commits, and the file is
         // neither published over nor deleted as superseded residue.
@@ -1334,7 +1333,7 @@ public sealed class PublicationRecoveryTests
     public async Task Publication_WhenAPublicationStreamIsDisposed_ThenItIsAnInternalFaultNotAStdoutFailure(
         string prefix, string format)
     {
-        // CX-M7H-034. An ObjectDisposedException from a publication stream is a contract defect,
+        // An ObjectDisposedException from a publication stream is a contract defect,
         // but it is also exactly what the host attributes to its own writers — so untagged it would
         // be reported as "cannot write to standard output" with exit 1, blaming a channel that was
         // never involved.
@@ -1361,7 +1360,7 @@ public sealed class PublicationRecoveryTests
     public async Task Publication_WhenAResidueReadRaisesAContractFault_ThenItIsAnInternalFault(
         string kind, string? prefix)
     {
-        // CX-M7H-035. The read side of the same rule: a contract defect at an internal residue
+        // The read side of the same rule: a contract defect at an internal residue
         // enumeration, read, or existence check is a product bug. Reporting it as an unusable
         // output location — or as hostile residue — would send the user to inspect their own
         // directory for a defect in this code.
