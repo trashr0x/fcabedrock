@@ -79,6 +79,8 @@ To remove it:
 dotnet tool uninstall --global FcaBedrock.Cli
 ```
 
+Per-command usage: see the [packed command guide](src/FcaBedrock.Cli/README.md).
+
 The preview is validated on **x64**, with Windows as the primary host; broader
 platform validation is an M8 task. The global tool is explicitly a **temporary**
 technical-preview distribution — a standalone, self-contained route is committed
