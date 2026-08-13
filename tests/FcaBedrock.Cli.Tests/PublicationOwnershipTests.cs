@@ -964,6 +964,82 @@ public sealed class PublicationOwnershipTests
         Assert.True(File.Exists(backup), "the aliased input was deleted rather than preserved");
     }
 
+    [Fact]
+    public async Task Publication_WhenAnUnrelatedObjectOccupiesThePendingRecordPathAtItsRemoval_ThenTheProofRefusesAndPreservesIt()
+    {
+        // The pending record's own removal, at the tail of a resumed cleanup. Its descriptor
+        // authorizes removing exactly one thing — the object whose identity that name states — and
+        // a file that took the path afterwards is not that object. The proof is read from the
+        // handle the deletion acts through, so the occupant is what it judges: the removal is
+        // attempted, refused, and the teardown stops before the record it would otherwise erase.
+        using var run = ConvertRun.Wide();
+        var token = new string('a', 32);
+        var residue = Residue.Create(run.Directory, "out", token);
+        residue.WriteRecord([("stage", "out.cxt")]);
+
+        // Well formed and naming no object that exists: the descriptor agrees with the record
+        // above, so classification accepts the state whole while the pending path is still empty.
+        var intent = WriteIntent(run.Directory, "out", token, [("stage", "out.cxt")], new string('b', 32));
+        var pending = Path.Combine(run.Directory, PublicationTargets.PendingRecordName("out", token));
+        var recordBytes = await File.ReadAllBytesAsync(residue.RecordPath);
+
+        // The first existence probe of that path is the prior-collision check's, which runs after
+        // classification accepted the state and before recovery mutates anything — so the occupant
+        // arrives inside exactly the window this proof exists for.
+        run.Harness.PublicationFiles.MutateBefore = "Exists:out.fcabedrock-pending-T";
+        run.Harness.PublicationFiles.Mutate = () => File.WriteAllText(pending, Keep);
+
+        Assert.Equal(1, await run.ConvertAsync("--format", "cxt"));
+        Assert.Equal(
+            DiagnosticRenderer.RenderHostError(
+                $"cannot clean up an incomplete fcabedrock run for the output base '{run.Base}'."),
+            run.Harness.StdErr);
+
+        // The removal really was attempted: the seam records that call only when the proof is
+        // evaluated against the object's own handle, so a surviving occupant beside it cannot be an
+        // existence or guard short-circuit.
+        Assert.Contains(
+            run.Harness.PublicationFiles.Operations,
+            operation => operation.StartsWith("Delete:out.fcabedrock-pending-", StringComparison.Ordinal));
+
+        var planted = Encoding.UTF8.GetBytes(Keep);
+        Assert.True(File.Exists(pending), "the occupant was removed by a descriptor that never named it");
+        Assert.Equal(planted, await File.ReadAllBytesAsync(pending));
+
+        // The descriptor immediately before it in the teardown order DID go, which pins the refusal
+        // to the pending record's own removal rather than to the preparatory-intent closure.
+        Assert.False(File.Exists(intent));
+        Assert.True(File.Exists(residue.RecordPath), "the record was removed over an unaccounted object");
+        Assert.Equal(recordBytes, await File.ReadAllBytesAsync(residue.RecordPath));
+        Assert.False(File.Exists(run.Target(".cxt")));
+
+        // Deterministic, and destructive of nothing: the preserved record and the occupant now form
+        // the coexistence classification refuses, and every plain retry says exactly that.
+        for (var attempt = 0; attempt < 2; attempt++)
+        {
+            var retry = new CliTestHarness();
+            Assert.Equal(
+                1, await retry.RunAsync("convert", run.Spec, run.Data, "--out", run.Base, "--format", "cxt"));
+            Assert.Contains(
+                "unrecognized fcabedrock transaction residue", retry.StdErr, StringComparison.Ordinal);
+
+            Assert.True(File.Exists(pending), $"attempt {attempt + 1} removed the occupant");
+            Assert.Equal(planted, await File.ReadAllBytesAsync(pending));
+            Assert.True(File.Exists(residue.RecordPath), $"attempt {attempt + 1} removed the record");
+            Assert.Equal(recordBytes, await File.ReadAllBytesAsync(residue.RecordPath));
+        }
+
+        // The remedy that message names. With the unrelated object gone the preserved authority is
+        // classifiable again, and an ordinary run clears it and publishes.
+        File.Delete(pending);
+
+        var resumed = new CliTestHarness();
+        Assert.Equal(
+            0, await resumed.RunAsync("convert", run.Spec, run.Data, "--out", run.Base, "--format", "cxt"));
+        Assert.True(File.Exists(run.Target(".cxt")));
+        Assert.Empty(run.Residue());
+    }
+
     // ---- origin-aware failure taxonomy at every mutation seam -------------------------------------
 
     [Theory]
