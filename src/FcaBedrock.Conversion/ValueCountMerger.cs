@@ -16,6 +16,15 @@ namespace FcaBedrock.Conversion;
 /// inputs until they delete, so the final write is no safer than an intermediate one and
 /// gets the same gate.
 /// </para>
+/// <para>
+/// <b>Both sides of that gate are the workspace's.</b> Live bytes come from the
+/// <see cref="SpoolWorkspace{TRow}"/>, which a whole calibration shares across its
+/// count-sensitive attributes, so the <c>baselineT</c> a caller supplies must be that same
+/// workspace's cumulative original-spill payload — every accumulator's, not the calling
+/// attribute's alone. Passing one attribute's total while several spill into the workspace
+/// compares a set against a fraction of its own baseline and refuses valid populations
+/// (<see cref="CalibrationBudget.SpilledBytes"/> is where the calibration path forms it).
+/// </para>
 /// </summary>
 internal sealed class ValueCountMerger
 {
@@ -33,9 +42,10 @@ internal sealed class ValueCountMerger
     /// <summary>
     /// Reduces <paramref name="runs"/> to exactly one ascending count-aggregated run,
     /// multi-stage when the count exceeds the fan-in, deleting each consumed input.
-    /// <paramref name="baselineT"/> is the cumulative <b>raw spill</b> payload (consolidation
-    /// output never inflates it). A single input needs no merge and is returned untouched —
-    /// nothing is opened, so no gate applies.
+    /// <paramref name="baselineT"/> is the cumulative <b>raw spill</b> payload of the whole
+    /// workspace this merger writes into — every accumulator sharing it, at this boundary
+    /// (consolidation output never inflates it, and it never falls). A single input needs no
+    /// merge and is returned untouched — nothing is opened, so no gate applies.
     /// </summary>
     /// <exception cref="GroupingStorageException">An in-path storage failure, or the 3T escalation.</exception>
     /// <exception cref="CalibrationPopulationOverflowException">A merged count sum exceeds <see cref="long"/>.</exception>

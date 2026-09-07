@@ -83,7 +83,7 @@ internal sealed class QuantileAccumulator
     private ValueCount[]? _sortBuffer;
     private int _resident;                 // used length of _sortBuffer on the zero-spill path
     private long _total;                   // the checked running total N
-    private long _spilledBytes;            // T_so_far: RAW spill payload only (consolidation never inflates it)
+    private long _spilledBytes;            // this attribute's T_i: RAW spill payload only (consolidation never inflates it)
     private SpoolRunHandle? _consolidated;
 
     public QuantileAccumulator(
@@ -123,6 +123,19 @@ internal sealed class QuantileAccumulator
 
     /// <summary>Whether any run reached storage (false ⇒ the whole population stayed in memory).</summary>
     public bool Spilled => _runs.Count > 0 || _consolidated is not null;
+
+    /// <summary>
+    /// This attribute's <c>T_i</c>: the cumulative exact serialized bytes of its <b>successful
+    /// original spills</b>, framing included. It never counts consolidation output, and never falls
+    /// — deletion, consolidation, replay and finalization all leave it where it was, because it
+    /// records what this attribute has written to the workspace, not what is still there.
+    /// <para>
+    /// Read by the owning <see cref="CalibrationBudget"/> to form the workspace-wide
+    /// <see cref="CalibrationBudget.SpilledBytes"/>; see there for why the sum, not this, is the
+    /// merge allowance's baseline.
+    /// </para>
+    /// </summary>
+    public long SpilledBytes => _spilledBytes;
 
     /// <summary>The modeled bytes for an accumulator of <paramref name="capacity"/> accepted entries.</summary>
     public static long Modeled(int capacity) => FixedBytes + (capacity * SlotBytes);
@@ -190,7 +203,7 @@ internal sealed class QuantileAccumulator
         }
 
         var merger = new ValueCountMerger(_workspace, _options, _attributeName);
-        var consolidated = merger.Consolidate([.. _runs], _spilledBytes, _cancellationToken);
+        var consolidated = merger.Consolidate([.. _runs], _budget.SpilledBytes, _cancellationToken);
         _runs.Clear();
         _runs.Add(consolidated);
         _consolidated = consolidated;
@@ -429,10 +442,14 @@ internal sealed class QuantileAccumulator
     // buffer are co-resident with the merge's readers/writer. That is accounted for in tier 2
     // (bounded by count and shape), and is why the release-before-merge rule is stated for the
     // POST-intake phase only.
+    //
+    // The baseline is the workspace's T_so_far at THIS boundary — the other accumulators' spills up
+    // to now, not a prediction of their final payload. T only grows, so a later merge is never
+    // measured against a smaller allowance than an earlier one.
     private void ConsolidateOnline()
     {
         var merger = new ValueCountMerger(_workspace, _options, _attributeName);
-        var consolidated = merger.Consolidate([.. _runs], _spilledBytes, _cancellationToken);
+        var consolidated = merger.Consolidate([.. _runs], _budget.SpilledBytes, _cancellationToken);
         _runs.Clear();
         _runs.Add(consolidated);
         _observer?.RunCatalog(_attributeName, _runs.Count);
@@ -550,6 +567,13 @@ internal sealed class QuantileAccumulator
 /// share. The honest consequence is stated rather than hidden: the guaranteed bound is
 /// <c>max(budget, A · FloorBytes)</c>, not the budget alone.
 /// </para>
+/// <para>
+/// It also carries the registry of those accumulators, which is what makes the workspace-wide
+/// spill payload (<see cref="SpilledBytes"/>) available to each of them. One
+/// <c>CalibrationRun</c> creates exactly one budget and one <see cref="SpoolWorkspace{TRow}"/> and
+/// hands both to every accumulator it builds, so "registered here" and "spilling into that
+/// workspace" name the same set.
+/// </para>
 /// </summary>
 internal sealed class CalibrationBudget
 {
@@ -569,6 +593,40 @@ internal sealed class CalibrationBudget
 
     /// <summary>The live accumulators, in spec-attribute order.</summary>
     public IReadOnlyList<QuantileAccumulator> Accumulators => _accumulators;
+
+    /// <summary>
+    /// The shared workspace's <c>T</c>: the cumulative original-spill payload of <b>every</b>
+    /// accumulator registered here, which is the baseline the D-082 <c>L + P ≤ 3T</c> merge
+    /// allowance must be measured against.
+    /// <para>
+    /// Both sides of that inequality have to describe the same set of files, and the retained side
+    /// — <see cref="SpoolWorkspace{TRow}.LiveBytes"/> — is the whole workspace's, because one
+    /// workspace serves the whole calibration. Using a single attribute's payload as the baseline
+    /// instead would divide the allowance by the number of attributes spilling into it: with A
+    /// comparable accumulators the retained bytes grow with A while the allowance does not, so a
+    /// perfectly ordinary population is refused with a degraded-cleanup diagnostic on healthy
+    /// storage. Summing here restores one consistently scoped guarantee — <b>not</b> a per-attribute
+    /// multiplier, and not a larger allowance than D-082 states.
+    /// </para>
+    /// <para>
+    /// It grows only with original spills, so it is monotone: deletion, consolidation, replay and an
+    /// attribute finishing all leave it alone, and an accumulator that never spilled contributes
+    /// nothing. Saturating, so the running total cannot wrap a merge projection into permission.
+    /// </para>
+    /// </summary>
+    public long SpilledBytes
+    {
+        get
+        {
+            long total = 0;
+            foreach (var accumulator in _accumulators)
+            {
+                total = ResidentModel.SaturatingAdd(total, accumulator.SpilledBytes);
+            }
+
+            return total;
+        }
+    }
 
     public void Register(QuantileAccumulator accumulator) => _accumulators.Add(accumulator);
 
