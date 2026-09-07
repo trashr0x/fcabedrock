@@ -91,14 +91,62 @@ public sealed class CorpusRegistryTests
     [Fact]
     public void EveryTier_ShouldMapToExactlyOneBenchmarkCategory()
     {
-        // Micro and External are Small-category work: fast, safe to run by default, and neither is
-        // a target-scale claim. Only the two scale tiers are opt-in.
+        // Micro is Small-category work: fast, generated from the same pinned arithmetic as the rest,
+        // and not a target-scale claim. External is not - its corpus is acquired from a third-party
+        // host, so it is opt-in for a reason that has nothing to do with size.
         Assert.Equal(BenchmarkCategories.Small, CorpusTiers.Category(CorpusTier.Micro));
         Assert.Equal(BenchmarkCategories.Small, CorpusTiers.Category(CorpusTier.Small));
-        Assert.Equal(BenchmarkCategories.Small, CorpusTiers.Category(CorpusTier.External));
+        Assert.Equal(BenchmarkCategories.External, CorpusTiers.Category(CorpusTier.External));
         Assert.Equal(BenchmarkCategories.Working, CorpusTiers.Category(CorpusTier.Working));
         Assert.Equal(BenchmarkCategories.Scale, CorpusTiers.Category(CorpusTier.Scale7M));
         Assert.Equal(BenchmarkCategories.Scale, CorpusTiers.Category(CorpusTier.Scale73M));
+    }
+
+    [Fact]
+    public void TheSmallTier_ShouldNotCarryTheAcquiredCase()
+    {
+        // `prepare small` prepares what a routine run needs, and a routine run must not need a
+        // download. This is the preparation half of the selection guarantee: the CI job prepares
+        // `micro small`, so Adult appearing under either token would put the network back.
+        var smallIds = CorpusCases.ForTier(CorpusTier.Small).Select(corpus => corpus.Id).ToList();
+        var microIds = CorpusCases.ForTier(CorpusTier.Micro).Select(corpus => corpus.Id).ToList();
+
+        Assert.DoesNotContain(CorpusCases.Adult.Id, smallIds);
+        Assert.DoesNotContain(CorpusCases.Adult.Id, microIds);
+        Assert.All(
+            CorpusCases.ForTier(CorpusTier.Small).Concat(CorpusCases.ForTier(CorpusTier.Micro)),
+            corpus => Assert.Equal(CorpusOrigin.Generated, corpus.Origin));
+        Assert.Contains(CorpusCases.Adult.Id, CorpusCases.ForTier(CorpusTier.External).Select(c => c.Id));
+    }
+
+    [Fact]
+    public void TheAcquiredCase_ShouldPinTheExactEntryItConsumes()
+    {
+        // The wiring assertion. The mechanism is tested offline in AcquiredCorpusIdentityTests;
+        // this is what says the real case actually uses it, and with which bytes: the length and
+        // digest of the `adult.data` entry every M8 measurement was stated against.
+        var identity = CorpusCases.Adult.DataIdentity;
+
+        Assert.NotNull(identity);
+        Assert.Equal(3_974_305L, identity.ByteLength);
+        Assert.Equal(
+            "5b00264637dbfec36bdeaab5676b0b309ff9eb788d63554ca0a249491c86603d", identity.Sha256);
+        Assert.Equal(AdultCorpus.DataByteLength, identity.ByteLength);
+        Assert.Equal(AdultCorpus.DataSha256, identity.Sha256);
+
+        // The pin and the acquisition revision are two halves of one fact, so a case that carries a
+        // pin must also carry the revision the pinned bytes were catalogued under.
+        Assert.Equal(AdultCorpus.AcquisitionRevision, CorpusCases.Adult.GeneratorRevision);
+    }
+
+    [Fact]
+    public void AGeneratedCase_ShouldCarryNoPinnedIdentity()
+    {
+        // A generated corpus needs none: its bytes are a function of a committed generator at a
+        // recorded revision, so its identity is derived rather than asserted.
+        Assert.All(
+            CorpusCases.All.Where(corpus => corpus.Origin == CorpusOrigin.Generated),
+            corpus => Assert.Null(corpus.DataIdentity));
     }
 
     [Fact]

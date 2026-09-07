@@ -99,8 +99,10 @@ internal static class BenchmarkLauncher
         if (requireExecution && measured == 0)
         {
             return (NothingSelected,
-                "No benchmark case was selected, so nothing was measured. Scale cases are opt-in: name the "
-                + $"'{BenchmarkCategories.Scale}' category explicitly (--anyCategories {BenchmarkCategories.Scale}).\n");
+                "No benchmark case was selected, so nothing was measured. The "
+                + $"'{BenchmarkCategories.Scale}' and '{BenchmarkCategories.External}' tiers are opt-in and are "
+                + "not reachable by a name filter: name the category explicitly, for example "
+                + $"--anyCategories {BenchmarkCategories.Scale} or --anyCategories {BenchmarkCategories.External}.\n");
         }
 
         return (Success, $"{measured} benchmark case(s) completed with no build, execution, or validation failure.\n");

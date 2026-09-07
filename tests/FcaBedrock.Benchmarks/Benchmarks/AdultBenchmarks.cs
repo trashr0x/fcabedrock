@@ -9,6 +9,15 @@ namespace FcaBedrock.Benchmarks;
 /// Drains the UCI Adult training split: fifteen headerless columns of real census-derived data,
 /// missing cells and all.
 /// <para>
+/// <b>Every Adult case is <see cref="BenchmarkCategories.External"/>, and so opt-in.</b> Not
+/// because it is slow — 32,562 records is Small-sized work — but because its corpus is acquired
+/// from a third-party host rather than generated here, and a routine run must be able to complete
+/// without reaching one. Run these with
+/// <c>--anyCategories External</c>; a bare run, a broad name filter, and an <c>*Adult*</c> filter
+/// all select nothing rather than requiring the download. If the corpus is not prepared, a selected
+/// case <em>fails</em>: it is never skipped.
+/// </para>
+/// <para>
 /// Its expectation is derived by a <b>second, independent reader</b> written for the purpose — split
 /// on the delimiter, trim, treat an empty cell or the missing token as missing — rather than by
 /// enumerating a generator, because there is no generator. Adult's fields carry no quoting, which is
@@ -16,7 +25,7 @@ namespace FcaBedrock.Benchmarks;
 /// asserts that property instead of assuming it.
 /// </para>
 /// </summary>
-[BenchmarkCategory(BenchmarkCategories.Small)]
+[BenchmarkCategory(BenchmarkCategories.External)]
 [BenchmarkCorpus(CorpusCases.AdultFamily, "", CorpusTier.External)]
 public class AdultSourceDrain : WideSourceDrainBenchmark
 {
@@ -39,7 +48,7 @@ public class AdultSourceDrain : WideSourceDrainBenchmark
 /// the v2 minis own the external ones. This case owns being real.
 /// </para>
 /// </summary>
-[BenchmarkCategory(BenchmarkCategories.Convert, BenchmarkCategories.Small)]
+[BenchmarkCategory(BenchmarkCategories.Convert, BenchmarkCategories.External)]
 [BenchmarkCorpus(CorpusCases.AdultFamily, "", CorpusTier.External)]
 public class AdultConvertDat
 {
@@ -84,7 +93,7 @@ public class AdultConvertDat
 /// Exports UCI Adult to <c>.cxt</c>: the two-pass format over real data with discovered domains, so
 /// the header carries names nobody in this repository chose.
 /// </summary>
-[BenchmarkCategory(BenchmarkCategories.Convert, BenchmarkCategories.Small)]
+[BenchmarkCategory(BenchmarkCategories.Convert, BenchmarkCategories.External)]
 [BenchmarkCorpus(CorpusCases.AdultFamily, "", CorpusTier.External)]
 public class AdultConvertCxt
 {

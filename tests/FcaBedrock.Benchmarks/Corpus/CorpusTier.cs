@@ -73,15 +73,21 @@ internal static class CorpusTiers
     };
 
     /// <summary>
-    /// The benchmark tier category a case of this tier must carry. Micro and External are
-    /// <c>Small</c>-category work: they are fast, always safe to run by default, and neither is a
-    /// target-scale claim.
+    /// The benchmark tier category a case of this tier must carry.
+    /// <para>
+    /// <see cref="CorpusTier.Micro"/> is <c>Small</c>-category work: it is fast, generated from the
+    /// same pinned arithmetic as every other synthetic case, and not a target-scale claim.
+    /// <see cref="CorpusTier.External"/> is <b>not</b>, and has its own category — not because it
+    /// is large (it is not) but because preparing it depends on a third-party host, so a routine
+    /// run must be able to complete without it.
+    /// </para>
     /// </summary>
     public static string Category(CorpusTier tier) => tier switch
     {
-        CorpusTier.Micro or CorpusTier.Small or CorpusTier.External => Configuration.BenchmarkCategories.Small,
+        CorpusTier.Micro or CorpusTier.Small => Configuration.BenchmarkCategories.Small,
         CorpusTier.Working => Configuration.BenchmarkCategories.Working,
         CorpusTier.Scale7M or CorpusTier.Scale73M => Configuration.BenchmarkCategories.Scale,
+        CorpusTier.External => Configuration.BenchmarkCategories.External,
         _ => throw new ArgumentOutOfRangeException(nameof(tier), tier, "Unknown corpus tier."),
     };
 

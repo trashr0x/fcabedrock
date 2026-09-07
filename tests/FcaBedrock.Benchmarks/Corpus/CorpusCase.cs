@@ -17,6 +17,18 @@ internal enum CorpusOrigin
 }
 
 /// <summary>
+/// A pinned input identity: the exact bytes a case's data file must have.
+/// <para>
+/// A generated case needs none — its bytes are a function of the committed generator and its
+/// revision, so the identity is <em>derived</em> rather than asserted. An acquired one does: the
+/// bytes come from somewhere this repository does not control, and the catalog's own recorded
+/// digest cannot decide whether a fresh download is the file the evidence was stated against,
+/// because the catalog records whatever arrived.
+/// </para>
+/// </summary>
+internal sealed record CorpusIdentity(long ByteLength, string Sha256);
+
+/// <summary>
 /// One preparable corpus: what it is called, how much data it carries, how its bytes are produced,
 /// and which spec it is converted under.
 /// <para>
@@ -43,6 +55,14 @@ internal sealed record CorpusCase(
     /// count is declared by its tier.
     /// </summary>
     public Func<string, long>? CountRecords { get; init; }
+
+    /// <summary>
+    /// The exact bytes this case's data file must have, or <see langword="null"/> when the bytes
+    /// are generated here and therefore need no pin. When it is set, a freshly prepared file that
+    /// does not match is <b>refused</b> rather than catalogued, and a reused one is checked against
+    /// this rather than against what the catalog recorded for itself.
+    /// </summary>
+    public CorpusIdentity? DataIdentity { get; init; }
 
     /// <summary>
     /// The catalog key and file-name stem: <c>family[-variant][-tier]</c>. Stable, lowercase, and
@@ -168,6 +188,7 @@ internal static class CorpusCases
     {
         Origin = CorpusOrigin.External,
         CountRecords = AdultCorpus.CountRecords,
+        DataIdentity = AdultCorpus.Identity,
     };
 
     // Declared BEFORE `All`, deliberately: static field initializers run in textual order, so a

@@ -4,13 +4,15 @@ namespace FcaBedrock.Benchmarks.Tests.Configuration;
 
 /// <summary>
 /// The one selection rule the suite adds on top of BenchmarkDotNet's own filtering. It decides
-/// whether hours of machine time start, so it is tested directly rather than inferred from a run.
+/// whether hours of machine time start, and whether a run depends on a third-party host being
+/// reachable, so it is tested directly rather than inferred from a run.
 /// </summary>
 public sealed class SelectionPolicyTests
 {
     private static readonly string[] SmallCase = [BenchmarkCategories.Source, BenchmarkCategories.Small];
     private static readonly string[] WorkingCase = [BenchmarkCategories.Source, BenchmarkCategories.Working];
     private static readonly string[] ScaleCase = [BenchmarkCategories.Source, BenchmarkCategories.Scale];
+    private static readonly string[] ExternalCase = [BenchmarkCategories.Source, BenchmarkCategories.External];
 
     [Fact]
     public void Policy_WhenNoCategoryIsNamed_ThenOnlySmallIsSelected()
@@ -20,6 +22,7 @@ public sealed class SelectionPolicyTests
         Assert.True(policy.Includes(SmallCase));
         Assert.False(policy.Includes(WorkingCase));
         Assert.False(policy.Includes(ScaleCase));
+        Assert.False(policy.Includes(ExternalCase));
     }
 
     [Fact]
@@ -30,6 +33,79 @@ public sealed class SelectionPolicyTests
 
         Assert.True(policy.Includes(SmallCase));
         Assert.False(policy.Includes(ScaleCase));
+    }
+
+    [Theory]
+    [InlineData("*")]
+    [InlineData("*Adult*")]
+    [InlineData("*AdultSourceDrain*")]
+    public void Policy_WhenOnlyANameFilterIsGiven_ThenExternalIsStillExcluded(string filter)
+    {
+        // The External equivalent, and the shape that matters most: naming the CASE is not opting
+        // in. Someone filtering for `*Adult*` has said which case they mean, not that this run may
+        // depend on a third-party host - and if it could opt in, the routine CI Dry run's own
+        // `--filter *` would drag the download back into every native job.
+        var policy = SelectionPolicy.FromArguments(["--filter", filter]);
+
+        Assert.False(policy.Includes(ExternalCase));
+        Assert.False(policy.ExternalRequested);
+    }
+
+    [Fact]
+    public void Policy_WhenOnlyASurfaceCategoryIsNamed_ThenExternalIsStillExcluded()
+    {
+        // Naming some other category lifts the Small default - that is deliberate, and tested
+        // below for Working - but it must not reach either opt-in tier.
+        var policy = SelectionPolicy.FromArguments(["--anyCategories", BenchmarkCategories.Source]);
+
+        Assert.True(policy.CategorySelectionPresent);
+        Assert.False(policy.Includes(ExternalCase));
+        Assert.False(policy.Includes(ScaleCase));
+    }
+
+    [Theory]
+    [InlineData("--anyCategories External")]
+    [InlineData("--allCategories External")]
+    [InlineData("--anyCategories=External")]
+    [InlineData("--anyCategories=Source,External")]
+    [InlineData("--anyCategories external --filter *")]
+    public void Policy_WhenExternalIsNamed_ThenExternalIsSelected(string commandLine)
+    {
+        // Both category options, both value forms, and case-insensitively - the same shapes the
+        // Scale opt-in is tested through, because it is the same guarantee.
+        var policy = SelectionPolicy.FromArguments(commandLine.Split(' '));
+
+        Assert.True(policy.ExternalRequested);
+        Assert.True(policy.Includes(ExternalCase));
+    }
+
+    [Fact]
+    public void Policy_WhenSmallAndExternalAreNamedTogether_ThenBothAreSelectedAndScaleIsNot()
+    {
+        // The union a real-data acceptance run uses when it wants the fixture cases beside the
+        // acquired ones.
+        var policy = SelectionPolicy.FromArguments(["--anyCategories", "Small", "External"]);
+
+        Assert.True(policy.Includes(SmallCase));
+        Assert.True(policy.Includes(ExternalCase));
+        Assert.False(policy.Includes(ScaleCase));
+
+        // Working is not asserted here, and deliberately: this policy never vetoes a category the
+        // run named, and BenchmarkDotNet's own category filter is what narrows `Small External`
+        // down to those two. The opt-in tiers are the exception, because BenchmarkDotNet cannot
+        // know that reaching one costs hours or a download.
+    }
+
+    [Fact]
+    public void Policy_WhenScaleIsNamed_ThenExternalIsNotDraggedInWithIt()
+    {
+        // The two opt-in tiers are independent: opting into hours of machine time is not opting
+        // into a network dependency, and the converse.
+        var scale = SelectionPolicy.FromArguments(["--anyCategories", "Scale"]);
+        var external = SelectionPolicy.FromArguments(["--anyCategories", "External"]);
+
+        Assert.False(scale.Includes(ExternalCase));
+        Assert.False(external.Includes(ScaleCase));
     }
 
     [Theory]
@@ -106,6 +182,11 @@ public sealed class SelectionPolicyTests
         Assert.True(SelectionPolicy.FromArguments(["--anyCategories", "Working"]).LongRunRequested);
         Assert.True(SelectionPolicy.FromArguments(["--anyCategories", "Scale"]).LongRunRequested);
         Assert.True(SelectionPolicy.FromArguments(["--anyCategories=Working,Small"]).LongRunRequested);
+
+        // External is opt-in for a different reason: about 32,000 records is Small-sized work, so
+        // it keeps the fresh-iteration job. Being opt-in and being long-running are separate facts.
+        Assert.False(SelectionPolicy.FromArguments(["--anyCategories", "External"]).LongRunRequested);
+        Assert.True(SelectionPolicy.FromArguments(["--anyCategories=External,Working"]).LongRunRequested);
     }
 
     [Fact]

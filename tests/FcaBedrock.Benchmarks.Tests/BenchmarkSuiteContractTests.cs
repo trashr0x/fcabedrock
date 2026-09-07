@@ -95,6 +95,70 @@ public sealed class BenchmarkSuiteContractTests
     }
 
     [Fact]
+    public void EveryExternalCase_ShouldBeExcludedFromEveryImplicitSelectionAndReachableWhenNamed()
+    {
+        // The External tier is opt-in for a different reason from Scale - its corpus is acquired
+        // from a third-party host rather than generated here - but the selection guarantee is the
+        // same one: nothing but naming the category reaches it.
+        var bare = SelectionPolicy.FromArguments([]);
+        var broad = SelectionPolicy.FromArguments(["--filter", "*"]);
+        var byName = SelectionPolicy.FromArguments(["--filter", "*Adult*"]);
+        var bySurface = SelectionPolicy.FromArguments(["--anyCategories", BenchmarkCategories.Convert]);
+        var opted = SelectionPolicy.FromArguments(["--anyCategories", BenchmarkCategories.External]);
+
+        var externalCases = BenchmarkTypes.Where(type => Categories(type)
+            .Contains(BenchmarkCategories.External, StringComparer.OrdinalIgnoreCase)).ToList();
+
+        Assert.NotEmpty(externalCases);
+        foreach (var type in externalCases)
+        {
+            var categories = Categories(type);
+            Assert.False(bare.Includes(categories), $"{type.Name} runs without opting in.");
+            Assert.False(broad.Includes(categories), $"{type.Name} is reachable by a broad name filter.");
+            Assert.False(byName.Includes(categories), $"{type.Name} is reachable by its own name.");
+            Assert.False(bySurface.Includes(categories), $"{type.Name} is reachable by a surface category.");
+            Assert.True(opted.Includes(categories), $"{type.Name} is unreachable even when opted in.");
+        }
+    }
+
+    [Fact]
+    public void TheAcquiredCorpusCases_ShouldBeExactlyTheExternalOnes()
+    {
+        // Read off the attributes BenchmarkDotNet will actually see, not off a category array
+        // written here: a case whose corpus is acquired but whose category still said Small would
+        // put a third-party download back into the default selection, and this is the check that
+        // notices.
+        var acquired = BenchmarkTypes
+            .Where(type => type.GetCustomAttribute<BenchmarkCorpusAttribute>()?.Tier == CorpusTier.External)
+            .ToList();
+        var external = BenchmarkTypes
+            .Where(type => Categories(type).Contains(BenchmarkCategories.External, StringComparer.OrdinalIgnoreCase))
+            .ToList();
+
+        Assert.NotEmpty(acquired);
+        Assert.Equal(acquired, external);
+        Assert.All(acquired, type =>
+            Assert.DoesNotContain(BenchmarkCategories.Small, Categories(type), StringComparer.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public void BenchmarkDotNet_ShouldDiscoverTheAcquiredCasesUnderTheExternalCategory()
+    {
+        // The end-to-end fact: BenchmarkDotNet's own converter reads the attributes, so this is
+        // what a real `--anyCategories External` run will match on.
+        var discovered = BenchmarkConverter.TypeToBenchmarks(typeof(AdultSourceDrain)).BenchmarksCases;
+
+        Assert.NotEmpty(discovered);
+        Assert.All(discovered, benchmark =>
+        {
+            Assert.Contains(
+                BenchmarkCategories.External, benchmark.Descriptor.Categories, StringComparer.OrdinalIgnoreCase);
+            Assert.DoesNotContain(
+                BenchmarkCategories.Small, benchmark.Descriptor.Categories, StringComparer.OrdinalIgnoreCase);
+        });
+    }
+
+    [Fact]
     public void EveryBenchmarkClass_ShouldBeUnsealedSoTheOutOfProcessToolchainCanGenerateAgainstIt()
     {
         // BenchmarkDotNet's default toolchain derives from the benchmark type; a sealed class fails

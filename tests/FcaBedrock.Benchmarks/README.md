@@ -22,15 +22,23 @@ dotnet run -c Release --project tests/FcaBedrock.Benchmarks -- prepare all
 ```
 
 `prepare adult` is the **only** command in this repository that touches the network: it downloads the
-UCI Adult training split, writes its bytes verbatim, and records their length and digest. Every other
+UCI Adult training split and writes its bytes verbatim, having first checked them against the exact
+length and SHA-256 pinned in `Corpus/AdultCorpus.cs`. A changed upstream file is **refused**, not
+adopted — the pin is what makes "the Adult measurement" name one specific set of bytes. Every other
 corpus is generated from pinned integer arithmetic. No ordinary test and no benchmark measurement
 performs any network access. Attribution and licence are in `Corpus/Adult.attribution.md`.
+
+Because it is acquired rather than generated, Adult is **not** in the default selection and not in
+routine CI; see [Selection](#selection).
 
 Then use the ordinary BenchmarkDotNet command line — there is no wrapper grammar:
 
 ```
 # every default (Small) case
 dotnet run -c Release --project tests/FcaBedrock.Benchmarks -- --filter '*'
+
+# the acquired UCI Adult cases (prepare adult first)
+dotnet run -c Release --project tests/FcaBedrock.Benchmarks -- --anyCategories External --filter '*'
 
 # prove the harness runs, without measuring anything meaningful
 dotnet run -c Release --project tests/FcaBedrock.Benchmarks -- --filter '*' --job dry
@@ -66,13 +74,35 @@ assembly.
 
 ## Selection
 
-Two category axes. A **tier** says how much data a case reads (`Small`, `Working`, `Scale`); a
-**surface** says which production path it measures (`Source`, `Convert`, `Mini`, …).
+Two category axes. A **tier** says which corpus a case reads (`Small`, `Working`, `Scale`,
+`External`); a **surface** says which production path it measures (`Source`, `Convert`, `Mini`, …).
 
 * With no category named, the selection is **Small**.
 * `Working` and `Scale` are **opt-in by category and by nothing else** — `--filter '*'` will not
   reach either, because those cases read 730,000, 7.3M, and 73M records and cost minutes to hours.
+* `External` is opt-in the same way, for a different reason. Its cases are quick — about 32,000
+  records — but its corpus is **acquired** from a third-party host rather than generated here, so a
+  routine run must be able to complete without one being reachable. Not even `--filter '*Adult*'`
+  opts in: naming the case says which case you mean, not that this run may depend on a download.
 * A job named with `--job` replaces the suite's own, so a run never executes each case twice.
+
+Opting in is not the same as skipping. A **selected** case whose corpus is not prepared is a hard
+failure with the exact `prepare` command in the message; it is never quietly passed over.
+
+### What runs where
+
+| | Bare run and routine CI | Explicit |
+| --- | --- | --- |
+| Small (incl. Micro) | yes | — |
+| Working, Scale | no | `--anyCategories Working` / `Scale` |
+| External (UCI Adult) | no | `--anyCategories External` |
+
+Routine CI prepares `micro small` and runs `--anyCategories Small --filter '*' --job dry` on each
+native target, so a green CI run proves the Small-category cases and their oracles on that platform
+and makes **no claim** about Adult. The real-data evidence is required of the *candidate* instead: a
+successful `External` run on the final Windows x64 build is a blocking acceptance obligation for M8
+and for each release candidate (D-124, `docs/roadmap.md`). Routine CI can be green while it is
+outstanding — an unreachable UCI is then an evidence-availability failure, not a defect in the build.
 
 ## Exit codes
 
@@ -80,9 +110,12 @@ Two category axes. A **tier** says how much data a case reads (`Small`, `Working
 | --- | --- |
 | 0 | Every selected case built, executed, and validated. |
 | 1 | A build, execution, or critical validation failure — no publishable result. |
-| 2 | Nothing was selected, so nothing was measured (or an unknown tier was named). |
+| 2 | Nothing was selected, so nothing was measured (or an unknown tier was named). Usually an opt-in tier reached only by a name filter — name its category. |
 
 ## What is measured
+
+Every case below is Small-category unless its family says otherwise; the UCI Adult cases are
+`External`, and the `Working`/`Scale` tiers are the same surfaces over larger corpora.
 
 | Surface | Families |
 | --- | --- |

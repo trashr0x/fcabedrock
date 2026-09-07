@@ -15,8 +15,16 @@ namespace FcaBedrock.Benchmarks.Corpus;
 /// <para>
 /// <b>Acquisition is explicit, separate, and outside every measured interval.</b> It happens only
 /// under the <c>prepare</c> verb and never as a side effect of a run; the downloaded bytes are
-/// written verbatim, their exact length and SHA-256 are recorded in the catalog, and the file itself
-/// never enters Git. No ordinary test and no benchmark measurement performs any network access.
+/// written verbatim, checked against the identity pinned below, and recorded in the catalog, and
+/// the file itself never enters Git. No ordinary test and no benchmark measurement performs any
+/// network access.
+/// </para>
+/// <para>
+/// <b>It is not in routine CI.</b> The Adult cases carry the opt-in
+/// <c>External</c> category, so no bare run and no native CI job depends on a third-party host
+/// being reachable. A successful <c>--anyCategories External</c> run on the final Windows x64
+/// candidate is instead a blocking acceptance obligation, recorded in D-124 and the roadmap: the
+/// real-data evidence is required, but it is required of the candidate rather than of every job.
 /// </para>
 /// <para>
 /// <b>Attribution.</b> Becker, B. and Kohavi, R. (1996). <i>Adult</i>. UCI Machine Learning
@@ -39,6 +47,12 @@ internal static class AdultCorpus
     /// count is a denominator, so an entry recorded under the old rule must be refused exactly as a
     /// changed corpus would be.
     /// </para>
+    /// <para>
+    /// It is still 2 after the <see cref="DataSha256"/> pin was added: the pin records the identity
+    /// of the bytes this revision already wrote and already catalogued, so nothing prepared under
+    /// it became stale. <b>Changing the accepted identity is a different matter and bumps this</b>
+    /// — see <see cref="DataSha256"/>.
+    /// </para>
     /// </summary>
     public const int AcquisitionRevision = 2;
 
@@ -50,6 +64,42 @@ internal static class AdultCorpus
 
     /// <summary>The entry inside the archive: the training split, headerless.</summary>
     public const string EntryName = "adult.data";
+
+    /// <summary>
+    /// The exact byte length of the <see cref="EntryName"/> entry this suite accepts.
+    /// </summary>
+    public const long DataByteLength = 3_974_305L;
+
+    /// <summary>
+    /// The exact SHA-256 of the <see cref="EntryName"/> entry this suite accepts.
+    /// <para>
+    /// <b>Why the entry and not the archive.</b> What a measurement consumes is the training
+    /// split's bytes; the zip around them can be repacked without changing a single one of them,
+    /// and pinning the container would refuse a download that is in fact identical. So the pin is
+    /// on the consumed entry.
+    /// </para>
+    /// <para>
+    /// <b>What it does and does not establish.</b> It fixes the bytes as <em>the same bytes M8
+    /// measured</em> — the ones recorded in <c>docs/benchmarks.md</c> — so a changed upstream file
+    /// is refused rather than silently adopted and quietly re-based on. It is not a signature and
+    /// establishes nothing about publisher authenticity: no attestation for this dataset exists to
+    /// check against.
+    /// </para>
+    /// <para>
+    /// <b>Changing it bumps <see cref="AcquisitionRevision"/>.</b> The accepted identity and the
+    /// revision are two halves of one fact: the identity refuses different bytes, and the revision
+    /// refuses a catalog entry written under the previous definition. Moving one without the other
+    /// would let an already-prepared corpus survive a change of what "prepared" means.
+    /// </para>
+    /// </summary>
+    public const string DataSha256 = "5b00264637dbfec36bdeaab5676b0b309ff9eb788d63554ca0a249491c86603d";
+
+    /// <summary>
+    /// The pinned identity of the consumed entry, enforced on a fresh acquisition and on reuse —
+    /// the second independently of the catalog's own recorded digest, so a changed file beside a
+    /// rewritten catalog that agrees with it is still refused.
+    /// </summary>
+    public static CorpusIdentity Identity { get; } = new(DataByteLength, DataSha256);
 
     /// <summary>The dataset citation, recorded beside every measurement over it.</summary>
     public const string Citation =
