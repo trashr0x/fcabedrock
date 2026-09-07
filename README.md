@@ -33,9 +33,38 @@ Implemented today:
   `fingerprint` — with the run manifest, the publication transaction, and the
   freeze engine.
 
-**M8 (a scaling and benchmark pass) is next**, followed by the desktop UI (M9).
+**M8 — a scaling and benchmark pass — is in progress**, followed by the desktop
+UI (M9). It adds an internal BenchmarkDotNet suite over the real production
+paths, target-scale evidence at 7.3M and 73M input records, a self-contained
+standalone distribution beside the global tool, and per-platform build, test,
+accounting, and packaging checks.
 
-`docs/roadmap.md` is the live source for the detailed current position.
+`docs/roadmap.md` is the live source for the detailed current position, and
+`docs/benchmarks.md` is the measurement record.
+
+## Continuous integration
+
+Every push and pull request builds, tests, checks resident-memory accounting,
+smoke-tests both distributions, and produces a tested archive on each supported
+native target: **Windows x64**, **Linux x64**, and **macOS ARM64**. Linux ARM64
+and Windows ARM64 run additionally where available; they carry no support claim
+and produce no distribution archive.
+
+The workflow is `.github/workflows/ci.yml`. It is deliberately **not** a
+performance measurement: hosted runners are shared and of unstated provenance, so
+the only benchmark step there is a `Dry` run that executes each **Small-category**
+case once and measures nothing. Comparative performance belongs to controlled,
+identified hardware and is recorded in `docs/benchmarks.md`.
+
+Every input those jobs need comes from this repository: the benchmark corpora they
+prepare are generated from pinned arithmetic. The one corpus that is downloaded
+rather than generated — the UCI Adult training split — is deliberately outside
+routine CI, so an outage at a research-data host cannot fail a build that has
+nothing to do with it. Its cases are run explicitly on the release candidate
+instead, which `docs/benchmarks.md` records.
+
+Each run of the three required targets uploads its self-contained archive as a
+build artifact, retained for seven days.
 
 ## Installation
 
@@ -81,10 +110,36 @@ dotnet tool uninstall --global FcaBedrock.Cli
 
 Per-command usage: see the [packed command guide](src/FcaBedrock.Cli/README.md).
 
-The preview is validated on **x64**, with Windows as the primary host; broader
-platform validation is an M8 task. The global tool is explicitly a **temporary**
-technical-preview distribution — a standalone, self-contained route is committed
-for the public release.
+### Standalone (no .NET installed)
+
+The global tool is **framework-dependent**: it needs a matching .NET runtime on
+the machine. The standalone distribution does not — it carries the runtime beside
+the executable.
+
+Build one for your platform:
+
+```text
+./eng/publish-selfcontained.ps1
+```
+
+That writes `artifacts/publish/<rid>/` and `artifacts/publish/fcabedrock-<rid>.zip`.
+Unzip it anywhere and run the executable directly; it keeps its assembly name,
+`FcaBedrock.Cli` (`.exe` on Windows), because the `fcabedrock` command name
+belongs to the global-tool shim.
+
+```text
+./FcaBedrock.Cli --version
+./FcaBedrock.Cli convert spec.toml data.csv --out out/context --format both
+```
+
+The required archives are `win-x64`, `linux-x64`, and `osx-arm64`, and CI
+produces each of them on its own platform — a cross-published folder shows only
+that the SDK can emit files for another target, not that the result runs there.
+"Self-contained" bundles .NET, not the operating system: globalization still uses
+the host's ICU, which Windows 10+ ships and a Linux host provides through its
+`libicu` packages.
+
+The global tool remains a **temporary** technical-preview distribution.
 
 ## Documentation
 
@@ -92,6 +147,9 @@ for the public release.
 - **`docs/principles.md`** — engineering invariants the code must satisfy.
 - **`docs/decisions.md`** — architectural decision log, with rationale.
 - **`docs/roadmap.md`** — milestones M0–M9 and the deferred backlog.
+- **`docs/benchmarks.md`** — the M8 measurement record: what is measured, on
+  what hardware, under what rules, and what has *not* been measured.
+- **`eng/README.md`** — the packaging and smoke commands.
 - **`docs/lineage.md`** — what the predecessors (v2, the PhD thesis, the
   SPARQL2FCA prototype) settled, distilled.
 - **`AGENTS.md`** — repo orientation for contributors and coding agents

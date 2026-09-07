@@ -8,9 +8,12 @@ vertical slices, not waterfall phases — each should leave the system working.
 
 **Now:** M1–M7 are complete. The `fcabedrock` global tool ships all eight commands over
 the publication transaction, the run manifest, and the freeze engine (D-122/D-123), with
-the diagnostic registry at 82. **M8 — the first scaling/benchmark pass — is next**, then
-M9. The milestone blocks below are the append-only history; the M7 and M8 sections carry
-the live detail.
+the diagnostic registry at 82. **M8 — the first scaling/benchmark pass — is in
+progress** (the suite, its corpora and oracles, the CLI-host and hashing coverage, the
+standalone distribution, and the target-scale evidence have landed under D-124; the
+native non-Windows proof and the canonical GitHub cutover remain), then M9. The
+milestone blocks below are the append-only history; the M7 and M8 sections carry the
+live detail.
 
 > **M1 complete — mini-mushroom + mini-adult reproduced byte-for-byte.** The whole
 > pipeline runs end-to-end and matches v2 on both families: `.bed` reader
@@ -997,7 +1000,11 @@ alignment, and the numerical `actual retained ≤ modeled` guarantee on each. In
 **target-specific correctness constants** if runtime layouts differ, and extend D-082's
 numerical guarantee beyond x64 **only after** each target is validated. Validated
 Windows, Linux, and macOS runtime targets are a **prerequisite for the cross-platform
-release**. Note the split (as in the grouping-backend note below): M8 may tune the
+release**, and so is the real-data acceptance run below: **each release candidate**
+submitted for release acceptance must have all three UCI Adult (`External`) cases pass
+on its final Windows x64 build against the pinned corpus, retained as evidence. That
+obligation attaches to the candidate, not to routine CI, and it does not lapse when M8
+closes. Note the split (as in the grouping-backend note below): M8 may tune the
 buffer budget and fan-in, but the layout **safety constants are correctness inputs** —
 they cannot be performance-tuned without revalidation.
 
@@ -1021,6 +1028,85 @@ deliberately does not claim (D-122).
 
 **Exit:** documented throughput/memory at target scale; no full-matrix
 materialization.
+
+**In progress (2026-09-06).** The benchmark suite is landing under **D-124**: one
+internal BenchmarkDotNet 0.15.8 executable (`tests/FcaBedrock.Benchmarks`) plus a
+tested corpus/oracle layer (`tests/FcaBedrock.Benchmarks.Tests`), with `Small` the
+default selection and the `Working`, `Scale`, and `External` tiers reachable only by
+naming their category. The evidence pack is `docs/benchmarks.md`; it records what has
+been measured, on what hardware, under what rules, and — deliberately — what has not.
+
+Landed: the W16 wide, T10 triple (both physical layouts), keyed-dedupe, Ads-width
+(1,559 columns), long-text, and externally acquired UCI Adult corpora, each with an
+independent oracle or, for real data, a stable baseline plus semantic assertions;
+source-drain, calibration, pure-plan, emit-to-`.dat`, emit-to-`.cxt`,
+probe (including the three limits straddled at their exact thresholds),
+grouping-budget/fan-in, CLI-host convert, and genuine input/output hashing-wrapper
+cases; the immutable v2 minis as external `.dat` and `.cxt` byte oracles;
+per-iteration validation after disposal; runtime-**observed** retained-layout
+witnesses in `Conversion.Tests`; a self-contained standalone distribution with its own
+gated publish/execute/archive smoke; `eng/` packaging commands; and
+`.github/workflows/ci.yml`.
+
+**Completion obligations, none waived:**
+
+- **Native proof on Windows x64, Linux x64, and macOS ARM64**, plus Linux/Windows
+  ARM64 where available. Portable test code is not non-Windows proof: until each
+  target has actually executed the ordinary suite, the resident-accounting witnesses,
+  the Small harness smoke, and the package smokes, D-082's numerical guarantee extends
+  to validated x64 alone.
+- **Verified migration to the canonical public GitHub destination**, Actions
+  established, and tested self-contained archives (`win-x64`, `linux-x64`,
+  `osx-arm64`) delivered from runs at recorded revisions.
+- **A successful real-data (`External`) run on the final Windows x64 candidate.** The
+  acquired UCI Adult corpus is deliberately outside routine CI — it is the one input
+  this repository cannot generate, and requiring it in every native job would let an
+  outage at a research-data host block package delivery. The evidence is required of
+  the *candidate* instead: all three Adult cases must run successfully against the
+  verified corpus (pinned length and SHA-256, D-124) on the final Windows x64 build,
+  and the result retained durably. **Routine CI can be green while this is
+  outstanding**, which is exactly why it is listed here. An unreachable host leaves
+  the obligation open; a digest mismatch is an input-identity failure to investigate;
+  a failure on verified bytes is a correctness finding. None becomes a pass.
+- **Probe-default adoption** remains a separate observable semantic decision — it
+  changes draft bytes, warnings, and success-versus-guard-failure — and needs its own
+  approval with a spec §7.1 / D-110 reconciliation. The defaults were measured at
+  target scale and **not** adopted.
+
+**Measured and settled (2026-09-06).** The controlled Windows x64 baseline is complete
+at 730,000, 7.3M, and **73M** records, on identified hardware with every corpus,
+output, spool and result on one non-system volume. Headlines:
+
+- **Throughput is linear** — the wide source drain reads 2.83M, 2.74M and 2.81M
+  records/second across a hundredfold range at a constant 723 B/record.
+- **A whole-command trace of the shipped executable converts 4.51 GiB of input in a
+  62 MB working set, unchanged between 7.3M and 73M**, while allocating 104 GB
+  through the collector. The triple `unordered` path is different and legitimately so:
+  its working set grows with the *subject* count (about 260 B/subject; 1.8 GB at 7.3M
+  subjects), which is the P-16 metadata carve-out, not a materialized matrix.
+- **The `.dat` writer allocates nothing measurable**; emission does. The `.cxt` format
+  costs 2.4x the time and 2.1x the allocation of `.dat` for the layout reason (§18.1).
+- **Inline input-stability hashing costs 12-19% of a source pass with zero
+  allocation**; the second pass an auto-calibrated spec requires costs 2x the whole
+  conversion.
+- **The grouping budget and merge fan-in were tested against the gate and retained.**
+  A 256 MiB budget wins 30-38% at 730k and 19-20% at 7.3M but only 4-7% at 73M with no
+  allocation gain, against a 25% between-session drift at that tier. See
+  `docs/benchmarks.md` and D-124.
+
+**One production defect was found by the suite, and fixed.** A spec with several
+`equal_frequency` attributes could fail to calibrate under the shipped budget
+(`GroupingStorageFailed`, **no result**) on healthy storage: calibration shares one
+spool workspace across its count-sensitive attributes, but the D-082 `≤3T` merge
+allowance compared that workspace's retained bytes against a **single attribute's**
+spill payload, so the allowance shrank as attributes were added. The baseline is now
+the workspace's, which is the scope its other side always had — one consistently
+scoped guarantee, no new diagnostic, bound, or default, and no output byte moved.
+The controlled 1/2/4/8/16-attribute by 64/512 MiB reproduction, the retained failure
+reports, and the replacement measurements are in `docs/benchmarks.md`; the contract
+and its evidence-replacement map are in D-124. `ManyQuantileCalibrateWorking` and
+`ManyQuantileCalibrateScale7M`, which published NA as failures, now carry real
+measurements.
 
 ### M9 — Avalonia desktop
 

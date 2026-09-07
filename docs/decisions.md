@@ -223,6 +223,10 @@ superseded or refined. A new entry MUST add its line here.
 
 - D-123 — M7 implementation architecture and public surfaces: the CLI package/global-tool boundary and one-way dependency, the CLI-internal coordinator + hand-rolled parser, centralized diagnostic/progress presentation, the complete audit argv (actual argv[0]), the input-open seam, the shared filesystem-identity service, the staged-publication transaction (create-new record, rename-aside backups, manifest-last/`--no-manifest` parity, validated recovery), the single-file `--force` matrix, the Spec-owned run manifest, the paired `SpecFreezer`, the `ConversionRuntimeOptions` temp-dir capability, the landed S1 presence nullability, and the landed S2 `.cxt` size advisory with registry 81 → 82 (lands the D-122 implementation architecture; realizes the M7 implementation rulings; S3–S11 were scheduled at entry time and have since landed)
 
+### M8 (first scaling / benchmark pass)
+
+- D-124 — M8 benchmark architecture: one internal BenchmarkDotNet host, explicit corpus/oracle layer, tier-gated selection (`External` opt-in and pinned, so routine CI needs no download; the Adult evidence is a blocking Windows acceptance run), benchmark-only friend grants (Conversion + CLI); and the conforming calibration fix the suite found (the `≤3T` merge allowance is the shared workspace's, not one attribute's)
+
 Spec-field defaults are recorded in spec §21 items 1–11 (see the final section
 of this file).
 
@@ -5649,6 +5653,376 @@ pinned here.
   `docs/roadmap.md`, `AGENTS.md`, README/user docs (status and install route — scheduled
   S11). This entry records the architecture; it implements only S1 and S2, and does not
   reopen D-122 or any consensus ruling.
+
+---
+
+## M8 (first scaling / benchmark pass)
+
+### D-124 — M8 benchmark architecture: one internal BenchmarkDotNet host, an explicit corpus/oracle layer, tier-gated selection with a pinned opt-in external corpus, two benchmark-only friend grants, and the conforming calibration fix the suite found
+
+- **Status:** accepted (M8 Slices S1–S5 landed, including both friend grants and the
+  conforming multi-attribute calibration correction with its replacement evidence;
+  S6's external cutover and the native non-Windows proof remain)
+- **Date:** 2026-09-06
+- **Decision:** M8 is measured by **one internal BenchmarkDotNet executable**
+  (`tests/FcaBedrock.Benchmarks`) plus a small tested corpus/oracle layer
+  (`tests/FcaBedrock.Benchmarks.Tests`) and a documented evidence pack. It is an
+  internal suite, not a benchmarking product: there is no plugin system, no
+  scenario language, no process supervisor, and no public benchmark surface.
+  - **BenchmarkDotNet owns everything standard.** Discovery, filters, jobs,
+    warmup and measurement, the out-of-process worker lifecycle, iteration
+    statistics, managed-allocation and GC reporting, profiling integration, logs,
+    and exporters are BenchmarkDotNet's, pinned centrally at **0.15.8** rather
+    than floating, because the measurement semantics every M8 comparison is
+    stated in must not move underneath the comparison. Custom code requires both
+    an actual FcaBedrock need **and** a verified gap. The accepted custom scope
+    is exactly: deterministic streaming corpus preparation and cataloguing;
+    independent domain oracles and post-iteration validation; derived domain
+    denominators in the report; the existing internal grouping/calibration
+    observers and layout tests; ordinary packaging scripts; and the existing
+    bounded test subprocess helper for finite package smokes.
+  - **Benchmarked surfaces are the real production paths**: source-session drain
+    for wide and triple CSV; calibration, pure planning, emit drain, real `.dat`
+    export and bounded small `.cxt` coverage; probe/discovery including bounded,
+    truncated, and guard outcomes; in-process `CliHost` conversion through the
+    real input/publication/hash paths, labelled **CLI-host throughput** and never
+    installed-command latency; genuine input/output hashing wrapper pairs and
+    manifest-sidecar comparisons; and separate real self-contained-command
+    resource traces and packaging smokes **outside** BenchmarkDotNet throughput
+    measurement. A nested CLI child is deliberately **not** benchmarked.
+  - **The measured interval is a contract.** Every timed file operation starts
+    from prepared but **unopened** inputs and outputs and includes opening, the
+    full awaited production operation, complete consumption, the final flush and
+    disposal, and the normal production diagnostics. Data generation, output
+    reset, independent validation, harness hashing, and artifact retention stay
+    outside it unless the production operation itself includes them. No scale
+    dataset and no full context matrix is ever materialized (P-16).
+  - **Validation is per-iteration and outside timing.** Each completed measured
+    iteration is validated after its producer sessions are disposed and its final
+    diagnostics are available; a failure throws, so the case has no throughput
+    result. The only correctness check is never deferred to global cleanup, where
+    one late failure would silently cover every iteration before it. The launcher
+    reads BenchmarkDotNet's own report/validation contract — build failures,
+    execution failures, critical validation errors — rather than inventing a
+    parallel result protocol, and additionally refuses to call a run successful
+    when it measured nothing.
+  - **The families, and what each one is for.** W16 (sixteen wide columns, both
+    missing forms, the RFC 4180 quoting path) and T10 (ten triple rows per subject,
+    in two physical layouts of the same observations) carry the tier ladder.
+    **Keyed W16** repeats a non-contiguous object key so wide `dedupe` exercises the
+    grouping backend from the other side; **Ads-width** is 1,559 columns of sparse
+    flags, so width pressure is separable from length; **long text** has few, large
+    values, which is the only shape that reaches probe's text guard before its value
+    guard; **UCI Adult** is real, externally acquired data whose distributions nobody
+    here chose. Adult and the v2 minis are the two external checks on a suite whose
+    other expectations are authored in this repository. Adult alone is *acquired*
+    rather than committed, which is why it is pinned and opt-in below.
+  - **Corpora are explicit, deterministic, hashed, and out of Git.** Generated
+    and downloaded data, produced outputs, and raw results are bulk evidence
+    under an ignored artifacts root (redirectable with `FCABEDROCK_BENCH_ROOT`);
+    only generator definitions, specs, attribution, the metadata contract, and
+    tiny independent expectations are committed. Generation uses **defined
+    integer arithmetic**, never an unversioned runtime pseudo-random source, so a
+    corpus regenerates byte-for-byte anywhere. Each prepared case records its
+    generator revision, geometry, exact byte length, and SHA-256; anything that no
+    longer matches is **refused**, and the catalog entry is written last so an
+    interrupted preparation is never reused. Preparation is a separate `prepare`
+    verb — no run may start generating a 73M-record file as a side effect of a
+    broad filter. No network access occurs during ordinary tests or benchmark
+    measurement.
+  - **The one acquired corpus is pinned by its consumed bytes, and kept out of
+    routine CI.** UCI Adult is the only input this repository cannot generate, and
+    it is treated accordingly.
+    - **Pinned to the entry, not the archive.** The accepted `adult.data` is
+      exactly **3,974,305 bytes**, SHA-256
+      `5b00264637dbfec36bdeaab5676b0b309ff9eb788d63554ca0a249491c86603d` — the file
+      every M8 Adult figure is stated against. It is enforced on a fresh acquisition
+      *before* a catalog entry is written, and again on reuse **independently of the
+      catalog's own recorded digest**: the catalog records whatever arrived, so a
+      changed upstream file and a catalog rewritten beside it agree with each other
+      perfectly, and that is precisely the failure a self-recorded receipt cannot
+      catch. A mismatch is refused and removed, never adopted. The pin is on the
+      consumed entry because a zip can be repacked without changing a byte of what
+      is measured. It establishes **byte identity**, not publisher authenticity; no
+      attestation exists to claim more. **Changing the accepted identity bumps
+      `AcquisitionRevision` with it**, so previously prepared corpora are refused
+      rather than silently reinterpreted.
+    - **Routine CI prepares `micro small` and runs `--anyCategories Small --filter
+      '*' --job dry`.** No required or optional native job prepares or selects
+      Adult. Every other build, test, accounting, package, and archive gate is
+      unchanged. A green CI run therefore proves the **selected synthetic and
+      fixture** contracts on that platform and claims nothing about Adult, on that
+      candidate or on any non-Windows target — the workflow and both READMEs say so
+      in those words.
+    - **The real-data evidence is required of the candidate instead.** Before whole-M8
+      acceptance, and for each later release candidate, all three External cases must
+      run successfully on the final **Windows x64** candidate with the verified
+      corpus, and the result is retained as durable evidence. It is a **blocking**
+      manual obligation — routine CI may be green while it is outstanding — enforced
+      the same way M8's other primary evidence is: the closure checklist, the
+      independent review, and operator acceptance. It is not a GitHub status check
+      and introduces no release framework. An earlier candidate's result carries
+      forward only under the existing explicit evidence-reuse justification, and a
+      retained corpus is reusable only when its identity, spec digest, and
+      acquisition revision all verify.
+    - **Three failure modes, kept apart.** An unreachable host is an
+      **evidence-availability** failure: the obligation stays outstanding, and no
+      routine job fails for it. A length or digest mismatch is an **input-identity**
+      failure to investigate, never an outage to retry into acceptance. A failure or
+      oracle mismatch on verified bytes is a **correctness finding**. None of the
+      three can become a pass, and none has a valid performance number.
+  - **Oracles are independent.** Expected output is derived from the corpus
+    definition plus the documented spec semantics, never by invoking the
+    conversion algorithm under test, and large expectations are hashed while
+    streamed rather than retained. The immutable v2 minis additionally serve as
+    **external** byte oracles: they were produced by a different program, so they
+    catch a pipeline that would still satisfy a model authored in this repository.
+  - **Selection: Small by default; `Working`, `Scale`, and `External` opt-in by
+    category.** Tier categories (`Small`/`Working`/`Scale`/`External`) and surface
+    categories are orthogonal. With no category named the selection is Small; **the
+    three opt-in tiers are reachable only by naming their category** — neither a
+    broad name filter such as `--filter *`, nor a case's own name, nor a surface
+    category reaches one. This is the one selection rule added on top of
+    BenchmarkDotNet's filtering, and it is a pure function of the command line and a
+    case's categories, so it is tested directly. A tier is a corpus: `Micro` (1,000
+    records, for the wide-geometry family), `Small` (10,000), `Working` (730,000),
+    the two target scales, and `External` for an acquired corpus whose size is
+    measured at preparation rather than chosen. Micro is Small-category work.
+    - **Why each tier is opt-in differs, and the difference is the point.**
+      `Working` and `Scale` are gated by **cost**: those cases read 730,000, 7.3M,
+      and 73M records, so an accidental run costs minutes to hours.
+      `External` is gated by **dependency**: its cases are quick, but its corpus is
+      acquired from a third-party host rather than generated here, so requiring it
+      would make an unrelated outage fail whatever run happened to select it. The
+      shape of the guarantee is identical either way, which is why one mechanism
+      serves both. `External` keeps the fresh-iteration job — it is opt-in, not
+      long-running.
+    - **Opting in is not skipping.** A *selected* case whose corpus is absent,
+      incomplete, or no longer matches its recorded identity is a hard failure
+      carrying the exact `prepare` command, and the launcher additionally exits
+      non-zero when a run measured nothing. An External case that quietly did not
+      run is the one outcome this category must never produce.
+  - **Two job shapes, chosen by the selection.** Small runs BenchmarkDotNet's
+    Throughput strategy with one invocation per iteration and unroll factor one;
+    Working and Scale run **Monitoring** with one launch, two warmups, and five
+    measured iterations, because an operation that already takes seconds gives
+    Throughput's pilot stage nothing to find. The 73M tier uses that same job with
+    BenchmarkDotNet's own `--warmupCount 1 --iterationCount 3` on the command line
+    rather than a third declared job: a run costing hours is a deliberate choice
+    made where the run is started.
+  - **Three memory meanings stay distinct**, and none is ever read off another:
+    (1) BenchmarkDotNet's process-wide **managed allocated bytes** and GC counts,
+    reported beside the recorded input-record and input-byte denominators so a
+    rate can be derived and rechecked; (2) **modelled retained-resource**
+    guarantees from the existing observers and independently validated layout
+    witnesses; (3) separately sampled **whole-command working set** and GC traces,
+    where a sampled maximum is a lower bound on the true peak and no sample is not
+    zero.
+  - **Build integration.** The benchmark host carries its own
+    `Directory.Build.props` that imports the repository root props directly,
+    deliberately shadowing `tests/Directory.Build.props`: inheriting the shared
+    test defaults (`IsTestProject`, the xUnit reference, the
+    Microsoft.Testing.Platform zero-tests guard) would make `dotnet test` run
+    multi-minute benchmarks, which **P-20** forbids. It keeps every root setting,
+    warnings-as-errors included. `FcaBedrock.Benchmarks.Tests` is an ordinary
+    xUnit v3 project and inherits the shared test props unchanged; the shared
+    zero-tests guard is not weakened.
+  - **Two benchmark-only friend grants, and no other access change.**
+    `FcaBedrock.Conversion` and `FcaBedrock.Cli` each grant
+    `InternalsVisibleTo` to `FcaBedrock.Benchmarks` so the suite can measure the
+    existing internal grouping/host/hash seams rather than a copy of them. The CLI
+    grant therefore changes from its own test assembly alone to **exactly**
+    `FcaBedrock.Cli.Tests` and `FcaBedrock.Benchmarks`, once each in the project
+    and in the compiled assembly, asserted independently of declaration order by
+    `tests/FcaBedrock.Cli.Tests/CliProjectContractTests.cs`.
+    `FcaBedrock.Benchmarks.Tests` gets **no** CLI grant — the contract test asserts
+    the absence of its *grant* rather than of its name, because the project comment
+    names it precisely to record that it is excluded. Both grantees are non-product
+    assemblies: this changes the internal access contract, never the public product
+    API. It preserves D-098's ban on production-to-production
+    internals access and D-122/D-123's CLI-internal boundary — no production
+    package references the benchmark assembly, CLI types stay internal, and no
+    benchmark code ships in any product artifact. M9 reuse still needs its own P-4
+    review. **Scheduling:** each grant landed in the slice that first
+    needed it — Conversion in S2 with the budget/fan-in experiments, CLI in S3 with
+    the host and hashing benchmarks — following the D-123 precedent of recording a
+    ruled architecture whose surfaces land per slice. Both are now in place.
+  - **The suite found a production defect, and it is fixed here as a conforming
+    correction.** A spec with several `equal_frequency` (or `percentile_p1_p99`)
+    attributes could fail to calibrate under the shipped budget, reporting
+    `GroupingStorageFailed (CleanupDelete/DeleteFailed)` and producing **no
+    result**, on entirely healthy storage. One `CalibrationRun` owns one
+    `SpoolWorkspace<ValueCount>` that every count-sensitive accumulator spills
+    into, but each accumulator passed **its own** cumulative spill payload as the
+    `baselineT` of D-082's `L + P ≤ 3T` merge allowance, while the retained bytes
+    it was compared against were the **whole workspace's**. The two sides
+    described different sets, so the allowance shrank as attributes were added:
+    with `A` comparable accumulators the left side grows with `A` and the right
+    side does not, and the guard fires for `A > 2`. The measured reproduction
+    is exactly that shape — one and two attributes succeed, four, eight and
+    sixteen fail, and sixteen attributes at 512 MiB fails while two at 64 MiB
+    passes although both give each accumulator 32 MiB.
+    - **`T` is the workspace's, not one attribute's.** `T_i` remains an
+      attribute's cumulative exact serialized bytes of successful **original**
+      spills, framing included, never consolidation output and never reduced by
+      deletion, consolidation, replay or finalization; `T` is their sum across
+      every accumulator sharing that workspace, taken at the boundary in
+      question, so online consolidation uses the workspace's `T_so_far` and a
+      later merge is never measured against a smaller allowance than an earlier
+      one. `L` is every retained run byte of that same workspace, `P` the
+      conservative sum of the next merge's input sizes, and the gate still
+      retries pending deletions and permits equality. That is **one consistently
+      scoped `≤3T` guarantee** — not `3A`, not a larger per-attribute allowance,
+      and not a process-RSS ceiling. `FirstAppearanceGrouping` never had the
+      mismatch (its workspace and its summed baseline describe the same grouping
+      call) and is unchanged.
+    - **The correction removes only false failures.** It changes no diagnostic,
+      severity, registry entry, public API, TOML field, fingerprint rule, output
+      byte, ordering rule, resource bound, or default. A genuine global
+      byte-bound or pending-cap breach is still an `Error` with no calibrated
+      result; cleanup-only trouble is still a `Warning`; `Σ Modeled(capacity_i) ≤
+      max(budget, A · FloorBytes)`, the per-accumulator catalog ≤ fan-in, the
+      single-workspace `4 × fan-in` pending-deletion cap, sequential merges,
+      release-before-post-intake-merge, lazy zero-spill operation, confidential
+      ownership, cancellation and non-masking cleanup all stand. Successful
+      outputs keep their bytes; the cases that previously aborted now agree with
+      their independent expectations and with their in-memory and frozen
+      equivalents. It promises nothing about faulty storage.
+    - **Ownership is narrow:** `QuantileAccumulator.cs`, which already owns
+      `CalibrationBudget` and therefore the registry of accumulators sharing the
+      run's workspace, plus the `baselineT` contract on `ValueCountMerger`. No
+      new workspace, storage or accounting framework, no population-sized
+      bookkeeping, no public seam, and no change to `SpoolWorkspace`,
+      `FirstAppearanceGrouping` or `RunMerger`. Splitting the grouping and
+      calibration budgets remains the separate recorded follow-up below; the
+      defect is not an argument for it.
+  - **No other product change is approved by this entry.** Beyond the conforming
+    calibration correction above, no public product API,
+    product-to-product internals access, diagnostic, ordering rule, determinism
+    contract, spec clause, or output byte changes for M8. The M1–M7 invariants
+    stand as correctness inputs M8 may measure and validate but never establish:
+    pure Core, orthogonal discretization and scaling, planner-owned semantics,
+    dumb exporters, streaming with no full matrix, **D-082** resource accounting
+    (whose layout constants are correctness constants, never performance knobs),
+    **D-095** exact bounded calibration, **D-110** probe accounting, and
+    **D-122/D-123** input-stability, publication, and manifest semantics.
+  - **What may change, and only after evidence.** The internal grouping and
+    calibration memory budget and merge fan-in are the tunable policy (P-19,
+    D-082/D-095: byte-neutral by construction, never a spec or fingerprint input),
+    and may move only after the approved evidence gate — a repeatable improvement
+    on identified controlled hardware, reproduced in two independent comparison
+    sessions and confirmed at both target sizes. **Probe-default adoption is not
+    included**: it changes draft bytes, warnings, or success-versus-guard-failure,
+    so it is a separate observable semantic decision requiring its own approval and
+    spec §7.1/D-110 reconciliation. Target-specific resident safety constants are
+    **correctness** changes requiring executed native proof and a narrow review, not
+    tuning. A measured hotspot may receive one narrow optimization inside the
+    accepted scope; no speculative optimization is preselected.
+  - **The tuning gate was run, and it was not met. Nothing changed.** A 256 MiB
+    grouping budget is 30-38% faster than the shipped 64 MiB at 730,000 records
+    and 19-20% faster at 7.3M, reproducibly across two independent sessions and
+    byte-neutral on every iteration. At **73M** — the larger of the two target
+    sizes the gate requires confirmation at — the elapsed gain falls to 6.9% and
+    4.0% in the two sessions, the allocation gain disappears entirely (+0.05%),
+    and the same case measured 99.9 s and 125.1 s between the two launches: a 25%
+    between-session drift, larger than the effect it would have to prove. The
+    budget is also shared with the count-sensitive calibration accumulator, which
+    is sized from it before any record is read, so a raise would multiply a fixed
+    per-calibration cost at every input size in exchange for a gain that is
+    largest where it matters least. **`DefaultMaxBufferedBytes` stays at 64 MiB
+    and `DefaultMaxMergeFanIn` stays at 16** (fan-in 32 moved elapsed time by
+    +0.1% and -1.9% in the two sessions — noise in both directions; fan-in 4 costs
+    40%). The measurements are in `docs/benchmarks.md`. That the two knobs' two
+    consumers want different values is a real finding and is recorded there as a
+    question for a later decision, not answered here.
+- **Why:** M8's job is to find out how FcaBedrock actually behaves at 7.3M and 73M
+  records, and a benchmark suite is only worth its cost if its numbers can be
+  believed. Almost every clause above exists to close a specific way a number can
+  be wrong rather than merely imprecise: a corpus that changed between two runs, a
+  timed interval that excluded the flush, an oracle that agreed with the code
+  because it *was* the code, a validation deferred until after the numbers were
+  printed, an accidental 73M-record run from a broad filter, an allocation figure
+  quoted as if it were peak memory, a Debug build, or an exit code of 0 over a run
+  that measured nothing. Pinning BenchmarkDotNet's version and delegating every
+  standard responsibility to it is the same discipline applied to the harness
+  itself: the previous M8 attempts failed by growing process-containment,
+  scheduling, and telemetry subsystems disproportionate to an internal benchmark,
+  so the scope gate is that custom machinery must name both a real FcaBedrock need
+  and a verified gap.
+- **Rejected:** a floating BenchmarkDotNet version (the measurement semantics of a
+  milestone's comparisons would drift with an upgrade — the D-075 hazard applied
+  to numbers); a custom scheduler, process supervisor, polling/telemetry framework,
+  scenario-plugin system, public benchmark framework, or threat model (no verified
+  gap, and the failure mode of the abandoned attempts); benchmarking a nested CLI
+  child process (it measures process startup and a containment problem, not
+  FcaBedrock); a null sink presented as export throughput (reports a rate no user
+  can obtain); an unversioned runtime pseudo-random corpus (`System.Random` may
+  change algorithm between .NET versions, so a corpus could not be regenerated);
+  implicit corpus generation inside a benchmark run (silently writes very large
+  files and blurs the preparation boundary); keeping Adult in the required native
+  jobs (repeating three cases on five runners adds platform coverage of a
+  *data-dependent* path, not five independent datasets, and buys it by letting an
+  outage at a research-data host block package delivery — the platform-specific
+  risks are already covered by the layout witnesses, the ordinary suite, the Small
+  smoke, and the package smokes); an `actions/cache` entry for the download (a cold
+  or evicted cache still needs the host, and it widens the exact action allowlist
+  for a partial mitigation — GitHub evicts after seven days without access);
+  committing the dataset (CC BY 4.0 would allow it, but it overrides the approved
+  no-large-data-in-Git rule and the documented promise that it never enters Git, to
+  solve a dependency that simply need not be in routine CI); a scheduled or separate
+  non-required real-data job (ongoing hosted evidence with a cadence and a
+  maintenance cost, and no gate value that the explicit candidate run does not
+  already provide — recorded as a follow-up if the manual run proves insufficient);
+  pinning the zip rather than the consumed entry (a repack that changes no measured
+  byte would be refused); and adopting a changed download's digest (it would
+  silently re-base every figure recorded against the old bytes); deferring the only correctness check
+  to global cleanup (one late failure covers every earlier iteration); deriving
+  expected output by calling the pipeline (an oracle that cannot disagree proves
+  nothing); a serializer-produced catalog (the metadata contract decides whether
+  cached inputs are believed, so its bytes must not drift with a library —
+  D-075's reasoning); making the benchmark host a test project or letting it
+  inherit the shared test props (P-20); granting `FcaBedrock.Benchmarks.Tests`
+  CLI access (it needs none); switching the CLI benchmarks to the public
+  executable (that changes the accepted measured boundary from host throughput to
+  process latency) or copying the host's behaviour into the suite (weakens
+  production-path validity); and exposing the grouping budget or fan-in as a
+  public tuning flag (D-082/D-095/P-6 — a knob that cannot change output bytes
+  belongs in neither the spec nor the public surface).
+- **Affects:** `tests/FcaBedrock.Benchmarks` and `tests/FcaBedrock.Benchmarks.Tests`
+  (new), `Directory.Packages.props` (the BenchmarkDotNet pin), `FcaBedrock.slnx`,
+  `src/FcaBedrock.Conversion` and `src/FcaBedrock.Cli` (benchmark-only
+  `InternalsVisibleTo`, one comment each), `tests/FcaBedrock.Cli.Tests`
+  (`CliProjectContractTests`' exact-friend-set assertion, the gated
+  self-contained publish smoke, and `ConvertMultiCalibrationTests`),
+  `tests/FcaBedrock.Conversion.Tests` (runtime-observed resident-layout witnesses
+  and `MultiAttributeCalibrationTests`), `eng/` (the publish/archive command
+  and its README), `.github/workflows/ci.yml`, `docs/roadmap.md`,
+  `docs/benchmarks.md`, `README.md`, and the stale no-CI comment in
+  `Directory.Build.props`. The **one** production behaviour change is the
+  conforming calibration correction above, in
+  `src/FcaBedrock.Conversion/QuantileAccumulator.cs` (the workspace-wide
+  `CalibrationBudget.SpilledBytes` baseline, used by both consolidation entry
+  points) and the `baselineT` contract documentation on `ValueCountMerger.cs`.
+  Everything else under `src/` is the two friend grants and their comments. **No
+  diagnostic, fingerprint, ordering, or output-byte change**: the registry stays
+  **82**, and every golden, canonical-byte, and SHA pin is untouched.
+- **Evidence replacement.** The correction invalidates the measurements that
+  consumed the broken path, and they were replaced rather than reinterpreted.
+  `ManyQuantileCalibrateWorking` and `ManyQuantileCalibrateScale7M` published
+  **NA** in session A because they failed; those reports are retained under their
+  original session identity as recorded failures, and both cases now carry real
+  measurements. The count-sensitive calibration series
+  (`CalibrateWide{Working,Scale7M,Scale73M}`,
+  `CalibrateTriple{GroupedWorking,UnorderedWorking,UnorderedScale7M}`) and the
+  auto-calibrated command series (`CliHostConvertAuto{Working,Scale7M,Scale73M}`)
+  were re-measured against the corrected build. Fixed-plan emit, declared CLI,
+  hash-wrapper, manifest, grouping-budget/fan-in, source-drain, planning,
+  discovery and probe evidence is **not** invalidated: the diff reaches only the
+  count-sensitive calibration merge baseline, which is absent from those timed
+  paths, and that dependency is recorded in `docs/benchmarks.md` rather than
+  assumed. The 64 MiB / fan-in-16 retention decision is unaffected — those cases
+  run the declared T10 plan through `FirstAppearanceGrouping` and `RunMerger`,
+  neither of which changed.
 
 ---
 
