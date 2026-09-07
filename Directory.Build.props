@@ -19,9 +19,10 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <NoWarn>$(NoWarn);CS1591</NoWarn>
 
-    <!-- Warnings are errors everywhere. There is no CI yet, so a CI-only gate
-         would never fire; the analyzer-dense .editorconfig is meant to bite. Use
-         -p:TreatWarningsAsErrors=false for ad-hoc local debugging. -->
+    <!-- Warnings are errors everywhere, locally and in CI alike. The rule predates
+         `.github/workflows/ci.yml` and does not depend on it: a warning should stop
+         the build on the machine that produced it, not survive until a gate later.
+         Use -p:TreatWarningsAsErrors=false for ad-hoc local debugging. -->
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
 

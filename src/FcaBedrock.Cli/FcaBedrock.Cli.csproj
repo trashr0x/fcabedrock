@@ -43,11 +43,24 @@
     <None Update="README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 
-  <!-- Every CLI component is internal (D-123 part 1). The argv-boundary tests drive
-       CliHost directly, so they need friend access; this is the only assembly granted
-       it, and no production package gains InternalsVisibleTo (the D-098 posture). -->
+  <!-- Every CLI component is internal (D-123 part 1). Exactly two non-product assemblies
+       are granted friend access, and no production package gains InternalsVisibleTo (the
+       D-098 posture):
+
+         FcaBedrock.Cli.Tests   - the argv-boundary tests drive CliHost directly.
+         FcaBedrock.Benchmarks  - the M8 suite measures CliHost, InputHashTracker and
+                                  HashingWriteStream themselves (D-124). Measuring the
+                                  public executable instead would change the accepted
+                                  boundary from host throughput to process latency, and
+                                  copying the host's behaviour into the suite would make
+                                  the measurement about the copy.
+
+       FcaBedrock.Benchmarks.Tests is deliberately NOT granted: it reaches what it needs
+       through the benchmark assembly. CliProjectContractTests asserts this exact set, in
+       the project text and in the compiled assembly, independently of order. -->
   <ItemGroup>
     <InternalsVisibleTo Include="FcaBedrock.Cli.Tests" />
+    <InternalsVisibleTo Include="FcaBedrock.Benchmarks" />
   </ItemGroup>
 
 </Project>

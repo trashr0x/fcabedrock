@@ -6,10 +6,15 @@
     <ProjectReference Include="..\FcaBedrock.Sources\FcaBedrock.Sources.csproj" />
   </ItemGroup>
 
-  <!-- White-box access for the Conversion unit tests (grouper/decorator internals). A test
-       seam only; no production behavior depends on it (principle P-6). -->
+  <!-- White-box access for the Conversion unit tests (grouper/decorator internals), and the
+       benchmark-only grant recorded by D-124: the M8 suite measures the grouping backend's real
+       budget and merge fan-in through the existing internal GroupingOptions seam rather than a copy
+       of it, which is what keeps the budget/fan-in evidence a measurement of production behaviour.
+       Both grantees are non-product assemblies; no production package references either, and no
+       production behavior depends on the grants (principle P-6). -->
   <ItemGroup>
     <InternalsVisibleTo Include="FcaBedrock.Conversion.Tests" />
+    <InternalsVisibleTo Include="FcaBedrock.Benchmarks" />
   </ItemGroup>
 
 </Project>

@@ -11,6 +11,8 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/FcaBedrock.Architecture.Tests/FcaBedrock.Architecture.Tests.csproj" />
+    <Project Path="tests/FcaBedrock.Benchmarks/FcaBedrock.Benchmarks.csproj" />
+    <Project Path="tests/FcaBedrock.Benchmarks.Tests/FcaBedrock.Benchmarks.Tests.csproj" />
     <Project Path="tests/FcaBedrock.Cli.Tests/FcaBedrock.Cli.Tests.csproj" />
     <Project Path="tests/FcaBedrock.Conversion.Tests/FcaBedrock.Conversion.Tests.csproj" />
     <Project Path="tests/FcaBedrock.Core.Tests/FcaBedrock.Core.Tests.csproj" />

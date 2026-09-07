@@ -1,0 +1,40 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The internal M8 benchmark host (D-124). An ordinary console executable that
+       BenchmarkDotNet drives; NOT a test project (see the local Directory.Build.props) and
+       never packed, referenced by a production package, or shipped in a product artifact. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+    <!-- BenchmarkDotNet's own analyzer asks for this so its out-of-process toolchain can
+         regenerate and rebuild the benchmark project from the produced assembly. -->
+    <AssemblyName>FcaBedrock.Benchmarks</AssemblyName>
+    <RootNamespace>FcaBedrock.Benchmarks</RootNamespace>
+    <!-- The GC and tiering settings are deliberately the product's defaults: a benchmark that
+         silently forces server GC would not be measuring what `fcabedrock` actually does. -->
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="BenchmarkDotNet" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\FcaBedrock.Diagnostics\FcaBedrock.Diagnostics.csproj" />
+    <ProjectReference Include="..\..\src\FcaBedrock.Core\FcaBedrock.Core.csproj" />
+    <ProjectReference Include="..\..\src\FcaBedrock.Sources\FcaBedrock.Sources.csproj" />
+    <ProjectReference Include="..\..\src\FcaBedrock.Spec\FcaBedrock.Spec.csproj" />
+    <ProjectReference Include="..\..\src\FcaBedrock.Conversion\FcaBedrock.Conversion.csproj" />
+    <ProjectReference Include="..\..\src\FcaBedrock.Export\FcaBedrock.Export.csproj" />
+    <ProjectReference Include="..\..\src\FcaBedrock.Discovery\FcaBedrock.Discovery.csproj" />
+    <!-- The CLI, for the S3 host and hashing benchmarks (D-124). It is referenced the same way a
+         test project references it: the benchmark assembly is not a product artifact, and no
+         production package references the benchmark assembly in return. -->
+    <ProjectReference Include="..\..\src\FcaBedrock.Cli\FcaBedrock.Cli.csproj" />
+  </ItemGroup>
+
+  <!-- The corpus/oracle/selection/validation layer is unit-tested like any other code. -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="FcaBedrock.Benchmarks.Tests" />
+  </ItemGroup>
+
+</Project>

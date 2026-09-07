@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Ordinary xUnit v3 tests for the benchmark suite's own custom code - corpus generation,
+       cataloguing, oracles, selection policy, validation, and the launcher's exit contract.
+       It inherits tests/Directory.Build.props like every other test project. No large data and
+       no timing assertion lives here: this suite proves the harness is correct, never fast. -->
+  <ItemGroup>
+    <ProjectReference Include="..\FcaBedrock.Benchmarks\FcaBedrock.Benchmarks.csproj" />
+  </ItemGroup>
+
+</Project>

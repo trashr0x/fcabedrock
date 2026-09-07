@@ -1,0 +1,18 @@
+<Project>
+
+  <!-- The benchmark executable deliberately opts OUT of tests/Directory.Build.props.
+       MSBuild stops at the FIRST Directory.Build.props above a project, so this file
+       shadows the tests/ one; the explicit import below then reaches PAST tests/ to the
+       repository root, which is why the search starts two directories up rather than one.
+
+       What that opt-out buys: the shared tests/ props sets IsTestProject=true, references
+       xunit.v3, and adds the Microsoft.Testing.Platform zero-tests guard argument. A
+       BenchmarkDotNet host is not a test project, and inheriting those would make
+       `dotnet test` try to run the benchmark suite as tests, which principle P-20 forbids:
+       "a multi-minute benchmark must never be reachable by a plain dotnet test".
+
+       What it keeps: everything in the root props. TargetFramework, Nullable,
+       ImplicitUsings, the analyzer set, warnings-as-errors, and RepoRoot. -->
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../../'))" />
+
+</Project>

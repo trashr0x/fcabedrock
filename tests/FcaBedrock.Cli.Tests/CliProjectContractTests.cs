@@ -16,6 +16,13 @@ public sealed class CliProjectContractTests
     private static string ProjectFile() =>
         File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "project", "FcaBedrock.Cli.csproj.txt"));
 
+    /// <summary>
+    /// The complete friend set (D-124): the CLI's own argv-boundary tests, and the M8 benchmark
+    /// host that measures <c>CliHost</c>, <c>InputHashTracker</c>, and <c>HashingWriteStream</c>
+    /// directly. Both are non-product assemblies, and no production package references either.
+    /// </summary>
+    private static readonly string[] ExpectedFriends = ["FcaBedrock.Cli.Tests", "FcaBedrock.Benchmarks"];
+
     private static readonly string[] ProductionPackages =
     [
         "FcaBedrock.Diagnostics",
@@ -80,18 +87,49 @@ public sealed class CliProjectContractTests
     }
 
     [Fact]
-    public void Project_ShouldGrantFriendAccessOnlyToItsOwnTestAssembly()
+    public void Project_ShouldGrantFriendAccessToExactlyTheTwoNamedNonProductAssemblies()
     {
+        // Exactly two grants, each once, in the project text AND in the compiled assembly, and the
+        // assertion is a SET rather than a sequence so it cannot be satisfied or broken by
+        // declaration order. A presence-only check would let a third grant appear unnoticed, which
+        // is the failure this guards (D-124).
         var project = ProjectFile();
 
-        Assert.Contains(
-            "<InternalsVisibleTo Include=\"FcaBedrock.Cli.Tests\" />", project, StringComparison.Ordinal);
-        Assert.Equal(1, CountOccurrences(project, "<InternalsVisibleTo"));
+        foreach (var friend in ExpectedFriends)
+        {
+            Assert.Equal(1, CountOccurrences(project, $"<InternalsVisibleTo Include=\"{friend}\" />"));
+        }
+
+        Assert.Equal(ExpectedFriends.Length, CountOccurrences(project, "<InternalsVisibleTo"));
 
         var granted = Cli.GetCustomAttributes<InternalsVisibleToAttribute>()
             .Select(attribute => attribute.AssemblyName)
             .ToList();
-        Assert.Equal(["FcaBedrock.Cli.Tests"], granted);
+
+        Assert.Equal(ExpectedFriends.Length, granted.Count);
+        Assert.Equal(
+            ExpectedFriends.Order(StringComparer.Ordinal),
+            granted.Order(StringComparer.Ordinal));
+    }
+
+    [Fact]
+    public void Project_ShouldNotGrantFriendAccessToTheBenchmarkTestAssembly()
+    {
+        // It needs none: it reaches the seams it tests through the benchmark assembly. Stated as
+        // its own case because "the set is exactly these two" and "this particular assembly is not
+        // in it" fail for different reasons and should read differently when they do.
+        //
+        // The assertion is on the GRANT, not on the words: the project comment names this assembly
+        // precisely to record that it is excluded, and a check that forbade the name would forbid
+        // explaining the decision.
+        Assert.DoesNotContain(
+            "<InternalsVisibleTo Include=\"FcaBedrock.Benchmarks.Tests\" />",
+            ProjectFile(),
+            StringComparison.Ordinal);
+
+        Assert.DoesNotContain(
+            "FcaBedrock.Benchmarks.Tests",
+            Cli.GetCustomAttributes<InternalsVisibleToAttribute>().Select(attribute => attribute.AssemblyName));
     }
 
     [Fact]
