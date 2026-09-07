@@ -1,0 +1,201 @@
+# FcaBedrock vNext — build, test, and packaging checks on every supported native target.
+#
+# What this workflow is for: proving the product BUILDS, PASSES ITS TESTS, ACCOUNTS FOR ITS MEMORY,
+# and PACKAGES CORRECTLY on each platform it claims to support, and producing the tested artifacts a
+# user can download. That is the whole scope.
+#
+# What it deliberately is NOT: a performance measurement. Hosted runners are shared, virtualised, and
+# of unstated provenance; two runs of the same job can differ by more than any change worth making.
+# Comparative performance belongs to controlled, identified hardware and is recorded in
+# `docs/benchmarks.md`. The only benchmark step here is a BenchmarkDotNet `Dry` job over the
+# Small-category cases, which executes each of them once and measures nothing — it proves the harness
+# runs on this platform, and nothing else.
+#
+# Every input this workflow needs comes from the repository. The benchmark corpora it prepares are
+# generated here from pinned integer arithmetic; the acquired UCI Adult corpus is NOT prepared or
+# selected, so no job depends on a third-party data host being reachable. Adult carries the opt-in
+# `External` category, and a successful `--anyCategories External` run on the final Windows x64
+# candidate is a blocking acceptance obligation recorded in D-124 and the roadmap — required of the
+# candidate, not of every job. A green run here therefore proves the SELECTED synthetic and fixture
+# contracts on this platform; it does not claim Adult ran on it.
+#
+# Required native targets are Windows x64, Linux x64, and macOS ARM64: those three carry the release
+# gate and the distribution archives. Linux ARM64 and Windows ARM64 run where the account has them
+# and are explicitly informational — an unavailable optional target stays unvalidated and makes no
+# support claim.
+
+name: ci
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches:
+      - main
+      # The M8 branch, so the workflow can be exercised on its own commits before `main` contains
+      # them. A push-triggered run executes the workflow file from the pushed branch.
+      - agent/m8-scaling-reset
+  workflow_dispatch:
+
+# Read-only, and no custom secrets anywhere in this file. Nothing here publishes, signs, uploads to a
+# feed, or creates a release; the only thing it writes is a build artifact through the GitHub-owned
+# upload action, which needs no token of its own.
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_NOLOGO: 'true'
+  DOTNET_CLI_TELEMETRY_OPTOUT: 'true'
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: 'true'
+
+jobs:
+  check:
+    name: ${{ matrix.label }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+
+    strategy:
+      # One target's failure must not hide another's: a Linux-only defect and a macOS-only defect
+      # should both be visible from one run.
+      fail-fast: false
+      matrix:
+        include:
+          - label: windows x64
+            os: windows-2025
+            rid: win-x64
+            required: true
+          - label: linux x64
+            os: ubuntu-24.04
+            rid: linux-x64
+            required: true
+          - label: macos arm64
+            os: macos-15
+            rid: osx-arm64
+            required: true
+          # Optional targets: run where available, produce no distribution archive, and carry no
+          # release claim. They exist to catch an architecture-specific defect early, not to widen
+          # what the project says it supports.
+          - label: linux arm64 (optional)
+            os: ubuntu-24.04-arm
+            rid: linux-arm64
+            required: false
+          - label: windows arm64 (optional)
+            os: windows-11-arm
+            rid: win-arm64
+            required: false
+
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      # The environment every result on this run has to be read against. A platform claim that does
+      # not name the OS image, the process architecture, and the runtime is not a platform claim, and
+      # a matrix label is not evidence of what actually executed.
+      - name: Record environment
+        shell: pwsh
+        run: |
+          Write-Host "runner image   : ${{ matrix.os }}"
+          Write-Host "declared rid   : ${{ matrix.rid }}"
+          Write-Host "process arch   : $([System.Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture)"
+          Write-Host "os arch        : $([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture)"
+          Write-Host "actual rid     : $([System.Runtime.InteropServices.RuntimeInformation]::RuntimeIdentifier)"
+          Write-Host "os description : $([System.Runtime.InteropServices.RuntimeInformation]::OSDescription)"
+          Write-Host "framework      : $([System.Runtime.InteropServices.RuntimeInformation]::FrameworkDescription)"
+          dotnet --info
+
+      # An x64 process on an ARM64 host is not ARM64 execution, and a job that quietly ran under
+      # emulation would report a green ARM64 check while proving nothing about ARM64.
+      - name: Verify the process architecture matches the declared target
+        shell: pwsh
+        run: |
+          $actual = [System.Runtime.InteropServices.RuntimeInformation]::RuntimeIdentifier
+          if ($actual -ne '${{ matrix.rid }}') {
+            throw "this job declares ${{ matrix.rid }} but is running as $actual."
+          }
+
+      - name: Restore
+        run: dotnet restore FcaBedrock.slnx
+
+      # Warnings are errors repository-wide, so a build that succeeds here is also a lint pass.
+      - name: Build (Release)
+        run: dotnet build FcaBedrock.slnx -c Release --no-restore
+
+      # Run FIRST and named, so the native resident-accounting evidence is a discrete result rather
+      # than a line inside a four-thousand-test summary. D-082's numerical guarantee extends only to
+      # layouts that have been validated, and this is where a target earns that.
+      - name: Resident-layout witnesses (native accounting)
+        run: >
+          dotnet test tests/FcaBedrock.Conversion.Tests -c Release --no-build
+          --filter-class '*ResidentLayoutWitnessTests*'
+
+      - name: Test (Release)
+        run: dotnet test --solution FcaBedrock.slnx -c Release --no-build
+
+      # Both tokens are required, and the set is not arbitrary: the Dry step selects the Small
+      # *category*, which is broader than the Small *tier* - `micro` carries the 1,000-row Ads-width
+      # case, which `prepare small` alone does not produce. Both are generated here from pinned
+      # integer arithmetic, so this step needs nothing but the repository.
+      #
+      # `adult` is deliberately absent. It is the one corpus this repository cannot generate, and
+      # preparing it would make every required job depend on a third-party host being reachable -
+      # an unrelated outage would then block the package delivery below. Its cases are opt-in
+      # instead, and are run explicitly on the final Windows x64 candidate.
+      - name: Prepare the Small benchmark corpora
+        run: dotnet run -c Release --no-build --project tests/FcaBedrock.Benchmarks -- prepare micro small
+
+      # A Dry job executes each selected case once and measures nothing. It proves the harness runs,
+      # the corpus preparation works, and the Small-category oracles agree on this platform - and it
+      # is never a performance result.
+      #
+      # The category is named explicitly rather than left to the default, so what this job selects is
+      # visible in the log rather than implied. The two opt-in tiers stay out either way: `Scale`
+      # costs hours, `External` needs the acquired corpus, and neither is reachable by a name filter.
+      # A benchmark never generates its own input, so a SELECTED case whose corpus is missing is an
+      # execution failure, never a skip.
+      - name: Benchmark harness smoke (Small, Dry, measures nothing)
+        run: >
+          dotnet run -c Release --no-build --project tests/FcaBedrock.Benchmarks --
+          --anyCategories Small --filter '*' --job dry
+
+      - name: Global-tool smoke (pack, install, convert, uninstall)
+        env:
+          FCABEDROCK_TOOL_SMOKE: '1'
+        run: >
+          dotnet test tests/FcaBedrock.Cli.Tests -c Release --no-build
+          --filter-class '*ToolSmokeTests*'
+
+      - name: Self-contained smoke (publish, run without an installed runtime, archive)
+        env:
+          FCABEDROCK_SELFCONTAINED_SMOKE: '1'
+        run: >
+          dotnet test tests/FcaBedrock.Cli.Tests -c Release --no-build
+          --filter-class '*SelfContainedSmokeTests*'
+
+      # The distribution archive, built by the same script a developer runs locally. Only the three
+      # required targets produce one: an optional target's archive would be a distribution nobody
+      # promised to support.
+      - name: Publish and archive the self-contained distribution
+        if: matrix.required
+        shell: pwsh
+        run: ./eng/publish-selfcontained.ps1 -Rid ${{ matrix.rid }}
+
+      - name: Upload the tested archive
+        if: matrix.required
+        uses: actions/upload-artifact@v4
+        with:
+          name: fcabedrock-${{ matrix.rid }}
+          path: artifacts/publish/fcabedrock-${{ matrix.rid }}.zip
+          if-no-files-found: error
+          # Seven days: long enough to download and inspect a run's output, short enough that CI
+          # storage is not a filing cabinet. Milestone evidence is retained separately and durably;
+          # an expiring CI artifact is not a record.
+          retention-days: 7
