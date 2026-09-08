@@ -2552,6 +2552,23 @@ disappears only on success, and preserves identical incomplete-run detection
 failures roll back best-effort, and surviving residue remains uncommitted and is
 detected, reported, and safely cleaned on a later collision.
 
+**Supported publication environment (D-125).** Every guarantee in this section and in
+§16.2 holds under one stated precondition: the run's **output participants, their
+containing-path resolution, and its private transaction state are exclusively managed by
+the invocation, and are left undisturbed after an interruption until a later run recovers
+them**. Other programs may read completed outputs; they MUST NOT rewrite that namespace
+while publication or recovery is in progress. **`--force` does not waive this
+precondition** — it authorizes replacing an existing distinct destination, nothing more.
+
+Within an invocation an implementation MUST detect a distinct object substituted for a
+participant it owns, and MUST NOT let the operating system's reuse of a file identifier
+defeat that detection. **Across a crash it cannot.** An interrupted file that nothing
+touched, and a deletion followed by a replacement that inherited the same identifier —
+byte-identical or not — leave identical durable evidence, and no hash, length or
+timestamp distinguishes them. Cold recovery therefore cannot always tell its own
+undisturbed residue from an externally substituted object; where it cannot establish
+ownership it MUST preserve what it finds and refuse, rather than act on it.
+
 ```toml
 [run]
 tool_version           = "fcabedrock-vnext 1.0.0"
@@ -2703,6 +2720,45 @@ under `--no-manifest` implementation-private transaction state preserves the sam
 incomplete-run detection (§15, D-122). **Exit codes:** 0 success (warnings included),
 1 any Error/Fatal diagnostic or a host/runtime/publication failure, 2 usage, 3
 cooperative cancellation, 4 unexpected internal fault (D-122).
+
+**Publication renames (normative, D-125).** Every commit, backup, restore and
+compensation is a **same-directory, same-filesystem native metadata rename**. It MUST
+NOT be implemented by a content copy, a clone, a link/unlink pair, a copy/delete pair,
+or a destination pre-delete. An implementation MUST attempt the platform's
+**exclusive**, atomically non-replacing primitive first: on Linux `renameat2` with
+exactly `RENAME_NOREPLACE`, on macOS `renamex_np` with exactly `RENAME_EXCL`, and on
+Windows a no-replace move with neither a replacement nor a copy flag.
+
+A **checked classic fallback** is permitted on Unix, and **only** for these results of
+that attempt:
+
+- **Linux** — `EINVAL` (the VFS contract requires it for a flag the filesystem does not
+  support, so it is admissible only once a valid invocation is established),
+  `ENOTSUP`/`EOPNOTSUPP`, and an `ENOSYS` reported directly by a correctly bound
+  `renameat2`.
+- **macOS** — the documented `ENOTSUP` alone. Darwin's `EINVAL`, its `ENOSYS`, and its
+  distinct modern `EOPNOTSUPP` MUST NOT fall back.
+- **Neither** — `EEXIST` is a collision and MUST fail. Every other result, `EXDEV`
+  included, is an operation failure and MUST NOT cause a second, weaker move. Windows
+  has no fallback at all.
+
+The fallback MUST establish destination **entry** absence immediately before renaming,
+where only a missing destination leaf establishes absence and **any** entry — including a
+directory or a dangling symbolic link — is a collision, and MUST then perform **exactly
+one** flagless native rename with no retry, placeholder or pre-delete.
+
+**What this does and does not guarantee.** Each individual rename is atomic; **no
+cross-file atomicity is claimed**, and none of this isolates a run from a hostile writer.
+Two intervals on Unix are explicitly **not** atomic: the fallback's absence check to its
+rename, at every destination role — public artifact, manifest, backup or private control
+name, and a source name used as a compensation destination — and the final ownership
+proof to the `unlink` that follows it, because POSIX offers no compare-and-delete by
+descriptor. Verifying the moved object's identity afterwards proves **which source
+object arrived**; it does not prove the destination stayed absent, and it cannot restore
+an overwritten foreign entry. Both intervals fall under §15's exclusive, undisturbed
+namespace precondition, which `--force` does not waive. A detected collision or identity
+mismatch MUST fail the operation and leave the objects it found in place. Serialization,
+diagnostic ownership and exit meanings are unchanged.
 
 ### 16.3 `DiagnosticLocation`
 

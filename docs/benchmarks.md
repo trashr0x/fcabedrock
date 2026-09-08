@@ -766,13 +766,42 @@ exactly what the shared-versus-per-attribute reading predicts.
 
 Named here so their absence is explicit rather than inferred.
 
-- **Linux x64, macOS ARM64, Linux ARM64, and Windows ARM64 have executed nothing.** The
-  resident-layout witnesses, the ordinary suite, the harness smoke, and both package smokes are
-  written to run on them and have run on **Windows x64 only**. Portable test code is not proof, and
-  D-082's numerical `actual retained ≤ modelled` guarantee still extends to validated x64 alone.
-- **No GitHub repository, workflow run, or published artifact exists.** `.github/workflows/ci.yml` is
-  authored and structurally checked, and every one of its steps has been executed locally on Windows
-  x64; authoring a workflow, and mirroring it by hand, is not executing one.
+- **No native target has produced a complete passing run, and no artifact exists.** The first
+  five-target workflow run,
+  [`34241484619`](https://github.com/trashr0x/fcabedrock/actions/runs/34241484619) at `a09e302`,
+  **failed**, and remains failed evidence at that revision. What it did establish is real and
+  narrow: all five jobs ran on their intended native architectures — both optional ARM64 targets
+  included — and passed checkout, SDK setup, the environment and process-architecture assertions,
+  restore, the Release build, and all 25 resident-layout witnesses, the first time D-082's retained
+  accounting had executed anywhere but Windows x64. All five then failed at `Test (Release)`, so
+  corpus preparation, the Small Dry smoke, both package smokes, the self-contained
+  publish/run/archive and the upload were **skipped**, and **no artifact was produced or retained**.
+  The grouping was: Linux x64 and Linux ARM64 each nine publication failures across
+  `PublicationOwnershipTests` and `PublicationRecoveryTests`, plus one `ToolPackTests` failure;
+  macOS ARM64, Windows x64 and Windows ARM64 the `ToolPackTests` failure alone. Every suite totalled
+  4,498 tests, and **no benchmark, corpus, oracle, selection or identity case failed anywhere**.
+  Both defects were pre-existing M7 blockers in files byte-identical to `main`, exposed by this gate
+  precisely because nothing had ever executed them off Windows x64; both are corrected under
+  **D-125**. Until a complete run passes, D-082's numerical `actual retained ≤ modelled` guarantee
+  still extends to validated x64 alone.
+- **The measured CLI-host figures in this document are superseded, and their controlled replacement
+  is outstanding.** D-125 retains a live reference for every object whose identity authorizes a
+  later mutation — on Windows as well as Unix — and that acquisition and its release sit **inside**
+  the measured CLI-host interval, so every `CliHostConvert*` figure here, both sides of the
+  manifest-versus-no-manifest comparisons, and all six whole-command traces stop describing the
+  shipped code. What **is** established is that the correction costs nothing measurable: with the
+  pre-fix and post-fix builds measured **interleaved in one machine state**, the post-fix wide
+  convert sits inside one standard deviation of the pre-fix one and the post-fix `.cxt` convert is
+  faster, while **allocation is byte-identical on both builds in every case** — the expected result
+  for a native handle that allocates nothing managed. What is **not** available is a controlled
+  replacement figure: on the machine as it stands, the *unchanged* pre-fix code measures about 10%
+  slower than the session-A row with three times the deviation, so this machine is demonstrably not
+  in session A's controlled state and any absolute number taken here would be a measurement of that
+  state. The rows below therefore keep their original provenance as the measurements of the revision
+  that produced them; they are neither relabelled nor overwritten with a noisier figure. Component
+  measurements that never reach `PublicationTransaction` — the Sources drains, calibration, the
+  grouping-budget and fan-in series, pure planning, emit and export, probe, and the hash-pair
+  wrappers — are unaffected, because the correction touches no timed line of code in any of them.
 - **Routine CI does not exercise the acquired Adult corpus, on any platform.** That is deliberate
   (see [Selection](#selection-and-what-routine-ci-proves)), and it means no cross-platform Adult
   evidence exists or is claimed. The real-data evidence is Windows x64 only.

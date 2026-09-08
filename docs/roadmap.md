@@ -10,10 +10,11 @@ vertical slices, not waterfall phases — each should leave the system working.
 the publication transaction, the run manifest, and the freeze engine (D-122/D-123), with
 the diagnostic registry at 82. **M8 — the first scaling/benchmark pass — is in
 progress** (the suite, its corpora and oracles, the CLI-host and hashing coverage, the
-standalone distribution, and the target-scale evidence have landed under D-124; the
-native non-Windows proof and the canonical GitHub cutover remain), then M9. The
-milestone blocks below are the append-only history; the M7 and M8 sections carry the
-live detail.
+standalone distribution, and the target-scale evidence have landed under D-124, and the
+canonical GitHub cutover is done; the **first five-target native run failed**, finding two
+pre-existing M7 defects now corrected under **D-125**, so a complete passing native run,
+its artifacts, and the re-measured CLI-host evidence remain), then M9. The milestone blocks
+below are the append-only history; the M7 and M8 sections carry the live detail.
 
 > **M1 complete — mini-mushroom + mini-adult reproduced byte-for-byte.** The whole
 > pipeline runs end-to-end and matches v2 on both families: `.bed` reader
@@ -1047,6 +1048,23 @@ per-iteration validation after disposal; runtime-**observed** retained-layout
 witnesses in `Conversion.Tests`; a self-contained standalone distribution with its own
 gated publish/execute/archive smoke; `eng/` packaging commands; and
 `.github/workflows/ci.yml`.
+
+**The first native gate ran, failed, and found two M7 defects (2026-09-08/09).** Run
+[`34241484619`](https://github.com/trashr0x/fcabedrock/actions/runs/34241484619) at
+`a09e302` executed on all five native targets — both optional ARM64 jobs included — and
+passed setup, the architecture assertions, restore, the Release build and all 25
+resident-layout witnesses, which had never before executed off Windows x64. All five then
+failed at `Test (Release)`, skipping corpus preparation, the Small Dry smoke, both package
+smokes, the self-contained publish/run/archive and the upload; **no artifact was
+produced**, and the run remains failed evidence at that revision. Linux x64 and Linux ARM64
+each failed nine publication cases plus one `ToolPackTests` case; macOS ARM64, Windows x64
+and Windows ARM64 failed `ToolPackTests` alone. Every suite totalled 4,498 tests and **no
+M8 case failed anywhere**. Both defects were pre-existing M7 release blockers in files
+byte-identical to `main` — a publication ownership defect that let a recycled file
+identifier authorize publishing or deleting a substituted object, and a package test that
+pinned one NuGet producer's metadata leaf — and both are corrected under **D-125**. Because
+that correction reaches the measured CLI-host interval, the CLI-host figures in
+`docs/benchmarks.md` are superseded and re-measured; component measurements are unaffected.
 
 **Completion obligations, none waived:**
 

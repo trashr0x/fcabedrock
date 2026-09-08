@@ -227,6 +227,10 @@ superseded or refined. A new entry MUST add its line here.
 
 - D-124 — M8 benchmark architecture: one internal BenchmarkDotNet host, explicit corpus/oracle layer, tier-gated selection (`External` opt-in and pinned, so routine CI needs no download; the Adult evidence is a blocking Windows acceptance run), benchmark-only friend grants (Conversion + CLI); and the conforming calibration fix the suite found (the `≤3T` merge allowance is the shared workspace's, not one attribute's)
 
+### M7 publication ownership (corrected under M8's first native gate)
+
+- D-125 — Lifetime-bound publication ownership and the exclusive-first native rename: the exclusively managed, undisturbed output namespace as a stated precondition; live references, so a recycled identifier cannot defeat an identity proof; the exact Linux/macOS capability matrix and its guarded classic fallback; both disclosed Unix final-name races and the across-crash limit; and the closed two-producer package-metadata set *(qualifies the reach of D-122 parts 4–5 and D-123 point 7; corrects the defects D-124's first native run exposed)*
+
 Spec-field defaults are recorded in spec §21 items 1–11 (see the final section
 of this file).
 
@@ -6023,6 +6027,303 @@ pinned here.
   assumed. The 64 MiB / fan-in-16 retention decision is unaffected — those cases
   run the declared T10 plan through `FirstAppearanceGrouping` and `RunMerger`,
   neither of which changed.
+- **What the first native gate found (2026-09-08; see D-125).** The branch's first
+  five-target workflow run,
+  [`34241484619`](https://github.com/trashr0x/fcabedrock/actions/runs/34241484619) at
+  `a09e302`, **failed** and remains failed evidence at that revision. All five jobs
+  passed checkout, SDK setup, the environment and process-architecture assertions,
+  restore, the Release build and all 25 resident-layout witnesses — the first time
+  D-082's retained accounting had executed anywhere but Windows x64 — and both
+  optional ARM64 targets were available and ran natively. All five then failed at
+  `Test (Release)`, so corpus preparation, the Small Dry smoke, both package smokes,
+  the self-contained publish/run/archive and the upload were skipped and **no
+  artifact was produced**. The accurate grouping is: Linux x64 and Linux ARM64 each
+  nine publication failures across `PublicationOwnershipTests` and
+  `PublicationRecoveryTests` plus one `ToolPackTests` failure; macOS ARM64,
+  Windows x64 and Windows ARM64 the `ToolPackTests` failure alone. Every suite
+  totalled 4,498 tests, and **no M8 benchmark, corpus, oracle, selection or identity
+  test failed on any target**. Both defects were pre-existing M7 release blockers in
+  files byte-identical to `main` — they had simply never executed off Windows x64 —
+  and both are corrected under **D-125**. That correction reaches the measured
+  CLI-host interval, so this entry's CLI-host `Convert` measurements are superseded
+  there rather than here; they keep their original provenance as the measurements of
+  the revision that produced them.
+
+---
+
+## M7 publication ownership (corrected under M8's first native gate)
+
+### D-125 — Lifetime-bound publication ownership, the exclusive-first native rename and its guarded fallback, the stated namespace precondition, and the closed package-metadata producer set
+
+- **Status:** accepted (semantic amendments A and B approved by Constantinos
+  Orphanides, 2026-09-08; architecture by Astra with revision 01, independent
+  bounded review by Fable ending `THUMBS UP`). It **qualifies the reach** of
+  D-122 parts 4–5 and D-123 point 7 rather than restating them, and corrects the
+  two defects M8's first native run exposed. D-122/D-123 are not rewritten: they
+  said what they said, and this entry records what is actually true.
+- **Date:** 2026-09-09
+- **Decision:** publication owns objects by **lifetime**, not by remembered
+  identifier, and renames through the platform's **exclusive** primitive with one
+  narrowly gated fallback. In seven parts.
+
+  **1. The defect this corrects.** Publication captured an object's OS identity
+  (Unix `dev`/`ino`, Windows volume plus `FILE_ID_INFO`), **closed the handle**, and
+  re-checked that identity later, by path, to authorize a commit, a backup rename, a
+  restore or a removal. An identifier is unique only among objects that exist **at the
+  same time**: unlink a file's last name on ext4 and its inode is immediately free, so
+  the next creation can be handed it. A substitute therefore compared **equal** to the
+  object the transaction had staged. The consequences were not theoretical — all three
+  were reproduced on ext4 with recorded identifiers, and nine publication cases failed
+  on each Linux job of the first native run: a substituted manifest was published at
+  exit **0** as the run's public commit marker; a substituted stage was published
+  **with a manifest certifying its hash**; and a foreign file was **deleted** by a
+  recovery whose proof the recycled identifier satisfied. Which cases failed varied
+  between runs of identical code, because it depended on the allocator's history —
+  which is why the corroboration recorded identifiers rather than outcomes.
+
+  **2. A — the supported namespace, and the limits that remain (approved).**
+  FcaBedrock requires its output participants, their containing-path resolution and
+  its private recovery state to be **exclusively managed by the invocation and left
+  undisturbed after an interruption until recovery**. Other programs may read
+  completed outputs; they must not rewrite this namespace during publication or
+  recovery. **`--force` does not waive it.** Within an invocation, live references
+  detect distinct observable substitutions and stop identifier reuse from defeating
+  the proof. They cannot say what happened while a crashed invocation held no
+  reference: two histories — an untouched interrupted file, and a deletion followed by
+  a same-identifier replacement, byte-identical or not — present identical durable
+  evidence, and no hash, length, timestamp or process-local lease recovers the missing
+  history. Arbitrary competing writes in the intervals named in part 5, and arbitrary
+  namespace replacement across a crash, are **outside** the guarantee. Every
+  observable mismatch still refuses mutation and preserves unknown objects under the
+  existing classification and recovery rules.
+
+  **3. Live references.** Every object whose identity authorizes a later mutation is
+  **held open** from the moment that identity is captured until its last authorized
+  use. A stage's reference is acquired while its creation handle is still open and
+  **proved equal to it**; an existing participant's is acquired through the open that
+  approves it; recovery acquires every reference its decision pass needs **before** it
+  mutates any earlier participant. **An identity is reported only when it is
+  anchored** — where a reference cannot be taken or proved, no identity is reported at
+  all and the existing fail-closed path refuses the run, exactly as a host with no
+  identity capability is refused. Acquisition or proof failure grants no mutation
+  authority. A reference is never released and re-acquired by name: a verified rename
+  **re-keys** it. These are **object-lifetime references, not writer streams or reader
+  locks** — the writer's flush-and-close precommit boundary is exactly where it was.
+  - **Windows** uses a non-inheritable, attribute-only open (`FILE_READ_ATTRIBUTES`,
+    sharing read/write/delete). An open requesting none of read-data, write-data or
+    delete access does not take part in share-access checking, which is what lets it
+    coexist with the `FileShare.None` creation handle, the later data-read
+    re-observations, and the share-mode-zero handle the removal deletes through.
+  - **Unix** uses a raw close-on-exec `open(O_RDONLY)`. A managed open is
+    specifically excluded: .NET emulates `FileShare` with advisory locks, so it would
+    take `LOCK_SH` and make `RemoveUnix`'s own `LOCK_EX` fail.
+  - **Release sequencing is part of the contract.** The Windows disposition names the
+    **object** and takes effect when its last handle closes, so a retained reference
+    keeps a completed deletion pending and the name occupied. The reference overlaps
+    the removal handle for the whole of its life — that is what transfers the proof —
+    and is released the instant the removal reports success, which completes the
+    deletion and frees the name for a restore that may follow. Because the disposition
+    is bound to that object, releasing can delete nothing else. No sleeps, forced
+    collections, reference gaps, test-only handles or new deletion modes are used.
+  - **The invariant is uniform on Windows and Unix.** NTFS and ReFS ids carry a
+    sequence component, but the filesystem contract does not promise an identifier is
+    never reissued, and one lifetime-based rule is worth more than a
+    filesystem-specific exception. The cost is explicit: Windows retention reaches the
+    measured CLI-host interval, so the reachable CLI-host measurements are
+    **invalidated and rerun** (see *Evidence*).
+
+  **4. B — exclusive-first native rename, and the exact fallback (approved).** Every
+  commit, backup, restore, compensation and private publication rename is a
+  **same-directory, same-filesystem native metadata rename** — never a content copy, a
+  clone, a link/unlink pair, a copy/delete pair, a destination pre-delete, or a managed
+  `File.Move` (whose Unix non-overwrite path performs its own check-then-rename and can
+  end in `link`+`unlink` or copy+delete). The same-directory precondition is enforced
+  structurally: a cross-directory request is a contract fault and never reaches a
+  native call.
+  - **Linux** calls `renameat2` with exactly `RENAME_NOREPLACE`. `EEXIST` is a
+    collision and **never** falls back. `EINVAL` is the capability answer — the VFS
+    contract requires a filesystem to return it for a flag it does not support, and the
+    invocation is valid by construction (one fixed flag, a correctly bound entry point,
+    two distinct sibling leaves in an already-resolved and guarded parent).
+    `ENOTSUP`/`EOPNOTSUPP` (one errno, 95) and a directly reported `ENOSYS` also permit
+    fallback; a libc wrapper may fold kernel `ENOSYS` into `EINVAL`, which the row
+    above already accepts.
+  - **macOS** calls `renamex_np` with exactly `RENAME_EXCL`. `EEXIST` is a collision.
+    **Only the documented `ENOTSUP` (45)** permits fallback: Apple documents `EINVAL`
+    as an invalid flag rather than an unsupported one, and neither Darwin's `ENOSYS`
+    (78) nor its distinct modern `EOPNOTSUPP` (102) is documented as this API's
+    capability answer. Linux's readings are **not** copied onto Darwin.
+  - **Every other result** — access, permission, I/O, read-only, cross-device, missing
+    source, invalid source or type, interruption, stale, quota or space, invalid
+    handle, import or ABI — is an operation failure and **never** permission to switch
+    primitives. In particular `EXDEV` never permits a copy. A missing or misbound
+    import is a contract fault, never a fabricated `ENOSYS`. Errno is captured
+    immediately from the indicated call and never inferred from an exception message,
+    an operating-system or filesystem name, a failed existence check, or a later
+    operation. Permission is **local to the attempted operation**: never cached, and
+    never disabling the exclusive primitive for another volume or a later one.
+  - **Windows** keeps native no-replace semantics through `MoveFileExW` with **no
+    flags at all** — neither `MOVEFILE_REPLACE_EXISTING` nor `MOVEFILE_COPY_ALLOWED`.
+    There is no Unix-style fallback, because there is no capability gap: no-replace
+    *is* the primitive. Existing-destination and every other failure keep their current
+    handling, and the extended-path prefix is applied exactly as the managed wrapper
+    applied it, so no path's reach changes.
+  - **After exactly one permitted capability result**, the guarded fallback keeps the
+    authorizing references and: (1) revalidates the source against the live reference —
+    a failed exclusive attempt is not evidence the namespace stayed still;
+    (2) establishes destination **entry** absence immediately before the rename with
+    native `lstat`, where **only** a missing destination leaf establishes absence and
+    **any** entry — an ordinary file, a directory, or a dangling symbolic link — is a
+    collision, while any other lookup result refuses the operation (`File.Exists ==
+    false` is insufficient, and cannot see a dangling link at all); (3) invokes
+    **exactly one** classic flagless `rename` — no retry, no second fallback, no
+    placeholder, no pre-delete; (4) verifies the destination against the original
+    retained reference, preserving the existing input checks, commit order,
+    compensation decisions, diagnostics and recovery direction. Reverse compensation
+    runs under these same rules, preserving a substitute rather than adopting or
+    deleting it; where compensation cannot safely restore state it keeps classification
+    authority and unresolved objects and reports failure.
+
+  **5. The three limits, stated rather than repaired.** (a) The fallback's
+  absence-check-to-rename interval is **not** atomic no-replace: an actor violating
+  part 2 can create the destination inside it, and the classic rename will replace that
+  entry. This applies at **every destination role** — a public artifact or manifest, a
+  backup or private control name, and a source name used as a compensation destination
+  — and the overwritten entry may have no surviving link and no transaction backup. A
+  post-move identity match proves **which source object arrived**; it does not prove
+  the destination stayed absent, restore an overwritten foreign entry, or certify that
+  nothing was transiently exposed. (b) Unix has no portable compare-and-delete by
+  descriptor — no `funlink`, and `unlinkat` still takes a name — so the analogous
+  proof-to-unlink interval remains. (c) Neither reaches across a crash, per part 2.
+  Windows has none of the three: its rename is no-replace and its deletion is
+  handle-bound.
+
+  **6. Preserved unchanged.** Manifest-last commit order and the manifest as the public
+  commit marker; canonical CXT/DAT order; no-manifest parity; previous-set restoration
+  where possible; rollback direction; code-less host failure; cancellation and fault
+  classification; confidential stages; input, hardlink and symlink collision
+  protection; unknown-object preservation; retry convergence; and post-commit cleanup
+  semantics. Repeated retries still refuse without consuming unknown residue. **No
+  product output byte, diagnostic code or message, exit meaning, manifest schema or
+  ordering, fingerprint, record vocabulary, residue name, target-safety constant,
+  supported-RID policy, benchmark meaning, corpus byte or tuning default changes.** The
+  registry stays **82**. No public API is added: the new types are `internal` to
+  `FcaBedrock.Cli`. No cross-file atomicity, and no protection for an unobserved object
+  introduced during an excluded race, is newly claimed.
+
+  **7. The package metadata's closed producer set.** `ToolPackTests` pinned the
+  core-properties leaf to a lowercase 32-hexadecimal GUID-N stem. That was one
+  producer's choice, not a package contract: NuGet through SDK 10.0.302 emits a GUID,
+  and from SDK 10.0.400 it hard-codes `nuget.psmdcp` (NuGet.Client change `5834c6b9`,
+  which fixed a deterministic-pack file-handle leak). The accepted part is now the
+  **closed two-producer set** — the exact existing directory, one leaf with no nested
+  component, a stem that is either a lowercase GUID-N or the ordinal literal `nuget`,
+  and a lowercase `.psmdcp` — and **not** `*.psmdcp`, which would admit an arbitrary
+  metadata part, `CON.psmdcp` among them. Because a canonical name is not
+  discoverability, the OPC wiring is validated too, from **bounded** reads with **DTD
+  processing prohibited and no resolver**: exactly one package core-properties
+  relationship whose internal target resolves to that exact part, the NuGet manifest
+  relationship targeting `FcaBedrock.Cli.nuspec`, duplicate identifiers and
+  relationships, external targets, traversal and encoded aliases and dangling targets
+  all refused, the effective content type
+  `application/vnd.openxmlformats-package.core-properties+xml` required with
+  conflicting declarations refused, and an OPC `coreProperties` root whose identifier
+  and version agree with the nuspec. Nothing pins relationship identifiers, the producer
+  version, timestamps, archive order, metadata bytes or whole-package reproducibility.
+  Package producer inputs are unchanged and **no SDK is pinned**. This changes no
+  shipped payload, extraction-safety guarantee, public API, product diagnostic or
+  product output.
+- **Why:** the exact-object promise D-122 and D-123 make — "never deletes unknown
+  lookalikes", a manifest that certifies the bytes this run wrote — was resting on a
+  value the operating system is free to reissue. M8's first native run was the first
+  time any of it executed off Windows x64, and it found exactly that. The correction is
+  deliberately about **lifetime rather than comparison**: holding the object open makes
+  every proof already in the code sound, without changing what any of them compare. The
+  namespace precondition and the fallback are recorded as approved semantic amendments
+  rather than filed as conforming maintenance, because both genuinely narrow what an
+  unqualified reading of D-122/D-123 promised — the first by excluding a hostile
+  writer, the second by admitting a non-atomic interval on filesystems with no
+  exclusive rename. Representative, version-qualified environments that may take the
+  fallback include Linux NFS and 9p implementations that reject rename flags (both
+  return `EINVAL` at the top of their rename functions in v6.12), FUSE configurations
+  lacking the flagged operation, and macOS volumes without `VOL_CAP_INT_RENAME_EXCL`.
+  Windows-backed WSL mounts must be assessed from actual operation results; **path
+  spelling is not a capability test**. These are examples, not an allowlist, a
+  denylist, a dispatch table, or a promise that every mount succeeds.
+- **Rejected:** *blanket refusal* on any filesystem without an exclusive rename
+  (Astra's original clause 4, withdrawn) — it would refuse to publish at all on mounts
+  that publish correctly today, to guard against an actor part 2 already excludes, and
+  it is the same category of race the accepted unlink interval already admits; a
+  **managed Unix `File.Move` fallback**, whose non-overwrite path is a
+  check-then-rename that can end in `link`+`unlink` or copy+delete, so the seam's
+  "never a copy" promise would stay untrue; retaining the .NET Windows wrapper's
+  `MOVEFILE_COPY_ALLOWED` (defensible, since a same-directory rename cannot cross
+  volumes, but it leaves the no-copy claim resting on an argument rather than on the
+  call); **more evidence instead of lifetime** — content hashes, lengths,
+  `mtime`/`ctime`/birth-time heuristics, extra `stat` calls, sleeps or a process-local
+  lease, none of which can distinguish a byte-identical replacement; **ext4 inode
+  generation**, which is filesystem-specific and fails closed on tmpfs and network
+  mounts; a **durable private-link ownership protocol**, which would need its own
+  residue role, validation and namespace contract and fails closed where hard links are
+  unavailable; **fail-closed recovery** that never restores or removes a final;
+  exempting Windows from retention (a filesystem-specific exception in place of one
+  invariant, and NTFS makes no never-reissued promise either); a **general filesystem or
+  transaction framework**, a public API, a new record role, residue name, sidecar or
+  package dependency; **test-only lifetime protection**, which would manufacture a green
+  Linux result while leaving production defective; accepting `*.psmdcp`; and **pinning
+  an older SDK** to keep the GUID leaf.
+- **Affects:** `src/FcaBedrock.Cli/Publication/` — new `PublicationNative.cs` (the three
+  native primitives behind one injectable seam, the capability rule and the guarded
+  protocol) and `PublicationObjectReference.cs` (the lifetime reference and the
+  per-transaction registry); `IPublicationFileSystem.cs` (`CreatedFile` carries an
+  anchored identity and its reference, `Move` takes the authorizing reference,
+  `TryAcquire` joins the seam); `PublicationTransaction{,.Preflight,.View,.Recovery,
+  .Primitives,.Residue}.cs` (acquire, transfer, release; recovery acquires before
+  mutating; the transaction is `IDisposable`); `Commands/ConvertCommand.cs` and
+  `Commands/SingleFileOutput.cs` (deterministic disposal on every exit);
+  `FileIdentity.cs` and `Publication/StageEvidence.cs` (corrected timeless
+  identity/proof comments). Tests: `PublicationRenameTests.cs`,
+  `PublicationReferenceTests.cs`, `PackageOpc.cs` and `PackageOpcTests.cs` (new), plus
+  `ToolPackTests.cs`, `ToolPackage.cs`, `CliTestHarness.cs`,
+  `PublicationOwnershipTests.cs`, `PublicationRecoveryTests.cs` and
+  `SingleFilePublicationTests.cs`. Docs: spec §§15 and 16.2,
+  `src/FcaBedrock.Cli/README.md`, `docs/benchmarks.md`, `docs/roadmap.md`, and D-124's
+  evidence note.
+- **Evidence.** Required, and none of it inferred from an outcome alone.
+  **Before-fix corroboration** on WSL2 Ubuntu 24.04.4 ext4 (.NET SDK 10.0.401) recorded
+  actual `dev`/`ino` at original capture, immediately before and after each
+  replacement, and after the move or removal, plus the substitution hook's fired flag,
+  the exit status and the surviving bytes — with a control proving two simultaneous
+  objects differ, one proving a **closed** original's identifier is reused, and one
+  proving a **held** original's is not. The same trace against the corrected build
+  shows the identifier no longer reused, exit 1 where it had been 0, no public marker,
+  and the foreign object preserved. **Focused proof** covers the capability table for
+  both platforms as a pure rule; `EEXIST` and ordinary failures never falling back;
+  exactly *exclusive → lookup → classic* after a permitted result, with no pre-delete,
+  placeholder or retry; entry-aware collisions including a directory and a dangling
+  symbolic link; a collision on a compensation destination; the excluded destination
+  race recorded as the disclosed limit it is; the no-copy identity proof against a
+  still-open original with a byte-identical copy as the negative; the full reference
+  lifecycle through create, acquire-while-open, flush/close, re-observe, rename,
+  proof-bound removal and **removed-name reuse**; and a byte-identical stage
+  substitution refused. Substitution tests assert the deterministic hook **fired**,
+  because before the correction the same case could pass or fail on identical code
+  depending on the allocator's history. **Native fast-path witnesses** record the test
+  volume and the primitive that actually ran, never inferring it from success.
+  **Superseded measurements.** Uniform Windows retention reaches the measured CLI-host
+  interval, so the CLI-host `Convert` Small, Working, 7.3M and 73M cases, both sides of
+  the sidecar comparisons, and all six actual-command traces stop describing the shipped
+  code. The correction's own cost was measured rather than argued: with the pre-fix and
+  post-fix builds run **interleaved in one machine state**, the post-fix figures sit
+  inside one standard deviation of the pre-fix ones, and **allocation is byte-identical
+  on both builds in every case** — the expected result for a native handle that allocates
+  nothing managed. The controlled *replacement* figures remain outstanding: on the machine
+  as it stands the **unchanged** pre-fix code measures about 10% slower than its own
+  session-A row with three times the deviation, so that machine is not in the controlled
+  state those rows were taken in, and an absolute number taken there would measure the
+  state rather than the code. The originals keep their provenance and are not overwritten.
+  Component measurements that do not reach `PublicationTransaction` keep theirs. Actions
+  run `34241484619` remains **failed** evidence at `a09e302`; nothing here relabels it.
 
 ---
 
