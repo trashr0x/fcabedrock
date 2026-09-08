@@ -136,6 +136,18 @@ internal static class PublicationMessages
 /// work exists.
 /// </para>
 /// <para>
+/// <b>An identity is only as good as the object that still holds it</b> (D-125). An identifier
+/// describes an object that exists; unlink a file's last name and the host may hand the very same
+/// number to the next creation, so a proof taken from a closed handle can be a proof about a
+/// substitute. Every object whose identity authorizes a later mutation is therefore held open from
+/// the moment that identity is captured until its last authorized use — the reference acquired
+/// while the creating or approving handle is still open and proved equal to it, transferred with
+/// overlapping references, and never released and re-acquired by name. A substitute cannot then be
+/// handed the original's identifier, and every proof below compares exactly what it always
+/// compared. These are object-lifetime references, not writer streams or reader locks: the writer's
+/// flush-and-close boundary is precisely where it was.
+/// </para>
+/// <para>
 /// <b>Then: record, stage, seal, back up, commit.</b> Forced replacement renames each existing
 /// target aside to a transaction-owned backup — a same-directory metadata rename, never a copy and
 /// never a rehash — and an old public manifest marker is demoted <em>before</em> any artifact it
@@ -147,9 +159,10 @@ internal static class PublicationMessages
 /// <em>is</em> the run's public commit marker. No cross-file atomicity is claimed.
 /// </para>
 /// </summary>
-internal sealed partial class PublicationTransaction
+internal sealed partial class PublicationTransaction : IDisposable
 {
     private readonly IPublicationFileSystem _files;
+    private readonly PublicationReferences _references;
     private readonly Func<FileIdentity> _identityFactory;
     private readonly IReadOnlyList<PublicationInput> _inputs;
     private readonly string _directory;
@@ -184,7 +197,8 @@ internal sealed partial class PublicationTransaction
         TransactionRecord record,
         IReadOnlyList<PublicationTarget> finals,
         IReadOnlyDictionary<PublicationTargetKind, PublicationTarget> targets,
-        IReadOnlyDictionary<string, string> preflightIdentity)
+        IReadOnlyDictionary<string, string> preflightIdentity,
+        PublicationReferences references)
     {
         _files = files;
         _identityFactory = identityFactory;
@@ -197,10 +211,23 @@ internal sealed partial class PublicationTransaction
         _finals = finals;
         _targets = targets;
         _preflightIdentity = preflightIdentity;
+
+        // Handed over by preflight, which already holds a reference to every existing participant
+        // it approved: the objects a forced replacement will rename aside were anchored at the one
+        // moment the collision and identity checks passed, and stay anchored from there.
+        _references = references;
     }
 
     /// <summary>True once every requested artifact — the manifest last, when written — is committed.</summary>
     public bool Committed { get; private set; }
+
+    /// <summary>
+    /// Releases every live reference this transaction still holds. Deterministic, and called on
+    /// success, refusal, cancellation and fault alike: a reference outliving its transaction would
+    /// keep a Windows deletion pending and an object allocated for no purpose. It is idempotent, so
+    /// a caller that disposes on both the normal and the exceptional path is correct.
+    /// </summary>
+    public void Dispose() => _references.Dispose();
 
     /// <summary>
     /// Runs the complete preflight for <paramref name="baseOperand"/> and, when it passes,
@@ -324,6 +351,13 @@ internal sealed partial class PublicationTransaction
             throw new PublicationFaultException(exception);
         }
 
+        // The object this creation produced, held open from here on: its identifier cannot be
+        // reissued to anything else while the transaction may still act on it.
+        if (file.Reference is { } reference)
+        {
+            _references.Adopt(pending, reference);
+        }
+
         var identity = IdentityEvidence.Of(_token, PublicationTargets.RecordRole, _baseFileName, file.Identity);
         var isPendingObject = IdentityIs(PublicationTargets.RecordRole, _baseFileName, identity);
         var isTheRecord = IdentityAndBytes(PublicationTargets.RecordRole, _baseFileName, identity, bytes);
@@ -361,7 +395,7 @@ internal sealed partial class PublicationTransaction
         // stream reaches the sanitized unexpected-fault exit instead of being reported as an
         // environment failure.
         if (!WriteControl(file.Content, bytes)
-            || !TryMutate(() => _files.Move(pending, RecordPath)))
+            || !TryMutate(() => _files.Move(pending, RecordPath, _references.Of(pending))))
         {
             AbandonPending(pending, isPendingObject);
             return new PublicationFailure(PublicationMessages.RecordFailed(_baseSpelling));
@@ -372,10 +406,15 @@ internal sealed partial class PublicationTransaction
         // It is put back where the rename took it from and nothing is begun.
         if (!MatchesObject(RecordPath, isTheRecord))
         {
-            TryMutate(() => _files.Move(RecordPath, pending));
+            TryMutate(() => _files.Move(RecordPath, pending, _references.Of(pending)));
             AbandonIntent();
             return new PublicationFailure(PublicationMessages.RecordFailed(_baseSpelling));
         }
+
+        // Verified, so the object at the record's name IS the one this run created: the reference
+        // is re-filed under the new name rather than released and taken again, which is what keeps
+        // the anchor continuous across the rename.
+        _references.Rekey(pending, RecordPath);
 
         _begun = true;
 
@@ -438,6 +477,14 @@ internal sealed partial class PublicationTransaction
         catch (Exception exception) when (FailureFamily.IsContractFault(exception))
         {
             throw new PublicationFaultException(exception);
+        }
+
+        // Held from creation. The stage's identity is the evidence every later step verifies it by
+        // — through the seal, the commit rename, and any rollback that removes what it published —
+        // so the object stays anchored for exactly that long.
+        if (stage.Reference is { } reference)
+        {
+            _references.Adopt(stagePath, reference);
         }
 
         var digest = IdentityEvidence.Of(
@@ -646,7 +693,7 @@ internal sealed partial class PublicationTransaction
                 return new PublicationFailure(PublicationMessages.CommitFailed(spelling));
             }
 
-            if (!TryMutate(() => _files.Move(targetPath, backupPath)))
+            if (!TryMutate(() => _files.Move(targetPath, backupPath, _references.Of(targetPath))))
             {
                 return new PublicationFailure(PublicationMessages.CommitFailed(spelling));
             }
@@ -657,13 +704,17 @@ internal sealed partial class PublicationTransaction
             // forced replacement never leaves a user's file stranded under a private name.
             if (!Matches(backupPath, PublicationTargets.BackupRole, entry.TargetFileName, expected))
             {
-                if (!TryMutate(() => _files.Move(backupPath, targetPath)))
+                // The object that moved is NOT the one preflight approved, so the reference stays
+                // filed under the name it still anchors; only a verified rename re-keys it.
+                if (!TryMutate(() => _files.Move(backupPath, targetPath, _references.Of(targetPath))))
                 {
                     _hazard = true;
                 }
 
                 return new PublicationFailure(PublicationMessages.CommitFailed(spelling));
             }
+
+            _references.Rekey(targetPath, backupPath);
         }
 
         foreach (var target in _finals)
@@ -689,7 +740,8 @@ internal sealed partial class PublicationTransaction
                 return new PublicationFailure(PublicationMessages.CommitFailed(target.Spelling));
             }
 
-            if (!TryMutate(() => _files.Move(StagePath(target.FileName), target.FullPath)))
+            var stagePath = StagePath(target.FileName);
+            if (!TryMutate(() => _files.Move(stagePath, target.FullPath, _references.Of(stagePath))))
             {
                 return new PublicationFailure(PublicationMessages.CommitFailed(target.Spelling));
             }
@@ -700,7 +752,7 @@ internal sealed partial class PublicationTransaction
             // recognizable to the rollback that follows.
             if (!Matches(target.FullPath, PublicationTargets.StageRole, target.FileName, sealedStage))
             {
-                if (!TryMutate(() => _files.Move(target.FullPath, StagePath(target.FileName))))
+                if (!TryMutate(() => _files.Move(target.FullPath, stagePath, _references.Of(stagePath))))
                 {
                     // The unowned object could not be moved off a published path. Nothing may
                     // erase the transaction's authority while it sits there.
@@ -709,6 +761,10 @@ internal sealed partial class PublicationTransaction
 
                 return new PublicationFailure(PublicationMessages.CommitFailed(target.Spelling));
             }
+
+            // Verified: the published final IS the staged object, so its anchor follows it to the
+            // public name a rollback would have to remove it from.
+            _references.Rekey(stagePath, target.FullPath);
         }
 
         // Past the commit point the run is public, so cleanup is best-effort and never downgrades
@@ -810,6 +866,7 @@ internal sealed partial class PublicationTransaction
     private TransactionView View() =>
         new(
             _files,
+            _references,
             _identityFactory,
             _directory,
             _record,
@@ -847,7 +904,8 @@ internal sealed partial class PublicationTransaction
     private bool MatchesObject(string path, RemovalProof proof) =>
         proof(_identityFactory().KeyFor(path), ReadControl(_files, path));
 
-    private bool Remove(string path, RemovalProof proof) => RemoveOwned(_files, path, proof, Guard());
+    private bool Remove(string path, RemovalProof proof) =>
+        RemoveOwned(_files, path, proof, Guard(), _references);
 
     // A record publication that never completed. The pending object goes only when it is provably
     // the object this run created there — whatever state its bytes are in — so an occupant that
@@ -908,6 +966,11 @@ internal sealed partial class PublicationTransaction
             throw new PublicationFaultException(exception);
         }
 
+        if (file.Reference is { } reference)
+        {
+            _references.Adopt(pending, reference);
+        }
+
         var identity = IdentityEvidence.Of(
             _token, PublicationTargets.EvidenceRole, targetFileName, file.Identity);
 
@@ -923,7 +986,7 @@ internal sealed partial class PublicationTransaction
             return false;
         }
 
-        if (!TryMutate(() => _files.Move(pending, published)))
+        if (!TryMutate(() => _files.Move(pending, published, _references.Of(pending))))
         {
             Remove(pending, isThatObject);
             return false;
@@ -931,10 +994,11 @@ internal sealed partial class PublicationTransaction
 
         if (!MatchesObject(published, isTheEvidence))
         {
-            TryMutate(() => _files.Move(published, pending));
+            TryMutate(() => _files.Move(published, pending, _references.Of(pending)));
             return false;
         }
 
+        _references.Rekey(pending, published);
         _evidence[targetFileName] = evidence;
         return true;
     }
@@ -1057,6 +1121,14 @@ internal sealed partial class PublicationTransaction
         catch (Exception exception) when (FailureFamily.IsContractFault(exception))
         {
             throw new PublicationFaultException(exception);
+        }
+
+        // Adopted like every other acquisition: the reference this creation produced belongs to the
+        // transaction from here on, and is released by the removal that eventually takes the control
+        // out. A reference nobody owns would keep a completed Windows deletion pending forever.
+        if (file.Reference is { } reference)
+        {
+            _references.Adopt(path, reference);
         }
 
         var mine = IdentityIs(

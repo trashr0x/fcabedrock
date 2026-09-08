@@ -14,9 +14,18 @@ internal sealed partial class PublicationTransaction
     /// every <see cref="TransactionPhase.RollingBack"/> transaction, whatever the files look like
     /// — is rolled back.
     /// </para>
+    /// <para>
+    /// <b>A resumed run holds no reference from the invocation that died</b>, so it takes its own —
+    /// before it decides anything, and therefore before it mutates any earlier participant. That is
+    /// what stops a decision made about one object from being carried out against a different
+    /// object that inherited its identifier in between (D-125). It does not make the interval in
+    /// which nothing was held provable: that remains the caller's undisturbed-namespace
+    /// precondition, not a guarantee this pass can offer.
+    /// </para>
     /// </summary>
     private static bool Recover(
         IPublicationFileSystem files,
+        PublicationReferences references,
         Func<FileIdentity> identityFactory,
         string directory,
         DiscoveredResidue residue,
@@ -42,8 +51,13 @@ internal sealed partial class PublicationTransaction
                 ControlDocument.IntentRole,
                 intent.Described.Digest));
 
-            return RemoveOwned(files, intent.PendingPath, pendingIsOurs, guard)
-                && RemoveOwned(files, intent.Path, descriptorIsOurs, guard);
+            // Anchored before either removal is attempted: the pending object's identity is the
+            // whole authority here, so it must name an object that cannot be swapped underneath it.
+            references.Ensure(intent.PendingPath);
+            references.Ensure(intent.Path);
+
+            return RemoveOwned(files, intent.PendingPath, pendingIsOurs, guard, references)
+                && RemoveOwned(files, intent.Path, descriptorIsOurs, guard, references);
         }
 
         if (residue.Prior is not { } prior)
@@ -53,6 +67,7 @@ internal sealed partial class PublicationTransaction
 
         var view = new TransactionView(
             files,
+            references,
             identityFactory,
             directory,
             prior.Record,
@@ -117,6 +132,13 @@ internal sealed partial class PublicationTransaction
     // else's.
     private static bool Clear(TransactionView view, RecoveryGuard guard)
     {
+        // Anchor every object this pass may remove before it removes any of them, so no removal can
+        // destroy evidence another one's proof still depends on.
+        foreach (var entry in view.Record.Files)
+        {
+            view.References.Ensure(view.Record.PathOf(view.Directory, entry));
+        }
+
         var complete = true;
         foreach (var entry in view.Record.Files)
         {
@@ -125,7 +147,8 @@ internal sealed partial class PublicationTransaction
                 view.Files,
                 view.Record.PathOf(view.Directory, entry),
                 isStage ? view.StageObject(entry.TargetFileName) : view.BackedUpObject(entry.TargetFileName),
-                guard);
+                guard,
+                view.References);
         }
 
         return complete && RemoveControl(view, guard);
@@ -162,6 +185,26 @@ internal sealed partial class PublicationTransaction
     {
         var complete = !hazard;
 
+        // 0. Anchor every participant this pass can consult or mutate, BEFORE the decision pass —
+        //    which is what makes a decision still true of the same object when it is acted on. A
+        //    running transaction already holds most of these and simply keeps them; a resumed one
+        //    takes them here. Where an object cannot be anchored nothing is authorized, and the
+        //    proofs below refuse it exactly as they refuse an identity that does not match.
+        foreach (var targetFileName in view.Record.Targets)
+        {
+            view.References.Ensure(view.FinalPath(targetFileName));
+
+            if (view.BackupPath(targetFileName) is { } backupToAnchor)
+            {
+                view.References.Ensure(backupToAnchor);
+            }
+
+            if (view.HasStage(targetFileName))
+            {
+                view.References.Ensure(view.StagePath(targetFileName));
+            }
+        }
+
         // 1. Decide everything first, from the state as found.
         var decisions = new List<TargetDecision>();
         foreach (var targetFileName in view.Record.Targets)
@@ -183,7 +226,11 @@ internal sealed partial class PublicationTransaction
             if (decision.Owns && !forward)
             {
                 complete &= RemoveOwned(
-                    view.Files, finalPath, view.PublishedObject(decision.TargetFileName), guard);
+                    view.Files,
+                    finalPath,
+                    view.PublishedObject(decision.TargetFileName),
+                    guard,
+                    view.References);
             }
 
             var present = view.Exists(finalPath);
@@ -215,7 +262,11 @@ internal sealed partial class PublicationTransaction
                 if (decision.BackupPresent && decision.BackupIsExpected)
                 {
                     complete &= RemoveOwned(
-                        view.Files, backupPath, view.BackedUpObject(decision.TargetFileName), guard);
+                        view.Files,
+                        backupPath,
+                        view.BackedUpObject(decision.TargetFileName),
+                        guard,
+                        view.References);
                 }
 
                 continue;
@@ -236,15 +287,21 @@ internal sealed partial class PublicationTransaction
                 && !present
                 && guard.Allows(backupPath)
                 && guard.Allows(finalPath)
-                && TryMutate(() => view.Files.Move(backupPath, finalPath));
+                && TryMutate(() => view.Files.Move(backupPath, finalPath, view.References.Of(backupPath)));
 
             // And the restoring rename's RESULT, before anything can discard the evidence that
             // makes this state recognizable. A different object substituted inside
             // that boundary is put back rather than published as the restored prior target.
             if (restored && !view.IsBackedUpObjectAt(decision.TargetFileName, finalPath))
             {
-                TryMutate(() => view.Files.Move(finalPath, backupPath));
+                TryMutate(() => view.Files.Move(finalPath, backupPath, view.References.Of(backupPath)));
                 restored = false;
+            }
+            else if (restored)
+            {
+                // Verified home. The anchor follows the object to the name it now occupies, rather
+                // than being dropped and taken again from a path.
+                view.References.Rekey(backupPath, finalPath);
             }
 
             complete &= restored;
@@ -264,7 +321,8 @@ internal sealed partial class PublicationTransaction
                 view.Files,
                 view.Record.PathOf(view.Directory, entry),
                 view.StageObject(entry.TargetFileName),
-                guard);
+                guard,
+                view.References);
         }
 
         return complete && RemoveControl(view, guard);

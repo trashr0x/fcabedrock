@@ -69,6 +69,15 @@ internal static class IdentityEvidence
 /// is exactly the proof that survives the commit rename.
 /// </para>
 /// <para>
+/// <b>And an identifier proves something only while its object is alive</b> (D-125). Once a file's
+/// last name is unlinked the host may reissue its identifier, so within an invocation every object
+/// named here is held open by a <see cref="PublicationObjectReference"/> for as long as this
+/// evidence authorizes anything about it. Across a crash there is no reference to hold, and this
+/// evidence alone cannot tell the transaction's own untouched residue from a replacement that
+/// inherited the identifier — an exclusive, undisturbed namespace is the caller's precondition,
+/// not something this file can establish.
+/// </para>
+/// <para>
 /// <b>Fixed path, atomic publication.</b> Its name is a function of the base, the role, and the
 /// run token alone — never of a runtime identity value — so the complete set of control paths is
 /// resolvable and collision-checkable <em>before</em> the transaction begins. The bytes are

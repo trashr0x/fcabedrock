@@ -153,6 +153,12 @@ internal static class ConvertCommand
                 environment, diagnostics, ((PublicationRefused)preparation).Message, cancellation);
         }
 
+        // The transaction holds live references to every object whose identity authorizes a
+        // mutation, so it is disposed on every exit — success, host failure, cancellation and
+        // unexpected fault alike. Releasing them is not cleanup that can be skipped: on Windows a
+        // surviving reference keeps a completed deletion pending (D-125).
+        using var owned = transaction;
+
         try
         {
             return await PublishAsync(

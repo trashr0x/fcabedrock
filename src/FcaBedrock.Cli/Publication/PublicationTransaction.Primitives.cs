@@ -35,9 +35,23 @@ internal sealed partial class PublicationTransaction
     /// path is not one of the run's own inputs. Returns true when the path no
     /// longer holds that object — removed, or never there.
     /// </para>
+    /// <para>
+    /// <b>Release sequencing.</b> The reference this run holds on that path overlaps the removal
+    /// for the whole of it, which is what transfers the proof to the handle the deletion acts
+    /// through. It is released the instant the removal answers true: on Windows that completes the
+    /// handle-bound deletion and frees the name for a restore that may follow, and because the
+    /// disposition names the <em>object</em> rather than the path, releasing it can delete nothing
+    /// else. Where the removal refused or failed the reference is deliberately kept — the run may
+    /// still have to act on that object, and re-acquiring it by name is exactly what this design
+    /// does not do (D-125).
+    /// </para>
     /// </summary>
     private static bool RemoveOwned(
-        IPublicationFileSystem files, string path, RemovalProof isExpected, RecoveryGuard guard)
+        IPublicationFileSystem files,
+        string path,
+        RemovalProof isExpected,
+        RecoveryGuard guard,
+        PublicationReferences references)
     {
         guard.ThrowIfCancelled();
 
@@ -45,6 +59,7 @@ internal sealed partial class PublicationTransaction
         // appears between here and the removal is one the removal's own proof will refuse.
         if (!Exists(files, path))
         {
+            references.Release(path);
             return true;
         }
 
@@ -55,7 +70,10 @@ internal sealed partial class PublicationTransaction
 
         try
         {
-            return files.Remove(path, isExpected);
+            if (!files.Remove(path, isExpected))
+            {
+                return false;
+            }
         }
         catch (Exception exception) when (FailureFamily.IsEnvironmentFailure(exception))
         {
@@ -65,6 +83,9 @@ internal sealed partial class PublicationTransaction
         {
             throw new PublicationFaultException(exception);
         }
+
+        references.Release(path);
+        return true;
     }
 
     private static bool Exists(IPublicationFileSystem files, string path)

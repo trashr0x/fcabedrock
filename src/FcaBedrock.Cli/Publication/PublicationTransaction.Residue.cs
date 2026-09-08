@@ -25,6 +25,7 @@ internal sealed partial class PublicationTransaction
     /// </summary>
     private static bool TryClassifyResidue(
         IPublicationFileSystem files,
+        PublicationReferences references,
         Func<FileIdentity> identityFactory,
         string directory,
         string baseFileName,
@@ -350,8 +351,11 @@ internal sealed partial class PublicationTransaction
             }
         }
 
+        // Classification only observes, but it shares the caller's registry rather than opening a
+        // second one: whatever it anchors while judging the state stays anchored into the recovery
+        // that follows, so nothing is released and taken again by name in between.
         var view = new TransactionView(
-            files, identityFactory, directory, record, record.Token, staged, evidence, stageClaims);
+            files, references, identityFactory, directory, record, record.Token, staged, evidence, stageClaims);
         if (!IsReachableState(view, reached))
         {
             return false;

@@ -107,15 +107,28 @@ internal sealed partial class PublicationTransaction
             return new PublicationRefused(PublicationMessages.RecordFailed(baseOperand));
         }
 
-        // What each backup-bearing target IS, at the one moment the collision check approved it.
+        // What each backup-bearing target IS, at the one moment the collision check approved it —
+        // and, from that same moment, a live reference to each so the answer stays about the object
+        // rather than about the name (D-125). The registry outlives this method: it becomes the
+        // transaction's, or it is released here.
+        var references = new PublicationReferences(files);
         var preflightIdentity = new Dictionary<string, string>(StringComparer.Ordinal);
-        if (!TryPreflightIdentity(identity, directory, token, entries, preflightIdentity, out var unprovable))
+        if (!TryPreflightIdentity(references, directory, token, entries, preflightIdentity, out var unprovable))
         {
+            references.Dispose();
             return new PublicationRefused(
                 PublicationMessages.CommitFailed(SpellingOfName(unprovable, targets)));
         }
 
-        cancellation.ThrowIfCancellationRequested();
+        try
+        {
+            cancellation.ThrowIfCancellationRequested();
+        }
+        catch
+        {
+            references.Dispose();
+            throw;
+        }
 
         return new PublicationReady(new PublicationTransaction(
             files,
@@ -128,7 +141,8 @@ internal sealed partial class PublicationTransaction
             record,
             finals,
             targets,
-            preflightIdentity));
+            preflightIdentity,
+            references));
     }
 
     // The single-file tail: one target, so no manifest to demote and no selection to make — the
@@ -175,16 +189,27 @@ internal sealed partial class PublicationTransaction
             return new PublicationRefused(PublicationMessages.RecordFailed(outPath));
         }
 
+        var references = new PublicationReferences(files);
         var preflightIdentity = new Dictionary<string, string>(StringComparer.Ordinal);
-        if (!TryPreflightIdentity(identity, directory, token, entries, preflightIdentity, out var unprovable))
+        if (!TryPreflightIdentity(references, directory, token, entries, preflightIdentity, out var unprovable))
         {
+            references.Dispose();
             return new PublicationRefused(PublicationMessages.CommitFailed(SpellingOfName(unprovable, targets)));
         }
 
-        cancellation.ThrowIfCancellationRequested();
+        try
+        {
+            cancellation.ThrowIfCancellationRequested();
+        }
+        catch
+        {
+            references.Dispose();
+            throw;
+        }
+
         return new PublicationReady(new PublicationTransaction(
             files, identityFactory, inputs, directory, outPath, baseFileName, token, record, finals,
-            targets, preflightIdentity));
+            targets, preflightIdentity, references));
     }
 
     /// <summary>
@@ -206,11 +231,20 @@ internal sealed partial class PublicationTransaction
     {
         cancellation.ThrowIfCancellationRequested();
         identity = identityFactory();
+
+        // One registry spans classification and the recovery that acts on its verdict, so a prior
+        // run's participants are anchored from the moment they are first judged until the moment
+        // they are mutated — no interval in between where an identifier could be reissued (D-125).
+        // It is a PRIOR run's set, and it is released here: this run's own participants are
+        // approved and anchored afterwards, by preflight, against the location recovery leaves.
+        using var references = new PublicationReferences(files);
+
         // Residue is validated in full before a single byte moves, so a malformed record, an
         // impossible shape or state, a foreign family, or an unknown lookalike refuses the run with
         // the location exactly as found. Discovery takes its own identity service: residue it
         // cannot see cannot be recovered, and case variants alias on some directories.
-        if (!TryClassifyResidue(files, identityFactory, directory, baseFileName, expectedFamily, out var residue))
+        if (!TryClassifyResidue(
+                files, references, identityFactory, directory, baseFileName, expectedFamily, out var residue))
         {
             return new PublicationRefused(PublicationMessages.UnknownResidue(baseOperand));
         }
@@ -229,7 +263,13 @@ internal sealed partial class PublicationTransaction
         }
 
         // A validated prior transaction is completed FIRST — it belongs to that run, not this one.
-        if (!Recover(files, identityFactory, directory, residue, new RecoveryGuard(identityFactory, inputs, cancellation)))
+        if (!Recover(
+                files,
+                references,
+                identityFactory,
+                directory,
+                residue,
+                new RecoveryGuard(identityFactory, inputs, cancellation)))
         {
             return new PublicationRefused(PublicationMessages.RecoveryFailed(baseOperand));
         }
@@ -242,8 +282,14 @@ internal sealed partial class PublicationTransaction
     // What each backup-bearing target IS, at the one moment the collision check approved it. False
     // names the target whose identity the host could not supply: it can never be committed over,
     // and knowing that here is knowing it before any record, stage, or claim exists.
+    //
+    // The identity is read through the reference this takes, not from a path observation the run
+    // then closes: the object is held from the instant it is approved until its last authorized
+    // use, so the digest below cannot come to describe a different object (D-125). A target that
+    // cannot be anchored is exactly a target whose identity the host could not supply, and takes
+    // the same fail-closed answer it always did.
     private static bool TryPreflightIdentity(
-        FileIdentity identity, string directory, string token,
+        PublicationReferences references, string directory, string token,
         IReadOnlyList<TransactionFileEntry> entries, Dictionary<string, string> preflightIdentity,
         out string unprovable)
     {
@@ -256,7 +302,7 @@ internal sealed partial class PublicationTransaction
 
             var evidence = IdentityEvidence.Of(
                 token, PublicationTargets.BackupRole, entry.TargetFileName,
-                identity.KeyFor(TransactionRecord.TargetPathOf(directory, entry)));
+                references.Ensure(TransactionRecord.TargetPathOf(directory, entry))?.Identity);
 
             if (!IdentityEvidence.IsIdentity(evidence))
             {

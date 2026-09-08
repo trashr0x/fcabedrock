@@ -6,8 +6,9 @@ using Microsoft.Win32.SafeHandles;
 namespace FcaBedrock.Cli.Publication;
 
 /// <summary>
-/// A newly created file: the stream to write it through, and the identity of the <b>exact
-/// object</b> that creation produced.
+/// A newly created file: the stream to write it through, the identity of the <b>exact object</b>
+/// that creation produced, and a live reference holding that object for as long as its identity
+/// authorizes anything.
 /// <para>
 /// The identity is read from the created file's own handle, while that handle is still open and
 /// before a single byte is written. It cannot be obtained afterwards from the path: the file is
@@ -22,10 +23,22 @@ namespace FcaBedrock.Cli.Publication;
 /// here, so a create-new that was <em>refused</em> — and therefore reported nothing — can never
 /// authorize touching the occupant that refused it.
 /// </para>
+/// <para>
+/// <b>An identity is reported only when it is anchored.</b> An identifier is a fact about an object
+/// that exists; once that object is gone the host may hand the same number to the next creation, so
+/// a value re-checked after the creation handle closed could describe a substitute rather than the
+/// original (D-125). The reference is therefore acquired while that handle is still open and proved
+/// equal to it, and where it cannot be — no reference, or a proof that fails — this reports
+/// <b>no identity at all</b>, so the existing fail-closed path refuses the run instead of
+/// proceeding on an identity it cannot anchor. The reference is the caller's to dispose, exactly
+/// as the stream is.
+/// </para>
 /// </summary>
 /// <param name="Content">The write stream. The caller owns it.</param>
-/// <param name="Identity">The created object's OS identity, or null where the host has none.</param>
-internal readonly record struct CreatedFile(Stream Content, FileIdentityKey? Identity);
+/// <param name="Identity">The created object's anchored OS identity, or null where there is none.</param>
+/// <param name="Reference">The live reference holding that object, or null where there is none.</param>
+internal readonly record struct CreatedFile(
+    Stream Content, FileIdentityKey? Identity, PublicationObjectReference? Reference);
 
 /// <summary>
 /// Whether the object a removal has opened is the one the transaction meant to remove.
@@ -83,6 +96,18 @@ internal interface IPublicationFileSystem
     CreatedFile CreateNewConfidential(string path);
 
     /// <summary>
+    /// Takes a live reference to whatever is at <paramref name="path"/> right now — an existing
+    /// participant this run is about to approve, or one a recovery pass must decide about — so its
+    /// identifier cannot be recycled underneath the proof that identity later authorizes (D-125).
+    /// <para>
+    /// Null means no reference could be taken, and a caller that cannot anchor an identity does not
+    /// act on it. It is an object-lifetime reference, not a lock: it blocks nothing, holds no bytes,
+    /// and coexists with this seam's own creation, re-observation, rename and removal opens.
+    /// </para>
+    /// </summary>
+    PublicationObjectReference? TryAcquire(string path);
+
+    /// <summary>
     /// Flushes <paramref name="stream"/> all the way to disk. The transaction hashes and flushes
     /// a stage before anything is committed, so "the bytes are on disk" is a step the run takes
     /// rather than an assumption it makes.
@@ -91,10 +116,27 @@ internal interface IPublicationFileSystem
 
     /// <summary>
     /// Renames <paramref name="source"/> to <paramref name="destination"/> <b>without
-    /// overwriting</b>. Every commit, backup, and restore is one of these: a same-directory,
-    /// same-filesystem metadata rename, never a copy and never a rehash.
+    /// overwriting</b>. Every commit, backup, restore and compensation is one of these: a
+    /// same-directory, same-filesystem <b>native metadata</b> rename, never a copy, a clone, a
+    /// link/unlink pair, a destination pre-delete, or a managed <c>File.Move</c>.
+    /// <para>
+    /// <b>How far "without overwriting" reaches is platform-visible</b> (D-125,
+    /// <see cref="PublicationRename"/>). Windows and any filesystem with an exclusive rename
+    /// primitive refuse an existing destination atomically. Where a Unix filesystem reports that it
+    /// cannot perform the flagged operation at all, the seam falls back — once, under an exact
+    /// error gate — to a checked classic rename whose absence check and rename are not one atomic
+    /// act. The caller's post-move identity verification still proves which <em>source</em> object
+    /// arrived; it does not close that final-name interval.
+    /// </para>
     /// </summary>
-    void Move(string source, string destination);
+    /// <param name="source">The full source path.</param>
+    /// <param name="destination">The full destination path, a sibling of the source.</param>
+    /// <param name="sourceReference">
+    /// The live reference authorizing this move, where the caller holds one. The fallback
+    /// revalidates the source against it, so "the source is still ours" is a statement about the
+    /// object rather than about the name.
+    /// </param>
+    void Move(string source, string destination, PublicationObjectReference? sourceReference = null);
 
     /// <summary>
     /// Removes the object at <paramref name="path"/> — and <b>only</b> the object
@@ -114,6 +156,15 @@ internal interface IPublicationFileSystem
     /// from the open handle immediately before the path is unlinked, and any observable mismatch
     /// fails closed. <b>The Unix removal is not atomic</b>; that interval is a platform constraint,
     /// not a design choice.
+    /// </para>
+    /// <para>
+    /// <b>Release sequencing is the caller's, and it matters on Windows</b> (D-125). The Windows
+    /// disposition names the object, not the path, and takes effect when its <em>last</em> handle
+    /// closes — so a live reference this transaction still holds keeps the deletion pending and the
+    /// name occupied. The reference overlaps the removal handle for the whole of its life, which is
+    /// what transfers the proof safely; the caller then releases it as soon as this answers true,
+    /// which completes the deletion of exactly that object and frees the name for the restore that
+    /// may follow. Nothing sleeps, forces a collection, or opens a reference gap to achieve it.
     /// </para>
     /// <para>
     /// Returns <see langword="true"/> when the path no longer holds that object — removed, or
@@ -160,12 +211,19 @@ internal interface IPublicationFileSystem
 /// <summary>The real filesystem; the only production implementation.</summary>
 internal sealed class PublicationFileSystem : IPublicationFileSystem
 {
-    private PublicationFileSystem()
-    {
-    }
+    private readonly IPublicationRenamePrimitives _rename;
 
-    /// <summary>The shared instance.</summary>
-    public static PublicationFileSystem Instance { get; } = new();
+    private PublicationFileSystem(IPublicationRenamePrimitives rename) => _rename = rename;
+
+    /// <summary>The shared instance, over this host's real native primitives.</summary>
+    public static PublicationFileSystem Instance { get; } = new(PublicationNative.Primitives);
+
+    /// <summary>
+    /// The same real filesystem over injected rename primitives, so a test can produce an exact
+    /// capability or error outcome while the guarded protocol and the classic primitive it falls
+    /// back to are still the production ones.
+    /// </summary>
+    public static PublicationFileSystem With(IPublicationRenamePrimitives rename) => new(rename);
 
     /// <inheritdoc/>
     public bool Exists(string path) => File.Exists(path);
@@ -174,18 +232,31 @@ internal sealed class PublicationFileSystem : IPublicationFileSystem
     public CreatedFile CreateNew(string path)
     {
         var stream = new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.None);
-        return Created(stream);
+        return Created(stream, path);
     }
 
     /// <inheritdoc/>
     public CreatedFile CreateNewConfidential(string path) =>
-        Created(OperatingSystem.IsWindows() ? CreateOwnerOnlyWindows(path) : CreateOwnerOnlyUnix(path));
+        Created(OperatingSystem.IsWindows() ? CreateOwnerOnlyWindows(path) : CreateOwnerOnlyUnix(path), path);
 
     // Read from THIS handle, before any byte is written and long before it closes. The path
     // cannot answer the question — the file is held FileShare.None — and asking after the close
     // would describe whatever occupies the name by then.
-    private static CreatedFile Created(FileStream stream) =>
-        new(stream, FileIdentityInterop.TryGetIdentity(stream.SafeFileHandle));
+    //
+    // The reference is then taken while that same creation handle is STILL OPEN and proved equal to
+    // it, so it provably holds the object this creation produced. Until it exists the identity is
+    // only a number; from here on it is anchored, and no later creation can be handed it. Where the
+    // reference cannot be taken or proved, no identity is reported at all and the caller fails
+    // closed — the same answer a host with no identity capability gets, for the same reason.
+    private static CreatedFile Created(FileStream stream, string path)
+    {
+        var identity = FileIdentityInterop.TryGetIdentity(stream.SafeFileHandle);
+        var reference = PublicationObjectReference.TryAcquire(path, identity);
+        return reference is null ? new CreatedFile(stream, null, null) : new CreatedFile(stream, identity, reference);
+    }
+
+    /// <inheritdoc/>
+    public PublicationObjectReference? TryAcquire(string path) => PublicationObjectReference.TryAcquire(path);
 
     /// <inheritdoc/>
     public void Flush(Stream stream)
@@ -204,7 +275,8 @@ internal sealed class PublicationFileSystem : IPublicationFileSystem
     }
 
     /// <inheritdoc/>
-    public void Move(string source, string destination) => File.Move(source, destination, overwrite: false);
+    public void Move(string source, string destination, PublicationObjectReference? sourceReference = null) =>
+        PublicationRename.Move(_rename, source, destination, sourceReference);
 
     /// <inheritdoc/>
     public bool Remove(string path, RemovalProof isExpected)

@@ -1,8 +1,17 @@
 namespace FcaBedrock.Cli;
 
 /// <summary>
-/// The identity of one file, as this run understands it. Two spellings of the same file
-/// produce equal keys; two different files never do.
+/// The identity of one file, as this run understands it. Two spellings of the same file produce
+/// equal keys, and two files that <b>both exist</b> never do.
+/// <para>
+/// <b>That qualification is load-bearing</b> (D-125). An identifier describes an object, and it is
+/// unique only among objects existing at the same time: once a file's last name is unlinked, the
+/// host may hand the very same device and inode — or volume plus file id — to the next creation. A
+/// key is therefore a fact about an object, never a durable name for one, and a key captured
+/// earlier proves nothing about a later observation unless something kept that object alive in
+/// between. In publication that something is
+/// <see cref="FcaBedrock.Cli.Publication.PublicationObjectReference"/>.
+/// </para>
 /// <para>
 /// <b>An equivalence relation by construction.</b> A key is either an OS identity triple or
 /// a single canonical path string, and equality is exact comparison of one of those — never
@@ -65,10 +74,18 @@ internal readonly struct FileIdentityKey : IEquatable<FileIdentityKey>
     /// The operating system's own identity components, when this key has them.
     /// <para>
     /// The only consumer is <see cref="FcaBedrock.Cli.Publication.IdentityEvidence"/>, which
-    /// digests them so a transaction can prove — durably, across a crash — that the file at a
-    /// target path is the very object it staged. A path-fallback key deliberately answers
-    /// <see langword="false"/>: it identifies a <em>name</em>, and a name proves nothing about the
-    /// object occupying it.
+    /// digests them so a transaction can prove that the file at a target path is the very object it
+    /// staged. A path-fallback key deliberately answers <see langword="false"/>: it identifies a
+    /// <em>name</em>, and a name proves nothing about the object occupying it.
+    /// </para>
+    /// <para>
+    /// <b>How far that proof reaches is bounded</b> (D-125). It holds for as long as the object is
+    /// kept alive — which within an invocation is what
+    /// <see cref="FcaBedrock.Cli.Publication.PublicationObjectReference"/> is for. It does <b>not</b>
+    /// reach across a crash: an invocation that held no reference cannot afterwards distinguish its
+    /// own untouched residue from a replacement that inherited the identifier, and no amount of
+    /// hashing, length or timestamp recovers the missing history. That gap is closed by the
+    /// caller's undisturbed-namespace precondition, not by this value.
     /// </para>
     /// </summary>
     internal bool TryGetOperatingSystemIdentity(out ulong volume, out ulong low, out ulong high)

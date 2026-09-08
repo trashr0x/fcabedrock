@@ -159,6 +159,12 @@ internal static class SingleFileOutput
                 environment, diagnostics, ((PublicationRefused)preparation).Message, cancellation);
         }
 
+        // The transaction holds live references to every object whose identity authorizes a
+        // mutation, so it is released on every exit — success, host failure, cancellation and
+        // unexpected fault alike. That is not skippable cleanup: on Windows a surviving reference
+        // keeps an already-requested deletion pending (D-125).
+        using var owned = transaction;
+
         try
         {
             if (transaction.Begin() is { } begun)

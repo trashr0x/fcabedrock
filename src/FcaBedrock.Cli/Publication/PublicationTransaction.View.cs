@@ -26,6 +26,7 @@ internal sealed partial class PublicationTransaction
     /// </summary>
     private sealed class TransactionView(
         IPublicationFileSystem files,
+        PublicationReferences references,
         Func<FileIdentity> identityFactory,
         string directory,
         TransactionRecord record,
@@ -38,6 +39,12 @@ internal sealed partial class PublicationTransaction
         IReadOnlySet<TransactionPhase>? marked = null)
     {
         public IPublicationFileSystem Files => files;
+
+        /// <summary>
+        /// The live references authorizing this view's mutations: the transaction's own while it is
+        /// still running, and the ones a resumed run acquired before it decided anything.
+        /// </summary>
+        public PublicationReferences References => references;
 
         public string Directory => directory;
 
@@ -139,7 +146,7 @@ internal sealed partial class PublicationTransaction
 
             // And a resumed run asks the same question of the bytes: exactly this transaction's
             // marker for exactly this phase, or nothing happens to it.
-            return RemoveOwned(files, path, ControlIs(ControlDocument.RoleOf(phase)), guard);
+            return RemoveOwned(files, path, ControlIs(ControlDocument.RoleOf(phase)), guard, references);
         }
 
         public bool RemoveEvidence(PublicationTargetKind kind, string targetFileName, RecoveryGuard guard)
@@ -154,7 +161,8 @@ internal sealed partial class PublicationTransaction
                 files,
                 path,
                 (_, bytes) => bytes is not null && IsOurEvidence(bytes, targetFileName),
-                guard);
+                guard,
+                references);
         }
 
         /// <summary>
@@ -189,13 +197,14 @@ internal sealed partial class PublicationTransaction
                     ControlDocument.ClaimRole(kind),
                     record.Digest,
                     digest),
-                guard);
+                guard,
+                references);
         }
 
         public bool RemoveIntent(RecoveryGuard guard) =>
             intentFileName is not { } name
             || RemoveOwned(
-                files, Path.Combine(directory, name), ControlIs(ControlDocument.IntentRole), guard);
+                files, Path.Combine(directory, name), ControlIs(ControlDocument.IntentRole), guard, references);
 
         private RemovalProof ControlIs(string role) => (_, bytes) =>
             ControlDocument.Matches(bytes, token, record.BaseFileName, role, record.Digest);
@@ -217,7 +226,8 @@ internal sealed partial class PublicationTransaction
                 files,
                 path,
                 (identity, _) => Is(identity, PublicationTargets.RecordRole, record.BaseFileName, digest),
-                guard);
+                guard,
+                references);
         }
 
         /// <summary>
@@ -232,7 +242,8 @@ internal sealed partial class PublicationTransaction
                 files,
                 Path.Combine(directory, PublicationTargets.RecordName(record.BaseFileName, token)),
                 (_, actual) => actual is not null && actual.AsSpan().SequenceEqual(bytes),
-                guard);
+                guard,
+                references);
         }
 
         private bool IsOurEvidence(byte[] bytes, string targetFileName) =>
