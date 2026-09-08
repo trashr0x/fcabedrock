@@ -258,6 +258,17 @@ internal sealed class RecordingPublicationFileSystem : IPublicationFileSystem
     public Action? Mutate { get; set; }
 
     /// <summary>
+    /// How many times a deterministic substitution actually fired.
+    /// <para>
+    /// A substitution test that silently never raced proves nothing, and an <em>outcome</em> cannot
+    /// tell the two apart — before the lifetime correction, whether a given variant failed depended
+    /// on the allocator's history rather than on whether the hook ran. So the tests that place a
+    /// race assert that it happened.
+    /// </para>
+    /// </summary>
+    public int MutationsFired { get; private set; }
+
+    /// <summary>
     /// As <see cref="Mutate"/>, but handed the <b>unfolded</b> operation — so a test can place a
     /// race at a path whose token this run generated and has not written anywhere yet.
     /// <para>
@@ -296,6 +307,13 @@ internal sealed class RecordingPublicationFileSystem : IPublicationFileSystem
     public bool SuppressControlIdentity { get; set; }
 
     /// <summary>
+    /// Report no lifetime reference for an <b>existing</b> participant, as a host that cannot hold
+    /// one does. Identity that cannot be anchored is identity this protocol will not act on, so a
+    /// forced replacement fails closed before anything is created or moved.
+    /// </summary>
+    public bool SuppressReferences { get; set; }
+
+    /// <summary>
     /// The operation to simulate a crash after, as the <c>kind:fileName</c> form used in
     /// <see cref="Operations"/>. The real operation completes, and every later operation then
     /// fails — which is what the on-disk state looks like when the process simply disappears:
@@ -323,7 +341,10 @@ internal sealed class RecordingPublicationFileSystem : IPublicationFileSystem
         var file = _real.CreateNew(path);
         if (SuppressControlIdentity)
         {
-            file = file with { Identity = null };
+            // A host with no identity capability reports none AND anchors nothing — the two go
+            // together, because an identity is only reported when a reference holds it.
+            file.Reference?.Dispose();
+            file = file with { Identity = null, Reference = null };
         }
 
         CrashIfRequested($"CreateNew:{name}");
@@ -343,7 +364,8 @@ internal sealed class RecordingPublicationFileSystem : IPublicationFileSystem
         var stage = _real.CreateNewConfidential(path);
         if (SuppressStageIdentity)
         {
-            stage = stage with { Identity = null };
+            stage.Reference?.Dispose();
+            stage = stage with { Identity = null, Reference = null };
         }
 
         StageIdentities[name] = stage.Identity;
@@ -379,11 +401,20 @@ internal sealed class RecordingPublicationFileSystem : IPublicationFileSystem
     }
 
     /// <inheritdoc/>
-    public void Move(string source, string destination)
+    public PublicationObjectReference? TryAcquire(string path)
+    {
+        var name = Path.GetFileName(path);
+        Observe("Acquire:" + name);
+        FailRead("Acquire", name);
+        return SuppressReferences ? null : _real.TryAcquire(path);
+    }
+
+    /// <inheritdoc/>
+    public void Move(string source, string destination, PublicationObjectReference? sourceReference = null)
     {
         var target = Path.GetFileName(destination);
         Fail("Move", source, target);
-        _real.Move(source, destination);
+        _real.Move(source, destination, sourceReference);
         CrashIfRequested($"Move:{Path.GetFileName(source)}->{target}");
 
         if (string.Equals(CancelAfterMoveTo, target, StringComparison.Ordinal) || Matches(CancelAfterMoveToPrefix, target))
@@ -524,6 +555,12 @@ internal sealed class RecordingPublicationFileSystem : IPublicationFileSystem
         var mutateWith = MutateWith;
         Mutate = null;
         MutateWith = null;
+
+        if (mutate is not null || mutateWith is not null)
+        {
+            MutationsFired++;
+        }
+
         mutate?.Invoke();
         mutateWith?.Invoke(operation);
     }

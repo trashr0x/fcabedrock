@@ -898,6 +898,7 @@ public sealed class PublicationOwnershipTests
 
         await second.RunAsync("convert", run.Spec, run.Data, "--out", run.Base, "--format", "cxt", "--force");
 
+        Assert.Equal(1, second.PublicationFiles.MutationsFired);
         Assert.NotEqual(string.Empty, substituted);
         Assert.True(File.Exists(substituted), $"'{substituted}' was deleted rather than preserved");
         Assert.Equal(Keep, await File.ReadAllTextAsync(substituted));
@@ -930,6 +931,7 @@ public sealed class PublicationOwnershipTests
 
         Assert.Equal(1, await run.ConvertAsync("--format", "both"));
 
+        Assert.Equal(1, run.Harness.PublicationFiles.MutationsFired);
         Assert.Equal(Keep, await File.ReadAllTextAsync(run.Target(".cxt")));
         Assert.True(File.Exists(residue.RecordPath), "the record was removed over an unaccounted object");
     }
@@ -1166,13 +1168,17 @@ public sealed class PublicationOwnershipTests
         // The inability is already KNOWN at preflight: the target exists, its identity was asked
         // for, and the answer cannot authorize a replacement. Discovering that only at sealing
         // would mean a record, three stages, and a whole conversion pass first.
+        //
+        // Both faces of that inability are present, because they are one capability: the host
+        // reports no filesystem identity for a path, and no live reference for an object. An
+        // identity that cannot be anchored is not an identity this protocol acts on (D-125).
         using var temp = TempDirectory.Create();
         var spec = temp.Write("spec.toml", CliFixtures.IndexBoundSpec);
         var data = temp.Write("data.csv", CliFixtures.WideData);
         var basePath = temp.Resolve("out");
         File.WriteAllText(basePath + extension, "the old one");
 
-        var files = new RecordingPublicationFileSystem();
+        var files = new RecordingPublicationFileSystem { SuppressReferences = true };
         var preparation = PublicationTransaction.Preflight(
             files,
             static () => new FileIdentity(new UnavailableFileIdentityProbe()),
@@ -1352,6 +1358,11 @@ public sealed class PublicationOwnershipTests
         }
 
         Assert.Equal(1, await second.RunAsync([.. argv]));
+
+        // The race really happened. Before the lifetime correction this case could pass or fail on
+        // the same code depending on which inode the allocator handed the impostor, so the run has
+        // to say that the substitution fired, not merely that the outcome looks right.
+        Assert.Equal(1, second.PublicationFiles.MutationsFired);
         Assert.Equal(
             DiagnosticRenderer.RenderHostError($"cannot publish the output '{run.Target(".manifest.toml")}'."),
             second.StdErr);
@@ -1449,6 +1460,44 @@ public sealed class PublicationOwnershipTests
             retry.StdErr);
         Assert.False(File.Exists(run.Target(".manifest.toml")));
         Assert.False(File.Exists(run.Target(".cxt")));
+    }
+
+    [Fact]
+    public async Task Publication_WhenAStageIsReplacedByAByteIdenticalObject_ThenItIsStillNotOurs()
+    {
+        // The sharpest substitution there is, and the one no content check can catch: the object at
+        // the stage path is replaced by a DIFFERENT object holding exactly the bytes this run wrote.
+        // Its hash is the one the manifest would certify, so only identity can refuse it — and
+        // identity can only refuse it because the original is still held open, which is what stops
+        // the replacement from being handed the original's identifier (D-125).
+        using var run = ConvertRun.Wide();
+
+        byte[] identical = [];
+        run.Harness.PublicationFiles.MutateBefore = "Move:out.cxt.fcabedrock-stage-T->out.cxt";
+        run.Harness.PublicationFiles.Mutate = () =>
+        {
+            var stage = Single(run.Directory, "out.cxt.fcabedrock-stage-*");
+            identical = File.ReadAllBytes(stage);
+            File.Delete(stage);
+            File.WriteAllBytes(stage, identical);
+        };
+
+        Assert.Equal(1, await run.ConvertAsync("--format", "cxt"));
+
+        Assert.Equal(1, run.Harness.PublicationFiles.MutationsFired);
+        Assert.NotEmpty(identical);
+        Assert.Equal(
+            DiagnosticRenderer.RenderHostError($"cannot publish the output '{run.Target(".cxt")}'."),
+            run.Harness.StdErr);
+
+        // Nothing becomes public, and the impostor is preserved where the compensation put it back:
+        // it is not this transaction's object, so it is neither certified nor deleted.
+        Assert.False(File.Exists(run.Target(".cxt")));
+        Assert.False(File.Exists(run.Target(".manifest.toml")));
+
+        var occupant = Single(run.Directory, "out.cxt.fcabedrock-stage-*");
+        Assert.Equal(identical, await File.ReadAllBytesAsync(occupant));
+        Assert.Contains(run.Residue(), name => name.Contains(".fcabedrock-transaction-", StringComparison.Ordinal));
     }
 
     [Fact]

@@ -596,7 +596,11 @@ internal sealed class SingleRun : IDisposable
             return refused.Message;
         }
 
-        var transaction = ((PublicationReady)preparation).Transaction;
+        // Disposed on every exit, exactly as the real command handlers do it. A transaction whose
+        // references outlive it would keep an already-requested Windows deletion pending, and — in
+        // the crash cases — would let a retry prove ownership from the DEAD invocation's own live
+        // handles instead of from the cold state on disk.
+        using var transaction = ((PublicationReady)preparation).Transaction;
         try
         {
             if (transaction.Begin() is { } begun)
