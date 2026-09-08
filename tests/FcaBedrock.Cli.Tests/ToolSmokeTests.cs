@@ -179,9 +179,22 @@ public sealed class ToolSmokeTests(ToolPackage package)
 
         Assert.NotEqual("fcabedrock", argv0);
         Assert.EndsWith("FcaBedrock.Cli.dll", argv0, StringComparison.Ordinal);
+
+        // Containment is a question about LOCATIONS, so both sides are resolved before they are
+        // compared. A temporary root is routinely reached through a symlinked ancestor — on macOS
+        // `/var` is a link to `/private/var`, so this test is handed `/var/folders/…` while the
+        // process it launched reports its own entry assembly under `/private/var/folders/…` — and
+        // the two spellings name one directory. Comparing them as text fails on the spelling while
+        // the property under test holds perfectly. The resolution is the CLI's own, so "the same
+        // place" means here exactly what it means everywhere else in this repository.
+        var canonical = FileIdentity.CreateDefault();
+        var toolPath = canonical.CanonicalPath(Path.GetFullPath(tools));
+        var entryPoint = canonical.CanonicalPath(Path.GetFullPath(argv0));
+
         Assert.True(
-            argv0.StartsWith(tools, StringComparison.OrdinalIgnoreCase),
-            $"the manifest's argv[0] '{argv0}' is not under the isolated tool path '{tools}'.");
+            entryPoint.StartsWith(toolPath, PathComparison),
+            $"the manifest's argv[0] '{argv0}' resolves to '{entryPoint}', which is not under the "
+            + $"isolated tool path '{tools}' ('{toolPath}').");
 
         // (8) Uninstall, and (9) confirm it is gone.
         await ToolProcess.RequireSuccessAsync(
