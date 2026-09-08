@@ -1,4 +1,3 @@
-using System.Globalization;
 using System.Xml.Linq;
 
 namespace FcaBedrock.Cli.Tests;
@@ -9,10 +8,16 @@ namespace FcaBedrock.Cli.Tests;
 /// the smoke would install — the exact assembly set, the tool settings the host reads, the
 /// identity the feed publishes, the readme the package page renders, and one version.
 /// <para>
-/// Nothing here pins whole-package bytes, the random value NuGet gives the core-properties part,
-/// the relationship part, or entry order: those differ between two packs of identical sources, so
+/// Nothing here pins whole-package bytes, the leaf NuGet gives the core-properties part, the
+/// relationship part, or entry order: those differ between two packs of identical sources, so
 /// pinning them would assert build noise rather than package content. That part's canonical name
-/// SHAPE is still required, because a name is not noise — it is what an extractor acts on.
+/// SHAPE is still required, because a name is not noise — it is what an extractor acts on, and the
+/// shape is a <b>closed two-producer set</b> rather than a wildcard (<see cref="PackageOpc"/>).
+/// </para>
+/// <para>
+/// The OPC wiring around it is checked too, through the same bounded validator the real package
+/// goes through: a metadata part nothing points at, or one the content-type map calls something
+/// else, is not a discoverable core-properties part however canonical its name looks.
 /// </para>
 /// </summary>
 [Collection(ToolPackageCollection.Name)]
@@ -25,7 +30,7 @@ public sealed class ToolPackTests(ToolPackage package)
     private const string PsmdcpExtension = ".psmdcp";
 
     // A syntactically canonical stem, used ONLY to exercise the core-properties rule in both
-    // directions below. The package's own randomly generated value is never compared to it.
+    // directions below. The package's own producer-chosen value is never compared to it.
     private const string CanonicalStemSample = "0123456789abcdef0123456789abcdef";
 
     // The eight production assemblies. Each ships its assembly, its symbols and its documentation,
@@ -76,8 +81,8 @@ public sealed class ToolPackTests(ToolPackage package)
         Check(aliased.Count == 0, $"the package repeats or aliases entry names: {string.Join(", ", aliased)}.");
 
         // The three parts two packs of identical sources disagree on are accounted for by SHAPE and
-        // never by content: no byte of the nupkg, of the GUID-named core-properties part, or of the
-        // relationship part is pinned anywhere. The partition stays deliberately LOOSE — anything
+        // never by content: no byte of the nupkg, of the producer-named core-properties part, or of
+        // the relationship part is pinned anywhere. The partition stays deliberately LOOSE — anything
         // under the core-properties directory is classified here — so that a rogue metadata part is
         // caught by the exact rule below with a message that names it, instead of slipping into the
         // payload comparison as an anonymous "unexpected" entry.
@@ -94,14 +99,15 @@ public sealed class ToolPackTests(ToolPackage package)
             "the package infrastructure is not exactly one core-properties part, '_rels/.rels' and "
             + $"'[Content_Types].xml': {string.Join(", ", infrastructure)}.");
 
-        // The sole dynamically named entry must be NuGet's canonical core-properties part. Its
-        // random VALUE is not pinned; its shape is. Accepting any '*.psmdcp' leaf would admit an
-        // arbitrary metadata part — 'CON.psmdcp' among them, which Windows resolves to a console
+        // The sole producer-named entry must be one of NuGet's two canonical core-properties
+        // leaves. Its VALUE is not pinned; its shape is. Accepting any '*.psmdcp' leaf would admit
+        // an arbitrary metadata part — 'CON.psmdcp' among them, which Windows resolves to a console
         // device rather than a file when the package is extracted.
         Check(
             IsCorePropertiesPart(coreProperties[0]),
             $"the core-properties part '{Printable(coreProperties[0])}' is not "
-            + $"'{CoreProperties}<32 lowercase hexadecimal digits>{PsmdcpExtension}'.");
+            + $"'{CoreProperties}<32 lowercase hexadecimal digits|{PackageOpc.DeterministicStem}>"
+            + $"{PsmdcpExtension}'.");
 
         // Everything else is the COMPLETE allowed surface, compared exactly.
         var shipped = entries.Where(name => !IsInfrastructure(name)).Order(StringComparer.Ordinal).ToList();
@@ -139,9 +145,20 @@ public sealed class ToolPackTests(ToolPackage package)
         // The rule the fact just applied is asserted in BOTH directions, so a later loosening back
         // to a bare '*.psmdcp' pattern cannot pass unnoticed. None of these is compared against the
         // package's own name; they exercise the predicate, and the canonical stem is a sample.
-        Check(
-            IsCorePropertiesPart(CoreProperties + CanonicalStemSample + PsmdcpExtension),
-            "the core-properties rule rejects a canonically named part.");
+        //
+        // The accepted set is exactly two, because exactly two producers write it: the GUID-N leaf
+        // NuGet emitted through SDK 10.0.302, and the hard-coded 'nuget' leaf it emits from
+        // SDK 10.0.400 onwards (NuGet.Client change 5834c6b9).
+        foreach (var accepted in (string[])
+                 [
+                     CoreProperties + CanonicalStemSample + PsmdcpExtension,
+                     CoreProperties + PackageOpc.DeterministicStem + PsmdcpExtension,
+                 ])
+        {
+            Check(
+                IsCorePropertiesPart(accepted),
+                $"the core-properties rule rejects the canonical part '{Printable(accepted)}'.");
+        }
 
         foreach (var alias in (string[])
                  [
@@ -156,6 +173,18 @@ public sealed class ToolPackTests(ToolPackage package)
                      CoreProperties + CanonicalStemSample + "0" + PsmdcpExtension,
                      CoreProperties + "nested/" + CanonicalStemSample + PsmdcpExtension,
                      "package\\services\\metadata\\core-properties\\" + CanonicalStemSample + PsmdcpExtension,
+
+                     // The deterministic stem is an ORDINAL literal, so an altered case, any
+                     // padding, and any nesting are all somebody else's part.
+                     CoreProperties + "NuGet" + PsmdcpExtension,
+                     CoreProperties + "NUGET" + PsmdcpExtension,
+                     CoreProperties + "nuget0" + PsmdcpExtension,
+                     CoreProperties + "0nuget" + PsmdcpExtension,
+                     CoreProperties + " nuget" + PsmdcpExtension,
+                     CoreProperties + "nuget " + PsmdcpExtension,
+                     CoreProperties + "nuget" + PsmdcpExtension + PsmdcpExtension,
+                     CoreProperties + "nested/" + PackageOpc.DeterministicStem + PsmdcpExtension,
+                     CoreProperties + PsmdcpExtension,
                  ])
         {
             Check(!IsCorePropertiesPart(alias), $"the core-properties rule accepts '{Printable(alias)}'.");
@@ -252,6 +281,20 @@ public sealed class ToolPackTests(ToolPackage package)
     }
 
     [Fact]
+    public void Package_WhenPacked_ThenTheCorePropertiesPartIsReallyDiscoverable()
+    {
+        // A canonical NAME is not discoverability. OPC finds the core-properties part through a
+        // package relationship and the part's effective content type, so the REAL package goes
+        // through the bounded validator that decides exactly that. The rule matrix in
+        // `PackageOpcTests` drives the same validator, which is what makes a green result here
+        // evidence about this package rather than about a helper.
+        var problems = PackageOpc.Validate(
+            OpcArchive.OfPackage(package.NupkgPath), "FcaBedrock.Cli", package.Version);
+
+        Check(problems.Count == 0, $"the packed OPC metadata is inconsistent: {string.Join(" ", problems)}");
+    }
+
+    [Fact]
     public void Package_WhenPacked_ThenThePackageVersionMatchesTheToolVersion()
     {
         // Three spellings of one fact: the packed file name, the nuspec, and the string the
@@ -317,30 +360,9 @@ public sealed class ToolPackTests(ToolPackage package)
         }
     }
 
-    // The one entry NuGet names at random. Its value is never pinned; its canonical shape is
-    // required: the exact core-properties directory in forward-slash archive syntax, a single leaf,
-    // a stem that is a GUID in the 'N' representation the SDK actually emits (32 hexadecimal digits,
-    // no separator), and a lowercase '.psmdcp'. `Guid.TryParseExact(..., "N", ...)` accepts EITHER
-    // case, so the ordinal round-trip against `ToString("N")` — lowercase by definition — is what
-    // pins the canonical spelling; the length guard makes the slice below provably in range.
-    private static bool IsCorePropertiesPart(string name)
-    {
-        if (name.Length < CoreProperties.Length + PsmdcpExtension.Length
-            || !name.StartsWith(CoreProperties, StringComparison.Ordinal)
-            || !name.EndsWith(PsmdcpExtension, StringComparison.Ordinal))
-        {
-            return false;
-        }
-
-        var stem = name[CoreProperties.Length..^PsmdcpExtension.Length];
-
-        return !stem.Contains('/', StringComparison.Ordinal)
-            && Guid.TryParseExact(stem, "N", out var identifier)
-            && string.Equals(
-                stem,
-                identifier.ToString("N", CultureInfo.InvariantCulture),
-                StringComparison.Ordinal);
-    }
+    // The one entry the producer names. ONE rule, shared with the bounded OPC validator, so the
+    // name predicate and the consistency check can never disagree about which part this is.
+    private static bool IsCorePropertiesPart(string name) => PackageOpc.IsCorePropertiesPart(name);
 
     private static bool IsInfrastructure(string name) =>
         name.StartsWith(CoreProperties, StringComparison.Ordinal)

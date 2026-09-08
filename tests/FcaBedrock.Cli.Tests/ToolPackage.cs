@@ -590,8 +590,9 @@ public sealed class ToolPackage : IAsyncLifetime
     private static ZipArchiveEntry Entry(ZipArchive archive, string name) =>
         archive.GetEntry(name) ?? throw new InvalidOperationException($"the package has no entry '{name}'.");
 
-    // The GUID-named core-properties part, the relationship part, and the content-type map all vary
-    // between two packs of identical sources, so nothing here ever asserts them.
+    // The producer-named core-properties part, the relationship part, and the content-type map all
+    // vary between two packs of identical sources, so nothing here ever asserts them. Their
+    // CONSISTENCY is asserted, through the bounded validator in `PackageOpc`; their bytes are not.
     private static bool IsNotReproducible(string name) =>
         name.StartsWith("package/services/metadata/core-properties/", StringComparison.Ordinal)
         || string.Equals(name, "_rels/.rels", StringComparison.Ordinal)
