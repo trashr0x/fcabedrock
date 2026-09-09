@@ -32,10 +32,22 @@ That tree is ignored by Git.
 
 The required release archives are `win-x64`, `linux-x64`, and `osx-arm64`.
 
+The zip is written entry by entry rather than with `Compress-Archive`, for one reason: a zip carries
+a file's Unix mode in its own metadata, and `Compress-Archive` records `0100644` for every entry. On
+Linux and macOS the apphost is therefore recorded **`0100755`** and every other entry left
+`0100644`, so `unzip` produces a `FcaBedrock.Cli` that can actually be run. Nothing else about the
+archive changed: a flat payload, relative names, the published files' own timestamps, and entries in
+ordinal name order.
+
 > **Cross-publishing is not evidence.** A folder produced for another platform shows that the SDK can
 > emit files for it and says nothing about whether the result runs there. Only a publish executed
 > *on* the target platform, followed by the smoke below, is evidence — which is why the required
 > native targets run on their own machines rather than being cross-published from one.
+>
+> The archive says so too: a zip records the platform that created it, and an extractor reads the DOS
+> attributes instead of the Unix mode when that platform is not Unix. Cross-publishing a Unix RID
+> from Windows still produces a zip, and the command warns that its modes will not survive
+> extraction.
 
 ## The smokes
 
@@ -49,12 +61,22 @@ installs nothing globally, and consults no network feed.
 $env:FCABEDROCK_TOOL_SMOKE = '1'
 dotnet test tests/FcaBedrock.Cli.Tests -c Release --filter-class '*ToolSmokeTests*'
 
-# The self-contained publish: publish for the RUNNING rid, check the runtime is bundled, run it with
-# the SDK's environment removed, compare its context bytes against this process's, resolve a real
-# BCP-47 locale, confirm a refused convert commits nothing, and inspect the archive.
+# The self-contained distribution: run the publish script above for the RUNNING rid, check the
+# runtime is bundled, inspect the archive it produced, EXTRACT that archive, and make every
+# behavioural check against the extracted apphost - the SDK's environment removed, context bytes
+# compared against this process's, a real BCP-47 locale resolved, a refused convert committing
+# nothing.
 $env:FCABEDROCK_SELFCONTAINED_SMOKE = '1'
 dotnet test tests/FcaBedrock.Cli.Tests -c Release --filter-class '*SelfContainedSmokeTests*'
 ```
+
+Running the extracted archive rather than the publish folder is the point, not a detail: the folder
+is not what a user receives. `FCABEDROCK_SELFCONTAINED_OUTPUT` names where the script writes, so CI
+verifies and then uploads the same file; unset, the smoke uses its own disposable directory.
+
+The archive writer itself is checked separately and *ungated*, in `DistributionArchiveTests`: it
+archives a folder the test controls through `-ArchiveOnly` and reads the recorded modes back, so
+every platform answers "is the Linux apphost executable?" in seconds without publishing a runtime.
 
 ## The ordinary checks
 

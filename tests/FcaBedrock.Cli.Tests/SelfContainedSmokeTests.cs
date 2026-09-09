@@ -1,4 +1,3 @@
-using System.IO.Compression;
 using System.Runtime.InteropServices;
 
 namespace FcaBedrock.Cli.Tests;
@@ -15,6 +14,14 @@ namespace FcaBedrock.Cli.Tests;
 /// than assumed from the publish command's exit code.
 /// </para>
 /// <para>
+/// <b>It runs the archive, not the publish folder.</b> The distribution a user receives is the zip,
+/// and a zip loses what its writer does not record — a file's Unix mode above all. So this publishes
+/// through the real packaging script, inspects the archive it produced, extracts <em>that exact
+/// archive</em>, and makes every behavioural check against the extracted apphost. Running the
+/// publish folder instead is what let three releases ship an archive whose <c>./FcaBedrock.Cli</c>
+/// could not be executed at all while every check here passed.
+/// </para>
+/// <para>
 /// <b>Gated</b>, like the tool smoke, because it is slow and writes a few hundred megabytes: it
 /// always reports as skipped rather than silently not existing. It publishes only for the
 /// <b>running</b> RID — a cross-published folder proves the SDK can emit files for another platform
@@ -24,6 +31,13 @@ namespace FcaBedrock.Cli.Tests;
 public sealed class SelfContainedSmokeTests
 {
     private const string Gate = "FCABEDROCK_SELFCONTAINED_SMOKE";
+
+    /// <summary>
+    /// Where the packaging script writes, when the caller needs to know. CI sets it so the archive
+    /// this test verifies is the same file the workflow then uploads — the bytes a user downloads
+    /// are the bytes something ran. Unset, the test uses its own disposable directory.
+    /// </summary>
+    private const string OutputRootVariable = "FCABEDROCK_SELFCONTAINED_OUTPUT";
 
     /// <summary>The apphost the publish produces, named from the assembly rather than the tool command.</summary>
     private static string ExecutableName =>
@@ -62,36 +76,38 @@ public sealed class SelfContainedSmokeTests
             $"set {Gate}=1 to run the self-contained publish smoke.");
 
         var token = TestContext.Current.CancellationToken;
-        var dotnet = ToolProcess.DotnetHost();
         var timeout = TimeSpan.FromMinutes(10);
         var rid = RuntimeInformation.RuntimeIdentifier;
 
+        var pwsh = ToolProcess.PowerShellHost();
+        Assert.SkipUnless(
+            pwsh is not null, "PowerShell 7 (pwsh) is not on PATH; the packaging script cannot be run here.");
+
         using var root = TempDirectory.Create();
-        var publish = Path.Combine(root.Path, "publish");
         var work = Path.Combine(root.Path, "work");
         Directory.CreateDirectory(work);
 
-        var repository = RepositoryRoot();
-        var project = Path.Combine(repository, "src", "FcaBedrock.Cli", "FcaBedrock.Cli.csproj");
-        Assert.True(File.Exists(project), $"the CLI project was not found at '{project}'.");
+        var repository = RepositoryRoot.Find();
+        var script = DistributionArchive.Script(repository);
+        Assert.True(File.Exists(script), $"the packaging script was not found at '{script}'.");
 
-        // (1) Publish for the RUNNING runtime identifier, self-contained.
-        //
-        // PackAsTool must be overridden: a tool package and a self-contained apphost are different
-        // distributions of the same program, and the SDK refuses to produce the second while the
-        // first is declared. Nothing else is overridden - no trimming, no single file, no AOT, and
-        // no invariant globalization - because every one of those changes what the program does,
-        // and this is meant to be the same program in a different wrapper.
+        // Where the script writes. CI names it so the archive verified below is the same file the
+        // workflow uploads; otherwise it is this test's own disposable directory.
+        var configured = Environment.GetEnvironmentVariable(OutputRootVariable);
+        var outputRoot = string.IsNullOrWhiteSpace(configured) ? Path.Combine(root.Path, "artifacts") : configured;
+        Directory.CreateDirectory(outputRoot);
+
+        var publish = Path.Combine(outputRoot, rid);
+        var archive = Path.Combine(outputRoot, $"fcabedrock-{rid}.zip");
+
+        // (1) Publish and archive for the RUNNING runtime identifier — through the SAME script CI
+        // runs and a developer runs, so what is proved below is the distribution command's output
+        // rather than a second, more forgiving publish written here. The script overrides
+        // PackAsTool and nothing else: no trimming, no single file, no AOT, and no invariant
+        // globalization, because every one of those changes what the program does.
         await ToolProcess.RequireSuccessAsync(
-            dotnet,
-            [
-                "publish", project,
-                "-c", "Release",
-                "-r", rid,
-                "--self-contained", "true",
-                "-p:PackAsTool=false",
-                "-o", publish,
-            ],
+            pwsh!,
+            ["-NoLogo", "-NoProfile", "-File", script, "-Rid", rid, "-OutputRoot", outputRoot],
             repository,
             environment: null,
             timeout,
@@ -101,8 +117,9 @@ public sealed class SelfContainedSmokeTests
         // `fcabedrock`: the tool COMMAND name belongs to the global-tool shim, and inventing a
         // second name for the same binary would make the two distributions disagree about what the
         // program is called.
-        var executable = Path.Combine(publish, ExecutableName);
-        Assert.True(File.Exists(executable), $"the publish produced no '{ExecutableName}' in '{publish}'.");
+        Assert.True(
+            File.Exists(Path.Combine(publish, ExecutableName)),
+            $"the publish produced no '{ExecutableName}' in '{publish}'.");
 
         // (3) The runtime really is bundled. These three are the host, the policy resolver, and the
         // runtime library itself: a framework-dependent publish has none of them.
@@ -129,6 +146,28 @@ public sealed class SelfContainedSmokeTests
             "System.Globalization.Invariant",
             await File.ReadAllTextAsync(runtimeConfig, token),
             StringComparison.Ordinal);
+
+        // (5a) THE ARCHIVE, before anything is run from it. Safe flat names, no links, no case
+        // collisions, and — on Linux and macOS — the apphost recorded 0100755 with every ordinary
+        // file left 0100644. A zip carries the mode; a published file's own permissions do not
+        // survive one that records none, which is exactly how three green runs shipped an archive
+        // whose documented `./FcaBedrock.Cli` could not be executed.
+        DistributionArchive.AssertValid(archive, rid);
+        Assert.True(
+            new FileInfo(archive).Length > 10L * 1024 * 1024, "the archive is too small to carry a runtime.");
+
+        // (5b) Extract THAT archive — the user's `unzip` step — and take the apphost from what came
+        // out of it. Everything below runs the extracted binary, so the distribution being proved is
+        // the one that gets downloaded rather than the folder it was made from.
+        var extracted = DistributionArchive.ExtractTo(archive, Path.Combine(root.Path, "extracted"));
+        var executable = DistributionArchive.AssertExtractedApphost(extracted, rid);
+
+        foreach (var bundled in BundledRuntimeFiles())
+        {
+            Assert.True(
+                File.Exists(Path.Combine(extracted, bundled)),
+                $"'{bundled}' did not survive the archive, so the extracted distribution is not self-contained.");
+        }
 
         // (6) It runs with the SDK's own environment removed. DOTNET_ROOT and the multilevel-lookup
         // switch are what a framework-dependent host would use to FIND a runtime; blanking them
@@ -206,22 +245,12 @@ public sealed class SelfContainedSmokeTests
                 $"a refused convert left '{refusedTarget + extension}' behind.");
         }
 
-        // (11) Archive: the folder zips, the archive carries the executable and the bundled runtime
-        // at its root, and it is not trivially small.
-        var archive = Path.Combine(root.Path, $"fcabedrock-{rid}.zip");
-        ZipFile.CreateFromDirectory(publish, archive, CompressionLevel.Fastest, includeBaseDirectory: false);
-
-        using var inspected = ZipFile.OpenRead(archive);
-        var entries = inspected.Entries.Select(entry => entry.FullName).ToList();
-
-        Assert.Contains(ExecutableName, entries);
-        Assert.Contains("FcaBedrock.Cli.runtimeconfig.json", entries);
-        foreach (var bundled in BundledRuntimeFiles())
-        {
-            Assert.Contains(bundled, entries);
-        }
-
-        Assert.True(new FileInfo(archive).Length > 10L * 1024 * 1024, "the archive is too small to carry a runtime.");
+        // (11) And the archive really is the whole distribution: what came out of it is exactly what
+        // went into it, name for name. Everything above ran from the extracted copy, so this closes
+        // the loop rather than opening a second definition of a valid archive.
+        var published = Directory.GetFiles(publish).Select(Path.GetFileName).Order(StringComparer.Ordinal);
+        var delivered = Directory.GetFiles(extracted).Select(Path.GetFileName).Order(StringComparer.Ordinal);
+        Assert.Equal(published, delivered);
     }
 
     // The three files that only a self-contained publish carries: the host resolver, the policy
@@ -252,19 +281,5 @@ public sealed class SelfContainedSmokeTests
 
         Assert.Equal(0, exitCode);
         return await File.ReadAllBytesAsync(target + extension, token);
-    }
-
-    // Never a fixed `..` hop count: the answer is wherever the solution file actually is.
-    private static string RepositoryRoot()
-    {
-        for (var directory = new DirectoryInfo(AppContext.BaseDirectory); directory is not null; directory = directory.Parent)
-        {
-            if (File.Exists(Path.Combine(directory.FullName, "FcaBedrock.slnx")))
-            {
-                return directory.FullName;
-            }
-        }
-
-        throw new InvalidOperationException($"FcaBedrock.slnx was not found above '{AppContext.BaseDirectory}'.");
     }
 }

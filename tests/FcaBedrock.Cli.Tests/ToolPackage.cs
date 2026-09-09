@@ -45,6 +45,33 @@ internal static class ToolProcess
         return !string.IsNullOrEmpty(host) && File.Exists(host) ? host : "dotnet";
     }
 
+    /// <summary>
+    /// PowerShell 7 on this machine's PATH, or null when it has none.
+    /// <para>
+    /// Resolved to a real file rather than left to the process launcher, so "no pwsh here" is an
+    /// answer a caller can act on — a reported skip — instead of a launch failure it has to
+    /// interpret. Windows PowerShell is deliberately not a fallback: the packaging script is written
+    /// for PowerShell 7 and uses its types and its automatic variables.
+    /// </para>
+    /// </summary>
+    internal static string? PowerShellHost()
+    {
+        var name = OperatingSystem.IsWindows() ? "pwsh.exe" : "pwsh";
+        var path = Environment.GetEnvironmentVariable("PATH") ?? string.Empty;
+
+        foreach (var directory in path.Split(
+                     Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            var candidate = Path.Combine(directory, name);
+            if (File.Exists(candidate))
+            {
+                return candidate;
+            }
+        }
+
+        return null;
+    }
+
     /// <summary>Runs <paramref name="fileName"/> to completion and returns its exit code and output.</summary>
     /// <remarks>
     /// A non-zero exit is a result, not an exception — the caller decides whether it matters.

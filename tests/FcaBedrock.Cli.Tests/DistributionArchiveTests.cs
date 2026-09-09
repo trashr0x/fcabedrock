@@ -1,0 +1,131 @@
+namespace FcaBedrock.Cli.Tests;
+
+/// <summary>
+/// The packaging script's <b>archive writer</b>, exercised against a folder this test controls.
+/// <para>
+/// The gated self-contained smoke proves the whole distribution, but it costs a full publish and
+/// runs only for the platform it is on. This runs on every target in the ordinary suite, in
+/// seconds, and asks the one question that was answered wrongly for every archive this project has
+/// shipped: does the zip record the apphost as executable? A Windows machine can answer it for a
+/// Linux distribution, because the answer is in the archive's own metadata rather than in the
+/// filesystem it came from.
+/// </para>
+/// <para>
+/// It runs the real script through <c>-ArchiveOnly</c> rather than reimplementing its rules — the
+/// point of a packaging test is that the packaging command is what was tested.
+/// </para>
+/// </summary>
+public sealed class DistributionArchiveTests
+{
+    [Theory]
+    [InlineData("linux-x64")]
+    [InlineData("osx-arm64")]
+    public async Task Archive_WhenTheDistributionIsUnix_ThenTheApphostIsExecutableAndNothingElseIs(string rid)
+    {
+        var script = RequireScript();
+        using var root = TempDirectory.Create();
+
+        var published = PublishFolder(root, rid);
+        await RunScriptAsync(script, rid, root.Path);
+
+        // The whole contract, in one place: safe flat names, no links, no case collisions, the
+        // apphost at 0100755, and every ordinary file still at 0100644.
+        DistributionArchive.AssertValid(ArchivePath(root, rid), rid);
+
+        // And the specific regression, named rather than implied. `Compress-Archive` recorded
+        // 0100644 for every entry, so an unzipped `./FcaBedrock.Cli` answered "Permission denied".
+        Assert.Equal(
+            DistributionArchive.ExecutableFileMode, ModeOf(ArchivePath(root, rid), DistributionArchive.ExecutableName(rid)));
+        Assert.NotEqual(
+            DistributionArchive.RegularFileMode, ModeOf(ArchivePath(root, rid), DistributionArchive.ExecutableName(rid)));
+        Assert.Equal(
+            DistributionArchive.RegularFileMode, ModeOf(ArchivePath(root, rid), "FcaBedrock.Cli.runtimeconfig.json"));
+
+        Assert.True(Directory.Exists(published), "the archive-only run must not disturb the folder it archives.");
+    }
+
+    [Fact]
+    public async Task Archive_WhenTheDistributionIsWindows_ThenItCarriesTheApphostAndClaimsNoUnixMode()
+    {
+        // The counterexample that keeps the rule honest: a Windows distribution has no Unix mode to
+        // record, and inventing one would be a claim about a platform this archive is not for.
+        var script = RequireScript();
+        using var root = TempDirectory.Create();
+
+        PublishFolder(root, "win-x64");
+        await RunScriptAsync(script, "win-x64", root.Path);
+
+        DistributionArchive.AssertValid(ArchivePath(root, "win-x64"), "win-x64");
+        Assert.Equal(0, ModeOf(ArchivePath(root, "win-x64"), "FcaBedrock.Cli.exe"));
+    }
+
+    [Fact]
+    public async Task Archive_WhenExtracted_ThenItYieldsExactlyThePublishedFilesAndTheirBytes()
+    {
+        // Extraction is the step the README documents, so it is the step that is tested: what comes
+        // out has to be what went in, at the same names, with the same bytes.
+        var script = RequireScript();
+        using var root = TempDirectory.Create();
+
+        var rid = "linux-x64";
+        var published = PublishFolder(root, rid);
+        await RunScriptAsync(script, rid, root.Path);
+
+        var extracted = DistributionArchive.ExtractTo(
+            ArchivePath(root, rid), Path.Combine(root.Path, "extracted"));
+
+        var before = Directory.GetFiles(published).Select(Path.GetFileName).Order(StringComparer.Ordinal);
+        var after = Directory.GetFiles(extracted).Select(Path.GetFileName).Order(StringComparer.Ordinal);
+        Assert.Equal(before, after);
+
+        Assert.Equal(
+            await File.ReadAllBytesAsync(Path.Combine(published, "FcaBedrock.Cli"), TestContext.Current.CancellationToken),
+            await File.ReadAllBytesAsync(Path.Combine(extracted, "FcaBedrock.Cli"), TestContext.Current.CancellationToken));
+    }
+
+    // A minimal stand-in for a published folder: the apphost the writer must mark executable, and an
+    // ordinary file it must leave alone. Two files rather than a runtime, because what is under test
+    // is the archive's metadata, not the SDK's output.
+    private static string PublishFolder(TempDirectory root, string rid)
+    {
+        var folder = Path.Combine(root.Path, rid);
+        Directory.CreateDirectory(folder);
+        File.WriteAllText(Path.Combine(folder, DistributionArchive.ExecutableName(rid)), "an apphost");
+        File.WriteAllText(Path.Combine(folder, "FcaBedrock.Cli.runtimeconfig.json"), "{}");
+        return folder;
+    }
+
+    private static string ArchivePath(TempDirectory root, string rid) =>
+        Path.Combine(root.Path, $"fcabedrock-{rid}.zip");
+
+    private static int ModeOf(string archivePath, string entryName)
+    {
+        using var archive = System.IO.Compression.ZipFile.OpenRead(archivePath);
+        var entry = archive.GetEntry(entryName);
+        Assert.NotNull(entry);
+        return entry.ExternalAttributes >>> 16;
+    }
+
+    private static async Task RunScriptAsync(string script, string rid, string outputRoot) =>
+        await ToolProcess.RequireSuccessAsync(
+            ToolProcess.PowerShellHost()!,
+            ["-NoLogo", "-NoProfile", "-File", script, "-Rid", rid, "-OutputRoot", outputRoot, "-ArchiveOnly"],
+            Path.GetDirectoryName(script)!,
+            environment: null,
+            TimeSpan.FromMinutes(2),
+            TestContext.Current.CancellationToken);
+
+    // PowerShell 7 is what the packaging script is written for, and what every CI target and the
+    // documented developer workflow already use. Where it is genuinely absent this reports as a
+    // skip with the reason, rather than failing for a missing shell.
+    private static string RequireScript()
+    {
+        Assert.SkipUnless(
+            ToolProcess.PowerShellHost() is not null,
+            "PowerShell 7 (pwsh) is not on PATH; the packaging script cannot be run here.");
+
+        var script = DistributionArchive.Script(RepositoryRoot.Find());
+        Assert.True(File.Exists(script), $"the packaging script was not found at '{script}'.");
+        return script;
+    }
+}

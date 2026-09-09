@@ -133,8 +133,11 @@ belongs to the global-tool shim.
 ```
 
 The required archives are `win-x64`, `linux-x64`, and `osx-arm64`, and CI
-produces each of them on its own platform — a cross-published folder shows only
-that the SDK can emit files for another target, not that the result runs there.
+produces each of them on its own platform, then extracts that exact archive and
+runs the extracted executable before uploading it — a cross-published folder
+shows only that the SDK can emit files for another target, not that the result
+runs there. On Linux and macOS the archive records `FcaBedrock.Cli` as
+executable, so `./FcaBedrock.Cli` works straight out of the unzip.
 "Self-contained" bundles .NET, not the operating system: globalization still uses
 the host's ICU, which Windows 10+ ships and a Linux host provides through its
 `libicu` packages.

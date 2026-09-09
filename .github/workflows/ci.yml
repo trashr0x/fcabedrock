@@ -173,20 +173,27 @@ jobs:
           dotnet test tests/FcaBedrock.Cli.Tests -c Release --no-build
           --filter-class '*ToolSmokeTests*'
 
-      - name: Self-contained smoke (publish, run without an installed runtime, archive)
+      # Publish, archive, EXTRACT, and run the extracted apphost — one step, because they are one
+      # claim. The smoke drives `eng/publish-selfcontained.ps1`, the same script a developer runs, so
+      # what it verifies is the archive that command produces rather than a second zip written for
+      # the occasion. That distinction is not academic: the previous arrangement ran the publish
+      # FOLDER and then zipped a separate test archive, so green runs uploaded Linux and macOS
+      # distributions whose `FcaBedrock.Cli` was recorded non-executable and could not be launched
+      # the way the README documents.
+      #
+      # On the three required targets it writes into `artifacts/publish`, and the upload below takes
+      # that exact file: the bytes a user downloads are the bytes this step extracted and ran. The
+      # optional targets run the identical smoke in the test's own temporary directory — proving the
+      # same thing about their platform, and producing no delivery archive, which is nobody's to
+      # support.
+      - name: Self-contained smoke (publish, archive, extract, run without an installed runtime)
         env:
           FCABEDROCK_SELFCONTAINED_SMOKE: '1'
+          FCABEDROCK_SELFCONTAINED_OUTPUT: >-
+            ${{ matrix.required && format('{0}/artifacts/publish', github.workspace) || '' }}
         run: >
           dotnet test tests/FcaBedrock.Cli.Tests -c Release --no-build
           --filter-class '*SelfContainedSmokeTests*'
-
-      # The distribution archive, built by the same script a developer runs locally. Only the three
-      # required targets produce one: an optional target's archive would be a distribution nobody
-      # promised to support.
-      - name: Publish and archive the self-contained distribution
-        if: matrix.required
-        shell: pwsh
-        run: ./eng/publish-selfcontained.ps1 -Rid ${{ matrix.rid }}
 
       - name: Upload the tested archive
         if: matrix.required
