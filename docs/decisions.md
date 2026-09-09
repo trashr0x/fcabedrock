@@ -6063,6 +6063,40 @@ pinned here.
   CLI-host interval, so this entry's CLI-host `Convert` measurements are superseded
   there rather than here; they keep their original provenance as the measurements of
   the revision that produced them.
+- **Correction (2026-09-09) — two of this entry's rules were stated correctly and
+  implemented incompletely.** An independent implementation review of `03352da7` found
+  both. Neither is a change to what this entry decided; both are the code being brought to
+  it, and the decisions above stand exactly as written.
+  1. **The tier gate reached two of its three tiers.** "The three opt-in tiers are
+     reachable only by naming their category" was implemented as an explicit branch for
+     `Scale` and for `External` and no branch for `Working`, so any *other* named category
+     — a surface category such as `--anyCategories Source` — admitted every `Working` case
+     as well. The second effect was worse than the first: because the command line had not
+     named `Working`, the job selection stayed `FreshIteration`, so an ordinary surface
+     query would have started 730,000-record cases under a throughput job's pilot stage
+     instead of the bounded monitoring job. `Working` now has the same explicit branch, and
+     all three tiers are swept for bare, broad-name, case-name and surface-only selection
+     against the categories BenchmarkDotNet actually reads, with the resulting job asserted
+     through the real configuration.
+  2. **The delivery archive recorded the Unix apphost as non-executable.** A zip carries
+     each file's mode in its own metadata, and `eng/publish-selfcontained.ps1` built the
+     archive with `Compress-Archive`, which records `0100644` for every entry. Both
+     successful native runs — `34289256438` at `4216610b` and `34392695933` at `03352da7` —
+     therefore uploaded Linux and macOS archives whose `FcaBedrock.Cli` unzips
+     non-executable, so the `./FcaBedrock.Cli` the README documents exits 126,
+     `Permission denied`. **Neither run is relabelled**: every job and every step of both
+     succeeded, and workflow success is not the same claim as archive usability. The gate
+     could not have caught it, because the self-contained smoke ran the publish *folder*
+     and inspected a *different* zip it created itself, while the workflow uploaded the
+     packaging script's archive — two definitions of a valid archive, and the delivered one
+     was never the tested one. The script now writes the archive entry by entry and records
+     the apphost `0100755` with every other entry left `0100644`; the smoke drives that
+     script, inspects the archive it produced, extracts **that exact archive** and makes
+     every behavioural check against the extracted apphost; and the workflow uploads the
+     file the smoke verified. The five-target matrix, the read-only permissions, the
+     required/optional split, the RID and bundled-runtime checks, and the path-safety rules
+     are unchanged, and no product output byte, diagnostic or manifest is touched.
+     Replacement archive evidence at the corrected head is an outstanding gate (**D-126**).
 
 ---
 
@@ -6386,6 +6420,60 @@ pinned here.
      corrected-command resource traces**. The session-A and session-C CLI-host rows and the
      six historical traces keep their original provenance as observations of the revisions
      that produced them and are never attributed to `4216610b`.
+- **Correction (2026-09-09) — part 3's acquire-before-mutate rule was implemented for the
+  running transaction and not for a resumed one.** An independent implementation review of
+  `03352da7` found it. The rule itself is unchanged and correct as written; what follows is
+  the code being brought to it.
+
+  A resumed recovery pass called the reference registry's `Ensure` for each participant and
+  then **ignored what it answered**. `Ensure` correctly returns null when acquisition fails
+  and stores nothing, but intent-only cleanup went on to remove the pending record and its
+  descriptor; `Preparing` cleanup went on to remove each recorded stage and backup; and the
+  forward/rollback pass went on to compute ownership and to remove, restore and re-rename.
+  Neither the removal primitive nor the path-shaped ownership decision required a retained
+  reference to exist, and the restore passed a possibly-null reference straight to the move.
+  So a transient capability, permission or sharing failure — the one case the rule exists
+  for — left the pass acting on an identifier the host is free to have reissued, which is
+  exactly the recycled-identifier class part 1 records. It also contradicted this entry's
+  own words at the seam: a null reference means the caller does not act on that identity.
+
+  What holds it now is an anchor gate in front of each pass, plus a requirement each mutating
+  primitive states for itself. **Intent-only cleanup** anchors its pending record *and* its
+  descriptor before either removal. **Resumed `Preparing` cleanup** anchors every stage and
+  backup entry the record lists before its data cleanup removes any of them. **Forward and
+  rollback recovery** anchors every final, backup and stage participant that its aggregate
+  direction question and its target-decision pass require — before that direction is decided
+  and before any target is mutated. Both orderings are load-bearing: the ownership question is
+  what authorizes forward cleanup over rollback, and anchoring per target as the pass reached
+  it would already have removed the first target's final before discovering it could not hold
+  the second target's backup. A participant that is present and cannot be held ends the pass
+  with the location exactly as it was found. Absence stays absence: a path with nothing at it
+  has nothing to anchor and nothing to mutate, so the ordinary idempotent case is unchanged,
+  and an unanswerable existence question reads as present and so fails closed too.
+
+  Beneath those gates the mutations state the requirement themselves. **Every destructive
+  removal — including the ordered marker, evidence and record cleanup — independently refuses
+  to act unless it holds the object at its own mutation boundary**, so a later call site cannot
+  reintroduce the gap by forgetting a gate; and the restoring rename **separately requires its
+  source anchor and proves that anchor is still at the name it is moving**, rather than
+  re-acquiring the destination by name.
+
+  **Control cleanup keeps its existing durable, incremental order** — most advanced phase
+  first, stopping at the first deletion that fails — and is deliberately *not* pre-anchored as
+  a set: each control object is held at the removal that acts on it. Nothing here claims that
+  all later control files are anchored before an earlier target or control removal.
+
+  A refused pass reports the existing code-less "cannot clean up an incomplete fcabedrock
+  run" host error at exit 1, preserves the residue byte for byte, and answers the same way
+  on every retry; nothing about diagnostics, exit meanings, record or residue vocabulary,
+  ordering, manifest bytes, output bytes or the target-safety constants changes, and no
+  public surface is added. The new proof is deterministic and per participant: intent-only
+  cleanup, resumed `Preparing` cleanup, forward cleanup after commit evidence, rollback with
+  restore, and a two-target case in which the *later* target's reference cannot be taken and
+  the earlier one — which the pass could hold and would have deleted first — is untouched.
+  Each suppresses one participant's acquisition while every other acquisition, path
+  observation and removal open still succeeds, asserts the suppression actually fired, and
+  ends by showing the same state converging under an ordinary retry.
 
 ---
 
@@ -6537,6 +6625,65 @@ pinned here.
   GitLab archival gate; and the standing Windows x64 External/Adult three-case acceptance
   obligation at the final candidate. **M8 remains in progress until all of them
   complete.**
+  - *Correction (2026-09-09).* The documentation-head native run happened —
+    [`34392695933`](https://github.com/trashr0x/fcabedrock/actions/runs/34392695933) at
+    `03352da7`, successful on all five targets, three archives retained and hash-verified —
+    and the evidence carriage across `03352da7` was verified on the stated three-file basis.
+    **The archive half of that gate is not satisfied**, and neither is `4216610b`'s: later
+    inspection found the Linux and macOS apphosts of both runs recorded without an execute
+    bit, so the archives are not usable deliveries (D-124's 2026-09-09 correction, item 2).
+    Both runs remain successful workflow evidence at their own revisions; what is
+    outstanding is the *archive*, not the run. The gate is therefore restated as: a complete
+    five-target native run at the corrected head, with three newly retained required
+    archives that are **extracted, mode-checked and executed on their own native targets**
+    rather than only inspected. The delivery gate now performs that extraction and execution
+    itself and uploads the bytes it verified, so the run and the archive are one claim
+    instead of two. No run id, digest, result or pass is recorded for it in advance.
+    Policy L is untouched: this licenses no latency, neutrality or non-regression claim, no
+    retry, and no corrected-build elapsed, rate or overhead figure.
+  - *Evidence carriage across the correction commit (2026-09-10) — ruled on that commit's own
+    diff.* **The correction is not failure-only.** `Commit` ends by calling
+    `Finish(forward: true)`, and that runs inside `CliHost.RunAsync("convert", …)` — the
+    interval the CLI-host cases measure. What the diff adds there is bounded and small: one
+    `File.Exists` for each absent stage, and a held-reference dictionary lookup at each
+    successful post-commit removal. Bounded and small is not zero, so:
+    - **Condition (c) is not satisfied for the proposed corrected candidate.** All fifteen
+      rows are `CliHost` cases and execute that changed successful path. Their exact
+      allocation totals and their per-iteration validation **remain valid historical evidence
+      for `4216610b`/`03352da7`** and are neither withdrawn nor relabelled — but they do not
+      prove the corrected candidate. **All fifteen allocation-plus-validation cases must be
+      reacquired after the correction is committed**, under a later explicit user gate. The
+      requirement is **not** divisible into "the old validation carries and the allocation does
+      not": (c) is a *coupled* allocation-and-per-iteration-validation proof of the actual
+      candidate, so all fifteen rows are reacquired together, preserving the existing oracle
+      strengths and the rule that every measured iteration validates after disposal.
+    - **Condition (d) is not satisfied for the proposed corrected candidate.** All six
+      actual-command traces drive the same changed publication tail through the real command.
+      They remain valid historical evidence for the revision that produced them, and **all six
+      must be reacquired** after the correction is committed, under the same later gate.
+    - **Policy L does not reopen.** The session-E paired campaign remains a complete failed
+      historical attempt; the incremental elapsed-time effect remains **inconclusive at the
+      pre-registered 5% bound**; no paired retry is owed; and no neutrality, equality,
+      non-regression, speedup, corrected-build elapsed, rate, sidecar/auto overhead or
+      cross-session old/new arithmetic may be inferred. Any elapsed values the future
+      allocation runs incidentally produce are **contextual raw data only**.
+    - **What does carry.** The component measurements — source drain, calibration,
+      grouping/fan-in, planning, emit/export, probe and the hash wrappers — and the
+      **64 MiB / fan-in-16 tuning conclusion** carry: publication is unreachable from those
+      measured paths and their assemblies did not change. The **Windows x64 External/Adult
+      three-case acceptance carries across this exact correction**, because those cases run
+      `ConversionRun` rather than `CliHost` and no product path they reach changed. That is a
+      bounded reachability conclusion about *this* diff — D-124's own explicit
+      evidence-reuse justification, discharged for this step only — and not general permission
+      to carry it across a later one; the standing obligation still re-attaches at whatever
+      revision is finally submitted for acceptance.
+    - **The two successful workflow runs** remain successful historical CI evidence at their
+      own revisions, and their Unix archives remain **rejected as delivery**. The corrected
+      candidate still requires one fresh five-target native run and three replacement archives
+      **extracted, mode-checked and executed on their native targets**.
+
+    No future allocation value, trace value, run id, hash, digest, result or pass is recorded
+    here in advance. Both reacquisitions are **pending and require later authorization**.
 - **Why:** the comparison was the right experiment and it was run honestly, in full, under
   a criterion fixed before any data was seen — and it did not pass. The two available
   alternatives were both worse than recording that plainly. Making a sub-5%

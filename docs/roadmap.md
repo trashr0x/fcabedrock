@@ -13,13 +13,22 @@ progress**, under the **D-126** measurement limitation: the suite, its corpora a
 the CLI-host and hashing coverage, the standalone distribution, and the target-scale
 evidence landed under D-124; the canonical GitHub cutover is done; the first five-target
 native run failed and found two pre-existing M7 defects, now corrected under **D-125**; and
-a complete five-target run at `4216610b` has since passed on every target and produced all
-three required archives, which are retained and hash-verified. The historical CLI-host
+complete five-target runs at `4216610b` and at the documentation head `03352da7` have since
+passed on every target and produced all three required archives, which are retained and
+hash-verified. **Those archives are not usable deliveries**: their Linux and macOS apphosts
+are recorded in the zip without an execute bit, so the runs' success and the archives'
+usability are separate facts and only the first was established. The packaging and the
+delivery gate are corrected — the gate now extracts and runs the archive it uploads — and
+replacement archive evidence is outstanding. The historical CLI-host
 figures were **not** re-measured into a controlled replacement — the attempted comparison
 failed its collective gate, so the correction's incremental latency is **inconclusive at
 the 5% bound and no retry is owed** — while the corrected build's allocation and output
 validation (all fifteen CLI-host cases, including all three 73M) and its six
-corrected-command resource traces are **complete**. What remains is the finalization gate
+corrected-command resource traces are **complete at `4216610b`/`03352da7`**. They do **not**
+carry to the three-blocker correction: its fail-closed recovery anchor is reached from the
+ordinary successful publication tail as well, so all fifteen cases and all six traces are
+outstanding again at that corrected candidate and must be reacquired there under a later
+explicit authorization. What remains is the finalization gate
 sequence in the M8 block below, then M9. The milestone blocks below are the append-only
 history; the M7 and M8 sections carry the live detail.
 
@@ -1085,7 +1094,25 @@ evidence at that revision. Run
 self-contained archives (`win-x64`, `linux-x64`, `osx-arm64`), which are retained,
 decompressed, inspected, and hash-verified against GitHub's own server-side digests. The
 Windows x64 External/Adult three-case acceptance also passed at that revision against the
-D-124-pinned entry (3,974,305 bytes, SHA-256 `5b00264637…c86603d`).
+D-124-pinned entry (3,974,305 bytes, SHA-256 `5b00264637…c86603d`). Run
+[`34392695933`](https://github.com/trashr0x/fcabedrock/actions/runs/34392695933) at the
+documentation head `03352da7` then did the same, on the same five targets.
+
+**Those archives do not satisfy the standalone delivery gate (found 2026-09-09).** Every
+check either run performed was about the archive's *contents*; neither extracted one. The
+property that decides whether a standalone distribution works is in the archive's
+**metadata**, and `Compress-Archive` recorded `0100644` for every entry — so the Linux and
+macOS `FcaBedrock.Cli` of **both** successful runs unzips non-executable and the documented
+`./FcaBedrock.Cli` exits 126, `Permission denied` (reproduced on WSL2 Ubuntu 24.04.4 ext4
+from run `34392695933`'s own retained artifact). The green gate missed it because the
+self-contained smoke ran the publish *folder* and inspected a *different* zip of its own,
+while the workflow uploaded the packaging script's archive, which nothing had extracted.
+Neither run is relabelled: both executed every job and every step successfully at their own
+revisions, and workflow success is simply not the same claim as archive usability. The
+packaging script now records the apphost `0100755`, the smoke drives that script and runs
+the extracted archive, and the workflow uploads exactly what the smoke verified; the
+corrected candidate's own five-target run and three replacement archives are an outstanding
+gate. Details and the retained-artifact readings are in `docs/benchmarks.md`.
 
 What the corrected build was measured to do, and what could not be measured, is **D-126**:
 
@@ -1102,7 +1129,11 @@ What the corrected build was measured to do, and what could not be measured, is 
   (six from session E, nine from session F), including all three 73M cases at their real
   1-warmup/3-measured policy. No allocation investigation trigger fired on any row. D-125's
   "allocation is byte-identical" claim is **retracted**: the corrected build allocates
-  +2,880 to +9,416 bytes more per published run within one machine state.
+  +2,880 to +9,416 bytes more per published run within one machine state. Those fifteen rows
+  are `4216610b`/`03352da7` evidence and are **outstanding again at the three-blocker
+  correction**, which reaches the same measured interval; they are reacquired **together**,
+  because D-126 (c) is one coupled allocation-and-per-iteration-validation proof of the actual
+  candidate, and only under a later explicit authorization.
 - **The corrected-command resource traces are complete at 6/6** — the two wide declared
   traces from session F (which spool nothing, so they carry no `--temp-dir`) and the four
   triple declared/auto traces from session G, each with an explicit unique `--temp-dir`
@@ -1110,7 +1141,10 @@ What the corrected build was measured to do, and what could not be measured, is 
   after the system volume could not host a ≈5.6 GiB grouping spool; it changed no output
   semantics, oracle, counter, product code or benchmark job — four byte-exact reproductions
   of session C's retained outputs prove it — and the 73M auto external digest continuity is
-  now **closed**. It may never be used to compare timing across sessions.
+  now **closed**. It may never be used to compare timing across sessions. All six likewise
+  describe `4216610b`/`03352da7` only: they drive the same changed publication tail, so **all
+  six are outstanding again at the three-blocker correction** and require the same later
+  authorization to reacquire.
 - **Historical whole-command memory and throughput headlines stay session A/C
   observations** of the revisions that produced them, with the corrected build's own
   sampled figures recorded beside them rather than replacing them. Sampled maxima are lower
@@ -1118,13 +1152,27 @@ What the corrected build was measured to do, and what could not be measured, is 
   allocation total proves a streaming bound — the algorithmic guarantee remains the
   independent observers and the retained-layout witnesses.
 
-**Remaining M8 gates, none waived:** this documentation commit; a complete five-target
-native run and three newly retained, inspected and hashed archives **at the documentation
-head**, with the expensive benchmark, trace and Adult evidence carried across that commit
-only after verifying the entire diff from `4216610b` is the three advisory Markdown files;
-a fresh independent implementation review; operator acceptance and authorized merge; the
-resulting main-push CI at the merge revision; and the separate GitLab archival gate. **M8
-is not accepted, merged or complete until all of them have happened.**
+**Remaining M8 gates, none waived:** the corrected candidate's commit and push; a complete
+five-target native run at that head, with three newly retained archives that are
+**extracted, mode-checked and executed on their own native targets** rather than only
+inspected; a fresh independent implementation review; operator acceptance and authorized
+merge; the resulting main-push CI at the merge revision; and the separate GitLab archival
+gate — and, ruled on the correction's own diff, **reacquisition of the fifteen CLI-host
+allocation/validation cases and of all six corrected-command resource traces** at that
+candidate, each under its own later explicit authorization.
+
+The expensive evidence carried across the documentation commit `03352da7` because the entire
+diff from `4216610b` is three advisory Markdown files. It does **not** all carry across the
+correction. The correction is not failure-only: `Commit` finishes forward inside the measured
+`CliHost` interval, so **D-126 conditions (c) and (d) are no longer satisfied** and both
+evidence sets are outstanding — the fifteen together, since (c) is one coupled
+allocation-and-validation proof rather than a separable pair. What does carry is the component
+measurements and the 64 MiB / fan-in-16 tuning conclusion (publication is unreachable from
+those measured paths) and the Windows x64 External/Adult three-case acceptance (those cases run
+`ConversionRun`, not `CliHost`, and no product path they reach changed) — a bounded
+reachability conclusion about this diff, not a standing exemption. **Policy L does not
+reopen**: the elapsed effect stays inconclusive at the 5% bound and no paired retry is owed.
+**M8 is not accepted, merged or complete until all of them have happened.**
 
 **Completion obligations, none waived** (each stands for every later release candidate,
 whatever its status at the current one):
@@ -1134,13 +1182,17 @@ whatever its status at the current one):
   target has actually executed the ordinary suite, the resident-accounting witnesses,
   the Small harness smoke, and the package smokes, D-082's numerical guarantee extends
   to validated x64 alone. **Satisfied at `4216610b`** — all five targets executed all
-  four, natively, in run `34289256438`. The obligation re-attaches at the documentation
-  head.
+  four, natively, in run `34289256438` — and again at the documentation head `03352da7`,
+  in run `34392695933`. The obligation re-attaches at the corrected candidate.
 - **Verified migration to the canonical public GitHub destination**, Actions
   established, and tested self-contained archives (`win-x64`, `linux-x64`,
-  `osx-arm64`) delivered from runs at recorded revisions. **Satisfied at `4216610b`** —
-  the cutover is verified and all three archives are retained and hash-verified. Three
-  newly retained archives are required again at the documentation head.
+  `osx-arm64`) delivered from runs at recorded revisions. **The cutover half is satisfied**
+  — it is verified, and both `4216610b` and `03352da7` produced all three archives, retained
+  and hash-verified. **The tested-archive half is not.** Hash-verifying an archive is not
+  testing it: neither run extracted one, and the Linux and macOS apphosts of both are
+  recorded non-executable, so those archives are **rejected as delivery** (D-124's
+  2026-09-09 correction, item 2). Three newly retained archives — **extracted, mode-checked
+  and executed on their own native targets** — are required at the corrected candidate.
 - **A successful real-data (`External`) run on the final Windows x64 candidate.** The
   acquired UCI Adult corpus is deliberately outside routine CI — it is the one input
   this repository cannot generate, and requiring it in every native job would let an

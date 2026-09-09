@@ -14,13 +14,20 @@ The architecture and its rationale are `decisions.md` **D-124**; how to run the 
 > [`34289256438`](https://github.com/trashr0x/fcabedrock/actions/runs/34289256438) at `4216610b`
 > passed on all five native targets** — Windows x64, Linux x64, macOS ARM64, and both optional ARM64
 > runners — producing all three required self-contained archives, which are retained and
-> hash-verified; see [Native delivery](#native-delivery). A second production defect, in M7's
+> hash-verified. **Those archives are not, however, usable deliveries:** a later inspection found the
+> Linux and macOS apphosts recorded in the zip without an execute bit, so the run's success and the
+> archive's usability are two different facts, and only the first was established. The packaging is
+> corrected and the delivery gate now extracts and runs what it uploads; replacement archive evidence
+> is outstanding. See [Native delivery](#native-delivery). A second production defect, in M7's
 > publication ownership, was found by that native gate and is fixed under **D-125**; its correction
 > reaches the measured CLI-host interval, so **every `CLI host` row and every trace below is a
 > session-A or session-C observation of the revision that produced it, never a measurement of the
 > shipped code**. What the corrected build *was* measured to do — and the one thing that could not be
-> measured — is [The corrected build](#the-corrected-build) and **D-126**. See also
-> [What has not been measured](#what-has-not-been-measured). The one acquired corpus is
+> measured — is [The corrected build](#the-corrected-build) and **D-126**. That evidence is
+> `4216610b`/`03352da7`'s: the later three-blocker correction reaches the same measured publication
+> tail, so its fifteen allocation/validation cases and its six traces **must be reacquired at the
+> corrected candidate** under a later explicit authorization, and neither is claimed for it here.
+> See also [What has not been measured](#what-has-not-been-measured). The one acquired corpus is
 > outside routine CI and carries its own acceptance obligation; see
 > [Selection, and what routine CI proves](#selection-and-what-routine-ci-proves).
 
@@ -235,9 +242,13 @@ The first complete pass of `.github/workflows/ci.yml`, and the first artifacts M
 | --- | --- | --- | --- |
 | [`34241484619`](https://github.com/trashr0x/fcabedrock/actions/runs/34241484619) | `a09e302` | **failure** | the first native gate; five jobs failed at `Test (Release)`, exposing two pre-existing M7 defects. No artifact. Remains failed evidence at that revision |
 | [`34287497829`](https://github.com/trashr0x/fcabedrock/actions/runs/34287497829) | `91188455` | **failure** | `Test (Release)` passed on all five targets for the first time; win-x64 and linux-x64 completed with artifacts; macOS ARM64 failed at the global-tool smoke — a pre-existing macOS-only test defect (`/var` vs `/private/var` path spelling), first reached because no run had ever got that far. Remains failed evidence at that revision |
-| [`34289256438`](https://github.com/trashr0x/fcabedrock/actions/runs/34289256438) | `4216610b` | **success** | **all five targets green; all three required archives produced** |
+| [`34289256438`](https://github.com/trashr0x/fcabedrock/actions/runs/34289256438) | `4216610b` | **success** | **all five targets green; all three required archives produced.** The archives are *not* usable deliveries — see [The property the delivery gate did not check](#the-property-the-delivery-gate-did-not-check) |
+| [`34392695933`](https://github.com/trashr0x/fcabedrock/actions/runs/34392695933) | `03352da7` | **success** | the documentation head's own five-target run; same five green jobs, same three archives produced and retained — and the same unusable-apphost defect in the Linux and macOS ones |
 
-Neither failed run is relabelled. The two artifacts run `34287497829` did produce are superseded —
+Neither failed run is relabelled, and neither successful run is. Runs `34289256438` and
+`34392695933` executed every job and every step successfully at their own revisions, and that is
+what a green workflow says. It does not say the archives those jobs uploaded can be used, because
+nothing in either run extracted one. The two artifacts run `34287497829` did produce are superseded —
 short by a required target and built at a superseded revision — and are not milestone evidence.
 
 **Run `34289256438`, attempt 1**, head `4216610b66b96925f8a3d3638b237c2f365211b5`:
@@ -279,13 +290,47 @@ All three expire from Actions on 2026-09-15; the durable copies do not.
 Each outer archive contains exactly its one named payload ZIP. Independent read-only inspection of
 all three payloads found no unsafe path, no case-insensitive duplicate, complete decompression, and
 the expected host plus CLI runtime files. Each is the distribution built by
-`eng/publish-selfcontained.ps1` — the same script a developer runs locally — in a job whose
-self-contained smoke had already published it, run it **without an installed runtime**, and archived
-it.
+`eng/publish-selfcontained.ps1` — the same script a developer runs locally.
 
-**A documentation commit creates a new candidate head**, so a fresh five-target run and three newly
-retained archives at that head are a remaining gate (D-126). The archives above stay the proof for
-`4216610b` and are never relabelled as a later build's.
+### The property the delivery gate did not check
+
+Every check above is about the archive's *contents*. None of them extracted one, and the property
+that decides whether a standalone distribution works at all is not in its contents but in its
+**metadata**: a zip records each file's Unix mode, and `eng/publish-selfcontained.ps1` built the
+archive with `Compress-Archive`, which records `0100644` for every entry.
+
+Read back from the retained artifacts of **both** successful runs:
+
+| Run | RID | Entry | Bytes | External attributes | Unix mode |
+| --- | --- | --- | ---: | --- | --- |
+| `34289256438` | linux-x64 | `FcaBedrock.Cli` | 78,256 | `0x81A40000` | `0100644` |
+| `34289256438` | osx-arm64 | `FcaBedrock.Cli` | 124,712 | `0x81A40000` | `0100644` |
+| `34392695933` | linux-x64 | `FcaBedrock.Cli` | 78,256 | `0x81A40000` | `0100644` |
+| `34392695933` | osx-arm64 | `FcaBedrock.Cli` | 124,712 | `0x81A40000` | `0100644` |
+
+Extracting run `34392695933`'s Linux archive on WSL2 Ubuntu 24.04.4 / ext4 produces
+`-rw-r--r-- FcaBedrock.Cli`, and the `./FcaBedrock.Cli` the README documents exits **126,
+`Permission denied`**. The Windows archives are unaffected: a Windows distribution carries no Unix
+mode and is launched by extension.
+
+Why the green gate missed it: the self-contained smoke published a folder, **ran the executable out
+of that folder**, and then created a *different* zip of its own with `ZipFile.CreateFromDirectory` to
+inspect names and sizes. The workflow separately ran the packaging script afterwards and uploaded
+*its* archive — which nothing had extracted or executed. Two definitions of a valid archive existed,
+and the delivered one was never the tested one.
+
+**The correction, and what it does not claim.** The packaging script now writes the archive entry by
+entry and records the Unix apphost as `0100755`, leaving every other entry at `0100644`; the
+self-contained smoke drives that script, inspects the archive it produced, extracts **that exact
+archive**, and makes every behavioural check against the extracted apphost; and the workflow uploads
+the file the smoke verified. Nothing else about the archive changed — flat payload, relative names,
+published timestamps — and no output byte, diagnostic, exit meaning or manifest schema is touched.
+
+**Neither run's archives satisfy the standalone delivery acceptance gate**, and that is a statement
+about the archives, not about the runs: both runs remain successful workflow evidence at their own
+revisions and are never relabelled. The corrected candidate's own five-target run and its three
+replacement archives — extracted, mode-checked and executed on their native targets — are an
+outstanding gate (**D-126**). No run id, digest or result is recorded for it here in advance.
 
 <!-- RESULTS -->
 
@@ -642,6 +687,23 @@ across 26 seconds, and a spike between samples would not appear. No sample is no
 
 Everything above describes the revisions that produced it. This section is what was measured on
 **`4216610b`**, the D-125-corrected build — and, first, the one thing that could not be.
+
+> **This evidence belongs to `4216610b`/`03352da7`, and the later three-blocker correction does not
+> inherit it.** That correction is **not** failure-only: `Commit` ends by calling
+> `Finish(forward: true)` inside `CliHost.RunAsync("convert", …)`, so a bounded amount of added
+> work — one `File.Exists` for each absent stage, and a held-reference dictionary lookup at each
+> successful post-commit removal — executes inside the measured interval. Bounded and small is not
+> zero, so the fifteen-row allocation/validation ledger and the six corrected-command traces below
+> **do not satisfy D-126 conditions (c) and (d) for that corrected candidate**. Every row and every
+> trace keeps its provenance here as valid historical evidence of the revision that produced it;
+> none is withdrawn, relabelled or overwritten. **All fifteen cases and all six traces must be
+> reacquired after the correction is committed, under a later explicit authorization** — the
+> fifteen together, because (c) is one *coupled* allocation-and-per-iteration-validation proof of
+> the actual candidate rather than a separable pair, reacquired at the same oracle strengths and
+> under the same validate-after-disposal rule. No future value, run id, digest, result or pass is
+> recorded anywhere in advance. **Policy L is untouched**: the reacquisition licenses no elapsed,
+> rate, neutrality, non-regression or overhead claim and owes no paired retry, and any elapsed
+> output it incidentally produces stays contextual raw data (D-126, correction of 2026-09-10).
 
 ### The publication comparison: attempted in full, failed, inconclusive
 
@@ -1233,11 +1295,28 @@ Named here so their absence is explicit rather than inferred.
   a table or converted into any rate, curve, speedup, overhead percentage or old/new arithmetic
   (D-126). Trace wall time is instrumented command duration in its provenance record, never
   performance evidence.
+- **The corrected build's own allocation ledger and traces have not been reacquired at the
+  three-blocker correction, and are not claimed for it.** That correction makes resumed recovery
+  fail closed without a held reference, and its anchor gate is reached from the ordinary
+  successful path too: `Commit` finishes forward inside the measured `CliHost` interval, adding one
+  `File.Exists` per absent stage and a held-reference dictionary lookup at each post-commit
+  removal. So the fifteen-row ledger and the six traces above satisfy D-126 (c) and (d) for
+  `4216610b`/`03352da7` and **not** for the corrected candidate; all fifteen cases and all six
+  traces are **outstanding** there, the fifteen as one coupled allocation-plus-validation proof
+  rather than a separable pair, and both reacquisitions require later authorization. Nothing about
+  them is predicted here. Component measurements, the 64 MiB / fan-in-16 retention conclusion, and
+  the Windows x64 External/Adult acceptance are **unaffected by that correction** — the components
+  never reach `PublicationTransaction`, and the Adult cases run `ConversionRun` rather than
+  `CliHost` — which is a reachability conclusion about that one diff, not a standing exemption.
 - **Routine CI does not exercise the acquired Adult corpus, on any platform.** That is deliberate
   (see [Selection](#selection-and-what-routine-ci-proves)), and it means no cross-platform Adult
   evidence exists or is claimed. The real-data evidence is Windows x64 only.
 - **No cross-published archive has been executed.** `eng/publish-selfcontained.ps1` can produce a
-  folder for another runtime identifier, and that shows only that the SDK can emit files for it.
+  folder for another runtime identifier, and that shows only that the SDK can emit files for it. A
+  Unix archive written on a Windows host also records the creating platform, which an ordinary
+  extractor reads instead of the Unix mode — so a cross-published zip's file modes do not survive
+  extraction either. The command says so when it writes one; the delivery archives are produced on
+  their own platforms.
 - **A bounded-cardinality *successful* probe scan at 7.3M or 73M is not represented.** Every
   synthetic family's numeric and subject columns scale with the row count, so at those tiers both W16
   and T10 truncate under the default retention limit. That is the honest outcome and it is what the
