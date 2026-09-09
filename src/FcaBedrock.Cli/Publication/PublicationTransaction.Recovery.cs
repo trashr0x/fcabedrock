@@ -16,11 +16,14 @@ internal sealed partial class PublicationTransaction
     /// </para>
     /// <para>
     /// <b>A resumed run holds no reference from the invocation that died</b>, so it takes its own —
-    /// before it decides anything, and therefore before it mutates any earlier participant. That is
-    /// what stops a decision made about one object from being carried out against a different
-    /// object that inherited its identifier in between (D-125). It does not make the interval in
-    /// which nothing was held provable: that remains the caller's undisturbed-namespace
-    /// precondition, not a guarantee this pass can offer.
+    /// every one it will need, before it decides anything, and therefore before it mutates any
+    /// earlier participant. That is what stops a decision made about one object from being carried
+    /// out against a different object that inherited its identifier in between (D-125). A
+    /// participant that is present and <em>cannot</em> be held grants no authority at all: the pass
+    /// stops there with the location exactly as it was found, the run reports that it could not
+    /// clean up an incomplete run, and a later attempt reaches the same state and says the same
+    /// thing. It does not make the interval in which nothing was held provable: that remains the
+    /// caller's undisturbed-namespace precondition, not a guarantee this pass can offer.
     /// </para>
     /// </summary>
     private static bool Recover(
@@ -51,10 +54,18 @@ internal sealed partial class PublicationTransaction
                 ControlDocument.IntentRole,
                 intent.Described.Digest));
 
-            // Anchored before either removal is attempted: the pending object's identity is the
-            // whole authority here, so it must name an object that cannot be swapped underneath it.
-            references.Ensure(intent.PendingPath);
-            references.Ensure(intent.Path);
+            // Anchored before either removal is attempted, and BOTH before the first of them: the
+            // pending object's identity is the whole authority here, so it must name an object that
+            // cannot be swapped underneath it — and the descriptor must be held before its own
+            // pending record is removed, or a failure to anchor it would be discovered only after
+            // the object it authorizes had already gone.
+            //
+            // Either one that is present and cannot be held ends the pass with nothing touched:
+            // the residue stays exactly as it was found, and the next attempt says the same thing.
+            if (!Anchor(files, references, intent.PendingPath) || !Anchor(files, references, intent.Path))
+            {
+                return false;
+            }
 
             return RemoveOwned(files, intent.PendingPath, pendingIsOurs, guard, references)
                 && RemoveOwned(files, intent.Path, descriptorIsOurs, guard, references);
@@ -83,6 +94,16 @@ internal sealed partial class PublicationTransaction
             return Clear(view, guard);
         }
 
+        // Anchored before the DIRECTION is decided, not merely before the first mutation: the
+        // ownership question below authorizes forward cleanup over rollback, and an answer taken
+        // from an identity nobody holds is exactly the authority D-125 withdraws. Finish anchors
+        // again — it has in-process callers of its own — and Ensure is idempotent, so a reference
+        // taken here is kept rather than released and taken a second time.
+        if (!AnchorParticipants(view))
+        {
+            return false;
+        }
+
         // The DURABLE PHASE decides the direction, never the file layout. Committed
         // always finishes forward and RollingBack always finishes backward — a durable rollback
         // intent is the whole point of the marker, and letting an ownership inference override it
@@ -96,6 +117,46 @@ internal sealed partial class PublicationTransaction
         };
 
         return Finish(view, forward, guard, hazard: false);
+    }
+
+    /// <summary>
+    /// Anchors every participant a <see cref="Finish"/> pass can consult or mutate — each target's
+    /// final, its backup where it has one, and its stage where it has one — and answers whether all
+    /// of them are now held.
+    /// <para>
+    /// <b>All of them, before any of them moves.</b> That ordering is the point: a pass that
+    /// anchored each target as it reached it could remove the first target's final and only then
+    /// discover it cannot hold the second's backup, having already spent the authority it can no
+    /// longer complete. Anchoring first means a participant that cannot be held costs nothing —
+    /// the location is exactly as it was found, the record survives, and a later attempt reaches
+    /// the same state and reaches the same answer (D-125).
+    /// </para>
+    /// <para>
+    /// Absence is not failure: a target with no final, no backup, or no stage on disk has nothing
+    /// to anchor and nothing to act on, which is the ordinary idempotent case.
+    /// </para>
+    /// </summary>
+    private static bool AnchorParticipants(TransactionView view)
+    {
+        foreach (var targetFileName in view.Record.Targets)
+        {
+            if (!view.Anchor(view.FinalPath(targetFileName)))
+            {
+                return false;
+            }
+
+            if (view.BackupPath(targetFileName) is { } backup && !view.Anchor(backup))
+            {
+                return false;
+            }
+
+            if (view.HasStage(targetFileName) && !view.Anchor(view.StagePath(targetFileName)))
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /// <summary>
@@ -133,10 +194,16 @@ internal sealed partial class PublicationTransaction
     private static bool Clear(TransactionView view, RecoveryGuard guard)
     {
         // Anchor every object this pass may remove before it removes any of them, so no removal can
-        // destroy evidence another one's proof still depends on.
+        // destroy evidence another one's proof still depends on — and so a participant that cannot
+        // be held is discovered while the location is still exactly as it was found. One that is
+        // present and unanchorable ends the pass here: nothing is removed, the record stays in
+        // place, and a later attempt reaches the same state and says the same thing.
         foreach (var entry in view.Record.Files)
         {
-            view.References.Ensure(view.Record.PathOf(view.Directory, entry));
+            if (!view.Anchor(view.Record.PathOf(view.Directory, entry)))
+            {
+                return false;
+            }
         }
 
         var complete = true;
@@ -176,6 +243,11 @@ internal sealed partial class PublicationTransaction
     /// filesystem can have changed underneath it.
     /// </para>
     /// <para>
+    /// Both rest on the anchor gate that precedes them: every present participant is held open
+    /// before the first decision is taken, and one that cannot be held ends the pass with nothing
+    /// touched (D-125).
+    /// </para>
+    /// <para>
     /// <paramref name="hazard"/> is set when a commit rename put an object this transaction cannot
     /// identify at a published path and could not put it back. Nothing may then erase the private
     /// state that lets a later run classify what is there.
@@ -183,27 +255,20 @@ internal sealed partial class PublicationTransaction
     /// </summary>
     private static bool Finish(TransactionView view, bool forward, RecoveryGuard guard, bool hazard)
     {
-        var complete = !hazard;
-
-        // 0. Anchor every participant this pass can consult or mutate, BEFORE the decision pass —
-        //    which is what makes a decision still true of the same object when it is acted on. A
-        //    running transaction already holds most of these and simply keeps them; a resumed one
-        //    takes them here. Where an object cannot be anchored nothing is authorized, and the
-        //    proofs below refuse it exactly as they refuse an identity that does not match.
-        foreach (var targetFileName in view.Record.Targets)
+        // 0. Anchor every participant this pass can consult or mutate, BEFORE the decision pass and
+        //    therefore before any of them is mutated — which is what makes a decision still true of
+        //    the same object when it is acted on. A running transaction already holds most of these
+        //    and simply keeps them; a resumed one takes them here. A participant that is present
+        //    and cannot be held ends the pass with the location untouched: acquiring the later
+        //    references only as each target came up would mean an earlier target had already been
+        //    removed or restored by the time the failure surfaced, which is the ordering D-125
+        //    requires and the reason this is a gate rather than a per-target check.
+        if (!AnchorParticipants(view))
         {
-            view.References.Ensure(view.FinalPath(targetFileName));
-
-            if (view.BackupPath(targetFileName) is { } backupToAnchor)
-            {
-                view.References.Ensure(backupToAnchor);
-            }
-
-            if (view.HasStage(targetFileName))
-            {
-                view.References.Ensure(view.StagePath(targetFileName));
-            }
+            return false;
         }
+
+        var complete = !hazard;
 
         // 1. Decide everything first, from the state as found.
         var decisions = new List<TargetDecision>();
@@ -282,19 +347,32 @@ internal sealed partial class PublicationTransaction
 
             // Restore only the object this transaction renamed aside — verified against the
             // durable evidence, at this instant — and only into a path nothing else occupies.
+            //
+            // And only an object this transaction is holding open. The reference is what the move
+            // revalidates its source against and what proves afterwards which object arrived; a
+            // rename made without one would be authorized by an identifier the host is free to have
+            // reissued, which is the authority D-125 withdraws (the gate above has already refused
+            // that case, and this states it where the mutation actually happens).
+            var anchor = view.References.Of(backupPath);
             var restored = decision.BackupIsExpected
                 && view.BackupIsExpected(decision.TargetFileName)
                 && !present
+                && anchor is not null
+                && anchor.IsStillAt(backupPath)
                 && guard.Allows(backupPath)
                 && guard.Allows(finalPath)
-                && TryMutate(() => view.Files.Move(backupPath, finalPath, view.References.Of(backupPath)));
+                && TryMutate(() => view.Files.Move(backupPath, finalPath, anchor));
 
             // And the restoring rename's RESULT, before anything can discard the evidence that
             // makes this state recognizable. A different object substituted inside
             // that boundary is put back rather than published as the restored prior target.
-            if (restored && !view.IsBackedUpObjectAt(decision.TargetFileName, finalPath))
+            //
+            // Asked of the backup's own reference, which is what still holds the object the rename
+            // moved: it is re-filed under the destination only once this has proved that is where
+            // it went.
+            if (restored && !view.IsBackedUpObjectAt(decision.TargetFileName, finalPath, anchor))
             {
-                TryMutate(() => view.Files.Move(finalPath, backupPath, view.References.Of(backupPath)));
+                TryMutate(() => view.Files.Move(finalPath, backupPath, anchor));
                 restored = false;
             }
             else if (restored)

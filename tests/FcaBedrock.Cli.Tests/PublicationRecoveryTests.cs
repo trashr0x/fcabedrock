@@ -1415,7 +1415,244 @@ public sealed class PublicationRecoveryTests
         Assert.True(File.Exists(residue.RecordPath));
     }
 
+    // ---- a resumed pass holds every participant it acts on ----------------------------------------
+
+    // A resumed run inherits no reference from the invocation that died, so it takes its own — and
+    // where it cannot take one for an object that IS there, the identity that object's evidence
+    // names is a number the host is free to have reissued. Acting on it is exactly how a foreign
+    // file comes to be deleted and a substitute comes to be published (D-125), so every case below
+    // proves the same two things: the pass mutated nothing, and the state it refused was genuinely
+    // recoverable — an identical retry with references available finishes it.
+
+    [Fact]
+    public async Task Publication_WhenAPendingRecordCannotBeAnchored_ThenIntentOnlyCleanupRemovesNothing()
+    {
+        // The descriptor authorizes removing exactly one object, by its identity. Unanchored, that
+        // identity proves nothing about what is at the path now.
+        using var run = ConvertRun.Wide();
+        var pending = Path.Combine(run.Directory, $"out.fcabedrock-pending-{Token}");
+        await File.WriteAllTextAsync(pending, "version = 1\ntoken =");
+        var intent = WriteIntent(run.Directory, "out", Token, [("stage", "out.cxt")]);
+
+        run.Harness.PublicationFiles.SuppressReferenceNamePrefix = "out.fcabedrock-pending-";
+
+        Assert.Equal(1, await run.ConvertAsync("--format", "cxt", "--no-manifest"));
+        AssertRecoveryRefused(run);
+
+        Assert.Equal("version = 1\ntoken =", await File.ReadAllTextAsync(pending));
+        Assert.True(File.Exists(intent));
+        Assert.False(File.Exists(run.Target(".cxt")));
+
+        await AssertTheStateWasRecoverableAsync(run, "cxt", "--no-manifest");
+    }
+
+    [Fact]
+    public async Task Publication_WhenTheIntentDescriptorCannotBeAnchored_ThenItsPendingRecordIsNotRemovedFirst()
+    {
+        // The ordering half of the same rule. Both objects are removable and the pending record
+        // goes FIRST, so a pass that anchored each one as it reached it would already have removed
+        // it before discovering it cannot hold the descriptor that authorized doing so. Both
+        // references are required before either removal, so neither happens.
+        using var run = ConvertRun.Wide();
+        var pending = Path.Combine(run.Directory, $"out.fcabedrock-pending-{Token}");
+        await File.WriteAllTextAsync(pending, "version = 1\ntoken =");
+        var intent = WriteIntent(run.Directory, "out", Token, [("stage", "out.cxt")]);
+
+        run.Harness.PublicationFiles.SuppressReferenceNamePrefix = "out.fcabedrock-intent-";
+
+        Assert.Equal(1, await run.ConvertAsync("--format", "cxt", "--no-manifest"));
+        AssertRecoveryRefused(run);
+
+        // The pending record — the one this pass could have held, and would have removed first —
+        // is exactly as it was.
+        Assert.Equal("version = 1\ntoken =", await File.ReadAllTextAsync(pending));
+        Assert.True(File.Exists(intent));
+
+        await AssertTheStateWasRecoverableAsync(run, "cxt", "--no-manifest");
+    }
+
+    [Fact]
+    public async Task Publication_WhenAPreparingStagesReferenceCannotBeTaken_ThenTheClearPassRemovesNothing()
+    {
+        // Preparing owns private residue and nothing else, and the claim proves which object its
+        // create-new produced — but only of an object still held. A stage carries converted user
+        // data; deleting the wrong one is not recoverable.
+        using var run = ConvertRun.Wide();
+        var residue = Residue.Create(run.Directory, "out", Token);
+        residue.WriteRecord([("stage", "out.cxt")]);
+        residue.WritePrivate("stage", "out.cxt", "half-written");
+        var claim = residue.WriteStageClaim("c", "out.cxt");
+
+        run.Harness.PublicationFiles.SuppressReferenceNamePrefix = "out.cxt.fcabedrock-stage-";
+
+        Assert.Equal(1, await run.ConvertAsync("--format", "cxt"));
+        AssertRecoveryRefused(run);
+
+        Assert.Equal("half-written", await File.ReadAllTextAsync(residue.PrivatePath("stage", "out.cxt")));
+        Assert.True(File.Exists(claim));
+        Assert.True(File.Exists(residue.RecordPath));
+        Assert.False(File.Exists(run.Target(".cxt")));
+
+        await AssertTheStateWasRecoverableAsync(run, "cxt");
+    }
+
+    [Fact]
+    public async Task Publication_WhenACommittedRunsBackupCannotBeAnchored_ThenForwardCleanupDropsNothing()
+    {
+        // Past the commit point the backup is superseded and forward cleanup drops it — which is a
+        // deletion of the user's previous output, so it happens only against an object this run
+        // holds open.
+        using var run = ConvertRun.Wide();
+        var residue = Residue.Create(run.Directory, "out", Token);
+        residue.WriteRecord([("backup", "out.cxt"), ("stage", "out.cxt")]);
+        residue.WritePrivate("backup", "out.cxt", "the old cxt");
+        await File.WriteAllTextAsync(run.Target(".cxt"), "the committed cxt");
+        residue.WriteEvidence(
+            "c",
+            "out.cxt",
+            residue.Identity("backup", "out.cxt"),
+            residue.IdentityOf(run.Target(".cxt"), "stage", "out.cxt"));
+        residue.WriteMarker("staged");
+        residue.WriteMarker("committed");
+
+        run.Harness.PublicationFiles.SuppressReferenceNamePrefix = "out.cxt.fcabedrock-backup-";
+
+        Assert.Equal(1, await run.ConvertAsync("--format", "cxt"));
+        AssertRecoveryRefused(run);
+
+        Assert.Equal("the old cxt", await File.ReadAllTextAsync(residue.PrivatePath("backup", "out.cxt")));
+        Assert.Equal("the committed cxt", await File.ReadAllTextAsync(run.Target(".cxt")));
+
+        // The control: with the reference available the same pass finishes forward — the backup and
+        // every private control go — and the run then refuses for the ordinary reason.
+        var retry = new CliTestHarness();
+        Assert.Equal(
+            1, await retry.RunAsync("convert", run.Spec, run.Data, "--out", run.Base, "--format", "cxt"));
+        Assert.Contains("already exists; use --force", retry.StdErr, StringComparison.Ordinal);
+        Assert.Empty(run.Residue());
+        Assert.Equal("the committed cxt", await File.ReadAllTextAsync(run.Target(".cxt")));
+    }
+
+    [Fact]
+    public async Task Publication_WhenARollbackBackupCannotBeAnchored_ThenThePublishedFinalIsNotRemovedFirst()
+    {
+        // The rollback order is: delete what the failed run published, then rename the old object
+        // home. The published final CAN be held; the backup cannot. Removing the final first would
+        // spend an authority the pass then cannot finish spending, and the user's previous output
+        // would be neither at its path nor restorable by this run.
+        using var run = ConvertRun.Wide();
+        var residue = Residue.Create(run.Directory, "out", Token);
+        residue.WriteRecord([("backup", "out.cxt"), ("stage", "out.cxt")]);
+        residue.WritePrivate("backup", "out.cxt", "the old cxt");
+        await File.WriteAllTextAsync(run.Target(".cxt"), "the failed run's cxt");
+        residue.WriteEvidence(
+            "c",
+            "out.cxt",
+            residue.Identity("backup", "out.cxt"),
+            residue.IdentityOf(run.Target(".cxt"), "stage", "out.cxt"));
+        residue.WriteMarker("staged");
+        residue.WriteMarker("rollback");
+
+        run.Harness.PublicationFiles.SuppressReferenceNamePrefix = "out.cxt.fcabedrock-backup-";
+
+        Assert.Equal(1, await run.ConvertAsync("--format", "cxt"));
+        AssertRecoveryRefused(run);
+
+        Assert.Equal("the failed run's cxt", await File.ReadAllTextAsync(run.Target(".cxt")));
+        Assert.Equal("the old cxt", await File.ReadAllTextAsync(residue.PrivatePath("backup", "out.cxt")));
+
+        // The control: the same state, with the reference available, rolls back completely — the
+        // failed run's artifact removed and the old object renamed home.
+        var retry = new CliTestHarness();
+        Assert.Equal(
+            1, await retry.RunAsync("convert", run.Spec, run.Data, "--out", run.Base, "--format", "cxt"));
+        Assert.Contains("already exists; use --force", retry.StdErr, StringComparison.Ordinal);
+        Assert.Equal("the old cxt", await File.ReadAllTextAsync(run.Target(".cxt")));
+        Assert.Empty(run.Residue());
+    }
+
+    [Fact]
+    public async Task Publication_WhenALaterTargetCannotBeAnchored_ThenNoEarlierTargetIsMutated()
+    {
+        // The multi-participant case. Two published finals, both this transaction's own, both due
+        // to be removed by the resumed rollback — the CXT first. The DAT's reference cannot be
+        // taken, and the pass stops before the CXT is touched: every required reference is obtained
+        // before the first mutation, not as each target comes up.
+        using var run = ConvertRun.Wide();
+        var residue = Residue.Create(run.Directory, "out", Token);
+        residue.WriteRecord([("stage", "out.cxt"), ("stage", "out.dat")]);
+        await File.WriteAllTextAsync(run.Target(".cxt"), "this run's cxt");
+        await File.WriteAllTextAsync(run.Target(".dat"), "this run's dat");
+        residue.WriteEvidence(
+            "c",
+            "out.cxt",
+            IdentityEvidence.NotApplicable,
+            residue.IdentityOf(run.Target(".cxt"), "stage", "out.cxt"));
+        residue.WriteEvidence(
+            "d",
+            "out.dat",
+            IdentityEvidence.NotApplicable,
+            residue.IdentityOf(run.Target(".dat"), "stage", "out.dat"));
+        residue.WriteMarker("staged");
+        residue.WriteMarker("rollback");
+
+        run.Harness.PublicationFiles.SuppressReferenceNamePrefix = "out.dat";
+
+        Assert.Equal(1, await run.ConvertAsync("--format", "both"));
+        AssertRecoveryRefused(run);
+
+        // The earlier target — the one this pass could hold, and would have deleted first.
+        Assert.Equal("this run's cxt", await File.ReadAllTextAsync(run.Target(".cxt")));
+        Assert.Equal("this run's dat", await File.ReadAllTextAsync(run.Target(".dat")));
+
+        // Both acquisitions were attempted, the one it could take before the one it could not, and
+        // AssertRecoveryRefused has already shown nothing happened in between.
+        var operations = run.Harness.PublicationFiles.Operations;
+        Assert.Contains("Acquire:out.cxt", operations);
+        Assert.Contains("Acquire:out.dat", operations);
+        Assert.True(
+            operations.IndexOf("Acquire:out.cxt") < operations.IndexOf("Acquire:out.dat"),
+            "the later target's reference was attempted before the earlier target's");
+
+        await AssertTheStateWasRecoverableAsync(run, "both");
+    }
+
     // ---- helpers ------------------------------------------------------------------------------------
+
+    // The refusal every anchor case produces: the sanitized, code-less recovery failure, the
+    // suppression proved to have fired, and not one mutating operation anywhere in the run.
+    private static void AssertRecoveryRefused(ConvertRun run)
+    {
+        Assert.Equal(
+            DiagnosticRenderer.RenderHostError(
+                $"cannot clean up an incomplete fcabedrock run for the output base '{run.Base}'."),
+            run.Harness.StdErr);
+        Assert.Equal(string.Empty, run.Harness.StdOut);
+
+        // An outcome cannot say whether the hook ran, and a case whose suppression never fired
+        // would pass against the very defect it exists to catch.
+        Assert.NotEqual(0, run.Harness.PublicationFiles.ReferencesSuppressed);
+
+        Assert.DoesNotContain(
+            run.Harness.PublicationFiles.Operations,
+            operation => operation.StartsWith("CreateNew:", StringComparison.Ordinal)
+                || operation.StartsWith("Confidential:", StringComparison.Ordinal)
+                || operation.StartsWith("Move:", StringComparison.Ordinal)
+                || operation.StartsWith("Delete:", StringComparison.Ordinal));
+    }
+
+    // The state was refused because a reference could not be taken — not because it was unowned,
+    // malformed, or unreachable: an identical retry with references available finishes it.
+    private static async Task AssertTheStateWasRecoverableAsync(
+        ConvertRun run, string format, params string[] options)
+    {
+        var retry = new CliTestHarness();
+        Assert.Equal(
+            0,
+            await retry.RunAsync(
+                ["convert", run.Spec, run.Data, "--out", run.Base, "--format", format, .. options]));
+        Assert.Empty(run.Residue());
+    }
 
     // A valid intent descriptor for the record `files` describes: the canonical intent body, and
     // a name carrying the shape, the digest of that record's bytes, and the identity of the

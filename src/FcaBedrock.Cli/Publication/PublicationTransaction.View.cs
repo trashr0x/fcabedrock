@@ -124,14 +124,33 @@ internal sealed partial class PublicationTransaction
             && IdentityEvidence.IsIdentity(value.Backup)
             && Is(identity, PublicationTargets.BackupRole, targetFileName, value.Backup);
 
+        /// <summary>
+        /// Anchors <paramref name="path"/> for this pass — see
+        /// <see cref="PublicationTransaction.Anchor"/>. False means an object is there and cannot
+        /// be held, so nothing about it may be decided or done.
+        /// </summary>
+        public bool Anchor(string path) => PublicationTransaction.Anchor(files, references, path);
+
         public bool Owns(string targetFileName) =>
             At(FinalPath(targetFileName), PublishedObject(targetFileName));
 
         public bool BackupIsExpected(string targetFileName) =>
             BackupPath(targetFileName) is { } backup && At(backup, BackedUpObject(targetFileName));
 
-        public bool IsBackedUpObjectAt(string targetFileName, string path) =>
-            At(path, BackedUpObject(targetFileName));
+        /// <summary>
+        /// Whether the object now at <paramref name="path"/> is the one this transaction renamed
+        /// aside, asked of an anchor the caller <b>already holds</b>.
+        /// <para>
+        /// The restoring rename is the case this exists for: its source reference is what still
+        /// holds the moved object, and it is deliberately not re-filed under the destination until
+        /// the result has been proved. Anchoring by the destination path instead would take a
+        /// second reference to the same object — release-and-reacquire-by-name in all but name,
+        /// which is precisely what the lifetime rule forbids.
+        /// </para>
+        /// </summary>
+        public bool IsBackedUpObjectAt(
+            string targetFileName, string path, PublicationObjectReference? anchor) =>
+            At(path, anchor, BackedUpObject(targetFileName));
 
         public bool RemoveMarker(TransactionPhase phase, RecoveryGuard guard)
         {
@@ -255,9 +274,22 @@ internal sealed partial class PublicationTransaction
                 IdentityEvidence.Of(token, role, targetFileName, identity), expected, StringComparison.Ordinal);
 
         // A DECISION about a path, taken fresh: what is there right now. It never authorizes a
-        // removal on its own — the removal re-asks the same proof of the object it has open.
+        // mutation on its own, which is why it does not itself require an anchor — classification
+        // asks these questions of a location it has not yet taken any reference to, and its only
+        // possible answer is to refuse.
+        //
+        // Every mutation it feeds is separately conditioned on the anchor: a removal re-asks the
+        // proof of the object it holds open (RemoveOwned), a restore proves its source reference is
+        // still at the name it is moving, and the recovery passes anchor every participant before
+        // they decide anything at all. So an unanchored identity can start no destructive step
+        // (D-125).
         private bool At(string path, RemovalProof proof) =>
             proof(identityFactory().KeyFor(path), ReadControl(files, path));
+
+        // The same question asked of an anchor the caller already holds: the answer must describe
+        // the object that reference keeps alive, not merely whatever the name resolves to.
+        private bool At(string path, PublicationObjectReference? anchor, RemovalProof proof) =>
+            anchor is not null && anchor.IsStillAt(path) && At(path, proof);
     }
 
     /// <summary>

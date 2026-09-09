@@ -314,6 +314,29 @@ internal sealed class RecordingPublicationFileSystem : IPublicationFileSystem
     public bool SuppressReferences { get; set; }
 
     /// <summary>
+    /// Report no lifetime reference for <b>one</b> participant — the objects whose file name starts
+    /// with this — while every other acquisition, path observation and removal open still succeeds.
+    /// <para>
+    /// A run-wide suppression can only show a pass refusing before it began. What a recovery pass
+    /// has to be held to is narrower and harder: <em>this</em> object cannot be held, everything
+    /// else can, and the pass must still mutate nothing — including the participants it could have
+    /// held and would otherwise have reached first.
+    /// </para>
+    /// </summary>
+    public string? SuppressReferenceNamePrefix { get; set; }
+
+    /// <summary>
+    /// How many acquisitions <see cref="SuppressReferences"/> or
+    /// <see cref="SuppressReferenceNamePrefix"/> actually refused.
+    /// <para>
+    /// A test that suppresses a reference and then observes an unchanged location proves nothing
+    /// unless the suppression fired, and an outcome cannot tell the two apart — the same reason
+    /// <see cref="MutationsFired"/> exists.
+    /// </para>
+    /// </summary>
+    public int ReferencesSuppressed { get; private set; }
+
+    /// <summary>
     /// The operation to simulate a crash after, as the <c>kind:fileName</c> form used in
     /// <see cref="Operations"/>. The real operation completes, and every later operation then
     /// fails — which is what the on-disk state looks like when the process simply disappears:
@@ -406,7 +429,14 @@ internal sealed class RecordingPublicationFileSystem : IPublicationFileSystem
         var name = Path.GetFileName(path);
         Observe("Acquire:" + name);
         FailRead("Acquire", name);
-        return SuppressReferences ? null : _real.TryAcquire(path);
+
+        if (SuppressReferences || Matches(SuppressReferenceNamePrefix, name))
+        {
+            ReferencesSuppressed++;
+            return null;
+        }
+
+        return _real.TryAcquire(path);
     }
 
     /// <inheritdoc/>

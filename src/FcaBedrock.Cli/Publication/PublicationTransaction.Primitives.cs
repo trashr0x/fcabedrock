@@ -19,6 +19,25 @@ internal sealed partial class PublicationTransaction
     }
 
     /// <summary>
+    /// Anchors <paramref name="path"/> for the pass that is about to consult or mutate it: takes
+    /// the live reference if this transaction does not already hold one, and answers whether the
+    /// object there is now held.
+    /// <para>
+    /// <b>Absence is not a failed acquisition.</b> A path with nothing at it has no object to
+    /// anchor and nothing to mutate, which is the ordinary idempotent case every recovery pass is
+    /// built on — so it answers true. A path that <em>does</em> hold an object whose reference
+    /// cannot be taken answers false, and the caller grants no mutation authority for it: an
+    /// identity nobody holds is a number the host is free to have reissued, which is exactly the
+    /// authority D-125 withdraws.
+    /// </para>
+    /// <para>
+    /// An unanswerable existence question reads as "present", so it fails closed too.
+    /// </para>
+    /// </summary>
+    private static bool Anchor(IPublicationFileSystem files, PublicationReferences references, string path) =>
+        references.Ensure(path) is not null || !Exists(files, path);
+
+    /// <summary>
     /// Removes the object at <paramref name="path"/> — and <b>only</b> the object
     /// <paramref name="isExpected"/> accepts.
     /// <para>
@@ -31,9 +50,10 @@ internal sealed partial class PublicationTransaction
     /// atomic.
     /// </para>
     /// <para>
-    /// The gate in front of it is unchanged: the exact host token, then a fresh check that this
-    /// path is not one of the run's own inputs. Returns true when the path no
-    /// longer holds that object — removed, or never there.
+    /// The gate in front of it is the exact host token, a fresh check that this path is not one of
+    /// the run's own inputs, and the <b>anchor</b>: an object that is there but cannot be held open
+    /// authorizes nothing and is left exactly as it is. Returns true when the path no longer holds
+    /// that object — removed, or never there.
     /// </para>
     /// <para>
     /// <b>Release sequencing.</b> The reference this run holds on that path overlaps the removal
@@ -64,6 +84,24 @@ internal sealed partial class PublicationTransaction
         }
 
         if (!guard.Allows(path))
+        {
+            return false;
+        }
+
+        // The object must be one this transaction HOLDS OPEN. Anchored here if the caller has not
+        // already done so, and refused outright where it cannot be: the proof below compares an
+        // identity, and an identity nobody holds is a number the host is free to have reissued
+        // (D-125). Stating it at the removal itself — rather than trusting each pass to have
+        // anchored first — is what stops a later call site reintroducing the gap.
+        //
+        // Holding it is the whole requirement, and no second observation is taken here. The removal
+        // primitive already proves the object through the handle it deletes through, and while this
+        // reference is alive that object's identifier cannot have been reissued to anything else, so
+        // re-asking what the name resolves to would prove nothing the pair does not already prove —
+        // at the cost of a file open on every removal, including the post-commit cleanup inside a
+        // successful conversion. Where the transaction already holds the reference, which is every
+        // in-process removal, this is a dictionary lookup and touches the filesystem not at all.
+        if (references.Ensure(path) is null)
         {
             return false;
         }
