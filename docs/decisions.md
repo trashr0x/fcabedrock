@@ -231,6 +231,10 @@ superseded or refined. A new entry MUST add its line here.
 
 - D-125 — Lifetime-bound publication ownership and the exclusive-first native rename: the exclusively managed, undisturbed output namespace as a stated precondition; live references, so a recycled identifier cannot defeat an identity proof; the exact Linux/macOS capability matrix and its guarded classic fallback; both disclosed Unix final-name races and the across-crash limit; and the closed two-producer package-metadata set *(qualifies the reach of D-122 parts 4–5 and D-123 point 7; corrects the defects D-124's first native run exposed)*
 
+### M8 evidence policy (Policy L)
+
+- D-126 — Policy L: M8 closes under a documented measurement limitation. The publication correction's incremental elapsed-time effect is **inconclusive at the 5% bound** after a complete, pre-registered paired comparison failed its collective gate; the fifteen corrected-build allocation/validation cases and the six corrected-command resource traces were completed instead *(amends D-124's invalidation/recheck rule for D-125's correction only; corrects the stale live status of D-124 and the measurement claims of D-125)*
+
 Spec-field defaults are recorded in spec §21 items 1–11 (see the final section
 of this file).
 
@@ -5667,6 +5671,17 @@ pinned here.
 - **Status:** accepted (M8 Slices S1–S5 landed, including both friend grants and the
   conforming multi-attribute calibration correction with its replacement evidence;
   S6's external cutover and the native non-Windows proof remain)
+  *(status correction, 2026-09-09: the live status above is stale. The canonical GitHub
+  cutover is done, and run
+  [`34289256438`](https://github.com/trashr0x/fcabedrock/actions/runs/34289256438) at
+  `4216610b` passed on all five native targets and produced all three required archives,
+  so neither the cutover nor the native non-Windows proof remains outstanding. What
+  remains is the documentation-head gate sequence recorded in **D-126**. Separately, read
+  every CLI-host row this entry produced as a **session-A or session-C observation of the
+  revision that produced it**: D-125's correction reaches that measured interval, and
+  D-126 records what the corrected build was actually measured to do. The calibration
+  correction, its evidence-replacement map, the failed-native-run history and the
+  component measurements are unaffected — the correction is unreachable from them.)*
 - **Date:** 2026-09-06
 - **Decision:** M8 is measured by **one internal BenchmarkDotNet executable**
   (`tests/FcaBedrock.Benchmarks`) plus a small tested corpus/oracle layer
@@ -6324,6 +6339,255 @@ pinned here.
   state rather than the code. The originals keep their provenance and are not overwritten.
   Component measurements that do not reach `PublicationTransaction` keep theirs. Actions
   run `34241484619` remains **failed** evidence at `a09e302`; nothing here relabels it.
+- **Correction (2026-09-09) — the *Superseded measurements* paragraph is retracted in
+  part and completed in the rest.** Three of its statements were written from one machine
+  state and one rounded reading; sessions D, E, F and G contradict or complete each. The
+  publication semantics of parts 1–7, the approved amendments A and B, the namespace
+  precondition, the capability matrix and its guarded fallback, the three stated limits,
+  the package producer set, and every D-122/D-123 contract this entry qualifies are
+  **unaffected** — only the measurement claims move. The complete evidence is in
+  `docs/benchmarks.md`; the policy that governs it is **D-126**.
+  1. **"Allocation is byte-identical on both builds in every case" is false and is
+     withdrawn**, and with it the inference that "a native handle allocates nothing
+     managed". The original reading came from the reports' rounded `1.04 GB` column. The
+     lifetime reference, its per-transaction registry and the path bookkeeping around
+     them are ordinary managed allocations, and they were measured. Within one machine
+     state the four Working publication forms allocate **+2,880 to +9,416 bytes** more
+     per published run than their paired unchanged control, on operations of 1.04 GB to
+     3.46 GB — except one preserved anomalous contrast of **-99,080 bytes**, which is
+     produced by that block's abnormally high *control* reading and is **not** a
+     candidate saving. Across sessions the fifteen corrected-build rows differ from their
+     historical totals by **-98,936 to +17,984 bytes**; the two negative 73M values are
+     descriptive cross-session measurement observations, **not savings**. No allocation
+     investigation trigger fired on any of the fifteen rows. Allocation is
+     near-deterministic but **not machine-state independent**, so it is reported as exact
+     integers and ranges with their denominators, never as a single value and never
+     inferred from a rounded unit.
+  2. **The "about 10% slower … with three times the deviation" explanation described one
+     machine state and is superseded by the complete history.** It was true of the machine
+     on 2026-09-09 ~01:00 and stands as that dated observation. Since then the same
+     *unchanged* pre-fix control has measured **5.3–8.5% faster** than its own session-A
+     rows, at *tighter* dispersion (session D), and — inside the pre-registered paired
+     campaign (session E) — has **failed to reproduce itself within 5% across its own six
+     launches** of `CliHostConvertBothWorking` (control spread 1.071382). The control has
+     therefore disqualified the machine in **both** directions, which supports the
+     original conclusion more strongly than either reading alone. None of this is a
+     statement about the correction's cost.
+  3. **"Invalidated and rerun" (part 3) is half true, and permanently so.** The reachable
+     CLI-host measurements were invalidated; **no controlled absolute replacement was ever
+     taken**, and under D-126 none is owed. The pre-registered paired comparison that would
+     have licensed a performance-continuity claim ran in full and **failed its collective
+     gate** (`CliHostConvertWideWorking` one-sided 95% upper limit 5.6809% > 5%;
+     `CliHostConvertBothWorking` control stability 1.071382 > 1.05), so the correction's
+     incremental elapsed-time effect is **inconclusive at the 5% bound** — never neutral,
+     never a non-regression, never "probably below 5%", and never a speedup. What exists
+     for the corrected build instead is **allocation and per-iteration output validation
+     for all fifteen CLI-host cases**, including all three 73M cases, and **six
+     corrected-command resource traces**. The session-A and session-C CLI-host rows and the
+     six historical traces keep their original provenance as observations of the revisions
+     that produced them and are never attributed to `4216610b`.
+
+---
+
+## M8 evidence policy (Policy L)
+
+### D-126 — Policy L: limitation closure. The publication correction's incremental latency is inconclusive at the 5% bound; the corrected-build allocation, validation and resource evidence is complete instead
+
+- **Status:** accepted (evidence-policy amendment adjudicated by Astra, independently
+  reviewed by Fable ending `THUMBS UP`, and approved by Constantinos Orphanides on
+  2026-09-09). It **amends D-124's mandatory invalidation/recheck rule for D-125's
+  already-implemented correction only**, and corrects the stale live status of D-124 and
+  the measurement claims of D-125. It reopens no publication, benchmark, spec or
+  packaging decision, and waives no other M8 obligation.
+- **Date:** 2026-09-09
+- **Decision:** M8 may close with an **explicit, permanent measurement limitation** in
+  place of a quantified incremental-latency bound for D-125's publication correction.
+
+  **1. Why the roadmap permits this.** M8's exit is "documented throughput/memory at
+  target scale; no full-matrix materialization", and its M7-cost clause says M8
+  **measures** inline input-stability and manifest hashing. Neither names a latency
+  threshold. The 5% figure enters only through the base plan's **optimization-adoption**
+  gate — a decision aid for whether to *change* a default, which M8 ran and did not meet
+  (D-124) — and through the later comparison's own pre-registered bound, which existed to
+  earn a performance-continuity claim rather than to satisfy the roadmap. **P-19** governs
+  claimed *improvements*; D-125 is a correctness correction, governed by P-7/P-11. The
+  failed comparison therefore forfeits that continuity claim; it does not expose a
+  previously unstated roadmap requirement that every correction prove a sub-5% cost.
+
+  **2. What was attempted, and exactly how it failed.** A four-form paired campaign was
+  **pre-registered before any measurement** — its criterion frozen and hashed 54 seconds
+  before the first invocation, and re-hashed identical afterwards — then executed exactly
+  as specified: twelve interleaved invocations of the unchanged pre-fix control and the
+  corrected candidate in a fixed six-block order, forty-eight case reports agreeing on
+  job, runtime, SDK, BenchmarkDotNet version, OS and instrumentation, every iteration
+  validated after disposal. The gate was **collective** — all four forms had to pass every
+  applicable check. Two failed:
+
+  | Working form | Point estimate | One-sided 95% `U` | `U ≤ 5%` | control `max/min` | `≤ 1.05` | order ratio |
+  | --- | ---: | ---: | --- | ---: | --- | ---: |
+  | Wide | +0.6969% | **5.6809%** | **fail** | 1.036610 | pass | 1.015293 |
+  | No-manifest | +1.4417% | 2.7330% | pass | 1.022896 | pass | 1.001014 |
+  | CXT | +0.4623% | 1.5892% | pass | 1.022205 | pass | 1.011346 |
+  | Both | -1.0576% | 0.9893% | pass | **1.071382** | **fail** | 1.010199 |
+
+  The two failures have different characters and neither implicates a code path: Wide's
+  `U` is carried over 5% by a single iteration in one candidate launch that ran ~200 ms
+  above its four siblings **at identical GC counts and an allocation total inside the same
+  1,592-byte band as its five siblings**, and Both's
+  failure is a **control-arm** stability failure — the *unchanged* pre-fix build moved
+  7.1% across its own six launches. **No block was discarded, no alternative bound
+  computed, no margin widened and no sample added**; the statistic is reported exactly as
+  it fell. The small point estimates are **not** offered as a bound or as evidence of
+  neutrality.
+
+  **3. Disposition: complete, failed, inconclusive, no retry.** The experiment's status is
+  **"attempt complete; collective gate failed; incremental elapsed effect inconclusive at
+  the 5% bound; no retry is required for M8 under limitation closure."** Not "bridge
+  passed", not "bridge pending" (which would imply an owed retry), and not
+  "measurement-neutral". The criterion and result are preserved unedited and are never
+  retroactively passed; any later attempt would be a new pre-registration, not a resumed
+  or enlarged campaign.
+
+  **4. Claims surrendered, permanently.** No equality, byte identity, neutrality,
+  non-regression, speedup, "probably below 5%", exact final-build publication or sidecar
+  overhead, new absolute CLI baseline, all-tier equivalence, or reached-path
+  performance-continuity inference. Historical A/C CLI-host rows and the six historical
+  traces describe **their measured revisions only**. No corrected-build elapsed figure may
+  be published as a result table or converted into records/s, MiB/s, a scaling curve, an
+  overhead percentage, sidecar or auto-versus-declared timing arithmetic, or any old/new
+  subtraction; corrected-build elapsed output is retained as **contextual raw data only**.
+  Trace wall time is instrumented command duration in its provenance record, never
+  BenchmarkDotNet performance evidence.
+
+  **5. The five conditions, and their state.** Limitation closure is available only when
+  all five hold:
+  - **(a) fixed-participant, unreachable premise — holds.** The `a09e302..4216610b`
+    correction inventory is exactly 29 paths (23 modified, 6 added), confined to
+    `src/FcaBedrock.Cli/`, `tests/FcaBedrock.Cli.Tests/` and four docs. **Nothing** under
+    Sources, Conversion, Export, Core, Spec, Discovery or `tests/FcaBedrock.Benchmarks`
+    changed, so the correction is unreachable from the Sources, calibration,
+    grouping/fan-in, planning, emit/export, probe, hash-wrapper and tuning measurements.
+    Those keep their original A/B/C provenance and their conclusions stand at their
+    original scope. This is **not** a claim that all prior evidence was invalidated, nor
+    that all current performance was remeasured.
+  - **(b) the failed comparison preserved and prominently reported — satisfied.** All four
+    rows are published together as one failed collective test in `docs/benchmarks.md`,
+    with both failed gates named by value and no selected passing-case conclusion.
+  - **(c) all fifteen corrected CLI-host cases carrying original-job allocation and
+    per-iteration validation, including all three 73M cases — met.** Six from session E,
+    nine from session F. Every completed iteration validated after disposal against its
+    existing validator; **no allocation investigation trigger fired**.
+  - **(d) all six corrected actual-command traces complete with their real
+    output/manifest validation and resource provenance — met.** Wide declared 7.3M and 73M
+    from session F (no grouping spool, no `--temp-dir`), and the four triple declared/auto
+    7.3M and 73M traces from session G, each with an explicit unique `--temp-dir` beneath
+    `D:\tmp`.
+  - **(e) every claim naming its session, revision, validation strength and measurement
+    meaning — satisfied**, and enforced by the wording rules in part 4.
+
+  No unresolved product, allocation or resource investigation is waived by any of this: an
+  open trigger would still stop closure.
+
+  **6. The disclosed acquisition boundary (sessions F and G).** Session F stopped before
+  its last two traces at a **pre-registered capacity gate**: a single triple-unordered 73M
+  conversion needs roughly **5.6 GiB** of grouping spool, the established trace argv
+  carries no `--temp-dir` so `SpoolWorkspace` falls back to the OS temporary directory on
+  the system volume, and that volume had 7.102 GiB free against a required 10.313 GiB.
+  That is an **acquisition/capacity** stop — an operator and environment matter, not a
+  product defect, not an oracle failure and not evidence instability. Session G then ran
+  all four triple traces with an **explicit per-trace `--temp-dir` beneath `D:\tmp`**.
+  This is a **disclosed acquisition-boundary change**, permitted precisely *because*
+  Policy L has already surrendered cross-session latency comparability: it may never be
+  used to compare timing with sessions A, C or F, and `D:` is never described as faster or
+  slower. It changed no output semantics, oracle, counter, product code or benchmark job -
+  proved by four **byte-exact** reproductions of session C's retained outputs — and the
+  product cleaned its own spool with **zero residue** and no manual deletion. Session F's
+  own `C:`-temp triple 7.3M traces remain valid corrected-build observations beside this
+  set; they are **not** the resource controls for the 73M triple traces, because a control
+  and its comparison must share an acquisition boundary. **G4 closes the corrected-build
+  73M auto external session-C digest continuity** that session F had left outstanding -
+  regression continuity, not an independently derived quantile-semantic oracle.
+
+  **7. Oracle boundaries, stated exactly.** The declared, CXT and both-format cases carry
+  **independent byte expectations** derived from the corpus definition plus documented
+  spec semantics. The auto cases carry only the narrower checks — expected subject count,
+  the `ObservedDomainUsed`-only diagnostic policy, manifest **presence**, and intra-run
+  byte determinism — plus external session-C digest continuity supplied by the
+  actual-command traces. That continuity is **regression evidence, not an independent
+  quantile-semantic oracle**. BenchmarkDotNet's manifest check is **presence/absence
+  only**; full manifest/input/output hash consistency is carried by the traces, which
+  recompute it independently. No validator was weakened, redesigned or filtered anywhere.
+
+  **8. What resource evidence means.** Every reported working-set, GC-heap and
+  GC-committed figure is a **sampled maximum at a one-second interval**, with its sample
+  count and coverage disclosed and `dotnet-counters` profiling overhead present. A sampled
+  maximum is a **lower bound** on the true peak — never an exact peak and never a portable
+  ceiling — and within-session size ratios are descriptive observations, not scaling laws.
+  Exit zero, a flat resident set, a BenchmarkDotNet allocation total, and the wide
+  investigation trigger's failure to fire each prove **no streaming guarantee** on their
+  own; the algorithmic bound remains carried by the independent observer and
+  retained-layout witnesses, which this evidence reconciles with rather than replaces.
+
+  **9. Remaining gates, none waived.** This documentation commit; a complete five-target
+  native run and three newly retained, inspected and hashed required archives **at the
+  documentation head**, with the expensive benchmark, trace and Adult evidence carried
+  across that commit only after verifying the entire diff from `4216610b` is these three
+  advisory Markdown files; a fresh independent implementation review; operator acceptance
+  and authorized merge; the resulting main-push CI at the merge revision; the separate
+  GitLab archival gate; and the standing Windows x64 External/Adult three-case acceptance
+  obligation at the final candidate. **M8 remains in progress until all of them
+  complete.**
+- **Why:** the comparison was the right experiment and it was run honestly, in full, under
+  a criterion fixed before any data was seen — and it did not pass. The two available
+  alternatives were both worse than recording that plainly. Making a sub-5%
+  incremental-latency bound a *new* M8 exit condition would invent a release obligation
+  the roadmap never stated, on a **correctness** correction, and would hold the milestone
+  open behind a machine that has now been shown — by its own unchanged control, in both
+  directions — not to hold still enough to prove it. Re-basing the whole scale matrix onto
+  a new session would spend hours of measurement to support exactly the cross-session
+  comparison that limitation closure forgoes, and would discard provenance that is
+  currently exact. What closure actually needs is that the corrected build is **correct**
+  and **bounded** — which is what the fifteen validated allocation rows and the six
+  validated resource traces establish — plus an honest statement of the one thing that
+  could not be measured. Recording it as an accepted evidence policy, rather than as a
+  quiet omission, is what keeps the next reader from mistaking "inconclusive" for "fine".
+- **Rejected:** treating the failed comparison as a pass, or reporting only its three
+  passing forms (the gate is collective, and a selected passing-case conclusion is the
+  laundering this entry exists to forbid); paraphrasing "inconclusive" as
+  *measurement-neutral*, *no measurable regression*, *probably below 5%*, or
+  *non-regression* (each asserts the very thing that was not established, and the small
+  point estimates cannot carry them); an automatic retry series (the criterion forbids
+  reusing or extending that campaign, and an unbounded correction loop is the failure mode
+  the M8 workflow was reset to escape); making the sub-5% bound a mandatory M8 exit
+  condition (a new release obligation the roadmap never stated); re-basing the scale matrix
+  onto a fresh session to support a comparison closure forgoes (expensive,
+  provenance-destroying, and unnecessary); rerunning the six already-valid session-E
+  allocation rows because a later session ran on a different machine state (their identity,
+  raw reports and per-iteration validation are intact — machine-state difference alone is
+  expected and changes nothing they claim); substituting ten times a 7.3M job, a `Dry`
+  smoke, or a smaller tier for a real 73M case (the 73M obligation is the 73M job);
+  publishing the corrected-build elapsed numbers as a results table or deriving any rate,
+  curve or overhead from them (they are contextual raw data, and a table would rebuild the
+  comparison by another route); adding `--temp-dir` to the wide traces so all six share one
+  boundary (the wide declared command performs no grouping and no calibration pass, so it
+  spools nothing — the option would change an established argv for no measurement gain);
+  redirecting process-global `TEMP`/`TMP`, or freeing space on the operator's system
+  volume, to keep session F's boundary (both change the environment under measurement
+  rather than disclosing the change); and inferring byte identity from a rounded `GB`
+  column, extrapolating one row's allocation delta to another, calling allocation
+  machine-state independent, or converting allocated throughput into resident memory (the
+  four readings that produced D-125's retracted sentence).
+- **Affects:** `docs/decisions.md` (this entry, the D-124 status correction and the D-125
+  measurement corrections), `docs/benchmarks.md` (the failed comparison and its limitation,
+  the fifteen-row allocation/validation ledger, the corrected-command trace and resource
+  records, the native-delivery record, and the session qualifiers on every historical
+  headline), `docs/roadmap.md` (current position and the M8 block). **No production code,
+  test, benchmark definition, job, corpus, spec, oracle, workflow, package input, public
+  API, diagnostic, ordering rule, determinism contract or output byte changes**; the
+  registry stays **82**, and every golden, canonical-byte and SHA pin is untouched. Amends
+  D-124's invalidation/recheck rule for D-125's correction only; corrects D-124's live
+  status and D-125's *Superseded measurements* paragraph; reopens neither D-122/D-123 nor
+  D-125's approved amendments A and B.
 
 ---
 

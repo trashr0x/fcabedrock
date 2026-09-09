@@ -9,12 +9,19 @@ vertical slices, not waterfall phases — each should leave the system working.
 **Now:** M1–M7 are complete. The `fcabedrock` global tool ships all eight commands over
 the publication transaction, the run manifest, and the freeze engine (D-122/D-123), with
 the diagnostic registry at 82. **M8 — the first scaling/benchmark pass — is in
-progress** (the suite, its corpora and oracles, the CLI-host and hashing coverage, the
-standalone distribution, and the target-scale evidence have landed under D-124, and the
-canonical GitHub cutover is done; the **first five-target native run failed**, finding two
-pre-existing M7 defects now corrected under **D-125**, so a complete passing native run,
-its artifacts, and the re-measured CLI-host evidence remain), then M9. The milestone blocks
-below are the append-only history; the M7 and M8 sections carry the live detail.
+progress**, under the **D-126** measurement limitation: the suite, its corpora and oracles,
+the CLI-host and hashing coverage, the standalone distribution, and the target-scale
+evidence landed under D-124; the canonical GitHub cutover is done; the first five-target
+native run failed and found two pre-existing M7 defects, now corrected under **D-125**; and
+a complete five-target run at `4216610b` has since passed on every target and produced all
+three required archives, which are retained and hash-verified. The historical CLI-host
+figures were **not** re-measured into a controlled replacement — the attempted comparison
+failed its collective gate, so the correction's incremental latency is **inconclusive at
+the 5% bound and no retry is owed** — while the corrected build's allocation and output
+validation (all fifteen CLI-host cases, including all three 73M) and its six
+corrected-command resource traces are **complete**. What remains is the finalization gate
+sequence in the M8 block below, then M9. The milestone blocks below are the append-only
+history; the M7 and M8 sections carry the live detail.
 
 > **M1 complete — mini-mushroom + mini-adult reproduced byte-for-byte.** The whole
 > pipeline runs end-to-end and matches v2 on both families: `.bed` reader
@@ -1064,18 +1071,76 @@ byte-identical to `main` — a publication ownership defect that let a recycled 
 identifier authorize publishing or deleting a substituted object, and a package test that
 pinned one NuGet producer's metadata leaf — and both are corrected under **D-125**. Because
 that correction reaches the measured CLI-host interval, the CLI-host figures in
-`docs/benchmarks.md` are superseded and re-measured; component measurements are unaffected.
+`docs/benchmarks.md` are **superseded and were never replaced by a controlled
+re-measurement**; component measurements are unaffected, because publication is unreachable
+from their timed paths.
 
-**Completion obligations, none waived:**
+**The native gate then passed, and the corrected build was characterized under D-126
+(2026-09-09).** A second run at `91188455` failed at a macOS-only global-tool-smoke defect
+— a `/var` versus `/private/var` path-spelling comparison in the test's own assertion,
+reached for the first time because no earlier run had got that far — and remains failed
+evidence at that revision. Run
+[`34289256438`](https://github.com/trashr0x/fcabedrock/actions/runs/34289256438) at
+`4216610b` then **passed on all five native targets** and produced all three required
+self-contained archives (`win-x64`, `linux-x64`, `osx-arm64`), which are retained,
+decompressed, inspected, and hash-verified against GitHub's own server-side digests. The
+Windows x64 External/Adult three-case acceptance also passed at that revision against the
+D-124-pinned entry (3,974,305 bytes, SHA-256 `5b00264637…c86603d`).
+
+What the corrected build was measured to do, and what could not be measured, is **D-126**:
+
+- **The incremental publication latency is inconclusive at the 5% bound.** A pre-registered
+  four-form paired comparison ran in full and **failed its collective gate** —
+  `CliHostConvertWideWorking` returned a one-sided 95% upper limit of **5.6809%** against
+  5%, and `CliHostConvertBothWorking` failed control stability at **1.071382** against 1.05
+  (the *unchanged* build moving 7.1% across its own six launches). The attempt is complete
+  and **no retry is required for M8**. It is never neutrality, non-regression, equality,
+  "probably below 5%", a speedup, or an exact publication/sidecar overhead, and no
+  corrected-build elapsed figure is published as a result or converted into any rate,
+  curve or old/new arithmetic.
+- **Allocation and per-iteration output validation are complete at 15/15 CLI-host cases**
+  (six from session E, nine from session F), including all three 73M cases at their real
+  1-warmup/3-measured policy. No allocation investigation trigger fired on any row. D-125's
+  "allocation is byte-identical" claim is **retracted**: the corrected build allocates
+  +2,880 to +9,416 bytes more per published run within one machine state.
+- **The corrected-command resource traces are complete at 6/6** — the two wide declared
+  traces from session F (which spool nothing, so they carry no `--temp-dir`) and the four
+  triple declared/auto traces from session G, each with an explicit unique `--temp-dir`
+  beneath `D:\tmp`. That spool placement is a **disclosed acquisition boundary**, adopted
+  after the system volume could not host a ≈5.6 GiB grouping spool; it changed no output
+  semantics, oracle, counter, product code or benchmark job — four byte-exact reproductions
+  of session C's retained outputs prove it — and the 73M auto external digest continuity is
+  now **closed**. It may never be used to compare timing across sessions.
+- **Historical whole-command memory and throughput headlines stay session A/C
+  observations** of the revisions that produced them, with the corrected build's own
+  sampled figures recorded beside them rather than replacing them. Sampled maxima are lower
+  bounds, and neither they, exit zero, a flat resident set, nor a BenchmarkDotNet
+  allocation total proves a streaming bound — the algorithmic guarantee remains the
+  independent observers and the retained-layout witnesses.
+
+**Remaining M8 gates, none waived:** this documentation commit; a complete five-target
+native run and three newly retained, inspected and hashed archives **at the documentation
+head**, with the expensive benchmark, trace and Adult evidence carried across that commit
+only after verifying the entire diff from `4216610b` is the three advisory Markdown files;
+a fresh independent implementation review; operator acceptance and authorized merge; the
+resulting main-push CI at the merge revision; and the separate GitLab archival gate. **M8
+is not accepted, merged or complete until all of them have happened.**
+
+**Completion obligations, none waived** (each stands for every later release candidate,
+whatever its status at the current one):
 
 - **Native proof on Windows x64, Linux x64, and macOS ARM64**, plus Linux/Windows
   ARM64 where available. Portable test code is not non-Windows proof: until each
   target has actually executed the ordinary suite, the resident-accounting witnesses,
   the Small harness smoke, and the package smokes, D-082's numerical guarantee extends
-  to validated x64 alone.
+  to validated x64 alone. **Satisfied at `4216610b`** — all five targets executed all
+  four, natively, in run `34289256438`. The obligation re-attaches at the documentation
+  head.
 - **Verified migration to the canonical public GitHub destination**, Actions
   established, and tested self-contained archives (`win-x64`, `linux-x64`,
-  `osx-arm64`) delivered from runs at recorded revisions.
+  `osx-arm64`) delivered from runs at recorded revisions. **Satisfied at `4216610b`** —
+  the cutover is verified and all three archives are retained and hash-verified. Three
+  newly retained archives are required again at the documentation head.
 - **A successful real-data (`External`) run on the final Windows x64 candidate.** The
   acquired UCI Adult corpus is deliberately outside routine CI — it is the one input
   this repository cannot generate, and requiring it in every native job would let an
@@ -1086,6 +1151,8 @@ that correction reaches the measured CLI-host interval, the CLI-host figures in
   outstanding**, which is exactly why it is listed here. An unreachable host leaves
   the obligation open; a digest mismatch is an input-identity failure to investigate;
   a failure on verified bytes is a correctness finding. None becomes a pass.
+  **Satisfied at `4216610b`** — all three cases passed on Windows x64 against the pinned
+  entry, retained as durable evidence; the obligation re-attaches at the final candidate.
 - **Probe-default adoption** remains a separate observable semantic decision — it
   changes draft bytes, warnings, and success-versus-guard-failure — and needs its own
   approval with a spec §7.1 / D-110 reconciliation. The defaults were measured at
@@ -1096,17 +1163,27 @@ at 730,000, 7.3M, and **73M** records, on identified hardware with every corpus,
 output, spool and result on one non-system volume. Headlines:
 
 - **Throughput is linear** — the wide source drain reads 2.83M, 2.74M and 2.81M
-  records/second across a hundredfold range at a constant 723 B/record.
-- **A whole-command trace of the shipped executable converts 4.51 GiB of input in a
-  62 MB working set, unchanged between 7.3M and 73M**, while allocating 104 GB
-  through the collector. The triple `unordered` path is different and legitimately so:
-  its working set grows with the *subject* count (about 260 B/subject; 1.8 GB at 7.3M
-  subjects), which is the P-16 metadata carve-out, not a materialized matrix.
+  records/second across a hundredfold range at a constant 723 B/record. This and the other
+  component results below are unaffected by D-125, which is unreachable from their timed
+  paths, and stand at their original session-A/session-C provenance.
+- **A whole-command trace converted 4.51 GiB of input in a 62 MB sampled working set,
+  unchanged between 7.3M and 73M**, while allocating 104 GB through the collector. The
+  triple `unordered` path is different and legitimately so: its sampled working set grows
+  with the *subject* count (about 260 B/subject; 1.8 GB at 7.3M subjects), which is the
+  P-16 metadata carve-out, not a materialized matrix. Both are **session-A/session-C**
+  observations of the executables those sessions built, not of the shipped build; the
+  corrected build's own six traces are recorded separately in `docs/benchmarks.md`, and a
+  sampled maximum is a lower bound on the true peak.
 - **The `.dat` writer allocates nothing measurable**; emission does. The `.cxt` format
   costs 2.4x the time and 2.1x the allocation of `.dat` for the layout reason (§18.1).
-- **Inline input-stability hashing costs 12-19% of a source pass with zero
-  allocation**; the second pass an auto-calibrated spec requires costs 2x the whole
-  conversion.
+- **Inline input-stability hashing costs 12-19% of a source pass, with no allocation the
+  reported precision resolves** — the hashed and unhashed arms agree in the rounded
+  `MB`/`GB` column, which is not a byte-identity claim. That is a **component** comparison
+  at session-A provenance, unaffected by D-125.
+- **The second pass an auto-calibrated spec requires costs 2x the whole conversion.** That
+  ratio comes from `CLI host` rows (session A declared, session C auto), so it describes
+  those revisions and **not** the shipped build; D-125 reaches that measured interval and
+  no controlled timing replacement exists or is owed (D-126).
 - **The grouping budget and merge fan-in were tested against the gate and retained.**
   A 256 MiB budget wins 30-38% at 730k and 19-20% at 7.3M but only 4-7% at 73M with no
   allocation gain, against a 25% between-session drift at that tier. See
