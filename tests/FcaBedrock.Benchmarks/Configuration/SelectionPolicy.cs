@@ -6,15 +6,22 @@ namespace FcaBedrock.Benchmarks.Configuration;
 /// <summary>
 /// Which cases a bare invocation may run.
 /// <para>
-/// BenchmarkDotNet owns filtering; this adds exactly one policy on top of it, for two cases that
-/// must never start by accident. The <see cref="BenchmarkCategories.Scale"/> cases read 7.3M and
-/// 73M records, so running them unintentionally costs hours of machine time and produces results
-/// nobody asked for. The <see cref="BenchmarkCategories.External"/> cases are quick, but their
-/// corpus is acquired from a third-party host, so requiring them turns an unrelated outage into a
-/// failure of whatever run happened to select them. Both are therefore <b>opt-in by category and
+/// BenchmarkDotNet owns filtering; this adds exactly one policy on top of it, for three tiers that
+/// must never start by accident. The <see cref="BenchmarkCategories.Working"/> cases read 730,000
+/// records and the <see cref="BenchmarkCategories.Scale"/> cases 7.3M and 73M, so running either
+/// unintentionally costs minutes to hours of machine time and produces results nobody asked for.
+/// The <see cref="BenchmarkCategories.External"/> cases are quick, but their corpus is acquired
+/// from a third-party host, so requiring them turns an unrelated outage into a failure of whatever
+/// run happened to select them. All three are therefore <b>opt-in by their own tier category and
 /// by nothing else</b> — a broad name filter such as <c>--filter *</c>, the case's own name, and a
-/// surface category all fail to reach them — and, when no category is named at all, the default
-/// selection is <see cref="BenchmarkCategories.Small"/>.
+/// surface category such as <c>Source</c> all fail to reach them — and, when no category is named
+/// at all, the default selection is <see cref="BenchmarkCategories.Small"/>.
+/// </para>
+/// <para>
+/// The gate is per tier, not per opt-in: naming one tier reaches that tier and no other. Reaching
+/// <see cref="BenchmarkCategories.Working"/> through anything else would also be silently wrong in
+/// a second way, because <see cref="LongRunRequested"/> would stay false and minutes-scale cases
+/// would run under the throughput job's pilot stage (D-124).
 /// </para>
 /// <para>
 /// Opting in is not the same as skipping: a selected case whose corpus is absent is still a hard
@@ -108,11 +115,16 @@ internal sealed record SelectionPolicy(
     {
         ArgumentNullException.ThrowIfNull(categories);
 
-        // The two opt-in tiers are checked first and answer on their own: naming some *other*
-        // category lifts the Small default, but it must never reach these. A case carries exactly
-        // one tier category, so the two branches cannot both apply.
+        // The three opt-in tiers are checked first and each answers on its own: naming some *other*
+        // category lifts the Small default, but it must never reach any of these. A case carries
+        // exactly one tier category, so at most one branch applies.
         //
         // BenchmarkDotNet compares categories case-insensitively, so this must too.
+        if (Has(categories, BenchmarkCategories.Working))
+        {
+            return WorkingRequested;
+        }
+
         if (Has(categories, BenchmarkCategories.Scale))
         {
             return ScaleRequested;

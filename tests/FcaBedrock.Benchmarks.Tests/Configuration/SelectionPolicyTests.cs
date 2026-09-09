@@ -200,4 +200,90 @@ public sealed class SelectionPolicyTests
         Assert.False(bare.Includes(["Working", "Convert"]));
         Assert.True(opted.Includes(["Working", "Convert"]));
     }
+
+    // ---- the three opt-in tiers, one rule ----------------------------------------------------
+
+    /// <summary>
+    /// Every way of selecting cases that is <b>not</b> naming a tier: bare, a broad name filter, a
+    /// filter naming the case itself, and a surface category. None of them may reach any opt-in
+    /// tier, whichever tier it is.
+    /// </summary>
+    public static TheoryData<string, string[]> ImplicitSelections => new()
+    {
+        { "bare", [] },
+        { "broad name filter", ["--filter", "*"] },
+        { "the case's own name", ["--filter", "*CliHostConvertWideWorking*"] },
+        { "a surface category", ["--anyCategories", BenchmarkCategories.Source] },
+        { "a surface category and a broad filter", ["--anyCategories", BenchmarkCategories.Convert, "--filter", "*"] },
+    };
+
+    [Theory]
+    [MemberData(nameof(ImplicitSelections))]
+    public void Policy_WhenNoTierIsNamed_ThenNoOptInTierIsReachable(string description, string[] arguments)
+    {
+        // One table for all three tiers, because it is one rule: `Working`, `Scale` and `External`
+        // are reachable by naming their own category and by nothing else (D-124). A surface
+        // category lifts the Small default — that is deliberate — but it must not carry an opt-in
+        // tier with it.
+        var policy = SelectionPolicy.FromArguments(arguments);
+
+        Assert.False(policy.Includes(WorkingCase), $"Working is reachable through {description}.");
+        Assert.False(policy.Includes(ScaleCase), $"Scale is reachable through {description}.");
+        Assert.False(policy.Includes(ExternalCase), $"External is reachable through {description}.");
+
+        // And the second, quieter consequence for Working: a selection that reached it without
+        // naming it would also run it under the wrong job shape.
+        Assert.False(policy.WorkingRequested, $"WorkingRequested is set by {description}.");
+        Assert.False(policy.LongRunRequested, $"LongRunRequested is set by {description}.");
+    }
+
+    [Theory]
+    [InlineData(BenchmarkCategories.Working)]
+    [InlineData(BenchmarkCategories.Scale)]
+    [InlineData(BenchmarkCategories.External)]
+    public void Policy_WhenOneTierIsNamed_ThenOnlyThatTierIsReachable(string tier)
+    {
+        // The positive half, and the independence: opting into one tier opts into that tier alone.
+        var policy = SelectionPolicy.FromArguments(["--anyCategories", tier]);
+
+        Assert.Equal(tier == BenchmarkCategories.Working, policy.Includes(WorkingCase));
+        Assert.Equal(tier == BenchmarkCategories.Scale, policy.Includes(ScaleCase));
+        Assert.Equal(tier == BenchmarkCategories.External, policy.Includes(ExternalCase));
+    }
+
+    [Fact]
+    public void Config_WhenOnlyASurfaceCategoryIsNamed_ThenNoWorkingCaseRunsUnderTheThroughputJob()
+    {
+        // Through the real configuration, not the predicate alone. Before the Working gate existed
+        // this shape was doubly wrong: `--anyCategories Source` admitted every Working source case,
+        // and — because the command line never named Working — the config attached the
+        // fresh-iteration job, so BenchmarkDotNet's pilot stage would have multiplied
+        // minutes-scale operations.
+        var surfaceOnly = SelectionPolicy.FromArguments(["--anyCategories", BenchmarkCategories.Source]);
+
+        Assert.False(surfaceOnly.Includes(WorkingCase));
+        Assert.Equal(
+            BedrockBenchmarkConfig.FreshIteration.Id,
+            Assert.Single(BedrockBenchmarkConfig.Create(surfaceOnly).GetJobs()).Id);
+
+        // Named explicitly, the same cases are admitted and carry the bounded monitoring job.
+        var opted = SelectionPolicy.FromArguments(["--anyCategories", BenchmarkCategories.Working]);
+
+        Assert.True(opted.Includes(WorkingCase));
+        Assert.Equal(
+            BedrockBenchmarkConfig.LongRun.Id,
+            Assert.Single(BedrockBenchmarkConfig.Create(opted).GetJobs()).Id);
+    }
+
+    [Fact]
+    public void Config_WhenAJobIsNamedExplicitly_ThenTheSuiteAddsNoneOfItsOwn()
+    {
+        // The existing explicit-job contract is unchanged by the Working gate: `--anyCategories
+        // Working --job dry` is exactly BenchmarkDotNet's dry run over the Working cases.
+        var policy = SelectionPolicy.FromArguments(["--anyCategories", BenchmarkCategories.Working, "--job", "dry"]);
+
+        Assert.True(policy.Includes(WorkingCase));
+        Assert.True(policy.JobRequested);
+        Assert.Empty(BedrockBenchmarkConfig.Create(policy).GetJobs());
+    }
 }

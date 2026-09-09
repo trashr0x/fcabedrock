@@ -122,6 +122,57 @@ public sealed class BenchmarkSuiteContractTests
     }
 
     [Fact]
+    public void EveryWorkingCase_ShouldBeExcludedFromEveryImplicitSelectionAndReachableWhenNamed()
+    {
+        // The Working tier's own sweep, over the categories BenchmarkDotNet will actually read.
+        // The reason it is opt-in is cost — 730,000 records per case — and the surface-category
+        // shape is the one that matters here: `--anyCategories Source` is an ordinary way to ask
+        // "every source-drain case", and it must mean the Small ones.
+        var bare = SelectionPolicy.FromArguments([]);
+        var broad = SelectionPolicy.FromArguments(["--filter", "*"]);
+        var byName = SelectionPolicy.FromArguments(["--filter", "*Working*"]);
+        var bySurface = SelectionPolicy.FromArguments(["--anyCategories", BenchmarkCategories.Source]);
+        var opted = SelectionPolicy.FromArguments(["--anyCategories", BenchmarkCategories.Working]);
+
+        var workingCases = BenchmarkTypes.Where(type => Categories(type)
+            .Contains(BenchmarkCategories.Working, StringComparer.OrdinalIgnoreCase)).ToList();
+
+        Assert.NotEmpty(workingCases);
+        foreach (var type in workingCases)
+        {
+            var categories = Categories(type);
+            Assert.False(bare.Includes(categories), $"{type.Name} runs without opting in.");
+            Assert.False(broad.Includes(categories), $"{type.Name} is reachable by a broad name filter.");
+            Assert.False(byName.Includes(categories), $"{type.Name} is reachable by its own name.");
+            Assert.False(bySurface.Includes(categories), $"{type.Name} is reachable by a surface category.");
+            Assert.True(opted.Includes(categories), $"{type.Name} is unreachable even when opted in.");
+        }
+    }
+
+    [Fact]
+    public void TheSelectionFilter_ShouldRefuseADiscoveredWorkingCaseUnderASurfaceOnlySelection()
+    {
+        // End to end through the real path: BenchmarkDotNet's own converter reads the attributes,
+        // and the suite's real filter — the one the configuration attaches — decides on the
+        // descriptor those attributes produced rather than on a category array written here.
+        var discovered = BenchmarkConverter.TypeToBenchmarks(typeof(CliHostConvertWideWorking)).BenchmarksCases;
+        Assert.NotEmpty(discovered);
+
+        var surfaceOnly = new TierSelectionFilter(
+            SelectionPolicy.FromArguments(["--anyCategories", BenchmarkCategories.Convert]));
+        var opted = new TierSelectionFilter(
+            SelectionPolicy.FromArguments(["--anyCategories", BenchmarkCategories.Working]));
+
+        Assert.All(discovered, benchmark =>
+        {
+            Assert.Contains(
+                BenchmarkCategories.Working, benchmark.Descriptor.Categories, StringComparer.OrdinalIgnoreCase);
+            Assert.False(surfaceOnly.Predicate(benchmark), $"{benchmark.Descriptor.WorkloadMethod.Name} was admitted.");
+            Assert.True(opted.Predicate(benchmark), $"{benchmark.Descriptor.WorkloadMethod.Name} was refused.");
+        });
+    }
+
+    [Fact]
     public void TheAcquiredCorpusCases_ShouldBeExactlyTheExternalOnes()
     {
         // Read off the attributes BenchmarkDotNet will actually see, not off a category array
