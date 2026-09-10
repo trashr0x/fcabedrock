@@ -42,8 +42,12 @@ The architecture and its rationale are `decisions.md` **D-124**; how to run the 
 > both before the criterion was frozen, and neither changed a measured byte. See
 > [Admissibility](#admissibility--two-protocol-deviations-and-one-tooling-correction).
 > See also [What has not been measured](#what-has-not-been-measured). The one acquired corpus is
-> outside routine CI and carries its own acceptance obligation; see
-> [Selection, and what routine CI proves](#selection-and-what-routine-ci-proves).
+> outside routine CI and carries its own acceptance obligation; that obligation is **met at the
+> documentation head `82e2ffea`** by the accepted offline replacement run, after a first attempt at
+> the same commit validated all three cases but crossed an explicit no-network stop boundary and so
+> did not close the gate. See
+> [Selection, and what routine CI proves](#selection-and-what-routine-ci-proves) and
+> [The acceptance run at the documentation head](#the-acceptance-run-at-the-documentation-head-2026-09-10-windows-x64-82e2ffea).
 
 ## What a number here means
 
@@ -247,6 +251,92 @@ against its independent expectation after disposal: `AdultConvertCxt` **124.8 ms
 These are a *correctness* result at `4216610b`, and they are **not** comparable with the 2026-09-07
 figures above or with anything in the controlled baseline: different session, different machine
 state, and — per **D-126** — no cross-session elapsed comparison is available for this build.
+
+### The acceptance run at the documentation head (2026-09-10, Windows x64, `82e2ffea`)
+
+The native, archive and implementation-review gates closed at `c4ceb8e2`, and the documentation
+reconciliation that records them was committed at **`82e2ffea`** — sole parent `c4ceb8e2`, three
+advisory Markdown files, `+342/−34`, nothing else. That is the revision submitted for acceptance, so
+the blocking obligation attached there. It was run twice at that exact candidate, and only the second
+run closes the gate.
+
+**The first attempt is preserved, and it is not the accepted run.** All three cases executed and
+validated at `82e2ffea` — native exit 0, three cases completed, no `NA` case, no oracle, validation
+or diagnostic failure — but BenchmarkDotNet's generated-project restore triggered NuGet's
+vulnerability audit, which contacted `api.nuget.org` vulnerability-metadata endpoints **inside the
+measured window**, against the commission's explicit no-network stop rule. The gate was therefore
+**not** closed with it. It is retained unchanged at `D:\tmp\fcabedrock-m8-g15-final-adult-82e2ffea` —
+**33 files / 4,192,655 bytes**, `MANIFEST-SHA256.txt` 4,301 B, SHA-256
+`4dbcfb9426b2117fdf7c3aa77be7175fe8aa8ffa67232a96e58a1aa05e11717e` — as a **technically successful,
+protocol-noncompliant** validation run. It is not a product failure, not a flake, not accepted, not
+superseded evidence, and not the source of any figure below; the two runs are compared nowhere.
+
+**The accepted run is the one authorized offline replacement**, at the same exact candidate, under a
+restore boundary that left the audit no way to reach the network. Input identity was verified first
+and nothing was acquired — `prepare adult` was never invoked and UCI was never contacted: `adult.csv`
+**3,974,305 bytes**, SHA-256 `5b00264637dbfec36bdeaab5676b0b309ff9eb788d63554ca0a249491c86603d`;
+`adult.toml` 3,006 B, SHA-256 `763661267b020be7da474dd35009359a6f56061cacc3da7ac6681e6c6ebce0a5`;
+catalog 355 B, SHA-256 `43448fede549b8b506b5dfa058f7faf60cc592a09a8519f7390c5cecb3af8e3f`, reading
+`tier = external`, `generator_revision = 2`, `records = 32562`, `columns = 15`. The retained spec is
+**byte-identical to the committed `AdultSpecs.Declared`**, derived independently of the catalog, and
+the data matched the **source-pinned** identity independently of the catalog's own recorded digest.
+The Release `--no-restore` build exited 0 with **zero warnings and zero errors**, and every product
+assembly the run exercised embeds `1.0.0+82e2ffea133b191c6949b4f073a14f4b1e2dcf4e`.
+
+Selection listed exactly `AdultConvertCxt`, `AdultConvertDat` and `AdultSourceDrain` — three cases,
+no fourth, and no `Small`, `Working`, `Scale`, mini-Adult or unrelated surface case. One measured
+invocation followed, native exit **0**, no retry, no `--job` and no filter change, all three under
+the ordinary `fresh-iteration` job (`InvocationCount=1`, `RunStrategy=Throughput`, `UnrollFactor=1`),
+with the launcher reporting `3 benchmark case(s) completed with no build, execution, or validation
+failure.` Every completed measured iteration validated in `[IterationCleanup]`, after disposal:
+`AdultSourceDrain` against the independent Adult drain expectation, and the two conversion cases
+against clean diagnostics, an independently counted artifact shape (32,562 objects, and the derived
+CXT line count) and intra-run byte stability. No product diagnostic, exception, validation error or
+failed case appears anywhere in the 611-line log.
+
+| Case | Measured N | Mean | StdDev | Records | Allocated |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| `adult emit + cxt export` | 22 | 100,015,363.63636364 ns | 2,412,180.615828057 ns | 32,562 | 150,943,216 B |
+| `adult emit + dat export` | 12 | 50,230,683.333333336 ns | 711,683.1200283826 ns | 32,562 | 70,394,432 B |
+| `wide source drain` (Adult) | 36 | 12,896,588.888888888 ns | 405,286.2852550935 ns | 32,562 | 22,882,960 B |
+
+All three report `Records = 32,562`, `InputMiB = 3.8`, .NET 10.0.12, `X64 RyuJIT x86-64-v3`, RELEASE
+and Concurrent Workstation GC under BenchmarkDotNet 0.15.8, parsed from the generated full-JSON and
+CSV reports rather than from the console's closing sentence. **These are the raw result of that one
+measured session and nothing else.** They are not compared with the first attempt, with the
+2026-09-07 or 2026-09-09 runs above, with session H, or with anything in the controlled baseline, and
+no delta, rate, records/s, MiB/s, throughput, speedup, overhead, scaling, neutrality, equality or
+non-regression reading is derived from them. **Policy L is untouched**: the incremental publication
+latency stays inconclusive at the pre-registered 5% bound and no retry is owed. BenchmarkDotNet's
+`MinIterationTime` advisory fired on all three — expected for millisecond-scale operations under the
+one-invocation-per-iteration job that D-124's per-iteration validation contract requires — and its
+ordinary outlier policy removed 1, 3 and 3 measurements respectively. Both are recorded as
+advisories: neither is a failure, and neither qualifies the correctness result.
+
+**The restore was provably local-only, which is the condition this replacement exists to satisfy.**
+`RestoreSources` carried a non-empty, local-only value — `C:\Program Files\dotnet\library-packs` and
+an empty directory inside the evidence root — because an empty value falls back to the configured
+feeds, together with `NuGetAudit=false`, `RestoreNoHttpCache=true`, `RestoreIgnoreFailedSources=false`
+and an isolated `NUGET_HTTP_CACHE_PATH`. All ten generated `project.assets.json` files and every
+`*.nuget.dgspec.json` record exactly those two filesystem sources, **zero** remote sources and
+**zero** `http(s)://` occurrences, with `enableAudit = false` on every project and `"success": true`
+with empty logs in every `project.nuget.cache`; all 26 resolved package receipts came from the
+pre-existing global packages folder, none created or modified in the run window. The machine's normal
+NuGet v3 HTTP cache (1,901 files / 1,888,939,328 B) and global packages tree (36,151 files /
+7,363,167,315 B) are **byte-identical** across the before, pre-measurement and after inventories; the
+three vulnerability-cache entries keep the first attempt's timestamps and digests untouched; and the
+isolated cache and the empty source are still empty. Nothing was downloaded or installed. `output`
+and `spool` are both empty by their owning cleanup contracts, with no manual deletion anywhere.
+
+Evidence root `D:\tmp\fcabedrock-m8-g15-adult-82e2ffea-offline` — **133 files / 20,324,696 bytes**,
+frozen — whose `MANIFEST-SHA256.txt` (15,852 B, SHA-256
+`73f396044d7a6927cfcade689c0825987a5ef0ba7cfc1cd449599892de0ce99e`) covers 132 entries / 20,308,844
+bytes, every one hash-matching, none missing, and only the manifest itself uncovered. The first
+attempt's root and every earlier retained evidence root were re-verified unchanged.
+
+**This closes the standing obligation at `82e2ffea` and nowhere else.** It is a *correctness* result
+for that candidate, not a standing exemption: the obligation re-attaches at every later release
+candidate, and no future code, build, test or workflow change inherits it.
 
 ## Native delivery
 
@@ -536,9 +626,12 @@ duration, rate, throughput, overhead, speedup, neutrality or non-regression infe
 them, and **Policy L is untouched**. One local limitation is carried forward rather than closed: the
 local WSL host cannot run the packaging tests at all, because `pwsh` is absent there, so hosted CI
 remains the only place they execute off Windows. That is an operational gap in local verification,
-never a local pass. And a green delivery gate is not acceptance: the standing Windows x64
-External/Adult three-case acceptance, operator acceptance and merge, the main-push CI at the merge
-revision, and the separate GitLab archival gate all remain open (**D-126**).
+never a local pass. And a green delivery gate is not acceptance. At `c4ceb8e2` the standing
+Windows x64 External/Adult three-case acceptance was still open; it has since been **met at the
+documentation head `82e2ffea`** — see
+[The acceptance run at the documentation head](#the-acceptance-run-at-the-documentation-head-2026-09-10-windows-x64-82e2ffea).
+Operator acceptance and merge, the main-push CI at the merge revision, and the separate GitLab
+archival gate all remain open (**D-126**).
 
 <!-- RESULTS -->
 
@@ -1539,6 +1632,17 @@ own root at
 `D:\tmp\fcabedrock-m8-g15-documentation-head-native-gate-03352da7-run-34392695933\` and is neither
 replaced nor relabelled. All of it is operator-retained evidence on one machine, not a portable
 link.
+
+The Adult acceptance evidence for the documentation head `82e2ffea` keeps two roots of its own, both
+outside this one. The **accepted** offline replacement run is
+`D:\tmp\fcabedrock-m8-g15-adult-82e2ffea-offline\` (**133 files / 20,324,696 bytes**, frozen:
+`README.md`, `MANIFEST-SHA256.txt`, `offline-nuget.config`, the deliberately empty `offline-source\`
+and `offline-http-cache\`, `corpus\`, `env\`, `logs\`, `records\`, `results\`, `generated-project\`,
+`tools\`, and the empty `output\` and `spool\`). The **first attempt** — technically successful,
+protocol-noncompliant, and not the accepted run — keeps its own root at
+`D:\tmp\fcabedrock-m8-g15-final-adult-82e2ffea\` (**33 files / 4,192,655 bytes**), unchanged and
+neither replaced nor relabelled. See
+[The acceptance run at the documentation head](#the-acceptance-run-at-the-documentation-head-2026-09-10-windows-x64-82e2ffea).
 
 BenchmarkDotNet writes one report per benchmark **type** and overwrites it on the next run, which is
 why session A's tuning reports were copied aside before session B started, and session B's before

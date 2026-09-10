@@ -35,7 +35,12 @@ the contract states: both Unix apphosts `0100755`, every other Unix entry `01006
 Windows entry an explicit zero. **The complete five-target native matrix and the three delivery
 archives are satisfied at `c4ceb8e2`**, as is the fresh independent implementation review, which
 returned `THUMBS UP` at that same head with all three original findings closed. That is not
-acceptance and not merge approval. The historical CLI-host
+acceptance and not merge approval. That reconciliation was committed at `82e2ffea`, and **the
+standing Windows x64 External/UCI Adult three-case acceptance is met there** — by an offline
+replacement run, after a first attempt at the same commit validated all three cases but crossed
+an explicit no-network stop boundary and so did not close the gate; both roots are retained, the
+first is a disclosed protocol deviation rather than a product failure, and the two runs are never
+compared. The historical CLI-host
 figures were **not** re-measured into a controlled replacement — the attempted comparison
 failed its collective gate, so the correction's incremental latency is **inconclusive at
 the 5% bound and no retry is owed**. The corrected build's allocation and output validation
@@ -1182,6 +1187,28 @@ forward rather than closed: the local WSL host cannot run the packaging tests at
 operational gap in local verification, never a local pass. Details, the full hashes and the
 retention inventory are in `docs/benchmarks.md`.
 
+**The final candidate's Adult gate is met at `82e2ffea` (2026-09-10).** The documentation
+reconciliation that records the `c4ceb8e2` gates was committed at `82e2ffea` — sole parent
+`c4ceb8e2`, three advisory Markdown files, `+342/−34` — and the standing Windows x64 External/UCI
+Adult three-case acceptance attached to that revision. It ran twice there, and only the second run
+closes the gate. **The first attempt validated all three cases and still did not close it**: native
+exit 0, three cases completed, no `NA` case and no oracle, validation or diagnostic failure, but
+BenchmarkDotNet's generated-project restore triggered NuGet's vulnerability audit, which contacted
+`api.nuget.org` vulnerability-metadata endpoints inside the measured window against an explicit
+no-network stop rule. That makes it a disclosed **protocol deviation**, never a product failure or a
+flake; it is preserved unchanged at `D:\tmp\fcabedrock-m8-g15-final-adult-82e2ffea` (33 files /
+4,192,655 bytes) and is not the source of any accepted number. **The accepted run is the one
+authorized offline replacement at the same exact candidate**: one measured invocation, native exit 0,
+no retry, exactly the three `External` cases and no fourth, all under the ordinary `fresh-iteration`
+job, every completed measured iteration validated after disposal, against the D-124-pinned entry
+(3,974,305 bytes, SHA-256 `5b00264637…c86603d`) and the byte-identical committed spec, with `output`
+and `spool` empty by their cleanup contracts and no manual deletion. Its generated-project restore
+had **no configured or effective remote source and no vulnerability audit**, and the machine's NuGet
+HTTP cache and global packages tree are byte-identical before and after. Evidence:
+`D:\tmp\fcabedrock-m8-g15-adult-82e2ffea-offline`, 133 files / 20,324,696 bytes, frozen and
+manifested. The raw figures are standalone facts of that one session, recorded in
+`docs/benchmarks.md` and compared with nothing; **Policy L is untouched**.
+
 What the corrected build was measured to do, and what could not be measured, is **D-126**:
 
 - **The incremental publication latency is inconclusive at the 5% bound.** A pre-registered
@@ -1233,16 +1260,22 @@ accepted delivery archives, and the fresh independent implementation review are 
 Those three gates are closed at `c4ceb8e2` — not at an earlier revision, and not at the later
 documentation-only commit that records them, across which the evidence carries only because this
 reconciliation's entire diff is three advisory Markdown documents that no build, test or workflow
-input consumes. What remains: this documentation reconciliation and its commit; **the standing
-Windows x64 External/Adult three-case acceptance at the documentation head this reconciliation
-produces** — it carried across the packaging corrections only by a bounded reachability ruling,
-which is **not** a standing exemption, and it has **not** been rerun at `50f6aa62`, `163f1c49` or
-`c4ceb8e2`; operator acceptance and an authorized merge; the resulting main-push CI at the merge
+input consumes. **The standing Windows x64 External/Adult three-case acceptance is satisfied at
+`82e2ffea`**, the documentation head that recorded those three gates, by the accepted offline
+replacement run described above — a result of that one revision and **not** a standing exemption,
+re-attaching at any later candidate. **Until this reconciliation is committed**, it and its
+operator-approved documentation-only commit are outstanding. **Once that commit lands and its exact
+diff is proven to be exactly `docs/decisions.md`, `docs/benchmarks.md` and `docs/roadmap.md`** — with
+no build, test, workflow, benchmark, corpus, spec, configuration or packaging input among them — the
+Adult evidence carries across it on the bounded reachability ruling already recorded, proven on that
+diff rather than assumed and never a standing exemption. **After that the gates remaining are
+exactly:** operator acceptance and an explicitly authorized merge; the main-push CI at the merge
 revision; and the separate GitLab archival gate. The historical statement that no native gate had
-passed was true of `50f6aa62` and `163f1c49`, and it stays true **of those two revisions**: none
-ran at `50f6aa62`, and run `34468088854` at `163f1c49` failed before building an archive, its
-single Windows artifact neither downloaded nor retained. No Adult result, documentation commit
-SHA, merge result, main-CI result, archival result or release result is predicted anywhere.
+passed was true of `50f6aa62` and
+`163f1c49`, and it stays true **of those two revisions**: none ran at `50f6aa62`, and run
+`34468088854` at `163f1c49` failed before building an archive, its single Windows artifact neither
+downloaded nor retained. No documentation commit SHA, merge result, main-CI result, archival
+result or release result is predicted anywhere.
 
 The expensive evidence carried across the documentation commit `03352da7` because the entire
 diff from `4216610b` is three advisory Markdown files. It did **not** all carry across the
@@ -1304,13 +1337,18 @@ whatever its status at the current one):
   outstanding**, which is exactly why it is listed here. An unreachable host leaves
   the obligation open; a digest mismatch is an input-identity failure to investigate;
   a failure on verified bytes is a correctness finding. None becomes a pass.
-  **Satisfied at `4216610b`** — all three cases passed on Windows x64 against the pinned
-  entry, retained as durable evidence; the obligation re-attaches at the final candidate. It
-  carried across the three-blocker and packaging corrections only by bounded reachability
-  rulings — those cases run `ConversionRun` rather than `CliHost`, and no product path they
-  reach changed — which is **not** a standing exemption. It has **not** been rerun at
-  `50f6aa62`, `163f1c49` or `c4ceb8e2`, and it must be run at the documentation head finally
-  submitted for acceptance.
+  **Satisfied at `4216610b`**, and **satisfied again at `82e2ffea`** — the documentation head
+  submitted for acceptance — where all three cases ran successfully on that candidate's
+  Windows x64 build against the pinned entry, each completed measured iteration validated
+  after disposal, on the accepted offline replacement run whose generated-project restore
+  used no remote source and no vulnerability audit. The first attempt at that same commit
+  validated all three cases but crossed an explicit no-network stop boundary and so did not
+  close the gate; it is retained as a disclosed protocol deviation, never a product failure,
+  and none of its figures is used. Between those two revisions the obligation carried across
+  the three-blocker and packaging corrections only by bounded reachability rulings — those
+  cases run `ConversionRun` rather than `CliHost`, and no product path they reach changed —
+  which is **not** a standing exemption; it was **not** rerun at `50f6aa62`, `163f1c49` or
+  `c4ceb8e2`, and it re-attaches at every later release candidate.
 - **Probe-default adoption** remains a separate observable semantic decision — it
   changes draft bytes, warnings, and success-versus-guard-failure — and needs its own
   approval with a spec §7.1 / D-110 reconciliation. The defaults were measured at

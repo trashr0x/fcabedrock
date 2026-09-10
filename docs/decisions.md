@@ -6141,6 +6141,19 @@ pinned here.
   corrected head"*. Neither is relabelled or rewritten: each records what was true on the day it
   was written. The delivery detail, the artifact identities and the gates that remain are in
   **D-126**'s correction history and `docs/benchmarks.md`.
+- **The candidate's Adult acceptance ran, and passed (2026-09-10).** The blocking real-data
+  obligation this entry states — all three `External` cases on the final Windows x64 candidate,
+  against the pinned entry, retained as durable evidence — is **met at `82e2ffea`**, the
+  documentation head that records the `c4ceb8e2` gates. It took two invocations at that exact
+  commit: the first validated all three cases but let BenchmarkDotNet's generated-project restore
+  contact NuGet's vulnerability-metadata endpoints against an explicit no-network stop rule, so it
+  is retained as a disclosed protocol deviation and **did not close the gate**; the accepted
+  gate-closing run is the offline replacement, whose generated-project restore had no configured or
+  effective remote source and no audit. Neither the pin, the acquisition revision, the
+  routine-CI exclusion, nor the three-failure-mode rule above changes, and this closes the
+  obligation **at that revision only** — it re-attaches at every later release candidate and is not
+  a standing exemption. The run detail, both evidence roots and the gates that remain are in
+  **D-126**'s correction history and `docs/benchmarks.md`.
 
 ---
 
@@ -6965,6 +6978,108 @@ pinned here.
       forward rather than closed: the local WSL host cannot run the packaging tests at all,
       because `pwsh` is absent there, so hosted CI remains the only place they execute off
       Windows. That is an operational gap in local verification, never a local pass.
+      **Superseded by the next bullet**, which records the Adult acceptance this list left open as
+      met at `82e2ffea`; the rest of this list stands there in updated form.
+  - *The final candidate's Adult gate (2026-09-10) — one attempt that did not close it, then the
+    accepted offline replacement; the standing Windows x64 `External`/UCI Adult three-case
+    acceptance is met at `82e2ffea`.* The reconciliation the previous bullet left outstanding was
+    committed at **`82e2ffea133b191c6949b4f073a14f4b1e2dcf4e`** (sole parent
+    `c4ceb8e2be03b68ff185caeb1e241b34a9aaa3ef`, tree `891a872d…`), so the standing Adult obligation
+    attached to that revision. It was run twice at that exact candidate, and only the second run
+    closes the gate.
+    - **The first attempt was technically green and protocol-noncompliant, so it did not close the
+      gate.** All three cases executed and validated on the final candidate's Windows x64 build —
+      native exit 0, three cases completed, no `NA` case, no oracle, validation or diagnostic
+      failure — but BenchmarkDotNet's generated-project restore triggered NuGet's vulnerability
+      audit, which contacted `api.nuget.org` vulnerability-metadata endpoints **inside the measured
+      window**, against the commission's explicit no-network stop rule. The orchestrator classified
+      that invocation as protocol-noncompliant and did **not** accept it for this gate. Its root is
+      preserved unchanged at `D:\tmp\fcabedrock-m8-g15-final-adult-82e2ffea`, **33 files /
+      4,192,655 bytes**, `MANIFEST-SHA256.txt` 4,301 B, SHA-256
+      `4DBCFB9426B2117FDF7C3AA77BE7175FE8AA8FFA67232A96E58A1AA05E11717E`. It is **not** a product
+      failure, a flake, an accepted run, superseded evidence, or the source of any accepted
+      number, and its figures are compared with the replacement's nowhere.
+    - **The accepted gate-closing run is the one authorized offline replacement, at the same exact
+      candidate.** One measured invocation, native exit **0**, no retry, no `--job` and no filter
+      change; the ordinary `fresh-iteration` job (`InvocationCount=1`, `RunStrategy=Throughput`,
+      `UnrollFactor=1`) on all three; the launcher reporting `3 benchmark case(s) completed with no
+      build, execution, or validation failure.` Selection listed exactly `AdultConvertCxt`,
+      `AdultConvertDat` and `AdultSourceDrain` and no fourth case, with no `Small`, `Working`,
+      `Scale`, mini-Adult or unrelated surface leakage.
+    - **Pinned input and committed spec.** `adult.csv` **3,974,305 bytes**, SHA-256
+      `5b00264637dbfec36bdeaab5676b0b309ff9eb788d63554ca0a249491c86603d`; `adult.toml` 3,006 B,
+      SHA-256 `763661267b020be7da474dd35009359a6f56061cacc3da7ac6681e6c6ebce0a5`; catalog 355 B,
+      SHA-256 `43448fede549b8b506b5dfa058f7faf60cc592a09a8519f7390c5cecb3af8e3f`, reading
+      `tier = external`, `generator_revision = 2`, `records = 32562`, `columns = 15`. The `prepare
+      adult` verb was never invoked and UCI was never contacted. The retained spec is
+      **byte-identical to the committed `AdultSpecs.Declared`**, derived independently of the
+      catalog, and the data matched the source-pinned identity independently of the catalog's own
+      recorded digest. The Release `--no-restore` build exited 0 with **zero warnings and zero
+      errors**, and every product assembly the run exercised embeds `1.0.0+82e2ffea…`.
+    - **Per-iteration validation, after disposal.** Every completed measured iteration passed its
+      existing validator in `[IterationCleanup]`: `AdultSourceDrain` against the independent Adult
+      drain expectation, and the two conversion cases against clean diagnostics, an independently
+      counted artifact shape (32,562 objects, and the derived CXT line count) and intra-run byte
+      stability. No product diagnostic, exception, validation error or failed case appears anywhere
+      in the run. The three raw results, recorded as **standalone facts of that one session** —
+      `AdultConvertCxt` N 22, mean `100,015,363.63636364 ns`, 150,943,216 B allocated;
+      `AdultConvertDat` N 12, mean `50,230,683.333333336 ns`, 70,394,432 B; `AdultSourceDrain`
+      N 36, mean `12,896,588.888888888 ns`, 22,882,960 B; all three at `Records = 32,562`,
+      `InputMiB = 3.8`, .NET 10.0.12, X64, RELEASE — are in `docs/benchmarks.md`.
+      BenchmarkDotNet's `MinIterationTime` advisory and its outlier hints are recorded as
+      advisories, neither hidden nor promoted into failures.
+    - **The local-only restore proof, which is the condition this replacement exists to satisfy.**
+      `RestoreSources` carried a **non-empty, local-only** value — `C:\Program
+      Files\dotnet\library-packs` and an empty directory inside the evidence root, because an empty
+      value falls back to the configured feeds — together with `NuGetAudit=false`,
+      `RestoreNoHttpCache=true`, `RestoreIgnoreFailedSources=false` and an isolated
+      `NUGET_HTTP_CACHE_PATH`. All ten generated `project.assets.json` files and every
+      `*.nuget.dgspec.json` record exactly those two filesystem sources, **zero** remote sources and
+      **zero** `http(s)://` occurrences, with `enableAudit = false` on every project; all 26
+      resolved package receipts came from the pre-existing global packages folder, none created or
+      modified in the run window. The machine's normal NuGet v3 HTTP cache and global packages tree
+      are **byte-identical** at the before, pre-measurement and after boundaries; the three
+      vulnerability-cache entries keep the first attempt's timestamps and digests; and the isolated
+      cache and the empty source stayed empty. Nothing was downloaded or installed.
+    - **Residue and evidence.** `output` and `spool` are both empty by their owning cleanup
+      contracts, with no manual deletion. The frozen root is
+      `D:\tmp\fcabedrock-m8-g15-adult-82e2ffea-offline`, **133 files / 20,324,696 bytes**, whose
+      `MANIFEST-SHA256.txt` (15,852 B, SHA-256
+      `73F396044D7A6927CFCADE689C0825987A5EF0BA7CFC1CD449599892DE0CE99E`) covers 132 entries /
+      20,308,844 bytes, all hash-matching, none missing, with only the manifest itself uncovered.
+      The first attempt's root and every earlier retained evidence root were re-verified unchanged.
+    - **What this closes, and what it does not.** The standing Windows x64 `External`/UCI Adult
+      three-case acceptance is **met at `82e2ffea`** — D-124's real-data candidate obligation, the
+      roadmap's release-candidate clause, and the obligation this entry records as re-attaching at
+      whatever revision is finally submitted for acceptance. It is **not** a standing exemption:
+      the obligation re-attaches at every later release candidate, and no future code, build, test
+      or workflow change inherits this result. Session-H conditions **(c) and (d) remain met at
+      `50f6aa62`**; the complete five-target native matrix, the three accepted delivery archives and
+      the fresh independent implementation review remain met at `c4ceb8e2`, each on its own bounded
+      carriage ruling; the component measurements and the **64 MiB / fan-in-16** tuning conclusion
+      stand. **Policy L is untouched**: the incremental elapsed effect remains **inconclusive at the
+      pre-registered 5% bound**, no retry is owed, and nothing here publishes or implies a delta,
+      rate, records/s, MiB/s, throughput, speedup, overhead, scaling, neutrality, equality or
+      non-regression figure. This run's UTC bounds and wall clock are provenance only.
+    - **Carriage across the commit that records this.** The accepted Adult run belongs to
+      `82e2ffea`. What this bullet records is a documentation-only change, and the
+      operator-approved commit that lands it will produce a different head — which is **not**
+      predicted here and must never be relabelled as the run head. The Adult result may carry
+      across that commit **only after** its exact diff is proven to be exactly these three advisory
+      Markdown documents — `docs/decisions.md`, `docs/benchmarks.md`, `docs/roadmap.md` — none of
+      which any `.csproj`, `.props`, `.targets`, `.slnx`, `.nuspec`, `eng/` script or workflow
+      consumes as a build, test, workflow, benchmark, corpus, spec, configuration or packaging
+      input. That is a finding about **that exact diff**, not a standing exemption, and the same
+      exact-diff reasoning is what preserves the session-H, native/archive and
+      implementation-review evidence across this reconciliation.
+    - **Remaining gates, none waived.** This documentation packet and its operator-approved
+      docs-only commit are outstanding. After that commit lands with the required exact diff, what
+      remains is: operator acceptance and an explicitly authorized merge; the main-push CI at the
+      merge revision; and the separate GitLab archival gate. **M8 remains in progress until all of
+      them complete.** No commit SHA, merge result, main-CI result, archival result or release
+      result is predicted here. One operational limitation is still carried forward rather than
+      closed: the local WSL host cannot run the packaging tests, because `pwsh` is absent there, so
+      hosted CI remains the only place they execute off Windows — never a local pass.
 - **Why:** the comparison was the right experiment and it was run honestly, in full, under
   a criterion fixed before any data was seen — and it did not pass. The two available
   alternatives were both worse than recording that plainly. Making a sub-5%
