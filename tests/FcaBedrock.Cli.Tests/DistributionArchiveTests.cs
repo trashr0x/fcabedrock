@@ -8,7 +8,8 @@ namespace FcaBedrock.Cli.Tests;
 /// seconds, and asks the one question that was answered wrongly for every archive this project has
 /// shipped: does the zip record the apphost as executable? A Windows machine can answer it for a
 /// Linux distribution, because the answer is in the archive's own metadata rather than in the
-/// filesystem it came from.
+/// filesystem it came from — and the reverse holds too, so a Linux machine answers it for a
+/// Windows distribution and must get the same answer a Windows machine would.
 /// </para>
 /// <para>
 /// It runs the real script through <c>-ArchiveOnly</c> rather than reimplementing its rules — the
@@ -48,7 +49,10 @@ public sealed class DistributionArchiveTests
     public async Task Archive_WhenTheDistributionIsWindows_ThenItCarriesTheApphostAndClaimsNoUnixMode()
     {
         // The counterexample that keeps the rule honest: a Windows distribution has no Unix mode to
-        // record, and inventing one would be a claim about a platform this archive is not for.
+        // record, and inventing one would be a claim about a platform this archive is not for. Asked
+        // on EVERY host, because the answer is the target's and not the writer's: the entry default
+        // is zero on Windows and 0100644 on Linux and macOS, so a writer that assigns nothing here
+        // produces a different archive depending on the machine the packaging command ran on.
         var script = RequireScript();
         using var root = TempDirectory.Create();
 
@@ -56,7 +60,11 @@ public sealed class DistributionArchiveTests
         await RunScriptAsync(script, "win-x64", root.Path);
 
         DistributionArchive.AssertValid(ArchivePath(root, "win-x64"), "win-x64");
+
+        // Both halves of the Windows rule, named rather than implied: the apphost claims no mode,
+        // and neither does an ordinary file - the two entries whose Unix counterparts differ.
         Assert.Equal(0, ModeOf(ArchivePath(root, "win-x64"), "FcaBedrock.Cli.exe"));
+        Assert.Equal(0, ModeOf(ArchivePath(root, "win-x64"), "FcaBedrock.Cli.runtimeconfig.json"));
     }
 
     [Fact]

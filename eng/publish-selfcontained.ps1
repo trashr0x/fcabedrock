@@ -62,7 +62,8 @@ $ErrorActionPreference = 'Stop'
 # The zip external-attribute values this writer records on a Linux or macOS distribution: a regular
 # file readable by all, and the same plus the execute bits for the apphost. They are `0100644` and
 # `0100755` in the octal form `ls` prints, shifted into the high half of the external-attributes
-# field where the zip format keeps a Unix mode.
+# field where the zip format keeps a Unix mode. A Windows distribution records neither - it has no
+# Unix mode to claim - and the writer says so with an explicit zero rather than by assigning nothing.
 $RegularFileAttributes = 0x81A4 -shl 16
 $ExecutableFileAttributes = 0x81ED -shl 16
 
@@ -77,6 +78,13 @@ $ExecutableFileAttributes = 0x81ED -shl 16
     documented `./FcaBedrock.Cli` could not be run at all. The mode lives in the ARCHIVE - the zip's
     external-attributes field - so recording it is the archive writer's job; the published file's own
     mode does not survive a zip that carries none.
+
+    The mode field is written for EVERY entry, and what it says is decided by the TARGET rather than
+    by the machine doing the writing. `ZipArchive.CreateEntry` leaves a host-dependent default there:
+    zero on a Windows host, and the creating platform's own mode on Linux and macOS. So a `win-*`
+    archive assigned nothing would record `0100644` when it happened to be built on a Unix machine -
+    a Unix claim about a distribution that has none to make - and the same folder would produce two
+    different archives depending on where the command ran.
 
     Everything else is deliberately what it already was: a flat payload, one entry per published file
     under its relative name with forward slashes, ordinary files still non-executable, and each
@@ -148,12 +156,14 @@ function Write-DistributionArchive {
                 $entry = $zip.CreateEntry($name, [System.IO.Compression.CompressionLevel]::Optimal)
                 $entry.LastWriteTime = [System.DateTimeOffset] $file.LastWriteTime
 
-                if ($Unix) {
-                    $entry.ExternalAttributes = if ($name -ceq $ExecutableName) {
-                        $ExecutableFileAttributes
-                    } else {
-                        $RegularFileAttributes
-                    }
+                # Every entry, every target: the archive states its own mode rather than
+                # inheriting whatever the creating host's default happens to be.
+                $entry.ExternalAttributes = if (-not $Unix) {
+                    0
+                } elseif ($name -ceq $ExecutableName) {
+                    $ExecutableFileAttributes
+                } else {
+                    $RegularFileAttributes
                 }
 
                 $target = $entry.Open()

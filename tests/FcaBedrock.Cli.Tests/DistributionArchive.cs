@@ -54,7 +54,9 @@ internal static class DistributionArchive
     /// <para>
     /// <b>Then the mode.</b> On a Linux or macOS distribution the apphost must be recorded
     /// <c>0100755</c> and every other entry left <c>0100644</c> — the second half matters as much as
-    /// the first, because "make everything executable" would be a different and worse archive.
+    /// the first, because "make everything executable" would be a different and worse archive. On a
+    /// Windows distribution every entry must record <b>no</b> Unix mode at all: what a zip claims
+    /// about permissions belongs to the target it was built for, never to the machine that wrote it.
     /// </para>
     /// </summary>
     internal static void AssertValid(string archivePath, string rid)
@@ -89,6 +91,12 @@ internal static class DistributionArchive
 
             if (!IsUnix(rid))
             {
+                Assert.True(
+                    mode == 0,
+                    $"'{name}' is recorded as 0{Convert.ToString(mode, 8)}, but a Windows distribution "
+                    + "claims no Unix mode. Every entry has to be given one explicitly, or the archive "
+                    + "records whatever default the host that wrote it supplied.");
+
                 continue;
             }
 
