@@ -6123,6 +6123,24 @@ pinned here.
   rebuilds. No public API, CLI contract, diagnostic, spec text, output byte, manifest schema
   or runtime product code changes, and the registry stays **82**. The five-target run and its
   three accepted archives remain outstanding at a later corrected head (**D-126**).
+- **The corrected writer's gate ran, and passed (2026-09-10).** Run
+  [`34483863717`](https://github.com/trashr0x/fcabedrock/actions/runs/34483863717) at
+  `c4ceb8e2`, attempt 1, event `push`, concluded **success on all five native targets**. The
+  four `DistributionArchiveTests` cases — including the unconditional synthetic
+  Windows-target counterexample — **executed rather than skipped on every one of the five
+  targets**, established from the runner's complete named-skip enumeration rather than inferred
+  from a green aggregate, so the host-independence this correction states is proved on Linux
+  x64, macOS ARM64 and Linux ARM64 — the three targets run `34468088854` failed on. All three
+  required archives were produced, uploaded, downloaded and retained, and their inner ZIP
+  metadata reads exactly what this entry requires: every one of win-x64's 217 entries
+  `ExternalAttributes = 0x00000000`, and both Unix apphosts `0x81ED0000` / `0100755` with every
+  other Unix entry `0x81A40000` / `0100644`. Two earlier sentences in this entry are therefore
+  **discharged at `c4ceb8e2`**: the 2026-09-09 correction's closing *"replacement archive
+  evidence at the corrected head is an outstanding gate"*, and the 2026-09-10 correction's
+  closing *"the five-target run and its three accepted archives remain outstanding at a later
+  corrected head"*. Neither is relabelled or rewritten: each records what was true on the day it
+  was written. The delivery detail, the artifact identities and the gates that remain are in
+  **D-126**'s correction history and `docs/benchmarks.md`.
 
 ---
 
@@ -6861,6 +6879,92 @@ pinned here.
     latency, neutrality, equality, non-regression, speedup, elapsed, rate or overhead inference, and
     no retry is owed. No replacement run id, digest, archive value, reviewer result, merge result or
     archival result is predicted here.
+  - *The corrected head's native gate ran, and passed (2026-09-10) — the native and delivery
+    gates are met at `c4ceb8e2`.* The host-independent archive correction was committed at
+    `c4ceb8e2` (parent `91e3f99c`) and pushed, and run
+    [`34483863717`](https://github.com/trashr0x/fcabedrock/actions/runs/34483863717), attempt 1,
+    event `push`, branch `agent/m8-scaling-reset`, head
+    `c4ceb8e2be03b68ff185caeb1e241b34a9aaa3ef`, **concluded `success` on all five native
+    targets**. Every one of the twelve named steps reached and passed on Windows x64, Linux x64,
+    macOS ARM64, Linux ARM64 and Windows ARM64; `Upload the tested archive` ran and succeeded on
+    the three required targets and is the only declared step skipped on the two optional ARM64
+    ones, under `if: matrix.required`. Every target reported the whole solution at **4,586 / 0
+    failed**, 25 / 0 resident-layout witnesses, 48 admitted Small `Dry` cases with no `Working`,
+    `Scale` or `External` leakage, and both gated smokes 1 / 0.
+    - **The correction-specific proof is enumerated, not inferred from a green aggregate.** The
+      runner names every skipped test and its reason, and the enumerated lists are complete on
+      all five targets (16 / 12 / 11 / 13 / 17, the existing platform-guard set): **no
+      `DistributionArchiveTests` case is skipped anywhere**. The four packaging cases — the two
+      Unix theory cases, the extraction byte-identity case, and the unconditional synthetic
+      Windows-target counterexample — therefore ran and passed on Linux x64, macOS ARM64 and
+      Linux ARM64, the three targets where run `34468088854` failed on exactly that assertion.
+    - **The archive tested is the archive delivered.** On each required target the gated smoke
+      drove the real `eng/publish-selfcontained.ps1`, validated the archive that script
+      produced, extracted **that exact archive**, and made every behavioural check against the
+      extracted apphost — on Unix including `File.GetUnixFileMode`'s `UserExecute`, which is the
+      native proof that the recorded mode survives extraction. The workflow then uploaded
+      `artifacts/publish/fcabedrock-<rid>.zip` with `if-no-files-found: error`: the same path,
+      the same bytes.
+    - **Exactly three artifacts, newly retained and digest-matched.** `fcabedrock-win-x64`
+      (id 10154922942, 37,746,675 B), `fcabedrock-linux-x64` (id 10154850927, 37,798,250 B) and
+      `fcabedrock-osx-arm64` (id 10154828289, 34,384,392 B), each bound to this run id and head
+      SHA, each local byte count and SHA-256 equal to GitHub's own server digest. The hashes,
+      the inner ZIP identities and the two-layer inventories are in `docs/benchmarks.md`; the
+      durable root is
+      `D:\tmp\fcabedrock-m8-g15-host-independent-archive-native-gate-c4ceb8e2-run-34483863717`,
+      **678 files / 480,268,211 bytes**, and every pre-existing evidence root was re-counted
+      unchanged.
+    - **The blocking mode gate passes on all three, read from the downloadable inner ZIPs.**
+      win-x64: 217 entries, **all** `0x00000000`. linux-x64: 217 entries, apphost `0x81ED0000` /
+      `0100755` and the other 216 `0x81A40000` / `0100644`. osx-arm64: 216 entries, apphost
+      `0100755` and the other 215 `0100644`. Both layers of all three are path-safe, with no
+      directory entry, no link entry and no case-insensitive duplicate. The payloads are PE32+
+      x86-64, ELF64 x86-64 and Mach-O 64-bit ARM64 respectively, each self-contained on
+      `Microsoft.NETCore.App` **10.0.12** with no framework reference. This is the first time
+      **both** halves of this rule — the Unix `0100755` and the explicit Windows zero — have
+      been established from a downloadable artifact.
+    - **What this closes, and exactly where.** The complete five-target native matrix and the
+      three replacement delivery archives are satisfied **at `c4ceb8e2`** — not at an earlier
+      revision, and not at the later documentation-only commit that records them. Native
+      extraction and execution rest on each target's own in-job smoke plus the smoke-to-upload
+      identity above; post-download inspection on Windows read archive metadata and file
+      formats and is **not** Linux or macOS execution.
+    - **The fresh independent implementation review is also at `c4ceb8e2`.** A fresh GPT-5.6 Sol
+      reviewer, with no inherited context, re-reviewed the committed and natively tested
+      candidate against the accepted authorities and returned **`THUMBS UP` — no blocking
+      implementation or evidence disagreement**, explicitly closing all three original findings:
+      fail-closed recovery references, the Unix/Windows archive metadata, and the `Working`-tier
+      opt-in. That is an implementation-review verdict. It is **not** operator acceptance and
+      **not** merge approval.
+    - **Carriage across this documentation-only commit.** The successful run belongs to
+      `c4ceb8e2`, and the later documentation commit that records it is **not** relabelled as
+      its run head. This reconciliation's entire diff is three advisory Markdown documents,
+      which no `.csproj`, `.props`, `.targets`, `.slnx`, `.nuspec`, `eng/` script or workflow
+      consumes as a build, test or workflow input — so the native, archive and
+      implementation-review evidence carries across it on that bounded reachability basis.
+      Source reach, not binary equality, and no waiver of the Adult obligation below.
+    - **Unaffected, and not reopened.** Session-H conditions **(c) and (d) remain met at
+      `50f6aa62`**; the component measurements and the **64 MiB / fan-in-16** tuning conclusion
+      stand; and the Windows x64 External/Adult carry across the packaging correction remains a
+      **bounded reachability conclusion about that diff, not a standing exemption**. Every
+      earlier run keeps its own conclusion at its own revision: `34241484619`, `34287497829` and
+      `34468088854` remain **failed**, `34289256438` and `34392695933` remain successful
+      workflow evidence whose Linux and macOS archives stay **rejected as delivery**, and none
+      of them is substituted by this run. **Policy L is untouched**: the incremental elapsed
+      effect remains **inconclusive at the pre-registered 5% bound**, no retry is owed, and
+      nothing here publishes or implies an elapsed, rate, throughput, overhead, speedup,
+      neutrality or non-regression figure. This run's hosted UTC bounds are provenance only.
+    - **Remaining gates after this reconciliation, none waived.** This documentation
+      reconciliation and its commit; **the standing Windows x64 External/Adult three-case
+      acceptance at the documentation head this reconciliation produces** — which the bounded
+      reachability ruling does not waive, and which has **not** been rerun at `c4ceb8e2`;
+      operator acceptance and an authorized merge; the resulting main-push CI at the merge
+      revision; and the separate GitLab archival gate. **M8 remains in progress until all of
+      them complete.** No Adult result, documentation commit SHA, merge result, CI result,
+      archival result or release result is predicted here. One operational limitation is carried
+      forward rather than closed: the local WSL host cannot run the packaging tests at all,
+      because `pwsh` is absent there, so hosted CI remains the only place they execute off
+      Windows. That is an operational gap in local verification, never a local pass.
 - **Why:** the comparison was the right experiment and it was run honestly, in full, under
   a criterion fixed before any data was seen — and it did not pass. The two available
   alternatives were both worse than recording that plainly. Making a sub-5%

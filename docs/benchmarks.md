@@ -19,8 +19,13 @@ The architecture and its rationale are `decisions.md` **D-124**; how to run the 
 > archive's usability are two different facts, and only the first was established. The packaging is
 > corrected and the delivery gate now extracts and runs what it uploads — and the corrected head's own
 > five-target run then **failed**, because that packaging fix stated only the Unix half of what the
-> writer decides and the three Unix targets caught the Windows half. **No Unix delivery archive has
-> been produced since**, so replacement archive evidence is outstanding. See
+> writer decides and the three Unix targets caught the Windows half. The writer now assigns every
+> entry from the target's RID, and run
+> [`34483863717`](https://github.com/trashr0x/fcabedrock/actions/runs/34483863717) at `c4ceb8e2`
+> then **passed on all five native targets and produced all three required archives** — retained,
+> server-digest matched, and carrying the modes the contract states: both Unix apphosts `0100755`,
+> every other Unix entry `0100644`, and every Windows entry an explicit zero. **The replacement
+> archive evidence is no longer outstanding; it exists at `c4ceb8e2`.** See
 > [Native delivery](#native-delivery). A second production defect, in M7's
 > publication ownership, was found by that native gate and is fixed under **D-125**; its correction
 > reaches the measured CLI-host interval, so **every `CLI host` row and every trace below is a
@@ -254,8 +259,9 @@ The first complete pass of `.github/workflows/ci.yml`, and the first artifacts M
 | [`34289256438`](https://github.com/trashr0x/fcabedrock/actions/runs/34289256438) | `4216610b` | **success** | **all five targets green; all three required archives produced.** The archives are *not* usable deliveries — see [The property the delivery gate did not check](#the-property-the-delivery-gate-did-not-check) |
 | [`34392695933`](https://github.com/trashr0x/fcabedrock/actions/runs/34392695933) | `03352da7` | **success** | the documentation head's own five-target run; same five green jobs, same three archives produced and retained — and the same unusable-apphost defect in the Linux and macOS ones |
 | [`34468088854`](https://github.com/trashr0x/fcabedrock/actions/runs/34468088854) | `163f1c49` | **failure** | the corrected head's gate; both Windows targets green, all three Unix targets failed at `Test (Release)` on the *new* Windows-archive assertion. No Unix archive was built and nothing was retained — see [Run 34468088854](#run-34468088854-the-windows-half-of-the-same-rule) |
+| [`34483863717`](https://github.com/trashr0x/fcabedrock/actions/runs/34483863717) | `c4ceb8e2` | **success** | the host-independent writer's gate; **all five targets green, all three required archives produced, retained, digest-matched and mode-correct** — the first archives that satisfy the delivery gate — see [Run 34483863717](#run-34483863717-the-gate-opens) |
 
-No failed run is relabelled, and neither successful run is. Runs `34289256438` and
+No failed run is relabelled, and no successful run is. Runs `34289256438` and
 `34392695933` executed every job and every step successfully at their own revisions, and that is
 what a green workflow says. It does not say the archives those jobs uploaded can be used, because
 nothing in either run extracted one. The two artifacts run `34287497829` did produce are superseded —
@@ -339,9 +345,9 @@ published timestamps — and no output byte, diagnostic, exit meaning or manifes
 **Neither run's archives satisfy the standalone delivery acceptance gate**, and that is a statement
 about the archives, not about the runs: both runs remain successful workflow evidence at their own
 revisions and are never relabelled. The corrected candidate's own five-target run and its three
-replacement archives — extracted, mode-checked and executed on their native targets — are an
-outstanding gate (**D-126**). The first attempt at that run is below; it failed, and it produced no
-replacement archive.
+replacement archives — extracted, mode-checked and executed on their native targets — were an
+outstanding gate (**D-126**). Two runs followed. The first, below, **failed** and produced no
+replacement archive; the second **passed** and produced all three, at `c4ceb8e2`.
 
 ### Run 34468088854: the Windows half of the same rule
 
@@ -395,8 +401,144 @@ a non-Windows host. Archiving one fixed folder with the old and the new writer o
 
 The earlier runs keep their own revisions and their own conclusions: `34241484619` and `34287497829`
 remain failed, `34289256438` and `34392695933` remain successful workflow evidence, and the Linux and
-macOS archives of both successful runs remain **rejected as delivery**. No run id, digest, archive
-value or result is recorded here for the replacement run.
+macOS archives of both successful runs remain **rejected as delivery**. The replacement run is the
+next section, and nothing in this one is relabelled by it.
+
+### Run 34483863717: the gate opens
+
+The host-independent writer was committed at `c4ceb8e2` and pushed, and **run
+[`34483863717`](https://github.com/trashr0x/fcabedrock/actions/runs/34483863717), attempt 1, event
+`push`, branch `agent/m8-scaling-reset`, head `c4ceb8e2be03b68ff185caeb1e241b34a9aaa3ef`, concluded
+`success` on all five native targets.** These are the first archives that satisfy the standalone
+delivery gate.
+
+| Job | Runner label | Declared = actual RID | Job id | Conclusion |
+| --- | --- | --- | --- | --- |
+| windows x64 (required) | `windows-2025` | win-x64 | 102893096996 | **success** |
+| linux x64 (required) | `ubuntu-24.04` | linux-x64 | 102893096898 | **success** |
+| macos arm64 (required) | `macos-15` | osx-arm64 | 102893096968 | **success** |
+| linux arm64 (optional) | `ubuntu-24.04-arm` | linux-arm64 | 102893096677 | **success** |
+| windows arm64 (optional) | `windows-11-arm` | win-arm64 | 102893096908 | **success** |
+
+Every job's actual RID equals its declared RID and its process architecture equals its OS
+architecture, so no job ran under emulation, and the workflow's own architecture assertion passed on
+all five. All twelve named steps — checkout, .NET setup, the environment record, the
+process-architecture assertion, restore, the Release build (0 warnings, 0 errors everywhere), the
+resident-layout witnesses, `Test (Release)`, corpus preparation, the Small `Dry` smoke, the
+global-tool smoke and the self-contained smoke — **reached and passed on every target**.
+`Upload the tested archive` ran and succeeded on the three required targets and is the **only**
+declared step skipped on the two optional ARM64 ones, under `if: matrix.required`.
+
+| Anchor | win x64 | linux x64 | macos arm64 | linux arm64 | win arm64 |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Whole solution (total / failed) | **4,586 / 0** | **4,586 / 0** | **4,586 / 0** | **4,586 / 0** | **4,586 / 0** |
+| Skipped (platform guards) | 16 | 12 | 11 | 13 | 17 |
+| Resident-layout witnesses | 25 / 0 | 25 / 0 | 25 / 0 | 25 / 0 | 25 / 0 |
+| Small `Dry` benchmarks admitted | 48 | 48 | 48 | 48 | 48 |
+| Global-tool smoke | 1 / 0 | 1 / 0 | 1 / 0 | 1 / 0 | 1 / 0 |
+| Self-contained smoke | 1 / 0 | 1 / 0 | 1 / 0 | 1 / 0 | 1 / 0 |
+
+The strings `Scale` and `External` appear in no job log; `Working` appears only in the runner's own
+`Working directory is ...` line, never as a category; and the only `Adult` occurrences are
+`MiniConvertCxtBenchmark.Adult` and `MiniConvertDatBenchmark.Adult`, the checked-in **mini-adult
+v2-compat** fixture cases in the Small category — not the acquired UCI Adult corpus. No
+`Working`, `Scale` or `External` leakage.
+
+**The correction-specific proof is enumerated, not inferred from a green aggregate.** The runner
+names every skipped test and its reason, and the enumerated lists equal the reported skipped totals
+exactly on all five targets (16 / 12 / 11 / 13 / 17), so they are complete. **No
+`DistributionArchiveTests` case is skipped anywhere.** The four packaging cases — the two Unix
+theory cases, the extraction byte-identity case, and the unconditional synthetic Windows-target
+counterexample — ran and passed inside the ordinary suite on Linux x64, macOS ARM64 and Linux
+ARM64, the three targets where run `34468088854` failed on exactly that assertion. `pwsh` is present
+on every runner image. The skips themselves are the existing guarded set: five
+`SpillEquivalenceTests.ManyQuantiles` cases behind `FCABEDROCK_CALIBRATION_MATRIX` and the two
+smoke tests behind their own gates on every target (both then run 1 / 0 in their own gated steps),
+plus each platform's own capability-guarded publication, file-identity, spool-confidentiality and
+quantile-sizing cases.
+
+**Smoke-to-upload identity.** On each required target the gated smoke ran with
+`FCABEDROCK_SELFCONTAINED_OUTPUT = <workspace>/artifacts/publish`, drove the real
+`eng/publish-selfcontained.ps1` for the running RID, called `DistributionArchive.AssertValid` on the
+archive **that script produced**, extracted that exact archive, and made every behavioural check
+against the extracted apphost: `--version`, a real `convert --format both` whose `.cxt` and `.dat`
+bytes are compared against the same conversion performed in-process, manifest presence, a `de-DE`
+locale spec through ICU, a refused convert that exits non-zero and leaves no residue, and a
+name-for-name comparison of the publish folder against the extracted copy. On Unix,
+`AssertExtractedApphost` reads `File.GetUnixFileMode` and requires `UserExecute` — the native proof
+that the recorded mode survives extraction and that the documented `./FcaBedrock.Cli` runs. The
+workflow then uploaded `artifacts/publish/fcabedrock-<rid>.zip` with `if-no-files-found: error`.
+**The bytes retained below are the bytes that smoke tested.**
+
+#### The three required archives — retained, digest-matched, and mode-correct
+
+Durable copies:
+`D:\tmp\fcabedrock-m8-g15-host-independent-archive-native-gate-c4ceb8e2-run-34483863717\`
+(operator-retained evidence on the machine described above, not a portable link), **678 files /
+480,268,211 bytes**, holding this run's raw metadata, all five complete job logs, the original outer
+artifact ZIPs, the unchanged inner archives, the safely extracted payloads and the two-layer
+inventories. Every artifact record binds to run id `34483863717` and head `c4ceb8e2...`; all three
+expire from Actions on 2026-09-17, and the retained copies do not.
+
+| Target | Artifact id | Outer bytes | Outer SHA-256 = GitHub server digest |
+| --- | ---: | ---: | --- |
+| win-x64 | 10154922942 | 37,746,675 | `03BED9BB2010036345965574A3B23698D1E6D204F5B0ADB099C15A646EBF613D` |
+| linux-x64 | 10154850927 | 37,798,250 | `27D2C2A36C6C036A4EED1860FCF36036357A80EFFACAD9AF776079DDFB62231D` |
+| osx-arm64 | 10154828289 | 34,384,392 | `4BD36E62710CEDF214191332367A0526D1DA28820B4564A4F4FC934D0563FC1A` |
+
+Each outer artifact holds **exactly one** inner distribution ZIP under its expected
+`fcabedrock-<rid>.zip` name:
+
+| Target | Inner bytes | Entries | Payload files | Payload bytes | Inner SHA-256 |
+| --- | ---: | ---: | ---: | ---: | --- |
+| win-x64 | 37,856,700 | 217 | 217 | 83,161,112 | `E6B6B34337A9638729218AE64F30742D74B9FD3006AAA9C556EEA50782285B56` |
+| linux-x64 | 37,925,729 | 217 | 217 | 85,204,317 | `332856B7EDC8ED18971DADD420C1CA383045D1CA681572C3BE8C2734D88B214F` |
+| osx-arm64 | 34,520,597 | 216 | 216 | 89,333,537 | `7ECF10EAC4EF3CD6078F820E6E3C284D42F569E69F1AD7EFE22D7E73CDDBFEF9` |
+
+**The mode histograms — the property the earlier gate did not check, now read from the
+downloadable inner ZIP metadata:**
+
+| Target | Apphost | Apphost `ExternalAttributes` | Unix mode | Every other entry | Link entries |
+| --- | --- | --- | --- | --- | --- |
+| win-x64 | `FcaBedrock.Cli.exe` | `0x00000000` | none claimed | all 217 exactly `0x00000000` | none |
+| linux-x64 | `FcaBedrock.Cli` | `0x81ED0000` | **`0100755`** | 216 at `0x81A40000` / `0100644` | none |
+| osx-arm64 | `FcaBedrock.Cli` | `0x81ED0000` | **`0100755`** | 215 at `0x81A40000` / `0100644` | none |
+
+`FcaBedrock.Cli.runtimeconfig.json` is `0` on win-x64 and `0100644` on both Unix targets, so both
+halves of the rule are named. Exactly one executable entry exists per Unix archive and it is the
+apphost. The zip `create_system` field is **0** (MS-DOS/Windows) on win-x64 and **3** (Unix) on both
+Unix archives, consistent with each having been written on its own native runner.
+
+**Path safety, both layers, all three archives:** no rooted, drive-qualified, traversing, dot/empty,
+backslashed or control-character name; no directory entry; no link entry; no case-insensitive
+duplicate; every extraction resolved inside its recorded target.
+
+**Native format, architecture and runtime structure:** the win-x64 apphost is **PE32+ x86-64** with
+16 native PE libraries, all x86-64, and no `.so` or `.dylib`; linux-x64 is **ELF 64-bit LSB PIE,
+x86-64** with 14 `.so`, no native PE and no `.dylib`; osx-arm64 is **Mach-O 64-bit arm64** with 13
+`.dylib`, no native PE and no `.so`. Each `.deps.json` names its own RID
+(`.NETCoreApp,Version=v10.0/<rid>`) and each `.runtimeconfig.json` declares `includedFrameworks:
+Microsoft.NETCore.App` **10.0.12** with **no** framework reference — which is what makes the payload
+self-contained rather than framework-dependent — and carries no `System.Globalization.Invariant`.
+201 files are common to all three payloads; the single 217 / 217 / 216 difference is
+`libcoreclrtraceptprovider.so`, the Linux LTTng trace provider, which macOS has no counterpart for.
+
+**What this establishes, and where.** The complete five-target native matrix and the three
+replacement delivery archives are satisfied **at `c4ceb8e2`**. Native extraction and execution rest
+on each target's own in-job smoke plus the smoke-to-upload identity above; the post-download
+inspection recorded here was performed on Windows and read archive metadata and file formats — it
+is **not** Linux or macOS execution and is not offered as a substitute for native evidence. No
+archive was repaired, recompressed or reconstructed, and every pre-existing evidence root under
+`D:\tmp` was re-counted unchanged, file for file and byte for byte.
+
+**What it does not establish.** The hosted UTC bounds of this run are provenance only: no elapsed,
+duration, rate, throughput, overhead, speedup, neutrality or non-regression inference is drawn from
+them, and **Policy L is untouched**. One local limitation is carried forward rather than closed: the
+local WSL host cannot run the packaging tests at all, because `pwsh` is absent there, so hosted CI
+remains the only place they execute off Windows. That is an operational gap in local verification,
+never a local pass. And a green delivery gate is not acceptance: the standing Windows x64
+External/Adult three-case acceptance, operator acceptance and merge, the main-push CI at the merge
+revision, and the separate GitLab archival gate all remain open (**D-126**).
 
 <!-- RESULTS -->
 
@@ -1387,8 +1529,16 @@ Git, and it expires with that directory unless the operator preserves it.
 
 The three retained native archives from run `34289256438` are outside this root, under
 `D:\tmp\fcabedrock-m8-g15-m7-native-contracts\retained-actions\run-34289256438\`, with the
-before/after ext4 publication-defect evidence beside them. All of it is operator-retained evidence on
-one machine, not a portable link.
+before/after ext4 publication-defect evidence beside them. The three **accepted** delivery archives,
+from run `34483863717` at `c4ceb8e2`, are outside it too, under
+`D:\tmp\fcabedrock-m8-g15-host-independent-archive-native-gate-c4ceb8e2-run-34483863717\`
+(**678 files / 480,268,211 bytes**: `MANIFEST.md`, `metadata/`, the five `logs/`, `artifacts/outer/`,
+`artifacts/inner/<rid>/`, `artifacts/payload/<rid>/` and `inventory/`) — see
+[Run 34483863717](#run-34483863717-the-gate-opens). Run `34392695933`'s retained evidence keeps its
+own root at
+`D:\tmp\fcabedrock-m8-g15-documentation-head-native-gate-03352da7-run-34392695933\` and is neither
+replaced nor relabelled. All of it is operator-retained evidence on one machine, not a portable
+link.
 
 BenchmarkDotNet writes one report per benchmark **type** and overwrites it on the next run, which is
 why session A's tuning reports were copied aside before session B started, and session B's before

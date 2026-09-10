@@ -26,8 +26,16 @@ Windows-target entry with the creating host's default, so the new counterexample
 and now unconditional — failed on all three Unix targets while both Windows targets stayed green.
 **No Unix delivery archive was produced by that run**, and its one Windows artifact was neither
 downloaded nor retained, so the native and archive gates are **unmet at `163f1c49`**. The writer now
-assigns every entry from the target's RID; both gates re-attach at a new corrected commit, push and
-run, and replacement archive evidence remains outstanding. The historical CLI-host
+assigns every entry from the target's RID, that host-independent correction is **committed at
+`c4ceb8e2` and pushed**, and run
+[`34483863717`](https://github.com/trashr0x/fcabedrock/actions/runs/34483863717) at that head
+**passed on all five native targets and produced all three required archives** — retained,
+digest-matched against GitHub's own server digests, path-safe in both layers, and carrying the modes
+the contract states: both Unix apphosts `0100755`, every other Unix entry `0100644`, and every
+Windows entry an explicit zero. **The complete five-target native matrix and the three delivery
+archives are satisfied at `c4ceb8e2`**, as is the fresh independent implementation review, which
+returned `THUMBS UP` at that same head with all three original findings closed. That is not
+acceptance and not merge approval. The historical CLI-host
 figures were **not** re-measured into a controlled replacement — the attempted comparison
 failed its collective gate, so the correction's incremental latency is **inconclusive at
 the 5% bound and no retry is owed**. The corrected build's allocation and output validation
@@ -1122,8 +1130,9 @@ Neither run is relabelled: both executed every job and every step successfully a
 revisions, and workflow success is simply not the same claim as archive usability. The
 packaging script now records the apphost `0100755`, the smoke drives that script and runs
 the extracted archive, and the workflow uploads exactly what the smoke verified; the
-corrected candidate's own five-target run and three replacement archives are an outstanding
-gate. Details and the retained-artifact readings are in `docs/benchmarks.md`.
+corrected candidate's own five-target run and three replacement archives were an outstanding
+gate — met two runs later, at `c4ceb8e2`. Details and the retained-artifact readings are in
+`docs/benchmarks.md`.
 
 **The corrected head's own gate then failed (2026-09-10).** Run
 [`34468088854`](https://github.com/trashr0x/fcabedrock/actions/runs/34468088854) at `163f1c49`
@@ -1142,6 +1151,36 @@ or macOS archive was produced**, the run exposed only `fcabedrock-win-x64`, that
 downloaded nor retained, and neither the three-archive gate nor the Unix `0100755` closure is
 established at `163f1c49`. The run is failed evidence at that revision and is not relabelled; its two
 green Windows jobs are not a partial pass. Details are in `docs/benchmarks.md`.
+
+**The corrected writer's gate then passed, and the delivery gate is met at `c4ceb8e2`
+(2026-09-10).** The host-independent writer was committed at `c4ceb8e2` and pushed, and run
+[`34483863717`](https://github.com/trashr0x/fcabedrock/actions/runs/34483863717), attempt 1, event
+`push`, concluded **`success` on all five native targets**. Every one of the twelve named steps
+reached and passed on every target, with `Upload the tested archive` succeeding on the three
+required RIDs and skipped only on the two optional ARM64 ones under `if: matrix.required`. Each
+target reported the whole solution at 4,586 / 0 failed, 25 / 0 resident-layout witnesses, 48
+admitted Small `Dry` cases with no `Working`, `Scale` or `External` leakage, and both gated smokes
+1 / 0. **The correction-specific proof is enumerated rather than inferred**: the runner names every
+skipped test, the lists are complete on all five targets, and **no `DistributionArchiveTests` case
+is skipped anywhere** — so the four packaging cases, including the unconditional synthetic
+Windows-target counterexample, ran and passed on the three Unix targets that run `34468088854`
+failed on. The three required archives were produced, uploaded, downloaded and retained
+(`fcabedrock-win-x64` 10154922942, `fcabedrock-linux-x64` 10154850927, `fcabedrock-osx-arm64`
+10154828289), each local byte count and SHA-256 equal to GitHub's own server digest, each holding
+exactly one inner distribution ZIP, both layers path-safe with no directory entry, link entry or
+case-insensitive duplicate. **The blocking mode gate passes on all three**: all 217 win-x64 entries
+`0x00000000`; linux-x64 and osx-arm64 apphosts `0x81ED0000` / `0100755` with every other entry
+`0x81A40000` / `0100644`. The payloads are PE32+ x86-64, ELF64 x86-64 and Mach-O 64-bit ARM64, each
+self-contained on `Microsoft.NETCore.App` 10.0.12. **The archive delivered is the archive tested**:
+each target's gated smoke drove the real packaging script, validated and extracted that exact
+archive, ran the extracted apphost — on Unix requiring `UserExecute` — and the workflow uploaded
+the same path. Native extraction and execution rest on those in-job smokes; the post-download
+inspection was performed on Windows and is metadata reading, not Unix execution. The run's hosted
+UTC bounds are provenance only, and **Policy L is untouched**. One local limitation is carried
+forward rather than closed: the local WSL host cannot run the packaging tests at all, because
+`pwsh` is absent there, so hosted CI remains the only place they execute off Windows — an
+operational gap in local verification, never a local pass. Details, the full hashes and the
+retention inventory are in `docs/benchmarks.md`.
 
 What the corrected build was measured to do, and what could not be measured, is **D-126**:
 
@@ -1187,21 +1226,23 @@ What the corrected build was measured to do, and what could not be measured, is 
   allocation total proves a streaming bound — the algorithmic guarantee remains the
   independent observers and the retained-layout witnesses.
 
-**Remaining M8 gates, none waived:** the corrected candidate is committed at `50f6aa62`, its
-**evidence reacquisition is complete** (below), and the documentation reconciliation was
-committed at `163f1c49` and pushed — but the run that push triggered **failed**, so the native
-and archive gates are both still open. What remains: a corrected commit and push, then a
-complete **five-target native run** at that head, with three newly retained archives that are
-**extracted, mode-checked and executed on their own native targets** rather than only
-inspected; a fresh independent implementation review; operator acceptance and authorized
-merge; the resulting main-push CI at the merge revision; the separate GitLab archival gate;
-and **the standing Windows x64 External/Adult three-case acceptance on the revision finally
-submitted for acceptance** — it carried across the three-blocker correction only by a bounded
-reachability ruling, which is **not** a standing exemption, and it has **not** been rerun at
-`50f6aa62` or at `163f1c49`. **No native gate has passed and no Unix delivery archive exists at
-either revision**: none ran at `50f6aa62`, and run `34468088854` at `163f1c49` failed before
-building one, its single Windows artifact neither downloaded nor retained. No run id, archive
-hash, review result, merge result, CI result or archival result is predicted anywhere.
+**Remaining M8 gates, none waived:** the corrected candidate's **evidence reacquisition is
+complete** at `50f6aa62` (below); the host-independent packaging correction is committed at
+`c4ceb8e2` and pushed; and at that head **the complete five-target native matrix, the three
+accepted delivery archives, and the fresh independent implementation review are all satisfied**.
+Those three gates are closed at `c4ceb8e2` — not at an earlier revision, and not at the later
+documentation-only commit that records them, across which the evidence carries only because this
+reconciliation's entire diff is three advisory Markdown documents that no build, test or workflow
+input consumes. What remains: this documentation reconciliation and its commit; **the standing
+Windows x64 External/Adult three-case acceptance at the documentation head this reconciliation
+produces** — it carried across the packaging corrections only by a bounded reachability ruling,
+which is **not** a standing exemption, and it has **not** been rerun at `50f6aa62`, `163f1c49` or
+`c4ceb8e2`; operator acceptance and an authorized merge; the resulting main-push CI at the merge
+revision; and the separate GitLab archival gate. The historical statement that no native gate had
+passed was true of `50f6aa62` and `163f1c49`, and it stays true **of those two revisions**: none
+ran at `50f6aa62`, and run `34468088854` at `163f1c49` failed before building an archive, its
+single Windows artifact neither downloaded nor retained. No Adult result, documentation commit
+SHA, merge result, main-CI result, archival result or release result is predicted anywhere.
 
 The expensive evidence carried across the documentation commit `03352da7` because the entire
 diff from `4216610b` is three advisory Markdown files. It did **not** all carry across the
@@ -1231,9 +1272,12 @@ whatever its status at the current one):
   the Small harness smoke, and the package smokes, D-082's numerical guarantee extends
   to validated x64 alone. **Satisfied at `4216610b`** — all five targets executed all
   four, natively, in run `34289256438` — and again at the documentation head `03352da7`,
-  in run `34392695933`. The obligation re-attaches at the corrected candidate, and run
+  in run `34392695933`. The obligation re-attached at the corrected candidate, and run
   `34468088854` at `163f1c49` did **not** discharge it: its three Unix targets stopped at
-  `Test (Release)`, before the harness smoke and both package smokes.
+  `Test (Release)`, before the harness smoke and both package smokes. **It is satisfied again
+  at `c4ceb8e2`**, where run `34483863717` executed all four on all five targets natively, with
+  4,586 / 0 tests, 25 / 0 witnesses, 48 admitted Small `Dry` cases and both package smokes
+  1 / 0 everywhere.
 - **Verified migration to the canonical public GitHub destination**, Actions
   established, and tested self-contained archives (`win-x64`, `linux-x64`,
   `osx-arm64`) delivered from runs at recorded revisions. **The cutover half is satisfied**
@@ -1242,9 +1286,14 @@ whatever its status at the current one):
   testing it: neither run extracted one, and the Linux and macOS apphosts of both are
   recorded non-executable, so those archives are **rejected as delivery** (D-124's
   2026-09-09 correction, item 2). Three newly retained archives — **extracted, mode-checked
-  and executed on their own native targets** — are required at the corrected candidate, and run
+  and executed on their own native targets** — were required at the corrected candidate, and run
   `34468088854` at `163f1c49` produced none: its three Unix jobs failed before the smoke, and
-  its single Windows artifact was neither downloaded nor retained.
+  its single Windows artifact was neither downloaded nor retained. **The tested-archive half is
+  satisfied at `c4ceb8e2`**: run `34483863717` produced all three, each target's own smoke
+  extracted and ran the exact archive the workflow then uploaded, and the three retained
+  artifacts are digest-matched, path-safe in both layers, and mode-correct — Unix apphosts
+  `0100755`, every other Unix entry `0100644`, every Windows entry an explicit zero. The two
+  earlier successful runs' archives stay rejected and are not substituted by them.
 - **A successful real-data (`External`) run on the final Windows x64 candidate.** The
   acquired UCI Adult corpus is deliberately outside routine CI — it is the one input
   this repository cannot generate, and requiring it in every native job would let an
@@ -1256,7 +1305,12 @@ whatever its status at the current one):
   the obligation open; a digest mismatch is an input-identity failure to investigate;
   a failure on verified bytes is a correctness finding. None becomes a pass.
   **Satisfied at `4216610b`** — all three cases passed on Windows x64 against the pinned
-  entry, retained as durable evidence; the obligation re-attaches at the final candidate.
+  entry, retained as durable evidence; the obligation re-attaches at the final candidate. It
+  carried across the three-blocker and packaging corrections only by bounded reachability
+  rulings — those cases run `ConversionRun` rather than `CliHost`, and no product path they
+  reach changed — which is **not** a standing exemption. It has **not** been rerun at
+  `50f6aa62`, `163f1c49` or `c4ceb8e2`, and it must be run at the documentation head finally
+  submitted for acceptance.
 - **Probe-default adoption** remains a separate observable semantic decision — it
   changes draft bytes, warnings, and success-versus-guard-failure — and needs its own
   approval with a spec §7.1 / D-110 reconciliation. The defaults were measured at
