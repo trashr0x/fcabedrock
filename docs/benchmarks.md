@@ -25,8 +25,14 @@ The architecture and its rationale are `decisions.md` **D-124**; how to run the 
 > shipped code**. What the corrected build *was* measured to do — and the one thing that could not be
 > measured — is [The corrected build](#the-corrected-build) and **D-126**. That evidence is
 > `4216610b`/`03352da7`'s: the later three-blocker correction reaches the same measured publication
-> tail, so its fifteen allocation/validation cases and its six traces **must be reacquired at the
-> corrected candidate** under a later explicit authorization, and neither is claimed for it here.
+> tail, so it could not carry — and on 2026-09-10 **session H reacquired all fifteen
+> allocation/validation cases and all six traces together at the corrected candidate `50f6aa62`**,
+> where **D-126 conditions (c) and (d) are now met**. See
+> [The corrected candidate](#the-corrected-candidate-50f6aa62--session-h). That campaign is
+> **admissible evidence, which is not the same as exact protocol compliance**: one restore's NuGet
+> vulnerability audit contacted `api.nuget.org`, and more than the one commissioned build ran —
+> both before the criterion was frozen, and neither changed a measured byte. See
+> [Admissibility](#admissibility--two-protocol-deviations-and-one-tooling-correction).
 > See also [What has not been measured](#what-has-not-been-measured). The one acquired corpus is
 > outside routine CI and carries its own acceptance obligation; see
 > [Selection, and what routine CI proves](#selection-and-what-routine-ci-proves).
@@ -688,22 +694,24 @@ across 26 seconds, and a spike between samples would not appear. No sample is no
 Everything above describes the revisions that produced it. This section is what was measured on
 **`4216610b`**, the D-125-corrected build — and, first, the one thing that could not be.
 
-> **This evidence belongs to `4216610b`/`03352da7`, and the later three-blocker correction does not
+> **This evidence belongs to `4216610b`/`03352da7`, and the later three-blocker correction did not
 > inherit it.** That correction is **not** failure-only: `Commit` ends by calling
 > `Finish(forward: true)` inside `CliHost.RunAsync("convert", …)`, so a bounded amount of added
 > work — one `File.Exists` for each absent stage, and a held-reference dictionary lookup at each
 > successful post-commit removal — executes inside the measured interval. Bounded and small is not
-> zero, so the fifteen-row allocation/validation ledger and the six corrected-command traces below
-> **do not satisfy D-126 conditions (c) and (d) for that corrected candidate**. Every row and every
-> trace keeps its provenance here as valid historical evidence of the revision that produced it;
-> none is withdrawn, relabelled or overwritten. **All fifteen cases and all six traces must be
-> reacquired after the correction is committed, under a later explicit authorization** — the
-> fifteen together, because (c) is one *coupled* allocation-and-per-iteration-validation proof of
-> the actual candidate rather than a separable pair, reacquired at the same oracle strengths and
-> under the same validate-after-disposal rule. No future value, run id, digest, result or pass is
-> recorded anywhere in advance. **Policy L is untouched**: the reacquisition licenses no elapsed,
-> rate, neutrality, non-regression or overhead claim and owes no paired retry, and any elapsed
-> output it incidentally produces stays contextual raw data (D-126, correction of 2026-09-10).
+> zero, so the fifteen-row allocation/validation ledger and the six corrected-command traces in
+> this section **do not satisfy D-126 conditions (c) and (d) for that corrected candidate**, and
+> they are not offered for it. **Session H reacquired all fifteen cases and all six traces together
+> at `50f6aa62` on 2026-09-10, and both conditions are met there** — the fifteen together, because
+> (c) is one *coupled* allocation-and-per-iteration-validation proof of the actual candidate rather
+> than a separable pair, reacquired at the same oracle strengths and under the same
+> validate-after-disposal rule. That campaign is
+> [The corrected candidate](#the-corrected-candidate-50f6aa62--session-h). Every row and every
+> trace in *this* section keeps its provenance as valid historical evidence of the revision that
+> produced it; none is withdrawn, relabelled, overwritten, or reused to satisfy a condition at the
+> corrected candidate. **Policy L is untouched**: the reacquisition licensed no elapsed, rate,
+> neutrality, non-regression or overhead claim and owed no paired retry, and the elapsed output it
+> incidentally produced stays contextual raw data (D-126, corrections of 2026-09-10).
 
 ### The publication comparison: attempted in full, failed, inconclusive
 
@@ -748,7 +756,7 @@ Sources, Conversion, Export, Core, Spec, Discovery or `tests/FcaBedrock.Benchmar
 scoped statement, not a claim that all earlier evidence survived or that all current performance was
 remeasured.
 
-### Allocation and per-iteration validation — all fifteen CLI-host cases
+### Allocation and per-iteration validation — all fifteen CLI-host cases (sessions E and F)
 
 Six rows are session **E** (the paired campaign; the elapsed gate failed, which erases neither the
 allocation totals nor the lifecycle validation) and nine are session **F**. Historical totals and
@@ -827,7 +835,7 @@ produced a full BenchmarkDotNet distribution; those are retained in the evidence
 speedup, overhead percentage, sidecar or auto-versus-declared timing arithmetic, or old/new
 subtraction may be derived from them.
 
-### Corrected-command resource traces — all six
+### Corrected-command resource traces — all six (sessions F and G)
 
 Separate `dotnet-counters` traces of the **real self-contained executable** built from `4216610b`,
 one-second refresh, the same nine-counter set as the historical traces. These are the six the
@@ -928,10 +936,16 @@ family, and none was applied.
 Within session G, per distinct subject the sampled working-set maximum is **352.89 B** (declared
 7.3M), **480.05 B** (auto 7.3M), **236.73 B** (declared 73M) and **269.29 B** (auto 73M) — a fixed
 baseline plus a per-subject term, growing **sub-linearly** as subjects grow tenfold. A dense
-7,300,000 × 15 incidence matrix would be 109,500,000 bits ≈ **0.013 GiB** packed, three orders of
-magnitude *below* the observed maxima, so the observed memory cannot be a materialized matrix — it
-tracks the subject-key vocabulary, which is the **P-16** bounded-metadata carve-out read against I3's
-"streaming is not constant total process memory". Moving from declared to auto at 73M raised the
+7,300,000 × 15 incidence matrix would be 109,500,000 bits ≈ **0.013 GiB** packed — roughly two
+orders of magnitude *smaller* than these sampled maxima, **not larger**. That comparison therefore
+**excludes nothing**: a payload that size would sit inside the observed working set unnoticed, so a
+sampled process maximum cannot show that no such matrix was materialized. It is recorded as a size
+fact, not as a no-materialization proof. The growth *is* consistent with the subject-key vocabulary
+— the **P-16** bounded-metadata carve-out read against I3's "streaming is not constant total process
+memory" — but consistency is not attribution, and these traces do not establish which structure
+holds the memory; **the no-full-matrix guarantee is carried by the independent
+grouping/calibration observers and the retained-layout witnesses**, as above. Moving from declared
+to auto at 73M raised the
 sampled working-set maximum ×1.1375 and GC committed ×1.1691 while GC heap fell ×0.9580, with
 time-in-GC ×1.5690; at 7.3M the same comparison is ×1.3603, ×1.5977 and ×1.4150. The wide family's
 own GC-heap maximum rose 19.1% across the same tenfold input increase while its working set moved
@@ -960,6 +974,7 @@ result.
 | E | `session-e-publication-bridge/` | 990 | `BRIDGE-CRITERION.md` `C0CFFAF242055FB227EAEDB4FF1D9B751CE509EF73CB984967A8A1F3CC2B0F3B` (34,516 B) · `BRIDGE-RESULT.md` `62C9319CA6B6CB4AA73BFEB9DC26DA018ACD5922E0E17A7D08958FB18C51A7D8` (13,426 B) |
 | F | `session-f-limitation-closure/` | 593 | `LIMITATION-CLOSURE-CRITERION.md` `276BC7580FEEA9D5311569FE4FD4E4502E4862679FF2B90FDCB0EEA3225D1BB3` (32,327 B) · `LIMITATION-CLOSURE-RESULT.md` `4EDC1ED3ADC10FF7F7065015AA81C367B55D87884033D50EADD15F6A5F61D3C0` (21,943 B) |
 | G | `session-g-triple-traces-d-temp/` | 35 | `TRIPLE-TRACE-D-TEMP-CRITERION.md` `961201166A8B97235323423139E7BBF060F29763ED6679CE1AFB7ACA38B84135` (27,187 B) · `TRIPLE-TRACE-D-TEMP-RESULT.md` `47CCC8D97B9AC72DFC21F8E902B6E62424204AFEA02296FC069E33B71E35E465` (10,931 B) |
+| **H** | `session-h-corrected-candidate-50f6aa62/` | **917** | `CORRECTED-CANDIDATE-EVIDENCE-CRITERION.md` `D06B4A440CCA0092228CC4CB47B5B5C4D0F16D5D0984BA7976E3AD9B248BF1E1` (33,363 B) · `CORRECTED-CANDIDATE-EVIDENCE-RESULT.md` `47B83F23706EE60A6BE20633FBB907DF03799748509BCA0EB6123DFC6DEE5C9F` (16,653 B) — the corrected candidate `50f6aa62`, 1,428,070,716 B |
 
 Every invocation's BenchmarkDotNet log, CSV, full JSON and Markdown reports, its literal argv, cwd,
 UTC bounds and before/after machine state, and each trace's counter CSV, manifest, output and
@@ -967,6 +982,249 @@ UTC bounds and before/after machine state, and each trace's counter CSV, manifes
 are untouched** — their file counts, the six historical trace CSVs and their 2026-09-06 timestamps
 are unchanged, and session D's failed qualification and both earlier diagnostic campaigns, including
 their unfavourable readings, are retained exactly as they fell.
+
+## The corrected candidate `50f6aa62` — session H
+
+The three-blocker correction reaches the measured publication tail, so nothing above describes it.
+**Session H reacquired all fifteen CLI-host allocation/validation rows and all six real-command
+resource traces together at `50f6aa62`** on 2026-09-10, under one criterion frozen and hashed before
+the first invocation (`2026-09-10T00:10:26.1129941Z`, against H1's start at
+`2026-09-10T00:12:14.952Z`) and re-hashed identical — in hash **and** mtime — at the end.
+**D-126 conditions (c) and (d) are met at this candidate.** Nothing below is borrowed from session
+E, F or G: every row and every trace here was measured in session H.
+
+The binaries are this commit's. All seventeen product assemblies across both builds embed
+`AssemblyInformationalVersion = 1.0.0+50f6aa6206655262e9f5339775863bfa82e777bb`. The
+framework-dependent Release build the fifteen rows executed is **69 files / 35,684,516 bytes**; the
+fresh self-contained `win-x64` publish the six traces executed is **217 files / 82,966,624 bytes**
+on .NET runtime **10.0.10**. The library assemblies differ from session E's retained copies although
+no library source changed between `4216610b` and `50f6aa62`, and the difference is localized: 144
+bytes of `FcaBedrock.Core.dll` in the PE header hash, the MVID, the debug-directory signature and
+that embedded commit SHA, with **no IL difference**. That is positive provenance that these binaries
+came from the committed candidate — **not** a binary-equivalence claim and not a performance claim.
+
+**No elapsed, throughput or overhead result appears in this section, by policy.** Each row produced
+a full BenchmarkDotNet distribution and each trace has a wall time; those stay in the evidence
+directories as **contextual raw data and provenance only**. Under **D-126** none of it may become a
+results table, records/s, MiB/s, a scaling curve, a speedup, an overhead percentage, sidecar or
+auto-versus-declared timing arithmetic, or any old/new subtraction. **Policy L does not reopen**:
+the session-E paired campaign remains a complete failed historical attempt, its incremental elapsed
+effect stays **inconclusive at the pre-registered 5% bound**, and no retry is owed.
+
+### The candidate ledger — all fifteen CLI-host cases, session H
+
+One ordinary BenchmarkDotNet invocation per row, in the order below, each archived immutably before
+the next began, under the existing tier categories and jobs — no command supplied `--job`, and every
+selection was proved with a non-executing `--list flat` to resolve to exactly one named case.
+**Every completed measured iteration passed its existing post-disposal validator**; a validation
+failure throws, so a case that produced the wrong result would carry no number at all. **No
+allocation investigation trigger fired on any of the fifteen rows.**
+
+`Reference` is the accepted session-E/F ledger at `4216610b`/`03352da7`, re-extracted in session H
+from the retained machine-readable reports before pre-registration, every one reproducing exactly.
+It is a **descriptive cross-session reference used only for the investigation trigger** — never
+proof for this candidate, never an isolated causal estimate, never extrapolated from one row to
+another. The threshold is `max(65,536 bytes, 0.0001 × H_max)`, one-sided on a positive increase
+above the historical maximum; for the four ranged references the full range is retained and the
+candidate compared to **both** endpoints, so no favourable member is selected anywhere.
+
+| # | Case | Tier | Allocated B/op | GC gen0/1/2 | Reference (E/F) | Δ vs low | Δ vs high | Threshold | Trigger | Launches × measured | Oracle strength |
+| ---: | --- | --- | ---: | --- | ---: | ---: | ---: | ---: | --- | --- | --- |
+| 1 | `CliHostConvertWideSmall` | Small | 16,621,592 | 0/0/0 | 16,620,576 | — | +1,016 | 65,536 | clear | 1 × 65 | independent bytes |
+| 2 | `CliHostConvertTripleSmall` | Small | 5,010,744 | 0/0/0 | 5,011,000 | — | −256 | 65,536 | clear | 1 × 100 | independent bytes |
+| 3 | `CliHostConvertWideWorking` | Working | 1,118,374,216 | 66/0/0 | 1,118,373,480 – 1,118,375,072 | +736 | −856 | 111,837.5072 | clear | 1 × 5 | independent bytes |
+| 4 | `CliHostConvertNoManifestWorking` | Working | 1,118,103,720 | 66/0/0 | 1,118,102,664 – 1,118,104,256 | +1,056 | −536 | 111,810.4256 | clear | 1 × 5 | independent bytes + sidecar proved absent |
+| 5 | `CliHostConvertCxtWorking` | Working | 2,345,519,184 | 141/17/3 | 2,345,517,888 – 2,345,518,048 | +1,296 | +1,136 | 234,551.8048 | clear | 1 × 5 | independent CXT bytes |
+| 6 | `CliHostConvertBothWorking` | Working | 3,462,974,704 | 208/17/3 | 3,462,974,584 – 3,462,976,424 | +120 | −1,720 | 346,297.6424 | clear | 1 × 5 | two independent expectations |
+| 7 | `CliHostConvertTripleGroupedWorking` | Working | 159,463,792 | 9/3/1 | 159,464,032 | — | −240 | 65,536 | clear | 1 × 5 | independent bytes |
+| 8 | `CliHostConvertAutoWorking` | Working | 845,252,024 | 35/19/8 | 845,255,304 | — | −3,280 | 84,525.5304 | clear | 1 × 5 | **limited auto** |
+| 9 | `CliHostConvertWideScale7M` | 7.3M | 11,185,802,648 | 668/3/0 | 11,185,803,504 | — | −856 | 1,118,580.3504 | clear | 1 × 5 | independent bytes |
+| 10 | `CliHostConvertNoManifestScale7M` | 7.3M | 11,185,532,808 | 668/3/0 | 11,185,531,432 | — | +1,376 | 1,118,553.1432 | clear | 1 × 5 | independent bytes + sidecar proved absent |
+| 11 | `CliHostConvertTripleScale7M` | 7.3M | 4,593,008,128 | 227/99/37 | 4,593,017,104 | — | −8,976 | 459,301.7104 | clear | 1 × 5 | independent bytes |
+| 12 | `CliHostConvertAutoScale7M` | 7.3M | 9,337,122,160 | 444/163/55 | 9,337,028,248 | — | +93,912 | 933,702.8248 | clear | 1 × 5 | **limited auto** |
+| 13 | `CliHostConvertWideScale73M` | 73M | 111,858,366,736 | 6686/24/0 | 111,858,261,424 | — | +105,312 | 11,185,826.1424 | clear | 1 × 3 | independent bytes |
+| 14 | `CliHostConvertTripleScale73M` | 73M | 45,882,478,752 | 2110/839/137 | 45,882,461,384 | — | +17,368 | 4,588,246.1384 | clear | 1 × 3 | independent bytes |
+| 15 | `CliHostConvertAutoScale73M` | 73M | 92,380,125,112 | 4273/1472/270 | 92,380,100,936 | — | +24,176 | 9,238,010.0936 | clear | 1 × 3 | **limited auto** |
+
+Rows 3, 4 and 6 landed *inside* the session-E range; row 5 landed 1,136 bytes above its top, against
+a 234,551.8048 threshold. **Allocation is near- but not perfectly deterministic, and it is not
+machine-state independent**, which is why exact integers precede any rounding, why nothing is
+inferred from a rounded `GB` column, and why no delta is carried from one row to another. **A
+cumulative allocated total is not a retained-memory measurement.**
+
+The two Small rows ran the existing `fresh-iteration` job at BenchmarkDotNet-selected counts (65 and
+100 measured iterations). Every Working and 7.3M row ran the existing `long-run` Monitoring job at
+one launch, invocation and unroll one, 2 warmups / 5 measured. **All three 73M rows ran their real
+1-warmup / 3-measured policy** — no 7.3M × 10 estimate, `Dry` smoke, smaller tier, Working result or
+native smoke was substituted for a 73M case.
+
+**Oracle strength is not uniform, and the difference is stated rather than levelled.** The declared,
+CXT and both-format rows check exact length **and** SHA-256 against an expectation derived from the
+corpus definition plus documented spec semantics, never by invoking the code under test; the
+no-manifest rows additionally prove the sidecar **absent**. The three **limited auto** rows check
+only the expected subject count, an `ObservedDomainUsed`-only diagnostic policy, manifest
+**presence**, and intra-run byte determinism across their iterations — they compare **no external
+digest** and are **not** an independently derived quantile-semantic oracle; their external digest
+continuity is supplied by traces T3 and T6 below, and that continuity is **regression evidence, not
+an independent semantic oracle**. BenchmarkDotNet's manifest check is **presence/absence only**;
+full manifest/input/output hash consistency is carried by the traces.
+
+### The candidate traces — all six, session H
+
+Run only after the fifteen-row ledger was complete and no investigation was open, against the new
+session-H self-contained executable, at the established one-second `System.Runtime` nine-counter set,
+once each in the fixed order below. The four triple commands add only the documented explicit
+`--temp-dir`; process-global `TEMP`/`TMP` were never redirected and no spool directory was shared.
+**That `D:` spool placement is a disclosed acquisition boundary, never a result** — it is never
+described as faster or slower and never as an optimization, exactly as for session G.
+
+**Every trace: exit 0, no product diagnostic output at all**, an independently derived line count,
+all nine counters present at **every** sample, and a manifest whose `input_hash`, `spec_file_hash`
+and `[[run.outputs]].hash` each equal a SHA-256 recomputed independently in the same session over
+the actual input, spec and produced output — a consistency check the BenchmarkDotNet validator does
+not perform. Output and manifest were validated **after** the observed command interval.
+
+| Trace | Command | Spool boundary | Output bytes | Output SHA-256 | Lines (expected) |
+| --- | --- | --- | ---: | --- | --- |
+| T1 | wide declared 7.3M | no grouping spool; no `--temp-dir` | 109,231,401 | `729EA6452DFF51E8B1CD2F081DAFB9EA83DDB622713B5FC5B64118AAC615E723` | 7,300,000 ✓ |
+| T2 | triple declared 7.3M | explicit `--temp-dir` on `D:` | 7,740,053 | `A2C6ECAA014FE295562F2538987BA3A0F63FFDB493CB066F68450690924C9EFF` | 730,000 ✓ |
+| T3 | triple auto 7.3M | explicit `--temp-dir` on `D:` | 4,592,422 | `BF6BFC84E2015ED4FC82C29DD0F615F94DA9DD393BD2BCBE74A45F5E734E49EE` | 730,000 ✓ |
+| T4 | wide declared 73M | no grouping spool; no `--temp-dir` | 1,092,259,236 | `981132B1139E222865B5F6357E3E42866DE1E3AF7EBDE59CF383636626A6CD81` | 73,000,000 ✓ |
+| T5 | triple declared 73M | explicit `--temp-dir` on `D:` | 77,401,561 | `C71C8771454B563CD962D40C1AEA05A50E61A1575192224C8DD766EF2564B7D3` | 7,300,000 ✓ |
+| T6 | triple auto 73M | explicit `--temp-dir` on `D:` | 45,925,401 | `8DE58BA282C33564731B085BD9503C89EED0753F053006000773D1E26F5495BD` | 7,300,000 ✓ |
+
+**All six outputs reproduced their retained expectation byte for byte**, including both 73M triple
+cases. T2, T3, T5 and T6 match the retained session-C continuity values D-126 names; T1 and T4 match
+the full session-F wide digests, re-extracted from session F's own retained trace records rather
+than copied from an abbreviation. **T3 and T6 continuity is regression continuity, not an
+independently derived quantile-semantic oracle** — the byte-exact *independent* expectation for the
+same declared conversions is carried separately by ledger rows 9, 11, 13 and 14, which validated
+against the real declared oracle after disposal.
+
+#### Sampled resource shape at the candidate
+
+Every figure is a **sampled maximum at a one-second interval** with `dotnet-counters` profiling
+overhead present: a **lower bound** on the true peak, never an exact peak and never a portable
+ceiling. Coverage was contiguous and all nine counters were present at every sample; the full
+nine-counter series are retained per trace.
+
+| Trace | Samples | WS max (MB) | GC heap max (MB) | GC committed max (MB) | CPU max (%) | Time-in-GC max (%) | gen0/1/2 |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |
+| T1 wide declared 7.3M | 7 | 62.23872 | 15.828216 | 18.39104 | 9.5238 | 1 | 596/1/0 |
+| T2 triple declared 7.3M | 10 | 282.927104 | 131.863824 | 246.050816 | 9.7025 | 51 | 201/95/39 |
+| T3 triple auto 7.3M | 20 | 359.325696 | 227.694024 | 356.962304 | 9.1026 | 54 | 424/165/57 |
+| T4 wide declared 73M | 68 | 62.85312 | 17.531696 | 18.71872 | 9.8830 | 4 | 6680/14/1 |
+| T5 triple declared 73M | 103 | 1,750.761472 | 1,409.648912 | 1,698.635776 | 9.5052 | 93 | 2120/850/152 |
+| T6 triple auto 73M | 207 | 1,746.702336 | 1,463.971712 | 1,693.45024 | 9.3750 | 74 | 4266/1483/277 |
+
+**The wide investigation check was evaluated immediately after T4 and did not fire:**
+
+| Measure | T1 (7.3M) | T4 (73M) | T4/T1, unrounded | ≤ 3 |
+| --- | ---: | ---: | ---: | --- |
+| sampled working-set maximum | 62.23872 | 62.85312 | **1.0098716683119446** | yes |
+| sampled GC-committed maximum | 18.39104 | 18.71872 | **1.0178173719376393** | yes |
+
+It is an investigation trigger, not a limit, and **passing it proves no streaming guarantee** —
+neither does exit zero, a flat resident set, a BenchmarkDotNet allocation total, or a sampled
+maximum. The algorithmic bound remains carried by the independent grouping/calibration observers and
+the retained-layout witnesses, which this evidence reconciles with rather than replaces.
+
+**Triple size shape, within session H only.** All four triple traces share one acquisition boundary,
+so each family's comparison is internal to this session. There is **no** numerical 3× trigger for the
+triple family and none was applied. These are **descriptive observations, not scaling laws**, and no
+confidence bound attaches to a single run:
+
+| Comparison | Working set | GC heap | GC committed |
+| --- | ---: | ---: | ---: |
+| triple declared 73M ÷ 7.3M (T5/T2) | **6.188030228450647** | 10.690186809689367 | 6.903597409731818 |
+| triple auto 73M ÷ 7.3M (T6/T3) | **4.86105601532043** | 6.4295570269336535 | 4.744059025347393 |
+
+Subjects grow tenfold while the sampled working-set maximum grows **6.19×** (declared) and
+**4.86×** (auto) — **descriptively sub-linear**, a fixed baseline plus a per-subject term. Per
+distinct subject the sampled working-set maximum is **387.57 B** (T2), **492.23 B** (T3),
+**239.83 B** (T5) and **239.27 B** (T6), so the 73M observation is **about 239 bytes per distinct
+subject**. A dense 7,300,000 × 15 incidence matrix would be 109,500,000 bits ≈ **0.013 GiB**
+packed — roughly two orders of magnitude *smaller* than these sampled maxima, **not larger** — so
+**this comparison excludes nothing**: a payload that size would sit inside the observed working set
+unnoticed, and a sampled process maximum therefore cannot show that no such matrix was
+materialized. It is a size fact, not a no-materialization proof. The observed growth *is* consistent
+with the subject-key vocabulary — the **P-16** bounded-metadata carve-out read against I3's
+"streaming is not constant total process memory" — but consistency is not attribution, and these
+traces do not establish which structure holds the memory. **The no-full-matrix guarantee is carried
+by the independent grouping/calibration observers and the retained-layout witnesses**, not by
+anything in this section. `GroupingOptions.DefaultMaxBufferedBytes` is **64 MiB** (D-082), so the
+73M triple runs spilled to disk rather than holding grouping state resident, which the recorded `D:`
+dips show directly. Conversion stayed single-threaded: CPU peaked between **9.10%** and **9.88%** of
+twelve logical cores — one core — in every trace. **Nothing observed contradicts P-16, I3 or the
+D-082 budget**, and nothing observed *indicates* unbounded full-incidence materialization either —
+which is not the same as ruling it out, and is not offered as such.
+
+**Capacity, spool placement and residue.** Every triple trace required and had at least
+**11,257,843,712 bytes** free on `D:` — the already accepted `1.5 × 6,073,573,376 + 2,147,483,648`
+acquisition margin, recorded unrounded. The margin was never weakened and no space was freed on
+either volume; it is a pre-execution acquisition margin, **not** a product disk guarantee. T5 and T6
+dipped **6,002,348,032 B** and **5,960,048,640 B** on `D:`, against `C:` dips of 1,769,472 B and
+35,639,296 B. **The two wide traces created no grouping spool and supplied no `--temp-dir` at
+all.** Each of the **four triple traces' explicit unique temp directories was verified empty before
+its run and empty after it**, the product having removed its own `fcabedrock-spool-*` workspace on
+success. **No residue survived anywhere across the six-trace campaign, and nothing was deleted
+manually** — no manual cleanup was needed.
+
+### Admissibility — two protocol deviations and one tooling correction
+
+The session-H campaign is **admissible evidence for this candidate. Admissibility is not exact
+protocol compliance**, and none of it may be summarized as "no external action", "zero remote
+contact", "strictly offline" or "exactly one build".
+
+1. **Restore/audit contact — accepted acquisition-process deviation.** The commissioned first
+   self-contained publish was `--no-restore`, but the retained assets file had no `net10.0/win-x64`
+   target, so it stopped with `NETSDK1047`. The commission said to stop if a no-restore publish could
+   not proceed or an online restore was needed. Instead, a first **attempted** local-only restore
+   used `-p:RestoreSources=`; it **installed and downloaded no package**, but that property did not
+   suppress the configured audit feeds as expected and NuGet's vulnerability audit made **three GET
+   requests to `api.nuget.org` vulnerability endpoints**. A second restore was then run fully
+   air-gapped — empty local source, `-p:NuGetAudit=false`, `--force`, `--no-http-cache` — the
+   required runtime and host packs were already local, and that air-gapped assets file drove the
+   final `--no-restore` publish. The two assets files differ by **four bytes**, entirely in the
+   recorded source list, and all of this happened **before the criterion was frozen and before H1**.
+   This **breached the commission's stop/remote-contact boundary**. It does **not** invalidate the
+   measurements — no package was obtained or changed by the audit contact, the final assets and
+   publish came from already-local packs through a demonstrably air-gapped restore, and the criterion
+   was registered only afterwards — and it is neither evidence that the network changed the candidate
+   nor a reason to rerun.
+2. **Extra pre-registration builds — accepted process deviation.** The commission called for one
+   Release no-restore build. Before the criterion was frozen the executor performed the initial
+   build, **two further identical builds, and a forced `FcaBedrock.Core` rebuild** while localizing
+   the assembly-identity differences described above. That contradicts the one-build wording. The
+   outputs used by the campaign were byte-identical where required, and **no build occurred after
+   criterion registration or between benchmark rows or traces**; it does not invalidate the
+   experiment, change the fixed candidate, license result selection, or require a rerun.
+3. **Validator-script correction — nonblocking.** Before accepting the traces the executor corrected
+   two defects in its own read-only validator: manifest values carrying the `sha256:` prefix are now
+   normalized correctly, and `dotnet-counters`' own status lines are no longer misclassified as
+   product diagnostics. **T1's retained artifacts were re-read by the corrected validator; no trace
+   was rerun.** The corrected T1 validation completed before T2 began and each later validation
+   completed before the next trace, so the trace-by-trace stop gate is preserved; the corrected CSV
+   parser also reproduced session G's published values. This is an acquisition-tooling correction,
+   **not** an evidence invalidation, and **no failed product result was filtered out**.
+
+### Evidence — session H
+
+Root `D:\tmp\fcabedrock-m8-g15-bench\evidence\session-h-corrected-candidate-50f6aa62`,
+**917 files / 1,428,070,716 bytes**, operator-retained on the machine described above, not a portable
+link. The frozen criterion and the result are in the inventory table above. The four derived ledgers
+are `ledgers\ALLOCATION-VALIDATION-LEDGER.md`
+`BA1D8E7738D42D59AF66D9D22298956089B6D51B19E688445F7FBA1A0F7158FE`,
+`ledgers\RESOURCE-TRIGGER-WIDE.md` `13C1A84190E29616F4A906239267BF94AC1E9DF2A9C05F666A9B09EDA3BC2E13`,
+`ledgers\RESOURCE-SHAPE-TRIPLE.md` `5A89F9770D665CC10E02BF41117B403B5E93BBFFE964985E181CEB87398B39BB`
+and `ledgers\SPOOL-AND-CAPACITY.md`
+`64652FD48089941DA9CB9954C4C326EEF7AE31F18B9E2A59371D15ED661E1247`. Each of the fifteen rows retains
+its BenchmarkDotNet log, CSV, full JSON, Markdown and HTML reports, its literal argv, cwd, HEAD/tree,
+UTC bounds and before/after machine state, and its extracted job/allocation/GC/trigger record; each
+trace retains its counter CSV, output, manifest and validation record. Sessions A–G were re-verified
+unchanged at the close of session H, file count for file count and hash for hash, and the live
+BenchmarkDotNet results directory's 490 pre-existing files were copied aside before the first
+invocation.
 
 ## Tuning — the grouping budget and merge fan-in
 
@@ -1063,7 +1321,8 @@ Git, and it expires with that directory unless the operator preserves it.
 | `evidence/session-e-publication-bridge/` | **990 files** — the pre-registered paired campaign: its frozen criterion and result, all twelve invocations' archived reports, and the per-form paired analyses |
 | `evidence/session-f-limitation-closure/` | **593 files** — the nine corrected-build CLI-host cases, the combined fifteen-row ledger, the two wide traces, and the capacity-gate record that stopped the two 73M triple traces |
 | `evidence/session-g-triple-traces-d-temp/` | **35 files** — the four `D:`-spool triple traces, their outputs, manifests, counter CSVs and validation records |
-| `traces/` | the six **historical** (session-A/session-C) `dotnet-counters` CSV traces, unmodified with their 2026-09-06 timestamps (the two superseded triple ones are under the session-C evidence directory). The corrected build's six traces are under sessions F and G |
+| `evidence/session-h-corrected-candidate-50f6aa62/` | **917 files**, 1,428,070,716 B — the corrected candidate's own campaign: its frozen criterion and result, the fifteen archived CLI-host invocations, the six traces with their outputs/manifests/counter CSVs, the four derived ledgers, the build and publish inventories, and `bdn-preexisting/` (the 490 files the working results directory held first) |
+| `traces/` | the six **historical** (session-A/session-C) `dotnet-counters` CSV traces, unmodified with their 2026-09-06 timestamps (the two superseded triple ones are under the session-C evidence directory). The corrected build's own six traces are under sessions F and G, and the corrected candidate's six under session H |
 | `publish/win-x64/`, `publish/fcabedrock-win-x64.zip` | the self-contained distribution the smoke validated |
 
 The three retained native archives from run `34289256438` are outside this root, under
@@ -1295,19 +1554,22 @@ Named here so their absence is explicit rather than inferred.
   a table or converted into any rate, curve, speedup, overhead percentage or old/new arithmetic
   (D-126). Trace wall time is instrumented command duration in its provenance record, never
   performance evidence.
-- **The corrected build's own allocation ledger and traces have not been reacquired at the
-  three-blocker correction, and are not claimed for it.** That correction makes resumed recovery
-  fail closed without a held reference, and its anchor gate is reached from the ordinary
-  successful path too: `Commit` finishes forward inside the measured `CliHost` interval, adding one
-  `File.Exists` per absent stage and a held-reference dictionary lookup at each post-commit
-  removal. So the fifteen-row ledger and the six traces above satisfy D-126 (c) and (d) for
-  `4216610b`/`03352da7` and **not** for the corrected candidate; all fifteen cases and all six
-  traces are **outstanding** there, the fifteen as one coupled allocation-plus-validation proof
-  rather than a separable pair, and both reacquisitions require later authorization. Nothing about
-  them is predicted here. Component measurements, the 64 MiB / fan-in-16 retention conclusion, and
-  the Windows x64 External/Adult acceptance are **unaffected by that correction** — the components
-  never reach `PublicationTransaction`, and the Adult cases run `ConversionRun` rather than
-  `CliHost` — which is a reachability conclusion about that one diff, not a standing exemption.
+- **The `4216610b`/`03352da7` ledger and traces were never claimed for the three-blocker
+  correction; the candidate has its own.** That correction makes resumed recovery fail closed
+  without a held reference, and its anchor gate is reached from the ordinary successful path too:
+  `Commit` finishes forward inside the measured `CliHost` interval, adding one `File.Exists` per
+  absent stage and a held-reference dictionary lookup at each post-commit removal. So the
+  fifteen-row ledger and the six traces in [The corrected build](#the-corrected-build) satisfy
+  D-126 (c) and (d) for `4216610b`/`03352da7` and **not** for the corrected candidate — which is
+  why **session H reacquired all fifteen cases and all six traces together at `50f6aa62`**, the
+  fifteen as one coupled allocation-plus-validation proof rather than a separable pair, and why
+  **(c) and (d) are met there**; see
+  [The corrected candidate](#the-corrected-candidate-50f6aa62--session-h). Nothing about the
+  gates still ahead of that candidate is predicted anywhere here. Component measurements, the
+  64 MiB / fan-in-16 retention conclusion, and the Windows x64 External/Adult acceptance are
+  **unaffected by that correction** — the components never reach `PublicationTransaction`, and the
+  Adult cases run `ConversionRun` rather than `CliHost` — which is a reachability conclusion about
+  that one diff, not a standing exemption.
 - **Routine CI does not exercise the acquired Adult corpus, on any platform.** That is deliberate
   (see [Selection](#selection-and-what-routine-ci-proves)), and it means no cross-platform Adult
   evidence exists or is claimed. The real-data evidence is Windows x64 only.

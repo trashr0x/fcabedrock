@@ -6562,14 +6562,23 @@ pinned here.
     rows are published together as one failed collective test in `docs/benchmarks.md`,
     with both failed gates named by value and no selected passing-case conclusion.
   - **(c) all fifteen corrected CLI-host cases carrying original-job allocation and
-    per-iteration validation, including all three 73M cases — met.** Six from session E,
-    nine from session F. Every completed iteration validated after disposal against its
-    existing validator; **no allocation investigation trigger fired**.
+    per-iteration validation, including all three 73M cases — met at `50f6aa62` by
+    session H.** All fifteen were reacquired **together** on 2026-09-10 at the corrected
+    candidate: one ordinary invocation apiece, in the required order, each archived
+    immutably before the next began; every completed measured iteration passed its
+    existing post-disposal validator; **no allocation investigation trigger fired** on any
+    row; and all three 73M rows ran their real 1-warmup/3-measured policy. The earlier
+    reading of this condition — six rows from session E and nine from session F — remains
+    valid historical evidence of `4216610b`/`03352da7`, neither withdrawn nor relabelled,
+    but it is **not** what satisfies (c) here. See the corrected-candidate correction of
+    2026-09-10 in part 9.
   - **(d) all six corrected actual-command traces complete with their real
-    output/manifest validation and resource provenance — met.** Wide declared 7.3M and 73M
-    from session F (no grouping spool, no `--temp-dir`), and the four triple declared/auto
-    7.3M and 73M traces from session G, each with an explicit unique `--temp-dir` beneath
-    `D:\tmp`.
+    output/manifest validation and resource provenance — met at `50f6aa62` by session
+    H.** All six were reacquired at the corrected candidate on 2026-09-10. The earlier
+    reading — wide declared 7.3M and 73M from session F (no grouping spool, no
+    `--temp-dir`), and the four triple declared/auto 7.3M and 73M traces from session G,
+    each with an explicit unique `--temp-dir` beneath `D:\tmp` — likewise remains valid
+    historical evidence at its own revisions and is **not** what satisfies (d) here.
   - **(e) every claim naming its session, revision, validation strength and measurement
     meaning — satisfied**, and enforced by the wording rules in part 4.
 
@@ -6642,7 +6651,11 @@ pinned here.
     Policy L is untouched: this licenses no latency, neutrality or non-regression claim, no
     retry, and no corrected-build elapsed, rate or overhead figure.
   - *Evidence carriage across the correction commit (2026-09-10) — ruled on that commit's own
-    diff.* **The correction is not failure-only.** `Commit` ends by calling
+    diff.* **Superseded the same day by the completed session-H acquisition at `50f6aa62`
+    (next bullet): the reacquisition this ruling required has since been performed in full,
+    and conditions (c) and (d) are met at that candidate.** The ruling is retained because it
+    is why session H exists, and why no older row or trace could stand in for it.
+    **The correction is not failure-only.** `Commit` ends by calling
     `Finish(forward: true)`, and that runs inside `CliHost.RunAsync("convert", …)` — the
     interval the CLI-host cases measure. What the diff adds there is bounded and small: one
     `File.Exists` for each absent stage, and a held-reference dictionary lookup at each
@@ -6683,7 +6696,124 @@ pinned here.
       **extracted, mode-checked and executed on their native targets**.
 
     No future allocation value, trace value, run id, hash, digest, result or pass is recorded
-    here in advance. Both reacquisitions are **pending and require later authorization**.
+    here in advance. Both reacquisitions were, **at the time of this ruling, pending and
+    requiring later authorization**; both were authorized and completed on 2026-09-10, in the
+    session-H campaign recorded next.
+  - *Corrected-candidate evidence reacquired (2026-09-10) — session H at `50f6aa62`;
+    conditions (c) and (d) are met.* The reacquisition the previous ruling required was
+    authorized and performed in full. **Session H acquired all fifteen BenchmarkDotNet
+    CLI-host allocation/validation rows and all six real-command resource traces together at
+    commit `50f6aa62`** (tree `e4412ac5…`), under one criterion frozen and hashed before the
+    first invocation and re-hashed identical — in hash **and** mtime — at the end of the
+    campaign. **Nothing used to satisfy (c) or (d) for this candidate is borrowed from
+    session E, F or G.** Those rows and traces keep their own provenance at
+    `4216610b`/`03352da7` and remain valid there.
+    - **(c) is met at `50f6aa62`:** 15/15 rows, one invocation apiece, in the required order,
+      each archived before the next; every measured iteration passed its existing
+      post-disposal validator; no allocation investigation trigger fired; and all three 73M
+      rows ran their real one-warmup/three-measured policy. (c) remains **one coupled
+      allocation-plus-per-iteration-validation condition**: it is satisfied because all
+      fifteen candidate rows were reacquired **together**, not because an older validator was
+      carried separately.
+    - **(d) is met at `50f6aa62`:** 6/6 traces exited zero, produced **no product
+      diagnostics**, passed independent line counts, supplied all nine counters at every
+      sample, passed independently recomputed manifest input/spec/output hash consistency,
+      left **zero spool residue without manual deletion**, and reproduced the retained
+      expected output **byte for byte**, including both 73M triple cases.
+    - **Provenance, so a later reviewer can audit this without the routing artifacts.**
+      Evidence root
+      `D:\tmp\fcabedrock-m8-g15-bench\evidence\session-h-corrected-candidate-50f6aa62`,
+      **917 files / 1,428,070,716 bytes**. Frozen criterion
+      `CORRECTED-CANDIDATE-EVIDENCE-CRITERION.md`, SHA-256
+      `D06B4A440CCA0092228CC4CB47B5B5C4D0F16D5D0984BA7976E3AD9B248BF1E1`, 33,363 B, last
+      written `2026-09-10T00:10:26.1129941Z` against H1's first start
+      `2026-09-10T00:12:14.952Z`. Result `CORRECTED-CANDIDATE-EVIDENCE-RESULT.md`, SHA-256
+      `47B83F23706EE60A6BE20633FBB907DF03799748509BCA0EB6123DFC6DEE5C9F`, 16,653 B. The four
+      ledgers are the allocation/validation ledger
+      `BA1D8E7738D42D59AF66D9D22298956089B6D51B19E688445F7FBA1A0F7158FE`, the wide
+      investigation check `13C1A84190E29616F4A906239267BF94AC1E9DF2A9C05F666A9B09EDA3BC2E13`,
+      the triple resource shape
+      `5A89F9770D665CC10E02BF41117B403B5E93BBFFE964985E181CEB87398B39BB`, and the
+      spool/capacity record
+      `64652FD48089941DA9CB9954C4C326EEF7AE31F18B9E2A59371D15ED661E1247`. The values
+      themselves are in `docs/benchmarks.md`. The measured candidate is a fresh
+      self-contained `win-x64` publish of **217 files / 82,966,624 bytes** on .NET runtime
+      **10.0.10**, and every product assembly embeds
+      `AssemblyInformationalVersion = 1.0.0+50f6aa62…`. Its library assemblies differ from
+      session E's retained copies only in the PE header hash, the MVID, the debug-directory
+      signature and that embedded commit SHA — **no IL differs** — which is positive
+      provenance that the binaries came from this commit, **not** a binary-equivalence or
+      performance claim.
+    - **Admissibility: accepted, with two protocol deviations and one tooling correction
+      disclosed.** The campaign is admissible evidence for this candidate. **Admissibility is
+      not exact protocol compliance**, and none of this may be summarized as "no external
+      action", "zero remote contact" or "exactly one build".
+      1. **Restore/audit-contact deviation — accepted, disclosed.** The commissioned first
+         publish was `--no-restore`, but the retained assets file had no `net10.0/win-x64`
+         target, so that publish stopped with `NETSDK1047`. The commission said to stop if a
+         no-restore publish could not proceed or an online restore was needed. Instead: a
+         first attempted local-only restore used `-p:RestoreSources=`; it installed and
+         downloaded **no package**, but NuGet's vulnerability audit made **three GET requests
+         to `api.nuget.org` vulnerability endpoints**, because that property did not suppress
+         the configured audit feeds as expected; a second restore was then run fully
+         air-gapped using an empty local source, `-p:NuGetAudit=false`, `--force` and
+         `--no-http-cache`; the required runtime and host packs were already local; the
+         air-gapped assets file drove the final `--no-restore` self-contained publish; the two
+         assets files differ by **four bytes**, only in the recorded source list; and all of
+         it happened **before the criterion was frozen and before H1**. This **breached the
+         commission's stop/remote-contact boundary** and is recorded as an accepted
+         **acquisition-process deviation**, not laundered as compliance. It does **not**
+         invalidate the measurements: no package was obtained or changed by the audit contact,
+         the final assets and publish were produced from already-local packs through a
+         demonstrably air-gapped restore, and the criterion was registered only afterwards. It
+         is neither evidence that the network changed the candidate nor an excuse to rerun.
+      2. **Extra pre-registration builds — accepted, disclosed.** The commission called for
+         one Release no-restore build. Before the criterion was frozen, the executor performed
+         the initial build, **two further identical builds, and a forced `FcaBedrock.Core`
+         rebuild** while localizing the expected assembly-identity differences described
+         above. That contradicts the one-build wording and is recorded separately as a
+         **pre-registration process deviation**. The outputs used by the campaign were
+         byte-identical where required, and **no build occurred after criterion registration
+         or between benchmark rows or traces**. It does **not** invalidate the experiment,
+         change the fixed candidate, license result selection, or require a rerun.
+      3. **Validator-script correction — nonblocking, disclosed.** Before accepting the
+         traces, the executor corrected two defects in its own read-only validator: manifest
+         values carrying the `sha256:` prefix are now normalized correctly, and
+         `dotnet-counters`' own status lines are no longer misclassified as product
+         diagnostics. **T1's retained artifacts were re-read by the corrected validator; no
+         trace was rerun.** The corrected T1 validation completed before T2 began, and each
+         later validation completed before the next trace, so the trace-by-trace stop gate is
+         preserved. The corrected CSV parser also reproduced session G's published values.
+         This is a **nonblocking acquisition-tooling correction**, not an evidence
+         invalidation, and **no failed product result was filtered out**.
+    - **Policy L is untouched.** The session-E paired campaign remains a complete failed
+      historical attempt; the incremental elapsed effect remains **inconclusive at the
+      pre-registered 5% bound**; no retry is owed. No corrected-build elapsed result,
+      throughput or rate, scaling curve, sidecar or auto overhead, speedup, neutrality,
+      equality, non-regression, or cross-session timing arithmetic is published from session
+      H. Its incidental elapsed values remain **contextual raw data only**, and trace wall
+      time remains provenance, not performance evidence.
+    - **Unaffected.** The component measurements, the retained **64 MiB / fan-in-16** tuning
+      conclusion, and the bounded Windows x64 External/Adult reachability conclusion of the
+      previous bullet all stand unchanged. The Adult result remains a bounded conclusion about
+      **that** diff and is **not** a standing exemption for any arbitrary later product diff;
+      the standing obligation still re-attaches at whatever revision is finally submitted for
+      acceptance.
+    - **Remaining gates after this reconciliation, none waived.** The evidence reacquisition
+      is **no longer outstanding**. What remains: this documentation reconciliation and its
+      commit; the branch push; a fresh **five-target native run at the documentation head this
+      reconciliation produces** — necessarily a later revision than `50f6aa62`, because the run
+      must follow this commit and its push — with three newly retained required archives
+      **natively extracted, mode-checked and executed** on their own targets; a fresh
+      independent Sol implementation review; operator acceptance and authorized merge; the
+      resulting main-push CI at the merge revision; the separate GitLab archival gate; and
+      **the standing Windows x64 External/Adult three-case acceptance at whatever revision is
+      finally submitted for acceptance** — the earlier Adult evidence carried across the
+      three-blocker correction only by the bounded reachability ruling above, which is **not** a
+      standing exemption, and it has **not** been rerun at `50f6aa62`. **M8 remains in progress
+      until all of them complete.** No native gate or delivery archive has run at `50f6aa62`,
+      and no run id, archive hash, review result, merge result, CI result or archival result is
+      predicted here.
 - **Why:** the comparison was the right experiment and it was run honestly, in full, under
   a criterion fixed before any data was seen — and it did not pass. The two available
   alternatives were both worse than recording that plainly. Making a sub-5%

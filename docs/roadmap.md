@@ -22,15 +22,18 @@ delivery gate are corrected — the gate now extracts and runs the archive it up
 replacement archive evidence is outstanding. The historical CLI-host
 figures were **not** re-measured into a controlled replacement — the attempted comparison
 failed its collective gate, so the correction's incremental latency is **inconclusive at
-the 5% bound and no retry is owed** — while the corrected build's allocation and output
-validation (all fifteen CLI-host cases, including all three 73M) and its six
-corrected-command resource traces are **complete at `4216610b`/`03352da7`**. They do **not**
-carry to the three-blocker correction: its fail-closed recovery anchor is reached from the
-ordinary successful publication tail as well, so all fifteen cases and all six traces are
-outstanding again at that corrected candidate and must be reacquired there under a later
-explicit authorization. What remains is the finalization gate
-sequence in the M8 block below, then M9. The milestone blocks below are the append-only
-history; the M7 and M8 sections carry the live detail.
+the 5% bound and no retry is owed**. The corrected build's allocation and output validation
+(all fifteen CLI-host cases, including all three 73M) and its six corrected-command resource
+traces were complete at `4216610b`/`03352da7` but did **not** carry to the three-blocker
+correction, whose fail-closed recovery anchor is reached from the ordinary successful
+publication tail as well — so **session H reacquired all fifteen cases and all six traces
+together at the corrected candidate `50f6aa62`** on 2026-09-10, and **D-126 conditions (c)
+and (d) are complete there**. That campaign is **admissible evidence but was not exactly
+protocol-compliant**: one restore's NuGet vulnerability audit contacted `api.nuget.org`, and
+more than the one commissioned build ran — both before the criterion was frozen, and neither
+changed a measured byte. The full account is in **D-126** and `docs/benchmarks.md`. What
+remains is the finalization gate sequence in the M8 block below, then M9. The milestone
+blocks below are the append-only history; the M7 and M8 sections carry the live detail.
 
 > **M1 complete — mini-mushroom + mini-adult reproduced byte-for-byte.** The whole
 > pipeline runs end-to-end and matches v2 on both families: `.bed` reader
@@ -1130,10 +1133,13 @@ What the corrected build was measured to do, and what could not be measured, is 
   1-warmup/3-measured policy. No allocation investigation trigger fired on any row. D-125's
   "allocation is byte-identical" claim is **retracted**: the corrected build allocates
   +2,880 to +9,416 bytes more per published run within one machine state. Those fifteen rows
-  are `4216610b`/`03352da7` evidence and are **outstanding again at the three-blocker
-  correction**, which reaches the same measured interval; they are reacquired **together**,
-  because D-126 (c) is one coupled allocation-and-per-iteration-validation proof of the actual
-  candidate, and only under a later explicit authorization.
+  are `4216610b`/`03352da7` evidence and did **not** carry to the three-blocker correction,
+  which reaches the same measured interval — so **session H reacquired all fifteen at
+  `50f6aa62`, together** (D-126 (c) is one coupled allocation-and-per-iteration-validation
+  proof of the actual candidate, not a separable pair): one invocation apiece in the required
+  order, each archived before the next, every measured iteration validated after disposal, no
+  trigger fired, and all three 73M rows at their real 1-warmup/3-measured policy.
+  **Condition (c) is complete at that candidate.**
 - **The corrected-command resource traces are complete at 6/6** — the two wide declared
   traces from session F (which spool nothing, so they carry no `--temp-dir`) and the four
   triple declared/auto traces from session G, each with an explicit unique `--temp-dir`
@@ -1142,9 +1148,12 @@ What the corrected build was measured to do, and what could not be measured, is 
   semantics, oracle, counter, product code or benchmark job — four byte-exact reproductions
   of session C's retained outputs prove it — and the 73M auto external digest continuity is
   now **closed**. It may never be used to compare timing across sessions. All six likewise
-  describe `4216610b`/`03352da7` only: they drive the same changed publication tail, so **all
-  six are outstanding again at the three-blocker correction** and require the same later
-  authorization to reacquire.
+  describe `4216610b`/`03352da7` only: they drive the same changed publication tail, so
+  **session H reacquired all six at `50f6aa62`** — each exiting zero with no product
+  diagnostic, an independent line count, all nine counters at every sample, independently
+  recomputed manifest input/spec/output hash consistency, zero spool residue without manual
+  deletion, and every output reproduced **byte for byte**, including both 73M triple cases.
+  **Condition (d) is complete at that candidate.**
 - **Historical whole-command memory and throughput headlines stay session A/C
   observations** of the revisions that produced them, with the corrected build's own
   sampled figures recorded beside them rather than replacing them. Sampled maxima are lower
@@ -1152,26 +1161,38 @@ What the corrected build was measured to do, and what could not be measured, is 
   allocation total proves a streaming bound — the algorithmic guarantee remains the
   independent observers and the retained-layout witnesses.
 
-**Remaining M8 gates, none waived:** the corrected candidate's commit and push; a complete
-five-target native run at that head, with three newly retained archives that are
-**extracted, mode-checked and executed on their own native targets** rather than only
-inspected; a fresh independent implementation review; operator acceptance and authorized
-merge; the resulting main-push CI at the merge revision; and the separate GitLab archival
-gate — and, ruled on the correction's own diff, **reacquisition of the fifteen CLI-host
-allocation/validation cases and of all six corrected-command resource traces** at that
-candidate, each under its own later explicit authorization.
+**Remaining M8 gates, none waived:** the corrected candidate is committed at `50f6aa62` and
+its **evidence reacquisition is complete** (below). What remains: this documentation
+reconciliation and its commit; the branch push; a complete **five-target native run at the
+documentation head this reconciliation produces** — necessarily a later revision than
+`50f6aa62`, because the run must follow this commit and its push — with three newly retained
+archives that are **extracted, mode-checked and executed on their own native targets** rather
+than only inspected; a fresh independent implementation review; operator acceptance and
+authorized merge; the resulting main-push CI at the merge revision; the separate GitLab
+archival gate; and **the standing Windows x64 External/Adult three-case acceptance on the
+revision finally submitted for acceptance** — it carried across the three-blocker correction
+only by a bounded reachability ruling, which is **not** a standing exemption, and it has
+**not** been rerun at `50f6aa62`. No native gate or delivery archive has run at `50f6aa62`,
+and no run id, archive hash, review result, merge result, CI result or archival result is
+predicted anywhere.
 
 The expensive evidence carried across the documentation commit `03352da7` because the entire
-diff from `4216610b` is three advisory Markdown files. It does **not** all carry across the
+diff from `4216610b` is three advisory Markdown files. It did **not** all carry across the
 correction. The correction is not failure-only: `Commit` finishes forward inside the measured
-`CliHost` interval, so **D-126 conditions (c) and (d) are no longer satisfied** and both
-evidence sets are outstanding — the fifteen together, since (c) is one coupled
-allocation-and-validation proof rather than a separable pair. What does carry is the component
-measurements and the 64 MiB / fan-in-16 tuning conclusion (publication is unreachable from
-those measured paths) and the Windows x64 External/Adult three-case acceptance (those cases run
-`ConversionRun`, not `CliHost`, and no product path they reach changed) — a bounded
-reachability conclusion about this diff, not a standing exemption. **Policy L does not
-reopen**: the elapsed effect stays inconclusive at the 5% bound and no paired retry is owed.
+`CliHost` interval, so D-126 conditions (c) and (d) were **not** satisfied by that older
+evidence — and on 2026-09-10 **session H reacquired all fifteen cases and all six traces
+together at `50f6aa62`, where both conditions are met** (the fifteen together, since (c) is one
+coupled allocation-and-validation proof rather than a separable pair). Two disclosed protocol
+deviations make that campaign **admissible rather than exactly protocol-compliant** — one
+restore's NuGet vulnerability audit contacted `api.nuget.org`, and more than the one
+commissioned build ran, both before the criterion was frozen and neither changing a measured
+byte — plus one nonblocking correction to the executor's own read-only validator, after which
+no trace was rerun. What carries independently of all that is the component measurements and
+the 64 MiB / fan-in-16 tuning conclusion (publication is unreachable from those measured paths)
+and the Windows x64 External/Adult three-case acceptance (those cases run `ConversionRun`, not
+`CliHost`, and no product path they reach changed) — a bounded reachability conclusion about
+this diff, not a standing exemption. **Policy L does not reopen**: the elapsed effect stays
+inconclusive at the 5% bound and no paired retry is owed.
 **M8 is not accepted, merged or complete until all of them have happened.**
 
 **Completion obligations, none waived** (each stands for every later release candidate,
