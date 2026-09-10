@@ -17,8 +17,11 @@ The architecture and its rationale are `decisions.md` **D-124**; how to run the 
 > hash-verified. **Those archives are not, however, usable deliveries:** a later inspection found the
 > Linux and macOS apphosts recorded in the zip without an execute bit, so the run's success and the
 > archive's usability are two different facts, and only the first was established. The packaging is
-> corrected and the delivery gate now extracts and runs what it uploads; replacement archive evidence
-> is outstanding. See [Native delivery](#native-delivery). A second production defect, in M7's
+> corrected and the delivery gate now extracts and runs what it uploads — and the corrected head's own
+> five-target run then **failed**, because that packaging fix stated only the Unix half of what the
+> writer decides and the three Unix targets caught the Windows half. **No Unix delivery archive has
+> been produced since**, so replacement archive evidence is outstanding. See
+> [Native delivery](#native-delivery). A second production defect, in M7's
 > publication ownership, was found by that native gate and is fixed under **D-125**; its correction
 > reaches the measured CLI-host interval, so **every `CLI host` row and every trace below is a
 > session-A or session-C observation of the revision that produced it, never a measurement of the
@@ -250,8 +253,9 @@ The first complete pass of `.github/workflows/ci.yml`, and the first artifacts M
 | [`34287497829`](https://github.com/trashr0x/fcabedrock/actions/runs/34287497829) | `91188455` | **failure** | `Test (Release)` passed on all five targets for the first time; win-x64 and linux-x64 completed with artifacts; macOS ARM64 failed at the global-tool smoke — a pre-existing macOS-only test defect (`/var` vs `/private/var` path spelling), first reached because no run had ever got that far. Remains failed evidence at that revision |
 | [`34289256438`](https://github.com/trashr0x/fcabedrock/actions/runs/34289256438) | `4216610b` | **success** | **all five targets green; all three required archives produced.** The archives are *not* usable deliveries — see [The property the delivery gate did not check](#the-property-the-delivery-gate-did-not-check) |
 | [`34392695933`](https://github.com/trashr0x/fcabedrock/actions/runs/34392695933) | `03352da7` | **success** | the documentation head's own five-target run; same five green jobs, same three archives produced and retained — and the same unusable-apphost defect in the Linux and macOS ones |
+| [`34468088854`](https://github.com/trashr0x/fcabedrock/actions/runs/34468088854) | `163f1c49` | **failure** | the corrected head's gate; both Windows targets green, all three Unix targets failed at `Test (Release)` on the *new* Windows-archive assertion. No Unix archive was built and nothing was retained — see [Run 34468088854](#run-34468088854-the-windows-half-of-the-same-rule) |
 
-Neither failed run is relabelled, and neither successful run is. Runs `34289256438` and
+No failed run is relabelled, and neither successful run is. Runs `34289256438` and
 `34392695933` executed every job and every step successfully at their own revisions, and that is
 what a green workflow says. It does not say the archives those jobs uploaded can be used, because
 nothing in either run extracted one. The two artifacts run `34287497829` did produce are superseded —
@@ -336,7 +340,63 @@ published timestamps — and no output byte, diagnostic, exit meaning or manifes
 about the archives, not about the runs: both runs remain successful workflow evidence at their own
 revisions and are never relabelled. The corrected candidate's own five-target run and its three
 replacement archives — extracted, mode-checked and executed on their native targets — are an
-outstanding gate (**D-126**). No run id, digest or result is recorded for it here in advance.
+outstanding gate (**D-126**). The first attempt at that run is below; it failed, and it produced no
+replacement archive.
+
+### Run 34468088854: the Windows half of the same rule
+
+The corrected packaging was committed at `163f1c49` and pushed, and its five-target run **failed**.
+Windows x64 and Windows ARM64 passed every step. Linux x64, macOS ARM64 and Linux ARM64 each failed
+at `Test (Release)`, all three on the same single case out of 4,586:
+
+```text
+FcaBedrock.Cli.Tests.DistributionArchiveTests
+  .Archive_WhenTheDistributionIsWindows_ThenItCarriesTheApphostAndClaimsNoUnixMode
+  Assert.Equal() Failure: Values differ
+  Expected: 0
+  Actual:   33188
+```
+
+`33188` is `0x81A4` — `0100644`, the very mode the correction above exists to stop recording. Every
+target reported the same 4,586 total, so the suite composition was as expected everywhere; the two
+Windows targets reported 0 failed and the three Unix targets 1.
+
+**The cause is deterministic host-dependent entry metadata, not a flake and not a runner issue.** The
+corrected writer assigned `ExternalAttributes` **only** inside its Unix branch. A `win-*` entry was
+therefore left with whatever `ZipArchive.CreateEntry` defaults to — and that default belongs to the
+*creating host*: zero on Windows, the platform's own `0100644` on Linux and macOS. The counterexample
+test builds a synthetic `win-x64` archive on whatever host runs the suite, so it passed on Windows
+and failed on every Unix one, identically, on three different OS/architecture combinations.
+
+**What it does not implicate.** The delivered `win-x64` archive is built on a Windows runner, where
+the default was already zero, so no shipped archive ever carried the wrong value. Nothing about the
+Unix `0100755`/`0100644` rule, the payload, the flat names, the ordering, the timestamps or the path
+safety checks is involved.
+
+**What the run therefore did not establish.** The three Unix jobs stopped at `Test (Release)`, so
+corpus preparation, the Small `Dry` smoke, both package smokes, the self-contained
+publish/archive/extract/run and the upload never executed on them. **No Linux or macOS archive was
+produced.** The run exposed one artifact, `fcabedrock-win-x64`; it was **not downloaded and not
+retained**. Neither the three-archive delivery gate nor the Unix `0100755` closure is established at
+`163f1c49`, and the two green Windows jobs are not offered as a partial pass. The run is failed
+evidence at that revision, exactly as `34241484619` and `34287497829` are at theirs, and it is not
+relabelled.
+
+**The correction, and its exact reach.** The writer now assigns every entry's external attributes
+from the **target's** RID rather than from the host: a Windows target records `0` for every entry, a
+Unix target records `0100755` for the apphost and `0100644` for everything else. The shared archive
+validator requires that zero on **every** entry of a Windows distribution instead of skipping the
+check, and the counterexample test names both halves — the apphost and an ordinary
+`FcaBedrock.Cli.runtimeconfig.json` — on every host. Relaxing the assertion or conditioning it on the
+creating host was rejected: either would have left the archive's metadata dependent on where the
+packaging command ran. The observable change is confined to that field on `win-*` archives written by
+a non-Windows host. Archiving one fixed folder with the old and the new writer on Windows produces
+**byte-identical** zips, and every Unix mode is unchanged.
+
+The earlier runs keep their own revisions and their own conclusions: `34241484619` and `34287497829`
+remain failed, `34289256438` and `34392695933` remain successful workflow evidence, and the Linux and
+macOS archives of both successful runs remain **rejected as delivery**. No run id, digest, archive
+value or result is recorded here for the replacement run.
 
 <!-- RESULTS -->
 

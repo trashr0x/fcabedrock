@@ -6097,6 +6097,32 @@ pinned here.
      required/optional split, the RID and bundled-runtime checks, and the path-safety rules
      are unchanged, and no product output byte, diagnostic or manifest is touched.
      Replacement archive evidence at the corrected head is an outstanding gate (**D-126**).
+- **Correction (2026-09-10) — that packaging fix stated only half of what the writer
+  decides.** It assigned `ExternalAttributes` **only** inside the Unix branch, so a `win-*`
+  entry kept whatever `ZipArchive.CreateEntry` defaults to — and that default belongs to the
+  *creating host*: zero on Windows, the platform's own `0100644` on Linux and macOS. The
+  counterexample test the same fix introduced builds a synthetic `win-x64` archive on whatever
+  host runs the suite, so it passed on Windows and failed on every Unix one. Run
+  [`34468088854`](https://github.com/trashr0x/fcabedrock/actions/runs/34468088854) at
+  `163f1c49` found it: Windows x64 and Windows ARM64 green, and Linux x64, macOS ARM64 and
+  Linux ARM64 each failing `Test (Release)` on that one case out of 4,586 — `Expected: 0`,
+  `Actual: 33188` (`0x81A4`, `0100644`). Deterministic host-dependent entry metadata,
+  reproduced identically on three OS/architecture combinations; not a flake and not a runner
+  issue. **The writer is corrected, not the test.** Relaxing the assertion or conditioning it
+  on the creating host would preserve host-dependent metadata and contradict the archive
+  contract this entry states, which is a claim about the **target**: a Linux or macOS target
+  records the apphost `0100755` and every other entry `0100644`; a Windows target claims no
+  Unix mode, so every entry's high mode field is explicitly zero; and neither answer varies
+  with the machine that happened to build the zip. Every entry is now assigned from the
+  target's RID, and the shared archive validator requires that zero on **every** entry of a
+  Windows distribution rather than skipping the check. The reach is exactly that field on
+  `win-*` archives written by a non-Windows host: native Windows delivery is semantically
+  unchanged — a Windows host already produced zero from the default, and archiving one fixed
+  folder with the old and the new writer there yields byte-identical zips — and every Unix
+  mode is unchanged. This is not a claim that a ZIP is byte-reproducible across hosts or
+  rebuilds. No public API, CLI contract, diagnostic, spec text, output byte, manifest schema
+  or runtime product code changes, and the registry stays **82**. The five-target run and its
+  three accepted archives remain outstanding at a later corrected head (**D-126**).
 
 ---
 
@@ -6814,6 +6840,27 @@ pinned here.
       until all of them complete.** No native gate or delivery archive has run at `50f6aa62`,
       and no run id, archive hash, review result, merge result, CI result or archival result is
       predicted here.
+  - *The documentation head's native gate ran, and failed (2026-09-10).* The reconciliation above was
+    committed at `163f1c49` and pushed, and run
+    [`34468088854`](https://github.com/trashr0x/fcabedrock/actions/runs/34468088854), attempt 1, event
+    `push`, **concluded `failure`**. Windows x64 and Windows ARM64 succeeded on every step; Linux x64,
+    macOS ARM64 and Linux ARM64 each failed at `Test (Release)` on the host-dependent Windows-archive
+    assertion recorded in D-124's 2026-09-10 correction. Those three jobs therefore never reached the
+    self-contained smoke or the upload: **no Linux or macOS archive was produced**, the run exposed
+    only the `fcabedrock-win-x64` artifact, that artifact was **neither downloaded nor retained**, and
+    neither the three-archive delivery gate nor the Unix `0100755` closure is established at
+    `163f1c49`. The run is failed evidence at that revision, is not relabelled, and its two green
+    Windows jobs are not a partial pass. **The gate itself is unchanged** and re-attaches at whatever
+    corrected head follows: a complete five-target run, then three newly retained required archives
+    **extracted, mode-checked and executed on their own native targets**. Conditions **(c) and (d)
+    remain met at `50f6aa62`**: the correction reaches only the packaging script, two test-support
+    files and three advisory documents, none of which is executed by the fifteen CLI-host cases, the
+    six actual-command traces or the `ConversionRun` Adult cases — a bounded reachability conclusion
+    about this diff, not a standing exemption, and not binary equality. The **native archive gate does
+    not carry**, because the packaging writer is exactly what changed. **Policy L is untouched**: no
+    latency, neutrality, equality, non-regression, speedup, elapsed, rate or overhead inference, and
+    no retry is owed. No replacement run id, digest, archive value, reviewer result, merge result or
+    archival result is predicted here.
 - **Why:** the comparison was the right experiment and it was run honestly, in full, under
   a criterion fixed before any data was seen — and it did not pass. The two available
   alternatives were both worse than recording that plainly. Making a sub-5%
