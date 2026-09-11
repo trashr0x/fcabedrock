@@ -1,3 +1,5 @@
+using System.IO.Compression;
+
 namespace FcaBedrock.Cli.Tests;
 
 /// <summary>
@@ -61,10 +63,68 @@ public sealed class DistributionArchiveTests
 
         DistributionArchive.AssertValid(ArchivePath(root, "win-x64"), "win-x64");
 
-        // Both halves of the Windows rule, named rather than implied: the apphost claims no mode,
-        // and neither does an ordinary file - the two entries whose Unix counterparts differ.
-        Assert.Equal(0, ModeOf(ArchivePath(root, "win-x64"), "FcaBedrock.Cli.exe"));
-        Assert.Equal(0, ModeOf(ArchivePath(root, "win-x64"), "FcaBedrock.Cli.runtimeconfig.json"));
+        // Both halves of the Windows rule, named rather than implied: the apphost records nothing,
+        // and neither does an ordinary file - the two entries whose Unix counterparts differ. The
+        // RAW field rather than the shifted mode, because the whole field is the claim: shifting
+        // first would accept the writing host's own attribute byte in the low half.
+        Assert.Equal(0, ExternalAttributesOf(ArchivePath(root, "win-x64"), "FcaBedrock.Cli.exe"));
+        Assert.Equal(0, ExternalAttributesOf(ArchivePath(root, "win-x64"), "FcaBedrock.Cli.runtimeconfig.json"));
+    }
+
+    [Fact]
+    public void Archive_WhenAWindowsEntryCarriesLowAttributeBits_ThenTheSharedValidatorRejectsIt()
+    {
+        // The counterexample a shifted check cannot see, and the reason the assertion is on the raw
+        // field: 0x00000001 is the DOS read-only bit, exactly the kind of value a writer that
+        // assigned nothing would leave behind. It shifts to a Unix mode of zero, so an archive
+        // carrying it satisfied every metadata check while being different bytes than the contract
+        // asks for.
+        //
+        // It is put in front of DistributionArchive.AssertValid rather than a local assertion,
+        // because that helper is the one the gated self-contained smoke calls: a duplicate check
+        // here would prove nothing about the validator the delivery archive is actually held to.
+        using var root = TempDirectory.Create();
+        var archive = Path.Combine(root.Path, "fcabedrock-win-x64.zip");
+        WriteArchive(archive, externalAttributes: 0x00000001);
+
+        var failure = Record.Exception(() => DistributionArchive.AssertValid(archive, "win-x64"));
+
+        Assert.NotNull(failure);
+        Assert.Contains("0x00000001", failure.Message, StringComparison.Ordinal);
+        Assert.Contains("records none at all", failure.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Archive_WhenAWindowsEntryRecordsNothing_ThenTheSharedValidatorAcceptsIt()
+    {
+        // The same synthetic archive carrying the field the packaging script really writes, so the
+        // rejection above is known to be about the attribute bits rather than about the shape of a
+        // hand-built zip.
+        using var root = TempDirectory.Create();
+        var archive = Path.Combine(root.Path, "fcabedrock-win-x64.zip");
+        WriteArchive(archive, externalAttributes: 0);
+
+        DistributionArchive.AssertValid(archive, "win-x64");
+    }
+
+    // A two-entry `win-x64` archive built directly, so a value no producing path emits can still be
+    // put in front of the validator. The apphost carries the attributes under test; the ordinary
+    // file carries the script's own zero, which keeps the failing entry the named one.
+    private static void WriteArchive(string archivePath, int externalAttributes)
+    {
+        using var stream = File.Create(archivePath);
+        using var zip = new ZipArchive(stream, ZipArchiveMode.Create, leaveOpen: false);
+
+        Add(zip, DistributionArchive.ExecutableName("win-x64"), "an apphost", externalAttributes);
+        Add(zip, "FcaBedrock.Cli.runtimeconfig.json", "{}", externalAttributes: 0);
+
+        static void Add(ZipArchive zip, string name, string content, int externalAttributes)
+        {
+            var entry = zip.CreateEntry(name);
+            entry.ExternalAttributes = externalAttributes;
+            using var writer = new StreamWriter(entry.Open());
+            writer.Write(content);
+        }
     }
 
     [Fact]
@@ -106,12 +166,20 @@ public sealed class DistributionArchiveTests
     private static string ArchivePath(TempDirectory root, string rid) =>
         Path.Combine(root.Path, $"fcabedrock-{rid}.zip");
 
-    private static int ModeOf(string archivePath, string entryName)
+    /// <summary>The Unix mode one entry records — the high half of the external-attributes field.</summary>
+    private static int ModeOf(string archivePath, string entryName) =>
+        ExternalAttributesOf(archivePath, entryName) >>> 16;
+
+    /// <summary>
+    /// The whole external-attributes field one entry records, unshifted. What a Windows target
+    /// claims is this value, not the Unix half of it.
+    /// </summary>
+    private static int ExternalAttributesOf(string archivePath, string entryName)
     {
-        using var archive = System.IO.Compression.ZipFile.OpenRead(archivePath);
+        using var archive = ZipFile.OpenRead(archivePath);
         var entry = archive.GetEntry(entryName);
         Assert.NotNull(entry);
-        return entry.ExternalAttributes >>> 16;
+        return entry.ExternalAttributes;
     }
 
     private static async Task RunScriptAsync(string script, string rid, string outputRoot) =>

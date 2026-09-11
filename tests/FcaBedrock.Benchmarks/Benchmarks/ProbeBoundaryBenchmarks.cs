@@ -43,12 +43,18 @@ public class ProbeRetentionBoundaryBenchmark : ProbeBenchmark
     private static int LargestDomain { get; } =
         ProbeAccountingOracle.W16LargestDomain(CorpusTiers.Records(CorpusTier.Small));
 
+    // One below the largest domain truncates exactly the columns that reach it — which columns
+    // those are is a fact about the generator, so it is derived from the generator rather than
+    // assumed to be only the one the limit was chosen from.
+    private static IReadOnlyList<string> TruncatingBelow { get; } =
+        ProbeOracle.W16Truncating(CorpusTiers.Records(CorpusTier.Small), LargestDomain - 1);
+
     private protected override void Check(Diagnosed<SpecDocument> result)
     {
         var what = $"probe retention boundary (limit {LargestDomain + Offset}, largest domain {LargestDomain})";
         if (Offset < 0)
         {
-            ProbeOracle.RequireTruncated(result, W16Corpus.ColumnCount, what);
+            ProbeOracle.RequireTruncated(result, W16Corpus.ColumnCount, TruncatingBelow, what);
         }
         else
         {

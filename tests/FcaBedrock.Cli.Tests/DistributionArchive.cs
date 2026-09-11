@@ -55,8 +55,10 @@ internal static class DistributionArchive
     /// <b>Then the mode.</b> On a Linux or macOS distribution the apphost must be recorded
     /// <c>0100755</c> and every other entry left <c>0100644</c> — the second half matters as much as
     /// the first, because "make everything executable" would be a different and worse archive. On a
-    /// Windows distribution every entry must record <b>no</b> Unix mode at all: what a zip claims
-    /// about permissions belongs to the target it was built for, never to the machine that wrote it.
+    /// Windows distribution every entry's external-attributes field must be <b>exactly zero</b>:
+    /// what a zip claims about permissions belongs to the target it was built for, never to the
+    /// machine that wrote it, and checking only the Unix half of that field would let the writing
+    /// host's own attribute bits through in the other half.
     /// </para>
     /// </summary>
     internal static void AssertValid(string archivePath, string rid)
@@ -86,19 +88,26 @@ internal static class DistributionArchive
 
             Assert.True(seen.Add(name), $"'{name}' appears twice where case does not distinguish it.");
 
-            var mode = entry.ExternalAttributes >>> 16;
-            Assert.NotEqual(SymbolicLinkType, mode & FileTypeMask);
-
             if (!IsUnix(rid))
             {
+                // The RAW field, before any shift, because a Windows distribution records nothing
+                // at all here — which is a stronger claim than "no Unix mode". The mode lives in
+                // the high half; the low half is where a host's own attribute byte lands, so
+                // `0x00000001` shifts to zero and reads as mode-less while being different bytes,
+                // written by a different host, than the contract asks for. The packaging script
+                // assigns a literal 0 to every entry of a `win-*` target, so exact zero is the
+                // claim and anything else is a machine's default leaking into the archive.
                 Assert.True(
-                    mode == 0,
-                    $"'{name}' is recorded as 0{Convert.ToString(mode, 8)}, but a Windows distribution "
-                    + "claims no Unix mode. Every entry has to be given one explicitly, or the archive "
-                    + "records whatever default the host that wrote it supplied.");
+                    entry.ExternalAttributes == 0,
+                    $"'{name}' records external attributes 0x{entry.ExternalAttributes:X8}, but a Windows "
+                    + "distribution records none at all. Every entry has to be given the field explicitly, "
+                    + "or the archive keeps whatever default the host that wrote it supplied.");
 
                 continue;
             }
+
+            var mode = entry.ExternalAttributes >>> 16;
+            Assert.NotEqual(SymbolicLinkType, mode & FileTypeMask);
 
             var expected = string.Equals(name, executable, StringComparison.Ordinal)
                 ? ExecutableFileMode

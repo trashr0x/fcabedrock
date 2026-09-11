@@ -95,17 +95,30 @@ public class ProbeWideSmall : ProbeBenchmark
 /// <summary>
 /// The same source under a deliberately small retention limit: <c>n_seq</c> has one distinct value
 /// per record, so it must truncate, and the draft must say so rather than silently shrink.
+/// <para>
+/// It is not the only column that must: at a limit this small the skewed and wide-range numeric
+/// columns exceed it too, while the categorical and binary ones stay well inside. The expected set
+/// is derived from the generator rather than named by hand, so the case asserts the whole
+/// truncation shape instead of the one column that motivated it.
+/// </para>
 /// </summary>
 [BenchmarkCategory(BenchmarkCategories.Small)]
 [BenchmarkCorpus(CorpusCases.W16Family, CorpusTier.Small)]
 public class ProbeWideTruncatedSmall : ProbeBenchmark
 {
+    private const int RetentionLimit = 64;
+
     private protected override CorpusCase Corpus => CorpusCases.W16(CorpusTier.Small);
 
-    private protected override ProbeOptions Options => ProbeOptions.Create(valueRetentionLimit: 64);
+    private protected override ProbeOptions Options =>
+        ProbeOptions.Create(valueRetentionLimit: RetentionLimit);
+
+    private static IReadOnlyList<string> Truncating { get; } =
+        ProbeOracle.W16Truncating(CorpusTiers.Records(CorpusTier.Small), RetentionLimit);
 
     private protected override void Check(Diagnosed<SpecDocument> result) =>
-        ProbeOracle.RequireTruncated(result, W16Corpus.ColumnCount, "probe (w16-small, truncated)");
+        ProbeOracle.RequireTruncated(
+            result, W16Corpus.ColumnCount, Truncating, "probe (w16-small, truncated)");
 }
 
 /// <summary>
@@ -153,8 +166,11 @@ public class ProbeWideWorking : ProbeBenchmark
 
     private protected override ProbeOptions Options => ProbeOptions.Default;
 
+    private static IReadOnlyList<string> Truncating { get; } = ProbeOracle.W16Truncating(
+        CorpusTiers.Records(CorpusTier.Working), ProbeOptions.Default.ValueRetentionLimit);
+
     private protected override void Check(Diagnosed<SpecDocument> result) =>
-        ProbeOracle.RequireTruncated(result, W16Corpus.ColumnCount, "probe (w16-working)");
+        ProbeOracle.RequireTruncated(result, W16Corpus.ColumnCount, Truncating, "probe (w16-working)");
 }
 
 /// <summary>
@@ -180,8 +196,12 @@ public class ProbeTripleWorking : ProbeBenchmark
 
     private protected override ProbeOptions Options => ProbeOptions.Default;
 
+    private static IReadOnlyList<string> Truncating { get; } = ProbeOracle.T10Truncating(
+        CorpusTiers.Records(CorpusTier.Working), ProbeOptions.Default.ValueRetentionLimit);
+
     private protected override void Check(Diagnosed<SpecDocument> result) =>
-        ProbeOracle.RequireTruncated(result, expectedAttributes: 4, "probe (t10-unordered-working)");
+        ProbeOracle.RequireTruncated(
+            result, expectedAttributes: 4, Truncating, "probe (t10-unordered-working)");
 }
 
 /// <summary>A successful wide probe at 7.3M records. Opt-in.</summary>
@@ -195,8 +215,11 @@ public class ProbeWideScale7M : ProbeBenchmark
     // realistic scale outcome, and pretending otherwise would need a limit no user would set.
     private protected override ProbeOptions Options => ProbeOptions.Default;
 
+    private static IReadOnlyList<string> Truncating { get; } = ProbeOracle.W16Truncating(
+        CorpusTiers.Records(CorpusTier.Scale7M), ProbeOptions.Default.ValueRetentionLimit);
+
     private protected override void Check(Diagnosed<SpecDocument> result) =>
-        ProbeOracle.RequireTruncated(result, W16Corpus.ColumnCount, "probe (w16-scale7m)");
+        ProbeOracle.RequireTruncated(result, W16Corpus.ColumnCount, Truncating, "probe (w16-scale7m)");
 }
 
 /// <summary>
@@ -218,8 +241,11 @@ public class ProbeWideScale73M : ProbeBenchmark
 
     private protected override ProbeOptions Options => ProbeOptions.Default;
 
+    private static IReadOnlyList<string> Truncating { get; } = ProbeOracle.W16Truncating(
+        CorpusTiers.Records(CorpusTier.Scale73M), ProbeOptions.Default.ValueRetentionLimit);
+
     private protected override void Check(Diagnosed<SpecDocument> result) =>
-        ProbeOracle.RequireTruncated(result, W16Corpus.ColumnCount, "probe (w16-scale73m)");
+        ProbeOracle.RequireTruncated(result, W16Corpus.ColumnCount, Truncating, "probe (w16-scale73m)");
 }
 
 /// <summary>
@@ -239,6 +265,12 @@ public class ProbeTripleScale73M : ProbeBenchmark
 
     private protected override ProbeOptions Options => ProbeOptions.Default;
 
+    // Exactly one predicate: the mixed shape this case exists for is the assertion, so a draft in
+    // which the three bounded predicates also lost their tails is a different result, not this one.
+    private static IReadOnlyList<string> Truncating { get; } = ProbeOracle.T10Truncating(
+        CorpusTiers.Records(CorpusTier.Scale73M), ProbeOptions.Default.ValueRetentionLimit);
+
     private protected override void Check(Diagnosed<SpecDocument> result) =>
-        ProbeOracle.RequireTruncated(result, expectedAttributes: 4, "probe (t10-unordered-scale73m)");
+        ProbeOracle.RequireTruncated(
+            result, expectedAttributes: 4, Truncating, "probe (t10-unordered-scale73m)");
 }

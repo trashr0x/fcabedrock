@@ -63,30 +63,139 @@ internal static class AdultOracle
     }
 
     /// <summary>
-    /// Checks the plan's shape: the curated spec's attribute count, and that every one of them
-    /// produced at least one formal attribute.
+    /// Checks the plan's shape: the curated spec's attribute count, and that <b>every one of those
+    /// attributes</b> contributed at least one formal attribute of its own.
     /// <para>
     /// It is a weaker claim than a byte expectation and is meant to be. What it catches is the
     /// failure a digest comparison against a self-recorded baseline cannot: an attribute that
     /// silently resolved to nothing, which would make every later run agree with a wrong first one.
     /// </para>
+    /// <para>
+    /// <b>Why the total column count cannot make that claim.</b> Adult's nominal attributes
+    /// discover domains of a dozen values or more, so the total sits far above fourteen whatever
+    /// any single attribute did: one <see cref="PlannedAttribute"/> could carry an empty
+    /// <see cref="PlannedAttribute.CrossesByBin"/> and no
+    /// <see cref="PlannedAttribute.MissingFormalAttributeId"/> while the total stayed comfortably
+    /// over the threshold, and the check would pass on an attribute that emits nothing. So the
+    /// proof is per attribute, and it is <em>attributed</em>: every id an attribute claims must
+    /// resolve to a real column whose <see cref="FormalAttributeIdentity.AttributeName"/> is that
+    /// attribute's own, which is what stops another attribute's columns from standing in for a
+    /// missing one.
+    /// </para>
+    /// <para>
+    /// A recognized bin that crosses nothing is not a defect — the false pole of <c>sex</c> and of
+    /// <c>class</c> is exactly that — so what must be non-empty is the <em>union</em> over an
+    /// attribute's bins plus its missing column, never each bin.
+    /// </para>
     /// </summary>
     public static void RequirePlanShape(ConversionPlan plan, string what)
     {
         ArgumentNullException.ThrowIfNull(plan);
+        RequirePlanShape(plan.Attributes, plan.FormalAttributes, what);
+    }
 
-        if (plan.Attributes.Count != SpecAttributeCount)
+    /// <summary>
+    /// The same check over the two lists a plan carries, so the per-attribute proof can be
+    /// exercised directly against a hand-built shape: <see cref="ConversionPlan"/> is planner-owned
+    /// and cannot be constructed outside Core, and a check nothing can fail is not a check.
+    /// </summary>
+    public static void RequirePlanShape(
+        IReadOnlyList<PlannedAttribute> attributes,
+        IReadOnlyList<FormalAttribute> formalAttributes,
+        string what)
+    {
+        ArgumentNullException.ThrowIfNull(attributes);
+        ArgumentNullException.ThrowIfNull(formalAttributes);
+
+        if (attributes.Count != SpecAttributeCount)
         {
             throw new InvalidOperationException(
-                $"{what}: the plan carries {plan.Attributes.Count} attributes, expected {SpecAttributeCount}.");
+                $"{what}: the plan carries {attributes.Count} attributes, expected {SpecAttributeCount}.");
         }
 
-        if (plan.FormalAttributes.Count < SpecAttributeCount)
+        var byId = new Dictionary<int, FormalAttribute>(formalAttributes.Count);
+        foreach (var formal in formalAttributes)
+        {
+            if (!byId.TryAdd(formal.Id, formal))
+            {
+                throw new InvalidOperationException(
+                    $"{what}: formal attribute id {formal.Id} appears twice in the schema, so no "
+                    + "attribute's contribution can be attributed to it.");
+            }
+        }
+
+        // Ownership is tracked across attributes as well as within one: two spec attributes that
+        // both claimed the same column would mean one of them contributed nothing of its own.
+        var owner = new Dictionary<int, string>(formalAttributes.Count);
+
+        foreach (var attribute in attributes)
+        {
+            var contributed = Contributions(attribute);
+            if (contributed.Count == 0)
+            {
+                throw new InvalidOperationException(
+                    $"{what}: attribute '{attribute.Name}' crosses no formal attribute in any bin and "
+                    + "carries no missing column, so it resolved to nothing at all.");
+            }
+
+            foreach (var id in contributed)
+            {
+                if (!byId.TryGetValue(id, out var formal))
+                {
+                    throw new InvalidOperationException(
+                        $"{what}: attribute '{attribute.Name}' crosses formal attribute id {id}, which "
+                        + "the plan's schema does not contain.");
+                }
+
+                if (!string.Equals(formal.Identity.AttributeName, attribute.Name, StringComparison.Ordinal))
+                {
+                    throw new InvalidOperationException(
+                        $"{what}: attribute '{attribute.Name}' crosses formal attribute id {id}, which "
+                        + $"belongs to '{formal.Identity.AttributeName}'.");
+                }
+
+                if (!owner.TryAdd(id, attribute.Name))
+                {
+                    throw new InvalidOperationException(
+                        $"{what}: formal attribute id {id} is claimed by both '{owner[id]}' and "
+                        + $"'{attribute.Name}'.");
+                }
+            }
+        }
+
+        // An additional guard, not the proof: fourteen attributes each owning at least one
+        // distinct column cannot produce fewer than fourteen columns, so a smaller total means the
+        // schema and the emit pipelines disagree about what was planned.
+        if (formalAttributes.Count < SpecAttributeCount)
         {
             throw new InvalidOperationException(
-                $"{what}: {plan.FormalAttributes.Count} formal attributes for {SpecAttributeCount} spec "
+                $"{what}: {formalAttributes.Count} formal attributes for {SpecAttributeCount} spec "
                 + "attributes means at least one resolved to no column at all.");
         }
+    }
+
+    /// <summary>
+    /// The distinct formal-attribute ids one planned attribute claims: every id crossed by any of
+    /// its bins, plus its missing column when it authors one. Ordered, so a failure names the same
+    /// id whichever run produced it.
+    /// </summary>
+    private static SortedSet<int> Contributions(PlannedAttribute attribute)
+    {
+        var contributed = new SortedSet<int>();
+        foreach (var crosses in attribute.CrossesByBin.Values)
+        {
+            foreach (var id in crosses)
+            {
+                contributed.Add(id);
+            }
+        }
+
+        if (attribute.MissingFormalAttributeId is { } missingId)
+        {
+            contributed.Add(missingId);
+        }
+
+        return contributed;
     }
 
     /// <summary>
