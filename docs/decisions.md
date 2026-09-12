@@ -6154,6 +6154,68 @@ pinned here.
   obligation **at that revision only** — it re-attaches at every later release candidate and is not
   a standing exemption. The run detail, both evidence roots and the gates that remain are in
   **D-126**'s correction history and `docs/benchmarks.md`.
+- **Correction (2026-09-11) — an exhaustive whole-branch review found three oracle/validator
+  defects, and they are corrected.** After the `82e2ffea` documentation commit the operator
+  commissioned one further independent, read-only implementation audit — **exhaustive** rather than
+  risk-based, covering every changed path individually — and at `d4b310ad` it returned **`BLOCK`**.
+  None of the three findings changes what this entry decided; all three are the code being brought
+  to it, and the decisions above stand exactly as written.
+  1. **The Adult plan-shape oracle did not prove its stated per-attribute guarantee.**
+     `AdultOracle.RequirePlanShape` asserted 14 planned attributes plus an aggregate
+     `FormalAttributes.Count >= 14`. Adult's nominal and manual-cut attributes each produce several
+     columns, so one `PlannedAttribute` could carry an empty `CrossesByBin` and no
+     `MissingFormalAttributeId` while the aggregate stayed far above 14 — precisely the silently
+     empty attribute the helper claimed to catch, and a self-confirming check of the kind this
+     entry's oracle-independence rule forbids. It now proves, **per planned attribute**, that the
+     union of its `CrossesByBin` ids with its `MissingFormalAttributeId` is non-empty, that every
+     claimed id resolves in the plan's schema, that the resolved column's `Identity.AttributeName`
+     equals that attribute's own name, and that no column is claimed by two attributes; the
+     aggregate count survives only as an explicitly labelled secondary guard. A recognized bin that
+     crosses nothing — a dichotomic false pole — remains legitimate, because the rule is over each
+     attribute's **union**, never over each bin.
+  2. **The probe outcome oracle was existential where the contract is per attribute and exact.**
+     D-108 is per attribute: an untruncated non-all-missing attribute authors its complete non-empty
+     domain, and a truncated one authors its retained prefix plus `unknown_value_policy =
+     "include"`. The oracle accepted a *complete* draft when **one** attribute carried a domain,
+     accepted a *truncated* draft when **one** attribute carried its recovery, and accepted an
+     expected `ProbeLimitExceeded` alongside unrelated blocking diagnostics — so a benchmark row
+     could be published for the wrong semantic outcome. It now requires every attribute's complete
+     non-empty domain subject only to an explicitly supplied all-missing exception set, requires the
+     observed truncated set to **equal** the expected one with every member carrying its recovery
+     and no unlisted attribute carrying one, and requires a guard breach to be **exactly one**
+     `ProbeLimitExceeded` at the production `Error` severity with no draft. The expected truncated
+     sets are derived from the **frozen corpus generator** at D-108's strictly-greater boundary,
+     never from the prober under measurement, and every check still runs in `[IterationCleanup]`,
+     outside the measured interval.
+  3. **The Windows archive validator shifted before it validated.**
+     `DistributionArchive.AssertValid` computed `entry.ExternalAttributes >>> 16` and required the
+     shifted value to be zero, so a Windows entry carrying a raw `0x00000001` — the DOS read-only
+     bit — shifted to zero and passed, although the 2026-09-10 correction above states the contract
+     as **exact raw zero on every entry of a Windows distribution**. The `win-*` branch now compares
+     the **raw** field before any shift and renders the offending value as `0x{…:X8}`; the shifted
+     mode and symbolic-link type handling stay on the Unix path, which is unchanged. Archive
+     *production* was already correct — `eng/publish-selfcontained.ps1` writes literal `0` for every
+     non-Unix entry — so no delivered archive was ever affected, and the retained `c4ceb8e2`
+     artifacts independently satisfy the corrected rule.
+
+  Six further findings were classified **nonblocking** and deliberately left untouched, so the
+  packet is exactly the blocking fix. The correction took **two stages**: a first packet closed 1
+  and 3 and the three concrete examples of 2, and a targeted review of it returned `BLOCK` again on
+  two residual findings — an all-missing exemption that `continue`d past the unexpected-recovery
+  check, and a guard predicate that would accept a duplicated or wrong-severity breach the producer
+  cannot emit; a bounded revision closed both, and a fresh reviewer then returned
+  `THUMBS UP — B-002-R1 and B-002-R2 are corrected; B-001, B-002, and B-003 are closed with no new
+  blocker.` The earlier `d4b310ad` review is **not** relabelled as green and the two-stage history
+  is retained. The packet is committed as signed **`3b2e4a80`** (`m8 review fixes`, sole parent
+  `d4b310ad`, tree `0bc9713e…`): **6 modified and 2 added paths, `+1294/−60`**, entirely within
+  `tests/FcaBedrock.Benchmarks`, `tests/FcaBedrock.Benchmarks.Tests` and
+  `tests/FcaBedrock.Cli.Tests`. **No production source, spec text, diagnostic, severity, registry
+  entry, public API, benchmark meaning, measured interval, job, category, corpus byte, packaging
+  script, workflow or output byte changes**; the registry stays **82**, and no earlier measurement is
+  invalidated — these are validators, and strengthening a validator changes what a run *proves*, not
+  what it *does*. What it does change is that no earlier benchmark, Adult or native run executed the
+  corrected checks, which is why the probe, Adult and native/archive gates were rerun at
+  `3b2e4a80`; that record is in **D-126**'s correction history and `docs/benchmarks.md`.
 
 ---
 
@@ -7080,6 +7142,108 @@ pinned here.
       result is predicted here. One operational limitation is still carried forward rather than
       closed: the local WSL host cannot run the packaging tests, because `pwsh` is absent there, so
       hosted CI remains the only place they execute off Windows — never a local pass.
+  - *The exhaustive review's correction, and the three gates at `3b2e4a80` (2026-09-11/12) — the
+    live gate truth moves to that commit.* The documentation packet the previous bullet left
+    outstanding was committed at **`d4b310ad`** (`m8 docs (final adult acceptance)`, sole parent
+    `82e2ffea`, exactly the same three advisory Markdown files, `+279/−22`). The operator then
+    commissioned one further independent **exhaustive** whole-branch implementation audit rather
+    than accept the candidate on the prior risk-based review, and it returned **`BLOCK`** on three
+    oracle/validation defects — recorded, with their corrections, in **D-124**'s 2026-09-11
+    correction. The bounded two-stage packet is committed as signed **`3b2e4a80`** and closed by
+    `THUMBS UP — B-002-R1 and B-002-R2 are corrected; B-001, B-002, and B-003 are closed with no new
+    blocker.` Because the corrected validators had never executed anywhere, three gates were rerun
+    at that exact commit. **None of the three is a performance measurement, and none reopens
+    Policy L.**
+    - **Probe — the accepted offline replacement.** A first attempt is **non-admissible**: a
+      `dotnet test --help` invocation implicitly contacted NuGet and downloaded a workload
+      advertising manifest **before** the offline evidence protocol existed. It created no evidence
+      root and ran no gate, and it is recorded as that — not as a failed run, a flake, or superseded
+      evidence. The accepted replacement drove the **corrected committed oracle** offline, with the
+      whole solution at **4,623 total / 0 failed / 20 skipped** and the Small `Dry` smoke at
+      **exactly 48** cases, and the five published probe rows — `ProbeWideWorking`,
+      `ProbeTripleWorking`, `ProbeWideScale7M`, `ProbeWideScale73M` and `ProbeTripleScale73M` — each
+      completed successfully **once**, at its registered job on its actual prepared corpus, with the
+      corrected validation passing after every completed measured iteration. That validation checks
+      complete non-empty **per-attribute** domains subject only to an explicit all-missing exception
+      set, exact `include`-carrying sets for truncation, and only `ProbeLimitExceeded` for a guard
+      breach; the expected sets come from the frozen corpus generator rather than from the product
+      result. Root `D:\tmp\fcabedrock-m8-g15-post-review-probe-3b2e4a80-offline`, with
+      `MANIFEST-SHA256.txt` SHA-256
+      `B61FDA0A72806D2A8AB12B345463F3E65433F66E6E61B2C9CE155A14DFD07D33`, `PROTOCOL.md`
+      `83A878E3FB9A1AA5B222EF1E8B09A45821B08C144C9C1DD1454F9C3FD05AED23` and `RESULT.md`
+      `547568BDFB21F58341C5B7C14780AF00966D678E0CD537DADFC5FAE73CB3EE8F`. This is
+      correctness/validation evidence — **not** a probe-default adoption and **not** a performance
+      comparison; the five published session-A probe timings keep their own provenance and are
+      neither replaced nor re-attributed.
+    - **Adult — the standing three-case acceptance, met again at the correction candidate.** One
+      offline measured invocation ran exactly `AdultConvertCxt`, `AdultConvertDat` and
+      `AdultSourceDrain` as `External`/UCI Adult cases under the registered `fresh-iteration` job,
+      and all three passed. The corrected `AdultOracle.RequirePlanShape` proof executes **once per
+      conversion case in `[GlobalSetup]`**, after the immutable plan is built and **before any
+      measurement**; that placement is longstanding and already adjudicated, not something this
+      correction introduced, and it is deliberately **not** claimed to run after every measured
+      iteration. What does run after every completed measured iteration, after disposal, is
+      `[IterationCleanup]`: clean diagnostics, an independently measured object/line count,
+      intra-run byte determinism and artifact cleanup for the two conversions, and its own
+      independent expectation for the drain. Root
+      `D:\tmp\fcabedrock-m8-g15-post-review-adult-3b2e4a80-offline`, with `MANIFEST-SHA256.txt`
+      SHA-256 `D38D4CCF33EAC0F802B7A20C67DC800C95BF75FAA1FC58EAA46DC0A0BAA8C4CB`, `PROTOCOL.md`
+      `78BEDC9E6D2659BB140D591C6CBF5513C36A4CCA71D55F832DFFD18B9B8DAB52` and `RESULT.md`
+      `5D07825EC02285171904887A1326DEEADA8D2E6F6B89FE76BE3DF0243C17FBCB`. The accepted `82e2ffea`
+      gate is preserved as historical evidence **at that revision**; the two runs are compared
+      nowhere, and no performance conclusion is derived from either's timings.
+    - **Native/archive — run `34685708360` at `3b2e4a80`.** One ordinary non-force push
+      fast-forwarded only `origin/agent/m8-scaling-reset` from `c4ceb8e2` to `3b2e4a80`, and run
+      [`34685708360`](https://github.com/trashr0x/fcabedrock/actions/runs/34685708360), attempt 1,
+      event `push`, branch `agent/m8-scaling-reset`, head `3b2e4a80` — **the only run at that
+      SHA** — concluded `success` on Windows x64, Linux x64, macOS ARM64, Linux ARM64 and Windows
+      ARM64. All twelve named common steps passed on every target; `Upload the tested archive`
+      passed on the three required targets and is the **only** declared step skipped on the two
+      optional ones. Each target reported the whole solution at **4,623 / 0**, at the exact skip
+      spread **16 / 12 / 11 / 13 / 17** — unchanged from `c4ceb8e2`, so all 37 added cases executed
+      everywhere — plus **25 / 0** resident-layout witnesses, exactly **48** Small `Dry` cases, and
+      both gated smokes **1 / 0**. Routine CI admitted no `Working`, `Scale` or `External` case; the
+      only `Adult` symbols anywhere are the checked-in mini-Adult v2-compat fixtures, which are not
+      the acquired UCI corpus. All **six** current `DistributionArchiveTests` cases ran on every
+      target, including the new synthetic Windows low-attribute-bit negative — it has no skip path,
+      appears in no target's complete skip enumeration, and drives the **shared** validator the
+      self-contained smoke calls — so the exact-raw-zero rule is established by execution rather
+      than inferred from a green aggregate. The three required archives were downloaded, retained
+      and digest-matched against GitHub's own server digests, are path-safe in both layers and
+      self-contained, and the exact smoke-tested archive path is the uploaded path. **Every one of
+      the 217 win-x64 inner entries records raw `ExternalAttributes = 0x00000000`**; both Unix
+      apphosts record `0x81ED0000` / `0100755` with every other Unix entry `0x81A40000` / `0100644`;
+      and there is **no link entry** in any of the three. Root
+      `D:\tmp\fcabedrock-m8-g15-post-review-native-gate-3b2e4a80-run-34685708360`, **684 files /
+      480,209,898 bytes**, with `INVENTORY.tsv`
+      `A5939E0E4C253D2B2DDBDE92CBD1D1DDC6A87FF3F770ADCC6CE0A5458D64A197`, `MANIFEST-SHA256.txt`
+      `1925BE0BD8D9BF04520A7DF1773A45195E6C5CD3A46CA8407E67F614F61E4E38` and `MANIFEST.md`
+      `C820013F409F41297B73EA5A8BFEE77B534BD62A5A111C9BD0133D81309D2512`. The hosted UTC bounds are
+      **provenance only**: no elapsed, throughput, Policy-L, merge, release or completion conclusion
+      follows from a hosted correctness/delivery run. The three disclosed corrections to the
+      **post-download inspection script** are reader defects, rerun locally against unchanged
+      retained bytes, with nothing rerun on GitHub and no archive repaired; they are detailed in
+      `docs/benchmarks.md`.
+    - **What carries, and what does not.** Earlier measured performance, trace, Policy-L, native and
+      Adult evidence keeps **only** its own recorded revision and its own bounded carriage:
+      conditions (c) and (d) remain met at `50f6aa62`; the component measurements and the
+      **64 MiB / fan-in-16** tuning conclusion stand; `c4ceb8e2`'s native/archive and
+      implementation-review gates and `82e2ffea`'s Adult gate remain met **there**. None of them is
+      relabelled as a run at `3b2e4a80`. **Policy L is untouched**: the incremental publication
+      latency remains **inconclusive at the pre-registered 5% bound**, no retry is owed, and no
+      elapsed, rate, records/s, MiB/s, throughput, overhead, speedup, scaling, neutrality, equality
+      or non-regression reading is published or implied from any of these three gates.
+    - **Remaining gates, none waived.** Review and curation of this documentation packet and the
+      operator's commit of it; explicit final candidate acceptance and an explicitly authorized
+      local merge; the main-push CI at the merge revision; and the separate private GitLab archival
+      gate. A later docs-only commit may carry the exact `3b2e4a80` evidence across it **only**
+      through a proven diff of exactly `docs/benchmarks.md`, `docs/decisions.md` and
+      `docs/roadmap.md` — the same exact-diff reasoning, about that exact diff and never a standing
+      exemption. **M8 remains in progress until all of them complete**, and no commit SHA, merge
+      result, main-CI result, archival result or release result is predicted here. One operational
+      limitation is still carried forward rather than closed: the local WSL host cannot run the
+      packaging tests, because `pwsh` is absent there, so hosted CI remains the only place they
+      execute off Windows — never a local pass.
 - **Why:** the comparison was the right experiment and it was run honestly, in full, under
   a criterion fixed before any data was seen — and it did not pass. The two available
   alternatives were both worse than recording that plainly. Making a sub-5%

@@ -48,6 +48,26 @@ The architecture and its rationale are `decisions.md` **D-124**; how to run the 
 > did not close the gate. See
 > [Selection, and what routine CI proves](#selection-and-what-routine-ci-proves) and
 > [The acceptance run at the documentation head](#the-acceptance-run-at-the-documentation-head-2026-09-10-windows-x64-82e2ffea).
+>
+> **An independent exhaustive whole-branch review then blocked the candidate at `d4b310ad`, and its
+> correction is committed at `3b2e4a80`.** Three oracle/validation defects were found — an Adult
+> plan-shape check that proved only an aggregate column count, a probe outcome oracle that accepted
+> existential rather than per-attribute evidence, and a Windows archive validator that shifted
+> `ExternalAttributes` before testing it — and all three are corrected in tests and oracles only,
+> with no production, spec, diagnostic, packaging, workflow or output-byte change. **The corrected
+> probe, Adult and native/archive gates then all passed at that exact commit**, each with its own
+> retained evidence identity: see [The review correction](#the-review-correction-3b2e4a80),
+> [The acceptance run at the correction candidate](#the-acceptance-run-at-the-correction-candidate-2026-09-11-windows-x64-3b2e4a80)
+> and [Run 34685708360](#run-34685708360-the-gate-at-the-correction-candidate). Every earlier gate
+> keeps its own revision — `c4ceb8e2` for the five-target native matrix, the three accepted archives
+> and the fresh implementation review, `82e2ffea` for the Adult acceptance, `50f6aa62` for D-126
+> conditions (c) and (d) — and none of them is relabelled to `3b2e4a80`. **Policy L is untouched**:
+> the incremental publication latency stays inconclusive at its pre-registered 5% bound, no retry is
+> owed, and none of the three gates publishes or implies an elapsed, rate, throughput, overhead,
+> speedup, neutrality or non-regression figure. **M8 is not yet accepted, merged, main-CI-verified,
+> GitLab-archived, released or complete**; what remains is documentation review and the operator's
+> commit, explicit candidate acceptance and an authorized local merge, the main-push CI at the merge
+> revision, and the separate private GitLab archival gate.
 
 ## What a number here means
 
@@ -256,9 +276,9 @@ state, and — per **D-126** — no cross-session elapsed comparison is availabl
 
 The native, archive and implementation-review gates closed at `c4ceb8e2`, and the documentation
 reconciliation that records them was committed at **`82e2ffea`** — sole parent `c4ceb8e2`, three
-advisory Markdown files, `+342/−34`, nothing else. That is the revision submitted for acceptance, so
-the blocking obligation attached there. It was run twice at that exact candidate, and only the second
-run closes the gate.
+advisory Markdown files, `+342/−34`, nothing else. That was the revision then submitted for
+acceptance, so the blocking obligation attached there. It was run twice at that exact candidate, and
+only the second run closes the gate.
 
 **The first attempt is preserved, and it is not the accepted run.** All three cases executed and
 validated at `82e2ffea` — native exit 0, three cases completed, no `NA` case, no oracle, validation
@@ -338,6 +358,96 @@ attempt's root and every earlier retained evidence root were re-verified unchang
 for that candidate, not a standing exemption: the obligation re-attaches at every later release
 candidate, and no future code, build, test or workflow change inherits it.
 
+### The acceptance run at the correction candidate (2026-09-11, Windows x64, `3b2e4a80`)
+
+The exhaustive whole-branch review produced a new candidate — the correction packet committed at
+**`3b2e4a80`** ([The review correction](#the-review-correction-3b2e4a80)) — and that packet changes
+`AdultOracle` itself, so the standing obligation re-attached there and was met again. The `82e2ffea`
+run above is **not** relabelled, replaced or re-attributed, and the two are compared nowhere.
+
+Input identity was verified first and nothing was acquired: `prepare adult` was never invoked and UCI
+was never contacted. `adult.csv` **3,974,305 bytes**, SHA-256
+`5b00264637dbfec36bdeaab5676b0b309ff9eb788d63554ca0a249491c86603d`; `adult.toml` 3,006 B, SHA-256
+`763661267b020be7da474dd35009359a6f56061cacc3da7ac6681e6c6ebce0a5`; catalog 355 B, SHA-256
+`43448fede549b8b506b5dfa058f7faf60cc592a09a8519f7390c5cecb3af8e3f`, reading `tier = external`,
+`generator_revision = 2`, `records = 32562`, `columns = 15`. The retained spec is **byte-identical to
+the committed `AdultSpecs.Declared`**, extracted from source independently of the catalog; the data
+matched the **source-pinned** identity independently of the catalog's own recorded digest; and the
+record count was counted independently at **32,562**, the published file's doubled final newline
+included. The Release `--no-restore` build exited 0 with zero warnings and zero errors, and every
+product assembly the run exercised embeds
+`1.0.0+3b2e4a801f5e37286bb2be110184e4f86ce11c6d`.
+
+One measured invocation followed — native exit **0**, no retry, no `--job` and no filter change —
+running exactly `AdultConvertCxt`, `AdultConvertDat` and `AdultSourceDrain` and no fourth case, under
+the registered `fresh-iteration` job (`InvocationCount=1`, `RunStrategy=Throughput`,
+`UnrollFactor=1`), with the launcher reporting `3 benchmark case(s) completed with no build,
+execution, or validation failure.` A non-executing selection listing first showed exactly those three
+names, with no `Small`, `Working`, `Scale`, mini-Adult or unrelated surface leakage.
+
+**Where each proof runs, stated exactly.** The corrected `AdultOracle.RequirePlanShape` — the
+per-planned-attribute, attributed, cross-attribute-ownership proof — executes **once per conversion
+case in `[GlobalSetup]`**, after the immutable plan is built and **before any measurement**. That
+placement is longstanding and already adjudicated rather than something this correction introduced,
+and this page does **not** claim the shape proof runs after every measured iteration. Had it thrown,
+`GlobalSetup` would have failed and the case would carry no measurement at all, so both conversion
+cases producing complete measurements is what establishes that it executed and passed. What runs
+**after every completed measured iteration, after disposal**, is `[IterationCleanup]`: clean
+diagnostics, an independently measured object/line count (32,562 objects, and the derived CXT line
+count), intra-run byte determinism against the first completed iteration, and artifact cleanup — and,
+for `AdultSourceDrain`, its own independent drain expectation. The executed benchmark assembly was
+reconciled against this commit's host build method body by method body: 1,561 IL methods on each
+side, one combined map digest, zero differing entries.
+
+| Case | Measured N | Mean | StdDev | Records | Allocated | GC 0/1/2 |
+| --- | ---: | ---: | ---: | ---: | ---: | --- |
+| `adult emit + cxt export` | 13 | 101,338,469.230769 ns | 1,561,321.78745266 ns | 32,562 | 150,943,216 B | 9 / 3 / 1 |
+| `adult emit + dat export` | 14 | 49,556,628.5714286 ns | 867,151.390764897 ns | 32,562 | 70,499,504 B | 4 / 0 / 0 |
+| `wide source drain` (Adult) | 13 | 12,857,546.1538462 ns | 172,027.108403417 ns | 32,562 | 22,882,960 B | 1 / 0 / 0 |
+
+All three report `Records = 32,562`, `InputMiB = 3.8`, .NET 10.0.12, `X64 RyuJIT x86-64-v3`, RELEASE
+and Concurrent Workstation GC under BenchmarkDotNet 0.15.8, parsed from the generated full-JSON and
+CSV reports rather than from the console's closing sentence. **These are the raw result of that one
+measured session and nothing else.** They are compared with the `82e2ffea` runs nowhere, with session
+H nowhere, and with the controlled baseline nowhere, and **no** delta, rate, records/s, MiB/s,
+throughput, speedup, overhead, scaling, neutrality, equality or non-regression reading is derived
+from them — this is an acceptance/correctness run, and no performance conclusion follows from its
+timings. **Policy L is untouched.** BenchmarkDotNet's `MinIterationTime` advisory fired, and its
+ordinary outlier policy removed 3 measurements from the CXT case and 2 from the drain: expected for
+millisecond-scale operations under the one-invocation-per-iteration job D-124's per-iteration
+validation contract requires, recorded as advisories, neither hidden nor promoted into failures.
+
+**The restore was provably local-only.** An `offline-nuget.config` cleared package sources *and*
+audit sources and added only `C:\Program Files\dotnet\library-packs` and an empty directory inside
+the evidence root. All 100 solution restore records and all 50 generated-project records name exactly
+those two filesystem sources and that one config, with `enableAudit = false`, `"success": true` and
+empty logs everywhere, zero remote sources, and no `http(s)://` occurrence beyond the MSBuild XML
+namespace; every package resolved from pre-existing content, none created or modified in the run
+window. The machine's NuGet HTTP cache, global packages tree, `%APPDATA%\NuGet`, SDK `metadata`,
+`sdk-manifests` and `%USERPROFILE%\.dotnet` — the workload advertising sentinels included — are
+byte-identical to the pre-campaign baseline at every one of the six comparison phases, and the
+isolated cache and the empty source stayed empty. `output` and `spool` are both empty by their owning
+cleanup contracts, with no manual deletion.
+
+Evidence root `D:\tmp\fcabedrock-m8-g15-post-review-adult-3b2e4a80-offline` — **288 files /
+49,943,651 bytes**, frozen — with `MANIFEST-SHA256.txt` SHA-256
+`D38D4CCF33EAC0F802B7A20C67DC800C95BF75FAA1FC58EAA46DC0A0BAA8C4CB`, `PROTOCOL.md`
+`78BEDC9E6D2659BB140D591C6CBF5513C36A4CCA71D55F832DFFD18B9B8DAB52` and `RESULT.md`
+`5D07825EC02285171904887A1326DEEADA8D2E6F6B89FE76BE3DF0243C17FBCB`. Four acquisition disclosures are
+recorded there rather than smoothed away: that session captured **no pre-restore inventory** of the
+solution restore records of its own, so the predecessor used for the 40 un-rewritten
+`.nuget.g.props`/`.g.targets` files is the probe campaign's independently frozen record set at the
+**same** commit, which all 40 matched in digest *and* mtime; one intermediate comparison keyed by
+file name was invalid and was corrected rather than reported as a finding; BenchmarkDotNet
+regenerated into `FcaBedrock.Benchmarks-1`, overwriting an ignored generated-project working copy,
+with nothing deleted and no evidence root touched; and two abbreviated digests are mis-typed in the
+frozen `RESULT.md`'s prior-root line, whose authoritative full values are the ones recorded here and
+in that root's `PROTOCOL.md`.
+
+**This closes the standing obligation at `3b2e4a80` and nowhere else.** It is a *correctness* result
+for that candidate, not a standing exemption: the obligation re-attaches at every later release
+candidate, and no future code, build, test or workflow change inherits it.
+
 ## Native delivery
 
 The first complete pass of `.github/workflows/ci.yml`, and the first artifacts M8 has produced.
@@ -350,6 +460,7 @@ The first complete pass of `.github/workflows/ci.yml`, and the first artifacts M
 | [`34392695933`](https://github.com/trashr0x/fcabedrock/actions/runs/34392695933) | `03352da7` | **success** | the documentation head's own five-target run; same five green jobs, same three archives produced and retained — and the same unusable-apphost defect in the Linux and macOS ones |
 | [`34468088854`](https://github.com/trashr0x/fcabedrock/actions/runs/34468088854) | `163f1c49` | **failure** | the corrected head's gate; both Windows targets green, all three Unix targets failed at `Test (Release)` on the *new* Windows-archive assertion. No Unix archive was built and nothing was retained — see [Run 34468088854](#run-34468088854-the-windows-half-of-the-same-rule) |
 | [`34483863717`](https://github.com/trashr0x/fcabedrock/actions/runs/34483863717) | `c4ceb8e2` | **success** | the host-independent writer's gate; **all five targets green, all three required archives produced, retained, digest-matched and mode-correct** — the first archives that satisfy the delivery gate — see [Run 34483863717](#run-34483863717-the-gate-opens) |
+| [`34685708360`](https://github.com/trashr0x/fcabedrock/actions/runs/34685708360) | `3b2e4a80` | **success** | the review correction's gate; **all five targets green at 4,623 / 0, all three required archives produced, retained, digest-matched and mode-correct**, with the new raw-attribute-bit negative executing on every target — see [Run 34685708360](#run-34685708360-the-gate-at-the-correction-candidate) |
 
 No failed run is relabelled, and no successful run is. Runs `34289256438` and
 `34392695933` executed every job and every step successfully at their own revisions, and that is
@@ -633,6 +744,166 @@ documentation head `82e2ffea`** — see
 Operator acceptance and merge, the main-push CI at the merge revision, and the separate GitLab
 archival gate all remain open (**D-126**).
 
+### Run 34685708360: the gate at the correction candidate
+
+The exhaustive review's correction was committed at **`3b2e4a80`**
+([The review correction](#the-review-correction-3b2e4a80)); one ordinary **non-force** push
+fast-forwarded `origin/agent/m8-scaling-reset` from `c4ceb8e2` to `3b2e4a80` and changed no other
+ref; and **run
+[`34685708360`](https://github.com/trashr0x/fcabedrock/actions/runs/34685708360), attempt 1, event
+`push`, branch `agent/m8-scaling-reset`, head `3b2e4a801f5e37286bb2be110184e4f86ce11c6d`, concluded
+`success` on all five native targets.** It is the **only** run at that SHA, repository-wide, and it
+was never rerun, cancelled or manually dispatched.
+
+| Job | Runner label | Declared = actual RID | Job id | Conclusion |
+| --- | --- | --- | --- | --- |
+| windows x64 (required) | `windows-2025` | win-x64 | 103532220041 | **success** |
+| linux x64 (required) | `ubuntu-24.04` | linux-x64 | 103532220061 | **success** |
+| macos arm64 (required) | `macos-15` | osx-arm64 | 103532219946 | **success** |
+| linux arm64 (optional) | `ubuntu-24.04-arm` | linux-arm64 | 103532220056 | **success** |
+| windows arm64 (optional) | `windows-11-arm` | win-arm64 | 103532220026 | **success** |
+
+Every job's actual RID equals its declared RID and its process architecture equals its OS
+architecture, so no job ran under emulation and the workflow's own assertion passed on all five; SDK
+10.0.401 and host runtime 10.0.12 everywhere. All twelve named common steps — checkout, .NET setup,
+the environment record, the process-architecture assertion, restore, the Release build (0 warnings,
+0 errors everywhere), the resident-layout witnesses, `Test (Release)`, corpus preparation, the Small
+`Dry` smoke, the global-tool smoke and the self-contained smoke — **reached and passed on every
+target**. `Upload the tested archive` passed on the three required targets and is the **only**
+declared step skipped on the two optional ARM64 ones, under `if: matrix.required`. No `##[error]`
+line appears in any job log; the inherited Node.js-20 deprecation warning and the `windows-11-arm`
+image-migration notice are recorded as what they are and absorbed into nothing.
+
+| Anchor | win x64 | linux x64 | macos arm64 | linux arm64 | win arm64 |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Whole solution (total / failed) | **4,623 / 0** | **4,623 / 0** | **4,623 / 0** | **4,623 / 0** | **4,623 / 0** |
+| Skipped (platform guards) | 16 | 12 | 11 | 13 | 17 |
+| Resident-layout witnesses | 25 / 0 | 25 / 0 | 25 / 0 | 25 / 0 | 25 / 0 |
+| Small `Dry` benchmarks admitted | 48 | 48 | 48 | 48 | 48 |
+| Global-tool smoke | 1 / 0 | 1 / 0 | 1 / 0 | 1 / 0 | 1 / 0 |
+| Self-contained smoke | 1 / 0 | 1 / 0 | 1 / 0 | 1 / 0 | 1 / 0 |
+
+**The total was derived from source before the push, not read off afterwards.** `c4ceb8e2` measured
+4,586 / 0 at the skip spread 16 / 12 / 11 / 13 / 17; the correction adds 26 `ProbeOracleTests` cases,
+9 `AdultOracleTests` cases and 2 `DistributionArchiveTests` cases, none of them platform-gated, so
+4,586 + 37 = **4,623** was the pre-push expectation. It was met on every target with the **skip
+spread unchanged**, which is what proves all 37 added cases executed everywhere rather than being
+skipped somewhere.
+
+Tier gating held: `Scale` and `External` appear in no job log; `Working` appears only in the runner's
+own `Working directory is …` line, never as a category; and the only `Adult` symbols anywhere are
+`MiniConvertCxtBenchmark.Adult` and `MiniConvertDatBenchmark.Adult` — the checked-in **mini-adult
+v2-compat fixtures**, not the acquired UCI Adult corpus. Routine CI still proves exactly what it
+selected, and claims nothing about Adult.
+
+**The correction-specific proof is established by execution, not inferred from a green aggregate.**
+The new negative,
+`DistributionArchiveTests.Archive_WhenAWindowsEntryCarriesLowAttributeBits_ThenTheSharedValidatorRejectsIt`,
+builds a synthetic `win-x64` archive whose entry carries raw `ExternalAttributes = 0x00000001` and
+puts it in front of **`DistributionArchive.AssertValid`** — the same helper the gated self-contained
+smoke calls, deliberately not a local duplicate — asserting that the failure names `0x00000001`. It
+has **no skip path at all**: it drives no script, so unlike the four `pwsh`-driven cases it cannot
+skip on any host. The runner enumerates every skipped test by name, the enumerated lists equal the
+reported skip totals exactly on all five targets, and **no `DistributionArchiveTests` case appears in
+any of them**. With `failed: 0` everywhere, all **six** current cases in that class — the two Unix
+theory cases, the Windows writer case, the extraction byte-identity case, and both new synthetic
+validator cases — ran and passed on every target. The validator's Windows branch compares the **raw**
+field before any shift and then `continue`s, so the shifted path is unreachable for a `win-*` target;
+the producing side is unchanged and still writes literal `0` for every non-Unix entry.
+
+**Smoke-to-upload identity.** On each required target the gated smoke ran with
+`FCABEDROCK_SELFCONTAINED_OUTPUT = <workspace>/artifacts/publish`, drove the real
+`eng/publish-selfcontained.ps1` for the running RID, called `DistributionArchive.AssertValid` on the
+archive **that script produced**, extracted that exact archive, and made every behavioural check
+against the extracted apphost — `--version`, a real `convert --format both` whose bytes are compared
+against the same conversion performed in-process, manifest presence, a `de-DE` locale spec through
+ICU, a refused convert that exits non-zero and leaves no residue, and a name-for-name comparison of
+the publish folder against the extracted copy; on Unix `AssertExtractedApphost` requires
+`UserExecute`. The workflow then uploaded `artifacts/publish/fcabedrock-<rid>.zip` with
+`if-no-files-found: error`, and each job's upload log records the artifact id and final size the
+artifact API also reports. **The bytes retained below are the bytes that smoke tested.**
+
+#### The three required archives at `3b2e4a80` — retained, digest-matched, and mode-correct
+
+Durable copies:
+`D:\tmp\fcabedrock-m8-g15-post-review-native-gate-3b2e4a80-run-34685708360\`, **684 files /
+480,209,898 bytes** (operator-retained evidence on the machine described above, not a portable link),
+holding this run's raw metadata, all five complete job logs, the original outer artifact ZIPs, the
+unchanged inner archives, the safely extracted payloads and the two-layer inventories. Its seals are
+`INVENTORY.tsv` SHA-256 `A5939E0E4C253D2B2DDBDE92CBD1D1DDC6A87FF3F770ADCC6CE0A5458D64A197`,
+`MANIFEST-SHA256.txt` SHA-256 `1925BE0BD8D9BF04520A7DF1773A45195E6C5CD3A46CA8407E67F614F61E4E38`
+and `MANIFEST.md` SHA-256 `C820013F409F41297B73EA5A8BFEE77B534BD62A5A111C9BD0133D81309D2512`. Every
+artifact record binds to run id `34685708360` and head `3b2e4a80…`; all three expire from Actions on
+2026-09-19 and the retained copies do not.
+
+| Target | Artifact id | Outer bytes | Outer SHA-256 = GitHub server digest |
+| --- | ---: | ---: | --- |
+| win-x64 | 10295536853 | 37,746,734 | `7d3e05b9c114de4431a568342d0fb75bb981aa1791cfdd4baf583374cf4cc410` |
+| linux-x64 | 10295616521 | 37,798,325 | `74e9257bc09844b240cb7f81d00750760e8178ee8b619c6ad5f266ede77cca7b` |
+| osx-arm64 | 10295516736 | 34,384,478 | `6e0fdb607101fe958634d2e5bd2c0941960bb3629dc7eab98e97bf069548d741` |
+
+Each outer artifact holds **exactly one** inner distribution ZIP under its expected
+`fcabedrock-<rid>.zip` name:
+
+| Target | Inner bytes | Entries | Payload files | Payload bytes | Inner SHA-256 |
+| --- | ---: | ---: | ---: | ---: | --- |
+| win-x64 | 37,856,758 | 217 | 217 | 83,161,136 | `fa0264b7b9c1c23448ad19f185e325e96735565a30ab3e516b5ccd7591275b67` |
+| linux-x64 | 37,925,801 | 217 | 217 | 85,204,337 | `2f7bfd9bab6f49397b8f8d035e5e6992fa07cf439f4b0571da98d5b634cde118` |
+| osx-arm64 | 34,520,649 | 216 | 216 | 89,333,561 | `2277e39fada6cfe90b69786ca3fea992e3a442b0b49cc10261d2c6c7c41f8a31` |
+
+**The raw `ExternalAttributes` histograms, read from the downloadable inner ZIP metadata before any
+shift** — which is exactly the field the corrected validator now tests:
+
+| Target | Raw histogram | High-mode histogram | Apphost | Link entries |
+| --- | --- | --- | --- | --- |
+| win-x64 | **`0x00000000` × 217 — one distinct value** | `0x0000` × 217 | `FcaBedrock.Cli.exe`, raw `0x00000000` | none |
+| linux-x64 | `0x81ED0000` × 1, `0x81A40000` × 216 | `0x81ED` (`0100755`) × 1, `0x81A4` (`0100644`) × 216 | `FcaBedrock.Cli`, **`0100755`** | none |
+| osx-arm64 | `0x81ED0000` × 1, `0x81A40000` × 215 | `0x81ED` × 1, `0x81A4` × 215 | `FcaBedrock.Cli`, **`0100755`** | none |
+
+No entry in any of the three carries a nonzero low bit; no entry's file-type bits are `0xA000`; and
+exactly one executable entry exists per Unix archive — the apphost.
+`FcaBedrock.Cli.runtimeconfig.json` and `FcaBedrock.Cli.deps.json` are raw `0x00000000` on win-x64
+and `0100644` on both Unix targets, so both halves of the rule are named. The central directory's
+`version made by` host is **0** (MS-DOS/Windows) on all 217 win-x64 records and **3** (Unix) on all
+217 linux-x64 and 216 osx-arm64 records, consistent with each archive having been written on its own
+native runner.
+
+**Path safety, both layers, all three archives:** no rooted, drive-qualified, traversing, dot/empty,
+backslashed or control-character name; no directory entry; no link entry; no case-insensitive
+duplicate; every extraction resolved inside its recorded target. **Native format, architecture and
+runtime structure:** the win-x64 apphost is PE32+ x86-64 with 16 native PE libraries, all x86-64, and
+no `.so` or `.dylib`; linux-x64 is ELF64 x86-64 with 16 ELF libraries, no native PE and no `.dylib`;
+osx-arm64 is Mach-O 64-bit ARM64 with 13 ARM64 dylibs and 2 ARM64 executables, no native PE and no
+`.so` — with managed CLI assemblies separated from native code by testing the CLI header rather than
+by file extension, so a managed `.dll` in a Unix payload is not misread as a foreign native binary.
+Each `.deps.json` names its own RID and each `.runtimeconfig.json` declares `includedFrameworks:
+Microsoft.NETCore.App` **10.0.12** with no framework reference and no
+`System.Globalization.Invariant`. 201 files are common to all three payloads; the single
+217 / 217 / 216 difference is `libcoreclrtraceptprovider.so`, which macOS has no counterpart for.
+
+**Three defects were found and fixed in the post-download *inspection script*, and none is a product
+or archive defect.** A strict-mode return shape; PowerShell's `-shr` being an *arithmetic* shift on
+`[int]`, which sign-extended `0x81A40000` and produced a false mode mismatch on every Unix entry
+(the validator under test uses C#'s unsigned `>>>`); and a 32-bit hex literal parsing as a signed
+`[int]`, which never matched the Mach-O magic. Each was corrected and re-run locally against the
+**unchanged retained bytes**. Nothing was rerun on GitHub, and no archive was repaired, recompressed
+or reconstructed.
+
+**What this establishes, and where.** The complete five-target native matrix and three delivery
+archives satisfying the mode contract are satisfied **at `3b2e4a80`**. Native extraction and
+execution rest on each target's own in-job smoke plus the smoke-to-upload identity above; the
+post-download inspection recorded here was performed on Windows and read archive metadata and file
+formats — it is **not** Linux or macOS execution and is not offered as a substitute for native
+evidence. Run `34483863717` and its three archives keep their own revision `c4ceb8e2` and are neither
+replaced nor relabelled by this run, and every earlier failed run stays failed at its own revision.
+
+**What it does not establish.** The hosted UTC bounds are provenance only: no elapsed, duration,
+rate, throughput, overhead, speedup, neutrality or non-regression inference is drawn from them, and
+**Policy L is untouched**. A green delivery gate is not acceptance, not a merge, not main-push CI and
+not archival. The local WSL limitation is carried forward unchanged rather than closed: `pwsh` is
+absent there, so hosted CI remains the only place the packaging tests execute off Windows — never a
+local pass.
+
 <!-- RESULTS -->
 
 ## How to read the tables
@@ -656,7 +927,10 @@ of them describe **the revision that produced them**. In particular the `CLI hos
 hash-pair and sidecar comparisons predate **D-125**'s publication correction, which sits inside the
 measured CLI-host interval; they are **not** measurements of the shipped code and no figure here is
 attributed to `4216610b`. What the corrected build was measured to do is
-[The corrected build](#the-corrected-build).
+[The corrected build](#the-corrected-build). The five `probe` rows below were separately
+**re-validated — not re-timed** — at `3b2e4a80` under the corrected per-attribute oracle; their
+timings here stay session A's, and the validation record is
+[The probe gate](#the-probe-gate-at-3b2e4a80).
 
 ## Results — working tier (730,000 records)
 
@@ -1521,6 +1795,125 @@ unchanged at the close of session H, file count for file count and hash for hash
 BenchmarkDotNet results directory's 490 pre-existing files were copied aside before the first
 invocation.
 
+## The review correction `3b2e4a80`
+
+Everything above describes revisions up to `d4b310ad`. After that documentation commit the operator
+commissioned one further independent implementation audit — **exhaustive** rather than risk-based,
+reviewing every changed path individually — and it returned **`BLOCK`**. This section is what it
+found, what was corrected, and the probe gate the correction required. The Adult and native/archive
+gates at the same commit are
+[The acceptance run at the correction candidate](#the-acceptance-run-at-the-correction-candidate-2026-09-11-windows-x64-3b2e4a80)
+and [Run 34685708360](#run-34685708360-the-gate-at-the-correction-candidate).
+
+### What the review blocked, and what changed
+
+Three defects, every one of them in an **oracle or validator** — the machinery that decides whether a
+result is believed — and none of them in a product path:
+
+| Finding | The defect | The correction |
+| --- | --- | --- |
+| **B-001** | `AdultOracle.RequirePlanShape` asserted 14 planned attributes plus an aggregate `FormalAttributes.Count >= 14`. Adult's nominal and manual-cut attributes each produce several columns, so one attribute could carry an empty `CrossesByBin` and no missing column while the aggregate stayed far above 14 — exactly the silently empty attribute the helper said it caught | per planned attribute: the union of its `CrossesByBin` ids with its `MissingFormalAttributeId` must be non-empty; every claimed id must resolve in the plan's schema; the resolved column's `Identity.AttributeName` must equal that attribute's own name; and no column may be claimed by two attributes. The aggregate survives only as a labelled secondary guard, and a dichotomic false pole that crosses nothing stays legitimate, because the rule is over the per-attribute **union**, never over each bin |
+| **B-002** | the probe outcome oracle accepted a *complete* draft when **one** attribute carried a domain, a *truncated* draft when **one** attribute carried its `include` recovery, and an expected `ProbeLimitExceeded` alongside unrelated blocking diagnostics — so a benchmark row could be published for the wrong semantic outcome | every attribute must author its complete non-empty domain, subject only to an explicitly supplied all-missing exception set that may itself carry no recovery policy; the observed `include`-carrying set must **equal** the expected truncated set, with no absent and no extra member; and a guard breach must be **exactly one** `ProbeLimitExceeded` at the production `Error` severity, with no draft |
+| **B-003** | `DistributionArchive.AssertValid` computed `ExternalAttributes >>> 16` before testing a Windows entry, so a raw `0x00000001` shifted to zero and passed although the contract is exact **raw** zero on every entry of a Windows distribution | the `win-*` branch compares the raw field **before any shift** and reports the offending value; the shifted mode and symbolic-link handling stay on the Unix path, unchanged. Archive *production* was already correct, so no delivered archive was ever affected and the retained `c4ceb8e2` artifacts independently satisfy the corrected rule |
+
+Six further findings were classified **nonblocking** and deliberately left unchanged, so the packet
+is exactly the blocking fix. The correction took **two stages**: a first packet closed B-001, B-003
+and the three concrete B-002 examples, and a targeted review of it returned `BLOCK` again on two
+residual B-002 findings — an all-missing exemption that skipped the unexpected-recovery check, and a
+guard predicate that would accept a duplicated or wrong-severity breach the producer cannot emit. A
+bounded revision closed both, and a fresh reviewer then returned `THUMBS UP — B-002-R1 and B-002-R2
+are corrected; B-001, B-002, and B-003 are closed with no new blocker.` The earlier `d4b310ad` review
+is **not** called green, and the two-stage history is kept rather than flattened.
+
+The packet is committed as signed **`3b2e4a80`** (`m8 review fixes`, sole parent `d4b310ad`, tree
+`0bc9713e…`): **6 modified and 2 added paths, `+1294/−60`**, entirely under
+`tests/FcaBedrock.Benchmarks`, `tests/FcaBedrock.Benchmarks.Tests` and `tests/FcaBedrock.Cli.Tests`.
+No production source, spec text, diagnostic, packaging script, workflow, project file, corpus byte,
+benchmark parameter, job, category or measured interval changed, so **no earlier measurement is
+invalidated**: strengthening a validator changes what a run *proves*, not what it *does*. What it
+does change is that no earlier benchmark, Adult or native run executed the corrected checks — which
+is why the probe, Adult and native/archive gates were rerun at this commit. The contract is
+**D-124**'s 2026-09-11 correction; the gate chronology is **D-126**'s.
+
+### The probe gate at `3b2e4a80`
+
+**The first attempt is non-admissible, and it is recorded as that rather than as a failure.** A
+`dotnet test --help` invocation implicitly contacted NuGet and downloaded a workload advertising
+manifest **before** the offline evidence protocol existed. It created **no evidence root** and ran
+**no gate**, so there is nothing of it to accept, reject or compare against; the session was stopped
+and the gate was re-run from the start under a protocol frozen before its first `dotnet` process.
+
+**The accepted replacement** drove the corrected, committed oracle offline at `3b2e4a80`:
+
+| Component | Result |
+| --- | --- |
+| Committed-head Release build | exit 0, **0 warnings, 0 errors**, 20 projects; every FcaBedrock assembly embeds `1.0.0+3b2e4a80…` |
+| Ordinary solution test | **4,623 total / 0 failed / 20 skipped**, all eleven test projects passing, every skip enumerated by name and reason |
+| Small `Dry` smoke | **exactly 48** cases, each under the exact `Dry` job and carrying statistics, with no `Working`, `Scale` or `External` case admitted |
+| `ProbeWideWorking` | 1 case, registered `long-run` Monitoring job (2 warmups / 5 measured), corpus `w16-working` |
+| `ProbeTripleWorking` | 1 case, same job, corpus `t10-unordered-working` |
+| `ProbeWideScale7M` | 1 case, same job, corpus `w16-scale7m` |
+| `ProbeWideScale73M` | 1 case, same job at 1 warmup / 3 measured, corpus `w16-scale73m` |
+| `ProbeTripleScale73M` | 1 case, same job at 1 warmup / 3 measured, corpus `t10-unordered-scale73m` |
+
+Each of the five ran **once**, in that order, at its registered job on its actual prepared corpus,
+each preceded by a non-executing selection listing that resolved to exactly one case, and each
+reporting `1 benchmark case(s) completed with no build, execution, or validation failure.` The Small
+gate's own listing matched a frozen 40-name expectation exactly, and those 40 names expand to exactly
+48 declared cases through the committed `[Params]` sets — verified, not assumed.
+
+**What the corrected validation proves, and where it runs.** `ProbeBenchmark.Validate` is the only
+`[IterationCleanup]`, so the check runs after **every completed measured iteration**, outside the
+measured interval. For a truncating case it requires a draft with no `Error`/`Fatal` diagnostic, the
+exact attribute count, a `ProbeDomainTruncated` diagnostic, the observed `include`-carrying set equal
+to the expected one — no absent member and no extra — a non-empty complete domain on every
+untruncated non-all-missing attribute, and no recovery policy on any attribute outside the truncated
+set. Because an exception inside `[IterationCleanup]` propagates out of BenchmarkDotNet's engine run
+— the worker exits non-zero, the launch fails, and the report carries no measurement — **a row that
+produced a complete report under its registered job with its full measured-iteration count is the
+record that the oracle passed after every one of those iterations.** The expected sets are computed
+from the **frozen generators** at the unchanged `ProbeOptions.Default.ValueRetentionLimit` of
+100,000, on D-108's strictly-greater boundary: `n_seq` and `n_wide` for W16, `Stage` for T10, with
+every other column bounded below the limit by the generator's own definitions, so the expectation
+comes from the corpus contract rather than from the prober under measurement. The worker's
+`FcaBedrock.Benchmarks.dll` was reconciled against the host build across all 143 probe-type method
+bodies, IL body by IL body.
+
+**What it is not.** This is correctness and validation evidence. It adopts **no** probe default — the
+limits are the unchanged `ProbeOptions.Default` ones — and it is **not** a performance measurement:
+the five published probe timings in the results tables above remain session-A observations of the
+revisions that produced them, and are neither replaced, re-timed nor re-attributed here. No elapsed,
+rate, records/s, MiB/s, throughput, overhead, speedup, neutrality or non-regression reading is derived
+from this gate. **Policy L is untouched**: the incremental publication latency stays inconclusive at
+its pre-registered 5% bound, and no retry is owed.
+
+**The offline boundary held at every one of the eighteen `dotnet` steps.** A config cleared package
+sources *and* audit sources and left only `C:\Program Files\dotnet\library-packs` and an empty
+directory inside the evidence root; the forced solution restore succeeded with exactly those two
+feeds and that one config recorded in all 100 per-project records, `enableAudit = false` throughout,
+zero remote sources, no `http(s)://` occurrence beyond the MSBuild XML namespace, and all 265 package
+rows resolved from pre-existing content. After each step a full inventory comparison found the
+machine's NuGet HTTP cache, global packages tree, `%APPDATA%\NuGet`, SDK `metadata`, `sdk-manifests`
+and `%USERPROFILE%\.dotnet` — the workload advertising sentinels included — byte-identical to the
+baseline, with the isolated cache and the empty source still empty and no workload advertising update
+anywhere. The five large corpora were **copied, not regenerated**, with all 13 catalog fields and both
+file digests verified on each side of the copy and the sources re-proved unchanged afterwards; the
+micro and small corpora were regenerated by the committed `prepare` verb and matched their documented
+identities, which is also what shows the copied Working and Scale corpora were prepared under the spec
+text this commit carries. `bench/output` and `bench/spool` were empty after every benchmark step, with
+no manual deletion.
+
+Evidence root `D:\tmp\fcabedrock-m8-g15-post-review-probe-3b2e4a80-offline` — **1,702 files /
+7,496,255,374 bytes**, frozen — with `MANIFEST-SHA256.txt` SHA-256
+`B61FDA0A72806D2A8AB12B345463F3E65433F66E6E61B2C9CE155A14DFD07D33`, `PROTOCOL.md`
+`83A878E3FB9A1AA5B222EF1E8B09A45821B08C144C9C1DD1454F9C3FD05AED23` and `RESULT.md`
+`547568BDFB21F58341C5B7C14780AF00966D678E0CD537DADFC5FAE73CB3EE8F`. Two disclosures are recorded in
+it rather than smoothed away: the frozen protocol expected all 100 solution restore records to be
+rewritten and 80 were — every record that carries source, config or audit state, the 20 unchanged
+`.nuget.g.targets` files carrying none of it — and two of the session's own read-only **analysis**
+scripts were corrected and re-run against unchanged retained bytes, with **no benchmark rerun** for
+either.
+
 ## Tuning — the grouping budget and merge fan-in
 
 These two internal knobs are the only defaults M8 may move, and only after the evidence gate: a
@@ -1643,6 +2036,18 @@ protocol-noncompliant, and not the accepted run — keeps its own root at
 `D:\tmp\fcabedrock-m8-g15-final-adult-82e2ffea\` (**33 files / 4,192,655 bytes**), unchanged and
 neither replaced nor relabelled. See
 [The acceptance run at the documentation head](#the-acceptance-run-at-the-documentation-head-2026-09-10-windows-x64-82e2ffea).
+
+The three gates at the review-correction candidate `3b2e4a80` keep three further roots of their own,
+each frozen and each outside this one:
+`D:\tmp\fcabedrock-m8-g15-post-review-probe-3b2e4a80-offline\` (**1,702 files / 7,496,255,374
+bytes**), `D:\tmp\fcabedrock-m8-g15-post-review-adult-3b2e4a80-offline\` (**288 files / 49,943,651
+bytes**) and `D:\tmp\fcabedrock-m8-g15-post-review-native-gate-3b2e4a80-run-34685708360\`
+(**684 files / 480,209,898 bytes**). Their manifest, protocol and result digests are recorded with
+each gate: [The probe gate](#the-probe-gate-at-3b2e4a80),
+[The acceptance run at the correction candidate](#the-acceptance-run-at-the-correction-candidate-2026-09-11-windows-x64-3b2e4a80)
+and [Run 34685708360](#run-34685708360-the-gate-at-the-correction-candidate). Every prior root was
+re-verified unchanged at those campaigns' boundaries; none was mutated, extracted into, moved,
+refrozen or relabelled.
 
 BenchmarkDotNet writes one report per benchmark **type** and overwrites it on the next run, which is
 why session A's tuning reports were copied aside before session B started, and session B's before
@@ -1884,6 +2289,14 @@ Named here so their absence is explicit rather than inferred.
   **unaffected by that correction** — the components never reach `PublicationTransaction`, and the
   Adult cases run `ConversionRun` rather than `CliHost` — which is a reachability conclusion about
   that one diff, not a standing exemption.
+- **The corrected oracles re-validated the five published probe rows; they did not re-time them.**
+  The exhaustive review's B-002 correction changes what a probe row *proves*, not what it *does* — no
+  corpus, option, parameter, job or measured interval moved — so the five published probe timings stay
+  session-A observations of the revisions that produced them, and **no corrected-build probe elapsed
+  figure exists or is owed**. The gate at `3b2e4a80` establishes the exact per-attribute outcome and
+  nothing about speed. The same holds for the Adult and native gates at that commit: both are
+  correctness and delivery evidence, and neither licenses an elapsed, rate, throughput, overhead,
+  speedup or non-regression reading.
 - **Routine CI does not exercise the acquired Adult corpus, on any platform.** That is deliberate
   (see [Selection](#selection-and-what-routine-ci-proves)), and it means no cross-platform Adult
   evidence exists or is claimed. The real-data evidence is Windows x64 only.

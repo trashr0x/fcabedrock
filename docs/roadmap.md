@@ -52,8 +52,24 @@ together at the corrected candidate `50f6aa62`** on 2026-09-10, and **D-126 cond
 and (d) are complete there**. That campaign is **admissible evidence but was not exactly
 protocol-compliant**: one restore's NuGet vulnerability audit contacted `api.nuget.org`, and
 more than the one commissioned build ran — both before the criterion was frozen, and neither
-changed a measured byte. The full account is in **D-126** and `docs/benchmarks.md`. What
-remains is the finalization gate sequence in the M8 block below, then M9. The milestone
+changed a measured byte. The full account is in **D-126** and `docs/benchmarks.md`.
+**An additional independent exhaustive whole-branch review then ran at `d4b310ad` and returned
+`BLOCK`**, on three concrete oracle/validation defects: the Adult plan-shape check proved only an
+aggregate column count rather than contribution and ownership per planned attribute; the probe
+outcome oracle accepted a draft on existential rather than per-attribute evidence, and tolerated an
+unrelated diagnostic beside an expected guard breach; and the Windows archive validator shifted
+`ExternalAttributes` before testing it, so a nonzero low bit such as `0x00000001` passed. The
+bounded correction took **two stages** — a first packet that closed B-001 and B-003 and the three
+original B-002 examples, then a revision that closed the two residual B-002 findings the targeted
+review raised — after which a fresh independent reviewer returned `THUMBS UP — B-002-R1 and
+B-002-R2 are corrected; B-001, B-002, and B-003 are closed with no new blocker.` The packet is
+committed as signed **`3b2e4a80`** (`m8 review fixes`, sole parent `d4b310ad`), eight test-and-oracle
+paths — 6 modified, 2 added — `+1294/−60`, with no production, spec, diagnostic, output-byte or
+workflow change. **The corrected probe, Adult and native/archive gates then all passed at that exact
+commit**, each with its own retained evidence identity. They are correctness and delivery evidence
+and nothing more: **Policy L stays inconclusive at its pre-registered 5% bound, no retry is owed**,
+and no elapsed, rate, throughput, neutrality or non-regression reading follows from any of them.
+What remains is the finalization gate sequence in the M8 block below, then M9. The milestone
 blocks below are the append-only history; the M7 and M8 sections carry the live detail.
 
 > **M1 complete — mini-mushroom + mini-adult reproduced byte-for-byte.** The whole
@@ -1209,6 +1225,55 @@ HTTP cache and global packages tree are byte-identical before and after. Evidenc
 manifested. The raw figures are standalone facts of that one session, recorded in
 `docs/benchmarks.md` and compared with nothing; **Policy L is untouched**.
 
+**An exhaustive whole-branch review then blocked the candidate, and its correction landed at
+`3b2e4a80` (2026-09-11).** After the `82e2ffea` documentation commit the operator commissioned one
+further, independent, read-only **exhaustive** implementation audit — every changed path, not a
+risk-based sample — and at `d4b310ad` it returned **`BLOCK`** on three concrete oracle/validation
+defects. **B-001:** `AdultOracle.RequirePlanShape` asserted 14 planned attributes plus an aggregate
+`FormalAttributes.Count >= 14`, which cannot see one attribute that contributes nothing, so its
+stated per-attribute guarantee was not established. **B-002:** the probe outcome oracle accepted a
+complete draft when only one attribute carried a domain, accepted a truncated draft when only one
+attribute carried its `include` recovery, and tolerated unrelated blocking diagnostics beside an
+expected `ProbeLimitExceeded`. **B-003:** `DistributionArchive.AssertValid` computed
+`ExternalAttributes >>> 16` before testing a Windows entry, so a raw `0x00000001` shifted to zero and
+passed although the contract requires exact raw zero. Six further findings were recorded as
+nonblocking and deliberately left unchanged. The correction took **two stages**: a first packet
+closed B-001 and B-003 and the three concrete B-002 examples, and a targeted review of it returned
+`BLOCK` again on two residual B-002 findings — an all-missing exemption that skipped the
+unexpected-recovery check, and a guard predicate that accepted more than the one `Error`
+`ProbeLimitExceeded` the producer can actually return; a bounded revision closed both, and a fresh
+reviewer then returned `THUMBS UP — B-002-R1 and B-002-R2 are corrected; B-001, B-002, and B-003 are
+closed with no new blocker.` The earlier `d4b310ad` review is **not** relabelled as green, and the
+two-stage history is retained. The exact eight-path packet is committed as signed **`3b2e4a80`**
+(`m8 review fixes`, sole parent `d4b310ad`, tree `0bc9713e…`) — 6 modified and 2 added test/oracle
+paths, `+1294/−60` — and touches no production source, spec, diagnostic, project, script, workflow
+or output byte; the registry stays **82**.
+
+**The corrected candidate's probe, Adult and native/archive gates then all passed at `3b2e4a80`
+(2026-09-11/12).** Each ran at that exact commit, each retains its own evidence identity, and none of
+them is a performance measurement. The **probe** gate is the accepted **offline replacement**: a first
+attempt is non-admissible because `dotnet test --help` implicitly contacted NuGet and downloaded a
+workload advertising manifest before the offline evidence protocol existed — it created no evidence
+root and ran no gate. The replacement drove the corrected committed oracle offline, with the whole
+solution at **4,623 total / 0 failed / 20 skipped**, the Small `Dry` smoke at exactly **48** cases,
+and the five published probe rows — `ProbeWideWorking`, `ProbeTripleWorking`, `ProbeWideScale7M`,
+`ProbeWideScale73M`, `ProbeTripleScale73M` — each completing successfully **once** at its registered
+job on its actual corpus. The **Adult** gate ran exactly `AdultConvertCxt`, `AdultConvertDat` and
+`AdultSourceDrain` as `External`/UCI Adult cases under the registered `fresh-iteration` job, all
+passing; the corrected `RequirePlanShape` proof runs once per conversion case in `[GlobalSetup]`,
+after the immutable plan is built and **before any measurement**, while `[IterationCleanup]` keeps
+validating every completed measured iteration after disposal. The **native/archive** gate is run
+[`34685708360`](https://github.com/trashr0x/fcabedrock/actions/runs/34685708360), attempt 1, event
+`push`, the only run at that SHA, **successful on all five native targets**, with **4,623 / 0** on
+each, 25 / 0 witnesses, 48 admitted Small `Dry` cases, both gated smokes 1 / 0, and all three required
+archives retained, server-digest matched and mode-correct. The accepted Adult gate at `82e2ffea`, the
+`c4ceb8e2` native/archive and implementation-review gates, and session H's `50f6aa62` conditions (c)
+and (d) all keep their own revisions and are **not** relabelled to `3b2e4a80`. Full identities,
+hashes and contract facts are in `docs/benchmarks.md`; the decision record is **D-124**/**D-126**.
+**Policy L is untouched**: the incremental publication latency stays **inconclusive at the
+pre-registered 5% bound**, no retry is owed, and no elapsed, rate, throughput, overhead, speedup,
+neutrality, equality or non-regression figure follows from any of these three gates.
+
 What the corrected build was measured to do, and what could not be measured, is **D-126**:
 
 - **The incremental publication latency is inconclusive at the 5% bound.** A pre-registered
@@ -1253,29 +1318,28 @@ What the corrected build was measured to do, and what could not be measured, is 
   allocation total proves a streaming bound — the algorithmic guarantee remains the
   independent observers and the retained-layout witnesses.
 
-**Remaining M8 gates, none waived:** the corrected candidate's **evidence reacquisition is
-complete** at `50f6aa62` (below); the host-independent packaging correction is committed at
-`c4ceb8e2` and pushed; and at that head **the complete five-target native matrix, the three
-accepted delivery archives, and the fresh independent implementation review are all satisfied**.
-Those three gates are closed at `c4ceb8e2` — not at an earlier revision, and not at the later
-documentation-only commit that records them, across which the evidence carries only because this
-reconciliation's entire diff is three advisory Markdown documents that no build, test or workflow
-input consumes. **The standing Windows x64 External/Adult three-case acceptance is satisfied at
-`82e2ffea`**, the documentation head that recorded those three gates, by the accepted offline
-replacement run described above — a result of that one revision and **not** a standing exemption,
-re-attaching at any later candidate. **Until this reconciliation is committed**, it and its
-operator-approved documentation-only commit are outstanding. **Once that commit lands and its exact
-diff is proven to be exactly `docs/decisions.md`, `docs/benchmarks.md` and `docs/roadmap.md`** — with
-no build, test, workflow, benchmark, corpus, spec, configuration or packaging input among them — the
-Adult evidence carries across it on the bounded reachability ruling already recorded, proven on that
-diff rather than assumed and never a standing exemption. **After that the gates remaining are
-exactly:** operator acceptance and an explicitly authorized merge; the main-push CI at the merge
-revision; and the separate GitLab archival gate. The historical statement that no native gate had
-passed was true of `50f6aa62` and
-`163f1c49`, and it stays true **of those two revisions**: none ran at `50f6aa62`, and run
-`34468088854` at `163f1c49` failed before building an archive, its single Windows artifact neither
-downloaded nor retained. No documentation commit SHA, merge result, main-CI result, archival
-result or release result is predicted anywhere.
+**Remaining M8 gates, none waived.** The corrected candidate's **evidence reacquisition is
+complete** at `50f6aa62` (below); the complete five-target native matrix, the three accepted
+delivery archives and a fresh independent implementation review were first satisfied at
+`c4ceb8e2`; and the standing Windows x64 External/Adult three-case acceptance was first satisfied
+at `82e2ffea`. Each closed **at its own revision** — not at an earlier one, and not at a later
+documentation-only commit that merely records it, across which evidence carries only on a proven
+three-advisory-file diff that no build, test or workflow input consumes. **The exhaustive
+whole-branch review then returned `BLOCK` at `d4b310ad`, its bounded two-stage correction is
+committed at `3b2e4a80`, and the corrected probe, Adult and native/archive gates all pass at that
+exact commit** — so the live gate truth is `3b2e4a80`, and every earlier result stays attached to
+its own revision rather than being relabelled. **The gates that remain are exactly:** review and
+curation of this documentation packet and the operator's commit of it; explicit final candidate
+acceptance and an explicitly authorized local merge; the main-push CI at the merge revision; and
+the separate private GitLab archival gate. A later docs-only commit may carry the exact `3b2e4a80`
+evidence across it **only** through a proven diff of exactly `docs/benchmarks.md`,
+`docs/decisions.md` and `docs/roadmap.md` — none of which any build, test, workflow, benchmark,
+corpus, spec, configuration or packaging input consumes — which is a finding about that exact diff
+and never a standing exemption. The historical statement that no native gate had passed was true of
+`50f6aa62` and `163f1c49`, and it stays true **of those two revisions**: none ran at `50f6aa62`,
+and run `34468088854` at `163f1c49` failed before building an archive, its single Windows artifact
+neither downloaded nor retained. No documentation commit SHA, merge result, main-CI result,
+archival result or release result is predicted anywhere.
 
 The expensive evidence carried across the documentation commit `03352da7` because the entire
 diff from `4216610b` is three advisory Markdown files. It did **not** all carry across the
@@ -1294,7 +1358,8 @@ and the Windows x64 External/Adult three-case acceptance (those cases run `Conve
 `CliHost`, and no product path they reach changed) — a bounded reachability conclusion about
 this diff, not a standing exemption. **Policy L does not reopen**: the elapsed effect stays
 inconclusive at the 5% bound and no paired retry is owed.
-**M8 is not accepted, merged or complete until all of them have happened.**
+**M8 is not yet accepted, merged, main-CI-verified, GitLab-archived, released or complete**, and
+stays that way until all of the remaining gates above have happened.
 
 **Completion obligations, none waived** (each stands for every later release candidate,
 whatever its status at the current one):
@@ -1310,7 +1375,10 @@ whatever its status at the current one):
   `Test (Release)`, before the harness smoke and both package smokes. **It is satisfied again
   at `c4ceb8e2`**, where run `34483863717` executed all four on all five targets natively, with
   4,586 / 0 tests, 25 / 0 witnesses, 48 admitted Small `Dry` cases and both package smokes
-  1 / 0 everywhere.
+  1 / 0 everywhere. It re-attached at the review-correction candidate, and **it is satisfied
+  again at `3b2e4a80`**, where run `34685708360` executed all four on all five targets natively,
+  with **4,623 / 0** tests at the exact skip spread 16 / 12 / 11 / 13 / 17, 25 / 0 witnesses, 48
+  admitted Small `Dry` cases and both package smokes 1 / 0 everywhere.
 - **Verified migration to the canonical public GitHub destination**, Actions
   established, and tested self-contained archives (`win-x64`, `linux-x64`,
   `osx-arm64`) delivered from runs at recorded revisions. **The cutover half is satisfied**
@@ -1326,7 +1394,14 @@ whatever its status at the current one):
   extracted and ran the exact archive the workflow then uploaded, and the three retained
   artifacts are digest-matched, path-safe in both layers, and mode-correct — Unix apphosts
   `0100755`, every other Unix entry `0100644`, every Windows entry an explicit zero. The two
-  earlier successful runs' archives stay rejected and are not substituted by them.
+  earlier successful runs' archives stay rejected and are not substituted by them. Three further
+  archives were produced, downloaded, retained and verified on the same terms at **`3b2e4a80`** by
+  run `34685708360` — every one of the 217 win-x64 inner entries raw `0x00000000`, both Unix
+  apphosts `0x81ED0000`/`0100755` with every other Unix entry `0x81A40000`/`0100644`, no link
+  entry, path-safe in both layers, each outer digest equal to GitHub's own server digest, and the
+  archive each target's smoke validated, extracted and executed is exactly the one the workflow
+  uploaded. The `c4ceb8e2` archives keep their own revision and are neither replaced nor
+  relabelled by them.
 - **A successful real-data (`External`) run on the final Windows x64 candidate.** The
   acquired UCI Adult corpus is deliberately outside routine CI — it is the one input
   this repository cannot generate, and requiring it in every native job would let an
@@ -1348,11 +1423,19 @@ whatever its status at the current one):
   the three-blocker and packaging corrections only by bounded reachability rulings — those
   cases run `ConversionRun` rather than `CliHost`, and no product path they reach changed —
   which is **not** a standing exemption; it was **not** rerun at `50f6aa62`, `163f1c49` or
-  `c4ceb8e2`, and it re-attaches at every later release candidate.
+  `c4ceb8e2`, and it re-attaches at every later release candidate. It re-attached at the
+  review-correction candidate and **is satisfied again at `3b2e4a80`**, on one offline measured
+  invocation in which exactly those three cases ran under the registered `fresh-iteration` job
+  against the pinned entry, every completed measured iteration was validated after disposal, and
+  the corrected per-planned-attribute plan-shape proof executed and passed in `[GlobalSetup]` for
+  both conversion cases. The `82e2ffea` result keeps its own revision; neither run is compared
+  with the other.
 - **Probe-default adoption** remains a separate observable semantic decision — it
   changes draft bytes, warnings, and success-versus-guard-failure — and needs its own
   approval with a spec §7.1 / D-110 reconciliation. The defaults were measured at
-  target scale and **not** adopted.
+  target scale and **not** adopted. The corrected probe validation at `3b2e4a80` adopts
+  nothing either: it re-proves the exact per-attribute outcome the suite claims, at the
+  unchanged `ProbeOptions.Default` limits.
 
 **Measured and settled (2026-09-06).** The controlled Windows x64 baseline is complete
 at 730,000, 7.3M, and **73M** records, on identified hardware with every corpus,
