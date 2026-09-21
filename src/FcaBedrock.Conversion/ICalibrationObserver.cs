@@ -37,7 +37,11 @@ internal interface ICalibrationObserver : IGroupingObserver
     /// </summary>
     void AggregateResident(long modeledBytes);
 
-    /// <summary>One attribute's live spill-run handles after a catalog change (bounded by the merge fan-in).</summary>
+    /// <summary>
+    /// One attribute's live spill-run handles after a catalog change (bounded by the fixed
+    /// catalogue ceiling K = (F-1)*L; simultaneously open readers stay bounded by the merge
+    /// fan-in).
+    /// </summary>
     void RunCatalog(string attribute, int liveRuns);
 }
 

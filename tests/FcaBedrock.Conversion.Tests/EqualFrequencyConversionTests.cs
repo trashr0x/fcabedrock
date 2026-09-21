@@ -1022,7 +1022,14 @@ public sealed class EqualFrequencyConversionTests
         // Tier 2 is bounded by COUNT and SHAPE — never a pinned byte constant, because a
         // FileStream's internal graph is runtime-owned and any such claim would be unvalidatable.
         Assert.True(observer.PeakOpenReaders <= 2, $"readers peaked at {observer.PeakOpenReaders}");
-        Assert.True(observer.PeakLiveRuns <= 2, $"live runs peaked at {observer.PeakLiveRuns}");
+
+        // The catalogue's own bound (D-128): logarithmic in the spill count, never beyond
+        // K = (F-1)*L. The reader bound above stays at the merge fan-in.
+        var spills = observer.Written.Count(write => write.Initial);
+        Assert.True(
+            observer.PeakLiveRuns <= CatalogueBound.Logarithmic(2, spills),
+            $"live runs peaked at {observer.PeakLiveRuns}, above the logarithmic bound for {spills} spills");
+        Assert.True(observer.PeakLiveRuns <= CatalogueBound.Ceiling(2), $"live runs peaked at {observer.PeakLiveRuns}");
         Assert.Equal(0, observer.PeakPendingDeletions);
 
         // Tier 1: the modeled accumulator aggregate never exceeded its share, and dropped to zero

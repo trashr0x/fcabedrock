@@ -156,6 +156,47 @@ internal sealed class RecordingCalibrationObserver : ICalibrationObserver
     public void BufferSpilled(long residentBytes) => _spool.BufferSpilled(residentBytes);
 }
 
+/// <summary>
+/// The per-accumulator run-catalogue bounds (D-128): the catalogue grows <b>logarithmically</b> in
+/// the spill count and never beyond the fixed ceiling <c>K = (F-1)*L</c>.
+/// <para>
+/// Both bounds are computed here by repeated integer division rather than read from the product,
+/// and both are non-vacuous: an implementation whose catalogue grew with the population would fail
+/// the logarithmic bound long before it approached K. The <b>open-reader</b> bound stays at the
+/// merge fan-in and is asserted separately wherever this is used.
+/// </para>
+/// </summary>
+internal static class CatalogueBound
+{
+    /// <summary>The logarithmic bound <c>(F-1) * ceil(log_F(spills + 1))</c>, never above K.</summary>
+    public static int Logarithmic(int fanIn, long spills)
+    {
+        var digits = 0;
+        var remaining = spills;
+        while (remaining > 0)
+        {
+            remaining /= fanIn;
+            digits++;
+        }
+
+        return (fanIn - 1) * Math.Max(digits, 1);
+    }
+
+    /// <summary>The fixed ceiling <c>K = (F-1) * L</c>, with L computed by repeated integer division.</summary>
+    public static long Ceiling(int fanIn)
+    {
+        var levels = 1;
+        var remaining = long.MaxValue;
+        while (remaining >= fanIn)
+        {
+            remaining /= fanIn;
+            levels++;
+        }
+
+        return checked((long)(fanIn - 1) * levels);
+    }
+}
+
 // Common synthetic-exception factories mapping to the classifier's kinds.
 internal static class StorageFaults
 {

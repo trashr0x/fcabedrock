@@ -235,6 +235,10 @@ superseded or refined. A new entry MUST add its line here.
 
 - D-126 — Policy L: M8 closes under a documented measurement limitation. The publication correction's incremental elapsed-time effect is **inconclusive at the 5% bound** after a complete, pre-registered paired comparison failed its collective gate; the fifteen corrected-build allocation/validation cases and the six corrected-command resource traces were completed instead *(amends D-124's invalidation/recheck rule for D-125's correction only; corrects the stale live status of D-124 and the measurement claims of D-125)*
 
+### M8.1 (pre-M9 performance pass)
+
+- D-128 — `QuantileAccumulator` uses a radix-F generation-tiered spill-run catalogue: logarithmic rewrite amplification, fixed catalogue ceiling, unchanged exact results and reader bound *(supersedes only D-103/D-124's catalogue-at-most-fan-in clauses)*
+
 Spec-field defaults are recorded in spec §21 items 1–11 (see the final section
 of this file).
 
@@ -7295,6 +7299,85 @@ pinned here.
   D-124's invalidation/recheck rule for D-125's correction only; corrects D-124's live
   status and D-125's *Superseded measurements* paragraph; reopens neither D-122/D-123 nor
   D-125's approved amendments A and B.
+
+---
+
+## M8.1 (pre-M9 performance pass)
+
+### D-128 — `QuantileAccumulator` uses a radix-F generation-tiered spill-run catalogue
+
+- **Status:** accepted
+- **Date:** 2026-09-21
+- **Decision:** replace `QuantileAccumulator`'s repeated whole-catalogue consolidation with an
+  internal radix-`F` generation-tiered catalogue. Original spills enter generation zero. When a
+  generation holds exactly `F` runs, those runs are merged oldest-first into one run of the next
+  generation; promotion is by original-spill count, never byte size. A generation-`g` run therefore
+  represents exactly `F^g` original spills, and finalization visits generations ascending and runs
+  in creation order.
+  - **Bounds.** Let `L = 1 + floor(log_F(long.MaxValue))`, computed by repeated integer division,
+    and `K = (F - 1) * L`. A quiescent catalogue contains the sum of the base-`F` digits of the
+    successful spill count and is bounded by `K` (`F=16`: `L=16`, `K=240`; `F=2`: `L=63`,
+    `K=63`). During insertion/carry it is bounded by `K+1`; a carry requiring generation `L` fails
+    as an internal invariant violation rather than growing. The open-reader bound remains `F`, with
+    at most one writer and the existing `4F` pending-deletion cap. Catalogue entries remain closed
+    `(path, size)` values, not open operating-system handles.
+  - **Resource accounting.** `T_so_far` still counts original-spill payload only; carry and final
+    outputs do not inflate it. The existing workspace-wide `<=3T` rule, tier-1 model
+    `384 + 44*capacity`, sequential merge ownership, release-before-post-intake-merge rule and lazy
+    zero-spill path are unchanged. The workspace file-count bound becomes `A*K + 4F + 2`; this is a
+    fixed structural bound, never population-sized memory.
+  - **Failure semantics.** A carry commits its catalogue transition only after the merge succeeds.
+    Storage failures, cancellation and cleanup therefore keep their existing diagnostics and
+    primary-result precedence. The physical run schedule, deletion order, first encountered storage
+    fault and cancellation-observation instant may differ; no contract promises identical fault
+    traces across two different merge schedules. Healthy storage still leaves no residue.
+  - **Output contract.** Cuts, frozen specs, fingerprints, diagnostics, public API and emitted bytes
+    are unchanged. The change adds one internal type, changes `QuantileAccumulator`, and changes
+    only the XML wording of `ICalibrationObserver.RunCatalog`. `ValueCountMerger` and every public
+    surface remain untouched.
+  - **Permanent proof.** The Conversion suite includes an independent model of both the
+    generation-tiered schedule and the superseded whole-catalogue schedule (the latter as a rejected
+    negative control), real accumulator/workspace observations through the `F=16`, 807-spill
+    transition, exact base-`F` occupancy and run-byte checks, fixed/logarithmic bounds, and
+    storage/cancellation/overflow cases. The three old catalogue-`<=F` assertions are replaced,
+    not removed: they require both the independent logarithmic bound and `<=K`, while continuing to
+    require open readers `<=F` and the existing cleanup/accounting bounds.
+  - **Measured evidence.** Eight fresh ordinary BenchmarkDotNet host launches used the existing
+    `Monitoring` job (two warmups, five actual iterations, one launch) and balanced the primary
+    endpoint as `AB`, then `BA`. The 7.3M sixteen-attribute many-quantile
+    (`ManyQuantileCalibrateScale7M`, E3) ratios were `0.746878` and `0.752516`; geometric mean
+    `0.749692` (about 25% less elapsed time). Baseline spread was 2.80% and order-ratio difference
+    0.75%. Combining the retained forward-order guard observations with fresh reverse-order
+    observations gave `0.991274` for E1 (`ManyQuantileCalibrateWorking`) and `0.994901` for E2
+    (`CalibrateWideScale7M`). Allocation deltas were
+    `+2,816`, `+424` and `+16,512` B/op for E1/E2/E3, all far inside the existing allowance. All
+    eight launches exited zero and their per-iteration `CalibrationOracle`/`OutputValidation`
+    checks passed. The earlier one-pair E3 screen (`0.760480`) is context, not silently pooled.
+  - **Evidence limit.** This was a pragmatic engineering assessment, not a run of the custom
+    custody/scoring runner built during the evaluation (tracked in the retained external evidence as
+    "QC-1"), which was rejected, and not a formal admission under that evaluation's protocol. It
+    makes no per-launch digest or surviving-worker claim, and no 73M run was performed. Those limits
+    do not weaken the correctness suite or the
+    direct, replicated BenchmarkDotNet comparison on the targeted 7.3M shape.
+- **Why:** the old schedule repeatedly rewrote the growing consolidated run after the fan-in was
+  reached, giving quadratic spill I/O amplification at fixed capacity. Tiering rewrites each value
+  at most once per generation. On the workload this change targets it reduced conservative written
+  bytes from `9,017,744,128` to `5,571,308,288` (`0.617816`) and reproducibly reduced elapsed time
+  by about 25%, without a detected correctness, guard-endpoint or meaningful allocation regression.
+  P-19's requirement for measured evidence is therefore met; retaining the simpler old schedule
+  would keep a demonstrated large target-scale cost.
+- **Rejected:** keeping merge-all (simpler, but retains the measured quadratic amplification); an
+  unbounded catalogue followed by one final merge (population-sized bookkeeping, which D-103
+  rejects); promotion by byte size (data-dependent schedule and no fixed digit-sum bound); changing
+  the fan-in, memory budget, `ValueCountMerger`, public API or spec (none is needed); and landing the
+  evaluation's custom runner, scorer, observer verb, digest helper or custody infrastructure
+  (measurement machinery, not product or permanent regression coverage).
+- **Affects:** `FcaBedrock.Conversion` (`QuantileRunCatalog`, `QuantileAccumulator`, observer XML)
+  and its tests; `docs/benchmarks.md`; `docs/roadmap.md`. Supersedes only D-103's
+  per-accumulator catalogue-`<=F` and merge-all scheduling clauses and D-124's restatement of that
+  catalogue bound. Every other D-103/D-124 clause stands; D-126 is unchanged. No public API, spec,
+  diagnostic, registry, output-byte, benchmark-definition, job, corpus, packaging or workflow
+  change.
 
 ---
 

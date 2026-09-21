@@ -319,17 +319,26 @@ public sealed class QuantileAccumulatorTests
     }
 
     [Fact]
-    public void Intake_WhenManyTinySpills_ThenTheRunCatalogStaysWithinTheFanIn()
+    public void Intake_WhenManyTinySpills_ThenTheRunCatalogStaysWithinTheFixedCeiling()
     {
-        // Without online consolidation the catalog would retain one handle per spill — memory
-        // proportional to the population, which is exactly what the bounded model forbids.
+        // Without consolidation the catalogue would retain one handle per spill — memory
+        // proportional to the population, exactly what the bounded model forbids. The catalogue
+        // bound is logarithmic in the spill count and never beyond K = (F-1)*L (D-128); both bounds
+        // below are computed independently of the product, and open readers stay within the fan-in.
         var observer = new RecordingCalibrationObserver();
         using var harness = Build(budget: TestModeled(3), fanIn: 3, observer: observer);
 
         Feed(harness.Accumulator, Enumerable.Range(1, 400).Select(i => (double)i).ToArray());
 
-        Assert.True(observer.Written.Count(w => w.Initial) > 3, "the population must genuinely spill many times");
-        Assert.True(observer.PeakLiveRuns <= 3, $"live runs peaked at {observer.PeakLiveRuns}, above the fan-in");
+        var spills = observer.Written.Count(w => w.Initial);
+        Assert.True(spills > 3, "the population must genuinely spill many times");
+        Assert.True(
+            observer.PeakLiveRuns <= CatalogueBound.Logarithmic(3, spills),
+            $"live runs peaked at {observer.PeakLiveRuns}, above the logarithmic bound for {spills} spills");
+        Assert.True(
+            observer.PeakLiveRuns <= CatalogueBound.Ceiling(3),
+            $"live runs peaked at {observer.PeakLiveRuns}, above K = {CatalogueBound.Ceiling(3)}");
+        Assert.True(observer.PeakOpenReaders <= 3, $"open readers peaked at {observer.PeakOpenReaders}, above the fan-in");
         Assert.Contains(observer.Written, w => !w.Initial); // consolidation output proves it ran
     }
 

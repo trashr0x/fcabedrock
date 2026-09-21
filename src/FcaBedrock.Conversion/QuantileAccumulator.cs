@@ -52,10 +52,11 @@ internal sealed class QuantileAccumulator
     /// </list>
     /// 160 + 96 + 96 = 352, rounded up to 384.
     /// <para>
-    /// Only the accumulator object's own allocation is charged here. What its <c>_runs</c> /
-    /// <c>_consolidated</c> slots <i>point to</i> is the run catalog — <b>tier 2</b>, bounded by
-    /// count and shape (≤ fan-in handles), never by a byte constant; the 8-byte slots themselves
-    /// live in this object and are counted above.
+    /// Only the accumulator object's own allocation is charged here. What its <c>_catalog</c> /
+    /// <c>_consolidated</c> slots <i>point to</i> is the run catalogue — <b>tier 2</b>, bounded
+    /// by count and shape (bounded by the fixed catalogue ceiling K = (F-1)*L; simultaneously open
+    /// readers stay bounded by the merge fan-in), never by a byte constant; the 8-byte slots
+    /// themselves live in this object and are counted above.
     /// </para>
     /// </summary>
     public const long FixedBytes = 384;
@@ -76,9 +77,9 @@ internal sealed class QuantileAccumulator
     private readonly ICalibrationObserver? _observer;
     private readonly CalibrationBudget _budget;
     private readonly CancellationToken _cancellationToken;
-    private readonly List<SpoolRunHandle> _runs = [];
     private readonly int _capacity;
 
+    private QuantileRunCatalog? _catalog;   // built at the first spill; a zero-spill accumulator never has one
     private Dictionary<double, long>? _counts;
     private ValueCount[]? _sortBuffer;
     private int _resident;                 // used length of _sortBuffer on the zero-spill path
@@ -122,7 +123,7 @@ internal sealed class QuantileAccumulator
     public long Total => _total;
 
     /// <summary>Whether any run reached storage (false ⇒ the whole population stayed in memory).</summary>
-    public bool Spilled => _runs.Count > 0 || _consolidated is not null;
+    public bool Spilled => _catalog is { Count: > 0 } || _consolidated is not null;
 
     /// <summary>
     /// This attribute's <c>T_i</c>: the cumulative exact serialized bytes of its <b>successful
@@ -174,7 +175,7 @@ internal sealed class QuantileAccumulator
     /// </summary>
     public void EndIntake()
     {
-        if (_runs.Count > 0)
+        if (_catalog is { Count: > 0 })
         {
             if (_counts!.Count > 0)
             {
@@ -197,17 +198,19 @@ internal sealed class QuantileAccumulator
     /// </summary>
     public void PrepareReplay()
     {
-        if (_runs.Count == 0)
+        if (_catalog is not { Count: > 0 } catalog)
         {
             return;
         }
 
+        // Generation ascending, creation order within a generation: a fixed order, never chosen by
+        // size, filesystem order, hash iteration or timing. A catalogue already holding exactly one
+        // run (S = F^g) is returned untouched by the merger, so no duplicate final rewrite occurs.
         var merger = new ValueCountMerger(_workspace, _options, _attributeName);
-        var consolidated = merger.Consolidate([.. _runs], _budget.SpilledBytes, _cancellationToken);
-        _runs.Clear();
-        _runs.Add(consolidated);
+        var consolidated = merger.Consolidate(catalog.Snapshot(), _budget.SpilledBytes, _cancellationToken);
+        catalog.ReplaceWithFinal(consolidated);
         _consolidated = consolidated;
-        _observer?.RunCatalog(_attributeName, _runs.Count);
+        _observer?.RunCatalog(_attributeName, catalog.Count);
     }
 
     /// <summary>
@@ -353,7 +356,7 @@ internal sealed class QuantileAccumulator
         if (_consolidated is { } handle)
         {
             _consolidated = null;
-            _runs.Clear();
+            _catalog?.Clear();
             _workspace.DeleteRun(handle);
             _observer?.RunCatalog(_attributeName, 0);
         }
@@ -419,40 +422,54 @@ internal sealed class QuantileAccumulator
 
     // Writes the resident entries as one sorted run and clears the dictionary, keeping its
     // capacity: here the capacity IS the budget, so replacing the dictionary would buy no bound
-    // and cost a re-sizing. Consolidates first when the catalog is full, so live run handles per
-    // accumulator never exceed the fan-in however many times the population spills.
+    // and cost a re-sizing. The run then enters generation 0 and any carry it completes cascades,
+    // so live run handles per accumulator never exceed the fixed catalogue ceiling K = (F-1)*L;
+    // simultaneously open readers stay bounded by the merge fan-in.
+    //
+    // The original run is written and its raw bytes registered in T BEFORE any carry, so the
+    // workspace-wide 3T allowance a carry is measured against already includes this spill.
     private void SpillCurrent()
     {
-        if (_runs.Count >= _options.MaxMergeFanIn)
-        {
-            ConsolidateOnline();
-        }
+        var catalog = _catalog ??= new QuantileRunCatalog(_options.MaxMergeFanIn);
 
         var used = FillSortBuffer();
         var handle = _workspace.WriteRun(RankedRows(used), GroupingOperation.Spill);
-        _runs.Add(handle);
         _spilledBytes = ResidentModel.SaturatingAdd(_spilledBytes, handle.SizeBytes);
-        _observer?.RunCatalog(_attributeName, _runs.Count);
+        catalog.Insert(handle);
+        _observer?.RunCatalog(_attributeName, catalog.Count);
         _observer?.BufferSpilled(ModeledBytes);
         _budget.ReportAggregate();
         _counts!.Clear();
+
+        Carry(catalog);
     }
 
-    // The one case where a merge runs DURING intake, so this accumulator's dictionary and sort
-    // buffer are co-resident with the merge's readers/writer. That is accounted for in tier 2
-    // (bounded by count and shape), and is why the release-before-merge rule is stated for the
-    // POST-intake phase only.
+    // Completes the carry chain the new leaf may have started: while a generation holds exactly the
+    // fan-in, those F runs — oldest first — merge into one run of the next generation, and the
+    // cascade continues upward. Promotion is by original-leaf count, never by byte size, and a
+    // higher-generation run is never used to fill a lower batch.
     //
-    // The baseline is the workspace's T_so_far at THIS boundary — the other accumulators' spills up
-    // to now, not a prediction of their final payload. T only grows, so a later merge is never
-    // measured against a smaller allowance than an earlier one.
-    private void ConsolidateOnline()
+    // This is the one case where a merge runs DURING intake, so this accumulator's dictionary and
+    // sort buffer are co-resident with the merge's readers/writer — the same tier-2 co-residence
+    // class the shipped online consolidation already had, and why the release-before-merge rule is
+    // stated for the POST-intake phase only.
+    //
+    // The baseline is the workspace's T_so_far at THIS boundary — every accumulator's original
+    // spills up to now, not a prediction of their final payload. T only grows, so a later merge is
+    // never measured against a smaller allowance than an earlier one.
+    //
+    // A level is committed only after its merge RETURNS: on a storage failure or cancellation the
+    // catalogue is untouched, the calibration aborts, and the workspace — which tracks every
+    // undeleted path — owns the cleanup. A partial carry is never resumed.
+    private void Carry(QuantileRunCatalog catalog)
     {
         var merger = new ValueCountMerger(_workspace, _options, _attributeName);
-        var consolidated = merger.Consolidate([.. _runs], _budget.SpilledBytes, _cancellationToken);
-        _runs.Clear();
-        _runs.Add(consolidated);
-        _observer?.RunCatalog(_attributeName, _runs.Count);
+        for (var generation = 0; catalog.IsFull(generation); generation++)
+        {
+            var carried = merger.Consolidate(catalog.Batch(generation), _budget.SpilledBytes, _cancellationToken);
+            catalog.Carry(generation, carried);
+            _observer?.RunCatalog(_attributeName, catalog.Count);
+        }
     }
 
     private int FillSortBuffer()

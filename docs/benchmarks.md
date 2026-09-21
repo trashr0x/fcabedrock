@@ -2312,3 +2312,56 @@ Named here so their absence is explicit rather than inferred.
   scale probe cases record; a bounded successful scan at target scale would need a corpus designed
   for it. Bounded successful scans do exist at the micro and small tiers.
 - **Nothing here is a cold-disk measurement**, and no figure is a comparison against another tool.
+
+## M8.1 — generation-tiered quantile spill catalogue
+
+The D-128 candidate changes only count-sensitive calibration's spill-run schedule. Original spills
+enter generation zero and carry oldest-first in radix `F`; it does not change the benchmark job,
+corpus, oracle, cuts, diagnostics, public API, fingerprints or output bytes. Three existing
+benchmarks are reported: the guards `ManyQuantileCalibrateWorking` (E1) and `CalibrateWideScale7M`
+(E2), and the targeted `ManyQuantileCalibrateScale7M` (E3, the 7.3M sixteen-attribute many-quantile
+workload). The retained one-pair screen first measured E3 at `0.760480` of baseline and was
+explicitly treated as unreplicated. The
+adoption assessment therefore added the smallest useful fresh comparison: one reverse-order pair for
+each guard and two order-balanced pairs for the primary endpoint.
+
+All fresh runs used the existing `Monitoring` job: one launch, two warmups, five actual iterations,
+`InvocationCount=1`, `UnrollFactor=1`, and MemoryDiagnoser. All eight hosts exited zero; every full
+JSON report contained one expected benchmark, the exact job/measurement shape and five finite
+positive actuals; stderr was empty; and the existing per-iteration `CalibrationOracle` and
+`OutputValidation` checks completed without failure.
+
+| Endpoint / order | Baseline mean | Candidate mean | B/A |
+| --- | ---: | ---: | ---: |
+| E1, fresh BA | 2.819 s | 2.761 s | 0.979558 |
+| E2, fresh BA | 5.571 s | 5.509 s | 0.988863 |
+| E3, fresh AB | 48.046 s | 35.884 s | 0.746878 |
+| E3, fresh BA | 46.737 s | 35.170 s | 0.752516 |
+
+The two fresh E3 ratios have geometric mean **`0.749692`**: about 25% less elapsed time,
+or 1.334x throughput for this operation. The two baseline means, measured about seventeen minutes
+apart and bracketing the candidate launches, differ by 2.80%, and the AB and BA ratios differ by
+0.75% — both far smaller than the measured 25% effect. Two order-balanced pairs support the observed
+improvement; they are not a statistical bound on drift or order effects. The retained forward-order
+and fresh reverse-order guard ratios have geometric means `0.991274` (E1) and `0.994901` (E2), both
+inside the 1.05 guard and best read as no detectable movement.
+
+| Endpoint | Baseline allocation | Candidate allocation | Delta |
+| --- | ---: | ---: | ---: |
+| E1 | 639,582,544 B/op | 639,585,360 B/op | +2,816 B/op |
+| E2 | 5,381,260,272 B/op | 5,381,260,696 B/op | +424 B/op |
+| E3 | 5,396,369,904 B/op | 5,396,386,416 B/op | +16,512 B/op |
+
+The largest delta is 0.0003% of the E3 allocation and far below the existing
+`max(2% of baseline, 65,536 B)` allowance. The independently counted 7.3M many-quantile write total
+falls from `9,017,744,128` B to `5,571,308,288` B, ratio `0.617816`, which explains the elapsed
+improvement without changing the managed allocation profile.
+
+**Scope and limitations.** This is a direct engineering BenchmarkDotNet assessment, not the
+evaluation's custom custody/scoring runner and not a formal admission under the evaluation's
+protocol. No 73M run was performed. The benchmark does not emit a per-launch calibration digest and
+BenchmarkDotNet deletes its worker, so neither a
+per-launch digest comparison nor a surviving-worker hash is claimed. Output identity remains covered
+by the retained observer/CLI evidence and the permanent Conversion regression suite. These limits
+do not qualify the measured 7.3M A/B result: D-128 adopts the candidate on the replicated,
+order-balanced evidence above.

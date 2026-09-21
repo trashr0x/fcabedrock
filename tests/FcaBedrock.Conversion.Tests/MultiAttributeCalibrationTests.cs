@@ -286,7 +286,12 @@ public sealed class MultiAttributeCalibrationTests
         Assert.Equal(5, calibrated.Calibrations.Count);
 
         // The bounds this correction must not have loosened, checked in the same run.
-        Assert.True(observer.PeakLiveRuns <= 2, $"an attribute's run catalog peaked at {observer.PeakLiveRuns}, above the fan-in");
+        Assert.True(
+            observer.PeakLiveRuns <= CatalogueBound.Logarithmic(2, observer.Written.Count(write => write.Initial)),
+            $"an attribute's run catalogue peaked at {observer.PeakLiveRuns}, above the logarithmic bound");
+        Assert.True(
+            observer.PeakLiveRuns <= CatalogueBound.Ceiling(2),
+            $"an attribute's run catalogue peaked at {observer.PeakLiveRuns}, above K");
         Assert.True(observer.PeakOpenReaders <= 2, $"open readers peaked at {observer.PeakOpenReaders}, above the fan-in");
         Assert.Equal(0, observer.PeakPendingDeletions); // healthy storage retains nothing
         Assert.All(observer.Aggregates, modelled => Assert.InRange(

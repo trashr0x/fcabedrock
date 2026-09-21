@@ -69,6 +69,11 @@ workflow change. **The corrected probe, Adult and native/archive gates then all 
 commit**, each with its own retained evidence identity. They are correctness and delivery evidence
 and nothing more: **Policy L stays inconclusive at its pre-registered 5% bound, no retry is owed**,
 and no elapsed, rate, throughput, neutrality or non-regression reading follows from any of them.
+**The M8.1 generation-tiered quantile spill catalogue is accepted for adoption under D-128** after
+two fresh order-balanced 7.3M pairs measured a `0.749692` candidate/baseline geometric mean, with no
+detected guard regression in these comparisons, effectively flat allocation and all observable
+correctness checks passing. Its scope and evidence limits are recorded in the M8.1 block below and
+in `docs/benchmarks.md`.
 What remains is the finalization gate sequence in the M8 block below, then M9. The milestone
 blocks below are the append-only history; the M7 and M8 sections carry the live detail.
 
@@ -1481,6 +1486,25 @@ reports, and the replacement measurements are in `docs/benchmarks.md`; the contr
 and its evidence-replacement map are in D-124. `ManyQuantileCalibrateWorking` and
 `ManyQuantileCalibrateScale7M`, which published NA as failures, now carry real
 measurements.
+
+### M8.1 — generation-tiered quantile spill catalogue
+
+**Accepted for adoption under D-128 (2026-09-21).** `QuantileAccumulator` now carries original
+spills through a radix-`F` generation catalogue instead of repeatedly merging the whole growing
+catalogue. The public/spec/output contract is unchanged; the open-reader bound remains the fan-in,
+while the closed run-handle catalogue has the fixed ceiling `K = (F-1)*L`. Permanent Conversion
+tests retain an independent recurrence, real workspace observations, exact occupancy/byte checks and
+the storage, cancellation and overflow cases. The evaluation-only runner, scorer, observer verb and
+custody infrastructure are not adopted.
+
+The direct BenchmarkDotNet assessment ran eight fresh hosts. Its two order-balanced 7.3M
+many-quantile pairs measured candidate/baseline ratios `0.746878` and `0.752516`, geometric mean
+`0.749692` (about 25% less elapsed time); the baseline spread was 2.80% and the AB/BA ratio
+difference 0.75%. The two guard benchmarks' geometric means were `0.991274` and `0.994901`,
+allocation was effectively flat, and all per-iteration correctness checks passed. This is practical
+adoption evidence, not a formal admission under the evaluation's protocol or a 73M result, and it
+does not amend D-126's unrelated publication-latency limitation. Full figures and limitations are in
+`docs/benchmarks.md`.
 
 ### M9 — Avalonia desktop
 
