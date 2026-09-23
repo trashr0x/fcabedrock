@@ -14,41 +14,43 @@ zero or more formal attributes. Every legacy attribute "type" is a
 
 ## Status
 
-Under active development. **M1–M7 are complete.** The pipeline reproduces
+Under active development. **M1–M8 are complete.** The pipeline reproduces
 FcaBedrock v2 byte-for-byte on the mini-mushroom and mini-adult fixture families
 (under `--v2-compat`).
 
 Implemented today:
 
-- **Input:** wide CSV/TSV **and** subject–predicate–value triple sources.
-- **Specs:** legacy `.bed` **and** the native TOML format — round-trip,
+- **Input:** wide CSV/TSV **and** subject-predicate-value triple sources.
+- **Specs:** legacy `.bed` **and** the native TOML format: round-trip,
   composition (`extends`), templates and matchers, the three plan-derived
   fingerprints, and one-way `.bed` → TOML migration.
 - **Conversion:** every v1 discretizer kind, calibration, and `restrict_to`.
 - **Output:** deterministic `.cxt`/`.dat`, with a `--v2-compat` preset.
 - **Discovery:** `probe` draft-spec generation for both wide and triple sources,
   as a library API **and** as the `probe` command.
-- **CLI:** the `fcabedrock` command, shipping all eight commands — `convert`,
+- **CLI:** the `fcabedrock` command, shipping all eight commands (`convert`,
   `validate`, `plan`, `stats`, `calibrate`, `probe`, `migrate` and
-  `fingerprint` — with the run manifest, the publication transaction, and the
+  `fingerprint`) with the run manifest, the publication transaction, and the
   freeze engine.
 
-**M8 — a scaling and benchmark pass — is in progress**, followed by the desktop
-UI (M9). It adds an internal BenchmarkDotNet suite over the real production
-paths, target-scale evidence at 7.3M and 73M input records, a self-contained
-standalone distribution beside the global tool, and per-platform build, test,
-accounting, and packaging checks.
+M8, the scaling and benchmark pass, added an internal BenchmarkDotNet suite
+over the real production paths, target-scale evidence at 7.3M and 73M input
+records, a self-contained standalone distribution beside the global tool, and
+per-platform build, test, accounting, and packaging checks. Its follow-up,
+M8.1, changed how count-sensitive (equal-frequency and percentile) calibration
+schedules its spill runs without changing its results. The desktop UI (M9) is
+planned after M8.2, the writing and provenance hardening pass.
 
 `docs/roadmap.md` is the live source for the detailed current position, and
 `docs/benchmarks.md` is the measurement record.
 
 ## Continuous integration
 
-Every push and pull request builds, tests, checks resident-memory accounting,
-smoke-tests both distributions, and produces a tested archive on each supported
-native target: **Windows x64**, **Linux x64**, and **macOS ARM64**. Linux ARM64
-and Windows ARM64 run additionally where available; they carry no support claim
-and produce no distribution archive.
+Every push to `main` and every pull request targeting it builds, tests, checks
+resident-memory accounting, smoke-tests both distributions, and produces a
+tested archive on each supported native target: **Windows x64**, **Linux x64**,
+and **macOS ARM64**. Linux ARM64 and Windows ARM64 also run where available;
+they carry no support claim and produce no distribution archive.
 
 The workflow is `.github/workflows/ci.yml`. It is deliberately **not** a
 performance measurement: hosted runners are shared and of unstated provenance, so
@@ -58,7 +60,7 @@ identified hardware and is recorded in `docs/benchmarks.md`.
 
 Every input those jobs need comes from this repository: the benchmark corpora they
 prepare are generated from pinned arithmetic. The one corpus that is downloaded
-rather than generated — the UCI Adult training split — is deliberately outside
+rather than generated (the UCI Adult training split) is deliberately outside
 routine CI, so an outage at a research-data host cannot fail a build that has
 nothing to do with it. Its cases are run explicitly on the release candidate
 instead, which `docs/benchmarks.md` records.
@@ -87,7 +89,7 @@ Then, once the package is available on a configured NuGet source:
 dotnet tool install --global FcaBedrock.Cli
 ```
 
-Until it is published, install it from a local pack of this repository — the
+Until it is published, install it from a local pack of this repository, the
 same package the installed-tool smoke test installs under `--tool-path`:
 
 ```text
@@ -113,7 +115,7 @@ Per-command usage: see the [packed command guide](src/FcaBedrock.Cli/README.md).
 ### Standalone (no .NET installed)
 
 The global tool is **framework-dependent**: it needs a matching .NET runtime on
-the machine. The standalone distribution does not — it carries the runtime beside
+the machine. The standalone distribution does not; it carries the runtime beside
 the executable.
 
 Build one for your platform:
@@ -134,7 +136,7 @@ belongs to the global-tool shim.
 
 The required archives are `win-x64`, `linux-x64`, and `osx-arm64`, and CI
 produces each of them on its own platform, then extracts that exact archive and
-runs the extracted executable before uploading it — a cross-published folder
+runs the extracted executable before uploading it; a cross-published folder
 shows only that the SDK can emit files for another target, not that the result
 runs there. On Linux and macOS the archive records `FcaBedrock.Cli` as
 executable, so `./FcaBedrock.Cli` works straight out of the unzip.
@@ -146,16 +148,18 @@ The global tool remains a **temporary** technical-preview distribution.
 
 ## Documentation
 
-- **`docs/bedrock-spec-v1.md`** — the normative Bedrock file-format spec.
-- **`docs/engineering-principles.md`** — engineering invariants the code must satisfy.
-- **`docs/decisions.md`** — architectural decision log, with rationale.
-- **`docs/roadmap.md`** — milestones M0–M9 and the deferred backlog.
-- **`docs/benchmarks.md`** — the M8 measurement record: what is measured, on
-  what hardware, under what rules, and what has *not* been measured.
-- **`eng/README.md`** — the packaging and smoke commands.
-- **`docs/lineage.md`** — what the predecessors (v2, the PhD thesis, the
+- **`docs/bedrock-spec-v1.md`**: the normative Bedrock file-format spec.
+- **`docs/engineering-principles.md`**: engineering invariants the code must satisfy.
+- **`docs/writing-principles.md`**: how this repository writes documents and comments.
+- **`docs/decisions.md`**: architectural decision log, with rationale.
+- **`docs/roadmap.md`**: milestones M0–M9 and the deferred backlog.
+- **`docs/benchmarks.md`**: the M8 measurement record (what is measured, on
+  what hardware, under what rules, and what has *not* been measured).
+- **`eng/README.md`**: the build, test, packaging, smoke, and authored-text
+  integrity commands.
+- **`docs/lineage.md`**: what the predecessors (v2, the PhD thesis, the
   SPARQL2FCA prototype) settled, distilled.
-- **`AGENTS.md`** — repo orientation for contributors and coding agents
+- **`AGENTS.md`**: repo orientation for contributors and coding agents
   (`CLAUDE.md` is its Claude Code import shim).
 
 ## Test fixtures
@@ -191,6 +195,6 @@ path.
 
 ## License
 
-MIT — see `LICENSE`. (Same license as FcaBedrock v2.)
+MIT: see `LICENSE`. (Same license as FcaBedrock v2.)
 
 Copyright © Constantinos Orphanides.
