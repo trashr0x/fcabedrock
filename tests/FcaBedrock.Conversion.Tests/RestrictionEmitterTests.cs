@@ -32,12 +32,12 @@ public sealed class RestrictionEmitterTests
         Assert.Equal(["0", "1", "2"], objects.Select(o => o.Name));
     }
 
-    // --- string matching (§10.4/P-12) ---------------------------------------
+    // --- string matching (§10.4/EP-12) ---------------------------------------
 
     [Fact]
     public async Task Emit_WhenStringRestriction_ThenMatchesOrdinallyAndCaseSensitively()
     {
-        // §10.4/P-12: ordinal, case-sensitive equality — no case folding, no locale, no regex.
+        // §10.4/EP-12: ordinal, case-sensitive equality — no case folding, no locale, no regex.
         // Rows: "Bmp5" (match), "bmp5" (case differs → no), "BMP5" (no), "Wnt1" (other → no).
         var spec = Wide(Filter("Gene", 0, new RestrictToValue("Bmp5")), ConversionFixtures.Nominal("t", 1, "x"));
 
@@ -207,7 +207,7 @@ public sealed class RestrictionEmitterTests
     public async Task Emit_WhenNumericRestrictionUnderALocale_ThenObservationsParseUnderThatLocale(
         string locale, string raw, bool survives)
     {
-        // §5.1/§10.4/P-11: the observation parses under binding.locale — derived once per emit,
+        // §5.1/§10.4/EP-11: the observation parses under binding.locale — derived once per emit,
         // never ambient. A discriminating vector, so an invariant-hardcoded matcher fails here.
         var binding = ConversionFixtures.Wide(hasHeader: false) with { Locale = locale };
         var spec = new BedrockSpec(binding,

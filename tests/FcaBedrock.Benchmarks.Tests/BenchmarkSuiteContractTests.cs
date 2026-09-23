@@ -224,7 +224,7 @@ public sealed class BenchmarkSuiteContractTests
     public void Suite_ShouldNotReferenceATestFramework()
     {
         // The benchmark host opts out of the shared test props precisely so `dotnet test` can never
-        // run it (P-20). A test-framework reference appearing here would mean that opt-out lapsed.
+        // run it (EP-20). A test-framework reference appearing here would mean that opt-out lapsed.
         var frameworks = Suite.GetReferencedAssemblies()
             .Select(reference => reference.Name!)
             .Where(name => name.Contains("xunit", StringComparison.OrdinalIgnoreCase)

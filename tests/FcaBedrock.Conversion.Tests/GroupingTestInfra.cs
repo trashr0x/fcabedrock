@@ -1,6 +1,6 @@
 namespace FcaBedrock.Conversion.Tests;
 
-// A decorating spool filesystem for failure injection (P-6 test seam). Each hook returns a non-null
+// A decorating spool filesystem for failure injection (EP-6 test seam). Each hook returns a non-null
 // exception to fail that operation; otherwise it delegates to the real filesystem. A delete hook that
 // throws leaves the file on disk, so live bytes accumulate (exercising the degraded-cleanup escalation).
 internal sealed class FakeSpoolFileSystem : ISpoolFileSystem

@@ -37,7 +37,7 @@ namespace FcaBedrock.Golden.Tests;
 /// names, are asserted in both output formats.
 /// </para>
 /// <para>
-/// Deliberately separate from the v2 golden comparisons (P-9): templates, matchers,
+/// Deliberately separate from the v2 golden comparisons (EP-9): templates, matchers,
 /// and the ad.data layout are native surface no v2 fixture uses. The corpus is
 /// deterministic and synthetic — it mirrors the layout of Nicholas Kushmerick
 /// (1999), Internet Advertisements (UCI), without copying any UCI data row.

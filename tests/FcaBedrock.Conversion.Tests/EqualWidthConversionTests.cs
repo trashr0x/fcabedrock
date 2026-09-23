@@ -193,7 +193,7 @@ public sealed class EqualWidthConversionTests
     [Fact]
     public async Task Calibrate_WhenNonInvariantLocale_ThenThePopulationParsesUnderIt()
     {
-        // P-11/§7: the calibration population is parsed under binding.locale, never the ambient
+        // EP-11/§7: the calibration population is parsed under binding.locale, never the ambient
         // culture. Under de-DE the comma is the decimal separator, so "0,5" is a half — and the
         // semicolon delimiter keeps those values in one column.
         var binding = new Binding(
@@ -261,7 +261,7 @@ public sealed class EqualWidthConversionTests
     [Fact]
     public async Task Calibrate_WhenRunTwice_ThenIdenticalCuts()
     {
-        // P-7: same spec + same input ⇒ same calibration, every run.
+        // EP-7: same spec + same input ⇒ same calibration, every run.
         var spec = Wide(Pending("score", 0, 7, new NominalScale()));
 
         var first = await CalibrateOkAsync(spec, ScoreCsv);
@@ -544,7 +544,7 @@ public sealed class EqualWidthConversionTests
     [Fact]
     public async Task Convert_WhenAutoRunTwice_ThenByteIdentical()
     {
-        // P-7: the whole calibrate → plan → emit chain is deterministic.
+        // EP-7: the whole calibrate → plan → emit chain is deterministic.
         var spec = Wide(Pending("score", 0, 4, new OrdinalScale(OrdinalDirection.Le)));
 
         var (firstCxt, firstDat) = await ConvertAsync(spec, ScoreCsv, WriterOptions.Native, LabelStyle.Native);
@@ -623,7 +623,7 @@ public sealed class EqualWidthConversionTests
     [Fact]
     public async Task EmitTriple_WhenRunTwice_ThenIdenticalObjectsAndCrosses()
     {
-        // P-7 on the triple path.
+        // EP-7 on the triple path.
         var (_, first, _) = await CalibratePlanEmitTriple(TripleSpec(TripleOrdering.Unordered), TripleInterleaved);
         var (_, second, _) = await CalibratePlanEmitTriple(TripleSpec(TripleOrdering.Unordered), TripleInterleaved);
 

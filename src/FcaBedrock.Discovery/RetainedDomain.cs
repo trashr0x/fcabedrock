@@ -2,7 +2,7 @@ namespace FcaBedrock.Discovery;
 
 /// <summary>
 /// One attribute's observed domain: the first <c>limit</c> distinct cleaned non-missing values
-/// in first-observation order, with ordinal identity (P-12) and set-based idempotent intake
+/// in first-observation order, with ordinal identity (EP-12) and set-based idempotent intake
 /// (D-106). Deliberately the same semantics as the calibrator's private domain observer, so a
 /// probed domain and the domain a conversion of the same source calibrates are identical rather
 /// than coincidentally equal — a cross-check test pins that.

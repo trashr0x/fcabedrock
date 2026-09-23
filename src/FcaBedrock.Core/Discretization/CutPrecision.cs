@@ -6,7 +6,7 @@ namespace FcaBedrock.Core.Discretization;
 /// <see langword="private protected"/> base constructor admits no out-of-assembly
 /// variant, so the derivation and fingerprint switches are exhaustive. Immutable
 /// and culture-free: rounding is pure binary64 arithmetic, never a locale concern
-/// (P-11).
+/// (EP-11).
 /// </summary>
 public abstract record CutPrecision
 {
@@ -29,7 +29,7 @@ public sealed record ExactPrecision : CutPrecision;
 /// <summary>
 /// <c>precision = { round_to = r }</c> (§11.4): each computed cut is rounded to
 /// the nearest multiple of <see cref="RoundTo"/>, halfway cases to even
-/// (<see cref="MidpointRounding.ToEven"/> — pinned, P-11). Rounding may collapse
+/// (<see cref="MidpointRounding.ToEven"/> — pinned, EP-11). Rounding may collapse
 /// two cuts onto one value; that is diagnosed where the cuts are derived
 /// (<c>EqualWidthCutsCollapsed</c> at spec validate, <c>CalibrationCutsInvalid</c>
 /// at calibrate), never here.
@@ -45,7 +45,7 @@ public sealed record RoundToPrecision : CutPrecision
     /// Builds the precision for <paramref name="roundTo"/>. Throws
     /// <see cref="ArgumentOutOfRangeException"/> unless it is finite and strictly
     /// greater than zero — the reader rejects the authored form first
-    /// (<c>SpecFieldInvalid</c>, §11.4); this is the P-10 backstop, so an unusable
+    /// (<c>SpecFieldInvalid</c>, §11.4); this is the EP-10 backstop, so an unusable
     /// rounding step is unrepresentable.
     /// </summary>
     public static RoundToPrecision Create(double roundTo)

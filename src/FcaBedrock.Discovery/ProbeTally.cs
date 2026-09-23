@@ -7,7 +7,7 @@ namespace FcaBedrock.Discovery;
 /// <para>
 /// The same shape and sample cap as Conversion's <c>DiagnosticTally</c>, re-implemented rather
 /// than shared because Discovery must not reference Conversion (D-109) and neither package
-/// should grow a public tally type to avoid ~15 lines (P-3/P-4). The duplication is
+/// should grow a public tally type to avoid ~15 lines (EP-3/EP-4). The duplication is
 /// deliberate and local.
 /// </para>
 /// </summary>

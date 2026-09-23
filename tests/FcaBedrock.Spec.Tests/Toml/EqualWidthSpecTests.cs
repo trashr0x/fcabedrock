@@ -196,7 +196,7 @@ public sealed class EqualWidthSpecTests
     [Fact]
     public void Read_WhenSeveralEqualWidthProblems_ThenTheyAggregate()
     {
-        // P-14: independent field problems report together, not first-one-wins.
+        // EP-14: independent field problems report together, not first-one-wins.
         var result = SpecReader.Read(Attribute("{ kind = \"equal_width\", bins = 1, range = \"wibble\", precision = \"nope\" }"));
 
         Assert.False(result.IsOk);
@@ -350,7 +350,7 @@ public sealed class EqualWidthSpecTests
     [Fact]
     public void Resolve_WhenPendingCarrierBuilt_ThenCultureIsTheResolvedReadOnlyParsingCulture()
     {
-        // P-11: the carrier hands the calibrator the spec's binding.locale, never an ambient one,
+        // EP-11: the carrier hands the calibrator the spec's binding.locale, never an ambient one,
         // and the ResolvedSpec boundary re-homes it read-only (D-098).
         var carrier = Assert.IsType<CalibrationPending>(ResolveOk(Section()).Attributes[0].Discretizer);
 

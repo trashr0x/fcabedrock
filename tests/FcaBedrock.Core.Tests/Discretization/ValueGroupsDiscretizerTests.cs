@@ -164,7 +164,7 @@ public sealed class ValueGroupsDiscretizerTests
         Assert.Empty(Education(ValueGroupsUnmatched.Other).PassthroughBins);
     }
 
-    // --- Construction backstops (P-10) ---------------------------------------
+    // --- Construction backstops (EP-10) ---------------------------------------
 
     [Fact]
     public void Create_WhenPassthrough_ThenThrowsBecauseItIsDataDependent() =>
@@ -199,7 +199,7 @@ public sealed class ValueGroupsDiscretizerTests
 
     [Fact]
     public void Create_WhenLabelIsLowercaseOtherUnderOther_ThenAllowedBecauseComparisonIsOrdinal() =>
-        // P-12: ordinal, so "other" does not collide with the synthetic "Other".
+        // EP-12: ordinal, so "other" does not collide with the synthetic "Other".
         Assert.Equal(
             ["other", "Other"],
             ValueGroupsDiscretizer.Create([Group("other", "11th")], ValueGroupsUnmatched.Other).DescribeBins([]).Labels);

@@ -32,7 +32,7 @@ internal sealed class TripleObservation(ProbeOptions options, bool subjectGroupe
     private readonly RetentionBudget _budget =
         new(options.MaxTotalRetainedValues, options.MaxTotalRetainedValueText);
 
-    // The contiguity state. `_completed` is D-110's inherited P-16 bounded-metadata carve-out —
+    // The contiguity state. `_completed` is D-110's inherited EP-16 bounded-metadata carve-out —
     // the object-names class the converter already retains — so it is charged to no guard and
     // creates no fourth one. It stays empty under `unordered`, where nothing consults it.
     private readonly HashSet<string> _completed = new(StringComparer.Ordinal);

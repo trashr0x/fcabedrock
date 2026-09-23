@@ -13,8 +13,8 @@ namespace FcaBedrock.Conversion.Tests;
 /// <summary>
 /// <c>value_groups</c> through the writers (§11.6, M4 Slice E / D-104): the <b>actual output
 /// bytes</b> for each unmatched policy, on the wide and both triple paths, plus repeat
-/// determinism (P-7). Byte-level rather than plan-level, because that is where a claim about
-/// output behaviour is genuinely settled — the exporters themselves are unchanged and dumb (P-15).
+/// determinism (EP-7). Byte-level rather than plan-level, because that is where a claim about
+/// output behaviour is genuinely settled — the exporters themselves are unchanged and dumb (EP-15).
 /// </summary>
 public sealed class ValueGroupsWriterTests
 {
@@ -210,7 +210,7 @@ public sealed class ValueGroupsWriterTests
             Encoding.UTF8.GetString(stream.ToArray()));
     }
 
-    // --- Determinism (P-7) ----------------------------------------------------
+    // --- Determinism (EP-7) ----------------------------------------------------
 
     [Fact]
     public async Task Cxt_WhenWrittenTwice_ThenIdenticalBytes()
@@ -227,7 +227,7 @@ public sealed class ValueGroupsWriterTests
     public async Task CalibrateAndWrite_WhenRepeated_ThenIdenticalBytesEndToEnd()
     {
         // The whole calibrate → plan → emit → write chain repeated: the discovered bin set, its
-        // order, and the bytes must all be reproducible from the same input (P-7).
+        // order, and the bytes must all be reproducible from the same input (EP-7).
         var first = await WriteCxtAsync(await CalibrateAndPlanAsync(PassthroughSpec(), Data), PassthroughSpec(), Data);
         var second = await WriteCxtAsync(await CalibrateAndPlanAsync(PassthroughSpec(), Data), PassthroughSpec(), Data);
 

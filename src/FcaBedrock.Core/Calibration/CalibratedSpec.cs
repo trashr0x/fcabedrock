@@ -211,7 +211,7 @@ public sealed class CalibratedSpec
 
     // Applies the pending → executable and effective-domain substitutions for one
     // attribute and returns the outcome it consumed (null when the attribute needs no
-    // calibration). Data-derived cut invalidity is appended to diagnostics (P-14); every
+    // calibration). Data-derived cut invalidity is appended to diagnostics (EP-14); every
     // other mismatch is a calibrator-contract violation and throws.
     private static (AttributeSpec Effective, AttributeCalibration? Used) Substitute(
         AttributeSpec attribute, AttributeCalibration? outcome, List<BedrockDiagnostic> diagnostics)
@@ -273,7 +273,7 @@ public sealed class CalibratedSpec
     // consistent state, and so an auto discretizer and its frozen form share the cut
     // machinery by construction (D-088). A missing or kind-mismatched outcome is a
     // calibrator-contract violation (programmer error); invalid calibrated cuts are a
-    // data-derived expected failure and come back as CalibrationCutsInvalid (P-14).
+    // data-derived expected failure and come back as CalibrationCutsInvalid (EP-14).
     private static (AttributeSpec Effective, AttributeCalibration? Used) SubstitutePending(
         AttributeSpec attribute, CalibrationPending pending, AttributeCalibration? outcome, List<BedrockDiagnostic> diagnostics)
     {
@@ -333,7 +333,7 @@ public sealed class CalibratedSpec
             $"attribute '{attribute.Name}' carries a pending '{pending.Kind}' calibration and requires exactly one CalibratedCuts outcome" +
             (outcome is null ? ", but none was provided." : $", but a {outcome.GetType().Name} was provided."));
 
-    // Applies one built discretizer, attributing its data-derived diagnostics (P-14). On failure
+    // Applies one built discretizer, attributing its data-derived diagnostics (EP-14). On failure
     // the Error fails the whole result, so the un-substituted attribute is never planned;
     // retaining the outcome keeps the report honest.
     private static (AttributeSpec Effective, AttributeCalibration? Used) Build<TDiscretizer>(
@@ -357,13 +357,13 @@ public sealed class CalibratedSpec
     // only touch Discretizer/DeclaredDomain, so each effective attribute carries the token's
     // already-immutable entry list by reference — but this factory is the last gate before
     // Plan/Emit/fingerprints, and its contract states that an invalid restriction
-    // entry surviving here throws (programmer error, P-14).
+    // entry surviving here throws (programmer error, EP-14).
     //
     // The check is EXHAUSTIVE over the three recognized variants, not just a finiteness test: a
     // half-guard that waved a null or an unknown variant through would let corrupt state reach
     // the emitter's matcher or the fingerprint encoder, which can only answer with a
     // NullReferenceException or an "unreachable" throw far from the cause. Reject at the
-    // boundary, then trust the type inward (P-10).
+    // boundary, then trust the type inward (EP-10).
     //
     // Defence in depth, deliberately: ResolvedSpec.Create is the primary boundary and the only
     // way to mint a token, so this is unreachable through any honest chain. It is kept because

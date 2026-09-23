@@ -7,7 +7,7 @@ namespace FcaBedrock.Golden.Tests;
 /// The deterministic, synthetic Internet-Advertisements corpus — a wide headerless CSV that
 /// mirrors the complete raw <c>ad.data</c> layout without copying any UCI data row.
 /// <para>
-/// <b>Determinism is the whole point</b> (P-7): no clock, random source, machine or culture
+/// <b>Determinism is the whole point</b> (EP-7): no clock, random source, machine or culture
 /// state, platform newline, or unordered enumeration enters the generated text. Every value is a
 /// literal string spelling and the newline is a fixed <c>\n</c>. The row set is small — a handful
 /// of rows — but the width is never reduced: 1,559 columns, always.

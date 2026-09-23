@@ -3,7 +3,7 @@ namespace FcaBedrock.Conversion;
 /// <summary>
 /// Per-attribute (or per-source) occurrence count plus a bounded first-observed
 /// sample, for aggregated data-phase diagnostics (§16.4, D-059). Deterministic
-/// given source order and bounded metadata — never the matrix (P-16). Shared by
+/// given source order and bounded metadata — never the matrix (EP-16). Shared by
 /// the emitter and the calibrator (D-098 hoist).
 /// </summary>
 internal sealed class DiagnosticTally

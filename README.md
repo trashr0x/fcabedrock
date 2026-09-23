@@ -147,7 +147,7 @@ The global tool remains a **temporary** technical-preview distribution.
 ## Documentation
 
 - **`docs/bedrock-spec-v1.md`** — the normative Bedrock file-format spec.
-- **`docs/principles.md`** — engineering invariants the code must satisfy.
+- **`docs/engineering-principles.md`** — engineering invariants the code must satisfy.
 - **`docs/decisions.md`** — architectural decision log, with rationale.
 - **`docs/roadmap.md`** — milestones M0–M9 and the deferred backlog.
 - **`docs/benchmarks.md`** — the M8 measurement record: what is measured, on

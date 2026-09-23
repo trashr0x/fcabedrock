@@ -9,7 +9,7 @@ namespace FcaBedrock.Cli.Commands;
 /// <b>It composes; it never formats.</b> The canonical bytes belong to
 /// <see cref="RunManifestWriter"/> in <c>FcaBedrock.Spec</c>, which shares the spec writer's
 /// literal, array, and wrapping machinery — so the CLI writes no TOML and there is no second
-/// canonical emitter (D-123 point 8, P-5).
+/// canonical emitter (D-123 point 8, EP-5).
 /// </para>
 /// <para>
 /// <b>Nothing here is re-derived.</b> The fingerprints, hashes, paths, and calibration outcomes

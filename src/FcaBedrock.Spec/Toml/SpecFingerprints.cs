@@ -71,7 +71,7 @@ public static class SpecFingerprints
     /// Verifies the stored <c>[spec]</c> fingerprints against
     /// <paramref name="computed"/> (§14): an absent stored field is silent (the
     /// fields are optional, §3); a matching one is silent (no "verified" noise,
-    /// P-3); a differing one warns with its own code. The three checks are
+    /// EP-3); a differing one warns with its own code. The three checks are
     /// independent — every stale field reports (the D-076 co-fire stance).
     /// Comparison is ordinal string equality of the full stored value, so a
     /// malformed stored string simply reads as stale (D-077).

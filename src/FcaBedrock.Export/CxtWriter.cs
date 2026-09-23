@@ -10,7 +10,7 @@ namespace FcaBedrock.Export;
 /// object and formal-attribute counts and names, then the incidence matrix. The
 /// layout needs the object names before any row, so the writer makes two passes
 /// over the replayable object stream, buffering only the (bounded) object names —
-/// never the matrix (P-16). Dumb: it emits the planner's order and names verbatim (P-15).
+/// never the matrix (EP-16). Dumb: it emits the planner's order and names verbatim (EP-15).
 /// <para>
 /// <b>Object-name sequence invariant (§18.1, D-082).</b> Pass 2 must replay the same object-name
 /// sequence (count and order) as pass 1; each pass-2 object's <c>Name</c> is checked against the pass-1
@@ -22,7 +22,7 @@ namespace FcaBedrock.Export;
 /// <b>Size advisory (§8, D-122 part 7 / D-123).</b> The advisory-carrying overload projects the
 /// <em>exact</em> final serialized size after the pass-1 name collection and <em>before any output
 /// byte</em>, emitting <see cref="DiagnosticCode.OutputCxtSizeAdvisory"/> when it is at or above the
-/// supplied threshold. The projection is byte-level bookkeeping only (P-15): it changes a warning,
+/// supplied threshold. The projection is byte-level bookkeeping only (EP-15): it changes a warning,
 /// never output bytes, and is a non-input to every fingerprint (D-077).
 /// </para>
 /// </summary>
@@ -67,7 +67,7 @@ public static class CxtWriter
         ArgumentNullException.ThrowIfNull(diagnostics);
         ArgumentOutOfRangeException.ThrowIfNegative(sizeAdvisoryBytes);
 
-        // Pass 1: object names + count (bounded metadata only — §18.1, P-16).
+        // Pass 1: object names + count (bounded metadata only — §18.1, EP-16).
         var objectNames = new List<string>();
         await foreach (var obj in openObjects().WithCancellation(cancellationToken).ConfigureAwait(false))
         {
@@ -118,7 +118,7 @@ public static class CxtWriter
         // Pass 2: incidence rows — replay the source rather than buffering the matrix. Each replayed
         // object's Name must match pass 1's at the same position (§18.1, D-082): a replay that yields a
         // different object-name sequence (count or order) would misalign the header names and the rows,
-        // so it fails the write. (Full producer/content determinism is a P-7 concern, not the writer's.)
+        // so it fails the write. (Full producer/content determinism is a EP-7 concern, not the writer's.)
         var first = true;
         var objectIndex = 0;
         await foreach (var obj in openObjects().WithCancellation(cancellationToken).ConfigureAwait(false))
@@ -220,7 +220,7 @@ public static class CxtWriter
     // The size-advisory diagnostic (§8 / §16.4, D-122 part 7 / D-123): Warning, export-phase, no
     // location (the writer has no file/attribute/record context) and no structured context — the
     // message carries both the projected size and the threshold, formatted in the invariant culture
-    // so the bytes are deterministic (P-11/P-12).
+    // so the bytes are deterministic (EP-11/EP-12).
     private static BedrockDiagnostic SizeAdvisory(long projectedBytes, long thresholdBytes) =>
         new(
             DiagnosticCode.OutputCxtSizeAdvisory,

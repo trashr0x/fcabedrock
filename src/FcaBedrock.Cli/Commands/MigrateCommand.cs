@@ -82,7 +82,7 @@ internal static class MigrateCommand
     }
 
     // Presence-faithful: a field is authored only when argv supplied it. Encoding and the quote
-    // character are never authored — v1 fixes both and exposes no flag for either (P-6, §5.1).
+    // character are never authored — v1 fixes both and exposes no flag for either (EP-6, §5.1).
     private static BindingSection Binding(CommandInvocation invocation)
     {
         var triple = string.Equals(invocation.Value("--shape"), "triple", StringComparison.Ordinal);
@@ -147,7 +147,7 @@ internal static class MigrateCommand
     // the first derives from ArgumentException and the second from SystemException — so a real
     // read failure stays on the code-less exit-1 path without admitting a broad base: those
     // bases are the documented call-contract channel of the reader and the migrator, and
-    // absorbing one would disguise a defect as a broken file (P-14).
+    // absorbing one would disguise a defect as a broken file (EP-14).
     private static bool IsBedReadFailure(Exception exception) =>
         exception is IOException
             or InvalidDataException

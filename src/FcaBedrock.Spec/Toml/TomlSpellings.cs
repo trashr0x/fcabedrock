@@ -7,7 +7,7 @@ namespace FcaBedrock.Spec.Toml;
 /// <summary>
 /// Single source of truth for the TOML surface's vocabulary: one spelling table
 /// per enum, consumed in both directions by the reader and the writer so the two
-/// can never drift (P-5), plus the kind names behind the D-070 dispatch. It no
+/// can never drift (EP-5), plus the kind names behind the D-070 dispatch. It no
 /// longer holds any deferred-surface set: the closed per-table D-075 sets retired
 /// with the carriers they were waiting for (extends/template/matcher at M2
 /// Slice F, D-078; the naming keys at M6 Slice A, D-120), leaving

@@ -44,7 +44,7 @@ public sealed class FirstAppearanceGroupingTests
     [Fact]
     public async Task GroupByFirstAppearanceAsync_WhenOrdinalKeys_ThenNoCultureFolding()
     {
-        // P-12: keys compare ordinally, never culture-folded. Distinct code-unit keys stay distinct
+        // EP-12: keys compare ordinally, never culture-folded. Distinct code-unit keys stay distinct
         // groups even when a culture-aware compare might treat them as equal.
         Row[] input = [new("SS", 0), new("ß", 1), new("SS", 2)];
 
@@ -58,7 +58,7 @@ public sealed class FirstAppearanceGroupingTests
     {
         // A one-byte budget spills every row (each over budget → its own run), forcing the full
         // spill/merge path. The codec round-trips keys (incl. null) exactly, so the order is identical
-        // to the in-memory path — spilling never changes results (P-7).
+        // to the in-memory path — spilling never changes results (EP-7).
         Row[] input =
         [
             new("a", 0), new("b", 1), new("a", 2), new("c", 3), new("b", 4),

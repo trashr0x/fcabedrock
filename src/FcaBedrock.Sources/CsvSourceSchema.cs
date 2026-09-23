@@ -10,7 +10,7 @@ namespace FcaBedrock.Sources;
 /// </summary>
 internal static class CsvSourceSchema
 {
-    // Ordinal schema-value equality (P-12): same column count and the same header
+    // Ordinal schema-value equality (EP-12): same column count and the same header
     // (both absent, or the same ordinal name sequence).
     public static bool Equal(SourceSchema a, SourceSchema b)
     {

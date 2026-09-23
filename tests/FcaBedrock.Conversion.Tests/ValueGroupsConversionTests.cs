@@ -230,7 +230,7 @@ public sealed class ValueGroupsConversionTests
         // SAME RecordingCalibrationObserver serves as both the grouping observer and the
         // calibration observer, so it sees the spool signals AND the accumulator's own tier-1
         // sizing events. Passthrough must produce neither — it retains only its bin set
-        // (schema-scale metadata, P-16), never a budgeted population — so an unused accumulator
+        // (schema-scale metadata, EP-16), never a budgeted population — so an unused accumulator
         // allocation or a passthrough contribution to the budget divisor would fail here even
         // though it would touch no filesystem and change no bins.
         var spec = new BedrockSpec(ConversionFixtures.Wide(hasHeader: false), [Passthrough("edu", 0, Group("School", "11th"))]);

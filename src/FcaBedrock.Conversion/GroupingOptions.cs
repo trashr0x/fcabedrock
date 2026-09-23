@@ -7,7 +7,7 @@ namespace FcaBedrock.Conversion;
 /// reporting state</b> — that is per-enumeration (<see cref="GroupingReports"/>), wired fresh by the
 /// emitter — so <see cref="Default"/> is safely shared and concurrent conversions cannot
 /// cross-contaminate. These are runtime knobs, never spec/fingerprint inputs: the storage strategy
-/// never changes output bytes. Provisional defaults; M8 tunes them against real distributions (P-19).
+/// never changes output bytes. Provisional defaults; M8 tunes them against real distributions (EP-19).
 /// </summary>
 internal sealed class GroupingOptions
 {
@@ -44,7 +44,7 @@ internal sealed class GroupingOptions
     /// <summary>The shared default configuration (no mutable state).</summary>
     public static GroupingOptions Default { get; } = new();
 
-    /// <summary>Resident-bytes budget before a spill is forced (P-16 bound base).</summary>
+    /// <summary>Resident-bytes budget before a spill is forced (EP-16 bound base).</summary>
     public long MaxBufferedBytes { get; }
 
     /// <summary>Maximum runs merged in one pass; multi-stage above this.</summary>
@@ -53,7 +53,7 @@ internal sealed class GroupingOptions
     /// <summary>The temp root for spool workspaces; <see langword="null"/> = the OS temp path.</summary>
     public string? TempDirectory { get; }
 
-    /// <summary>The spool filesystem (real by default; a test seam for failure injection — P-6).</summary>
+    /// <summary>The spool filesystem (real by default; a test seam for failure injection — EP-6).</summary>
     public ISpoolFileSystem FileSystem { get; }
 
     /// <summary>An optional observer for resource-bound assertions (a test seam; no production effect).</summary>
@@ -63,7 +63,7 @@ internal sealed class GroupingOptions
 /// <summary>
 /// A test-only observer of the grouping backend's spool activity — run creation/open/close/delete and
 /// the pre-merge-batch live-bytes accounting (D-082 resource proofs). No production behavior depends on
-/// it (P-6); production runs leave it <see langword="null"/>.
+/// it (EP-6); production runs leave it <see langword="null"/>.
 /// </summary>
 internal interface IGroupingObserver
 {
@@ -85,7 +85,7 @@ internal interface IGroupingObserver
     /// <summary>
     /// The workspace's retained failed-deletion entries after a delete attempt or a retry pass
     /// (the bounded-bookkeeping proof, D-103). Reported by the workspace itself, so it is
-    /// available to every caller; only the calibration workspace caps it (P-1).
+    /// available to every caller; only the calibration workspace caps it (EP-1).
     /// </summary>
     void PendingDeletions(int count);
 

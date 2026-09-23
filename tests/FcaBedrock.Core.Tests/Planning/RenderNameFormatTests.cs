@@ -13,7 +13,7 @@ namespace FcaBedrock.Core.Tests.Planning;
 /// rendered-name backstop with its pinned message representation (D-116).
 /// <para>
 /// Rendering lives here and nowhere else — exporters are decision-free
-/// serializers (P-15), so a name that reaches a writer is already final.
+/// serializers (EP-15), so a name that reaches a writer is already final.
 /// </para>
 /// </summary>
 public sealed class RenderNameFormatTests
@@ -204,7 +204,7 @@ public sealed class RenderNameFormatTests
     [Fact]
     public void Plan_WhenPlannedTwice_ThenTheRenderedNamesAreIdentical()
     {
-        // P-7: same spec ⇒ same rendered names, byte for byte.
+        // EP-7: same spec ⇒ same rendered names, byte for byte.
         var first = Plan(Nominal(["b", "n"], format: "{display_name}::{scale_op}{value}", missing: MissingPolicy.AsAttribute));
         var second = Plan(Nominal(["b", "n"], format: "{display_name}::{scale_op}{value}", missing: MissingPolicy.AsAttribute));
 
@@ -363,7 +363,7 @@ public sealed class RenderNameFormatTests
     [Fact]
     public void Plan_WhenPlannedTwice_ThenTheInvalidNameMessageIsByteIdentical()
     {
-        // P-7 over the message itself: the samples are drawn deterministically, so two runs
+        // EP-7 over the message itself: the samples are drawn deterministically, so two runs
         // (and two machines) produce the same bytes.
         var first = PlanResult(Nominal(["a\nb", "c\rd", "e\nf", "g\rh"], format: "{value}"));
         var second = PlanResult(Nominal(["a\nb", "c\rd", "e\nf", "g\rh"], format: "{value}"));
@@ -393,7 +393,7 @@ public sealed class RenderNameFormatTests
     [Fact]
     public void Plan_WhenANameIsInvalidAndAnotherCollides_ThenBothConditionsReport()
     {
-        // Independent conditions aggregate (P-14): registration still happens, so the
+        // Independent conditions aggregate (EP-14): registration still happens, so the
         // collision check sees exactly what a valid run would and both diagnostics surface.
         var spec = new BedrockSpec(SpecFixtures.WideRowIndex(), [
             SpecFixtures.Nominal("dirty", 0, ["a\nb"]),

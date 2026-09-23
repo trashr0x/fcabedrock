@@ -4,7 +4,7 @@ using FcaBedrock.Spec.Toml;
 namespace FcaBedrock.Discovery.Tests;
 
 /// <summary>
-/// The programmer-error half of P-14: what <see cref="Prober.ProbeAsync"/> throws rather than
+/// The programmer-error half of EP-14: what <see cref="Prober.ProbeAsync"/> throws rather than
 /// diagnoses. The caller selects the shape (D-106), so a shape that does not match the session
 /// it was handed is a bug in the call — not a property of the data — and must not be dressed up
 /// as a <c>BedrockDiagnostic</c> a caller might try to handle.

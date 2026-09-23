@@ -121,7 +121,7 @@ public sealed class ProbeDraftContentTests
         Assert.Equal(ProbeDraftExpectations.NotesFor(100_000, 0), provenance.Notes);
 
         // created_at above all: reading a clock would break byte repeatability outright (D-112)
-        // and violate the no-clock rule (D-079/P-13).
+        // and violate the no-clock rule (D-079/EP-13).
         Assert.Null(provenance.CreatedAt);
         Assert.Null(provenance.Author);
         Assert.Null(provenance.SourceUrl);
@@ -154,7 +154,7 @@ public sealed class ProbeDraftContentTests
             Assert.IsType<NominalScaleSection>(attribute.Scale);
 
             // Absent by contract. `include` and `missing_policy` are omitted rather than written
-            // at their defaults: M5 authors no policy it did not decide (P-6/D-049).
+            // at their defaults: M5 authors no policy it did not decide (EP-6/D-049).
             Assert.Null(attribute.Include);
             Assert.Null(attribute.Template);
             Assert.Null(attribute.RestrictTo);

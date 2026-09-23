@@ -28,7 +28,7 @@ internal sealed record PreparedConversion(
 /// Every stage runs in benchmark <em>setup</em>, outside any measured interval. A diagnostic of
 /// Error or Fatal severity here is a broken corpus or a broken spec, not a data condition under
 /// test, so it throws rather than being reported: the exception channel is the right one for a
-/// misconfigured harness (P-14's "programmer error" side).
+/// misconfigured harness (EP-14's "programmer error" side).
 /// </para>
 /// </summary>
 internal static class ConversionPipeline

@@ -42,7 +42,7 @@ public static class Prober
     /// Probes a wide source, returning a draft spec with its warnings, or diagnostics alone
     /// when no valid draft exists.
     /// <para>
-    /// <b>Errors are values; misuse is an exception</b> (P-14). A source that cannot be read, a
+    /// <b>Errors are values; misuse is an exception</b> (EP-14). A source that cannot be read, a
     /// column-less source, and a breached boundedness guard are diagnostics with no document. A
     /// null argument, or a <paramref name="session"/>/<paramref name="readSettings"/> pair that
     /// is not both wide, is a programmer error and throws: the caller chose the shape, so a
@@ -319,7 +319,7 @@ public static class Prober
     {
         // Enumerated by hand rather than with `await foreach` so the catch clauses here wrap
         // ONLY the session's own record acquisition. An `await foreach`'s try block would also
-        // cover the observation body, where an exception is a bug in this engine — and P-14
+        // cover the observation body, where an exception is a bug in this engine — and EP-14
         // forbids dressing a bug up as an infrastructure diagnostic.
         //
         // Acquisition is TWO calls before the first record arrives — ReadAsync and

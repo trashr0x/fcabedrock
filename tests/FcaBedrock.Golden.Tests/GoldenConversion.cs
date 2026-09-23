@@ -36,7 +36,7 @@ internal static class GoldenConversion
         // are collected once and grouping-storage failures aggregated across passes and
         // flushed at disposal, so only after the using block are they authoritative
         // (EmitReplay). Each pass re-invokes Emit -> a fresh source enumeration, so the
-        // write is replayable by construction (P-16).
+        // write is replayable by construction (EP-16).
         using (var session = EmitReplay.Begin(prepared.Emit, diagnostics))
         {
             await CxtWriter.WriteAsync(prepared.Plan, session.Open, options, stream);
@@ -169,7 +169,7 @@ internal static class GoldenConversion
     // column is empty in v2's OWN golden bytes (every incidence row carries '.' at that
     // position), so AttributeHasNoCrosses reporting it is the diagnostic working, not a
     // regression. The fixtures record what v2 produced and are never edited to silence a
-    // diagnostic (P-9).
+    // diagnostic (EP-9).
     //
     // Permitting exactly these three codes — and nothing else — costs no coverage, because
     // byte-equality is the real gate here and they cannot mask a byte change: a wrongly dropped

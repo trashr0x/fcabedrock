@@ -19,7 +19,7 @@ namespace FcaBedrock.Golden.Tests;
 /// every row of the §9/D-119 neutrality-and-change matrix that templates own.
 /// <para>
 /// Deliberately separate from the v2 golden comparisons: those are immutable
-/// evidence of what v2 produced (P-9), while templates and matchers are native
+/// evidence of what v2 produced (EP-9), while templates and matchers are native
 /// surface no v2 fixture uses. Asserting through the real pipeline rather than the
 /// Spec-side fingerprint API is what proves the claim that actually matters —
 /// §9.2's "semantically equivalent flat, materialized, template/matcher-authored,
@@ -266,7 +266,7 @@ public sealed class NativeTemplatePipelineTests
     [Fact]
     public async Task Convert_WhenRunTwice_ThenTheArtifactsAreByteIdentical()
     {
-        // P-7 through the whole template path, including the warning traversal.
+        // EP-7 through the whole template path, including the warning traversal.
         var spec = Declarative() + "\n[[matcher]]\nmatch = { name_regex = \"^zz$\" }\ntemplate = \"flag\"\n";
 
         var first = await ConvertAsync(spec);
@@ -361,7 +361,7 @@ public sealed class NativeTemplatePipelineTests
     /// every restriction, plus the object key, execution shape, and label style.
     /// <para>
     /// Unordered members (<c>KnownBins</c>, <c>CrossesByBin</c>) are ordinally sorted so
-    /// the projection is stable without discarding their content (P-12). This is
+    /// the projection is stable without discarding their content (EP-12). This is
     /// deliberately wider than the fingerprint inputs — the point is to catch divergence
     /// the hashes are not designed to expose.
     /// </para>

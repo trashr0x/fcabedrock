@@ -178,7 +178,7 @@ public sealed class MatcherSelectorTests
     [Fact]
     public void NameRegex_WhenAmbientCultureIsTurkish_ThenMatchingIsUnaffected()
     {
-        // P-12/D-115: matching is CultureInvariant, so the classic Turkish dotless-i
+        // EP-12/D-115: matching is CultureInvariant, so the classic Turkish dotless-i
         // hazard cannot make the same spec select different attributes on two machines.
         // Under a culture-sensitive engine `(?i)I` would match `ı` under tr-TR.
         var original = CultureInfo.CurrentCulture;

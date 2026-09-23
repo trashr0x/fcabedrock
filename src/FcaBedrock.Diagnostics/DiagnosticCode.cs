@@ -4,7 +4,7 @@ namespace FcaBedrock.Diagnostics;
 /// Stable identifier for a distinct diagnostic condition. The full registry is
 /// this enum (spec §16.4 lists the illustrative initial set). Only codes with a
 /// real emit site in the current milestone are present; the enum grows per slice
-/// rather than front-loading codes no path produces yet (principle P-3).
+/// rather than front-loading codes no path produces yet (principle EP-3).
 /// </summary>
 public enum DiagnosticCode
 {
@@ -296,7 +296,7 @@ public enum DiagnosticCode
     /// <summary>
     /// A <c>value_groups</c> discretizer declares the same group <c>label</c> twice, or —
     /// under <c>unmatched = "other"</c> — a group whose label collides with the synthetic
-    /// <c>Other</c> bin. Ordinal comparison (P-12), so <c>"Other"</c> collides and
+    /// <c>Other</c> bin. Ordinal comparison (EP-12), so <c>"Other"</c> collides and
     /// <c>"other"</c> does not. Error, one per duplicate. Duplicates never surface as
     /// <c>SpecFieldInvalid</c>; a pass-through value merely <em>observed</em> to equal a label
     /// is data-dependent and belongs to plan (<c>FormalAttributeCollision</c>).
@@ -347,7 +347,7 @@ public enum DiagnosticCode
     /// <see cref="FormalAttributeNameCollision"/>. The shared plan fails, so
     /// <c>.dat</c> emission is blocked as well as <c>.cxt</c>: a newline inside a
     /// name would add a phantom line to the line-oriented <c>.cxt</c>, and
-    /// exporters never sanitize (P-15). Load-bearing beyond the M6 naming surface
+    /// exporters never sanitize (EP-15). Load-bearing beyond the M6 naming surface
     /// — it also catches CR/LF arriving from raw values, calibrated domains, and
     /// <c>value_labels</c>. Spec §10.7 / §16.4 (D-116/D-117).
     /// </summary>
@@ -443,7 +443,7 @@ public enum DiagnosticCode
     /// running total, or a merge sum would overflow <see cref="long"/> (spec §16.4,
     /// D-103/G-13). Error, calibrate, in-path — no calibrated result. A distinct
     /// condition from <see cref="CalibrationDataInsufficient"/> (too little data) and
-    /// from a storage failure, so it must not masquerade as either (P-14). A
+    /// from a storage failure, so it must not masquerade as either (EP-14). A
     /// contract-totality row: unreachable below ~9.2e18 observations.
     /// </summary>
     CalibrationPopulationTooLarge,

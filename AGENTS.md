@@ -43,7 +43,8 @@ raw value --[discretizer]--> bin label --[scale]--> formal attribute(s)
 /README.md                     # public-facing; includes credits
 /docs/
   bedrock-spec-v1.md           # NORMATIVE spec for the Bedrock file format
-  principles.md                # engineering invariants; check code against these
+  engineering-principles.md    # engineering invariants; check code against these (EP-<n>)
+  writing-principles.md        # how documents and comments are written (WP-<n>)
   decisions.md                 # architectural decision log (read before changing design)
   roadmap.md                   # milestones M0–M9, current position, deferred items
   lineage.md                   # what v2/thesis/SPARQL2FCA settled (one-time synthesis)
@@ -70,25 +71,63 @@ Dependency rule: `Diagnostics` is the only internal package referenced by
 everything. `Core` references only `Diagnostics` and `System.*`. No circular
 references. `Core` never references `Sources`, `Export`, `Cli`, or `Desktop`.
 
+## Writing rules and who owns which fact
+
+**Read `docs/writing-principles.md` before authoring or editing any prose or
+comment in this repository.** It is the single source of truth for how we write,
+it binds humans and assistants alike, and it is not restated here (D-129).
+
+Identifier prefixes name their owning file:
+
+| Prefix | Family | Owner |
+| --- | --- | --- |
+| `D-` | architectural decisions | `docs/decisions.md` |
+| `EP-` | engineering principles | `docs/engineering-principles.md` |
+| `WP-` | writing principles | `docs/writing-principles.md` |
+
+One document owns each lasting fact; everything else links to it (WP-3):
+
+| Lasting fact | Owner |
+| --- | --- |
+| Purpose, capabilities, quick start, delivery state, navigation, credits | `README.md` |
+| Operational session rules and mandatory pointers | `AGENTS.md` (`CLAUDE.md` imports it) |
+| Engineering invariants the code must satisfy | `docs/engineering-principles.md` |
+| How we write documents and comments | `docs/writing-principles.md` |
+| Normative grammar, semantics, examples, conformance | `docs/bedrock-spec-v1.md` |
+| Architectural decisions and their rationale | `docs/decisions.md` |
+| Current position, milestone history, deferred backlog | `docs/roadmap.md` |
+| Benchmark methodology, results, uncertainty, limitations | `docs/benchmarks.md` |
+| Immutable evidence identity for the scaling work | `docs/evidence/m8-provenance.md` |
+| Authorship, origins, licence and dataset attribution | `docs/lineage.md`, `LICENSE`, the two attribution files |
+| Benchmark harness operation and corpus preparation | `tests/FcaBedrock.Benchmarks/README.md` |
+| Build, package, archive and validation commands | `eng/README.md` |
+| Standalone tool guidance shipped to users | `src/FcaBedrock.Cli/README.md` |
+| Build, workflow and repository configuration | the file's own inline rationale; commands in `eng/README.md` |
+| Reasons, risks, constraints and caller contracts at a use site | the local comment or XML doc |
+
+`eng/check-authored-text.ps1` checks authored-text bytes, obsolete spellings and
+the two instruction entry points; links and style are review judgments, and
+`eng/README.md` documents the commands.
+
 ## Hard conventions (do not violate without a decision-log entry)
 
-Operational summary; the invariants are authoritative in `docs/principles.md`
-(P-7/P-13/P-14/P-15/P-17) and `docs/decisions.md`.
+Operational summary; the invariants are authoritative in `docs/engineering-principles.md`
+(EP-7/EP-13/EP-14/EP-15/EP-17) and `docs/decisions.md`.
 
 - **Target framework: .NET 10.** Modern APIs (`System.IO.Pipelines`,
   `IAsyncEnumerable`, `Span`/`Memory`, `ValueTask`) where justified; justify
   allocations in hot paths, don't cargo-cult.
 - **Determinism is a correctness property:** same spec + same normalized input ⇒
-  byte-identical output; ordering rules live in the planner. Spec §17, D-004, P-7.
+  byte-identical output; ordering rules live in the planner. Spec §17, D-004, EP-7.
 - **Core is pure / UI-independent; exporters are dumb** — all semantics decided
-  before export, writers only serialize. P-13, P-15.
+  before export, writers only serialize. EP-13, EP-15.
 - **Error handling:** `Result<T, BedrockDiagnostic>` for single-error ops;
   `Diagnosed<T>` (value + diagnostic list) for aggregating ops (validation,
   planning); convert streams diagnostics alongside the emit stream. Codes are an
-  enum. P-14.
+  enum. EP-14.
 - **Scale of intent:** v1 targets 10×–100× the v2 EMAGE workload (~7.3M–73M
   records) — streaming is a v1 concern, not a retrofit. D-007.
-- **Small composable pieces over god classes.** P-17.
+- **Small composable pieces over god classes.** EP-17.
 
 ## Testing conventions
 
@@ -116,7 +155,7 @@ rationale live in `docs/decisions.md` D-039/D-040.
 1. Read this file + `docs/roadmap.md` (current position) + the **index** at
    the top of `docs/decisions.md`; then read the decision entries your task
    touches (D-073). Read the log in full before proposing architectural
-   changes (the rule at the top of this file). Skim `docs/principles.md` —
+   changes (the rule at the top of this file). Skim `docs/engineering-principles.md` —
    it's the invariant set code must satisfy.
 2. For spec questions, `docs/bedrock-spec-v1.md` is the source of truth.
    Do not infer format behavior from code; the spec governs.
@@ -180,7 +219,7 @@ unrelated refactors.
 
 For non-trivial work, don't start editing immediately. Inspect the docs/code,
 then propose a short concrete plan: what changes and which files/projects;
-whether any **public** API/contract/diagnostic changes (the workflow face of P-4);
+whether any **public** API/contract/diagnostic changes (the workflow face of EP-4);
 tests to add or update; and open questions. Present it and wait for a go-ahead.
 
 For consequential changes — new public surface, a cross-package contract, a
@@ -190,7 +229,7 @@ bytes — be more explicit about the contract, risks, and test coverage first.
 Purely mechanical/trivial tasks: say so and proceed with a brief note.
 
 If scope expands mid-task, stop and revise the plan before continuing (the
-planning-time face of P-1 "surgical changes" and the diff-growth rule above).
+planning-time face of EP-1 "surgical changes" and the diff-growth rule above).
 Don't implement first and explain later.
 
 ## Current status

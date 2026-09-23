@@ -34,7 +34,7 @@ internal static class SingleFileOutput
 {
     /// <summary>
     /// The canonical bytes' encoder. Output encoding only — all <em>decoding</em> of authored
-    /// text belongs to <see cref="SpecTextDecoding"/> (P-5).
+    /// text belongs to <see cref="SpecTextDecoding"/> (EP-5).
     /// </summary>
     private static readonly UTF8Encoding Utf8NoBom = new(encoderShouldEmitUTF8Identifier: false);
 

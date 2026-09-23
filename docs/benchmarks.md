@@ -1229,7 +1229,7 @@ find. Neither may be converted into the other.
 
 **The triple unordered path is different, and legitimately so.** In **session C** its sampled
 working-set maximum grew about sevenfold from 7.3M to 73M — roughly 250 bytes per distinct subject at
-the larger size. That is the P-16 metadata carve-out doing exactly what it says: the grouping key
+the larger size. That is the EP-16 metadata carve-out doing exactly what it says: the grouping key
 vocabulary is bounded metadata that grows with the number of *objects*, not a materialized matrix.
 I3's wording is the right one to read this against — "streaming" is not "constant total process
 memory". On that session's evidence a user grouping 7.3 million unordered subjects should expect to
@@ -1510,7 +1510,7 @@ orders of magnitude *smaller* than these sampled maxima, **not larger**. That co
 **excludes nothing**: a payload that size would sit inside the observed working set unnoticed, so a
 sampled process maximum cannot show that no such matrix was materialized. It is recorded as a size
 fact, not as a no-materialization proof. The growth *is* consistent with the subject-key vocabulary
-— the **P-16** bounded-metadata carve-out read against I3's "streaming is not constant total process
+— the **EP-16** bounded-metadata carve-out read against I3's "streaming is not constant total process
 memory" — but consistency is not attribution, and these traces do not establish which structure
 holds the memory; **the no-full-matrix guarantee is carried by the independent
 grouping/calibration observers and the retained-layout witnesses**, as above. Moving from declared
@@ -1717,14 +1717,14 @@ packed — roughly two orders of magnitude *smaller* than these sampled maxima, 
 **this comparison excludes nothing**: a payload that size would sit inside the observed working set
 unnoticed, and a sampled process maximum therefore cannot show that no such matrix was
 materialized. It is a size fact, not a no-materialization proof. The observed growth *is* consistent
-with the subject-key vocabulary — the **P-16** bounded-metadata carve-out read against I3's
+with the subject-key vocabulary — the **EP-16** bounded-metadata carve-out read against I3's
 "streaming is not constant total process memory" — but consistency is not attribution, and these
 traces do not establish which structure holds the memory. **The no-full-matrix guarantee is carried
 by the independent grouping/calibration observers and the retained-layout witnesses**, not by
 anything in this section. `GroupingOptions.DefaultMaxBufferedBytes` is **64 MiB** (D-082), so the
 73M triple runs spilled to disk rather than holding grouping state resident, which the recorded `D:`
 dips show directly. Conversion stayed single-threaded: CPU peaked between **9.10%** and **9.88%** of
-twelve logical cores — one core — in every trace. **Nothing observed contradicts P-16, I3 or the
+twelve logical cores — one core — in every trace. **Nothing observed contradicts EP-16, I3 or the
 D-082 budget**, and nothing observed *indicates* unbounded full-incidence materialization either —
 which is not the same as ruling it out, and is not offered as such.
 

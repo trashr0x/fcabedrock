@@ -52,7 +52,7 @@ public sealed class DependencyRulesTests
     {
         // D-122 part 9 / D-123 part 1: the CLI depends on every library and no library
         // depends on the CLI. The run/publication coordinator stays CLI-internal until a
-        // P-4 extraction review says otherwise.
+        // EP-4 extraction review says otherwise.
         var others = ProductionExcept("FcaBedrock.Cli");
 
         // Non-vacuity in both directions: Cli must have real types to be depended ON, and
@@ -140,7 +140,7 @@ public sealed class DependencyRulesTests
     [Fact]
     public void Core_ShouldNotDependOnSystemIo()
     {
-        // P-13: Core is pure — no file/stream I/O. ArchUnitNET sees type-level
+        // EP-13: Core is pure — no file/stream I/O. ArchUnitNET sees type-level
         // dependencies (incl. BCL targets by namespace) that the package-reference
         // rules cannot; this is the purity guard D-039 anticipated for M1. Core now
         // has real types, so this is non-vacuous (no WithoutRequiringPositiveResults).

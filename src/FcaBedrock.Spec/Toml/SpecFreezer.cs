@@ -56,7 +56,7 @@ public static class SpecFreezer
     /// <paramref name="calibrated"/> was not produced from <paramref name="resolved"/>'s
     /// resolution (<c>ReferenceEquals(resolved.Resolved, calibrated.Resolution)</c> is
     /// false) — a programmer error, mirroring the <c>SpecFingerprints.ComputeNative</c>
-    /// pairing posture (P-14), not a diagnostic.
+    /// pairing posture (EP-14), not a diagnostic.
     /// </exception>
     public static SpecDocument Freeze(ResolvedDocument resolved, CalibratedSpec calibrated)
     {

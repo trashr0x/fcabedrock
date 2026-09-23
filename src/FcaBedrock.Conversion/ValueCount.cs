@@ -24,8 +24,8 @@ internal readonly record struct ValueCount(double Value, long Count);
 /// The <see cref="ValueCount"/> spool codec (D-095): a fixed 16-byte little-endian payload
 /// — the <see cref="ValueCount.Value"/> bit pattern then the <see cref="ValueCount.Count"/>
 /// — reusing the existing framing, integrity, and failure semantics of the grouping spool
-/// stack rather than a second temporary-storage system (P-5). Encoding is deterministic and
-/// exactly round-trips the double's bits, so spilling never moves a cut (P-7).
+/// stack rather than a second temporary-storage system (EP-5). Encoding is deterministic and
+/// exactly round-trips the double's bits, so spilling never moves a cut (EP-7).
 /// </summary>
 internal sealed class ValueCountCodec : IRowCodec<ValueCount>
 {

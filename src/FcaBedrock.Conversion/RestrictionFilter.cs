@@ -59,7 +59,7 @@ internal sealed class RestrictionFilter
 
     /// <summary>
     /// Builds the filter for one emit attempt. The numeric parsing culture is derived <b>once</b>
-    /// here from <c>binding.locale</c> — never ambient (P-11) and never per row.
+    /// here from <c>binding.locale</c> — never ambient (EP-11) and never per row.
     /// </summary>
     public static RestrictionFilter Create(ConversionPlan plan)
     {
@@ -71,7 +71,7 @@ internal sealed class RestrictionFilter
         // A restriction owns the unparseable diagnostic only when its attribute plans no column —
         // i.e. it is filter-only. An included-and-restricted attribute is classified for every
         // formed object, and that pass is the owner (D-097). Ordinal, like every identity
-        // comparison here (P-12).
+        // comparison here (EP-12).
         var included = new HashSet<string>(StringComparer.Ordinal);
         foreach (var attribute in plan.Attributes)
         {
@@ -242,7 +242,7 @@ internal sealed class RestrictionFilter
 
         if (restriction.ValueType == SourceValueType.String)
         {
-            // §10.4/P-12: ordinal, case-sensitive equality on the raw value. No trimming, no case
+            // §10.4/EP-12: ordinal, case-sensitive equality on the raw value. No trimming, no case
             // folding, no locale, no regex — restriction matching is identity, not search.
             foreach (var entry in restriction.Entries)
             {
@@ -299,7 +299,7 @@ internal sealed class RestrictionFilter
     // contradicts it (RestrictToNumericEntryRequired / SourceValueTypeInvalid), so a mismatch here
     // is corrupt Core state from a hand-built spec. Validated ONCE per emit rather than per row,
     // and thrown rather than silently treated as a non-match — a filter that quietly stops
-    // matching would drop every object with no diagnostic at all (P-10, the D-098 posture).
+    // matching would drop every object with no diagnostic at all (EP-10, the D-098 posture).
     private static void ValidateEntries(PlannedRestriction restriction)
     {
         foreach (var entry in restriction.Entries)
@@ -316,7 +316,7 @@ internal sealed class RestrictionFilter
         }
     }
 
-    // §5.1/§10.4/P-11: the numeric parsing culture, derived once per emit from the seam-validated
+    // §5.1/§10.4/EP-11: the numeric parsing culture, derived once per emit from the seam-validated
     // binding locale — never ambient, never per row, never mutable state. ResolvedSpec.Create
     // already proved the locale resolves under the same predefined-only rule, so a failure here is
     // corrupt Core state, not user input.

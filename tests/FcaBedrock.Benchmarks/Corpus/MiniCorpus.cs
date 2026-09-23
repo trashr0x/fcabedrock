@@ -7,7 +7,7 @@ namespace FcaBedrock.Benchmarks.Corpus;
 /// <summary>
 /// One immutable v2 mini fixture, with the binding the v2 <c>.bed</c> never recorded.
 /// <para>
-/// The fixtures are <b>read-only evidence</b> of what v2 produced (P-9): nothing here writes,
+/// The fixtures are <b>read-only evidence</b> of what v2 produced (EP-9): nothing here writes,
 /// copies, or normalizes them, and their expected outputs are used as byte oracles exactly as
 /// checked in. The binding table is deliberately small and local — it names only the cases these
 /// benchmarks use, rather than reaching into a test project.

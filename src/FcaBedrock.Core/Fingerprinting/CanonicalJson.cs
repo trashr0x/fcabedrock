@@ -10,7 +10,7 @@ namespace FcaBedrock.Core.Fingerprinting;
 /// Rules: compact (no insignificant whitespace); one escaping rule
 /// (<c>\"</c>, <c>\\</c>, the <c>\b \t \n \f \r</c> shorthands, remaining C0
 /// controls as lowercase <c>\u00xx</c>, raw UTF-8 otherwise); numbers as the
-/// parsed value in invariant shortest round-trippable form (P-11). Callers emit
+/// parsed value in invariant shortest round-trippable form (EP-11). Callers emit
 /// object keys pre-sorted (the vocabulary is fixed ASCII); the canonical-bytes
 /// golden locks the result.
 /// </summary>
@@ -66,7 +66,7 @@ internal static class CanonicalJson
     /// <summary>
     /// Appends the parsed numeric value in invariant, shortest round-trippable
     /// form — <c>30</c>, <c>30.0</c> and <c>3e1</c> all collapse to <c>30</c>
-    /// (D-053/P-11). Canonical JSON has no NaN/∞ representation; cut validation
+    /// (D-053/EP-11). Canonical JSON has no NaN/∞ representation; cut validation
     /// guarantees finiteness, so a non-finite value here is a programmer error.
     /// </summary>
     public static void AppendNumber(StringBuilder builder, double value)

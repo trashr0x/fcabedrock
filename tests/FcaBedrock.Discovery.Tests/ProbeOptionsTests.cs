@@ -6,7 +6,7 @@ namespace FcaBedrock.Discovery.Tests;
 
 /// <summary>
 /// The <see cref="ProbeOptions"/> contract: the pinned defaults (D-108/D-110), the exact
-/// exception taxonomy of its validating factory (P-10), and — the one that would
+/// exception taxonomy of its validating factory (EP-10), and — the one that would
 /// otherwise rot silently — that its locale predicate agrees with the resolve seam's.
 /// </summary>
 public sealed class ProbeOptionsTests

@@ -150,7 +150,7 @@ public sealed class CliProjectContractTests
     [Fact]
     public void Assembly_ShouldExposeNoPublicType()
     {
-        // Every CLI component is internal; a P-4 extraction review gates any M9 reuse.
+        // Every CLI component is internal; a EP-4 extraction review gates any M9 reuse.
         Assert.Empty(Cli.GetExportedTypes());
     }
 

@@ -13,7 +13,7 @@ namespace FcaBedrock.Discovery.Tests;
 /// <para>
 /// A catch-all would be the easy implementation and the wrong one: it converts genuine bugs
 /// (a null dereference, a misused API, a violated invariant) into polite diagnostics a caller
-/// would try to handle, hiding the defect (P-14). So the engine catches a closed, explicit set
+/// would try to handle, hiding the defect (EP-14). So the engine catches a closed, explicit set
 /// of expected provider/read failures, and the counterexamples below are what prove the filter
 /// is actually narrow rather than merely described as narrow. They also cover what an
 /// architecture rule cannot see: ArchUnitNET does not reliably surface catch-handler metadata,

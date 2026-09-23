@@ -78,7 +78,7 @@ internal sealed record GroupingStorageFailure(
 /// (never from disposal). It is recorded into the per-enumeration <see cref="GroupingReports"/> ledger as
 /// an <b>Error</b> at its first-occurrence position (by the site that detects it, before any cleanup that
 /// its unwinding triggers), and additionally thrown so the emitter halts — the emitter catches it only to
-/// stop, not to record. Never public (P-14): storage failures cross the seam as
+/// stop, not to record. Never public (EP-14): storage failures cross the seam as
 /// <see cref="DiagnosticCode.GroupingStorageFailed"/> diagnostics, not exceptions.
 /// </summary>
 internal sealed class GroupingStorageException : Exception

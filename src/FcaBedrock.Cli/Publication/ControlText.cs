@@ -81,7 +81,7 @@ internal static class ControlDocument
 /// decisive rule: re-formatting the fields parsed out of a file must reproduce its decoded text
 /// exactly. That only proves anything if both use the same escaping, the same line discipline,
 /// and the same closed-set matching — so those live here rather than being spelled twice
-/// (P-5).
+/// (EP-5).
 /// </para>
 /// <para>
 /// The format is deliberately trivial: LF-terminated <c>key = "value"</c> lines, UTF-8 without a

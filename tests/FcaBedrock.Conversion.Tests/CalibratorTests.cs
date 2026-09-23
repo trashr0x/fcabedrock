@@ -360,7 +360,7 @@ public sealed class CalibratorTests
     [Fact]
     public async Task CalibrateAsync_WhenCancelled_ThenPropagatesOperationCanceled()
     {
-        // Cancellation propagates; it is never converted to a diagnostic (P-14).
+        // Cancellation propagates; it is never converted to a diagnostic (EP-14).
         var spec = new BedrockSpec(ConversionFixtures.Wide(hasHeader: false), [Identity("g", 0, null)]);
         var (resolved, source) = await WidePrep(spec, "a\nb");
         using var cts = new CancellationTokenSource();

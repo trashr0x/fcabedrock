@@ -417,7 +417,7 @@ public sealed class SpecResolverTests
     {
         // Aggregation over cascade: the duplicate is an Error, but keeping the FIRST
         // declaration as the lookup means a referencing attribute reports its own real
-        // problem rather than a spurious unknown-reference pile-up (P-14).
+        // problem rather than a spurious unknown-reference pile-up (EP-14).
         var document = DocumentFixtures.Document(
             [DocumentFixtures.Attribute("a", DocumentFixtures.Column(0), template: "t")],
             templates: [DocumentFixtures.Template("t", scale: new NominalScaleSection()), DocumentFixtures.Template("t")]);
@@ -484,7 +484,7 @@ public sealed class SpecResolverTests
     {
         // §16.4: family 1 is emitted BEFORE the shape gate, so a shape-less document still
         // reports its template-identity errors — the aggregation the retired transitional
-        // reject used to provide (P-14). Families 2–5 do not run: matcher shape
+        // reject used to provide (EP-14). Families 2–5 do not run: matcher shape
         // compatibility has no shape to judge against.
         var document = new SpecDocument(
             DocumentFixtures.SpecV1(), null, null, null, null,
@@ -623,7 +623,7 @@ public sealed class SpecResolverTests
         Assert.DoesNotContain("#2", warning.Message, StringComparison.Ordinal);
         Assert.DoesNotContain("\"second\"", warning.Message, StringComparison.Ordinal);
 
-        // P-7 for this shape specifically: the ordered signature repeats exactly.
+        // EP-7 for this shape specifically: the ordered signature repeats exactly.
         Assert.Equal(
             SpecResolver.Resolve(document).Diagnostics.Select(d => (d.Code, d.Severity, d.Message)),
             SpecResolver.Resolve(document).Diagnostics.Select(d => (d.Code, d.Severity, d.Message)));
@@ -715,7 +715,7 @@ public sealed class SpecResolverTests
     [Fact]
     public void Resolve_WhenTheSameDocumentIsResolvedTwice_ThenTheOrderedDiagnosticsAreIdentical()
     {
-        // P-7 over the whole M6 diagnostic surface: identity, references, effective
+        // EP-7 over the whole M6 diagnostic surface: identity, references, effective
         // validation, and both warning kinds, compared on the full structured tuple —
         // code, severity, location, and message — not merely on codes.
         var document = DocumentFixtures.Document(
@@ -905,7 +905,7 @@ public sealed class SpecResolverTests
     [Fact]
     public void Resolve_WhenMultipleProblems_ThenAllDiagnosticsAggregate()
     {
-        // P-14/D-067: resolve + validate in one pass, reporting everything at once.
+        // EP-14/D-067: resolve + validate in one pass, reporting everything at once.
         var document = DocumentFixtures.Document(
         [
             DocumentFixtures.Attribute(name: null, DocumentFixtures.Column(0),
@@ -1144,7 +1144,7 @@ public sealed class SpecResolverTests
     [Fact]
     public void Resolve_WhenOneEntryIsBothWronglyTypedAndInvalid_ThenBothCodesCoFire()
     {
-        // P-14 aggregation, on ONE entry: "numeric entry on a string source" and "that exact
+        // EP-14 aggregation, on ONE entry: "numeric entry on a string source" and "that exact
         // value is not finite" are INDEPENDENT conditions, and both hold here. Reporting only the
         // first would hide the second edit the author still has to make — the same reasoning that
         // makes D-076's quote check and delimiter/quote conflict co-fire.
@@ -1192,7 +1192,7 @@ public sealed class SpecResolverTests
     [Fact]
     public void Resolve_WhenSeveralRestrictEntriesAreInvalid_ThenAllAggregateWithoutThrowing()
     {
-        // P-14 + the round-7 success gate: independent conditions aggregate, the result fails,
+        // EP-14 + the round-7 success gate: independent conditions aggregate, the result fails,
         // and NO strict factory runs — so an authored error never escapes as an exception.
         var document = DocumentFixtures.Document(
             [DocumentFixtures.Attribute("age", DocumentFixtures.Column(0),
@@ -1603,7 +1603,7 @@ public sealed class SpecResolverTests
     {
         // The D-080 payoff: the dup check reads the document sections, so a
         // duplicate whose sibling field fails to resolve (ResolveAttribute drops
-        // it) still surfaces — alongside that sibling's own diagnostic (P-14). The
+        // it) still surfaces — alongside that sibling's own diagnostic (EP-14). The
         // former Core-model check over resolved attributes would have lost it.
         var document = DocumentFixtures.Document(
         [
@@ -1668,7 +1668,7 @@ public sealed class SpecResolverTests
     [Fact]
     public void Resolve_WhenDuplicateNameAndStaleLabel_ThenBothSeamChecksAggregate()
     {
-        // P-14: the two re-homed seam checks aggregate with each other and the rest
+        // EP-14: the two re-homed seam checks aggregate with each other and the rest
         // of the resolve pass rather than short-circuiting.
         var document = DocumentFixtures.Document(
         [
@@ -1863,7 +1863,7 @@ public sealed class SpecResolverTests
     [Fact]
     public void Resolve_WhenNumericDomainAndLabelErrors_ThenBothAggregateDeterministically()
     {
-        // P-14: the D-096 seam checks aggregate independently rather than short-circuiting.
+        // EP-14: the D-096 seam checks aggregate independently rather than short-circuiting.
         var result = Resolve(DocumentFixtures.Document([FreePerValue("v", 0, SourceValueType.Number, ["90", "90.0"],
             new Dictionary<string, string> { ["abc"] = "x" })]));
 
@@ -1965,7 +1965,7 @@ public sealed class SpecResolverTests
         Assert.Empty(result.Diagnostics);
     }
 
-    // --- Determinism bridge (P-7) ---
+    // --- Determinism bridge (EP-7) ---
 
     [Fact]
     public void Resolve_WhenResolvedTwice_ThenPlansIdentically()
@@ -1985,7 +1985,7 @@ public sealed class SpecResolverTests
     public void Resolve_WhenMiniMushroomDocument_ThenPlansToTheBedPathSchema()
     {
         // The hand-built document twin must plan to the exact formal-attribute
-        // schema the .bed migration path yields (P-7 — one schema, two producers).
+        // schema the .bed migration path yields (EP-7 — one schema, two producers).
         var viaDocument = Resolve(DocumentFixtures.MiniMushroom());
         Assert.True(BedReader.Read(BedFixtures.MushroomBed).TryGetValue(out var bedDocument));
         var migrated = BedMigrator.Migrate(
@@ -2403,7 +2403,7 @@ public sealed class SpecResolverTests
     {
         // The reader validates every authored format, so reaching the resolver with an
         // invalid one means the document never came through SpecReader — a programmer error
-        // on the exception channel, not authored input (P-14). There is no resolve-phase
+        // on the exception channel, not authored input (EP-14). There is no resolve-phase
         // condition for it, and giving SpecFieldInvalid a second phase would break D-067's
         // one-code-one-phase rule.
         var document = DocumentFixtures.Document(

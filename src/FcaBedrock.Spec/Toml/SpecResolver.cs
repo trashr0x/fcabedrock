@@ -350,7 +350,7 @@ public static class SpecResolver
         {
             // predefinedOnly: under ICU, GetCultureInfo synthesizes a culture for
             // almost any well-formed tag, which would make locale acceptance
-            // OS-dependent (P-7); only predefined cultures resolve.
+            // OS-dependent (EP-7); only predefined cultures resolve.
             return CultureInfo.GetCultureInfo(locale, predefinedOnly: true);
         }
         catch (CultureNotFoundException)
@@ -705,7 +705,7 @@ public static class SpecResolver
     // parse against this same grammar owner (AttributeReader.ReadNameFormat), so a
     // failure here means the document did not come through the reader — a programmer
     // error on a hand-built document, not authored input, and therefore the exception
-    // channel rather than a diagnostic (P-14; there is no resolve-phase condition for it,
+    // channel rather than a diagnostic (EP-14; there is no resolve-phase condition for it,
     // and giving SpecFieldInvalid a second phase would break D-067's one-code-one-phase
     // rule). Same reader-gate/factory-backstop split the discretizer factories follow.
     private static NameFormat? ParseEffectiveFormat(string? format)
@@ -908,7 +908,7 @@ public static class SpecResolver
     // The Slice D static attribute checks (D-067). They read the document
     // sections directly — authored-vs-default provenance exists only there
     // (D-060) — and run whether or not the source/discretizer/scale resolved,
-    // so one bad field does not mask another (P-14).
+    // so one bad field does not mask another (EP-14).
     private static void ValidateAttributeConstraints(
         AttributeSection section,
         string attribute,
@@ -980,7 +980,7 @@ public static class SpecResolver
     // validity, and these are the CROSS-group / cross-field ones it cannot see.
     //
     // (a) Authored labels must be distinct, and — under unmatched = "other" — none may collide
-    //     with the synthetic Other bin. Ordinal comparison (P-12): "Other" collides, "other"
+    //     with the synthetic Other bin. Ordinal comparison (EP-12): "Other" collides, "other"
     //     does not. Duplicates own ValueGroupsLabelDuplicate and never surface as
     //     SpecFieldInvalid (D-090); one diagnostic per duplicate occurrence. A pass-through value
     //     merely OBSERVED to equal a label is data-dependent and belongs to plan
@@ -1021,11 +1021,11 @@ public static class SpecResolver
 
     // The single decision point for the §11.6 label rules, in authored order: one entry per
     // conflict, flagged as a synthetic-Other collision or a plain duplicate. Two callers with
-    // different jobs share it so they cannot drift (P-5) — ValidateValueGroups turns each entry
+    // different jobs share it so they cannot drift (EP-5) — ValidateValueGroups turns each entry
     // into the user-facing ValueGroupsLabelDuplicate, and ResolveValueGroups uses "any conflict"
     // to decline building the discretizer WITHOUT reporting the same condition a second time
     // (D-067, one condition → one code). Groups with no usable label are skipped: the reader owns
-    // those (SpecFieldInvalid). Ordinal throughout (P-12).
+    // those (SpecFieldInvalid). Ordinal throughout (EP-12).
     private static List<(string Label, bool OtherCollision)> LabelConflicts(ValueGroupsDiscretizerSection section)
     {
         var conflicts = new List<(string, bool)>();
@@ -1121,7 +1121,7 @@ public static class SpecResolver
         foreach (var entry in entries)
         {
             // Two INDEPENDENT questions, checked independently so both report when both hold
-            // (P-14 aggregation; the D-076 precedent where the quote check and the
+            // (EP-14 aggregation; the D-076 precedent where the quote check and the
             // delimiter/quote conflict co-fire). Compatibility with the source's value_type is
             // one condition; the entry's own validity is another, and an entry can be wrong on
             // both counts at once — e.g. `{ value = nan }` on a string source.
@@ -1207,7 +1207,7 @@ public static class SpecResolver
     // means "any usable numeric value"; one-sided ranges are equally valid. from == to is
     // rejected rather than treated as empty: under the half-open [from, to) convention it can
     // match nothing, so it is authored nonsense, and from > to likewise. One diagnostic per
-    // offending entry (independent conditions aggregate, P-14).
+    // offending entry (independent conditions aggregate, EP-14).
     private static void ValidateRestrictRange(
         RestrictToRange range, string attribute, List<BedrockDiagnostic> diagnostics)
     {
@@ -1504,7 +1504,7 @@ public static class SpecResolver
     // valid arguments (the success-gate sequence). The guards here are the backstop for a
     // hand-built section that bypassed the reader: they resolve to the same
     // AttributeScalingMissing the other unbuildable discretizer carriers use (§10.9) rather than
-    // throwing — an authored error must never leave on the exception channel (P-14).
+    // throwing — an authored error must never leave on the exception channel (EP-14).
     private static Discretizer? ResolveValueGroups(
         ValueGroupsDiscretizerSection section,
         string attribute,

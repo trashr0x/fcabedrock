@@ -72,7 +72,7 @@ internal readonly struct DedupeRow
 /// <summary>
 /// The wide <c>dedupe</c> row codec (D-083): serializes a <see cref="DedupeRow"/>'s field count, index,
 /// and fields (never a name), via <see cref="DedupeRow.Field"/> — identically for live and decoded
-/// rows, so spilling round-trips a row's values exactly (P-7/P-12). A decoded row's field count is
+/// rows, so spilling round-trips a row's values exactly (EP-7/EP-12). A decoded row's field count is
 /// validated against the record buffer so a corrupt count cannot force an oversized allocation.
 /// </summary>
 internal sealed class DedupeRowCodec : IRowCodec<DedupeRow>

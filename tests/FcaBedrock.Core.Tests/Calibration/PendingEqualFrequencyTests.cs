@@ -30,7 +30,7 @@ public sealed class PendingEqualFrequencyTests
     [InlineData(0)]
     [InlineData(-1)]
     public void Create_WhenBinsIsBelowTwo_ThenThrows(int bins) =>
-        // The reader owns the authored form (SpecFieldInvalid, §11.5); this is the P-10 backstop,
+        // The reader owns the authored form (SpecFieldInvalid, §11.5); this is the EP-10 backstop,
         // so a carrier that cannot produce two bins is unrepresentable.
         Assert.Throws<ArgumentOutOfRangeException>(() =>
             new PendingEqualFrequency(bins, TiePolicy.Left, CutPlacement.RightValue));
@@ -38,7 +38,7 @@ public sealed class PendingEqualFrequencyTests
     [Fact]
     public void Create_WhenTiePolicyIsUndefined_ThenThrows() =>
         // A cast can smuggle an undefined member into an enum-typed parameter; the switches that
-        // spell it for the fingerprint would then have no answer (P-10).
+        // spell it for the fingerprint would then have no answer (EP-10).
         Assert.Throws<ArgumentOutOfRangeException>(() =>
             new PendingEqualFrequency(4, (TiePolicy)99, CutPlacement.RightValue));
 

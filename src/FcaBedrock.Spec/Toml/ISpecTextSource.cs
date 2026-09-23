@@ -3,7 +3,7 @@ namespace FcaBedrock.Spec.Toml;
 /// <summary>
 /// Supplies base-spec TOML text for §13 composition. The source owns
 /// reference→canonical-key resolution (relative paths, case rules), so path
-/// and OS determinism hazards never enter Spec logic (P-11);
+/// and OS determinism hazards never enter Spec logic (EP-11);
 /// <see cref="SpecComposer"/> compares canonical keys ordinally. This package
 /// does no file I/O (D-075) — the file-backed implementation is M7 host work,
 /// not missing Slice F work (D-078); tests compose through an in-memory source.

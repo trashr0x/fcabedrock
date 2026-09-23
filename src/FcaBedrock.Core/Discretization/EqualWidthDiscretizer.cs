@@ -28,7 +28,7 @@ namespace FcaBedrock.Core.Discretization;
 /// <para>
 /// There is no public constructor: every path validates first, so an executable
 /// discretizer with a non-finite or non-ascending cut sequence is unrepresentable
-/// (P-10).
+/// (EP-10).
 /// </para>
 /// </summary>
 public sealed record EqualWidthDiscretizer : Discretizer
@@ -70,19 +70,19 @@ public sealed record EqualWidthDiscretizer : Discretizer
     /// <summary>The effective resolved cuts: <c>Bins - 1</c> values, finite and strictly ascending.</summary>
     public IReadOnlyList<double> Cuts => _bins.Cuts;
 
-    /// <summary>The culture used to parse raw data values (never ambient — P-11).</summary>
+    /// <summary>The culture used to parse raw data values (never ambient — EP-11).</summary>
     public CultureInfo Culture => _bins.Culture;
 
     /// <summary>
     /// The spec-determined <c>range = "manual"</c> form (§11.4, D-089): the cuts come
     /// from <paramref name="vmin"/>/<paramref name="vmax"/> alone, so no calibration
-    /// runs. Diagnostics (P-14): <see cref="DiagnosticCode.EqualWidthRangeInvalid"/>
+    /// runs. Diagnostics (EP-14): <see cref="DiagnosticCode.EqualWidthRangeInvalid"/>
     /// when the authored range is non-finite or non-increasing, and
     /// <see cref="DiagnosticCode.EqualWidthCutsCollapsed"/> when the derived cuts are
     /// not finite and strictly ascending after <paramref name="precision"/> (a
     /// <c>round_to</c> collapsing two cuts onto one value). Wired into the resolve
     /// seam (D-067) — the reader owns the field shapes, including <c>bins</c>, so
-    /// <paramref name="bins"/> below 2 is the P-10 programmer-error backstop.
+    /// <paramref name="bins"/> below 2 is the EP-10 programmer-error backstop.
     /// </summary>
     public static Diagnosed<EqualWidthDiscretizer> CreateManual(
         int bins, double vmin, double vmax, CutPrecision precision, CultureInfo culture)
@@ -123,7 +123,7 @@ public sealed record EqualWidthDiscretizer : Discretizer
     /// The data-derived form: the executable discretizer for <paramref name="config"/>
     /// over the cuts the calibrator derived from the observed span. Called only by
     /// <c>CalibratedSpec.Create</c> (same assembly), which owns the pending →
-    /// executable substitution (D-093). Diagnostics (P-14):
+    /// executable substitution (D-093). Diagnostics (EP-14):
     /// <see cref="DiagnosticCode.CalibrationCutsInvalid"/> when the calibrated cuts are
     /// not finite and strictly ascending — the calibrate-phase twin of
     /// <see cref="DiagnosticCode.EqualWidthCutsCollapsed"/> (D-088/D-089).
@@ -139,7 +139,7 @@ public sealed record EqualWidthDiscretizer : Discretizer
         // calibrator-contract violation, not a data-derived failure: it would build a discretizer
         // whose Bins disagrees with its own geometry — the fingerprint would encode "bins":4 beside
         // a two-bin schema array. That state must be unrepresentable, so it throws rather than
-        // diagnosing (the D-093 programmer-error posture, P-10). Cut *validity* below stays a
+        // diagnosing (the D-093 programmer-error posture, EP-10). Cut *validity* below stays a
         // diagnostic: correctly-sized cuts that the data could not make ascending are expected.
         if (cuts.Count != config.Bins - 1)
         {
@@ -170,7 +170,7 @@ public sealed record EqualWidthDiscretizer : Discretizer
     /// which cuts are derived — the Conversion calibrator invokes that factory over
     /// the <b>calibrated</b> span rather than re-deriving, so auto and frozen cuts are
     /// the same numbers by construction (D-088) with no second copy of the formula and
-    /// no public surface beyond the approved inventory (P-4).
+    /// no public surface beyond the approved inventory (EP-4).
     /// <para>
     /// For <c>i = 1 .. bins - 1</c> with <c>t = (double)i / bins</c>, the interpolation
     /// is <b>sign-aware</b> so that no finite increasing span can overflow: a same-sign
@@ -190,7 +190,7 @@ public sealed record EqualWidthDiscretizer : Discretizer
     /// <see cref="DiagnosticCode.EqualWidthRangeInvalid"/>, the calibrator with
     /// <see cref="DiagnosticCode.CalibrationDataInsufficient"/> — so a non-finite or
     /// non-increasing span here is programmer error
-    /// (<see cref="ArgumentOutOfRangeException"/>, P-10). The returned cuts may still
+    /// (<see cref="ArgumentOutOfRangeException"/>, EP-10). The returned cuts may still
     /// be unusable after rounding; the caller validates them
     /// (<see cref="CutValidation.AreUsableCuts"/>).
     /// </para>

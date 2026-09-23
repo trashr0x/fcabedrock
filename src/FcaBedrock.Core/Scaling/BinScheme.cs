@@ -4,7 +4,7 @@ namespace FcaBedrock.Core.Scaling;
 /// What a <see cref="FcaBedrock.Core.Discretization.Discretizer"/> hands a
 /// <see cref="Scale"/> at plan time: the ordered bins plus the structure an
 /// ordinal scale needs (the cut edges and which ends are open). Internal — the
-/// discretizer↔scale contract, not a public surface (P-4).
+/// discretizer↔scale contract, not a public surface (EP-4).
 /// </summary>
 /// <param name="Labels">
 /// The ordered bin labels — the crossing/match keys the emitter sees from

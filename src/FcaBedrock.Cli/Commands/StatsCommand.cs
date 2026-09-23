@@ -20,7 +20,7 @@ namespace FcaBedrock.Cli.Commands;
 /// <para>
 /// <b>Bounded by the column count, not the context.</b> Counting keeps four integers and one
 /// <c>bool</c> per planned column; no emitted object, no row's cross list, and no incidence
-/// cell is retained (P-16). There is no second pass: the plan's stop condition forbids one, so
+/// cell is retained (EP-16). There is no second pass: the plan's stop condition forbids one, so
 /// <c>EmitReplay</c> is deliberately not used.
 /// </para>
 /// <para>

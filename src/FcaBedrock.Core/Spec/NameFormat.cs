@@ -9,7 +9,7 @@ namespace FcaBedrock.Core.Spec;
 /// the token sequence the planner renders. One grammar implementation serves both
 /// the Spec reader (which validates every authored format, wherever it is
 /// authored) and <c>ConversionPlanner</c> (which renders through it) — two copies
-/// would be two chances to disagree about bytes (P-5, D-117).
+/// would be two chances to disagree about bytes (EP-5, D-117).
 /// <para>
 /// The placeholder set is <b>closed and case-sensitive</b> — exactly
 /// <c>{name}</c>, its alias <c>{column}</c>, <c>{display_name}</c>,
@@ -53,7 +53,7 @@ public sealed class NameFormat
     /// <param name="parsed">The validated format on success.</param>
     /// <param name="error">
     /// On failure, the reason — a sentence fragment the caller folds into its own
-    /// <c>SpecFieldInvalid</c> message (P-14; §10.7 mints no format-specific code).
+    /// <c>SpecFieldInvalid</c> message (EP-14; §10.7 mints no format-specific code).
     /// </param>
     /// <returns><see langword="true"/> when <paramref name="format"/> is valid.</returns>
     public static bool TryCreate(
@@ -195,7 +195,7 @@ public sealed class NameFormat
             return false;
         }
 
-        // Ordinal, case-sensitive (P-12): {Value} is a typo, not a synonym — the closed
+        // Ordinal, case-sensitive (EP-12): {Value} is a typo, not a synonym — the closed
         // set fails fast at parse rather than silently rendering different bytes.
         switch (name)
         {

@@ -31,7 +31,7 @@ public sealed record ValueGroupsDiscretizer : Discretizer
     private const string OtherLabel = "Other";
 
     // Iterated on the emit hot path, so the struct enumerator (not the boxed interface) is
-    // what Discretize walks — no per-value allocation (P-18).
+    // what Discretize walks — no per-value allocation (EP-18).
     private readonly ImmutableArray<ValueGroup> _groups;
     private readonly ImmutableArray<string> _passthroughBins;
     private readonly ImmutableArray<string> _binLabels;
@@ -76,7 +76,7 @@ public sealed record ValueGroupsDiscretizer : Discretizer
 
     /// <summary>
     /// Builds the spec-determined form (<see cref="ValueGroupsUnmatched.Skip"/> or
-    /// <see cref="ValueGroupsUnmatched.Other"/>) — the P-10 backstop behind the seam's
+    /// <see cref="ValueGroupsUnmatched.Other"/>) — the EP-10 backstop behind the seam's
     /// clean diagnostic gate (the resolver owns the user-facing
     /// <c>ValueGroupsLabelDuplicate</c>, §11.6/D-090).
     /// </summary>
@@ -128,7 +128,7 @@ public sealed record ValueGroupsDiscretizer : Discretizer
         return new ValueGroupsDiscretizer(snapshot, ValueGroupsUnmatched.Passthrough, passthroughBins.ToImmutableArray());
     }
 
-    // The shared group snapshot + label-distinctness gate. Ordinal throughout (P-12): "Other"
+    // The shared group snapshot + label-distinctness gate. Ordinal throughout (EP-12): "Other"
     // collides with the synthetic bin, "other" does not.
     private static ImmutableArray<ValueGroup> Snapshot(IReadOnlyList<ValueGroup> groups, ValueGroupsUnmatched unmatched)
     {

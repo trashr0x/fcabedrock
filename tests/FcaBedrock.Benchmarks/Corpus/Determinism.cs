@@ -11,7 +11,7 @@ namespace FcaBedrock.Benchmarks.Corpus;
 /// <see cref="System.Random"/> is documented as free to change its algorithm between .NET versions
 /// and is unseeded-per-thread by default, and even a seeded instance is a promise .NET does not
 /// make. The mixing function below is the SplitMix64 finalizer, written out here so the corpus's
-/// definition lives in this repository rather than in a dependency (P-7/P-11).
+/// definition lives in this repository rather than in a dependency (EP-7/EP-11).
 /// </para>
 /// </summary>
 internal static class Determinism

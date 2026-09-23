@@ -24,11 +24,11 @@ namespace FcaBedrock.Core.Discretization;
 /// constructor overloads that omit it inherit the host's ambient
 /// <c>REGEX_DEFAULT_MATCH_TIMEOUT</c>, which would make the same spec over the same
 /// input complete on one machine and throw <see cref="RegexMatchTimeoutException"/>
-/// on another (P-7 determinism), on the exception channel rather than the diagnostic
-/// one (P-14). Matching is <b>partial</b> (unanchored
+/// on another (EP-7 determinism), on the exception channel rather than the diagnostic
+/// one (EP-14). Matching is <b>partial</b> (unanchored
 /// <see cref="Regex.IsMatch(string)"/>) and <b>case-sensitive</b> unless the author
 /// writes an inline option such as <c>(?i)</c>, which is honored as part of the
-/// pattern. Explicit values compare with <b>ordinal</b> equality (P-12). Nothing here
+/// pattern. Explicit values compare with <b>ordinal</b> equality (EP-12). Nothing here
 /// is trimmed, case-folded, anchored, or culture-normalized.
 /// </para>
 /// <para>
@@ -68,7 +68,7 @@ public sealed record ValueGroup
     public string? Pattern { get; }
 
     /// <summary>
-    /// Builds a group, validating it as the P-10 backstop behind the reader's
+    /// Builds a group, validating it as the EP-10 backstop behind the reader's
     /// <c>SpecFieldInvalid</c> gate (§11.6/D-090 — the reader owns the user-facing
     /// diagnostic; reaching this factory with invalid arguments is programmer error).
     /// </summary>
@@ -123,8 +123,8 @@ public sealed record ValueGroup
             {
                 // InfiniteMatchTimeout is passed EXPLICITLY: the two-argument overload silently
                 // inherits the host's ambient REGEX_DEFAULT_MATCH_TIMEOUT, which would make
-                // matching host-dependent (P-7) and surface as an exception mid-calibrate/emit
-                // rather than a diagnostic (P-14).
+                // matching host-dependent (EP-7) and surface as an exception mid-calibrate/emit
+                // rather than a diagnostic (EP-14).
                 regex = new Regex(pattern, RegexOptions.CultureInvariant, Regex.InfiniteMatchTimeout);
             }
             catch (ArgumentException ex)

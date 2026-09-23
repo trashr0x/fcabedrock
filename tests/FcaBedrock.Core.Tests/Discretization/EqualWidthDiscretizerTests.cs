@@ -28,7 +28,7 @@ public sealed class EqualWidthDiscretizerTests
     //
     // Each expected cut list below is an independently-stated concrete result, never a
     // re-run of the production formula — a test that recomputed the interpolation could
-    // not catch the formula changing (P-7/P-11).
+    // not catch the formula changing (EP-7/EP-11).
 
     [Fact]
     public void DeriveCuts_WhenSimpleSpan_ThenEvenlySpacedInteriorCuts() =>
@@ -61,7 +61,7 @@ public sealed class EqualWidthDiscretizerTests
         // The opposite-sign branch again, off-centre. The value is pinned EXACTLY, not to a
         // tolerance: the whole point of the vector is to lock the pinned expression order, and a
         // reordered or contracted expression lands a few ULPs away — which would silently move cut
-        // identities, labels, and fingerprints while a tolerant assert stayed green (P-7/P-11).
+        // identities, labels, and fingerprints while a tolerant assert stayed green (EP-7/EP-11).
         // -4.999999999999998e306 is the arithmetic result, not the ideal -5e306.
         var cut = Assert.Single(EqualWidthDiscretizer.DeriveCuts(2, -1.7e308, 1.6e308, CutPrecision.Exact));
 
@@ -213,7 +213,7 @@ public sealed class EqualWidthDiscretizerTests
         // §11.4: `bins` bins come from exactly `bins - 1` cuts. A wrong-sized outcome is a
         // calibrator-contract violation, not a data error: it would build a discretizer whose Bins
         // contradicts its own geometry, so the fingerprint would encode "bins":4 beside a schema
-        // array of a different width. Unrepresentable, therefore a throw (P-10/D-093) — not the
+        // array of a different width. Unrepresentable, therefore a throw (EP-10/D-093) — not the
         // CalibrationCutsInvalid channel, which is for correctly-sized but unusable cuts.
         Assert.Throws<ArgumentException>(() => EqualWidthDiscretizer.FromCalibratedCuts(
             new PendingEqualWidth(4, EqualWidthRange.MinMax, CutPrecision.Exact), cuts, CultureInfo.InvariantCulture));
@@ -230,7 +230,7 @@ public sealed class EqualWidthDiscretizerTests
     [Fact]
     public void EqualWidthDiscretizer_WhenInspected_ThenNoPublicConstructorOrSetter()
     {
-        // P-10: an executable equal_width with unchecked state is UNREPRESENTABLE, not merely
+        // EP-10: an executable equal_width with unchecked state is UNREPRESENTABLE, not merely
         // rejected — every path goes through a validating factory, and the get-only properties
         // mean even `with` cannot desync the range mode from its vmin/vmax.
         var type = typeof(EqualWidthDiscretizer);
@@ -267,7 +267,7 @@ public sealed class EqualWidthDiscretizerTests
 
     [Fact]
     public void PendingEqualWidth_WhenRangeIsManual_ThenThrows() =>
-        // P-10: a spec-determined range never pends — that state is unrepresentable, not merely
+        // EP-10: a spec-determined range never pends — that state is unrepresentable, not merely
         // rejected later (§11.4/D-089).
         Assert.Throws<ArgumentOutOfRangeException>(
             () => new PendingEqualWidth(4, EqualWidthRange.Manual, CutPrecision.Exact));
@@ -330,7 +330,7 @@ public sealed class EqualWidthDiscretizerTests
 
     [Fact]
     public void Discretize_WhenSuppliedLocale_ThenParsesUnderIt() =>
-        // P-11: binding.locale governs numeric parsing, never the ambient culture.
+        // EP-11: binding.locale governs numeric parsing, never the ambient culture.
         Assert.Equal(
             BinResult.Bin("[25, 50)"),
             Manual(4, 0, 100, culture: CultureInfo.GetCultureInfo("de-DE")).Discretize("30,5"));

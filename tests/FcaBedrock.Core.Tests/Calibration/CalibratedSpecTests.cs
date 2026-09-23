@@ -313,7 +313,7 @@ public sealed class CalibratedSpecTests
     [Fact]
     public void Create_WhenCalibratedCutsInvalid_ThenCalibrationCutsInvalidDiagnosticNotException()
     {
-        // P-14: cut invalidity is a DATA-derived expected failure, so it returns through Diagnosed
+        // EP-14: cut invalidity is a DATA-derived expected failure, so it returns through Diagnosed
         // for the calibrator to aggregate — it is not a calibrator-contract violation. The list is
         // correctly sized for bins = 4; only its ordering is wrong.
         var result = CalibratedSpec.Create(Resolve(PendingEqualWidthSpec(), 1), [new CalibratedCuts("score", [25, 75, 50])]);
@@ -329,7 +329,7 @@ public sealed class CalibratedSpecTests
     public void Create_WhenCalibratedCutCountDisagreesWithBins_ThenThrows() =>
         // The contract split: a wrong-SIZED outcome is a calibrator-contract violation (throw),
         // while wrong-VALUED cuts of the right size are a data error (diagnostic, above). Without
-        // this the state would plan and fingerprint as "bins":4 over a two-bin schema (D-093/P-10).
+        // this the state would plan and fingerprint as "bins":4 over a two-bin schema (D-093/EP-10).
         Assert.Throws<ArgumentException>(() =>
             CalibratedSpec.Create(Resolve(PendingEqualWidthSpec(), 1), [new CalibratedCuts("score", [50])]));
 
@@ -836,7 +836,7 @@ public sealed class CalibratedSpecTests
         // The boundary is exhaustive over the three recognized variants, not merely a finiteness
         // test: waving a null through would surface as a NullReferenceException inside the
         // emitter's matcher or the fingerprint encoder — far from the cause. Reject at the
-        // boundary, trust the type inward (P-10).
+        // boundary, trust the type inward (EP-10).
         var resolved = Resolve(With(SpecFixtures.Nominal("g", 0, ["b"])), 1);
         var tampered = TamperRestrictions(resolved, [null!]);
 

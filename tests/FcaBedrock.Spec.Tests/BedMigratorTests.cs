@@ -130,7 +130,7 @@ public sealed class BedMigratorTests
 
         Assert.NotNull(document.Provenance);
         Assert.Equal("fixtures/v2/mini-mushroom/mini-mushroom.bed", document.Provenance.DerivedFrom);
-        Assert.Null(document.Provenance.CreatedAt); // no clock in pure code (P-7)
+        Assert.Null(document.Provenance.CreatedAt); // no clock in pure code (EP-7)
         Assert.Null(document.Provenance.Author);
     }
 
@@ -572,7 +572,7 @@ public sealed class BedMigratorTests
             document.Attributes[0].RestrictTo);
 
         // The seam owns the locale error, and the now-string entries independently attract the
-        // numeric-source mismatch — one condition, one owner, both reported (P-14).
+        // numeric-source mismatch — one condition, one owner, both reported (EP-14).
         var resolved = SpecResolver.Resolve(document);
         Assert.False(resolved.TryGetValue(out _));
         Assert.Contains(resolved.Diagnostics, d => d.Code == DiagnosticCode.BindingLocaleInvalid);
@@ -764,7 +764,7 @@ public sealed class BedMigratorTests
     [Fact]
     public void Migrate_WhenSeveralAttributesInvalid_ThenAllErrorsAggregateWithAttributeLocations()
     {
-        // P-14: the whole document reports in one pass, not first-failure-wins.
+        // EP-14: the whole document reports in one pass, not first-failure-wins.
         var migrated = BedMigrator.Migrate(
             ReadBed(Bed(
                 new BedAttr("dob", "d", "<,01/01/1980,>"),

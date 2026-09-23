@@ -7,7 +7,7 @@ using FcaBedrock.Spec.Toml;
 namespace FcaBedrock.Discovery.Tests;
 
 /// <summary>
-/// The P-4 lock on Discovery's public surface. M5 is now complete — both shapes probe — and the
+/// The EP-4 lock on Discovery's public surface. M5 is now complete — both shapes probe — and the
 /// inventory is still exactly two types and two methods: the triple vertical added an entry
 /// point, not an engine type, a result type, a role resolver, or an observer hook.
 /// <para>
@@ -31,7 +31,7 @@ public sealed class PublicSurfaceTests
     [Fact]
     public void Prober_WhenInspected_ThenExposesOnlyTheTwoShapeEntryPoints()
     {
-        // One method per record shape, mirroring CalibrateAsync/CalibrateTripleAsync (P-5) —
+        // One method per record shape, mirroring CalibrateAsync/CalibrateTripleAsync (EP-5) —
         // deliberately not a single method over a session union, for which this codebase has no
         // precedent. Nothing else: no overloads taking a path, a stream, or provenance.
         var methods = typeof(Prober)
@@ -110,7 +110,7 @@ public sealed class PublicSurfaceTests
 
     [Fact]
     public void ProbeOptions_WhenInspected_ThenHasNoPublicConstructor() =>
-        // P-10: construction goes through the validating factory, so an unvalidated locale or a
+        // EP-10: construction goes through the validating factory, so an unvalidated locale or a
         // zero limit is unrepresentable rather than merely rejected later.
         Assert.Empty(typeof(ProbeOptions).GetConstructors(BindingFlags.Public | BindingFlags.Instance));
 

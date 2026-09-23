@@ -21,7 +21,7 @@ namespace FcaBedrock.Core.Discretization;
 /// <see cref="CalibrationPending"/> carrier the Calibrate phase replaces. There is no
 /// public constructor: an executable discretizer with a non-finite or non-ascending
 /// cut sequence, or one whose cut count contradicts its own <see cref="Bins"/>, is
-/// unrepresentable (P-10).
+/// unrepresentable (EP-10).
 /// </para>
 /// <para>
 /// <see cref="TiePolicy"/> and <see cref="CutPlacement"/> are retained
@@ -59,14 +59,14 @@ public sealed record EqualFrequencyDiscretizer : Discretizer
     /// <summary>The effective calibrated cuts: <c>Bins - 1</c> values, finite and strictly ascending.</summary>
     public IReadOnlyList<double> Cuts => _bins.Cuts;
 
-    /// <summary>The culture used to parse raw data values (never ambient — P-11).</summary>
+    /// <summary>The culture used to parse raw data values (never ambient — EP-11).</summary>
     public CultureInfo Culture => _bins.Culture;
 
     /// <summary>
     /// The executable discretizer for <paramref name="config"/> over the cuts the
     /// calibrator selected from the population. Called only by
     /// <c>CalibratedSpec.Create</c> (same assembly), which owns the pending →
-    /// executable substitution (D-093). Diagnostics (P-14):
+    /// executable substitution (D-093). Diagnostics (EP-14):
     /// <see cref="DiagnosticCode.CalibrationCutsInvalid"/> when the calibrated cuts are
     /// not finite and strictly ascending.
     /// </summary>
@@ -81,7 +81,7 @@ public sealed record EqualFrequencyDiscretizer : Discretizer
         // calibrator-contract violation, not a data-derived failure: it would build a discretizer
         // whose Bins disagrees with its own geometry — the fingerprint would encode "bins":4 beside
         // a schema array of another width. That state must be unrepresentable, so it throws rather
-        // than diagnosing (the D-093 programmer-error posture, P-10). Cut *validity* below stays a
+        // than diagnosing (the D-093 programmer-error posture, EP-10). Cut *validity* below stays a
         // diagnostic: correctly-sized cuts the data could not make ascending are expected.
         if (cuts.Count != config.Bins - 1)
         {

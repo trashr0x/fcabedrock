@@ -24,6 +24,6 @@ public sealed record ColumnObjectKey(int Index, DuplicateObjectPolicy Policy) : 
 /// <summary>
 /// Marker for the deferred composite key (§5.4), a permanent v1 plan-phase
 /// reject (D-064). Columns/aggregate stay document-only; parameterizing later
-/// is additive (P-3).
+/// is additive (EP-3).
 /// </summary>
 public sealed record CompositeObjectKey : ObjectKey;

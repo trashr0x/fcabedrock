@@ -169,7 +169,7 @@ public sealed class EmitterTests
     [Fact]
     public async Task EmitAsync_WhenStringFreePerValue_ThenVerbatimBinsCrossAndAreDeterministic()
     {
-        // String free_per_value keeps each spelling distinct; a repeat run is byte-identical (P-7).
+        // String free_per_value keeps each spelling distinct; a repeat run is byte-identical (EP-7).
         var spec = new BedrockSpec(ConversionFixtures.Wide(hasHeader: false),
             [new AttributeSpec("g", new ColumnSource(0, SourceValueType.String), Include: true,
                 new FreePerValueDiscretizer(SourceValueType.String, CultureInfo.InvariantCulture),

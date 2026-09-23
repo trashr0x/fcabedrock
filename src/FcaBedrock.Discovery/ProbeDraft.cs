@@ -11,11 +11,11 @@ namespace FcaBedrock.Discovery;
 /// <b>What is deliberately absent, and why.</b> No schema or output fingerprint (a draft is a
 /// starting point, never a frozen artifact — a stored hash would fossilize a schema the user has
 /// not reviewed, §14); no <c>created_at</c>, tool version, path, or machine text (the no-clock
-/// rule, D-079/P-13 — and a clock would break byte repeatability outright, D-112); no
+/// rule, D-079/EP-13 — and a clock would break byte repeatability outright, D-112); no
 /// <c>[defaults]</c>, <c>[output]</c>, templates, matchers, or <c>[binding.object_key]</c> (the
 /// defaults are already correct: wide object keys are <c>row_index</c>). The caller may enrich
 /// the returned record afterwards — it is a public document model — which is exactly why the
-/// probe API takes no provenance parameters (P-6).
+/// probe API takes no provenance parameters (EP-6).
 /// </para>
 /// <para>
 /// <b>Everything effective is authored explicitly</b>, including settings that equal their

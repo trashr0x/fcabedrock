@@ -7,7 +7,7 @@ namespace FcaBedrock.Conversion;
 /// workspace is created <b>when a spill is required</b>. It is a runtime capability, never a
 /// spec/fingerprint input: it changes no calibrated state, emitted object, diagnostic, ordering,
 /// output byte, fingerprint, or manifest — the storage strategy never changes bytes (D-082). The
-/// memory budget and merge fan-in stay internal pending M8 measurement (P-6). Immutable and safe to
+/// memory budget and merge fan-in stay internal pending M8 measurement (EP-6). Immutable and safe to
 /// share between runs; it carries no mutable reporting state.
 /// </summary>
 public sealed record ConversionRuntimeOptions

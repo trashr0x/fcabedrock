@@ -18,7 +18,7 @@ namespace FcaBedrock.Golden.Tests;
 /// (§11.6 is native surface). Instead each test runs the spec's <b>own normative example</b>
 /// verbatim, through the complete authored-TOML → read → resolve → calibrate → plan → emit →
 /// write pipeline, and asserts the native bytes match what §11.6 says they should be. Agreement
-/// with the spec, not merely with the implementation (P-8).
+/// with the spec, not merely with the implementation (EP-8).
 /// </para>
 /// </summary>
 public sealed class ValueGroupsConformanceTests

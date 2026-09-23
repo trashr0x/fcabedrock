@@ -29,7 +29,7 @@ internal static class BenchmarkGrouping
     /// <param name="maxBufferedBytes">The in-memory budget before an intake spill; null keeps the shipped default.</param>
     /// <param name="maxMergeFanIn">The merge fan-in; null keeps the shipped default.</param>
     /// <param name="observer">
-    /// The resource observer. Production leaves it null (P-6), and so does every <em>timed</em> case:
+    /// The resource observer. Production leaves it null (EP-6), and so does every <em>timed</em> case:
     /// an observer recording every spill while the clock runs would be measuring itself. It is
     /// supplied only by the separate, untimed resource checks.
     /// </param>

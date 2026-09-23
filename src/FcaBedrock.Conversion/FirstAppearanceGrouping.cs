@@ -9,7 +9,7 @@ namespace FcaBedrock.Conversion;
 /// (D-083). It buffers input rows and stable-sorts them by each distinct key's first-appearance rank;
 /// when the resident buffer exceeds <see cref="GroupingOptions.MaxBufferedBytes"/> it spills a sorted
 /// run to an owner-restricted spool workspace and merges the runs with bounded fan-in, so a zero-spill
-/// enumeration stays entirely in memory (and touches no disk) while a large one stays bounded (P-16).
+/// enumeration stays entirely in memory (and touches no disk) while a large one stays bounded (EP-16).
 /// The single cleaned-key structure is the rank map — one name-cardinality collection, not two.
 /// <para>
 /// Deliberately <b>validity-agnostic</b>: it never inspects a key for "usability" and never raises a
@@ -17,7 +17,7 @@ namespace FcaBedrock.Conversion;
 /// concern (it truncates its input before grouping). Storage failures use two channels (D-082):
 /// in-path failures throw <see cref="GroupingStorageException"/> (the emitter records an Error and
 /// halts); cleanup failures accrue to the <c>reports</c> channel as Warnings while enumeration
-/// continues. Spilling is byte-neutral: the codec round-trips values exactly (P-7).
+/// continues. Spilling is byte-neutral: the codec round-trips values exactly (EP-7).
 /// </para>
 /// </summary>
 internal static class FirstAppearanceGrouping
@@ -25,7 +25,7 @@ internal static class FirstAppearanceGrouping
     /// <summary>
     /// Yields <paramref name="rows"/> reordered so rows with the same <paramref name="keyOf"/> value are
     /// contiguous, groups in first-appearance order of the key, input order preserved within a group.
-    /// Ordinal keying (P-12) keeps ranks machine-stable.
+    /// Ordinal keying (EP-12) keeps ranks machine-stable.
     /// </summary>
     public static async IAsyncEnumerable<TRow> GroupByFirstAppearanceAsync<TRow>(
         IAsyncEnumerable<TRow> rows,
@@ -47,7 +47,7 @@ internal static class FirstAppearanceGrouping
         {
             // Intake: assign each distinct key a first-appearance rank over one counter (the single
             // key-identity structure), tagging each row with a global arrival Seq. Buffer until over
-            // budget, then spill a sorted run. Ordinal comparison (P-12) is the grouping identity rule.
+            // budget, then spill a sorted run. Ordinal comparison (EP-12) is the grouping identity rule.
             var rankByKey = new Dictionary<string, int>(StringComparer.Ordinal);
             var nullRank = -1;
             var nextRank = 0;

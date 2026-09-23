@@ -11,7 +11,7 @@ namespace FcaBedrock.Conversion;
 /// yields are already subject-contiguous, that emitter's contiguity check is a no-op and all its
 /// subject-validity / classification / union logic applies verbatim. Grouping buffers <i>rows</i> via
 /// <see cref="FirstAppearanceGrouping"/> (spilling to a bounded spool workspace above the budget),
-/// never the incidence matrix (P-16). Its <see cref="GroupingOptions"/> and per-enumeration
+/// never the incidence matrix (EP-16). Its <see cref="GroupingOptions"/> and per-enumeration
 /// <see cref="GroupingReports"/> are supplied by the emitter, which owns ordering selection and
 /// reporting (D-082) — never constructed by an external selector without an active sink.
 /// </summary>
@@ -42,7 +42,7 @@ internal sealed class UnorderedTripleRowSource : ITripleRowSource
     /// Yields the inner rows regrouped subject-contiguous in first-appearance order, truncated at the
     /// first structurally-invalid subject (see <see cref="TruncateAtFirstUnusableSubjectAsync"/>).
     /// Replayable: each call re-reads and re-derives the same order, which the <c>.cxt</c> two-pass
-    /// relies on (P-16).
+    /// relies on (EP-16).
     /// </summary>
     public IAsyncEnumerable<TripleRow> ReadRowsAsync(CancellationToken cancellationToken = default) =>
         FirstAppearanceGrouping.GroupByFirstAppearanceAsync(

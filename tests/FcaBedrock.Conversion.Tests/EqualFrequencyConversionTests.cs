@@ -150,7 +150,7 @@ public sealed class EqualFrequencyConversionTests
     [Fact]
     public async Task Calibrate_WhenLocaleIsAuthored_ThenValuesParseUnderIt()
     {
-        // P-11: never the ambient locale — the resolved binding.locale governs. The delimiter is
+        // EP-11: never the ambient locale — the resolved binding.locale governs. The delimiter is
         // a semicolon precisely because de-DE's decimal separator is a comma: a comma-delimited
         // source could not carry these values at all.
         var spec = new BedrockSpec(
@@ -262,7 +262,7 @@ public sealed class EqualFrequencyConversionTests
     [Fact]
     public async Task Calibrate_WhenRepeated_ThenDeterministic()
     {
-        // P-7: same spec + same input ⇒ same cuts, every run.
+        // EP-7: same spec + same input ⇒ same cuts, every run.
         var first = await CalibrateOkAsync(Wide(Pending("score", 0, 3, new NominalScale())), TiedCsv);
         var second = await CalibrateOkAsync(Wide(Pending("score", 0, 3, new NominalScale())), TiedCsv);
 
@@ -279,7 +279,7 @@ public sealed class EqualFrequencyConversionTests
         using var cancelled = new CancellationTokenSource();
         await cancelled.CancelAsync();
 
-        // Cancellation is never converted into a diagnostic (P-14).
+        // Cancellation is never converted into a diagnostic (EP-14).
         await Assert.ThrowsAnyAsync<OperationCanceledException>(async () =>
             await Calibrator.CalibrateAsync(resolved, source, cancelled.Token));
     }
@@ -731,7 +731,7 @@ public sealed class EqualFrequencyConversionTests
     [InlineData(LabelStyle.V2Compat)]
     public async Task Convert_WhenRepeated_ThenByteIdentical(LabelStyle style)
     {
-        // P-7: determinism is a test, not an aspiration.
+        // EP-7: determinism is a test, not an aspiration.
         var options = style == LabelStyle.V2Compat ? WriterOptions.V2Compat : WriterOptions.Native;
         var spec = Wide(Pending("score", 0, 3, new NominalScale()));
 
@@ -800,7 +800,7 @@ public sealed class EqualFrequencyConversionTests
         var result = await CalibrateAsync(Wide(Pending("score", 0, 3, new NominalScale())), TiedCsv, options);
 
         // In-path: Error, no calibrated result — and it crosses the seam as a diagnostic, never as
-        // a GroupingStorageException (P-14).
+        // a GroupingStorageException (EP-14).
         Assert.False(result.IsOk);
         var diagnostic = Assert.Single(result.Diagnostics, d => d.Code == DiagnosticCode.GroupingStorageFailed);
         Assert.Equal(DiagnosticSeverity.Error, diagnostic.Severity);
@@ -897,7 +897,7 @@ public sealed class EqualFrequencyConversionTests
     [Fact]
     public async Task Calibrate_WhenALaterAttributeFailsStorage_ThenAnEarlierAttributesDiagnosticSurvives()
     {
-        // P-14: an aggregating operation collects EVERY diagnostic, not just the one that stopped
+        // EP-14: an aggregating operation collects EVERY diagnostic, not just the one that stopped
         // it. Attribute "a" has too few distinct values to bound its cuts (a data error it
         // diagnoses on its own, in phase 2, first); attribute "z" then hits a storage failure
         // during ITS post-intake merge. The first attribute's diagnostic must survive the second's

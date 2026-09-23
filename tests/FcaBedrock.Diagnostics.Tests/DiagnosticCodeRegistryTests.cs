@@ -3,7 +3,7 @@ namespace FcaBedrock.Diagnostics.Tests;
 /// <summary>
 /// Governance locks on the diagnostic registry (spec §16.4, D-085 enum timing): a code exists
 /// only once it has a real emit site, so the enum grows per slice rather than front-loading codes
-/// no path produces (P-3). These tests make the current slice's boundary a runtime assertion
+/// no path produces (EP-3). These tests make the current slice's boundary a runtime assertion
 /// rather than something only a diff review would notice.
 /// <para>
 /// Deliberately targeted rather than a whole-enum snapshot: a snapshot of every name churns on

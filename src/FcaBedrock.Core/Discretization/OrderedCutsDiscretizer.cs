@@ -10,11 +10,11 @@ namespace FcaBedrock.Core.Discretization;
 /// <c>n</c> type. <see cref="Order"/> declares the domain low→high;
 /// <see cref="Cuts"/> are members of it. A raw value not in <see cref="Order"/>
 /// gets no bin. No numeric parse and no locale: the category strings are used
-/// verbatim as cut values (P-11 n/a).
+/// verbatim as cut values (EP-11 n/a).
 /// <para>
 /// Constructed only through <see cref="Create"/>, which validates the order and
 /// cut spec (<see cref="CutValidation.ValidateOrdered"/>) so an invalid one is
-/// unrepresentable (P-10, D-056). The private constructor trusts its already-validated
+/// unrepresentable (EP-10, D-056). The private constructor trusts its already-validated
 /// inputs.
 /// </para>
 /// </summary>
@@ -38,7 +38,7 @@ public sealed record OrderedCutsDiscretizer : Discretizer
     {
         // Snapshot the caller's lists into immutable storage: mutable inputs must not desync
         // Order/Cuts from the cached labels/positions, and no castable mutable backing array may
-        // survive on the resolved/planned graph (P-10, D-098 recursive immutability).
+        // survive on the resolved/planned graph (EP-10, D-098 recursive immutability).
         Order = ImmutableArray.CreateRange(order);
         Cuts = ImmutableArray.CreateRange(cuts);
         Ends = ends;

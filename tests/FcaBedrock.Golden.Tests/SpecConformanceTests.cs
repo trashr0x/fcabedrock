@@ -7,7 +7,7 @@ namespace FcaBedrock.Golden.Tests;
 // *bytes*, which the spec deliberately does NOT make the native default. These
 // tests run the *native* (non-v2-compat) path and assert it matches
 // bedrock-spec-v1.md, with section citations. Agreement with the spec, not merely
-// with v2 (principle P-8). Driven off mini-mushroom (comma + header).
+// with v2 (principle EP-8). Driven off mini-mushroom (comma + header).
 public sealed class SpecConformanceTests
 {
     private static readonly FixtureCase Mushroom = FixtureCase.Active[0];

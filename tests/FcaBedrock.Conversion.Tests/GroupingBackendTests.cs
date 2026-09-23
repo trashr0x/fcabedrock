@@ -241,7 +241,7 @@ public sealed class GroupingBackendTests
     [Fact]
     public async Task Backend_WhenSpillForcedUnordered_ThenSameObjectsAndCrossesAsSubjectGrouped()
     {
-        // Spilling never changes results (P-7): the interleaved mushroom data grouped via a spill-forced
+        // Spilling never changes results (EP-7): the interleaved mushroom data grouped via a spill-forced
         // unordered path emits the same objects (first-appearance order) and crosses as the contiguous
         // subject_grouped path over the equivalent contiguous data.
         var spec = ConversionFixtures.MushroomTripleSpec();

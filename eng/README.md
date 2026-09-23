@@ -1,8 +1,9 @@
 # eng/ — the packaging and smoke commands
 
 Two distributions of one program, and the commands that produce and check them. Nothing here is a
-build system: every command is a thin wrapper over `dotnet`, or a documented `dotnet` invocation with
-a gate set. If a step could be a plain command, it is one.
+build system: every distribution command is a thin wrapper over `dotnet`, or a documented `dotnet`
+invocation with a gate set, and the authored-text integrity check below is a standalone PowerShell 7
+script that needs no build. If a step could be a plain command, it is one.
 
 ## The two distributions
 
@@ -85,9 +86,48 @@ dotnet build FcaBedrock.slnx -c Release          # warnings are errors
 dotnet test --solution FcaBedrock.slnx -c Release
 ```
 
-The benchmark host is deliberately unreachable from `dotnet test` (P-20): it carries its own
+The benchmark host is deliberately unreachable from `dotnet test` (EP-20): it carries its own
 `Directory.Build.props` so it is not a test project, and a multi-minute benchmark can never start
 because someone ran the test suite.
+
+## Authored-text integrity
+
+```pwsh
+# The whole authored set that eng/authored-files.txt defines.
+pwsh -NoProfile -File eng/check-authored-text.ps1
+
+# Chosen files or directories; the whole manifest is still validated.
+pwsh -NoProfile -File eng/check-authored-text.ps1 -Path docs/roadmap.md
+
+# The command's own behaviour tests: offline, with no restore or build first.
+pwsh -NoProfile -File eng/check-authored-text.tests.ps1
+```
+
+`check-authored-text.ps1` is read-only and offline. It checks strict UTF-8 and control characters,
+the obsolete engineering-principle identifier, file name and stage-label spellings, and the two
+instruction entry points: the writing-policy sentence in `AGENTS.md` and the `@AGENTS.md` import in
+`CLAUDE.md`. Each output line has five tab-separated fields: rule, path, line, severity and message.
+Exit 0 means no owned violation was found, and 1 means at least one content error. Exit 2 means the
+command refused to complete the assessment, for an invalid manifest or selection, a reparse point,
+an unreadable file, an undecodable `.cs` under `src/` or `tests/`, or an internal failure; it takes
+precedence over 1. Several `-Path` operands need an in-session call, such as
+`./eng/check-authored-text.ps1 -Path docs, README.md`, because `pwsh -File` passes a comma list as
+one operand.
+
+The command does not check local links, fragments or writing style, and it does not own the bytes
+of `.cs` under `src/` and `tests/`, which `tests/FcaBedrock.Architecture.Tests/SourceHygieneTests.cs`
+checks. Exit 0 says nothing about any of those.
+
+A change that adds or edits a local link, renames or moves its target, changes a target heading or
+explicit anchor, or changes structure that could alter whether a link or heading renders needs a
+reviewer to check each affected link against the changed headings. D-130 records the review table
+and the rest of that rule.
+
+The runner exits 2 when its comparator self-check fails. Otherwise it exits 1 when a case fails,
+when no case runs, or when the session directory is kept because its cleanup was withheld or
+failed; it exits 0 only when at least one case ran, none failed and the session directory was
+removed. `-Filter <text>` runs only the cases whose names contain that text, and a case this host
+cannot set up is reported as skipped with its reason.
 
 ## The benchmark smoke
 

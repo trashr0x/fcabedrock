@@ -41,7 +41,7 @@ internal sealed class GroupingReports
 /// <summary>
 /// Bounded, insertion-ordered aggregation of storage failures by stable identity
 /// <c>(operation, kind)</c> — a count, up to three path samples in first-occurrence order, and the
-/// worst severity seen (D-082/D-059). Never a per-failure diagnostic (P-16): a delete storm over
+/// worst severity seen (D-082/D-059). Never a per-failure diagnostic (EP-16): a delete storm over
 /// 73M-record spool runs yields one aggregate, not millions. Shared by the emitter's per-enumeration
 /// flush and the replay session's cross-pass promotion.
 /// </summary>

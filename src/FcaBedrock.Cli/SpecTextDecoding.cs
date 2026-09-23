@@ -16,7 +16,7 @@ namespace FcaBedrock.Cli;
 /// Spelled out here because the convenient overloads are all permissive:
 /// <see cref="StreamReader"/>'s mark detection also recognizes UTF-16 and UTF-32, and the
 /// one-argument <see cref="UTF8Encoding"/> replaces invalid bytes instead of rejecting them.
-/// One concern, one owner (P-5): no other decoding policy exists in the CLI.
+/// One concern, one owner (EP-5): no other decoding policy exists in the CLI.
 /// </para>
 /// </summary>
 internal static class SpecTextDecoding

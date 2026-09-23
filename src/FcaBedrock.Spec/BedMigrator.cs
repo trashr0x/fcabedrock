@@ -341,7 +341,7 @@ public static class BedMigrator
     }
 
     // The locale numeric restrict tokens parse under: binding.locale ?? "invariant", resolved
-    // with the SAME predefined-only rule as the resolve seam (P-7 — a synthesized ICU culture
+    // with the SAME predefined-only rule as the resolve seam (EP-7 — a synthesized ICU culture
     // would make migration OS-dependent).
     //
     // §5.1/D-079/D-091: an INVALID authored locale returns null, and the caller then leaves every

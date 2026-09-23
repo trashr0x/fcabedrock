@@ -30,7 +30,7 @@ public sealed class CutPrecisionTests
     [InlineData(double.PositiveInfinity)]
     [InlineData(double.NegativeInfinity)]
     public void Create_WhenNotFinitePositive_ThenThrows(double step) =>
-        // P-10: an unusable rounding step is unrepresentable. The reader owns the authored form
+        // EP-10: an unusable rounding step is unrepresentable. The reader owns the authored form
         // (SpecFieldInvalid); this factory is the backstop, so it throws rather than diagnoses.
         Assert.Throws<ArgumentOutOfRangeException>(() => RoundToPrecision.Create(step));
 

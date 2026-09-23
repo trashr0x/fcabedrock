@@ -53,7 +53,7 @@ internal sealed class QuantileRunCatalog
     /// <summary>
     /// Creates a catalogue with an explicit level ceiling. Production always passes
     /// <see cref="LevelsFor"/>; a lower ceiling exists only so the level-<c>L</c> fail-closed rule
-    /// can be exercised without <c>F^L</c> spills (P-6 — a construction seam, not a behaviour
+    /// can be exercised without <c>F^L</c> spills (EP-6 — a construction seam, not a behaviour
     /// branch: nothing below reads which constructor was used).
     /// </summary>
     public QuantileRunCatalog(int fanIn, int levels)

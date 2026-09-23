@@ -8,7 +8,7 @@
   </ItemGroup>
 
   <!-- Referenced only so their assemblies land in this project's output directory
-       for reflection (a test seam, P-6). The dependency-direction rules are
+       for reflection (a test seam, EP-6). The dependency-direction rules are
        asserted over the compiled FcaBedrock.*.dll metadata. -->
   <ItemGroup>
     <ProjectReference Include="..\..\src\FcaBedrock.Diagnostics\FcaBedrock.Diagnostics.csproj" />

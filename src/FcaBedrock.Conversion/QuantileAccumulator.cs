@@ -12,7 +12,7 @@ namespace FcaBedrock.Conversion;
 /// Exactness is a correctness property, not a performance target: <c>equal_frequency</c> and
 /// <c>percentile_p1_p99</c> cuts must be identical whether or not the population fitted in
 /// memory (§11.5 forbids approximate quantiles outright, because an approximation would break
-/// both determinism (P-7) and the D-088 auto/frozen byte-equivalence). So the spill and
+/// both determinism (EP-7) and the D-088 auto/frozen byte-equivalence). So the spill and
 /// zero-spill paths share one allocation and selection walk; only where the rows live differs.
 /// </para>
 /// <para>
@@ -116,7 +116,7 @@ internal sealed class QuantileAccumulator
     /// <summary>The accepted fixed capacity (the runtime's real prime-rounded value).</summary>
     public int Capacity => _capacity;
 
-    /// <summary>The resolved culture the population was parsed under (never ambient — P-11).</summary>
+    /// <summary>The resolved culture the population was parsed under (never ambient — EP-11).</summary>
     public CultureInfo Culture => _culture;
 
     /// <summary>The checked total observation count <c>N</c>.</summary>

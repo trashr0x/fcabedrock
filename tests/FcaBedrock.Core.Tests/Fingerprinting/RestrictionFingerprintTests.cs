@@ -260,7 +260,7 @@ public sealed class RestrictionFingerprintTests
         // formats -0.0 as "-0" (that is what keeps authored manual-cut bytes and fp_format = 1
         // stable). Without canonicalization at the boundary, a programmatic -0 would encode "-0"
         // — while MATCHING identically to 0, since IEEE says 0.0 == -0.0. Same behaviour, different
-        // hash, is exactly the determinism bug P-7 forbids.
+        // hash, is exactly the determinism bug EP-7 forbids.
         var negative = Cxt(Restricting([new RestrictToNumber(-0.0)]));
 
         Assert.Contains("\"entries\":[{\"value\":0}]", negative, StringComparison.Ordinal);
@@ -359,7 +359,7 @@ public sealed class RestrictionFingerprintTests
     {
         // G-10, the discriminating vector. "" (a BMP private-use char, ONE UTF-16 code unit
         // 0xE000) versus "\U0001F600" (supplementary, encoded as the surrogate pair 0xD83D
-        // 0xDE00). Under UTF-16 ordinal — what StringComparer.Ordinal compares, and what P-12
+        // 0xDE00). Under UTF-16 ordinal — what StringComparer.Ordinal compares, and what EP-12
         // means by "ordinal" — 0xD83D < 0xE000, so the emoji sorts FIRST.
         //
         // Sorting the UTF-8 ENCODING would reverse this: U+E000 encodes EE 80 80 and U+1F600

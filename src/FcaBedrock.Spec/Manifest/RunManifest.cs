@@ -366,7 +366,7 @@ public sealed record RunManifest
     // records one or two, never two of a kind; and the per-format fingerprint
     // fields are present iff that format was written. Checking both here — the one
     // place that sees the [run] table and the output set together — keeps a
-    // structurally impossible manifest unrepresentable (P-10) rather than letting
+    // structurally impossible manifest unrepresentable (EP-10) rather than letting
     // the writer emit an incoherent audit record.
     private static void RequireCoherentOutputs(RunSection run, IReadOnlyList<RunOutput> outputs)
     {

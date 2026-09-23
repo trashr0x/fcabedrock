@@ -15,7 +15,7 @@ public sealed record ColumnAttributeSource(int Index) : AttributeSource;
 
 /// <summary>
 /// Reads the raw value from every triple row whose predicate matches <paramref name="Predicate"/>
-/// exactly and ordinally (§5.3/§10.2/P-12); a mistyped predicate simply never matches. The
+/// exactly and ordinally (§5.3/§10.2/EP-12); a mistyped predicate simply never matches. The
 /// selector is data, not schema — so it is not range-checked at plan.
 /// </summary>
 /// <param name="Predicate">The predicate selector string (verbatim from the spec).</param>

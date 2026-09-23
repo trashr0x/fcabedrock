@@ -588,7 +588,7 @@ public sealed class ConversionPlannerTests
     [Fact]
     public void Plan_WhenObjectKeyCompositeAndDeferredScale_ThenBothDiagnosticsReport()
     {
-        // P-14: the object-key guard aggregates with the attribute checks rather than
+        // EP-14: the object-key guard aggregates with the attribute checks rather than
         // short-circuiting the static pass. Duplicate names moved to the resolve seam (D-080)
         // and restrict_to now EXECUTES (D-105, so it is no longer a plan diagnostic at all),
         // leaving the deferred-scale reject as the attribute-side plan code that pairs with the
@@ -654,7 +654,7 @@ public sealed class ConversionPlannerTests
     [Fact]
     public void Plan_WhenSeveralAttributesRestrict_ThenRestrictionsFollowSpecAttributeOrder()
     {
-        // §17 r1 / P-7: restriction order is spec-attribute order, interleaving filter-only and
+        // §17 r1 / EP-7: restriction order is spec-attribute order, interleaving filter-only and
         // included-and-restricted attributes, and independent of which of them plan columns.
         var gene = SpecFixtures.Excluded("Gene", 0) with { RestrictTo = [new RestrictToValue("Bmp5")] };
         var tissue = SpecFixtures.Nominal("Tissue", 1, ["endoderm"]);

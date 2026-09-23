@@ -202,7 +202,7 @@ public sealed class ConvertMultiCalibrationTests
     [Fact]
     public async Task Convert_WhenTheSameSpecRunsTwice_ThenTheCommittedBytesAreIdentical()
     {
-        // P-7 across the whole command, with several accumulators live: nothing about how the
+        // EP-7 across the whole command, with several accumulators live: nothing about how the
         // populations were counted may reach the output.
         using var first = ConvertRun.Wide(ManyCalibratedSpec, ManyCalibratedData);
         using var second = ConvertRun.Wide(ManyCalibratedSpec, ManyCalibratedData);

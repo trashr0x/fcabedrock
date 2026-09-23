@@ -20,7 +20,7 @@ public sealed record ColumnSource(int Index, SourceValueType ValueType) : Source
 /// <summary>
 /// Binds a triple attribute to a source <paramref name="Predicate"/> string
 /// (§10.2/§5.3). The predicate is data, not schema: it is matched exactly and
-/// ordinally against each row's predicate value at emit (P-12), so a mistyped
+/// ordinally against each row's predicate value at emit (EP-12), so a mistyped
 /// predicate simply never matches (surfacing at emit as <c>AttributeHasNoCrosses</c>,
 /// not a binding error). <paramref name="ValueType"/> has no default for the same
 /// reason as <see cref="ColumnSource"/> (§10.2 / D-061).

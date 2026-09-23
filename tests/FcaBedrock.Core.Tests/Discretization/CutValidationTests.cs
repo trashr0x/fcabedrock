@@ -7,7 +7,7 @@ namespace FcaBedrock.Core.Tests.Discretization;
 /// <summary>
 /// Cut-spec validation via the discretizer smart factories (spec §11.2 / §11.8,
 /// decisions.md D-056). Each rule maps to a distinct code; an invalid spec yields
-/// no discretizer (P-10), so <see cref="ManualCutsDiscretizer.Create"/> /
+/// no discretizer (EP-10), so <see cref="ManualCutsDiscretizer.Create"/> /
 /// <see cref="OrderedCutsDiscretizer.Create"/> never construct an illegal one.
 /// </summary>
 public sealed class CutValidationTests
@@ -105,7 +105,7 @@ public sealed class CutValidationTests
         Assert.Contains(DiagnosticCode.OrderedCutsCutNotInDomain, codes);
     }
 
-    // --- the factory snapshots its inputs: a valid discretizer cannot be desynced post-build (P-10) ---
+    // --- the factory snapshots its inputs: a valid discretizer cannot be desynced post-build (EP-10) ---
 
     [Fact]
     public void CreateManual_WhenInputListMutatedAfterCreate_ThenDiscretizerUnaffected()

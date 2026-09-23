@@ -15,7 +15,7 @@ namespace FcaBedrock.Conversion;
 /// bin. They are Warnings and the (degenerate but structurally valid) output is still written.
 /// </para>
 /// <para>
-/// Bounded (P-16): a <see cref="bool"/> per planned column plus a count and a three-item sample —
+/// Bounded (EP-16): a <see cref="bool"/> per planned column plus a count and a three-item sample —
 /// never the incidence matrix, and never one diagnostic per row or column.
 /// </para>
 /// </summary>
@@ -91,7 +91,7 @@ internal sealed class EmitObservability
                 "their rows are empty (§16.4)."));
         }
 
-        // Plan order, so the count and the bounded sample are deterministic (P-7).
+        // Plan order, so the count and the bounded sample are deterministic (EP-7).
         var count = 0;
         var sample = new List<string>(3);
         for (var id = 0; id < _crossed.Length; id++)

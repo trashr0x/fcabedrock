@@ -102,7 +102,7 @@ public sealed class NameFormatTests
     [Fact]
     public void Render_WhenCalledTwice_ThenIdenticalBytes()
     {
-        // P-7: rendering is pure over its inputs — same format + same substitutions ⇒ same
+        // EP-7: rendering is pure over its inputs — same format + same substitutions ⇒ same
         // name, so a rendered .cxt name cannot drift between two runs of one plan.
         var format = Parse("{display_name}-{scale_op}{value}");
 
@@ -113,7 +113,7 @@ public sealed class NameFormatTests
 
     [Fact]
     public void TryCreate_WhenFormatIsNull_ThenThrows() =>
-        // A null format is a programmer error, not authored input (P-14): the reader only
+        // A null format is a programmer error, not authored input (EP-14): the reader only
         // calls this with a string it actually read.
         Assert.Throws<ArgumentNullException>(() => NameFormat.TryCreate(null!, out _, out _));
 

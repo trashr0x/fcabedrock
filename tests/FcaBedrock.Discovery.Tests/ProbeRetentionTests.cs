@@ -198,7 +198,7 @@ public sealed class ProbeRetentionTests
     [Fact]
     public async Task Probe_WhenValuesDifferOnlyByCase_ThenTheyAreDistinctOrdinally()
     {
-        // P-12: ordinal identity, never culture-aware. A culture-aware comparison could fold or
+        // EP-12: ordinal identity, never culture-aware. A culture-aware comparison could fold or
         // reorder these differently on another machine — a determinism bug on a path that
         // decides output columns.
         var result = await ProbeFixtures.ProbeCsvAsync("a\nStraße\nSTRASSE\nstrasse\n");
@@ -210,7 +210,7 @@ public sealed class ProbeRetentionTests
     // value sequence and any limit, the retained domain is the first `limit` distinct values in
     // first-observation order, and truncation is exactly "more distinct values existed". Rolled
     // by hand rather than pulled from a property-testing package — the repo has none, and M5
-    // does not introduce one (P-5).
+    // does not introduce one (EP-5).
     public static TheoryData<string, int> RetentionCases()
     {
         var data = new TheoryData<string, int>();

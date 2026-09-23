@@ -73,11 +73,13 @@ superseded or refined. A new entry MUST add its line here.
 
 ### Process / governance
 
-- D-029 — Engineering principles formalized as docs/principles.md
+- D-029 — Engineering principles formalized as docs/engineering-principles.md
 - D-039 — Test conventions + ArchUnitNET for architecture tests
 - D-040 — Shared `tests/Directory.Build.props`; MTP-only
 - D-048 — `AGENTS.md` canonical; `CLAUDE.md` imports it; no symlink
 - D-073 — Decision index; sessions read it first, then relevant entries
+- D-129 — M8.2 writing governance: decisions may be compacted in place; `docs/engineering-principles.md` owns the engineering invariants as `EP-<n>`; `docs/writing-principles.md` owns the writing policy as `WP-<n>`; the authored inventory, the public owner map and the mechanical checker boundary *(narrows D-073's no-summarizing rule; renames the owner D-029 established; checker portion of rule 5 superseded by D-130)*
+- D-130 — Authored-text integrity: one mechanical command over raw decoded text, two fixed instruction-entry checks, an include/exclude manifest and a process-level test runner *(supersedes the checker portion of D-129 rule 5)*
 
 ### M1 (mini-mushroom walking skeleton)
 
@@ -140,7 +142,7 @@ superseded or refined. A new entry MUST add its line here.
 
 - D-082 — M3 triple source contract: reader, orderings, object identity, absent-vs-missing semantics, structural-error severity (realizes D-072; retires `TripleSourceNotImplementedV1`)
 - D-083 — Wide `column` object-key execution + `duplicate_object_policy`; `dedupe` on the shared sort-merge path (realizes D-064; retires `ObjectKeyColumnNotImplementedV1`)
-- D-084 — Ordinal string comparison is the project-wide rule (adds principle P-12)
+- D-084 — Ordinal string comparison is the project-wide rule (adds principle EP-12)
 - D-085 — M3 diagnostic taxonomy: structural triple/column-key codes, severities, retirements (refines D-067)
 - D-086 — Shape-aware `.bed` migration sources: wide → column, triple → predicate by attribute name (refines D-079)
 - D-087 — Symmetrical `[output.dat].trailing_newline` + shape-derived v2 triple `.dat` final-newline compat (new fingerprint input, backward-compatible encoding)
@@ -192,7 +194,7 @@ superseded or refined. A new entry MUST add its line here.
 - D-106 — Discovery `probe`: caller-selected shape, no inference, universal `identity` + `nominal`, one set-based observation pass (refines D-003/D-036)
 - D-107 — Draft naming/binding matrix, validity guarantee, content inventory; no stored fingerprints/clock/tool version; caller enrichment
 - D-108 — Retention limit (100,000 default), strictly-greater truncation, prefix + `include` recovery, marker + always-written notes, probe options ownership; legacy retention-cap correction
-- D-109 — The general unbound streaming source session; adapter/engine split; package dependency direction; required P-4 review
+- D-109 — The general unbound streaming source session; adapter/engine split; package dependency direction; required EP-4 review
 - D-110 — Probe boundedness: per-attribute limit + three aggregate guards, deterministic accounting, hard-failure semantics, no spill machinery, inherited subject-metadata carve-out (refines D-095)
 - D-111 — Probe diagnostic governance: five future codes, two phase widenings, `ProbeSourceReadFailed` scope, cancellation is not a diagnostic, registry 70 → expected 75 (refines D-067/D-085/D-099)
 - D-112 — Probe determinism and cancellation: record-sequence input, no ambient state, byte/diagnostic repeatability, no partial artifact; the M5 verification suite
@@ -548,7 +550,7 @@ reverse, the earlier decisions.
   `value_groups`), not a source-level toggle.
 - **Why:** matches v2 (coalesces by subject, accumulates crosses). A
   source-level collapse toggle would be a second way to express what the scale
-  already expresses, violating principles P-5 ("One project-standard way per
+  already expresses, violating principles EP-5 ("One project-standard way per
   concern").
 - **Rejected:** a configurable collapse flag on the source (the "(maybe
   configurable?)" question) — declined for the one-way reason above.
@@ -725,12 +727,12 @@ refinement markers (D-003, D-005, D-021); the entries below are new.
 
 ## Process / governance
 
-### D-029 — Engineering principles formalized as docs/principles.md
+### D-029: Engineering principles formalized as docs/engineering-principles.md
 
 - **Status:** accepted
 - **Date:** 2026-06-20
 - **Decision:** project-specific engineering principles live in
-  `docs/principles.md` (21 principles across Working discipline + Correctness,
+  `docs/engineering-principles.md` (21 principles across Working discipline + Correctness,
   Architecture, Performance, Testing). Mechanical rules stay in `.editorconfig`
   / analyzers. Changes to the principle set are governance changes and get a
   `decisions.md` entry; internal cross-references use number + short title so
@@ -753,9 +755,9 @@ refinement markers (D-003, D-005, D-021); the entries below are new.
   `Subject_Should<Outcome>`. Architecture/dependency tests are written with
   **ArchUnitNET** (`TngTech.ArchUnitNET.xUnit`), replacing the hand-rolled
   reflection harness.
-- **Why:** one documented test style (P-5), and a fluent arch-test library whose
+- **Why:** one documented test style (EP-5), and a fluent arch-test library whose
   type-level dependency analysis can enforce invariants reflection cannot — notably
-  P-13 ("Core is pure: no `System.IO`") once Core has code at M1. The cross-package
+  EP-13 ("Core is pure: no `System.IO`") once Core has code at M1. The cross-package
   layering and cycle rules read declaratively and extend cleanly as packages land.
 - **Rejected:** NetArchTest.Rules — simpler fluent API but less expressive and less
   actively maintained; the hand-rolled reflection harness — zero-dependency but
@@ -860,6 +862,204 @@ refinement markers (D-003, D-005, D-021); the entries below are new.
   informative, so no normative change). Process/docs only; no code, no output
   bytes.
 
+### D-129: M8.2 writing governance: in-place decision compaction, `EP-` and `WP-` identifier ownership, the authored inventory, and the mechanical checker boundary
+
+- **Status:** accepted; the checker portion of rule (5) superseded by D-130
+- **Date:** 2026-09-22
+- **Decision:** five governance rules for the M8.2 authored-text pass.
+  **(1) Compaction.** A decision entry may be shortened *in place*. Its ID, heading anchor, actual
+  rule, decisive rationale and tradeoff, consequences and limits, status, meaningful dates,
+  supersession links and position in historical order all survive. What may go is chronological run
+  narration, retry and custody story, text about obligations that were open at the time, and
+  repeated evidence tables. An earlier rule must never be reworded so that it reads as though it
+  always contained a later correction.
+  **(2) Engineering principles.** `docs/engineering-principles.md` owns the engineering invariants,
+  numbered `EP-1` through `EP-22`. Numbers, titles and meanings are fixed, and renumbering stays
+  forbidden (D-029). Every authored citation in this repository uses that family. No alias anchor
+  and no compatibility stub carries any earlier spelling, and no earlier spelling or path remains in
+  authored repository state. Git is the record of what the names were.
+  **(3) Writing policy.** `docs/writing-principles.md` is the single vendor-neutral owner of how
+  this repository writes documents and comments, numbered `WP-1` onward. It binds humans and
+  assistants. `AGENTS.md` carries a mandatory pointer to it, never a copy, and an instruction shim
+  may satisfy that pointer through an explicit mandatory import. No vendor skill is required; an
+  adapter, if one is ever added, reads this file rather than restating it.
+  **(4) Inventory and owner map.** Every authored document and every comment-bearing source, test,
+  benchmark, engineering, workflow, configuration and instruction file is inventoried from
+  tracked-file enumeration, with owner, input class, risk, packet, disposition, validation and
+  review state recorded. Review state distinguishes foundation routing, a reviewed mechanical
+  migration, and completed content review, so a mechanically migrated file is never recorded as
+  content-reviewed. The detailed ledger is private working state and is not a repository artifact;
+  the public artifact is the owner map in `AGENTS.md`.
+  **(5) Checker boundary.** `eng/` carries one small local command that exits non-zero only for
+  reliable mechanical failures: invalid required UTF-8 or prohibited control bytes, a resolvably
+  broken local file or explicit-anchor reference, a missing mandatory policy pointer, a forbidden
+  obsolete canonical path or identifier, and a malformed or stale suppression. Sentence length,
+  passive voice, dashes and listed vocabulary are warnings for human review. They never fail the
+  command, and the command never rewrites text. Suppressions are per-rule and either next-line or
+  one-path narrow, carry a reason, and fail when malformed or stale. The command adds no dependency
+  beyond tools the repository already requires and does not duplicate the existing source-hygiene
+  ownership.
+  M8.2 closes finitely: a private acceptance receipt may record integration, so no self-referential
+  public documentation commit is required.
+- **Why:** D-073 made the index the routine read and explicitly rejected "summarizing entries in
+  place (rewrites history)". That rejection was aimed at losing the reasoning trail, not at removing
+  campaign narration that never carried reasoning. Rule (1) narrows it to exactly that: the
+  reasoning trail is enumerated and protected, and only material with no lasting reader value may
+  go. Rules (2) and (3) follow one policy, that an identifier prefix names its owning file; with a
+  second principles document in the repository, a prefix that does not name its file stops being
+  self-describing. The two-letter forms were chosen over single letters because this repository's
+  canonical number formatter emits uppercase exponent literals such as `1E-05` and `5E-324`, and a
+  single-letter `E-` prefix would sit beside them in the fingerprinting and planner code that cites
+  principles most. Rule (4) exists because a text search cannot prove coverage of a repository, and
+  because the per-file detail that makes the pass executable is private working state with no
+  lasting reader value. Rule (5) keeps the checker small: usefulness, repetition and semantic
+  preservation are review judgments, and a tool that failed on them would either be wrong or grow
+  into a prose-analysis platform.
+- **Rejected:** a principle prefix that does not name its owning file, which stops being
+  self-describing once a second principles document exists. Permanent alias anchors and an old-path
+  stub, which keep an obsolete spelling as a migration diary when Git already holds it. Renumbering
+  principles, which D-029 forbids and which no rename requires. An in-tree archive of
+  pre-compaction prose, which duplicates what Git already stores. A checker that fails on style,
+  which cannot be made reliable and would invite automatic rewriting of exact contract language. A
+  second owner for the source-hygiene encoding rules, which `tests/FcaBedrock.Architecture.Tests`
+  already holds for `.cs` under `src/` and `tests/`.
+- **Affects:** `docs/engineering-principles.md` (the canonical engineering-principle owner),
+  `docs/writing-principles.md` (new), `AGENTS.md` (the policy pointer, the prefix table and the
+  owner map), `eng/` (the checker and its manifest), `docs/decisions.md` (this entry, its index
+  line, and D-029's title and body, which now name the canonical path), and every authored file that
+  cites an engineering principle. Narrows D-073. Renames the owner D-029 established. Process and
+  documentation only: no code, no diagnostics, no output bytes.
+
+### D-130: Authored-text integrity: one mechanical command over raw decoded text, two fixed instruction-entry checks, an include/exclude manifest and a process-level test runner
+
+- **Status:** accepted
+- **Date:** 2026-09-23
+- **Decision:** M8.2 works in nine numbered packets; this entry names four of them: Packet 2, the
+  first to rewrite documentation; Packet 3, which edits the decision log, roadmap and benchmark
+  record; Packet 8, which edits tests, benchmarks, engineering files and workflows; and Packet 9,
+  the closing integration audit. `eng/check-authored-text.ps1`, its manifest
+  `eng/authored-files.txt` and its test runner `eng/check-authored-text.tests.ps1` ship together
+  before Packet 2, a deliberate move of this tooling ahead of Packet 8, which owes no checker design
+  and no first tests. The command is one PowerShell 7 script with no module and no dependency. It is
+  read-only and offline, takes `-RepoRoot` (default: the parent of `eng/`) and `-Path`, and checks a
+  stable, trusted checkout: an edit during a run invalidates the result, and it is not a security
+  boundary.
+  **(1) Selection.** The root is normalized lexically and must be an existing ordinary directory;
+  containment is by path segment. The command walks one directory at a time with its entries in
+  ordinal order, skips `.git`, never enters a directory that an exclude of the form `<prefix>/**`
+  matches, and refuses every other reparse point at its segment without resolving, following or
+  naming its target. The manifest accepts only blank lines, `#` comments, exactly one
+  `min-files <n>`, `+ <glob>` and `- <glob>`. Globs are repository-relative and case-sensitive, `*`
+  stays within a segment and `**` spans segments; a leading slash, a drive letter, a backslash, a
+  `.` or `..` segment and any other line, including the retired `!`, `~` and `@` forms, make the
+  manifest malformed. Excludes win. Every include must match a walked file, the resolved set must
+  reach `min-files` on every invocation, and it must keep `AGENTS.md`, `CLAUDE.md`,
+  `docs/writing-principles.md` and the manifest; an exclude that removes one of them is malformed.
+  `-Path` validates the whole manifest first. Each operand must be contained, spelled exactly as
+  walked and select at least one file of the manifest set (a file itself, a directory its selected
+  descendants, `.` all of it), or the run is refused naming that operand. Every comparison and every
+  ordering is ordinal.
+  **(2) Checks.** Every selected file is read and decoded as strict UTF-8, and a byte order mark is
+  accepted. For `.cs` under `src/` and `tests/`, whose bytes
+  `tests/FcaBedrock.Architecture.Tests/SourceHygieneTests.cs` owns, no control-character check runs
+  and a decode failure is a file-level refusal. For any other file, a decode failure is
+  `encoding-invalid-utf8` and ends that file's checks, and a C0 character other than TAB, LF and CR,
+  or DEL, is `encoding-control-byte`. Over the whole decoded text of every file, with no syntax
+  masked, three case-sensitive .NET regular expressions with Unicode `\b` and `\d` report one
+  finding per match: `\bP-\d+\b` is `identifier-obsolete`, `(?<![\w-])principles\.md` is
+  `path-obsolete` and also applies to each selected path, and `\bP[0-3]\b` is
+  `stage-label-obsolete`. On every invocation, targeted or not: `AGENTS.md`, `CLAUDE.md` and
+  `docs/writing-principles.md` must exist as regular files (`required-file-missing`); `AGENTS.md`,
+  with each whitespace run collapsed to one space, must contain the sentence
+  ``Read `docs/writing-principles.md` before authoring or editing any prose or comment in this repository.``
+  (`policy-pointer-missing`), which fixes that sentence and not its paragraph; and the first
+  nonblank line of `CLAUDE.md`, with trailing whitespace trimmed, must be exactly `@AGENTS.md`
+  (`instruction-import-invalid`), while later lines stay free as D-048 allows.
+  **(3) Refusals, output and exits.** A run-level refusal stops the assessment and keeps every
+  finding already collected: a missing or malformed manifest, an invalid root, a reparse point, an
+  unsafe or empty operand, a selected path that contains a tab, CR or LF, and an unexpected
+  failure. A file-level refusal (an unreadable file, or an undecodable `.cs` under `src/` or
+  `tests/`) is reported and the scan continues. Each output line has five tab-separated fields:
+  rule; repository-relative path or `-`; line, counting LF and ignoring CR, or `0`; severity
+  `fatal`, `error` or `info`; and message. Fatal lines come first, then errors, each ordered by path,
+  line, rule and message. The last two lines are `checker-scope`, which states that local links,
+  fragments and writing style are not assessed and that `SourceHygieneTests` owns the bytes of
+  `.cs` under `src/` and `tests/`, and `checker-summary`, which counts the selected, decoded,
+  owned-elsewhere and refused files and the errors. The complete rule set is the eight content
+  errors named in (2); the refusals `checker-manifest-missing`, `checker-manifest-malformed`,
+  `checker-scan-empty`, `checker-path-escape`, `checker-file-unreadable`,
+  `checker-file-undecodable` and `checker-internal-failure`; and those two information lines. Exit 2
+  means a refusal occurred and takes precedence over exit 1, which means a content error. Exit 0
+  means only that the manifest and selection were valid, every selected file was decoded or
+  accounted, the fixed checks passed and no owned violation was found; it is never a statement about
+  links, style or the `SourceHygieneTests` result.
+  **(4) Removed from automation.** Link, fragment, anchor and slug checks, because an open Markdown
+  grammar cannot yield reliable errors. Style warnings and every comment or prose extractor, because
+  the warnings were not a usable work list and a one-line search replaces the useful part.
+  Suppressions and preservation or instruction routes, because none had a caller and an identifier
+  suppression contradicts D-129 rule (2). Import graphs, because D-048 fixes exactly two entry
+  points. Reparse following and physical-alias identity, because no caller needs them and they
+  conflict with logical selection. The coverage channel, because it claimed a completeness it could
+  not prove.
+  **(5) Human link review.** A change that adds or edits a local link, renames or moves its target,
+  changes a target heading or explicit anchor, or changes structure that could alter whether a link
+  or heading renders requires review. The packet that makes such a change keeps a private
+  navigation table with one row per affected occurrence (source path, line, destination, target
+  heading before and after, and the reviewer's mark), and the reviewer checks every row against the
+  candidate's actual headings. The baseline at this decision is 47 local links: 46 same-file
+  fragment links to 17 distinct destinations, in `docs/benchmarks.md` (40),
+  `src/FcaBedrock.Cli/README.md` (5) and `tests/FcaBedrock.Benchmarks/README.md` (1), and one
+  cross-file link from `README.md`. Packet 3's table also carries the decision-identifier and
+  contractual-heading inventory that D-129 rule (1) requires, whether or not any link points at
+  them, and Packet 9 reconciles the union of all packet tables.
+  **(6) A legitimate future spelling.** No suppression exists. Authored code and tests assemble a
+  needed obsolete spelling from fragments. Required verbatim third-party text that contains one is
+  excluded by a literal `- <path>` line whose comment names the reason and the authorizing decision,
+  and review then preserves that text as it preserves `LICENSE`. `stage-label-obsolete` may be
+  retired by a later decision if it collides with a legitimate identifier; the other two predicates
+  stand while the `EP-` family and its owner exist.
+  **(7) Tests.** `eng/check-authored-text.tests.ps1` builds each case from inline content in the
+  session temporary directory, runs the command only as a child process, asserts the exit code, the
+  complete standard output and an empty standard error, and hashes every case directory before and
+  after the run. It reports a case the host cannot set up as skipped with its reason, fails when no
+  case runs, and first proves that its comparator rejects wrong expectations. It is a named, narrow
+  exception to the one-xUnit-project-per-package convention of D-039 and D-040, because it tests a
+  standalone PowerShell command that must run without a restore or a build, and it establishes no
+  general test framework.
+  **(8) Supersession.** This supersedes the checker portion of D-129 rule (5): its link and
+  explicit-anchor failures, its style warnings and its suppression rules. Rule (5) keeps one small
+  local command, no new dependency, no rewriting of text and a single source-hygiene owner. D-129
+  rules (1) to (4), the writing policy and D-048's allowance for later guidance are unchanged. No CI
+  job, blocking or not, is licensed; that remains a separate decision.
+- **Why:** the earlier draft decided its errors through Markdown and source-language recognizers
+  that each review could defeat with new valid input, and its proof lived only in private scratch
+  cases. Deciding every error on raw decoded text, a path or a fixed predicate removes the syntax
+  dependency, so an exit status means the same on any input. D-129 rule (2) already makes any
+  occurrence of an earlier spelling an error, including inside literals, so the raw predicates are
+  exact rather than approximate. The permanent runner makes the behaviour's proof part of the
+  repository. The rewrite packets are the command's first users, so it ships before them.
+- **Rejected:** a bounded Markdown grammar with advisory style warnings and a 1,200-line ceiling,
+  because its recognizer cannot prove it saw every relevant construct, the warnings were not a work
+  list, and the ceiling was an unexplained number. A whole-file safe-text envelope for automatic link
+  checks, which admitted none of the 16 Markdown files. Deferring the command and its tests to
+  Packet 8, which inverts the value: the packets before it are the callers. Repairing the earlier
+  draft one counterexample at a time, an open grammar with no completion criterion and no permanent
+  tests. Keeping the earlier name `check-writing.ps1`, which claims a writing assessment the command
+  no longer makes. Hosting the runner in an xUnit project, which needs a built test host for a check
+  meant to run without one. An opt-in style mode, aggregate counters or a separate style command,
+  which keep extraction machinery for output a one-line search gives. A suppression grammar kept for
+  later, which has no caller, contradicts D-129 rule (2) and is covered by the two dispositions in
+  (6). Hard-coded pruning of `bin`, `obj` and `artifacts`, a second owner for a fact the manifest
+  states. Stopping the whole run at the first undecodable `.cs`, which hides other files' findings
+  when a file-level refusal is as honest and clearer. A physical line cap as an acceptance measure;
+  the structural limits above decide scope.
+- **Affects:** `eng/check-authored-text.ps1` and `eng/check-authored-text.tests.ps1` (new),
+  `eng/authored-files.txt`, `docs/decisions.md` (this entry, its index line, and D-129's status line
+  and index annotation), one sentence each in `AGENTS.md` and `docs/writing-principles.md`, and
+  `eng/README.md`; the uncommitted earlier draft `eng/check-writing.ps1` was removed. Supersedes the
+  checker portion of D-129 rule (5). Process and tooling only: no code, diagnostics, spec, fixture,
+  output bytes or roadmap change.
+
 ---
 
 ## M1 (mini-mushroom walking skeleton)
@@ -880,9 +1080,9 @@ refinement markers (D-003, D-005, D-021); the entries below are new.
   delimiters/newlines) is a classic bug farm, and the v1 scale target (D-007, up
   to ~73M records) wants a parser already hardened and benchmarked for span-based,
   zero-allocation streaming. Sep is currently the fastest .NET CSV parser and its
-  span-first row/col API suits the emit hot path (P-18). Wrapping rather than
+  span-first row/col API suits the emit hot path (EP-18). Wrapping rather than
   exposing it keeps Sep out of the public surface, so it can be swapped without a
-  contract change (P-4).
+  contract change (EP-4).
 - **Rejected:** (a) hand-rolling a span DSV parser — reinvents the wheel we
   explicitly chose not to, and shifts the hardening/benchmark burden onto us; (b)
   `Sylvan.Data.Csv` — also fast and mature, but exposes an ADO.NET
@@ -901,11 +1101,11 @@ refinement markers (D-003, D-005, D-021); the entries below are new.
   `Result<T, BedrockDiagnostic>` directly. `Diagnosed<T>` (the aggregating carrier)
   is unaffected and remains the standard for validate/plan.
 - **Why:** one result type, no indirection, no second way to spell the same thing
-  (P-5). Naming the alias only to never realize it would have been a phantom in the
+  (EP-5). Naming the alias only to never realize it would have been a phantom in the
   surface.
 - **Rejected:** a `BedrockResult` static factory class over the closed generic —
   still indirection for zero benefit; a distinct wrapper type — a second result
-  type to learn, against P-5.
+  type to learn, against EP-5.
 - **Affects:** Diagnostics; refines D-006 (alias struck from the type list).
 
 ### D-043 — Two test axes: golden = v2-compat evidence, conformance = native spec
@@ -915,7 +1115,7 @@ refinement markers (D-003, D-005, D-021); the entries below are new.
 - **Decision:** output behavior is proven along two distinct axes. (1) **Golden
   tests** (`FcaBedrock.Golden.Tests`) run the pipeline under
   `WriterOptions.V2Compat` and assert byte-identity against the `fixtures/v2/`
-  goldens — *compatibility evidence* (P-9). (2) **Spec-conformance tests** run the
+  goldens — *compatibility evidence* (EP-9). (2) **Spec-conformance tests** run the
   **native** (non-v2) path and assert documented behavior with spec-section
   citations (e.g. native `.cxt` is LF + trailing newline §18.1; native `.dat` has
   no trailing space §18.2/§21.4; dichotomic name is `{column}` alone §10.7/§12.2;
@@ -925,8 +1125,8 @@ refinement markers (D-003, D-005, D-021); the entries below are new.
 - **Why:** the v2 goldens are deliberately *not* the spec's native output (v2-isms
   are quarantined behind `--v2-compat`, D-011), so byte-equality to v2 alone would
   leave the native contract unproven. The conformance axis is how code is held to
-  the spec, not merely to v2 (P-8); the golden axis is how v2 compatibility stays
-  evidenced (P-9).
+  the spec, not merely to v2 (EP-8); the golden axis is how v2 compatibility stays
+  evidenced (EP-9).
 - **Rejected:** a single golden axis — would silently let the native default drift
   from the spec; asserting native output against checked-in native golden files —
   premature before the native format stabilizes, and the spec text is the
@@ -948,7 +1148,7 @@ refinement markers (D-003, D-005, D-021); the entries below are new.
   as the bin key / `BinKey` / `CrossesByBin` key; the style touches only the
   rendered name. `WriterOptions` gains no label flag.
 - **Why:** label style affects `output_fingerprint` (now split per-format, D-051)
-  only, never the schema (§8/§14, D-011/D-035). Canonical identity + late render keeps writers dumb (P-15) and lets
+  only, never the schema (§8/§14, D-011/D-035). Canonical identity + late render keeps writers dumb (EP-15) and lets
   one planner path serve both styles.
 - **Affects:** `FcaBedrock.Core` (`Discretizer.RenderBinLabel`, `LabelStyle`,
   `ConversionPlanner`); the golden harness derives the style from the v2-compat
@@ -984,14 +1184,14 @@ refinement markers (D-003, D-005, D-021); the entries below are new.
 - **Date:** 2026-06-25
 - **Decision:** add an `ordered_cuts` discretizer — cuts over a declared category
   order — as the categorical sibling of `manual_cuts`, sharing one `CutBinLabels`
-  label/identity helper. Documented in spec §11.8 **before/with** the code (P-8).
+  label/identity helper. Documented in spec §11.8 **before/with** the code (EP-8).
   For v2 `n`, `[Attribute Categories]` carries the ordered domain and
   `[Category Values]` carries the cut (`<,Managerial,>`); for `o`, both carry the
   numeric cut spec.
-- **Why:** keeps numeric and ordered cuts symmetric and DRY (P-17); the shared
+- **Why:** keeps numeric and ordered cuts symmetric and DRY (EP-17); the shared
   label helper guarantees they never drift on bin labels or `--v2-compat` rendering.
 - **Rejected:** modelling `n` with `value_groups` (loses order and threshold
-  semantics); a mode-switched single cut discretizer (god type, P-17).
+  semantics); a mode-switched single cut discretizer (god type, EP-17).
 - **Affects:** `FcaBedrock.Core` (`OrderedCutsDiscretizer`, `ManualCutsDiscretizer`,
   `CutBinLabels`, `BinEnds`); spec §11.8, §19.2.
 
@@ -1007,7 +1207,7 @@ refinement markers (D-003, D-005, D-021); the entries below are new.
   never changes the schema (D-035); `drop_top` suppresses it. Over half-open
   `[lo, hi)` cut bins only the geometry-aligned boundary is well-defined (`le`+`<`,
   `ge`+`>=`); the straddling combinations and the independent `boundary` knob await
-  the M2 value-bin path (no M1 producer, P-3). Spec §12.3 amended.
+  the M2 value-bin path (no M1 producer, EP-3). Spec §12.3 amended.
 - **Why:** makes "N bins → N formal attributes" exact and reproduces v2's
   progressive column count; an `all`-only-under-`--v2-compat` rule would add a
   column under compat, violating D-035.
@@ -1050,7 +1250,7 @@ refinement markers (D-003, D-005, D-021); the entries below are new.
   (§12.3); revisiting the `value_type`-vs-discretizer rule (§10.2 — a live
   conflict, left validating). See `docs/roadmap.md`.
 - **Deferred (migrator hygiene):** make `BedToSpec` return `Result<T,
-  BedrockDiagnostic>` instead of throwing (P-14), so excluded-config recovery can
+  BedrockDiagnostic>` instead of throwing (EP-14), so excluded-config recovery can
   emit a *diagnostic* rather than relying on the broad recovery `catch (Exception)`
   in `MapAttribute`. Natural to fold in when M2 reworks the `.bed` → TOML migrator;
   not worth a standalone refactor now. *(Landed at M2 Slice G, D-079 —
@@ -1086,12 +1286,12 @@ conformance pass (`roadmap.md`).
 - **Why:** "missing" and "malformed" diverge under `missing_policy = "as_attribute"`
   (missing crosses the `-missing` column; malformed must not) and for diagnostics
   (malformed data deserves a signal). Reusing `unknown_value_policy` for severity
-  avoids a second strictness knob (P-5); for numeric attributes that policy was
+  avoids a second strictness knob (EP-5); for numeric attributes that policy was
   otherwise inert (cut discretizers ignore `declared_domain`, §10.3). NaN/±∞ are
   folded in with parse-failure rather than split into a third behavior.
 - **Rejected:** keeping parse-failure as missing (conflates two conditions, hides
   bad data); a fixed Warning severity (a `fail` pipeline expects malformed data to
-  abort); a dedicated malformed-value policy knob (P-6, redundant with
+  abort); a dedicated malformed-value policy knob (EP-6, redundant with
   `unknown_value_policy`).
 - **Affects:** Core (planner/emit), Conversion; spec §10.6 / §11.5 / §16.4;
   diagnostic `SourceValueUnparseable`. Byte-neutral on M1 (still "keep object, no
@@ -1158,7 +1358,7 @@ conformance pass (`roadmap.md`).
   already obsoleted by defining `schema_fingerprint` over the planned list. Hashing
   the plan is the single source of truth. Pinning the numeric format and a version
   tag makes stored fingerprints portable and the encoding evolvable — both durable
-  contracts (P-11), so they must be fixed before any spec ships with a stored hash.
+  contracts (EP-11), so they must be fixed before any spec ships with a stored hash.
 - **Rejected:** hashing TOML text (formatting-sensitive, and `30` vs `30.0` would
   differ); `"R"`/`"G17"` float formatting (17 digits defeats the `30.0`/`30`
   collapse).
@@ -1195,7 +1395,7 @@ conformance pass (`roadmap.md`).
   it triggers Calibrate, emits `ValueGroupsPassthroughDataDependent` (Warning), and
   omits stored fingerprints unless frozen.
 - **Why:** `declared_domain` + `value_groups` created two overlapping
-  "recognized-value" gates (P-5) — and since unmatched-`skip` already defers to
+  "recognized-value" gates (EP-5) — and since unmatched-`skip` already defers to
   `unknown_value_policy`, the domain added nothing but precedence ambiguity (it also
   made regex groups, the high-cardinality case D-022 targets, useless). Dropping it
   dissolves the ambiguity.
@@ -1259,7 +1459,7 @@ conformance pass (`roadmap.md`).
 - **Why:** `EmptyExtent` was listed at the plan phase, which is impossible for a
   per-attribute "no crosses" meaning (it needs emit-time data); and "extent/intent"
   are concept-level FCA terms, confusing when applied per-attribute/per-object. The
-  per-element emit diagnostics must aggregate (P-20) or they flood at 73M rows.
+  per-element emit diagnostics must aggregate (EP-20) or they flood at 73M rows.
 - **Rejected:** keeping `EmptyExtent` / `EmptyIntent` (wrong phase, overloaded
   names); failing on zero columns (blocks the staged-editing workflow §10.1 allows).
 - **Affects:** Core (planner/emit), Diagnostics, Spec; spec §16.2 / §16.4.
@@ -1282,18 +1482,18 @@ decision is below.
   replacing the old `string?` that collapsed all four into "label or null". Emit-phase data
   diagnostics that can occur per row (`UnknownValueObserved`, `SourceValueUnparseable`) are
   **aggregated per attribute** with a count and a bounded sample, flushed in plan order after
-  the stream (deterministic — P-7), never one diagnostic per row.
+  the stream (deterministic — EP-7), never one diagnostic per row.
 - **Why:** `string?` conflated the silent no-cross cases (out-of-range, §11.2) with the
   diagnosable ones (unparseable §11.5/D-050; unknown §10.6/§11.8), so malformed/unknown data
-  could not be surfaced without re-deriving it in the emitter (P-17); and per-row diagnostics
+  could not be surfaced without re-deriving it in the emitter (EP-17); and per-row diagnostics
   do not scale to the v1 data target (~73M records, D-007). One result type plus one
   aggregation pattern keeps future discretizers (`equal_width`/`equal_frequency` at M4,
-  `value_groups`) and emit diagnostics consistent (P-5). Also closes the §11.8 gap where an
+  `value_groups`) and emit diagnostics consistent (EP-5). Also closes the §11.8 gap where an
   `ordered_cuts` value-not-in-order was silently dropped instead of treated as unknown.
 - **Rejected:** keeping `string?` and re-deriving unparseable-vs-out-of-range in the emitter
   (duplicates the parse/culture logic out of the discretizer, double-parses the hot path); a
-  second `TryDiscretize` out-param method (two ways to spell one decision, P-5); per-row data
-  diagnostics (flood at scale, P-20).
+  second `TryDiscretize` out-param method (two ways to spell one decision, EP-5); per-row data
+  diagnostics (flood at scale, EP-20).
 - **Affects:** Core (discretizers, `BinResult`), Conversion (emit aggregation), Diagnostics
   (`SourceValueUnparseable`); spec §10.6 / §11.5 / §11.8 / §16.4. The §5.1 whitespace
   reconciliation in the same pass needed no decision entry — `SepTrim.Outer` is an
@@ -1365,9 +1565,9 @@ feature, so they are recorded here. They refine, not reverse, earlier decisions.
   conflict* — it spoke of one "discretizer-implied type," which mis-described
   `free_per_value` (legitimately both) and could reject its headline numeric use
   (D-022). Naming type-fixing vs flexible makes the four real conflict cases exact and
-  keeps one numeric distinct-binner (P-5).
+  keeps one numeric distinct-binner (EP-5).
 - **Rejected:** making `identity` also flexible (a second way to spell numeric distinct
-  binning, P-5); leaving the rule vague (the original live conflict).
+  binning, EP-5); leaving the rule vague (the original live conflict).
 - **Affects:** Core (validate), Spec; spec §10.2 / §11.3; diagnostic
   `SourceValueTypeInvalid` (scope clarified). Resolves the D-049-deferred item; refines
   D-022.
@@ -1383,8 +1583,8 @@ feature, so they are recorded here. They refine, not reverse, earlier decisions.
 - **Why:** a `*NotImplementedV1` reservation is only meaningful when a parseable
   carrier lets a v1 spec express the feature and be cleanly rejected (the `composite` /
   `date` / scale pattern). With no carrier the code was dead. Not every future idea
-  needs reserved syntax (P-3).
-- **Rejected:** inventing a carrier now (P-3 — no current need); keeping the dead
+  needs reserved syntax (EP-3).
+- **Rejected:** inventing a carrier now (EP-3 — no current need); keeping the dead
   diagnostic (misleads readers into thinking the feature is expressible).
 - **Affects:** Spec; spec §20; `roadmap.md` (stale "§19" → "§20" reference fixed);
   diagnostic `RestrictCrossAttributeNotImplementedV1` removed.
@@ -1403,9 +1603,9 @@ feature, so they are recorded here. They refine, not reverse, earlier decisions.
   match the attribute's type, so a genuinely mixed list is rejected at validation (§10.4).
 - **Why:** D-057 established round-trip + execution-deferral, but §10.4 prose never
   documented the static checks the §16.4 table already listed, nor their precedence vs
-  `SourceValueTypeInvalid`. One condition → one owning code (P-14).
+  `SourceValueTypeInvalid`. One condition → one owning code (EP-14).
 - **Rejected:** deferring shape validation to M4 with execution (an authoring error
-  would surface late); letting both codes fire on the same mismatch (ambiguous, P-5).
+  would surface late); letting both codes fire on the same mismatch (ambiguous, EP-5).
 - **Affects:** Core (validate), Spec; spec §10.4 / §10.2; diagnostics
   `RestrictToOnNumericRequiresRange`, `RestrictToValueNotInDomain`. Refines D-057.
 
@@ -1424,7 +1624,7 @@ feature, so they are recorded here. They refine, not reverse, earlier decisions.
 - **Why:** D-034 fully specified wide column-key behavior, but no milestone implemented
   it and no guard existed — a silent partial implementation (carrier parses, execution
   missing), the hole D-057 closed for `restrict_to`. M3 already builds subject-derived
-  column keys, so it is the natural home. Distinct conditions get distinct codes (P-14).
+  column keys, so it is the natural home. Distinct conditions get distinct codes (EP-14).
 - **Rejected:** implementing wide column keys in M2 (expands M2 scope; M3 is the
   object-key milestone); leaving execution unguarded (latent wrong output — a silent
   `row_index` fallback).
@@ -1448,7 +1648,7 @@ feature, so they are recorded here. They refine, not reverse, earlier decisions.
   select objects" is the FCA-coherent model and keeps the schema stable under
   object-filter changes (reproducibility). Documenting it as a deliberate choice — with
   the §19.4 consequence visible — prevents it being read as a bug.
-- **Rejected:** population-relative calibration as the v1 default/option (P-3 — no
+- **Rejected:** population-relative calibration as the v1 default/option (EP-3 — no
   current need; a larger M4 design); leaving the interaction unspecified (the audit's
   F14 — a determinism/expectation gap).
 - **Affects:** Conversion (calibrate/emit ordering), Spec; spec §7 / §19.4; `roadmap.md`
@@ -1462,7 +1662,7 @@ A reconciled pass fixing the M2 *implementation* contracts the earlier M2/Tier-1
 decisions left open: the in-memory two-model split, the resolve/validate seam, the
 exact fingerprint encoding, and the carrier-vs-execution scope for discretizers,
 absent domains, triple input, and `missing_policy`. These pin cross-package
-contracts (P-4) before the TOML reader/writer, migrator, and fingerprints are
+contracts (EP-4) before the TOML reader/writer, migrator, and fingerprints are
 built; they refine, not reverse, D-009 / D-049 / D-050…D-065.
 
 ### D-066 — Parsed spec document model vs. resolved Core `BedrockSpec`
@@ -1479,7 +1679,7 @@ built; they refine, not reverse, D-009 / D-049 / D-050…D-065.
   `formal_attribute_format`), a column bound **by name or by index**, and
   possibly-invalid parsed states. It **resolves+validates into** Core's
   `BedrockSpec`: the resolved model with defaults merged, `extends` applied,
-  name→index resolved, illegal states unrepresentable (P-10). A bind-by-header
+  name→index resolved, illegal states unrepresentable (EP-10). A bind-by-header
   `NamedColumnSource` and a triple `predicate` **attribute source** are therefore
   **document-model states only**, never resolved Core sources; the Core wide
   binding carries a resolved column **index** plus a `value_type`. The one
@@ -1492,18 +1692,18 @@ built; they refine, not reverse, D-009 / D-049 / D-050…D-065.
   preservation, D-052 `extends` merge) needs a model that holds exactly what was
   authored — provenance, unresolved references, an authored `[]` — while the
   planner's determinism guarantees need a model where bad states cannot occur
-  (P-10) and Core stays pure (P-13). One model cannot be both. Splitting them
+  (EP-10) and Core stays pure (EP-13). One model cannot be both. Splitting them
   confines Tomlyn and every authoring concession to Spec and hands the planner a
   clean resolved input.
 - **Rejected:** a single model for both parse and plan — it either admits invalid
-  states (defeating P-10, scattering guards through the planner) or rejects at
+  states (defeating EP-10, scattering guards through the planner) or rejects at
   parse and loses the authored form a faithful round-trip needs (breaking
   D-049/D-057); resolving name→index inside Core — pulls header/schema knowledge
   into a pure package and lets a resolved source hold an unresolved reference.
 - **Affects:** Spec (new `Toml/` document model), Core (`BedrockSpec`,
   `AttributeSpec`, wide binding + a minimal triple binding carrier (D-072),
   `OrdinalScale`, `ObjectKey` grow *resolved* fields), Diagnostics; spec §2 / §3 /
-  §5.4 / §10.2. Defines public Core/Spec surface (P-4). Realizes D-009; refines D-049.
+  §5.4 / §10.2. Defines public Core/Spec surface (EP-4). Realizes D-009; refines D-049.
 
 ### D-067 — Resolve/validate seam and diagnostic phase ownership
 
@@ -1513,9 +1713,9 @@ built; they refine, not reverse, D-009 / D-049 / D-050…D-065.
   `SpecResolver.Resolve(document) → Diagnosed<BedrockSpec>`** step that resolves and
   validates **together** (not two sequential passes): defaults merge, `extends`
   resolves, name→index resolves, and the static checks run against the resolving
-  model, aggregating all diagnostics (P-14). Each §16.4 code is **owned by exactly
+  model, aggregating all diagnostics (EP-14). Each §16.4 code is **owned by exactly
   one phase**: construction-time invariants stay in Core smart factories
-  (`CutValidation`, D-056; the `OrdinalScale`/`ObjectKey` factories — P-10);
+  (`CutValidation`, D-056; the `OrdinalScale`/`ObjectKey` factories — EP-10);
   resolution-time *static* checks (source-binding shape, `value_type` matrix,
   ordinal-over-cuts, `restrict_to` shape, object-key taxonomy, and the existing
   Core duplicate-name / `value_labels` checks — invoked from the seam, not
@@ -1527,14 +1727,14 @@ built; they refine, not reverse, D-009 / D-049 / D-050…D-065.
   (D-070, no carrier built) fires in the seam; data-phase codes fire in
   Calibrate/Emit. This seam is the
   real M7 `validate` caller, so it is built where it is used, not speculatively
-  (P-3). One condition → one owning code.
+  (EP-3). One condition → one owning code.
 - **Why:** M2 is the first point hand-authored TOML can express invalid specs, so
   the ~20 static diagnostics need a definite home and a definite phase. A combined
   resolve+validate avoids a half-resolved intermediate a separate validate pass
   would re-derive; single-owner phasing keeps §16.4's "Where" column honest and
-  stops two codes firing on one mistake (P-5). Reusing the existing Core static
+  stops two codes firing on one mistake (EP-5). Reusing the existing Core static
   checks from the seam (not big-bang-refactoring them) keeps the diff surgical
-  (P-1).
+  (EP-1).
 - **Rejected:** sequential resolve-then-validate (a throwaway half-resolved model,
   and cross-field checks want the merged view); scattering static checks across
   reader, Core, and planner (drifts from the §16.4 phase column, risks double
@@ -1561,7 +1761,7 @@ built; they refine, not reverse, D-009 / D-049 / D-050…D-065.
   while M2 ships fingerprints would freeze an incomplete schema; and the migrator
   must recognize a non-`?` missing token or it silently drops a real v2 attribute.
   Anchoring the ordinal-position rule and the effective-token rule keeps the
-  planner/emitter/migrator (three packages) consistent (P-4).
+  planner/emitter/migrator (three packages) consistent (EP-4).
 - **Rejected:** deferring `as_attribute` past M2 (its column is a fingerprint
   input, §14 — would ship a knowingly-incomplete schema hash); hardcoding `?` in
   the migrator (misreads any spec with a custom `missing_token`).
@@ -1575,7 +1775,7 @@ built; they refine, not reverse, D-009 / D-049 / D-050…D-065.
 - **Date:** 2026-07-03
 - **Decision:** the plan-derived canonical structure D-053 mandated is pinned
   concretely, so a stored hash is portable and version-tagged before Slice E ships
-  one (P-11). It is **UTF-8, no BOM**, with sorted object keys, arrays in planned
+  one (EP-11). It is **UTF-8, no BOM**, with sorted object keys, arrays in planned
   order, and this fixed shape:
   - a root object carrying `"fp_format": 1` (the encoding **version literal**;
     bumped only on an incompatible encoding change) and a `"kind"` of `"schema"` /
@@ -1593,14 +1793,14 @@ built; they refine, not reverse, D-009 / D-049 / D-050…D-065.
     endings + trailing-space for dat) — never mixed;
   - **numbers** are the *parsed* numeric value reformatted with invariant, shortest
     round-trippable .NET formatting, so `30`, `30.0`, `3e1` collapse and no machine
-    float drift occurs (P-11);
+    float drift occurs (EP-11);
   - **strings** use one JSON escaping rule (minimal `\"`, `\\`, control escapes,
     UTF-8 passthrough otherwise).
 
   Slice E realizes exactly this and ships the canonical-stability golden that locks it.
 - **Why:** D-053 fixed the *properties* (version tag, sorted keys, shortest
   numbers, structural open ends) but not a concrete shape, and a durable hash
-  contract (P-11) cannot ship half-specified — the first stored fingerprint
+  contract (EP-11) cannot ship half-specified — the first stored fingerprint
   fossilizes whatever the encoder emits. Pinning the root shape, field names, and
   version literal now makes Slice E mechanical and the golden a genuine lock.
 - **Rejected:** hashing TOML text (D-053, formatting-sensitive); leaving field
@@ -1635,17 +1835,17 @@ built; they refine, not reverse, D-009 / D-049 / D-050…D-065.
 - **Why:** M2's job is the format, migrator, fingerprints, and `extends` — not new
   discretizers (M4 is the discretizer milestone). Building full document/Core
   carriers and round-trip for parameter shapes M2 cannot execute is speculative
-  surface for kinds no M2 workflow reaches (P-3/P-6) — and no v2 `.bed` type maps to
+  surface for kinds no M2 workflow reaches (EP-3/EP-6) — and no v2 `.bed` type maps to
   these vNext-native discretizers, so migration loses nothing by not carrying them.
   Recognizing the *name* is enough to separate "valid v1 feature, later milestone"
   (a transitional, actionable diagnostic) from "typo / unknown kind" (a generic
-  parse error) so an author can tell which they hit (P-14). Rejecting at read/resolve
+  parse error) so an author can tell which they hit (EP-14). Rejecting at read/resolve
   (not silently accepting) avoids the wrong-output hole D-057 closed for `restrict_to`.
-- **Rejected:** implementing the M4 discretizers in M2 (scope creep, P-1); building
+- **Rejected:** implementing the M4 discretizers in M2 (scope creep, EP-1); building
   full round-trip carriers for the deferred discretizers' parameter shapes in M2
-  (speculative surface for kinds M2 cannot execute — P-3/P-6; no v2 type maps to
+  (speculative surface for kinds M2 cannot execute — EP-3/EP-6; no v2 type maps to
   them, so migration loses nothing); one code for both not-yet-supported and unknown
-  kinds (hides whether the spec is valid, P-14); silently ignoring unimplemented
+  kinds (hides whether the spec is valid, EP-14); silently ignoring unimplemented
   kinds (latent wrong output).
 - **Affects:** Spec (reader/resolver), Diagnostics; spec §11 / §16.4; diagnostic
   `DiscretizerKindNotYetSupported` (transitional, **read/resolve**, removed as each
@@ -1670,7 +1870,7 @@ built; they refine, not reverse, D-009 / D-049 / D-050…D-065.
   `free_per_value` is a *deferred* discretizer (D-070), already rejected earlier at
   read/resolve with `DiscretizerKindNotYetSupported` — that code owns the
   `free_per_value` case, and the absent-domain code never fires for it in M2 (one
-  condition → one owning code, P-14). Cut discretizers ignore `declared_domain`
+  condition → one owning code, EP-14). Cut discretizers ignore `declared_domain`
   (§10.3) and are unaffected.
 - **Why:** the authored `[]`-vs-omitted distinction must survive round-trip (D-049)
   even though both mean "absent," so provenance is preserved without inventing a
@@ -1714,9 +1914,9 @@ built; they refine, not reverse, D-009 / D-049 / D-050…D-065.
   silent-mis-conversion hole (D-057 pattern) while keeping M2 scoped to the format.
   Deferring the advanced surface matches the §5.3 M3 finalization note.
 - **Rejected:** pulling triple conversion into M2 (that is the whole M3 milestone —
-  scope creep, P-1); omitting the triple carrier from M2 (migration of the
+  scope creep, EP-1); omitting the triple carrier from M2 (migration of the
   `mini-*_triples` specs would drop config, D-049); parsing the advanced surface now
-  (no M2 consumer, P-3).
+  (no M2 consumer, EP-3).
 - **Affects:** Spec (reader/writer), Core/Conversion (planner guard), Diagnostics;
   spec §5.3 / §16.4; diagnostic `TripleSourceNotImplementedV1` (transitional,
   removed at M3). Refines D-009; the M3 triple audit owns the advanced surface.
@@ -1768,7 +1968,7 @@ built; they refine, not reverse, D-009 / D-049 / D-050…D-065.
     (one code, message names the expected form; also the D-070 tier-3
     unknown-kind case). TOML-level errors are `SpecTomlInvalid` (Fatal; Tomlyn
     parser warnings surface under the same code at Warning).
-  - **Two-phase aggregation (the P-14 reading):** all TOML syntax errors report
+  - **Two-phase aggregation (the EP-14 reading):** all TOML syntax errors report
     together and are terminal (a broken tree would cascade garbage); on clean
     syntax, one whole-document semantic pass aggregates every diagnostic.
   - **Deferred-surface scaffolding:** recognized-but-unmodelled v1 surface —
@@ -1812,7 +2012,7 @@ built; they refine, not reverse, D-009 / D-049 / D-050…D-065.
   costs nothing and buys deterministic output and a trivial round-trip oracle.
 - **Rejected:** warning-and-drop for unknown keys (silent loss on write-after-
   read); one code for all parse problems (hides whether the spec is valid v1 —
-  P-14); parsing deferred surface into inert carriers now (pulls Slice F /
+  EP-14); parsing deferred surface into inert carriers now (pulls Slice F /
   naming-slice semantics forward, and an authored-but-ignored
   `formal_attribute_format` would silently change intended output); Tomlyn's
   serializer for writing (its formatting choices can drift across versions);
@@ -1854,7 +2054,7 @@ built; they refine, not reverse, D-009 / D-049 / D-050…D-065.
     `"`) and `BindingDelimiterQuoteConflict` (resolved delimiter = resolved
     quote) are distinct §5.1 conditions and report independently — both fire
     when both hold (e.g. delimiter and quote both authored `|`). Two conditions,
-    two codes (P-14), not double reporting of one.
+    two codes (EP-14), not double reporting of one.
   - **`ObservedDomainCalibrationNotImplementedV1`** is an **Error at plan** and
     **blanket across scales** for an included `identity` attribute with an
     absent domain — dichotomic included, because with no domain every observed
@@ -1868,11 +2068,11 @@ built; they refine, not reverse, D-009 / D-049 / D-050…D-065.
     requires a resolved **string** `value_type`: on a mis-typed numeric
     `identity` source the same entries are already owned by
     `SourceValueTypeInvalid` / `RestrictToOnNumericRequiresRange`, and a third
-    diagnostic would be noise (P-14).
+    diagnostic would be noise (EP-14).
 - **Why:** the phase/owner assignments were settled (D-060/D-063/D-064/D-067/
   D-071), but the excluded-attribute interactions, the co-fire policy, and the
   blanket's scale coverage were not derivable from any single entry — and each
-  reads as a bug (a D-049 violation, a P-14 violation, an over-broad reject)
+  reads as a bug (a D-049 violation, a EP-14 violation, an over-broad reject)
   unless the rationale is on record.
 - **Rejected:** skipping restrict_to shape checks on excluded attributes (a
   filter-only attribute's restrict_to changes output at M4, so its shape errors
@@ -1915,7 +2115,7 @@ built; they refine, not reverse, D-009 / D-049 / D-050…D-065.
   - **The plan carries the structure:** `FormalAttribute` gains a public
     `CanonicalBin` (`ValueBin` / `NumericCutBin` / `TextCutBin`; `null` bound =
     unbounded), produced by the same planner walk as the identity's `BinKey` —
-    single producer, no string parse-back (P-4 surface, byte-neutral on the M1
+    single producer, no string parse-back (EP-4 surface, byte-neutral on the M1
     goldens).
   - **Vocabulary:** JSON enum spellings are the spec's TOML spellings; label
     style spells `"native"`/`"v2-compat"`; line endings hash as the
@@ -1950,7 +2150,7 @@ built; they refine, not reverse, D-009 / D-049 / D-050…D-065.
     V2Compat/V2Compat.
   - **Verification:** defined over a successful plan only (a failed
     resolve/plan already fails the run). Absent stored field → silent (§3
-    optional); match → silent (no "verified" noise, P-3); mismatch → its own
+    optional); match → silent (no "verified" noise, EP-3); mismatch → its own
     Warning (`SchemaFingerprintStale` / `CxtOutputFingerprintStale` /
     `DatOutputFingerprintStale`, phase "spec load"); all stale fields co-fire
     (the D-076 stance). No production call site is added — tests call it now
@@ -1959,7 +2159,7 @@ built; they refine, not reverse, D-009 / D-049 / D-050…D-065.
 - **Why:** the first stored hash fossilizes the encoder's bytes, so every
   residual freedom — compactness, escaping, the unbounded-end encoding, the key
   vocabulary, the exact `shared` key set — had to be pinned and golden-locked
-  before any spec ships with a stored value (P-11, D-069). The locks: the
+  before any spec ships with a stored value (EP-11, D-069). The locks: the
   hand-authored canonical-JSON goldens plus a hard SHA-256 vector
   (`FingerprintCalculatorTests`), the roadmap 30/30.0/3e1 TOML golden, and the
   §19.1/§19.2 end-to-end baselines (`SpecFingerprintsTests`).
@@ -2009,7 +2209,7 @@ built; they refine, not reverse, D-009 / D-049 / D-050…D-065.
     composer compares canonical keys ordinally (cycles = a revisited key,
     including self-extends). Slice F's production API is deliberately
     **string/text-source only**: file loading is **M7 host work, not missing
-    Slice F work** (D-075 "file I/O belongs to a host slice", P-3); tests
+    Slice F work** (D-075 "file I/O belongs to a host slice", EP-3); tests
     compose through an in-memory source.
   - **Resolve-without-compose is a call-contract violation.** `Resolve` on a
     document with an authored `extends` throws `ArgumentException` — the
@@ -2079,7 +2279,7 @@ built; they refine, not reverse, D-009 / D-049 / D-050…D-065.
   derived duplicates (masks `AttributeNameDuplicate`); a shared
   attribute/template config record now (churns every construction site for a
   duplication M6 may reshape anyway); a compose-then-resolve convenience
-  overload before M7 gives it a real caller (P-3).
+  overload before M7 gives it a real caller (EP-3).
 - **Affects:** Spec (`SpecComposer`, `ISpecTextSource`/`SpecSourceText`,
   `SpecSection.Extends`, `AttributeSection.Template`,
   `TemplateSection`/`MatcherSection`/`MatchSection`, reader/writer carriers,
@@ -2132,7 +2332,7 @@ built; they refine, not reverse, D-009 / D-049 / D-050…D-065.
     attributes keep string entries too — a range cannot express v2's exact
     match ([x, x) is empty under lo-inclusive/hi-exclusive) — and the seam's
     `RestrictToOnNumericRequiresRange` owns the mismatch; the migrator stays
-    silent (one condition → one owning code, P-14). The planner still rejects
+    silent (one condition → one owning code, EP-14). The planner still rejects
     any carried `restrict_to` with `RestrictToNotImplementedV1` until M4.
   - **Missing token (D-068):** for the domain-list types (`c`, `b`) a
     `[Category Values]` entry equal to the **effective** token — null when
@@ -2153,7 +2353,7 @@ built; they refine, not reverse, D-009 / D-049 / D-050…D-065.
     carry as dormant `value_labels` (byte-/fingerprint-inert; dichotomic renders
     the column name alone) instead of dropping silently. `[spec]` holds
     `version = 1` only — no stored fingerprints (a migrated spec is unfrozen;
-    D-057) and no `created_at` (no clock in pure code — P-7); `derived_from`
+    D-057) and no `created_at` (no clock in pure code — EP-7); `derived_from`
     lands in `[provenance]` when the caller supplies it.
 - **Why:** D-009 promised "load v2, save as TOML", but the M1 migrator could
   only produce a Core spec — unwritable, unfingerprintable, restrict-dropping —
@@ -2207,7 +2407,7 @@ built; they refine, not reverse, D-009 / D-049 / D-050…D-065.
   for an attribute whose source/discretizer/scale fails to resolve, so a
   Core-model check would *lose* a duplicate whose sibling field is broken — the
   document-model check catches it and aggregates with that sibling's own
-  diagnostic (P-14). It also makes §16.4's "Where" column honest without a spec
+  diagnostic (EP-14). It also makes §16.4's "Where" column honest without a spec
   edit.
 - **Consequences:** (i) a Core-only caller hand-building a `BedrockSpec` and
   planning it directly no longer gets these two checks — the resolve seam is the
@@ -2225,7 +2425,7 @@ built; they refine, not reverse, D-009 / D-049 / D-050…D-065.
   the §16.4 "Where" cell to `plan` instead of moving the code (records the drift
   as intended rather than fixing it, and orphans the checks from the seam that
   owns every other spec-validate code); leaving the drift (a standing
-  code-vs-spec disagreement, P-8).
+  code-vs-spec disagreement, EP-8).
 - **Affects:** Spec (`SpecResolver` two new private checks; `SpecComposer`
   doc-comment), Core (`ConversionPlanner` two checks + `ValidateValueLabels`
   removed), tests (planner tests relocated to `SpecResolverTests`). Diagnostics
@@ -2254,7 +2454,7 @@ built; they refine, not reverse, D-009 / D-049 / D-050…D-065.
     already §16.4-registered at `plan`; Slice H adds their enum members and emit
     sites. The membership check is suppressed on an absent domain — D-071's
     `ObservedDomainCalibrationNotImplementedV1` owns that (one condition → one
-    code, P-14). `order` lists **raw domain values, never display labels**.
+    code, EP-14). `order` lists **raw domain values, never display labels**.
   - **Order list shape** (distinct, non-empty entries) is validated at the
     **resolve seam** by broadening `OrderDomainInvalid` (its existing §16.4
     `spec validate` cell) from `ordered_cuts.order` to *any* authored order over
@@ -2334,7 +2534,7 @@ enum members, and golden activation are the M3 *implementation* that follows.
     subject MUST be contiguous; a recurrence after an intervening subject is
     `TripleSubjectNotContiguous` (Error, stop — D-031). `ordering = "unordered"`
     groups non-contiguous (interleaved) subjects via external sort-merge/spool,
-    never a full matrix (P-16), and emits objects in **first-appearance order of
+    never a full matrix (EP-16), and emits objects in **first-appearance order of
     each cleaned subject** — the same output order as `subject_grouped`, differing
     only in the contiguity requirement. Both are required for M3 completion.
   - **Object identity = the resolved subject**, always (§5.4 default `column` =
@@ -2349,7 +2549,7 @@ enum members, and golden activation are the M3 *implementation* that follows.
     `-missing`. `missing_policy` fires **only** when a matching-predicate row
     *exists* and its value is empty / `missing_token` / absent-because-short. An
     unknown or empty predicate keeps the subject and sets no crosses. Predicate
-    matching is exact ordinal (P-12).
+    matching is exact ordinal (EP-12).
   - **Cleanup scope.** The §5.1 quote-aware trim applies to the subject (→ object
     name) and predicate (→ selector), not only value-side matching; the cleaned
     subject is both the object name and the grouping/sort key.
@@ -2398,7 +2598,7 @@ enum members, and golden activation are the M3 *implementation* that follows.
   structure), spill runs, and a bounded-fan-in multi-stage `RunMerger`. Invariants:
   - **Byte-neutral spilling.** The row codec round-trips values exactly (strings as
     length + raw UTF-16 code units, lone surrogates preserved), so spilling never
-    changes output bytes (P-7); a zero-spill enumeration stays fully in memory.
+    changes output bytes (EP-7); a zero-spill enumeration stays fully in memory.
   - **Lazy, owned, confidential workspace.** The spool directory is created only on
     the first required spill (zero-spill needs no disk, even under an unusable temp
     root); it is a uniquely-named, create-new per-enumeration directory, and only that
@@ -2463,7 +2663,7 @@ enum members, and golden activation are the M3 *implementation* that follows.
     is internal — never a spec/TOML/fingerprint input (the storage strategy never
     changes bytes).
   - **Rejected:** an external sort library (ExternalSort — Parquet baggage; SQLite —
-    disproportionate); a record-and-rethrow failure model (P-14 — storage failures
+    disproportionate); a record-and-rethrow failure model (EP-14 — storage failures
     cross the seam as diagnostics, not exceptions); warnings-as-exceptions (a faulted
     async iterator cannot resume); deriving failure identity from the runtime exception
     type (it must neither split one condition nor merge unrelated ones).
@@ -2476,14 +2676,14 @@ enum members, and golden activation are the M3 *implementation* that follows.
   `duplicate_object_policy` over the **cleaned** key value:
   - **`fail`** (default): a repeated key → `DuplicateObjectKey` (Error), stop.
   - **`keep`**: each row is its own object. Name assignment is a **conversion**
-    concern (the object-key resolver, **not** the writer — P-15): names are assigned
+    concern (the object-key resolver, **not** the writer — EP-15): names are assigned
     in object emission order (§17 rule 4) and are **unique by construction** — the
     first occurrence of a cleaned key takes the key itself, a later occurrence takes
     `<key>#<record-index>` (0-based). If any candidate is already assigned (a literal
     data key or an earlier generated name), the resolver **escalates** by appending
     `#1`, `#2`, … (ascending integers from 1) and taking the first unused; all
-    comparisons are ordinal (P-12). The assigned-name set is bounded object-name
-    metadata (P-16); `.cxt` serializes these names and `.dat` ignores them, so the
+    comparisons are ordinal (EP-12). The assigned-name set is bounded object-name
+    metadata (EP-16); `.cxt` serializes these names and `.dat` ignores them, so the
     guarantee is observable only in `.cxt`. A repeated cleaned key aggregates to one
     `DuplicateObjectKey` (Warning); a candidate-name collision that forces the `#N`
     escalation aggregates to a separate `ObjectKeyNameDisambiguated` (Warning) — one
@@ -2491,7 +2691,7 @@ enum members, and golden activation are the M3 *implementation* that follows.
     suppressed on a structural halt (an invalid key).
   - **`dedupe`**: rows sharing a key collapse to one object, later crosses union onto
     the first; `DuplicateObjectKey` (Info). Non-contiguous keys cannot stream in one
-    pass without holding all crosses (P-16), so `dedupe` is built on the **shared
+    pass without holding all crosses (EP-16), so `dedupe` is built on the **shared
     external grouping/sort-merge/spool path** — the same infrastructure as triple
     `unordered` (D-082).
   - **Output order (audit NF-7).** Wide `column` object order = **order of first
@@ -2522,14 +2722,14 @@ enum members, and golden activation are the M3 *implementation* that follows.
   output order matches triple `unordered`'s first-appearance order on the shared
   grouping infra (neither sorts object output). `keep` uniqueness was tightened from a
   "documented residual" to a guarantee once it was clear the **converter** can hold
-  the assigned-name set as bounded metadata (P-16), so uniqueness is affordable and
-  stays upstream of the dumb writer (P-15) rather than being decided in the `.cxt`
+  the assigned-name set as bounded metadata (EP-16), so uniqueness is affordable and
+  stays upstream of the dumb writer (EP-15) rather than being decided in the `.cxt`
   writer.
 - **Rejected:** silent `row_index` fallback (D-064's latent-wrong-output hole);
   duplicate output object names under `keep` as a documented residual (rejected in
   audit Round 2 — names are already held, uniqueness is affordable); sorting
   `dedupe` output (contradicts §6.1 "union onto the first");
-  buffering all crosses for `dedupe` (violates P-16).
+  buffering all crosses for `dedupe` (violates EP-16).
 - **Affects:** Core (`ColumnObjectKey` execution, planner guard narrowed to `dedupe`
   + key-index range-check), Sources (row-index-agnostic `WideCsvSource`, ragged
   tolerance), Conversion (`keep` name-uniqueness via `ColumnKeyNamer`; grouping/
@@ -2547,29 +2747,29 @@ enum members, and golden activation are the M3 *implementation* that follows.
 
 ### D-084 — Ordinal string comparison is the project-wide rule
 
-- **Status:** accepted (M3 audit; adds principle P-12)
+- **Status:** accepted (M3 audit; adds principle EP-12)
 - **Date:** 2026-07-07
 - **Decision:** all string identity, equality, matching, deduplication, grouping,
   source binding, and deterministic string **ordering** use ordinal comparison
   (`StringComparer.Ordinal`, a UTF-16 code-unit compare), never culture-aware
   collation; `binding.locale` (§5.1) governs numeric/date **parsing** only, never
-  string collation. Recorded as new principle **P-12** ("Strings compare and sort
-  ordinally…"), the string-side companion to P-11 (numeric/locale parsing).
+  string collation. Recorded as new principle **EP-12** ("Strings compare and sort
+  ordinally…"), the string-side companion to EP-11 (numeric/locale parsing).
 - **Why:** the audit (F-054) found "invariant culture" for the unordered subject
   grouping a determinism hazard — `InvariantCulture` string collation is ICU/NLS-version
   dependent and can mis-group or reorder across machines/runtimes, drifting output bytes
-  on a golden/fingerprint path (P-7); ordinal is byte-stable. (Slice F confirms this: the
+  on a golden/fingerprint path (EP-7); ordinal is byte-stable. (Slice F confirms this: the
   grouping backend keys strictly by `StringComparer.Ordinal` and emits in first-appearance
   order — there is no culture-sensitive sort.) The code already uses
   `StringComparer.Ordinal` for name/identity dedup, so this codifies practice across
   every string-keyed surface (predicate matching, key dedup, name uniqueness). A
-  dedicated principle (not a P-11 extension) has its own check moment — comparing or
-  sorting strings — distinct from P-11's numeric-parsing moment.
+  dedicated principle (not a EP-11 extension) has its own check moment — comparing or
+  sorting strings — distinct from EP-11's numeric-parsing moment.
 - **Rejected:** `InvariantCulture` collation (ICU-version-dependent — the hazard);
-  extending P-11 instead of a sibling principle (different check moment; leaves a
+  extending EP-11 instead of a sibling principle (different check moment; leaves a
   correctness rule structurally implicit — Codex's Option B); "byte-value" wording
   (`Ordinal` compares UTF-16 code units, not bytes — precision matters).
-- **Affects:** `principles.md` (new **P-12**; old P-12…P-21 renumbered P-13…P-22,
+- **Affects:** `engineering-principles.md` (new **EP-12**; old EP-12…EP-21 renumbered EP-13…EP-22,
   cross-references updated in `decisions.md` / `AGENTS.md`);
   Core / Conversion / Sources (ordinal collation on all string keys) at
   implementation. Byte-neutral: `unordered` emits first-appearance order (no object
@@ -2617,7 +2817,7 @@ enum members, and golden activation are the M3 *implementation* that follows.
     emit); a future schema-aware resolve pass may move it back to spec-validate, same code.
   - **Enum timing.** The §16.4 **table** is the documentation home; each
     `DiagnosticCode` **enum member** lands with its **emit site** at the implementing
-    slice ("grows per slice", P-3) — the new codes above
+    slice ("grows per slice", EP-3) — the new codes above
     (`ObjectKeyValueInvalid`, `TripleColumnsNotDistinct`, `ObjectKeyNameDisambiguated`)
     and the already-spec'd-but-unimplemented `DuplicateObjectKey`,
     `TripleSubjectNotContiguous`, `AttributeHasNoCrosses`, `ObjectHasNoCrosses`,
@@ -2629,16 +2829,16 @@ enum members, and golden activation are the M3 *implementation* that follows.
     wide `column` object keys now execute for every `duplicate_object_policy`.
 - **Why:** the audit (F-081 / NF-1) found the triple/column-key structural-error
   class had no diagnostic home, and that reusing value-level (`UnknownValueObserved`)
-  or duplicate-key codes would break one-condition → one-owning-code (P-14).
+  or duplicate-key codes would break one-condition → one-owning-code (EP-14).
   Assigning owners/severities now — and consolidating shape/addressing under the
   existing `SourceBindingInvalid` rather than proliferating codes — keeps §16.4's
   phase-ownership honest (D-067).
 - **Rejected:** reusing `UnknownValueObserved` / `DuplicateObjectKey` for structural
-  conditions (mis-phased, mis-severity, P-14); a dedicated code per shape/addressing
+  conditions (mis-phased, mis-severity, EP-14); a dedicated code per shape/addressing
   variant (`SourceBindingInvalid` already means "binding shape invalid" —
   proliferation for no gain); `Fatal` for row-level structural errors (the file is
   usable next call); adding enum members in this docs landing (would strand members
-  no emit site raises, P-3).
+  no emit site raises, EP-3).
 - **Affects:** Diagnostics (`ObjectKeyValueInvalid`, `TripleColumnsNotDistinct`, and
   the six deferred codes, at their emit sites), Core / Conversion / Sources (emit
   sites), Spec (`SpecResolver` shape checks); spec §16.4. Refines D-067; pairs with
@@ -2840,7 +3040,7 @@ enum members, and golden activation are the M3 *implementation* that follows.
   validity codes, and ordinal/passthrough/include interactions were under-specified
   and each would otherwise read as an implementation choice rather than a contract.
 - **Rejected:** a dedicated regex-error diagnostic (`SpecFieldInvalid` already owns
-  malformed fields, P-14); ordinal over `passthrough` (its data-discovered bins
+  malformed fields, EP-14); ordinal over `passthrough` (its data-discovered bins
   cannot be a full authored permutation); routing duplicate labels through
   `SpecFieldInvalid` (duplicates own `ValueGroupsLabelDuplicate`).
 - **Affects:** spec §11.6 / §12.3 / §16.4 / §17; new diagnostics
@@ -2974,7 +3174,7 @@ pattern).
     discovers — resolved auto cuts, observed domains, `unknown_value_policy =
     "include"` additions, and `value_groups` `unmatched = "passthrough"` bins. It is
     **produced by the Conversion calibrator** and returned through `Diagnosed<…>`
-    (P-14, alongside `ObservedDomainUsed` / `CalibrationDataInsufficient` / …), and
+    (EP-14, alongside `ObservedDomainUsed` / `CalibrationDataInsufficient` / …), and
     it is what **Plan consumes**. The freeze path (`calibrate`) and later manifest
     serialization read this **same** retained outcome — none re-derives M4 semantics
     from raw data (the retention boundary, D-028/D-036; §15).
@@ -2996,7 +3196,7 @@ pattern).
     not the surface.
 - **Why:** M4 introduces the first calibration that reads data. Without a single
   owned, retained outcome, planning, freezing, and manifest serialization could each
-  re-derive cuts/domains — three chances to diverge and break determinism (P-7).
+  re-derive cuts/domains — three chances to diverge and break determinism (EP-7).
   Making the resolved state Core-owned and immutable, and routing declared specs
   through the same path, collapses those to one contract and makes the D-088
   byte-equivalence fall out of shared machinery.
@@ -3080,7 +3280,7 @@ pattern).
     bytes.
 - **Why:** the M4 discretizers had no pinned canonical encoding (they reject at
   read pre-M4, D-070), so the first M4 fingerprint would fossilize whatever the
-  encoder happened to emit (P-11, the D-069 rationale). Pinning the shapes, the
+  encoder happened to emit (EP-11, the D-069 rationale). Pinning the shapes, the
   omission rules, and the effective/authored split now makes the M4 encoder
   mechanical and its goldens a genuine lock, and states plainly why auto and frozen
   output fingerprints may differ despite identical bytes.
@@ -3130,7 +3330,7 @@ pattern).
     Warning. No new diagnostic code.
 - **Why:** M4 calibrates over the v1 target population (7.3M–73M records, D-007);
   a calibration that must hold every value in memory would break at target scale, and
-  a calibration that goes approximate under pressure would break determinism (P-7)
+  a calibration that goes approximate under pressure would break determinism (EP-7)
   and the D-088 auto/frozen byte-equivalence. Fixing "exact + bounded" as an M4
   property — with spill/non-spill byte-identity — closes both. Subject-local
   deduplication keeps the triple path bounded without a dataset-wide set (which would
@@ -3189,7 +3389,7 @@ pattern).
   `free_per_value` (contradicts the bin-identity collapse, §11.3/D-092); preserving
   signed zero (`-0` leaking into a key/label/hash is a determinism hazard for no
   gain); overloading `ValueLabelKeyNotInDomain` for the duplicate case (a distinct
-  condition deserves its own code, P-14); a new code for duplicate numeric `order`
+  condition deserves its own code, EP-14); a new code for duplicate numeric `order`
   (reuse `OrderDomainInvalid`, which already owns duplicate/invalid domain entries).
 - **Affects:** Core (numeric `free_per_value` identity, signed-zero canonicalization),
   Spec (document model round-trip; the two new validate checks), Diagnostics (new
@@ -3254,7 +3454,7 @@ pattern).
      resolve (no condition gains a second owner). Prefix gates match full resolve: an authored
      `extends` throws `ArgumentException` (uncomposed, D-078); a missing/unsupported version is
      `SpecVersionUnsupported` (Fatal) with no settings — the bootstrap never opens a source for a
-     document whose semantics are unknown. `SourceReadSettings.Create` is the P-10 backstop with
+     document whose semantics are unknown. `SourceReadSettings.Create` is the EP-10 backstop with
      an exact exception contract (empty `missingToken` valid; UTF-8 spellings normalize;
      `delimiter == quoteChar`/non-`"` quote/inconsistent shape-ordering throw).
   2. **Session** (reads schema, holds no resolved indexes): `WideCsvSession` /
@@ -3268,7 +3468,7 @@ pattern).
      class produced only by the validating factory `ResolvedSpec.Create`. `Create` deep-snapshots
      the spec graph into recursively-immutable storage (`ImmutableArray`/`FrozenDictionary`/
      `FrozenSet`, no castable mutable backing array on any public property), and is the
-     **validate-once trust boundary** (P-10): it exhaustively re-checks every structural invariant
+     **validate-once trust boundary** (EP-10): it exhaustively re-checks every structural invariant
      downstream phases trust — schema structure, settings↔binding consistency, locale, source-kind
      ↔shape, binding-union coherence (the subject-pinned triple key, distinct in-range roles,
      null triple fields under wide), included discretizer/scale presence, defined enum members,
@@ -3293,7 +3493,7 @@ pattern).
   The **Calibrate phase** (`Calibrator.CalibrateAsync`/`CalibrateTripleAsync`, Conversion)
   produces the Core-owned, immutable **`CalibratedSpec`** — the single Plan input carrying the
   effective spec, the schema snapshot, and the retained outcomes (D-093). `CalibratedSpec.Create`
-  returns `Diagnosed` (P-14) and enforces per-mode **completeness**: an absent-domain consuming
+  returns `Diagnosed` (EP-14) and enforces per-mode **completeness**: an absent-domain consuming
   attribute requires exactly one `ObservedDomain` outcome; an explicit-domain consuming attribute
   under `unknown_value_policy = "include"` requires exactly one `IncludeAdditions` marker (an
   empty list is the zero-additions marker); a leftover/duplicate/kind-mismatched/unexpected outcome
@@ -3308,7 +3508,7 @@ pattern).
   Construction authority: public validating Core factories + reference-token pairing — a forger
   can only build a parallel honest chain, not a mixed one; **no production `InternalsVisibleTo`**.
 - **Why:** without one owned, retained, validated preparation, resolve/calibrate/plan/emit/
-  fingerprint could each re-derive or mispair state — breaking determinism (P-7) and the D-093
+  fingerprint could each re-derive or mispair state — breaking determinism (EP-7) and the D-093
   retention boundary. The two-stage bootstrap is the only compilable ordering (sources cannot
   precede resolution); the opaque token makes pairing structural rather than a header heuristic.
 - **Rejected:** a one-stage bootstrap (sources cannot be built before resolution); header-only
@@ -3383,7 +3583,7 @@ pattern).
   `value_groups`; the enum member stays — G-8). It is **type-flexible** (D-061): with
   `value_type = "string"` (the default) each raw spelling is its own bin, verbatim; with
   `value_type = "number"` the bin identity is the **parsed numeric value** — parsed with
-  `binding.locale` (never ambient — P-11), **finite-only**, and rendered by the one canonical §14
+  `binding.locale` (never ambient — EP-11), **finite-only**, and rendered by the one canonical §14
   number rule, so `90`/`90.0`/`9e1` collapse to one bin labelled `90` and every zero spelling
   (`-0` included) collapses to `0` (D-092/D-096). A present-but-unparseable/non-finite numeric value
   is `BinResult.Unparseable` (§11.5). `identity` + `value_type = "number"` stays invalid — the numeric
@@ -3408,7 +3608,7 @@ pattern).
     `ValueLabelKeyDuplicate` (two label keys collapsing to one numeric identity); an out-of-domain
     label key stays `ValueLabelKeyNotInDomain`, a normalization-duplicate/invalid `order` entry reuses
     `OrderDomainInvalid`. String `free_per_value` consults `value_labels` verbatim, exactly like
-    `identity`. The seam checks aggregate independently (P-14).
+    `identity`. The seam checks aggregate independently (EP-14).
   - **Calibration (extends Slice A's discovery-class path).** Absent-domain numeric `free_per_value`
     calibrates its **observed domain** from canonical numeric identities (first-observation order after
     collapse; `ObservedDomainUsed`), and `unknown_value_policy = "include"` appends novel canonical
@@ -3429,10 +3629,10 @@ pattern).
     unchanged.
 - **Why:** M4's first executable discretizer beyond manual cuts needs its numeric identity, seam
   normalization, calibration, ordinal, and fingerprint contracts pinned so `90`/`90.0` are one bin on
-  every path (determinism, P-7) and a signed zero never leaks into a key, label, or hash — without
+  every path (determinism, EP-7) and a signed zero never leaks into a key, label, or hash — without
   moving the `fp_format = 1` bytes (G-6).
 - **Rejected:** making `identity` also numeric-flexible (a second numeric distinct-value spelling,
-  P-5/D-061); canonicalizing zero inside `Format` or changing `CanonicalJson.AppendNumber` (would move
+  EP-5/D-061); canonicalizing zero inside `Format` or changing `CanonicalJson.AppendNumber` (would move
   the standing `-0` bytes, G-6); normalizing the document model's authored spellings (breaks round-trip
   fidelity, D-081); requiring an explicit order for numeric value bins (natural numeric order is
   unambiguous, D-096).
@@ -3473,12 +3673,12 @@ pattern).
   - **The shared `NumericCutBins` engine (realizes D-093).** The numeric-cut execution machinery
     — parsing, finite-only classification, cut membership, bin/cut labels, structural interval
     bins, and native/v2-compat rendering — is extracted into one internal Core engine that
-    `ManualCutsDiscretizer` and `EqualWidthDiscretizer` both compose (P-17). This is what makes
+    `ManualCutsDiscretizer` and `EqualWidthDiscretizer` both compose (EP-17). This is what makes
     the **D-088 auto/frozen byte-equivalence structural** rather than a property two code paths
     must independently maintain: the same effective cuts through one engine give the same bins,
     labels, canonical identities, and crosses. The extraction is **byte- and behaviour-neutral**
     for `manual_cuts` — the nine golden fixtures, every pinned canonical-byte baseline, every SHA
-    vector, and the authored `-0.0` manual-cut encoding are all unchanged (P-1's stated exception:
+    vector, and the authored `-0.0` manual-cut encoding are all unchanged (EP-1's stated exception:
     touching M1 code is justified as D-093-mandated shared machinery, with the goldens as proof).
   - **Range mode decides the phase (D-089).** `range = "manual"` is spec-determined: the seam
     calls the strict factory, the cuts come from `vmin`/`vmax` alone, no calibration runs, and the
@@ -3504,7 +3704,7 @@ pattern).
     **observed** span (keeping only its cuts; `CalibratedSpec.Create` then builds the real
     discretizer, preserving the authored data-derived range and its absent `vmin`/`vmax`). So auto
     and frozen cuts are the same numbers by construction with **no second copy of the formula and
-    no public surface beyond the approved inventory** (P-4).
+    no public surface beyond the approved inventory** (EP-4).
   - **Failure ownership.** Authored: a non-finite or non-increasing manual range is
     `EqualWidthRangeInvalid`, and cuts that are not finite and strictly ascending after
     `precision` are `EqualWidthCutsCollapsed` (both Error, spec validate). Data-derived: a
@@ -3515,7 +3715,7 @@ pattern).
     values than `bins` is valid whenever `min < max` (D-089).
   - **The calibrated-state boundary is total, so the transitional line holds at every seam.**
     Two conditions are **calibrator-contract violations** rather than data errors, and therefore
-    throw (the D-093 programmer-error posture, P-10): a `CalibratedCuts` outcome whose length is
+    throw (the D-093 programmer-error posture, EP-10): a `CalibratedCuts` outcome whose length is
     not `bins - 1` (it would build a discretizer whose `Bins` contradicts its own geometry — the
     fingerprint would encode `"bins":4` beside a schema array of another width), and a pending
     `equal_width` whose range is not `min_max` (percentile has no calibration until Slice D, so
@@ -3547,12 +3747,12 @@ pattern).
 - **Why:** `equal_width` is M4's first data-calibrated discretizer, so the boundary it establishes
   — one cut engine, one formula, one retained outcome — is what makes the auto/frozen guarantee a
   structural property instead of a coincidence maintained by hand. Pinning the sign-aware formula
-  and the positive-zero canonicalization now keeps cuts identical across machines (P-7/P-11)
+  and the positive-zero canonicalization now keeps cuts identical across machines (EP-7/EP-11)
   before any stored hash fossilizes them.
 - **Rejected:** duplicating the interpolation in the calibrator (the exact drift D-093's shared
   machinery exists to prevent); making the derivation a **public** Core helper so the calibrator
   could call it directly (it would widen the approved public surface for no capability — reusing
-  the `CreateManual` boundary over the observed span centralizes the formula just as well, P-4);
+  the `CreateManual` boundary over the observed span centralizes the formula just as well, EP-4);
   letting `FromCalibratedCuts` accept any ascending cut list (a wrong-sized one silently desyncs
   `bins` from the geometry); allowing percentile to substitute from hand-supplied cuts (it would
   make a Slice D mode executable through the public calibrated-state API while the reader still
@@ -3664,7 +3864,7 @@ pattern).
     to the calibration workspace: the 3T byte rule alone does **not** bound them, because
     repeated-key runs let live bytes and `T` grow together and never trip the escalation while
     pending entries grow without bound. Exceeding the cap is an in-path Error — persistently failing
-    storage is broken storage. The emit-path backend keeps its existing uncapped semantics (P-1).
+    storage is broken storage. The emit-path backend keeps its existing uncapped semantics (EP-1).
   - **Release before merge; the consolidated-run two-pass replay.** At intake end a spilled
     accumulator flushes and **releases both buffers** before any post-intake merge, which then runs
     sequentially per attribute (online consolidations are the sole in-intake exception, and tier 2
@@ -3718,7 +3918,7 @@ pattern).
 - **Why:** equal-frequency is the milestone's first calibration whose result depends on **how many**
   observations carry a value, not merely which occur — which is what forces exact counting, the
   bounded accumulator, and the triple dedup all at once. Pinning exact-rational ranks and the
-  sign-aware midpoint now keeps cuts identical across machines (P-7/P-11) before any stored hash
+  sign-aware midpoint now keeps cuts identical across machines (EP-7/EP-11) before any stored hash
   fossilizes them, and stating the feasibility precedence normatively turns a case where the spec
   asked for two incompatible things into one defined answer.
 - **Rejected:** a `double` (or `decimal`) rank target (silently selects the wrong order statistic
@@ -3741,7 +3941,7 @@ pattern).
   equal-frequency's distinct-value guard (both are "the data cannot bound these cuts" —
   `CalibrationDataInsufficient` already owns it, D-067); reusing `CalibrationDataInsufficient` for
   count overflow (its exact opposite — too much data, not too little); letting `OverflowException`
-  cross the calibrator seam (P-14); re-encoding calibrated cuts in the discretizer sub-object
+  cross the calibrator seam (EP-14); re-encoding calibrated cuts in the discretizer sub-object
   (redundant with the schema bins, D-094); emitting the resolved `tie_policy`/`cut_placement`
   defaults into authored TOML (D-049 presence tracking — the fingerprint is where the resolved
   values are load-bearing).
@@ -3782,13 +3982,13 @@ pattern).
   - **Matching, pinned exactly.** A group matches when an explicit value matches **or** its regex
     matches (OR within a group); groups are walked in **declaration order** and the **first match
     wins**, which is why the `groups` array is planned-order everywhere — semantic, not
-    presentational. Explicit values compare with **ordinal** equality (P-12). The regex is compiled
+    presentational. Explicit values compare with **ordinal** equality (EP-12). The regex is compiled
     **once** per group with `RegexOptions.CultureInvariant`, default backtracking, and
     `Regex.InfiniteMatchTimeout` passed **explicitly** — the constructor overloads that omit a
     timeout silently inherit the host's ambient `REGEX_DEFAULT_MATCH_TIMEOUT`, which would let the
     same spec over the same input complete on one machine and throw `RegexMatchTimeoutException` on
-    another (P-7), on the exception channel mid-calibrate/emit rather than the diagnostic one
-    (P-14); "no timeout" is therefore a property the construction must *state*, not one it can
+    another (EP-7), on the exception channel mid-calibrate/emit rather than the diagnostic one
+    (EP-14); "no timeout" is therefore a property the construction must *state*, not one it can
     inherit. Matching is **partial** (unanchored `IsMatch`) and **case-sensitive** unless the author
     writes an inline option such as `(?i)`. Nothing is trimmed, case-folded, anchored, or
     culture-normalized.
@@ -3812,7 +4012,7 @@ pattern).
     (D-093). Discovery is **set-based and idempotent**, so — unlike the count-sensitive kinds — it
     needs no `QuantileAccumulator`, value counts, spill runs, merge/replay, or §5.3.1 subject-local
     deduplication, and it does not enter the count-sensitive budget divisor: its bound is the
-    attribute vocabulary, the documented schema-scale carve-out (P-16/D-095). It therefore reads
+    attribute vocabulary, the documented schema-scale carve-out (EP-16/D-095). It therefore reads
     the **raw** pass only — for both triple orderings — and alone never triggers the grouped second
     pass; when a count-sensitive attribute coexists and forces that pass, pass-through is fed
     **only** from the raw one (D-103's one-pass-per-observer rule), never both, never a third.
@@ -3827,7 +4027,7 @@ pattern).
     including the synthetic `Other` — never `declared_domain`, and never the raw values the groups
     match. Group labels are strings, so unlike numeric `free_per_value` there is **no** natural
     order to derive. The universe comes from the discretizer's own `BinLabels`, so one permutation
-    algorithm serves every value-bin kind (P-5). All four `direction × boundary` combinations are
+    algorithm serves every value-bin kind (EP-5). All four `direction × boundary` combinations are
     live (value bins have no half-open geometry) and `drop_top` keeps its value-bin semantics.
     `ordinal` + `passthrough` is `OrdinalNotAllowedWithValueGroupsPassthrough` (Error, spec
     validate): a data-discovered bin set can never be a full authored permutation.
@@ -3873,7 +4073,7 @@ pattern).
   than reusing the quantile engine because both "read data") is what keeps it bounded by the
   schema, not the population.
 - **Rejected:** a dedicated regex-error diagnostic (`SpecFieldInvalid` already owns malformed
-  fields — D-090/P-14); a public `ValueGroup.Matches` or a production `InternalsVisibleTo` so the
+  fields — D-090/EP-14); a public `ValueGroup.Matches` or a production `InternalsVisibleTo` so the
   calibrator could match directly (the approved public surface is the pinned one, and the
   discretizer already answers the question through supported API); normalizing an authored
   `values = []` to null (it is authored state the §14 bytes distinguish — G-11); sorting the
@@ -3886,7 +4086,7 @@ pattern).
   `free_per_value` has one to derive); reporting both `ValueGroupsLabelDuplicate` and
   `AttributeScalingMissing` for one duplicate (one condition → one code, D-067); a regex timeout
   knob, and equally the timeout-omitting `Regex` overloads that quietly inherit one from the host
-  (both make matching machine-dependent — P-7).
+  (both make matching machine-dependent — EP-7).
 - **Affects:** Core (`ValueGroup`, `ValueGroupsDiscretizer`, `ValueGroupsUnmatched`,
   `PendingValueGroupsPassthrough`, `CalibratedSpec` substitution, `ResolvedSpec` recognition +
   validation, `ConversionPlanner` value-bin ordinal universe, `FingerprintCalculator`), Conversion
@@ -3914,7 +4114,7 @@ pattern).
     non-finite value, because the Spec document model reuses the Core union (D-057), so
     the carrier must represent an authored `{ value = nan }` long enough for the
     **resolve seam** to diagnose it as `RestrictToRangeInvalid` on the user channel — a
-    throwing factory would put an authoring error on the exception channel (P-14). The
+    throwing factory would put an authoring error on the exception channel (EP-14). The
     boundary is layered instead: the seam validates and zero-canonicalizes, and
     `ResolvedSpec.Create` (plus the calibrated-state factories) **throw** for anything
     non-finite that survives past it, which only a hand-built graph can produce. The
@@ -3934,7 +4134,7 @@ pattern).
     of its observations for that source matches **at least one** entry (OR across both),
     and is emitted only when **every** restriction passes (AND). Missing matches nothing;
     an absent triple predicate supplies no observation and fails. Strings compare
-    **ordinally** (P-12); numbers parse under `binding.locale` — derived **once per emit**,
+    **ordinally** (EP-12); numbers parse under `binding.locale` — derived **once per emit**,
     never ambient — then zero-canonicalize; unparseable/non-finite input is a non-match;
     ranges are half-open `[from, to)` and `{}` matches any usable numeric value.
     Restrictions read **cleaned raw values before discretization** and never consult bins.
@@ -3970,7 +4170,7 @@ pattern).
     (D-085 enum timing): `NoObjectsEmitted` (zero rows), `ObjectHasNoCrosses` (empty
     rows), and `AttributeHasNoCrosses` (empty columns) — the latter two **aggregated**
     (count + ≤3 samples, in emission and plan order respectively), tracked over a bounded
-    `bool[]` and a tally, never the matrix (P-16). Only **emitted** objects count. They
+    `bool[]` and a tally, never the matrix (EP-16). Only **emitted** objects count. They
     flush in the pinned order whole-context → rows → columns, and are suppressed on **any
     invalid run** — the same predicate G-12 uses for the artifact itself: any Error/Fatal
     among the emit diagnostics. That covers two cases, which differ in whether the stream
@@ -4010,7 +4210,7 @@ pattern).
     throw, and mints no migrate-phase diagnostic: full resolution owns
     `BindingLocaleInvalid` (D-067 — one condition, one owner).
   - **Caller-discard output contract (G-12), normative.** Writers serialize their inputs
-    to **caller-owned sinks** and remain semantically dumb (P-15); they cannot retract
+    to **caller-owned sinks** and remain semantically dumb (EP-15); they cannot retract
     bytes. A run's artifact is valid **only if** the run's collected diagnostics — for
     `.cxt`, inspected **after `EmitReplaySession` disposal**, which is when the final
     cross-pass aggregates land — contain no Error/Fatal; otherwise **the caller must
@@ -4052,15 +4252,15 @@ pattern).
   anomaly); per-object/per-column observability diagnostics (a storm at target scale —
   aggregated with bounded samples, §16.4); emitting the observability warnings after a
   halt (they would describe the halt); a throwing `RestrictToNumber` factory (wrong
-  channel for an authoring error, P-14 — the boundary is layered instead); a
+  channel for an authoring error, EP-14 — the boundary is layered instead); a
   `RestrictToOnNumericRequiresRange` alias (one condition, one name); sorting the
   canonical restriction JSON by UTF-8 bytes (diverges from UTF-16 ordinal above U+E000 —
-  P-12 defines ordinal as a code-unit compare); merging overlapping ranges (loses authored
+  EP-12 defines ordinal as a code-unit compare); merging overlapping ranges (loses authored
   intent, no determinism gain); sorting or deduplicating the authored document/plan to
   match the fingerprint (the projection is the fingerprint's, not the author's);
   reinterpreting numeric-looking tokens on categorical `.bed` attributes (changes which
   objects survive); falling back to invariant on an invalid migrate locale (parses under a
-  locale the author never asked for); making the writers transactional (P-15 — that is
+  locale the author never asked for); making the writers transactional (EP-15 — that is
   M7's run abstraction).
 - **Affects:** Core (`RestrictToNumber`; `ResolvedSpec`/`CalibratedSpec` numeric boundary;
   `ConversionPlanner` restriction population; `FingerprintCalculator` restrictions
@@ -4080,7 +4280,7 @@ pre-M4 audits (D-088…D-097), it is **docs-only**: no production code, tests, f
 enum members, fingerprints, or output bytes change here. The normative contract lives in
 spec §7.1 (with targeted clarifications in §5.1/§14/§16.4/§17); these entries carry the
 rationale. Values deliberately left to the M5 implementation review are named where they
-arise (the public Discovery API surface — a P-4 review; the aggregate-guard defaults and
+arise (the public Discovery API surface — a EP-4 review; the aggregate-guard defaults and
 accounting constants; the canonical-writer wrapping cutoff) and are **not** pinned here.
 
 ### D-106 — Discovery `probe`: caller-selected shape, no inference, universal identity + nominal, one set-based observation pass
@@ -4104,7 +4304,7 @@ accounting constants; the canonical-writer wrapping cutoff) and are **not** pinn
   `nominal`**; no numeric/boolean/ordinal/date inference at M5. Probe observes the source's
   **cleaned records exactly once, in input order** — one data-record pass ("single pass"
   means one *record* pass, not structural inference), per-attribute **set-based and
-  idempotent** over cleaned values, with **ordinal** identity (P-12) and **first-observation**
+  idempotent** over cleaned values, with **ordinal** identity (EP-12) and **first-observation**
   domain order (§17 rule 3's principle). Missing values are **not observations** (empty
   field, or a field equal to the effective `missing_token`). **Triple** probe observes raw
   `(predicate, value)` pairs; predicates are discovered in **first-appearance order**; an
@@ -4125,7 +4325,7 @@ accounting constants; the canonical-writer wrapping cutoff) and are **not** pinn
   pass" over set-based ordinal observation is what makes probe's and Calibrate's observed
   domains provably identical rather than coincidentally so.
 - **Rejected:** structural/type inference at M5 (valuable as future guided UX, not the
-  conservative base — P-3); numeric/date/boolean typing now; a grouped second pass or a
+  conservative base — EP-3); numeric/date/boolean typing now; a grouped second pass or a
   contiguity requirement under `unordered` (set-based observation needs neither); skipping
   subject-usability validation (would let a probe author a draft the same-source conversion
   rejects, D-107).
@@ -4173,7 +4373,7 @@ accounting constants; the canonical-writer wrapping cutoff) and are **not** pinn
     clock/timestamps** (`created_at` never stamped — the D-079 no-clock rule), no tool
     version, no `[defaults]`, `[output]`, templates, matchers, or object-key section (the
     defaults are correct: wide `row_index`, triple subject-pinned). The initial Discovery API
-    accepts **no speculative provenance parameters** (P-6); the caller may enrich the returned
+    accepts **no speculative provenance parameters** (EP-6); the caller may enrich the returned
     `SpecDocument` afterwards (it is a public record).
 - **Why:** the four-part guarantee makes "a probe draft is immediately usable" a *tested*
   property, not a hope — the reread/resolve/convert chain is exactly what a user does next.
@@ -4189,9 +4389,9 @@ accounting constants; the canonical-writer wrapping cutoff) and are **not** pinn
   renaming a source selector to make it a valid attribute name (would change which
   predicate/column the draft reads); storing fingerprints or a timestamp in a draft (it is
   not a frozen artifact — a stored hash would fossilize an unreviewed schema, and a clock
-  read violates D-079/P-13); a no-draft outcome for all-missing/header-only input (the
+  read violates D-079/EP-13); a no-draft outcome for all-missing/header-only input (the
   attributes are real; their emptiness is a convert-time signal); speculative provenance
-  parameters on the first API (P-6 — the caller enriches the returned record).
+  parameters on the first API (EP-6 — the caller enriches the returned record).
 - **Affects:** Discovery (future engine), Spec (`SpecWriter`, `SpecDocument`); spec §5.2 /
   §5.3 / §7.1 / §10.1 / §10.2 / §14. Cross-references D-049 (`include`/dormant-config
   authoring hygiene), D-066 (document model the draft targets), D-071 (absent-domain
@@ -4246,7 +4446,7 @@ accounting constants; the canonical-writer wrapping cutoff) and are **not** pinn
   precedent), D-071 (absent/empty `declared_domain`), D-098 (observed-domain + `include`
   calibration the recovery relies on); spec §10.6 include behavior.
 
-### D-109 — The general unbound streaming source session; adapter/engine split; package dependency direction; required P-4 review
+### D-109 — The general unbound streaming source session; adapter/engine split; package dependency direction; required EP-4 review
 
 - **Status:** accepted (M5 pre-implementation audit)
 - **Date:** 2026-07-18
@@ -4262,17 +4462,17 @@ accounting constants; the canonical-writer wrapping cutoff) and are **not** pinn
   cycle-free under the current graph (Spec references neither Sources nor Discovery). Probe
   returns `Diagnosed<SpecDocument>`; the **caller** serializes via `SpecWriter` and owns all
   file output. Exact interface/member names are reserved for the implementation-time
-  **public-API (P-4) review** — the docs record the seam's shape and dependency direction, not
+  **public-API (EP-4) review** — the docs record the seam's shape and dependency direction, not
   signatures.
 - **Why:** an abstraction over *schema + normalized records* (rather than over a byte
   stream) is what lets an in-memory or future SQL/SPARQL source feed Discovery with no CSV
   coupling — the determinism guarantee (D-112) must hold over a record sequence, not a file.
   Keeping Discovery out of `Conversion` and off the filesystem preserves the dependency graph
-  and P-13 purity boundaries.
+  and EP-13 purity boundaries.
 - **Rejected:** coupling Discovery to a stream/file type (would block non-file sources and
   make determinism a file-byte property); letting Discovery reference `Conversion` or open
-  files (breaks the seam and P-13); designing SQL/SPARQL connection/query semantics now (P-3
-  — future adapters, unscheduled); pinning interface signatures in docs (reserved for the P-4
+  files (breaks the seam and EP-13); designing SQL/SPARQL connection/query semantics now (EP-3
+  — future adapters, unscheduled); pinning interface signatures in docs (reserved for the EP-4
   review).
 - **Affects:** Discovery (future engine + adapters), Sources (adapter boundary), Spec
   (`SpecWriter`); spec §7.1; roadmap M5/M7. Cross-references D-075/D-078 (the string-only
@@ -4289,11 +4489,11 @@ accounting constants; the canonical-writer wrapping cutoff) and are **not** pinn
   the implementation review** against representative workloads (the motivating arithmetic:
   1,554 attributes × 100,000 values permits a theoretical 155.4M retained strings) — not
   invented here. Guards use **deterministic logical accounting, never available machine
-  memory** (P-7/P-11). An **aggregate breach** emits `ProbeLimitExceeded` (D-111) and **no
+  memory** (EP-7/EP-11). An **aggregate breach** emits `ProbeLimitExceeded` (D-111) and **no
   draft**; aggregate pressure **never silently truncates** further attributes — only the
   per-attribute limit produces a usable, marked, truncated draft (D-108). Probe uses **no
   spill / count-sensitive calibration machinery** — it is set-based and idempotent (D-106).
-  The seen-subject set that triple contiguity validation needs is the **inherited P-16
+  The seen-subject set that triple contiguity validation needs is the **inherited EP-16
   bounded-metadata carve-out** (the object-names class the converter already retains); probe
   invents **no fourth aggregate guard** for it.
 - **Why:** probe reads data at the v1 target scale (D-007), so it needs the same bounded-memory
@@ -4301,12 +4501,12 @@ accounting constants; the canonical-writer wrapping cutoff) and are **not** pinn
   spill/merge machinery (D-095) that count-sensitive calibration does. Distinguishing a
   usable, marked truncation (per-attribute) from a hard failure (aggregate breach) keeps a
   runaway vocabulary from silently producing a partial draft that reads as complete.
-- **Rejected:** memory-figure-based guards (non-deterministic — P-7/P-11); silently truncating
+- **Rejected:** memory-figure-based guards (non-deterministic — EP-7/EP-11); silently truncating
   attributes under aggregate pressure (a partial draft that reads as complete); reusing the
   quantile-accumulator/spill machinery (probe is set-based — it would buy nothing, D-095); a
-  fourth aggregate guard for the seen-subject set (already covered by the P-16 carve-out).
+  fourth aggregate guard for the seen-subject set (already covered by the EP-16 carve-out).
 - **Affects:** Discovery (future engine, probe options); spec §7.1 / §16.4; roadmap M5/M8.
-  Refines D-095; cross-references D-007 (target scale), P-16 (bounded-metadata carve-out).
+  Refines D-095; cross-references D-007 (target scale), EP-16 (bounded-metadata carve-out).
 
 ### D-111 — Probe diagnostic governance: five future codes, two phase widenings, `ProbeSourceReadFailed` scope, cancellation is not a diagnostic, registry 70 → expected 75
 
@@ -4355,7 +4555,7 @@ accounting constants; the canonical-writer wrapping cutoff) and are **not** pinn
   determinism, not file-byte determinism — it must hold equally for future non-file adapters
   (D-109). Probe reads **no** clock, ambient culture, environment variable, current directory,
   random source, or available-memory figure, and writes **no** tool version or timestamp
-  (D-107). **Cancellation propagates with no diagnostic and no partial document — ever.** P-7
+  (D-107). **Cancellation propagates with no diagnostic and no partial document — ever.** EP-7
   applies verbatim: the repeatability test ships with the path, in the same commit. The
   settled M5 test categories (verbatim or a faithful grouped equivalent): (1) repeatable bytes
   and diagnostics; (2) strict reread, resolve, and same-source conversion; (3)
@@ -4371,13 +4571,13 @@ accounting constants; the canonical-writer wrapping cutoff) and are **not** pinn
 - **Why:** because Discovery's boundary is a record sequence (D-109), determinism must be
   defined over that sequence, not over file bytes — otherwise a future in-memory or SQL source
   could not inherit the guarantee. Enumerating the test categories now fixes M5's acceptance
-  contract so the repeatability and no-partial-artifact properties ship with the code (P-7),
+  contract so the repeatability and no-partial-artifact properties ship with the code (EP-7),
   not after.
 - **Rejected:** file-byte determinism (would not transfer to non-file adapters — D-109);
-  reading any ambient state (a determinism hazard — P-11/D-079); leaving a partial document on
+  reading any ambient state (a determinism hazard — EP-11/D-079); leaving a partial document on
   cancellation (a half-authored draft is worse than none); deferring the repeatability test
-  (P-7 forbids it for output-producing paths).
-- **Affects:** Discovery (future engine + tests); spec §7.1 / §17. Cross-references P-7, D-004
+  (EP-7 forbids it for output-producing paths).
+- **Affects:** Discovery (future engine + tests); spec §7.1 / §17. Cross-references EP-7, D-004
   (planner determinism rules), D-079 (no-clock), D-082 (guarantee-over-stable-graph
   precedent), D-095 (bounded-memory determinism).
 
@@ -4403,8 +4603,8 @@ accounting constants; the canonical-writer wrapping cutoff) and are **not** pinn
   belongs in the one canonical writer and must be byte-deterministic like everything else it
   emits — but the cutoff is a formatting constant, not a semantic knob, so it stays private
   and is pinned by a byte test rather than exposed.
-- **Rejected:** a probe-specific writer (two serialization paths — P-5); a configurable
-  wrapping width (a speculative knob — P-6); inventing the numeric cutoff in the docs
+- **Rejected:** a probe-specific writer (two serialization paths — EP-5); a configurable
+  wrapping width (a speculative knob — EP-6); inventing the numeric cutoff in the docs
   (reserved for the implementation review, byte-pinned then); treating wrapping as
   fingerprint-affecting (hashes read the plan, not the text — §14); conflating the cutoff with
   the retention limits (unrelated concerns).
@@ -4423,7 +4623,7 @@ pressure test**; the normative contract lives in spec §9 (with targeted
 clarifications in §6/§10.1/§10.7/§12.3/§13/§16.4), and these entries carry the
 rationale. Values deliberately left to the M6 implementation review are named
 where they arise — the public diagnostic **enum names** and their final §16.4
-registry rows, and the public naming surface (a P-4 review) — and are **not**
+registry rows, and the public naming surface (a EP-4 review) — and are **not**
 pinned here.
 
 ### D-114 — Template/matcher resolution: field-wise layering in declaration order, whole-value compounds, authored provenance, closed flat template surface
@@ -4486,7 +4686,7 @@ pinned here.
     templates cannot reference or inherit from another template** — no template
     graph, parent lookup, chain precedence, or cycle diagnostics. Template
     inheritance may be reconsidered after v1 only if a concrete caller justifies
-    reopening the grammar and a graph-resolution contract (P-3).
+    reopening the grammar and a graph-resolution contract (EP-3).
   - **Equivalence.** Semantically equivalent flat, materialized,
     template/matcher-authored, and `extends`-composed specs resolve to the same
     effective attributes, the same plan, the same three fingerprints, and
@@ -4515,7 +4715,7 @@ pinned here.
   template-authored `strict` boundary would be silently discarded and the
   geometry would render a different operator — a silent wrong-output path);
   nested templates (`extends` already composes specs and matchers already share
-  one template — no v1 caller, P-3); skipping excluded attributes (a
+  one template — no v1 caller, EP-3); skipping excluded attributes (a
   template-supplied `restrict_to` is live on a filter-only attribute, §10.4/
   D-076).
 - **Affects:** spec §6 / §9.1 / §9.2 / §12.3 / §13; Spec (`SpecResolver`
@@ -4545,7 +4745,7 @@ pinned here.
     `Regex.InfiniteMatchTimeout` passed **explicitly** — the constructor
     overloads that omit a timeout inherit the host's ambient
     `REGEX_DEFAULT_MATCH_TIMEOUT`, which would make the same spec host-dependent
-    on the exception channel (the identical D-104 reasoning, P-7/P-14). Each
+    on the exception channel (the identical D-104 reasoning, EP-7/EP-14). Each
     pattern is **compiled once** and reused across attribute names.
   - **Pattern validity:** non-empty and compilable. An empty or uncompilable
     pattern is `SpecFieldInvalid` at spec parse; there is **no dedicated
@@ -4593,7 +4793,7 @@ pinned here.
   two selectors mean AND, OR, or an error.
 - **Rejected:** partial/substring selector matching (§11.6 consistency argues for
   it, but accidental-substring application is the costlier silent error, and
-  §10.1 already promised whole-name); culture-sensitive matching (P-12); a finite
+  §10.1 already promised whole-name); culture-sensitive matching (EP-12); a finite
   wall-clock match timeout (machine-speed dependent — a worse determinism hazard
   than a slow pattern, and matching runs over a config-bounded name set);
   `RegexOptions.NonBacktracking` (silently narrows the regex language relative to
@@ -4623,7 +4823,7 @@ pinned here.
     the empty format, and CR/LF or emptiness where D-117 forbids it).
   - **Seven new permanent conditions**, recorded by condition/phase/severity/
     granularity. **Their public enum names and their final §16.4 registry rows
-    are deliberately deferred to the M6 implementation-surface review (P-4)** —
+    are deliberately deferred to the M6 implementation-surface review (EP-4)** —
     this landing mints no code name and adds no named registry row:
     1. a `[[template]]` without `id` — **spec resolve**, Error, one per template;
     2. a **duplicate** template `id` in the composed document — **spec resolve**,
@@ -4693,11 +4893,11 @@ pinned here.
   legitimately over-cover, D-115); validating an unused template as a
   hypothetical attribute (it has no `source` and no attribute context —
   dormancy is the D-049 precedent); minting enum names or final registry rows in
-  a docs-only landing (they would strand members no site raises — P-3 and D-085's
+  a docs-only landing (they would strand members no site raises — EP-3 and D-085's
   enum-timing rule); a dedicated regex-error or format-error code (`SpecFieldInvalid`
-  already owns malformed fields — D-090/P-14).
+  already owns malformed fields — D-090/EP-14).
 - **Affects:** spec §9.2 / §16.4; Diagnostics (seven conditions at M6, names at
-  the P-4 review; two retirements at M6). Refines D-067; closes D-078's deferred
+  the EP-4 review; two retirements at M6). Refines D-067; closes D-078's deferred
   duplicate-id validation; pairs with D-114/D-115/D-117. Docs-only landing — the
   registry stays **75** and no enum member changes here.
 
@@ -4759,7 +4959,7 @@ pinned here.
     `.dat` emission as well as `.cxt`, consistent with existing formal-name
     collision behaviour even though `.dat` serializes no names.
   - **Exporters never sanitize**, replace, escape, or independently validate a
-    name (P-15).
+    name (EP-15).
   - **No broader character policy.** Only *empty*, *CR*, and *LF* are settled for
     v1; no wider C0/Unicode-control prohibition is adopted by this entry.
   - **Fingerprint reach.** A naming change moves rendered `.cxt` names, `.cxt`
@@ -4774,7 +4974,7 @@ pinned here.
   empty format is legal — and every one of those answers changes `.cxt` bytes and
   `cxt_output_fingerprint`. Separately, nothing constrained `display_name` or the
   *rendered* name at all: `.cxt` is a line-oriented format (§18.1) whose writer is
-  dumb by law (P-15), so a rendered name containing a newline adds a phantom line
+  dumb by law (EP-15), so a rendered name containing a newline adds a phantom line
   — the attribute count and the name block disagree and every downstream consumer
   misparses — with no diagnostic, since the canonical fingerprint encoding escapes
   control characters happily (D-077). M6 is what first lets author-controlled text
@@ -4793,13 +4993,13 @@ pinned here.
   legally contain a line break — so an input-only rule is insufficient);
   constraining only the rendered name (an authored multiline `display_name`
   deserves a parse-time error, not a late plan failure); letting the exporter
-  sanitize (P-15); adding `{scale}` or dropping `{name}` (neither is defined by
+  sanitize (EP-15); adding `{scale}` or dropping `{name}` (neither is defined by
   §10.7 — an undefined-but-legal placeholder would let two conforming
   implementations emit different bytes, and dropping a documented one would reject
   valid specs).
 - **Affects:** spec §10.1 / §10.7 (its conditions register through D-116); Spec
   (the naming carriers at M6), Core (`ConversionPlanner` rendering and the
-  validity guard), Export (unchanged — P-15). Refines D-037(a)/D-074/D-092;
+  validity guard), Export (unchanged — EP-15). Refines D-037(a)/D-074/D-092;
   pairs with D-116/D-118. Docs-only landing.
 
 ### D-118 — M6 application site and architecture: resolver-seam application, template/matcher-free Core, planner-owned naming
@@ -4827,7 +5027,7 @@ pinned here.
     naming inputs. Template ids, matcher selectors, compiled regexes, ranges, and
     precedence syntax **never enter Core**, and `ConversionPlanner` needs no new
     guard.
-  - **New public document surface** (the P-4 review list; internal layouts stay
+  - **New public document surface** (the EP-4 review list; internal layouts stay
     free): `display_name` and `formal_attribute_format` on `AttributeSection` and
     `TemplateSection`, plus `formal_attribute_format` on `DefaultsSection`, with
     the corresponding `SpecSurfaceNotYetSupported` retirements (D-116) and
@@ -4836,7 +5036,7 @@ pinned here.
     consumes.
   - **The planner owns final name rendering and the validity guard**, including
     applying an explicit total format to the missing-value formal attribute
-    (D-117). **Exporters remain decision-free serializers** (P-15).
+    (D-117). **Exporters remain decision-free serializers** (EP-15).
   - **No fingerprint-encoder change and no `fp_format` bump.** Template/matcher
     syntax is never a fingerprint input; fingerprints consume only the resolved
     plan, and naming reaches only the existing `rendered_names` array in the
@@ -4849,7 +5049,7 @@ pinned here.
     emission.
 - **Why:** D-078 deliberately deferred the shared config record to "when M6
   applies templates", D-067/D-080 made the seam the enforced validation entry
-  point, and P-4 requires the public shape first. Left unpinned, the obvious
+  point, and EP-4 requires the public shape first. Left unpinned, the obvious
   failure modes are template state leaking into `ResolvedSpec`, validation running
   *before* application (checking authored rather than effective configuration),
   and matching acquiring a data dependency — each of which would quietly undo an
@@ -4860,7 +5060,7 @@ pinned here.
   what `SpecWriter` emits and what the flat-file `AttributeNameDuplicate`-style
   diagnostics see — and application needs the *composed* matcher list anyway, so
   it is inherently resolve-time); a Core reject-carrier or any template/matcher
-  type in Core (speculative surface removed again at M6 — P-3); validating
+  type in Core (speculative surface removed again at M6 — EP-3); validating
   authored rather than effective configuration; reading data rows to evaluate a
   selector (§7 phase 1); a fingerprint-encoder change for template syntax (only
   resolved semantics are inputs — §9.2/§14).
@@ -4891,7 +5091,7 @@ pinned here.
     §2's cardinality rule, make the column set depend on the source header/width
     (breaking §14's "fully determined by its own text" and the spec-first
     workflow), and blur D-003's discovery boundary — and its only proposed caller
-    was this exit criterion (P-3).
+    was this exit criterion (EP-3).
   - **Curation from an M5 probe draft.** A draft authors `discretizer` and
     `scale` explicitly on **every** attribute (D-107), and explicit per-attribute
     fields are tier 5 — above matcher templates at tier 3 — so a matcher laid
@@ -4912,7 +5112,7 @@ pinned here.
     selection; D-115 settles both selectors on their own merits.
   - **The verification floor** — the M6 completion gate. It is a gate, not a
     prescribed test-file layout, and each behaviour ships with its verification in
-    the same slice (P-7):
+    the same slice (EP-7):
     1. every precedence tier pair; multiple matching templates; authored presence
        (explicit `false`, authored `[]`, authored-equals-default); whole-value
        compound replacement; boundary and ordinal-defaults provenance, including
@@ -4949,7 +5149,7 @@ pinned here.
     10. the document→resolver→Core boundary: template/matcher-free Core,
         planner-owned naming, dumb exporters, schema-only bounded matcher
         resolution, and no source-row inspection;
-    11. each behaviour landing with its verification in the same slice (P-7).
+    11. each behaviour landing with its verification in the same slice (EP-7).
   - **The neutrality/change matrix.** Adding a valid **unused** `[[template]]`, a
     matcher that **matches nothing**, or a `display_name` **no format
     references** leaves all three fingerprints and both outputs unchanged (the
@@ -4969,10 +5169,10 @@ pinned here.
   not. Restating the exit as a curation-delta claim keeps the honest promise
   (roughly 1,500 attributes configured without roughly 1,500 manual edits) while
   leaving §2, §14, and D-003 intact. Agreeing the verification floor now prevents
-  the exit being declared on untested precedence (P-7/P-21).
+  the exit being declared on untested precedence (EP-7/EP-21).
 - **Rejected:** keeping the "<50 lines" gate (unmeetable — the arithmetic is
   exact); matchers synthesizing attributes from the source schema (§2/§14/D-003,
-  and P-3 — this exit was its only proposed caller); adding a probe "bare/minimal
+  and EP-3 — this exit was its only proposed caller); adding a probe "bare/minimal
   draft" mode to feed the demonstration (reopens D-107 and the public Discovery
   contract, and is unnecessary once curation may materialize or de-shadow);
   treating the exit as satisfied only by a two-file `extends` split (composition
@@ -5003,7 +5203,7 @@ pinned here.
     (`Text`, `static TryCreate`, no public constructor; token model and
     rendering internal to Core). The Spec reader validates every authored format
     through it and the planner renders through it, so the two cannot disagree
-    about which formats are legal or what they produce (P-5). Parsing is one
+    about which formats are legal or what they produce (EP-5). Parsing is one
     left-to-right pass into literal/placeholder tokens and rendering walks those
     tokens, which makes "substituted text is never rescanned" **structural**
     rather than a property two code paths maintain.
@@ -5014,7 +5214,7 @@ pinned here.
     selectors, ranges, or precedence syntax (D-118). `ResolvedSpec.Create`
     backstops `DisplayName` non-null/non-empty for hand-built graphs; the format
     needs no re-check, because `NameFormat` cannot be constructed except through
-    its validating factory (P-10).
+    its validating factory (EP-10).
   - **One new diagnostic: `FormalAttributeNameInvalid`** (Error, plan) — the
     seventh D-116 condition, the only one whose site exists at Slice A. Its
     representation is **pinned**: one aggregated diagnostic per affected logical
@@ -5022,7 +5222,7 @@ pinned here.
     count and at most three samples **in render order**, each wrapped in double
     quotes with exactly four escapes (`\`→`\\`, `"`→`\"`, CR→`\r`, LF→`\n`) and a
     `(+N more)` tail only when truncated. Byte-identical messages across runs and
-    machines are the point (P-7). Invalid names still register in the id maps, so
+    machines are the point (EP-7). Invalid names still register in the id maps, so
     ids and collision reporting stay exactly what a valid run would produce, and
     the shared plan fails — blocking `.dat` as well as `.cxt` (§10.7).
   - **Centralized parse ordering.** D-116's "parse diagnostics retain reader
@@ -5035,7 +5235,7 @@ pinned here.
     and future readers inherit the policy automatically. Phase separation is
     untouched: TOML syntax errors stay terminal, and phase-1 parser warnings stay
     ahead of every semantic diagnostic. The helper is **`internal` rather than
-    private, as a deliberate test seam** (P-6): the span-less branch is defensive —
+    private, as a deliberate test seam** (EP-6): the span-less branch is defensive —
     `TomlReadContext` always attaches a span, so no authored document reaches it
     through `Read` — and a two-element equal-position case survives even an
     unstable sort, so both guarantees are exercised directly with constructed
@@ -5064,7 +5264,7 @@ pinned here.
     identically, are fully neutral.
 - **Why:** D-116/D-117 settled the *semantics* and deliberately minted no enum
   name, no public shape, and no registry row — those are implementation-surface
-  choices P-4 requires be designed before code, and this entry records the ones
+  choices EP-4 requires be designed before code, and this entry records the ones
   actually taken. Two are load-bearing beyond their local scope. The parse-ordering
   policy is centralized because ordering that emerges from traversal is not a
   contract: it changes silently whenever a reader's field order is edited, and
@@ -5084,7 +5284,7 @@ pinned here.
   on `NameFormat` (unlisted public behaviour beyond the approved surface, and
   reference equality is unobservable while every pre-M6 spec resolves to null);
   keeping the deferred-key sets empty "for symmetry" (dead dispatch, M4 Slice E's
-  precedent); sanitizing an invalid rendered name in the exporter (P-15 — writers
+  precedent); sanitizing an invalid rendered name in the exporter (EP-15 — writers
   serialize an already-decided result); sorting the invalid-name samples (render
   order is the order the planner actually emits those columns, so it is the order
   an author can act on).
@@ -5094,7 +5294,7 @@ pinned here.
   `AttributeReader`, `SpecSectionReaders`, `SpecReader` ordering, `TomlSpellings`,
   `TomlTableCursor`, `SpecWriter`, `SpecComposer.MergeDefaults`, `SpecResolver`);
   spec §10.1 / §10.7 / §16.4. Realizes D-116(7)/D-117/D-118; pairs with
-  D-114…D-119. Export unchanged (P-15); no fingerprint-encoder or `fp_format`
+  D-114…D-119. Export unchanged (EP-15); no fingerprint-encoder or `fp_format`
   change; no production project reference changed.
 
 ## M6 Slice B (template/matcher application at the resolver seam)
@@ -5138,12 +5338,12 @@ pinned here.
     the flat equivalent does.
   - **One wrapped whole-name regex construction**, in the internal `MatcherSelectors`,
     shared by the parse gate and selector evaluation so a pattern cannot parse
-    successfully and then fail — or match differently — when evaluated (P-5):
+    successfully and then fail — or match differently — when evaluated (EP-5):
     `new Regex(@"\A(?:" + pattern + @")\z", RegexOptions.CultureInvariant,
     Regex.InfiniteMatchTimeout)`. The **non-capturing** group is load-bearing rather
     than cosmetic: bare anchors around an alternation would bind as `\Aa|b\z` —
     "starts with a, or ends with b" — instead of whole-name "a or b", and a
-    non-capturing group shifts no backreference number. `CultureInvariant` (P-12) and
+    non-capturing group shifts no backreference number. `CultureInvariant` (EP-12) and
     the **explicit** `InfiniteMatchTimeout` follow D-104's `value_groups` precedent;
     `NonBacktracking` stays unadopted (D-115).
   - **Application is a document→document fold** inside `SpecResolver.Resolve`,
@@ -5184,7 +5384,7 @@ pinned here.
     `SpecSurfaceNotYetSupported` stays live with its one non-M6 owner,
     `value_type = "date"`.
 - **Why:** D-114…D-118 settled the *semantics* and deliberately minted no enum name
-  and no public shape — those are the implementation-surface choices P-4 requires be
+  and no public shape — those are the implementation-surface choices EP-4 requires be
   designed before code, and this entry records the ones actually taken. Three are
   load-bearing beyond their local scope. The addressing pass is called out because
   the naive implementation — resolving the source once for the matcher and again for
@@ -5348,7 +5548,7 @@ pinned here.
   measurement.
 
   **9. Ownership.** The run/publication coordinator is **CLI-internal** for M7; **no
-  production package references `Cli`** (an architecture lock). A **P-4
+  production package references `Cli`** (an architecture lock). A **EP-4
   public-surface extraction review** is required before any M9 reuse.
   `EmitReplaySession` remains public and supported — nothing is deprecated before a
   proven replacement exists.
@@ -5409,7 +5609,7 @@ pinned here.
     options **identical to probe's** (together, one mode, names need `--header true`,
     indices zero-based). The invoked `.bed` path is recorded automatically as
     `derived_from`. Fixed one-value v1 facts (encoding, quote character) get no flags
-    (P-6).
+    (EP-6).
 
   **11. Extends canonical identity.** The file-backed host resolves **actual
   filesystem identity** where available — which unifies supported symlink/hardlink
@@ -5535,7 +5735,7 @@ pinned here.
   `FcaBedrock.Cli` — a .NET global tool (`PackAsTool`, `ToolCommandName = fcabedrock`,
   `PackageId = FcaBedrock.Cli`) that references all seven production packages. **No
   production package references `Cli`** — a one-way dependency enforced by an architecture
-  lock (point 13). Every CLI component is `internal`; a P-4 public-surface extraction
+  lock (point 13). Every CLI component is `internal`; a EP-4 public-surface extraction
   review gates any M9 reuse; `EmitReplaySession` stays public.
 
   **2. Coordination and parsing.** The run/publication coordinator is plain static
@@ -5593,13 +5793,13 @@ pinned here.
   the retained `AttributeCalibration` union — no re-derivation, D-093) and
   `RunManifestWriter.Write(RunManifest) → string`, implemented on the **same
   Spec-internal canonical TOML literal/wrapping machinery as the spec writer** (D-075/
-  D-113), so no second canonical-TOML emitter exists (P-5). The CLI composes the model and
+  D-113), so no second canonical-TOML emitter exists (EP-5). The CLI composes the model and
   never formats TOML itself.
 
   **9. Freeze pairing.** The public **`SpecFreezer.Freeze(ResolvedDocument resolved,
   CalibratedSpec calibrated) → SpecDocument`** is the **paired** carrier: it
   verifies `ReferenceEquals(resolved.Resolved, calibrated.Resolution)` and throws
-  `ArgumentException` on mismatch (the `SpecFingerprints.ComputeNative` posture, P-14), so
+  `ArgumentException` on mismatch (the `SpecFingerprints.ComputeNative` posture, EP-14), so
   template/matcher-won values invisible in the composed document are read from the
   effective resolved state before calibration additions are appended.
 
@@ -5612,7 +5812,7 @@ pinned here.
   (single member `TempDirectory`) plus public `Calibrator`/`Emitter` overloads map to the
   internal `GroupingOptions(tempDirectory:)`, giving `--temp-dir` a minimal, byte- and
   fingerprint-neutral public capability; memory budget and merge fan-in stay internal
-  pending M8 (P-6).
+  pending M8 (EP-6).
 
   **12. CXT size advisory (landed, this slice, S2).** `CxtWriter.WriteAsync` gains the
   additive public overload `(…, ICollection<BedrockDiagnostic> diagnostics, long
@@ -5637,7 +5837,7 @@ pinned here.
   --out -` writes **only** the corrected canonical spec on stdout and suppresses the normal
   report, while file targets keep report-on-stdout plus spec-in-file.
 
-- **Why:** `AGENTS.md` requires a decision entry for real architectural decisions; P-4
+- **Why:** `AGENTS.md` requires a decision entry for real architectural decisions; EP-4
   requires public shapes to be designed before implementation; and the registry lock's own
   convention requires the 81 → 82 count change to land **with** its decision entry. D-122
   deliberately left concrete parser, serializer, and transaction-mechanism ownership to the
@@ -5647,13 +5847,13 @@ pinned here.
   later reader sees what was chosen and why without reconstructing them.
 - **Rejected:** `System.CommandLine` (library-owned help/usage bytes inside a byte-locked
   surface, drifting with upgrades — the D-075 hazard); a second canonical-TOML emitter in
-  the CLI (P-5 — the one emitter stays in Spec); a raw-document-plus-unpaired-outcome
+  the CLI (EP-5 — the one emitter stays in Spec); a raw-document-plus-unpaired-outcome
   freezer (loses template/matcher-won values and permits cross-run mixing);
   path/symlink-only identity (misses the hardlink aliases normative §13 names);
   overwrite-then-delete forced replacement (a false commit marker and a destroyed prior run);
   fixed-suffix residue recognition without ownership proof; a
   synthesized constant `fcabedrock` argv[0] (not the verbatim audit value);
-  exposing grouping budget/fan-in as a test seam (P-6); and several narrow decision entries
+  exposing grouping budget/fan-in as a test seam (EP-6); and several narrow decision entries
   in place of one (a fragmented audit trail).
 - **Affects:** `Diagnostics` (registry 81 → 82 — **landed** this slice); `Export` (the
   `CxtWriter` advisory overload — **landed** this slice); `Core` (nullable
@@ -5719,7 +5919,7 @@ pinned here.
     disposal, and the normal production diagnostics. Data generation, output
     reset, independent validation, harness hashing, and artifact retention stay
     outside it unless the production operation itself includes them. No scale
-    dataset and no full context matrix is ever materialized (P-16).
+    dataset and no full context matrix is ever materialized (EP-16).
   - **Validation is per-iteration and outside timing.** Each completed measured
     iteration is validated after its producer sessions are disposed and its final
     diagnostics are available; a failure throws, so the case has no throughput
@@ -5846,7 +6046,7 @@ pinned here.
     deliberately shadowing `tests/Directory.Build.props`: inheriting the shared
     test defaults (`IsTestProject`, the xUnit reference, the
     Microsoft.Testing.Platform zero-tests guard) would make `dotnet test` run
-    multi-minute benchmarks, which **P-20** forbids. It keeps every root setting,
+    multi-minute benchmarks, which **EP-20** forbids. It keeps every root setting,
     warnings-as-errors included. `FcaBedrock.Benchmarks.Tests` is an ordinary
     xUnit v3 project and inherits the shared test props unchanged; the shared
     zero-tests guard is not weakened.
@@ -5865,7 +6065,7 @@ pinned here.
     API. It preserves D-098's ban on production-to-production
     internals access and D-122/D-123's CLI-internal boundary — no production
     package references the benchmark assembly, CLI types stay internal, and no
-    benchmark code ships in any product artifact. M9 reuse still needs its own P-4
+    benchmark code ships in any product artifact. M9 reuse still needs its own EP-4
     review. **Scheduling:** each grant landed in the slice that first
     needed it — Conversion in S2 with the budget/fan-in experiments, CLI in S3 with
     the host and hashing benchmarks — following the D-123 precedent of recording a
@@ -5930,7 +6130,7 @@ pinned here.
     **D-095** exact bounded calibration, **D-110** probe accounting, and
     **D-122/D-123** input-stability, publication, and manifest semantics.
   - **What may change, and only after evidence.** The internal grouping and
-    calibration memory budget and merge fan-in are the tunable policy (P-19,
+    calibration memory budget and merge fan-in are the tunable policy (EP-19,
     D-082/D-095: byte-neutral by construction, never a spec or fingerprint input),
     and may move only after the approved evidence gate — a repeatable improvement
     on identified controlled hardware, reproduced in two independent comparison
@@ -6004,12 +6204,12 @@ pinned here.
   nothing); a serializer-produced catalog (the metadata contract decides whether
   cached inputs are believed, so its bytes must not drift with a library —
   D-075's reasoning); making the benchmark host a test project or letting it
-  inherit the shared test props (P-20); granting `FcaBedrock.Benchmarks.Tests`
+  inherit the shared test props (EP-20); granting `FcaBedrock.Benchmarks.Tests`
   CLI access (it needs none); switching the CLI benchmarks to the public
   executable (that changes the accepted measured boundary from host throughput to
   process latency) or copying the host's behaviour into the suite (weakens
   production-path validity); and exposing the grouping budget or fan-in as a
-  public tuning flag (D-082/D-095/P-6 — a knob that cannot change output bytes
+  public tuning flag (D-082/D-095/EP-6 — a knob that cannot change output bytes
   belongs in neither the spec nor the public surface).
 - **Affects:** `tests/FcaBedrock.Benchmarks` and `tests/FcaBedrock.Benchmarks.Tests`
   (new), `Directory.Packages.props` (the BenchmarkDotNet pin), `FcaBedrock.slnx`,
@@ -6620,8 +6820,8 @@ pinned here.
   threshold. The 5% figure enters only through the base plan's **optimization-adoption**
   gate — a decision aid for whether to *change* a default, which M8 ran and did not meet
   (D-124) — and through the later comparison's own pre-registered bound, which existed to
-  earn a performance-continuity claim rather than to satisfy the roadmap. **P-19** governs
-  claimed *improvements*; D-125 is a correctness correction, governed by P-7/P-11. The
+  earn a performance-continuity claim rather than to satisfy the roadmap. **EP-19** governs
+  claimed *improvements*; D-125 is a correctness correction, governed by EP-7/EP-11. The
   failed comparison therefore forfeits that continuity claim; it does not expose a
   previously unstated roadmap requirement that every correction prove a sub-5% cost.
 
@@ -7364,7 +7564,7 @@ pinned here.
   at most once per generation. On the workload this change targets it reduced conservative written
   bytes from `9,017,744,128` to `5,571,308,288` (`0.617816`) and reproducibly reduced elapsed time
   by about 25%, without a detected correctness, guard-endpoint or meaningful allocation regression.
-  P-19's requirement for measured evidence is therefore met; retaining the simpler old schedule
+  EP-19's requirement for measured evidence is therefore met; retaining the simpler old schedule
   would keep a demonstrated large target-scale cost.
 - **Rejected:** keeping merge-all (simpler, but retains the measured quadratic amplification); an
   unbounded catalogue followed by one final merge (population-sized bookkeeping, which D-103

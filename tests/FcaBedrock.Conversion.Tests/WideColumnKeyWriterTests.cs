@@ -8,7 +8,7 @@ using FcaBedrock.Sources;
 namespace FcaBedrock.Conversion.Tests;
 
 // Integration: Sources → Emitter → writers. The keep unique-name escalation is a converter concern
-// (P-15) observable in the .cxt name block; .dat ignores names but preserves object count/order.
+// (EP-15) observable in the .cxt name block; .dat ignores names but preserves object count/order.
 public sealed class WideColumnKeyWriterTests
 {
     [Fact]

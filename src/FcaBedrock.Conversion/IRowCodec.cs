@@ -7,7 +7,7 @@ namespace FcaBedrock.Conversion;
 /// Serializes one row type to and from a fixed-size byte buffer for spilling (D-082). Strings are
 /// encoded as a length (in UTF-16 code units, <c>-1</c> for null) plus their raw UTF-16 code units, so
 /// lone surrogates round-trip exactly — spilling never changes a value's identity or the output bytes
-/// (P-7/P-12). <see cref="Measure"/> returns the exact serialized size (checked <see langword="long"/>
+/// (EP-7/EP-12). <see cref="Measure"/> returns the exact serialized size (checked <see langword="long"/>
 /// so it composes across many rows without overflow), and <see cref="Write"/> writes exactly that many
 /// bytes. <see cref="Read"/> validates every field against the record buffer bounds, so a
 /// safely-identifiable corrupt record surfaces as a storage failure rather than a malformed row.

@@ -13,7 +13,7 @@ namespace FcaBedrock.Sources;
 /// never a read failure (D-111/D-112), and programmer errors — <see cref="ArgumentException"/>,
 /// <see cref="InvalidOperationException"/>, <see cref="NullReferenceException"/>, violated
 /// invariants — propagate as themselves rather than being disguised as an infrastructure
-/// problem (P-14).
+/// problem (EP-14).
 /// </para>
 /// </summary>
 public sealed class SourceReadException : Exception

@@ -216,7 +216,7 @@ internal static class CommandLineParser
     // The predicate SpecResolver and ProbeOptions both apply (§5.1): "invariant"
     // case-insensitively, or a PREDEFINED culture — predefinedOnly matters, because under ICU
     // GetCultureInfo synthesizes a culture for almost any well-formed tag, which would make
-    // acceptance OS-dependent (P-7/P-11) and let a draft fail its own reread.
+    // acceptance OS-dependent (EP-7/EP-11) and let a draft fail its own reread.
     private static bool IsLocale(string value)
     {
         if (string.Equals(value, "invariant", StringComparison.OrdinalIgnoreCase))

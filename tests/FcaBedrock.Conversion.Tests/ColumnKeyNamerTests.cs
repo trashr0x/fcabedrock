@@ -70,7 +70,7 @@ public sealed class ColumnKeyNamerTests
     [Fact]
     public void Assign_WhenKeysDifferByOrdinalCase_ThenDistinct()
     {
-        // Ordinal comparison (P-12): "A" and "a" are different keys.
+        // Ordinal comparison (EP-12): "A" and "a" are different keys.
         var namer = new ColumnKeyNamer();
 
         Assert.Equal("A", namer.Assign("A", 0, out var upper, out _));

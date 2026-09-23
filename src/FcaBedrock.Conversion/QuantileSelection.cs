@@ -8,7 +8,7 @@ namespace FcaBedrock.Conversion;
 /// D-088/D-103, the G-5 formulas). One place each, so no production path carries a second
 /// copy: rank selection, gap allocation, and cut placement.
 /// <para>
-/// The split is deliberate and load-bearing (P-11): <b>rank selection is exact integer
+/// The split is deliberate and load-bearing (EP-11): <b>rank selection is exact integer
 /// arithmetic</b> (no floating target is ever formed), while <b>cut placement is
 /// binary64</b> (the cut is a data value, so it lives in the data's own type). Mixing the
 /// two is the classic quantile bug — a rank target rounded through a <c>double</c> silently

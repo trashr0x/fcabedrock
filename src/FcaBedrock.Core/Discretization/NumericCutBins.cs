@@ -11,7 +11,7 @@ namespace FcaBedrock.Core.Discretization;
 /// (authored cuts, §11.2) and <see cref="EqualWidthDiscretizer"/> (computed cuts,
 /// always open-ended, §11.4). It owns numeric parsing, finite-only classification,
 /// cut membership, the cut and bin labels, the structural interval bins, and the
-/// native/v2-compat rendering, so those formulas exist once (P-17).
+/// native/v2-compat rendering, so those formulas exist once (EP-17).
 /// <para>
 /// This is what makes the D-088 auto/frozen byte-equivalence <b>structural</b>
 /// rather than a property two code paths must independently maintain (D-093): the
@@ -22,7 +22,7 @@ namespace FcaBedrock.Core.Discretization;
 /// The constructor trusts its inputs: the owning discretizer's smart factory has
 /// already validated the cuts as finite and strictly ascending (and, for
 /// <see cref="BinEnds.Closed"/>, at least two), so labelling never sees a NaN/∞
-/// edge (P-10).
+/// edge (EP-10).
 /// </para>
 /// </summary>
 internal sealed class NumericCutBins
@@ -36,7 +36,7 @@ internal sealed class NumericCutBins
     {
         // Snapshot into immutable storage: a mutable caller list must not desync the cuts
         // from the cached labels after construction, and no castable mutable backing array
-        // may survive on the resolved/planned graph (P-10, D-098 recursive immutability).
+        // may survive on the resolved/planned graph (EP-10, D-098 recursive immutability).
         Cuts = ImmutableArray.CreateRange(cuts);
         Ends = ends;
         Culture = culture;
@@ -51,7 +51,7 @@ internal sealed class NumericCutBins
     /// <summary>Whether the outer bins extend to ±∞ (<see cref="BinEnds.Open"/>) or are dropped.</summary>
     public BinEnds Ends { get; }
 
-    /// <summary>The culture raw values parse under (never ambient — P-11).</summary>
+    /// <summary>The culture raw values parse under (never ambient — EP-11).</summary>
     public CultureInfo Culture { get; }
 
     /// <summary>The canonical cut labels — invariant schema strings, not locale numbers (§14).</summary>

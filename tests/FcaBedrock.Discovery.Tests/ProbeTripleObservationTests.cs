@@ -54,7 +54,7 @@ public sealed class ProbeTripleObservationTests
     [Fact]
     public async Task ProbeTriple_WhenValuesDifferOnlyByCase_ThenTheyAreDistinct()
     {
-        // Ordinal identity (P-12): no culture, no case folding, no normalization.
+        // Ordinal identity (EP-12): no culture, no case folding, no normalization.
         var draft = ProbeFixtures.Draft(await TripleProbeFixtures.ProbeTripleCsvAsync(
             "s1,p,Cat\ns2,p,cat\ns3,p,CAT\n"));
 

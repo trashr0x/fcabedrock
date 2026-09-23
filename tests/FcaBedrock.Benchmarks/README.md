@@ -2,7 +2,7 @@
 
 The internal M8 benchmark suite: one BenchmarkDotNet host over the real production paths, plus the
 corpus, oracle, and evidence layer those measurements need to mean something. It is **not** a test
-project and is never reachable from `dotnet test` (principle P-20); it is not packed, and no
+project and is never reachable from `dotnet test` (principle EP-20); it is not packed, and no
 production package references it.
 
 See `docs/benchmarks.md` for the evidence pack and `docs/decisions.md` D-124 for why the suite is

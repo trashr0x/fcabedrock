@@ -51,7 +51,7 @@ public static class CanonicalNumber
 
     /// <summary>
     /// Parses <paramref name="text"/> under <paramref name="culture"/> using
-    /// <see cref="NumberStyles.Float"/> (P-11: never ambient), accepting only a
+    /// <see cref="NumberStyles.Float"/> (EP-11: never ambient), accepting only a
     /// finite result. Returns <see langword="false"/> — with <paramref name="value"/>
     /// set to <c>0</c> — on a parse failure or a non-finite result. Does <b>not</b>
     /// canonicalize zero itself; the caller applies <see cref="CanonicalizeZero"/>,

@@ -69,7 +69,7 @@ internal static class ResourceProbe
     /// <summary>The modelled floor a single accumulator entry costs — the honestly stated bound arm.</summary>
     public static long AccumulatorFloorBytes => QuantileAccumulator.FloorBytes;
 
-    // Records the signals and changes nothing: production leaves the observer null (P-6).
+    // Records the signals and changes nothing: production leaves the observer null (EP-6).
     private sealed class Recorder : ICalibrationObserver
     {
         private readonly List<long> _resident = [];

@@ -10,7 +10,7 @@ namespace FcaBedrock.Core.Spec;
 /// <para>
 /// Mechanically closed — the <see langword="private protected"/> base constructor
 /// leaves no accessible base constructor to out-of-assembly types, so the trust
-/// boundary's site switch is exhaustive by construction (P-10).
+/// boundary's site switch is exhaustive by construction (EP-10).
 /// </para>
 /// </summary>
 public abstract record ResolvedNameBinding

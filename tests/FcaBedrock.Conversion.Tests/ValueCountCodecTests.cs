@@ -6,7 +6,7 @@ namespace FcaBedrock.Conversion.Tests;
 /// The <see cref="ValueCount"/> spool codec (D-095/D-103): a fixed 16-byte payload with no
 /// reference fields, reusing the existing framing and integrity semantics rather than a second
 /// storage system. Spilling must be byte-neutral — a value that round-trips inexactly would
-/// move a cut, and with it the output bytes (P-7).
+/// move a cut, and with it the output bytes (EP-7).
 /// </summary>
 public sealed class ValueCountCodecTests
 {

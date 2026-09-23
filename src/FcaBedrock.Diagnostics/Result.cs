@@ -3,7 +3,7 @@ using System.Diagnostics.CodeAnalysis;
 namespace FcaBedrock.Diagnostics;
 
 /// <summary>
-/// The project-standard result type for single-error operations (principle P-5):
+/// The project-standard result type for single-error operations (principle EP-5):
 /// a value of <typeparamref name="T"/> or an error of <typeparamref name="TError"/>,
 /// never both. A <c>readonly struct</c>, so <see cref="Ok"/>/<see cref="Err"/>
 /// allocate nothing.
@@ -33,11 +33,11 @@ public readonly struct Result<T, TError>
     /// <summary>True when this holds an error.</summary>
     public bool IsError => !IsOk;
 
-    /// <summary>The value. Throws if this is an error (a programmer error — P-14).</summary>
+    /// <summary>The value. Throws if this is an error (a programmer error — EP-14).</summary>
     public T Value =>
         IsOk ? _value : throw new InvalidOperationException("Cannot read Value of an error Result.");
 
-    /// <summary>The error. Throws if this is ok (a programmer error — P-14).</summary>
+    /// <summary>The error. Throws if this is ok (a programmer error — EP-14).</summary>
     public TError Error =>
         IsOk ? throw new InvalidOperationException("Cannot read Error of an ok Result.") : _error;
 

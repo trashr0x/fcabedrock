@@ -123,7 +123,7 @@ internal static class AttributeReader
     }
 
     // §9.1/§10.1: [A-Za-z_][A-Za-z0-9_-]* — ASCII only and ordinal by construction
-    // (P-12); an empty id fails the leading-character rule rather than needing its own
+    // (EP-12); an empty id fails the leading-character rule rather than needing its own
     // branch. Hand-written rather than a Regex: the grammar is four character classes,
     // and this way it cannot inherit an ambient match timeout (D-115's concern).
     private static bool IsTemplateId(string text)
@@ -193,7 +193,7 @@ internal static class AttributeReader
     /// <summary>
     /// Reads an authored <c>formal_attribute_format</c> (§10.7) and validates it
     /// against the one grammar owner, <c>NameFormat.TryCreate</c> — so the reader
-    /// and the planner can never disagree about which formats are legal (P-5).
+    /// and the planner can never disagree about which formats are legal (EP-5).
     /// Every §10.7 shape failure is the ordinary <c>SpecFieldInvalid</c>; §10.7
     /// deliberately mints no format-specific code. The document keeps the authored
     /// string verbatim for round-trip; the resolver reparses the effective one.
@@ -367,7 +367,7 @@ internal static class AttributeReader
     // owns what the values IMPLY across groups (ValueGroupsLabelDuplicate,
     // OrdinalNotAllowedWithValueGroupsPassthrough).
     //
-    // Every field is read before the gates run, so independent failures report together (P-14):
+    // Every field is read before the gates run, so independent failures report together (EP-14):
     // a spec with a bad group AND a bad unmatched reports both.
     private static DiscretizerSection ReadValueGroups(TomlReadContext context, TomlTableCursor inner, SourceSpan tableSpan)
     {
@@ -664,7 +664,7 @@ internal static class AttributeReader
     // the population under every configuration (§7), so unlike equal_width it has no
     // spec-determined mode and no vmin/vmax cross-checks. Independent failures are reported
     // together — every field is read before the gates run, so a spec with a bad bins AND a bad
-    // tie_policy reports both rather than stopping at the first (P-14).
+    // tie_policy reports both rather than stopping at the first (EP-14).
     private static DiscretizerSection ReadEqualFrequency(TomlReadContext context, TomlTableCursor inner, SourceSpan tableSpan)
     {
         var (bins, binsAuthored) = TakeBins(context, inner, TomlSpellings.EqualFrequencyKind, "§11.5");

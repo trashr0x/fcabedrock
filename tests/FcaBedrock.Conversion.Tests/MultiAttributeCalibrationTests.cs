@@ -322,7 +322,7 @@ public sealed class MultiAttributeCalibrationTests
     public async Task Calibrate_WhenASpillWriteFailsUnderSeveralAttributes_ThenStillAnErrorAndNoResult()
     {
         // The other direction: a genuine in-path storage failure is still an Error, and still
-        // crosses the seam as a diagnostic rather than a GroupingStorageException (P-14).
+        // crosses the seam as a diagnostic rather than a GroupingStorageException (EP-14).
         var fileSystem = new FakeSpoolFileSystem { OnCreateRun = _ => StorageFaults.DiskFull() };
 
         var result = await CalibrateAsync(MultiAttributeSpec(), Csv, TinyBudget(fileSystem));

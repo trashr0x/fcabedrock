@@ -11,7 +11,7 @@ namespace FcaBedrock.Spec.Tests.Toml;
 /// <summary>
 /// Read → resolve integration (D-066/D-067): the §19 worked examples flow from
 /// authored TOML through <see cref="SpecResolver"/> — §19.1 planning to the same
-/// schema as the in-code document twin (P-7 parity), §19.3 (unordered) resolving but
+/// schema as the in-code document twin (EP-7 parity), §19.3 (unordered) resolving but
 /// refused at plan until Slice D with a subject_grouped twin that resolves and plans
 /// (D-082), and the D-010 deferred-scale path failing at plan, not before.
 /// </summary>

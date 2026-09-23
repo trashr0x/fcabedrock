@@ -391,7 +391,7 @@ public static class FingerprintCalculator
 
     // §14/G-10: sorts complete canonical-JSON strings with StringComparer.Ordinal — a UTF-16
     // code-unit compare over the JSON text, applied BEFORE the whole structure is UTF-8 encoded
-    // (P-12's definition of "ordinal"). This is not the same order as comparing UTF-8 bytes:
+    // (EP-12's definition of "ordinal"). This is not the same order as comparing UTF-8 bytes:
     // the two diverge between a BMP character at or above U+E000 and a supplementary character
     // (U+E000 is one code unit 0xE000, above U+1F600's lead surrogate 0xD83D — but its UTF-8
     // lead byte 0xEE sorts below 0xF0). Sorting encoded bytes would therefore produce different
@@ -427,7 +427,7 @@ public static class FingerprintCalculator
 
     private static void AppendSharedAttribute(StringBuilder builder, AttributeSpec attribute)
     {
-        // Planner invariant: an included attribute always carries both (P-10).
+        // Planner invariant: an included attribute always carries both (EP-10).
         var discretizer = attribute.Discretizer
             ?? throw new InvalidOperationException($"Included attribute '{attribute.Name}' has no discretizer.");
         var scale = attribute.Scale

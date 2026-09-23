@@ -10,7 +10,7 @@ namespace FcaBedrock.Core.Spec;
 /// <para>
 /// <b>Failure contract.</b> The resolve seam diagnoses authored errors (missing
 /// shape, unsupported quote, delimiter/quote conflict, unsupported encoding)
-/// <em>before</em> calling <see cref="Create"/>; <see cref="Create"/> is the P-10
+/// <em>before</em> calling <see cref="Create"/>; <see cref="Create"/> is the EP-10
 /// programmer-error backstop and throws exactly:
 /// <list type="bullet">
 /// <item><see cref="ArgumentNullException"/> for a null <c>encoding</c> or
@@ -63,7 +63,7 @@ public sealed class SourceReadSettings
     public TripleOrdering? Ordering { get; }
 
     /// <summary>
-    /// Builds validated read settings (the P-10 backstop; see the type remarks for
+    /// Builds validated read settings (the EP-10 backstop; see the type remarks for
     /// the exact exception contract). Recognized UTF-8 spellings normalize to
     /// <c>"utf-8"</c>.
     /// </summary>

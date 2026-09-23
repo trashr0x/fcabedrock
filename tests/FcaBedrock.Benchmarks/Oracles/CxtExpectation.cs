@@ -17,7 +17,7 @@ namespace FcaBedrock.Benchmarks.Oracles;
 /// Like the <c>.dat</c> expectation it hashes as it goes and retains nothing, so a case is limited by
 /// what its <em>writer</em> can stream rather than by what its oracle can hold. The one thing it does
 /// hold is the object-name and attribute-name lists, which the format itself requires the writer to
-/// hold too (§18.1, P-16: bounded metadata is allowed; the matrix is not).
+/// hold too (§18.1, EP-16: bounded metadata is allowed; the matrix is not).
 /// </para>
 /// </summary>
 internal static class CxtExpectation

@@ -4,7 +4,7 @@ using static System.FormattableString;
 
 namespace FcaBedrock.Golden.Tests;
 
-// The project-standard byte-equality primitive for golden comparison (P-5).
+// The project-standard byte-equality primitive for golden comparison (EP-5).
 // Exact comparison with a human-readable diff so a golden failure points at the
 // first differing offset instead of dumping two opaque blobs.
 internal static class ByteComparer

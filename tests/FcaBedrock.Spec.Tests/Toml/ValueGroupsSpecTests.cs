@@ -262,7 +262,7 @@ public sealed class ValueGroupsSpecTests
     [Fact]
     public void Read_WhenSeveralIndependentProblems_ThenAllAggregate()
     {
-        // P-14: independent failures report together rather than stopping at the first — a bad
+        // EP-14: independent failures report together rather than stopping at the first — a bad
         // group AND a bad unmatched must both surface.
         var result = SpecReader.Read(Attribute(
             "{ kind = \"value_groups\", groups = [{ label = \"G\" }], unmatched = \"wibble\" }"));
@@ -275,7 +275,7 @@ public sealed class ValueGroupsSpecTests
     public void Read_WhenMalformed_ThenNothingEscapesAsAnException()
     {
         // The strict Core factories must never see malformed input: the reader gates first, so
-        // every authored error leaves on the diagnostic channel (P-14).
+        // every authored error leaves on the diagnostic channel (EP-14).
         foreach (var discretizer in new[]
         {
             "{ kind = \"value_groups\" }",
@@ -586,7 +586,7 @@ public sealed class ValueGroupsSpecTests
 
     [Fact]
     public void Resolve_WhenLabelIsLowercaseOtherUnderOther_ThenNoDiagnosticBecauseComparisonIsOrdinal() =>
-        // P-12: "Other" collides; "other" does not.
+        // EP-12: "Other" collides; "other" does not.
         Assert.True(Resolve(Attribute(
             "{ kind = \"value_groups\", groups = [{ label = \"other\", values = [\"a\"] }], unmatched = \"other\" }")).IsOk);
 

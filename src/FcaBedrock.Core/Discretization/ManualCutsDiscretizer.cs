@@ -7,16 +7,16 @@ namespace FcaBedrock.Core.Discretization;
 /// <summary>
 /// User-defined numeric cut points (spec §11.2). Composes the shared
 /// <see cref="NumericCutBins"/> engine, which owns the parsing, classification,
-/// labelling, and rendering every numeric-cut discretizer shares (P-17, D-093):
+/// labelling, and rendering every numeric-cut discretizer shares (EP-17, D-093):
 /// raw values are parsed to <see cref="double"/> with the injected
-/// <see cref="CultureInfo"/> (never ambient — P-11); a value that fails to parse or
+/// <see cref="CultureInfo"/> (never ambient — EP-11); a value that fails to parse or
 /// is non-finite gets no bin (§11.5), as does an out-of-range value under
 /// <see cref="BinEnds.Closed"/> (§11.2). Cut labels are invariant schema strings,
 /// not locale numbers (§14), so the same spec yields the same labels everywhere.
 /// <para>
 /// Constructed only through <see cref="Create"/>, which validates the cut spec
 /// (<see cref="CutValidation.ValidateManual"/>) so an invalid one is unrepresentable
-/// (P-10, D-056). The private constructor trusts its already-validated inputs.
+/// (EP-10, D-056). The private constructor trusts its already-validated inputs.
 /// </para>
 /// </summary>
 public sealed record ManualCutsDiscretizer : Discretizer
@@ -32,7 +32,7 @@ public sealed record ManualCutsDiscretizer : Discretizer
     /// <summary>Whether the outer bins extend to ±∞ (<see cref="BinEnds.Open"/>) or are dropped.</summary>
     public BinEnds Ends => _bins.Ends;
 
-    /// <summary>The culture used to parse raw data values (never ambient — P-11).</summary>
+    /// <summary>The culture used to parse raw data values (never ambient — EP-11).</summary>
     public CultureInfo Culture => _bins.Culture;
 
     /// <summary>

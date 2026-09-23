@@ -16,7 +16,7 @@ namespace FcaBedrock.Spec.Manifest;
 /// It shares the spec writer's canonical literal and array machinery
 /// (<see cref="TomlLiteral"/>, <see cref="TomlArrays"/>) rather than minting a
 /// second set of escaping, number, date-time, array, or wrapping rules (D-075/
-/// D-113, P-5) — which is why the model and this writer live in
+/// D-113, EP-5) — which is why the model and this writer live in
 /// <c>FcaBedrock.Spec</c> and the CLI never formats TOML itself.
 /// </para>
 /// <para>

@@ -69,7 +69,7 @@ public sealed class EqualFrequencyDiscretizerTests
         Assert.True(discretizer.Culture.IsReadOnly);
         Assert.Equal("de-DE", discretizer.Culture.Name);
 
-        // The resolved culture parses data (never ambient — P-11): "2,5" is 2.5 under de-DE.
+        // The resolved culture parses data (never ambient — EP-11): "2,5" is 2.5 under de-DE.
         Assert.Equal(BinResult.Bin("[2, 3)"), discretizer.Discretize("2,5"));
     }
 
@@ -94,7 +94,7 @@ public sealed class EqualFrequencyDiscretizerTests
         // §11.5: `bins` bins come from exactly `bins - 1` cuts. A wrong-sized outcome would build
         // a discretizer whose Bins disagrees with its own geometry — the fingerprint would encode
         // "bins":3 beside a schema array of another width. That is a calibrator-contract violation,
-        // not a data error, so it throws rather than diagnosing (D-093/P-10).
+        // not a data error, so it throws rather than diagnosing (D-093/EP-10).
         var ex = Assert.Throws<ArgumentException>(() => CreateWith([2, 3, 4], bins: 3));
 
         Assert.Contains("exactly 2 calibrated cuts", ex.Message, StringComparison.Ordinal);
@@ -121,7 +121,7 @@ public sealed class EqualFrequencyDiscretizerTests
     public void Create_WhenCorrectlySizedCutsAreInvalid_ThenCalibrationCutsInvalid(double[] cuts)
     {
         // Correctly sized but unusable cuts are a DATA-derived failure, so they come back through
-        // the diagnostic channel (P-14) rather than throwing — the opposite of the wrong-count case.
+        // the diagnostic channel (EP-14) rather than throwing — the opposite of the wrong-count case.
         var created = CreateWith(cuts);
 
         Assert.False(created.IsOk);

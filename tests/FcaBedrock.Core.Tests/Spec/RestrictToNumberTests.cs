@@ -7,7 +7,7 @@ namespace FcaBedrock.Core.Tests.Spec;
 /// The exact numeric restrict entry (§10.4/D-091/D-105). It means <b>parsed numeric identity</b> —
 /// not string-spelling equality, and not a single-point range — and it is deliberately a
 /// positional carrier able to hold non-finite authored state long enough for the resolve seam to
-/// diagnose it on the user-facing channel (P-14).
+/// diagnose it on the user-facing channel (EP-14).
 /// </summary>
 public sealed class RestrictToNumberTests
 {
@@ -64,7 +64,7 @@ public sealed class RestrictToNumberTests
         // so the carrier MUST be able to hold an authored `{ value = nan }` long enough for the
         // resolve seam to report RestrictToRangeInvalid on the diagnostic channel. A throwing
         // factory would turn an authoring error into a parse-time exception — the wrong channel
-        // (P-14). The boundary is layered instead: ResolvedSpec.Create and the calibrated-state
+        // (EP-14). The boundary is layered instead: ResolvedSpec.Create and the calibrated-state
         // factories throw for anything non-finite that survives past the seam.
         Assert.Equal(double.NaN, new RestrictToNumber(double.NaN).Value);
         Assert.Equal(double.PositiveInfinity, new RestrictToNumber(double.PositiveInfinity).Value);
@@ -73,7 +73,7 @@ public sealed class RestrictToNumberTests
     [Fact]
     public void RestrictToNumber_WhenInspected_ThenExposesNoMatchingOrCultureSurface()
     {
-        // P-3/P-6: the carrier is data. Matching lives in one place (the emitter's shared
+        // EP-3/EP-6: the carrier is data. Matching lives in one place (the emitter's shared
         // restriction filter), so no Matches/Culture/Tolerance member may appear here — a second
         // matching entry point is exactly how wide and triple semantics would drift.
         var declared = typeof(RestrictToNumber)

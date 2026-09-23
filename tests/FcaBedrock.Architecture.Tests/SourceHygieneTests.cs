@@ -9,7 +9,7 @@ namespace FcaBedrock.Architecture.Tests;
 // binary, silently degrading ordinary content search over it.
 //
 // This is a SPELLING rule, not a semantic one: "\0" and the raw byte compile to the same string,
-// so nothing here constrains behaviour. It is deliberately narrow (P-1) — only .cs under src/ and
+// so nothing here constrains behaviour. It is deliberately narrow (EP-1) — only .cs under src/ and
 // tests/, and only the character predicate below. It is not a Roslyn analyzer, not a universal
 // file-type or asset policy, and not a line-length, file-size, or complexity rule.
 public sealed class SourceHygieneTests
@@ -24,7 +24,7 @@ public sealed class SourceHygieneTests
 
     private static readonly string[] AuthoredAreas = ["src", "tests"];
 
-    // The repository's established strict decoder (P-5, as SpecTextDecoding and ControlText use):
+    // The repository's established strict decoder (EP-5, as SpecTextDecoding and ControlText use):
     // a file that is not valid UTF-8 is itself a failure, never silently replaced.
     private static readonly UTF8Encoding StrictUtf8 =
         new(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true);
@@ -100,7 +100,7 @@ public sealed class SourceHygieneTests
 
     // A filesystem enumeration, not a git one, so it sees untracked files too — including this
     // guard before the operator curates it. Sorted by normalized relative path so the diagnostics
-    // are identical on every run and every machine (P-7).
+    // are identical on every run and every machine (EP-7).
     private static List<(string Relative, string FullPath)> AuthoredCsFiles(string root)
     {
         var authored = new List<(string Relative, string FullPath)>();

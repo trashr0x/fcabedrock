@@ -14,7 +14,7 @@ namespace FcaBedrock.Benchmarks.Corpus;
 /// <para>
 /// <b>Why the keys interleave.</b> Wide <c>dedupe</c> shares the grouping/sort-merge/spool backend
 /// with triple <c>unordered</c>, because non-contiguous keys cannot be merged in one naive pass
-/// without holding every cross (§6.1, P-16). Contiguous key runs would let that backend look easy;
+/// without holding every cross (§6.1, EP-16). Contiguous key runs would let that backend look easy;
 /// here every key recurs only after all the others have appeared, so each of the four rows behind an
 /// object is separated by the full object count. That is the honest worst case for the path this
 /// family exists to measure.

@@ -37,7 +37,7 @@ public sealed record FixtureCase(string Family, string Variant, BindingSection B
     // ordering is `unordered` (first-appearance object order, D-082); headerless; the
     // roles sit at the normative default 0/1/2 positions (Columns: null). The object
     // key is always the subject under triple (ObjectKey: null). Extend the ordering
-    // argument when a subject_grouped golden exists (P-3).
+    // argument when a subject_grouped golden exists (EP-3).
     public static BindingSection Triple(char delimiter, bool hasHeader) =>
         new(SourceShape.Triple, Encoding: null, delimiter, QuoteChar: null, hasHeader,
             Locale: null, MissingToken: null, Ordering: TripleOrdering.Unordered, Columns: null, ObjectKey: null);

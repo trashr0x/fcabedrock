@@ -12,7 +12,7 @@ namespace FcaBedrock.Spec.Toml;
 /// <para>
 /// Extracted from <see cref="SpecWriter"/> at M7 Slice E so
 /// <c>FcaBedrock.Spec.Manifest.RunManifestWriter</c> reuses the one wrapping rule
-/// rather than minting a second one (D-123 point 8, P-5). The extraction is
+/// rather than minting a second one (D-123 point 8, EP-5). The extraction is
 /// byte-neutral: <see cref="SpecWriter"/>'s <c>declared_domain</c> output is
 /// unchanged, and <c>DeclaredDomainWrappingTests</c> is the pin.
 /// </para>
@@ -73,7 +73,7 @@ internal static class TomlArrays
     /// one wraps. A private canonical-writer formatting constant, byte-pinned by
     /// test: never a spec field, probe option, CLI/UI setting, or fingerprint
     /// input. UTF-16 code units (not display cells, graphemes, or UTF-8 bytes)
-    /// keep the measurement machine-independent (P-7).
+    /// keep the measurement machine-independent (EP-7).
     /// </summary>
     private const int InlineLineLimit = 100;
 }

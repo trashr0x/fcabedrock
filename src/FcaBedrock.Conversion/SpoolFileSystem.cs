@@ -6,7 +6,7 @@ namespace FcaBedrock.Conversion;
 
 /// <summary>
 /// The spool filesystem seam (D-082). Real by default; a test can substitute a decorator that injects
-/// failures to exercise the two-channel storage-failure model (P-6). Implementations own confidentiality
+/// failures to exercise the two-channel storage-failure model (EP-6). Implementations own confidentiality
 /// (the spool holds raw source data): a workspace is created owner-restricted, and open run handles use
 /// <see cref="FileShare.None"/> with non-inheritable OS handles. Callers own the
 /// <see cref="GroupingOperation"/> classification — these methods throw raw exceptions, which the caller

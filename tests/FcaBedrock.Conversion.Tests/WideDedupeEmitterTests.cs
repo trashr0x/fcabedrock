@@ -102,7 +102,7 @@ public sealed class WideDedupeEmitterTests
     [Fact]
     public async Task Dedupe_WhenKeysDifferOnlyByCase_ThenDistinctObjectsOrdinal()
     {
-        // P-12: keys compare ordinally; K1 and k1 are distinct objects, no duplicate.
+        // EP-12: keys compare ordinally; K1 and k1 are distinct objects, no duplicate.
         var (objects, diagnostics) = await RunAsync(DedupeSpec(), "K1,x\nk1,y");
 
         Assert.Empty(diagnostics);

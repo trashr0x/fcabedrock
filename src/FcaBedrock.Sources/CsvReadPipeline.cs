@@ -141,7 +141,7 @@ internal static class CsvReadPipeline
         catch (NotSupportedException ex) when (IsTokenizerFailure(ex))
         {
             // Only the path this method introduces is handled here; every other exception keeps
-            // its existing identity and disposal behavior (P-1).
+            // its existing identity and disposal behavior (EP-1).
             stream.Dispose();
             throw new SourceReadException("The source could not be opened for reading.", ex);
         }
@@ -151,7 +151,7 @@ internal static class CsvReadPipeline
     // 16777216", also raised for an unterminated quote) as a NotSupportedException. That is an
     // expected provider read failure, normalized HERE so no consumer needs to know Sep exists.
     // Nothing else is caught: cancellation, argument/state errors, and every other
-    // framework exception propagate as themselves (P-14).
+    // framework exception propagate as themselves (EP-14).
     private static bool Advance(SepReader reader)
     {
         try

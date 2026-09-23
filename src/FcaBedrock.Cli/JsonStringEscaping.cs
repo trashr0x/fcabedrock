@@ -13,7 +13,7 @@ namespace FcaBedrock.Cli;
 /// exact bytes, so binding a presentation surface to it would couple two unrelated byte
 /// locks and give a future rendering tweak the power to move fingerprints. It is also
 /// internal to Core, and making it public to share ~30 lines of `switch` would be a
-/// public-surface change for no benefit (P-4). The rules below are the same standard
+/// public-surface change for no benefit (EP-4). The rules below are the same standard
 /// JSON rules, restated here where the rendering contract lives.
 /// </para>
 /// <para>

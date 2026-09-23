@@ -19,7 +19,7 @@ internal enum BudgetBreach
 /// <para>
 /// <b>Logical accounting only.</b> Both totals count things the input determines — retained
 /// values, and their UTF-16 code units — never an available-memory figure, so the same record
-/// sequence breaches on every machine or on none (P-7/P-11).
+/// sequence breaches on every machine or on none (EP-7/EP-11).
 /// </para>
 /// <para>
 /// <b>A breach is a hard failure, never a silent truncation.</b> Aggregate pressure must not

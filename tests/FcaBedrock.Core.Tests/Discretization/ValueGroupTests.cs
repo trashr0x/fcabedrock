@@ -152,7 +152,7 @@ public sealed class ValueGroupTests
     {
         // The Turkish dotless-i is the classic discriminator: under tr-TR a culture-sensitive
         // engine would fold "I"/"i" differently. RegexOptions.CultureInvariant pins the behaviour
-        // to be identical regardless of the ambient culture (P-11) — asserted by comparing the
+        // to be identical regardless of the ambient culture (EP-11) — asserted by comparing the
         // SAME matches under an invariant and a Turkish current culture.
         var original = CultureInfo.CurrentCulture;
         try
@@ -188,12 +188,12 @@ public sealed class ValueGroupTests
     [Fact]
     public void Create_WhenPatternCompiled_ThenTheMatcherCarriesAnExplicitInfiniteTimeout()
     {
-        // §11.6/D-090/P-7: matching must not depend on host configuration. The Regex overloads that
+        // §11.6/D-090/EP-7: matching must not depend on host configuration. The Regex overloads that
         // omit a timeout inherit the ambient REGEX_DEFAULT_MATCH_TIMEOUT, so on a host that sets one
         // a catastrophically-backtracking pattern would throw RegexMatchTimeoutException out of
         // Discretize — the same spec over the same input completing on one machine and failing on
         // another, and failing on the EXCEPTION channel mid-calibrate/emit rather than the
-        // diagnostic one (P-14). Passing InfiniteMatchTimeout explicitly is what forecloses that.
+        // diagnostic one (EP-14). Passing InfiniteMatchTimeout explicitly is what forecloses that.
         //
         // Reflection because the compiled matcher is deliberately private (it is not public
         // surface). Scope, stated honestly: on a host with no ambient default configured the

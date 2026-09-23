@@ -7,7 +7,7 @@ namespace FcaBedrock.Spec.Tests.Toml;
 
 /// <summary>
 /// Unit tests for the shared enum-spelling tables (D-075): every table maps both
-/// directions consistently, so the reader and writer cannot drift (P-5).
+/// directions consistently, so the reader and writer cannot drift (EP-5).
 /// </summary>
 public sealed class TomlSpellingsTests
 {

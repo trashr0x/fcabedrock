@@ -508,7 +508,7 @@ public sealed class UnboundSessionTests
     public async Task Unbound_WhenStreamFactoryFails_ThenThatExceptionPropagatesUnwrapped()
     {
         // A stream-factory failure is not normalized here: Sources must not manufacture a
-        // catch-all, and programmer/infrastructure exceptions keep their own identity (P-14).
+        // catch-all, and programmer/infrastructure exceptions keep their own identity (EP-14).
         var session = new WideCsvSession(
             () => throw new InvalidOperationException("transient open failure"),
             SourceReadSettings.CreateWide());

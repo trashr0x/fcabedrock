@@ -169,7 +169,7 @@ public sealed class EqualFrequencySpecTests
     [Fact]
     public void Read_WhenSeveralFieldsAreInvalid_ThenAllAggregateWithoutAFactoryException()
     {
-        // P-14: every field is read before the gates run, so independent problems report together
+        // EP-14: every field is read before the gates run, so independent problems report together
         // rather than the first one stopping the pass — and the strict carrier constructor never
         // sees them.
         var result = SpecReader.Read(Attribute("{ kind = \"equal_frequency\", bins = 1, tie_policy = \"middle\", cut_placement = \"nope\" }"));
@@ -295,7 +295,7 @@ public sealed class EqualFrequencySpecTests
     [Fact]
     public void Resolve_WhenPendingCarrierBuilt_ThenCultureIsTheResolvedReadOnlyParsingCulture()
     {
-        // P-11: the carrier hands the calibrator the spec's binding.locale, never an ambient one,
+        // EP-11: the carrier hands the calibrator the spec's binding.locale, never an ambient one,
         // and the ResolvedSpec boundary re-homes it read-only (D-098).
         var result = Resolve(Section());
         Assert.True(result.TryGetValue(out var spec));

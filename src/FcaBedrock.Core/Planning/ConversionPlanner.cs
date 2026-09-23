@@ -16,7 +16,7 @@ namespace FcaBedrock.Core.Planning;
 /// <see cref="ConversionPlan"/>. Pure and data-free (spec §7 step 3). Centralizes
 /// every ordering rule (decisions.md D-004): attribute order follows the spec,
 /// formal-attribute order follows the discretizer's bins then the scale's
-/// enumeration, and names are rendered here (not in the writers — P-15).
+/// enumeration, and names are rendered here (not in the writers — EP-15).
 /// </summary>
 public static class ConversionPlanner
 {
@@ -24,9 +24,9 @@ public static class ConversionPlanner
     /// Plans the conversion from resolved <b>calibrated state</b> (D-093/D-098): the
     /// effective spec and its schema come from <paramref name="calibrated"/>, so Plan
     /// cannot be handed an unrelated schema and "plan an uncalibrated spec" is a
-    /// compile error. Aggregates all plan diagnostics (P-14). <paramref name="labelStyle"/>
+    /// compile error. Aggregates all plan diagnostics (EP-14). <paramref name="labelStyle"/>
     /// selects how cut bin labels render in names (spec §8/§14); it affects rendered
-    /// names only, never identity (P-15, D-044), and is carried on the plan so the cxt
+    /// names only, never identity (EP-15, D-044), and is carried on the plan so the cxt
     /// output fingerprint pairs with it.
     /// </summary>
     public static Diagnosed<ConversionPlan> Plan(
@@ -56,7 +56,7 @@ public static class ConversionPlanner
             // include-skip below. A filter-only attribute (include = false + restrict_to)
             // contributes only here — no PlannedAttribute, no formal column — while an
             // included-and-restricted attribute contributes both. Restrictions are built in
-            // spec-attribute order (P-7); that order never reorders columns or objects.
+            // spec-attribute order (EP-7); that order never reorders columns or objects.
             if (attribute.RestrictTo.Count > 0)
             {
                 restrictions.Add(new PlannedRestriction(
@@ -195,7 +195,7 @@ public static class ConversionPlanner
         }
 
         // Reported after the attribute's columns are registered, so ids and any
-        // collision diagnostics stay exactly what a valid run would produce (P-7); the
+        // collision diagnostics stay exactly what a valid run would produce (EP-7); the
         // Error fails the shared plan either way, blocking .dat as well as .cxt (§10.7).
         if (invalidNames.Count > 0)
         {
@@ -313,7 +313,7 @@ public static class ConversionPlanner
     // One aggregated Error per affected logical attribute (D-116 granularity), with a
     // deterministic representation: the count, then at most three offenders in render
     // order, each quoted and escaped, then the truncation tail. Pinned so two runs on
-    // two machines produce byte-identical messages (P-7).
+    // two machines produce byte-identical messages (EP-7).
     private static BedrockDiagnostic InvalidRenderedNames(string attributeName, List<string> invalidNames)
     {
         const int sampleLimit = 3;
@@ -486,7 +486,7 @@ public static class ConversionPlanner
     // §12.3 / §17-r2 / D-096: the one value-bin-ordinal exemption. When a numeric free_per_value
     // ordinal authors no scale.order, its bin order is the natural NUMERIC ascending order of its
     // canonical domain keys — parsed back to their numeric value and sorted (distinct identities,
-    // so the sort is total and deterministic, P-7/P-11). Every other discretizer/scale/order state
+    // so the sort is total and deterministic, EP-7/EP-11). Every other discretizer/scale/order state
     // is returned unchanged.
     private static Scale DeriveNaturalNumericOrder(Discretizer discretizer, Scale scale, IReadOnlyList<string> domain)
     {
@@ -527,7 +527,7 @@ public static class ConversionPlanner
     // The universe is the caller's, because it differs by kind: identity/free_per_value bin the
     // declared_domain, while value_groups ignores the domain entirely (D-055) and bins its group
     // labels plus a synthetic Other. Passing it in keeps ONE permutation algorithm over the
-    // effective bin labels rather than a second ordinal implementation per kind (P-5).
+    // effective bin labels rather than a second ordinal implementation per kind (EP-5).
     private static void ValidateValueBinOrder(
         AttributeSpec attribute,
         OrdinalScale ordinal,

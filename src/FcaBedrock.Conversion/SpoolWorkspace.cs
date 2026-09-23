@@ -25,7 +25,7 @@ internal sealed class SpoolWorkspace<TRow>
     /// Creates the workspace. <c>maxPendingDeletions</c> optionally caps retained
     /// failed-deletion entries; exceeding it records an in-path Error and throws (D-103).
     /// <see langword="null"/> is the emit-path grouping backend's existing, deliberately
-    /// uncapped behavior (P-1: this slice bounds the new quantile engine's workspace usage and
+    /// uncapped behavior (EP-1: this slice bounds the new quantile engine's workspace usage and
     /// does not reopen the emit path). The cap exists because the 3T byte rule alone does
     /// <b>not</b> bound this metadata: with repeated-key runs, live bytes and <c>T</c> grow
     /// together and never trip the escalation while pending entries grow without bound.

@@ -131,7 +131,7 @@ public sealed class GoldenArgvFloorTests
     [MemberData(nameof(Rows))]
     public async Task Floor_WhenTheWholeArgvRouteIsRepeated_ThenTheSpecAndBothArtifactsAreByteIdentical(string name)
     {
-        // The spec §17 / P-7 repeatability leg, over the whole orchestration rather than one
+        // The spec §17 / EP-7 repeatability leg, over the whole orchestration rather than one
         // library call: two independent temporary directories, same bytes.
         var row = Case(name);
         using var first = TempDirectory.Create();
@@ -234,7 +234,7 @@ public sealed class GoldenArgvFloorTests
 
     // Divergence triage is part of the contract: a mismatch here on a variant whose LIBRARY
     // route is green in GoldenFixtureTests is an argv-orchestration divergence, and neither a
-    // fixture nor an expected byte may be touched to resolve it (P-9).
+    // fixture nor an expected byte may be touched to resolve it (EP-9).
     private static void AssertGoldenBytes(FloorCase row, string kind, byte[] expected, byte[] actual)
     {
         if (expected.AsSpan().SequenceEqual(actual))

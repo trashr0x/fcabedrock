@@ -356,7 +356,7 @@ public sealed class ResolvedSpecTests
     public void Create_WhenOriginalParsingCultureMutatedAfterResolution_ThenClassificationUnaffected()
     {
         // The resolved discretizer carries a read-only culture clone, so mutating the original
-        // culture's NumberFormat cannot change parsing/classification after resolution (D-098, P-11).
+        // culture's NumberFormat cannot change parsing/classification after resolution (D-098, EP-11).
         var culture = (CultureInfo)CultureInfo.GetCultureInfo("en-US").Clone(); // a mutable clone
         var discretizer = ManualCutsDiscretizer.Create([30.0], BinEnds.Open, culture).Value!;
         var spec = new BedrockSpec(SpecFixtures.WideRowIndex(),
@@ -377,7 +377,7 @@ public sealed class ResolvedSpecTests
     {
         // The numeric free_per_value discretizer is rebuilt with a read-only culture clone, so a
         // caller mutating the originally-mutable culture cannot change parsing/classification after
-        // resolution (D-098 recursive immutability, P-11) — analogous to the manual-cuts case.
+        // resolution (D-098 recursive immutability, EP-11) — analogous to the manual-cuts case.
         var culture = (CultureInfo)CultureInfo.GetCultureInfo("en-US").Clone(); // a mutable clone
         var discretizer = new FreePerValueDiscretizer(SourceValueType.Number, culture);
         var spec = new BedrockSpec(SpecFixtures.WideRowIndex(),
@@ -406,7 +406,7 @@ public sealed class ResolvedSpecTests
     {
         // The equal_width discretizer is rebuilt over a read-only culture clone, exactly like
         // manual_cuts and free_per_value — a caller mutating its own culture cannot change which
-        // bin a value lands in after resolution (D-098 recursive immutability, P-11).
+        // bin a value lands in after resolution (D-098 recursive immutability, EP-11).
         var culture = (CultureInfo)CultureInfo.GetCultureInfo("en-US").Clone(); // a mutable clone
         var discretizer = EqualWidthDiscretizer.CreateManual(4, 0, 100, CutPrecision.Exact, culture).Value!;
         var resolved = Create(EqualWidthSpec(discretizer), new SourceSchema(1));
@@ -452,12 +452,12 @@ public sealed class ResolvedSpecTests
     // Slice D — equal_frequency's tie_policy/cut_placement and the pending union's variants (see
     // ResolvedSpec.ValidateDiscretizerEnums). Those arms are deliberately unreachable from outside
     // Core and have no negative test, because the states they reject are UNREPRESENTABLE rather
-    // than merely rejected (P-10, asserted directly by
+    // than merely rejected (EP-10, asserted directly by
     // EqualWidthDiscretizerTests.EqualWidthDiscretizer_WhenInspected_ThenNoPublicConstructorOrSetter,
     // PendingEqualWidth's guards, and PendingEqualFrequencyTests' undefined-enum rejections): every
     // property is get-only so `with` cannot desync them, the only constructors are the validating
     // factories, and CutPrecision / PendingCalibration are private-protected-closed unions no
-    // out-of-assembly type can extend. They stay as the P-10 backstop for a future in-assembly
+    // out-of-assembly type can extend. They stay as the EP-10 backstop for a future in-assembly
     // caller, matching this file's existing defensive arms.
 
     // --- equal_frequency (M4 Slice D, D-103) ----------------------------------

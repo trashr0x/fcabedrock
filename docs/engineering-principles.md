@@ -11,27 +11,27 @@ Scope boundaries with the other docs:
 - `AGENTS.md` = where things live, how a session works (operational).
 - `decisions.md` = why we chose a specific thing on a specific date (rationale).
 - `roadmap.md` = what's next (sequence).
-- **`principles.md` (this file) = what's always true, that code must conform to.**
+- **`engineering-principles.md` (this file) = what's always true, that code must conform to.**
 
 Mechanical rules a tool can check (naming, formatting, `var`, usings) live in
 `.editorconfig` and the analyzer ruleset, **not here**. If a linter can enforce
 it, it should — this doc holds only the judgment calls a linter can't make.
 
-The first section (**Working discipline**, P-1…P-6) governs *how you work on
+The first section (**Working discipline**, EP-1…EP-6) governs *how you work on
 the codebase* and matters most for AI-agent sessions, which tend to expand
 scope. The remaining sections (**Correctness, Architecture, Performance,
-Testing**, P-7…P-22) are invariants about *the system itself*. There are 22
+Testing**, EP-7…EP-22) are invariants about *the system itself*. There are 22
 principles in total; the count is deliberate, not a target — add or cut only
 under the test stated above.
 
-Internal cross-references use number + short title (e.g. `P-3 ("Do not invent
+Internal cross-references use number + short title (e.g. `EP-3 ("Do not invent
 callers…")`) so that renumbering stays painless.
 
 ---
 
 ## Working discipline
 
-### P-1 — Changes are surgical unless the task is explicitly a refactor
+### EP-1: Changes are surgical unless the task is explicitly a refactor
 
 Touch only what the task requires. Do not restyle adjacent code, fix unrelated
 issues, rename things opportunistically, or expand scope because you noticed
@@ -45,7 +45,7 @@ the default failure mode.
 *Check when:* any diff touches files, APIs, or behavior not directly needed by
 the task.
 
-### P-2 — Do not silently violate project laws; name the conflict
+### EP-2: Do not silently violate project laws; name the conflict
 
 The spec, decisions, roadmap, and these principles are constraints, not
 suggestions. Do not silently bend one to satisfy a local change. When a task
@@ -60,20 +60,20 @@ ambiguity by guessing and staying silent is the thing this rule forbids.
 decision, a fixture, or any invariant below; or when behavior is unclear and
 you're tempted to guess.
 
-### P-3 — Do not invent callers, requirements, or futures
+### EP-3: Do not invent callers, requirements, or futures
 
 Do not justify a branch, option, interface, constructor parameter, compatibility
 path, or public method with an imagined future caller or hypothetical
 requirement. If the caller or requirement is real, verify it (in code, the
 roadmap, or the spec) and cite it. If it isn't, don't build for it — YAGNI is
 project policy here, not a preference. (The config-surface special case of this
-rule is P-6 ("No speculative knobs").)
+rule is EP-6 ("No speculative knobs").)
 
 *Check when:* adding any surface — a branch, option, interface, public method,
 constructor parameter, or compatibility path — whose only justification is "we
 might need it."
 
-### P-4 — Public surfaces are designed before implementation
+### EP-4: Public surfaces are designed before implementation
 
 For cross-package APIs, planner contracts, diagnostics, writers, sources, and
 spec-facing types, define the public shape first: types, signatures, the
@@ -86,7 +86,7 @@ cheap.
 *Check when:* adding or changing a `public` type, interface, diagnostic, writer,
 source, or package seam.
 
-### P-5 — One project-standard way per concern
+### EP-5: One project-standard way per concern
 
 Use the established project-standard result type, diagnostic style, parser
 style, test style, benchmark style, and writer pattern. Do not introduce a
@@ -98,11 +98,11 @@ migrate toward it, rather than leaving two competing patterns in place.
 type, diagnostic shape, parser approach, serialization approach, or writer
 pattern.
 
-### P-6 — No speculative knobs
+### EP-6: No speculative knobs
 
 Options, flags, constructor parameters, modes, and feature switches need a
 current caller and a documented reason. Do not add configurability because
-someone might want it later; the general form of this rule is P-3 ("Do not
+someone might want it later; the general form of this rule is EP-3 ("Do not
 invent callers, requirements, or futures"). If a behavior is project
 policy, encode it as policy, not as an option. Test seams are allowed when they
 improve isolation, determinism, or coverage without creating different
@@ -114,7 +114,7 @@ feature switch, compatibility mode, test seam, or alternative code path.
 
 ## Correctness
 
-### P-7 — Determinism is a test, not an aspiration
+### EP-7: Determinism is a test, not an aspiration
 
 Every path that produces output (a plan, an emitted stream, a `.cxt`/`.dat`
 file, a fingerprint) has a test proving same-input ⇒ same-output, byte-for-byte
@@ -123,7 +123,7 @@ these paths specifically** — the test ships in the same commit as the path.
 
 *Check when:* adding or changing anything in Conversion, Export, or the planner.
 
-### P-8 — The spec is the contract; code conforms to the spec
+### EP-8: The spec is the contract; code conforms to the spec
 
 `bedrock-spec-v1.md` is normative. When code and spec disagree, the code is the
 bug — or the spec gets a *reviewed* change with a `decisions.md` entry. Never a
@@ -132,7 +132,7 @@ allowed to be discovered by reading the implementation.
 
 *Check when:* implementing any spec'd field, default, or output format.
 
-### P-9 — Golden fixtures are compatibility evidence; never edit them to pass
+### EP-9: Golden fixtures are compatibility evidence; never edit them to pass
 
 The `fixtures/v2/` files record what v2 actually produced — they are evidence of
 v2 behavior, not a definition of correctness (v2 has known bugs; see
@@ -143,7 +143,7 @@ current output pass** — that destroys its evidentiary value.
 
 *Check when:* a golden test fails.
 
-### P-10 — Make illegal states unrepresentable before validating against them
+### EP-10: Make illegal states unrepresentable before validating against them
 
 Prefer a type that cannot hold a bad value over a runtime check that rejects
 one. A discriminated union, a private constructor with a smart factory, a
@@ -154,7 +154,7 @@ practice; we reject it.
 
 *Check when:* designing any Core domain type.
 
-### P-11 — Floating-point and locale are determinism hazards, handled explicitly
+### EP-11: Floating-point and locale are determinism hazards, handled explicitly
 
 Bin cuts, equal-frequency quantiles, and number/date parsing must specify
 rounding and culture. Default to `CultureInfo.InvariantCulture`; never rely on
@@ -164,7 +164,7 @@ is explicit and tested (a cut that renders as `34.25` on one machine and
 
 *Check when:* implementing discretizers, parsers, or anything numeric in output.
 
-### P-12 — Strings compare and sort ordinally; culture-aware collation is a determinism hazard
+### EP-12: Strings compare and sort ordinally; culture-aware collation is a determinism hazard
 
 String identity, equality, matching, deduplication, grouping, source binding, and
 any deterministic *ordering* of strings use ordinal comparison
@@ -173,7 +173,7 @@ compare), never a culture-aware one. Culture-aware collation, `InvariantCulture`
 included, is ICU/NLS-version dependent: the same two strings can order or match
 differently across machines and runtimes — a determinism bug on any path feeding
 output bytes, IDs, or fingerprints (e.g. triple predicate matching, or object-key
-deduplication and `keep` name uniqueness). This is the string-side companion to P-11 ("Floating-point and
+deduplication and `keep` name uniqueness). This is the string-side companion to EP-11 ("Floating-point and
 locale…"): `binding.locale` governs numeric/date *parsing* only (decimal
 separators), never string collation — the two are separate concerns and must not
 be conflated. Where a spec section fixes a *non-string* order (numeric or
@@ -186,7 +186,7 @@ names, declared-domain values, bin labels.
 
 ## Architecture
 
-### P-13 — Core is pure: no I/O, no UI, no ambient state
+### EP-13: Core is pure: no I/O, no UI, no ambient state
 
 `FcaBedrock.Core` references only `System.*` and `FcaBedrock.Diagnostics`. No
 file access, no network, no `Console`, no `DateTime.Now`/`Guid.NewGuid` in
@@ -196,7 +196,7 @@ network. If you reach for `System.IO` in Core, the design is wrong.
 
 *Check when:* adding any type or dependency to Core.
 
-### P-14 — Errors are values at package boundaries; exceptions are for the unexpected
+### EP-14: Errors are values at package boundaries; exceptions are for the unexpected
 
 The project default for expected failures is result/diagnostic values, not
 exceptions. Across package seams and for anything a caller can sensibly handle,
@@ -216,7 +216,7 @@ The distinction:
 
 *Check when:* designing any public method that can fail.
 
-### P-15 — Exporters are dumb; semantics happen before export
+### EP-15: Exporters are dumb; semantics happen before export
 
 A writer serializes an already-decided result and makes zero scaling, ordering,
 or policy decisions. A writer may *preserve* an order the planner already
@@ -228,7 +228,7 @@ separators).
 
 *Check when:* touching anything in Export.
 
-### P-16 — The pipeline stays streaming; never materialize the full incidence matrix
+### EP-16: The pipeline stays streaming; never materialize the full incidence matrix
 
 `Emit` yields objects; the set of all crosses is never held in memory at once in
 Core or Conversion. Bounded metadata collections are fine — object names, the
@@ -244,7 +244,7 @@ does not.
 `.ToList()` / `.ToArray()` on an emit stream (as opposed to on a bounded
 metadata collection).
 
-### P-17 — Compose small pieces at real variation points; prefer composition over inheritance
+### EP-17: Compose small pieces at real variation points; prefer composition over inheritance
 
 Discretizers, scales, sources, and writers are small and single-purpose,
 composed by the planner. Use interfaces at real variation points or test seams —
@@ -263,7 +263,7 @@ relationship. Inheritance is not a code-sharing mechanism.
 
 ## Performance
 
-### P-18 — Allocation discipline is scoped to hot paths, not blanket
+### EP-18: Allocation discipline is scoped to hot paths, not blanket
 
 The emit loop and the byte-level parser are allocation-audited: prefer
 `Span`/`Memory`, pooled buffers, `ValueTask`, no per-object closures or boxing.
@@ -275,14 +275,14 @@ and "optimize nothing" are both wrong.
 *Check when:* writing in Sources (parse loop) or Conversion (emit loop), audit
 allocations; elsewhere, write for clarity.
 
-### P-19 — Performance claims are measured, not asserted
+### EP-19: Performance claims are measured, not asserted
 
 Any "this is faster / lower-allocation" change to a hot path is backed by a
 BenchmarkDotNet result in `FcaBedrock.Benchmarks`, not by intuition. A clever trick
 justified by performance needs benchmark evidence; otherwise prefer the simpler
 code. Non-obvious code that exists for *determinism or correctness* rather than
-performance is governed by P-7 ("Determinism is a test, not an aspiration") and
-P-11 ("Floating-point and locale are determinism hazards, handled explicitly"),
+performance is governed by EP-7 ("Determinism is a test, not an aspiration") and
+EP-11 ("Floating-point and locale are determinism hazards, handled explicitly"),
 not by this one — but make the reason visible (in a test name, type name,
 benchmark, nearby comment, or `decisions.md` entry) so the next reader does not
 mistake it for cleverness. Modern APIs are used where *justified*, not because
@@ -290,7 +290,7 @@ they're modern.
 
 *Check when:* introducing any non-obvious performance construct.
 
-### P-20 — Large-scale tests are opt-in and never gate the normal suite
+### EP-20: Large-scale tests are opt-in and never gate the normal suite
 
 The 7.3M / 73M synthetic datasets live in `FcaBedrock.Benchmarks`, behind a category
 filter. `dotnet test` stays fast and runs on the mini fixtures. A multi-minute
@@ -300,7 +300,7 @@ benchmark must never be reachable by a plain `dotnet test`.
 
 ## Testing
 
-### P-21 — Golden and policy/property tests, where each applies
+### EP-21: Golden and policy/property tests, where each applies
 
 Where output bytes are affected, add or update a **golden test** (proves
 byte/output compatibility). Where semantics are affected, add or update a
@@ -312,7 +312,7 @@ change may require neither.
 *Check when:* adding or changing any scale, discretizer, source, policy, writer,
 or output-affecting behavior.
 
-### P-22 — A behavior bug fix starts with a failing test
+### EP-22: A behavior bug fix starts with a failing test
 
 Before fixing a behavior bug, write the test that fails because of it; the fix
 is correct when that test goes green and nothing else goes red — a permanent

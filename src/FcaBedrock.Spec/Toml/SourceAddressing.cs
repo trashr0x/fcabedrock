@@ -184,7 +184,7 @@ internal static class SourceAddressing
     /// §10.2/§5.3: a header name must resolve to exactly one column. Returns the sole
     /// index, -1 when no header matches, or -2 when several do — the -2 case is the
     /// duplicate-matching-header reject shared by wide sources, wide column object
-    /// keys, and triple roles (ordinal compare, P-12).
+    /// keys, and triple roles (ordinal compare, EP-12).
     /// </summary>
     public static int ResolveUniqueHeader(IReadOnlyList<string> header, string name)
     {

@@ -33,7 +33,7 @@ public abstract record PendingCalibration
 /// <para>
 /// <see cref="EqualWidthRange.Manual"/> never pends — it is spec-determined and
 /// resolves straight to an executable discretizer (§7) — so it is rejected here
-/// (P-10: the mis-sequenced state is unrepresentable rather than merely diagnosed).
+/// (EP-10: the mis-sequenced state is unrepresentable rather than merely diagnosed).
 /// </para>
 /// </summary>
 public sealed record PendingEqualWidth : PendingCalibration
@@ -42,7 +42,7 @@ public sealed record PendingEqualWidth : PendingCalibration
     /// <exception cref="ArgumentOutOfRangeException">
     /// <paramref name="range"/> is <see cref="EqualWidthRange.Manual"/> (spec-determined,
     /// never pending) or undefined, or <paramref name="bins"/> is below 2 — the reader
-    /// owns the authored forms (<c>SpecFieldInvalid</c>, §11.4); these are the P-10 backstops.
+    /// owns the authored forms (<c>SpecFieldInvalid</c>, §11.4); these are the EP-10 backstops.
     /// </exception>
     public PendingEqualWidth(int bins, EqualWidthRange range, CutPrecision precision)
     {
@@ -96,7 +96,7 @@ public sealed record PendingEqualFrequency : PendingCalibration
     /// <exception cref="ArgumentOutOfRangeException">
     /// <paramref name="bins"/> is below 2, or <paramref name="tiePolicy"/> /
     /// <paramref name="cutPlacement"/> is undefined — the reader owns the authored forms
-    /// (<c>SpecFieldInvalid</c>, §11.5); these are the P-10 backstops.
+    /// (<c>SpecFieldInvalid</c>, §11.5); these are the EP-10 backstops.
     /// </exception>
     public PendingEqualFrequency(int bins, TiePolicy tiePolicy, CutPlacement cutPlacement)
     {
@@ -188,7 +188,7 @@ public sealed record CalibrationPending : Discretizer
     /// <summary>The pending calibration configuration.</summary>
     public PendingCalibration Config { get; }
 
-    /// <summary>The culture used once the auto-discretizer resolves (never ambient — P-11).</summary>
+    /// <summary>The culture used once the auto-discretizer resolves (never ambient — EP-11).</summary>
     public CultureInfo Culture { get; }
 
     /// <inheritdoc/>

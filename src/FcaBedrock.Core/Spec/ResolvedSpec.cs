@@ -18,7 +18,7 @@ namespace FcaBedrock.Core.Spec;
 /// chain, which is an honest second pipeline rather than a mixed one.
 /// <para>
 /// <see cref="Create"/> is also the validate-once trust boundary for
-/// hand-built graphs (P-10): it deep-snapshots the spec graph into recursively
+/// hand-built graphs (EP-10): it deep-snapshots the spec graph into recursively
 /// immutable storage (no public property returns a castable mutable backing
 /// array), copies the schema and settings, and exhaustively validates every
 /// structural invariant the downstream phases trust — so the planner's residual
@@ -99,7 +99,7 @@ public sealed class ResolvedSpec
     }
 
     // (e) the locale must be "invariant" or a predefined culture — mirrors the seam's
-    // predefinedOnly rule (P-7); a synthesized ICU culture would make acceptance
+    // predefinedOnly rule (EP-7); a synthesized ICU culture would make acceptance
     // OS-dependent.
     private static void ValidateLocale(string locale)
     {
@@ -198,7 +198,7 @@ public sealed class ResolvedSpec
 
             // §10.1/§10.7: {display_name} must render something, and a CR/LF there would
             // corrupt the line-oriented .cxt. The reader rejects both on the authored path
-            // (SpecFieldInvalid), so this is the hand-built-graph backstop (P-10) — never a
+            // (SpecFieldInvalid), so this is the hand-built-graph backstop (EP-10) — never a
             // user-facing route. The format itself needs no re-check: NameFormat cannot be
             // constructed except through its validating factory.
             ArgumentNullException.ThrowIfNull(attribute.DisplayName);
@@ -257,7 +257,7 @@ public sealed class ResolvedSpec
     // scale.order entries MUST be canonical numeric identities — the resolve seam guarantees this, and
     // the emitter/planner/fingerprint trust it (emit produces canonical bin keys, so a non-canonical
     // domain bin would be unmatchable and a non-canonical label key would silently never render). The
-    // trust boundary re-checks it for hand-built graphs (P-10): each key must be a finite number whose
+    // trust boundary re-checks it for hand-built graphs (EP-10): each key must be a finite number whose
     // canonical form round-trips to itself. Distinctness stays a plan concern (FormalAttributeCollision),
     // matching identity. String free_per_value keys are verbatim, so this applies to numeric only.
     private static void ValidateNumericFreePerValueKeys(AttributeSpec attribute)
@@ -370,7 +370,7 @@ public sealed class ResolvedSpec
                 throw new ArgumentException($"value_groups declares the label '{group.Label}' more than once (§11.6).");
             }
 
-            // Ordinal, like every other identity comparison (P-12): "Other" collides, "other" does not.
+            // Ordinal, like every other identity comparison (EP-12): "Other" collides, "other" does not.
             if (unmatched == ValueGroupsUnmatched.Other && string.Equals(group.Label, "Other", StringComparison.Ordinal))
             {
                 throw new ArgumentException(
@@ -380,7 +380,7 @@ public sealed class ResolvedSpec
     }
 
     // The pending union is mechanically closed, but its variants are freely constructible,
-    // so the trust boundary re-checks each one's enum/union state (P-10). An unknown variant
+    // so the trust boundary re-checks each one's enum/union state (EP-10). An unknown variant
     // is rejected rather than silently carried to a calibrator that cannot resolve it.
     private static void RequirePending(PendingCalibration config)
     {
@@ -447,7 +447,7 @@ public sealed class ResolvedSpec
     // parse), and its diagnostic — RestrictToRangeInvalid — only gained a seam site at this
     // slice. The resolver runs that check first and returns Diagnosed.Failed BEFORE calling any
     // strict factory (the success gate), so an authored non-finite entry can never reach this
-    // throw; anything that does is a hand-built graph, i.e. genuine programmer error (P-14).
+    // throw; anything that does is a hand-built graph, i.e. genuine programmer error (EP-14).
     // Downstream then trusts finiteness: emit compares parsed values without re-checking, and
     // the fingerprint's number formatter rejects non-finite outright.
     //
@@ -639,7 +639,7 @@ public sealed class ResolvedSpec
     // CanonicalJson.AppendNumber faithfully formats it "-0" (untouched, G-6 — that is what keeps
     // authored manual-cut bytes and fp_format = 1 stable), two specs that MATCH identically
     // (IEEE: 0.0 == -0.0) would produce different canonical bytes and hashes, and would fail to
-    // deduplicate. Same behaviour ⇒ same fingerprint is exactly P-7, so the boundary makes it
+    // deduplicate. Same behaviour ⇒ same fingerprint is exactly EP-7, so the boundary makes it
     // structural rather than trusting every caller to pre-canonicalize.
     private static ImmutableArray<RestrictToEntry> SnapshotRestrictTo(IReadOnlyList<RestrictToEntry> entries)
     {
@@ -670,7 +670,7 @@ public sealed class ResolvedSpec
     // CultureInfo (read during parsing — manual_cuts and, at M4, numeric free_per_value).
     // Reconstruct those with a read-only culture clone so a programmatic caller cannot mutate
     // NumberFormat after resolution and change classification (D-098 recursive immutability,
-    // P-7/P-11). The cultureless kinds (identity, ordered_cuts, and — at M4 Slice E —
+    // EP-7/EP-11). The cultureless kinds (identity, ordered_cuts, and — at M4 Slice E —
     // value_groups, whose matching is ordinal + culture-invariant and whose factories snapshot
     // both the group list and each group's authored values) are already fully immutable and are
     // reused as-is; re-creating them would allocate without changing a single reachable byte.
@@ -734,7 +734,7 @@ public sealed class ResolvedSpec
     // ObjectKey is a public, externally-derivable record hierarchy (not private-protected
     // closed), so the trust boundary validates its union exhaustively: an unknown subtype would
     // otherwise slip past the planner (no rejecting default) and be treated as row_index at emit
-    // (`plan.ObjectKey as ColumnObjectKey` → null) — a silent semantic fallback (D-098, P-10).
+    // (`plan.ObjectKey as ColumnObjectKey` → null) — a silent semantic fallback (D-098, EP-10).
     private static void RequireDefined(ObjectKey objectKey)
     {
         ArgumentNullException.ThrowIfNull(objectKey);

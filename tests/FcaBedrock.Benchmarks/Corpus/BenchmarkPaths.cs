@@ -29,7 +29,7 @@ internal static class BenchmarkPaths
     /// <summary>The repository root — the directory holding <c>FcaBedrock.slnx</c>.</summary>
     public static string RepositoryRoot => LazyRepositoryRoot.Value;
 
-    /// <summary>The immutable v2 fixture root. Read-only: nothing here is ever written (P-9).</summary>
+    /// <summary>The immutable v2 fixture root. Read-only: nothing here is ever written (EP-9).</summary>
     public static string V2FixtureRoot => Path.Combine(RepositoryRoot, "fixtures", "v2");
 
     /// <summary>The bulk-artifact root: <c>$FCABEDROCK_BENCH_ROOT</c>, else <c>&lt;repo&gt;/artifacts/bench</c>.</summary>

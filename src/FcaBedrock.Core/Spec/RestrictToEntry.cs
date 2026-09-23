@@ -18,7 +18,7 @@ namespace FcaBedrock.Core.Spec;
 public abstract record RestrictToEntry;
 
 /// <summary>Keeps objects whose raw value equals <paramref name="Value"/> (categorical form, §10.4).</summary>
-/// <param name="Value">The raw value to match, compared ordinally (P-12) — never trimmed or case-folded.</param>
+/// <param name="Value">The raw value to match, compared ordinally (EP-12) — never trimmed or case-folded.</param>
 public sealed record RestrictToValue(string Value) : RestrictToEntry;
 
 /// <summary>
@@ -33,7 +33,7 @@ public sealed record RestrictToValue(string Value) : RestrictToEntry;
 /// <see cref="RestrictToRange"/>'s bounds can: the document model reuses this union
 /// (D-057), so the carrier must represent an authored <c>{ value = nan }</c> long
 /// enough for the <b>resolve seam</b> to diagnose it as
-/// <c>RestrictToRangeInvalid</c> on the user-facing channel (P-14) — a throwing
+/// <c>RestrictToRangeInvalid</c> on the user-facing channel (EP-14) — a throwing
 /// factory would turn an authoring error into a parse-time exception. The boundary
 /// is layered instead: the seam validates and zero-canonicalizes what it resolves,
 /// and <see cref="ResolvedSpec.Create"/> (plus the calibrated-state factories)

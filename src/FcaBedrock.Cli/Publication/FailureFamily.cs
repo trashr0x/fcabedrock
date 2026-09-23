@@ -63,7 +63,7 @@ internal static class FailureFamily
     /// The broad family an unusable output <b>operand</b> can raise. Admitted at exactly one
     /// boundary — preflight's own path resolution — where an <see cref="ArgumentException"/> or
     /// <see cref="NotSupportedException"/> genuinely describes what the user typed. Everywhere
-    /// else the same types are contract defects and must reach the unexpected-fault exit (P-14).
+    /// else the same types are contract defects and must reach the unexpected-fault exit (EP-14).
     /// </summary>
     internal static bool IsPublicationFailure(Exception exception) =>
         exception is IOException

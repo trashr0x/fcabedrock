@@ -1,0 +1,75 @@
+# Authored-text manifest for eng/check-authored-text.ps1 (D-130).
+#
+# It defines the authored set: the files the command checks. Every line is one of:
+#
+#   (blank)
+#   # <comment>
+#   min-files <n>      exactly once; the smallest acceptable size of the resolved set
+#   + <glob>           include
+#   - <glob>           exclude; an exclude always wins over an include
+#
+# Globs are repository-relative, use forward slashes and match case-sensitively. '*' matches
+# within one path segment and '**' across segments. A leading slash, a drive letter, a backslash
+# or a '.' or '..' segment is refused, and so is any other kind of line. Every include must match
+# at least one file. The command never descends into a directory that a '<prefix>/**' exclude
+# matches. AGENTS.md, CLAUDE.md, docs/writing-principles.md and this file must stay selected.
+#
+# No suppression exists: an obsolete spelling that authored code or tests must contain is
+# assembled from fragments, and required verbatim third-party text that contains one is excluded
+# by a literal '- <path>' line whose comment names the reason and the authorizing decision, after
+# which review preserves that text as it preserves LICENSE.
+
+min-files 400
+
+# ---------------------------------------------------------------------------
+# Authored prose and source
+# ---------------------------------------------------------------------------
+#
+# The two required attribution files, fixtures/v2/ATTRIBUTION.md and
+# tests/FcaBedrock.Benchmarks/Corpus/Adult.attribution.md, are ordinary selected files: the
+# command checks their bytes and spellings, and review preserves their text.
+
++ *.md
++ docs/**/*.md
++ src/**/*.md
++ tests/**/*.md
++ fixtures/**/*.md
++ eng/**/*.md
+
++ src/**/*.cs
++ tests/**/*.cs
+
++ src/**/*.csproj
++ tests/**/*.csproj
++ *.props
++ tests/**/*.props
++ *.slnx
++ global.json
+
++ eng/**/*.ps1
++ .github/workflows/*.yml
++ .editorconfig
++ .gitattributes
++ .gitignore
++ *.jsonc
++ eng/authored-files.txt
+
+# ---------------------------------------------------------------------------
+# Not authored prose
+# ---------------------------------------------------------------------------
+#
+# Generated output, and the immutable v2 fixtures. The fixture data files record what the v2
+# tool produced and are never edited to make a check pass (EP-9).
+
+- **/bin/**
+- **/obj/**
+- artifacts/**
+- fixtures/v2/**/expected/*.cxt
+- fixtures/v2/**/expected/*.dat
+- fixtures/v2/**/*.bed
+- fixtures/v2/**/*.data
+
+# Required legal text, preserved byte for byte. It is not authored prose and
+# carries no project terminology obligation.
+
+- LICENSE

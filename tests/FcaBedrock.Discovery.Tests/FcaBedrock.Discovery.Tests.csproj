@@ -16,7 +16,7 @@
 
   <!-- The wide v2 data fixtures, copied next to the test assembly for the end-to-end
        mini-mushroom / mini-adult probes. Data only: this suite reads no .bed, .cxt, or
-       .dat, and never writes a fixture (P-9). -->
+       .dat, and never writes a fixture (EP-9). -->
   <ItemGroup>
     <Content Include="$(RepoRoot)fixtures\v2\**\*.data" Link="fixtures\v2\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" Visible="false" />
   </ItemGroup>

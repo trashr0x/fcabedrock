@@ -15,7 +15,7 @@ namespace FcaBedrock.Discovery.Tests;
 /// <c>ReadRowsAsync</c>, <c>GetAsyncEnumerator</c>, and the <c>MoveNextAsync</c>/<c>Current</c>
 /// pair — so it needs its own coverage rather than inheriting the wide suite's. The
 /// counterexamples matter most: a catch-all would convert genuine bugs into polite diagnostics a
-/// caller would try to handle (P-14), and ArchUnitNET does not reliably surface catch-handler
+/// caller would try to handle (EP-14), and ArchUnitNET does not reliably surface catch-handler
 /// metadata, so behaviour is the enforcement.
 /// </para>
 /// </summary>

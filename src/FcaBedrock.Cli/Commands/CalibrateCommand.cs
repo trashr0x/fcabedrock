@@ -130,7 +130,7 @@ internal static class CalibrateCommand
     /// the freeze itself creates by writing explicit fields that shadow a matcher's every
     /// contribution. Order-preserving multiset difference keeps each distinct statement exactly
     /// once, which is the same suppression rule the preparation path already applies to a re-run
-    /// phase (D-098) and satisfies P-14: nothing is truncated, only re-stated facts are dropped.
+    /// phase (D-098) and satisfies EP-14: nothing is truncated, only re-stated facts are dropped.
     /// </para>
     /// <para>
     /// The baseline is built from <paramref name="initial"/> only, so a stale-hash warning can

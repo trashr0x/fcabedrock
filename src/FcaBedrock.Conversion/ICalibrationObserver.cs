@@ -3,7 +3,7 @@ namespace FcaBedrock.Conversion;
 /// <summary>
 /// A test-only observer of the count-sensitive calibration's resource use (D-095/D-103
 /// resource proofs), extending the spool backend's <see cref="IGroupingObserver"/> so one
-/// object can watch both tiers. No production behavior depends on it (P-6); production runs
+/// object can watch both tiers. No production behavior depends on it (EP-6); production runs
 /// leave it <see langword="null"/>.
 /// <para>
 /// The signals mirror the <b>two-tier</b> contract the calibration actually offers, stated
@@ -53,7 +53,7 @@ internal interface ICalibrationObserver : IGroupingObserver
 /// A dedicated type rather than letting <see cref="OverflowException"/> travel: the
 /// calibrator must attribute the failure to the offending attribute and must not
 /// mis-report an unrelated overflow from elsewhere as a population diagnostic. Like
-/// <see cref="GroupingStorageException"/> it never crosses the public seam (P-14) — the
+/// <see cref="GroupingStorageException"/> it never crosses the public seam (EP-14) — the
 /// calibrator converts it to a diagnostic.
 /// </para>
 /// </summary>

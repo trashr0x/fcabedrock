@@ -295,7 +295,7 @@ public sealed class SpecReaderDiagnosticsTests
         // The unknown key is still its own condition — asserted here alongside the two
         // shape failures this matcher genuinely also has, since `pattern` is not a
         // selector: it authors no `match` table and no `template` (§9.2, M6 Slice B).
-        // Distinct conditions aggregate rather than masking one another (P-14).
+        // Distinct conditions aggregate rather than masking one another (EP-14).
         var result = SpecReader.Read("[[matcher]]\npattern = \"x\"\n");
 
         var unrecognized = Assert.Single(result.Diagnostics, d => d.Code == DiagnosticCode.SpecKeyUnrecognized);
@@ -306,7 +306,7 @@ public sealed class SpecReaderDiagnosticsTests
     public void Read_WhenMatcherDeclaresNoSelectorOrTemplate_ThenBothShapeFailuresReport()
     {
         // §9.2's two static requirements, checked independently so a matcher missing both
-        // tells its author about both in one read (P-14). Anchored at the table header,
+        // tells its author about both in one read (EP-14). Anchored at the table header,
         // since an ABSENT key has no span of its own.
         var result = SpecReader.Read("[[matcher]]\n");
 
@@ -372,7 +372,7 @@ public sealed class SpecReaderDiagnosticsTests
     [Fact]
     public void Read_WhenSeveralProblems_ThenAllAggregateInOnePass()
     {
-        // P-14: one read reports everything — a bad shape spelling, an unknown key, and an
+        // EP-14: one read reports everything — a bad shape spelling, an unknown key, and an
         // unrecognized discretizer kind together, each on its own condition.
         var result = SpecReader.Read(
             "[binding]\nshape = \"wibble\"\nmissing_polcy = \"skip\"\n" +
@@ -529,7 +529,7 @@ public sealed class SpecReaderDiagnosticsTests
     [Fact]
     public void Read_WhenReadTwice_ThenTheOrderedDiagnosticListIsIdentical()
     {
-        // P-7 at the parse boundary: same document ⇒ same ordered diagnostics, so tooling
+        // EP-7 at the parse boundary: same document ⇒ same ordered diagnostics, so tooling
         // that prints or hashes them cannot see run-to-run drift.
         const string Toml =
             "[binding]\nshape = \"wibble\"\nmissing_polcy = \"skip\"\n"
@@ -595,7 +595,7 @@ public sealed class SpecReaderDiagnosticsTests
     public void Read_WhenExactRestrictValueIsNotNumeric_ThenSpecFieldInvalid(string value)
     {
         // The reported condition must be "this exact entry's value is not a number", raised by
-        // the ordinary numeric accessor — never a leaked factory/parser exception (P-14).
+        // the ordinary numeric accessor — never a leaked factory/parser exception (EP-14).
         AssertFailsWith(
             SpecReader.Read(Attribute($"restrict_to = [{{ value = {value} }}]")),
             DiagnosticCode.SpecFieldInvalid);
@@ -644,7 +644,7 @@ public sealed class SpecReaderDiagnosticsTests
     [Fact]
     public void Read_WhenSeveralRestrictEntriesAreMalformed_ThenAllAggregateDeterministically()
     {
-        // P-14: parse failures aggregate rather than short-circuiting, and never leak an
+        // EP-14: parse failures aggregate rather than short-circuiting, and never leak an
         // exception from a strict factory.
         var result = SpecReader.Read(Attribute("restrict_to = [{ value = \"x\" }, 10, { value = true }]"));
 

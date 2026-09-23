@@ -12,7 +12,7 @@
 
   <!-- White-box access for the Spec unit tests (spelling map / TOML literal
        internals). A test seam only; no production behavior depends on it
-       (principle P-6). -->
+       (principle EP-6). -->
   <ItemGroup>
     <InternalsVisibleTo Include="FcaBedrock.Spec.Tests" />
   </ItemGroup>

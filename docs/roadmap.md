@@ -143,10 +143,10 @@ blocks below are the append-only history; the M7 and M8 sections carry the live 
 > **The M3 triple-source audit has landed (spec/decisions only, D-082…D-085).** A
 > review pass over the finalized triple + wide-column-key surface settled the
 > contract — shape-specific `has_header`, optional/one-mode `columns`, absent-vs-
-> missing semantics, ordinal string collation (new principle **P-12**),
+> missing semantics, ordinal string collation (new principle **EP-12**),
 > wide `dedupe` first-occurrence order on the shared sort-merge path, `keep` name
 > uniqueness, and the structural diagnostic taxonomy — with the spec, `decisions.md`,
-> and `principles.md` updated. This landing is docs-only and byte-/fingerprint-neutral
+> and `engineering-principles.md` updated. This landing is docs-only and byte-/fingerprint-neutral
 > (no enum members, no `FixtureCase.Active` change, no production code).
 >
 > **M3 is complete (Slices C–G).** Slices C–D added the triple reader and both orderings
@@ -204,7 +204,7 @@ blocks below are the append-only history; the M7 and M8 sections carry the live 
 > pairing guard before any row), the `ConversionPlan` sealed internal-ctor plan
 > carrying its calibrated state + label style, the fingerprint API re-signed over
 > `plan.Calibrated.Spec` (byte-neutral — all pinned hashes and nine goldens
-> unchanged), the include emit-crash closure (P-22), and `NoFormalAttributes` at plan
+> unchanged), the include emit-crash closure (EP-22), and `NoFormalAttributes` at plan
 > all landed. `ObservedDomainCalibrationNotImplementedV1` retired. The four deferred
 > discretizers stay read-rejected and `RestrictToNotImplementedV1` stays active at
 > plan; only the abstract `PendingCalibration` + `CalibrationPending` carrier landed
@@ -306,7 +306,7 @@ blocks below are the append-only history; the M7 and M8 sections carry the live 
 > compiled **once** per group as **culture-invariant, partial (unanchored), case-sensitive unless
 > the author writes `(?i)`**, with `InfiniteMatchTimeout` passed **explicitly** — the overloads
 > that omit it inherit the host's ambient `REGEX_DEFAULT_MATCH_TIMEOUT`, which would make the same
-> spec host-dependent and fail on the exception channel (P-7/P-14); a group matches on values
+> spec host-dependent and fail on the exception channel (EP-7/EP-14); a group matches on values
 > **OR** pattern, and
 > among groups the **first declared match wins** — which is why the `groups` array is planned-order
 > in the TOML, the document, and the §14 bytes alike. **Authored presence survives** (G-11): an
@@ -318,7 +318,7 @@ blocks below are the append-only history; the M7 and M8 sections carry the live 
 > `ValueGroupsPassthroughDataDependent` whenever the mode runs — **zero discoveries included** —
 > and retaining an empty outcome as the legitimate completeness marker. Discovery is set-based, so
 > it is **discovery-class, not count-sensitive**: no quantile accumulator, no spill/merge, no
-> subject-local dedup, no budget share — bounded by the attribute vocabulary (P-16). It reads the
+> subject-local dedup, no budget share — bounded by the attribute vocabulary (EP-16). It reads the
 > **raw pass only** for both triple orderings and never triggers the grouped second pass alone;
 > when a count-sensitive attribute forces that pass, pass-through is fed from the raw one only
 > (D-103), never twice, never a third pass — proven by enumeration counts, not by equal bins.
@@ -485,7 +485,7 @@ blocks below are the append-only history; the M7 and M8 sections carry the live 
 > `.dat` as well as `.cxt`; it is load-bearing beyond the M6 surface, since CR/LF can
 > arrive from raw values, calibrated domains, and `value_labels` on the **default** path
 > too (the empty-name half is format-reachable only — a default-rendered `f1-` is valid).
-> Exporters never sanitize (P-15). Semantic parse diagnostics gained a **centralized
+> Exporters never sanitize (EP-15). Semantic parse diagnostics gained a **centralized
 > source-position ordering** at the `SpecReader` boundary — `(Line, Column, emission
 > ordinal)`, total by construction, span-less first — leaving the terminal
 > syntax-vs-semantic phasing untouched. The closed D-075 deferred-**key** sets retired
@@ -603,7 +603,7 @@ blocks below are the append-only history; the M7 and M8 sections carry the live 
 Solution per `AGENTS.md` layout, with packages created by the milestone that
 first needs them — M0 creates `FcaBedrock.Diagnostics` + `FcaBedrock.Core` plus
 the test projects; the remaining packages follow as their code lands (empty
-shells up front would be speculative noise — P-3). xUnit wiring (BenchmarkDotNet
+shells up front would be speculative noise — EP-3). xUnit wiring (BenchmarkDotNet
 deferred to M8, where its first benchmark lives).
 `FcaBedrock.Golden.Tests` running against the three v2 `fixtures/v2/` examples
 with placeholder pass-throughs (expected = the v2 file; actual starts as a copy
@@ -710,7 +710,7 @@ shape-specific `has_header` (triple defaults `false`); `columns` optional / one
 addressing mode; object identity = the resolved subject (an authored triple
 `object_key` is rejected); **absent predicate = no observation** (≠ a present-missing
 value); structural row/source errors are `Error`; ordinal string collation is a
-project-wide rule (new principle P-12); wide `dedupe` runs on the shared
+project-wide rule (new principle EP-12); wide `dedupe` runs on the shared
 sort-merge path and emits in **first-occurrence** order — the same first-appearance
 principle as triple `unordered` (neither sorts object output); `keep` guarantees
 unique object names; and the structural diagnostic
@@ -824,7 +824,7 @@ their sites (`ProbeSourceReadFailed`, `ProbeNoAttributesDiscovered`,
 `ProbeAttributeNameAdjusted`, `ProbeDomainTruncated`, `ProbeLimitExceeded`), and
 `TripleSubjectNotContiguous` / `ObjectKeyValueInvalid` widen to `probe/calibrate/emit` —
 registry **70 → 75** (D-111). The public Discovery API surface is fixed at an
-implementation-time P-4 review.
+implementation-time EP-4 review.
 
 **Exit:** `probe` produces an editable draft spec from raw data — deterministic over the
 record sequence (D-112), immediately usable (reread → resolve → convert the same source), one
@@ -866,7 +866,7 @@ semantics, diagnostic identity/ordering, exact rendered-name tables across all
 five placeholders, the fingerprint neutrality/change matrix, round-trip,
 unchanged existing locks, the one-file Ads workflow, and the architecture
 boundary — is the D-119 verification floor, each item landing with its slice
-(P-7).
+(EP-7).
 
 ### M7 — CLI
 
@@ -1454,7 +1454,7 @@ output, spool and result on one non-system volume. Headlines:
   unchanged between 7.3M and 73M**, while allocating 104 GB through the collector. The
   triple `unordered` path is different and legitimately so: its sampled working set grows
   with the *subject* count (about 260 B/subject; 1.8 GB at 7.3M subjects), which is the
-  P-16 metadata carve-out, not a materialized matrix. Both are **session-A/session-C**
+  EP-16 metadata carve-out, not a materialized matrix. Both are **session-A/session-C**
   observations of the executables those sessions built, not of the shipped build; the
   corrected build's own six traces are recorded separately in `docs/benchmarks.md`, and a
   sampled maximum is a lower bound on the true peak.
@@ -1512,7 +1512,7 @@ Parallel-able from M5 onward; does not gate the CLI track. MVVM over the same
 Core. Progress reporting + cancellation already plumbed from M1.
 
 **Gate:** M7's run/publication coordinator is CLI-internal by decision (D-122), so a
-**P-4 public-surface extraction review** MUST happen **before** any Desktop reuse of
+**EP-4 public-surface extraction review** MUST happen **before** any Desktop reuse of
 it; no production package may reference `Cli`, and `EmitReplaySession` remains the
 supported public bracket until a proven replacement exists.
 
@@ -1589,17 +1589,17 @@ Modelled in the spec where noted, so adding them later isn't a format break.
 - Conversion run/session API (M7): M3 Slice F promoted the interim replay helper to the
   public `EmitReplaySession` (`EmitReplay.Begin`) — it brackets one conversion attempt,
   collects data diagnostics once, and aggregates grouping storage failures across the
-  `.cxt` two-pass, flushing the finals at disposal (P-16). **D-122 settles the M7
+  `.cxt` two-pass, flushing the finals at disposal (EP-16). **D-122 settles the M7
   answer:** the run/publication coordinator is **CLI-internal**, nothing references
   `Cli`, and `EmitReplaySession` is **retained** as the public bracket — it is not
-  superseded at M7. A P-4 public-surface extraction review is required before M9 reuse.
+  superseded at M7. A EP-4 public-surface extraction review is required before M9 reuse.
 - Grouping backend knobs (M7/M8): `GroupingOptions` (in-memory budget, merge fan-in,
   temp root) is **internal** — never a spec/TOML/fingerprint input (the storage strategy
   never changes bytes). **D-122 settles the M7 exposure:** a runtime-only `--temp-dir`
   on `convert`, `plan`, `stats`, `calibrate`, and `fingerprint` (byte- and
   fingerprint-neutral, over a minimal public byte-neutral Conversion capability), with
   the memory budget and fan-in staying internal; tuning those provisional defaults
-  against real 7.3M–73M distributions is M8 (P-19).
+  against real 7.3M–73M distributions is M8 (EP-19).
 - Phase alignment for `AttributeNameDuplicate` (noted at the Slice F review,
   2026-07-05): **done at the M2 exit review (D-080).** The check — and its twin
   `ValueLabelKeyNotInDomain` — were re-homed from `ConversionPlanner` to the

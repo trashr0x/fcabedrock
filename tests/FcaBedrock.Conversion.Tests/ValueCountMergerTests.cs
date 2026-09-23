@@ -218,7 +218,7 @@ public sealed class ValueCountMergerTests
     [Fact]
     public void Consolidate_WhenRepeated_ThenTheOutputIsDeterministic()
     {
-        // P-7: same runs in, same aggregated bytes out — the merge's tie handling must not depend
+        // EP-7: same runs in, same aggregated bytes out — the merge's tie handling must not depend
         // on which reader happens to reach a shared value first.
         static List<ValueCount> Run()
         {

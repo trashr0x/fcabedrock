@@ -10,7 +10,7 @@ namespace FcaBedrock.Conversion;
 /// <summary>
 /// Streams object records through a <see cref="ConversionPlan"/>, producing one
 /// <see cref="EmittedObject"/> per <b>surviving</b> formed object (spec §7 step 4). Single-pass
-/// and allocation-streaming: the incidence matrix is never materialized (P-16). All ordering and
+/// and allocation-streaming: the incidence matrix is never materialized (EP-16). All ordering and
 /// naming are already decided by the planner; emit only looks values up. Data diagnostics
 /// (unknown / unparseable values) are <b>aggregated per attribute</b> — a count with a bounded
 /// sample, flushed in plan order after the stream, never one diagnostic per row (spec §16.4,
@@ -42,7 +42,7 @@ namespace FcaBedrock.Conversion;
 /// </list>
 /// The whole-stream observability warnings are suppressed on both (they would describe an artifact
 /// the caller must discard). Transactional publication is M7's conversion-run abstraction, not a
-/// writer or emitter concern (P-15).
+/// writer or emitter concern (EP-15).
 /// </para>
 /// </summary>
 public static class Emitter
@@ -54,9 +54,9 @@ public static class Emitter
     /// <c>duplicate_object_policy</c> — <c>fail</c> (a repeat halts with <c>DuplicateObjectKey</c>),
     /// <c>keep</c> (each row its own object, colliding names disambiguated by the converter), or
     /// <c>dedupe</c> (rows sharing a cleaned key collapse to one object, crosses unioned onto the first,
-    /// first-occurrence order — §5.4/§6.1, P-15). <c>row_index</c>/<c>fail</c>/<c>keep</c> stream
+    /// first-occurrence order — §5.4/§6.1, EP-15). <c>row_index</c>/<c>fail</c>/<c>keep</c> stream
     /// single-pass in source-row order; <c>dedupe</c> uses the shared grouping/spool backend (§17 rule 4).
-    /// The matrix is never materialized (P-16). Emit diagnostics accrue to <paramref name="diagnostics"/>
+    /// The matrix is never materialized (EP-16). Emit diagnostics accrue to <paramref name="diagnostics"/>
     /// once per enumeration — a replaying caller (the <c>.cxt</c> two-pass) brackets this with
     /// <see cref="EmitReplay.Begin"/>.
     /// </summary>
@@ -90,7 +90,7 @@ public static class Emitter
     }
 
     // Internal overload: the grouping budget/fan-in is a spill-forcing test seam for the dedupe path
-    // (P-6); production uses GroupingOptions.Default. Non-iterator, so the guards + dispatch run eagerly.
+    // (EP-6); production uses GroupingOptions.Default. Non-iterator, so the guards + dispatch run eagerly.
     internal static IAsyncEnumerable<EmittedObject> EmitAsync(
         ConversionPlan plan,
         IRecordSource source,
@@ -111,7 +111,7 @@ public static class Emitter
         }
 
         // dedupe collapses rows sharing a cleaned key onto one object; non-contiguous keys cannot stream
-        // in one pass (P-16), so it runs on the shared grouping/spool backend (§6.1/D-083). row_index /
+        // in one pass (EP-16), so it runs on the shared grouping/spool backend (§6.1/D-083). row_index /
         // fail / keep stream single-pass in source order.
         return plan.ObjectKey is ColumnObjectKey { Policy: DuplicateObjectPolicy.Dedupe } dedupeKey
             ? EmitDedupeAsync(plan, source, diagnostics, dedupeKey.Index, groupingOptions, cancellationToken)
@@ -244,7 +244,7 @@ public static class Emitter
         }
 
         // Aggregated data-phase diagnostics: one per attribute, in plan order, so the diagnostic
-        // sequence is deterministic (P-7) and bounded regardless of row count. Reached only on normal
+        // sequence is deterministic (EP-7) and bounded regardless of row count. Reached only on normal
         // completion — a structural yield break above (invalid/duplicate key) skips these, suppressing
         // any pending keep warnings from the partial stream (matching the triple path).
         var aborted = FlushData(plan, unparseable, unknown, restrictions, diagnostics);
@@ -263,7 +263,7 @@ public static class Emitter
     /// Emits wide <c>column</c> objects under <c>duplicate_object_policy = "dedupe"</c> (§6.1 / D-083):
     /// rows sharing a <b>cleaned</b> key collapse to one object whose crosses are the union of all its
     /// rows', in <b>first-occurrence order</b> of the key (§17 rule 4). Runs on the shared grouping/spool
-    /// backend (never the matrix, P-16); the intake hook tallies duplicates in source order for one
+    /// backend (never the matrix, EP-16); the intake hook tallies duplicates in source order for one
     /// aggregated <c>DuplicateObjectKey</c> (Info). An unusable key halts with
     /// <c>ObjectKeyValueInvalid</c> (Error), and grouping storage failures surface via the two-channel
     /// model — never exceptions across the seam (D-082).
@@ -405,7 +405,7 @@ public static class Emitter
         finally
         {
             // Storage aggregates always flush — even on early disposal — so cleanup Warnings recorded
-            // during the grouping's disposal-time teardown reach the caller/session (D-082/P-14).
+            // during the grouping's disposal-time teardown reach the caller/session (D-082/EP-14).
             FlushStorage(reports, diagnostics);
         }
     }
@@ -454,7 +454,7 @@ public static class Emitter
     /// object order is first-appearance of each cleaned subject (§17 rule 4). Structural failures
     /// (invalid subject, non-contiguity) and grouping <b>storage</b> failures are reported to
     /// <paramref name="diagnostics"/> and stop the stream — never exceptions across the seam
-    /// (D-082/P-14). Single-pass over the grouped rows, no matrix (P-16). A replaying caller (the
+    /// (D-082/EP-14). Single-pass over the grouped rows, no matrix (EP-16). A replaying caller (the
     /// <c>.cxt</c> two-pass) brackets this with <see cref="EmitReplay.Begin"/>.
     /// </summary>
     public static IAsyncEnumerable<EmittedObject> EmitTripleAsync(
@@ -486,7 +486,7 @@ public static class Emitter
         return EmitTripleAsync(plan, source, diagnostics, runtimeOptions.ToGroupingOptions(), cancellationToken);
     }
 
-    // Internal overload: the grouping budget/fan-in is a test seam for forcing spills (P-6); production
+    // Internal overload: the grouping budget/fan-in is a test seam for forcing spills (EP-6); production
     // uses GroupingOptions.Default.
     internal static async IAsyncEnumerable<EmittedObject> EmitTripleAsync(
         ConversionPlan plan,
@@ -526,7 +526,7 @@ public static class Emitter
             ? new UnorderedTripleRowSource(source, groupingOptions, reports)
             : source;
 
-        // Subjects whose group has closed, for the §5.3 contiguity check (ordinal, P-12).
+        // Subjects whose group has closed, for the §5.3 contiguity check (ordinal, EP-12).
         var completed = new HashSet<string>(StringComparer.Ordinal);
         string? currentSubject = null;
         var crossed = new SortedSet<int>();
@@ -645,7 +645,7 @@ public static class Emitter
                     yield return last;
                 }
 
-                // Aggregated data-phase diagnostics, in plan order (P-7). Skipped on any halt above (the
+                // Aggregated data-phase diagnostics, in plan order (EP-7). Skipped on any halt above (the
                 // conversion aborted; partial data diagnostics would be noise).
                 var aborted = FlushData(plan, unparseable, unknown, restrictions, diagnostics);
                 observability.Flush(plan, aborted, diagnostics);
@@ -654,14 +654,14 @@ public static class Emitter
         finally
         {
             // Storage aggregates always flush — even on early disposal — so the in-path Error surfaces
-            // and cleanup Warnings from teardown reach the caller/session (D-082/P-14). One per identity,
+            // and cleanup Warnings from teardown reach the caller/session (D-082/EP-14). One per identity,
             // worst severity, first-occurrence order.
             FlushStorage(reports, diagnostics);
         }
     }
 
     // Predicate selector → the plan-order indices of the attributes that bind it. A list because
-    // one predicate may bind several attributes (source repeat, D-033); ordinal keys (P-12).
+    // one predicate may bind several attributes (source repeat, D-033); ordinal keys (EP-12).
     private static Dictionary<string, List<int>> IndexByPredicate(ConversionPlan plan)
     {
         var map = new Dictionary<string, List<int>>(StringComparer.Ordinal);
@@ -700,7 +700,7 @@ public static class Emitter
 
     // Classifies one raw value (null = missing) for an attribute into the object's crosses,
     // applying missing_policy and the discretizer outcomes. Shared by the wide (column-addressed)
-    // and triple (predicate-routed) emit paths so both classify values identically (P-7).
+    // and triple (predicate-routed) emit paths so both classify values identically (EP-7).
     private static void Classify(
         PlannedAttribute attribute,
         string? raw,
@@ -756,7 +756,7 @@ public static class Emitter
     }
 
     // The one data-diagnostic flush order, shared by all three emit paths so they cannot drift
-    // (P-7 — the diagnostic sequence is part of deterministic output): every planned attribute's
+    // (EP-7 — the diagnostic sequence is part of deterministic output): every planned attribute's
     // unparseable then unknown aggregate in PLAN order, followed by the filter-only restriction
     // aggregates in restriction (spec-attribute) order.
     //
@@ -821,7 +821,7 @@ public static class Emitter
     }
 
     // Aggregated object-key policy diagnostic (§6.1, D-083/D-085): one diagnostic with a bounded count +
-    // source-order sample, flushed after the stream on normal completion (P-7/P-16). No location — the
+    // source-order sample, flushed after the stream on normal completion (EP-7/EP-16). No location — the
     // condition spans the object stream, not a single record or attribute. Used by keep (Warning) and
     // dedupe (Info); the keep messages are byte-identical to their prior form.
     private static void FlushPolicyAggregate(

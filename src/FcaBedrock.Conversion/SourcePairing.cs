@@ -77,7 +77,7 @@ internal static class SourcePairing
         }
     }
 
-    // Ordinal schema-value equality (P-12): same column count and the same header.
+    // Ordinal schema-value equality (EP-12): same column count and the same header.
     private static bool SchemasEqual(SourceSchema a, SourceSchema b)
     {
         if (a.ColumnCount != b.ColumnCount)

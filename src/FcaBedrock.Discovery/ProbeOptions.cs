@@ -6,7 +6,7 @@ namespace FcaBedrock.Discovery;
 /// The caller-overridable knobs of a <see cref="Prober"/> run (D-108/D-110): the
 /// per-attribute retention limit, the three aggregate boundedness guards, and the draft's
 /// <c>locale</c>. Immutable, built through the validating <see cref="Create"/> factory
-/// (P-10) so an out-of-range limit or an unusable locale cannot reach the engine.
+/// (EP-10) so an out-of-range limit or an unusable locale cannot reach the engine.
 /// <para>
 /// <b>Options are caller contract, not spec text.</b> The four numeric options shape a
 /// draft; they are never authored into <c>[binding]</c> and never enter a fingerprint
@@ -19,7 +19,7 @@ namespace FcaBedrock.Discovery;
 /// (the motivating arithmetic: 1,554 attributes × 100,000 values would permit 155.4M retained
 /// strings). Their accounting is deterministic and logical — counts and UTF-16 code units,
 /// never an available-memory figure, which would make the same input succeed on one machine
-/// and fail on another (P-7/P-11).
+/// and fail on another (EP-7/EP-11).
 /// </para>
 /// </summary>
 public sealed class ProbeOptions
@@ -119,7 +119,7 @@ public sealed class ProbeOptions
     // internal agreement. A cross-check test pins the two against each other, so
     // drift fails a test rather than silently producing a draft that cannot resolve itself.
     // predefinedOnly matters — under ICU, GetCultureInfo synthesizes a culture for almost any
-    // well-formed tag, which would make acceptance OS-dependent (P-7/P-11).
+    // well-formed tag, which would make acceptance OS-dependent (EP-7/EP-11).
     private static bool IsAcceptedLocale(string locale)
     {
         if (string.Equals(locale, "invariant", StringComparison.OrdinalIgnoreCase))

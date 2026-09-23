@@ -159,7 +159,7 @@ public sealed class UnorderedTripleEmitterTests
     public async Task CxtWriter_WhenUnorderedWrittenTwice_ThenIdenticalBytesInFirstAppearanceOrder()
     {
         // The .cxt two-pass calls the emit factory twice; the unordered grouping re-derives the same
-        // first-appearance order each pass, so bytes are identical without a persistent spool (P-16).
+        // first-appearance order each pass, so bytes are identical without a persistent spool (EP-16).
         // Object names appear in first-appearance order (Sam before Alice/Tim), not sorted.
         var spec = new BedrockSpec(ConversionFixtures.Triple(TripleOrdering.Unordered),
             [ConversionFixtures.PredicateNominal("role", "role", ["dev", "ops"])]);

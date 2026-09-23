@@ -18,7 +18,7 @@ namespace FcaBedrock.Golden.Tests;
 /// neutrality-and-change matrix rows that naming owns.
 /// <para>
 /// Deliberately separate from the v2 golden comparisons: those are immutable
-/// evidence of what v2 produced (P-9), while <c>formal_attribute_format</c> is
+/// evidence of what v2 produced (EP-9), while <c>formal_attribute_format</c> is
 /// native surface no v2 fixture uses. Asserting through the real pipeline rather
 /// than the Spec-side fingerprint API is what proves the claim that matters — a
 /// naming edit moves <c>.cxt</c> bytes and the cxt fingerprint <em>together</em>,
@@ -177,7 +177,7 @@ public sealed class NativeNamingPipelineTests
     [Fact]
     public async Task Convert_WhenRunTwice_ThenTheArtifactsAreByteIdentical()
     {
-        // P-7 through the whole naming path: same spec + same input ⇒ same bytes and hashes.
+        // EP-7 through the whole naming path: same spec + same input ⇒ same bytes and hashes.
         var first = await ConvertAsync(Spec("display_name = \"Gill\"\nformal_attribute_format = \"{display_name}-{value}\"\n"));
         var second = await ConvertAsync(Spec("display_name = \"Gill\"\nformal_attribute_format = \"{display_name}-{value}\"\n"));
 
@@ -189,7 +189,7 @@ public sealed class NativeNamingPipelineTests
     {
         // §10.7: the plan is shared, so an invalid rendered name blocks .dat as well as
         // .cxt. Asserted at the pipeline level — the writers are never reached, which is
-        // what "exporters never sanitize" (P-15) means operationally.
+        // what "exporters never sanitize" (EP-15) means operationally.
         var plan = await PlanOnlyAsync(
             Header
             + "[[attribute]]\nname = \"gill-size\"\nsource = { kind = \"column\", index = 0 }\n"

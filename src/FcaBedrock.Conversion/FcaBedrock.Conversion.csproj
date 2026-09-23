@@ -11,7 +11,7 @@
        budget and merge fan-in through the existing internal GroupingOptions seam rather than a copy
        of it, which is what keeps the budget/fan-in evidence a measurement of production behaviour.
        Both grantees are non-product assemblies; no production package references either, and no
-       production behavior depends on the grants (principle P-6). -->
+       production behavior depends on the grants (principle EP-6). -->
   <ItemGroup>
     <InternalsVisibleTo Include="FcaBedrock.Conversion.Tests" />
     <InternalsVisibleTo Include="FcaBedrock.Benchmarks" />

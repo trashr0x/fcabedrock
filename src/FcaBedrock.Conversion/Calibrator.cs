@@ -17,7 +17,7 @@ namespace FcaBedrock.Conversion;
 /// filling an absent <c>declared_domain</c> (<c>ObservedDomainUsed</c>) or extending an
 /// explicit one under <c>unknown_value_policy = "include"</c>
 /// (<c>UnknownValuePolicyInclude</c>). Set-idempotent, so bounded by the attribute
-/// vocabulary — schema-scale metadata (P-16).</item>
+/// vocabulary — schema-scale metadata (EP-16).</item>
 /// <item><b>Count-insensitive cuts</b> (<c>equal_width</c> <c>range = "min_max"</c>,
 /// D-102): a streaming minimum and maximum — two doubles, never the population.</item>
 /// <item><b>Count-sensitive cuts</b> (<c>equal_frequency</c> and <c>equal_width</c>
@@ -46,7 +46,7 @@ public static class Calibrator
     /// (<see cref="ArgumentException"/>); throws <see cref="InvalidOperationException"/>
     /// when the shape is not wide, or when the source was not prepared against this
     /// resolution (the pairing guard, before any row). Expected failures are
-    /// diagnostics (P-14); cancellation propagates.
+    /// diagnostics (EP-14); cancellation propagates.
     /// </summary>
     public static ValueTask<Diagnosed<CalibratedSpec>> CalibrateAsync(
         ResolvedSpec resolved, IRecordSource source, CancellationToken cancellationToken = default) =>
@@ -104,7 +104,7 @@ public static class Calibrator
         return CalibrateTripleAsync(resolved, source, runtimeOptions.ToGroupingOptions(), observer: null, cancellationToken);
     }
 
-    // The spill-forcing / accounting test seams (P-6), mirroring the emitter's internal
+    // The spill-forcing / accounting test seams (EP-6), mirroring the emitter's internal
     // overloads: production always takes the public entry points above.
     internal static async ValueTask<Diagnosed<CalibratedSpec>> CalibrateAsync(
         ResolvedSpec resolved,
@@ -159,7 +159,7 @@ public static class Calibrator
         finally
         {
             // Before Complete, not after: teardown records its own cleanup-channel Warnings, and
-            // the storage ledger is snapshotted into the result below (D-095/P-14).
+            // the storage ledger is snapshotted into the result below (D-095/EP-14).
             run.Cleanup();
         }
 
@@ -442,7 +442,7 @@ public static class Calibrator
         private readonly SpoolWorkspace<ValueCount> _workspace;
 
         // Owned by the run, not by Finish: an attribute's diagnostics are produced one at a time,
-        // and a LATER attribute's merge/replay failure must not discard an earlier one's (P-14 —
+        // and a LATER attribute's merge/replay failure must not discard an earlier one's (EP-14 —
         // aggregating operations collect every diagnostic, not just the fatal one).
         private readonly List<BedrockDiagnostic> _diagnostics = [];
         private CalibrationBudget? _budget;
@@ -458,7 +458,7 @@ public static class Calibrator
 
             // Lazy by construction: a calibration that never spills touches no disk at all, even
             // under an unusable temp root. The pending-deletion cap is the calibration
-            // workspace's alone (P-1: the emit path keeps its existing uncapped semantics).
+            // workspace's alone (EP-1: the emit path keeps its existing uncapped semantics).
             _workspace = new SpoolWorkspace<ValueCount>(
                 options, ValueCountCodec.Instance, GroupingReports, QuantileAccumulator.MaxPendingDeletions(options.MaxMergeFanIn));
         }
@@ -516,7 +516,7 @@ public static class Calibrator
         /// merges its diagnostics. A structural error aborts before any outcome (D-095/D-099).
         /// Returns the calibrated state, or <see langword="null"/> when the run failed; every
         /// diagnostic accrues to <see cref="_diagnostics"/> as it is produced, so a later
-        /// attribute's failure cannot discard an earlier one's (P-14).
+        /// attribute's failure cannot discard an earlier one's (EP-14).
         /// </summary>
         public CalibratedSpec? Finish(List<CalibrationTarget> targets, BedrockDiagnostic? structural)
         {
@@ -894,8 +894,8 @@ public static class Calibrator
     }
 
     // Accumulates the distinct non-missing observed values for one attribute in
-    // first-observation order (ordinal dedup, P-12). Bounded by the attribute vocabulary —
-    // schema-scale metadata, documented and not budget-gated (P-16, D-095). In numeric mode
+    // first-observation order (ordinal dedup, EP-12). Bounded by the attribute vocabulary —
+    // schema-scale metadata, documented and not budget-gated (EP-16, D-095). In numeric mode
     // (numeric free_per_value, D-096) each present value is parsed under the injected culture and
     // reduced to its canonical numeric identity before dedup, so equivalent spellings occupy one
     // bin at their first occurrence.
@@ -956,7 +956,7 @@ public static class Calibrator
     // it off the count-sensitive path entirely — no quantile accumulator, no value counts, no
     // spill runs, no merge or replay, no subject-local triple deduplication, and no contribution
     // to the budget divisor. Its bound is the attribute vocabulary — schema-scale metadata, the
-    // same documented P-16 carve-out as an observed domain (D-095), not a budget-gated
+    // same documented EP-16 carve-out as an observed domain (D-095), not a budget-gated
     // population.
     //
     // Matching is delegated to Core rather than reimplemented: the observer classifies each value
@@ -996,7 +996,7 @@ public static class Calibrator
                 return; // some group claimed it, so it is grouped — not a pass-through bin.
             }
 
-            // Ordinal dedup (P-12); §17 rule 3 fixes the order as first-observation order, which
+            // Ordinal dedup (EP-12); §17 rule 3 fixes the order as first-observation order, which
             // for triple input is RAW input order — hence discovery lives on the raw pass.
             if (_seen.Add(raw))
             {
@@ -1016,7 +1016,7 @@ public static class Calibrator
         public PendingEqualWidth Config { get; } = config;
 
         // The resolved parsing culture, carried so cut derivation re-homes onto the same one the
-        // population was read under (P-11).
+        // population was read under (EP-11).
         public CultureInfo Culture { get; } = culture;
 
         public bool HasValues { get; private set; }
@@ -1056,7 +1056,7 @@ public static class Calibrator
     // The count-sensitive population (§11.5 equal_frequency, §11.4 percentile_p1_p99): exactly
     // one of the two configs is non-null. Both need the same aggregated (value, count) population
     // and differ only in what they extract from it, so they share one accumulator rather than two
-    // near-identical engines (P-5).
+    // near-identical engines (EP-5).
     private sealed class QuantileObserver : CalibrationObserver
     {
         public QuantileObserver(QuantileAccumulator accumulator, PendingEqualWidth? percentile, PendingEqualFrequency? equalFrequency)

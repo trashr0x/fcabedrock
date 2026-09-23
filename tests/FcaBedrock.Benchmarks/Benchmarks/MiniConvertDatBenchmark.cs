@@ -18,7 +18,7 @@ namespace FcaBedrock.Benchmarks;
 /// satisfy its own oracle — but not these bytes.
 /// </para>
 /// <para>
-/// The fixtures are read-only (P-9). They are never copied, normalized, or written; the timed
+/// The fixtures are read-only (EP-9). They are never copied, normalized, or written; the timed
 /// interval covers the same open-emit-write-flush-close boundary as every other conversion case,
 /// and validation compares the produced file against the checked-in expected bytes afterwards.
 /// </para>

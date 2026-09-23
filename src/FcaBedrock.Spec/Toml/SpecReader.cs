@@ -14,7 +14,7 @@ namespace FcaBedrock.Spec.Toml;
 /// <c>SpecFieldInvalid</c>. The reader enforces parse shape
 /// only — possibly-invalid <em>values</em> land in the document for the
 /// resolve/validate seam to judge (D-066/D-067). Diagnostics aggregate in two
-/// phases (P-14): all TOML-level errors together (<c>SpecTomlInvalid</c>,
+/// phases (EP-14): all TOML-level errors together (<c>SpecTomlInvalid</c>,
 /// terminal — a broken tree would cascade garbage), then all semantic issues
 /// from one whole-document walk, ordered by source position before
 /// <see cref="Read"/> returns (<see cref="SortSemantic"/>, D-116/D-120).
@@ -194,7 +194,7 @@ public static class SpecReader
     /// The emission ordinal is part of the comparison, not merely a tie-break convention,
     /// which makes the order <b>total</b> — so equal-position diagnostics keep their
     /// relative order regardless of the underlying sort's stability, and two reads of one
-    /// document produce identical ordered lists (P-7). Diagnostics with no span (document
+    /// document produce identical ordered lists (EP-7). Diagnostics with no span (document
     /// level) compare as line 0, column 0 and therefore come first, in emission order.
     /// </para>
     /// <para>
@@ -203,7 +203,7 @@ public static class SpecReader
     /// stay ahead of every semantic diagnostic.
     /// </para>
     /// <para>
-    /// <b>Internal rather than private as a deliberate test seam</b> (P-6): the
+    /// <b>Internal rather than private as a deliberate test seam</b> (EP-6): the
     /// span-less branch is defensive — <see cref="TomlReadContext"/> always attaches a
     /// span, so no authored document can reach it through <see cref="Read"/> — and the
     /// equal-position tie-break is invisible from the outside when the sort happens to be

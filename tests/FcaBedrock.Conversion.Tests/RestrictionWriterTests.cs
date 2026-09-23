@@ -62,7 +62,7 @@ public sealed class RestrictionWriterTests
     [Fact]
     public async Task Cxt_WhenTheSameSpecIsConvertedTwice_ThenTheBytesAreIdentical()
     {
-        // P-7: restriction execution is on an output path, so it carries a repeatability test.
+        // EP-7: restriction execution is on an output path, so it carries a repeatability test.
         var spec = new BedrockSpec(ConversionFixtures.Wide(hasHeader: false),
         [
             Filter("Gene", 0, new RestrictToValue("Bmp5")),
@@ -144,7 +144,7 @@ public sealed class RestrictionWriterTests
     [InlineData(DuplicateObjectPolicy.Dedupe)]
     public async Task Emit_WhenRestrictionsExecute_ThenTheSourceIsStillEnumeratedExactlyOnce(DuplicateObjectPolicy policy)
     {
-        // P-16/D-105: restriction evaluation rides the EXISTING pass — it reads the same rows the
+        // EP-16/D-105: restriction evaluation rides the EXISTING pass — it reads the same rows the
         // classification already reads, and the dedupe path reuses the existing grouping/spool
         // backend. Counted directly rather than inferred from equal output, because equal output
         // is exactly what a wasteful second pass would also produce.

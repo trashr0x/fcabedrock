@@ -617,7 +617,7 @@ public sealed class EmitObservabilityTests
     [Fact]
     public async Task Emit_WhenCancelled_ThenItThrowsWithoutReportingNormalCompletionWarnings()
     {
-        // Cancellation stays exceptional (P-14) and never becomes a diagnostic.
+        // Cancellation stays exceptional (EP-14) and never becomes a diagnostic.
         var spec = Wide(ConversionFixtures.Nominal("t", 0, "a", "b"));
         var source = ConversionFixtures.SourceOver("a\nb", spec.Binding);
         Assert.True(ConversionFixtures.PlanFor(spec, await source.GetSchemaAsync()).TryGetValue(out var plan));

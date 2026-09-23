@@ -428,7 +428,7 @@ internal static class RunPipeline
     /// the code-less exit-1 path <em>without</em> admitting its broad base — those bases are
     /// the documented call-contract channel of the calibrator, the emitter, and the
     /// calibrated-state factories (D-093/D-098), and absorbing them would disguise a defect as
-    /// a broken data file (P-14).
+    /// a broken data file (EP-14).
     /// </para>
     /// </summary>
     internal static bool IsDataReadFailure(Exception exception) =>
