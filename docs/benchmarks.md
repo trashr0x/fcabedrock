@@ -1,144 +1,76 @@
-# M8 benchmarks — evidence pack
+# Benchmarks: FcaBedrock vNext
 
-The M8 measurement record: what is measured, on what, under what rules, and what the numbers say.
-The architecture and its rationale are `decisions.md` **D-124**; how to run the suite is
-`tests/FcaBedrock.Benchmarks/README.md`. This file is the evidence.
+This guide describes FcaBedrock's benchmark suite. It explains what the suite measures and how,
+gives representative results, and states the limits of those results. The scale targets are
+7.3 million and 73 million records, 10 and 100 times the v2 EMAGE workload of about 732,000
+triples (D-007). The suite's design and rationale are in `docs/decisions.md` (D-124, and D-128
+for the tiered spill schedule), and `tests/FcaBedrock.Benchmarks/README.md` explains how to run it.
 
-> **Status.** The suite, its corpora and oracles, the CLI-host and hashing coverage, the standalone
-> distribution and its smoke, the `eng/` commands, and `.github/workflows/ci.yml` are implemented and
-> green. The controlled Windows x64 baseline is measured at the working (730,000), 7.3M, and 73M
-> tiers. The suite found one production defect — multi-attribute count-sensitive calibration refusing
-> a valid spec on healthy storage — and it is **fixed**, with its affected measurements replaced; see
-> [Corrected defect](#corrected-defect--many-attribute-count-sensitive-calibration). The repository
-> is now canonical on GitHub, and **run
-> [`34289256438`](https://github.com/trashr0x/fcabedrock/actions/runs/34289256438) at `4216610b`
-> passed on all five native targets** — Windows x64, Linux x64, macOS ARM64, and both optional ARM64
-> runners — producing all three required self-contained archives, which are retained and
-> hash-verified. **Those archives are not, however, usable deliveries:** a later inspection found the
-> Linux and macOS apphosts recorded in the zip without an execute bit, so the run's success and the
-> archive's usability are two different facts, and only the first was established. The packaging is
-> corrected and the delivery gate now extracts and runs what it uploads — and the corrected head's own
-> five-target run then **failed**, because that packaging fix stated only the Unix half of what the
-> writer decides and the three Unix targets caught the Windows half. The writer now assigns every
-> entry from the target's RID, and run
-> [`34483863717`](https://github.com/trashr0x/fcabedrock/actions/runs/34483863717) at `c4ceb8e2`
-> then **passed on all five native targets and produced all three required archives** — retained,
-> server-digest matched, and carrying the modes the contract states: both Unix apphosts `0100755`,
-> every other Unix entry `0100644`, and every Windows entry an explicit zero. **The replacement
-> archive evidence is no longer outstanding; it exists at `c4ceb8e2`.** See
-> [Native delivery](#native-delivery). A second production defect, in M7's
-> publication ownership, was found by that native gate and is fixed under **D-125**; its correction
-> reaches the measured CLI-host interval, so **every `CLI host` row and every trace below is a
-> session-A or session-C observation of the revision that produced it, never a measurement of the
-> shipped code**. What the corrected build *was* measured to do — and the one thing that could not be
-> measured — is [The corrected build](#the-corrected-build) and **D-126**. That evidence is
-> `4216610b`/`03352da7`'s: the later three-blocker correction reaches the same measured publication
-> tail, so it could not carry — and on 2026-09-10 **session H reacquired all fifteen
-> allocation/validation cases and all six traces together at the corrected candidate `50f6aa62`**,
-> where **D-126 conditions (c) and (d) are now met**. See
-> [The corrected candidate](#the-corrected-candidate-50f6aa62--session-h). That campaign is
-> **admissible evidence, which is not the same as exact protocol compliance**: one restore's NuGet
-> vulnerability audit contacted `api.nuget.org`, and more than the one commissioned build ran —
-> both before the criterion was frozen, and neither changed a measured byte. See
-> [Admissibility](#admissibility--two-protocol-deviations-and-one-tooling-correction).
-> See also [What has not been measured](#what-has-not-been-measured). The one acquired corpus is
-> outside routine CI and carries its own acceptance obligation; that obligation is **met at the
-> documentation head `82e2ffea`** by the accepted offline replacement run, after a first attempt at
-> the same commit validated all three cases but crossed an explicit no-network stop boundary and so
-> did not close the gate. See
-> [Selection, and what routine CI proves](#selection-and-what-routine-ci-proves) and
-> [The acceptance run at the documentation head](#the-acceptance-run-at-the-documentation-head-2026-09-10-windows-x64-82e2ffea).
->
-> **An independent exhaustive whole-branch review then blocked the candidate at `d4b310ad`, and its
-> correction is committed at `3b2e4a80`.** Three oracle/validation defects were found — an Adult
-> plan-shape check that proved only an aggregate column count, a probe outcome oracle that accepted
-> existential rather than per-attribute evidence, and a Windows archive validator that shifted
-> `ExternalAttributes` before testing it — and all three are corrected in tests and oracles only,
-> with no production, spec, diagnostic, packaging, workflow or output-byte change. **The corrected
-> probe, Adult and native/archive gates then all passed at that exact commit**, each with its own
-> retained evidence identity: see [The review correction](#the-review-correction-3b2e4a80),
-> [The acceptance run at the correction candidate](#the-acceptance-run-at-the-correction-candidate-2026-09-11-windows-x64-3b2e4a80)
-> and [Run 34685708360](#run-34685708360-the-gate-at-the-correction-candidate). Every earlier gate
-> keeps its own revision — `c4ceb8e2` for the five-target native matrix, the three accepted archives
-> and the fresh implementation review, `82e2ffea` for the Adult acceptance, `50f6aa62` for D-126
-> conditions (c) and (d) — and none of them is relabelled to `3b2e4a80`. **Policy L is untouched**:
-> the incremental publication latency stays inconclusive at its pre-registered 5% bound, no retry is
-> owed, and none of the three gates publishes or implies an elapsed, rate, throughput, overhead,
-> speedup, neutrality or non-regression figure. **M8 is not yet accepted, merged, main-CI-verified,
-> GitLab-archived, released or complete**; what remains is documentation review and the operator's
-> commit, explicit candidate acceptance and an authorized local merge, the main-push CI at the merge
-> revision, and the separate private GitLab archival gate.
+The scaling baseline at 730,000, 7.3M and 73M records and the later checks of the corrected build
+were measured on one Windows x64 machine. The tiered spill schedule was assessed later on a Windows
+host at 730,000 and 7.3M records, with no machine identity recorded and no 73M run. The raw
+evidence (reports, logs, traces and archives) is held outside Git. Where this guide quotes a digest,
+the digest identifies the recorded bytes; it does not promise that they are still available.
 
-## What a number here means
+Two limits apply throughout. First, the `CLI host` rows describe the build that produced them, not
+the shipped command: a later publication correction reaches that measured interval, and the
+comparison meant to bound its cost was inconclusive
+([Command latency after the publication correction](#command-latency-after-the-publication-correction)).
+Second, the tiered spill schedule has no 73M result
+([Tiered spill schedule for count-sensitive calibration](#tiered-spill-schedule-for-count-sensitive-calibration)).
 
-Every timed operation starts from a corpus prepared on disk with **nothing open**, and the measured
+## What is measured
+
+The suite is one BenchmarkDotNet host over the real production paths: source drains for wide and
+triple CSV, calibration (including count-sensitive calibration: `equal_frequency`, and `equal_width`
+over the `percentile_p1_p99` range, which need the exact count of every value), planning, emit,
+`.dat` and `.cxt` export, probe, the grouping backend's memory budget and merge fan-in, input and
+output hashing, and a complete `convert` through the in-process CLI host. The `CLI host` cases
+measure host throughput, not installed-command latency. Separate `dotnet-counters` traces of the
+real self-contained executable cover whole-command memory.
+
+Every timed operation starts from a corpus prepared on disk with **nothing open**. The measured
 interval covers opening, the full awaited production operation, complete consumption, and the final
-flush and disposal. Corpus generation, output reset, oracle derivation, harness hashing, and
+flush and disposal. Corpus generation, output reset, oracle derivation, harness hashing and
 validation are all outside it.
 
-Every completed iteration is validated **after** disposal: the artifact must have exactly the
+Every completed iteration is validated **after** disposal. The artifact must have exactly the
 expected length and digest, or the calibration exactly the expected cuts and domain, and the run must
 carry no diagnostic that would oblige a caller to discard its output. A validation failure throws, so
-**a case that produced the wrong result has no throughput number at all**. The launcher exits
-non-zero on any build, execution, or validation failure, and also when a run measured nothing.
+**a case that produced the wrong result has no number at all**. The launcher exits non-zero on any
+build, execution or validation failure, and also when a run measured nothing.
 
-Expected results are derived from the corpus definition plus the documented spec semantics, never by
-invoking the code under test. Where the population makes an exact expectation derivable it is exact:
-the equal-frequency cuts for `n_seq` are order statistics over a known arithmetic sequence, so the
-oracle states them outright. Where it does not — a deliberately tie-heavy population whose exact cuts
-would mean re-implementing the feasibility algorithm under test — the check is shape plus an
-independent equality, and this file says which is which rather than implying the stronger one.
+Expected results are derived from the corpus definition and the documented spec semantics, never by
+invoking the code under test. Where the population makes an exact expectation derivable, the oracle
+is exact: the equal-frequency cuts for `n_seq` are order statistics over a known arithmetic sequence.
+Where it does not, as for a deliberately tie-heavy population whose exact cuts would mean
+re-implementing the algorithm under test, the check is shape plus an independent equality, which is
+weaker, and it is not presented as the exact kind.
 
 Two corpora are **external** checks on a suite whose other expectations are authored in this
-repository: the immutable v2 minis, produced by a different program years earlier and compared
-byte-for-byte, and UCI Adult, whose distributions nobody here chose.
+repository: the immutable v2 minis, produced by a different program years earlier and compared byte
+for byte, and UCI Adult, whose distributions nobody here chose.
 
-### Three memory meanings, never interchanged
+### Three memory meanings
 
-1. **Allocated** in the tables below is BenchmarkDotNet's process-wide **managed allocated bytes per
-   operation**, with its GC collection counts. It is not peak live memory, not native allocation, and
-   not another process's memory. It is reported beside the recorded input-record and input-byte
-   denominators, so a per-record figure can be derived and rechecked against the corpus catalog.
+1. **Allocated** is BenchmarkDotNet's process-wide **managed allocated bytes per operation**, with
+   its GC collection counts. It is not peak live memory, not native allocation and not another
+   process's memory. It is reported beside the recorded record and byte denominators, so a
+   per-record figure can be derived and rechecked against the corpus table.
 2. **Modelled retained bytes** come from the grouping and calibration observers and from the
    retained-layout witnesses. They are scoped algorithmic guarantees over a stable graph, not a
    whole-process limit.
-3. **Sampled working set** comes from separate `dotnet-counters` traces of the real self-contained
-   command. A sampled maximum is a **lower bound** on the true peak, and no sample is not zero.
+3. **Sampled working set** comes from the separate `dotnet-counters` traces. A sampled maximum is a
+   **lower bound** on the true peak, and no sample is not zero.
 
-## Environment
-
-Every measurement below was taken on one machine, in one identified configuration.
-
-| | |
-| --- | --- |
-| Revision | `agent/m8-scaling-reset`, based on `main` at `38b3dda` |
-| OS | Windows 11 Pro (10.0.26200) |
-| CPU | AMD Ryzen 5 5600X — 1 CPU, 6 physical / 12 logical cores |
-| Runtime | .NET 10.0.11, X64 RyuJIT AVX2, **Concurrent Workstation GC** (the product default, not forced) |
-| SDK | 10.0.302 |
-| BenchmarkDotNet | 0.15.8, out-of-process toolchain, Release |
-| Storage | `D:` — Samsung SSD 850 EVO 500 GB, SATA, NTFS; **not** the system volume, and carrying no page file |
-| Bench root | `D:\tmp\fcabedrock-m8-g15-bench` — corpora, outputs, **grouping spools**, and results |
-
-**Storage is a stated condition, not an accident.** Corpora, produced artifacts, BenchmarkDotNet's
-own results, and the grouping backend's sort-merge spool all live on one identified volume: the suite
-points the backend at its own root through the production `GroupingOptions.TempDirectory` seam — the
-same one the CLI's `--temp-dir` uses — rather than letting it default to the OS temporary directory
-on the system drive. Without that, a scale run would be measuring two devices at once, and a
-multi-gigabyte spill would land on the volume the operating system is running from.
-
-**Filesystem cache is warm.** Preparation, validation, and repeated iterations all read the same
-files, and no cache is dropped between iterations. These are therefore warm-cache figures where the
-corpus fits in RAM. Nothing here is a cold-disk claim, and none is made.
-
-Hosted or otherwise unidentified hardware has produced **no** figure in this file.
+None of the three is ever read off another.
 
 ## Corpora
 
-Generated data, downloaded data, produced artifacts, and raw results are bulk evidence and stay out
-of Git; only generator definitions, specs, attribution, the metadata contract, and tiny expectations
-are committed. Every prepared case records its generator revision, geometry, exact byte length, and
-SHA-256, and anything that no longer matches is refused rather than measured.
+Generated and downloaded data, produced artifacts and raw results stay out of Git; only generator
+definitions, specs, attribution, the metadata contract and small expectations are committed. Every
+prepared case records its generator revision, geometry, exact byte length and SHA-256, and a case
+that no longer matches is refused rather than measured. These digests identify the measured inputs.
 
 | Case | Records | Cols | Bytes | rev | SHA-256 |
 | --- | ---: | ---: | ---: | ---: | --- |
@@ -163,776 +95,278 @@ SHA-256, and anything that no longer matches is refused rather than measured.
 | `longtext-working` | 730,000 | 4 | 781,351,597 | 1 | `daf06a6167e2a8fb2f7bb63306ec2518ed4682a7d7ad575a9c091a20ba08c84a` |
 | `adult` † | 32,562 | 15 | 3,974,305 | 2 | `5b00264637dbfec36bdeaab5676b0b309ff9eb788d63554ca0a249491c86603d` |
 
-† The only **acquired** corpus. Its row is not just a record of what was prepared: that length and
-digest are **pinned in the source** (`AdultCorpus.cs`) and enforced on every acquisition and reuse,
-so this table names one specific file rather than whatever a later download happens to return.
+† The only **acquired** corpus. Its length and digest are **pinned in the source** (`AdultCorpus.cs`)
+and enforced on every acquisition and reuse, so this row names one specific file rather than
+whatever a later download returns. The pin establishes byte identity, not publisher authenticity.
 
-**W16** is sixteen wide columns: four numeric (strictly increasing, heavily tied, skewed, wide signed
-decimal), eight categorical over eight-value domains, four binary. It carries both missing forms — an
-explicit token and an empty cell — and two domain values that force the RFC 4180 quoting path.
+- **W16** is sixteen wide columns: four numeric (strictly increasing, heavily tied, skewed, wide
+  signed decimal), eight categorical over eight-value domains, and four binary. It carries both
+  missing forms (an explicit token and an empty cell) and two values that force the RFC 4180
+  quoting path.
+- **T10** is ten triple rows per subject in two layouts of the same observations: contiguous, and
+  block-interleaved with first-appearance subject order unchanged. It carries a multi-valued
+  predicate, an exact duplicate row, one numeric value in two equivalent spellings, and a predicate
+  no attribute binds. The two layouts have the same byte length and different digests.
+- **w16keyed** is W16 with a leading object-key column whose values repeat four times and never
+  adjacently, converted under `duplicate_object_policy = "dedupe"`. Wide dedupe shares the
+  grouping backend with unordered triples, so this measures that backend from the other side.
+- **ads** is 1,559 columns (three numeric, a local flag, 1,554 sparse term flags at about 1.2%
+  density, and a class), matching the internet-advertisements geometry. It tests width, and it is
+  outside the scale ladder: 1,559 columns do not need 73 million rows to be wide.
+- **longtext** is four columns of long values (eight fixed 512-character blobs and a per-row note of
+  64 to 1,024 characters), the only family that can reach probe's retained-text guard before its
+  retained-value guard.
+- **adult** is the UCI Adult training split, acquired rather than generated; its attribution and
+  licence are in `tests/FcaBedrock.Benchmarks/Corpus/Adult.attribution.md`. The published file ends
+  with a doubled newline, so it holds the 32,561 census rows usually cited plus one empty final row.
+  A reader is right to yield that row, so the recorded count is 32,562, and the conversion produces a
+  32,562nd object with no crosses.
 
-**T10** is ten triple rows per subject in two physical layouts of the *same* observations: contiguous,
-and block-interleaved so that first-appearance subject order is unchanged. It carries a multi-valued
-predicate, an exact duplicate row, one numeric value in two equivalent raw spellings, and a predicate
-no attribute binds. The two layouts have identical byte length and different digests, which is what
-"the same rows in a different order" should look like.
+## Selection and routine CI
 
-**w16keyed** is W16 with a leading object-key column whose values repeat four times and never
-adjacently, converted under `duplicate_object_policy = "dedupe"`. Wide dedupe shares the
-grouping/sort-merge backend with triple `unordered`, so this measures that backend from the other
-side.
-
-**ads** is 1,559 columns — three numeric, a local flag, 1,554 sparse term flags at about 1.2%
-density, and a class — matching the geometry of the internet-advertisements workload. It pressures
-*width*, and is deliberately outside the target-scale matrix: 1,559 columns do not need seventy-three
-million rows to be wide.
-
-**longtext** is four columns whose values are long rather than numerous: eight fixed 512-character
-blobs and a per-row note of 64 to 1,024 characters. It is the only family that can reach probe's
-retained-*text* guard before its retained-*value* guard.
-
-**adult** is the UCI Adult training split, acquired rather than generated
-(`tests/FcaBedrock.Benchmarks/Corpus/Adult.attribution.md`). One property of the published file is
-worth stating: it ends with a **doubled newline**, so it carries the 32,561 census rows everyone
-cites *plus one empty final row*. A reader is right to yield that row, so the recorded count is
-32,562 and the conversion produces a 32,562nd object with no crosses. The suite records the count the
-pipeline actually reads rather than the count the literature quotes.
-
-## Selection, and what routine CI proves
-
-Four tier categories. `Small` is the default; `Working`, `Scale`, and `External` are **opt-in by
-category and by nothing else** — no name filter and no surface category reaches one.
+The suite has four tier categories. `Small` is the default; `Working`, `Scale` and `External` are
+**opt-in by category and by nothing else**, so no name filter and no surface category reaches one.
 
 | Tier | Bare run and routine CI | Reached by | Why it is gated |
 | --- | --- | --- | --- |
-| `Small` (with `Micro`) | yes | the default | — |
+| `Small` (with `Micro`) | yes | the default | n/a |
 | `Working` | no | `--anyCategories Working` | 730,000 records per case |
 | `Scale` | no | `--anyCategories Scale` | 7.3M and 73M records; hours |
 | `External` | no | `--anyCategories External` | its corpus is **acquired**, not generated |
 
-The first two are gated by cost. `External` is gated by **dependency**: its three cases are quick
-— 32,562 records — but the corpus comes from `archive.ics.uci.edu`, and requiring it in every native
-job would let an outage at a research-data host fail a build that has nothing to do with it. Opting
-in is not skipping: a *selected* case whose corpus is absent is a hard failure carrying the exact
-`prepare` command, and the launcher exits non-zero when a run measured nothing.
+`Working` and `Scale` are opt-in because of their cost. `External` is opt-in because of a
+dependency: its three cases read only 32,562 records, but the corpus comes from
+`archive.ics.uci.edu`, and an outage there must not fail a build that has nothing to do with it.
+Opting in is not skipping: a selected case whose corpus is absent is a hard failure that names the
+exact `prepare` command.
 
-**Routine CI** prepares `micro small` and runs `--anyCategories Small --filter '*' --job dry` on each
-native target. What a green run proves is exactly what it selected: the Small-category cases and
-their oracles on that platform. It does **not** claim Adult ran, on that candidate or on any
-non-Windows target. Two Small-category cases are named "mini-adult" — they are the committed
-immutable v2 fixtures, compared byte-for-byte against v2's own output, and they are not the acquired
-dataset.
+Routine CI prepares `micro small` and runs `--anyCategories Small --filter '*' --job dry` on each
+native target. A green run proves exactly what it selected, the Small-category cases and their
+oracles on that platform. It measures nothing, and it claims nothing about Adult. The two Small
+cases named "mini-adult" are the committed v2 fixtures, compared byte for byte with v2's output, not
+the acquired dataset.
 
-**The real-data evidence is required of the candidate instead.** Before M8 acceptance, and for each
-later release candidate, all three `External` cases must pass on the final Windows x64 build against
-the verified corpus, retained as durable evidence. It is a **blocking** obligation — routine CI can
-be green while it is outstanding — enforced by the closure checklist, the independent review, and
-operator acceptance, exactly as the controlled 7.3M/73M matrix on this page is. Three outcomes are
-kept apart, and none of them can become a pass:
+The real-data evidence is required of each release candidate instead: all three `External` cases
+must pass on the final Windows x64 build against the verified corpus (D-124). An unreachable host, a
+length or digest mismatch, and a failure on verified bytes are kept apart, and none of them becomes a
+pass. The most recent recorded pass was at `3b2e4a80` on 2026-09-11, with every completed iteration
+validated after disposal and the Adult plan-shape proof run once per conversion case before
+measurement. At the same revision the five `probe` rows in the result tables were re-validated under
+the per-attribute probe oracle, not re-timed. Both are correctness results for that revision, and
+the Adult obligation applies again at every later release candidate.
 
-| Outcome | What it means |
+## Environment and applicability
+
+The scaling baseline and the tuning runs were taken on one machine:
+
+| | |
 | --- | --- |
-| UCI unreachable | **evidence-availability** failure; the obligation stays open, no routine job fails |
-| length or digest mismatch | **input-identity** failure to investigate; never retried into acceptance |
-| failure or oracle mismatch on verified bytes | a **correctness finding** to diagnose |
+| Revision | a working state based on `38b3dda`; the baseline runs of 2026-09-06 predate every later commit, and no commit is recorded for the re-measurement after the calibration fix |
+| OS | Windows 11 Pro (10.0.26200) |
+| CPU | AMD Ryzen 5 5600X: 1 CPU, 6 physical / 12 logical cores |
+| Runtime | .NET 10.0.11, X64 RyuJIT AVX2, **Concurrent Workstation GC** (the product default, not forced) |
+| SDK | 10.0.302 |
+| BenchmarkDotNet | 0.15.8, out-of-process toolchain, Release |
+| Storage | a Samsung SSD 850 EVO 500 GB (SATA, NTFS); **not** the system volume, and carrying no page file |
+| Bench root | one directory on that volume holding corpora, outputs, **grouping spools** and results |
 
-A retained corpus may be reused only when its pinned identity, its committed spec digest, and its
-acquisition revision all verify — which is ordinary verified reuse, not a fallback.
+**Storage is a stated condition.** Corpora, produced artifacts, BenchmarkDotNet's results and the
+grouping spool all live on that one volume. The suite points the grouping backend at its own root
+through the production `GroupingOptions.TempDirectory` seam, the one the CLI's `--temp-dir` uses,
+rather than letting it default to the OS temporary directory. Otherwise a scale run would measure
+two devices at once, and a multi-gigabyte spill would land on the system volume.
 
-### The acceptance run (2026-09-07, Windows x64)
+**The filesystem cache is warm.** Preparation, validation and repeated iterations read the same
+files, and no cache is dropped between iterations, so these are warm-cache figures wherever the
+corpus fits in RAM. Nothing here is a cold-disk measurement.
 
-Run at the amendment's revision, from a hermetic root, after one explicit fresh acquisition whose
-bytes matched the pin exactly. Every completed iteration validated after disposal.
+Hosted CI hardware produced no performance figure in this guide. Each result set describes the code
+it measured, and later changes limit how far it reaches:
 
-| Case | Mean | StdDev | Records | Allocated |
+| Result set | Code it describes | Does it describe today's code? |
+| --- | --- | --- |
+| Baseline measurements, tuning runs, and the re-measurement after the calibration fix (from 2026-09-06; .NET 10.0.11) | a working state based on `38b3dda`; no commit recorded | component rows: yes, by reachability, because every executable product change committed since `38b3dda` is in count-sensitive calibration or CLI publication; † rows (count-sensitive calibration): no, the tiered spill schedule (D-128) changed that path; `CLI host` rows: no, the publication correction (D-125) changed publication |
+| Publication-latency comparison (2026-09-09) | `4216610b` against its unchanged pre-fix control | no: it describes those two builds, and it was inconclusive at the 5% bound |
+| Shipped-code validation and memory traces (2026-09-10; traces on .NET 10.0.10) | `50f6aa62`, whose `src/` equals that of `3d71524b` | yes, except the auto-calibrated rows and traces, which predate the tiered spill schedule |
+| Tiered spill schedule assessment (adopted 2026-09-21; a Windows host; environment not recorded) | a candidate whose source equals `47e2ce71` apart from one documentation comment | yes, for the three measured count-sensitive calibration cases at 730,000 and 7.3M records; no 73M run |
+
+The details are in [Command latency after the publication correction](#command-latency-after-the-publication-correction)
+and [Tiered spill schedule for count-sensitive calibration](#tiered-spill-schedule-for-count-sensitive-calibration).
+
+## Findings
+
+### Streaming throughput is linear in the record count
+
+The wide source drain reads **2.83M, 2.74M and 2.81M records/second** at 730,000, 7.3M and 73M
+records, the same rate across a hundredfold range, at 721 to 723 B/record. The triple drain (10.6M
+to 11.3M records/second), grouped triple conversion (4.2M to 4.4M) and wide emit (1.24M to 1.33M)
+also hold their rate: these streaming paths do not degrade with size, which is the property D-007's
+streaming design exists to provide. The paths that merge spilled data do slow down: unordered
+triple conversion falls from 1.00M to 0.81M and 0.70M records/second, and four-shape calibration
+holds 1.25M at 730,000 and 7.3M records and falls to 0.75M at 73M. These are component measurements
+of the measured paths, not a rate to expect from a whole `convert` invocation.
+
+### Serialization is nearly free; emission is the cost
+
+Pairing each conversion with an **emit drain** that produces the same objects and writes nothing
+isolates the writer:
+
+| Case | emit drain | + `.dat` | writer's share | extra allocation |
 | --- | ---: | ---: | ---: | ---: |
-| `adult emit + cxt export` | 110.0 ms | 4.04 ms | 32,562 | 143.95 MB |
-| `adult emit + dat export` | 50.58 ms | 0.924 ms | 32,562 | 67.13 MB |
-| `wide source drain` (Adult) | 13.05 ms | 0.238 ms | 32,562 | 21.82 MB |
-
-An independent earlier run the same day agreed within variance (112.7 / 49.67 / 13.00 ms) at
-identical allocations. These are candidate acceptance measurements on the fresh-iteration job; they
-are not part of the controlled baseline below and are not comparable with it.
-
-Full evidence — the hermetic Small Dry smoke (48 cases, no Adult, and identical when repeated in the
-same workspace), the selected-but-unprepared failure, the name-filter checks, and the
-catalog-stability check against corpora prepared before the amendment — is under
-`evidence/s6-github/adult-external-amendment/` in the bench root.
-
-### The acceptance run at the final candidate (2026-09-09, Windows x64, `4216610b`)
-
-D-125's publication correction produced a new candidate, so the blocking obligation was met again
-against it. Input identity was verified first and nothing was downloaded: `adult.csv`,
-**3,974,305 bytes**, SHA-256 `5b00264637dbfec36bdeaab5676b0b309ff9eb788d63554ca0a249491c86603d` —
-both matching the D-124 pin. All three cases ran successfully, each iteration's artifact validated
-against its independent expectation after disposal: `AdultConvertCxt` **124.8 ms**,
-`AdultConvertDat` **54.78 ms**, `AdultSourceDrain` **14.17 ms**.
-
-These are a *correctness* result at `4216610b`, and they are **not** comparable with the 2026-09-07
-figures above or with anything in the controlled baseline: different session, different machine
-state, and — per **D-126** — no cross-session elapsed comparison is available for this build.
-
-### The acceptance run at the documentation head (2026-09-10, Windows x64, `82e2ffea`)
-
-The native, archive and implementation-review gates closed at `c4ceb8e2`, and the documentation
-reconciliation that records them was committed at **`82e2ffea`** — sole parent `c4ceb8e2`, three
-advisory Markdown files, `+342/−34`, nothing else. That was the revision then submitted for
-acceptance, so the blocking obligation attached there. It was run twice at that exact candidate, and
-only the second run closes the gate.
-
-**The first attempt is preserved, and it is not the accepted run.** All three cases executed and
-validated at `82e2ffea` — native exit 0, three cases completed, no `NA` case, no oracle, validation
-or diagnostic failure — but BenchmarkDotNet's generated-project restore triggered NuGet's
-vulnerability audit, which contacted `api.nuget.org` vulnerability-metadata endpoints **inside the
-measured window**, against the commission's explicit no-network stop rule. The gate was therefore
-**not** closed with it. It is retained unchanged at `D:\tmp\fcabedrock-m8-g15-final-adult-82e2ffea` —
-**33 files / 4,192,655 bytes**, `MANIFEST-SHA256.txt` 4,301 B, SHA-256
-`4dbcfb9426b2117fdf7c3aa77be7175fe8aa8ffa67232a96e58a1aa05e11717e` — as a **technically successful,
-protocol-noncompliant** validation run. It is not a product failure, not a flake, not accepted, not
-superseded evidence, and not the source of any figure below; the two runs are compared nowhere.
-
-**The accepted run is the one authorized offline replacement**, at the same exact candidate, under a
-restore boundary that left the audit no way to reach the network. Input identity was verified first
-and nothing was acquired — `prepare adult` was never invoked and UCI was never contacted: `adult.csv`
-**3,974,305 bytes**, SHA-256 `5b00264637dbfec36bdeaab5676b0b309ff9eb788d63554ca0a249491c86603d`;
-`adult.toml` 3,006 B, SHA-256 `763661267b020be7da474dd35009359a6f56061cacc3da7ac6681e6c6ebce0a5`;
-catalog 355 B, SHA-256 `43448fede549b8b506b5dfa058f7faf60cc592a09a8519f7390c5cecb3af8e3f`, reading
-`tier = external`, `generator_revision = 2`, `records = 32562`, `columns = 15`. The retained spec is
-**byte-identical to the committed `AdultSpecs.Declared`**, derived independently of the catalog, and
-the data matched the **source-pinned** identity independently of the catalog's own recorded digest.
-The Release `--no-restore` build exited 0 with **zero warnings and zero errors**, and every product
-assembly the run exercised embeds `1.0.0+82e2ffea133b191c6949b4f073a14f4b1e2dcf4e`.
-
-Selection listed exactly `AdultConvertCxt`, `AdultConvertDat` and `AdultSourceDrain` — three cases,
-no fourth, and no `Small`, `Working`, `Scale`, mini-Adult or unrelated surface case. One measured
-invocation followed, native exit **0**, no retry, no `--job` and no filter change, all three under
-the ordinary `fresh-iteration` job (`InvocationCount=1`, `RunStrategy=Throughput`, `UnrollFactor=1`),
-with the launcher reporting `3 benchmark case(s) completed with no build, execution, or validation
-failure.` Every completed measured iteration validated in `[IterationCleanup]`, after disposal:
-`AdultSourceDrain` against the independent Adult drain expectation, and the two conversion cases
-against clean diagnostics, an independently counted artifact shape (32,562 objects, and the derived
-CXT line count) and intra-run byte stability. No product diagnostic, exception, validation error or
-failed case appears anywhere in the 611-line log.
-
-| Case | Measured N | Mean | StdDev | Records | Allocated |
-| --- | ---: | ---: | ---: | ---: | ---: |
-| `adult emit + cxt export` | 22 | 100,015,363.63636364 ns | 2,412,180.615828057 ns | 32,562 | 150,943,216 B |
-| `adult emit + dat export` | 12 | 50,230,683.333333336 ns | 711,683.1200283826 ns | 32,562 | 70,394,432 B |
-| `wide source drain` (Adult) | 36 | 12,896,588.888888888 ns | 405,286.2852550935 ns | 32,562 | 22,882,960 B |
-
-All three report `Records = 32,562`, `InputMiB = 3.8`, .NET 10.0.12, `X64 RyuJIT x86-64-v3`, RELEASE
-and Concurrent Workstation GC under BenchmarkDotNet 0.15.8, parsed from the generated full-JSON and
-CSV reports rather than from the console's closing sentence. **These are the raw result of that one
-measured session and nothing else.** They are not compared with the first attempt, with the
-2026-09-07 or 2026-09-09 runs above, with session H, or with anything in the controlled baseline, and
-no delta, rate, records/s, MiB/s, throughput, speedup, overhead, scaling, neutrality, equality or
-non-regression reading is derived from them. **Policy L is untouched**: the incremental publication
-latency stays inconclusive at the pre-registered 5% bound and no retry is owed. BenchmarkDotNet's
-`MinIterationTime` advisory fired on all three — expected for millisecond-scale operations under the
-one-invocation-per-iteration job that D-124's per-iteration validation contract requires — and its
-ordinary outlier policy removed 1, 3 and 3 measurements respectively. Both are recorded as
-advisories: neither is a failure, and neither qualifies the correctness result.
-
-**The restore was provably local-only, which is the condition this replacement exists to satisfy.**
-`RestoreSources` carried a non-empty, local-only value — `C:\Program Files\dotnet\library-packs` and
-an empty directory inside the evidence root — because an empty value falls back to the configured
-feeds, together with `NuGetAudit=false`, `RestoreNoHttpCache=true`, `RestoreIgnoreFailedSources=false`
-and an isolated `NUGET_HTTP_CACHE_PATH`. All ten generated `project.assets.json` files and every
-`*.nuget.dgspec.json` record exactly those two filesystem sources, **zero** remote sources and
-**zero** `http(s)://` occurrences, with `enableAudit = false` on every project and `"success": true`
-with empty logs in every `project.nuget.cache`; all 26 resolved package receipts came from the
-pre-existing global packages folder, none created or modified in the run window. The machine's normal
-NuGet v3 HTTP cache (1,901 files / 1,888,939,328 B) and global packages tree (36,151 files /
-7,363,167,315 B) are **byte-identical** across the before, pre-measurement and after inventories; the
-three vulnerability-cache entries keep the first attempt's timestamps and digests untouched; and the
-isolated cache and the empty source are still empty. Nothing was downloaded or installed. `output`
-and `spool` are both empty by their owning cleanup contracts, with no manual deletion anywhere.
-
-Evidence root `D:\tmp\fcabedrock-m8-g15-adult-82e2ffea-offline` — **133 files / 20,324,696 bytes**,
-frozen — whose `MANIFEST-SHA256.txt` (15,852 B, SHA-256
-`73f396044d7a6927cfcade689c0825987a5ef0ba7cfc1cd449599892de0ce99e`) covers 132 entries / 20,308,844
-bytes, every one hash-matching, none missing, and only the manifest itself uncovered. The first
-attempt's root and every earlier retained evidence root were re-verified unchanged.
-
-**This closes the standing obligation at `82e2ffea` and nowhere else.** It is a *correctness* result
-for that candidate, not a standing exemption: the obligation re-attaches at every later release
-candidate, and no future code, build, test or workflow change inherits it.
-
-### The acceptance run at the correction candidate (2026-09-11, Windows x64, `3b2e4a80`)
-
-The exhaustive whole-branch review produced a new candidate — the correction packet committed at
-**`3b2e4a80`** ([The review correction](#the-review-correction-3b2e4a80)) — and that packet changes
-`AdultOracle` itself, so the standing obligation re-attached there and was met again. The `82e2ffea`
-run above is **not** relabelled, replaced or re-attributed, and the two are compared nowhere.
-
-Input identity was verified first and nothing was acquired: `prepare adult` was never invoked and UCI
-was never contacted. `adult.csv` **3,974,305 bytes**, SHA-256
-`5b00264637dbfec36bdeaab5676b0b309ff9eb788d63554ca0a249491c86603d`; `adult.toml` 3,006 B, SHA-256
-`763661267b020be7da474dd35009359a6f56061cacc3da7ac6681e6c6ebce0a5`; catalog 355 B, SHA-256
-`43448fede549b8b506b5dfa058f7faf60cc592a09a8519f7390c5cecb3af8e3f`, reading `tier = external`,
-`generator_revision = 2`, `records = 32562`, `columns = 15`. The retained spec is **byte-identical to
-the committed `AdultSpecs.Declared`**, extracted from source independently of the catalog; the data
-matched the **source-pinned** identity independently of the catalog's own recorded digest; and the
-record count was counted independently at **32,562**, the published file's doubled final newline
-included. The Release `--no-restore` build exited 0 with zero warnings and zero errors, and every
-product assembly the run exercised embeds
-`1.0.0+3b2e4a801f5e37286bb2be110184e4f86ce11c6d`.
-
-One measured invocation followed — native exit **0**, no retry, no `--job` and no filter change —
-running exactly `AdultConvertCxt`, `AdultConvertDat` and `AdultSourceDrain` and no fourth case, under
-the registered `fresh-iteration` job (`InvocationCount=1`, `RunStrategy=Throughput`,
-`UnrollFactor=1`), with the launcher reporting `3 benchmark case(s) completed with no build,
-execution, or validation failure.` A non-executing selection listing first showed exactly those three
-names, with no `Small`, `Working`, `Scale`, mini-Adult or unrelated surface leakage.
-
-**Where each proof runs, stated exactly.** The corrected `AdultOracle.RequirePlanShape` — the
-per-planned-attribute, attributed, cross-attribute-ownership proof — executes **once per conversion
-case in `[GlobalSetup]`**, after the immutable plan is built and **before any measurement**. That
-placement is longstanding and already adjudicated rather than something this correction introduced,
-and this page does **not** claim the shape proof runs after every measured iteration. Had it thrown,
-`GlobalSetup` would have failed and the case would carry no measurement at all, so both conversion
-cases producing complete measurements is what establishes that it executed and passed. What runs
-**after every completed measured iteration, after disposal**, is `[IterationCleanup]`: clean
-diagnostics, an independently measured object/line count (32,562 objects, and the derived CXT line
-count), intra-run byte determinism against the first completed iteration, and artifact cleanup — and,
-for `AdultSourceDrain`, its own independent drain expectation. The executed benchmark assembly was
-reconciled against this commit's host build method body by method body: 1,561 IL methods on each
-side, one combined map digest, zero differing entries.
-
-| Case | Measured N | Mean | StdDev | Records | Allocated | GC 0/1/2 |
-| --- | ---: | ---: | ---: | ---: | ---: | --- |
-| `adult emit + cxt export` | 13 | 101,338,469.230769 ns | 1,561,321.78745266 ns | 32,562 | 150,943,216 B | 9 / 3 / 1 |
-| `adult emit + dat export` | 14 | 49,556,628.5714286 ns | 867,151.390764897 ns | 32,562 | 70,499,504 B | 4 / 0 / 0 |
-| `wide source drain` (Adult) | 13 | 12,857,546.1538462 ns | 172,027.108403417 ns | 32,562 | 22,882,960 B | 1 / 0 / 0 |
-
-All three report `Records = 32,562`, `InputMiB = 3.8`, .NET 10.0.12, `X64 RyuJIT x86-64-v3`, RELEASE
-and Concurrent Workstation GC under BenchmarkDotNet 0.15.8, parsed from the generated full-JSON and
-CSV reports rather than from the console's closing sentence. **These are the raw result of that one
-measured session and nothing else.** They are compared with the `82e2ffea` runs nowhere, with session
-H nowhere, and with the controlled baseline nowhere, and **no** delta, rate, records/s, MiB/s,
-throughput, speedup, overhead, scaling, neutrality, equality or non-regression reading is derived
-from them — this is an acceptance/correctness run, and no performance conclusion follows from its
-timings. **Policy L is untouched.** BenchmarkDotNet's `MinIterationTime` advisory fired, and its
-ordinary outlier policy removed 3 measurements from the CXT case and 2 from the drain: expected for
-millisecond-scale operations under the one-invocation-per-iteration job D-124's per-iteration
-validation contract requires, recorded as advisories, neither hidden nor promoted into failures.
-
-**The restore was provably local-only.** An `offline-nuget.config` cleared package sources *and*
-audit sources and added only `C:\Program Files\dotnet\library-packs` and an empty directory inside
-the evidence root. All 100 solution restore records and all 50 generated-project records name exactly
-those two filesystem sources and that one config, with `enableAudit = false`, `"success": true` and
-empty logs everywhere, zero remote sources, and no `http(s)://` occurrence beyond the MSBuild XML
-namespace; every package resolved from pre-existing content, none created or modified in the run
-window. The machine's NuGet HTTP cache, global packages tree, `%APPDATA%\NuGet`, SDK `metadata`,
-`sdk-manifests` and `%USERPROFILE%\.dotnet` — the workload advertising sentinels included — are
-byte-identical to the pre-campaign baseline at every one of the six comparison phases, and the
-isolated cache and the empty source stayed empty. `output` and `spool` are both empty by their owning
-cleanup contracts, with no manual deletion.
-
-Evidence root `D:\tmp\fcabedrock-m8-g15-post-review-adult-3b2e4a80-offline` — **288 files /
-49,943,651 bytes**, frozen — with `MANIFEST-SHA256.txt` SHA-256
-`D38D4CCF33EAC0F802B7A20C67DC800C95BF75FAA1FC58EAA46DC0A0BAA8C4CB`, `PROTOCOL.md`
-`78BEDC9E6D2659BB140D591C6CBF5513C36A4CCA71D55F832DFFD18B9B8DAB52` and `RESULT.md`
-`5D07825EC02285171904887A1326DEEADA8D2E6F6B89FE76BE3DF0243C17FBCB`. Four acquisition disclosures are
-recorded there rather than smoothed away: that session captured **no pre-restore inventory** of the
-solution restore records of its own, so the predecessor used for the 40 un-rewritten
-`.nuget.g.props`/`.g.targets` files is the probe campaign's independently frozen record set at the
-**same** commit, which all 40 matched in digest *and* mtime; one intermediate comparison keyed by
-file name was invalid and was corrected rather than reported as a finding; BenchmarkDotNet
-regenerated into `FcaBedrock.Benchmarks-1`, overwriting an ignored generated-project working copy,
-with nothing deleted and no evidence root touched; and two abbreviated digests are mis-typed in the
-frozen `RESULT.md`'s prior-root line, whose authoritative full values are the ones recorded here and
-in that root's `PROTOCOL.md`.
-
-**This closes the standing obligation at `3b2e4a80` and nowhere else.** It is a *correctness* result
-for that candidate, not a standing exemption: the obligation re-attaches at every later release
-candidate, and no future code, build, test or workflow change inherits it.
-
-## Native delivery
-
-The first complete pass of `.github/workflows/ci.yml`, and the first artifacts M8 has produced.
-
-| Run | Head | Conclusion | What it established |
-| --- | --- | --- | --- |
-| [`34241484619`](https://github.com/trashr0x/fcabedrock/actions/runs/34241484619) | `a09e302` | **failure** | the first native gate; five jobs failed at `Test (Release)`, exposing two pre-existing M7 defects. No artifact. Remains failed evidence at that revision |
-| [`34287497829`](https://github.com/trashr0x/fcabedrock/actions/runs/34287497829) | `91188455` | **failure** | `Test (Release)` passed on all five targets for the first time; win-x64 and linux-x64 completed with artifacts; macOS ARM64 failed at the global-tool smoke — a pre-existing macOS-only test defect (`/var` vs `/private/var` path spelling), first reached because no run had ever got that far. Remains failed evidence at that revision |
-| [`34289256438`](https://github.com/trashr0x/fcabedrock/actions/runs/34289256438) | `4216610b` | **success** | **all five targets green; all three required archives produced.** The archives are *not* usable deliveries — see [The property the delivery gate did not check](#the-property-the-delivery-gate-did-not-check) |
-| [`34392695933`](https://github.com/trashr0x/fcabedrock/actions/runs/34392695933) | `03352da7` | **success** | the documentation head's own five-target run; same five green jobs, same three archives produced and retained — and the same unusable-apphost defect in the Linux and macOS ones |
-| [`34468088854`](https://github.com/trashr0x/fcabedrock/actions/runs/34468088854) | `163f1c49` | **failure** | the corrected head's gate; both Windows targets green, all three Unix targets failed at `Test (Release)` on the *new* Windows-archive assertion. No Unix archive was built and nothing was retained — see [Run 34468088854](#run-34468088854-the-windows-half-of-the-same-rule) |
-| [`34483863717`](https://github.com/trashr0x/fcabedrock/actions/runs/34483863717) | `c4ceb8e2` | **success** | the host-independent writer's gate; **all five targets green, all three required archives produced, retained, digest-matched and mode-correct** — the first archives that satisfy the delivery gate — see [Run 34483863717](#run-34483863717-the-gate-opens) |
-| [`34685708360`](https://github.com/trashr0x/fcabedrock/actions/runs/34685708360) | `3b2e4a80` | **success** | the review correction's gate; **all five targets green at 4,623 / 0, all three required archives produced, retained, digest-matched and mode-correct**, with the new raw-attribute-bit negative executing on every target — see [Run 34685708360](#run-34685708360-the-gate-at-the-correction-candidate) |
-
-No failed run is relabelled, and no successful run is. Runs `34289256438` and
-`34392695933` executed every job and every step successfully at their own revisions, and that is
-what a green workflow says. It does not say the archives those jobs uploaded can be used, because
-nothing in either run extracted one. The two artifacts run `34287497829` did produce are superseded —
-short by a required target and built at a superseded revision — and are not milestone evidence.
-
-**Run `34289256438`, attempt 1**, head `4216610b66b96925f8a3d3638b237c2f365211b5`:
-
-| Job | Runner label | Target | Job id |
-| --- | --- | --- | --- |
-| windows x64 (required) | `windows-2025` | win-x64 | 102271873798 |
-| linux x64 (required) | `ubuntu-24.04` | linux-x64 | 102271873782 |
-| macos arm64 (required) | `macos-15` | osx-arm64 | 102271873772 |
-| windows arm64 (optional) | `windows-11-arm` | win-arm64 | 102271873716 |
-| linux arm64 (optional) | `ubuntu-24.04-arm` | linux-arm64 | 102271873578 |
-
-Every job ran natively on its declared architecture and passed **every applicable step**: checkout,
-.NET setup, the environment record, the process-architecture assertion, restore, the Release build,
-the 25 resident-layout witnesses, `Test (Release)`, corpus preparation, the Small `Dry` smoke, the
-global-tool smoke, and the self-contained smoke. The two optional jobs skipped exactly the two
-required-target steps — `Publish and archive` and `Upload the tested archive` — under the workflow's
-`if: matrix.required` rule, because an optional target's archive would be a distribution nobody
-promised to support.
-
-This is the first time D-082's retained accounting has executed off Windows x64 inside a job that
-then went on to succeed. It extends the numerical `actual retained ≤ modelled` guarantee's *executed*
-coverage to the validated targets above; the guarantee's own scope is unchanged.
-
-### The three required archives — retained, decompressed, and hash-verified
-
-Durable copies: `D:\tmp\fcabedrock-m8-g15-m7-native-contracts\retained-actions\run-34289256438\`
-(operator-retained evidence on the machine described above, not a portable link). GitHub's own
-artifact API returns a server-side `digest` for each, and all three equal the outer SHA-256 computed
-locally — so the retained copies are provably the run's own artifacts, not merely same-sized files.
-All three expire from Actions on 2026-09-15; the durable copies do not.
-
-| Target | Artifact id | Outer bytes | Outer SHA-256 | Payload bytes | Payload SHA-256 | Entries |
-| --- | --- | ---: | --- | ---: | --- | ---: |
-| win-x64 | 10080818922 | 37,745,780 | `DBED4FDA5010BEAF92E9D9CFB5E83495FD0D2A5047DDBF9A4C86B69CE3BA2DDA` | 37,855,593 | `2453E3C8592E8A924F0869D548416CB4FD1F1B5EBDB723947C1C6051EDE9A472` | 217 |
-| linux-x64 | 10080762640 | 37,797,223 | `0C4387702B4BA3DC3D18B305F483AA33C3B7B70F4F444BEAEC620ABCCB848F60` | 37,924,610 | `0A3120743274D46273914237EC63EBD11F8D3D526A28EE1DFB8B70B7CFD9AC14` | 217 |
-| osx-arm64 | 10080740722 | 34,383,094 | `1EBE6ED9965EB59A85097FCAA4DC0748B87F21EE145BF71271996F5EF1CCFC11` | 34,519,473 | `D18EDD7B8FFE105768E3EB9A1F2C679883FAD53FBC2541DA18A7293255E54E34` | 216 |
-
-Each outer archive contains exactly its one named payload ZIP. Independent read-only inspection of
-all three payloads found no unsafe path, no case-insensitive duplicate, complete decompression, and
-the expected host plus CLI runtime files. Each is the distribution built by
-`eng/publish-selfcontained.ps1` — the same script a developer runs locally.
-
-### The property the delivery gate did not check
-
-Every check above is about the archive's *contents*. None of them extracted one, and the property
-that decides whether a standalone distribution works at all is not in its contents but in its
-**metadata**: a zip records each file's Unix mode, and `eng/publish-selfcontained.ps1` built the
-archive with `Compress-Archive`, which records `0100644` for every entry.
-
-Read back from the retained artifacts of **both** successful runs:
-
-| Run | RID | Entry | Bytes | External attributes | Unix mode |
-| --- | --- | --- | ---: | --- | --- |
-| `34289256438` | linux-x64 | `FcaBedrock.Cli` | 78,256 | `0x81A40000` | `0100644` |
-| `34289256438` | osx-arm64 | `FcaBedrock.Cli` | 124,712 | `0x81A40000` | `0100644` |
-| `34392695933` | linux-x64 | `FcaBedrock.Cli` | 78,256 | `0x81A40000` | `0100644` |
-| `34392695933` | osx-arm64 | `FcaBedrock.Cli` | 124,712 | `0x81A40000` | `0100644` |
-
-Extracting run `34392695933`'s Linux archive on WSL2 Ubuntu 24.04.4 / ext4 produces
-`-rw-r--r-- FcaBedrock.Cli`, and the `./FcaBedrock.Cli` the README documents exits **126,
-`Permission denied`**. The Windows archives are unaffected: a Windows distribution carries no Unix
-mode and is launched by extension.
-
-Why the green gate missed it: the self-contained smoke published a folder, **ran the executable out
-of that folder**, and then created a *different* zip of its own with `ZipFile.CreateFromDirectory` to
-inspect names and sizes. The workflow separately ran the packaging script afterwards and uploaded
-*its* archive — which nothing had extracted or executed. Two definitions of a valid archive existed,
-and the delivered one was never the tested one.
-
-**The correction, and what it does not claim.** The packaging script now writes the archive entry by
-entry and records the Unix apphost as `0100755`, leaving every other entry at `0100644`; the
-self-contained smoke drives that script, inspects the archive it produced, extracts **that exact
-archive**, and makes every behavioural check against the extracted apphost; and the workflow uploads
-the file the smoke verified. Nothing else about the archive changed — flat payload, relative names,
-published timestamps — and no output byte, diagnostic, exit meaning or manifest schema is touched.
-
-**Neither run's archives satisfy the standalone delivery acceptance gate**, and that is a statement
-about the archives, not about the runs: both runs remain successful workflow evidence at their own
-revisions and are never relabelled. The corrected candidate's own five-target run and its three
-replacement archives — extracted, mode-checked and executed on their native targets — were an
-outstanding gate (**D-126**). Two runs followed. The first, below, **failed** and produced no
-replacement archive; the second **passed** and produced all three, at `c4ceb8e2`.
-
-### Run 34468088854: the Windows half of the same rule
-
-The corrected packaging was committed at `163f1c49` and pushed, and its five-target run **failed**.
-Windows x64 and Windows ARM64 passed every step. Linux x64, macOS ARM64 and Linux ARM64 each failed
-at `Test (Release)`, all three on the same single case out of 4,586:
-
-```text
-FcaBedrock.Cli.Tests.DistributionArchiveTests
-  .Archive_WhenTheDistributionIsWindows_ThenItCarriesTheApphostAndClaimsNoUnixMode
-  Assert.Equal() Failure: Values differ
-  Expected: 0
-  Actual:   33188
-```
-
-`33188` is `0x81A4` — `0100644`, the very mode the correction above exists to stop recording. Every
-target reported the same 4,586 total, so the suite composition was as expected everywhere; the two
-Windows targets reported 0 failed and the three Unix targets 1.
-
-**The cause is deterministic host-dependent entry metadata, not a flake and not a runner issue.** The
-corrected writer assigned `ExternalAttributes` **only** inside its Unix branch. A `win-*` entry was
-therefore left with whatever `ZipArchive.CreateEntry` defaults to — and that default belongs to the
-*creating host*: zero on Windows, the platform's own `0100644` on Linux and macOS. The counterexample
-test builds a synthetic `win-x64` archive on whatever host runs the suite, so it passed on Windows
-and failed on every Unix one, identically, on three different OS/architecture combinations.
-
-**What it does not implicate.** The delivered `win-x64` archive is built on a Windows runner, where
-the default was already zero, so no shipped archive ever carried the wrong value. Nothing about the
-Unix `0100755`/`0100644` rule, the payload, the flat names, the ordering, the timestamps or the path
-safety checks is involved.
-
-**What the run therefore did not establish.** The three Unix jobs stopped at `Test (Release)`, so
-corpus preparation, the Small `Dry` smoke, both package smokes, the self-contained
-publish/archive/extract/run and the upload never executed on them. **No Linux or macOS archive was
-produced.** The run exposed one artifact, `fcabedrock-win-x64`; it was **not downloaded and not
-retained**. Neither the three-archive delivery gate nor the Unix `0100755` closure is established at
-`163f1c49`, and the two green Windows jobs are not offered as a partial pass. The run is failed
-evidence at that revision, exactly as `34241484619` and `34287497829` are at theirs, and it is not
-relabelled.
-
-**The correction, and its exact reach.** The writer now assigns every entry's external attributes
-from the **target's** RID rather than from the host: a Windows target records `0` for every entry, a
-Unix target records `0100755` for the apphost and `0100644` for everything else. The shared archive
-validator requires that zero on **every** entry of a Windows distribution instead of skipping the
-check, and the counterexample test names both halves — the apphost and an ordinary
-`FcaBedrock.Cli.runtimeconfig.json` — on every host. Relaxing the assertion or conditioning it on the
-creating host was rejected: either would have left the archive's metadata dependent on where the
-packaging command ran. The observable change is confined to that field on `win-*` archives written by
-a non-Windows host. Archiving one fixed folder with the old and the new writer on Windows produces
-**byte-identical** zips, and every Unix mode is unchanged.
-
-The earlier runs keep their own revisions and their own conclusions: `34241484619` and `34287497829`
-remain failed, `34289256438` and `34392695933` remain successful workflow evidence, and the Linux and
-macOS archives of both successful runs remain **rejected as delivery**. The replacement run is the
-next section, and nothing in this one is relabelled by it.
-
-### Run 34483863717: the gate opens
-
-The host-independent writer was committed at `c4ceb8e2` and pushed, and **run
-[`34483863717`](https://github.com/trashr0x/fcabedrock/actions/runs/34483863717), attempt 1, event
-`push`, branch `agent/m8-scaling-reset`, head `c4ceb8e2be03b68ff185caeb1e241b34a9aaa3ef`, concluded
-`success` on all five native targets.** These are the first archives that satisfy the standalone
-delivery gate.
-
-| Job | Runner label | Declared = actual RID | Job id | Conclusion |
-| --- | --- | --- | --- | --- |
-| windows x64 (required) | `windows-2025` | win-x64 | 102893096996 | **success** |
-| linux x64 (required) | `ubuntu-24.04` | linux-x64 | 102893096898 | **success** |
-| macos arm64 (required) | `macos-15` | osx-arm64 | 102893096968 | **success** |
-| linux arm64 (optional) | `ubuntu-24.04-arm` | linux-arm64 | 102893096677 | **success** |
-| windows arm64 (optional) | `windows-11-arm` | win-arm64 | 102893096908 | **success** |
-
-Every job's actual RID equals its declared RID and its process architecture equals its OS
-architecture, so no job ran under emulation, and the workflow's own architecture assertion passed on
-all five. All twelve named steps — checkout, .NET setup, the environment record, the
-process-architecture assertion, restore, the Release build (0 warnings, 0 errors everywhere), the
-resident-layout witnesses, `Test (Release)`, corpus preparation, the Small `Dry` smoke, the
-global-tool smoke and the self-contained smoke — **reached and passed on every target**.
-`Upload the tested archive` ran and succeeded on the three required targets and is the **only**
-declared step skipped on the two optional ARM64 ones, under `if: matrix.required`.
-
-| Anchor | win x64 | linux x64 | macos arm64 | linux arm64 | win arm64 |
-| --- | ---: | ---: | ---: | ---: | ---: |
-| Whole solution (total / failed) | **4,586 / 0** | **4,586 / 0** | **4,586 / 0** | **4,586 / 0** | **4,586 / 0** |
-| Skipped (platform guards) | 16 | 12 | 11 | 13 | 17 |
-| Resident-layout witnesses | 25 / 0 | 25 / 0 | 25 / 0 | 25 / 0 | 25 / 0 |
-| Small `Dry` benchmarks admitted | 48 | 48 | 48 | 48 | 48 |
-| Global-tool smoke | 1 / 0 | 1 / 0 | 1 / 0 | 1 / 0 | 1 / 0 |
-| Self-contained smoke | 1 / 0 | 1 / 0 | 1 / 0 | 1 / 0 | 1 / 0 |
-
-The strings `Scale` and `External` appear in no job log; `Working` appears only in the runner's own
-`Working directory is ...` line, never as a category; and the only `Adult` occurrences are
-`MiniConvertCxtBenchmark.Adult` and `MiniConvertDatBenchmark.Adult`, the checked-in **mini-adult
-v2-compat** fixture cases in the Small category — not the acquired UCI Adult corpus. No
-`Working`, `Scale` or `External` leakage.
-
-**The correction-specific proof is enumerated, not inferred from a green aggregate.** The runner
-names every skipped test and its reason, and the enumerated lists equal the reported skipped totals
-exactly on all five targets (16 / 12 / 11 / 13 / 17), so they are complete. **No
-`DistributionArchiveTests` case is skipped anywhere.** The four packaging cases — the two Unix
-theory cases, the extraction byte-identity case, and the unconditional synthetic Windows-target
-counterexample — ran and passed inside the ordinary suite on Linux x64, macOS ARM64 and Linux
-ARM64, the three targets where run `34468088854` failed on exactly that assertion. `pwsh` is present
-on every runner image. The skips themselves are the existing guarded set: five
-`SpillEquivalenceTests.ManyQuantiles` cases behind `FCABEDROCK_CALIBRATION_MATRIX` and the two
-smoke tests behind their own gates on every target (both then run 1 / 0 in their own gated steps),
-plus each platform's own capability-guarded publication, file-identity, spool-confidentiality and
-quantile-sizing cases.
-
-**Smoke-to-upload identity.** On each required target the gated smoke ran with
-`FCABEDROCK_SELFCONTAINED_OUTPUT = <workspace>/artifacts/publish`, drove the real
-`eng/publish-selfcontained.ps1` for the running RID, called `DistributionArchive.AssertValid` on the
-archive **that script produced**, extracted that exact archive, and made every behavioural check
-against the extracted apphost: `--version`, a real `convert --format both` whose `.cxt` and `.dat`
-bytes are compared against the same conversion performed in-process, manifest presence, a `de-DE`
-locale spec through ICU, a refused convert that exits non-zero and leaves no residue, and a
-name-for-name comparison of the publish folder against the extracted copy. On Unix,
-`AssertExtractedApphost` reads `File.GetUnixFileMode` and requires `UserExecute` — the native proof
-that the recorded mode survives extraction and that the documented `./FcaBedrock.Cli` runs. The
-workflow then uploaded `artifacts/publish/fcabedrock-<rid>.zip` with `if-no-files-found: error`.
-**The bytes retained below are the bytes that smoke tested.**
-
-#### The three required archives — retained, digest-matched, and mode-correct
-
-Durable copies:
-`D:\tmp\fcabedrock-m8-g15-host-independent-archive-native-gate-c4ceb8e2-run-34483863717\`
-(operator-retained evidence on the machine described above, not a portable link), **678 files /
-480,268,211 bytes**, holding this run's raw metadata, all five complete job logs, the original outer
-artifact ZIPs, the unchanged inner archives, the safely extracted payloads and the two-layer
-inventories. Every artifact record binds to run id `34483863717` and head `c4ceb8e2...`; all three
-expire from Actions on 2026-09-17, and the retained copies do not.
-
-| Target | Artifact id | Outer bytes | Outer SHA-256 = GitHub server digest |
-| --- | ---: | ---: | --- |
-| win-x64 | 10154922942 | 37,746,675 | `03BED9BB2010036345965574A3B23698D1E6D204F5B0ADB099C15A646EBF613D` |
-| linux-x64 | 10154850927 | 37,798,250 | `27D2C2A36C6C036A4EED1860FCF36036357A80EFFACAD9AF776079DDFB62231D` |
-| osx-arm64 | 10154828289 | 34,384,392 | `4BD36E62710CEDF214191332367A0526D1DA28820B4564A4F4FC934D0563FC1A` |
-
-Each outer artifact holds **exactly one** inner distribution ZIP under its expected
-`fcabedrock-<rid>.zip` name:
-
-| Target | Inner bytes | Entries | Payload files | Payload bytes | Inner SHA-256 |
-| --- | ---: | ---: | ---: | ---: | --- |
-| win-x64 | 37,856,700 | 217 | 217 | 83,161,112 | `E6B6B34337A9638729218AE64F30742D74B9FD3006AAA9C556EEA50782285B56` |
-| linux-x64 | 37,925,729 | 217 | 217 | 85,204,317 | `332856B7EDC8ED18971DADD420C1CA383045D1CA681572C3BE8C2734D88B214F` |
-| osx-arm64 | 34,520,597 | 216 | 216 | 89,333,537 | `7ECF10EAC4EF3CD6078F820E6E3C284D42F569E69F1AD7EFE22D7E73CDDBFEF9` |
-
-**The mode histograms — the property the earlier gate did not check, now read from the
-downloadable inner ZIP metadata:**
-
-| Target | Apphost | Apphost `ExternalAttributes` | Unix mode | Every other entry | Link entries |
-| --- | --- | --- | --- | --- | --- |
-| win-x64 | `FcaBedrock.Cli.exe` | `0x00000000` | none claimed | all 217 exactly `0x00000000` | none |
-| linux-x64 | `FcaBedrock.Cli` | `0x81ED0000` | **`0100755`** | 216 at `0x81A40000` / `0100644` | none |
-| osx-arm64 | `FcaBedrock.Cli` | `0x81ED0000` | **`0100755`** | 215 at `0x81A40000` / `0100644` | none |
-
-`FcaBedrock.Cli.runtimeconfig.json` is `0` on win-x64 and `0100644` on both Unix targets, so both
-halves of the rule are named. Exactly one executable entry exists per Unix archive and it is the
-apphost. The zip `create_system` field is **0** (MS-DOS/Windows) on win-x64 and **3** (Unix) on both
-Unix archives, consistent with each having been written on its own native runner.
-
-**Path safety, both layers, all three archives:** no rooted, drive-qualified, traversing, dot/empty,
-backslashed or control-character name; no directory entry; no link entry; no case-insensitive
-duplicate; every extraction resolved inside its recorded target.
-
-**Native format, architecture and runtime structure:** the win-x64 apphost is **PE32+ x86-64** with
-16 native PE libraries, all x86-64, and no `.so` or `.dylib`; linux-x64 is **ELF 64-bit LSB PIE,
-x86-64** with 14 `.so`, no native PE and no `.dylib`; osx-arm64 is **Mach-O 64-bit arm64** with 13
-`.dylib`, no native PE and no `.so`. Each `.deps.json` names its own RID
-(`.NETCoreApp,Version=v10.0/<rid>`) and each `.runtimeconfig.json` declares `includedFrameworks:
-Microsoft.NETCore.App` **10.0.12** with **no** framework reference — which is what makes the payload
-self-contained rather than framework-dependent — and carries no `System.Globalization.Invariant`.
-201 files are common to all three payloads; the single 217 / 217 / 216 difference is
-`libcoreclrtraceptprovider.so`, the Linux LTTng trace provider, which macOS has no counterpart for.
-
-**What this establishes, and where.** The complete five-target native matrix and the three
-replacement delivery archives are satisfied **at `c4ceb8e2`**. Native extraction and execution rest
-on each target's own in-job smoke plus the smoke-to-upload identity above; the post-download
-inspection recorded here was performed on Windows and read archive metadata and file formats — it
-is **not** Linux or macOS execution and is not offered as a substitute for native evidence. No
-archive was repaired, recompressed or reconstructed, and every pre-existing evidence root under
-`D:\tmp` was re-counted unchanged, file for file and byte for byte.
-
-**What it does not establish.** The hosted UTC bounds of this run are provenance only: no elapsed,
-duration, rate, throughput, overhead, speedup, neutrality or non-regression inference is drawn from
-them, and **Policy L is untouched**. One local limitation is carried forward rather than closed: the
-local WSL host cannot run the packaging tests at all, because `pwsh` is absent there, so hosted CI
-remains the only place they execute off Windows. That is an operational gap in local verification,
-never a local pass. And a green delivery gate is not acceptance. At `c4ceb8e2` the standing
-Windows x64 External/Adult three-case acceptance was still open; it has since been **met at the
-documentation head `82e2ffea`** — see
-[The acceptance run at the documentation head](#the-acceptance-run-at-the-documentation-head-2026-09-10-windows-x64-82e2ffea).
-Operator acceptance and merge, the main-push CI at the merge revision, and the separate GitLab
-archival gate all remain open (**D-126**).
-
-### Run 34685708360: the gate at the correction candidate
-
-The exhaustive review's correction was committed at **`3b2e4a80`**
-([The review correction](#the-review-correction-3b2e4a80)); one ordinary **non-force** push
-fast-forwarded `origin/agent/m8-scaling-reset` from `c4ceb8e2` to `3b2e4a80` and changed no other
-ref; and **run
-[`34685708360`](https://github.com/trashr0x/fcabedrock/actions/runs/34685708360), attempt 1, event
-`push`, branch `agent/m8-scaling-reset`, head `3b2e4a801f5e37286bb2be110184e4f86ce11c6d`, concluded
-`success` on all five native targets.** It is the **only** run at that SHA, repository-wide, and it
-was never rerun, cancelled or manually dispatched.
-
-| Job | Runner label | Declared = actual RID | Job id | Conclusion |
-| --- | --- | --- | --- | --- |
-| windows x64 (required) | `windows-2025` | win-x64 | 103532220041 | **success** |
-| linux x64 (required) | `ubuntu-24.04` | linux-x64 | 103532220061 | **success** |
-| macos arm64 (required) | `macos-15` | osx-arm64 | 103532219946 | **success** |
-| linux arm64 (optional) | `ubuntu-24.04-arm` | linux-arm64 | 103532220056 | **success** |
-| windows arm64 (optional) | `windows-11-arm` | win-arm64 | 103532220026 | **success** |
-
-Every job's actual RID equals its declared RID and its process architecture equals its OS
-architecture, so no job ran under emulation and the workflow's own assertion passed on all five; SDK
-10.0.401 and host runtime 10.0.12 everywhere. All twelve named common steps — checkout, .NET setup,
-the environment record, the process-architecture assertion, restore, the Release build (0 warnings,
-0 errors everywhere), the resident-layout witnesses, `Test (Release)`, corpus preparation, the Small
-`Dry` smoke, the global-tool smoke and the self-contained smoke — **reached and passed on every
-target**. `Upload the tested archive` passed on the three required targets and is the **only**
-declared step skipped on the two optional ARM64 ones, under `if: matrix.required`. No `##[error]`
-line appears in any job log; the inherited Node.js-20 deprecation warning and the `windows-11-arm`
-image-migration notice are recorded as what they are and absorbed into nothing.
-
-| Anchor | win x64 | linux x64 | macos arm64 | linux arm64 | win arm64 |
-| --- | ---: | ---: | ---: | ---: | ---: |
-| Whole solution (total / failed) | **4,623 / 0** | **4,623 / 0** | **4,623 / 0** | **4,623 / 0** | **4,623 / 0** |
-| Skipped (platform guards) | 16 | 12 | 11 | 13 | 17 |
-| Resident-layout witnesses | 25 / 0 | 25 / 0 | 25 / 0 | 25 / 0 | 25 / 0 |
-| Small `Dry` benchmarks admitted | 48 | 48 | 48 | 48 | 48 |
-| Global-tool smoke | 1 / 0 | 1 / 0 | 1 / 0 | 1 / 0 | 1 / 0 |
-| Self-contained smoke | 1 / 0 | 1 / 0 | 1 / 0 | 1 / 0 | 1 / 0 |
-
-**The total was derived from source before the push, not read off afterwards.** `c4ceb8e2` measured
-4,586 / 0 at the skip spread 16 / 12 / 11 / 13 / 17; the correction adds 26 `ProbeOracleTests` cases,
-9 `AdultOracleTests` cases and 2 `DistributionArchiveTests` cases, none of them platform-gated, so
-4,586 + 37 = **4,623** was the pre-push expectation. It was met on every target with the **skip
-spread unchanged**, which is what proves all 37 added cases executed everywhere rather than being
-skipped somewhere.
-
-Tier gating held: `Scale` and `External` appear in no job log; `Working` appears only in the runner's
-own `Working directory is …` line, never as a category; and the only `Adult` symbols anywhere are
-`MiniConvertCxtBenchmark.Adult` and `MiniConvertDatBenchmark.Adult` — the checked-in **mini-adult
-v2-compat fixtures**, not the acquired UCI Adult corpus. Routine CI still proves exactly what it
-selected, and claims nothing about Adult.
-
-**The correction-specific proof is established by execution, not inferred from a green aggregate.**
-The new negative,
-`DistributionArchiveTests.Archive_WhenAWindowsEntryCarriesLowAttributeBits_ThenTheSharedValidatorRejectsIt`,
-builds a synthetic `win-x64` archive whose entry carries raw `ExternalAttributes = 0x00000001` and
-puts it in front of **`DistributionArchive.AssertValid`** — the same helper the gated self-contained
-smoke calls, deliberately not a local duplicate — asserting that the failure names `0x00000001`. It
-has **no skip path at all**: it drives no script, so unlike the four `pwsh`-driven cases it cannot
-skip on any host. The runner enumerates every skipped test by name, the enumerated lists equal the
-reported skip totals exactly on all five targets, and **no `DistributionArchiveTests` case appears in
-any of them**. With `failed: 0` everywhere, all **six** current cases in that class — the two Unix
-theory cases, the Windows writer case, the extraction byte-identity case, and both new synthetic
-validator cases — ran and passed on every target. The validator's Windows branch compares the **raw**
-field before any shift and then `continue`s, so the shifted path is unreachable for a `win-*` target;
-the producing side is unchanged and still writes literal `0` for every non-Unix entry.
-
-**Smoke-to-upload identity.** On each required target the gated smoke ran with
-`FCABEDROCK_SELFCONTAINED_OUTPUT = <workspace>/artifacts/publish`, drove the real
-`eng/publish-selfcontained.ps1` for the running RID, called `DistributionArchive.AssertValid` on the
-archive **that script produced**, extracted that exact archive, and made every behavioural check
-against the extracted apphost — `--version`, a real `convert --format both` whose bytes are compared
-against the same conversion performed in-process, manifest presence, a `de-DE` locale spec through
-ICU, a refused convert that exits non-zero and leaves no residue, and a name-for-name comparison of
-the publish folder against the extracted copy; on Unix `AssertExtractedApphost` requires
-`UserExecute`. The workflow then uploaded `artifacts/publish/fcabedrock-<rid>.zip` with
-`if-no-files-found: error`, and each job's upload log records the artifact id and final size the
-artifact API also reports. **The bytes retained below are the bytes that smoke tested.**
-
-#### The three required archives at `3b2e4a80` — retained, digest-matched, and mode-correct
-
-Durable copies:
-`D:\tmp\fcabedrock-m8-g15-post-review-native-gate-3b2e4a80-run-34685708360\`, **684 files /
-480,209,898 bytes** (operator-retained evidence on the machine described above, not a portable link),
-holding this run's raw metadata, all five complete job logs, the original outer artifact ZIPs, the
-unchanged inner archives, the safely extracted payloads and the two-layer inventories. Its seals are
-`INVENTORY.tsv` SHA-256 `A5939E0E4C253D2B2DDBDE92CBD1D1DDC6A87FF3F770ADCC6CE0A5458D64A197`,
-`MANIFEST-SHA256.txt` SHA-256 `1925BE0BD8D9BF04520A7DF1773A45195E6C5CD3A46CA8407E67F614F61E4E38`
-and `MANIFEST.md` SHA-256 `C820013F409F41297B73EA5A8BFEE77B534BD62A5A111C9BD0133D81309D2512`. Every
-artifact record binds to run id `34685708360` and head `3b2e4a80…`; all three expire from Actions on
-2026-09-19 and the retained copies do not.
-
-| Target | Artifact id | Outer bytes | Outer SHA-256 = GitHub server digest |
-| --- | ---: | ---: | --- |
-| win-x64 | 10295536853 | 37,746,734 | `7d3e05b9c114de4431a568342d0fb75bb981aa1791cfdd4baf583374cf4cc410` |
-| linux-x64 | 10295616521 | 37,798,325 | `74e9257bc09844b240cb7f81d00750760e8178ee8b619c6ad5f266ede77cca7b` |
-| osx-arm64 | 10295516736 | 34,384,478 | `6e0fdb607101fe958634d2e5bd2c0941960bb3629dc7eab98e97bf069548d741` |
-
-Each outer artifact holds **exactly one** inner distribution ZIP under its expected
-`fcabedrock-<rid>.zip` name:
-
-| Target | Inner bytes | Entries | Payload files | Payload bytes | Inner SHA-256 |
-| --- | ---: | ---: | ---: | ---: | --- |
-| win-x64 | 37,856,758 | 217 | 217 | 83,161,136 | `fa0264b7b9c1c23448ad19f185e325e96735565a30ab3e516b5ccd7591275b67` |
-| linux-x64 | 37,925,801 | 217 | 217 | 85,204,337 | `2f7bfd9bab6f49397b8f8d035e5e6992fa07cf439f4b0571da98d5b634cde118` |
-| osx-arm64 | 34,520,649 | 216 | 216 | 89,333,561 | `2277e39fada6cfe90b69786ca3fea992e3a442b0b49cc10261d2c6c7c41f8a31` |
-
-**The raw `ExternalAttributes` histograms, read from the downloadable inner ZIP metadata before any
-shift** — which is exactly the field the corrected validator now tests:
-
-| Target | Raw histogram | High-mode histogram | Apphost | Link entries |
-| --- | --- | --- | --- | --- |
-| win-x64 | **`0x00000000` × 217 — one distinct value** | `0x0000` × 217 | `FcaBedrock.Cli.exe`, raw `0x00000000` | none |
-| linux-x64 | `0x81ED0000` × 1, `0x81A40000` × 216 | `0x81ED` (`0100755`) × 1, `0x81A4` (`0100644`) × 216 | `FcaBedrock.Cli`, **`0100755`** | none |
-| osx-arm64 | `0x81ED0000` × 1, `0x81A40000` × 215 | `0x81ED` × 1, `0x81A4` × 215 | `FcaBedrock.Cli`, **`0100755`** | none |
-
-No entry in any of the three carries a nonzero low bit; no entry's file-type bits are `0xA000`; and
-exactly one executable entry exists per Unix archive — the apphost.
-`FcaBedrock.Cli.runtimeconfig.json` and `FcaBedrock.Cli.deps.json` are raw `0x00000000` on win-x64
-and `0100644` on both Unix targets, so both halves of the rule are named. The central directory's
-`version made by` host is **0** (MS-DOS/Windows) on all 217 win-x64 records and **3** (Unix) on all
-217 linux-x64 and 216 osx-arm64 records, consistent with each archive having been written on its own
-native runner.
-
-**Path safety, both layers, all three archives:** no rooted, drive-qualified, traversing, dot/empty,
-backslashed or control-character name; no directory entry; no link entry; no case-insensitive
-duplicate; every extraction resolved inside its recorded target. **Native format, architecture and
-runtime structure:** the win-x64 apphost is PE32+ x86-64 with 16 native PE libraries, all x86-64, and
-no `.so` or `.dylib`; linux-x64 is ELF64 x86-64 with 16 ELF libraries, no native PE and no `.dylib`;
-osx-arm64 is Mach-O 64-bit ARM64 with 13 ARM64 dylibs and 2 ARM64 executables, no native PE and no
-`.so` — with managed CLI assemblies separated from native code by testing the CLI header rather than
-by file extension, so a managed `.dll` in a Unix payload is not misread as a foreign native binary.
-Each `.deps.json` names its own RID and each `.runtimeconfig.json` declares `includedFrameworks:
-Microsoft.NETCore.App` **10.0.12** with no framework reference and no
-`System.Globalization.Invariant`. 201 files are common to all three payloads; the single
-217 / 217 / 216 difference is `libcoreclrtraceptprovider.so`, which macOS has no counterpart for.
-
-**Three defects were found and fixed in the post-download *inspection script*, and none is a product
-or archive defect.** A strict-mode return shape; PowerShell's `-shr` being an *arithmetic* shift on
-`[int]`, which sign-extended `0x81A40000` and produced a false mode mismatch on every Unix entry
-(the validator under test uses C#'s unsigned `>>>`); and a 32-bit hex literal parsing as a signed
-`[int]`, which never matched the Mach-O magic. Each was corrected and re-run locally against the
-**unchanged retained bytes**. Nothing was rerun on GitHub, and no archive was repaired, recompressed
-or reconstructed.
-
-**What this establishes, and where.** The complete five-target native matrix and three delivery
-archives satisfying the mode contract are satisfied **at `3b2e4a80`**. Native extraction and
-execution rest on each target's own in-job smoke plus the smoke-to-upload identity above; the
-post-download inspection recorded here was performed on Windows and read archive metadata and file
-formats — it is **not** Linux or macOS execution and is not offered as a substitute for native
-evidence. Run `34483863717` and its three archives keep their own revision `c4ceb8e2` and are neither
-replaced nor relabelled by this run, and every earlier failed run stays failed at its own revision.
-
-**What it does not establish.** The hosted UTC bounds are provenance only: no elapsed, duration,
-rate, throughput, overhead, speedup, neutrality or non-regression inference is drawn from them, and
-**Policy L is untouched**. A green delivery gate is not acceptance, not a merge, not main-push CI and
-not archival. The local WSL limitation is carried forward unchanged rather than closed: `pwsh` is
-absent there, so hosted CI remains the only place the packaging tests execute off Windows — never a
-local pass.
-
-<!-- RESULTS -->
-
-## How to read the tables
-
-`Mean` and `StdDev` are BenchmarkDotNet's, over the iteration count each job declares. `Records/s`
-and `MiB/s` are `records / mean` and `input bytes / mean`, using the denominators the corpus catalog
-recorded — both are recheckable from the corpus table above. `Allocated` is managed allocation per
-operation.
-
-**`B/record` is misleading for the wide family and is omitted there.** An Ads-width record is 1,559
-fields against W16's sixteen, so a per-*record* figure compares different amounts of work; divide by
-the column count for a per-field figure.
-
-Jobs: Small runs Throughput with one invocation per iteration; Working and 7.3M run **Monitoring**,
-1 launch, 2 warmups, 5 iterations; 73M runs the same job with 1 warmup and 3 iterations.
-
-**Which session produced which row.** Every row in the three tables below is a **session-A**
-measurement unless it is marked † (**session C**, re-measured against the corrected calibration
-build — see [Corrected defect](#corrected-defect--many-attribute-count-sensitive-calibration)). All
-of them describe **the revision that produced them**. In particular the `CLI host` rows and the
-hash-pair and sidecar comparisons predate **D-125**'s publication correction, which sits inside the
-measured CLI-host interval; they are **not** measurements of the shipped code and no figure here is
-attributed to `4216610b`. What the corrected build was measured to do is
-[The corrected build](#the-corrected-build). The five `probe` rows below were separately
-**re-validated — not re-timed** — at `3b2e4a80` under the corrected per-attribute oracle; their
-timings here stay session A's, and the validation record is
-[The probe gate](#the-probe-gate-at-3b2e4a80).
-
-## Results — working tier (730,000 records)
+| wide, 730k | 566.3 ms | 596.3 ms | **+5.3%** | ~0 |
+| wide, 7.3M | 5.885 s | 6.549 s | **+11.3%** | 0 |
+| wide, 73M | 55.058 s | 60.503 s | **+9.9%** | 0 |
+| triple unordered, 7.3M | 8.906 s | 9.005 s | **+1.1%** | 0 |
+| triple unordered, 73M | 98.386 s | 104.689 s | **+6.4%** | 0 |
+
+The `.dat` writer allocates **nothing measurable**: the 1,532 B/record a wide conversion allocates is
+spent before a byte reaches the exporter. A profiling pass has one place to look, and it is not the
+writer.
+
+### The `.cxt` writer takes two passes where `.dat` takes one
+
+At the working tier, `.cxt` takes **2.40x** the time and **2.10x** the allocation of `.dat` over the
+same context (1.432 s / 2.18 GB against 596.3 ms / 1.04 GB). The `.cxt` layout puts the counts and
+every object name before the incidence rows (§18.1). This implementation's writer buffers only the
+object names, which are bounded metadata, in a first pass, and then replays the emission for the
+rows: two complete passes where `.dat` streams once. The spec also allows a writer that spools the
+incidence rows during the name pass instead of replaying the emission, so 2.40x and 2.10x are
+measurements of this writer against `.dat` on this case, not a property of the format.
+
+### Unordered triple input takes 4-6x as long to convert as grouped input
+
+A triple conversion of the same observations takes **4.2x** as long unordered as grouped at 730,000
+records, **5.4x** at 7.3M and **6.2x** at 73M. Each ratio compares two whole conversions, and both
+conversions read, group, emit and export, so the ratio does not show how the extra time divides
+between those phases. The difference is consistent with the external sort-merge or buffering that
+unordered input requires (§5.3). `subject_grouped` is a declaration a user can make when the data
+really is grouped, and this is what it is worth.
+
+### Input-stability hashing costs 12-19% of a source pass, and allocates nothing
+
+Hashing the input costs **+18.7%** of a source pass at 730,000 records and **+11.9%** at 7.3M.
+Hashing the output costs far less, **+1.9%** and **+5.7%** of a `.dat` export, because a staged
+`.dat` is a fraction of its input. The cost is CPU over bytes the pass was already reading, and the
+wrappers allocate nothing the reported precision resolves: both arms agree in the rounded `MB` and
+`GB` columns, which is not a byte-identity claim. Neither is a switch: inline hashing of every
+complete input pass is a correctness guarantee (D-122 part 5, §17), and the unhashed arm is a
+component experiment that no user can select.
+
+### An auto-calibrated convert took about twice as long as a declared one at target scale
+
+An auto-calibrated convert reads its input **twice**, once to calibrate and once to emit, and hashes
+both, with the second required to agree with the first. A spec that declares its domains runs no
+calibration pass and reads its input once. At 7.3M and 73M, where the declared and auto-calibrated
+commands read the same unordered corpus, the auto command took **2.0x** as long. The auto command
+adds calibration work as well as a second read, so this whole-command ratio does not isolate the
+cost of hashing, of the second read or of a repeated conversion. At 730,000 records the declared
+command measured reads the grouped layout while the auto command reads the unordered one, so that
+tier's 6.7x ratio also includes the difference between the two layouts. Both arms are `CLI host`
+rows from before the publication correction, and the auto arm also predates the tiered spill
+schedule; the ratios describe those builds, and no corrected-build timing is published
+([Command latency after the publication correction](#command-latency-after-the-publication-correction)).
+
+### The manifest sidecar is at or below the noise floor
+
+In the baseline measurements the manifest-bearing convert was **faster** than `--no-manifest` at
+730,000 records (729.0 ms against 756.0 ms, StdDev 9.4 and 44.6 ms) and 4.0% slower at 7.3M
+(6.975 s against 6.708 s). The sign is not stable across tiers, so the sidecar's timing cost is at
+the edge of what that measurement resolved. Its allocation is not zero: at 730,000 records the
+manifest-bearing arm allocated **1,118,368,544 B** against **1,118,098,280 B**, an exact difference
+of **270,264 B** that rounds away at GB precision. `--no-manifest` suppresses only the sidecar; the
+input pass and the staged output are hashed either way. These figures predate the publication
+correction, and no corrected-build elapsed comparison of the two arms exists.
+
+### Wide dedupe is the most expensive path in the matrix
+
+`keyed dedupe` converts 7.3M rows into 1.825M objects in **29.0 s**, allocating **19.47 GB**: 2,864
+B/record, the highest figure in the 7.3M table. Against W16 converted without a key (6.549 s and
+1,532 B/record), that is 4.4x the time and 1.9x the allocation per record. Its emit drain takes
+28.7 s, so again the writer is not the cost. Non-contiguous keys cannot be merged without the
+spool, and this is what that machinery costs when every key recurs at maximum distance.
+
+### Width is a planner cost, paid once
+
+The pure planner takes **54.7 us / 38.3 KB** for a 33-column plan and **4.2 ms / 3.07 MB** for a
+1,568-column one: 77x the time for 48x the columns. It is paid once per conversion, so it is
+irrelevant at scale and dominant for a small one: at 1,000 Ads-width rows, planning is a measurable
+share of the whole job.
+
+### Whole-command memory
+
+Six `dotnet-counters` traces of the real self-contained executable, sampling once a second while a
+genuine `fcabedrock convert` ran, record whole-command memory for the shipped code (built at
+`50f6aa62`; the two auto-calibrated traces predate the tiered spill schedule). WS is the working
+set. Every figure is a **sampled maximum**, a lower bound on the true peak with profiling overhead
+present, never an exact peak or a portable ceiling. Every trace exited 0 with no diagnostic output,
+its line count was derived independently, and its manifest's input, spec and output hashes equalled
+SHA-256 values recomputed over the actual files. Every output matched its retained expectation byte
+for byte; for the two auto-calibrated commands that match is regression continuity, not an
+independent quantile oracle. The four triple traces placed their grouping spool on the non-system
+volume with an explicit `--temp-dir`, an acquisition condition that supports no timing comparison.
+
+| Command | Samples | WS max (MB) | GC heap max (MB) | GC committed max (MB) | CPU max (%) | Time-in-GC max (%) |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| wide declared, 7.3M | 7 | 62.23872 | 15.828216 | 18.39104 | 9.5238 | 1 |
+| triple declared, 7.3M | 10 | 282.927104 | 131.863824 | 246.050816 | 9.7025 | 51 |
+| triple auto, 7.3M | 20 | 359.325696 | 227.694024 | 356.962304 | 9.1026 | 54 |
+| wide declared, 73M | 68 | 62.85312 | 17.531696 | 18.71872 | 9.8830 | 4 |
+| triple declared, 73M | 103 | 1,750.761472 | 1,409.648912 | 1,698.635776 | 9.5052 | 93 |
+| triple auto, 73M | 207 | 1,746.702336 | 1,463.971712 | 1,693.45024 | 9.3750 | 74 |
+
+**The wide declared path is flat.** It converted 7.3M and 73M records in a sampled working set of
+about 62 MB, and the tenfold input changed that maximum by a ratio of 1.0099 (GC committed 1.0178).
+That ratio is checked against an investigation threshold of 3, which is a trigger for a closer look,
+not a limit, and it did not fire. The baseline traces of the same two commands (2026-09-06) read
+62.5 and 62.1 MB. BenchmarkDotNet measured **104 GB allocated** for the same 73M wide conversion,
+which is why the memory meanings must stay apart: allocation is throughput through the collector,
+and working set is what the machine must find.
+
+**The grouping path grows with the number of subjects, as it may.** From 7.3M to 73M records the
+triple working set grew 6.19x (declared) and 4.86x (auto) while subjects grew tenfold: about 239
+bytes per distinct subject at 73M. That is consistent with the EP-16 bounded-metadata carve-out
+(`docs/engineering-principles.md`), under which the subject-key vocabulary grows with the number of
+objects, read against the rule that streaming is not constant total process memory. Consistency is
+not attribution: the traces do not show which structure holds the memory. The 73M triple runs
+spilled to the grouping spool rather than holding their state resident. Free space on the spool
+volume dipped by about 5.6 GiB, and the product removed its own spool workspace on success, leaving
+no residue.
+
+Time in GC peaked at 1% and 4% for the wide conversions and at 51% to 93% for the triple ones. The
+higher readings on the triple commands are consistent with their grouping path, but a sample of the
+whole process does not attribute GC time to a component. CPU peaked between 9.10% and 9.88% of
+twelve logical cores in every trace, near one logical core's share (8.33%); a one-second sample of
+total process CPU does not show how many threads did the work.
+
+**None of this proves a streaming or no-materialization guarantee.** A dense 7,300,000 × 15
+incidence matrix would be about 0.013 GiB packed, small enough to hide inside the observed working
+set, so a sampled process maximum cannot show that no such matrix was built. Exit status, a flat
+working set and an allocation total prove no algorithmic bound either. That guarantee is carried by
+the grouping and calibration observers and the retained-layout witnesses, which these traces
+reconcile with rather than replace.
+
+## Results by tier
+
+`Surface` is the production path a row measures. `Mean` and `StdDev` are BenchmarkDotNet's, over the
+iterations each job declares. `Records/s` and `MiB/s` are records and input bytes divided by the
+mean, using the corpus table's denominators, so both can be rechecked. `Allocated` is managed
+allocation per operation. `B/record` is omitted for the Ads-width family, whose records have 1,559
+fields against W16's sixteen; divide by the column count for a per-field figure.
+
+The working and 7.3M tiers run the Monitoring job (1 launch, 2 warmups, 5 iterations); the 73M tier
+runs it with 1 warmup and 3 iterations. At 73M the same case measured 25% apart in two independent
+runs (see the tuning section), so a small difference in these tables is not a finding.
+
+Every row is a baseline measurement from 2026-09-06 unless it is marked †. The † rows were
+re-measured after the calibration fix, and they are exactly the count-sensitive calibration rows,
+which the later tiered spill schedule (D-128) changed again. The `CLI host` rows, including the
+sidecar comparison, describe the build before the publication correction (D-125), which reaches the
+measured `CLI host` interval. They are not measurements of the shipped command, and no corrected
+elapsed figure replaces them
+([Command latency after the publication correction](#command-latency-after-the-publication-correction)).
+The five `probe` rows were later re-validated, not re-timed.
+
+### 730,000 records
 
 | Surface | Case | Mean | StdDev | Allocated | B/record |
 | --- | --- | ---: | ---: | ---: | ---: |
@@ -968,13 +402,11 @@ timings here stay session A's, and the validation record is
 | CLI host | `--format both` | 2.354 s | 53.5 ms | 3.23 GB | 4,744 |
 | CLI host | `.cxt` | 1.663 s | 25.7 ms | 2.18 GB | 3,213 |
 
-† Re-measured in **session C** against the corrected build; every other row is session A. The
-calibration correction described under [Corrected defect](#corrected-defect--many-attribute-count-sensitive-calibration)
-is the reason, and the rows are marked rather than silently replaced because a table mixing two
-sessions should say so. The many-quantile row is new: session A recorded it as a **failure with no
-throughput number**.
+† Re-measured after the calibration fix; the later tiered spill schedule (D-128) changed this path
+again. The many-quantile row replaces a recorded failure: the baseline run of that case produced no
+number (see the corrected-defect section).
 
-## Results — 7.3M records (10x the motivating EMAGE workload)
+### 7.3M records (10x the EMAGE workload)
 
 | Surface | Case | Mean | StdDev | Records/s | Allocated | B/record |
 | --- | --- | ---: | ---: | ---: | ---: | ---: |
@@ -991,23 +423,25 @@ throughput number**.
 | emit + `.dat` | triple unordered | 9.005 s | 41.8 ms | 0.81M | 4.28 GB | 629 |
 | emit | keyed dedupe drain | 28.692 s | 706.9 ms | 0.25M | **19.47 GB** | 2,864 |
 | emit + `.dat` | keyed dedupe | 29.001 s | 369.0 ms | 0.25M | **19.47 GB** | 2,864 |
-| hash pair | source pass, unhashed / hashed | 2.373 s / 2.655 s | 3.1 / 14.1 ms | — | 4.91 GB both | 723 |
-| hash pair | `.dat` export, unhashed / hashed | 5.925 s / 6.264 s | 14.8 / 74.7 ms | — | 10.42 GB both | 1,532 |
+| hash pair | source pass, unhashed / hashed | 2.373 s / 2.655 s | 3.1 / 14.1 ms | n/a | 4.91 GB both | 723 |
+| hash pair | `.dat` export, unhashed / hashed | 5.925 s / 6.264 s | 14.8 / 74.7 ms | n/a | 10.42 GB both | 1,532 |
 | CLI host | wide convert | 6.975 s | 51.8 ms | 1.05M | 10.42 GB | 1,532 |
 | CLI host | wide convert, `--no-manifest` | 6.708 s | 51.5 ms | 1.09M | 10.42 GB | 1,532 |
 | CLI host | triple convert | 9.168 s | 87.2 ms | 0.80M | 4.28 GB | 629 |
 | CLI host | auto-calibrated, **two input passes** † | 18.250 s | 27.0 ms | 0.40M | 8.70 GB | 1,279 |
 
-† Re-measured in session C against the corrected build, as above. The many-quantile row replaces a
-recorded **failure**. Sixteen simultaneous exact accumulators over 7.3M records is by a wide margin
-the most expensive calibration in the matrix — 52 s against 5.8 s for the four-shape spec — and that
-is the honest cost of sixteen exact populations, not a regression: the shipped budget gives each of
-them a sixteenth of 64 MiB, so every one of them spills and merges.
+† Re-measured after the calibration fix, as above. The many-quantile row replaces a recorded
+failure. Sixteen simultaneous exact accumulators over 7.3M records is the most expensive
+calibration at this tier, 52 s against 5.8 s for the four-shape spec: the shipped budget gives each
+accumulator a sixteenth of 64 MiB, so every one of them spills and merges. That is the cost of
+sixteen exact populations, not a regression. In a separate paired assessment the tiered spill
+schedule later reduced this case's elapsed time by about 25%
+([Tiered spill schedule for count-sensitive calibration](#tiered-spill-schedule-for-count-sensitive-calibration)).
 
-## Results — 73M records (100x the motivating EMAGE workload)
+### 73M records (100x the EMAGE workload)
 
-**Every case completed and validated.** 1 launch, 1 warmup, 3 measured iterations; each iteration's
-artifact checked against its independent expectation after disposal.
+**Every case completed and validated**, each iteration's artifact checked against its independent
+expectation after disposal.
 
 | Surface | Case | Mean | StdDev | Records/s | MiB/s | Allocated | B/record |
 | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
@@ -1025,273 +459,31 @@ artifact checked against its independent expectation after disposal.
 | CLI host | triple convert | 99.166 s | 681.8 ms | 0.74M | 18 | 42.73 GB | 629 |
 | CLI host | auto-calibrated, **two input passes** † | 201.540 s | 8.910 s | 0.36M | 9 ‡ | 86.04 GB | 1,265 |
 
-† Re-measured in session C against the corrected build. Both are within the between-session drift
-this tier already shows, and both allocate **identically** to session A — which is the expected
-result for a correction that only stops a valid population being refused.
+† Re-measured after the calibration fix, as above. Both rows' elapsed times are within this tier's
+between-run drift, and their reported `Allocated` values, rounded to 49.25 GB and 86.04 GB, match
+the rounded values of their baseline rows. That match is the expected result for a fix that only
+stops a valid population being refused; equal rounded values do not show equal byte totals.
 
-‡ Corrected denominator, not a slowdown. The session-A row read 23 MiB/s, which is this corpus's
-elapsed time divided by the **wide** corpus's size; the auto-calibrated command reads the T10
-unordered corpus (1,800.8 MiB), and every other row in this table already used its own case's input.
-9 MiB/s is that same convention applied consistently. The command still reads the input twice, so
-about 18 MiB/s crosses the parser.
+‡ Divided by this command's own input, the T10 unordered corpus (1,800.8 MiB), as every other row
+uses its own case's input. The command reads the input twice, so about 18 MiB/s crosses the
+parser.
 
-> **The CLI-host rows above have no corrected-build replacement, and none is owed.** D-125's
-> publication correction reaches the measured CLI-host interval, so those rows were invalidated as
-> descriptions of the shipped code. A pre-registered paired comparison that would have licensed a
-> performance-continuity claim ran in full and **failed its collective gate**:
-> `CliHostConvertWideWorking` returned a one-sided 95% upper limit of **5.6809%** against a 5% bound,
-> and `CliHostConvertBothWorking` failed control stability at **1.071382** against 1.05. The
-> correction's incremental elapsed-time effect is therefore **inconclusive at the 5% bound** — not
-> neutral, not a non-regression, not "probably below 5%", and not a speedup. **No corrected-build
-> elapsed figure, throughput rate, or publication/sidecar overhead may be derived from anything on
-> this page.** The complete result, and the corrected-build allocation, validation and resource
-> evidence that *was* obtained, are in [The corrected build](#the-corrected-build); the policy is
-> **D-126**.
+## Command latency after the publication correction
 
-## Findings
+The publication correction (D-125) holds a live reference to every object whose identity authorizes
+a later mutation, on Windows as well as Unix. That work sits inside the measured `CLI host` interval,
+so every `CLI host` row in the tier tables, both sides of the sidecar comparison, and the baseline
+whole-command traces describe the build before it. They keep that provenance; none is relabelled or
+overwritten.
 
-### Throughput is linear in the record count
-
-The wide source drain reads **2.83M, 2.74M, and 2.81M records/second** at 730,000, 7.3M, and 73M
-records — the same rate across a hundredfold range, at a constant **723 B/record**. The same holds
-for every other surface measured at more than one tier. Nothing in the pipeline degrades with size,
-which is the property D-007's streaming design exists to provide and the one this milestone was
-convened to check.
-
-These are **component** measurements — Sources, calibration, planning, emit and export — taken in
-sessions A and C, and D-125's publication correction is **unreachable** from every one of them, so
-they stand at their original provenance and this conclusion is unaffected. It is a statement about
-those measured paths across those tiers, not a rate anyone should expect from a whole `convert`
-invocation, and not a claim about the shipped command's end-to-end latency.
-
-### Serialization is nearly free; emission is the cost
-
-Pairing each conversion with an **emit drain** that produces the same objects and writes nothing
-isolates the writer:
-
-| Case | emit drain | + `.dat` | writer's share | extra allocation |
-| --- | ---: | ---: | ---: | ---: |
-| wide, 730k | 566.3 ms | 596.3 ms | **+5.3%** | ~0 |
-| wide, 7.3M | 5.885 s | 6.549 s | **+11.3%** | 0 |
-| wide, 73M | 55.058 s | 60.503 s | **+9.9%** | 0 |
-| triple unordered, 7.3M | 8.906 s | 9.005 s | **+1.1%** | 0 |
-| triple unordered, 73M | 98.386 s | 104.689 s | **+6.4%** | 0 |
-
-The `.dat` writer allocates **nothing measurable** — the 1,532 B/record a wide conversion allocates
-is spent before a byte reaches the exporter. A profiling pass has one place to look, and it is not
-the writer. That is the sharpest actionable result in this pack.
-
-### The `.cxt` format costs what its layout implies
-
-At the working tier, `.cxt` takes **2.40x** the time and **2.10x** the allocation of `.dat` over the
-same context (1.432 s / 2.18 GB against 596.3 ms / 1.04 GB). A `.cxt` header carries counts and every
-object name before the matrix, so a conforming writer takes a bounded name pass and then replays the
-emission (§18.1) — two complete passes where `.dat` streams once. The factor is the format's, not the
-implementation's.
-
-### Accepting unordered triple input costs 4-6x, and it is grouping, not reading
-
-| Tier | grouped | unordered | ratio |
-| --- | ---: | ---: | ---: |
-| 730k | 174.0 ms | 727.6 ms | 4.2x |
-| 7.3M | 1.653 s | 9.005 s | 5.4x |
-| 73M | 16.846 s | 104.689 s | 6.2x |
-
-Reading is not the difference. The triple **source drain** takes 6.442 s at 73M, so of the 104.7 s an
-unordered conversion spends, **fewer than 7 seconds are spent reading** and the rest is grouping.
-`subject_grouped` is a declaration a user can make when their data really is grouped, and this is
-what it is worth.
-
-### Input-stability hashing costs 12-19% of a source pass, and allocates nothing
-
-All four rows are **session A**.
-
-| Tier | unhashed | hashed | cost | allocation |
-| --- | ---: | ---: | ---: | --- |
-| 730k | 240.6 ms | 285.7 ms | **+18.7%** | equal at reported precision (501.85 MB) |
-| 7.3M | 2.373 s | 2.655 s | **+11.9%** | equal at reported precision (4.91 GB) |
-
-Output hashing costs far less — **+1.9%** at 730k and **+5.7%** at 7.3M — because a staged `.dat` is
-a fraction of the input it came from. The cost is pure CPU over bytes the pass was already reading,
-and the wrappers allocate **nothing the reported precision resolves**: these arms agree in the
-rounded `MB`/`GB` column, which is **not** a byte-identity claim (the sidecar correction above is
-what that mistake looks like when the difference is real). These are component measurements that
-never reach `PublicationTransaction`, so D-125 does not touch them and they stand at their original
-session-A scope.
-
-Neither is a switch. Inline hashing of every complete input pass is a correctness guarantee
-(D-122 part 5 / §17); the unhashed arm is a component experiment that no user can select.
-
-### The second input pass is the real input-stability cost
-
-An auto-calibrated convert reads its input **twice** — once to calibrate, once to emit — and hashes
-both, with the second required to agree with the first. Against a declared spec over the same corpus:
-
-| Tier | declared (one pass) | auto (two passes) † | ratio |
-| --- | ---: | ---: | ---: |
-| 730k | 227.0 ms | 1.527 s | 6.7x |
-| 7.3M | 9.168 s | 18.250 s | 2.0x |
-| 73M | 99.166 s | 201.540 s | 2.0x |
-
-At target scale the second pass is exactly what it looks like: the conversion done twice. A spec that
-declares its domains avoids it.
-
-† The auto arm is session C's; the declared arm is session A's, unaffected by the calibration
-correction because a declared spec runs no calibration pass at all. The ratio is unchanged at both
-target sizes. Both arms are `CLI host` rows and therefore predate D-125: the ratio describes the
-revisions that produced it, and **no corrected-build timing replacement exists or is owed** (D-126).
-The corrected build's auto and declared commands were re-validated for output and allocation, and
-traced for resource shape, in [The corrected build](#the-corrected-build).
-
-### The manifest sidecar is at or below the noise floor
-
-In **session A** the manifest-bearing arm was **faster** than `--no-manifest` at 730k (729.0 ms
-against 756.0 ms, StdDev 9.4 and 44.6 ms); at 7.3M it was 4.0% slower (6.975 s against 6.708 s). The
-sign is not stable across tiers, so the honest statement is that the sidecar's cost is at the edge of
-what that measurement resolved. `--no-manifest` suppresses **only** the sidecar: the complete input
-pass and the staged output are still hashed either way.
-
-**Correction — the two arms do not allocate identically.** The earlier "both arms allocate
-identically" read the reports' rounded `1.04 GB` column. Exactly, at 730k, the manifest-bearing arm
-allocated **1,118,368,544 B** against `--no-manifest`'s **1,118,098,280 B** in session A — a real
-**270,264 B** difference, which is the sidecar's own cost and rounds away at GB precision. Both arms
-were re-measured on the corrected build and both remain distinct; the exact totals are in the
-[fifteen-row ledger](#the-corrected-build). **No corrected-build elapsed comparison of these two arms
-is available** — the sidecar's timing cost on the shipped build is one of the claims D-126's
-limitation surrenders.
-
-### Wide dedupe is the most expensive path in the matrix
-
-`keyed dedupe` converts 7.3M rows into 1.825M objects in **29.0 s**, allocating **19.47 GB** — 2,864
-B/record, the highest figure here, and 4.4x the allocation of the same rows converted without a key.
-Its emit drain is 28.7 s, so again the writer is not the cost. Non-contiguous keys cannot be merged
-without the spool, and this is what that machinery costs when every key recurs at maximum distance.
-
-### Width is a planner cost, paid once
-
-The pure planner takes **54.7 us / 38.3 KB** for a 33-column plan and **4.2 ms / 3.07 MB** for a
-1,568-column one — 77x the time for 48x the columns. It is paid once per conversion, so it is
-irrelevant at scale and dominant for a small one: at 1,000 Ads-width rows, planning is a measurable
-share of the whole job.
-
-### Whole-command working set: the wide path is constant-memory, the grouping path is not
-
-Separate `dotnet-counters` traces of the **real self-contained executable** — not BenchmarkDotNet, not
-this process — sampling once a second while a genuine `fcabedrock convert` ran. **Every figure is a
-sampled maximum — a lower bound on the true peak, not an exact peak** — and every row below is a
-**session-A or session-C** observation of the executable *that session* built. The corrected build's
-own six traces are separate, and are in [The corrected build](#the-corrected-build).
-
-| Command | Session | Sampled WS max | Sampled GC-heap max | Sampled committed max | Samples |
-| --- | --- | ---: | ---: | ---: | ---: |
-| wide declared, 7.3M (455 MiB in) | A | **62.5 MB** | 14.8 MB | 18.2 MB | 11 |
-| wide declared, 73M (4.51 GiB in) | A | **62.1 MB** | 18.0 MB | 18.3 MB | 99 |
-| triple unordered declared, 7.3M § | C | 256.7 MB | 172.3 MB | 210.9 MB | 15 |
-| triple unordered declared, 73M § | C | **1,721.1 MB** | 1,412.8 MB | 1,679.4 MB | 219 |
-| triple unordered **auto-calibrated**, 7.3M § | C | 357.8 MB | 228.5 MB | 360.7 MB | 31 |
-| triple unordered **auto-calibrated**, 73M § | C | 1,873.9 MB | 1,413.8 MB | 1,894.7 MB | 315 |
-
-§ Session C, against the corrected executable, with the command, spec digest, data digest, output
-digest and executable hash recorded in
-`evidence/session-c-calibration-guard-fix/trace-provenance.md`. The two declared rows **replace**
-session A's `t10u-scale7m.csv` and `t10u-scale73m.csv`, which are retained beside that record: their
-CSVs hold counter samples only, the run log recorded a command template rather than an argv, and two
-specs exist for that corpus — one declared and one auto-calibrated — so which was traced could not
-be established. Rather than infer it from a file name, both were re-taken. The two auto-calibrated
-rows are new; they are the triple commands whose code path the calibration correction actually
-touches, and no earlier trace covered them.
-
-The 7.3M declared row lands within 0.2 MB of session A's on working set and on exactly its committed
-figure, which suggests the original was indeed the declared command — but a corroboration is not a
-provenance record, and the replacement stands on its own. The 73M declared row reads about 5% *lower*
-than session A's across all three counters despite 219 samples against 162; that is what a sampled
-maximum is worth on a transient peak, and it is the reason this table says "lower bound" rather than
-"peak".
-
-The wide declared traces are **not** replaced. Their spec is fully declared — identity discretizers
-with `declared_domain` and `manual_cuts`, no `equal_frequency` or `percentile_p1_p99` anywhere — so
-`CalibratedSpec.RequiresData` is false and those commands run no calibration pass at all. The
-corrected code is unreachable from them.
-
-**In session A, the wide declared path converted 4.51 GiB of input in a 62 MB sampled working set,
-and that figure did not move between 7.3M and 73M records** — a tenfold increase in input changed the
-sampled maximum by 0.6%. That is the streaming guarantee (D-007, I3) observed end to end on the
-command *that session* traced, and it is the single result this milestone existed to obtain. It is a
-**session-A** observation of a pre-D-125 executable, so it is not a statement about the shipped
-build; the corrected build was independently observed at 62.52 MB and 63.00 MB on the same two
-commands in **session F**, a new observation beside this one rather than a replacement of it (and
-not a cross-session comparison — see [The corrected build](#the-corrected-build)).
-
-It also shows plainly why the three memory meanings must not be confused: BenchmarkDotNet measured
-**104 GB allocated** for the same 73M wide conversion, and the process held a **62 MB** sampled
-working set. Allocation is throughput through the collector; working set is what the machine must
-find. Neither may be converted into the other.
-
-**The triple unordered path is different, and legitimately so.** In **session C** its sampled
-working-set maximum grew about sevenfold from 7.3M to 73M — roughly 250 bytes per distinct subject at
-the larger size. That is the EP-16 metadata carve-out doing exactly what it says: the grouping key
-vocabulary is bounded metadata that grows with the number of *objects*, not a materialized matrix.
-I3's wording is the right one to read this against — "streaming" is not "constant total process
-memory". On that session's evidence a user grouping 7.3 million unordered subjects should expect to
-provide about 1.8 GB. The corrected build was separately observed at 236.73 B and 269.29 B per
-distinct subject at 73M in **session G**, under an explicit `D:` spool boundary — a new observation
-beside this one, and not a cross-session comparison.
-
-**In session C, auto-calibrating that path cost about 100 MB more at 7.3M and about 9% more at 73M.**
-The extra is the count-sensitive accumulator, which is sized from its share of the budget before a
-record is read, plus a second pass over the input. At 73M the two runs' sampled GC-heap maxima are
-within 1 MB of each other (1,412.8 against 1,413.8), which is what one expects when the grouping
-vocabulary dominates and the accumulator is a fixed addition rather than a data-sized one.
-
-Three further observations from the same traces:
-
-- **GC pressure is confined to the grouping path.** In sessions A and C, time-in-GC peaked at **3%**
-  for the wide conversion, **86%** for the 73M triple unordered declared one, and **91%**
-  auto-calibrated.
-- **Conversion is single-threaded.** CPU usage peaked at 10.0% on a 12-logical-core machine — one
-  core — in every trace, and the corrected build's own six traces reproduce that shape.
-- **The corrected calibration path holds no more memory than the guard's scope implies.** The
-  auto-calibrated 73M command completed with a sampled working-set maximum 9% above its declared
-  counterpart, not a multiple of it: fixing the baseline's scope removed a false refusal, and did not
-  enlarge the resources the merge actually uses.
-
-A sampled maximum is a **lower bound** on the true peak: the wide 7.3M run was observed 11 times
-across 26 seconds, and a spike between samples would not appear. No sample is not zero.
-
-## The corrected build
-
-Everything above describes the revisions that produced it. This section is what was measured on
-**`4216610b`**, the D-125-corrected build — and, first, the one thing that could not be.
-
-> **This evidence belongs to `4216610b`/`03352da7`, and the later three-blocker correction did not
-> inherit it.** That correction is **not** failure-only: `Commit` ends by calling
-> `Finish(forward: true)` inside `CliHost.RunAsync("convert", …)`, so a bounded amount of added
-> work — one `File.Exists` for each absent stage, and a held-reference dictionary lookup at each
-> successful post-commit removal — executes inside the measured interval. Bounded and small is not
-> zero, so the fifteen-row allocation/validation ledger and the six corrected-command traces in
-> this section **do not satisfy D-126 conditions (c) and (d) for that corrected candidate**, and
-> they are not offered for it. **Session H reacquired all fifteen cases and all six traces together
-> at `50f6aa62` on 2026-09-10, and both conditions are met there** — the fifteen together, because
-> (c) is one *coupled* allocation-and-per-iteration-validation proof of the actual candidate rather
-> than a separable pair, reacquired at the same oracle strengths and under the same
-> validate-after-disposal rule. That campaign is
-> [The corrected candidate](#the-corrected-candidate-50f6aa62--session-h). Every row and every
-> trace in *this* section keeps its provenance as valid historical evidence of the revision that
-> produced it; none is withdrawn, relabelled, overwritten, or reused to satisfy a condition at the
-> corrected candidate. **Policy L is untouched**: the reacquisition licensed no elapsed, rate,
-> neutrality, non-regression or overhead claim and owed no paired retry, and the elapsed output it
-> incidentally produced stays contextual raw data (D-126, corrections of 2026-09-10).
-
-### The publication comparison: attempted in full, failed, inconclusive
-
-A four-form paired campaign was **pre-registered before any measurement** — its criterion frozen and
-hashed 54 seconds before the first invocation and re-hashed identical afterwards — then executed
-exactly as specified: twelve interleaved invocations of the unchanged pre-fix control (P) and the
-corrected candidate (C) in a fixed six-block order, forty-eight case reports agreeing on job,
-runtime, SDK, BenchmarkDotNet version, OS and instrumentation, every iteration validated after
-disposal. `U` is the one-sided 95% upper limit on the geometric-mean ratio; control `max/min` is the
-unchanged build's own spread across its six launches. **The gate was collective: all four forms had
-to pass every applicable check.**
+A four-form paired comparison was pre-registered to bound the correction's cost on elapsed time.
+It ran in full on 2026-09-09: twelve interleaved invocations of the unchanged pre-fix control and the
+corrected build `4216610b` in a fixed six-block order, with every iteration validated after disposal.
+Each form is one Working-tier `CLI host` case: wide `.dat`, `--no-manifest`, `.cxt` and
+`--format both`. The point estimate is the geometric-mean change in elapsed time of the corrected
+build against the control, `U` is its one-sided 95% upper limit, control `max/min` is the unchanged
+build's own spread across its six launches, and the order ratio is the comparison's check for an
+effect of block order. All four forms had to pass every applicable check.
 
 | Working form | Point estimate | One-sided 95% `U` | `U ≤ 5%` | control `max/min` | `≤ 1.05` | order ratio |
 | --- | ---: | ---: | --- | ---: | --- | ---: |
@@ -1300,803 +492,262 @@ to pass every applicable check.**
 | CXT | +0.4623% | 1.5892% | pass | 1.022205 | pass | 1.011346 |
 | Both | −1.0576% | 0.9893% | pass | **1.071382** | **fail** | 1.010199 |
 
-**Status: attempt complete; collective gate failed; incremental elapsed effect inconclusive at the
-5% bound; no retry is required for M8 under limitation closure** (D-126). Not "passed", not
-"pending".
+Two forms failed. Wide's `U` exceeded 5% because of one iteration in one candidate launch that ran
+about 200 ms above its four siblings at identical GC counts. Both failed on the control arm: the
+unchanged pre-fix build moved 7.1% across its own six launches. No block was discarded, no bound
+recomputed, no margin widened and no sample added.
 
-The two failures have different characters and neither implicates a code path. Wide's `U` is carried
-over 5% by a **single** iteration in one candidate launch that ran ~200 ms above its four siblings,
-at **identical GC counts** (66/0/0) and an allocation total inside the same 1,592-byte band as its
-five siblings — every other candidate launch of that case fell in 670.54–721.84 ms. Both's is a **control-arm** failure: the *unchanged* pre-fix build moved 7.1%
-across its own six launches. No block was discarded, no alternative bound computed, no margin
-widened, and no sample added; the statistic is reported exactly as it fell.
+**The correction's effect on command latency is therefore unknown.** The comparison was complete and
+inconclusive at its 5% bound, and no retry is required: D-126 records this as a permanent limitation
+of the evidence. The point estimates are shown so that nothing is hidden; they are not a bound.
+Nothing here may be read as neutral, as no measurable regression, as equality, as non-regression, as
+probably below 5% or as a speedup, and no corrected-build elapsed figure, throughput rate,
+publication or sidecar overhead, or new absolute CLI baseline is derived anywhere in this guide. The
+corrected build allocates slightly more per published run: within one machine state, the four
+Working forms allocated +2,880 to +9,416 bytes more than the unchanged control, on operations of
+1.04 GB to 3.23 GB, apart from one pair distorted by an anomalous control reading (D-125).
 
-**The four point estimates are not a bound and not evidence of neutrality.** They are reported
-because reporting only `U` would hide them, not because they license a conclusion. Nothing on this
-page may be paraphrased as measurement-neutral, no measurable regression, equality, non-regression,
-probably below 5%, a speedup, an exact publication or sidecar overhead, a new absolute CLI baseline,
-or reached-path performance continuity.
+What was measured on the shipped code instead is correctness and allocation. All fifteen `CLI host`
+cases were run at `50f6aa62` on 2026-09-10, one invocation each, with every completed iteration
+validated after disposal and all three 73M cases at their full 1-warmup, 3-iteration job. No
+allocation investigation threshold was crossed on any row.
 
-**What remains valid at its original provenance.** Sources, calibration, grouping/fan-in, planning,
-emit/export, probe, hash-wrapper and tuning measurements are **unaffected**, because publication is
-unreachable from those measured paths: the `a09e302..4216610b` correction inventory is 29 paths
-confined to `src/FcaBedrock.Cli/`, `tests/FcaBedrock.Cli.Tests/` and four docs, with nothing under
-Sources, Conversion, Export, Core, Spec, Discovery or `tests/FcaBedrock.Benchmarks`. That is a
-scoped statement, not a claim that all earlier evidence survived or that all current performance was
-remeasured.
-
-### Allocation and per-iteration validation — all fifteen CLI-host cases (sessions E and F)
-
-Six rows are session **E** (the paired campaign; the elapsed gate failed, which erases neither the
-allocation totals nor the lifecycle validation) and nine are session **F**. Historical totals and
-their sessions sit in separate columns, and *candidate − historical* is a **descriptive
-cross-session difference**, never an isolated causal estimate. Every threshold is
-`max(65,536 bytes, 0.0001 × H)` against the exact historical `H`; for the four repeated forms the
-largest of the six candidate totals is used, never a favourable one. **No allocation investigation
-trigger fired on any row.**
-
-| # | Case | Tier | Session | Candidate allocated B/op | GC gen0/1/2 | Historical `H` | `H` from | Cand − H | Threshold | Verdict | Launches × measured | Oracle strength |
-| ---: | --- | --- | --- | ---: | --- | ---: | --- | ---: | ---: | --- | --- | --- |
-| 1 | `CliHostConvertWideSmall` | Small | E | 16,620,576 | 0/0/0 | 16,615,224 | A | +5,352 | 65,536 | clear | 1 × 74 | independent bytes |
-| 2 | `CliHostConvertTripleSmall` | Small | E | 5,011,000 | 0/0/0 | 5,004,216 | A | +6,784 | 65,536 | clear | 1 × 100 | independent bytes |
-| 3 | `CliHostConvertWideWorking` | Working | E | 1,118,373,480 – 1,118,375,072 | 66/0/0 | 1,118,368,544 | A | +6,528 | 111,836.8544 | clear | 6 × 5 | independent bytes |
-| 4 | `CliHostConvertNoManifestWorking` | Working | E | 1,118,102,664 – 1,118,104,256 | 66/0/0 | 1,118,098,280 | A | +5,976 | 111,809.8280 | clear | 6 × 5 | independent bytes + absent sidecar |
-| 5 | `CliHostConvertCxtWorking` | Working | E | 2,345,517,888 – 2,345,518,048 | 141/17/3 | 2,345,512,936 | A | +5,112 | 234,551.2936 | clear | 6 × 5 | independent CXT bytes |
-| 6 | `CliHostConvertBothWorking` | Working | E | 3,462,974,584 – 3,462,976,424 | 208/17/3; 209/20/4 | 3,462,968,176 | A | +8,248 | 346,296.8176 | clear | 6 × 5 | two independent expectations |
-| 7 | `CliHostConvertTripleGroupedWorking` | Working | F | 159,464,032 | 9/3/1 | 159,456,688 | A | +7,344 | 65,536 | clear | 1 × 5 | independent bytes |
-| 8 | `CliHostConvertAutoWorking` | Working | F | 845,255,304 | 35/19/8 | 845,247,384 | C | +7,920 | 84,524.7384 | clear | 1 × 5 | **limited auto** |
-| 9 | `CliHostConvertWideScale7M` | 7.3M | F | 11,185,803,504 | 668/3/0 | 11,185,797,632 | A | +5,872 | 1,118,579.7632 | clear | 1 × 5 | independent bytes |
-| 10 | `CliHostConvertNoManifestScale7M` | 7.3M | F | 11,185,531,432 | 668/3/0 | 11,185,527,208 | A | +4,224 | 1,118,552.7208 | clear | 1 × 5 | independent bytes + absent sidecar |
-| 11 | `CliHostConvertTripleScale7M` | 7.3M | F | 4,593,017,104 | 227/99/37 | 4,593,005,352 | A | +11,752 | 459,300.5352 | clear | 1 × 5 | independent bytes |
-| 12 | `CliHostConvertAutoScale7M` | 7.3M | F | 9,337,028,248 | 444/163/55 | 9,337,012,872 | C | +15,376 | 933,701.2872 | clear | 1 × 5 | **limited auto** |
-| 13 | `CliHostConvertWideScale73M` | 73M | F | 111,858,261,424 | 6686/26/0 | 111,858,360,360 | A | **−98,936** | 11,185,836.0360 | clear | 1 × 3 | independent bytes |
-| 14 | `CliHostConvertTripleScale73M` | 73M | F | 45,882,461,384 | 2108/838/133 | 45,882,487,320 | A | **−25,936** | 4,588,248.7320 | clear | 1 × 3 | independent bytes |
-| 15 | `CliHostConvertAutoScale73M` | 73M | F | 92,380,100,936 | 4271/1469/269 | 92,380,082,952 | C | +17,984 | 9,238,008.2952 | clear | 1 × 3 | **limited auto** |
-
-**Every completed iteration validated after disposal**, including all three 73M cases at their real
-1-warmup/3-measured policy. No smaller job, `Dry` smoke or ten-times-7.3M estimate was substituted
-for a 73M case.
-
-**Oracle strength is not uniform, and the difference matters.** The declared, CXT and both-format
-rows check exact length **and** SHA-256 against an expectation derived from the corpus definition
-plus documented spec semantics, never by invoking the code under test. The three **limited auto**
-rows check only the expected subject count, an `ObservedDomainUsed`-only diagnostic policy, manifest
-**presence**, and intra-run byte determinism across their iterations; their external session-C digest
-continuity comes from the actual-command traces below, and that continuity is **regression evidence,
-not an independently derived quantile-semantic oracle**. BenchmarkDotNet's manifest check is
-**presence/absence only** — full manifest/input/output hash consistency is carried by the traces.
-
-#### The four repeated Working forms, in full
-
-Ranges are used in the table above; here are all six candidate totals and all six paired
-differences, so no favourable value can be selected.
-
-| Form | six candidate totals (block order) | range | six paired P→C differences |
+| Case | Tier | Allocated B/op | Oracle strength |
 | --- | --- | ---: | --- |
-| `CliHostConvertWideWorking` | 1,118,373,480 / 1,118,374,736 / 1,118,374,576 / 1,118,373,480 / 1,118,373,480 / 1,118,375,072 | 1,592 B | +5,384 / +6,144 / +5,384 / +5,544 / **−99,080** / +6,976 |
-| `CliHostConvertNoManifestWorking` | 1,118,103,840 / 1,118,103,840 / 1,118,103,080 / 1,118,102,664 / 1,118,102,664 / 1,118,104,256 | 1,592 B | +4,056 / +5,072 / +4,056 / **+2,880** / +4,056 / +5,488 |
-| `CliHostConvertCxtWorking` | 2,345,517,888 ×4 / 2,345,518,048 / 2,345,518,008 | 160 B | +5,560 / +5,400 / +5,560 / +5,560 / +5,720 / +5,680 |
-| `CliHostConvertBothWorking` | 3,462,976,424 / 3,462,974,752 / 3,462,974,744 / 3,462,974,584 / 3,462,974,736 / 3,462,976,344 | 1,840 B | **+9,416** / +6,112 / +5,920 / +5,776 / +5,920 / +7,520 |
-
-**Every positive within-state paired difference falls between +2,880 and +9,416 bytes per published
-run** across these four forms, on operations of 1.04 GB to 3.46 GB. The single **−99,080** figure is
-**not** a candidate saving: it is produced by that block's anomalous *control* reading of
-1,118,472,560 B against 1,118,367,936–1,118,369,192 B in the control's own other five launches, at
-unchanged GC counts. It is preserved here rather than dropped.
-
-**The two negative 73M differences (rows 13 and 14) are measurement observations, not savings.**
-They are cross-session, one candidate measurement against a single historical measurement of a
-different revision in a different machine state; −98,936 is 0.0000885% of a 111.86 GB operation and
-**0.88%** of that row's own investigation threshold, −25,936 is 0.000057% and **0.57%** of its own.
-Session E independently recorded a discrete ≈104 KB step in the same case family across six launches
-of **unchanged** code, so a step of this magnitude is not unexplained. Gen-0 collections are
-identical for row 13 and differ by 9 in 2,117 for row 14. No retry, replacement run or threshold
-change was made in response.
-
-**Allocation is near- but not perfectly deterministic, and it is not machine-state independent.**
-That is why ranges are reported rather than single values, why exact integers precede any rounding,
-and why no delta is extrapolated from one row to another. Nothing here is inferred from a rounded
-`GB` or `MB` column.
-
-**Corrected-build elapsed output exists and is deliberately not published.** Every one of these runs
-produced a full BenchmarkDotNet distribution; those are retained in the evidence directories as
-**contextual raw data only**. Under D-126 no results table, records/s, MiB/s, scaling curve,
-speedup, overhead percentage, sidecar or auto-versus-declared timing arithmetic, or old/new
-subtraction may be derived from them.
-
-### Corrected-command resource traces — all six (sessions F and G)
-
-Separate `dotnet-counters` traces of the **real self-contained executable** built from `4216610b`,
-one-second refresh, the same nine-counter set as the historical traces. These are the six the
-corrected build owes; the six historical traces above keep their session-A/session-C identity beside
-them and are neither replaced nor re-attributed.
-
-Every trace: exit 0, **no diagnostic output at all**, an independently derived line count, all nine
-counters present at every sample, and a manifest whose `input_hash`, `spec_file_hash` and
-`[[run.outputs]].hash` each equal a SHA-256 **recomputed independently in the same session** over
-the actual input, spec and produced output — a consistency check the BenchmarkDotNet validator does
-not perform. Output and manifest were validated **after** the observed command interval.
-
-| # | Trace | Session | Spool boundary | Samples | Output bytes | Lines (expected) |
-| ---: | --- | --- | --- | ---: | ---: | --- |
-| 1 | wide declared 7.3M | F | no grouping spool; no `--temp-dir` | 8 | 109,231,401 | 7,300,000 ✓ |
-| 2 | wide declared 73M | F | no grouping spool; no `--temp-dir` | 67 | 1,092,259,236 | 73,000,000 ✓ |
-| 3 | triple declared 7.3M | G | explicit `--temp-dir` on `D:` | 11 | 7,740,053 | 730,000 ✓ |
-| 4 | triple auto 7.3M | G | explicit `--temp-dir` on `D:` | 21 | 4,592,422 | 730,000 ✓ |
-| 5 | triple declared 73M | G | explicit `--temp-dir` on `D:` | 104 | 77,401,561 | 7,300,000 ✓ |
-| 6 | triple auto 73M | G | explicit `--temp-dir` on `D:` | 211 | 45,925,401 | 7,300,000 ✓ |
-
-**The `D:` spool placement is a disclosed acquisition boundary, not a result.** Session F stopped
-before the two 73M triple traces at a pre-registered capacity gate: one triple-unordered 73M
-conversion needs roughly **5.6 GiB** of grouping spool; the established trace argv carries no
-`--temp-dir`, so `SpoolWorkspace` falls back to the OS temporary directory on the **system** volume,
-which had 7.102 GiB free against a required 10.313 GiB. That is an acquisition/capacity stop — an
-operator and environment matter, not a product defect, not an oracle failure, not evidence
-instability. Session G then ran all four triple traces with an explicit **unique per-trace
-`--temp-dir` beneath `D:\tmp`**, appended after `--format dat` so the established argv prefix is
-preserved verbatim and the single addition is textually isolated. Nothing else differed — not the
-executable, corpora, specs, format, manifest behaviour, counter set or interval, cwd, runtime,
-validation or oracle. **This may never be used to compare timing with sessions A, C or F, and `D:`
-is never described as faster or slower**; the change is coherent only because D-126 has already
-surrendered cross-session latency comparability. Session F's own `C:`-temp triple 7.3M traces remain
-valid corrected-build observations (recorded below), but they are **not** the resource controls for
-traces 5 and 6, because a control and its comparison must share an acquisition boundary.
-
-**Output continuity, byte-exact.** All four session-G traces reproduced session C's retained outputs
-**byte for byte**. The two declared traces ran under the committed `t10-unordered-scale7m.toml` and
-`t10-unordered-scale73m.toml` specs; the two auto traces ran under the auto spec whose SHA-256 is
-`45073d8f35d6dbbf5245d24f8dc2a1aa004173526cbf4157a72de5406dd0cf38` — the same spec session C
-recorded, byte-identical at 703 bytes, regenerated by nothing in these sessions:
-
-| Trace | Output bytes | Output SHA-256 |
-| --- | ---: | --- |
-| triple declared 7.3M | 7,740,053 | `a2c6ecaa014fe295562f2538987ba3a0f63ffdb493cb066f68450690924c9eff` |
-| triple auto 7.3M | 4,592,422 | `bf6bfc84e2015ed4fc82c29dd0f615f94da9dd393bd2bcbe74a45f5e734e49ee` |
-| triple declared 73M | 77,401,561 | `c71c8771454b563cd962d40c1aea05a50e61a1575192224c8dd766ef2564b7d3` |
-| triple auto 73M | 45,925,401 | `8de58ba282c33564731b085bd9503c89eed0753f053006000773d1e26f5495bd` |
-
-The last row **closes the corrected-build 73M auto external digest continuity** that session F had
-left outstanding. That continuity is **regression evidence, not an independently derived
-quantile-semantic oracle** — it says this build reproduces session C's bytes for the same corpus and
-spec, not that a third party derived those bytes. The byte-exact *independent* expectation for the
-same declared conversions is carried separately by rows 11 and 14 of the allocation ledger, which
-validated against the real declared oracle after disposal. The two wide traces have no historical
-trace digest to compare against (session A's wide traces recorded none), so their strength is exit
-status, absent diagnostics, independent line count and manifest consistency — stated at exactly that
-scope, with rows 9 and 13 carrying their byte-exact expectation.
-
-#### Sampled resource shape
-
-Every figure is a **sampled maximum at a one-second interval** with `dotnet-counters` profiling
-overhead present: a **lower bound** on the true peak, never an exact peak and never a portable
-ceiling. Sample counts are in the table above.
-
-| # | Trace | Session | WS max (MB) | GC heap max (MB) | GC committed max (MB) | CPU max (%) | Time-in-GC max (%) |
-| ---: | --- | --- | ---: | ---: | ---: | ---: | ---: |
-| 1 | wide declared 7.3M | F | 62.5213 | 15.0132 | 18.4566 | 9.9476 | 1 |
-| 2 | wide declared 73M | F | 62.9965 | 17.8808 | 18.7187 | 9.6354 | 4 |
-| 3 | triple declared 7.3M | G | 257.6097 | 169.4020 | 223.3385 | 9.4364 | 44 |
-| 4 | triple auto 7.3M | G | 350.4374 | 239.7009 | 356.8271 | 9.0433 | 54 |
-| 5 | triple declared 73M | G | 1,728.1352 | 1,471.0624 | 1,699.4058 | 9.8958 | 58 |
-| 6 | triple auto 73M | G | 1,965.8220 | 1,409.3160 | 1,986.7361 | 9.8958 | 91 |
-
-Session F's `C:`-temp triple 7.3M traces, retained beside session G's and **not** used as controls
-for traces 5 and 6: declared 270.4548 / 193.6762 / 225.8289 MB at CPU 9.1146% and time-in-GC 49%
-(11 samples); auto 350.5152 / 249.5708 / 356.8189 MB at CPU 9.2689% and time-in-GC 54% (21 samples).
-Both reproduced session C's outputs byte for byte.
-
-**Size shapes, within a session and a family only.** These are descriptive observations, not scaling
-laws, and no confidence bound is attached to a single run:
-
-| Comparison | Session | Working set | GC heap | GC committed |
-| --- | --- | ---: | ---: | ---: |
-| wide declared 73M ÷ 7.3M | F | **1.0075995807127882** | 1.1910052487144647 | **1.014203284509543** |
-| triple declared 73M ÷ 7.3M | G | **6.7083459208496965** | 8.683857164344497 | 7.60910391372923 |
-| triple auto 73M ÷ 7.3M | G | **5.609624105848801** | 5.879477530196633 | 5.567783185637541 |
-
-**The wide 3× investigation trigger was evaluated immediately after trace 2 and did not fire** —
-working set 1.0076 and GC committed 1.0142 against a threshold of 3, unrounded. It is an
-investigation trigger, not a limit, and **passing it proves no streaming guarantee**: neither does
-exit zero, a flat resident set, or a BenchmarkDotNet allocation total. The algorithmic bound remains
-carried by the independent grouping/calibration observers and the retained-layout witnesses, which
-this evidence reconciles with rather than replaces. There is **no** numerical trigger for the triple
-family, and none was applied.
-
-Within session G, per distinct subject the sampled working-set maximum is **352.89 B** (declared
-7.3M), **480.05 B** (auto 7.3M), **236.73 B** (declared 73M) and **269.29 B** (auto 73M) — a fixed
-baseline plus a per-subject term, growing **sub-linearly** as subjects grow tenfold. A dense
-7,300,000 × 15 incidence matrix would be 109,500,000 bits ≈ **0.013 GiB** packed — roughly two
-orders of magnitude *smaller* than these sampled maxima, **not larger**. That comparison therefore
-**excludes nothing**: a payload that size would sit inside the observed working set unnoticed, so a
-sampled process maximum cannot show that no such matrix was materialized. It is recorded as a size
-fact, not as a no-materialization proof. The growth *is* consistent with the subject-key vocabulary
-— the **EP-16** bounded-metadata carve-out read against I3's "streaming is not constant total process
-memory" — but consistency is not attribution, and these traces do not establish which structure
-holds the memory; **the no-full-matrix guarantee is carried by the independent
-grouping/calibration observers and the retained-layout witnesses**, as above. Moving from declared
-to auto at 73M raised the
-sampled working-set maximum ×1.1375 and GC committed ×1.1691 while GC heap fell ×0.9580, with
-time-in-GC ×1.5690; at 7.3M the same comparison is ×1.3603, ×1.5977 and ×1.4150. The wide family's
-own GC-heap maximum rose 19.1% across the same tenfold input increase while its working set moved
-0.76% — the two are different quantities and neither is read off the other. Conversion stayed
-single-threaded throughout: across all six traces CPU peaked between **9.04%** and **9.95%** of
-twelve logical cores — one core.
-**Nothing observed contradicts a named existing bound.**
-
-**Disk, not memory.** `GroupingOptions.DefaultMaxBufferedBytes` is 64 MiB, so the 73M triple runs
-spilled rather than holding their grouping state resident: session G measured free-space dips on
-`D:` of **5,989,060,608 B** (declared, 5.577 GiB) and **6,058,573,824 B** (auto, 5.642 GiB), against
-`C:` dips of 1,105,920 B and 2,560,000 B. **The product cleaned its own spool workspace on success
-in all four runs — every `--temp-dir` was empty afterwards, with no manual deletion.** That is the
-bounded intake budget behaving as it must, observed end to end.
-
-### Evidence
-
-Under `D:\tmp\fcabedrock-m8-g15-bench\evidence\` on the machine described above —
-operator-retained, not portable links. Each pre-registered criterion was written and hashed **before
-its first invocation** and re-hashed identical at the end of its session, so none was fitted to a
-result.
-
-| Session | Root | Files | Criterion / result |
-| --- | --- | ---: | --- |
-| D | `session-d-controlled-replacement/` | 502 | the failed controlled-state qualification, its three canary runs, and `traces-superseded/` |
-| E | `session-e-publication-bridge/` | 990 | `BRIDGE-CRITERION.md` `C0CFFAF242055FB227EAEDB4FF1D9B751CE509EF73CB984967A8A1F3CC2B0F3B` (34,516 B) · `BRIDGE-RESULT.md` `62C9319CA6B6CB4AA73BFEB9DC26DA018ACD5922E0E17A7D08958FB18C51A7D8` (13,426 B) |
-| F | `session-f-limitation-closure/` | 593 | `LIMITATION-CLOSURE-CRITERION.md` `276BC7580FEEA9D5311569FE4FD4E4502E4862679FF2B90FDCB0EEA3225D1BB3` (32,327 B) · `LIMITATION-CLOSURE-RESULT.md` `4EDC1ED3ADC10FF7F7065015AA81C367B55D87884033D50EADD15F6A5F61D3C0` (21,943 B) |
-| G | `session-g-triple-traces-d-temp/` | 35 | `TRIPLE-TRACE-D-TEMP-CRITERION.md` `961201166A8B97235323423139E7BBF060F29763ED6679CE1AFB7ACA38B84135` (27,187 B) · `TRIPLE-TRACE-D-TEMP-RESULT.md` `47CCC8D97B9AC72DFC21F8E902B6E62424204AFEA02296FC069E33B71E35E465` (10,931 B) |
-| **H** | `session-h-corrected-candidate-50f6aa62/` | **917** | `CORRECTED-CANDIDATE-EVIDENCE-CRITERION.md` `D06B4A440CCA0092228CC4CB47B5B5C4D0F16D5D0984BA7976E3AD9B248BF1E1` (33,363 B) · `CORRECTED-CANDIDATE-EVIDENCE-RESULT.md` `47B83F23706EE60A6BE20633FBB907DF03799748509BCA0EB6123DFC6DEE5C9F` (16,653 B) — the corrected candidate `50f6aa62`, 1,428,070,716 B |
-
-Every invocation's BenchmarkDotNet log, CSV, full JSON and Markdown reports, its literal argv, cwd,
-UTC bounds and before/after machine state, and each trace's counter CSV, manifest, output and
-`validation.json` are archived per run before the next could overwrite them. **Sessions A, B and C
-are untouched** — their file counts, the six historical trace CSVs and their 2026-09-06 timestamps
-are unchanged, and session D's failed qualification and both earlier diagnostic campaigns, including
-their unfavourable readings, are retained exactly as they fell.
-
-## The corrected candidate `50f6aa62` — session H
-
-The three-blocker correction reaches the measured publication tail, so nothing above describes it.
-**Session H reacquired all fifteen CLI-host allocation/validation rows and all six real-command
-resource traces together at `50f6aa62`** on 2026-09-10, under one criterion frozen and hashed before
-the first invocation (`2026-09-10T00:10:26.1129941Z`, against H1's start at
-`2026-09-10T00:12:14.952Z`) and re-hashed identical — in hash **and** mtime — at the end.
-**D-126 conditions (c) and (d) are met at this candidate.** Nothing below is borrowed from session
-E, F or G: every row and every trace here was measured in session H.
-
-The binaries are this commit's. All seventeen product assemblies across both builds embed
-`AssemblyInformationalVersion = 1.0.0+50f6aa6206655262e9f5339775863bfa82e777bb`. The
-framework-dependent Release build the fifteen rows executed is **69 files / 35,684,516 bytes**; the
-fresh self-contained `win-x64` publish the six traces executed is **217 files / 82,966,624 bytes**
-on .NET runtime **10.0.10**. The library assemblies differ from session E's retained copies although
-no library source changed between `4216610b` and `50f6aa62`, and the difference is localized: 144
-bytes of `FcaBedrock.Core.dll` in the PE header hash, the MVID, the debug-directory signature and
-that embedded commit SHA, with **no IL difference**. That is positive provenance that these binaries
-came from the committed candidate — **not** a binary-equivalence claim and not a performance claim.
-
-**No elapsed, throughput or overhead result appears in this section, by policy.** Each row produced
-a full BenchmarkDotNet distribution and each trace has a wall time; those stay in the evidence
-directories as **contextual raw data and provenance only**. Under **D-126** none of it may become a
-results table, records/s, MiB/s, a scaling curve, a speedup, an overhead percentage, sidecar or
-auto-versus-declared timing arithmetic, or any old/new subtraction. **Policy L does not reopen**:
-the session-E paired campaign remains a complete failed historical attempt, its incremental elapsed
-effect stays **inconclusive at the pre-registered 5% bound**, and no retry is owed.
-
-### The candidate ledger — all fifteen CLI-host cases, session H
-
-One ordinary BenchmarkDotNet invocation per row, in the order below, each archived immutably before
-the next began, under the existing tier categories and jobs — no command supplied `--job`, and every
-selection was proved with a non-executing `--list flat` to resolve to exactly one named case.
-**Every completed measured iteration passed its existing post-disposal validator**; a validation
-failure throws, so a case that produced the wrong result would carry no number at all. **No
-allocation investigation trigger fired on any of the fifteen rows.**
-
-`Reference` is the accepted session-E/F ledger at `4216610b`/`03352da7`, re-extracted in session H
-from the retained machine-readable reports before pre-registration, every one reproducing exactly.
-It is a **descriptive cross-session reference used only for the investigation trigger** — never
-proof for this candidate, never an isolated causal estimate, never extrapolated from one row to
-another. The threshold is `max(65,536 bytes, 0.0001 × H_max)`, one-sided on a positive increase
-above the historical maximum; for the four ranged references the full range is retained and the
-candidate compared to **both** endpoints, so no favourable member is selected anywhere.
-
-| # | Case | Tier | Allocated B/op | GC gen0/1/2 | Reference (E/F) | Δ vs low | Δ vs high | Threshold | Trigger | Launches × measured | Oracle strength |
-| ---: | --- | --- | ---: | --- | ---: | ---: | ---: | ---: | --- | --- | --- |
-| 1 | `CliHostConvertWideSmall` | Small | 16,621,592 | 0/0/0 | 16,620,576 | — | +1,016 | 65,536 | clear | 1 × 65 | independent bytes |
-| 2 | `CliHostConvertTripleSmall` | Small | 5,010,744 | 0/0/0 | 5,011,000 | — | −256 | 65,536 | clear | 1 × 100 | independent bytes |
-| 3 | `CliHostConvertWideWorking` | Working | 1,118,374,216 | 66/0/0 | 1,118,373,480 – 1,118,375,072 | +736 | −856 | 111,837.5072 | clear | 1 × 5 | independent bytes |
-| 4 | `CliHostConvertNoManifestWorking` | Working | 1,118,103,720 | 66/0/0 | 1,118,102,664 – 1,118,104,256 | +1,056 | −536 | 111,810.4256 | clear | 1 × 5 | independent bytes + sidecar proved absent |
-| 5 | `CliHostConvertCxtWorking` | Working | 2,345,519,184 | 141/17/3 | 2,345,517,888 – 2,345,518,048 | +1,296 | +1,136 | 234,551.8048 | clear | 1 × 5 | independent CXT bytes |
-| 6 | `CliHostConvertBothWorking` | Working | 3,462,974,704 | 208/17/3 | 3,462,974,584 – 3,462,976,424 | +120 | −1,720 | 346,297.6424 | clear | 1 × 5 | two independent expectations |
-| 7 | `CliHostConvertTripleGroupedWorking` | Working | 159,463,792 | 9/3/1 | 159,464,032 | — | −240 | 65,536 | clear | 1 × 5 | independent bytes |
-| 8 | `CliHostConvertAutoWorking` | Working | 845,252,024 | 35/19/8 | 845,255,304 | — | −3,280 | 84,525.5304 | clear | 1 × 5 | **limited auto** |
-| 9 | `CliHostConvertWideScale7M` | 7.3M | 11,185,802,648 | 668/3/0 | 11,185,803,504 | — | −856 | 1,118,580.3504 | clear | 1 × 5 | independent bytes |
-| 10 | `CliHostConvertNoManifestScale7M` | 7.3M | 11,185,532,808 | 668/3/0 | 11,185,531,432 | — | +1,376 | 1,118,553.1432 | clear | 1 × 5 | independent bytes + sidecar proved absent |
-| 11 | `CliHostConvertTripleScale7M` | 7.3M | 4,593,008,128 | 227/99/37 | 4,593,017,104 | — | −8,976 | 459,301.7104 | clear | 1 × 5 | independent bytes |
-| 12 | `CliHostConvertAutoScale7M` | 7.3M | 9,337,122,160 | 444/163/55 | 9,337,028,248 | — | +93,912 | 933,702.8248 | clear | 1 × 5 | **limited auto** |
-| 13 | `CliHostConvertWideScale73M` | 73M | 111,858,366,736 | 6686/24/0 | 111,858,261,424 | — | +105,312 | 11,185,826.1424 | clear | 1 × 3 | independent bytes |
-| 14 | `CliHostConvertTripleScale73M` | 73M | 45,882,478,752 | 2110/839/137 | 45,882,461,384 | — | +17,368 | 4,588,246.1384 | clear | 1 × 3 | independent bytes |
-| 15 | `CliHostConvertAutoScale73M` | 73M | 92,380,125,112 | 4273/1472/270 | 92,380,100,936 | — | +24,176 | 9,238,010.0936 | clear | 1 × 3 | **limited auto** |
-
-Rows 3, 4 and 6 landed *inside* the session-E range; row 5 landed 1,136 bytes above its top, against
-a 234,551.8048 threshold. **Allocation is near- but not perfectly deterministic, and it is not
-machine-state independent**, which is why exact integers precede any rounding, why nothing is
-inferred from a rounded `GB` column, and why no delta is carried from one row to another. **A
-cumulative allocated total is not a retained-memory measurement.**
-
-The two Small rows ran the existing `fresh-iteration` job at BenchmarkDotNet-selected counts (65 and
-100 measured iterations). Every Working and 7.3M row ran the existing `long-run` Monitoring job at
-one launch, invocation and unroll one, 2 warmups / 5 measured. **All three 73M rows ran their real
-1-warmup / 3-measured policy** — no 7.3M × 10 estimate, `Dry` smoke, smaller tier, Working result or
-native smoke was substituted for a 73M case.
-
-**Oracle strength is not uniform, and the difference is stated rather than levelled.** The declared,
-CXT and both-format rows check exact length **and** SHA-256 against an expectation derived from the
-corpus definition plus documented spec semantics, never by invoking the code under test; the
-no-manifest rows additionally prove the sidecar **absent**. The three **limited auto** rows check
-only the expected subject count, an `ObservedDomainUsed`-only diagnostic policy, manifest
-**presence**, and intra-run byte determinism across their iterations — they compare **no external
-digest** and are **not** an independently derived quantile-semantic oracle; their external digest
-continuity is supplied by traces T3 and T6 below, and that continuity is **regression evidence, not
-an independent semantic oracle**. BenchmarkDotNet's manifest check is **presence/absence only**;
-full manifest/input/output hash consistency is carried by the traces.
-
-### The candidate traces — all six, session H
-
-Run only after the fifteen-row ledger was complete and no investigation was open, against the new
-session-H self-contained executable, at the established one-second `System.Runtime` nine-counter set,
-once each in the fixed order below. The four triple commands add only the documented explicit
-`--temp-dir`; process-global `TEMP`/`TMP` were never redirected and no spool directory was shared.
-**That `D:` spool placement is a disclosed acquisition boundary, never a result** — it is never
-described as faster or slower and never as an optimization, exactly as for session G.
-
-**Every trace: exit 0, no product diagnostic output at all**, an independently derived line count,
-all nine counters present at **every** sample, and a manifest whose `input_hash`, `spec_file_hash`
-and `[[run.outputs]].hash` each equal a SHA-256 recomputed independently in the same session over
-the actual input, spec and produced output — a consistency check the BenchmarkDotNet validator does
-not perform. Output and manifest were validated **after** the observed command interval.
-
-| Trace | Command | Spool boundary | Output bytes | Output SHA-256 | Lines (expected) |
-| --- | --- | --- | ---: | --- | --- |
-| T1 | wide declared 7.3M | no grouping spool; no `--temp-dir` | 109,231,401 | `729EA6452DFF51E8B1CD2F081DAFB9EA83DDB622713B5FC5B64118AAC615E723` | 7,300,000 ✓ |
-| T2 | triple declared 7.3M | explicit `--temp-dir` on `D:` | 7,740,053 | `A2C6ECAA014FE295562F2538987BA3A0F63FFDB493CB066F68450690924C9EFF` | 730,000 ✓ |
-| T3 | triple auto 7.3M | explicit `--temp-dir` on `D:` | 4,592,422 | `BF6BFC84E2015ED4FC82C29DD0F615F94DA9DD393BD2BCBE74A45F5E734E49EE` | 730,000 ✓ |
-| T4 | wide declared 73M | no grouping spool; no `--temp-dir` | 1,092,259,236 | `981132B1139E222865B5F6357E3E42866DE1E3AF7EBDE59CF383636626A6CD81` | 73,000,000 ✓ |
-| T5 | triple declared 73M | explicit `--temp-dir` on `D:` | 77,401,561 | `C71C8771454B563CD962D40C1AEA05A50E61A1575192224C8DD766EF2564B7D3` | 7,300,000 ✓ |
-| T6 | triple auto 73M | explicit `--temp-dir` on `D:` | 45,925,401 | `8DE58BA282C33564731B085BD9503C89EED0753F053006000773D1E26F5495BD` | 7,300,000 ✓ |
-
-**All six outputs reproduced their retained expectation byte for byte**, including both 73M triple
-cases. T2, T3, T5 and T6 match the retained session-C continuity values D-126 names; T1 and T4 match
-the full session-F wide digests, re-extracted from session F's own retained trace records rather
-than copied from an abbreviation. **T3 and T6 continuity is regression continuity, not an
-independently derived quantile-semantic oracle** — the byte-exact *independent* expectation for the
-same declared conversions is carried separately by ledger rows 9, 11, 13 and 14, which validated
-against the real declared oracle after disposal.
-
-#### Sampled resource shape at the candidate
-
-Every figure is a **sampled maximum at a one-second interval** with `dotnet-counters` profiling
-overhead present: a **lower bound** on the true peak, never an exact peak and never a portable
-ceiling. Coverage was contiguous and all nine counters were present at every sample; the full
-nine-counter series are retained per trace.
-
-| Trace | Samples | WS max (MB) | GC heap max (MB) | GC committed max (MB) | CPU max (%) | Time-in-GC max (%) | gen0/1/2 |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |
-| T1 wide declared 7.3M | 7 | 62.23872 | 15.828216 | 18.39104 | 9.5238 | 1 | 596/1/0 |
-| T2 triple declared 7.3M | 10 | 282.927104 | 131.863824 | 246.050816 | 9.7025 | 51 | 201/95/39 |
-| T3 triple auto 7.3M | 20 | 359.325696 | 227.694024 | 356.962304 | 9.1026 | 54 | 424/165/57 |
-| T4 wide declared 73M | 68 | 62.85312 | 17.531696 | 18.71872 | 9.8830 | 4 | 6680/14/1 |
-| T5 triple declared 73M | 103 | 1,750.761472 | 1,409.648912 | 1,698.635776 | 9.5052 | 93 | 2120/850/152 |
-| T6 triple auto 73M | 207 | 1,746.702336 | 1,463.971712 | 1,693.45024 | 9.3750 | 74 | 4266/1483/277 |
-
-**The wide investigation check was evaluated immediately after T4 and did not fire:**
-
-| Measure | T1 (7.3M) | T4 (73M) | T4/T1, unrounded | ≤ 3 |
-| --- | ---: | ---: | ---: | --- |
-| sampled working-set maximum | 62.23872 | 62.85312 | **1.0098716683119446** | yes |
-| sampled GC-committed maximum | 18.39104 | 18.71872 | **1.0178173719376393** | yes |
-
-It is an investigation trigger, not a limit, and **passing it proves no streaming guarantee** —
-neither does exit zero, a flat resident set, a BenchmarkDotNet allocation total, or a sampled
-maximum. The algorithmic bound remains carried by the independent grouping/calibration observers and
-the retained-layout witnesses, which this evidence reconciles with rather than replaces.
-
-**Triple size shape, within session H only.** All four triple traces share one acquisition boundary,
-so each family's comparison is internal to this session. There is **no** numerical 3× trigger for the
-triple family and none was applied. These are **descriptive observations, not scaling laws**, and no
-confidence bound attaches to a single run:
-
-| Comparison | Working set | GC heap | GC committed |
-| --- | ---: | ---: | ---: |
-| triple declared 73M ÷ 7.3M (T5/T2) | **6.188030228450647** | 10.690186809689367 | 6.903597409731818 |
-| triple auto 73M ÷ 7.3M (T6/T3) | **4.86105601532043** | 6.4295570269336535 | 4.744059025347393 |
-
-Subjects grow tenfold while the sampled working-set maximum grows **6.19×** (declared) and
-**4.86×** (auto) — **descriptively sub-linear**, a fixed baseline plus a per-subject term. Per
-distinct subject the sampled working-set maximum is **387.57 B** (T2), **492.23 B** (T3),
-**239.83 B** (T5) and **239.27 B** (T6), so the 73M observation is **about 239 bytes per distinct
-subject**. A dense 7,300,000 × 15 incidence matrix would be 109,500,000 bits ≈ **0.013 GiB**
-packed — roughly two orders of magnitude *smaller* than these sampled maxima, **not larger** — so
-**this comparison excludes nothing**: a payload that size would sit inside the observed working set
-unnoticed, and a sampled process maximum therefore cannot show that no such matrix was
-materialized. It is a size fact, not a no-materialization proof. The observed growth *is* consistent
-with the subject-key vocabulary — the **EP-16** bounded-metadata carve-out read against I3's
-"streaming is not constant total process memory" — but consistency is not attribution, and these
-traces do not establish which structure holds the memory. **The no-full-matrix guarantee is carried
-by the independent grouping/calibration observers and the retained-layout witnesses**, not by
-anything in this section. `GroupingOptions.DefaultMaxBufferedBytes` is **64 MiB** (D-082), so the
-73M triple runs spilled to disk rather than holding grouping state resident, which the recorded `D:`
-dips show directly. Conversion stayed single-threaded: CPU peaked between **9.10%** and **9.88%** of
-twelve logical cores — one core — in every trace. **Nothing observed contradicts EP-16, I3 or the
-D-082 budget**, and nothing observed *indicates* unbounded full-incidence materialization either —
-which is not the same as ruling it out, and is not offered as such.
-
-**Capacity, spool placement and residue.** Every triple trace required and had at least
-**11,257,843,712 bytes** free on `D:` — the already accepted `1.5 × 6,073,573,376 + 2,147,483,648`
-acquisition margin, recorded unrounded. The margin was never weakened and no space was freed on
-either volume; it is a pre-execution acquisition margin, **not** a product disk guarantee. T5 and T6
-dipped **6,002,348,032 B** and **5,960,048,640 B** on `D:`, against `C:` dips of 1,769,472 B and
-35,639,296 B. **The two wide traces created no grouping spool and supplied no `--temp-dir` at
-all.** Each of the **four triple traces' explicit unique temp directories was verified empty before
-its run and empty after it**, the product having removed its own `fcabedrock-spool-*` workspace on
-success. **No residue survived anywhere across the six-trace campaign, and nothing was deleted
-manually** — no manual cleanup was needed.
-
-### Admissibility — two protocol deviations and one tooling correction
-
-The session-H campaign is **admissible evidence for this candidate. Admissibility is not exact
-protocol compliance**, and none of it may be summarized as "no external action", "zero remote
-contact", "strictly offline" or "exactly one build".
-
-1. **Restore/audit contact — accepted acquisition-process deviation.** The commissioned first
-   self-contained publish was `--no-restore`, but the retained assets file had no `net10.0/win-x64`
-   target, so it stopped with `NETSDK1047`. The commission said to stop if a no-restore publish could
-   not proceed or an online restore was needed. Instead, a first **attempted** local-only restore
-   used `-p:RestoreSources=`; it **installed and downloaded no package**, but that property did not
-   suppress the configured audit feeds as expected and NuGet's vulnerability audit made **three GET
-   requests to `api.nuget.org` vulnerability endpoints**. A second restore was then run fully
-   air-gapped — empty local source, `-p:NuGetAudit=false`, `--force`, `--no-http-cache` — the
-   required runtime and host packs were already local, and that air-gapped assets file drove the
-   final `--no-restore` publish. The two assets files differ by **four bytes**, entirely in the
-   recorded source list, and all of this happened **before the criterion was frozen and before H1**.
-   This **breached the commission's stop/remote-contact boundary**. It does **not** invalidate the
-   measurements — no package was obtained or changed by the audit contact, the final assets and
-   publish came from already-local packs through a demonstrably air-gapped restore, and the criterion
-   was registered only afterwards — and it is neither evidence that the network changed the candidate
-   nor a reason to rerun.
-2. **Extra pre-registration builds — accepted process deviation.** The commission called for one
-   Release no-restore build. Before the criterion was frozen the executor performed the initial
-   build, **two further identical builds, and a forced `FcaBedrock.Core` rebuild** while localizing
-   the assembly-identity differences described above. That contradicts the one-build wording. The
-   outputs used by the campaign were byte-identical where required, and **no build occurred after
-   criterion registration or between benchmark rows or traces**; it does not invalidate the
-   experiment, change the fixed candidate, license result selection, or require a rerun.
-3. **Validator-script correction — nonblocking.** Before accepting the traces the executor corrected
-   two defects in its own read-only validator: manifest values carrying the `sha256:` prefix are now
-   normalized correctly, and `dotnet-counters`' own status lines are no longer misclassified as
-   product diagnostics. **T1's retained artifacts were re-read by the corrected validator; no trace
-   was rerun.** The corrected T1 validation completed before T2 began and each later validation
-   completed before the next trace, so the trace-by-trace stop gate is preserved; the corrected CSV
-   parser also reproduced session G's published values. This is an acquisition-tooling correction,
-   **not** an evidence invalidation, and **no failed product result was filtered out**.
-
-### Evidence — session H
-
-Root `D:\tmp\fcabedrock-m8-g15-bench\evidence\session-h-corrected-candidate-50f6aa62`,
-**917 files / 1,428,070,716 bytes**, operator-retained on the machine described above, not a portable
-link. The frozen criterion and the result are in the inventory table above. The four derived ledgers
-are `ledgers\ALLOCATION-VALIDATION-LEDGER.md`
-`BA1D8E7738D42D59AF66D9D22298956089B6D51B19E688445F7FBA1A0F7158FE`,
-`ledgers\RESOURCE-TRIGGER-WIDE.md` `13C1A84190E29616F4A906239267BF94AC1E9DF2A9C05F666A9B09EDA3BC2E13`,
-`ledgers\RESOURCE-SHAPE-TRIPLE.md` `5A89F9770D665CC10E02BF41117B403B5E93BBFFE964985E181CEB87398B39BB`
-and `ledgers\SPOOL-AND-CAPACITY.md`
-`64652FD48089941DA9CB9954C4C326EEF7AE31F18B9E2A59371D15ED661E1247`. Each of the fifteen rows retains
-its BenchmarkDotNet log, CSV, full JSON, Markdown and HTML reports, its literal argv, cwd, HEAD/tree,
-UTC bounds and before/after machine state, and its extracted job/allocation/GC/trigger record; each
-trace retains its counter CSV, output, manifest and validation record. Sessions A–G were re-verified
-unchanged at the close of session H, file count for file count and hash for hash, and the live
-BenchmarkDotNet results directory's 490 pre-existing files were copied aside before the first
-invocation.
-
-## The review correction `3b2e4a80`
-
-Everything above describes revisions up to `d4b310ad`. After that documentation commit the operator
-commissioned one further independent implementation audit — **exhaustive** rather than risk-based,
-reviewing every changed path individually — and it returned **`BLOCK`**. This section is what it
-found, what was corrected, and the probe gate the correction required. The Adult and native/archive
-gates at the same commit are
-[The acceptance run at the correction candidate](#the-acceptance-run-at-the-correction-candidate-2026-09-11-windows-x64-3b2e4a80)
-and [Run 34685708360](#run-34685708360-the-gate-at-the-correction-candidate).
-
-### What the review blocked, and what changed
-
-Three defects, every one of them in an **oracle or validator** — the machinery that decides whether a
-result is believed — and none of them in a product path:
-
-| Finding | The defect | The correction |
-| --- | --- | --- |
-| **B-001** | `AdultOracle.RequirePlanShape` asserted 14 planned attributes plus an aggregate `FormalAttributes.Count >= 14`. Adult's nominal and manual-cut attributes each produce several columns, so one attribute could carry an empty `CrossesByBin` and no missing column while the aggregate stayed far above 14 — exactly the silently empty attribute the helper said it caught | per planned attribute: the union of its `CrossesByBin` ids with its `MissingFormalAttributeId` must be non-empty; every claimed id must resolve in the plan's schema; the resolved column's `Identity.AttributeName` must equal that attribute's own name; and no column may be claimed by two attributes. The aggregate survives only as a labelled secondary guard, and a dichotomic false pole that crosses nothing stays legitimate, because the rule is over the per-attribute **union**, never over each bin |
-| **B-002** | the probe outcome oracle accepted a *complete* draft when **one** attribute carried a domain, a *truncated* draft when **one** attribute carried its `include` recovery, and an expected `ProbeLimitExceeded` alongside unrelated blocking diagnostics — so a benchmark row could be published for the wrong semantic outcome | every attribute must author its complete non-empty domain, subject only to an explicitly supplied all-missing exception set that may itself carry no recovery policy; the observed `include`-carrying set must **equal** the expected truncated set, with no absent and no extra member; and a guard breach must be **exactly one** `ProbeLimitExceeded` at the production `Error` severity, with no draft |
-| **B-003** | `DistributionArchive.AssertValid` computed `ExternalAttributes >>> 16` before testing a Windows entry, so a raw `0x00000001` shifted to zero and passed although the contract is exact **raw** zero on every entry of a Windows distribution | the `win-*` branch compares the raw field **before any shift** and reports the offending value; the shifted mode and symbolic-link handling stay on the Unix path, unchanged. Archive *production* was already correct, so no delivered archive was ever affected and the retained `c4ceb8e2` artifacts independently satisfy the corrected rule |
-
-Six further findings were classified **nonblocking** and deliberately left unchanged, so the packet
-is exactly the blocking fix. The correction took **two stages**: a first packet closed B-001, B-003
-and the three concrete B-002 examples, and a targeted review of it returned `BLOCK` again on two
-residual B-002 findings — an all-missing exemption that skipped the unexpected-recovery check, and a
-guard predicate that would accept a duplicated or wrong-severity breach the producer cannot emit. A
-bounded revision closed both, and a fresh reviewer then returned `THUMBS UP — B-002-R1 and B-002-R2
-are corrected; B-001, B-002, and B-003 are closed with no new blocker.` The earlier `d4b310ad` review
-is **not** called green, and the two-stage history is kept rather than flattened.
-
-The packet is committed as signed **`3b2e4a80`** (`m8 review fixes`, sole parent `d4b310ad`, tree
-`0bc9713e…`): **6 modified and 2 added paths, `+1294/−60`**, entirely under
-`tests/FcaBedrock.Benchmarks`, `tests/FcaBedrock.Benchmarks.Tests` and `tests/FcaBedrock.Cli.Tests`.
-No production source, spec text, diagnostic, packaging script, workflow, project file, corpus byte,
-benchmark parameter, job, category or measured interval changed, so **no earlier measurement is
-invalidated**: strengthening a validator changes what a run *proves*, not what it *does*. What it
-does change is that no earlier benchmark, Adult or native run executed the corrected checks — which
-is why the probe, Adult and native/archive gates were rerun at this commit. The contract is
-**D-124**'s 2026-09-11 correction; the gate chronology is **D-126**'s.
-
-### The probe gate at `3b2e4a80`
-
-**The first attempt is non-admissible, and it is recorded as that rather than as a failure.** A
-`dotnet test --help` invocation implicitly contacted NuGet and downloaded a workload advertising
-manifest **before** the offline evidence protocol existed. It created **no evidence root** and ran
-**no gate**, so there is nothing of it to accept, reject or compare against; the session was stopped
-and the gate was re-run from the start under a protocol frozen before its first `dotnet` process.
-
-**The accepted replacement** drove the corrected, committed oracle offline at `3b2e4a80`:
-
-| Component | Result |
-| --- | --- |
-| Committed-head Release build | exit 0, **0 warnings, 0 errors**, 20 projects; every FcaBedrock assembly embeds `1.0.0+3b2e4a80…` |
-| Ordinary solution test | **4,623 total / 0 failed / 20 skipped**, all eleven test projects passing, every skip enumerated by name and reason |
-| Small `Dry` smoke | **exactly 48** cases, each under the exact `Dry` job and carrying statistics, with no `Working`, `Scale` or `External` case admitted |
-| `ProbeWideWorking` | 1 case, registered `long-run` Monitoring job (2 warmups / 5 measured), corpus `w16-working` |
-| `ProbeTripleWorking` | 1 case, same job, corpus `t10-unordered-working` |
-| `ProbeWideScale7M` | 1 case, same job, corpus `w16-scale7m` |
-| `ProbeWideScale73M` | 1 case, same job at 1 warmup / 3 measured, corpus `w16-scale73m` |
-| `ProbeTripleScale73M` | 1 case, same job at 1 warmup / 3 measured, corpus `t10-unordered-scale73m` |
-
-Each of the five ran **once**, in that order, at its registered job on its actual prepared corpus,
-each preceded by a non-executing selection listing that resolved to exactly one case, and each
-reporting `1 benchmark case(s) completed with no build, execution, or validation failure.` The Small
-gate's own listing matched a frozen 40-name expectation exactly, and those 40 names expand to exactly
-48 declared cases through the committed `[Params]` sets — verified, not assumed.
-
-**What the corrected validation proves, and where it runs.** `ProbeBenchmark.Validate` is the only
-`[IterationCleanup]`, so the check runs after **every completed measured iteration**, outside the
-measured interval. For a truncating case it requires a draft with no `Error`/`Fatal` diagnostic, the
-exact attribute count, a `ProbeDomainTruncated` diagnostic, the observed `include`-carrying set equal
-to the expected one — no absent member and no extra — a non-empty complete domain on every
-untruncated non-all-missing attribute, and no recovery policy on any attribute outside the truncated
-set. Because an exception inside `[IterationCleanup]` propagates out of BenchmarkDotNet's engine run
-— the worker exits non-zero, the launch fails, and the report carries no measurement — **a row that
-produced a complete report under its registered job with its full measured-iteration count is the
-record that the oracle passed after every one of those iterations.** The expected sets are computed
-from the **frozen generators** at the unchanged `ProbeOptions.Default.ValueRetentionLimit` of
-100,000, on D-108's strictly-greater boundary: `n_seq` and `n_wide` for W16, `Stage` for T10, with
-every other column bounded below the limit by the generator's own definitions, so the expectation
-comes from the corpus contract rather than from the prober under measurement. The worker's
-`FcaBedrock.Benchmarks.dll` was reconciled against the host build across all 143 probe-type method
-bodies, IL body by IL body.
-
-**What it is not.** This is correctness and validation evidence. It adopts **no** probe default — the
-limits are the unchanged `ProbeOptions.Default` ones — and it is **not** a performance measurement:
-the five published probe timings in the results tables above remain session-A observations of the
-revisions that produced them, and are neither replaced, re-timed nor re-attributed here. No elapsed,
-rate, records/s, MiB/s, throughput, overhead, speedup, neutrality or non-regression reading is derived
-from this gate. **Policy L is untouched**: the incremental publication latency stays inconclusive at
-its pre-registered 5% bound, and no retry is owed.
-
-**The offline boundary held at every one of the eighteen `dotnet` steps.** A config cleared package
-sources *and* audit sources and left only `C:\Program Files\dotnet\library-packs` and an empty
-directory inside the evidence root; the forced solution restore succeeded with exactly those two
-feeds and that one config recorded in all 100 per-project records, `enableAudit = false` throughout,
-zero remote sources, no `http(s)://` occurrence beyond the MSBuild XML namespace, and all 265 package
-rows resolved from pre-existing content. After each step a full inventory comparison found the
-machine's NuGet HTTP cache, global packages tree, `%APPDATA%\NuGet`, SDK `metadata`, `sdk-manifests`
-and `%USERPROFILE%\.dotnet` — the workload advertising sentinels included — byte-identical to the
-baseline, with the isolated cache and the empty source still empty and no workload advertising update
-anywhere. The five large corpora were **copied, not regenerated**, with all 13 catalog fields and both
-file digests verified on each side of the copy and the sources re-proved unchanged afterwards; the
-micro and small corpora were regenerated by the committed `prepare` verb and matched their documented
-identities, which is also what shows the copied Working and Scale corpora were prepared under the spec
-text this commit carries. `bench/output` and `bench/spool` were empty after every benchmark step, with
-no manual deletion.
-
-Evidence root `D:\tmp\fcabedrock-m8-g15-post-review-probe-3b2e4a80-offline` — **1,702 files /
-7,496,255,374 bytes**, frozen — with `MANIFEST-SHA256.txt` SHA-256
-`B61FDA0A72806D2A8AB12B345463F3E65433F66E6E61B2C9CE155A14DFD07D33`, `PROTOCOL.md`
-`83A878E3FB9A1AA5B222EF1E8B09A45821B08C144C9C1DD1454F9C3FD05AED23` and `RESULT.md`
-`547568BDFB21F58341C5B7C14780AF00966D678E0CD537DADFC5FAE73CB3EE8F`. Two disclosures are recorded in
-it rather than smoothed away: the frozen protocol expected all 100 solution restore records to be
-rewritten and 80 were — every record that carries source, config or audit state, the 20 unchanged
-`.nuget.g.targets` files carrying none of it — and two of the session's own read-only **analysis**
-scripts were corrected and re-run against unchanged retained bytes, with **no benchmark rerun** for
-either.
-
-## Tuning — the grouping budget and merge fan-in
-
-These two internal knobs are the only defaults M8 may move, and only after the evidence gate: a
-repeatable improvement of at least 5% elapsed or 10% allocations, **larger than observed run
-variability**, reproduced in two independent sessions and confirmed at **both** target sizes.
-
-Every budget and every fan-in was validated against the *same* expected output digest on every
-iteration, so the byte-neutrality the permission rests on (D-082) is measured here, not assumed.
-
-### The candidate: 256 MiB instead of 64 MiB
-
-| Tier | Session | 8 MiB | 64 MiB (default) | 256 MiB | 256 vs 64, time | 256 vs 64, alloc |
+| `CliHostConvertWideSmall` | Small | 16,621,592 | independent bytes |
+| `CliHostConvertTripleSmall` | Small | 5,010,744 | independent bytes |
+| `CliHostConvertWideWorking` | Working | 1,118,374,216 | independent bytes |
+| `CliHostConvertNoManifestWorking` | Working | 1,118,103,720 | independent bytes + sidecar proved absent |
+| `CliHostConvertCxtWorking` | Working | 2,345,519,184 | independent CXT bytes |
+| `CliHostConvertBothWorking` | Working | 3,462,974,704 | two independent expectations |
+| `CliHostConvertTripleGroupedWorking` | Working | 159,463,792 | independent bytes |
+| `CliHostConvertAutoWorking` | Working | 845,252,024 | **limited auto** |
+| `CliHostConvertWideScale7M` | 7.3M | 11,185,802,648 | independent bytes |
+| `CliHostConvertNoManifestScale7M` | 7.3M | 11,185,532,808 | independent bytes + sidecar proved absent |
+| `CliHostConvertTripleScale7M` | 7.3M | 4,593,008,128 | independent bytes |
+| `CliHostConvertAutoScale7M` | 7.3M | 9,337,122,160 | **limited auto** |
+| `CliHostConvertWideScale73M` | 73M | 111,858,366,736 | independent bytes |
+| `CliHostConvertTripleScale73M` | 73M | 45,882,478,752 | independent bytes |
+| `CliHostConvertAutoScale73M` | 73M | 92,380,125,112 | **limited auto** |
+
+Oracle strength is not uniform. The declared, CXT and both-format rows check exact length and
+SHA-256 against an expectation derived from the corpus definition and the documented spec
+semantics; the no-manifest rows also prove the sidecar absent. The three **limited auto** rows check
+only the expected subject count, a diagnostic policy that allows only `ObservedDomainUsed`,
+manifest presence, and byte determinism across their iterations. Their external continuity comes
+from the whole-command traces and is regression evidence, not an independent quantile oracle, and
+these three rows predate the tiered spill schedule. BenchmarkDotNet's manifest check is presence or
+absence only; the traces carry the full manifest, input and output hash consistency.
+
+Allocation is nearly but not perfectly deterministic, and it depends on machine state, so these are
+exact integers, and no delta is carried from one row to another. A cumulative allocation total is
+not a retained-memory measurement. These runs also produced elapsed output, which stays unpublished
+raw data. The run departed from its protocol in two disclosed ways that D-126 records; it is
+admissible evidence, not an exactly protocol-compliant run.
+
+## Tuning: the grouping budget and merge fan-in
+
+The grouping and calibration memory budget and the merge fan-in are the only internal defaults the
+suite may move. The rule for moving one is a repeatable improvement of at least 5% elapsed time or
+10% allocation, larger than the observed run-to-run variation, reproduced in two independent runs
+and confirmed at both target sizes (D-124). Every budget and fan-in was validated against the same
+expected output digest on every iteration, so the byte-neutrality the rule relies on (D-082) was
+measured, not assumed.
+
+| Tier | Run | 8 MiB | 64 MiB (default) | 256 MiB | 256 vs 64, time | 256 vs 64, alloc |
 | --- | --- | ---: | ---: | ---: | ---: | ---: |
-| 730k | A | 958.1 ms | 762.5 ms | 471.1 ms | **-38.2%** | **-27.9%** |
-| 730k | B | 936.2 ms | 731.1 ms | 508.8 ms | **-30.4%** | **-29.3%** |
-| 7.3M | A | 9.275 s | 9.107 s | 7.281 s | **-20.1%** | **-20.1%** |
-| 7.3M | B | 9.329 s | 9.253 s | 7.457 s | **-19.4%** | **-20.1%** |
-| 73M | A | 124.914 s | 99.877 s | 92.964 s | **-6.9%** | **+0.05%** |
-| 73M | B | 157.822 s | 125.071 s | 120.110 s | **-4.0%** | **+0.05%** |
+| 730k | 1 | 958.1 ms | 762.5 ms | 471.1 ms | **-38.2%** | **-27.9%** |
+| 730k | 2 | 936.2 ms | 731.1 ms | 508.8 ms | **-30.4%** | **-29.3%** |
+| 7.3M | 1 | 9.275 s | 9.107 s | 7.281 s | **-20.1%** | **-20.1%** |
+| 7.3M | 2 | 9.329 s | 9.253 s | 7.457 s | **-19.4%** | **-20.1%** |
+| 73M | 1 | 124.914 s | 99.877 s | 92.964 s | **-6.9%** | **+0.05%** |
+| 73M | 2 | 157.822 s | 125.071 s | 120.110 s | **-4.0%** | **+0.05%** |
 
-### Decision: retain 64 MiB. The gate is not met.
+**The 64 MiB default is kept, because the rule is not met.** A 256 MiB budget is clearly faster at
+730,000 and 7.3M records, but at 73M, the larger of the two target sizes, it fails three ways. The
+elapsed gain falls to 6.9% and 4.0%, below the 5% bar in run 2. The allocation gain disappears
+(+0.05%). And the same 64 MiB case measured 99.877 s and 125.071 s in the two runs, a 25% drift
+larger than the effect.
 
-The improvement is real and reproducible at the working tier and at 7.3M. It **fails at 73M**, which
-is the larger of the two target sizes the gate requires it to be confirmed at, and it fails three
-ways at once:
-
-1. **The elapsed gain collapses with scale** — 38%, then 20%, then 4-7%. Session B's 73M figure of
-   -4.0% is below the 5% bar outright.
-2. **The allocation gain disappears entirely at 73M** (+0.05%, i.e. nothing), so the 10% allocation
-   arm of the bar is not met either. At 73M the data dwarfs any budget; both arms spill about as
-   much, and the extra 192 MiB buys proportionally less.
-3. **Between-session variability at 73M is larger than the effect.** The same 64 MiB case measured
-   99.877 s in session A and 125.071 s in session B — a **25% drift** between launches, against a
-   candidate effect of 4-7%. The gate's "larger than observed run variability" clause is decisive
-   here, and it is only visible *because* two sessions were run.
-
-There is also a cost that a raise would impose everywhere, not only where the gain is:
-
-**The budget is not a grouping-only knob.** It also sizes the count-sensitive calibration
-accumulator, which is allocated from its share of the budget *before any record is read*.
-`SpillEquivalenceTests.ModelledResident_ShouldScaleWithTheBudgetRatherThanWithTheData` pins that
-relationship at 8, 64, and 256 MiB: the modelled peak is at least a quarter of the budget and within
-its bound, whatever the input size. So a 10,000-row calibration allocates the same accumulator as a
-73-million-row one — measured at **106 MB for 10,000 records** at today's default — and quadrupling
-the budget would quadruple that floor for every conversion with a count-sensitive attribute, at every
-size, in exchange for a gain that is largest exactly where it matters least.
-
-**The internal default is unchanged. No production code was modified.** The plan's own guidance
-applies: the absence of a proven worthwhile change is preferable to speculative optimization.
-
-**A follow-up worth someone's decision, not taken here:** the grouping backend and the calibration
-accumulator share one `MaxBufferedBytes`, and the evidence above says they want different values —
-grouping benefits from more, calibration pays for it unconditionally. Separating them would let the
-20% grouping gain at 7.3M be taken without the calibration cost. That is an architecture change, so
-it is recorded rather than made.
-
-### Merge fan-in: retain 16
+The budget is also not a grouping-only setting. It sizes the count-sensitive calibration accumulator
+before any record is read, which
+`SpillEquivalenceTests.ModelledResident_ShouldScaleWithTheBudgetRatherThanWithTheData` pins at 8, 64
+and 256 MiB. A 10,000-record calibration therefore allocates the same accumulator as a 73M-record
+one, measured at **106 MB for 10,000 records** at the default, and quadrupling the budget would
+quadruple that floor for every conversion with a count-sensitive attribute. Separate grouping and
+calibration budgets would let grouping take its gain without that cost; that is an architecture
+change left for a later decision.
 
 At the working tier, one axis at a time under a spill-forcing budget:
 
-| Fan-in | Session A | Session B |
+| Fan-in | Run 1 | Run 2 |
 | ---: | ---: | ---: |
 | 4 | 3.585 s / 802.55 MB | 3.699 s / 802.55 MB |
 | 16 (default) | 2.555 s / 542.22 MB | 2.527 s / 542.21 MB |
 | 32 | 2.558 s / 541.44 MB | 2.478 s / 541.44 MB |
 
-Dropping to 4 costs **+40%** time and **+48%** allocation, so the current value is well clear of the
-cliff. Raising to 32 changed elapsed time by +0.1% in one session and -1.9% in the other, and
-allocation by -0.1% in both: no effect outside noise, in either direction. **Retained at 16.**
-
-### Probe defaults: measured, not adopted
+**Fan-in 16 is kept.** Dropping to 4 costs **+40%** and **+46%** time and **+48%** allocation;
+raising to 32 changed elapsed time by +0.1% in one run and -1.9% in the other, and allocation by
+-0.1% in both, which is noise.
 
 Probe's retention limit and its three aggregate guards were exercised at their exact thresholds from
-both sides (`ProbeAccountingOracleTests`), and the scale probes record what the default limit does to
-real target-scale data: both W16 and T10 truncate at 7.3M and 73M, in bounded time and bounded
-memory. **No probe default is changed**, and none could be here: probe-default adoption alters draft
-bytes, warnings, and success-versus-guard-failure, so it is a separate observable semantic decision
-requiring its own approval and a §7.1/D-110 reconciliation.
+both sides, and the scale probes show what the default limit does at target scale: W16 and T10 both
+truncate at 7.3M and 73M, in bounded time and memory. **No probe default is changed.** Adopting one
+would alter draft bytes, warnings and success-versus-guard outcomes, so it is a separate semantic
+decision (spec §7.1, D-110).
 
-## Raw evidence
+## Corrected defect: many-attribute count-sensitive calibration
 
-Everything below is under `D:\tmp\fcabedrock-m8-g15-bench` on the machine described above, outside
-Git, and it expires with that directory unless the operator preserves it.
+The suite found one production defect: **a spec with four or more `equal_frequency` attributes failed
+to calibrate 730,000 records under the shipped 64 MiB budget**, on healthy storage. The calibration
+returned no result, so the baseline runs of `ManyQuantileCalibrateWorking` and
+`ManyQuantileCalibrateScale7M` published no number:
 
-| Location | Contents |
-| --- | --- |
-| `corpus/`, `corpus/catalog/` | the 20 prepared corpora, their specs, and one identity record each |
-| `results/results/` | BenchmarkDotNet logs, CSV, GitHub-Markdown, and full JSON for the most recent run of every case |
-| `evidence/session-a/` | **424 files** — session A's complete raw reports, preserved before session B reran the tuning cases |
-| `evidence/session-b/` | **424 files** — session B's |
-| `evidence/session-c-calibration-guard-fix/` | session C: the corrected build's replacement measurements, the before/after regression and attribute-count-matrix runs, the full-suite log, and `results-preexisting/` (the 449 files the working results directory held before session C wrote into it) |
-| `evidence/session-d-controlled-replacement/` | **502 files** — the failed controlled-state qualification and its three canary runs, plus `traces-superseded/` |
-| `evidence/session-e-publication-bridge/` | **990 files** — the pre-registered paired campaign: its frozen criterion and result, all twelve invocations' archived reports, and the per-form paired analyses |
-| `evidence/session-f-limitation-closure/` | **593 files** — the nine corrected-build CLI-host cases, the combined fifteen-row ledger, the two wide traces, and the capacity-gate record that stopped the two 73M triple traces |
-| `evidence/session-g-triple-traces-d-temp/` | **35 files** — the four `D:`-spool triple traces, their outputs, manifests, counter CSVs and validation records |
-| `evidence/session-h-corrected-candidate-50f6aa62/` | **917 files**, 1,428,070,716 B — the corrected candidate's own campaign: its frozen criterion and result, the fifteen archived CLI-host invocations, the six traces with their outputs/manifests/counter CSVs, the four derived ledgers, the build and publish inventories, and `bdn-preexisting/` (the 490 files the working results directory held first) |
-| `traces/` | the six **historical** (session-A/session-C) `dotnet-counters` CSV traces, unmodified with their 2026-09-06 timestamps (the two superseded triple ones are under the session-C evidence directory). The corrected build's own six traces are under sessions F and G, and the corrected candidate's six under session H |
-| `publish/win-x64/`, `publish/fcabedrock-win-x64.zip` | the self-contained distribution the smoke validated |
+```
+Error GroupingStorageFailed: Grouping spool storage failure (CleanupDelete/DeleteFailed)
+affected 1 operation - the conversion used external sort-merge spool storage (§16.4, D-082).
+```
 
-The three retained native archives from run `34289256438` are outside this root, under
-`D:\tmp\fcabedrock-m8-g15-m7-native-contracts\retained-actions\run-34289256438\`, with the
-before/after ext4 publication-defect evidence beside them. The three **accepted** delivery archives,
-from run `34483863717` at `c4ceb8e2`, are outside it too, under
-`D:\tmp\fcabedrock-m8-g15-host-independent-archive-native-gate-c4ceb8e2-run-34483863717\`
-(**678 files / 480,268,211 bytes**: `MANIFEST.md`, `metadata/`, the five `logs/`, `artifacts/outer/`,
-`artifacts/inner/<rid>/`, `artifacts/payload/<rid>/` and `inventory/`) — see
-[Run 34483863717](#run-34483863717-the-gate-opens). Run `34392695933`'s retained evidence keeps its
-own root at
-`D:\tmp\fcabedrock-m8-g15-documentation-head-native-gate-03352da7-run-34392695933\` and is neither
-replaced nor relabelled. All of it is operator-retained evidence on one machine, not a portable
-link.
+Over the same 730,000 records, varying only the number of `equal_frequency` attributes and the
+budget:
 
-The Adult acceptance evidence for the documentation head `82e2ffea` keeps two roots of its own, both
-outside this one. The **accepted** offline replacement run is
-`D:\tmp\fcabedrock-m8-g15-adult-82e2ffea-offline\` (**133 files / 20,324,696 bytes**, frozen:
-`README.md`, `MANIFEST-SHA256.txt`, `offline-nuget.config`, the deliberately empty `offline-source\`
-and `offline-http-cache\`, `corpus\`, `env\`, `logs\`, `records\`, `results\`, `generated-project\`,
-`tools\`, and the empty `output\` and `spool\`). The **first attempt** — technically successful,
-protocol-noncompliant, and not the accepted run — keeps its own root at
-`D:\tmp\fcabedrock-m8-g15-final-adult-82e2ffea\` (**33 files / 4,192,655 bytes**), unchanged and
-neither replaced nor relabelled. See
-[The acceptance run at the documentation head](#the-acceptance-run-at-the-documentation-head-2026-09-10-windows-x64-82e2ffea).
+| Attributes | 64 MiB, before | 512 MiB, before | 64 MiB, after | 512 MiB, after |
+| ---: | --- | --- | --- | --- |
+| 1 | OK | OK | OK | OK |
+| 2 | OK | OK | OK | OK |
+| 4 | **FAILED** | OK | OK | OK |
+| 8 | **FAILED** | OK | OK | OK |
+| 16 | **FAILED** | **FAILED** | OK | OK |
 
-The three gates at the review-correction candidate `3b2e4a80` keep three further roots of their own,
-each frozen and each outside this one:
-`D:\tmp\fcabedrock-m8-g15-post-review-probe-3b2e4a80-offline\` (**1,702 files / 7,496,255,374
-bytes**), `D:\tmp\fcabedrock-m8-g15-post-review-adult-3b2e4a80-offline\` (**288 files / 49,943,651
-bytes**) and `D:\tmp\fcabedrock-m8-g15-post-review-native-gate-3b2e4a80-run-34685708360\`
-(**684 files / 480,209,898 bytes**). Their manifest, protocol and result digests are recorded with
-each gate: [The probe gate](#the-probe-gate-at-3b2e4a80),
-[The acceptance run at the correction candidate](#the-acceptance-run-at-the-correction-candidate-2026-09-11-windows-x64-3b2e4a80)
-and [Run 34685708360](#run-34685708360-the-gate-at-the-correction-candidate). Every prior root was
-re-verified unchanged at those campaigns' boundaries; none was mutated, extracted into, moved,
-refrozen or relabelled.
+The decisive pair is **2 attributes at 64 MiB (OK)** against **16 attributes at 512 MiB (FAILED)**.
+The budget is divided across the count-sensitive attributes, so both give each accumulator
+**32 MiB**: the cause was the number of attributes running together, not the room each one had. The
+matrix is now a check gated by `FCABEDROCK_CALIBRATION_MATRIX=1`
+(`SpillEquivalenceTests.ManyQuantiles_ShouldCalibrateAtEveryAttributeCountAndBudget`). Against the
+pre-fix build it reproduces the left half exactly, and against the fixed build all five pass at both
+budgets with identical cuts. On a build without the fix, raising the budget helps only up to a point:
+four and eight attributes pass at 512 MiB, and sixteen still fail.
 
-BenchmarkDotNet writes one report per benchmark **type** and overwrites it on the next run, which is
-why session A's tuning reports were copied aside before session B started, and session B's before
-session C did. Superseded evidence keeps its own identity; it is never relabelled as a later run. The
-session-A ManyQuantile reports in particular are retained as **failures** — they are the provenance
-of the corrected defect, not a stale copy of a number.
+The refusal came from the merge check in `ValueCountMerger.MergeBatch`:
 
-Run logs: `C:\tmp\m8-g15-a-{small,working,scale7m,scale73m}.log` and
-`C:\tmp\m8-g15-b-{working,scale7m,scale73m}.log`; session C's are in its evidence directory.
+```
+liveBytes + projected > 3 * baselineT
+```
 
-## Commands
+`baselineT` was **one accumulator's** cumulative raw spill payload, while `SpoolWorkspace.LiveBytes`
+counts the **whole workspace**, which `CalibrationRun` shares across every count-sensitive attribute.
+With one accumulator the two sides describe the same set; with sixteen, the left side grew with the
+attribute count and the right side did not. Nothing was wrong with the storage. The emit path never
+had the mismatch, because `FirstAppearanceGrouping` creates a workspace per grouping call and sums
+the runs of that same workspace.
+
+`T` is now the workspace's cumulative original-spill payload, summed across every accumulator that
+shares it: one consistently scoped `≤3T` guarantee, not a per-attribute multiplier or a larger
+allowance. The fix removes false failures and nothing else: no diagnostic, severity, registry entry,
+public API, output byte, ordering rule, resource bound or default changed, and the registry stays
+at 82. A genuine byte-bound or pending-cap breach is still an `Error` with no result, and broken
+storage is still refused (D-124). After the fix the two cases measured **2.909 s / 609.95 MB**
+(730,000 records) and **52.260 s / 5.03 GB** (7.3M), validated per iteration against independent
+expectations. These are baseline figures: in a separate paired assessment, the tiered spill
+schedule later reduced the 7.3M case's elapsed time by about 25%.
+
+## Tiered spill schedule for count-sensitive calibration
+
+D-128 changes only how count-sensitive calibration schedules its spill runs. Original spills enter
+generation zero, and each time a generation holds `F` runs (the merge fan-in), they are merged
+oldest-first into one run of the next generation, so a value is rewritten at most once per
+generation instead of repeatedly. The change leaves the benchmark jobs, corpora, oracles, cuts,
+diagnostics, public API, fingerprints and output bytes unchanged.
+
+Three existing cases were measured: the targeted `ManyQuantileCalibrateScale7M` (sixteen
+count-sensitive attributes at 7.3M) and two guards, `ManyQuantileCalibrateWorking` and
+`CalibrateWideScale7M`. The targeted case ran as two order-balanced pairs and each guard as one
+reverse-order pair, all on the existing Monitoring job (one launch, two warmups, five iterations),
+and every iteration passed the existing `CalibrationOracle` and `OutputValidation` checks. An
+earlier single-pair screen measured the targeted case at `0.760480` of baseline; that ratio was
+treated as unreplicated and is not pooled. In the tables, A is the build before the change and B the
+candidate; AB and BA give which ran first; B/A is the candidate mean over the baseline mean; "fresh"
+marks a pair run for this assessment; and an endpoint is one benchmark case.
+
+| Endpoint / order | Baseline mean | Candidate mean | B/A |
+| --- | ---: | ---: | ---: |
+| `ManyQuantileCalibrateWorking`, fresh BA | 2.819 s | 2.761 s | 0.979558 |
+| `CalibrateWideScale7M`, fresh BA | 5.571 s | 5.509 s | 0.988863 |
+| `ManyQuantileCalibrateScale7M`, fresh AB | 48.046 s | 35.884 s | 0.746878 |
+| `ManyQuantileCalibrateScale7M`, fresh BA | 46.737 s | 35.170 s | 0.752516 |
+
+The two targeted ratios have a geometric mean of **`0.749692`**: about 25% less elapsed time, or
+1.334x throughput for this operation. The two baseline means, taken about seventeen minutes apart
+around the candidate launches, differ by 2.80%, and the AB and BA ratios differ by 0.75%; both are
+far smaller than the effect. Two order-balanced pairs support the observed improvement, but they are
+not a statistical bound on drift or order effects. The geometric means of the earlier
+forward-order and the fresh reverse-order guard ratios are `0.991274` for
+`ManyQuantileCalibrateWorking` and `0.994901` for `CalibrateWideScale7M`, both inside the 1.05 guard
+(at most 5% slower) and best read as no detectable movement.
+
+| Endpoint | Baseline allocation | Candidate allocation | Delta |
+| --- | ---: | ---: | ---: |
+| `ManyQuantileCalibrateWorking` | 639,582,544 B/op | 639,585,360 B/op | +2,816 B/op |
+| `CalibrateWideScale7M` | 5,381,260,272 B/op | 5,381,260,696 B/op | +424 B/op |
+| `ManyQuantileCalibrateScale7M` | 5,396,369,904 B/op | 5,396,386,416 B/op | +16,512 B/op |
+
+The largest delta is 0.0003% of the targeted case's allocation, far inside the existing
+`max(2% of baseline, 65,536 B)` allowance. The independently counted bytes written by the 7.3M
+many-quantile case fall from `9,017,744,128` B to `5,571,308,288` B (ratio `0.617816`), which
+explains the elapsed gain without a change in managed allocation. The baseline † rows in
+[Results by tier](#results-by-tier) predate this change.
+
+**Limits.** This is a direct engineering assessment with BenchmarkDotNet, not a formal admission. No
+73M run was performed. The benchmark emits no per-launch calibration digest and BenchmarkDotNet
+deletes its worker, so neither a per-launch digest comparison nor a surviving-worker hash is
+claimed; output identity rests on the permanent Conversion regression suite and the earlier observer
+and CLI evidence. The assessment ran on a Windows host and records no machine, OS build, .NET
+runtime or SDK identity, so it is not compared with the baseline environment.
+
+**Source identity.** The measured candidate's `QuantileAccumulator.cs` and `ICalibrationObserver.cs`
+are byte-identical to those committed at `47e2ce71`. Its `QuantileRunCatalog.cs` differs from the
+committed file only in one token of an XML documentation comment, which the committed file
+replaces with the citation `(D-128)`, so no executable source differs. No build of the committed
+revision was measured, and the assessment records no build-to-commit tie or runtime identity.
+
+## What has not been measured
+
+- **No admissible published elapsed result, derived throughput rate or overhead estimate is
+  established for the corrected `CLI host` path.** The corrected build's runs recorded elapsed
+  output, which stays unpublished raw data. The publication correction's effect on command latency
+  is inconclusive at the 5% bound, and no retry is required
+  ([Command latency after the publication correction](#command-latency-after-the-publication-correction)).
+- **The tiered spill schedule has no 73M result**, and no `CLI host` row or whole-command trace has
+  been recorded since it.
+- **The five `probe` timings are baseline observations.** The probe cases were later re-validated
+  under the corrected per-attribute oracle, which establishes correctness, not a new elapsed figure.
+- **A bounded successful probe scan at 7.3M or 73M is not represented.** Every synthetic family's
+  numeric and subject columns grow with the row count, so W16 and T10 truncate at those tiers under
+  the default retention limit. Bounded successful scans exist at the micro and small tiers.
+- **Real-data evidence is Windows x64 only.** Routine CI never runs the acquired Adult corpus, on any
+  platform.
+- **D-082's `actual retained ≤ modelled` guarantee has executed coverage only on the targets where
+  the retained-layout witnesses ran.** Execution does not widen the guarantee's scope.
+- **Sampled memory is a lower bound**, and no trace proves a streaming or no-materialization
+  guarantee.
+- **Only the publication comparison carries a statistical bound across launches.** The tier
+  tables report single runs, the tiered spill assessment reports pairs, and between-run drift at
+  73M reached 25%.
+- **Nothing here is a cold-disk measurement**, and no figure is a comparison with another tool.
+
+## Reproducing the results
+
+`tests/FcaBedrock.Benchmarks/README.md` owns corpus preparation, selection, jobs and the per-tier
+commands. Set `FCABEDROCK_BENCH_ROOT` to an absolute path on the volume to be measured. The commands
+below are the ones that README does not list.
 
 ```pwsh
-$env:FCABEDROCK_BENCH_ROOT = 'D:\tmp\fcabedrock-m8-g15-bench'
-$bm = 'dotnet run -c Release --project tests/FcaBedrock.Benchmarks --'
+$env:FCABEDROCK_BENCH_ROOT = '<absolute path>'
 
-# preparation (explicit, outside every measured interval)
-dotnet run -c Release --project tests/FcaBedrock.Benchmarks -- prepare small working scale7m scale73m
-dotnet run -c Release --project tests/FcaBedrock.Benchmarks -- prepare adult   # the only networked step
-
-# what routine CI runs on each native target - generated corpora only, no download
-dotnet run -c Release --project tests/FcaBedrock.Benchmarks -- prepare micro small
-dotnet run -c Release --project tests/FcaBedrock.Benchmarks -- --anyCategories Small --filter '*' --job dry
-
-# the real-data acceptance run (Windows x64, on the final candidate)
-dotnet run -c Release --project tests/FcaBedrock.Benchmarks -- --anyCategories External --filter '*'
-
-# session A - the baseline matrix
-dotnet run -c Release --project tests/FcaBedrock.Benchmarks -- --filter '*'
-dotnet run -c Release --project tests/FcaBedrock.Benchmarks -- --anyCategories Working --filter '*'
-dotnet run -c Release --project tests/FcaBedrock.Benchmarks -- --anyCategories Scale --filter '*Scale7M*'
-dotnet run -c Release --project tests/FcaBedrock.Benchmarks -- --anyCategories Scale --filter '*Scale73M*' --warmupCount 1 --iterationCount 3
-
-# session B - the independent tuning comparison (grouping cases only)
+# the grouping budget and fan-in comparison
 dotnet run -c Release --project tests/FcaBedrock.Benchmarks -- --anyCategories Working --filter '*GroupingBudgetWorking*' '*GroupingFanInWorking*'
 dotnet run -c Release --project tests/FcaBedrock.Benchmarks -- --anyCategories Scale --filter '*GroupingBudgetScale7M*'
 dotnet run -c Release --project tests/FcaBedrock.Benchmarks -- --anyCategories Scale --filter '*GroupingBudgetScale73M*' --warmupCount 1 --iterationCount 3
-
-# session C - the calibration correction's replacement measurements
-dotnet run -c Release --project tests/FcaBedrock.Benchmarks -- --filter '*' --job dry
-dotnet run -c Release --project tests/FcaBedrock.Benchmarks -- --filter '*'
-dotnet run -c Release --project tests/FcaBedrock.Benchmarks -- --anyCategories Working `
-    --filter '*ManyQuantileCalibrateWorking*' '*CalibrateWideWorking*' '*CalibrateTripleGroupedWorking*' `
-             '*CalibrateTripleUnorderedWorking*' '*CliHostConvertAutoWorking*'
-dotnet run -c Release --project tests/FcaBedrock.Benchmarks -- --anyCategories Scale `
-    --filter '*ManyQuantileCalibrateScale7M*' '*CalibrateWideScale7M*' `
-             '*CalibrateTripleUnorderedScale7M*' '*CliHostConvertAutoScale7M*'
-dotnet run -c Release --project tests/FcaBedrock.Benchmarks -- --anyCategories Scale `
-    --filter '*CalibrateWideScale73M*' '*CliHostConvertAutoScale73M*' --warmupCount 1 --iterationCount 3
 
 # the controlled attribute-count matrix, gated out of the ordinary suite
 $env:FCABEDROCK_CALIBRATION_MATRIX = '1'
@@ -2108,260 +759,3 @@ dotnet-counters collect --format csv --output traces/<name>.csv --refresh-interv
     --counters 'System.Runtime[cpu-usage,working-set,gc-heap-size,gc-committed,alloc-rate,gen-0-gc-count,gen-1-gc-count,gen-2-gc-count,time-in-gc]' `
     -- publish/win-x64/FcaBedrock.Cli.exe convert <spec> <data> --out <base> --format dat
 ```
-
-### Which session C did not repeat, and why
-
-Only the measurements that execute the changed code were replaced. The correction is confined to the
-baseline the **count-sensitive calibration** merge is gated against — `QuantileAccumulator`'s two
-`ValueCountMerger.Consolidate` calls — so a case whose timed work never constructs a
-`QuantileAccumulator` cannot have been affected, and its session-A number stands:
-
-| Not repeated | Why the diff cannot reach it |
-| --- | --- |
-| fixed-plan emit drains and `.dat`/`.cxt` exports | the plan is prepared outside the timed region; no calibration runs inside it |
-| declared-spec CLI-host converts, `--no-manifest` pairs, `--format both`, `.cxt` | fully declared specs need no data pass to calibrate at all |
-| hash-wrapper pairs | a source pass and a writer, with no calibration in either |
-| grouping-budget and fan-in sweeps (sessions A and B) | declared T10 plans through `FirstAppearanceGrouping`/`RunMerger`, neither of which changed; the 64 MiB / fan-in-16 retention decision therefore stands unaltered |
-| source drains, pure planning, probe/discovery | no calibration in the timed path |
-| resident row-layout witnesses | the accumulator's retained graph is unchanged — no field was added or removed |
-
-The rule this follows is revision 02's: name the dependency and check it, rather than rerun
-everything or nothing.
-
-Session A ran 2026-09-06 10:10-12:35 UTC; session B 12:36-13:17; the traces 13:18-13:23.
-
-
-
-
-## Corrected defect — many-attribute count-sensitive calibration
-
-This is the milestone's one production finding: the suite refused a valid spec, the refusal was
-diagnosed to a real defect, and the defect was fixed. Both the failure and its replacement are kept
-below, because a benchmark that discovers a bug is worth more as a record of the whole sequence than
-as a corrected number.
-
-### What session A measured
-
-**A spec with four or more `equal_frequency` attributes failed to calibrate 730,000 records under the
-shipped 64 MiB default budget** — a failure, not a slow success: the calibration returned no result,
-so `ManyQuantileCalibrateWorking` and `ManyQuantileCalibrateScale7M` published **NA** and no
-throughput number. Those reports are retained under their session-A identity.
-
-```
-Error GroupingStorageFailed: Grouping spool storage failure (CleanupDelete/DeleteFailed)
-affected 1 operation - the conversion used external sort-merge spool storage (§16.4, D-082).
-```
-
-The same corpus, the same 730,000 records, varying only the number of `equal_frequency` attributes
-and the budget:
-
-| Attributes | 64 MiB, before | 512 MiB, before | 64 MiB, after | 512 MiB, after |
-| ---: | --- | --- | --- | --- |
-| 1 | OK | OK | OK | OK |
-| 2 | OK | OK | OK | OK |
-| 4 | **FAILED** | OK | OK | OK |
-| 8 | **FAILED** | OK | OK | OK |
-| 16 | **FAILED** | **FAILED** | OK | OK |
-
-The decisive pair is **2 attributes at 64 MiB (OK)** against **16 attributes at 512 MiB (FAILED)**.
-The budget is divided across the count-sensitive attributes, so both of those give each accumulator
-**32 MiB**. Same per-attribute budget, opposite outcomes — so the independent variable was the number
-of attributes running concurrently, not how much room each one had.
-
-That matrix is now a gated check rather than a one-off:
-`SpillEquivalenceTests.ManyQuantiles_ShouldCalibrateAtEveryAttributeCountAndBudget`, run with
-`FCABEDROCK_CALIBRATION_MATRIX=1`. Against the pre-fix build it reproduces the left half exactly —
-1 and 2 pass, 4, 8 and 16 fail — and against the corrected build all five pass at both budgets with
-identical cuts.
-
-### The mechanism
-
-The rendered aggregate carried no path sample, which distinguishes the escalation in
-`ValueCountMerger.MergeBatch` from an ordinary failed delete. That site checks
-
-```
-liveBytes + projected > 3 * baselineT
-```
-
-`baselineT` was **one accumulator's** cumulative raw spill payload, while `SpoolWorkspace.LiveBytes`
-is the **whole workspace's** live spool bytes — and `CalibrationRun` creates one workspace shared by
-every count-sensitive attribute. With a single accumulator the two describe the same set and the
-check is D-082's intended 3T guarantee; with sixteen, the left side grew with the attribute count
-while the right side did not. Nothing was wrong with the storage.
-
-The emit path never shared the defect: `FirstAppearanceGrouping` creates a workspace per grouping
-call and computes `baselineT` by summing the runs of that same workspace, so both sides describe one
-set.
-
-### The fix, and what it does not change
-
-`T` is now the workspace's cumulative original-spill payload — the sum across every accumulator
-sharing it — which is the scope `liveBytes` always had. It is still original spills only, never
-consolidation output, and it never falls when a run is deleted or an attribute finishes. This is one
-consistently scoped `≤3T` guarantee, not a per-attribute multiplier and not a larger allowance.
-
-It removes false failures and nothing else. No diagnostic, severity, registry entry, public API,
-output byte, ordering rule, resource bound, or default changed; the registry stays at 82 and every
-golden and canonical-byte pin is untouched. A genuine byte-bound or pending-cap breach is still an
-Error with no result, and broken storage is still refused — proved by tests that fail every delete
-and every spill write and still require the Error. The full contract is D-124.
-
-### What replaced the failure
-
-`ManyQuantileCalibrateWorking` now measures **2.909 s / 609.95 MB** and `ManyQuantileCalibrateScale7M`
-**52.260 s / 5.03 GB**, both validated per iteration against independent expectations. Sixteen exact
-accumulators are expensive — 52 s against 5.8 s for the four-shape spec at 7.3M — because the shipped
-budget gives each a sixteenth of 64 MiB, so all sixteen spill and merge. That is a cost, not a defect,
-and it is the honest price of sixteen exact populations in one pass.
-
-A practical note for a reader on an older build: raising the budget helped up to a point (four and
-eight attributes passed at 512 MiB) and stopped helping (sixteen failed at 512 MiB too), which is
-exactly what the shared-versus-per-attribute reading predicts.
-
-
-## What has not been measured
-
-Named here so their absence is explicit rather than inferred.
-
-- **The first native gate failed, and both failed runs stay failed.** The first five-target workflow
-  run, [`34241484619`](https://github.com/trashr0x/fcabedrock/actions/runs/34241484619) at
-  `a09e302`, **failed**, and remains failed evidence at that revision. What it did establish is real
-  and narrow: all five jobs ran on their intended native architectures — both optional ARM64 targets
-  included — and passed checkout, SDK setup, the environment and process-architecture assertions,
-  restore, the Release build, and all 25 resident-layout witnesses, the first time D-082's retained
-  accounting had executed anywhere but Windows x64. All five then failed at `Test (Release)`, so
-  corpus preparation, the Small Dry smoke, both package smokes, the self-contained
-  publish/run/archive and the upload were **skipped**, and **no artifact was produced or retained**.
-  The grouping was: Linux x64 and Linux ARM64 each nine publication failures across
-  `PublicationOwnershipTests` and `PublicationRecoveryTests`, plus one `ToolPackTests` failure;
-  macOS ARM64, Windows x64 and Windows ARM64 the `ToolPackTests` failure alone. Every suite totalled
-  4,498 tests, and **no benchmark, corpus, oracle, selection or identity case failed anywhere**.
-  Both defects were pre-existing M7 blockers in files byte-identical to `main`, exposed by this gate
-  precisely because nothing had ever executed them off Windows x64; both are corrected under
-  **D-125**. The second run,
-  [`34287497829`](https://github.com/trashr0x/fcabedrock/actions/runs/34287497829) at `91188455`,
-  also **failed** — at a macOS-only global-tool-smoke defect a run had to get that far to reach —
-  and likewise remains failed evidence at its revision. A complete pass exists at `4216610b`
-  ([Native delivery](#native-delivery)); D-082's numerical `actual retained ≤ modelled` guarantee
-  extends to the targets actually validated, and its scope is unchanged by execution alone.
-- **The measured CLI-host figures in this document are superseded, and no controlled replacement
-  was ever taken — nor is one owed.** D-125 retains a live reference for every object whose identity
-  authorizes a later mutation — on Windows as well as Unix — and that acquisition and its release sit
-  **inside** the measured CLI-host interval, so every `CliHostConvert*` figure here, both sides of the
-  manifest-versus-no-manifest comparisons, and all six whole-command traces stop describing the
-  shipped code. The pre-registered paired comparison that would have licensed a
-  performance-continuity claim ran in full and **failed its collective gate**
-  (`CliHostConvertWideWorking` `U = 5.6809%` against a 5% bound; `CliHostConvertBothWorking` control
-  stability 1.071382 against 1.05), so the correction's incremental elapsed-time effect is
-  **inconclusive at the 5% bound**. Two earlier claims are **withdrawn**: allocation is *not*
-  byte-identical on both builds — the corrected build allocates **+2,880 to +9,416 bytes** more per
-  published run within one machine state, and the inference that a native handle allocates nothing
-  managed goes with it — and the "about 10% slower with three times the deviation" reading described
-  one machine state that no longer obtains, the same unchanged control having since measured 5.3–8.5%
-  *faster* and then failed to reproduce itself within 5% across its own six launches. The rows in
-  this document keep their original provenance as measurements of the revisions that produced them;
-  they are neither relabelled nor overwritten with a noisier figure. What the corrected build *was*
-  measured to do — allocation and per-iteration validation for all fifteen CLI-host cases, and six
-  corrected-command resource traces — is [The corrected build](#the-corrected-build), and the policy
-  is **D-126**. Component measurements that never reach `PublicationTransaction` — the Sources
-  drains, calibration, the grouping-budget and fan-in series, pure planning, emit and export, probe,
-  and the hash-pair wrappers — are unaffected, because the correction touches no timed line of code
-  in any of them.
-- **No corrected-build elapsed, throughput or overhead figure exists anywhere in this document, by
-  policy.** The corrected build's BenchmarkDotNet runs produced full elapsed distributions; they are
-  retained as contextual raw data in the evidence directories and are deliberately not published as
-  a table or converted into any rate, curve, speedup, overhead percentage or old/new arithmetic
-  (D-126). Trace wall time is instrumented command duration in its provenance record, never
-  performance evidence.
-- **The `4216610b`/`03352da7` ledger and traces were never claimed for the three-blocker
-  correction; the candidate has its own.** That correction makes resumed recovery fail closed
-  without a held reference, and its anchor gate is reached from the ordinary successful path too:
-  `Commit` finishes forward inside the measured `CliHost` interval, adding one `File.Exists` per
-  absent stage and a held-reference dictionary lookup at each post-commit removal. So the
-  fifteen-row ledger and the six traces in [The corrected build](#the-corrected-build) satisfy
-  D-126 (c) and (d) for `4216610b`/`03352da7` and **not** for the corrected candidate — which is
-  why **session H reacquired all fifteen cases and all six traces together at `50f6aa62`**, the
-  fifteen as one coupled allocation-plus-validation proof rather than a separable pair, and why
-  **(c) and (d) are met there**; see
-  [The corrected candidate](#the-corrected-candidate-50f6aa62--session-h). Nothing about the
-  gates still ahead of that candidate is predicted anywhere here. Component measurements, the
-  64 MiB / fan-in-16 retention conclusion, and the Windows x64 External/Adult acceptance are
-  **unaffected by that correction** — the components never reach `PublicationTransaction`, and the
-  Adult cases run `ConversionRun` rather than `CliHost` — which is a reachability conclusion about
-  that one diff, not a standing exemption.
-- **The corrected oracles re-validated the five published probe rows; they did not re-time them.**
-  The exhaustive review's B-002 correction changes what a probe row *proves*, not what it *does* — no
-  corpus, option, parameter, job or measured interval moved — so the five published probe timings stay
-  session-A observations of the revisions that produced them, and **no corrected-build probe elapsed
-  figure exists or is owed**. The gate at `3b2e4a80` establishes the exact per-attribute outcome and
-  nothing about speed. The same holds for the Adult and native gates at that commit: both are
-  correctness and delivery evidence, and neither licenses an elapsed, rate, throughput, overhead,
-  speedup or non-regression reading.
-- **Routine CI does not exercise the acquired Adult corpus, on any platform.** That is deliberate
-  (see [Selection](#selection-and-what-routine-ci-proves)), and it means no cross-platform Adult
-  evidence exists or is claimed. The real-data evidence is Windows x64 only.
-- **No cross-published archive has been executed.** `eng/publish-selfcontained.ps1` can produce a
-  folder for another runtime identifier, and that shows only that the SDK can emit files for it. A
-  Unix archive written on a Windows host also records the creating platform, which an ordinary
-  extractor reads instead of the Unix mode — so a cross-published zip's file modes do not survive
-  extraction either. The command says so when it writes one; the delivery archives are produced on
-  their own platforms.
-- **A bounded-cardinality *successful* probe scan at 7.3M or 73M is not represented.** Every
-  synthetic family's numeric and subject columns scale with the row count, so at those tiers both W16
-  and T10 truncate under the default retention limit. That is the honest outcome and it is what the
-  scale probe cases record; a bounded successful scan at target scale would need a corpus designed
-  for it. Bounded successful scans do exist at the micro and small tiers.
-- **Nothing here is a cold-disk measurement**, and no figure is a comparison against another tool.
-
-## M8.1 — generation-tiered quantile spill catalogue
-
-The D-128 candidate changes only count-sensitive calibration's spill-run schedule. Original spills
-enter generation zero and carry oldest-first in radix `F`; it does not change the benchmark job,
-corpus, oracle, cuts, diagnostics, public API, fingerprints or output bytes. Three existing
-benchmarks are reported: the guards `ManyQuantileCalibrateWorking` (E1) and `CalibrateWideScale7M`
-(E2), and the targeted `ManyQuantileCalibrateScale7M` (E3, the 7.3M sixteen-attribute many-quantile
-workload). The retained one-pair screen first measured E3 at `0.760480` of baseline and was
-explicitly treated as unreplicated. The
-adoption assessment therefore added the smallest useful fresh comparison: one reverse-order pair for
-each guard and two order-balanced pairs for the primary endpoint.
-
-All fresh runs used the existing `Monitoring` job: one launch, two warmups, five actual iterations,
-`InvocationCount=1`, `UnrollFactor=1`, and MemoryDiagnoser. All eight hosts exited zero; every full
-JSON report contained one expected benchmark, the exact job/measurement shape and five finite
-positive actuals; stderr was empty; and the existing per-iteration `CalibrationOracle` and
-`OutputValidation` checks completed without failure.
-
-| Endpoint / order | Baseline mean | Candidate mean | B/A |
-| --- | ---: | ---: | ---: |
-| E1, fresh BA | 2.819 s | 2.761 s | 0.979558 |
-| E2, fresh BA | 5.571 s | 5.509 s | 0.988863 |
-| E3, fresh AB | 48.046 s | 35.884 s | 0.746878 |
-| E3, fresh BA | 46.737 s | 35.170 s | 0.752516 |
-
-The two fresh E3 ratios have geometric mean **`0.749692`**: about 25% less elapsed time,
-or 1.334x throughput for this operation. The two baseline means, measured about seventeen minutes
-apart and bracketing the candidate launches, differ by 2.80%, and the AB and BA ratios differ by
-0.75% — both far smaller than the measured 25% effect. Two order-balanced pairs support the observed
-improvement; they are not a statistical bound on drift or order effects. The retained forward-order
-and fresh reverse-order guard ratios have geometric means `0.991274` (E1) and `0.994901` (E2), both
-inside the 1.05 guard and best read as no detectable movement.
-
-| Endpoint | Baseline allocation | Candidate allocation | Delta |
-| --- | ---: | ---: | ---: |
-| E1 | 639,582,544 B/op | 639,585,360 B/op | +2,816 B/op |
-| E2 | 5,381,260,272 B/op | 5,381,260,696 B/op | +424 B/op |
-| E3 | 5,396,369,904 B/op | 5,396,386,416 B/op | +16,512 B/op |
-
-The largest delta is 0.0003% of the E3 allocation and far below the existing
-`max(2% of baseline, 65,536 B)` allowance. The independently counted 7.3M many-quantile write total
-falls from `9,017,744,128` B to `5,571,308,288` B, ratio `0.617816`, which explains the elapsed
-improvement without changing the managed allocation profile.
-
-**Scope and limitations.** This is a direct engineering BenchmarkDotNet assessment, not the
-evaluation's custom custody/scoring runner and not a formal admission under the evaluation's
-protocol. No 73M run was performed. The benchmark does not emit a per-launch calibration digest and
-BenchmarkDotNet deletes its worker, so neither a
-per-launch digest comparison nor a surviving-worker hash is claimed. Output identity remains covered
-by the retained observer/CLI evidence and the permanent Conversion regression suite. These limits
-do not qualify the measured 7.3M A/B result: D-128 adopts the candidate on the replicated,
-order-balanced evidence above.

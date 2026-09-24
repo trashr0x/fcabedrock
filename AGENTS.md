@@ -97,7 +97,6 @@ One document owns each lasting fact; everything else links to it (WP-3):
 | Architectural decisions and their rationale | `docs/decisions.md` |
 | Current position, milestone history, deferred backlog | `docs/roadmap.md` |
 | Benchmark methodology, results, uncertainty, limitations | `docs/benchmarks.md` |
-| Immutable evidence identity for the scaling work | `docs/evidence/m8-provenance.md` |
 | Authorship, origins, licence and dataset attribution | `docs/lineage.md`, `LICENSE`, the two attribution files |
 | Benchmark harness operation and corpus preparation | `tests/FcaBedrock.Benchmarks/README.md` |
 | Build, package, archive and validation commands | `eng/README.md` |

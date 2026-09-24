@@ -78,8 +78,10 @@ superseded or refined. A new entry MUST add its line here.
 - D-040 — Shared `tests/Directory.Build.props`; MTP-only
 - D-048 — `AGENTS.md` canonical; `CLAUDE.md` imports it; no symlink
 - D-073 — Decision index; sessions read it first, then relevant entries
-- D-129 — M8.2 writing governance: decisions may be compacted in place; `docs/engineering-principles.md` owns the engineering invariants as `EP-<n>`; `docs/writing-principles.md` owns the writing policy as `WP-<n>`; the authored inventory, the public owner map and the mechanical checker boundary *(narrows D-073's no-summarizing rule; renames the owner D-029 established; checker portion of rule 5 superseded by D-130)*
+- D-129 — M8.2 writing governance: decisions may be compacted in place; `docs/engineering-principles.md` owns the engineering invariants as `EP-<n>`; `docs/writing-principles.md` owns the writing policy as `WP-<n>`; the authored inventory, the public owner map and the mechanical checker boundary *(narrows D-073's no-summarizing rule; renames the owner D-029 established; checker portion of rule 5 superseded by D-130; heading-anchor clause of rule 1 superseded by D-131 for the one-time heading-separator migration)*
 - D-130 — Authored-text integrity: one mechanical command over raw decoded text, two fixed instruction-entry checks, an include/exclude manifest and a process-level test runner *(supersedes the checker portion of D-129 rule 5)*
+- D-131: One-time heading-separator migration in the decision log, roadmap and benchmark record: colons replace em dashes, changed anchors are accepted, and no alias is kept *(supersedes the heading-anchor clause of D-129 rule 1 for this migration only)*
+- D-132: No separate public evidence file; the benchmark guide carries only the identities that qualify its current claims
 
 ### M1 (mini-mushroom walking skeleton)
 
@@ -179,7 +181,7 @@ superseded or refined. A new entry MUST add its line here.
 
 ### M4 Slice D (equal_frequency + percentile + the bounded quantile engine)
 
-- D-103 — `equal_frequency` + `equal_width` `percentile_p1_p99` executable: exact-rational rank selection, the §11.5 feasibility-precedence amendment, sign-aware midpoint placement, the bounded fixed-capacity quantile accumulator with spill/online consolidation, subject-local triple deduplication, and `CalibrationPopulationTooLarge` (realizes D-088/D-089/D-093/D-094/D-095; the G-5/G-6/G-8/G-13 governance items)
+- D-103 — `equal_frequency` + `equal_width` `percentile_p1_p99` executable: exact-rational rank selection, the §11.5 feasibility-precedence amendment, sign-aware midpoint placement, the bounded fixed-capacity quantile accumulator with spill/online consolidation, subject-local triple deduplication, and `CalibrationPopulationTooLarge` (realizes D-088/D-089/D-093/D-094/D-095; the G-5/G-6/G-8/G-13 governance items) *(catalogue-at-most-fan-in and merge-all scheduling clauses superseded by D-128)*
 
 ### M4 Slice E (value_groups)
 
@@ -219,27 +221,27 @@ superseded or refined. A new entry MUST add its line here.
 
 ### M7 (CLI) pre-implementation adjudication
 
-- D-122 — M7 CLI contract: eight commands, process/exit/signal model, safe rendering, publication transaction, per-run manifest, full calibration freeze, authored-empty domain semantics, per-command semantics, non-goals, distribution, and the argv-boundary exit floor (revises D-071's empty-domain reading; refines D-026/D-078/D-088; realizes D-005's plan/validate face, D-028's command face, D-067's validate caller, D-077's M7 write gate)
+- D-122 — M7 CLI contract: eight commands, process/exit/signal model, safe rendering, publication transaction, per-run manifest, full calibration freeze, authored-empty domain semantics, per-command semantics, non-goals, distribution, and the argv-boundary exit floor (revises D-071's empty-domain reading; refines D-026/D-078/D-088; realizes D-005's plan/validate face, D-028's command face, D-067's validate caller, D-077's M7 write gate) *(reach of parts 4–5 qualified by D-125)*
 
 ### M7 (CLI) implementation
 
-- D-123 — M7 implementation architecture and public surfaces: the CLI package/global-tool boundary and one-way dependency, the CLI-internal coordinator + hand-rolled parser, centralized diagnostic/progress presentation, the complete audit argv (actual argv[0]), the input-open seam, the shared filesystem-identity service, the staged-publication transaction (create-new record, rename-aside backups, manifest-last/`--no-manifest` parity, validated recovery), the single-file `--force` matrix, the Spec-owned run manifest, the paired `SpecFreezer`, the `ConversionRuntimeOptions` temp-dir capability, the landed S1 presence nullability, and the landed S2 `.cxt` size advisory with registry 81 → 82 (lands the D-122 implementation architecture; realizes the M7 implementation rulings; S3–S11 were scheduled at entry time and have since landed)
+- D-123 — M7 implementation architecture and public surfaces: the CLI package/global-tool boundary and one-way dependency, the CLI-internal coordinator + hand-rolled parser, centralized diagnostic/progress presentation, the complete audit argv (actual argv[0]), the input-open seam, the shared filesystem-identity service, the staged-publication transaction (create-new record, rename-aside backups, manifest-last/`--no-manifest` parity, validated recovery), the single-file `--force` matrix, the Spec-owned run manifest, the paired `SpecFreezer`, the `ConversionRuntimeOptions` temp-dir capability, the landed S1 presence nullability, and the landed S2 `.cxt` size advisory with registry 81 → 82 (lands the D-122 implementation architecture; realizes the M7 implementation rulings; S3–S11 were scheduled at entry time and have since landed) *(reach of point 7 qualified by D-125)*
 
 ### M8 (first scaling / benchmark pass)
 
-- D-124 — M8 benchmark architecture: one internal BenchmarkDotNet host, explicit corpus/oracle layer, tier-gated selection (`External` opt-in and pinned, so routine CI needs no download; the Adult evidence is a blocking Windows acceptance run), benchmark-only friend grants (Conversion + CLI); and the conforming calibration fix the suite found (the `≤3T` merge allowance is the shared workspace's, not one attribute's)
+- D-124: M8 benchmark architecture: one internal BenchmarkDotNet host, explicit corpus/oracle layer, tier-gated selection (`External` opt-in and pinned, so routine CI needs no download; the Adult evidence is a blocking Windows acceptance run), benchmark-only friend grants (Conversion + CLI); and the conforming calibration fix the suite found (the `≤3T` merge allowance is the shared workspace's, not one attribute's) *(invalidation/recheck rule amended for D-125's correction only, and live status corrected, by D-126; catalogue-at-most-fan-in restatement superseded by D-128)*
 
 ### M7 publication ownership (corrected under M8's first native gate)
 
-- D-125 — Lifetime-bound publication ownership and the exclusive-first native rename: the exclusively managed, undisturbed output namespace as a stated precondition; live references, so a recycled identifier cannot defeat an identity proof; the exact Linux/macOS capability matrix and its guarded classic fallback; both disclosed Unix final-name races and the across-crash limit; and the closed two-producer package-metadata set *(qualifies the reach of D-122 parts 4–5 and D-123 point 7; corrects the defects D-124's first native run exposed)*
+- D-125: Lifetime-bound publication ownership and the exclusive-first native rename: the exclusively managed, undisturbed output namespace as a stated precondition; live references, so a recycled identifier cannot defeat an identity proof; the exact Linux/macOS capability matrix and its guarded classic fallback; both disclosed Unix final-name races and the across-crash limit; and the closed two-producer package-metadata set *(qualifies the reach of D-122 parts 4–5 and D-123 point 7; corrects the defects D-124's first native run exposed; measurement claims corrected by D-126)*
 
-### M8 evidence policy (Policy L)
+### M8 evidence policy
 
-- D-126 — Policy L: M8 closes under a documented measurement limitation. The publication correction's incremental elapsed-time effect is **inconclusive at the 5% bound** after a complete, pre-registered paired comparison failed its collective gate; the fifteen corrected-build allocation/validation cases and the six corrected-command resource traces were completed instead *(amends D-124's invalidation/recheck rule for D-125's correction only; corrects the stale live status of D-124 and the measurement claims of D-125)*
+- D-126: M8 closes under a documented measurement limitation. The publication correction's incremental elapsed-time effect is **inconclusive at the 5% bound** after a complete, pre-registered paired comparison failed its collective gate; the fifteen corrected-build allocation/validation cases and the six corrected-command resource traces were completed instead *(amends D-124's invalidation/recheck rule for D-125's correction only; corrects the stale live status of D-124 and the measurement claims of D-125)*
 
 ### M8.1 (pre-M9 performance pass)
 
-- D-128 — `QuantileAccumulator` uses a radix-F generation-tiered spill-run catalogue: logarithmic rewrite amplification, fixed catalogue ceiling, unchanged exact results and reader bound *(supersedes only D-103/D-124's catalogue-at-most-fan-in clauses)*
+- D-128: `QuantileAccumulator` uses a radix-F generation-tiered spill-run catalogue: logarithmic rewrite amplification, fixed catalogue ceiling, unchanged exact results and reader bound *(supersedes only D-103/D-124's catalogue-at-most-fan-in clauses)*
 
 Spec-field defaults are recorded in spec §21 items 1–11 (see the final section
 of this file).
@@ -864,7 +866,7 @@ refinement markers (D-003, D-005, D-021); the entries below are new.
 
 ### D-129: M8.2 writing governance: in-place decision compaction, `EP-` and `WP-` identifier ownership, the authored inventory, and the mechanical checker boundary
 
-- **Status:** accepted; the checker portion of rule (5) superseded by D-130
+- **Status:** accepted; the checker portion of rule (5) superseded by D-130; the heading-anchor clause of rule (1) superseded by D-131 for the one-time heading-separator migration
 - **Date:** 2026-09-22
 - **Decision:** five governance rules for the M8.2 authored-text pass.
   **(1) Compaction.** A decision entry may be shortened *in place*. Its ID, heading anchor, actual
@@ -1059,6 +1061,72 @@ refinement markers (D-003, D-005, D-021); the entries below are new.
   `eng/README.md`; the uncommitted earlier draft `eng/check-writing.ps1` was removed. Supersedes the
   checker portion of D-129 rule (5). Process and tooling only: no code, diagnostics, spec, fixture,
   output bytes or roadmap change.
+
+### D-131: One-time heading-separator migration in the decision log, roadmap and benchmark record: colons replace em dashes, changed anchors are accepted, and no alias is kept
+
+- **Status:** accepted
+- **Date:** 2026-09-24
+- **Decision:** the em-dash separators in the headings of `docs/decisions.md`, `docs/roadmap.md` and
+  `docs/benchmarks.md` become colons. Each heading changes once, in the change that edits its
+  section, never in a separate heading-only sweep. A decision heading keeps its words apart from the
+  separator, except that it may drop an internal process label that means nothing outside the
+  project's working process; the words around a dropped label may be repunctuated, or joined by a
+  conjunction, so that the heading still reads as one title. A roadmap or benchmark heading may
+  also be retitled, merged or removed when that change restructures its section on its own merits.
+  The index lines and the entry-format template, which mirror the decision headings, take the same
+  form.
+  The anchors those headings generate change with them:
+  - **External fragments may break.** A link from outside the repository to a changed anchor stops
+    resolving, and that is accepted. No compatibility alias, explicit anchor or old-path stub keeps
+    an earlier anchor.
+  - **Every in-repository local link is repaired and recorded.** The D-130 human link review applies:
+    the change that converts a heading repairs every local link in the repository that targets it,
+    and its private navigation table records each old and new anchor.
+  - **The rest of D-129 rule (1) still holds.** A compacted entry keeps its ID, actual rule, decisive
+    rationale and tradeoff, consequences and limits, status, meaningful dates, supersession links and
+    position in historical order. Decision identifiers and file paths do not change, so every
+    citation by `D-NNN` or by path still resolves.
+  This supersedes the heading-anchor clause of D-129 rule (1) for this migration only.
+- **Why:** WP-6 forbids the em dash as punctuation, and a heading separator is punctuation. Keeping
+  every heading byte-identical to preserve its anchor would have kept the separator in every heading
+  of the three documents that used one, plus the entry-format template, permanently. The maintainer
+  explicitly accepted that external links to the changed headings may break. No local link in the
+  repository targets a decision or roadmap heading, and every local link that targets a changed
+  heading is a same-file link in `docs/benchmarks.md` that the D-130 review already covers, so the
+  cost falls only on external fragment links. An internal process label, such as a policy letter,
+  tells a reader outside the project nothing, so a decision heading may lose one; D-126's heading
+  lost one.
+- **Rejected:** keeping every heading byte-identical, the D-129 default, which preserves each anchor by
+  keeping its dash; alias anchors or stub headings for the old anchors, which D-129 already rejects as
+  a migration diary that Git holds; and one repository-wide heading sweep apart from the content
+  changes, which would review each heading away from its section and twice.
+- **Affects:** `docs/decisions.md` (this entry, its index line, D-129's status line and index
+  annotation, and each decision heading, index line and the entry-format template as the change that
+  edits each section converts it), `docs/roadmap.md` and `docs/benchmarks.md` (their headings and the
+  in-file fragment links that target them). Public documentation anchors change. No product code,
+  public API, CLI contract, diagnostic, spec text, fingerprint or output byte changes. Supersedes the
+  heading-anchor clause of D-129 rule (1) for this one-time migration; the rest of D-129 is unchanged.
+
+### D-132: No separate public evidence file; the benchmark guide carries only the identities that qualify its current claims
+
+- **Status:** accepted
+- **Date:** 2026-09-24
+- **Decision:** `docs/benchmarks.md` is the only public home for benchmark evidence identity, and it
+  carries only the revisions and digests that qualify its current claims: the corpus identities,
+  the revision each result set describes, and the source identity of the M8.1 measurement. No
+  separate evidence file, directory, stub or digest ledger exists. Seals, archive and trace
+  digests, pre-registered criteria and deviation records are not repository content: the
+  maintainer's private evidence holds them, and Git history holds the earlier benchmark narrative.
+  The owner map in `AGENTS.md` has no evidence row.
+- **Why:** a public ledger of seals and run identities restates the chronology the benchmark guide
+  drops, and a digest of unpublished evidence identifies bytes without making them available. Each
+  claim stays qualified where it is made. The maintainer chose removal over a smaller receipt.
+- **Rejected:** a public receipt of up to 10 KiB listing revisions, archive and trace digests and
+  evidence seals; a stub, alias or renamed file; moving the seals into the benchmark guide, a
+  decision entry or the roadmap.
+- **Affects:** `AGENTS.md` (the owner map), `docs/benchmarks.md`, `docs/decisions.md` (this entry
+  and its index line). No product code, public API, CLI contract, diagnostic, spec text,
+  fingerprint or output byte changes.
 
 ---
 
@@ -3786,7 +3854,8 @@ pattern).
 ### D-103 — `equal_frequency` + percentile executable: exact-rational ranks, feasibility precedence, sign-aware midpoints, the bounded quantile accumulator, subject-local triple dedup
 
 - **Status:** accepted (M4 Slice D; realizes D-088/D-089/D-093/D-094/D-095; the G-5/G-6/G-8/G-13
-  governance items)
+  governance items); its per-accumulator catalogue-at-most-fan-in and merge-all scheduling clauses
+  superseded by D-128 (2026-09-21)
 - **Date:** 2026-07-17
 - **Decision:** the `equal_frequency` discretizer (§11.5) and `equal_width`
   `range = "percentile_p1_p99"` (§11.4) become executable — M4's **count-sensitive** calibration.
@@ -5426,7 +5495,8 @@ pinned here.
 ### D-122 — M7 CLI contract: commands, process model, publication, manifest, freeze, authored-empty domains, per-command semantics, non-goals, distribution, and the exit floor
 
 - **Status:** accepted (M7 pre-implementation adjudication; **revises D-071**;
-  refines D-026/D-078/D-088; realizes the CLI faces of D-005/D-028/D-067/D-077)
+  refines D-026/D-078/D-088; realizes the CLI faces of D-005/D-028/D-067/D-077); the reach of parts
+  4–5 qualified by D-125 (2026-09-09)
 - **Date:** 2026-07-22
 - **Decision:** the complete M7 CLI contract is settled **before any M7 code**, in
   fifteen parts.
@@ -5722,6 +5792,7 @@ pinned here.
   *(landing complete: S1–S11 all landed by M7 Slice K, merged 2026-08-08; the roadmap
   M7 exit block is the landed record)*
   *(maintenance 2026-08-12: non-repository review identifiers retired throughout; every recorded decision, reason, rejection, status, and landing annotation is unchanged.)*
+  *(the reach of point 7 qualified by D-125, 2026-09-09)*
 - **Date:** 2026-07-24
 - **Decision:** M7's implementation architecture and every new public surface are
   settled here; the CLI host is built to this shape across slices S1–S11. Only the
@@ -5870,22 +5941,14 @@ pinned here.
 
 ## M8 (first scaling / benchmark pass)
 
-### D-124 — M8 benchmark architecture: one internal BenchmarkDotNet host, an explicit corpus/oracle layer, tier-gated selection with a pinned opt-in external corpus, two benchmark-only friend grants, and the conforming calibration fix the suite found
+### D-124: M8 benchmark architecture: one internal BenchmarkDotNet host, an explicit corpus/oracle layer, tier-gated selection with a pinned opt-in external corpus, two benchmark-only friend grants, and the conforming calibration fix the suite found
 
-- **Status:** accepted (M8 Slices S1–S5 landed, including both friend grants and the
-  conforming multi-attribute calibration correction with its replacement evidence;
-  S6's external cutover and the native non-Windows proof remain)
-  *(status correction, 2026-09-09: the live status above is stale. The canonical GitHub
-  cutover is done, and run
-  [`34289256438`](https://github.com/trashr0x/fcabedrock/actions/runs/34289256438) at
-  `4216610b` passed on all five native targets and produced all three required archives,
-  so neither the cutover nor the native non-Windows proof remains outstanding. What
-  remains is the documentation-head gate sequence recorded in **D-126**. Separately, read
-  every CLI-host row this entry produced as a **session-A or session-C observation of the
-  revision that produced it**: D-125's correction reaches that measured interval, and
-  D-126 records what the corrected build was actually measured to do. The calibration
-  correction, its evidence-replacement map, the failed-native-run history and the
-  component measurements are unaffected — the correction is unreachable from them.)*
+- **Status:** accepted, with M8 Slices S1 to S5 landed: both friend grants and the conforming
+  multi-attribute calibration correction with its replacement evidence. *Corrected 2026-09-09 by
+  D-126:* the remaining-work status first recorded here was stale, and this entry's
+  invalidation/recheck rule is amended for D-125's correction only. *Superseded 2026-09-21 by D-128*
+  for the restated per-accumulator catalogue-at-most-fan-in bound only. M8's evidence closed at
+  `3b2e4a80` (D-126).
 - **Date:** 2026-09-06
 - **Decision:** M8 is measured by **one internal BenchmarkDotNet executable**
   (`tests/FcaBedrock.Benchmarks`) plus a small tested corpus/oracle layer
@@ -5925,9 +5988,9 @@ pinned here.
     diagnostics are available; a failure throws, so the case has no throughput
     result. The only correctness check is never deferred to global cleanup, where
     one late failure would silently cover every iteration before it. The launcher
-    reads BenchmarkDotNet's own report/validation contract — build failures,
-    execution failures, critical validation errors — rather than inventing a
-    parallel result protocol, and additionally refuses to call a run successful
+    reads BenchmarkDotNet's own report/validation contract (build failures,
+    execution failures, critical validation errors) rather than inventing a
+    parallel result protocol, and also refuses to call a run successful
     when it measured nothing.
   - **The families, and what each one is for.** W16 (sixteen wide columns, both
     missing forms, the RFC 4180 quoting path) and T10 (ten triple rows per subject,
@@ -5950,7 +6013,7 @@ pinned here.
     generator revision, geometry, exact byte length, and SHA-256; anything that no
     longer matches is **refused**, and the catalog entry is written last so an
     interrupted preparation is never reused. Preparation is a separate `prepare`
-    verb — no run may start generating a 73M-record file as a side effect of a
+    verb: no run may start generating a 73M-record file as a side effect of a
     broad filter. No network access occurs during ordinary tests or benchmark
     measurement.
   - **The one acquired corpus is pinned by its consumed bytes, and kept out of
@@ -5958,7 +6021,7 @@ pinned here.
     it is treated accordingly.
     - **Pinned to the entry, not the archive.** The accepted `adult.data` is
       exactly **3,974,305 bytes**, SHA-256
-      `5b00264637dbfec36bdeaab5676b0b309ff9eb788d63554ca0a249491c86603d` — the file
+      `5b00264637dbfec36bdeaab5676b0b309ff9eb788d63554ca0a249491c86603d`, the file
       every M8 Adult figure is stated against. It is enforced on a fresh acquisition
       *before* a catalog entry is written, and again on reuse **independently of the
       catalog's own recorded digest**: the catalog records whatever arrived, so a
@@ -5972,16 +6035,16 @@ pinned here.
       rather than silently reinterpreted.
     - **Routine CI prepares `micro small` and runs `--anyCategories Small --filter
       '*' --job dry`.** No required or optional native job prepares or selects
-      Adult. Every other build, test, accounting, package, and archive gate is
+      Adult. Every other build, test, accounting, package, and archive check is
       unchanged. A green CI run therefore proves the **selected synthetic and
       fixture** contracts on that platform and claims nothing about Adult, on that
-      candidate or on any non-Windows target — the workflow and both READMEs say so
+      candidate or on any non-Windows target; the workflow and both READMEs say so
       in those words.
     - **The real-data evidence is required of the candidate instead.** Before whole-M8
       acceptance, and for each later release candidate, all three External cases must
       run successfully on the final **Windows x64** candidate with the verified
       corpus, and the result is retained as durable evidence. It is a **blocking**
-      manual obligation — routine CI may be green while it is outstanding — enforced
+      manual obligation (routine CI may be green while it is outstanding), enforced
       the same way M8's other primary evidence is: the closure checklist, the
       independent review, and operator acceptance. It is not a GitHub status check
       and introduces no release framework. An earlier candidate's result carries
@@ -5997,13 +6060,13 @@ pinned here.
   - **Oracles are independent.** Expected output is derived from the corpus
     definition plus the documented spec semantics, never by invoking the
     conversion algorithm under test, and large expectations are hashed while
-    streamed rather than retained. The immutable v2 minis additionally serve as
+    streamed rather than retained. The immutable v2 minis also serve as
     **external** byte oracles: they were produced by a different program, so they
     catch a pipeline that would still satisfy a model authored in this repository.
   - **Selection: Small by default; `Working`, `Scale`, and `External` opt-in by
     category.** Tier categories (`Small`/`Working`/`Scale`/`External`) and surface
     categories are orthogonal. With no category named the selection is Small; **the
-    three opt-in tiers are reachable only by naming their category** — neither a
+    three opt-in tiers are reachable only by naming their category**: neither a
     broad name filter such as `--filter *`, nor a case's own name, nor a surface
     category reaches one. This is the one selection rule added on top of
     BenchmarkDotNet's filtering, and it is a pure function of the command line and a
@@ -6018,11 +6081,11 @@ pinned here.
       acquired from a third-party host rather than generated here, so requiring it
       would make an unrelated outage fail whatever run happened to select it. The
       shape of the guarantee is identical either way, which is why one mechanism
-      serves both. `External` keeps the fresh-iteration job — it is opt-in, not
+      serves both. `External` keeps the fresh-iteration job: it is opt-in, not
       long-running.
     - **Opting in is not skipping.** A *selected* case whose corpus is absent,
       incomplete, or no longer matches its recorded identity is a hard failure
-      carrying the exact `prepare` command, and the launcher additionally exits
+      carrying the exact `prepare` command, and the launcher also exits
       non-zero when a run measured nothing. An External case that quietly did not
       run is the one outcome this category must never produce.
   - **Two job shapes, chosen by the selection.** Small runs BenchmarkDotNet's
@@ -6058,18 +6121,15 @@ pinned here.
     `FcaBedrock.Cli.Tests` and `FcaBedrock.Benchmarks`, once each in the project
     and in the compiled assembly, asserted independently of declaration order by
     `tests/FcaBedrock.Cli.Tests/CliProjectContractTests.cs`.
-    `FcaBedrock.Benchmarks.Tests` gets **no** CLI grant — the contract test asserts
+    `FcaBedrock.Benchmarks.Tests` gets **no** CLI grant; the contract test asserts
     the absence of its *grant* rather than of its name, because the project comment
     names it precisely to record that it is excluded. Both grantees are non-product
     assemblies: this changes the internal access contract, never the public product
     API. It preserves D-098's ban on production-to-production
-    internals access and D-122/D-123's CLI-internal boundary — no production
+    internals access and D-122/D-123's CLI-internal boundary: no production
     package references the benchmark assembly, CLI types stay internal, and no
     benchmark code ships in any product artifact. M9 reuse still needs its own EP-4
-    review. **Scheduling:** each grant landed in the slice that first
-    needed it — Conversion in S2 with the budget/fan-in experiments, CLI in S3 with
-    the host and hashing benchmarks — following the D-123 precedent of recording a
-    ruled architecture whose surfaces land per slice. Both are now in place.
+    review.
   - **The suite found a production defect, and it is fixed here as a conforming
     correction.** A spec with several `equal_frequency` (or `percentile_p1_p99`)
     attributes could fail to calibrate under the shipped budget, reporting
@@ -6081,10 +6141,7 @@ pinned here.
     it was compared against were the **whole workspace's**. The two sides
     described different sets, so the allowance shrank as attributes were added:
     with `A` comparable accumulators the left side grows with `A` and the right
-    side does not, and the guard fires for `A > 2`. The measured reproduction
-    is exactly that shape — one and two attributes succeed, four, eight and
-    sixteen fail, and sixteen attributes at 512 MiB fails while two at 64 MiB
-    passes although both give each accumulator 32 MiB.
+    side does not, and the guard fires for `A > 2`.
     - **`T` is the workspace's, not one attribute's.** `T_i` remains an
       attribute's cumulative exact serialized bytes of successful **original**
       spills, framing included, never consolidation output and never reduced by
@@ -6093,9 +6150,9 @@ pinned here.
       question, so online consolidation uses the workspace's `T_so_far` and a
       later merge is never measured against a smaller allowance than an earlier
       one. `L` is every retained run byte of that same workspace, `P` the
-      conservative sum of the next merge's input sizes, and the gate still
+      conservative sum of the next merge's input sizes, and the check still
       retries pending deletions and permits equality. That is **one consistently
-      scoped `≤3T` guarantee** — not `3A`, not a larger per-attribute allowance,
+      scoped `≤3T` guarantee**: not `3A`, not a larger per-attribute allowance,
       and not a process-RSS ceiling. `FirstAppearanceGrouping` never had the
       mismatch (its workspace and its summed baseline describe the same grouping
       call) and is unchanged.
@@ -6132,33 +6189,32 @@ pinned here.
   - **What may change, and only after evidence.** The internal grouping and
     calibration memory budget and merge fan-in are the tunable policy (EP-19,
     D-082/D-095: byte-neutral by construction, never a spec or fingerprint input),
-    and may move only after the approved evidence gate — a repeatable improvement
-    on identified controlled hardware, reproduced in two independent comparison
-    sessions and confirmed at both target sizes. **Probe-default adoption is not
-    included**: it changes draft bytes, warnings, or success-versus-guard-failure,
+    and may move only after the approved evidence rule is met: a repeatable
+    improvement on identified controlled hardware, reproduced in two independent
+    comparison sessions and confirmed at both target sizes. **Probe-default adoption
+    is not included**: it changes draft bytes, warnings, or success-versus-guard-failure,
     so it is a separate observable semantic decision requiring its own approval and
     spec §7.1/D-110 reconciliation. Target-specific resident safety constants are
     **correctness** changes requiring executed native proof and a narrow review, not
     tuning. A measured hotspot may receive one narrow optimization inside the
     accepted scope; no speculative optimization is preselected.
-  - **The tuning gate was run, and it was not met. Nothing changed.** A 256 MiB
-    grouping budget is 30-38% faster than the shipped 64 MiB at 730,000 records
-    and 19-20% faster at 7.3M, reproducibly across two independent sessions and
-    byte-neutral on every iteration. At **73M** — the larger of the two target
-    sizes the gate requires confirmation at — the elapsed gain falls to 6.9% and
-    4.0% in the two sessions, the allocation gain disappears entirely (+0.05%),
-    and the same case measured 99.9 s and 125.1 s between the two launches: a 25%
-    between-session drift, larger than the effect it would have to prove. The
-    budget is also shared with the count-sensitive calibration accumulator, which
-    is sized from it before any record is read, so a raise would multiply a fixed
-    per-calibration cost at every input size in exchange for a gain that is
-    largest where it matters least. **`DefaultMaxBufferedBytes` stays at 64 MiB
-    and `DefaultMaxMergeFanIn` stays at 16** (fan-in 32 moved elapsed time by
-    +0.1% and -1.9% in the two sessions — noise in both directions; fan-in 4 costs
+  - **The tuning rule was applied, and it was not met. Nothing changed.** A 256 MiB
+    grouping budget is reproducibly faster than the shipped 64 MiB at 730,000 and
+    7.3M records, and byte-neutral on every iteration. At **73M**, the larger of the
+    two target sizes the rule requires confirmation at, the elapsed gain falls to
+    6.9% and 4.0% in the two sessions, the allocation gain disappears entirely
+    (+0.05%), and the same case measured 99.9 s and 125.1 s between the two
+    launches: a 25% between-session drift, larger than the effect it would have to
+    prove. The budget is also shared with the count-sensitive calibration
+    accumulator, which is sized from it before any record is read, so a raise would
+    multiply a fixed per-calibration cost at every input size in exchange for a gain
+    that is largest where it matters least. **`DefaultMaxBufferedBytes` stays at 64
+    MiB and `DefaultMaxMergeFanIn` stays at 16** (fan-in 32 moved elapsed time by
+    +0.1% and -1.9% in the two sessions, noise in both directions; fan-in 4 costs
     40%). The measurements are in `docs/benchmarks.md`. That the two knobs' two
     consumers want different values is a real finding and is recorded there as a
     question for a later decision, not answered here.
-- **Why:** M8's job is to find out how FcaBedrock actually behaves at 7.3M and 73M
+- **Why:** M8's job is to find out how FcaBedrock behaves at 7.3M and 73M
   records, and a benchmark suite is only worth its cost if its numbers can be
   believed. Almost every clause above exists to close a specific way a number can
   be wrong rather than merely imprecise: a corpus that changed between two runs, a
@@ -6170,10 +6226,10 @@ pinned here.
   standard responsibility to it is the same discipline applied to the harness
   itself: the previous M8 attempts failed by growing process-containment,
   scheduling, and telemetry subsystems disproportionate to an internal benchmark,
-  so the scope gate is that custom machinery must name both a real FcaBedrock need
+  so the scope rule is that custom machinery must name both a real FcaBedrock need
   and a verified gap.
 - **Rejected:** a floating BenchmarkDotNet version (the measurement semantics of a
-  milestone's comparisons would drift with an upgrade — the D-075 hazard applied
+  milestone's comparisons would drift with an upgrade: the D-075 hazard applied
   to numbers); a custom scheduler, process supervisor, polling/telemetry framework,
   scenario-plugin system, public benchmark framework, or threat model (no verified
   gap, and the failure mode of the abandoned attempts); benchmarking a nested CLI
@@ -6185,55 +6241,51 @@ pinned here.
   files and blurs the preparation boundary); keeping Adult in the required native
   jobs (repeating three cases on five runners adds platform coverage of a
   *data-dependent* path, not five independent datasets, and buys it by letting an
-  outage at a research-data host block package delivery — the platform-specific
+  outage at a research-data host block package delivery; the platform-specific
   risks are already covered by the layout witnesses, the ordinary suite, the Small
   smoke, and the package smokes); an `actions/cache` entry for the download (a cold
   or evicted cache still needs the host, and it widens the exact action allowlist
-  for a partial mitigation — GitHub evicts after seven days without access);
+  for a partial mitigation; GitHub evicts after seven days without access);
   committing the dataset (CC BY 4.0 would allow it, but it overrides the approved
   no-large-data-in-Git rule and the documented promise that it never enters Git, to
   solve a dependency that simply need not be in routine CI); a scheduled or separate
   non-required real-data job (ongoing hosted evidence with a cadence and a
-  maintenance cost, and no gate value that the explicit candidate run does not
-  already provide — recorded as a follow-up if the manual run proves insufficient);
+  maintenance cost, and no checking value that the explicit candidate run does not
+  already provide; recorded as a follow-up if the manual run proves insufficient);
   pinning the zip rather than the consumed entry (a repack that changes no measured
   byte would be refused); and adopting a changed download's digest (it would
   silently re-base every figure recorded against the old bytes); deferring the only correctness check
   to global cleanup (one late failure covers every earlier iteration); deriving
   expected output by calling the pipeline (an oracle that cannot disagree proves
   nothing); a serializer-produced catalog (the metadata contract decides whether
-  cached inputs are believed, so its bytes must not drift with a library —
+  cached inputs are believed, so its bytes must not drift with a library:
   D-075's reasoning); making the benchmark host a test project or letting it
   inherit the shared test props (EP-20); granting `FcaBedrock.Benchmarks.Tests`
   CLI access (it needs none); switching the CLI benchmarks to the public
   executable (that changes the accepted measured boundary from host throughput to
   process latency) or copying the host's behaviour into the suite (weakens
   production-path validity); and exposing the grouping budget or fan-in as a
-  public tuning flag (D-082/D-095/EP-6 — a knob that cannot change output bytes
+  public tuning flag (D-082/D-095/EP-6: a knob that cannot change output bytes
   belongs in neither the spec nor the public surface).
-- **Affects:** `tests/FcaBedrock.Benchmarks` and `tests/FcaBedrock.Benchmarks.Tests`
-  (new), `Directory.Packages.props` (the BenchmarkDotNet pin), `FcaBedrock.slnx`,
-  `src/FcaBedrock.Conversion` and `src/FcaBedrock.Cli` (benchmark-only
-  `InternalsVisibleTo`, one comment each), `tests/FcaBedrock.Cli.Tests`
-  (`CliProjectContractTests`' exact-friend-set assertion, the gated
-  self-contained publish smoke, and `ConvertMultiCalibrationTests`),
-  `tests/FcaBedrock.Conversion.Tests` (runtime-observed resident-layout witnesses
-  and `MultiAttributeCalibrationTests`), `eng/` (the publish/archive command
-  and its README), `.github/workflows/ci.yml`, `docs/roadmap.md`,
-  `docs/benchmarks.md`, `README.md`, and the stale no-CI comment in
-  `Directory.Build.props`. The **one** production behaviour change is the
-  conforming calibration correction above, in
-  `src/FcaBedrock.Conversion/QuantileAccumulator.cs` (the workspace-wide
-  `CalibrationBudget.SpilledBytes` baseline, used by both consolidation entry
-  points) and the `baselineT` contract documentation on `ValueCountMerger.cs`.
-  Everything else under `src/` is the two friend grants and their comments. **No
-  diagnostic, fingerprint, ordering, or output-byte change**: the registry stays
-  **82**, and every golden, canonical-byte, and SHA pin is untouched.
+- **Affects:** `tests/FcaBedrock.Benchmarks` and `tests/FcaBedrock.Benchmarks.Tests` (new);
+  `Directory.Packages.props` (the BenchmarkDotNet pin) and `FcaBedrock.slnx`;
+  `src/FcaBedrock.Conversion` and `src/FcaBedrock.Cli` (benchmark-only `InternalsVisibleTo`, one
+  comment each);
+  `tests/FcaBedrock.Cli.Tests` (the exact-friend-set assertion, the gated self-contained publish
+  smoke, `ConvertMultiCalibrationTests`) and `tests/FcaBedrock.Conversion.Tests` (runtime-observed
+  resident-layout witnesses, `MultiAttributeCalibrationTests`); `eng/` (the publish/archive command
+  and its README), `.github/workflows/ci.yml`, `docs/roadmap.md`, `docs/benchmarks.md`, `README.md`
+  and a stale comment in `Directory.Build.props`. The **one** production behaviour change is the
+  conforming calibration correction in `src/FcaBedrock.Conversion/QuantileAccumulator.cs` (the
+  workspace-wide `CalibrationBudget.SpilledBytes` baseline, used by both consolidation entry points),
+  with the `baselineT` contract documented on `ValueCountMerger.cs`; everything else under `src/` is
+  the two friend grants and their comments. **No diagnostic, fingerprint, ordering, or output-byte
+  change**: the registry stays **82**, and every golden, canonical-byte, and SHA pin is untouched.
 - **Evidence replacement.** The correction invalidates the measurements that
   consumed the broken path, and they were replaced rather than reinterpreted.
   `ManyQuantileCalibrateWorking` and `ManyQuantileCalibrateScale7M` published
-  **NA** in session A because they failed; those reports are retained under their
-  original session identity as recorded failures, and both cases now carry real
+  **NA** in the baseline measurements (2026-09-06) because they failed; those reports are retained
+  under their original identity as recorded failures, and both cases now carry real
   measurements. The count-sensitive calibration series
   (`CalibrateWide{Working,Scale7M,Scale73M}`,
   `CalibrateTriple{GroupedWorking,UnorderedWorking,UnorderedScale7M}`) and the
@@ -6243,200 +6295,124 @@ pinned here.
   discovery and probe evidence is **not** invalidated: the diff reaches only the
   count-sensitive calibration merge baseline, which is absent from those timed
   paths, and that dependency is recorded in `docs/benchmarks.md` rather than
-  assumed. The 64 MiB / fan-in-16 retention decision is unaffected — those cases
+  assumed. The 64 MiB / fan-in-16 retention decision is unaffected: those cases
   run the declared T10 plan through `FirstAppearanceGrouping` and `RunMerger`,
   neither of which changed.
-- **What the first native gate found (2026-09-08; see D-125).** The branch's first
-  five-target workflow run,
-  [`34241484619`](https://github.com/trashr0x/fcabedrock/actions/runs/34241484619) at
-  `a09e302`, **failed** and remains failed evidence at that revision. All five jobs
-  passed checkout, SDK setup, the environment and process-architecture assertions,
-  restore, the Release build and all 25 resident-layout witnesses — the first time
-  D-082's retained accounting had executed anywhere but Windows x64 — and both
-  optional ARM64 targets were available and ran natively. All five then failed at
-  `Test (Release)`, so corpus preparation, the Small Dry smoke, both package smokes,
-  the self-contained publish/run/archive and the upload were skipped and **no
-  artifact was produced**. The accurate grouping is: Linux x64 and Linux ARM64 each
-  nine publication failures across `PublicationOwnershipTests` and
-  `PublicationRecoveryTests` plus one `ToolPackTests` failure; macOS ARM64,
-  Windows x64 and Windows ARM64 the `ToolPackTests` failure alone. Every suite
-  totalled 4,498 tests, and **no M8 benchmark, corpus, oracle, selection or identity
-  test failed on any target**. Both defects were pre-existing M7 release blockers in
-  files byte-identical to `main` — they had simply never executed off Windows x64 —
-  and both are corrected under **D-125**. That correction reaches the measured
-  CLI-host interval, so this entry's CLI-host `Convert` measurements are superseded
-  there rather than here; they keep their original provenance as the measurements of
-  the revision that produced them.
-- **Correction (2026-09-09) — two of this entry's rules were stated correctly and
-  implemented incompletely.** An independent implementation review of `03352da7` found
-  both. Neither is a change to what this entry decided; both are the code being brought to
-  it, and the decisions above stand exactly as written.
-  1. **The tier gate reached two of its three tiers.** "The three opt-in tiers are
-     reachable only by naming their category" was implemented as an explicit branch for
-     `Scale` and for `External` and no branch for `Working`, so any *other* named category
-     — a surface category such as `--anyCategories Source` — admitted every `Working` case
-     as well. The second effect was worse than the first: because the command line had not
-     named `Working`, the job selection stayed `FreshIteration`, so an ordinary surface
-     query would have started 730,000-record cases under a throughput job's pilot stage
-     instead of the bounded monitoring job. `Working` now has the same explicit branch, and
-     all three tiers are swept for bare, broad-name, case-name and surface-only selection
-     against the categories BenchmarkDotNet actually reads, with the resulting job asserted
-     through the real configuration.
-  2. **The delivery archive recorded the Unix apphost as non-executable.** A zip carries
-     each file's mode in its own metadata, and `eng/publish-selfcontained.ps1` built the
-     archive with `Compress-Archive`, which records `0100644` for every entry. Both
-     successful native runs — `34289256438` at `4216610b` and `34392695933` at `03352da7` —
-     therefore uploaded Linux and macOS archives whose `FcaBedrock.Cli` unzips
-     non-executable, so the `./FcaBedrock.Cli` the README documents exits 126,
-     `Permission denied`. **Neither run is relabelled**: every job and every step of both
-     succeeded, and workflow success is not the same claim as archive usability. The gate
-     could not have caught it, because the self-contained smoke ran the publish *folder*
-     and inspected a *different* zip it created itself, while the workflow uploaded the
-     packaging script's archive — two definitions of a valid archive, and the delivered one
-     was never the tested one. The script now writes the archive entry by entry and records
-     the apphost `0100755` with every other entry left `0100644`; the smoke drives that
-     script, inspects the archive it produced, extracts **that exact archive** and makes
-     every behavioural check against the extracted apphost; and the workflow uploads the
-     file the smoke verified. The five-target matrix, the read-only permissions, the
-     required/optional split, the RID and bundled-runtime checks, and the path-safety rules
-     are unchanged, and no product output byte, diagnostic or manifest is touched.
-     Replacement archive evidence at the corrected head is an outstanding gate (**D-126**).
-- **Correction (2026-09-10) — that packaging fix stated only half of what the writer
-  decides.** It assigned `ExternalAttributes` **only** inside the Unix branch, so a `win-*`
-  entry kept whatever `ZipArchive.CreateEntry` defaults to — and that default belongs to the
-  *creating host*: zero on Windows, the platform's own `0100644` on Linux and macOS. The
-  counterexample test the same fix introduced builds a synthetic `win-x64` archive on whatever
-  host runs the suite, so it passed on Windows and failed on every Unix one. Run
-  [`34468088854`](https://github.com/trashr0x/fcabedrock/actions/runs/34468088854) at
-  `163f1c49` found it: Windows x64 and Windows ARM64 green, and Linux x64, macOS ARM64 and
-  Linux ARM64 each failing `Test (Release)` on that one case out of 4,586 — `Expected: 0`,
-  `Actual: 33188` (`0x81A4`, `0100644`). Deterministic host-dependent entry metadata,
-  reproduced identically on three OS/architecture combinations; not a flake and not a runner
-  issue. **The writer is corrected, not the test.** Relaxing the assertion or conditioning it
-  on the creating host would preserve host-dependent metadata and contradict the archive
-  contract this entry states, which is a claim about the **target**: a Linux or macOS target
-  records the apphost `0100755` and every other entry `0100644`; a Windows target claims no
-  Unix mode, so every entry's high mode field is explicitly zero; and neither answer varies
-  with the machine that happened to build the zip. Every entry is now assigned from the
-  target's RID, and the shared archive validator requires that zero on **every** entry of a
-  Windows distribution rather than skipping the check. The reach is exactly that field on
-  `win-*` archives written by a non-Windows host: native Windows delivery is semantically
-  unchanged — a Windows host already produced zero from the default, and archiving one fixed
-  folder with the old and the new writer there yields byte-identical zips — and every Unix
-  mode is unchanged. This is not a claim that a ZIP is byte-reproducible across hosts or
-  rebuilds. No public API, CLI contract, diagnostic, spec text, output byte, manifest schema
-  or runtime product code changes, and the registry stays **82**. The five-target run and its
-  three accepted archives remain outstanding at a later corrected head (**D-126**).
-- **The corrected writer's gate ran, and passed (2026-09-10).** Run
-  [`34483863717`](https://github.com/trashr0x/fcabedrock/actions/runs/34483863717) at
-  `c4ceb8e2`, attempt 1, event `push`, concluded **success on all five native targets**. The
-  four `DistributionArchiveTests` cases — including the unconditional synthetic
-  Windows-target counterexample — **executed rather than skipped on every one of the five
-  targets**, established from the runner's complete named-skip enumeration rather than inferred
-  from a green aggregate, so the host-independence this correction states is proved on Linux
-  x64, macOS ARM64 and Linux ARM64 — the three targets run `34468088854` failed on. All three
-  required archives were produced, uploaded, downloaded and retained, and their inner ZIP
-  metadata reads exactly what this entry requires: every one of win-x64's 217 entries
-  `ExternalAttributes = 0x00000000`, and both Unix apphosts `0x81ED0000` / `0100755` with every
-  other Unix entry `0x81A40000` / `0100644`. Two earlier sentences in this entry are therefore
-  **discharged at `c4ceb8e2`**: the 2026-09-09 correction's closing *"replacement archive
-  evidence at the corrected head is an outstanding gate"*, and the 2026-09-10 correction's
-  closing *"the five-target run and its three accepted archives remain outstanding at a later
-  corrected head"*. Neither is relabelled or rewritten: each records what was true on the day it
-  was written. The delivery detail, the artifact identities and the gates that remain are in
-  **D-126**'s correction history and `docs/benchmarks.md`.
-- **The candidate's Adult acceptance ran, and passed (2026-09-10).** The blocking real-data
-  obligation this entry states — all three `External` cases on the final Windows x64 candidate,
-  against the pinned entry, retained as durable evidence — is **met at `82e2ffea`**, the
-  documentation head that records the `c4ceb8e2` gates. It took two invocations at that exact
-  commit: the first validated all three cases but let BenchmarkDotNet's generated-project restore
-  contact NuGet's vulnerability-metadata endpoints against an explicit no-network stop rule, so it
-  is retained as a disclosed protocol deviation and **did not close the gate**; the accepted
-  gate-closing run is the offline replacement, whose generated-project restore had no configured or
-  effective remote source and no audit. Neither the pin, the acquisition revision, the
-  routine-CI exclusion, nor the three-failure-mode rule above changes, and this closes the
-  obligation **at that revision only** — it re-attaches at every later release candidate and is not
-  a standing exemption. The run detail, both evidence roots and the gates that remain are in
-  **D-126**'s correction history and `docs/benchmarks.md`.
-- **Correction (2026-09-11) — an exhaustive whole-branch review found three oracle/validator
-  defects, and they are corrected.** After the `82e2ffea` documentation commit the operator
-  commissioned one further independent, read-only implementation audit — **exhaustive** rather than
-  risk-based, covering every changed path individually — and at `d4b310ad` it returned **`BLOCK`**.
-  None of the three findings changes what this entry decided; all three are the code being brought
-  to it, and the decisions above stand exactly as written.
-  1. **The Adult plan-shape oracle did not prove its stated per-attribute guarantee.**
-     `AdultOracle.RequirePlanShape` asserted 14 planned attributes plus an aggregate
+- **What the first native gate found (2026-09-08; see D-125).** The first five-target workflow run,
+  at `a09e302`, **failed**, produced no artifact, and remains failed evidence at that revision. Both
+  defects it exposed were pre-existing M7 release blockers that had never executed off Windows x64,
+  and both are corrected under **D-125**; **no M8 benchmark, corpus, oracle, selection or identity
+  test failed on any target.** That correction reaches the measured CLI-host interval, so this
+  entry's CLI-host `Convert` measurements are superseded there rather than here; they keep their
+  original provenance as the measurements of the revision that produced them.
+- **Correction (2026-09-09): two of this entry's rules were stated correctly and implemented
+  incompletely.** Neither changes what this entry decided; both bring the code to it, and the
+  decisions above stand exactly as written.
+  1. **The tier opt-in reached two of its three tiers.** "The three opt-in tiers are reachable only
+     by naming their category" was implemented with an explicit branch for `Scale` and `External` and
+     none for `Working`, so any other named category, such as the surface category `Source`, admitted
+     every `Working` case; and because the command line had not named `Working`, those 730,000-record
+     cases would have run under a throughput job's pilot stage instead of the bounded monitoring job.
+     `Working` now has the same explicit branch, and all three tiers are swept for bare, broad-name,
+     case-name and surface-only selection against the categories BenchmarkDotNet reads, with the
+     resulting job asserted through the real configuration.
+  2. **The delivery archive recorded the Unix apphost as non-executable.** `Compress-Archive`
+     records `0100644` for every entry, so the Linux and macOS archives the successful `4216610b` and
+     `03352da7` runs uploaded unzip a non-executable `FcaBedrock.Cli`, and the documented
+     `./FcaBedrock.Cli` exits 126, `Permission denied`. **Neither run is relabelled**: workflow
+     success is not the same claim as archive usability. The smoke had inspected a zip it created
+     itself, not the one the workflow uploaded. The script now writes the archive entry by entry and
+     records the apphost `0100755` with every other entry left `0100644`; the smoke drives that
+     script, inspects the archive it produced, extracts **that exact archive** and makes every
+     behavioural check against the extracted apphost; and the workflow uploads the file the smoke
+     verified, so **the archive tested is the archive delivered**. The five-target matrix, the
+     read-only permissions, the required/optional split, the RID and bundled-runtime checks and the
+     path-safety rules are unchanged, and no product output byte, diagnostic or manifest is touched.
+- **Correction (2026-09-10): that packaging fix stated only half of what the writer decides.** It
+  assigned `ExternalAttributes` only inside the Unix branch, so a `win-*` entry kept whatever
+  `ZipArchive.CreateEntry` defaults to on the *creating host*: zero on Windows, `0100644` on Linux and
+  macOS. The native run at `163f1c49` found it as deterministic host-dependent metadata, not a flake
+  or a runner issue. **The writer is corrected, not the test.** Relaxing the assertion or
+  conditioning it on the creating host would preserve host-dependent metadata and contradict the
+  archive contract, which is a claim about the **target**: a Linux or macOS target
+  records the apphost `0100755` and every other entry `0100644`; a Windows target claims no Unix mode,
+  so every entry's high mode field is explicitly zero; and neither answer varies with the machine that
+  built the zip. Every entry is now assigned from the target's RID, and the shared archive validator
+  requires that zero on **every** entry of a Windows distribution rather than skipping the check. The
+  reach is exactly that field on `win-*` archives written by a non-Windows host: native Windows
+  delivery is semantically unchanged, archiving one fixed folder with the old and the new writer on
+  Windows yields byte-identical zips, and every Unix mode is unchanged. This is not a claim that a ZIP
+  is byte-reproducible across hosts or rebuilds. No public API, CLI contract, diagnostic, spec text,
+  output byte, manifest schema or runtime product code changes, and the registry stays **82**.
+- **Outcomes (2026-09-10 to 2026-09-12).** The corrected writer's five-target run at `c4ceb8e2`
+  passed on all five native targets with every `DistributionArchiveTests` case executed on every
+  target, and its three archives carry exactly the modes the 2026-09-10 correction requires. The
+  blocking real-data obligation was met at `82e2ffea` by an offline replacement run, after a first
+  attempt at the same commit crossed an explicit no-network rule and did not close it; the pin, the
+  acquisition revision, the routine-CI exclusion and the three-failure-mode rule did not change. After
+  the 2026-09-11 correction below, the probe validation, the Adult acceptance and the native/archive
+  gate were met again at `3b2e4a80`, where M8's evidence closes (D-126). Each result closes its
+  obligation at its own revision only: the real-data obligation re-attaches at every later release
+  candidate and is not a standing exemption.
+- **Correction (2026-09-11): three oracle and validator defects, found by an exhaustive review of the
+  whole branch.** None changes what this entry decided; all three bring the code to it, and the
+  decisions above stand exactly as written.
+  1. **The Adult plan-shape oracle proves its stated guarantee per planned attribute.**
+     `AdultOracle.RequirePlanShape` had asserted 14 planned attributes plus an aggregate
      `FormalAttributes.Count >= 14`. Adult's nominal and manual-cut attributes each produce several
-     columns, so one `PlannedAttribute` could carry an empty `CrossesByBin` and no
-     `MissingFormalAttributeId` while the aggregate stayed far above 14 — precisely the silently
-     empty attribute the helper claimed to catch, and a self-confirming check of the kind this
-     entry's oracle-independence rule forbids. It now proves, **per planned attribute**, that the
-     union of its `CrossesByBin` ids with its `MissingFormalAttributeId` is non-empty, that every
-     claimed id resolves in the plan's schema, that the resolved column's `Identity.AttributeName`
-     equals that attribute's own name, and that no column is claimed by two attributes; the
-     aggregate count survives only as an explicitly labelled secondary guard. A recognized bin that
-     crosses nothing — a dichotomic false pole — remains legitimate, because the rule is over each
-     attribute's **union**, never over each bin.
-  2. **The probe outcome oracle was existential where the contract is per attribute and exact.**
-     D-108 is per attribute: an untruncated non-all-missing attribute authors its complete non-empty
-     domain, and a truncated one authors its retained prefix plus `unknown_value_policy =
-     "include"`. The oracle accepted a *complete* draft when **one** attribute carried a domain,
-     accepted a *truncated* draft when **one** attribute carried its recovery, and accepted an
-     expected `ProbeLimitExceeded` alongside unrelated blocking diagnostics — so a benchmark row
-     could be published for the wrong semantic outcome. It now requires every attribute's complete
-     non-empty domain subject only to an explicitly supplied all-missing exception set, requires the
-     observed truncated set to **equal** the expected one with every member carrying its recovery
-     and no unlisted attribute carrying one, and requires a guard breach to be **exactly one**
-     `ProbeLimitExceeded` at the production `Error` severity with no draft. The expected truncated
-     sets are derived from the **frozen corpus generator** at D-108's strictly-greater boundary,
-     never from the prober under measurement, and every check still runs in `[IterationCleanup]`,
-     outside the measured interval.
-  3. **The Windows archive validator shifted before it validated.**
-     `DistributionArchive.AssertValid` computed `entry.ExternalAttributes >>> 16` and required the
-     shifted value to be zero, so a Windows entry carrying a raw `0x00000001` — the DOS read-only
-     bit — shifted to zero and passed, although the 2026-09-10 correction above states the contract
-     as **exact raw zero on every entry of a Windows distribution**. The `win-*` branch now compares
-     the **raw** field before any shift and renders the offending value as `0x{…:X8}`; the shifted
-     mode and symbolic-link type handling stay on the Unix path, which is unchanged. Archive
-     *production* was already correct — `eng/publish-selfcontained.ps1` writes literal `0` for every
-     non-Unix entry — so no delivered archive was ever affected, and the retained `c4ceb8e2`
-     artifacts independently satisfy the corrected rule.
+     columns, so one attribute could carry an empty `CrossesByBin` and no `MissingFormalAttributeId`
+     while the aggregate stayed far above 14: the silently empty attribute the helper claimed to catch,
+     and a self-confirming check of the kind this entry's oracle-independence rule forbids. It now
+     proves, **per planned attribute**, that the union of its `CrossesByBin` ids with its
+     `MissingFormalAttributeId` is non-empty, that every claimed id resolves in the plan's schema, that
+     the resolved column's `Identity.AttributeName` equals that attribute's own name, and that no
+     column is claimed by two attributes; the aggregate count survives only as an explicitly labelled
+     secondary guard. A recognized bin that crosses nothing, a dichotomic false pole, remains
+     legitimate, because the rule is over each attribute's **union**, never over each bin.
+  2. **The probe outcome oracle is per attribute and exact.** D-108 is per attribute: an untruncated
+     non-all-missing attribute authors its complete non-empty domain, and a truncated one authors its
+     retained prefix plus `unknown_value_policy = "include"`. The oracle now requires every
+     attribute's complete non-empty domain, subject only to an explicitly supplied all-missing
+     exception set; requires the observed truncated set to **equal** the expected one, with every
+     member carrying its recovery and no unlisted attribute carrying one; and requires a guard breach
+     to be **exactly one** `ProbeLimitExceeded` at the production `Error` severity with no draft. The
+     expected truncated sets are derived from the **frozen corpus generator** at D-108's
+     strictly-greater boundary, never from the prober under measurement, and every check still runs in
+     `[IterationCleanup]`, outside the measured interval.
+  3. **The Windows archive validator compares the raw field before any shift.**
+     `DistributionArchive.AssertValid` had shifted `ExternalAttributes` right by 16 before requiring
+     zero, so a raw `0x00000001`, the DOS read-only bit, passed although the 2026-09-10 correction
+     states the contract as **exact raw zero on every entry of a Windows distribution**. The `win-*`
+     branch now compares the **raw** field before any shift and renders the offending value as
+     `0x{…:X8}`; the shifted mode and symbolic-link handling stay on the Unix path, which is unchanged.
+     Archive *production* was already correct, writing literal `0` for every non-Unix entry, so no
+     delivered archive was ever affected, and the retained `c4ceb8e2` artifacts independently satisfy
+     the corrected rule.
 
-  Six further findings were classified **nonblocking** and deliberately left untouched, so the
-  packet is exactly the blocking fix. The correction took **two stages**: a first packet closed 1
-  and 3 and the three concrete examples of 2, and a targeted review of it returned `BLOCK` again on
-  two residual findings — an all-missing exemption that `continue`d past the unexpected-recovery
-  check, and a guard predicate that would accept a duplicated or wrong-severity breach the producer
-  cannot emit; a bounded revision closed both, and a fresh reviewer then returned
-  `THUMBS UP — B-002-R1 and B-002-R2 are corrected; B-001, B-002, and B-003 are closed with no new
-  blocker.` The earlier `d4b310ad` review is **not** relabelled as green and the two-stage history
-  is retained. The packet is committed as signed **`3b2e4a80`** (`m8 review fixes`, sole parent
-  `d4b310ad`, tree `0bc9713e…`): **6 modified and 2 added paths, `+1294/−60`**, entirely within
-  `tests/FcaBedrock.Benchmarks`, `tests/FcaBedrock.Benchmarks.Tests` and
-  `tests/FcaBedrock.Cli.Tests`. **No production source, spec text, diagnostic, severity, registry
-  entry, public API, benchmark meaning, measured interval, job, category, corpus byte, packaging
-  script, workflow or output byte changes**; the registry stays **82**, and no earlier measurement is
-  invalidated — these are validators, and strengthening a validator changes what a run *proves*, not
-  what it *does*. What it does change is that no earlier benchmark, Adult or native run executed the
-  corrected checks, which is why the probe, Adult and native/archive gates were rerun at
-  `3b2e4a80`; that record is in **D-126**'s correction history and `docs/benchmarks.md`.
+  The correction is committed as signed `3b2e4a80` (sole parent `d4b310ad`), entirely within
+  `tests/FcaBedrock.Benchmarks`, `tests/FcaBedrock.Benchmarks.Tests` and `tests/FcaBedrock.Cli.Tests`.
+  **No production source, spec text, diagnostic, severity, registry entry, public API, benchmark
+  meaning, measured interval, job, category, corpus byte, packaging script, workflow or output byte
+  changes**; the registry stays **82**, and no earlier measurement is invalidated: strengthening a
+  validator changes what a run *proves*, not what it *does*. Because no earlier benchmark, Adult or
+  native run executed the corrected checks, the probe validation, the Adult acceptance and the
+  native/archive gate were rerun at `3b2e4a80`.
 
 ---
 
 ## M7 publication ownership (corrected under M8's first native gate)
 
-### D-125 — Lifetime-bound publication ownership, the exclusive-first native rename and its guarded fallback, the stated namespace precondition, and the closed package-metadata producer set
+### D-125: Lifetime-bound publication ownership, the exclusive-first native rename and its guarded fallback, the stated namespace precondition, and the closed package-metadata producer set
 
-- **Status:** accepted (semantic amendments A and B approved by Constantinos
-  Orphanides, 2026-09-08; architecture by Astra with revision 01, independent
-  bounded review by Fable ending `THUMBS UP`). It **qualifies the reach** of
-  D-122 parts 4–5 and D-123 point 7 rather than restating them, and corrects the
-  two defects M8's first native run exposed. D-122/D-123 are not rewritten: they
-  said what they said, and this entry records what is actually true.
+- **Status:** accepted (semantic amendments A and B approved by Constantinos Orphanides on
+  2026-09-08, after an independent bounded review). It **qualifies the reach** of D-122 parts 4–5 and
+  D-123 point 7 rather than restating them, and corrects the two defects M8's first native run
+  exposed. D-122/D-123 are not rewritten: they said what they said, and this entry records what
+  holds. *Corrected 2026-09-09 by D-126:* its measurement claims (see *Evidence*).
 - **Date:** 2026-09-09
 - **Decision:** publication owns objects by **lifetime**, not by remembered
   identifier, and renames through the platform's **exclusive** primitive with one
-  narrowly gated fallback. In seven parts.
+  narrowly guarded fallback. In seven parts.
 
   **1. The defect this corrects.** Publication captured an object's OS identity
   (Unix `dev`/`ino`, Windows volume plus `FILE_ID_INFO`), **closed the handle**, and
@@ -6444,16 +6420,13 @@ pinned here.
   restore or a removal. An identifier is unique only among objects that exist **at the
   same time**: unlink a file's last name on ext4 and its inode is immediately free, so
   the next creation can be handed it. A substitute therefore compared **equal** to the
-  object the transaction had staged. The consequences were not theoretical — all three
-  were reproduced on ext4 with recorded identifiers, and nine publication cases failed
-  on each Linux job of the first native run: a substituted manifest was published at
-  exit **0** as the run's public commit marker; a substituted stage was published
-  **with a manifest certifying its hash**; and a foreign file was **deleted** by a
-  recovery whose proof the recycled identifier satisfied. Which cases failed varied
-  between runs of identical code, because it depended on the allocator's history —
-  which is why the corroboration recorded identifiers rather than outcomes.
+  object the transaction had staged. The consequences were not theoretical: all three
+  were reproduced on ext4 with recorded identifiers. A substituted manifest was
+  published at exit **0** as the run's public commit marker; a substituted stage was
+  published **with a manifest certifying its hash**; and a foreign file was **deleted**
+  by a recovery whose proof the recycled identifier satisfied.
 
-  **2. A — the supported namespace, and the limits that remain (approved).**
+  **2. A: the supported namespace, and the limits that remain (approved).**
   FcaBedrock requires its output participants, their containing-path resolution and
   its private recovery state to be **exclusively managed by the invocation and left
   undisturbed after an interruption until recovery**. Other programs may read
@@ -6461,8 +6434,8 @@ pinned here.
   recovery. **`--force` does not waive it.** Within an invocation, live references
   detect distinct observable substitutions and stop identifier reuse from defeating
   the proof. They cannot say what happened while a crashed invocation held no
-  reference: two histories — an untouched interrupted file, and a deletion followed by
-  a same-identifier replacement, byte-identical or not — present identical durable
+  reference: two histories (an untouched interrupted file, and a deletion followed by
+  a same-identifier replacement, byte-identical or not) present identical durable
   evidence, and no hash, length, timestamp or process-local lease recovers the missing
   history. Arbitrary competing writes in the intervals named in part 5, and arbitrary
   namespace replacement across a crash, are **outside** the guarantee. Every
@@ -6475,12 +6448,12 @@ pinned here.
   **proved equal to it**; an existing participant's is acquired through the open that
   approves it; recovery acquires every reference its decision pass needs **before** it
   mutates any earlier participant. **An identity is reported only when it is
-  anchored** — where a reference cannot be taken or proved, no identity is reported at
+  anchored**: where a reference cannot be taken or proved, no identity is reported at
   all and the existing fail-closed path refuses the run, exactly as a host with no
   identity capability is refused. Acquisition or proof failure grants no mutation
   authority. A reference is never released and re-acquired by name: a verified rename
   **re-keys** it. These are **object-lifetime references, not writer streams or reader
-  locks** — the writer's flush-and-close precommit boundary is exactly where it was.
+  locks**; the writer's flush-and-close precommit boundary is exactly where it was.
   - **Windows** uses a non-inheritable, attribute-only open (`FILE_READ_ATTRIBUTES`,
     sharing read/write/delete). An open requesting none of read-data, write-data or
     delete access does not take part in share-access checking, which is what lets it
@@ -6492,7 +6465,7 @@ pinned here.
   - **Release sequencing is part of the contract.** The Windows disposition names the
     **object** and takes effect when its last handle closes, so a retained reference
     keeps a completed deletion pending and the name occupied. The reference overlaps
-    the removal handle for the whole of its life — that is what transfers the proof —
+    the removal handle for the whole of its life (that is what transfers the proof)
     and is released the instant the removal reports success, which completes the
     deletion and frees the name for a restore that may follow. Because the disposition
     is bound to that object, releasing can delete nothing else. No sleeps, forced
@@ -6504,16 +6477,16 @@ pinned here.
     measured CLI-host interval, so the reachable CLI-host measurements are
     **invalidated and rerun** (see *Evidence*).
 
-  **4. B — exclusive-first native rename, and the exact fallback (approved).** Every
+  **4. B: exclusive-first native rename, and the exact fallback (approved).** Every
   commit, backup, restore, compensation and private publication rename is a
-  **same-directory, same-filesystem native metadata rename** — never a content copy, a
+  **same-directory, same-filesystem native metadata rename**, never a content copy, a
   clone, a link/unlink pair, a copy/delete pair, a destination pre-delete, or a managed
   `File.Move` (whose Unix non-overwrite path performs its own check-then-rename and can
   end in `link`+`unlink` or copy+delete). The same-directory precondition is enforced
   structurally: a cross-directory request is a contract fault and never reaches a
   native call.
   - **Linux** calls `renameat2` with exactly `RENAME_NOREPLACE`. `EEXIST` is a
-    collision and **never** falls back. `EINVAL` is the capability answer — the VFS
+    collision and **never** falls back. `EINVAL` is the capability answer: the VFS
     contract requires a filesystem to return it for a flag it does not support, and the
     invocation is valid by construction (one fixed flag, a correctly bound entry point,
     two distinct sibling leaves in an already-resolved and guarded parent).
@@ -6525,9 +6498,9 @@ pinned here.
     as an invalid flag rather than an unsupported one, and neither Darwin's `ENOSYS`
     (78) nor its distinct modern `EOPNOTSUPP` (102) is documented as this API's
     capability answer. Linux's readings are **not** copied onto Darwin.
-  - **Every other result** — access, permission, I/O, read-only, cross-device, missing
+  - **Every other result** (access, permission, I/O, read-only, cross-device, missing
     source, invalid source or type, interruption, stale, quota or space, invalid
-    handle, import or ABI — is an operation failure and **never** permission to switch
+    handle, import or ABI) is an operation failure and **never** permission to switch
     primitives. In particular `EXDEV` never permits a copy. A missing or misbound
     import is a contract fault, never a fabricated `ENOSYS`. Errno is captured
     immediately from the indicated call and never inferred from an exception message,
@@ -6535,21 +6508,21 @@ pinned here.
     operation. Permission is **local to the attempted operation**: never cached, and
     never disabling the exclusive primitive for another volume or a later one.
   - **Windows** keeps native no-replace semantics through `MoveFileExW` with **no
-    flags at all** — neither `MOVEFILE_REPLACE_EXISTING` nor `MOVEFILE_COPY_ALLOWED`.
+    flags at all**: neither `MOVEFILE_REPLACE_EXISTING` nor `MOVEFILE_COPY_ALLOWED`.
     There is no Unix-style fallback, because there is no capability gap: no-replace
     *is* the primitive. Existing-destination and every other failure keep their current
     handling, and the extended-path prefix is applied exactly as the managed wrapper
     applied it, so no path's reach changes.
   - **After exactly one permitted capability result**, the guarded fallback keeps the
-    authorizing references and: (1) revalidates the source against the live reference —
-    a failed exclusive attempt is not evidence the namespace stayed still;
+    authorizing references and: (1) revalidates the source against the live reference,
+    because a failed exclusive attempt is not evidence the namespace stayed still;
     (2) establishes destination **entry** absence immediately before the rename with
     native `lstat`, where **only** a missing destination leaf establishes absence and
-    **any** entry — an ordinary file, a directory, or a dangling symbolic link — is a
+    **any** entry (an ordinary file, a directory, or a dangling symbolic link) is a
     collision, while any other lookup result refuses the operation (`File.Exists ==
     false` is insufficient, and cannot see a dangling link at all); (3) invokes
-    **exactly one** classic flagless `rename` — no retry, no second fallback, no
-    placeholder, no pre-delete; (4) verifies the destination against the original
+    **exactly one** classic flagless `rename`, with no retry, no second fallback, no
+    placeholder and no pre-delete; (4) verifies the destination against the original
     retained reference, preserving the existing input checks, commit order,
     compensation decisions, diagnostics and recovery direction. Reverse compensation
     runs under these same rules, preserving a substitute rather than adopting or
@@ -6559,16 +6532,16 @@ pinned here.
   **5. The three limits, stated rather than repaired.** (a) The fallback's
   absence-check-to-rename interval is **not** atomic no-replace: an actor violating
   part 2 can create the destination inside it, and the classic rename will replace that
-  entry. This applies at **every destination role** — a public artifact or manifest, a
-  backup or private control name, and a source name used as a compensation destination
-  — and the overwritten entry may have no surviving link and no transaction backup. A
-  post-move identity match proves **which source object arrived**; it does not prove
-  the destination stayed absent, restore an overwritten foreign entry, or certify that
-  nothing was transiently exposed. (b) Unix has no portable compare-and-delete by
-  descriptor — no `funlink`, and `unlinkat` still takes a name — so the analogous
-  proof-to-unlink interval remains. (c) Neither reaches across a crash, per part 2.
-  Windows has none of the three: its rename is no-replace and its deletion is
-  handle-bound.
+  entry. This applies at **every destination role** (a public artifact or manifest, a
+  backup or private control name, and a source name used as a compensation
+  destination), and the overwritten entry may have no surviving link and no transaction
+  backup. A post-move identity match proves **which source object arrived**; it does
+  not prove the destination stayed absent, restore an overwritten foreign entry, or
+  certify that nothing was transiently exposed. (b) Unix has no portable
+  compare-and-delete by descriptor (no `funlink`, and `unlinkat` still takes a name),
+  so the analogous proof-to-unlink interval remains. (c) Neither reaches across a
+  crash, per part 2. Windows has none of the three: its rename is no-replace and its
+  deletion is handle-bound.
 
   **6. Preserved unchanged.** Manifest-last commit order and the manifest as the public
   commit marker; canonical CXT/DAT order; no-manifest parity; previous-set restoration
@@ -6588,9 +6561,9 @@ pinned here.
   producer's choice, not a package contract: NuGet through SDK 10.0.302 emits a GUID,
   and from SDK 10.0.400 it hard-codes `nuget.psmdcp` (NuGet.Client change `5834c6b9`,
   which fixed a deterministic-pack file-handle leak). The accepted part is now the
-  **closed two-producer set** — the exact existing directory, one leaf with no nested
+  **closed two-producer set** (the exact existing directory, one leaf with no nested
   component, a stem that is either a lowercase GUID-N or the ordinal literal `nuget`,
-  and a lowercase `.psmdcp` — and **not** `*.psmdcp`, which would admit an arbitrary
+  and a lowercase `.psmdcp`) and **not** `*.psmdcp`, which would admit an arbitrary
   metadata part, `CON.psmdcp` among them. Because a canonical name is not
   discoverability, the OPC wiring is validated too, from **bounded** reads with **DTD
   processing prohibited and no resolver**: exactly one package core-properties
@@ -6605,15 +6578,15 @@ pinned here.
   Package producer inputs are unchanged and **no SDK is pinned**. This changes no
   shipped payload, extraction-safety guarantee, public API, product diagnostic or
   product output.
-- **Why:** the exact-object promise D-122 and D-123 make — "never deletes unknown
-  lookalikes", a manifest that certifies the bytes this run wrote — was resting on a
+- **Why:** the exact-object promise D-122 and D-123 make ("never deletes unknown
+  lookalikes", a manifest that certifies the bytes this run wrote) was resting on a
   value the operating system is free to reissue. M8's first native run was the first
   time any of it executed off Windows x64, and it found exactly that. The correction is
   deliberately about **lifetime rather than comparison**: holding the object open makes
   every proof already in the code sound, without changing what any of them compare. The
   namespace precondition and the fallback are recorded as approved semantic amendments
   rather than filed as conforming maintenance, because both genuinely narrow what an
-  unqualified reading of D-122/D-123 promised — the first by excluding a hostile
+  unqualified reading of D-122/D-123 promised: the first by excluding a hostile
   writer, the second by admitting a non-atomic interval on filesystems with no
   exclusive rename. Representative, version-qualified environments that may take the
   fallback include Linux NFS and 9p implementations that reject rename flags (both
@@ -6623,7 +6596,7 @@ pinned here.
   spelling is not a capability test**. These are examples, not an allowlist, a
   denylist, a dispatch table, or a promise that every mount succeeds.
 - **Rejected:** *blanket refusal* on any filesystem without an exclusive rename
-  (Astra's original clause 4, withdrawn) — it would refuse to publish at all on mounts
+  (an earlier draft clause, withdrawn): it would refuse to publish at all on mounts
   that publish correctly today, to guard against an actor part 2 already excludes, and
   it is the same category of race the accepted unlink interval already admits; a
   **managed Unix `File.Move` fallback**, whose non-overwrite path is a
@@ -6631,9 +6604,9 @@ pinned here.
   "never a copy" promise would stay untrue; retaining the .NET Windows wrapper's
   `MOVEFILE_COPY_ALLOWED` (defensible, since a same-directory rename cannot cross
   volumes, but it leaves the no-copy claim resting on an argument rather than on the
-  call); **more evidence instead of lifetime** — content hashes, lengths,
+  call); **more evidence instead of lifetime** (content hashes, lengths,
   `mtime`/`ctime`/birth-time heuristics, extra `stat` calls, sleeps or a process-local
-  lease, none of which can distinguish a byte-identical replacement; **ext4 inode
+  lease), none of which can distinguish a byte-identical replacement; **ext4 inode
   generation**, which is filesystem-specific and fails closed on tmpfs and network
   mounts; a **durable private-link ownership protocol**, which would need its own
   residue role, validation and namespace contract and fails closed where hard links are
@@ -6644,32 +6617,21 @@ pinned here.
   package dependency; **test-only lifetime protection**, which would manufacture a green
   Linux result while leaving production defective; accepting `*.psmdcp`; and **pinning
   an older SDK** to keep the GUID leaf.
-- **Affects:** `src/FcaBedrock.Cli/Publication/` — new `PublicationNative.cs` (the three
-  native primitives behind one injectable seam, the capability rule and the guarded
-  protocol) and `PublicationObjectReference.cs` (the lifetime reference and the
-  per-transaction registry); `IPublicationFileSystem.cs` (`CreatedFile` carries an
-  anchored identity and its reference, `Move` takes the authorizing reference,
-  `TryAcquire` joins the seam); `PublicationTransaction{,.Preflight,.View,.Recovery,
-  .Primitives,.Residue}.cs` (acquire, transfer, release; recovery acquires before
-  mutating; the transaction is `IDisposable`); `Commands/ConvertCommand.cs` and
-  `Commands/SingleFileOutput.cs` (deterministic disposal on every exit);
-  `FileIdentity.cs` and `Publication/StageEvidence.cs` (corrected timeless
-  identity/proof comments). Tests: `PublicationRenameTests.cs`,
-  `PublicationReferenceTests.cs`, `PackageOpc.cs` and `PackageOpcTests.cs` (new), plus
-  `ToolPackTests.cs`, `ToolPackage.cs`, `CliTestHarness.cs`,
-  `PublicationOwnershipTests.cs`, `PublicationRecoveryTests.cs` and
-  `SingleFilePublicationTests.cs`. Docs: spec §§15 and 16.2,
-  `src/FcaBedrock.Cli/README.md`, `docs/benchmarks.md`, `docs/roadmap.md`, and D-124's
-  evidence note.
+- **Affects:** `src/FcaBedrock.Cli/Publication/` (new `PublicationNative` and
+  `PublicationObjectReference`: the native primitives behind one injectable seam, the lifetime
+  reference and its per-transaction registry; the seam and the `IDisposable` transaction acquire,
+  transfer and release references), `src/FcaBedrock.Cli/Commands/` (deterministic disposal on every
+  exit), `FileIdentity.cs` and `StageEvidence.cs` (identity comments), and
+  `tests/FcaBedrock.Cli.Tests` (new rename, reference and package-OPC tests; the tool-pack, harness
+  and publication tests). Docs:
+  spec §§15 and 16.2, `src/FcaBedrock.Cli/README.md`, `docs/benchmarks.md`, `docs/roadmap.md`, and
+  D-124's evidence note.
 - **Evidence.** Required, and none of it inferred from an outcome alone.
-  **Before-fix corroboration** on WSL2 Ubuntu 24.04.4 ext4 (.NET SDK 10.0.401) recorded
-  actual `dev`/`ino` at original capture, immediately before and after each
-  replacement, and after the move or removal, plus the substitution hook's fired flag,
-  the exit status and the surviving bytes — with a control proving two simultaneous
-  objects differ, one proving a **closed** original's identifier is reused, and one
-  proving a **held** original's is not. The same trace against the corrected build
-  shows the identifier no longer reused, exit 1 where it had been 0, no public marker,
-  and the foreign object preserved. **Focused proof** covers the capability table for
+  **Before-fix corroboration** on WSL2 Ubuntu 24.04.4 ext4 (.NET SDK 10.0.401) recorded the actual
+  `dev`/`ino` values around each replacement, with controls proving that a **closed** original's
+  identifier is reused and a **held** original's is not; against the corrected build the identifier
+  is no longer reused, the run exits 1 where it had exited 0, no public marker appears, and the
+  foreign object is preserved. **Focused proof** covers the capability table for
   both platforms as a pure rule; `EEXIST` and ordinary failures never falling back;
   exactly *exclusive → lookup → classic* after a permitted result, with no pre-delete,
   placeholder or retry; entry-aware collisions including a directory and a dangling
@@ -6681,135 +6643,108 @@ pinned here.
   substitution refused. Substitution tests assert the deterministic hook **fired**,
   because before the correction the same case could pass or fail on identical code
   depending on the allocator's history. **Native fast-path witnesses** record the test
-  volume and the primitive that actually ran, never inferring it from success.
-  **Superseded measurements.** Uniform Windows retention reaches the measured CLI-host
-  interval, so the CLI-host `Convert` Small, Working, 7.3M and 73M cases, both sides of
-  the sidecar comparisons, and all six actual-command traces stop describing the shipped
-  code. The correction's own cost was measured rather than argued: with the pre-fix and
-  post-fix builds run **interleaved in one machine state**, the post-fix figures sit
-  inside one standard deviation of the pre-fix ones, and **allocation is byte-identical
-  on both builds in every case** — the expected result for a native handle that allocates
-  nothing managed. The controlled *replacement* figures remain outstanding: on the machine
-  as it stands the **unchanged** pre-fix code measures about 10% slower than its own
-  session-A row with three times the deviation, so that machine is not in the controlled
-  state those rows were taken in, and an absolute number taken there would measure the
-  state rather than the code. The originals keep their provenance and are not overwritten.
-  Component measurements that do not reach `PublicationTransaction` keep theirs. Actions
-  run `34241484619` remains **failed** evidence at `a09e302`; nothing here relabels it.
-- **Correction (2026-09-09) — the *Superseded measurements* paragraph is retracted in
-  part and completed in the rest.** Three of its statements were written from one machine
-  state and one rounded reading; sessions D, E, F and G contradict or complete each. The
-  publication semantics of parts 1–7, the approved amendments A and B, the namespace
-  precondition, the capability matrix and its guarded fallback, the three stated limits,
-  the package producer set, and every D-122/D-123 contract this entry qualifies are
-  **unaffected** — only the measurement claims move. The complete evidence is in
-  `docs/benchmarks.md`; the policy that governs it is **D-126**.
-  1. **"Allocation is byte-identical on both builds in every case" is false and is
-     withdrawn**, and with it the inference that "a native handle allocates nothing
-     managed". The original reading came from the reports' rounded `1.04 GB` column. The
-     lifetime reference, its per-transaction registry and the path bookkeeping around
-     them are ordinary managed allocations, and they were measured. Within one machine
-     state the four Working publication forms allocate **+2,880 to +9,416 bytes** more
-     per published run than their paired unchanged control, on operations of 1.04 GB to
-     3.46 GB — except one preserved anomalous contrast of **-99,080 bytes**, which is
-     produced by that block's abnormally high *control* reading and is **not** a
-     candidate saving. Across sessions the fifteen corrected-build rows differ from their
-     historical totals by **-98,936 to +17,984 bytes**; the two negative 73M values are
-     descriptive cross-session measurement observations, **not savings**. No allocation
-     investigation trigger fired on any of the fifteen rows. Allocation is
-     near-deterministic but **not machine-state independent**, so it is reported as exact
-     integers and ranges with their denominators, never as a single value and never
-     inferred from a rounded unit.
-  2. **The "about 10% slower … with three times the deviation" explanation described one
-     machine state and is superseded by the complete history.** It was true of the machine
-     on 2026-09-09 ~01:00 and stands as that dated observation. Since then the same
-     *unchanged* pre-fix control has measured **5.3–8.5% faster** than its own session-A
-     rows, at *tighter* dispersion (session D), and — inside the pre-registered paired
-     campaign (session E) — has **failed to reproduce itself within 5% across its own six
-     launches** of `CliHostConvertBothWorking` (control spread 1.071382). The control has
-     therefore disqualified the machine in **both** directions, which supports the
-     original conclusion more strongly than either reading alone. None of this is a
+  volume and the primitive that ran, never inferring it from success.
+
+  **Measurements (corrected 2026-09-09 by D-126).** Uniform Windows retention reaches the measured
+  CLI-host interval, so the CLI-host `Convert` Small, Working, 7.3M and 73M cases, both sides of the
+  sidecar comparisons, and all six actual-command traces stop describing the shipped code. The
+  originals keep their provenance and are not overwritten; component measurements that do not reach
+  `PublicationTransaction` keep theirs; and the native run at `a09e302` remains **failed** evidence,
+  which nothing here relabels. As first written, this paragraph drew three conclusions from one
+  machine state and one rounded reading, and D-126 corrected all three. Only the measurement claims
+  moved: the publication semantics of parts 1–7, the approved amendments A and B, the namespace
+  precondition, the capability matrix and its guarded fallback, the three stated limits, the package
+  producer set, and every D-122/D-123 contract this entry qualifies are **unaffected**.
+  1. **Allocation is not byte-identical on both builds.** That reading came from the reports' rounded
+     `1.04 GB` column and is withdrawn, with its inference that a native handle allocates nothing
+     managed: the lifetime reference, its per-transaction registry and the path bookkeeping around
+     them are ordinary managed allocations. Within one machine state the four Working publication
+     forms allocate **+2,880 to +9,416 bytes** more per published run than their paired unchanged
+     control, on operations of 1.04 GB to 3.23 GB in BenchmarkDotNet's binary units, apart from one
+     preserved anomalous contrast of **-99,080 bytes**, which that block's abnormally high *control*
+     reading produces and which is **not** a candidate saving. Across sessions the fifteen
+     corrected-build rows differ from their historical totals by **-98,936 to +17,984 bytes**; the two
+     negative 73M values are descriptive cross-session measurement observations, **not savings**. No
+     allocation investigation trigger fired on any of the fifteen rows. Allocation is
+     near-deterministic but **not machine-state independent**, so it is reported as exact integers and
+     ranges with their denominators, never as a single value and never inferred from a rounded unit.
+  2. **The "about 10% slower with three times the deviation" explanation describes one machine
+     state.** It was true of the machine on 2026-09-09 around 01:00 and stands as that dated
+     observation. The same *unchanged* pre-fix control later measured **5.3–8.5% faster** than its
+     own baseline rows at *tighter* dispersion, and inside the pre-registered paired comparison it
+     **failed to reproduce itself within 5% across its own six launches** of
+     `CliHostConvertBothWorking` (control spread 1.071382). The control therefore disqualified the
+     machine in **both** directions, which supports, more strongly than either reading alone, the
+     original conclusion that the machine was not in the controlled state those rows were taken in,
+     so an absolute number taken there would measure the state rather than the code. None of this is a
      statement about the correction's cost.
-  3. **"Invalidated and rerun" (part 3) is half true, and permanently so.** The reachable
-     CLI-host measurements were invalidated; **no controlled absolute replacement was ever
-     taken**, and under D-126 none is owed. The pre-registered paired comparison that would
-     have licensed a performance-continuity claim ran in full and **failed its collective
-     gate** (`CliHostConvertWideWorking` one-sided 95% upper limit 5.6809% > 5%;
-     `CliHostConvertBothWorking` control stability 1.071382 > 1.05), so the correction's
-     incremental elapsed-time effect is **inconclusive at the 5% bound** — never neutral,
-     never a non-regression, never "probably below 5%", and never a speedup. What exists
-     for the corrected build instead is **allocation and per-iteration output validation
-     for all fifteen CLI-host cases**, including all three 73M cases, and **six
-     corrected-command resource traces**. The session-A and session-C CLI-host rows and the
-     six historical traces keep their original provenance as observations of the revisions
-     that produced them and are never attributed to `4216610b`.
-- **Correction (2026-09-09) — part 3's acquire-before-mutate rule was implemented for the
-  running transaction and not for a resumed one.** An independent implementation review of
-  `03352da7` found it. The rule itself is unchanged and correct as written; what follows is
-  the code being brought to it.
+  3. **"Invalidated and rerun" (part 3) is half true, and permanently so.** The reachable CLI-host
+     measurements were invalidated; **no controlled absolute replacement was ever taken**, and under
+     D-126 none is owed. The pre-registered paired comparison that would have licensed a
+     performance-continuity claim ran in full and **failed its collective test**
+     (`CliHostConvertWideWorking` one-sided 95% upper limit 5.6809% > 5%; `CliHostConvertBothWorking`
+     control stability 1.071382 > 1.05), so the correction's incremental elapsed-time effect is
+     **inconclusive at the 5% bound**: never neutral, never a non-regression, never "probably below
+     5%", and never a speedup. What exists for the corrected build instead is **allocation and
+     per-iteration output validation for all fifteen CLI-host cases**, including all three 73M cases,
+     and **six corrected-command resource traces**. The CLI-host rows of the baseline measurements and
+     the re-measurement after the calibration fix, and the six historical traces, keep their original
+     provenance as observations of the revisions that produced them and are never attributed to
+     `4216610b`.
+- **Correction (2026-09-09): part 3's acquire-before-mutate rule was implemented for the running
+  transaction and not for a resumed one.** The rule itself is unchanged and correct as written; what
+  follows is the code being brought to it.
 
-  A resumed recovery pass called the reference registry's `Ensure` for each participant and
-  then **ignored what it answered**. `Ensure` correctly returns null when acquisition fails
-  and stores nothing, but intent-only cleanup went on to remove the pending record and its
-  descriptor; `Preparing` cleanup went on to remove each recorded stage and backup; and the
-  forward/rollback pass went on to compute ownership and to remove, restore and re-rename.
-  Neither the removal primitive nor the path-shaped ownership decision required a retained
-  reference to exist, and the restore passed a possibly-null reference straight to the move.
-  So a transient capability, permission or sharing failure — the one case the rule exists
-  for — left the pass acting on an identifier the host is free to have reissued, which is
-  exactly the recycled-identifier class part 1 records. It also contradicted this entry's
-  own words at the seam: a null reference means the caller does not act on that identity.
+  A resumed recovery pass called the reference registry's `Ensure` for each participant and then
+  **ignored what it answered**: a null answer, which means the caller must not act on that identity,
+  was followed by removals, restores and re-renames anyway. A transient capability, permission or
+  sharing failure, the one case the rule exists for, therefore left the pass acting on an identifier
+  the host is free to have reissued: exactly the recycled-identifier class part 1 records.
 
-  What holds it now is an anchor gate in front of each pass, plus a requirement each mutating
+  What holds it now is an anchor check in front of each pass, plus a requirement each mutating
   primitive states for itself. **Intent-only cleanup** anchors its pending record *and* its
-  descriptor before either removal. **Resumed `Preparing` cleanup** anchors every stage and
-  backup entry the record lists before its data cleanup removes any of them. **Forward and
-  rollback recovery** anchors every final, backup and stage participant that its aggregate
-  direction question and its target-decision pass require — before that direction is decided
-  and before any target is mutated. Both orderings are load-bearing: the ownership question is
-  what authorizes forward cleanup over rollback, and anchoring per target as the pass reached
-  it would already have removed the first target's final before discovering it could not hold
-  the second target's backup. A participant that is present and cannot be held ends the pass
-  with the location exactly as it was found. Absence stays absence: a path with nothing at it
-  has nothing to anchor and nothing to mutate, so the ordinary idempotent case is unchanged,
-  and an unanswerable existence question reads as present and so fails closed too.
+  descriptor before either removal. **Resumed `Preparing` cleanup** anchors every stage and backup
+  entry the record lists before its data cleanup removes any of them. **Forward and rollback
+  recovery** anchors every final, backup and stage participant that its aggregate direction question
+  and its target-decision pass require, before that direction is decided and before any target is
+  mutated. Both orderings are required: the ownership question is what authorizes forward cleanup
+  over rollback, and anchoring per target as the pass reached it would already have removed the first
+  target's final before discovering it could not hold the second target's backup. A participant that
+  is present and cannot be held ends the pass with the location exactly as it was found. Absence stays
+  absence, so the ordinary idempotent case is unchanged, and an unanswerable existence question reads
+  as present and so fails closed too.
 
-  Beneath those gates the mutations state the requirement themselves. **Every destructive
-  removal — including the ordered marker, evidence and record cleanup — independently refuses
-  to act unless it holds the object at its own mutation boundary**, so a later call site cannot
-  reintroduce the gap by forgetting a gate; and the restoring rename **separately requires its
-  source anchor and proves that anchor is still at the name it is moving**, rather than
-  re-acquiring the destination by name.
+  **Every destructive removal, including the ordered marker, evidence and record cleanup,
+  independently refuses to act unless it holds the object at its own mutation boundary**, so a later
+  call site cannot reintroduce the gap by forgetting a check; and the restoring rename **separately
+  requires its source anchor and proves that anchor is still at the name it is moving**, rather than
+  re-acquiring the destination by name. **Control cleanup keeps its existing durable, incremental
+  order** (most advanced phase first, stopping at the first deletion that fails) and is deliberately
+  *not* pre-anchored as a set: each control object is held at the removal that acts on it.
 
-  **Control cleanup keeps its existing durable, incremental order** — most advanced phase
-  first, stopping at the first deletion that fails — and is deliberately *not* pre-anchored as
-  a set: each control object is held at the removal that acts on it. Nothing here claims that
-  all later control files are anchored before an earlier target or control removal.
-
-  A refused pass reports the existing code-less "cannot clean up an incomplete fcabedrock
-  run" host error at exit 1, preserves the residue byte for byte, and answers the same way
-  on every retry; nothing about diagnostics, exit meanings, record or residue vocabulary,
-  ordering, manifest bytes, output bytes or the target-safety constants changes, and no
-  public surface is added. The new proof is deterministic and per participant: intent-only
-  cleanup, resumed `Preparing` cleanup, forward cleanup after commit evidence, rollback with
-  restore, and a two-target case in which the *later* target's reference cannot be taken and
-  the earlier one — which the pass could hold and would have deleted first — is untouched.
-  Each suppresses one participant's acquisition while every other acquisition, path
-  observation and removal open still succeeds, asserts the suppression actually fired, and
-  ends by showing the same state converging under an ordinary retry.
+  A refused pass reports the existing code-less "cannot clean up an incomplete fcabedrock run" host
+  error at exit 1, preserves the residue byte for byte, and answers the same way on every retry; no
+  diagnostic, exit meaning, record or residue vocabulary, ordering, manifest byte, output byte or
+  target-safety constant changes, and no public surface is added. The proof is deterministic and per
+  participant (intent-only cleanup, resumed `Preparing` cleanup, forward cleanup after commit
+  evidence, rollback with restore, and a two-target case in which the *later* target's reference
+  cannot be taken and the earlier one is untouched): each suppresses one participant's acquisition,
+  asserts the suppression fired, and ends by showing the same state converging under an ordinary
+  retry.
 
 ---
 
-## M8 evidence policy (Policy L)
+## M8 evidence policy
 
-### D-126 — Policy L: limitation closure. The publication correction's incremental latency is inconclusive at the 5% bound; the corrected-build allocation, validation and resource evidence is complete instead
+### D-126: Limitation closure: the publication correction's incremental latency is inconclusive at the 5% bound, and the corrected-build allocation, validation and resource evidence is complete instead
 
-- **Status:** accepted (evidence-policy amendment adjudicated by Astra, independently
-  reviewed by Fable ending `THUMBS UP`, and approved by Constantinos Orphanides on
-  2026-09-09). It **amends D-124's mandatory invalidation/recheck rule for D-125's
-  already-implemented correction only**, and corrects the stale live status of D-124 and
-  the measurement claims of D-125. It reopens no publication, benchmark, spec or
-  packaging decision, and waives no other M8 obligation.
+- **Status:** accepted (an evidence-policy amendment, independently reviewed, then approved by
+  Constantinos Orphanides on 2026-09-09). It **amends D-124's mandatory invalidation/recheck rule for
+  D-125's already-implemented correction only**, and corrects the stale live status of D-124 and the
+  measurement claims of D-125. It reopens no publication, benchmark, spec or packaging decision, and
+  waives no other M8 obligation. Conditions (c) and (d) were met at `50f6aa62` on 2026-09-10, the
+  fresh implementation review at `c4ceb8e2`, and M8's evidence closed at `3b2e4a80`, whose probe,
+  Adult and native runs took place on 2026-09-11 and 2026-09-12.
 - **Date:** 2026-09-09
 - **Decision:** M8 may close with an **explicit, permanent measurement limitation** in
   place of a quantified incremental-latency bound for D-125's publication correction.
@@ -6818,38 +6753,31 @@ pinned here.
   target scale; no full-matrix materialization", and its M7-cost clause says M8
   **measures** inline input-stability and manifest hashing. Neither names a latency
   threshold. The 5% figure enters only through the base plan's **optimization-adoption**
-  gate — a decision aid for whether to *change* a default, which M8 ran and did not meet
-  (D-124) — and through the later comparison's own pre-registered bound, which existed to
+  rule (a decision aid for whether to *change* a default, which M8 ran and did not meet;
+  D-124) and through the later comparison's own pre-registered bound, which existed to
   earn a performance-continuity claim rather than to satisfy the roadmap. **EP-19** governs
   claimed *improvements*; D-125 is a correctness correction, governed by EP-7/EP-11. The
   failed comparison therefore forfeits that continuity claim; it does not expose a
   previously unstated roadmap requirement that every correction prove a sub-5% cost.
 
   **2. What was attempted, and exactly how it failed.** A four-form paired campaign was
-  **pre-registered before any measurement** — its criterion frozen and hashed 54 seconds
-  before the first invocation, and re-hashed identical afterwards — then executed exactly
-  as specified: twelve interleaved invocations of the unchanged pre-fix control and the
-  corrected candidate in a fixed six-block order, forty-eight case reports agreeing on
-  job, runtime, SDK, BenchmarkDotNet version, OS and instrumentation, every iteration
-  validated after disposal. The gate was **collective** — all four forms had to pass every
-  applicable check. Two failed:
+  **pre-registered before any measurement**, its criterion frozen and hashed before the first
+  invocation and re-hashed identical afterwards, then executed exactly as specified: twelve
+  interleaved invocations of the unchanged pre-fix control and the corrected candidate in a fixed
+  six-block order, forty-eight case reports agreeing on job, runtime, SDK, BenchmarkDotNet version, OS
+  and instrumentation, every iteration validated after disposal. The test was **collective** (part
+  3's "collective gate"): all four forms had to pass every applicable check. Two failed. For Wide,
+  the one-sided 95% upper limit `U` was **5.6809%** against the 5% bound; for Both, the unchanged
+  control's `max/min` was **1.071382** against 1.05. No-manifest and CXT passed every check. All four
+  rows are published together in `docs/benchmarks.md`.
 
-  | Working form | Point estimate | One-sided 95% `U` | `U ≤ 5%` | control `max/min` | `≤ 1.05` | order ratio |
-  | --- | ---: | ---: | --- | ---: | --- | ---: |
-  | Wide | +0.6969% | **5.6809%** | **fail** | 1.036610 | pass | 1.015293 |
-  | No-manifest | +1.4417% | 2.7330% | pass | 1.022896 | pass | 1.001014 |
-  | CXT | +0.4623% | 1.5892% | pass | 1.022205 | pass | 1.011346 |
-  | Both | -1.0576% | 0.9893% | pass | **1.071382** | **fail** | 1.010199 |
-
-  The two failures have different characters and neither implicates a code path: Wide's
-  `U` is carried over 5% by a single iteration in one candidate launch that ran ~200 ms
-  above its four siblings **at identical GC counts and an allocation total inside the same
-  1,592-byte band as its five siblings**, and Both's
-  failure is a **control-arm** stability failure — the *unchanged* pre-fix build moved
-  7.1% across its own six launches. **No block was discarded, no alternative bound
-  computed, no margin widened and no sample added**; the statistic is reported exactly as
-  it fell. The small point estimates are **not** offered as a bound or as evidence of
-  neutrality.
+  The two failures have different characters and neither implicates a code path: Wide's `U` is
+  carried over 5% by a single iteration in one candidate launch that ran ~200 ms above its four
+  siblings **at identical GC counts and an allocation total inside the same 1,592-byte band as its
+  five siblings**, and Both's failure is a **control-arm** stability failure, the *unchanged* pre-fix
+  build having moved 7.1% across its own six launches. **No block was discarded, no alternative bound
+  computed, no margin widened and no sample added**; the statistic is reported exactly as it fell. The
+  small point estimates are **not** offered as a bound or as evidence of neutrality.
 
   **3. Disposition: complete, failed, inconclusive, no retry.** The experiment's status is
   **"attempt complete; collective gate failed; incremental elapsed effect inconclusive at
@@ -6862,632 +6790,154 @@ pinned here.
   **4. Claims surrendered, permanently.** No equality, byte identity, neutrality,
   non-regression, speedup, "probably below 5%", exact final-build publication or sidecar
   overhead, new absolute CLI baseline, all-tier equivalence, or reached-path
-  performance-continuity inference. Historical A/C CLI-host rows and the six historical
-  traces describe **their measured revisions only**. No corrected-build elapsed figure may
-  be published as a result table or converted into records/s, MiB/s, a scaling curve, an
-  overhead percentage, sidecar or auto-versus-declared timing arithmetic, or any old/new
-  subtraction; corrected-build elapsed output is retained as **contextual raw data only**.
+  performance-continuity inference. The historical CLI-host rows (the baseline measurements and the
+  re-measurement after the calibration fix) and the six historical traces describe **their measured
+  revisions only**. No corrected-build elapsed figure may be published as a result table or
+  converted into records/s, MiB/s, a scaling curve, an overhead percentage, sidecar or
+  auto-versus-declared timing arithmetic, or any old/new subtraction; corrected-build elapsed output
+  is retained as **contextual raw data only**.
   Trace wall time is instrumented command duration in its provenance record, never
   BenchmarkDotNet performance evidence.
 
   **5. The five conditions, and their state.** Limitation closure is available only when
   all five hold:
-  - **(a) fixed-participant, unreachable premise — holds.** The `a09e302..4216610b`
+  - **(a) fixed-participant, unreachable premise: holds.** The `a09e302..4216610b`
     correction inventory is exactly 29 paths (23 modified, 6 added), confined to
     `src/FcaBedrock.Cli/`, `tests/FcaBedrock.Cli.Tests/` and four docs. **Nothing** under
     Sources, Conversion, Export, Core, Spec, Discovery or `tests/FcaBedrock.Benchmarks`
     changed, so the correction is unreachable from the Sources, calibration,
     grouping/fan-in, planning, emit/export, probe, hash-wrapper and tuning measurements.
-    Those keep their original A/B/C provenance and their conclusions stand at their
+    Those keep their original provenance and their conclusions stand at their
     original scope. This is **not** a claim that all prior evidence was invalidated, nor
     that all current performance was remeasured.
-  - **(b) the failed comparison preserved and prominently reported — satisfied.** All four
+  - **(b) the failed comparison preserved and prominently reported: satisfied.** All four
     rows are published together as one failed collective test in `docs/benchmarks.md`,
-    with both failed gates named by value and no selected passing-case conclusion.
+    with both failed checks named by value and no selected passing-case conclusion.
   - **(c) all fifteen corrected CLI-host cases carrying original-job allocation and
-    per-iteration validation, including all three 73M cases — met at `50f6aa62` by
-    session H.** All fifteen were reacquired **together** on 2026-09-10 at the corrected
-    candidate: one ordinary invocation apiece, in the required order, each archived
-    immutably before the next began; every completed measured iteration passed its
-    existing post-disposal validator; **no allocation investigation trigger fired** on any
-    row; and all three 73M rows ran their real 1-warmup/3-measured policy. The earlier
-    reading of this condition — six rows from session E and nine from session F — remains
-    valid historical evidence of `4216610b`/`03352da7`, neither withdrawn nor relabelled,
-    but it is **not** what satisfies (c) here. See the corrected-candidate correction of
-    2026-09-10 in part 9.
+    per-iteration validation, including all three 73M cases: met at `50f6aa62`.** All fifteen
+    were reacquired **together** on 2026-09-10 at the corrected candidate: one ordinary invocation
+    apiece, in the required order, each archived immutably before the next began; every completed
+    measured iteration passed its existing post-disposal validator; **no allocation investigation
+    trigger fired** on any row; and all three 73M rows ran their real 1-warmup/3-measured policy. The
+    earlier reading of this condition, from the first corrected-build checks at
+    `4216610b`/`03352da7`, remains valid historical evidence of those revisions, neither withdrawn
+    nor relabelled, but it is **not** what satisfies (c) here; part 9 records why the reacquisition
+    was required.
   - **(d) all six corrected actual-command traces complete with their real
-    output/manifest validation and resource provenance — met at `50f6aa62` by session
-    H.** All six were reacquired at the corrected candidate on 2026-09-10. The earlier
-    reading — wide declared 7.3M and 73M from session F (no grouping spool, no
-    `--temp-dir`), and the four triple declared/auto 7.3M and 73M traces from session G,
-    each with an explicit unique `--temp-dir` beneath `D:\tmp` — likewise remains valid
-    historical evidence at its own revisions and is **not** what satisfies (d) here.
+    output/manifest validation and resource provenance: met at `50f6aa62`.** All six were
+    reacquired at the corrected candidate on 2026-09-10. The earlier traces at
+    `4216610b`/`03352da7` likewise remain valid historical evidence at their own revisions and are
+    **not** what satisfies (d) here.
   - **(e) every claim naming its session, revision, validation strength and measurement
-    meaning — satisfied**, and enforced by the wording rules in part 4.
+    meaning: satisfied**, and enforced by the wording rules in part 4.
 
   No unresolved product, allocation or resource investigation is waived by any of this: an
   open trigger would still stop closure.
 
-  **6. The disclosed acquisition boundary (sessions F and G).** Session F stopped before
-  its last two traces at a **pre-registered capacity gate**: a single triple-unordered 73M
-  conversion needs roughly **5.6 GiB** of grouping spool, the established trace argv
-  carries no `--temp-dir` so `SpoolWorkspace` falls back to the OS temporary directory on
-  the system volume, and that volume had 7.102 GiB free against a required 10.313 GiB.
-  That is an **acquisition/capacity** stop — an operator and environment matter, not a
-  product defect, not an oracle failure and not evidence instability. Session G then ran
-  all four triple traces with an **explicit per-trace `--temp-dir` beneath `D:\tmp`**.
-  This is a **disclosed acquisition-boundary change**, permitted precisely *because*
-  Policy L has already surrendered cross-session latency comparability: it may never be
-  used to compare timing with sessions A, C or F, and `D:` is never described as faster or
-  slower. It changed no output semantics, oracle, counter, product code or benchmark job -
-  proved by four **byte-exact** reproductions of session C's retained outputs — and the
-  product cleaned its own spool with **zero residue** and no manual deletion. Session F's
-  own `C:`-temp triple 7.3M traces remain valid corrected-build observations beside this
-  set; they are **not** the resource controls for the 73M triple traces, because a control
-  and its comparison must share an acquisition boundary. **G4 closes the corrected-build
-  73M auto external session-C digest continuity** that session F had left outstanding -
-  regression continuity, not an independently derived quantile-semantic oracle.
+  **6. A disclosed acquisition-boundary change.** When an evidence run must change how it acquires
+  data, for example by moving the grouping spool to another volume because the system volume lacks
+  space, the change is disclosed with the evidence rather than hidden or worked around. It is allowed
+  here only because this policy has already surrendered cross-session latency comparability: such a
+  run never supports a timing comparison, the other volume is never described as faster or slower,
+  and a control and its comparison must share one acquisition boundary. The corrected build's 73M
+  triple traces were taken this way; their outputs reproduced the earlier retained outputs byte for
+  byte, and the product removed its own spool.
 
   **7. Oracle boundaries, stated exactly.** The declared, CXT and both-format cases carry
   **independent byte expectations** derived from the corpus definition plus documented
-  spec semantics. The auto cases carry only the narrower checks — expected subject count,
+  spec semantics. The auto cases carry only the narrower checks (expected subject count,
   the `ObservedDomainUsed`-only diagnostic policy, manifest **presence**, and intra-run
-  byte determinism — plus external session-C digest continuity supplied by the
-  actual-command traces. That continuity is **regression evidence, not an independent
-  quantile-semantic oracle**. BenchmarkDotNet's manifest check is **presence/absence
-  only**; full manifest/input/output hash consistency is carried by the traces, which
-  recompute it independently. No validator was weakened, redesigned or filtered anywhere.
+  byte determinism), plus external digest continuity with the re-measurement after the
+  calibration fix, supplied by the actual-command traces. That continuity is **regression
+  evidence, not an independent quantile-semantic oracle**. BenchmarkDotNet's manifest check is
+  **presence/absence only**; full manifest/input/output hash consistency is carried by the traces,
+  which recompute it independently. No validator was weakened, redesigned or filtered anywhere.
 
   **8. What resource evidence means.** Every reported working-set, GC-heap and
   GC-committed figure is a **sampled maximum at a one-second interval**, with its sample
   count and coverage disclosed and `dotnet-counters` profiling overhead present. A sampled
-  maximum is a **lower bound** on the true peak — never an exact peak and never a portable
-  ceiling — and within-session size ratios are descriptive observations, not scaling laws.
+  maximum is a **lower bound** on the true peak (never an exact peak and never a portable
+  ceiling), and within-session size ratios are descriptive observations, not scaling laws.
   Exit zero, a flat resident set, a BenchmarkDotNet allocation total, and the wide
   investigation trigger's failure to fire each prove **no streaming guarantee** on their
   own; the algorithmic bound remains carried by the independent observer and
   retained-layout witnesses, which this evidence reconciles with rather than replaces.
 
-  **9. Remaining gates, none waived.** This documentation commit; a complete five-target
-  native run and three newly retained, inspected and hashed required archives **at the
-  documentation head**, with the expensive benchmark, trace and Adult evidence carried
-  across that commit only after verifying the entire diff from `4216610b` is these three
-  advisory Markdown files; a fresh independent implementation review; operator acceptance
-  and authorized merge; the resulting main-push CI at the merge revision; the separate
-  GitLab archival gate; and the standing Windows x64 External/Adult three-case acceptance
-  obligation at the final candidate. **M8 remains in progress until all of them
-  complete.**
-  - *Correction (2026-09-09).* The documentation-head native run happened —
-    [`34392695933`](https://github.com/trashr0x/fcabedrock/actions/runs/34392695933) at
-    `03352da7`, successful on all five targets, three archives retained and hash-verified —
-    and the evidence carriage across `03352da7` was verified on the stated three-file basis.
-    **The archive half of that gate is not satisfied**, and neither is `4216610b`'s: later
-    inspection found the Linux and macOS apphosts of both runs recorded without an execute
-    bit, so the archives are not usable deliveries (D-124's 2026-09-09 correction, item 2).
-    Both runs remain successful workflow evidence at their own revisions; what is
-    outstanding is the *archive*, not the run. The gate is therefore restated as: a complete
-    five-target native run at the corrected head, with three newly retained required
-    archives that are **extracted, mode-checked and executed on their own native targets**
-    rather than only inspected. The delivery gate now performs that extraction and execution
-    itself and uploads the bytes it verified, so the run and the archive are one claim
-    instead of two. No run id, digest, result or pass is recorded for it in advance.
-    Policy L is untouched: this licenses no latency, neutrality or non-regression claim, no
-    retry, and no corrected-build elapsed, rate or overhead figure.
-  - *Evidence carriage across the correction commit (2026-09-10) — ruled on that commit's own
-    diff.* **Superseded the same day by the completed session-H acquisition at `50f6aa62`
-    (next bullet): the reacquisition this ruling required has since been performed in full,
-    and conditions (c) and (d) are met at that candidate.** The ruling is retained because it
-    is why session H exists, and why no older row or trace could stand in for it.
-    **The correction is not failure-only.** `Commit` ends by calling
-    `Finish(forward: true)`, and that runs inside `CliHost.RunAsync("convert", …)` — the
-    interval the CLI-host cases measure. What the diff adds there is bounded and small: one
-    `File.Exists` for each absent stage, and a held-reference dictionary lookup at each
-    successful post-commit removal. Bounded and small is not zero, so:
-    - **Condition (c) is not satisfied for the proposed corrected candidate.** All fifteen
-      rows are `CliHost` cases and execute that changed successful path. Their exact
-      allocation totals and their per-iteration validation **remain valid historical evidence
-      for `4216610b`/`03352da7`** and are neither withdrawn nor relabelled — but they do not
-      prove the corrected candidate. **All fifteen allocation-plus-validation cases must be
-      reacquired after the correction is committed**, under a later explicit user gate. The
-      requirement is **not** divisible into "the old validation carries and the allocation does
-      not": (c) is a *coupled* allocation-and-per-iteration-validation proof of the actual
-      candidate, so all fifteen rows are reacquired together, preserving the existing oracle
-      strengths and the rule that every measured iteration validates after disposal.
-    - **Condition (d) is not satisfied for the proposed corrected candidate.** All six
-      actual-command traces drive the same changed publication tail through the real command.
-      They remain valid historical evidence for the revision that produced them, and **all six
-      must be reacquired** after the correction is committed, under the same later gate.
-    - **Policy L does not reopen.** The session-E paired campaign remains a complete failed
-      historical attempt; the incremental elapsed-time effect remains **inconclusive at the
-      pre-registered 5% bound**; no paired retry is owed; and no neutrality, equality,
-      non-regression, speedup, corrected-build elapsed, rate, sidecar/auto overhead or
-      cross-session old/new arithmetic may be inferred. Any elapsed values the future
-      allocation runs incidentally produce are **contextual raw data only**.
-    - **What does carry.** The component measurements — source drain, calibration,
-      grouping/fan-in, planning, emit/export, probe and the hash wrappers — and the
-      **64 MiB / fan-in-16 tuning conclusion** carry: publication is unreachable from those
-      measured paths and their assemblies did not change. The **Windows x64 External/Adult
-      three-case acceptance carries across this exact correction**, because those cases run
-      `ConversionRun` rather than `CliHost` and no product path they reach changed. That is a
-      bounded reachability conclusion about *this* diff — D-124's own explicit
-      evidence-reuse justification, discharged for this step only — and not general permission
-      to carry it across a later one; the standing obligation still re-attaches at whatever
-      revision is finally submitted for acceptance.
-    - **The two successful workflow runs** remain successful historical CI evidence at their
-      own revisions, and their Unix archives remain **rejected as delivery**. The corrected
-      candidate still requires one fresh five-target native run and three replacement archives
-      **extracted, mode-checked and executed on their native targets**.
-
-    No future allocation value, trace value, run id, hash, digest, result or pass is recorded
-    here in advance. Both reacquisitions were, **at the time of this ruling, pending and
-    requiring later authorization**; both were authorized and completed on 2026-09-10, in the
-    session-H campaign recorded next.
-  - *Corrected-candidate evidence reacquired (2026-09-10) — session H at `50f6aa62`;
-    conditions (c) and (d) are met.* The reacquisition the previous ruling required was
-    authorized and performed in full. **Session H acquired all fifteen BenchmarkDotNet
-    CLI-host allocation/validation rows and all six real-command resource traces together at
-    commit `50f6aa62`** (tree `e4412ac5…`), under one criterion frozen and hashed before the
-    first invocation and re-hashed identical — in hash **and** mtime — at the end of the
-    campaign. **Nothing used to satisfy (c) or (d) for this candidate is borrowed from
-    session E, F or G.** Those rows and traces keep their own provenance at
-    `4216610b`/`03352da7` and remain valid there.
-    - **(c) is met at `50f6aa62`:** 15/15 rows, one invocation apiece, in the required order,
-      each archived before the next; every measured iteration passed its existing
-      post-disposal validator; no allocation investigation trigger fired; and all three 73M
-      rows ran their real one-warmup/three-measured policy. (c) remains **one coupled
-      allocation-plus-per-iteration-validation condition**: it is satisfied because all
-      fifteen candidate rows were reacquired **together**, not because an older validator was
-      carried separately.
-    - **(d) is met at `50f6aa62`:** 6/6 traces exited zero, produced **no product
-      diagnostics**, passed independent line counts, supplied all nine counters at every
-      sample, passed independently recomputed manifest input/spec/output hash consistency,
-      left **zero spool residue without manual deletion**, and reproduced the retained
-      expected output **byte for byte**, including both 73M triple cases.
-    - **Provenance, so a later reviewer can audit this without the routing artifacts.**
-      Evidence root
-      `D:\tmp\fcabedrock-m8-g15-bench\evidence\session-h-corrected-candidate-50f6aa62`,
-      **917 files / 1,428,070,716 bytes**. Frozen criterion
-      `CORRECTED-CANDIDATE-EVIDENCE-CRITERION.md`, SHA-256
-      `D06B4A440CCA0092228CC4CB47B5B5C4D0F16D5D0984BA7976E3AD9B248BF1E1`, 33,363 B, last
-      written `2026-09-10T00:10:26.1129941Z` against H1's first start
-      `2026-09-10T00:12:14.952Z`. Result `CORRECTED-CANDIDATE-EVIDENCE-RESULT.md`, SHA-256
-      `47B83F23706EE60A6BE20633FBB907DF03799748509BCA0EB6123DFC6DEE5C9F`, 16,653 B. The four
-      ledgers are the allocation/validation ledger
-      `BA1D8E7738D42D59AF66D9D22298956089B6D51B19E688445F7FBA1A0F7158FE`, the wide
-      investigation check `13C1A84190E29616F4A906239267BF94AC1E9DF2A9C05F666A9B09EDA3BC2E13`,
-      the triple resource shape
-      `5A89F9770D665CC10E02BF41117B403B5E93BBFFE964985E181CEB87398B39BB`, and the
-      spool/capacity record
-      `64652FD48089941DA9CB9954C4C326EEF7AE31F18B9E2A59371D15ED661E1247`. The values
-      themselves are in `docs/benchmarks.md`. The measured candidate is a fresh
-      self-contained `win-x64` publish of **217 files / 82,966,624 bytes** on .NET runtime
-      **10.0.10**, and every product assembly embeds
-      `AssemblyInformationalVersion = 1.0.0+50f6aa62…`. Its library assemblies differ from
-      session E's retained copies only in the PE header hash, the MVID, the debug-directory
-      signature and that embedded commit SHA — **no IL differs** — which is positive
-      provenance that the binaries came from this commit, **not** a binary-equivalence or
-      performance claim.
-    - **Admissibility: accepted, with two protocol deviations and one tooling correction
-      disclosed.** The campaign is admissible evidence for this candidate. **Admissibility is
-      not exact protocol compliance**, and none of this may be summarized as "no external
-      action", "zero remote contact" or "exactly one build".
-      1. **Restore/audit-contact deviation — accepted, disclosed.** The commissioned first
-         publish was `--no-restore`, but the retained assets file had no `net10.0/win-x64`
-         target, so that publish stopped with `NETSDK1047`. The commission said to stop if a
-         no-restore publish could not proceed or an online restore was needed. Instead: a
-         first attempted local-only restore used `-p:RestoreSources=`; it installed and
-         downloaded **no package**, but NuGet's vulnerability audit made **three GET requests
-         to `api.nuget.org` vulnerability endpoints**, because that property did not suppress
-         the configured audit feeds as expected; a second restore was then run fully
-         air-gapped using an empty local source, `-p:NuGetAudit=false`, `--force` and
-         `--no-http-cache`; the required runtime and host packs were already local; the
-         air-gapped assets file drove the final `--no-restore` self-contained publish; the two
-         assets files differ by **four bytes**, only in the recorded source list; and all of
-         it happened **before the criterion was frozen and before H1**. This **breached the
-         commission's stop/remote-contact boundary** and is recorded as an accepted
-         **acquisition-process deviation**, not laundered as compliance. It does **not**
-         invalidate the measurements: no package was obtained or changed by the audit contact,
-         the final assets and publish were produced from already-local packs through a
-         demonstrably air-gapped restore, and the criterion was registered only afterwards. It
-         is neither evidence that the network changed the candidate nor an excuse to rerun.
-      2. **Extra pre-registration builds — accepted, disclosed.** The commission called for
-         one Release no-restore build. Before the criterion was frozen, the executor performed
-         the initial build, **two further identical builds, and a forced `FcaBedrock.Core`
-         rebuild** while localizing the expected assembly-identity differences described
-         above. That contradicts the one-build wording and is recorded separately as a
-         **pre-registration process deviation**. The outputs used by the campaign were
-         byte-identical where required, and **no build occurred after criterion registration
-         or between benchmark rows or traces**. It does **not** invalidate the experiment,
-         change the fixed candidate, license result selection, or require a rerun.
-      3. **Validator-script correction — nonblocking, disclosed.** Before accepting the
-         traces, the executor corrected two defects in its own read-only validator: manifest
-         values carrying the `sha256:` prefix are now normalized correctly, and
-         `dotnet-counters`' own status lines are no longer misclassified as product
-         diagnostics. **T1's retained artifacts were re-read by the corrected validator; no
-         trace was rerun.** The corrected T1 validation completed before T2 began, and each
-         later validation completed before the next trace, so the trace-by-trace stop gate is
-         preserved. The corrected CSV parser also reproduced session G's published values.
-         This is a **nonblocking acquisition-tooling correction**, not an evidence
-         invalidation, and **no failed product result was filtered out**.
-    - **Policy L is untouched.** The session-E paired campaign remains a complete failed
-      historical attempt; the incremental elapsed effect remains **inconclusive at the
-      pre-registered 5% bound**; no retry is owed. No corrected-build elapsed result,
-      throughput or rate, scaling curve, sidecar or auto overhead, speedup, neutrality,
-      equality, non-regression, or cross-session timing arithmetic is published from session
-      H. Its incidental elapsed values remain **contextual raw data only**, and trace wall
-      time remains provenance, not performance evidence.
-    - **Unaffected.** The component measurements, the retained **64 MiB / fan-in-16** tuning
-      conclusion, and the bounded Windows x64 External/Adult reachability conclusion of the
-      previous bullet all stand unchanged. The Adult result remains a bounded conclusion about
-      **that** diff and is **not** a standing exemption for any arbitrary later product diff;
-      the standing obligation still re-attaches at whatever revision is finally submitted for
-      acceptance.
-    - **Remaining gates after this reconciliation, none waived.** The evidence reacquisition
-      is **no longer outstanding**. What remains: this documentation reconciliation and its
-      commit; the branch push; a fresh **five-target native run at the documentation head this
-      reconciliation produces** — necessarily a later revision than `50f6aa62`, because the run
-      must follow this commit and its push — with three newly retained required archives
-      **natively extracted, mode-checked and executed** on their own targets; a fresh
-      independent Sol implementation review; operator acceptance and authorized merge; the
-      resulting main-push CI at the merge revision; the separate GitLab archival gate; and
-      **the standing Windows x64 External/Adult three-case acceptance at whatever revision is
-      finally submitted for acceptance** — the earlier Adult evidence carried across the
-      three-blocker correction only by the bounded reachability ruling above, which is **not** a
-      standing exemption, and it has **not** been rerun at `50f6aa62`. **M8 remains in progress
-      until all of them complete.** No native gate or delivery archive has run at `50f6aa62`,
-      and no run id, archive hash, review result, merge result, CI result or archival result is
-      predicted here.
-  - *The documentation head's native gate ran, and failed (2026-09-10).* The reconciliation above was
-    committed at `163f1c49` and pushed, and run
-    [`34468088854`](https://github.com/trashr0x/fcabedrock/actions/runs/34468088854), attempt 1, event
-    `push`, **concluded `failure`**. Windows x64 and Windows ARM64 succeeded on every step; Linux x64,
-    macOS ARM64 and Linux ARM64 each failed at `Test (Release)` on the host-dependent Windows-archive
-    assertion recorded in D-124's 2026-09-10 correction. Those three jobs therefore never reached the
-    self-contained smoke or the upload: **no Linux or macOS archive was produced**, the run exposed
-    only the `fcabedrock-win-x64` artifact, that artifact was **neither downloaded nor retained**, and
-    neither the three-archive delivery gate nor the Unix `0100755` closure is established at
-    `163f1c49`. The run is failed evidence at that revision, is not relabelled, and its two green
-    Windows jobs are not a partial pass. **The gate itself is unchanged** and re-attaches at whatever
-    corrected head follows: a complete five-target run, then three newly retained required archives
-    **extracted, mode-checked and executed on their own native targets**. Conditions **(c) and (d)
-    remain met at `50f6aa62`**: the correction reaches only the packaging script, two test-support
-    files and three advisory documents, none of which is executed by the fifteen CLI-host cases, the
-    six actual-command traces or the `ConversionRun` Adult cases — a bounded reachability conclusion
-    about this diff, not a standing exemption, and not binary equality. The **native archive gate does
-    not carry**, because the packaging writer is exactly what changed. **Policy L is untouched**: no
-    latency, neutrality, equality, non-regression, speedup, elapsed, rate or overhead inference, and
-    no retry is owed. No replacement run id, digest, archive value, reviewer result, merge result or
-    archival result is predicted here.
-  - *The corrected head's native gate ran, and passed (2026-09-10) — the native and delivery
-    gates are met at `c4ceb8e2`.* The host-independent archive correction was committed at
-    `c4ceb8e2` (parent `91e3f99c`) and pushed, and run
-    [`34483863717`](https://github.com/trashr0x/fcabedrock/actions/runs/34483863717), attempt 1,
-    event `push`, branch `agent/m8-scaling-reset`, head
-    `c4ceb8e2be03b68ff185caeb1e241b34a9aaa3ef`, **concluded `success` on all five native
-    targets**. Every one of the twelve named steps reached and passed on Windows x64, Linux x64,
-    macOS ARM64, Linux ARM64 and Windows ARM64; `Upload the tested archive` ran and succeeded on
-    the three required targets and is the only declared step skipped on the two optional ARM64
-    ones, under `if: matrix.required`. Every target reported the whole solution at **4,586 / 0
-    failed**, 25 / 0 resident-layout witnesses, 48 admitted Small `Dry` cases with no `Working`,
-    `Scale` or `External` leakage, and both gated smokes 1 / 0.
-    - **The correction-specific proof is enumerated, not inferred from a green aggregate.** The
-      runner names every skipped test and its reason, and the enumerated lists are complete on
-      all five targets (16 / 12 / 11 / 13 / 17, the existing platform-guard set): **no
-      `DistributionArchiveTests` case is skipped anywhere**. The four packaging cases — the two
-      Unix theory cases, the extraction byte-identity case, and the unconditional synthetic
-      Windows-target counterexample — therefore ran and passed on Linux x64, macOS ARM64 and
-      Linux ARM64, the three targets where run `34468088854` failed on exactly that assertion.
-    - **The archive tested is the archive delivered.** On each required target the gated smoke
-      drove the real `eng/publish-selfcontained.ps1`, validated the archive that script
-      produced, extracted **that exact archive**, and made every behavioural check against the
-      extracted apphost — on Unix including `File.GetUnixFileMode`'s `UserExecute`, which is the
-      native proof that the recorded mode survives extraction. The workflow then uploaded
-      `artifacts/publish/fcabedrock-<rid>.zip` with `if-no-files-found: error`: the same path,
-      the same bytes.
-    - **Exactly three artifacts, newly retained and digest-matched.** `fcabedrock-win-x64`
-      (id 10154922942, 37,746,675 B), `fcabedrock-linux-x64` (id 10154850927, 37,798,250 B) and
-      `fcabedrock-osx-arm64` (id 10154828289, 34,384,392 B), each bound to this run id and head
-      SHA, each local byte count and SHA-256 equal to GitHub's own server digest. The hashes,
-      the inner ZIP identities and the two-layer inventories are in `docs/benchmarks.md`; the
-      durable root is
-      `D:\tmp\fcabedrock-m8-g15-host-independent-archive-native-gate-c4ceb8e2-run-34483863717`,
-      **678 files / 480,268,211 bytes**, and every pre-existing evidence root was re-counted
-      unchanged.
-    - **The blocking mode gate passes on all three, read from the downloadable inner ZIPs.**
-      win-x64: 217 entries, **all** `0x00000000`. linux-x64: 217 entries, apphost `0x81ED0000` /
-      `0100755` and the other 216 `0x81A40000` / `0100644`. osx-arm64: 216 entries, apphost
-      `0100755` and the other 215 `0100644`. Both layers of all three are path-safe, with no
-      directory entry, no link entry and no case-insensitive duplicate. The payloads are PE32+
-      x86-64, ELF64 x86-64 and Mach-O 64-bit ARM64 respectively, each self-contained on
-      `Microsoft.NETCore.App` **10.0.12** with no framework reference. This is the first time
-      **both** halves of this rule — the Unix `0100755` and the explicit Windows zero — have
-      been established from a downloadable artifact.
-    - **What this closes, and exactly where.** The complete five-target native matrix and the
-      three replacement delivery archives are satisfied **at `c4ceb8e2`** — not at an earlier
-      revision, and not at the later documentation-only commit that records them. Native
-      extraction and execution rest on each target's own in-job smoke plus the smoke-to-upload
-      identity above; post-download inspection on Windows read archive metadata and file
-      formats and is **not** Linux or macOS execution.
-    - **The fresh independent implementation review is also at `c4ceb8e2`.** A fresh GPT-5.6 Sol
-      reviewer, with no inherited context, re-reviewed the committed and natively tested
-      candidate against the accepted authorities and returned **`THUMBS UP` — no blocking
-      implementation or evidence disagreement**, explicitly closing all three original findings:
-      fail-closed recovery references, the Unix/Windows archive metadata, and the `Working`-tier
-      opt-in. That is an implementation-review verdict. It is **not** operator acceptance and
-      **not** merge approval.
-    - **Carriage across this documentation-only commit.** The successful run belongs to
-      `c4ceb8e2`, and the later documentation commit that records it is **not** relabelled as
-      its run head. This reconciliation's entire diff is three advisory Markdown documents,
-      which no `.csproj`, `.props`, `.targets`, `.slnx`, `.nuspec`, `eng/` script or workflow
-      consumes as a build, test or workflow input — so the native, archive and
-      implementation-review evidence carries across it on that bounded reachability basis.
-      Source reach, not binary equality, and no waiver of the Adult obligation below.
-    - **Unaffected, and not reopened.** Session-H conditions **(c) and (d) remain met at
-      `50f6aa62`**; the component measurements and the **64 MiB / fan-in-16** tuning conclusion
-      stand; and the Windows x64 External/Adult carry across the packaging correction remains a
-      **bounded reachability conclusion about that diff, not a standing exemption**. Every
-      earlier run keeps its own conclusion at its own revision: `34241484619`, `34287497829` and
-      `34468088854` remain **failed**, `34289256438` and `34392695933` remain successful
-      workflow evidence whose Linux and macOS archives stay **rejected as delivery**, and none
-      of them is substituted by this run. **Policy L is untouched**: the incremental elapsed
-      effect remains **inconclusive at the pre-registered 5% bound**, no retry is owed, and
-      nothing here publishes or implies an elapsed, rate, throughput, overhead, speedup,
-      neutrality or non-regression figure. This run's hosted UTC bounds are provenance only.
-    - **Remaining gates after this reconciliation, none waived.** This documentation
-      reconciliation and its commit; **the standing Windows x64 External/Adult three-case
-      acceptance at the documentation head this reconciliation produces** — which the bounded
-      reachability ruling does not waive, and which has **not** been rerun at `c4ceb8e2`;
-      operator acceptance and an authorized merge; the resulting main-push CI at the merge
-      revision; and the separate GitLab archival gate. **M8 remains in progress until all of
-      them complete.** No Adult result, documentation commit SHA, merge result, CI result,
-      archival result or release result is predicted here. One operational limitation is carried
-      forward rather than closed: the local WSL host cannot run the packaging tests at all,
-      because `pwsh` is absent there, so hosted CI remains the only place they execute off
-      Windows. That is an operational gap in local verification, never a local pass.
-      **Superseded by the next bullet**, which records the Adult acceptance this list left open as
-      met at `82e2ffea`; the rest of this list stands there in updated form.
-  - *The final candidate's Adult gate (2026-09-10) — one attempt that did not close it, then the
-    accepted offline replacement; the standing Windows x64 `External`/UCI Adult three-case
-    acceptance is met at `82e2ffea`.* The reconciliation the previous bullet left outstanding was
-    committed at **`82e2ffea133b191c6949b4f073a14f4b1e2dcf4e`** (sole parent
-    `c4ceb8e2be03b68ff185caeb1e241b34a9aaa3ef`, tree `891a872d…`), so the standing Adult obligation
-    attached to that revision. It was run twice at that exact candidate, and only the second run
-    closes the gate.
-    - **The first attempt was technically green and protocol-noncompliant, so it did not close the
-      gate.** All three cases executed and validated on the final candidate's Windows x64 build —
-      native exit 0, three cases completed, no `NA` case, no oracle, validation or diagnostic
-      failure — but BenchmarkDotNet's generated-project restore triggered NuGet's vulnerability
-      audit, which contacted `api.nuget.org` vulnerability-metadata endpoints **inside the measured
-      window**, against the commission's explicit no-network stop rule. The orchestrator classified
-      that invocation as protocol-noncompliant and did **not** accept it for this gate. Its root is
-      preserved unchanged at `D:\tmp\fcabedrock-m8-g15-final-adult-82e2ffea`, **33 files /
-      4,192,655 bytes**, `MANIFEST-SHA256.txt` 4,301 B, SHA-256
-      `4DBCFB9426B2117FDF7C3AA77BE7175FE8AA8FFA67232A96E58A1AA05E11717E`. It is **not** a product
-      failure, a flake, an accepted run, superseded evidence, or the source of any accepted
-      number, and its figures are compared with the replacement's nowhere.
-    - **The accepted gate-closing run is the one authorized offline replacement, at the same exact
-      candidate.** One measured invocation, native exit **0**, no retry, no `--job` and no filter
-      change; the ordinary `fresh-iteration` job (`InvocationCount=1`, `RunStrategy=Throughput`,
-      `UnrollFactor=1`) on all three; the launcher reporting `3 benchmark case(s) completed with no
-      build, execution, or validation failure.` Selection listed exactly `AdultConvertCxt`,
-      `AdultConvertDat` and `AdultSourceDrain` and no fourth case, with no `Small`, `Working`,
-      `Scale`, mini-Adult or unrelated surface leakage.
-    - **Pinned input and committed spec.** `adult.csv` **3,974,305 bytes**, SHA-256
-      `5b00264637dbfec36bdeaab5676b0b309ff9eb788d63554ca0a249491c86603d`; `adult.toml` 3,006 B,
-      SHA-256 `763661267b020be7da474dd35009359a6f56061cacc3da7ac6681e6c6ebce0a5`; catalog 355 B,
-      SHA-256 `43448fede549b8b506b5dfa058f7faf60cc592a09a8519f7390c5cecb3af8e3f`, reading
-      `tier = external`, `generator_revision = 2`, `records = 32562`, `columns = 15`. The `prepare
-      adult` verb was never invoked and UCI was never contacted. The retained spec is
-      **byte-identical to the committed `AdultSpecs.Declared`**, derived independently of the
-      catalog, and the data matched the source-pinned identity independently of the catalog's own
-      recorded digest. The Release `--no-restore` build exited 0 with **zero warnings and zero
-      errors**, and every product assembly the run exercised embeds `1.0.0+82e2ffea…`.
-    - **Per-iteration validation, after disposal.** Every completed measured iteration passed its
-      existing validator in `[IterationCleanup]`: `AdultSourceDrain` against the independent Adult
-      drain expectation, and the two conversion cases against clean diagnostics, an independently
-      counted artifact shape (32,562 objects, and the derived CXT line count) and intra-run byte
-      stability. No product diagnostic, exception, validation error or failed case appears anywhere
-      in the run. The three raw results, recorded as **standalone facts of that one session** —
-      `AdultConvertCxt` N 22, mean `100,015,363.63636364 ns`, 150,943,216 B allocated;
-      `AdultConvertDat` N 12, mean `50,230,683.333333336 ns`, 70,394,432 B; `AdultSourceDrain`
-      N 36, mean `12,896,588.888888888 ns`, 22,882,960 B; all three at `Records = 32,562`,
-      `InputMiB = 3.8`, .NET 10.0.12, X64, RELEASE — are in `docs/benchmarks.md`.
-      BenchmarkDotNet's `MinIterationTime` advisory and its outlier hints are recorded as
-      advisories, neither hidden nor promoted into failures.
-    - **The local-only restore proof, which is the condition this replacement exists to satisfy.**
-      `RestoreSources` carried a **non-empty, local-only** value — `C:\Program
-      Files\dotnet\library-packs` and an empty directory inside the evidence root, because an empty
-      value falls back to the configured feeds — together with `NuGetAudit=false`,
-      `RestoreNoHttpCache=true`, `RestoreIgnoreFailedSources=false` and an isolated
-      `NUGET_HTTP_CACHE_PATH`. All ten generated `project.assets.json` files and every
-      `*.nuget.dgspec.json` record exactly those two filesystem sources, **zero** remote sources and
-      **zero** `http(s)://` occurrences, with `enableAudit = false` on every project; all 26
-      resolved package receipts came from the pre-existing global packages folder, none created or
-      modified in the run window. The machine's normal NuGet v3 HTTP cache and global packages tree
-      are **byte-identical** at the before, pre-measurement and after boundaries; the three
-      vulnerability-cache entries keep the first attempt's timestamps and digests; and the isolated
-      cache and the empty source stayed empty. Nothing was downloaded or installed.
-    - **Residue and evidence.** `output` and `spool` are both empty by their owning cleanup
-      contracts, with no manual deletion. The frozen root is
-      `D:\tmp\fcabedrock-m8-g15-adult-82e2ffea-offline`, **133 files / 20,324,696 bytes**, whose
-      `MANIFEST-SHA256.txt` (15,852 B, SHA-256
-      `73F396044D7A6927CFCADE689C0825987A5EF0BA7CFC1CD449599892DE0CE99E`) covers 132 entries /
-      20,308,844 bytes, all hash-matching, none missing, with only the manifest itself uncovered.
-      The first attempt's root and every earlier retained evidence root were re-verified unchanged.
-    - **What this closes, and what it does not.** The standing Windows x64 `External`/UCI Adult
-      three-case acceptance is **met at `82e2ffea`** — D-124's real-data candidate obligation, the
-      roadmap's release-candidate clause, and the obligation this entry records as re-attaching at
-      whatever revision is finally submitted for acceptance. It is **not** a standing exemption:
-      the obligation re-attaches at every later release candidate, and no future code, build, test
-      or workflow change inherits this result. Session-H conditions **(c) and (d) remain met at
-      `50f6aa62`**; the complete five-target native matrix, the three accepted delivery archives and
-      the fresh independent implementation review remain met at `c4ceb8e2`, each on its own bounded
-      carriage ruling; the component measurements and the **64 MiB / fan-in-16** tuning conclusion
-      stand. **Policy L is untouched**: the incremental elapsed effect remains **inconclusive at the
-      pre-registered 5% bound**, no retry is owed, and nothing here publishes or implies a delta,
-      rate, records/s, MiB/s, throughput, speedup, overhead, scaling, neutrality, equality or
-      non-regression figure. This run's UTC bounds and wall clock are provenance only.
-    - **Carriage across the commit that records this.** The accepted Adult run belongs to
-      `82e2ffea`. What this bullet records is a documentation-only change, and the
-      operator-approved commit that lands it will produce a different head — which is **not**
-      predicted here and must never be relabelled as the run head. The Adult result may carry
-      across that commit **only after** its exact diff is proven to be exactly these three advisory
-      Markdown documents — `docs/decisions.md`, `docs/benchmarks.md`, `docs/roadmap.md` — none of
-      which any `.csproj`, `.props`, `.targets`, `.slnx`, `.nuspec`, `eng/` script or workflow
-      consumes as a build, test, workflow, benchmark, corpus, spec, configuration or packaging
-      input. That is a finding about **that exact diff**, not a standing exemption, and the same
-      exact-diff reasoning is what preserves the session-H, native/archive and
-      implementation-review evidence across this reconciliation.
-    - **Remaining gates, none waived.** This documentation packet and its operator-approved
-      docs-only commit are outstanding. After that commit lands with the required exact diff, what
-      remains is: operator acceptance and an explicitly authorized merge; the main-push CI at the
-      merge revision; and the separate GitLab archival gate. **M8 remains in progress until all of
-      them complete.** No commit SHA, merge result, main-CI result, archival result or release
-      result is predicted here. One operational limitation is still carried forward rather than
-      closed: the local WSL host cannot run the packaging tests, because `pwsh` is absent there, so
-      hosted CI remains the only place they execute off Windows — never a local pass.
-  - *The exhaustive review's correction, and the three gates at `3b2e4a80` (2026-09-11/12) — the
-    live gate truth moves to that commit.* The documentation packet the previous bullet left
-    outstanding was committed at **`d4b310ad`** (`m8 docs (final adult acceptance)`, sole parent
-    `82e2ffea`, exactly the same three advisory Markdown files, `+279/−22`). The operator then
-    commissioned one further independent **exhaustive** whole-branch implementation audit rather
-    than accept the candidate on the prior risk-based review, and it returned **`BLOCK`** on three
-    oracle/validation defects — recorded, with their corrections, in **D-124**'s 2026-09-11
-    correction. The bounded two-stage packet is committed as signed **`3b2e4a80`** and closed by
-    `THUMBS UP — B-002-R1 and B-002-R2 are corrected; B-001, B-002, and B-003 are closed with no new
-    blocker.` Because the corrected validators had never executed anywhere, three gates were rerun
-    at that exact commit. **None of the three is a performance measurement, and none reopens
-    Policy L.**
-    - **Probe — the accepted offline replacement.** A first attempt is **non-admissible**: a
-      `dotnet test --help` invocation implicitly contacted NuGet and downloaded a workload
-      advertising manifest **before** the offline evidence protocol existed. It created no evidence
-      root and ran no gate, and it is recorded as that — not as a failed run, a flake, or superseded
-      evidence. The accepted replacement drove the **corrected committed oracle** offline, with the
-      whole solution at **4,623 total / 0 failed / 20 skipped** and the Small `Dry` smoke at
-      **exactly 48** cases, and the five published probe rows — `ProbeWideWorking`,
-      `ProbeTripleWorking`, `ProbeWideScale7M`, `ProbeWideScale73M` and `ProbeTripleScale73M` — each
-      completed successfully **once**, at its registered job on its actual prepared corpus, with the
-      corrected validation passing after every completed measured iteration. That validation checks
-      complete non-empty **per-attribute** domains subject only to an explicit all-missing exception
-      set, exact `include`-carrying sets for truncation, and only `ProbeLimitExceeded` for a guard
-      breach; the expected sets come from the frozen corpus generator rather than from the product
-      result. Root `D:\tmp\fcabedrock-m8-g15-post-review-probe-3b2e4a80-offline`, with
-      `MANIFEST-SHA256.txt` SHA-256
-      `B61FDA0A72806D2A8AB12B345463F3E65433F66E6E61B2C9CE155A14DFD07D33`, `PROTOCOL.md`
-      `83A878E3FB9A1AA5B222EF1E8B09A45821B08C144C9C1DD1454F9C3FD05AED23` and `RESULT.md`
-      `547568BDFB21F58341C5B7C14780AF00966D678E0CD537DADFC5FAE73CB3EE8F`. This is
-      correctness/validation evidence — **not** a probe-default adoption and **not** a performance
-      comparison; the five published session-A probe timings keep their own provenance and are
-      neither replaced nor re-attributed.
-    - **Adult — the standing three-case acceptance, met again at the correction candidate.** One
-      offline measured invocation ran exactly `AdultConvertCxt`, `AdultConvertDat` and
-      `AdultSourceDrain` as `External`/UCI Adult cases under the registered `fresh-iteration` job,
-      and all three passed. The corrected `AdultOracle.RequirePlanShape` proof executes **once per
-      conversion case in `[GlobalSetup]`**, after the immutable plan is built and **before any
-      measurement**; that placement is longstanding and already adjudicated, not something this
-      correction introduced, and it is deliberately **not** claimed to run after every measured
-      iteration. What does run after every completed measured iteration, after disposal, is
-      `[IterationCleanup]`: clean diagnostics, an independently measured object/line count,
-      intra-run byte determinism and artifact cleanup for the two conversions, and its own
-      independent expectation for the drain. Root
-      `D:\tmp\fcabedrock-m8-g15-post-review-adult-3b2e4a80-offline`, with `MANIFEST-SHA256.txt`
-      SHA-256 `D38D4CCF33EAC0F802B7A20C67DC800C95BF75FAA1FC58EAA46DC0A0BAA8C4CB`, `PROTOCOL.md`
-      `78BEDC9E6D2659BB140D591C6CBF5513C36A4CCA71D55F832DFFD18B9B8DAB52` and `RESULT.md`
-      `5D07825EC02285171904887A1326DEEADA8D2E6F6B89FE76BE3DF0243C17FBCB`. The accepted `82e2ffea`
-      gate is preserved as historical evidence **at that revision**; the two runs are compared
-      nowhere, and no performance conclusion is derived from either's timings.
-    - **Native/archive — run `34685708360` at `3b2e4a80`.** One ordinary non-force push
-      fast-forwarded only `origin/agent/m8-scaling-reset` from `c4ceb8e2` to `3b2e4a80`, and run
-      [`34685708360`](https://github.com/trashr0x/fcabedrock/actions/runs/34685708360), attempt 1,
-      event `push`, branch `agent/m8-scaling-reset`, head `3b2e4a80` — **the only run at that
-      SHA** — concluded `success` on Windows x64, Linux x64, macOS ARM64, Linux ARM64 and Windows
-      ARM64. All twelve named common steps passed on every target; `Upload the tested archive`
-      passed on the three required targets and is the **only** declared step skipped on the two
-      optional ones. Each target reported the whole solution at **4,623 / 0**, at the exact skip
-      spread **16 / 12 / 11 / 13 / 17** — unchanged from `c4ceb8e2`, so all 37 added cases executed
-      everywhere — plus **25 / 0** resident-layout witnesses, exactly **48** Small `Dry` cases, and
-      both gated smokes **1 / 0**. Routine CI admitted no `Working`, `Scale` or `External` case; the
-      only `Adult` symbols anywhere are the checked-in mini-Adult v2-compat fixtures, which are not
-      the acquired UCI corpus. All **six** current `DistributionArchiveTests` cases ran on every
-      target, including the new synthetic Windows low-attribute-bit negative — it has no skip path,
-      appears in no target's complete skip enumeration, and drives the **shared** validator the
-      self-contained smoke calls — so the exact-raw-zero rule is established by execution rather
-      than inferred from a green aggregate. The three required archives were downloaded, retained
-      and digest-matched against GitHub's own server digests, are path-safe in both layers and
-      self-contained, and the exact smoke-tested archive path is the uploaded path. **Every one of
-      the 217 win-x64 inner entries records raw `ExternalAttributes = 0x00000000`**; both Unix
-      apphosts record `0x81ED0000` / `0100755` with every other Unix entry `0x81A40000` / `0100644`;
-      and there is **no link entry** in any of the three. Root
-      `D:\tmp\fcabedrock-m8-g15-post-review-native-gate-3b2e4a80-run-34685708360`, **684 files /
-      480,209,898 bytes**, with `INVENTORY.tsv`
-      `A5939E0E4C253D2B2DDBDE92CBD1D1DDC6A87FF3F770ADCC6CE0A5458D64A197`, `MANIFEST-SHA256.txt`
-      `1925BE0BD8D9BF04520A7DF1773A45195E6C5CD3A46CA8407E67F614F61E4E38` and `MANIFEST.md`
-      `C820013F409F41297B73EA5A8BFEE77B534BD62A5A111C9BD0133D81309D2512`. The hosted UTC bounds are
-      **provenance only**: no elapsed, throughput, Policy-L, merge, release or completion conclusion
-      follows from a hosted correctness/delivery run. The three disclosed corrections to the
-      **post-download inspection script** are reader defects, rerun locally against unchanged
-      retained bytes, with nothing rerun on GitHub and no archive repaired; they are detailed in
-      `docs/benchmarks.md`.
-    - **What carries, and what does not.** Earlier measured performance, trace, Policy-L, native and
-      Adult evidence keeps **only** its own recorded revision and its own bounded carriage:
-      conditions (c) and (d) remain met at `50f6aa62`; the component measurements and the
-      **64 MiB / fan-in-16** tuning conclusion stand; `c4ceb8e2`'s native/archive and
-      implementation-review gates and `82e2ffea`'s Adult gate remain met **there**. None of them is
-      relabelled as a run at `3b2e4a80`. **Policy L is untouched**: the incremental publication
-      latency remains **inconclusive at the pre-registered 5% bound**, no retry is owed, and no
-      elapsed, rate, records/s, MiB/s, throughput, overhead, speedup, scaling, neutrality, equality
-      or non-regression reading is published or implied from any of these three gates.
-    - **Remaining gates, none waived.** Review and curation of this documentation packet and the
-      operator's commit of it; explicit final candidate acceptance and an explicitly authorized
-      local merge; the main-push CI at the merge revision; and the separate private GitLab archival
-      gate. A later docs-only commit may carry the exact `3b2e4a80` evidence across it **only**
-      through a proven diff of exactly `docs/benchmarks.md`, `docs/decisions.md` and
-      `docs/roadmap.md` — the same exact-diff reasoning, about that exact diff and never a standing
-      exemption. **M8 remains in progress until all of them complete**, and no commit SHA, merge
-      result, main-CI result, archival result or release result is predicted here. One operational
-      limitation is still carried forward rather than closed: the local WSL host cannot run the
-      packaging tests, because `pwsh` is absent there, so hosted CI remains the only place they
-      execute off Windows — never a local pass.
+  **9. Evidence carriage and admissibility.** *(As first recorded on 2026-09-09, this part listed the
+  obligations that then remained; the Status line records how they were met. The rules below were
+  settled between 2026-09-09 and 2026-09-12, as the evidence was carried to later revisions.)*
+  - **Carriage is a finding about one exact diff.** Evidence recorded at one revision carries to a
+    later one only after that change's exact diff is shown not to reach the measured path. That is a
+    bounded reachability conclusion about that diff: never a standing exemption, never binary
+    equality, and never carried to a further change without its own check.
+  - **The recovery correction was not failure-only.** `Commit` ends by calling
+    `Finish(forward: true)` inside `CliHost.RunAsync("convert", …)`, the interval the CLI-host cases
+    measure, and the correction adds one `File.Exists` for each absent stage and a held-reference
+    lookup at each successful post-commit removal there. Bounded and small is not zero, so the rows
+    and traces taken at `4216610b`/`03352da7` stayed valid evidence of those revisions but did not
+    satisfy (c) or (d) for the corrected candidate. All fifteen rows were reacquired **together**,
+    because (c) is one coupled allocation-plus-per-iteration-validation proof of the actual
+    candidate, at the same oracle strengths, and all six traces with them, at `50f6aa62`. The
+    component measurements, the **64 MiB / fan-in-16** tuning conclusion and the Windows x64
+    External/Adult acceptance carried across that correction, because publication is unreachable from
+    the component paths and the Adult cases run `ConversionRun` rather than `CliHost`.
+  - **The later packaging correction** reached only the packaging script, two test-support files and
+    three advisory documents, none of which the CLI-host cases, the traces or the Adult cases execute,
+    so (c) and (d) stayed met at `50f6aa62`. The native archive gate did not carry, because the
+    packaging writer is exactly what changed.
+  - **A documentation-only commit** whose exact diff is `docs/decisions.md`, `docs/benchmarks.md` and
+    `docs/roadmap.md`, none of which any `.csproj`, `.props`, `.targets`, `.slnx`, `.nuspec`, `eng/`
+    script or workflow consumes as a build, test, workflow, benchmark, corpus, spec, configuration or
+    packaging input, carries the native, archive, Adult and `50f6aa62` evidence across it. A run's
+    result belongs to its own revision, and the commit that records it is never relabelled as the run
+    head.
+  - **Admissibility is not exact protocol compliance.** The `50f6aa62` reacquisition is admissible
+    evidence with two protocol deviations and one tooling correction disclosed: before its criterion
+    was frozen, a restore's vulnerability audit contacted NuGet's public endpoints without obtaining
+    or changing a package, and extra identical builds ran; a correction to its own read-only validator
+    re-read retained output and reran no trace. None of these invalidates the measurements or
+    requires a rerun. The first `82e2ffea` Adult attempt, which crossed an explicit no-network rule
+    and did not close that obligation, and the first `3b2e4a80` probe attempt, which is
+    non-admissible, are recorded as that, never as failures or superseded evidence.
+  - **Limitation closure does not reopen.** No reacquisition or later run licenses a latency,
+    neutrality, equality, non-regression, speedup, corrected-build elapsed, rate or overhead claim,
+    and no retry is owed; any elapsed values they incidentally produced are contextual raw data only.
 - **Why:** the comparison was the right experiment and it was run honestly, in full, under
-  a criterion fixed before any data was seen — and it did not pass. The two available
+  a criterion fixed before any data was seen, and it did not pass. The two available
   alternatives were both worse than recording that plainly. Making a sub-5%
   incremental-latency bound a *new* M8 exit condition would invent a release obligation
   the roadmap never stated, on a **correctness** correction, and would hold the milestone
-  open behind a machine that has now been shown — by its own unchanged control, in both
-  directions — not to hold still enough to prove it. Re-basing the whole scale matrix onto
+  open behind a machine that has now been shown, by its own unchanged control in both
+  directions, not to hold still enough to prove it. Re-basing the whole scale matrix onto
   a new session would spend hours of measurement to support exactly the cross-session
   comparison that limitation closure forgoes, and would discard provenance that is
-  currently exact. What closure actually needs is that the corrected build is **correct**
-  and **bounded** — which is what the fifteen validated allocation rows and the six
-  validated resource traces establish — plus an honest statement of the one thing that
+  currently exact. What closure needs is that the corrected build is **correct**
+  and **bounded** (which is what the fifteen validated allocation rows and the six
+  validated resource traces establish), plus an honest statement of the one thing that
   could not be measured. Recording it as an accepted evidence policy, rather than as a
   quiet omission, is what keeps the next reader from mistaking "inconclusive" for "fine".
 - **Rejected:** treating the failed comparison as a pass, or reporting only its three
-  passing forms (the gate is collective, and a selected passing-case conclusion is the
+  passing forms (the test is collective, and a selected passing-case conclusion is the
   laundering this entry exists to forbid); paraphrasing "inconclusive" as
   *measurement-neutral*, *no measurable regression*, *probably below 5%*, or
   *non-regression* (each asserts the very thing that was not established, and the small
   point estimates cannot carry them); an automatic retry series (the criterion forbids
-  reusing or extending that campaign, and an unbounded correction loop is the failure mode
-  the M8 workflow was reset to escape); making the sub-5% bound a mandatory M8 exit
-  condition (a new release obligation the roadmap never stated); re-basing the scale matrix
-  onto a fresh session to support a comparison closure forgoes (expensive,
-  provenance-destroying, and unnecessary); rerunning the six already-valid session-E
-  allocation rows because a later session ran on a different machine state (their identity,
-  raw reports and per-iteration validation are intact — machine-state difference alone is
-  expected and changes nothing they claim); substituting ten times a 7.3M job, a `Dry`
-  smoke, or a smaller tier for a real 73M case (the 73M obligation is the 73M job);
-  publishing the corrected-build elapsed numbers as a results table or deriving any rate,
+  reusing or extending that campaign, and a retry series is an unbounded correction loop);
+  making the sub-5% bound a mandatory M8 exit condition (a new release obligation the roadmap
+  never stated); re-basing the scale matrix onto a fresh session to support a comparison
+  closure forgoes (expensive, provenance-destroying, and unnecessary); rerunning valid
+  evidence only because a later run saw a different machine state (machine-state difference
+  alone is expected and changes nothing that evidence claims); substituting ten times a 7.3M
+  job, a `Dry` smoke, or a smaller tier for a real 73M case (the 73M obligation is the 73M
+  job); publishing the corrected-build elapsed numbers as a results table or deriving any rate,
   curve or overhead from them (they are contextual raw data, and a table would rebuild the
-  comparison by another route); adding `--temp-dir` to the wide traces so all six share one
-  boundary (the wide declared command performs no grouping and no calibration pass, so it
-  spools nothing — the option would change an established argv for no measurement gain);
-  redirecting process-global `TEMP`/`TMP`, or freeing space on the operator's system
-  volume, to keep session F's boundary (both change the environment under measurement
-  rather than disclosing the change); and inferring byte identity from a rounded `GB`
-  column, extrapolating one row's allocation delta to another, calling allocation
-  machine-state independent, or converting allocated throughput into resident memory (the
-  four readings that produced D-125's retracted sentence).
+  comparison by another route); changing an established trace command for no measurement gain,
+  such as giving a command that spools nothing a `--temp-dir`; changing the environment under
+  measurement, such as redirecting process-global `TEMP`/`TMP` or freeing space on the measured
+  machine's system volume, to keep an acquisition boundary instead of disclosing the change; and
+  inferring byte identity from a rounded `GB` column, extrapolating one row's allocation delta to
+  another, calling allocation machine-state independent, or converting allocated throughput into
+  resident memory (the four readings that produced D-125's retracted sentence).
 - **Affects:** `docs/decisions.md` (this entry, the D-124 status correction and the D-125
   measurement corrections), `docs/benchmarks.md` (the failed comparison and its limitation,
   the fifteen-row allocation/validation ledger, the corrected-command trace and resource
@@ -7504,7 +6954,7 @@ pinned here.
 
 ## M8.1 (pre-M9 performance pass)
 
-### D-128 — `QuantileAccumulator` uses a radix-F generation-tiered spill-run catalogue
+### D-128: `QuantileAccumulator` uses a radix-F generation-tiered spill-run catalogue
 
 - **Status:** accepted
 - **Date:** 2026-09-21
@@ -7545,20 +6995,25 @@ pinned here.
   - **Measured evidence.** Eight fresh ordinary BenchmarkDotNet host launches used the existing
     `Monitoring` job (two warmups, five actual iterations, one launch) and balanced the primary
     endpoint as `AB`, then `BA`. The 7.3M sixteen-attribute many-quantile
-    (`ManyQuantileCalibrateScale7M`, E3) ratios were `0.746878` and `0.752516`; geometric mean
+    (`ManyQuantileCalibrateScale7M`) ratios were `0.746878` and `0.752516`; geometric mean
     `0.749692` (about 25% less elapsed time). Baseline spread was 2.80% and order-ratio difference
     0.75%. Combining the retained forward-order guard observations with fresh reverse-order
-    observations gave `0.991274` for E1 (`ManyQuantileCalibrateWorking`) and `0.994901` for E2
-    (`CalibrateWideScale7M`). Allocation deltas were
-    `+2,816`, `+424` and `+16,512` B/op for E1/E2/E3, all far inside the existing allowance. All
-    eight launches exited zero and their per-iteration `CalibrationOracle`/`OutputValidation`
-    checks passed. The earlier one-pair E3 screen (`0.760480`) is context, not silently pooled.
-  - **Evidence limit.** This was a pragmatic engineering assessment, not a run of the custom
-    custody/scoring runner built during the evaluation (tracked in the retained external evidence as
-    "QC-1"), which was rejected, and not a formal admission under that evaluation's protocol. It
-    makes no per-launch digest or surviving-worker claim, and no 73M run was performed. Those limits
-    do not weaken the correctness suite or the
-    direct, replicated BenchmarkDotNet comparison on the targeted 7.3M shape.
+    observations gave `0.991274` for `ManyQuantileCalibrateWorking` and `0.994901` for
+    `CalibrateWideScale7M`. Allocation deltas were `+2,816`, `+424` and `+16,512` B/op for
+    `ManyQuantileCalibrateWorking`, `CalibrateWideScale7M` and `ManyQuantileCalibrateScale7M`, all far
+    inside the existing allowance. All eight launches exited zero and their per-iteration
+    `CalibrationOracle`/`OutputValidation` checks passed. The earlier one-pair
+    `ManyQuantileCalibrateScale7M` screen (`0.760480`) is context, not silently pooled.
+  - **Evidence limit.** This was a direct BenchmarkDotNet engineering assessment of eight launches,
+    with two order-balanced pairs on the targeted endpoint: evidence of the observed improvement, not
+    a statistical bound on drift or order effects, and not a formal admission. It makes no
+    per-launch digest or surviving-worker claim, and no 73M run was performed. Those limits do not
+    weaken the correctness suite or the direct, replicated BenchmarkDotNet comparison on the
+    targeted 7.3M shape. *Noted 2026-09-24:* the measured candidate's `QuantileRunCatalog.cs`
+    differs from the committed file only in one XML documentation comment, whose evaluation label
+    became the citation `(D-128)`; `QuantileAccumulator.cs` and `ICalibrationObserver.cs` are
+    byte-identical. No build of the committed revision was measured, and the assessment records no
+    build-to-commit tie.
 - **Why:** the old schedule repeatedly rewrote the growing consolidated run after the fan-in was
   reached, giving quadratic spill I/O amplification at fixed capacity. Tiering rewrites each value
   at most once per generation. On the workload this change targets it reduced conservative written
