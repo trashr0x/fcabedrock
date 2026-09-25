@@ -1,13 +1,14 @@
-# Decisions Log — FcaBedrock vNext
+# Decisions Log: FcaBedrock vNext
 
 Architectural decisions, with rationale and rejected alternatives. Append-only
-in spirit: supersede entries rather than deleting them, so the reasoning trail
-survives. Newest decisions at the bottom of each section.
+in spirit: supersede entries rather than deleting them, and compact an entry in
+place only as D-129 allows, so the reasoning trail survives. Newest decisions at
+the bottom of each section.
 
 **Entry format:**
 
 ```text
-### D-NNN — Short title
+### D-NNN: Short title
 - **Status:** accepted | superseded by D-MMM | revisited
 - **Date:** YYYY-MM-DD
 - **Decision:** what we're doing.
@@ -27,118 +28,119 @@ spec-field default, it lives in spec §21 and is only cross-referenced here.
 
 One line per decision, grouped as the sections below. Read the entries your
 task touches (see the `AGENTS.md` workflow, D-073); read the log in full before
-proposing architectural changes. Status is annotated only where an entry is
-superseded or refined. A new entry MUST add its line here.
+proposing architectural changes. An italic note records where a later decision
+supersedes, refines, realizes or retires part of an entry, or where the entry
+changes an earlier one. A new entry MUST add its line here.
 
 ### Architecture
 
-- D-001 — Separable binding vs scaling in the spec
-- D-002 — Orthogonal discretizer × scale model (the anchoring idea)
-- D-003 — Discovery is a separate operation, not implicit in convert *(refined by D-036)*
-- D-004 — Determinism rules centralized in the planner
-- D-005 — Plan/Emit separation, with calibration before planning *(refined by D-036)*
-- D-006 — Diagnostics package as the shared leaf *(alias dropped by D-042)*
-- D-007 — Target 10×–100× the v2 EMAGE workload
-- D-008 — Avalonia for the desktop UI
-- D-009 — New TOML spec format; one-way `.bed` migration *(migrator realized by D-079)*
-- D-010 — Modelled-but-rejected scales/features carry forward-compat
-- D-011 — v2 byte-equality is a CLI flag, not a spec setting
+- D-001: Separable binding vs scaling in the spec
+- D-002: Orthogonal discretizer × scale model (the anchoring idea)
+- D-003: Discovery is a separate operation, not implicit in convert *(refined by D-036)*
+- D-004: Determinism rules centralized in the planner
+- D-005: Plan/Emit separation, with calibration before planning *(refined by D-036)*
+- D-006: Diagnostics package as the shared leaf *(alias dropped by D-042)*
+- D-007: Target 10×–100× the v2 EMAGE workload
+- D-008: Avalonia for the desktop UI
+- D-009: New TOML spec format; one-way `.bed` migration *(migrator realized by D-079)*
+- D-010: Modelled-but-rejected scales/features carry forward-compat
+- D-011: v2 byte-equality is a CLI flag, not a spec setting
 
 ### Scope / feature decisions
 
-- D-020 — v1 scale and discretizer surface
-- D-021 — Three filtering levers kept distinct *(refined by D-032)*
-- D-022 — `value_groups` discretizer (clustering raw values)
-- D-023 — `value_labels` (raw value → display label)
-- D-024 — Object grouping by composite key (deferred to v1.1)
-- D-025 — Post-context reductions live in a sibling tool
-- D-026 — Reproducibility: provenance block + run manifest *(per-run manifest schema and complete calibration representation refined by D-122)*
-- D-027 — Spec composition via `extends`
-- D-028 — Calibration on-the-fly by default; `calibrate` to freeze
+- D-020: v1 scale and discretizer surface
+- D-021: Three filtering levers kept distinct *(refined by D-032)*
+- D-022: `value_groups` discretizer (clustering raw values)
+- D-023: `value_labels` (raw value → display label)
+- D-024: Object grouping by composite key (deferred to v1.1)
+- D-025: Post-context reductions live in a sibling tool
+- D-026: Reproducibility: provenance block + run manifest *(per-run manifest schema and complete calibration representation refined by D-122)*
+- D-027: Spec composition via `extends`
+- D-028: Calibration on-the-fly by default; `calibrate` to freeze
 
 ### Round 1 spec audit
 
-- D-030 — Triple multi-value union; scale decides folding
-- D-031 — `subject_grouped` requires contiguous subjects
-- D-032 — Filter-only attributes (`include = false` keeps `restrict_to`)
-- D-033 — `source` may repeat across attributes
-- D-034 — Duplicate object keys defined by key mode; `fail` default *(execution → M3, D-064)*
-- D-035 — Fingerprint scopes: schema = planned columns only *(output split by D-051/D-053)*
-- D-036 — Four-phase processing model; convert calibrates, never discovers
+- D-030: Triple multi-value union; scale decides folding
+- D-031: `subject_grouped` requires contiguous subjects
+- D-032: Filter-only attributes (`include = false` keeps `restrict_to`)
+- D-033: `source` may repeat across attributes
+- D-034: Duplicate object keys defined by key mode; `fail` default *(execution → M3, D-064)*
+- D-035: Fingerprint scopes: schema = planned columns only *(output split by D-051/D-053)*
+- D-036: Four-phase processing model; convert calibrates, never discovers *(NaN/∞-as-missing clause superseded by D-050)*
 
 ### Round 2 spec audit
 
-- D-037 — Scale-specific default naming; emitted-field discipline *((b) superseded by D-049)*
-- D-038 — Date support deferred; v2 six-type-code map confirmed
+- D-037: Scale-specific default naming; emitted-field discipline *((b) superseded by D-049)*
+- D-038: Date support deferred; v2 six-type-code map confirmed
 
 ### Process / governance
 
-- D-029 — Engineering principles formalized as docs/engineering-principles.md
-- D-039 — Test conventions + ArchUnitNET for architecture tests
-- D-040 — Shared `tests/Directory.Build.props`; MTP-only
-- D-048 — `AGENTS.md` canonical; `CLAUDE.md` imports it; no symlink
-- D-073 — Decision index; sessions read it first, then relevant entries
-- D-129 — M8.2 writing governance: decisions may be compacted in place; `docs/engineering-principles.md` owns the engineering invariants as `EP-<n>`; `docs/writing-principles.md` owns the writing policy as `WP-<n>`; the authored inventory, the public owner map and the mechanical checker boundary *(narrows D-073's no-summarizing rule; renames the owner D-029 established; checker portion of rule 5 superseded by D-130; heading-anchor clause of rule 1 superseded by D-131 for the one-time heading-separator migration)*
-- D-130 — Authored-text integrity: one mechanical command over raw decoded text, two fixed instruction-entry checks, an include/exclude manifest and a process-level test runner *(supersedes the checker portion of D-129 rule 5)*
+- D-029: Engineering principles formalized as docs/engineering-principles.md *(owner file renamed and renumbering forbidden by D-129)*
+- D-039: Test conventions + ArchUnitNET for architecture tests *(conventions moved to `AGENTS.md` by D-048)*
+- D-040: Shared `tests/Directory.Build.props`; MTP-only
+- D-048: `AGENTS.md` canonical; `CLAUDE.md` imports it; no symlink
+- D-073: Decision index; sessions read it first, then relevant entries *(in-place summarizing narrowed by D-129)*
+- D-129: M8.2 writing governance: in-place decision compaction, `EP-` and `WP-` identifier ownership, the authored inventory, and the mechanical checker boundary *(narrows D-073; rule 5's checker portion superseded by D-130; rule 1's heading-anchor clause superseded by D-131 for its one-time migration)*
+- D-130: Authored-text integrity: one mechanical command over raw decoded text, two fixed instruction-entry checks, an include/exclude manifest and a process-level test runner *(supersedes the checker portion of D-129 rule 5)*
 - D-131: One-time heading-separator migration in the decision log, roadmap and benchmark record: colons replace em dashes, changed anchors are accepted, and no alias is kept *(supersedes the heading-anchor clause of D-129 rule 1 for this migration only)*
 - D-132: No separate public evidence file; the benchmark guide carries only the identities that qualify its current claims
 
 ### M1 (mini-mushroom walking skeleton)
 
-- D-041 — Sep as the DSV tokenizer for the wide-CSV source
-- D-042 — Drop the `BedrockResult<T>` alias; use `Result<T, BedrockDiagnostic>`
-- D-043 — Two test axes: golden = v2-compat evidence, conformance = native spec
-- D-044 — Bin-label style is a plan-time render hook, not a writer flag
-- D-045 — v2 `o` and `n` are both cut-based; discrete→nominal, progressive→ordinal
-- D-046 — `ordered_cuts` discretizer; v2 `.bed` section-role asymmetry
-- D-047 — Open-end ordinal threshold renders `all`, canonical in both paths
-- D-049 — `include = false` is an authoring toggle; dormant config never blocks
+- D-041: Sep as the DSV tokenizer for the wide-CSV source
+- D-042: Drop the `BedrockResult<T>` alias; use `Result<T, BedrockDiagnostic>`
+- D-043: Two test axes: golden = v2-compat evidence, conformance = native spec
+- D-044: Bin-label style is a plan-time render hook, not a writer flag
+- D-045: v2 `o` and `n` are both cut-based; discrete→nominal, progressive→ordinal
+- D-046: `ordered_cuts` discretizer; v2 `.bed` section-role asymmetry
+- D-047: Open-end ordinal threshold renders `all`, canonical in both paths
+- D-049: `include = false` is an authoring toggle; dormant config never blocks
 
 ### M2 (TOML spec format + fingerprinting)
 
-- D-050 — Malformed numeric values are present-but-invalid, not missing
-- D-051 — Per-format output fingerprints (cxt + dat)
-- D-052 — `extends` overrides attributes position-preservingly
-- D-053 — Fingerprints hash a plan-derived canonical JSON structure *(pinned by D-069)*
-- D-054 — v1 supports only the standard double `quote_char`
-- D-055 — `value_groups` does not use `declared_domain`
-- D-056 — Cut validation in M2
-- D-057 — `restrict_to` round-trips in M2; execution deferred to M4 *(carriage realized by D-079)*
-- D-058 — Empty-output diagnostics: mechanical names replace EmptyExtent/EmptyIntent
+- D-050: Malformed numeric values are present-but-invalid, not missing
+- D-051: Per-format output fingerprints (cxt + dat)
+- D-052: `extends` overrides attributes position-preservingly
+- D-053: Fingerprints hash a plan-derived canonical JSON structure *(pinned by D-069)*
+- D-054: v1 supports only the standard double `quote_char`
+- D-055: `value_groups` does not use `declared_domain`
+- D-056: Cut validation in M2
+- D-057: `restrict_to` round-trips in M2; execution deferred to M4 *(carriage realized by D-079; execution realized by D-105)*
+- D-058: Empty-output diagnostics: mechanical names replace EmptyExtent/EmptyIntent
 
 ### M1-adjacent conformance pass
 
-- D-059 — Discretization outcomes and data-diagnostic aggregation
+- D-059: Discretization outcomes and data-diagnostic aggregation
 
 ### Tier 1 spec audit (pre-M2)
 
-- D-060 — Ordinal-over-cuts validation contract *((c) authored-boundary provenance extended to template/matcher-supplied fields by D-114)*
-- D-061 — `value_type` matrix: `free_per_value` flexible, `identity` string-only
-- D-062 — Cross-attribute restrict not modelled in v1; drop the diagnostic
-- D-063 — `restrict_to`: M2 validates shape, M4 executes; diagnostic ownership *(exact numeric form added + diagnostic renamed by D-091)*
-- D-064 — Wide column object keys deferred to M3; object-key diagnostic taxonomy *(execution realized by D-083)*
-- D-065 — Calibration/vocabulary over the input universe, before `restrict_to`
+- D-060: Ordinal-over-cuts validation contract *((c) authored-boundary provenance extended to template/matcher-supplied fields by D-114)*
+- D-061: `value_type` matrix: `free_per_value` flexible, `identity` string-only
+- D-062: Cross-attribute restrict not modelled in v1; drop the diagnostic
+- D-063: `restrict_to`: M2 validates shape, M4 executes; diagnostic ownership *(exact numeric form added + diagnostic renamed by D-091; execution realized by D-105)*
+- D-064: Wide column object keys deferred to M3; object-key diagnostic taxonomy *(execution realized by D-083)*
+- D-065: Calibration/vocabulary over the input universe, before `restrict_to`
 
 ### Tier 2 register (pre-M2)
 
-- D-066 — Parsed spec document model vs. resolved Core `BedrockSpec`
-- D-067 — Resolve/validate seam and diagnostic phase ownership
-- D-068 — `missing_policy = "as_attribute"` scheduled into M2 *(migrator branch realized by D-079)*
-- D-069 — Canonical fingerprint encoding, pinned (appendix to D-053)
-- D-070 — Minimal M2 discretizer-carrier scope; three-tier kind response
-- D-071 — Absent/empty `declared_domain`: M2 interim reject until calibrate *(authored-empty reading revised by D-122)*
-- D-072 — Basic triple TOML carrier in M2; conversion deferred to M3 *(conversion realized by D-082)*
+- D-066: Parsed spec document model vs. resolved Core `BedrockSpec`
+- D-067: Resolve/validate seam and diagnostic phase ownership *(re-homing parenthetical superseded by D-080)*
+- D-068: `missing_policy = "as_attribute"` scheduled into M2 *(migrator branch realized by D-079)*
+- D-069: Canonical fingerprint encoding, pinned (appendix to D-053)
+- D-070: Minimal M2 discretizer-carrier scope; three-tier kind response *(transitional kind reject fully retired by D-104)*
+- D-071: Absent/empty `declared_domain`: M2 interim reject until calibrate *(authored-empty reading revised by D-122; interim reject retired by D-098)*
+- D-072: Basic triple TOML carrier in M2; conversion deferred to M3 *(conversion realized by D-082)*
 
 ### M2 implementation (slices)
 
-- D-074 — `as_attribute` missing-column position uniform across scale kinds (appendix to D-068) *(default-path rendering; an explicit `formal_attribute_format` renders the missing column too — D-117)*
-- D-075 — Slice C TOML reader/writer contract: strictness, parse codes, canonical form
-- D-076 — Slice D seam/plan validation contract details (appends D-067) *(exact numeric form added + diagnostic renamed by D-091)*
-- D-077 — Slice E fingerprint encoding/verification contract details (appends D-069)
-- D-078 — Slice F composition/carrier contract details (realizes D-027/D-052; refines D-067/D-075) *(pattern semantics and template application settled by D-114/D-115/D-118; extends canonical file identity settled by D-122)*
-- D-079 — Slice G `.bed` migrator contract: document-model target, Diagnosed surfaces (realizes D-009/D-049/D-057/D-068) *(numeric restrict migration refined by D-091)*
-- D-080 — `AttributeNameDuplicate` / `ValueLabelKeyNotInDomain` re-homed to the resolve seam (realizes D-067; supersedes its "not re-homed" parenthetical)
-- D-081 — Value-bin ordinal path (Slice H): identity + explicit order (realizes the D-047-deferred path; refines D-060)
+- D-074: `as_attribute` missing-column position uniform across scale kinds (appendix to D-068) *(default-path rendering; an explicit `formal_attribute_format` renders the missing column too; D-117)*
+- D-075: Slice C TOML reader/writer contract: strictness, parse codes, canonical form *(deferred-surface set narrowed by D-078/D-120 to `value_type = "date"`)*
+- D-076: Slice D seam/plan validation contract details (appends D-067) *(exact numeric form added + diagnostic renamed by D-091)*
+- D-077: Slice E fingerprint encoding/verification contract details (appends D-069)
+- D-078: Slice F composition/carrier contract details (realizes D-027/D-052; refines D-067/D-075) *(pattern semantics and template application settled by D-114/D-115/D-118; extends canonical file identity settled by D-122)*
+- D-079: Slice G `.bed` migrator contract: document-model target, Diagnosed surfaces (realizes D-009/D-049/D-057/D-068) *(numeric restrict migration refined by D-091)*
+- D-080: `AttributeNameDuplicate` / `ValueLabelKeyNotInDomain` re-homed to the resolve seam (realizes D-067; supersedes its "not re-homed" parenthetical)
+- D-081: Value-bin ordinal path (Slice H): identity + explicit order (realizes the D-047-deferred path; refines D-060)
 
 ### M3 (triple source + wide column object keys)
 
@@ -250,7 +252,7 @@ of this file).
 
 ## Architecture
 
-### D-001 — Separable binding vs scaling in the spec
+### D-001: Separable binding vs scaling in the spec
 
 - **Status:** accepted
 - **Decision:** the Bedrock spec splits into a `[binding]` layer (which data
@@ -261,14 +263,14 @@ of this file).
   goal. Without the split, every attribute entry duplicates source-binding
   detail and portability is brittle.
 - **Rejected:** a flat spec where each attribute carries its own source
-  binding — simpler to write, but spec reuse across datasets becomes
+  binding: simpler to write, but spec reuse across datasets becomes
   copy-paste-and-drift.
 - **Affects:** Spec, Core, spec §5 ("The [binding] block") / §10 ("The [[attribute]] block").
 
-### D-002 — Orthogonal discretizer × scale model
+### D-002: Orthogonal discretizer × scale model
 
 - **Status:** accepted
-- **Decision:** model conceptual scaling as two independent stages — a
+- **Decision:** model conceptual scaling as two independent stages: a
   discretizer (raw value → bin label) and a scale (bin label → formal
   attributes). v2's `c`/`b`/`o` type codes become (discretizer, scale) pairs.
 - **Why:** v2 conflated discretization and scaling through a single type code,
@@ -276,11 +278,11 @@ of this file).
   special cases. Orthogonality reproduces every v2 mode and yields new
   combinations (e.g., equal-frequency bins + ordinal scaling) at zero extra
   design cost. The thesis already separates these conceptually (Ch 4.7 vs 4.8).
-- **Rejected:** preserving v2's unified type code — familiar but blocks the
+- **Rejected:** preserving v2's unified type code: familiar but blocks the
   combinations and bakes in the conflation.
 - **Affects:** Core, Conversion, spec §11 ("Discretizer reference") / §12 ("Scale reference"). This is THE anchoring idea.
 
-### D-003 — Discovery is a separate operation, not implicit in convert
+### D-003: Discovery is a separate operation, not implicit in convert
 
 - **Status:** accepted; refined by D-036
 - **Decision:** `Discover(source) → draft spec` (the `probe` command) is a
@@ -294,13 +296,13 @@ of this file).
   emit time would force a hidden pre-pass. Making discovery explicit (and
   distinct from calibration) keeps the converter clean. See D-036 for the full
   phase model.
-- **Rejected:** auto-*discovery* folded into convert — convenient but couples
+- **Rejected:** auto-*discovery* folded into convert: convenient but couples
   two concerns and makes the streaming story murky. (Auto-*calibration* IS
-  folded in by default — D-005, D-028 — but it is an explicit phase, not
+  folded in by default (D-005, D-028), but it is an explicit phase, not
   discovery.)
 - **Affects:** Discovery, Conversion; spec §7 ("Processing phases").
 
-### D-004 — Determinism rules centralized in the planner
+### D-004: Determinism rules centralized in the planner
 
 - **Status:** accepted
 - **Decision:** all ordering rules (attribute order, formal-attribute order,
@@ -311,7 +313,7 @@ of this file).
   and writers guarantees drift and cross-machine non-reproducibility.
 - **Affects:** Core (planner), spec §17 ("Determinism rules").
 
-### D-005 — Plan/Emit separation, with calibration before planning
+### D-005: Plan/Emit separation, with calibration before planning
 
 - **Status:** accepted; phase order refined by D-036
 - **Decision:** the pipeline is Parse/validate → **Calibrate** → **Plan** →
@@ -325,12 +327,12 @@ of this file).
   CLI commands), and the emit stage stays allocation-conscious at 10–100×
   scale. `.dat` is single-pass; `.cxt` is two-pass (needs |G| up front) but
   pass 1 carries only object identity, not the incidence matrix. (The original
-  wording put Calibrate "before emit" but after Plan; D-036 fixes the order —
+  wording put Calibrate "before emit" but after Plan; D-036 fixes the order:
   Plan needs calibrated cuts to assign formal-attribute IDs, so Calibrate must
   precede it.)
 - **Affects:** Conversion, Export, Cli; spec §7 ("Processing phases").
 
-### D-006 — Diagnostics package as the shared leaf
+### D-006: Diagnostics package as the shared leaf
 
 - **Status:** accepted; `BedrockResult<T>` alias dropped by D-042
 - **Decision:** `FcaBedrock.Diagnostics` holds `Result<T, TError>`,
@@ -341,12 +343,12 @@ of this file).
 - **Why:** a domain-specific instantiation of the generic Result type, shared
   across CLI, future Reduce tool, etc. Aggregating diagnostics (`Diagnosed<T>`)
   lets `validate` surface all errors at once, not just the first.
-- **Rejected:** (a) reusing the trading-platform Result library — work code
+- **Rejected:** (a) reusing the trading-platform Result library: work code
   stays at work, FcaBedrock is personal; keep them unmixed. (b) a `.Common`
-  junk-drawer package — named `.Diagnostics` to resist scope creep.
+  junk-drawer package: named `.Diagnostics` to resist scope creep.
 - **Affects:** all packages, spec §16 ("Diagnostics").
 
-### D-007 — Target 10×–100× the v2 EMAGE workload
+### D-007: Target 10×–100× the v2 EMAGE workload
 
 - **Status:** accepted
 - **Decision:** v1 design target is ~7.3M–73M records (EMAGE was ~732k
@@ -356,11 +358,11 @@ of this file).
 - **Why:** explicit answer to "how large." At this scale, transient
   per-object allocations and full-matrix materialization are disqualifying.
   Also means `.cxt` and `.dat` are not symmetric: at the top end a `.cxt` is
-  tens of GB and ConExp can't open it — `.dat` is the scaling format, `.cxt`
+  tens of GB and ConExp can't open it; `.dat` is the scaling format, `.cxt`
   the human-readable/small-context one. Planner warns over a size threshold.
 - **Affects:** Sources, Conversion, Export, spec §8 (`size_advisory_bytes`).
 
-### D-008 — Avalonia for the desktop UI
+### D-008: Avalonia for the desktop UI
 
 - **Status:** accepted
 - **Decision:** the eventual desktop UI is Avalonia.
@@ -370,22 +372,22 @@ of this file).
 - **Rejected:** WPF (platform lock-in), MAUI/Uno (fit/maturity).
 - **Affects:** Desktop only; zero effect on Core. UI is M9.
 
-### D-009 — New TOML spec format; one-way .bed migration
+### D-009: New TOML spec format; one-way .bed migration
 
 - **Status:** accepted (the migrator's document-model realization is D-079)
 - **Decision:** the Bedrock spec is a new TOML format, record-per-attribute.
   A v2 `.bed` reader exists for one-way migration (load v2, save as TOML).
   `.bed` writing is not supported.
-- **Why:** v2's `.bed` is parallel arrays under bracketed headers —
+- **Why:** v2's `.bed` is parallel arrays under bracketed headers:
   index-aligned and brittle (one misaligned line silently corrupts the spec).
-  TOML record-per-attribute is robust and diffable. No file-format-compat
-  requirement was found.
+  TOML record-per-attribute is hard to misalign and easy to diff. No
+  file-format-compat requirement was found.
 - **Rejected:** preserving `.bed` format compatibility (no need, and it would
   perpetuate the brittleness); JSON/YAML (TOML reads better for this and
   matches the author's habits; `Tomlyn` is solid on .NET).
 - **Affects:** Spec, spec §2+ (file structure).
 
-### D-010 — Modelled-but-rejected scales/features carry forward-compat
+### D-010: Modelled-but-rejected scales/features carry forward-compat
 
 - **Status:** accepted
 - **Decision:** `interordinal`, `biordinal`, `contranominal` scales, and
@@ -394,10 +396,10 @@ of this file).
 - **Why:** lets v1 spec files declare these without a format break when they're
   implemented. Near-zero cost (a parse case + a planner guard). The user
   preferred "model it now."
-- **Rejected:** not modelling them — would force a spec-version bump later.
+- **Rejected:** not modelling them (would force a spec-version bump later).
 - **Affects:** Spec, Core (planner), spec §12.4 / §5.4 / §20.
 
-### D-011 — v2 byte-equality is a CLI flag, not a spec setting
+### D-011: v2 byte-equality is a CLI flag, not a spec setting
 
 - **Status:** accepted
 - **Decision:** `--v2-compat` on the `convert` command overrides `[output]`
@@ -407,14 +409,14 @@ of this file).
   of a spec. Keeps the spec format clean. M1's byte-equality goal uses this
   flag.
 - **Rejected:** a `bin_label_style = "math" | "v2"` spec field (originally
-  proposed, then pulled) — pollutes the spec with a transient concern.
+  proposed, then pulled): pollutes the spec with a transient concern.
 - **Affects:** Cli, Export, spec §8 ("The [output] block") / §18 ("Output formats").
 
 ---
 
 ## Scope / feature decisions
 
-### D-020 — v1 scale and discretizer surface
+### D-020: v1 scale and discretizer surface
 
 - **Status:** accepted
 - **Decision:** v1 implements discretizers `identity`, `manual_cuts`,
@@ -422,7 +424,7 @@ of this file).
   scales `nominal`, `dichotomic`, `ordinal`. `std_dev` binning was considered
   and **removed entirely** (not deferred). Advanced scales are D-010.
 - **Why:** this set reproduces the v2 behavior targeted for current
-  compatibility / golden tests, plus value grouping and ordinal-over-groups —
+  compatibility / golden tests, plus value grouping and ordinal-over-groups,
   **except std-dev binning**, which is intentionally removed rather than
   deferred because there is no current user need and it is not part of the M1
   compatibility target. (v2's source has a std-dev branch, and SPARQL2FCA had
@@ -430,48 +432,48 @@ of this file).
   a real need appears later; re-adding is non-breaking.
 - **Affects:** Core, spec §11 / §12 / §21.
 
-### D-021 — Three filtering levers kept distinct
+### D-021: Three filtering levers kept distinct
 
 - **Status:** accepted; lever (1) refined by D-032
 - **Decision:** (1) `include = false` drops formal-attribute generation and
   incidence emission, but does **not** suppress the attribute's own
-  `restrict_to` (the filter-only pattern — see D-032);
+  `restrict_to` (the filter-only pattern; see D-032);
   (2) `declared_domain` limits which raw values become formal attributes;
   (3) `restrict_to` filters objects (OR within an attribute, AND across
   attributes), operating on **raw values before discretization**.
 - **Why:** v2 has all three but the UI blurs them. They compose and have
-  different semantics — e.g., you can restrict on a raw value range that isn't
+  different semantics: e.g., you can restrict on a raw value range that isn't
   even a bin boundary, and matched objects still cross under their actual bin.
-  The restrict-on-raw-value-before-discretization rule is load-bearing (thesis
-  EMAGE walkthrough relies on it).
+  The restrict-on-raw-value-before-discretization rule is required: the thesis
+  EMAGE walkthrough relies on it.
 - **Affects:** Core (planner filter stage), spec §10.3 / §10.4.
 
-### D-022 — value_groups discretizer (clustering raw values)
+### D-022: value_groups discretizer (clustering raw values)
 
 - **Status:** accepted
 - **Decision:** a `value_groups` discretizer maps many raw values to one bin
   label, via explicit `values`, a regex `pattern`, or both, with an
   `unmatched` policy (`skip` | `other` | `passthrough`). Pairs with nominal
   (mutually-exclusive groups) or ordinal (cumulative, needs `order`).
-- **Why:** requested — collapse {Bachelors, Masters, PhD} → "Uni-Degree" to
+- **Why:** requested: collapse {Bachelors, Masters, PhD} → "Uni-Degree" to
   reduce clutter. Falls out of the orthogonal model as just another
   discretizer. Regex form is essential for high-cardinality coded data
   (ICD-10, gene IDs). Value aliases (synonyms → one label) are the same
   mechanism, no extra feature.
 - **Affects:** Core, spec §11.6 ("value_groups").
 
-### D-023 — value_labels (raw value → display label)
+### D-023: value_labels (raw value → display label)
 
 - **Status:** accepted
 - **Decision:** a per-attribute `value_labels` map renders raw values under
   display names in formal-attribute output (v2's `[Attribute Categories]` vs
   `[Category Values]`). Applies only under `identity` / `free_per_value`.
-- **Why:** caught during spec review — v2 outputs `gill-size-broad`, not
-  `gill-size-b`. Without it, mini-mushroom byte-equality (M1) fails and output
-  names are ugly. Affects `output_fingerprint` (now split per-format, D-051), not `schema_fingerprint`.
+- **Why:** v2 outputs `gill-size-broad`, not `gill-size-b`. Without it,
+  mini-mushroom byte-equality (M1) fails and output names are ugly. Affects
+  `output_fingerprint` (now split per-format, D-051), not `schema_fingerprint`.
 - **Affects:** Core, Export, spec §10.8 ("value_labels").
 
-### D-024 — Object grouping by composite key (deferred to v1.1)
+### D-024: Object grouping by composite key (deferred to v1.1)
 
 - **Status:** accepted (deferred)
 - **Decision:** `object_key.mode = "composite"` (rows sharing a derived key
@@ -483,7 +485,7 @@ of this file).
   is proven.
 - **Affects:** Sources, Conversion, spec §5.4 ("Object key resolution").
 
-### D-025 — Post-context reductions live in a sibling tool
+### D-025: Post-context reductions live in a sibling tool
 
 - **Status:** accepted
 - **Decision:** clarification, reduction, and minimum-support filtering are
@@ -494,7 +496,7 @@ of this file).
   minimum-support as future work.
 - **Affects:** future sibling tool; keeps Conversion/Export focused.
 
-### D-026 — Reproducibility: provenance block + run manifest
+### D-026: Reproducibility: provenance block + run manifest
 
 - **Status:** accepted *(manifest schema refined by D-122)*
 - **Decision:** specs carry an optional `[provenance]` block (author, source
@@ -511,7 +513,7 @@ of this file).
   reproducible without forcing a separate `calibrate` step.
 - **Affects:** Spec, Cli, spec §4 ("The [provenance] block") / §15 ("Run manifest"). D-122.
 
-### D-027 — Spec composition via `extends`
+### D-027: Spec composition via `extends`
 
 - **Status:** accepted
 - **Decision:** a spec may `extends` a base spec; merge rules are defined
@@ -523,7 +525,7 @@ of this file).
   drift. Hard to retrofit (changes parser resolution order), so committed early.
 - **Affects:** Spec, spec §13 ("Composition: extends").
 
-### D-028 — Calibration on-the-fly by default; `calibrate` to freeze
+### D-028: Calibration on-the-fly by default; `calibrate` to freeze
 
 - **Status:** accepted
 - **Decision:** auto-discretizers (`equal_width`, `equal_frequency`) calibrate
@@ -542,7 +544,7 @@ These resolve ambiguities and conflicts found auditing `bedrock-spec-v1.md`
 against the settled triple/filter/fingerprint assumptions. They refine, not
 reverse, the earlier decisions.
 
-### D-030 — Triple multi-value union; scale decides folding
+### D-030: Triple multi-value union; scale decides folding
 
 - **Status:** accepted
 - **Decision:** for triple input, rows sharing an object key accumulate crosses
@@ -554,11 +556,11 @@ reverse, the earlier decisions.
   source-level collapse toggle would be a second way to express what the scale
   already expresses, violating principles EP-5 ("One project-standard way per
   concern").
-- **Rejected:** a configurable collapse flag on the source (the "(maybe
-  configurable?)" question) — declined for the one-way reason above.
+- **Rejected:** a configurable collapse flag on the source: declined for the
+  one-way reason above.
 - **Affects:** Sources, Conversion, spec §5.3.1.
 
-### D-031 — `subject_grouped` requires contiguous subjects
+### D-031: `subject_grouped` requires contiguous subjects
 
 - **Status:** accepted
 - **Decision:** under `ordering = "subject_grouped"`, all rows for a subject
@@ -571,7 +573,7 @@ reverse, the earlier decisions.
 - **Rejected:** silent buffering on non-contiguous subjects.
 - **Affects:** Sources, spec §5.3.1.
 
-### D-032 — Filter-only attributes (`include = false` keeps `restrict_to`)
+### D-032: Filter-only attributes (`include = false` keeps `restrict_to`)
 
 - **Status:** accepted
 - **Decision:** `include = false` suppresses formal-attribute emission and
@@ -584,7 +586,7 @@ reverse, the earlier decisions.
   whose text implied it wasn't emitted.
 - **Affects:** Core (planner), spec §10.1 / §10.4 / §19.4.
 
-### D-033 — `source` may repeat across attributes
+### D-033: `source` may repeat across attributes
 
 - **Status:** accepted (supersedes the blanket source-duplicate ban; the rule
   now lives in spec §10.2)
@@ -599,7 +601,7 @@ reverse, the earlier decisions.
 - **Rejected:** keeping the ban (would forbid multi-scale, a real need).
 - **Affects:** Core (planner), spec §10.2; new diagnostic `FormalAttributeCollision`.
 
-### D-034 — Duplicate object keys defined by key mode; `fail` default
+### D-034: Duplicate object keys defined by key mode; `fail` default
 
 - **Status:** accepted (supersedes the inconsistent `duplicate_policy` /
   `duplicate_object_policy` wording)
@@ -617,12 +619,11 @@ reverse, the earlier decisions.
 - **Affects:** Core (planner), Sources, spec §5.4 / §6.1; diagnostic
   `DuplicateObjectKey` (severity per policy).
 
-### D-035 — Fingerprint scopes: schema = planned columns only
+### D-035: Fingerprint scopes: schema = planned columns only
 
 - **Status:** accepted; the single `output_fingerprint` is split into per-format
   `cxt_output_fingerprint` / `dat_output_fingerprint` by D-051 and its plan-derived
-  canonical encoding pinned by D-053 (refines D-004-adjacent fingerprint wording;
-  tightened in Round 4)
+  canonical encoding pinned by D-053 (refines D-004-adjacent fingerprint wording)
 - **Decision:** `schema_fingerprint` hashes **only the final ordered list of
   planned formal-attribute canonical identities** (logical name + scale +
   canonical bin/threshold key + operator), as produced by Plan. No policy is an
@@ -631,27 +632,25 @@ reverse, the earlier decisions.
   and cuts all enter *only* through their effect on that resolved list. Two
   plans with the same ordered canonical-identity list fingerprint identically.
   It excludes `duplicate_object_policy`, `restrict_to`, object-key mode, and
-  object ordering (those select/merge *rows*). `output_fingerprint` =
-  effective conversion plan + effective output settings (binding mappings,
-  delimiter/quote/missing token, value types, policies, locale, object
-  ordering, rendered names, writer settings incl. `trailing_newline`).
+  object ordering (those select/merge *rows*). A single `output_fingerprint`
+  covered the effective plan and output settings; D-051 replaced it with
+  per-format output fingerprints.
 - **Canonical identity vs rendered name:** canonical identity (→ `.dat` columns,
   → `schema_fingerprint`) is distinct from the rendered `.cxt` name (produced by
-  `formal_attribute_format` / `display_name` / `value_labels`, → only
-  `output_fingerprint`). Identity collision → `FormalAttributeCollision`;
-  rendered-name collision → `FormalAttributeNameCollision`; both Error.
+  `formal_attribute_format` / `display_name` / `value_labels`, → only the
+  output fingerprint, the `.cxt` one since D-051). Identity collision →
+  `FormalAttributeCollision`; rendered-name collision →
+  `FormalAttributeNameCollision`; both Error.
 - **Why:** `.dat` column identity is the schema; listing policies as *direct*
   inputs double-counted their effect (the extra/included columns are already in
-  the planned list). Hashing the planned list alone is exact and simpler. The
-  original §13 wrongly put `duplicate_object_policy` in the schema fingerprint;
-  Round 3 removed locale; Round 4 removed the residual policy inputs and split
-  identity from rendered name.
+  the planned list). Hashing the planned list alone is exact and simpler.
 - **Affects:** Spec (fingerprinting), spec §10.2 / §14 / §17; diagnostics
   `FormalAttributeCollision`, `FormalAttributeNameCollision`.
 
-### D-036 — Four-phase processing model; convert calibrates, never discovers
+### D-036: Four-phase processing model; convert calibrates, never discovers
 
-- **Status:** accepted (makes D-003 / D-005 concrete and normative in the spec)
+- **Status:** accepted (makes D-003 / D-005 concrete and normative in the spec);
+  the "NaN/∞ → missing" clause superseded by D-050
 - **Decision:** Parse/validate → Calibrate → Plan → Emit. Calibrate is the only
   data-reading phase that resolves data-dependent schema (absent
   `declared_domain`, auto-discretizer cuts, `unknown_value_policy = "include"`).
@@ -671,31 +670,28 @@ reverse, the earlier decisions.
 
 ## Round 2 spec audit (contract-tightening)
 
-Refinements from the second audit pass. Several existing decisions gained
-refinement markers (D-003, D-005, D-021); the entries below are new.
+Refinements from the second audit pass.
 
-### D-037 — Scale-specific default naming; emitted-field discipline
+### D-037: Scale-specific default naming; emitted-field discipline
 
-- **Status:** accepted; (b) superseded by D-049 — `EmittedFieldOnExcludedAttribute`
+- **Status:** accepted; (b) superseded by D-049: `EmittedFieldOnExcludedAttribute`
   is removed and `include = false` is an authoring toggle (retained config is
   ignored, not an error). (a) stands.
-- **Decision:** (a) default formal-attribute naming is scale-specific —
+- **Decision:** (a) default formal-attribute naming is scale-specific:
   nominal `{column}-{value}`, ordinal `{column}-{scale_op}{value}`, dichotomic
   `{column}` alone, `as_attribute` adds `{column}-missing`; an explicit
   `formal_attribute_format` overrides the scale default entirely. (b)
   `discretizer`/`scale` are required only when `include = true`; emitted-only
-  fields (`discretizer`, `scale`, `value_labels`, `declared_domain`,
-  `formal_attribute_format`, `display_name`, `missing_policy`,
-  `unknown_value_policy`) on an `include = false` attribute are
-  `EmittedFieldOnExcludedAttribute` (Error).
+  fields on an `include = false` attribute were first an Error
+  (`EmittedFieldOnExcludedAttribute`), which D-049 removed.
 - **Why:** (a) M1 byte-equality requires dichotomic `bruises?` not
   `bruises?-bruises`; the old flat `{column}-{value}` default was wrong for
   dichotomic and contradicted the examples. (b) the old "every attribute needs
   discretizer+scale" rule made the new filter-only examples invalid.
-- **Affects:** Core, Export, spec §10.7 / §10.9 / §12.2; new diagnostic
-  `EmittedFieldOnExcludedAttribute`.
+- **Affects:** Core, Export, spec §10.7 / §10.9 / §12.2; diagnostic
+  `EmittedFieldOnExcludedAttribute` (removed by D-049).
 
-### D-038 — Date support deferred; v2 six-type-code map confirmed
+### D-038: Date support deferred; v2 six-type-code map confirmed
 
 - **Status:** accepted (supersedes the Round 2 "implement date now" direction)
 - **Decision:** date-valued scaling is **deferred** from v1. `value_type =
@@ -706,19 +702,19 @@ refinement markers (D-003, D-005, D-021); the entries below are new.
   non-breaking addition of the `"date"` value, not a new field).
 - **Why:** continuous *numeric* support is the v1 priority. Full date support
   pulls in cut syntax, `DateOnly`/`DateTime` semantics, day-space binning, label
-  rounding, and date-specific diagnostics — complexity not worth front-loading
-  before coding. This reverses the Round 2 decision to implement date now.
-- **v2 finding (retained, accurate):** verified against `frmFcaBedrock.vb`, v2
-  has **six** type codes — `c` categorical, `b` boolean, `o` continuous-numeric,
-  `d` date, `n` ordinal, plus missing. The earlier "dates as continuous" reading
-  was wrong; `d` is a distinct type using `DateTime.Parse`. So v1 deferring `d`
-  is a *conscious parity deferral*, not an oversight — and D-020's "reproduces
-  v2 behavior" is correspondingly qualified (date deferred, std-dev removed).
+  rounding, and date-specific diagnostics: complexity not worth front-loading
+  before coding.
+- **v2 finding:** verified against `frmFcaBedrock.vb`, v2 has **six** type
+  codes: `c` categorical, `b` boolean, `o` continuous-numeric, `d` date, `n`
+  ordinal, plus missing. The earlier "dates as continuous" reading was wrong;
+  `d` is a distinct type using `DateTime.Parse`. So v1 deferring `d` is a
+  *conscious parity deferral*, not an oversight, and D-020's "reproduces v2
+  behavior" is correspondingly qualified (date deferred, std-dev removed).
   v2's `n` (Ordinal) type = our `ordinal` scale over an ordered categorical
   discretizer (already covered, no new feature). The 60% date auto-detect
   heuristic is retained only as future `probe` behavior when date lands.
-- **Rejected:** implementing date in v1 (Round 2 direction) — reversed for
-  scope/priority. Fully removing `value_type` until date lands — kept the field
+- **Rejected:** implementing date in v1 (Round 2 direction): reversed for
+  scope/priority. Fully removing `value_type` until date lands: kept the field
   so re-enabling is non-breaking.
 - **Affects:** Sources, Conversion, Core, spec §5.1 / §10.2 / §11.7 / §20;
   lineage.md (v2 type-code map, `d` marked deferred); diagnostics
@@ -731,7 +727,7 @@ refinement markers (D-003, D-005, D-021); the entries below are new.
 
 ### D-029: Engineering principles formalized as docs/engineering-principles.md
 
-- **Status:** accepted
+- **Status:** accepted; owner file renamed and renumbering forbidden by D-129
 - **Date:** 2026-06-20
 - **Decision:** project-specific engineering principles live in
   `docs/engineering-principles.md` (21 principles across Working discipline + Correctness,
@@ -740,36 +736,36 @@ refinement markers (D-003, D-005, D-021); the entries below are new.
   `decisions.md` entry; internal cross-references use number + short title so
   renumbering stays painless.
 - **Why:** gives sessions (especially agents) a checkable invariant set
-  distinct from operational guidance (`CLAUDE.md`) and per-decision rationale
-  (this file).
+  distinct from operational guidance (then `CLAUDE.md`, now `AGENTS.md` under
+  D-048) and per-decision rationale (this file).
 - **Affects:** all packages; governance. See also the mechanical-backstop
   follow-up in `roadmap.md` (M0).
 
-### D-039 — Test conventions + ArchUnitNET for architecture tests
+### D-039: Test conventions + ArchUnitNET for architecture tests
 
-- **Status:** accepted
+- **Status:** accepted; the conventions moved to `AGENTS.md` by D-048
 - **Date:** 2026-06-23
-- **Decision:** project test conventions live in `CLAUDE.md` ("Testing
-  conventions"): one `FcaBedrock.<Package>.Tests` project per package (created when
-  the package gains code), unit test class `<ClassUnderTest>Tests` mirroring the
-  production type's folder/namespace, unit/behavioural methods named
-  `Subject_When<Condition>_Then<Outcome>`, and architecture tests named
-  `Subject_Should<Outcome>`. Architecture/dependency tests are written with
-  **ArchUnitNET** (`TngTech.ArchUnitNET.xUnit`), replacing the hand-rolled
-  reflection harness.
+- **Decision:** the project test conventions, first recorded in `CLAUDE.md`
+  ("Testing conventions"), are: one `FcaBedrock.<Package>.Tests` project per
+  package (created when the package gains code), unit test class
+  `<ClassUnderTest>Tests` mirroring the production type's folder/namespace,
+  unit/behavioural methods named `Subject_When<Condition>_Then<Outcome>`, and
+  architecture tests named `Subject_Should<Outcome>`. Architecture/dependency
+  tests are written with **ArchUnitNET** (`TngTech.ArchUnitNET.xUnit`),
+  replacing the hand-rolled reflection harness.
 - **Why:** one documented test style (EP-5), and a fluent arch-test library whose
-  type-level dependency analysis can enforce invariants reflection cannot — notably
+  type-level dependency analysis can enforce invariants reflection cannot, notably
   EP-13 ("Core is pure: no `System.IO`") once Core has code at M1. The cross-package
   layering and cycle rules read declaratively and extend cleanly as packages land.
-- **Rejected:** NetArchTest.Rules — simpler fluent API but less expressive and less
-  actively maintained; the hand-rolled reflection harness — zero-dependency but
+- **Rejected:** NetArchTest.Rules: simpler fluent API but less expressive and less
+  actively maintained; the hand-rolled reflection harness: zero-dependency but
   assembly-reference granular, so it cannot see type-level dependencies like
   `System.IO.File`. On M0's empty assemblies all three are equally vacuous, so the
   arch suite keeps a non-vacuous "production assemblies were loaded" guard.
 - **Affects:** tests (`FcaBedrock.Architecture.Tests`, `*.Tests` naming),
   `CLAUDE.md`, `Directory.Packages.props`.
 
-### D-040 — Shared `tests/Directory.Build.props`; MTP-only (no Microsoft.NET.Test.Sdk)
+### D-040: Shared `tests/Directory.Build.props`; MTP-only (no Microsoft.NET.Test.Sdk)
 
 - **Status:** accepted
 - **Date:** 2026-06-23
@@ -782,9 +778,8 @@ refinement markers (D-003, D-005, D-021); the entries below are new.
   Each `FcaBedrock.<Package>.Tests` project now carries only its own
   references/items. `Microsoft.NET.Test.Sdk` is dropped: xUnit v3 self-hosts
   Microsoft.Testing.Platform, so `OutputType=Exe` + `xunit.v3` is sufficient for
-  `dotnet test` (MTP runner per `global.json`); CLI build/test, the guard, and
-  golden fixture copying were all verified green without it, and Visual Studio
-  2026 Test Explorer was confirmed to discover and run both projects without it.
+  `dotnet test` (MTP runner per `global.json`); the CLI build and test run, the guard,
+  golden fixture copying and Visual Studio 2026 Test Explorer were verified without it.
   `Microsoft.NET.Test.Sdk` is therefore removed from `Directory.Packages.props`
   entirely; if some future tooling needs VSTest, re-add the `PackageReference` to
   the shared props (one line) rather than per project.
@@ -792,53 +787,52 @@ refinement markers (D-003, D-005, D-021); the entries below are new.
   duplicated boilerplate lines would be re-pasted for every future package, and
   the zero-tests guard relied on each session remembering to copy it. Centralizing
   makes the guard automatic and shrinks each `.csproj` to its unique parts.
-- **Rejected:** a `tests/Directory.Build.props` *without* the parent import — it
+- **Rejected:** a `tests/Directory.Build.props` *without* the parent import: it
   shadows (does not merge with) the root props, silently dropping
   `TargetFramework`, `Nullable`, analyzers, `TreatWarningsAsErrors`, and
   `RepoRoot` (the last breaks the Golden fixture-copy glob). Putting the shared
   block in the **root** `Directory.Build.props` under
-  `Condition="'$(IsTestProject)'=='true'"` — fails, because props are imported
+  `Condition="'$(IsTestProject)'=='true'"`: fails, because props are imported
   before the csproj body sets `IsTestProject`; a root `Directory.Build.targets`
   with that condition works but is less discoverable and mixes test config into a
-  root file. Keeping `Microsoft.NET.Test.Sdk` unconditionally — unnecessary VSTest
+  root file. Keeping `Microsoft.NET.Test.Sdk` unconditionally: unnecessary VSTest
   weight for the MTP/CLI path.
 - **Affects:** tests (`tests/Directory.Build.props`, both `*.Tests` csproj),
   `CLAUDE.md`. Refines D-039.
 
 ---
 
-### D-048 — `AGENTS.md` canonical; `CLAUDE.md` imports it; no symlink
+### D-048: `AGENTS.md` canonical; `CLAUDE.md` imports it; no symlink
 
 - **Status:** accepted
 - **Date:** 2026-06-26
 - **Decision:** the shared, tool-agnostic agent guidance formerly in `CLAUDE.md`
   is now canonical in **`AGENTS.md`** (the cross-tool convention Codex and other
   agents read natively). `CLAUDE.md` is reduced to a one-line Claude Code import
-  shim — `@AGENTS.md` — which inlines the file into context identically to inline
+  shim, `@AGENTS.md`, which inlines the file into context identically to inline
   content. Any Claude-only instructions go *after* that import line; Codex-only
-  runtime config stays in Codex's own config, never the shared file. The two
-  self-references in the migrated file (the `# AGENTS.md` title and the
-  `/AGENTS.md # this file` layout-block line) were repointed; historical
+  runtime config stays in Codex's own config, never the shared file. Historical
   `CLAUDE.md` mentions elsewhere in this log (e.g. D-040 "Affects") are left as-is.
 - **Why:** a Claude session and a Codex session working the same repo need one
   source of truth, not two files that silently drift. The import costs Claude
   nothing and Codex reads `AGENTS.md` directly.
-- **Rejected:** a `CLAUDE.md → AGENTS.md` **symlink** — this checkout has
+- **Rejected:** a `CLAUDE.md → AGENTS.md` **symlink**: this checkout has
   `core.symlinks=false` (the Windows default; `core.autocrlf=true` compounds it),
   so a committed symlink checks out as a one-line text file containing the path,
   i.e. Claude would load the literal string `AGENTS.md` as its entire guidance.
-  Duplicating the content across both files — guaranteed drift.
-- **Affects:** `AGENTS.md` (renamed from `CLAUDE.md`, history preserved via
-  `git mv`), `CLAUDE.md` (new import shim). Process/tooling only; no code, no
-  output bytes.
+  Duplicating the content across both files: guaranteed drift.
+- **Affects:** `AGENTS.md`, `CLAUDE.md` (new import shim). Process/tooling only; no
+  code, no output bytes.
 
-### D-073 — Decision index; sessions read it first, then relevant entries
+### D-073: Decision index; sessions read it first, then relevant entries
 
-- **Status:** accepted
+- **Status:** accepted; its rejection of summarizing entries in place narrowed by
+  D-129 rule (1)
 - **Date:** 2026-07-04
-- **Decision:** this file opens with a compact **index** — one line per
-  decision, grouped by section, status annotated only where superseded or
-  refined. The `AGENTS.md` session workflow changes from "read
+- **Decision:** this file opens with a compact **index**: one line per
+  decision, grouped by section, status originally annotated only where
+  superseded or refined (the index introduction now states the annotation
+  rule). The `AGENTS.md` session workflow changes from "read
   `docs/decisions.md`" to "read the index, then the entries the task touches";
   reading the log in full remains the bar before proposing architectural
   changes (the rule at the top of `AGENTS.md`). A new decision entry MUST also
@@ -876,8 +870,8 @@ refinement markers (D-003, D-005, D-021); the entries below are new.
   repeated evidence tables. An earlier rule must never be reworded so that it reads as though it
   always contained a later correction.
   **(2) Engineering principles.** `docs/engineering-principles.md` owns the engineering invariants,
-  numbered `EP-1` through `EP-22`. Numbers, titles and meanings are fixed, and renumbering stays
-  forbidden (D-029). Every authored citation in this repository uses that family. No alias anchor
+  numbered `EP-1` through `EP-22`. Numbers, titles and meanings are fixed, and renumbering is
+  forbidden. Every authored citation in this repository uses that family. No alias anchor
   and no compatibility stub carries any earlier spelling, and no earlier spelling or path remains in
   authored repository state. Git is the record of what the names were.
   **(3) Writing policy.** `docs/writing-principles.md` is the single vendor-neutral owner of how
@@ -920,7 +914,7 @@ refinement markers (D-003, D-005, D-021); the entries below are new.
 - **Rejected:** a principle prefix that does not name its owning file, which stops being
   self-describing once a second principles document exists. Permanent alias anchors and an old-path
   stub, which keep an obsolete spelling as a migration diary when Git already holds it. Renumbering
-  principles, which D-029 forbids and which no rename requires. An in-tree archive of
+  principles, which no rename requires. An in-tree archive of
   pre-compaction prose, which duplicates what Git already stores. A checker that fails on style,
   which cannot be made reliable and would invite automatic rewriting of exact contract language. A
   second owner for the source-hygiene encoding rules, which `tests/FcaBedrock.Architecture.Tests`
@@ -1132,7 +1126,7 @@ refinement markers (D-003, D-005, D-021); the entries below are new.
 
 ## M1 (mini-mushroom walking skeleton)
 
-### D-041 — Sep as the DSV tokenizer for the wide-CSV source
+### D-041: Sep as the DSV tokenizer for the wide-CSV source
 
 - **Status:** accepted
 - **Date:** 2026-06-24
@@ -1147,64 +1141,64 @@ refinement markers (D-003, D-005, D-021); the entries below are new.
 - **Why:** hand-rolling correct RFC 4180 quoting (escaped quotes, embedded
   delimiters/newlines) is a classic bug farm, and the v1 scale target (D-007, up
   to ~73M records) wants a parser already hardened and benchmarked for span-based,
-  zero-allocation streaming. Sep is currently the fastest .NET CSV parser and its
+  zero-allocation streaming. Sep was then the fastest .NET CSV parser and its
   span-first row/col API suits the emit hot path (EP-18). Wrapping rather than
   exposing it keeps Sep out of the public surface, so it can be swapped without a
   contract change (EP-4).
-- **Rejected:** (a) hand-rolling a span DSV parser — reinvents the wheel we
+- **Rejected:** (a) hand-rolling a span DSV parser: reinvents the wheel we
   explicitly chose not to, and shifts the hardening/benchmark burden onto us; (b)
-  `Sylvan.Data.Csv` — also fast and mature, but exposes an ADO.NET
+  `Sylvan.Data.Csv`: also fast and mature, but exposes an ADO.NET
   `DbDataReader` shape with slightly more per-field overhead and a less span-native
   API than Sep.
 - **Affects:** Sources, `Directory.Packages.props`; spec §5.1/§5.2.
 
-### D-042 — Drop the `BedrockResult<T>` alias; use `Result<T, BedrockDiagnostic>`
+### D-042: Drop the `BedrockResult<T>` alias; use `Result<T, BedrockDiagnostic>`
 
 - **Status:** accepted (refines D-006)
 - **Date:** 2026-06-24
 - **Decision:** `Result<T, TError>` is a `readonly struct` whose `Ok`/`Err`
   factories allocate nothing, so the `BedrockResult<T>` "alias" D-006 named would
-  be pure typing-sugar with no runtime benefit — and C# cannot alias a
+  be pure typing-sugar with no runtime benefit, and C# cannot alias a
   partly-closed generic anyway. It is **not** introduced; call sites use
   `Result<T, BedrockDiagnostic>` directly. `Diagnosed<T>` (the aggregating carrier)
   is unaffected and remains the standard for validate/plan.
 - **Why:** one result type, no indirection, no second way to spell the same thing
   (EP-5). Naming the alias only to never realize it would have been a phantom in the
   surface.
-- **Rejected:** a `BedrockResult` static factory class over the closed generic —
-  still indirection for zero benefit; a distinct wrapper type — a second result
-  type to learn, against EP-5.
+- **Rejected:** a `BedrockResult` static factory class over the closed generic
+  (still indirection for zero benefit); a distinct wrapper type (a second result
+  type to learn, against EP-5).
 - **Affects:** Diagnostics; refines D-006 (alias struck from the type list).
 
-### D-043 — Two test axes: golden = v2-compat evidence, conformance = native spec
+### D-043: Two test axes: golden = v2-compat evidence, conformance = native spec
 
 - **Status:** accepted
 - **Date:** 2026-06-24
 - **Decision:** output behavior is proven along two distinct axes. (1) **Golden
   tests** (`FcaBedrock.Golden.Tests`) run the pipeline under
   `WriterOptions.V2Compat` and assert byte-identity against the `fixtures/v2/`
-  goldens — *compatibility evidence* (EP-9). (2) **Spec-conformance tests** run the
+  goldens: *compatibility evidence* (EP-9). (2) **Spec-conformance tests** run the
   **native** (non-v2) path and assert documented behavior with spec-section
   citations (e.g. native `.cxt` is LF + trailing newline §18.1; native `.dat` has
   no trailing space §18.2/§21.4; dichotomic name is `{column}` alone §10.7/§12.2;
   `value_labels` change names not order/count §10.8). Per-fixture binding (which
-  the v2 `.bed` never recorded — delimiter/header/shape) lives in a typed
+  the v2 `.bed` never recorded: delimiter/header/shape) lives in a typed
   `FixtureCase` table, as the fixtures README sanctions.
 - **Why:** the v2 goldens are deliberately *not* the spec's native output (v2-isms
   are quarantined behind `--v2-compat`, D-011), so byte-equality to v2 alone would
   leave the native contract unproven. The conformance axis is how code is held to
   the spec, not merely to v2 (EP-8); the golden axis is how v2 compatibility stays
   evidenced (EP-9).
-- **Rejected:** a single golden axis — would silently let the native default drift
-  from the spec; asserting native output against checked-in native golden files —
-  premature before the native format stabilizes, and the spec text is the
-  authority at this stage.
+- **Rejected:** a single golden axis (would silently let the native default drift
+  from the spec); asserting native output against checked-in native golden files
+  (premature before the native format stabilizes, and the spec text is the
+  authority at this stage).
 - **Affects:** tests (`FcaBedrock.Golden.Tests`: `GoldenFixtureTests`,
   `SpecConformanceTests`, `FixtureCase`); spec §18.
 
 ---
 
-### D-044 — Bin-label style is a plan-time render hook, not a writer flag
+### D-044: Bin-label style is a plan-time render hook, not a writer flag
 
 - **Status:** accepted
 - **Date:** 2026-06-25
@@ -1224,7 +1218,7 @@ refinement markers (D-003, D-005, D-021); the entries below are new.
 
 ---
 
-### D-045 — v2 `o` and `n` are both cut-based; discrete→nominal, progressive→ordinal
+### D-045: v2 `o` and `n` are both cut-based; discrete→nominal, progressive→ordinal
 
 - **Status:** accepted
 - **Date:** 2026-06-25
@@ -1232,7 +1226,7 @@ refinement markers (D-003, D-005, D-021); the entries below are new.
   discretizers; the discrete/progressive toggle is the **scale** choice, not a
   discretizer mode. `o` → `manual_cuts`, `n` → `ordered_cuts` (D-046); discrete →
   `nominal`, progressive → `OrdinalScale(direction = le)`. The mode is **not in the
-  `.bed`** (the two ordinal `.bed`s are byte-identical) — it is supplied
+  `.bed`** (the two ordinal `.bed`s are byte-identical); it is supplied
   **out-of-band** (a `ScalingMode` argument to `BedToSpec.ToSpec`, like `Binding`),
   defaulting to discrete. **No TOML reader is needed** to reproduce the progressive
   golden. `d` (date) stays rejected (D-038).
@@ -1240,18 +1234,18 @@ refinement markers (D-003, D-005, D-021); the entries below are new.
   produces mutually-exclusive `<Managerial`/`>=Managerial`). Treating the mode as
   caller metadata mirrors how delimiter/header already are.
 - **Rejected:** mapping `n` to a cumulative ordinal by default (refuted by the
-  discrete `n` golden); gating the progressive golden behind the M2 TOML reader.
+  discrete `n` golden); deferring the progressive golden to the M2 TOML reader.
 - **Affects:** `FcaBedrock.Spec` (`BedToSpec`, `ScalingMode`); the golden harness
   (`FixtureCase.ScalingMode`).
 
 ---
 
-### D-046 — `ordered_cuts` discretizer (spec §11.8); v2 `.bed` section-role asymmetry
+### D-046: `ordered_cuts` discretizer (spec §11.8); v2 `.bed` section-role asymmetry
 
 - **Status:** accepted
 - **Date:** 2026-06-25
-- **Decision:** add an `ordered_cuts` discretizer — cuts over a declared category
-  order — as the categorical sibling of `manual_cuts`, sharing one `CutBinLabels`
+- **Decision:** add an `ordered_cuts` discretizer (cuts over a declared category
+  order) as the categorical sibling of `manual_cuts`, sharing one `CutBinLabels`
   label/identity helper. Documented in spec §11.8 **before/with** the code (EP-8).
   For v2 `n`, `[Attribute Categories]` carries the ordered domain and
   `[Category Values]` carries the cut (`<,Managerial,>`); for `o`, both carry the
@@ -1265,13 +1259,13 @@ refinement markers (D-003, D-005, D-021); the entries below are new.
 
 ---
 
-### D-047 — Open-end ordinal threshold renders `all`, canonical in both paths
+### D-047: Open-end ordinal threshold renders `all`, canonical in both paths
 
 - **Status:** accepted
 - **Date:** 2026-06-25
 - **Decision:** for an `ordinal` scale over an **open-ended** cut discretizer, the
   tautological threshold at the open end has no finite edge and renders **`all`**
-  (v2's `age-all`). It is **canonical** — emitted natively too — so `--v2-compat`
+  (v2's `age-all`). It is **canonical** (emitted natively too), so `--v2-compat`
   never changes the schema (D-035); `drop_top` suppresses it. Over half-open
   `[lo, hi)` cut bins only the geometry-aligned boundary is well-defined (`le`+`<`,
   `ge`+`>=`); the straddling combinations and the independent `boundary` knob await
@@ -1285,7 +1279,7 @@ refinement markers (D-003, D-005, D-021); the entries below are new.
 
 ---
 
-### D-049 — `include = false` is an authoring toggle; dormant config never blocks
+### D-049: `include = false` is an authoring toggle; dormant config never blocks
 
 - **Status:** accepted
 - **Date:** 2026-06-27
@@ -1293,36 +1287,31 @@ refinement markers (D-003, D-005, D-021); the entries below are new.
   excluded attribute MAY retain any emitted-shaping config (`discretizer`,
   `scale`, `value_labels`, `declared_domain`, `formal_attribute_format`,
   `display_name`, `missing_policy`, `unknown_value_policy`); the planner ignores
-  it while excluded — it is **never** an error. This reverses D-037(b)'s
+  it while excluded, and it is **never** an error. This reverses D-037(b)'s
   `EmittedFieldOnExcludedAttribute`, which is **removed** (diagnostic + enum
   member). `restrict_to` still applies (D-021/D-032). Consequences: (a) the v2
   `.bed` migrator now **preserves** an excluded attribute's derived
-  discretizer/scale/domain — best-effort: an unsupported type or config that fails
+  discretizer/scale/domain, best-effort: an unsupported type or config that fails
   to parse degrades to a bare excluded attribute, never failing the migration; (b)
   `value_labels` under a discretizer that does not
-  consult it is **dormant** — ignored by both validation *and* name rendering, so
+  consult it is **dormant**: ignored by both validation *and* name rendering, so
   it cannot change output even when a key matches a cut-bin label. `value_labels`
   applies only when the discretizer consults it (`identity`/`free_per_value`); the
   single authority is `Discretizer.ConsultsValueLabels`. So `ValueLabelsNotApplicable`
   (spec-text only) and the enforced `ValueLabelKeyNotInDomain` fire only for live
-  labels — `ValueLabelKeyNotInDomain` stays the typo-catcher there.
+  labels; `ValueLabelKeyNotInDomain` stays the typo-catcher there.
 - **Why:** the D-037(b) rule made toggling an attribute off destructive (strip all
-  config) and a TOML round-trip of a parked attribute lossy — authoring-hostile
-  ahead of the M2 reader/writer. The principle: inactive/dormant config must not
-  block authoring; active attributes are still validated normally. Aligns excluded
-  attributes and dormant `value_labels` with how `declared_domain` is already
-  ignored for cut-based discretizers (§10.3).
-- **Deferred (M2 writer):** authored-vs-default presence tracking for
+  config) and a TOML round-trip of a parked attribute lossy, which was
+  authoring-hostile ahead of the M2 reader/writer. The principle: inactive/dormant
+  config must not block authoring; active attributes are still validated normally.
+  Aligns excluded attributes and dormant `value_labels` with how `declared_domain`
+  is already ignored for cut-based discretizers (§10.3).
+- **Deferred at the time:** round-trip presence tracking for
   `missing_policy`/`unknown_value_policy`/`display_name`/`formal_attribute_format`
-  (round-trip fidelity); the default-`boundary` round-trip trap over cut bins
-  (§12.3); revisiting the `value_type`-vs-discretizer rule (§10.2 — a live
-  conflict, left validating). See `docs/roadmap.md`.
-- **Deferred (migrator hygiene):** make `BedToSpec` return `Result<T,
-  BedrockDiagnostic>` instead of throwing (EP-14), so excluded-config recovery can
-  emit a *diagnostic* rather than relying on the broad recovery `catch (Exception)`
-  in `MapAttribute`. Natural to fold in when M2 reworks the `.bed` → TOML migrator;
-  not worth a standalone refactor now. *(Landed at M2 Slice G, D-079 —
-  `Diagnosed<SpecDocument>` over the document model.)*
+  (settled by D-066 and D-075), the default-`boundary` round-trip trap over cut
+  bins (§12.3, settled by D-060) and the `value_type`-vs-discretizer rule (§10.2,
+  settled by D-061) went to the M2 writer. Replacing the migrator's broad recovery
+  `catch (Exception)` with diagnostics (EP-14) landed with D-079.
 - **Affects:** Core (planner `ValidateValueLabels` + `RenderName`; new
   `Discretizer.ConsultsValueLabels`; `AttributeSpec` doc), Diagnostics (enum:
   `EmittedFieldOnExcludedAttribute` removed), Spec (`BedToSpec` migrator), spec
@@ -1333,18 +1322,15 @@ refinement markers (D-003, D-005, D-021); the entries below are new.
 ## M2 (TOML spec format + fingerprinting)
 
 These finalize the M2 contract before the TOML reader/writer, `.bed` migrator,
-fingerprints, manifests, and `extends` are implemented. They were settled over
-four review passes; the spec text (`bedrock-spec-v1.md`) is updated to match in
-the same documentation pass. Implementation follows a separate M1-adjacent
-conformance pass (`roadmap.md`).
+fingerprints, manifests, and `extends` are implemented.
 
-### D-050 — Malformed numeric values are present-but-invalid, not missing
+### D-050: Malformed numeric values are present-but-invalid, not missing
 
 - **Status:** accepted (supersedes the §11.5 "parse failure → missing" wording and
   the "NaN/∞ → missing" clause of D-036)
 - **Date:** 2026-06-28
 - **Decision:** for a numeric attribute, a value that is present but not a usable
-  finite number — fails to parse under `binding.locale`, or parses to NaN/±∞ — is
+  finite number (fails to parse under `binding.locale`, or parses to NaN/±∞) is
   **invalid**, not missing. The object is kept, no cross is emitted, the value is
   excluded from calibration, and `SourceValueUnparseable` is reported at the
   severity `unknown_value_policy` selects (`skip` → silent; `warn` → Warning;
@@ -1365,7 +1351,7 @@ conformance pass (`roadmap.md`).
   diagnostic `SourceValueUnparseable`. Byte-neutral on M1 (still "keep object, no
   cross"; only adds a diagnostic).
 
-### D-051 — Per-format output fingerprints (cxt + dat) replace the single output_fingerprint
+### D-051: Per-format output fingerprints (cxt + dat) replace the single output_fingerprint
 
 - **Status:** accepted (supersedes the single-`output_fingerprint` model of D-035;
   `schema_fingerprint` unchanged)
@@ -1373,7 +1359,7 @@ conformance pass (`roadmap.md`).
 - **Decision:** the `[spec]` block stores `schema_fingerprint`,
   `cxt_output_fingerprint`, and `dat_output_fingerprint`. Both output fingerprints
   build on `schema_fingerprint` and add the **shared** byte-affecting inputs that
-  schema omits — `duplicate_object_policy`, object-ordering policy, `restrict_to`
+  schema omits: `duplicate_object_policy`, object-ordering policy, `restrict_to`
   (once executable), and conversion-affecting binding/source settings. `.cxt` then
   adds rendered names + bin-label style + `.cxt` writer settings; `.dat` adds only
   `.dat` writer settings (`base_index`, line endings, trailing space). Rendered
@@ -1388,14 +1374,14 @@ conformance pass (`roadmap.md`).
 - **Affects:** Spec, Core; spec §3 / §14 / §15 / §21-item-16; diagnostics
   `CxtOutputFingerprintStale`, `DatOutputFingerprintStale`.
 
-### D-052 — extends overrides attributes position-preservingly
+### D-052: extends overrides attributes position-preservingly
 
 - **Status:** accepted (supersedes §13 rule 5 "concatenate; current wins"; refines
   D-027)
 - **Date:** 2026-06-28
 - **Decision:** under `extends`, base attributes keep their original positions; a
   derived attribute with the same `name` replaces the base attribute **in place**
-  (whole-attribute replacement — inherited fields, including `restrict_to`, are
+  (whole-attribute replacement: inherited fields, including `restrict_to`, are
   dropped unless repeated); a derived attribute with a new `name` is appended after
   all inherited attributes; the merge is applied at each step of a multi-level
   chain, base-most first. Suppress an inherited attribute by overriding it with
@@ -1403,14 +1389,14 @@ conformance pass (`roadmap.md`).
   field. Base-stored fingerprints are ignored and recomputed for the resolved spec.
 - **Why:** attribute order is column order (§17 rule 1) and feeds
   `schema_fingerprint`, so plain concatenation would reorder columns whenever a
-  derived spec re-tuned an inherited attribute — surprising and fingerprint-
+  derived spec re-tuned an inherited attribute: surprising and fingerprint-
   changing. Position-preserving override keeps column order stable across re-tunes.
   `[output]` merge was previously unspecified.
 - **Rejected:** concatenation with append-on-override (reorders columns);
   field-level merge of same-name attributes (error-prone, already rejected by D-027).
 - **Affects:** Spec; spec §13.
 
-### D-053 — Fingerprints hash a plan-derived canonical JSON structure, not TOML text
+### D-053: Fingerprints hash a plan-derived canonical JSON structure, not TOML text
 
 - **Status:** accepted (supersedes the §2/§3 "canonical TOML projection" framing;
   refines D-035's plan-based hashing)
@@ -1425,15 +1411,14 @@ conformance pass (`roadmap.md`).
 - **Why:** §2/§3 still described a "canonical TOML projection," which D-035 had
   already obsoleted by defining `schema_fingerprint` over the planned list. Hashing
   the plan is the single source of truth. Pinning the numeric format and a version
-  tag makes stored fingerprints portable and the encoding evolvable — both durable
+  tag makes stored fingerprints portable and the encoding evolvable, both durable
   contracts (EP-11), so they must be fixed before any spec ships with a stored hash.
 - **Rejected:** hashing TOML text (formatting-sensitive, and `30` vs `30.0` would
   differ); `"R"`/`"G17"` float formatting (17 digits defeats the `30.0`/`30`
   collapse).
-- **Affects:** Spec, Core (fingerprint encoder); spec §2 / §3 / §14. Needs a
-  canonical-encoding stability golden (numeric cuts) at implementation.
+- **Affects:** Spec, Core (fingerprint encoder); spec §2 / §3 / §14.
 
-### D-054 — v1 supports only the standard double quote_char
+### D-054: v1 supports only the standard double quote_char
 
 - **Status:** accepted (refines D-041 / §5.1)
 - **Date:** 2026-06-28
@@ -1450,7 +1435,7 @@ conformance pass (`roadmap.md`).
 - **Affects:** Sources, Spec; spec §5.1 / §16.4; diagnostics
   `QuoteCharNotSupportedV1`, `BindingDelimiterQuoteConflict`.
 
-### D-055 — value_groups does not use declared_domain
+### D-055: value_groups does not use declared_domain
 
 - **Status:** accepted (refines D-022)
 - **Date:** 2026-06-28
@@ -1463,7 +1448,7 @@ conformance pass (`roadmap.md`).
   it triggers Calibrate, emits `ValueGroupsPassthroughDataDependent` (Warning), and
   omits stored fingerprints unless frozen.
 - **Why:** `declared_domain` + `value_groups` created two overlapping
-  "recognized-value" gates (EP-5) — and since unmatched-`skip` already defers to
+  "recognized-value" checks (EP-5), and since unmatched-`skip` already defers to
   `unknown_value_policy`, the domain added nothing but precedence ambiguity (it also
   made regex groups, the high-cardinality case D-022 targets, useless). Dropping it
   dissolves the ambiguity.
@@ -1472,47 +1457,46 @@ conformance pass (`roadmap.md`).
 - **Affects:** Core, Spec; spec §7 / §10.3 / §11.6 / §17;
   diagnostic `ValueGroupsPassthroughDataDependent`.
 
-### D-056 — Cut validation in M2
+### D-056: Cut validation in M2
 
-- **Status:** accepted (formalizes the 2026-06-26 review item; refines D-046)
+- **Status:** accepted (refines D-046)
 - **Date:** 2026-06-28
 - **Decision:** M2 validates hand-authored TOML cuts, since hand-written specs first
-  become possible at M2: `manual_cuts` — strictly ascending (`DiscretizerCutsNotAscending`),
-  length ≥ 1 (`DiscretizerCutsTooFew`), and `ends = "closed"` requires ≥ 2 cuts
-  (`DiscretizerEndsClosedTooFewCuts`); `ordered_cuts` — `order` entries distinct and
-  non-empty (`OrderDomainInvalid`), cuts ∈ `order` (`OrderedCutsCutNotInDomain`),
-  cuts strictly ascending by order position (`OrderedCutsNotAscending`), plus the
-  closed-ends rule.
+  become possible at M2. For `manual_cuts`: strictly ascending
+  (`DiscretizerCutsNotAscending`), length ≥ 1 (`DiscretizerCutsTooFew`), and
+  `ends = "closed"` requires ≥ 2 cuts (`DiscretizerEndsClosedTooFewCuts`). For
+  `ordered_cuts`: `order` entries distinct and non-empty (`OrderDomainInvalid`),
+  cuts ∈ `order` (`OrderedCutsCutNotInDomain`), cuts strictly ascending by order
+  position (`OrderedCutsNotAscending`), plus the closed-ends rule.
 - **Why:** v2 `.bed` migration produced cuts mechanically, but a hand-authored TOML
   spec can easily express invalid cuts; these need clear diagnostics at the
-  validate phase rather than surfacing as confusing downstream behavior. Recorded
-  here because the 2026-06-26 review agreed the item without a decision entry.
+  validate phase rather than surfacing as confusing downstream behavior.
 - **Affects:** Core (cut validation), Spec; spec §11.2 / §11.8 / §16.4; diagnostics
   `DiscretizerEndsClosedTooFewCuts`, `OrderDomainInvalid`, `OrderedCutsCutNotInDomain`,
   `OrderedCutsNotAscending` (and existing `DiscretizerCutsNotAscending` / `DiscretizerCutsTooFew`).
 
-### D-057 — restrict_to round-trips in M2; execution deferred to M4
+### D-057: restrict_to round-trips in M2; execution deferred to M4
 
-- **Status:** accepted (refines D-021 / D-032; sequences §10.4; migrator carriage realized by D-079)
+- **Status:** accepted (refines D-021 / D-032; sequences §10.4; migrator carriage realized by D-079;
+  execution realized by D-105)
 - **Date:** 2026-06-28
 - **Decision:** M2 parses, preserves, and round-trips every `restrict_to` form
-  (string list, open- and closed-range, mixed), but planning/conversion **rejects**
-  any `restrict_to` with `RestrictToNotImplementedV1` until execution lands at M4 —
-  it is never silently ignored. While unimplemented, `restrict_to` does not enter
-  the output fingerprints, and a spec containing any `restrict_to` is not
-  fully-frozen, so tooling stores no fingerprints for it.
-- **Why:** the M2 carrier is needed for round-trip and migration, and `restrict_to`
-  is an output-fingerprint input — but its execution is roadmap M4. Silently
-  ignoring it would produce unfiltered output mismatching the spec's intent; storing
-  an M2 output fingerprint that excludes `restrict_to` would go stale when M4 lands.
-  The parse-but-reject pattern (as for templates/matchers) closes both holes.
+  (string list, open- and closed-range, mixed). Until execution landed at M4,
+  planning rejected any `restrict_to` with the transitional
+  `RestrictToNotImplementedV1` rather than silently ignoring it; `restrict_to`
+  stayed out of the output fingerprints, and a restricting spec was not fully
+  frozen. D-105 made `restrict_to` execute and retired all three limits.
+- **Why:** round-trip and migration need the carrier in M2. Silently ignoring an
+  authored filter would produce unfiltered output mismatching the spec's intent,
+  and a stored output fingerprint without `restrict_to` would have gone stale
+  when execution landed. The parse-but-reject pattern closed both holes.
 - **Rejected:** silently ignoring `restrict_to` in M2 (latent correctness bug);
   pulling wide-CSV `restrict_to` execution forward into M2 (expands M2 scope; M4 is
   the restriction milestone).
 - **Affects:** Core (planner guard), Spec; spec §10.4 / §14 / §16.4; diagnostic
-  `RestrictToNotImplementedV1` (transitional — removed at M4).
+  `RestrictToNotImplementedV1` (transitional, retired by D-105).
 
-### D-058 — Empty-output diagnostics: mechanical names replace EmptyExtent/EmptyIntent
+### D-058: Empty-output diagnostics: mechanical names replace EmptyExtent/EmptyIntent
 
 - **Status:** accepted (supersedes the §16.4 `EmptyExtent` / `EmptyIntent` rows)
 - **Date:** 2026-06-28
@@ -1536,21 +1520,20 @@ conformance pass (`roadmap.md`).
 
 ## M1-adjacent conformance pass
 
-Landed when shipped M1 code was reconciled with the merged M2 wording (the "Before
-implementation" pass in `roadmap.md`), before M2 proper. Mostly realizes earlier
-decisions (D-050 malformed-numeric, D-056 cut validation); the one new architectural
-decision is below.
+Landed when shipped M1 code was reconciled with the merged M2 wording, before M2
+proper. Mostly realizes earlier decisions (D-050 malformed-numeric, D-056 cut
+validation); the one new architectural decision is below.
 
-### D-059 — Discretization outcomes and data-diagnostic aggregation
+### D-059: Discretization outcomes and data-diagnostic aggregation
 
 - **Status:** accepted
 - **Date:** 2026-06-28
 - **Decision:** discretizers return a structured `BinResult` distinguishing a recognized
-  **bin**, **no-bin** (out-of-range), an **unknown** value, and an **unparseable** numeric —
+  **bin**, **no-bin** (out-of-range), an **unknown** value, and an **unparseable** numeric,
   replacing the old `string?` that collapsed all four into "label or null". Emit-phase data
   diagnostics that can occur per row (`UnknownValueObserved`, `SourceValueUnparseable`) are
   **aggregated per attribute** with a count and a bounded sample, flushed in plan order after
-  the stream (deterministic — EP-7), never one diagnostic per row.
+  the stream (deterministic, EP-7), never one diagnostic per row.
 - **Why:** `string?` conflated the silent no-cross cases (out-of-range, §11.2) with the
   diagnosable ones (unparseable §11.5/D-050; unknown §10.6/§11.8), so malformed/unknown data
   could not be surfaced without re-deriving it in the emitter (EP-17); and per-row diagnostics
@@ -1563,24 +1546,21 @@ decision is below.
   second `TryDiscretize` out-param method (two ways to spell one decision, EP-5); per-row data
   diagnostics (flood at scale, EP-20).
 - **Affects:** Core (discretizers, `BinResult`), Conversion (emit aggregation), Diagnostics
-  (`SourceValueUnparseable`); spec §10.6 / §11.5 / §11.8 / §16.4. The §5.1 whitespace
-  reconciliation in the same pass needed no decision entry — `SepTrim.Outer` is an
-  implementation detail inside the existing Sep integration (D-041); its conformance tests
-  are the record.
+  (`SourceValueUnparseable`); spec §10.6 / §11.5 / §11.8 / §16.4.
 
 ---
 
 ## Tier 1 spec audit (pre-M2)
 
-A consolidated internal-consistency audit of `bedrock-spec-v1.md`, reconciled over
-two external review rounds, before M2 implementation. Most findings were doc fixes
-needing no decision; the six below change a validation/output contract or sequence a
-feature, so they are recorded here. They refine, not reverse, earlier decisions.
+A consolidated internal-consistency audit of `bedrock-spec-v1.md` before M2
+implementation. Most findings were doc fixes needing no decision; the six below change a
+validation/output contract or sequence a feature, so they are recorded here. They refine,
+not reverse, earlier decisions.
 
-### D-060 — Ordinal-over-cuts validation contract
+### D-060: Ordinal-over-cuts validation contract
 
 - **Status:** accepted; (c)'s authored-vs-defaulted boundary provenance is
-  extended by D-114 — a `boundary` arriving as a **winning field from an applied
+  extended by D-114: a `boundary` arriving as a **winning field from an applied
   template or matcher** counts as explicitly authored, exactly as if it had been
   written on the attribute. A `[defaults]`-inherited boundary remains defaulted,
   as recorded here.
@@ -1592,8 +1572,8 @@ feature, so they are recorded here. They refine, not reverse, earlier decisions.
   `equal_frequency`); presence is `OrdinalOrderNotAllowedWithCuts` (Error). The cut
   discretizer is the single source of order, and `ordered_cuts` bin order is added to
   §17 rule 3 (ascending by cut position). (b) Both ordinal-over-cuts compatibility
-  checks run at **spec validate**: `OrdinalOrderNotAllowedWithCuts` and — re-phased
-  from plan — `OrdinalBoundaryIncompatibleWithCuts`; both depend only on authored
+  checks run at **spec validate**: `OrdinalOrderNotAllowedWithCuts` and (re-phased
+  from plan) `OrdinalBoundaryIncompatibleWithCuts`; both depend only on authored
   spec shape (discretizer kind, presence of `scale.order`, authored-vs-default
   `boundary`), never on data or calibrated cut values. (c) `[defaults]
   .ordinal_direction` / `ordinal_boundary` fill a missing `scale.direction` /
@@ -1609,28 +1589,28 @@ feature, so they are recorded here. They refine, not reverse, earlier decisions.
   treatment. Validate phase is the earliest point these static errors can be caught
   and matches the other cut validations (D-056) and the M2 validation freeze.
 - **Rejected:** ignoring `scale.order` over cuts as dormant (the
-  `declared_domain`-over-cuts / D-049 pattern) — on an *active* attribute it leaves two
+  `declared_domain`-over-cuts / D-049 pattern): on an *active* attribute it leaves two
   visible order declarations and can silently void the authored one; the local
   ordinal-over-cuts contract (boundary already rejects) is the tighter consistency
-  axis. Placing the checks at plan — they need no data, so validate is earlier.
+  axis. Placing the checks at plan: they need no data, so validate is earlier.
 - **Affects:** Core (validate, `OrdinalScale`), Spec, Diagnostics
   (`OrdinalOrderNotAllowedWithCuts` new; `OrdinalBoundaryIncompatibleWithCuts`
   re-phased plan→validate); spec §6 / §12.3 / §16.4 / §17. Refines D-044 / D-046 /
   D-047 / D-049.
 
-### D-061 — value_type matrix: free_per_value flexible, identity string-only
+### D-061: value_type matrix: free_per_value flexible, identity string-only
 
 - **Status:** accepted
 - **Date:** 2026-06-30
 - **Decision:** each discretizer either **fixes** the value type or is **flexible**.
-  String-fixing — `identity`, `value_groups`, `ordered_cuts` (only `"string"`).
-  Number-fixing — `manual_cuts`, `equal_width`, `equal_frequency` (only `"number"`).
-  Flexible — `free_per_value` (either: `"number"` → parsed-numeric bin identity, so
+  String-fixing: `identity`, `value_groups`, `ordered_cuts` (only `"string"`).
+  Number-fixing: `manual_cuts`, `equal_width`, `equal_frequency` (only `"number"`).
+  Flexible: `free_per_value` (either: `"number"` → parsed-numeric bin identity, so
   `90` / `90.0` / `9e1` collapse to one bin; `"string"` → verbatim spelling).
   `identity` + `"number"` is `SourceValueTypeInvalid`; numeric distinct-value binning
   uses `free_per_value`.
 - **Why:** D-049 flagged the §10.2 `value_type`-vs-discretizer rule as a *live
-  conflict* — it spoke of one "discretizer-implied type," which mis-described
+  conflict*: it spoke of one "discretizer-implied type," which mis-described
   `free_per_value` (legitimately both) and could reject its headline numeric use
   (D-022). Naming type-fixing vs flexible makes the four real conflict cases exact and
   keeps one numeric distinct-binner (EP-5).
@@ -1640,67 +1620,74 @@ feature, so they are recorded here. They refine, not reverse, earlier decisions.
   `SourceValueTypeInvalid` (scope clarified). Resolves the D-049-deferred item; refines
   D-022.
 
-### D-062 — Cross-attribute restrict not modelled in v1; drop the diagnostic
+### D-062: Cross-attribute restrict not modelled in v1; drop the diagnostic
 
 - **Status:** accepted
 - **Date:** 2026-06-30
 - **Decision:** cross-attribute restrict ("include attr A only when attr B = X") has no
   reserved carrier syntax in v1 and is **not modelled**. The named
-  `RestrictCrossAttributeNotImplementedV1` diagnostic is **removed** from §20 — it was
+  `RestrictCrossAttributeNotImplementedV1` diagnostic is **removed** from §20; it was
   unreachable, since no v1 syntax could trigger it. It remains prose-only future work.
 - **Why:** a `*NotImplementedV1` reservation is only meaningful when a parseable
   carrier lets a v1 spec express the feature and be cleanly rejected (the `composite` /
   `date` / scale pattern). With no carrier the code was dead. Not every future idea
   needs reserved syntax (EP-3).
-- **Rejected:** inventing a carrier now (EP-3 — no current need); keeping the dead
+- **Rejected:** inventing a carrier now (EP-3: no current need); keeping the dead
   diagnostic (misleads readers into thinking the feature is expressible).
-- **Affects:** Spec; spec §20; `roadmap.md` (stale "§19" → "§20" reference fixed);
-  diagnostic `RestrictCrossAttributeNotImplementedV1` removed.
+- **Affects:** Spec; spec §20; diagnostic `RestrictCrossAttributeNotImplementedV1`
+  removed.
 
-### D-063 — restrict_to: M2 validates shape, M4 executes; diagnostic ownership
+### D-063: restrict_to: M2 validates shape, M4 executes; diagnostic ownership
 
-- **Status:** accepted *(refined by D-091: exact numeric restrict entries added; `RestrictToOnNumericRequiresRange` renamed `RestrictToNumericEntryRequired` in live text)*
+- **Status:** accepted *(refined by D-091: exact numeric restrict entries added; `RestrictToOnNumericRequiresRange` renamed `RestrictToNumericEntryRequired` in live text; execution realized by D-105)*
 - **Date:** 2026-06-30
-- **Decision:** M2 validates the *shape* of `restrict_to` at parse/validate even though
-  execution is deferred to M4 (D-057): `RestrictToOnNumericRequiresRange` (Error) owns
-  the numeric-source + non-range-entry mismatch; `RestrictToValueNotInDomain` (Warning)
-  is the explicit-domain typo-catcher. `SourceValueTypeInvalid` (§10.2) does **not**
-  duplicate the numeric/string-entry case. Conversion still rejects all `restrict_to`
-  with `RestrictToNotImplementedV1` until M4. Mixed string/range `restrict_to` lists
-  round-trip (D-057) but, under the single-`value_type` matrix (D-061), each entry must
-  match the attribute's type, so a genuinely mixed list is rejected at validation (§10.4).
+- **Decision:** M2 validated the *shape* of `restrict_to` at parse/validate even though
+  execution was deferred to M4 (D-057). In M2, `RestrictToOnNumericRequiresRange`
+  (Error) owned the numeric-source + non-range-entry mismatch, and conversion
+  rejected all `restrict_to` with the transitional `RestrictToNotImplementedV1`.
+  D-091 added exact numeric entries and renamed the code
+  `RestrictToNumericEntryRequired`, which now owns a bare string on a numeric source;
+  D-105 landed the rename with no alias, made `restrict_to` execute and retired the
+  reject. `RestrictToValueNotInDomain` (Warning) is the explicit-domain typo-catcher.
+  `SourceValueTypeInvalid` (§10.2) does **not** duplicate the numeric/string-entry
+  case. Mixed string/range `restrict_to` lists round-trip (D-057) but, under the
+  single-`value_type` matrix (D-061), each entry must match the attribute's type, so a
+  genuinely mixed list is rejected at validation (§10.4).
 - **Why:** D-057 established round-trip + execution-deferral, but §10.4 prose never
   documented the static checks the §16.4 table already listed, nor their precedence vs
   `SourceValueTypeInvalid`. One condition → one owning code (EP-14).
 - **Rejected:** deferring shape validation to M4 with execution (an authoring error
   would surface late); letting both codes fire on the same mismatch (ambiguous, EP-5).
 - **Affects:** Core (validate), Spec; spec §10.4 / §10.2; diagnostics
-  `RestrictToOnNumericRequiresRange`, `RestrictToValueNotInDomain`. Refines D-057.
+  `RestrictToOnNumericRequiresRange` (renamed by D-091/D-105),
+  `RestrictToValueNotInDomain`. Refines D-057.
 
-### D-064 — Wide column object keys deferred to M3; object-key diagnostic taxonomy
+### D-064: Wide column object keys deferred to M3; object-key diagnostic taxonomy
 
 - **Status:** accepted
 - **Date:** 2026-06-30
 - **Decision:** wide `object_key.mode = "column"` (and the `duplicate_object_policy`
-  machinery it gates) is parsed and round-tripped from M2, but its **execution is
+  machinery it governs) is parsed and round-tripped from M2, but its **execution was
   deferred to M3**, alongside the triple subject-derived column key; until then
-  conversion rejects a wide column object key with the transitional
-  `ObjectKeyColumnNotImplementedV1`. Object-key validation gains a taxonomy:
-  `ObjectKeyBindingInvalid` (malformed — e.g. column mode without a resolvable
-  `column`), `ObjectKeyModeInvalidForShape` (e.g. `row_index` under triple);
+  conversion rejected a wide column object key with the transitional
+  `ObjectKeyColumnNotImplementedV1`. D-083 made wide column object keys execute and
+  retired that code. Object-key validation gains a taxonomy: `ObjectKeyBindingInvalid`
+  (malformed, e.g. column mode without a resolvable `column`),
+  `ObjectKeyModeInvalidForShape` (e.g. `row_index` under triple);
   `ObjectKeyCompositeNotImplementedV1` is unchanged.
 - **Why:** D-034 fully specified wide column-key behavior, but no milestone implemented
-  it and no guard existed — a silent partial implementation (carrier parses, execution
-  missing), the hole D-057 closed for `restrict_to`. M3 already builds subject-derived
-  column keys, so it is the natural home. Distinct conditions get distinct codes (EP-14).
+  it and no guard existed: a silent partial implementation (carrier parses, execution
+  missing), the hole D-057 closed for `restrict_to`. M3 was already planned to build
+  subject-derived column keys, so it was the natural home. Distinct conditions get
+  distinct codes (EP-14).
 - **Rejected:** implementing wide column keys in M2 (expands M2 scope; M3 is the
-  object-key milestone); leaving execution unguarded (latent wrong output — a silent
+  object-key milestone); leaving execution unguarded (latent wrong output: a silent
   `row_index` fallback).
 - **Affects:** Core (validate/plan), Sources, Spec; spec §5.4 / §6.1 / §16.4;
   diagnostics `ObjectKeyColumnNotImplementedV1` (transitional, removed at M3),
   `ObjectKeyBindingInvalid`, `ObjectKeyModeInvalidForShape`. Refines D-034.
 
-### D-065 — Calibration/vocabulary over the input universe, before restrict_to
+### D-065: Calibration/vocabulary over the input universe, before restrict_to
 
 - **Status:** accepted
 - **Date:** 2026-06-30
@@ -1714,11 +1701,11 @@ feature, so they are recorded here. They refine, not reverse, earlier decisions.
   implied this, but §19.4 (`equal_frequency` + `restrict_to` on TheilerStage) made the
   consequence non-obvious and the spec never stated it. "Define vocabulary first, then
   select objects" is the FCA-coherent model and keeps the schema stable under
-  object-filter changes (reproducibility). Documenting it as a deliberate choice — with
-  the §19.4 consequence visible — prevents it being read as a bug.
-- **Rejected:** population-relative calibration as the v1 default/option (EP-3 — no
-  current need; a larger M4 design); leaving the interaction unspecified (the audit's
-  F14 — a determinism/expectation gap).
+  object-filter changes (reproducibility). Documenting it as a deliberate choice, with
+  the §19.4 consequence visible, prevents it being read as a bug.
+- **Rejected:** population-relative calibration as the v1 default/option (EP-3: no
+  current need; a larger M4 design); leaving the interaction unspecified (a
+  determinism and expectation gap).
 - **Affects:** Conversion (calibrate/emit ordering), Spec; spec §7 / §19.4; `roadmap.md`
   (population-relative noted as future). Refines D-021 / D-036.
 
@@ -1726,14 +1713,14 @@ feature, so they are recorded here. They refine, not reverse, earlier decisions.
 
 ## Tier 2 register (pre-M2): model boundary + carrier scope
 
-A reconciled pass fixing the M2 *implementation* contracts the earlier M2/Tier-1
-decisions left open: the in-memory two-model split, the resolve/validate seam, the
+A pass fixing the M2 *implementation* contracts the earlier M2/Tier-1 decisions
+left open: the in-memory two-model split, the resolve/validate seam, the
 exact fingerprint encoding, and the carrier-vs-execution scope for discretizers,
 absent domains, triple input, and `missing_policy`. These pin cross-package
 contracts (EP-4) before the TOML reader/writer, migrator, and fingerprints are
 built; they refine, not reverse, D-009 / D-049 / D-050…D-065.
 
-### D-066 — Parsed spec document model vs. resolved Core `BedrockSpec`
+### D-066: Parsed spec document model vs. resolved Core `BedrockSpec`
 
 - **Status:** accepted
 - **Date:** 2026-07-03
@@ -1748,34 +1735,35 @@ built; they refine, not reverse, D-009 / D-049 / D-050…D-065.
   possibly-invalid parsed states. It **resolves+validates into** Core's
   `BedrockSpec`: the resolved model with defaults merged, `extends` applied,
   name→index resolved, illegal states unrepresentable (EP-10). A bind-by-header
-  `NamedColumnSource` and a triple `predicate` **attribute source** are therefore
-  **document-model states only**, never resolved Core sources; the Core wide
-  binding carries a resolved column **index** plus a `value_type`. The one
-  exception is the *basic triple binding shape* (`shape = "triple"`), which
-  **does** resolve into a **minimal Core carrier** — just enough for
-  `ConversionPlanner` to reject a triple spec with `TripleSourceNotImplementedV1`
-  (D-072, D-067) — while triple predicate-source *execution* and the advanced
-  triple surface remain document-layer / M3 concerns.
+  `NamedColumnSource` is therefore a **document-model state only**, never a
+  resolved Core source; the Core wide binding carries a resolved column **index**
+  plus a `value_type`. In M2 a triple `predicate` **attribute source** was also
+  document-only; the one exception was the *basic triple binding shape*
+  (`shape = "triple"`), which resolved into a **minimal Core carrier**, just enough
+  for `ConversionPlanner` to reject a triple spec with `TripleSourceNotImplementedV1`
+  (D-072, D-067). D-082 made triple conversion execute, and the triple binding and
+  its `predicate` sources now resolve into Core.
 - **Why:** round-trip fidelity (D-049 presence tracking, D-057 `restrict_to`
   preservation, D-052 `extends` merge) needs a model that holds exactly what was
-  authored — provenance, unresolved references, an authored `[]` — while the
+  authored (provenance, unresolved references, an authored `[]`), while the
   planner's determinism guarantees need a model where bad states cannot occur
   (EP-10) and Core stays pure (EP-13). One model cannot be both. Splitting them
   confines Tomlyn and every authoring concession to Spec and hands the planner a
   clean resolved input.
-- **Rejected:** a single model for both parse and plan — it either admits invalid
+- **Rejected:** a single model for both parse and plan: it either admits invalid
   states (defeating EP-10, scattering guards through the planner) or rejects at
   parse and loses the authored form a faithful round-trip needs (breaking
-  D-049/D-057); resolving name→index inside Core — pulls header/schema knowledge
+  D-049/D-057); resolving name→index inside Core: pulls header/schema knowledge
   into a pure package and lets a resolved source hold an unresolved reference.
 - **Affects:** Spec (new `Toml/` document model), Core (`BedrockSpec`,
   `AttributeSpec`, wide binding + a minimal triple binding carrier (D-072),
   `OrdinalScale`, `ObjectKey` grow *resolved* fields), Diagnostics; spec §2 / §3 /
   §5.4 / §10.2. Defines public Core/Spec surface (EP-4). Realizes D-009; refines D-049.
 
-### D-067 — Resolve/validate seam and diagnostic phase ownership
+### D-067: Resolve/validate seam and diagnostic phase ownership
 
-- **Status:** accepted
+- **Status:** accepted; the "invoked from the seam, not re-homed" parenthetical
+  superseded by D-080
 - **Date:** 2026-07-03
 - **Decision:** the document→Core transformation is a **single
   `SpecResolver.Resolve(document) → Diagnosed<BedrockSpec>`** step that resolves and
@@ -1783,19 +1771,19 @@ built; they refine, not reverse, D-009 / D-049 / D-050…D-065.
   resolves, name→index resolves, and the static checks run against the resolving
   model, aggregating all diagnostics (EP-14). Each §16.4 code is **owned by exactly
   one phase**: construction-time invariants stay in Core smart factories
-  (`CutValidation`, D-056; the `OrdinalScale`/`ObjectKey` factories — EP-10);
+  (`CutValidation`, D-056; the `OrdinalScale`/`ObjectKey` factories, EP-10);
   resolution-time *static* checks (source-binding shape, `value_type` matrix,
   ordinal-over-cuts, `restrict_to` shape, object-key taxonomy, and the existing
-  Core duplicate-name / `value_labels` checks — invoked from the seam, not
+  Core duplicate-name / `value_labels` checks, invoked from the seam, not
   re-homed) live in the seam; plan-time checks (`FormalAttributeCollision`,
-  `ScaleNotImplementedV1`, and the transitional `*NotImplementedV1` rejects whose
-  carriers resolve into Core — e.g. `RestrictToNotImplementedV1`,
-  `TripleSourceNotImplementedV1`) stay in `ConversionPlanner`, while a
-  read/resolve-owned transitional reject such as `DiscretizerKindNotYetSupported`
-  (D-070, no carrier built) fires in the seam; data-phase codes fire in
-  Calibrate/Emit. This seam is the
-  real M7 `validate` caller, so it is built where it is used, not speculatively
-  (EP-3). One condition → one owning code.
+  `ScaleNotImplementedV1`) stay in `ConversionPlanner`; data-phase codes fire in
+  Calibrate/Emit. In M2 the planner also owned the transitional `*NotImplementedV1`
+  rejects whose carriers resolved into Core, such as `RestrictToNotImplementedV1`
+  (retired by D-105) and `TripleSourceNotImplementedV1` (retired by D-082). A
+  read/resolve-owned transitional reject with no carrier built, such as
+  `DiscretizerKindNotYetSupported` (D-070; retired by D-104), fired in the seam.
+  This seam is the real M7 `validate` caller, so it is built where it is used, not
+  speculatively (EP-3). One condition → one owning code.
 - **Why:** M2 is the first point hand-authored TOML can express invalid specs, so
   the ~20 static diagnostics need a definite home and a definite phase. A combined
   resolve+validate avoids a half-resolved intermediate a separate validate pass
@@ -1810,16 +1798,16 @@ built; they refine, not reverse, D-009 / D-049 / D-050…D-065.
 - **Affects:** Spec (`SpecResolver`), Core (factories, planner guards),
   Diagnostics; spec §7 / §16.4. Realizes the §16.4 "Where" column; pairs with D-066.
 
-### D-068 — `missing_policy = "as_attribute"` scheduled into M2; effective-`missing_token` migration
+### D-068: `missing_policy = "as_attribute"` scheduled into M2; effective-`missing_token` migration
 
 - **Status:** accepted (schedules the previously-unscheduled §10.5 branch; migrator branch realized by D-079)
 - **Date:** 2026-07-03
-- **Decision:** `missing_policy = "as_attribute"` (§10.5) — omitted from the M1
-  pipeline — is **implemented in M2**. Plan appends a `{column}-missing`
+- **Decision:** `missing_policy = "as_attribute"` (§10.5), omitted from the M1
+  pipeline, is **implemented in M2**. Plan appends a `{column}-missing`
   `FormalAttribute` at the correct ordinal position (after the value columns for
   nominal; the second column for dichotomic) with its own canonical identity; Emit
   crosses it when a value is *missing* (empty cell or explicit `missing_token`
-  match — never a merely unparseable numeric, D-050) instead of the M1
+  match, never a merely unparseable numeric, D-050) instead of the M1
   unconditional skip. The `.bed` migrator detects it structurally: a
   `[Category Values]` entry equal to the **effective `binding.missing_token`** (the
   resolved token, *not* a hardcoded `?`) becomes `missing_policy = "as_attribute"`
@@ -1831,13 +1819,13 @@ built; they refine, not reverse, D-009 / D-049 / D-050…D-065.
   Anchoring the ordinal-position rule and the effective-token rule keeps the
   planner/emitter/migrator (three packages) consistent (EP-4).
 - **Rejected:** deferring `as_attribute` past M2 (its column is a fingerprint
-  input, §14 — would ship a knowingly-incomplete schema hash); hardcoding `?` in
+  input, §14: would ship a knowingly-incomplete schema hash); hardcoding `?` in
   the migrator (misreads any spec with a custom `missing_token`).
 - **Affects:** Core (`ConversionPlanner`, `PlannedAttribute`), Conversion
   (`Emitter`), Spec (`BedToSpec`); spec §10.5 / §14 / §17. Byte-neutral on the M1
   goldens (no fixture uses `as_attribute`).
 
-### D-069 — Canonical fingerprint encoding, pinned (appendix to D-053)
+### D-069: Canonical fingerprint encoding, pinned (appendix to D-053)
 
 - **Status:** accepted (appends D-053; pins the exact structure before any stored hash ships)
 - **Date:** 2026-07-03
@@ -1858,7 +1846,7 @@ built; they refine, not reverse, D-009 / D-049 / D-050…D-065.
     `"schema"`, the D-051 **shared** row/binding inputs under `"shared"`, and the
     per-format inputs under `"cxt"` / `"dat"` (rendered names + label style +
     `bin_label_unicode` + `.cxt` writer settings for cxt; `base_index` + line
-    endings + trailing-space for dat) — never mixed;
+    endings + trailing-space for dat), never mixed;
   - **numbers** are the *parsed* numeric value reformatted with invariant, shortest
     round-trippable .NET formatting, so `30`, `30.0`, `3e1` collapse and no machine
     float drift occurs (EP-11);
@@ -1868,137 +1856,124 @@ built; they refine, not reverse, D-009 / D-049 / D-050…D-065.
   Slice E realizes exactly this and ships the canonical-stability golden that locks it.
 - **Why:** D-053 fixed the *properties* (version tag, sorted keys, shortest
   numbers, structural open ends) but not a concrete shape, and a durable hash
-  contract (EP-11) cannot ship half-specified — the first stored fingerprint
+  contract (EP-11) cannot ship half-specified: the first stored fingerprint
   fossilizes whatever the encoder emits. Pinning the root shape, field names, and
   version literal now makes Slice E mechanical and the golden a genuine lock.
 - **Rejected:** hashing TOML text (D-053, formatting-sensitive); leaving field
   names to the encoder (the first stored hash fossilizes an unreviewed shape);
   `∞`/`"all"` sentinels for open ends (string-fragile; booleans are exact);
   `"R"`/`"G17"` floats (17 digits defeat the `30.0`≡`30` collapse, D-053).
-- **Affects:** Spec, Core (fingerprint encoder); spec §3 / §14. Needs the
-  canonical-stability golden at Slice E. Appends D-053; supports D-051.
+- **Affects:** Spec, Core (fingerprint encoder); spec §3 / §14. Appends D-053;
+  supports D-051.
 
-### D-070 — Minimal M2 discretizer-carrier scope; three-tier kind response
+### D-070: Minimal M2 discretizer-carrier scope; three-tier kind response
 
-- **Status:** accepted
+- **Status:** accepted; the transitional `DiscretizerKindNotYetSupported` fully retired by D-104
 - **Date:** 2026-07-03
-- **Decision:** M2 executes only the three M1 discretizers; the rest are
-  **recognized by kind name and rejected**, in **three tiers**:
-  - **executable** — `identity`, `manual_cuts`, `ordered_cuts` (M1) parse, resolve,
-    and convert;
-  - **known-but-not-yet-supported** — `free_per_value`, `equal_width`,
-    `equal_frequency`, `value_groups` are recognized by **kind name only** and
-    rejected at **read/resolve** with a **transitional** `DiscretizerKindNotYetSupported`.
-    M2 does **not** build full document/Core carriers for their parameter shapes and
-    does **not** promise round-trip for them (minimal carrier);
-  - **unrecognized** — any other `kind` is a generic unrecognized-kind **parse** error.
-
-  The distinction that survives is the *code*: a recognized deferred kind gets an
-  actionable "valid v1 feature, later milestone" diagnostic; a typo gets a generic
-  unknown-kind error. `free_per_value`, `equal_width`, `equal_frequency`, and
-  `value_groups` all execute at **M4** (roadmap.md). The M2-executable value-bin
-  ordinal is therefore `identity` + an explicit **string** `order` only (D-061
-  string-fixing); numeric value-bin ordinal (`free_per_value` + `order`) is rejected
-  in M2 by the `free_per_value` read/resolve reject above, never silently accepted.
-- **Why:** M2's job is the format, migrator, fingerprints, and `extends` — not new
-  discretizers (M4 is the discretizer milestone). Building full document/Core
-  carriers and round-trip for parameter shapes M2 cannot execute is speculative
-  surface for kinds no M2 workflow reaches (EP-3/EP-6) — and no v2 `.bed` type maps to
-  these vNext-native discretizers, so migration loses nothing by not carrying them.
-  Recognizing the *name* is enough to separate "valid v1 feature, later milestone"
-  (a transitional, actionable diagnostic) from "typo / unknown kind" (a generic
-  parse error) so an author can tell which they hit (EP-14). Rejecting at read/resolve
-  (not silently accepting) avoids the wrong-output hole D-057 closed for `restrict_to`.
+- **Decision:** M2 answered a discretizer `kind` in **three tiers**. The M1
+  kinds (`identity`, `manual_cuts`, `ordered_cuts`) parsed, resolved and
+  converted. The four kinds planned for M4 (`free_per_value`, `equal_width`,
+  `equal_frequency`, `value_groups`) were recognized by **kind name only** and
+  rejected at **read/resolve** with the transitional
+  `DiscretizerKindNotYetSupported`, with no parameter carrier and no round-trip
+  promise. Any other `kind` was a generic unrecognized-kind **parse** error. Each
+  kind left the transitional set as it landed, and D-104 retired the code with
+  the last one; an unrecognized kind is now an ordinary `SpecFieldInvalid`
+  (spec §16.4).
+- **Why:** M2's job was the format, migrator, fingerprints, and `extends`, not new
+  discretizers (M4 is the discretizer milestone). Carriers for parameter shapes M2
+  could not execute would have been speculative surface (EP-3/EP-6), and no v2
+  `.bed` type maps to these vNext-native discretizers, so migration lost nothing.
+  Recognizing the *name* separated "valid v1 feature, later milestone" from a
+  typo, so an author could tell which they hit (EP-14). Rejecting rather than
+  silently accepting avoided the wrong-output hole D-057 closed for `restrict_to`.
 - **Rejected:** implementing the M4 discretizers in M2 (scope creep, EP-1); building
-  full round-trip carriers for the deferred discretizers' parameter shapes in M2
-  (speculative surface for kinds M2 cannot execute — EP-3/EP-6; no v2 type maps to
-  them, so migration loses nothing); one code for both not-yet-supported and unknown
-  kinds (hides whether the spec is valid, EP-14); silently ignoring unimplemented
-  kinds (latent wrong output).
+  full round-trip carriers for their parameter shapes in M2 (speculative surface);
+  one code for both not-yet-supported and unknown kinds (hides whether the spec is
+  valid, EP-14); silently ignoring unimplemented kinds (latent wrong output).
 - **Affects:** Spec (reader/resolver), Diagnostics; spec §11 / §16.4; diagnostic
-  `DiscretizerKindNotYetSupported` (transitional, **read/resolve**, removed as each
-  kind lands). Refines D-020 / D-061; roadmap.md assigns `value_groups` → M4.
+  `DiscretizerKindNotYetSupported` (transitional, retired by D-104). Refines
+  D-020 / D-061.
 
-### D-071 — Absent/empty `declared_domain`: M2 interim reject until calibrate
+### D-071: Absent/empty `declared_domain`: M2 interim reject until calibrate
 
-- **Status:** accepted (sequences §10.3 for M2; refines D-036; refined by D-076 —
-  retirement is "when observed-domain calibration lands", not a fixed milestone)
+- **Status:** accepted (sequences §10.3 for M2; refines D-036; refined by D-076:
+  retirement is "when observed-domain calibration lands", not a fixed milestone;
+  retired by D-098)
   *(authored-empty reading revised by D-122: an authored `[]` is a complete fixed
-  empty domain — zero declared value bins — not absent; only omission requests
+  empty domain (zero declared value bins), not absent; only omission requests
   calibration)*
 - **Date:** 2026-07-03
-- **Decision:** omitted `declared_domain` **and** an explicit empty `[]` both
-  resolve as **absent** (§10.3), and the reader/writer **round-trips the authored
-  form verbatim** (omitted stays omitted, `[]` stays `[]`). The §10.3 end-state —
-  Calibrate fills an absent domain from observed data with `ObservedDomainUsed` — is
-  **not yet built in M2** (Calibrate is M4-ward), so an M2 conversion of the
-  **M2-supported value-bin discretizer** (`identity`) with an absent domain is
-  **rejected** with a transitional `ObservedDomainCalibrationNotImplementedV1`,
-  never silently emitting an empty or data-order-dependent schema. **Precedence:**
-  `free_per_value` is a *deferred* discretizer (D-070), already rejected earlier at
-  read/resolve with `DiscretizerKindNotYetSupported` — that code owns the
-  `free_per_value` case, and the absent-domain code never fires for it in M2 (one
-  condition → one owning code, EP-14). Cut discretizers ignore `declared_domain`
-  (§10.3) and are unaffected.
-- **Why:** the authored `[]`-vs-omitted distinction must survive round-trip (D-049)
-  even though both mean "absent," so provenance is preserved without inventing a
-  third state. An absent value-bin domain has no columns until calibration observes
-  the data; converting it in M2 without Calibrate would emit zero columns or
-  silently depend on input order — both violate the spec's reproducibility intent. A
-  transitional reject makes the gap explicit and actionable (the D-057 / D-070
-  pattern) until observed-domain calibration lands (numeric auto-binning
-  calibration is M4; the categorical case is backlog-unassigned — D-076).
-- **Rejected:** treating `[]` as "zero columns" (contradicts §10.3); silently
-  calibrating in M2 (Calibrate is not built — a latent, undocumented
-  data-dependence); collapsing omitted and `[]` at read time (loses authored
-  provenance, D-049).
+- **Decision:** in M2, omitted `declared_domain` **and** an explicit empty `[]`
+  both resolved as **absent** (§10.3 as then written), and the reader/writer
+  **round-trips the authored form verbatim** (omitted stays omitted, `[]` stays
+  `[]`). Observed-domain calibration was not built in M2, so an M2 conversion of
+  `identity` (the only M2 value-bin discretizer) with an absent domain was
+  **rejected** with the transitional `ObservedDomainCalibrationNotImplementedV1`,
+  never silently emitting an empty or data-order-dependent schema. D-098 retired
+  the reject when the Calibrate phase began filling an omitted domain from the
+  data.
+- **Why:** the authored `[]`-vs-omitted distinction must survive round-trip
+  (D-049) even though both then meant "absent," so provenance is preserved
+  without inventing a third state. An absent value-bin domain has no columns
+  until calibration observes the data; converting it without Calibrate would
+  have emitted zero columns or depended on input order, against the spec's
+  reproducibility intent.
+- **Rejected:** treating `[]` as "zero columns" (contradicted §10.3 as then
+  written); silently calibrating in M2 (Calibrate was not built: a latent,
+  undocumented data-dependence); collapsing omitted and `[]` at read time (loses
+  authored provenance, D-049).
 - **D-122 revision (2026-07-22):** the `[]`-resolves-as-absent half of this
-  decision is revised — an authored `[]` is complete (a fixed empty domain with
+  decision is revised: an authored `[]` is complete (a fixed empty domain with
   zero declared value bins; `unknown_value_policy = "include"` may still extend it
   and `missing_policy = "as_attribute"` may still add its missing column). The
-  verbatim round-trip rule and the historical M2 transitional mechanics recorded
-  here stand as history.
+  verbatim round-trip rule still stands.
 - **Affects:** Spec (reader/writer), Core (planner guard), Diagnostics; spec §7 /
   §10.3; diagnostic `ObservedDomainCalibrationNotImplementedV1` (transitional,
-  removed when observed-domain calibration lands — see the roadmap backlog and
-  D-076). Refines D-036; pairs with D-070. Revised by D-122.
+  retired by D-098). Refines D-036; pairs with D-070. Revised by D-122.
 
-### D-072 — Basic triple TOML carrier in M2; conversion deferred to M3
+### D-072: Basic triple TOML carrier in M2; conversion deferred to M3
 
 - **Status:** accepted (sequences §5.3 for M2; refines D-009)
 - **Date:** 2026-07-03
-- **Decision:** M2 carries and **round-trips** the *basic* triple binding —
+- **Decision:** M2 carries and **round-trips** the *basic* triple binding:
   `shape = "triple"`, `ordering`, `columns` (`subject`/`predicate`/`value`), and
-  `{ kind = "predicate", name = … }` attribute sources — but **conversion rejects**
-  any triple spec with a transitional `TripleSourceNotImplementedV1` until the
-  triple source lands at M3. This M2 reject is **required** so a triple spec is not
-  silently mis-converted as wide. The **advanced** triple surface (triple header
-  rows, binding `columns` by header **name**, object/subject-name filtering) stays
-  **M3** and is neither parsed nor relied on in M2 (§5.3). The triple *execution*
-  diagnostics (`TripleSubjectNotContiguous`, …) are M3, not M2.
-- **Why:** round-trip and migration need the basic triple carrier now (the three v2
-  `mini-*_triples` examples must survive read→write→read as documents), but the
-  triple *reader/streaming* is the M3 milestone. Parsing-but-rejecting closes the
+  `{ kind = "predicate", name = … }` attribute sources. In M2, **conversion
+  rejected** any triple spec with the transitional `TripleSourceNotImplementedV1`;
+  that reject was **required** so a triple spec was not silently mis-converted as
+  wide. The **advanced** triple surface (triple header rows, binding `columns` by
+  header **name**, object/subject-name filtering) was left to **M3** and neither
+  parsed nor relied on in M2 (§5.3), and the triple *execution* diagnostics
+  (`TripleSubjectNotContiguous`, …) belonged to M3, not M2. D-082 made triple
+  conversion execute, retired the reject and settled the advanced surface.
+- **Why:** round-trip and migration needed the basic triple carrier in M2 (the three
+  v2 `mini-*_triples` examples must survive read→write→read as documents), but the
+  triple *reader/streaming* was the M3 milestone. Parsing-but-rejecting closed the
   silent-mis-conversion hole (D-057 pattern) while keeping M2 scoped to the format.
-  Deferring the advanced surface matches the §5.3 M3 finalization note.
-- **Rejected:** pulling triple conversion into M2 (that is the whole M3 milestone —
+  Deferring the advanced surface matched the §5.3 M3 finalization note.
+- **Rejected:** pulling triple conversion into M2 (that was the whole M3 milestone:
   scope creep, EP-1); omitting the triple carrier from M2 (migration of the
-  `mini-*_triples` specs would drop config, D-049); parsing the advanced surface now
-  (no M2 consumer, EP-3).
+  `mini-*_triples` specs would drop config, D-049); parsing the advanced surface in
+  M2 (no M2 consumer, EP-3).
 - **Affects:** Spec (reader/writer), Core/Conversion (planner guard), Diagnostics;
   spec §5.3 / §16.4; diagnostic `TripleSourceNotImplementedV1` (transitional,
-  removed at M3). Refines D-009; the M3 triple audit owns the advanced surface.
+  removed at M3). Refines D-009; the M3 triple audit (D-082) settled the advanced
+  surface.
 
-### D-074 — `as_attribute` missing-column position uniform across scale kinds (appendix to D-068)
+---
+
+## M2 implementation (slices)
+
+### D-074: `as_attribute` missing-column position uniform across scale kinds (appendix to D-068)
 
 - **Status:** accepted (appends D-068; lands with M2 Slice B); the rendered-name
-  clause describes the **default** naming path — under an explicit
+  clause describes the **default** naming path: under an explicit
   `formal_attribute_format` the missing column renders through that format like
   every other formal attribute the logical attribute emits (D-117). Its
   **position** and canonical identity are unchanged.
 - **Date:** 2026-07-04
 - **Decision:** the `{column}-missing` column appends **after the scale's columns
-  for every scale kind** — D-068 named nominal (after the value bins) and
+  for every scale kind**. D-068 named nominal (after the value bins) and
   dichotomic (the second column); ordinal, reachable in M2 via the string
   value-bin path (D-047/D-070), follows the same rule: after the threshold
   columns. Canonical identity is `(name, scale_kind, "missing", "")` (§14); the
@@ -2010,8 +1985,8 @@ built; they refine, not reverse, D-009 / D-049 / D-050…D-065.
   for planning and for the Slice E output-fingerprint shared inputs.
 - **Why:** the planner's append branch is scale-agnostic, so ordinal support is
   free; excluding it would cost a scale-kind special case and leave
-  `ordinal + as_attribute` silently behaving as skip — the exact gap D-068
-  closes — which Slice E would then freeze incorrectly into `schema_fingerprint`.
+  `ordinal + as_attribute` silently behaving as skip (the exact gap D-068
+  closes), which Slice E would then freeze incorrectly into `schema_fingerprint`.
 - **Rejected:** rejecting `as_attribute` on ordinal scales (extra code plus a
   transitional diagnostic for a combination that works uniformly); keeping
   `MissingPolicy` on `PlannedAttribute` alongside the id (two fields with an
@@ -2019,9 +1994,10 @@ built; they refine, not reverse, D-009 / D-049 / D-050…D-065.
 - **Affects:** Core (`ConversionPlanner`, `PlannedAttribute`), Conversion
   (`Emitter`); spec §10.5 (ordinal clause). Appends D-068.
 
-### D-075 — Slice C TOML reader/writer contract: strictness, parse codes, canonical form
+### D-075: Slice C TOML reader/writer contract: strictness, parse codes, canonical form
 
-- **Status:** accepted
+- **Status:** accepted; the deferred-surface set narrowed by D-078/D-120 to
+  `value_type = "date"`
 - **Date:** 2026-07-04
 - **Decision:** the M2 Slice C reader/writer fixes the contracts the spec left
   open:
@@ -2030,7 +2006,7 @@ built; they refine, not reverse, D-009 / D-049 / D-050…D-065.
     CST (`SyntaxParser.Parse` → `DocumentSyntax`) for node spans, and no Tomlyn
     type appears on any public signature.
   - **Reader strictness:** unknown keys/tables are **Errors**
-    (`SpecKeyUnrecognized`) — the spec is silent on unknown-key policy, and a
+    (`SpecKeyUnrecognized`): the spec is silent on unknown-key policy, and a
     reader that accepted what the writer would drop makes read→write silently
     lossy. Known keys with the wrong type/shape/spelling are `SpecFieldInvalid`
     (one code, message names the expected form; also the D-070 tier-3
@@ -2039,17 +2015,20 @@ built; they refine, not reverse, D-009 / D-049 / D-050…D-065.
   - **Two-phase aggregation (the EP-14 reading):** all TOML syntax errors report
     together and are terminal (a broken tree would cascade garbage); on clean
     syntax, one whole-document semantic pass aggregates every diagnostic.
-  - **Deferred-surface scaffolding:** recognized-but-unmodelled v1 surface —
-    `[spec].extends`, `[[template]]`/`[[matcher]]`, attribute `template` /
-    `display_name` / `formal_attribute_format`, `[defaults]`
-    `formal_attribute_format`, `value_type = "date"` — fails the read with the
-    transitional `SpecSurfaceNotYetSupported` (Error) so nothing known is
-    silently dropped. The set is **closed and per-owning-table**, never a
-    fallback: near-miss keys and a listed name in the wrong table get
+  - **Deferred-surface scaffolding:** at Slice C, recognized-but-unmodelled v1
+    surface (`[spec].extends`, `[[template]]`/`[[matcher]]`, attribute
+    `template` / `display_name` / `formal_attribute_format`, `[defaults]`
+    `formal_attribute_format`, `value_type = "date"`) failed the read with the
+    transitional `SpecSurfaceNotYetSupported` (Error) so nothing known was
+    silently dropped. The set was **closed and per-owning-table**, never a
+    fallback: near-miss keys and a listed name in the wrong table got
     `SpecKeyUnrecognized`. Entries retire as slices D–G land their carriers;
     the `date` entry retires when the D-038 carrier lands (the v1 end-state is
     the plan-phase `DateValueTypeNotImplementedV1`).
-  - **Canonical writer:** hand-rolled emission (not Tomlyn serialization — the
+    D-078 retired the `extends`, template and matcher entries, and D-120
+    retired the naming keys. `SpecSurfaceNotYetSupported` now covers only the
+    value-level `value_type = "date"` reject (spec §16.4).
+  - **Canonical writer:** hand-rolled emission (not Tomlyn serialization: the
     canonical form is owned here and cannot drift with a library upgrade):
     authored-only fields (presence tracking survives verbatim, D-049/D-071),
     fixed section/key order (spec presentation order), inline tables for the
@@ -2063,38 +2042,36 @@ built; they refine, not reverse, D-009 / D-049 / D-050…D-065.
     zero-offset `DateTimeOffset` (deterministic across machines; the field is
     inert provenance, §4).
   - **API:** `SpecReader.Read(string toml, string? filePath = null)` →
-    `Diagnosed<SpecDocument>` and `SpecWriter.Write(SpecDocument)` → `string` —
+    `Diagnosed<SpecDocument>` and `SpecWriter.Write(SpecDocument)` → `string`:
     string-only, mirroring `BedReader`; file I/O belongs to a host slice.
 
   The slice also realizes D-010 for scales: `interordinal`/`biordinal`/
   `contranominal` parse into a kind-only `DeferredScaleSection`, resolve into
   the Core `UnimplementedScale` reject-carrier (the D-072 pattern), and fail at
-  **plan** with `ScaleNotImplementedV1` (Fatal) — parse-but-fail-to-plan, the
-  roadmap-M2 "parsable types the planner rejects" item.
+  **plan** with `ScaleNotImplementedV1` (Fatal): parse-but-fail-to-plan.
 - **Why:** round-trip fidelity is a headline property of the format, so reader
-  strictness and writer canonicalization must be decided together — the reader
+  strictness and writer canonicalization must be decided together: the reader
   must reject exactly what the writer cannot re-emit. Distinct codes keep
   typo-vs-valid-feature actionable (the D-070 rationale); the closed
   deferred-surface set keeps the transitional code from becoming a catch-all.
   Hashing is already formatting-immune (D-053), so one canonical written form
   costs nothing and buys deterministic output and a trivial round-trip oracle.
 - **Rejected:** warning-and-drop for unknown keys (silent loss on write-after-
-  read); one code for all parse problems (hides whether the spec is valid v1 —
+  read); one code for all parse problems (hides whether the spec is valid v1,
   EP-14); parsing deferred surface into inert carriers now (pulls Slice F /
   naming-slice semantics forward, and an authored-but-ignored
   `formal_attribute_format` would silently change intended output); Tomlyn's
   serializer for writing (its formatting choices can drift across versions);
   byte-preserving round-trip (would require a lossless CST document model for
-  no consumer — §2 makes formatting informative).
-- **Affects:** Spec (`SpecReader`, `SpecWriter`, `TomlSpellings`, `TomlLiteral`,
-  read infra; `DeferredScaleSection`; resolver mapping), Core
-  (`UnimplementedScale`, planner guard), Diagnostics (`SpecTomlInvalid`,
+  no consumer; §2 makes formatting informative).
+- **Affects:** Spec (`SpecReader`, `SpecWriter`, `DeferredScaleSection`, resolver
+  mapping), Core (`UnimplementedScale`, planner guard), Diagnostics (`SpecTomlInvalid`,
   `SpecKeyUnrecognized`, `SpecFieldInvalid`, `DiscretizerKindNotYetSupported`,
   `SpecSurfaceNotYetSupported`, `ScaleNotImplementedV1`), spec §16.4,
   `Directory.Packages.props`. Realizes D-009/D-066/D-070/D-071/D-072 read/write
   faces; realizes D-010 for scales.
 
-### D-076 — Slice D seam/plan validation contract details
+### D-076: Slice D seam/plan validation contract details
 
 - **Status:** accepted (appends D-067; realizes D-054/D-060/D-061/D-063/D-064/
   D-071 at the seam and planner) *(refined by D-091: exact numeric restrict entries added; `RestrictToOnNumericRequiresRange` renamed `RestrictToNumericEntryRequired` in live text)*
@@ -2102,50 +2079,50 @@ built; they refine, not reverse, D-009 / D-049 / D-050…D-065.
 - **Decision:** Slice D activates the static validation the earlier decisions
   assigned but left operationally open; the details settled here:
   - **`include = false` interaction matrix.** (a) The `restrict_to` **shape**
-    checks (`RestrictToOnNumericRequiresRange`; the range-entry-on-string-source
+    checks (`RestrictToNumericEntryRequired`; the range-entry-on-string-source
     case of `SourceValueTypeInvalid`) run on **excluded/filter-only attributes
-    too**: `restrict_to` is *live* config, not parked — §10.1/§10.4 apply it
+    too**: `restrict_to` is *live* config, not parked; §10.1/§10.4 apply it
     whether or not the attribute is included (the §19.4 filter-only pattern), so
     its static shape is validated on the same terms. (b)
     `RestrictToValueNotInDomain` does **not** run on excluded attributes:
-    `declared_domain` is emitted-shaping config, parked under D-049 — a live
+    `declared_domain` is emitted-shaping config, parked under D-049; a live
     check must not warn against a dormant list. (c) A **parked numeric-cut
     discretizer still types a live `restrict_to`** (an excluded attribute
     retaining `manual_cuts` resolves `value_type = "number"`, so a bare-string
     entry rejects). Deliberate, not a D-049 violation: `value_type` is a
     source-level property whose D-061 derivation is include-independent, and
     §10.4 itself defines a numeric source as "`value_type = "number"`, *or a
-    numeric-cut discretizer*" — recorded so the combination is not later "fixed"
-    into a silent skip. The remaining Slice D checks (the `value_type` matrix,
+    numeric-cut discretizer*" (recorded so the combination is not later "fixed"
+    into a silent skip). The remaining Slice D checks (the `value_type` matrix,
     ordinal-over-cuts) are include-gated per D-049/D-060 ("active attribute").
   - **Quote/delimiter co-fire.** `QuoteCharNotSupportedV1` (authored quote ≠
     `"`) and `BindingDelimiterQuoteConflict` (resolved delimiter = resolved
-    quote) are distinct §5.1 conditions and report independently — both fire
+    quote) are distinct §5.1 conditions and report independently; both fire
     when both hold (e.g. delimiter and quote both authored `|`). Two conditions,
     two codes (EP-14), not double reporting of one.
-  - **`ObservedDomainCalibrationNotImplementedV1`** is an **Error at plan** and
-    **blanket across scales** for an included `identity` attribute with an
-    absent domain — dichotomic included, because with no domain every observed
-    value is "unknown" and the single column never crosses (the same
-    silent-wrong-output D-071 closes). The blanket survives the future value-bin
-    ordinal slice: `scale.order` orders bins, but the domain remains the bin
+  - **`ObservedDomainCalibrationNotImplementedV1`** (retired by D-098) was an
+    **Error at plan** and **blanket across scales** for an included `identity`
+    attribute with an absent domain: dichotomic included, because with no domain
+    every observed value is "unknown" and the single column never crosses (the
+    same silent-wrong-output D-071 closed). The blanket covered the value-bin
+    ordinal path too: `scale.order` orders bins, but the domain remains the bin
     *source* for `identity`, so an ordinal `order` never substitutes for a
-    domain. Retirement is phrased "when observed-domain calibration lands" — the
-    categorical case is unassigned in the roadmap backlog — not a bare "M4".
-  - **Domain typo-catcher gate.** `RestrictToValueNotInDomain` additionally
+    domain. Retirement was phrased "when observed-domain calibration lands" (the
+    categorical case was then unassigned in the roadmap backlog), not a bare "M4".
+  - **Domain typo-catcher condition.** `RestrictToValueNotInDomain` also
     requires a resolved **string** `value_type`: on a mis-typed numeric
     `identity` source the same entries are already owned by
-    `SourceValueTypeInvalid` / `RestrictToOnNumericRequiresRange`, and a third
+    `SourceValueTypeInvalid` / `RestrictToNumericEntryRequired`, and a third
     diagnostic would be noise (EP-14).
 - **Why:** the phase/owner assignments were settled (D-060/D-063/D-064/D-067/
   D-071), but the excluded-attribute interactions, the co-fire policy, and the
-  blanket's scale coverage were not derivable from any single entry — and each
+  blanket's scale coverage were not derivable from any single entry, and each
   reads as a bug (a D-049 violation, a EP-14 violation, an over-broad reject)
   unless the rationale is on record.
 - **Rejected:** skipping restrict_to shape checks on excluded attributes (a
   filter-only attribute's restrict_to changes output at M4, so its shape errors
   must surface at authoring time); warning against a parked domain (turns
-  toggling an attribute off into new warnings — the authoring-hostility D-049
+  toggling an attribute off into new warnings: the authoring-hostility D-049
   removed); suppressing the delimiter conflict when the quote is unsupported
   (hides an independent, independently-fixable mistake).
 - **Affects:** Spec (`SpecResolver` seam checks), Core (`ConversionPlanner`
@@ -2153,7 +2130,7 @@ built; they refine, not reverse, D-009 / D-049 / D-050…D-065.
   matrix point is locked by a dedicated test in `SpecResolverTests` /
   `ConversionPlannerTests`.
 
-### D-077 — Slice E fingerprint encoding/verification contract details
+### D-077: Slice E fingerprint encoding/verification contract details
 
 - **Status:** accepted (appends D-069; realizes D-035/D-051/D-053/D-069 in code)
 - **Date:** 2026-07-05
@@ -2174,7 +2151,7 @@ built; they refine, not reverse, D-009 / D-049 / D-050…D-065.
   - **Cut bins:** always the fixed four-key object
     `{"hi":…,"hi_open":…,"lo":…,"lo_open":…}`; an unbounded end is `null` plus
     its `*_open: true` flag. **`lo_open`/`hi_open` mean *unbounded end* (the
-    bin runs to ±∞ on that side), never interval inclusivity** — every bounded
+    bin runs to ±∞ on that side), never interval inclusivity**: every bounded
     cut bin is uniformly half-open `[lo, hi)` (§11.2), so `<30` carries
     `hi_open: false`. Bounds are JSON numbers for `manual_cuts`, JSON strings
     for `ordered_cuts`. Non-interval bins stay plain strings: value bins,
@@ -2182,7 +2159,7 @@ built; they refine, not reverse, D-009 / D-049 / D-050…D-065.
     missing column's `missing`.
   - **The plan carries the structure:** `FormalAttribute` gains a public
     `CanonicalBin` (`ValueBin` / `NumericCutBin` / `TextCutBin`; `null` bound =
-    unbounded), produced by the same planner walk as the identity's `BinKey` —
+    unbounded), produced by the same planner walk as the identity's `BinKey`:
     single producer, no string parse-back (EP-4 surface, byte-neutral on the M1
     goldens).
   - **Vocabulary:** JSON enum spellings are the spec's TOML spellings; label
@@ -2197,7 +2174,7 @@ built; they refine, not reverse, D-009 / D-049 / D-050…D-065.
     source, unknown_value_policy}`. `declared_domain` is the **effective**
     domain (`Discretizer.ConsumesDeclaredDomain`): cut discretizers hash `[]`,
     so an inert authored domain never moves an output fingerprint (§10.3, the
-    D-049 parked-config discipline). `manual_cuts.Culture` is not encoded — it
+    D-049 parked-config discipline). `manual_cuts.Culture` is not encoded: it
     *is* `binding.locale`, and double-counting is the mistake D-035 removed.
     `restrict_to` is absent until executable (§14); M4 adds it
     present-only-when-non-empty, so restrict_to-free specs keep their hashes,
@@ -2205,11 +2182,11 @@ built; they refine, not reverse, D-009 / D-049 / D-050…D-065.
   - **`cxt`/`dat` content:** per D-069 (`bin_label_unicode` + `label_style` +
     `line_endings` + `rendered_names` + `trailing_newline`; `base_index` +
     `empty_line_trailing_space` + `line_endings` +
-    `nonempty_line_trailing_space`). **`size_advisory_bytes` is not an input**
-    — it changes a warning, never output bytes; §3's byte-affecting definition
+    `nonempty_line_trailing_space`). **`size_advisory_bytes` is not an input**:
+    it changes a warning, never output bytes; §3's byte-affecting definition
     wins over §8's blanket sentence (clarified there). `bin_label_unicode`
     hashes the resolved flag although Unicode rendering is not built yet: when
-    rendering lands, rendered names change and the stale warning fires — the
+    rendering lands, rendered names change and the stale warning fires, the
     mechanism working as designed.
   - **Pairing precondition:** `ComputeCxtOutputFingerprint`'s `LabelStyle`
     input must be the style the plan was produced with (rendered names bake it
@@ -2221,38 +2198,35 @@ built; they refine, not reverse, D-009 / D-049 / D-050…D-065.
     optional); match → silent (no "verified" noise, EP-3); mismatch → its own
     Warning (`SchemaFingerprintStale` / `CxtOutputFingerprintStale` /
     `DatOutputFingerprintStale`, phase "spec load"); all stale fields co-fire
-    (the D-076 stance). No production call site is added — tests call it now
-    and M7's CLI is the real caller (the D-067 pattern). *Writing* stored
-    fingerprints and enforcing the §14 fully-frozen gate are M7 tooling.
+    (the D-076 stance). Slice E added no production call site (the D-067
+    pattern); the M7 CLI became its caller and enforces the §14 fully-frozen
+    gate when writing stored fingerprints (D-122/D-123).
 - **Why:** the first stored hash fossilizes the encoder's bytes, so every
-  residual freedom — compactness, escaping, the unbounded-end encoding, the key
-  vocabulary, the exact `shared` key set — had to be pinned and golden-locked
+  residual freedom (compactness, escaping, the unbounded-end encoding, the key
+  vocabulary, the exact `shared` key set) had to be pinned and golden-locked
   before any spec ships with a stored value (EP-11, D-069). The locks: the
   hand-authored canonical-JSON goldens plus a hard SHA-256 vector
   (`FingerprintCalculatorTests`), the roadmap 30/30.0/3e1 TOML golden, and the
   §19.1/§19.2 end-to-end baselines (`SpecFingerprintsTests`).
 - **Rejected:** renaming `lo_open`/`hi_open` to `*_unbounded` (amends D-069's
-  pinned field names for a readability gain the definition here provides —
-  review-settled); omitting the `lo`/`hi` key on unbounded ends (a conditional
-  shape; the fixed four-key object is the literal D-069 reading); hashing the
-  authored `declared_domain` under cut discretizers (an inert edit would move
-  output fingerprints); a `System.Text.Json` writer (library-version drift on
-  a durable hash contract); raw line-ending characters in the canonical bytes
-  (escape noise; the token names are the spec's own vocabulary).
-- **Affects:** Core (`CanonicalBin` + leaves, `FormalAttribute.Bin`,
-  `BinScheme.Bins`, `FormalAttributeShape.Bin`, discretizer
-  `DescribeBins`/`ConsumesDeclaredDomain`, new `Fingerprinting` namespace:
-  `FingerprintCalculator`, `CanonicalJson`, `CxtFingerprintInputs`,
-  `DatFingerprintInputs`, `LineEnding`), Spec (`SpecFingerprints`,
-  `ComputedFingerprints`), Diagnostics (the three stale codes); spec §3 / §8 /
+  pinned field names for a readability gain the definition here provides);
+  omitting the `lo`/`hi` key on unbounded ends (a conditional shape; the fixed
+  four-key object is the literal D-069 reading); hashing the authored
+  `declared_domain` under cut discretizers (an inert edit would move output
+  fingerprints); a `System.Text.Json` writer (library-version drift on a durable
+  hash contract); raw line-ending characters in the canonical bytes (escape
+  noise; the token names are the spec's own vocabulary).
+- **Affects:** Core (`CanonicalBin` and its leaves, `FormalAttribute.Bin`, the new
+  `Fingerprinting` namespace: `FingerprintCalculator`, `CanonicalJson`), Spec
+  (`SpecFingerprints`), Diagnostics (the three stale codes); spec §3 / §8 /
   §14. Appends D-069; byte-neutral on the M1 goldens.
 
-### D-078 — Slice F composition/carrier contract details
+### D-078: Slice F composition/carrier contract details
 
 - **Status:** accepted (realizes D-027/D-052; refines D-067/D-075); the clauses
-  this entry deferred to M6 — pattern semantics and validation (arity, regex
-  syntax), template resolution precedence, within-file duplicate ids, and the
-  shared-config-record question — are settled by D-114/D-115/D-116/D-118. Its
+  this entry deferred to M6 (pattern semantics and validation: arity, regex
+  syntax; template resolution precedence; within-file duplicate ids; and the
+  shared-config-record question) are settled by D-114/D-115/D-116/D-118. Its
   carrier, composition, and "templates never resolve into Core" contracts stand.
 - **Date:** 2026-07-05
 - **Decision:** Slice F ships §13 `extends` composition and the
@@ -2266,7 +2240,7 @@ built; they refine, not reverse, D-009 / D-049 / D-050…D-065.
     defined over *authored* surface, so the merge must run on the
     presence-tracked model (`null` never overrides an authored value; `derived
     ?? base` is the only override operator). For §16.4 phase ownership,
-    composition is part of the **spec-resolve phase** — the
+    composition is part of the **spec-resolve phase**: the
     `SpecExtendsNotFound`/`SpecExtendsCycle` "Where = spec resolve" rows stand
     unchanged. This refines D-067's "extends resolves in the seam": the seam
     stays a single loader-free resolve+validate step; composition precedes it.
@@ -2280,7 +2254,7 @@ built; they refine, not reverse, D-009 / D-049 / D-050…D-065.
     Slice F work** (D-075 "file I/O belongs to a host slice", EP-3); tests
     compose through an in-memory source.
   - **Resolve-without-compose is a call-contract violation.** `Resolve` on a
-    document with an authored `extends` throws `ArgumentException` — the
+    document with an authored `extends` throws `ArgumentException`: the
     document is not bad; the *call* skipped composition. Resolve never throws
     for valid inputs under its contract; an uncomposed extends document is
     invalid input to Resolve. Extends can therefore never be silently ignored,
@@ -2290,14 +2264,14 @@ built; they refine, not reverse, D-009 / D-049 / D-050…D-065.
     consultation** (an unversioned root must not drive v1 extends semantics or
     surface a missing-base/cycle diagnostic first) and **each base at its
     load** (Fatal `SpecVersionUnsupported`, base-file location). The composed
-    document's version (the derived file's) is re-checked only by the seam —
+    document's version (the derived file's) is re-checked only by the seam;
     per flow the condition fires exactly once.
   - **Merge details** (beyond §13's own rules): the composed `[spec]` is
     derived-only (version, description, stored fingerprints; base-stored
     fingerprints never merge); the nested `[binding]` tables (`columns`,
-    `object_key`) override as **whole values** — per-leaf mixing would compose
+    `object_key`) override as **whole values** (per-leaf mixing would compose
     an incoherent key-mode hybrid or a partial triple remap with silently
-    duplicated role indices (unvalidated until M3) — unlike `[output]`'s
+    duplicated role indices, unvalidated until M3), unlike `[output]`'s
     per-leaf merge; attribute/template replacement searches only the **base
     region** of the working list and marks each name/id overridden at most
     once, so authoring duplicates are preserved into the composed document for
@@ -2305,59 +2279,50 @@ built; they refine, not reverse, D-009 / D-049 / D-050…D-065.
     collapsed.
   - **Template/matcher carriers.** `TemplateSection` mirrors the
     `AttributeSection` config fields (minus `name`/`source`/`description`,
-    §9.1) as a deliberately **flat** record — a shared config record earns its
-    keep when M6 applies templates; `MatcherSection`/`MatchSection` carry
+    §9.1) as a deliberately **flat** record; a shared config record earns its
+    keep when M6 applies templates. `MatcherSection`/`MatchSection` carry
     `match` at authored shape (`source_index_range` at authored arity; M6 owns
     pattern semantics). Template bodies parse with attribute strictness:
     per-attribute identity fields fall to `SpecKeyUnrecognized` (the D-075
-    wrong-table stance), the naming-deferred keys stay
-    `SpecSurfaceNotYetSupported`, deferred discretizer kinds stay
+    wrong-table stance); at Slice F the naming-deferred keys stayed
+    `SpecSurfaceNotYetSupported` and deferred discretizer kinds stayed
     `DiscretizerKindNotYetSupported` (D-070). Same-`id` template merge
     (replace in place, first base-region match) is **carrier composition
-    only**, not resolution precedence; within-file duplicate ids are
-    unvalidated until M6.
-  - **Use-reject ownership.** `TemplateMatcherNotImplementedV1` fires at the
-    **seam**, not the planner — templates/matchers never resolve into Core, so
-    by D-067's own criterion (plan-time rejects are for carriers that resolve
-    into Core) a Core reject-carrier would be speculative surface removed at
-    M6. §16.4's Where cell moves from "plan (transitional)" to "spec resolve
-    (transitional)" accordingly. Granularity: one aggregated Error per document
-    for `[[matcher]]` presence (anonymous and span-less at document level;
-    count in the message) plus one Error per attribute with an authored
-    `template` reference (AttributeName location); emitted before the
-    binding-shape gate so they aggregate on shape-less and triple documents.
-    An unreferenced `[[template]]` is inert and resolves/converts cleanly.
+    only**, not resolution precedence; within-file duplicate ids were
+    unvalidated until M6 (D-116 rejects them).
+  - **Use-reject ownership.** Until D-121 retired it,
+    `TemplateMatcherNotImplementedV1` fired at the **seam**, not the planner:
+    templates/matchers never resolve into Core, so by D-067's own criterion
+    (plan-time rejects are for carriers that resolve into Core) a Core
+    reject-carrier would have been speculative surface removed at M6.
   - **Deferred-surface retirement.** `extends`, `[[template]]`/`[[matcher]]`,
     and attribute `template` leave the D-075 `SpecSurfaceNotYetSupported` set
     (their sets/branches deleted); the remaining entries
-    (`display_name`/`formal_attribute_format`, `value_type = "date"`) belong
-    to the naming-fidelity slice and D-038.
+    (`display_name`/`formal_attribute_format`, `value_type = "date"`) were
+    left to the naming-fidelity slice (D-120) and D-038.
 - **Why:** D-027/D-052 fixed the merge semantics but not the API shape, phase
   ownership, version gating, nested-table granularity, duplicate handling, or
-  carrier scope — and each unpinned point reads as a bug or an invitation to
+  carrier scope, and each unpinned point reads as a bug or an invitation to
   scope creep without the rationale on record. The fingerprint invariant (§13:
   composed ≡ flat, all three fingerprints) is locked by tests over the
-  unchanged Slice E machinery — composition needed no encoder change, which is
+  unchanged Slice E machinery; composition needed no encoder change, which is
   itself evidence the document→document design is at the right altitude.
 - **Rejected:** merging inside `Resolve` (a loader on the seam signature and a
-  half-composed intermediate — the shape D-067 already rejected); a
+  half-composed intermediate, the shape D-067 already rejected); a
   resolve-side "not found" diagnostic for the uncomposed case (synthesizes a
   fake condition for a host bug and dilutes `SpecExtendsNotFound`); per-leaf
   merge of `columns`/`object_key` (incoherent hybrids); collapsing same-name
   derived duplicates (masks `AttributeNameDuplicate`); a shared
   attribute/template config record now (churns every construction site for a
   duplication M6 may reshape anyway); a compose-then-resolve convenience
-  overload before M7 gives it a real caller (EP-3).
-- **Affects:** Spec (`SpecComposer`, `ISpecTextSource`/`SpecSourceText`,
-  `SpecSection.Extends`, `AttributeSection.Template`,
-  `TemplateSection`/`MatcherSection`/`MatchSection`, reader/writer carriers,
-  `TomlSpellings` set retirements, `SpecResolver` guard + rejects),
-  Diagnostics (`SpecExtendsNotFound`, `SpecExtendsCycle`,
-  `TemplateMatcherNotImplementedV1`); spec §9 / §13 / §16.4. Realizes
-  D-027/D-052; refines D-067/D-075; byte-neutral on the M1 goldens and the
-  Slice E fingerprint baselines (Core untouched).
+  overload with no caller before M7 (EP-3).
+- **Affects:** Spec (`SpecComposer`, `ISpecTextSource`/`SpecSourceText`, the
+  template/matcher carriers, `SpecResolver`), Diagnostics (`SpecExtendsNotFound`,
+  `SpecExtendsCycle`, `TemplateMatcherNotImplementedV1`); spec §9 / §13 / §16.4.
+  Realizes D-027/D-052; refines D-067/D-075; byte-neutral on the M1 goldens and
+  the Slice E fingerprint baselines (Core untouched).
 
-### D-079 — Slice G `.bed` migrator contract: document-model target, Diagnosed surfaces
+### D-079: Slice G `.bed` migrator contract: document-model target, Diagnosed surfaces
 
 - **Status:** accepted (realizes D-009's save-as-TOML face, the D-049
   migrator-hygiene item, D-068's migrator branch, and D-057's carriage;
@@ -2367,51 +2332,58 @@ built; they refine, not reverse, D-009 / D-049 / D-050…D-065.
   `BedMigrator.Migrate(BedDocument, BindingSection, ScalingMode, derivedFrom?) →
   Diagnosed<SpecDocument>` replaces `BedToSpec` (Core-targeting, throwing), and
   `BedReader.Read(text, filePath?)` returns `Diagnosed<BedDocument>` (structural
-  problems — missing section, entry-count shortfall, unparseable count/convert
-  flag — are `BedStructureInvalid`, Fatal, aggregated). A migrated spec is
+  problems (missing section, entry-count shortfall, unparseable count/convert
+  flag) are `BedStructureInvalid`, Fatal, aggregated). A migrated spec is
   written by `SpecWriter`, resolved through the one seam (D-066/D-067), and
   fingerprinted like any authored spec; the golden harness runs this
   migrate→resolve route. Contract points:
   - **Carry what the carrier represents; validation stays at the seam.** The
     migrator transcribes; representable-but-invalid config (e.g. non-ascending
     cuts) carries verbatim and fails at resolve under its owning code
-    (D-056/D-067) — an *included* malformed-cut `.bed` therefore now fails at
+    (D-056/D-067); an *included* malformed-cut `.bed` therefore now fails at
     resolve, not migrate. Only transcription failures diagnose at migrate: an
     unparseable numeric cut token (the carrier stores numbers) or a dichotomic
     true value equal to the effective missing token (contradicts the D-068
     domain exclusion; no seam check would catch it) → `BedAttributeConfigInvalid`;
     type `d` on an included attribute → `BedDateTypeNotSupported` (D-038 parity
-    deferral — failing is honest, a spec silently missing an included attribute
+    deferral: failing is honest, a spec silently missing an included attribute
     changes the analysis; retires if the date carrier lands); an unknown type
     code → `BedTypeUnrecognized` (the D-070 typo-vs-deferred tiering).
-  - **Parked config (D-049):** an excluded attribute parks its **full** config —
+  - **Parked config (D-049):** an excluded attribute parks its **full** config,
     including representable-but-invalid config, which the seam skips while
     parked, so flipping `include = true` is what surfaces validation (better
     than M1, which degraded it). Untranscribable parked config degrades to bare
     excluded (`name`, `source`, `include = false`, plus the live `restrict_to`)
-    with `BedParkedConfigDropped` (Warning) — replacing M1's silent broad
+    with `BedParkedConfigDropped` (Warning), replacing M1's silent broad
     `catch (Exception)`. Excluded attributes hence resolve parked-with-nulls in
-    Core rather than M1's carried discretizer/scale — planner- and
+    Core rather than M1's carried discretizer/scale: planner- and
     fingerprint-inert (both skip excluded attributes).
   - **restrict_to (D-057):** a non-empty `[Restrict To Values]` line migrates to
-    authored string `RestrictToValue` entries, tokens verbatim (no per-token
-    trim — v2 restrict is raw-value equality, OR within an attribute),
-    include-independent (§10.1/D-076); a blank line stays unauthored. Numeric
-    attributes keep string entries too — a range cannot express v2's exact
-    match ([x, x) is empty under lo-inclusive/hi-exclusive) — and the seam's
-    `RestrictToOnNumericRequiresRange` owns the mismatch; the migrator stays
-    silent (one condition → one owning code, EP-14). The planner still rejects
-    any carried `restrict_to` with `RestrictToNotImplementedV1` until M4.
+    authored `restrict_to` entries without per-token trim (v2 restrict is
+    raw-value equality, OR within an attribute), include-independent
+    (§10.1/D-076); a blank line stays unauthored. At M2 every token became a
+    verbatim string `RestrictToValue`, numeric attributes included (a range
+    cannot express v2's exact match: [x, x) is empty under
+    lo-inclusive/hi-exclusive). D-091 made migration type-directed and D-105
+    implemented it: on a type-`o` (numeric) attribute, a finite token that
+    parses under the effective `binding.locale` becomes an exact
+    `{ value = n }` entry; a token on any other v2 type, or a type-`o` token
+    that is not a finite number, stays a verbatim string (under an invalid
+    locale no token is parsed; resolution owns the locale error). The seam's
+    `RestrictToNumericEntryRequired` owns a string entry on a numeric source;
+    the migrator stays silent (one condition → one owning code, EP-14). At M2
+    the planner rejected any carried `restrict_to` with
+    `RestrictToNotImplementedV1`; D-105 made it execute.
   - **Missing token (D-068):** for the domain-list types (`c`, `b`) a
-    `[Category Values]` entry equal to the **effective** token — null when
+    `[Category Values]` entry equal to the **effective** token (null when
     `missing_token` is authored `""` (§5.1: detection disabled), else the
-    authored value or the default `?` — selects `missing_policy = "as_attribute"`
+    authored value or the default `?`) selects `missing_policy = "as_attribute"`
     and leaves `declared_domain`/`value_labels`; a display label on the token
     has no v1 carrier (`{column}-missing` is canonical, D-074) →
     `BedMissingTokenLabelDropped` (Warning). Cut types (`o`, `n`) get no
-    detection — their `[Category Values]` is a cut spec, not a domain.
+    detection: their `[Category Values]` is a cut spec, not a domain.
   - **Authoring rules:** `ends` is always authored (the resolver defaults an
-    absent `ends` to open, but a sentinel-less v2 cut spec means closed —
+    absent `ends` to open, but a sentinel-less v2 cut spec means closed;
     omission would silently flip it); the progressive ordinal authors
     `direction = "le"` **only** (an authored `boundary`/`order` over cuts is a
     D-060 validation error; the resolver defaults reproduce v2's rendering);
@@ -2420,11 +2392,11 @@ built; they refine, not reverse, D-009 / D-049 / D-050…D-065.
     `include = true`, `[defaults]`, `[output]`). Dichotomic display labels now
     carry as dormant `value_labels` (byte-/fingerprint-inert; dichotomic renders
     the column name alone) instead of dropping silently. `[spec]` holds
-    `version = 1` only — no stored fingerprints (a migrated spec is unfrozen;
-    D-057) and no `created_at` (no clock in pure code — EP-7); `derived_from`
+    `version = 1` only: no stored fingerprints (a migrated spec is unfrozen;
+    D-057) and no `created_at` (no clock in pure code, EP-7); `derived_from`
     lands in `[provenance]` when the caller supplies it.
 - **Why:** D-009 promised "load v2, save as TOML", but the M1 migrator could
-  only produce a Core spec — unwritable, unfingerprintable, restrict-dropping —
+  only produce a Core spec (unwritable, unfingerprintable, restrict-dropping),
   and D-049 deferred the hygiene ("no silently-dropped parked config") to this
   rework. Targeting the document model gets the writer, seam validation, and
   fingerprints for free and keeps every static check single-homed (D-067);
@@ -2433,75 +2405,71 @@ built; they refine, not reverse, D-009 / D-049 / D-050…D-065.
 - **Rejected:** keeping a Core-targeting migrator alongside the document path
   (two producers to hold semantically aligned forever); wrapping the M1
   exceptions in `Diagnosed` at the edges (keeps the broad catch and the silent
-  drops); converting v2 numeric restrict tokens to ranges (changes semantics —
+  drops); converting v2 numeric restrict tokens to ranges (changes semantics;
   see above); parking an included `d` attribute as excluded so migration
-  "succeeds" (silently changes the analysis — the exact hazard D-068 names);
+  "succeeds" (silently changes the analysis, the exact hazard D-068 names);
   hardcoding `?` in missing-token detection (already rejected by D-068).
-- **Affects:** Spec (`BedReader`, `BedMigrator` replacing `BedToSpec`,
-  `BedDocument`/`ScalingMode` docs), Diagnostics (`BedStructureInvalid`,
-  `BedDateTypeNotSupported`, `BedTypeUnrecognized`, `BedAttributeConfigInvalid`,
-  `BedParkedConfigDropped`, `BedMissingTokenLabelDropped`), golden harness
-  (migrate→resolve route; `FixtureCase` supplies a `BindingSection`), spec
-  §16.4 (the `migrate (v2)` phase rows). M1 goldens byte-identical; Slice E
-  fingerprint baselines unchanged.
+- **Affects:** Spec (`BedReader`, `BedMigrator` replacing `BedToSpec`), Diagnostics
+  (`BedStructureInvalid`, `BedDateTypeNotSupported`, `BedTypeUnrecognized`,
+  `BedAttributeConfigInvalid`, `BedParkedConfigDropped`, `BedMissingTokenLabelDropped`),
+  the golden harness (the migrate→resolve route); spec §16.4 (the `migrate (v2)`
+  phase rows). M1 goldens byte-identical; Slice E fingerprint baselines unchanged.
 
-### D-080 — `AttributeNameDuplicate` / `ValueLabelKeyNotInDomain` re-homed to the resolve seam
+### D-080: `AttributeNameDuplicate` / `ValueLabelKeyNotInDomain` re-homed to the resolve seam
 
 - **Status:** accepted (the M2-exit standalone cleanup; supersedes D-067's
   "invoked from the seam, not re-homed" parenthetical for these two codes)
 - **Date:** 2026-07-05
-- **Decision:** the two remaining Core-emitted spec-validate checks —
-  `AttributeNameDuplicate` and `ValueLabelKeyNotInDomain` — are **physically
+- **Decision:** the two remaining Core-emitted spec-validate checks,
+  `AttributeNameDuplicate` and `ValueLabelKeyNotInDomain`, are **physically
   moved** into `SpecResolver` as private static checks over the **document
   model**, and deleted from `ConversionPlanner`. Both are §16.4 *spec validate*
   codes (their "Where" cell already read `spec validate`); the planner emitting
-  them was the phase drift flagged at the Slice F review. The re-home matches
-  the D-076 seam style: the dup-name check runs in the wide-shape attribute loop
-  (after the triple early-return, so triple documents are unaffected — as the
-  planner's triple guard already did), skips null/empty names
-  (`AttributeNameMissing` owns those), and reports **one diagnostic per extra
-  occurrence**, message verbatim. The `value_labels` check runs in the
-  `include`-gated `ValidateAttributeConstraints` block, keyed on
+  them was a phase drift. The re-home matches the D-076 seam style: the dup-name
+  check runs in the wide-shape attribute loop (after the triple early-return, so
+  triple documents are unaffected, as the planner's triple guard already did),
+  skips null/empty names (`AttributeNameMissing` owns those), and reports **one
+  diagnostic per extra occurrence**, message verbatim. The `value_labels` check
+  runs in the `include`-gated `ValidateAttributeConstraints` block, keyed on
   `section.Discretizer is IdentityDiscretizerSection` (≡
-  `Discretizer.ConsultsValueLabels` in M2 — `free_per_value` is the only other
-  consulting kind and is read-rejected before the seam, D-070; it joins the gate
+  `Discretizer.ConsultsValueLabels` in M2: `free_per_value` is the only other
+  consulting kind and is read-rejected before the seam, D-070; it joins the check
   at M4), checking keys against `declared_domain ?? []`. `FormalAttributeCollision`
   / `FormalAttributeNameCollision` stay at **plan** as the output-integrity
   backstop (colliding *rendered/canonical* identities, not authored names).
 - **Why:** D-067 assigned these to the seam but, to keep that slice surgical,
-  left them "invoked from the seam, not re-homed" — a parenthetical the code
+  left them "invoked from the seam, not re-homed": a parenthetical the code
   never realized (they stayed in the planner). Realizing the physical re-home
   over the **document model** is not cosmetic: `ResolveAttribute` returns `null`
   for an attribute whose source/discretizer/scale fails to resolve, so a
-  Core-model check would *lose* a duplicate whose sibling field is broken — the
+  Core-model check would *lose* a duplicate whose sibling field is broken; the
   document-model check catches it and aggregates with that sibling's own
   diagnostic (EP-14). It also makes §16.4's "Where" column honest without a spec
   edit.
 - **Consequences:** (i) a Core-only caller hand-building a `BedrockSpec` and
-  planning it directly no longer gets these two checks — the resolve seam is the
+  planning it directly no longer gets these two checks: the resolve seam is the
   enforced entry point for spec validation (every §16.4 spec-validate code is
   already seam-owned; the planner keeps only its plan-phase checks). (ii) These
-  checks aggregate within the resolve pass rather than the plan pass — the
+  checks aggregate within the resolve pass rather than the plan pass, the
   cross-phase split every D-067 seam check already has. Neither is a public API
   change: no new public Core surface, no production `InternalsVisibleTo`, and the
   diagnostic codes/severities/messages are unchanged. **Byte- and
   fingerprint-neutral** on every golden and pinned baseline (validation-only; no
   planned column, name, or hash input moves).
 - **Rejected:** a Core *helper* over the resolved model invoked from the seam
-  (D-067's literal parenthetical) — semantically weaker (drops duplicates whose
+  (D-067's literal parenthetical): semantically weaker (drops duplicates whose
   sibling resolution fails) and still splits the check across packages; moving
   the §16.4 "Where" cell to `plan` instead of moving the code (records the drift
   as intended rather than fixing it, and orphans the checks from the seam that
   owns every other spec-validate code); leaving the drift (a standing
   code-vs-spec disagreement, EP-8).
-- **Affects:** Spec (`SpecResolver` two new private checks; `SpecComposer`
-  doc-comment), Core (`ConversionPlanner` two checks + `ValidateValueLabels`
+- **Affects:** Spec (`SpecResolver`), Core (`ConversionPlanner`; `ValidateValueLabels`
   removed), tests (planner tests relocated to `SpecResolverTests`). Diagnostics
   unchanged. Realizes the D-067 seam assignment for these two codes; pairs with
-  D-076. Spec §10.2 / §10.8 / §16.4 (no text change — the cells already read
+  D-076. Spec §10.2 / §10.8 / §16.4 (no text change: the cells already read
   `spec validate`).
 
-### D-081 — Value-bin ordinal path (Slice H): identity + explicit order
+### D-081: Value-bin ordinal path (Slice H): identity + explicit order
 
 - **Status:** accepted (M2 Slice H; realizes the D-047-deferred value-bin path
   and closes the F1 silent-output hole; refines D-060)
@@ -2509,25 +2477,28 @@ built; they refine, not reverse, D-009 / D-049 / D-050…D-065.
 - **Decision:** the value-bin ordinal path (§12.3) is implemented, so an
   `ordinal` scale over a **value-bin** discretizer thresholds on the explicit
   `scale.order` instead of the (unread) cut geometry. Scope and semantics:
-  - **Kind gate.** In M2 the only value-bin discretizer is `identity`
-    (`free_per_value` → M4, read-rejected by D-070), so this path is
-    `identity` + a **string** `order` only (D-061 string-fixing). `order` is
-    **always required** in M2; §12.3's "optional for numeric" branch belongs to
-    the numeric value-bin (`free_per_value`) case and activates at M4.
+  - **Kind scope.** In M2 the only value-bin discretizer was `identity`
+    (`free_per_value` was read-rejected by D-070), so this path was
+    `identity` + a **string** `order` only (D-061 string-fixing), and `order`
+    was **always required**. §12.3's "optional for numeric" branch belongs to
+    the numeric value-bin (`free_per_value`) case, which D-101 activated at M4
+    with D-096's natural numeric ascending default.
   - **Permutation rule.** `order` must be a **full permutation** of the
     `declared_domain`: every domain value gets a threshold. At **plan** an
     omitted `order` **or** a domain value missing from `order` is
     `OrdinalOrderMissing`; an `order` entry outside the domain is
     `OrdinalOrderHasUnknownValue` (one per stray entry). These two codes were
     already §16.4-registered at `plan`; Slice H adds their enum members and emit
-    sites. The membership check is suppressed on an absent domain — D-071's
-    `ObservedDomainCalibrationNotImplementedV1` owns that (one condition → one
-    code, EP-14). `order` lists **raw domain values, never display labels**.
+    sites. In M2 the membership check was suppressed on an absent domain,
+    which D-071's transitional reject owned (one condition → one code, EP-14);
+    since D-098, Calibrate fills an omitted domain before Plan, so the check
+    always has a domain. `order` lists **raw domain values, never display
+    labels**.
   - **Order list shape** (distinct, non-empty entries) is validated at the
     **resolve seam** by broadening `OrderDomainInvalid` (its existing §16.4
     `spec validate` cell) from `ordered_cuts.order` to *any* authored order over
     a non-cut discretizer; include-gated (parked orders never block, D-049). A
-    cut discretizer's order stays `OrdinalOrderNotAllowedWithCuts` (D-060) — the
+    cut discretizer's order stays `OrdinalOrderNotAllowedWithCuts` (D-060); the
     two are mutually exclusive by discretizer kind, no double-report.
   - **Threshold semantics.** For order position *i* (value `order[i]`),
     `direction × boundary` pick the operator and crossings: `ge`+inclusive →
@@ -2541,47 +2512,45 @@ built; they refine, not reverse, D-009 / D-049 / D-050…D-065.
     the first, `le` → the last). Under a **strict** boundary it is a **no-op**:
     there is no tautological threshold; the statically-empty end (`> highest` /
     `< lowest`) is **kept and simply never crosses** (the closed-ends cut
-    precedent — an empty column is legal, §10.1). *(Open question 1 →
-    recommended option.)* An empty column that never crosses is a future
-    **emit-phase** `AttributeHasNoCrosses` concern (D-058); Slice H makes no
-    claim it surfaces now — that code has no emit site yet.
+    precedent: an empty column is legal, §10.1). An empty column that never
+    crosses is left to the **emit-phase** `AttributeHasNoCrosses` (D-058),
+    whose emit site D-105 added.
   - **Naming / identity.** Names render through the existing `RenderName`
     (`{attr}-{op}{display}`, `value_labels` applied since `identity` consults
     them); the canonical identity's `BinKey` is the **raw** order value, so it
-    is style-independent (the roadmap gate `BinKey == ValueLabel`). The
-    fingerprint **encoder is untouched**: `AppendScale` already encoded ordinal
+    is style-independent (the `BinKey == ValueLabel` check). The fingerprint
+    **encoder is untouched**: `AppendScale` already encoded ordinal
     `boundary`/`direction`/`drop_top`/`order`, and each threshold column encodes
     as `{"bin":"<raw value>","op":"<op>","scale":"ordinal"}`. Two order
     permutations of one domain change the column identities/sequence, so the
-    schema fingerprint moves — byte- and fingerprint-neutral on every existing
-    golden and pinned baseline (no cut spec takes this path).
+    schema fingerprint moves; Slice H is byte- and fingerprint-neutral on every
+    existing golden and pinned baseline (no cut spec takes this path).
 - **Why:** the path was committed M2 scope in three places (roadmap M2 body, the
   Tier-2 net-scope line, spec §12.3 "implemented at M2") but never landed:
   `OrdinalScale.BuildShapes` read only the cut geometry, and an `identity` +
   `ordinal` spec resolved, planned, and emitted output that **silently ignored**
-  the authored `order`/`boundary` — the exact wrong-output hazard D-057/D-070/
+  the authored `order`/`boundary`, the exact wrong-output hazard D-057/D-070/
   D-071 close elsewhere, and a path that could mint a wrong schema fingerprint.
   A `BinScheme.CutBins` discriminator selects the path with one bit, keeping the
   cut geometry (and its `Boundary`-is-unread rule, D-060) exactly as it was.
-- **Rejected:** *drop_top drops the statically-empty end under strict* (open
-  question 1 alt) — that end is not tautological, and dropping it would make
-  `drop_top` mean two different things by boundary; keeping it matches the
-  closed-ends cut precedent and an empty column is already legal (§10.1). *A new
-  §16.4 code for "order omits a domain value"* (open question 2 alt) — it is the
-  same defect as an omitted `order` (a bin with no threshold), so a message
-  variant of `OrdinalOrderMissing` keeps the registry closed. *Plan-phase
-  duplicate/empty order validation* (open question 3 alt) — that would split
-  `OrderDomainInvalid`'s phase ownership across packages; the seam already owns
-  the identical `ordered_cuts.order` shape check. *Building the numeric value-bin
-  ordinal now* — that is `free_per_value`, an M4 discretizer (D-070); M2 is
-  string-only.
-- **Affects:** Core (`OrdinalScale.BuildValueThresholds`, `BinScheme.CutBins`
-  and its three construction sites), Core (`ConversionPlanner` order-permutation
-  guard), Spec (`SpecResolver` broadened `OrderDomainInvalid`), Diagnostics
-  (`OrdinalOrderMissing`, `OrdinalOrderHasUnknownValue` enum members added). Spec
-  §12.3 (surgical: `drop_top` value-bin + strict-no-op wording, the
-  full-permutation clause). Byte- and fingerprint-neutral. Refines D-047/D-060;
-  pairs with D-070 (kind scope) and D-071 (absent-domain precedence).
+- **Rejected:** *drop_top drops the statically-empty end under strict*: that
+  end is not tautological, and dropping it would make `drop_top` mean two
+  different things by boundary; keeping it matches the closed-ends cut
+  precedent and an empty column is already legal (§10.1). *A new §16.4 code for
+  "order omits a domain value"*: it is the same defect as an omitted `order` (a
+  bin with no threshold), so a message variant of `OrdinalOrderMissing` keeps
+  the registry closed. *Plan-phase duplicate/empty order validation*: that would
+  split `OrderDomainInvalid`'s phase ownership across packages; the seam already
+  owns the identical `ordered_cuts.order` shape check. *Building the numeric
+  value-bin ordinal now*: that is `free_per_value`, an M4 discretizer (D-070);
+  M2 is string-only.
+- **Affects:** Core (`OrdinalScale.BuildValueThresholds`, `BinScheme.CutBins`,
+  the `ConversionPlanner` order-permutation guard), Spec (`SpecResolver` broadened
+  `OrderDomainInvalid`), Diagnostics (`OrdinalOrderMissing`,
+  `OrdinalOrderHasUnknownValue` enum members added). Spec §12.3 (the `drop_top`
+  value-bin and strict-no-op wording, the full-permutation clause). Byte- and
+  fingerprint-neutral. Refines D-047/D-060; pairs with D-070 (kind scope) and
+  D-071 (absent-domain precedence).
 
 ---
 
