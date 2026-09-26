@@ -184,7 +184,7 @@ so the caller selects the shape and header handling). Triple role binding by hea
 parsing (decimal point). All parsing in the pipeline uses this one declared
 locale; determinism comes from the locale being part of the spec, not from
 hardcoding invariant. (Date parsing is reserved for the deferred date value
-type — §11.7.) Recommended: keep `"invariant"` unless you specifically need a
+type, §11.7.) Recommended: keep `"invariant"` unless you specifically need a
 locale's conventions.
 
 **`missing_token`** *(default `"?"`)*. Any string equal to this token,
@@ -193,9 +193,9 @@ token-based missing detection, set `missing_token = ""`. Empty string
 cells are *always* missing regardless of this setting.
 
 **Whitespace.** Leading and trailing whitespace around an **unquoted** data field
-value is trimmed before any interpretation — missing-token detection, matching
+value is trimmed before any interpretation: missing-token detection, matching
 against `declared_domain` / `value_labels` keys / `restrict_to` / a `dichotomic`
-`true_value` / `value_groups`, numeric parsing, and — for triple input — deriving
+`true_value` / `value_groups`, numeric parsing, and, for triple input, deriving
 the object name from the **subject** and matching the **predicate** selector.
 Whitespace inside a **quoted** field is preserved (deliberate spaces survive). The spec-side strings you write in
 the TOML are taken **verbatim** and never trimmed; only the data-side field value
@@ -203,9 +203,9 @@ is. The rule is uniform across all matching, so a value never fails to match
 purely because of surrounding spaces in the source file.
 
 **Numeric spec-side entries are the one exception to "verbatim".** A **numeric**
-entry written in the spec — a numeric `restrict_to` value (§10.4), or a numeric
+entry written in the spec (a numeric `restrict_to` value (§10.4), or a numeric
 `free_per_value` `declared_domain` (§10.3), `value_labels` key (§10.8), or
-`scale.order` entry (§12.3) — is **parsed** under `binding.locale` to its numeric
+`scale.order` entry (§12.3)) is **parsed** under `binding.locale` to its numeric
 identity rather than compared as an opaque string, so `90`, `90.0`, and `9e1`
 denote the same value and all zero spellings canonicalize to `0` (D-096). This is
 a value-identity rule, not a whitespace one; surrounding whitespace remains
@@ -263,12 +263,12 @@ Whether multiple values produce multiple crosses or are folded into one is a
 property of the chosen **scale**, not a source-level toggle: `nominal` produces
 one cross per distinct value (the union above); `dichotomic` or a `value_groups`
 mapping can fold several values into a single formal attribute. There is no
-separate "collapse multi-values" option — pick the scale that expresses the
+separate "collapse multi-values" option; pick the scale that expresses the
 intent (one standard way per concern).
 
 **Calibration population (triple).** When an attribute's discretizer calibrates
 (§7), each **distinct cleaned `(subject, predicate, value)` observation
-contributes exactly once** to that attribute's calibration population — the same
+contributes exactly once** to that attribute's calibration population: the same
 idempotence that makes a repeated triple set the same cross (above) makes it count
 once toward an auto-discretizer's cuts or an observed domain. This specializes the
 general calibration-population rule (§7); it is the triple analogue of a wide row
@@ -276,7 +276,7 @@ being one independent observation (see also §11.5).
 
 **Absent predicate vs missing value.** Triple input has no cell-per-column
 guarantee: a subject may carry **no** row for a given predicate. An **absent**
-predicate is **no observation** — it produces no cross and never crosses a
+predicate is **no observation**: it produces no cross and never crosses a
 `missing_policy = "as_attribute"` `-missing` column (§10.5). A value is **missing**
 (and then follows `missing_policy`) only when a **matching-predicate row exists**
 and its value is empty, equals `missing_token`, or is absent because the row is too
@@ -318,7 +318,7 @@ column = "id"                                # name (with header) or index
 ```
 
 Object name is taken from the named/indexed column. The column is **not implicit**
-as an attribute — it generates no formal attributes on its own — but it MAY be
+as an attribute (it generates no formal attributes on its own), but it MAY be
 referenced explicitly by an `[[attribute]]` source (§10.2, D-033), the same field
 serving as both object key and an analyzed attribute. Object order is the **order of
 first occurrence of each cleaned key value** (§17 rule 4). Duplicate key values are
@@ -373,7 +373,7 @@ individual attributes.
 
 `formal_attribute_format`, when present in `[defaults]`, is an explicit global
 override for emitted attributes. If absent, the scale-specific defaults from
-§10.7 apply (this is the normal case — there is no hard-coded `{column}-{value}`
+§10.7 apply (this is the normal case; there is no hard-coded `{column}-{value}`
 default).
 
 `ordinal_direction` and `ordinal_boundary` supply the defaults for an `ordinal`
@@ -381,12 +381,12 @@ scale (§12.3) that omits `direction` / `boundary`; a per-attribute `scale` fiel
 wins (§9 precedence). They fill an omitted `direction` / `boundary` **only after
 the winning effective scale has been selected** (§9.2), so they never participate
 in the template/matcher merge itself. **`direction`** applies to **all** ordinal
-scales — for cut-bin scales it selects which bin edge each threshold sits on
+scales; for cut-bin scales it selects which bin edge each threshold sits on
 (`le` → upper, `ge` → lower).
 **`boundary`** selects the operator only for **value-bin** ordinal scales (where all
 four `direction × boundary` combinations are live); for **cut-bin** scales the
 operator is fixed by the cut geometry, so a **defaulted** `boundary` never selects it
-and never trips `OrdinalBoundaryIncompatibleWithCuts` (§12.3) — only an
+and never trips `OrdinalBoundaryIncompatibleWithCuts` (§12.3). Only an
 explicitly-authored straddling `boundary` does, whether authored on the attribute
 or arriving as a winning field from an applied template or matcher (§9.2, §12.3).
 Authored-vs-default provenance is preserved by the reader/writer.
@@ -411,30 +411,30 @@ For `column` mode, given input where key `P001` appears at rows 1 and 3:
   wide mode always used `row_index`, so there is no v2 precedent to preserve
   here.
 - **`"keep"`**: each row becomes its own formal object. Object names are assigned by
-  the **converter** (the object-key resolver, **not** the writer — EP-15 "exporters
+  the **converter** (the object-key resolver, **not** the writer; EP-15 "exporters
   are dumb"), in object emission order (§17 rule 4), and are **unique by
   construction**: the first occurrence of a cleaned key takes the key itself; a later
   occurrence takes `<key>#<record-index>` (0-based source record index, e.g. `P001`,
-  …, `P001#2`). If any candidate is already assigned — colliding with a literal data
-  key or an earlier generated name — the converter appends `#1`, `#2`, … (ascending
+  …, `P001#2`). If any candidate is already assigned, colliding with a literal data
+  key or an earlier generated name, the converter appends `#1`, `#2`, … (ascending
   integers from 1) and takes the first unused; all comparisons are ordinal (EP-12).
   The assigned-name set is bounded object-name metadata (EP-16); `.cxt` serializes
   these names and `.dat` ignores them, so the guarantee is observable only in `.cxt`.
   A repeated cleaned key is reported as an aggregated `DuplicateObjectKey` (Warning);
   a candidate-name collision that forces the `#1`, `#2`, … escalation is reported
   separately as an aggregated `ObjectKeyNameDisambiguated` (Warning, with a bounded
-  `key→name` sample) — one condition, one code. Both are counted and flushed once
+  `key→name` sample): one condition, one code. Both are counted and flushed once
   after the object stream (EP-16), and a structural halt (an invalid key) suppresses
   any pending counts. The suffix is generated by the converter; it is not part of the
   duplicate row's cleaned key.
 - **`"dedupe"`**: rows sharing a key collapse to one formal object; later rows'
   crosses union onto the first, and the object keeps the **first occurrence's**
-  position (§17 rule 4). Emit **one aggregated** `DuplicateObjectKey` (Info) — a count
+  position (§17 rule 4). Emit **one aggregated** `DuplicateObjectKey` (Info): a count
   of the merged (duplicate) rows with a bounded **source-order** sample, and **silent**
   when every key is unique. Because non-contiguous
   keys cannot be merged in a single naive pass without holding all crosses (EP-16),
-  `dedupe` uses external grouping/sort-merge/spool — the same machinery as triple
-  `unordered` — and, like `unordered`, emits in **first-occurrence** order (§17
+  `dedupe` uses external grouping/sort-merge/spool (the same machinery as triple
+  `unordered`) and, like `unordered`, emits in **first-occurrence** order (§17
   rule 4); neither sorts its object output. Note this can cross mutually-exclusive
   bins on one
   object (e.g. two ages), meaningful only for genuinely set-valued data.
@@ -447,48 +447,48 @@ deferred `composite` object-key feature (§5.4).
 A conversion proceeds through four ordered phases. Implementations MUST preserve
 this separation (see decisions.md D-003, D-005).
 
-1. **Parse / validate** — resolve TOML syntax, `extends` composition, and
+1. **Parse / validate**: resolve TOML syntax, `extends` composition, and
    *static* spec validity (cut validation §11.2/§11.8, scale/discretizer
-   compatibility — including `OrdinalOrderNotAllowedWithCuts` and
+   compatibility, including `OrdinalOrderNotAllowedWithCuts` and
    `OrdinalBoundaryIncompatibleWithCuts` (§12.3), `value_labels` keys in domain
    when live (§10.8), duplicate `name`s,
    `BindingShapeMissing` when `shape` is absent). Reads no data
-   *rows*. It MAY inspect source *schema metadata* supplied by the caller —
-   header names, column count — to validate source bindings (e.g. a
+   *rows*. It MAY inspect source *schema metadata* supplied by the caller
+   (header names, column count) to validate source bindings (e.g. a
    `{ kind = "column", name = "age" }` binding against an actual header);
    binding by column *index* needs no schema at all. It does not scan object
    records or values. Produces a validated spec or aggregated diagnostics.
-2. **Calibrate** — the only phase that reads data to resolve *data-dependent
+2. **Calibrate**: the only phase that reads data to resolve *data-dependent
    schema elements*: **omitted** `declared_domain`s that a discretizer consumes
    (`identity` / `free_per_value`; observed-domain discovery),
    auto-discretizer cuts (`equal_width`, `equal_frequency`),
    `unknown_value_policy = "include"` extensions, and `value_groups`
    `unmatched = "passthrough"` (which discovers one column per observed ungrouped
    value, §11.6). A numeric value that is **present but unparseable** is excluded
-   from calibration (§11.5) — it never influences a cut. Produces a **retained,
-   immutable resolved outcome** — the resolved cuts, observed domains, `include`
-   additions, and pass-through bins — that the Plan phase (and, later, the freeze
+   from calibration (§11.5); it never influences a cut. Produces a **retained,
+   immutable resolved outcome** (the resolved cuts, observed domains, `include`
+   additions, and pass-through bins) that the Plan phase (and, later, the freeze
    path and manifest serialization, §15) consumes **without re-deriving** it from
    data (decisions.md D-093); the calibrated cuts are also captured in the run
    manifest (§15). The **equal-frequency and percentile-range** cut calibration
-   MUST be **exact and bounded-memory** (§11.5) — its correctness does not depend on
+   MUST be **exact and bounded-memory** (§11.5): its correctness does not depend on
    holding the whole population in memory.
-3. **Plan** — consume a validated spec together with its **resolved
-   calibrated-state** (phase 2 above — a fully-declared spec supplies it with no
+3. **Plan**: consume a validated spec together with its **resolved
+   calibrated-state** (phase 2 above; a fully-declared spec supplies it with no
    data pass, below) and produce the immutable `ConversionPlan`: the ordered
    formal-attribute schema with stable IDs, scale instances, restriction predicates,
    and ordering rules. Plan **never** plans from unresolved calibration-dependent
    state (D-093). Plan detects formal-attribute identity collisions
    (`FormalAttributeCollision`, §10.2), including one that only calibrated state
    reveals (§11.6). Pure; reads no data.
-4. **Emit** — stream objects through the plan, producing the output. Each formed
+4. **Emit**: stream objects through the plan, producing the output. Each formed
    object is **discretized and scaled first**, then the object as a whole is kept or
    dropped by `restrict_to`; restriction reads the object's **raw values, before
    discretization** (§10.4), but it selects *objects*, so an included attribute is
-   classified — and reports its ordinary value diagnostics — whether or not the
+   classified, and reports its ordinary value diagnostics, whether or not the
    object survives (§10.4/D-097). A surviving object keeps **all** its crosses.
    `.dat` is single-pass. `.cxt` needs the object count and all object names before
-   any incidence row, so it uses a replay-or-spool strategy (§18.1) — never
+   any incidence row, so it uses a replay-or-spool strategy (§18.1), never
    materializing the full incidence matrix in Core.
 
 **Fully-declared specs skip Calibrate.** A spec with an **authored**
@@ -496,13 +496,13 @@ this separation (see decisions.md D-003, D-005).
 consumes one (`identity` / `free_per_value`), only
 `manual_cuts` / `ordered_cuts` / `identity` / `value_groups` / `free_per_value` discretizers
 (and `equal_width` with `range = "manual"`, whose cuts are fixed by the spec, not
-the data — §11.4), no `unknown_value_policy = "include"` on an `identity` or
+the data, §11.4), no `unknown_value_policy = "include"` on an `identity` or
 `free_per_value` attribute, and no `value_groups`
 `unmatched = "passthrough"` is fully determined by its own text: Parse → Plan →
 Emit, deterministic from the spec alone, no data pre-pass that affects the schema.
 Such a spec is **already calibration-ready**: it satisfies the **same** resolved
 calibrated-state contract as an auto-calibrated spec and enters the **identical
-Plan input** — one Plan input shape, not a declared-vs-auto split (D-093).
+Plan input**: one Plan input shape, not a declared-vs-auto split (D-093).
 
 **`convert` auto-calibrates by default** (D-005, D-028): a spec needing
 calibration is calibrated in-line, and the resolved cuts are recorded in the
@@ -521,17 +521,17 @@ calibrate writes all three native stored fingerprints, and recalibrating its own
 output is **byte-idempotent**. On an `extends` chain, §13 states what calibrate writes.
 
 **Auto and frozen calibration are byte-equivalent.** For **every** freeze mapping
-above — auto cuts (`equal_width`, `equal_frequency`), observed domains, `include`
-additions, and pass-through bins — converting on the fly and converting with the
+above (auto cuts (`equal_width`, `equal_frequency`), observed domains, `include`
+additions, and pass-through bins), converting on the fly and converting with the
 `calibrate`-frozen spec MUST produce **byte-identical** `.cxt` and `.dat` on the
 **calibration dataset**, in **both native and `--v2-compat`** modes (D-122). This
 makes the D-028 guarantee explicit at the output-byte level: freezing changes *when*
 a data-dependent decision is resolved, never *which* decision. Only **audit
-metadata** is exempt and need not match — the run manifest (§15), the recorded
+metadata** is exempt and need not match: the run manifest (§15), the recorded
 command line, spec-file hashes, and calibration diagnostics.
 
-**Calibration population.** Every calibration — auto-discretizer cuts or an
-observed domain — is computed over one well-defined population: each record
+**Calibration population.** Every calibration (auto-discretizer cuts or an
+observed domain) is computed over one well-defined population: each record
 contributes its **non-missing, usable** value for the attribute; a **numeric**
 value contributes only when it parses to a **finite** number under `binding.locale`
 (a present-but-unparseable value is excluded and never influences a cut, §11.5);
@@ -543,21 +543,21 @@ observations. This population is the input universe, evaluated before `restrict_
 **`convert` calibrates but never discovers.** Discovery (draft-spec generation
 from data) is the separate `probe` operation (§7.1, D-003), never performed implicitly
 by convert. A spec with an **omitted** `declared_domain` under a consuming discretizer
-(`identity` / `free_per_value`) *is* calibrated — the observed domain is filled in
-— but the user is warned (`ObservedDomainUsed`,
+(`identity` / `free_per_value`) *is* calibrated (the observed domain is filled in),
+but the user is warned (`ObservedDomainUsed`,
 Warning) because the resulting formal-attribute schema then depends on this
 specific input rather than on the spec alone. To make such a spec
 input-independent, declare the domain explicitly or freeze it with `calibrate`.
 
 **Calibration and vocabulary precede object filtering.** The formal-attribute
 **vocabulary** (which columns exist) and any auto-discretizer **calibration** are
-computed over the **input universe** — *before* `restrict_to` (§10.4) selects which
+computed over the **input universe**, *before* `restrict_to` (§10.4) selects which
 objects are emitted. `restrict_to` filters **emitted objects**, never the
 calibration population or the column set: define the attribute vocabulary first,
 then select objects (the FCA model). A consequence is that after filtering some
-columns may carry no crosses (`AttributeHasNoCrosses`, §16.4) — allowed, not an
-error. (Population-relative calibration — quantiles over only the surviving objects
-— is a recognized future option recorded in decisions.md/roadmap, not a v1 setting.)
+columns may carry no crosses (`AttributeHasNoCrosses`, §16.4): allowed, not an
+error. (Population-relative calibration, quantiles over only the surviving objects,
+is a recognized future option recorded in decisions.md/roadmap, not a v1 setting.)
 
 ### 7.1 Discovery / `probe` (draft-spec generation)
 
@@ -580,11 +580,11 @@ by **both** shapes: delimiter `","`, `quote_char = "\""` (the only supported quo
 detection; empty cells are always missing), and `locale = "invariant"` (inert: probe
 parses no numbers). Only a few defaults are **shape-specific**:
 
-- `has_header` follows §5.1's shape-specific default — **`true` for wide**, **`false` for
+- `has_header` follows §5.1's shape-specific default: **`true` for wide**, **`false` for
   triple**.
 - **triple** additionally defaults `ordering = "unordered"` and roles
   `{ subject = 0, predicate = 1, value = 2 }`; a caller may supply a complete role map in one
-  addressing mode (§5.3). **`ordering = "subject_grouped"` is explicit-only** — never a
+  addressing mode (§5.3). **`ordering = "subject_grouped"` is explicit-only**: never a
   default and never inferred. (Wide has no `ordering` or role settings.)
 
 **Every discovered attribute is string-valued `identity` + `nominal`.** Probe authors no
@@ -593,7 +593,7 @@ Discovery UX: tooling that *suggests* an attribute looks continuous and offers r
 silently reinterpreting. Header/delimiter sniffing is likewise future probe tooling.)
 
 **Observation semantics.** Probe observes the source's **cleaned records exactly once, in
-input order** — "single pass" means one *record* pass, not structural inference. Observation
+input order**: "single pass" means one *record* pass, not structural inference. Observation
 is **per-attribute, set-based and idempotent** over cleaned values, with **ordinal** identity
 (EP-12) and **first-observation** domain order (§17 rule 3's principle). **Missing values are
 not observations:** an empty field is always missing, a field equal to the effective
@@ -605,8 +605,8 @@ requirement under `unordered`. A probed attribute's domain equals the Calibrate 
 observed domain (same values, same order) for the same input.
 
 **Structural validation is symmetric with conversion.** Every triple probe validates
-**subject usability under both orderings** — an empty, whitespace-only, control-character, or
-absent subject halts the probe (`ObjectKeyValueInvalid`, §16.4) — because otherwise the draft
+**subject usability under both orderings** (an empty, whitespace-only, control-character, or
+absent subject halts the probe (`ObjectKeyValueInvalid`, §16.4)) because otherwise the draft
 could violate the same-source conversion guarantee below. An **explicitly selected**
 `subject_grouped` probe additionally validates **contiguity**
 (`TripleSubjectNotContiguous`). **Wide** probe is row-index based and performs **no**
@@ -636,11 +636,11 @@ limit to inspect more values.
 least one attribute**; (2) **rereads** under the strict TOML reader; (3) **resolves** against
 the probed source's schema with no Error/Fatal; (4) **converts the same source under the same
 effective settings** with no Error/Fatal (warnings and structurally valid degenerate contexts
-are allowed — probe does not itself run conversion; tests enforce this). Probe returns **no
+are allowed; probe does not itself run conversion; tests enforce this). Probe returns **no
 draft** (diagnostics only) when no valid draft exists: zero-column wide input, triple input
 with no usable predicates, structural invalidity (unusable subjects under either ordering;
 non-contiguous input under explicit `subject_grouped`), or impossible binding/naming.
-**All-missing columns and header-only sources succeed** — attributes are authored with their
+**All-missing columns and header-only sources succeed**: attributes are authored with their
 domains omitted, and their data-side emptiness surfaces at convert as the ordinary
 degenerate-context warnings (§16.4).
 
@@ -659,11 +659,11 @@ synthesis alone is **not** a warning.
 
 **Draft content inventory.** The generated draft contains exactly:
 
-- `[spec]` — `version = 1` and a deterministic probe `description`.
-- `[binding]` — **every effective read setting, authored explicitly even when defaulted** (a
+- `[spec]`: `version = 1` and a deterministic probe `description`.
+- `[binding]`: **every effective read setting, authored explicitly even when defaulted** (a
   self-documenting draft), including the complete triple ordering and role mappings.
-- `[provenance]` — the deterministic notes above, and nothing else.
-- Per attribute — `name`, `source` (with an **explicit** `value_type = "string"`),
+- `[provenance]`: the deterministic notes above, and nothing else.
+- Per attribute: `name`, `source` (with an **explicit** `value_type = "string"`),
   `discretizer = { kind = "identity" }`, and `scale = { kind = "nominal" }`, authored
   explicitly; the complete domain when untruncated and non-empty; the retained prefix plus
   `unknown_value_policy = "include"` plus the description marker when truncated; the domain
@@ -687,8 +687,8 @@ unknown_value_policy = "include"
 ```
 
 **Nothing else** is authored: **no stored fingerprints** (a probe draft is never a frozen
-artifact — even when its explicit domains would make it fully-declared, §14), **no
-clock/timestamps** (`created_at` is never stamped — the no-clock rule), no tool version, no
+artifact, even when its explicit domains would make it fully-declared, §14), **no
+clock/timestamps** (`created_at` is never stamped, the no-clock rule), no tool version, no
 `[defaults]`, `[output]`, templates, matchers, or `[binding.object_key]` section (the defaults
 are correct: wide `row_index`, triple subject-pinned). The initial Discovery API accepts **no
 speculative provenance parameters**; the caller may enrich the returned `SpecDocument`
@@ -732,7 +732,7 @@ first-occurrence diagnostic ordering, and identical bounded samples. This is
 **record-sequence** determinism (§17), not file-byte determinism, so it holds equally for
 future non-file adapters. Probe reads **no** clock, ambient culture, environment variable,
 current directory, random source, or available-memory figure. **Cancellation propagates with
-no diagnostic and no partial document — ever.** As for every output-producing path, the
+no diagnostic and no partial document, ever.** As for every output-producing path, the
 repeatability test ships with the implementation (EP-7).
 
 ## 8. The `[output]` block
