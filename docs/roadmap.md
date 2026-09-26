@@ -39,7 +39,8 @@ This roadmap records no five-target native CI, tested-archive, UCI Adult accepta
 `main`-push CI result for any revision after `3b2e4a80`. Each release candidate supplies its own
 evidence ([Release-candidate obligations](#release-candidate-obligations)).
 
-M8.2, the current milestone, changes no product behavior. M9 begins after M8.2 is accepted and
+M8.2, the current milestone, changes no conversion behavior; its one change in product behavior is
+the wording of TOML syntax-error messages (D-133). M9 begins after M8.2 is accepted and
 integrated. Work deferred beyond v1 is in the [deferred backlog](#deferred-backlog-not-v1).
 
 ## Milestones
@@ -341,8 +342,10 @@ the integrated revision was measured. `docs/benchmarks.md` has the figures and l
 
 M8.2 is the current milestone, and M9 waits for it to be accepted and integrated. It hardens how
 the repository is written, who owns each lasting fact, how evidence provenance is stated, and how
-authored text is checked. It changes no public API, CLI contract, diagnostic, normative spec
-meaning, determinism rule or output byte.
+authored text is checked. It changes no public API, CLI grammar, exit code, determinism rule,
+fingerprint, or `.cxt`, `.dat` or manifest byte. Its one normative change declares TOML 1.1.0, the
+grammar of the parser the spec reader has always used, and the `SpecTomlInvalid` syntax-error
+message now names that grammar (D-133). No other diagnostic or normative spec meaning changes.
 
 Its work proceeds in this order:
 

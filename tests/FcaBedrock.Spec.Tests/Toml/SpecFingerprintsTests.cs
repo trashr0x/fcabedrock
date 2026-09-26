@@ -242,6 +242,101 @@ public sealed class SpecFingerprintsTests
         Assert.Equal(plain, exponent);
     }
 
+    [Fact]
+    public void ComputeNative_WhenInlineTablesSpanLines_ThenAllThreeFingerprintsMatchTheSingleLineTwin()
+    {
+        // §2: fingerprints hash the resolved plan, never the TOML text, so the TOML 1.1.0 layout
+        // (inline tables across lines, comments, trailing commas; D-133) cannot move a hash. The
+        // single-line twin is also valid TOML 1.0.0, so it doubles as the compatibility control.
+        const string SingleLine = """
+            [spec]
+            version = 1
+
+            [binding]
+            shape = "wide"
+
+            [[attribute]]
+            name = "age"
+            source = { kind = "column", index = 0 }
+            discretizer = { kind = "manual_cuts", cuts = [30, 40], ends = "open" }
+            scale = { kind = "ordinal", direction = "le" }
+
+            [[attribute]]
+            name = "tissue"
+            source = { kind = "column", index = 1 }
+            discretizer = { kind = "value_groups", groups = [{ label = "head", values = ["brain", "eye"] }, { label = "trunk", values = ["heart"] }], unmatched = "skip" }
+            scale = { kind = "nominal" }
+
+            [[attribute]]
+            name = "gill-size"
+            source = { kind = "column", index = 2 }
+            discretizer = { kind = "identity" }
+            scale = { kind = "nominal" }
+            declared_domain = ["b", "n"]
+            value_labels = { b = "broad", n = "narrow" }
+            """;
+        const string Multiline = """
+            [spec]
+            version = 1
+
+            [binding]
+            shape = "wide"
+
+            [[attribute]]
+            name = "age"
+            source = {
+                kind = "column",
+                index = 0,
+            }
+            discretizer = {
+                kind = "manual_cuts",
+                cuts = [30, 40],   # two cuts, three bins
+                ends = "open",
+            }
+            scale = { kind = "ordinal", direction = "le", }
+
+            [[attribute]]
+            name = "tissue"
+            source = { kind = "column", index = 1, }
+            discretizer = {
+                kind = "value_groups",
+                groups = [
+                    {
+                        label = "head",
+                        values = ["brain", "eye"],
+                    },
+                    { label = "trunk", values = ["heart"], },
+                ],
+                unmatched = "skip",   # a value outside every group gets no bin
+            }
+            scale = { kind = "nominal" }
+
+            [[attribute]]
+            name = "gill-size"
+            source = { kind = "column", index = 2 }
+            discretizer = { kind = "identity" }
+            scale = {
+                kind = "nominal",
+            }
+            declared_domain = ["b", "n"]
+            value_labels = {
+                b = "broad",   # rendered as gill-size-broad
+                n = "narrow",
+            }
+            """;
+
+        var singleLine = Pipeline(SingleLine, new SourceSchema(3));
+        var multiline = Pipeline(Multiline, new SourceSchema(3));
+
+        Assert.NotEmpty(singleLine.Plan.FormalAttributes);
+        Assert.Equal(
+            singleLine.Plan.FormalAttributes.Select(a => a.RenderedName),
+            multiline.Plan.FormalAttributes.Select(a => a.RenderedName));
+        AssertSameFingerprints(
+            ComputeNative(singleLine.Document, singleLine.Spec, singleLine.Plan),
+            ComputeNative(multiline.Document, multiline.Spec, multiline.Plan));
+    }
+
     // --- restrict_to presence versus emptiness (§10.4/§14, D-105/D-114) -------
 
     private static string NumericAttribute(string extraKeys = "") =>

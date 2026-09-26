@@ -33,7 +33,7 @@ namespace structure, .NET-specifics). UI/UX. Post-context reductions
 
 ## 2. Top-level file structure
 
-A Bedrock spec is a UTF-8 TOML 1.0 document containing the following
+A Bedrock spec is a UTF-8 TOML 1.1.0 document containing the following
 sections, all optional except `[spec]`, `[binding]`, and at least one
 `[[attribute]]`:
 

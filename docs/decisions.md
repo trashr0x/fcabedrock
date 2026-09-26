@@ -45,6 +45,7 @@ changes an earlier one. A new entry MUST add its line here.
 - D-009: New TOML spec format; one-way `.bed` migration *(migrator realized by D-079)*
 - D-010: Modelled-but-rejected scales/features carry forward-compat
 - D-011: v2 byte-equality is a CLI flag, not a spec setting
+- D-133: A Bedrock spec is a UTF-8 TOML 1.1.0 document; the TOML version is independent of `[spec].version`
 
 ### Scope / feature decisions
 
@@ -411,6 +412,60 @@ of this file).
 - **Rejected:** a `bin_label_style = "math" | "v2"` spec field (originally
   proposed, then pulled): pollutes the spec with a transient concern.
 - **Affects:** Cli, Export, spec §8 ("The [output] block") / §18 ("Output formats").
+
+### D-133: A Bedrock spec is a UTF-8 TOML 1.1.0 document; the TOML version is independent of `[spec].version`
+
+- **Status:** accepted
+- **Date:** 2026-09-26
+- **Decision:** spec §2 declares a Bedrock spec a UTF-8 TOML 1.1.0 document instead of a TOML 1.0
+  document. The whole TOML 1.1.0 grammar is the contract, not a subset, and the version is spelled
+  `1.1.0` in the spec and in the diagnostic. The Bedrock rules for sections, keys, types and values
+  still apply on top of that grammar, unchanged.
+  - **What TOML 1.1.0 adds.** The tagged TOML 1.1.0 changelog
+    (<https://github.com/toml-lang/toml/blob/1.1.0/CHANGELOG.md>) lists four syntax additions, and
+    the specification (<https://toml.io/en/v1.1.0>) and its grammar define them; the changelog's
+    other entries are clarifications. Inline tables may contain newlines, comments and a trailing
+    comma. Basic strings gain the `\e` and `\xHH` escapes. Seconds become optional in date-times
+    and times, and an omitted value means `:00`. Each addition is another spelling of a value that
+    TOML 1.0.0 already expresses: the same table on one line, `\u001B` and `\u00HH`, and explicit
+    seconds. The canonical writer (D-075, D-113) is unchanged.
+  - **No universal compatibility claim.** Neither the specification nor the changelog states that
+    every valid TOML 1.0.0 document stays valid, so this decision does not claim it. The evidence
+    is representative only: the existing specs in the test suite still read, and the new grammar
+    tests read each addition beside a TOML 1.0.0 spelling that gives the same document.
+  - **Accepted input does not change.** Since the reader was introduced (D-075) it has parsed with
+    Tomlyn 2.10.1, whose package documentation says it targets TOML 1.1.0 only and does not support
+    TOML 1.0. That parser call is unchanged, so the reader accepts and rejects exactly what it did
+    before.
+  - **The diagnostic.** A Fatal `SpecTomlInvalid` syntax-error message now begins
+    `Not valid TOML 1.1.0: ` instead of `Not valid TOML 1.0: `. Its code, severity, phase and
+    location are unchanged, and the parser's text after the prefix is not a contract.
+  - **`[spec].version` stays `1`.** It versions the Bedrock schema, which §3 bumps on incompatible
+    schema changes. This declaration changes no section, field, type, default or meaning and
+    rejects no spec that the reader accepted, so it is not a schema change.
+  - **Parser upgrades.** The contract is the TOML 1.1.0 grammar, not Tomlyn's observed behaviour,
+    which the grammar tests record as evidence. Tomlyn stays exact-pinned (D-075), and upgrading it
+    is a reviewed change that must keep those tests passing. Input that a parser accepts although
+    TOML 1.1.0 forbids it carries no compatibility promise. Adopting a later TOML version needs its
+    own decision.
+- **Why:** §2 said TOML 1.0 while nine spec examples write inline tables across lines, and the
+  reader has parsed TOML 1.1.0 since it was introduced. EP-8 allows either correction. Declaring
+  the grammar that the reader and the examples already use changes no accepted input, keeps every
+  example byte-identical and needs no added syntax check. The maintainer chose TOML 1.1.0 over the
+  options below.
+- **Rejected:** keeping TOML 1.0 and rewriting the nine examples, because the reader would still
+  accept TOML 1.1.0 and §2 would stay untrue unless an added check rejected syntax that every build
+  has accepted; declaring a subset, such as TOML 1.0.0 plus multi-line inline tables, because the
+  pinned parser has no such mode and enforcing it needs the same check; and bumping
+  `[spec].version`, because the grammar is not the schema and a bump would signal an incompatible
+  schema change where none exists.
+- **Affects:** spec §2; `FcaBedrock.Spec` (the `SpecTomlInvalid` syntax-error message);
+  `FcaBedrock.Diagnostics` (the `SpecTomlInvalid` documentation); comments that quote §2 in
+  `FcaBedrock.Cli` and its tests; grammar tests in `FcaBedrock.Spec.Tests`; `docs/roadmap.md` (the
+  M8.2 scope). The only change in product behaviour is that message text, which library callers
+  receive and the CLI prints on stderr. No public API, CLI grammar, exit code, diagnostic code,
+  severity, phase, registry count, schema version, fingerprint, `fp_format`, or `.cxt`, `.dat`,
+  canonical-TOML or manifest byte changes.
 
 ---
 

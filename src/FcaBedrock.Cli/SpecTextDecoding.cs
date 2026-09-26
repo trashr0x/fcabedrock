@@ -4,7 +4,7 @@ namespace FcaBedrock.Cli;
 
 /// <summary>
 /// The one decoder for authored document text the CLI reads: a TOML spec (§2 — "a Bedrock
-/// spec is a UTF-8 TOML 1.0 document") and a v2 <c>.bed</c> alike.
+/// spec is a UTF-8 TOML 1.1.0 document") and a v2 <c>.bed</c> alike.
 /// <para>
 /// <b>Strict UTF-8, with no byte-order mark or exactly one leading UTF-8 mark.</b> A UTF-16
 /// or UTF-32 mark is rejected rather than silently transcoded, and a malformed sequence is

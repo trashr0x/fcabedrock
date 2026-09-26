@@ -22,6 +22,57 @@ public sealed class SpecReaderDiagnosticsTests
             d.Code == DiagnosticCode.SpecTomlInvalid &&
             d.Severity == DiagnosticSeverity.Fatal &&
             d.Location is { File: "broken.toml", Line: 1 });
+
+        // Every syntax error names the grammar §2 declares (D-133). The parser's own text
+        // after the prefix is not a contract, so it is not pinned.
+        Assert.All(
+            result.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Fatal),
+            d => Assert.StartsWith("Not valid TOML 1.1.0: ", d.Message, StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Read_WhenKeyRepeatsInsideMultilineInlineTable_ThenSpecTomlInvalid()
+    {
+        // TOML 1.1.0 lets an inline table span lines (D-133), but it is still one table: a
+        // repeated key stays a TOML error, and it is reported where the repetition is written.
+        var result = SpecReader.Read(
+            "[spec]\nversion = 1\n[[attribute]]\nname = \"a\"\n"
+            + "source = {\n"
+            + "    kind = \"column\",\n"
+            + "    index = 0,\n"
+            + "    index = 1,\n"                                  // line 8
+            + "}\n",
+            "spec.toml");
+
+        Assert.False(result.TryGetValue(out _));
+        Assert.All(result.Diagnostics, d =>
+        {
+            Assert.Equal(DiagnosticCode.SpecTomlInvalid, d.Code);
+            Assert.Equal(DiagnosticSeverity.Fatal, d.Severity);
+        });
+        Assert.Contains(result.Diagnostics, d => d.Location is { File: "spec.toml", Line: 8 });
+    }
+
+    [Fact]
+    public void Read_WhenFieldInvalidInsideMultilineInlineTable_ThenDiagnosticPointsAtTheInnerLine()
+    {
+        // Inside an inline table that spans lines (D-133), each bad value is reported at its
+        // own line and column, and the D-116/D-120 source-position order still holds. The two
+        // values are written in the reverse of the order the reader takes them (index, then
+        // value_type), so a traversal-ordered result would report line 8 first.
+        var result = SpecReader.Read(
+            "[spec]\nversion = 1\n[[attribute]]\nname = \"a\"\n"
+            + "source = {\n"
+            + "    kind = \"column\",\n"
+            + "    value_type = \"numbr\",\n"                       // line 7, value at column 18
+            + "    index = \"zero\",\n"                             // line 8, value at column 13
+            + "}\n");
+
+        Assert.False(result.IsOk);
+        Assert.All(result.Diagnostics, d => Assert.Equal(DiagnosticCode.SpecFieldInvalid, d.Code));
+        Assert.Equal(
+            [(7, 18), (8, 13)],
+            result.Diagnostics.Select(d => (d.Location?.Line ?? 0, d.Location?.Column ?? 0)).ToArray());
     }
 
     [Fact]

@@ -11,7 +11,7 @@ public enum DiagnosticCode
     // --- Spec parse ---
 
     /// <summary>
-    /// The document is not valid TOML 1.0 (syntax error, duplicate key, malformed
+    /// The document is not valid TOML 1.1.0 (syntax error, duplicate key, malformed
     /// datetime, …). Fatal: no document is produced. Spec §2 / §16.4 (D-075).
     /// </summary>
     SpecTomlInvalid,

@@ -42,7 +42,7 @@ public static class SpecReader
             if (message.Kind == DiagnosticMessageKind.Error)
             {
                 hasSyntaxErrors = true;
-                context.Fatal(DiagnosticCode.SpecTomlInvalid, $"Not valid TOML 1.0: {message.Message}", message.Span);
+                context.Fatal(DiagnosticCode.SpecTomlInvalid, $"Not valid TOML 1.1.0: {message.Message}", message.Span);
             }
             else
             {

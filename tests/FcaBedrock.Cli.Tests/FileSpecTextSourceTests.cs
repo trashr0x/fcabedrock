@@ -221,7 +221,7 @@ public sealed class FileSpecTextSourceTests
     [InlineData(new byte[] { 0x00, 0x00, 0xFE, 0xFF, 0x00, 0x00, 0x00, (byte)'a' })] // UTF-32 BE
     public void ReadText_WhenTheBytesCarryANonUtf8ByteOrderMark_ThenTheyAreRejected(byte[] bytes)
     {
-        // §2: "A Bedrock spec is a UTF-8 TOML 1.0 document." Silently transcoding UTF-16 or
+        // §2: "A Bedrock spec is a UTF-8 TOML 1.1.0 document." Silently transcoding UTF-16 or
         // UTF-32 would accept documents outside that contract.
         var host = HostOver(bytes);
 

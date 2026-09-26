@@ -36,6 +36,63 @@ public sealed class SpecRoundTripTests
     }
 
     [Fact]
+    public void RoundTrip_WhenInlineTablesSpanLines_ThenCanonicalTextEqualsTheSingleLineTwin()
+    {
+        // A spec written with TOML 1.1.0 spellings (D-133) canonicalizes to the writer's existing
+        // form: inline tables on one line, \e as \u001B, \x41 as the character it names, and the
+        // omitted seconds written out. That canonical text is also valid TOML 1.0.0, and a second
+        // read and write leaves it unchanged.
+        const string Authored = """
+            [spec]
+            version = 1
+
+            [provenance]
+            created_at = 2026-05-09T10:15+02:00
+            notes = "bold \e[1m, letter \x41"
+
+            [binding]
+            shape = "wide"
+
+            [[attribute]]
+            name = "tissue"
+            source = {
+                kind = "column",
+                index = 0,   # the first column
+            }
+            discretizer = {
+                kind = "value_groups",
+                groups = [
+                    { label = "head", values = ["brain", "eye"], },
+                ],
+                unmatched = "skip",
+            }
+            scale = { kind = "nominal", }
+            """;
+        var singleLineTwin = string.Join(
+            '\n',
+            "[spec]",
+            "version = 1",
+            "",
+            "[provenance]",
+            "created_at = 2026-05-09T10:15:00+02:00",
+            "notes = \"bold \\u001B[1m, letter A\"",
+            "",
+            "[binding]",
+            "shape = \"wide\"",
+            "",
+            "[[attribute]]",
+            "name = \"tissue\"",
+            "source = { kind = \"column\", index = 0 }",
+            "discretizer = { kind = \"value_groups\", groups = [{ label = \"head\", values = [\"brain\", \"eye\"] }], unmatched = \"skip\" }",
+            "scale = { kind = \"nominal\" }") + "\n";
+
+        var canonical = SpecWriter.Write(Read(Authored));
+
+        Assert.Equal(singleLineTwin, canonical);
+        Assert.Equal(canonical, SpecWriter.Write(Read(canonical)));
+    }
+
+    [Fact]
     public void RoundTrip_WhenDeclaredDomainAuthoredEmpty_ThenStaysAuthoredEmpty()
     {
         // D-071: [] survives verbatim; omitted stays omitted.

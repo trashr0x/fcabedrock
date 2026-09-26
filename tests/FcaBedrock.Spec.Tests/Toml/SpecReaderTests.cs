@@ -350,6 +350,110 @@ public sealed class SpecReaderTests
         Assert.Equal(new DateTimeOffset(2026, 5, 9, 0, 0, 0, TimeSpan.Zero), document.Provenance?.CreatedAt);
     }
 
+    [Theory]
+    [InlineData("2026-05-09T10:15+02:00", "2026-05-09T10:15:00+02:00", 2)] // offset date-time, taken verbatim
+    [InlineData("2026-05-09T10:15", "2026-05-09T10:15:00", 0)]             // local date-time, zero offset (D-075)
+    public void Read_WhenCreatedAtOmitsSeconds_ThenSecondsAreZero(string withoutSeconds, string withSeconds, int offsetHours)
+    {
+        // TOML 1.1.0 makes seconds optional and assumes :00 (D-133), so each form reads to the
+        // same value as its TOML 1.0.0 spelling with explicit seconds.
+        var expected = new DateTimeOffset(2026, 5, 9, 10, 15, 0, TimeSpan.FromHours(offsetHours));
+        var createdAt = ReadOk($"[provenance]\ncreated_at = {withoutSeconds}\n").Provenance?.CreatedAt;
+
+        Assert.Equal(expected, ReadOk($"[provenance]\ncreated_at = {withSeconds}\n").Provenance?.CreatedAt);
+        Assert.Equal(expected, createdAt);
+        Assert.Equal(expected.Offset, createdAt?.Offset);
+    }
+
+    [Fact]
+    public void Read_WhenStringUsesEscapeAndHexEscapes_ThenValueIsDecoded()
+    {
+        // TOML 1.1.0 adds the basic-string escapes \e (U+001B) and \xHH (up to U+00FF) (D-133).
+        // Each spells a value TOML 1.0.0 writes as \uXXXX, so the TOML 1.0.0 twin reads the same.
+        var escaped = ReadOk(Attribute("declared_domain = [\"\\x41\", \"caf\\xE9\", \"\\e[1m\"]"));
+        var unicode = ReadOk(Attribute("declared_domain = [\"\\u0041\", \"caf\\u00E9\", \"\\u001B[1m\"]"));
+
+        Assert.Equal(["A", "caf\u00E9", "\u001B[1m"], escaped.Attributes[0].DeclaredDomain);
+        Assert.Equal(unicode.Attributes[0].DeclaredDomain, escaped.Attributes[0].DeclaredDomain);
+    }
+
+    [Fact]
+    public void Read_WhenInlineTableSpansLinesWithCommentsAndTrailingComma_ThenDocumentMatchesTheSingleLineForm()
+    {
+        // TOML 1.1.0 lets an inline table span lines, carry comments and end with a trailing comma
+        // (D-133); it is still the same table. The single-line form is also valid TOML 1.0.0, so it
+        // doubles as the compatibility control. Canonical text is the document oracle (D-075).
+        const string SingleLine = """
+            [spec]
+            version = 1
+
+            [binding]
+            shape = "wide"
+
+            [[attribute]]
+            name = "tissue"
+            source = { kind = "column", index = 0 }
+            discretizer = { kind = "value_groups", groups = [{ label = "head", values = ["brain", "eye"] }, { label = "trunk", pattern = "^(heart|liver)$" }], unmatched = "other" }
+            scale = { kind = "nominal" }
+
+            [[attribute]]
+            name = "gill-size"
+            source = { kind = "column", index = 1 }
+            discretizer = { kind = "identity" }
+            scale = { kind = "dichotomic", true_value = "b" }
+            declared_domain = ["b", "n"]
+            value_labels = { b = "broad", n = "narrow" }
+            """;
+        const string Multiline = """
+            [spec]
+            version = 1
+
+            [binding]
+            shape = "wide"
+
+            [[attribute]]
+            name = "tissue"
+            source = {
+                kind = "column",   # the first column
+                index = 0,
+            }
+            discretizer = {
+                kind = "value_groups",
+                groups = [
+                    { label = "head", values = ["brain", "eye"], },
+                    {
+                        label = "trunk",
+                        pattern = "^(heart|liver)$",   # a regex group
+                    },
+                ],
+                unmatched = "other",
+            }
+            scale = { kind = "nominal", }
+
+            [[attribute]]
+            name = "gill-size"
+            source = { kind = "column", index = 1 }
+            discretizer = { kind = "identity" }
+            scale = {
+                kind = "dichotomic",
+                true_value = "b",
+            }
+            declared_domain = ["b", "n"]
+            value_labels = {
+                b = "broad",   # the label for b
+                n = "narrow",
+            }
+            """;
+
+        var document = ReadOk(Multiline);
+
+        Assert.Equal(SpecWriter.Write(ReadOk(SingleLine)), SpecWriter.Write(document));
+        var groups = Assert.IsType<ValueGroupsDiscretizerSection>(document.Attributes[0].Discretizer).Groups!;
+        Assert.Equal(["head", "trunk"], groups.Select(g => g.Label));
+        Assert.Equal("^(heart|liver)$", groups[1].Pattern);
+        Assert.Equal(["b", "n"], document.Attributes[1].ValueLabels!.Keys);
+    }
+
     [Fact]
     public void Read_WhenOutputSectionsAuthored_ThenAllFieldsCarry()
     {

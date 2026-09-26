@@ -82,7 +82,7 @@ internal sealed class FileSpecTextSource : ISpecTextSource
 
     /// <summary>
     /// Reads the text of <paramref name="path"/> as <b>strict UTF-8</b>. §2 is explicit —
-    /// "a Bedrock spec is a UTF-8 TOML 1.0 document" — so encoding is part of the format
+    /// "a Bedrock spec is a UTF-8 TOML 1.1.0 document" — so encoding is part of the format
     /// boundary, not a convenience: a UTF-16/UTF-32 byte-order mark is rejected rather than
     /// silently transcoded, and a malformed byte sequence is rejected rather than repaired
     /// into U+FFFD, which would change authored content with no diagnostic. An optional
