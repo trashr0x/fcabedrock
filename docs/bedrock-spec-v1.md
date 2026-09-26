@@ -146,7 +146,7 @@ shape         = "wide"                       # "wide" | "triple"
 encoding      = "utf-8"                      # default "utf-8"
 delimiter     = ","                          # default ","; any single char
 quote_char    = "\""                         # default "\""
-has_header    = true                         # only meaningful for shape = "wide"
+has_header    = true                         # default true for "wide", false for "triple"
 locale        = "invariant"                  # default "invariant"
 missing_token = "?"                          # default "?"; "" disables token detection
 ```
@@ -172,11 +172,11 @@ change.)
 `false` for `shape = "triple"`)*. If true, the first non-empty record is consumed
 as a header and is available for binding columns/roles by name; if false, every
 record is data. Triple data is typically headerless, hence the `false` default
-there — a `true` default would silently consume the first triple as a header. The
+there: a `true` default would silently consume the first triple as a header. The
 resolved behaviour is identical across shapes; there is no header heuristic
-(guessing belongs to `probe`, not `convert` — and even there only to *future* probe
-tooling: the M5 `probe` base performs **no** structural or type inference, so the
-caller selects the shape and header handling, §7.1). Triple role binding by header **name**
+(guessing belongs to `probe`, not `convert`, and even there only to *future* probe
+tooling: the `probe` that §7.1 specifies performs **no** structural or type inference,
+so the caller selects the shape and header handling). Triple role binding by header **name**
 (§5.3) requires `has_header = true`.
 
 **`locale`** *(default `"invariant"`)*. Governs how raw values parse to numbers
@@ -247,14 +247,6 @@ the attribute `name`); extra physical columns beyond the three roles are ignored
 
 Attributes under triple binding use
 `{ kind = "predicate", name = "..." }` to bind by predicate string.
-
-> **Triple-source surface finalized at M3 (D-082).** Header rows for triple input
-> and binding `columns` by header **name** are settled above — `has_header` is
-> shape-specific (§5.1), role binding may be by index or name. Object/subject
-> identity is always the resolved **subject** (§5.4): there is no separate
-> subject-name filter, and an authored `[binding.object_key]` under triple is
-> rejected (`ObjectKeyModeInvalidForShape`). Object filtering is the ordinary
-> `restrict_to` (§10.4).
 
 ### 5.3.1 Triple multi-value and grouping semantics
 
@@ -337,13 +329,6 @@ contains newline/control characters is `ObjectKeyValueInvalid` (Error). A wide
 object-key cell is validated at **emit**; a triple subject (which also scopes the
 §5.3.1 calibration dedup) is validated at **calibrate/emit** (D-099, §16.4).
 
-> **Wide `column` execution (D-083).** Wide `object_key.mode = "column"` — and with it
-> the `duplicate_object_policy` machinery (§6.1) — executes at M3, sharing the
-> object-key machinery with triple's subject-derived key: `fail`/`keep` stream
-> single-pass and `dedupe` runs on the shared grouping/sort-merge/spool path. (M1/M2
-> wide conversion used `row_index`; the transitional `ObjectKeyColumnNotImplementedV1`
-> guard retired when `dedupe` landed.)
-
 **`mode = "composite"`** **(deferred)**:
 
 ```toml
@@ -360,9 +345,10 @@ For triple binding the object key is **always** the resolved subject: with no
 `[binding.object_key]` block the default is `mode = "column"` with `column` set to
 `binding.columns.subject`. This matches v2's behavior (subject becomes object name).
 An **authored** `[binding.object_key]` under `shape = "triple"` is rejected
-(`ObjectKeyModeInvalidForShape`, Error, spec validate) — triple identity is not
+(`ObjectKeyModeInvalidForShape`, Error, spec validate); triple identity is not
 repointable. Repeated subjects accumulate per §5.3.1 and are not a duplicate-object
-condition.
+condition. There is no separate subject-name filter; object filtering is the ordinary
+`restrict_to` (§10.4, D-082).
 
 ## 6. The `[defaults]` block
 
@@ -520,16 +506,15 @@ manifest so the run stays reproducible without a separate step.
 
 `fcabedrock calibrate` freezes **every** data-dependent outcome into the spec
 (D-122, generalizing D-088): automatic cuts become `manual_cuts`; an observed domain
-becomes an explicit `declared_domain` — an **empty** observed outcome freezes as
-`declared_domain = []`, a fixed empty domain (D-122); `unknown_value_policy =
+becomes an explicit `declared_domain` (an **empty** observed outcome freezes as
+`declared_domain = []`, a fixed empty domain, D-122); `unknown_value_policy =
 "include"` additions are folded into the domain and the policy becomes fixed
 `"warn"`; `value_groups` `unmatched = "passthrough"` bins become ordered singleton
 groups and `unmatched` becomes fixed `"skip"`. Declaration/first-observation order is
 preserved (§17 rule 3) and numeric entries use the canonical numeric spellings
 (§11.3, D-096/D-101). The frozen result satisfies the fully-frozen gate (§14):
 calibrate writes all three native stored fingerprints, and recalibrating its own
-output is **byte-idempotent**. On an `extends` chain, calibrate writes one standalone
-flattened frozen spec (§13/§14, D-122).
+output is **byte-idempotent**. On an `extends` chain, §13 states what calibrate writes.
 
 **Auto and frozen calibration are byte-equivalent.** For **every** freeze mapping
 above — auto cuts (`equal_width`, `equal_frequency`), observed domains, `include`
@@ -550,25 +535,6 @@ for **triple** input each distinct cleaned `(subject, predicate, value)`
 observation contributes once (§5.3.1); and **wide** rows are independent
 observations. This population is the input universe, evaluated before `restrict_to`
 (below).
-
-> **How the Calibrate phase landed (M4, complete).** **Slice A** (D-098) implemented the
-> discovery-class calibration: filling an absent `declared_domain` under a
-> consuming discretizer (`ObservedDomainUsed`) and `unknown_value_policy =
-> "include"` (§10.6), for the M1 `identity` discretizer; **Slice B** (D-101)
-> extended it to numeric `free_per_value`, whose observed/included values are
-> canonical numeric identities (§11.3/D-096); **Slice C** (D-102) added the first
-> auto-discretizer cut calibration — `equal_width` with `range = "min_max"`, a
-> streaming minimum/maximum over the population above (its `range = "manual"` form
-> is spec-determined and skips this phase entirely, §11.4); **Slice D** (D-103)
-> added the **count-sensitive** calibration — `equal_frequency` (§11.5) and
-> `equal_width` `range = "percentile_p1_p99"` (§11.4) — over the exact,
-> bounded-memory aggregated population, together with the §5.3.1 subject-local
-> deduplication their counts require; and **Slice E** (D-104) added the last one,
-> `value_groups` `unmatched = "passthrough"` (§11.6), which discovers one bin per
-> observed ungrouped value on the raw-order pass. Every §11 discretizer kind is
-> executable. **Slice F** (D-105) then added `restrict_to` execution (§10.4),
-> completing M4; it does not affect this phase, since restriction never shapes the
-> calibration population (below).
 
 **`convert` calibrates but never discovers.** Discovery (draft-spec generation
 from data) is the separate `probe` operation (§7.1, D-003), never performed implicitly
@@ -591,10 +557,7 @@ error. (Population-relative calibration — quantiles over only the surviving ob
 
 ### 7.1 Discovery / `probe` (draft-spec generation)
 
-> **Status: implemented — M5 complete.** Discovery landed across M5 Slices A–D, for
-> both the wide and triple shapes. This section remains the normative contract the
-> implementation realizes (decisions.md D-106…D-113); the roadmap tracks the
-> implementation position and test count.
+The reasoning behind this section is in decisions.md D-106…D-113.
 
 `probe` is an **optional draft-generation operation** that reads raw data and emits a
 **draft Bedrock spec** the user then curates. It is **outside** the four-phase conversion
@@ -606,11 +569,11 @@ convert, and convert never infers a schema from data.
 `shape` (`wide` | `triple`) and any read settings; probe performs **no** delimiter sniffing,
 header detection, shape detection, or value-type inference. This mirrors the legacy tool,
 which likewise required choosing CSV/TSV, wide/triple, and header handling before
-autodetection — it was never a zero-configuration sniffer. Every read setting has a
+autodetection; it was never a zero-configuration sniffer. Every read setting has a
 **caller-overridable default**. Most are the ordinary §5.1 **common** binding defaults, shared
 by **both** shapes: delimiter `","`, `quote_char = "\""` (the only supported quote, §5.1),
 `encoding = "utf-8"`, `missing_token = "?"` (an empty token disables token-based missing
-detection; empty cells are always missing), and `locale = "invariant"` (inert at M5 — probe
+detection; empty cells are always missing), and `locale = "invariant"` (inert: probe
 parses no numbers). Only a few defaults are **shape-specific**:
 
 - `has_header` follows §5.1's shape-specific default — **`true` for wide**, **`false` for
@@ -620,11 +583,10 @@ parses no numbers). Only a few defaults are **shape-specific**:
   addressing mode (§5.3). **`ordering = "subject_grouped"` is explicit-only** — never a
   default and never inferred. (Wide has no `ordering` or role settings.)
 
-**Every discovered attribute is string-valued `identity` + `nominal`.** M5 authors no
-numeric, boolean, ordinal, or date typing. (Guided, *advisory* detection — tooling that
-*suggests* an attribute looks continuous and offers ranges, never silently reinterpreting —
-is recognized future Discovery UX, unassigned to a milestone; header/delimiter sniffing is
-likewise future probe tooling, not M5.)
+**Every discovered attribute is string-valued `identity` + `nominal`.** Probe authors no
+numeric, boolean, ordinal, or date typing. (Guided, *advisory* detection is recognized future
+Discovery UX: tooling that *suggests* an attribute looks continuous and offers ranges, never
+silently reinterpreting. Header/delimiter sniffing is likewise future probe tooling.)
 
 **Observation semantics.** Probe observes the source's **cleaned records exactly once, in
 input order** — "single pass" means one *record* pass, not structural inference. Observation
@@ -651,16 +613,17 @@ bounded-metadata carve-out (EP-16), not a fourth aggregate guard (below).
 **distinct cleaned non-missing** values in first-observation order, allocated as observed.
 The **default `limit` is 100,000**. **Truncation is strictly greater-than:** an attribute is
 truncated only when **more than** `limit` distinct values exist; probe then knows only that
-**at least one more distinct value exists** — never an exact over-limit count. A **truncated**
+**at least one more distinct value exists**, never an exact over-limit count. A **truncated**
 attribute authors its retained **prefix** as `declared_domain` (first-observation order) plus
 `unknown_value_policy = "include"`, so converting the draft over the probed source **recovers
 the complete schema** through the existing §10.6 include calibration (include-appended values
 follow the declared prefix in first-observation order, §17 rule 3, so the resulting column set
 and order match an untruncated probe's). An **untruncated** attribute authors its complete
-non-empty domain; an **all-missing** attribute authors **no** domain (omitted). Each truncated
-attribute carries a deterministic human-readable **marker in its `description`**, and
+non-empty domain; an **all-missing** attribute authors **no** domain (omitted), so converting the
+draft calibrates it; probe never authors `[]`, which denotes a **fixed empty domain** (§10.3, D-122).
+Each truncated attribute carries a deterministic human-readable **marker in its `description`**, and
 `[provenance].notes` **always** records the effective per-attribute limit and the number of
-truncated attributes — **including zero**, so an untruncated draft still explains which limit
+truncated attributes, **including zero**, so an untruncated draft still explains which limit
 produced it. Description and notes are fingerprint-inert (§14). `limit` is a probe option,
 never a `[binding]` field and never a fingerprint input; re-probe with a higher
 limit to inspect more values.
@@ -729,15 +692,14 @@ afterwards (it is a public record).
 
 **The Discovery source seam.** Discovery consumes a **general unbound streaming source
 session** whose stable boundary is **ordered schema + streamed cleaned/normalized records +
-source-shape information + cancellation + source diagnostics** — *not* a stream or file
+source-shape information + cancellation + source diagnostics**, *not* a stream or file
 abstraction. The CSV wide/triple **adapters** implement that boundary **outside** the
 Discovery engine; a future SQL or SPARQL source could implement the same boundary without
-refactoring, but such adapters are **examples of future work, not M5 promises**. Discovery
+refactoring, but such adapters are **examples of future work, not promises**. Discovery
 does **not** tokenize, fabricate conversion bindings, open file paths, or reference
-`FcaBedrock.Conversion`; it references only `Sources`, `Spec`, `Core`, and `Diagnostics`.
+`FcaBedrock.Conversion` (decisions.md D-109 lists the packages it may reference).
 Probe returns `Diagnosed<SpecDocument>`, and the **caller** serializes it via the canonical
-writer (§14) and owns all file output. (Exact public interface and member names are reserved
-for the implementation-time public-API review, EP-4.)
+writer (decisions.md D-075) and owns all file output.
 
 ```text
 CSV adapter ───┐
@@ -745,21 +707,17 @@ Triple adapter ┼─> unbound source session ─> Discovery
 Future SQL ────┘
 ```
 
-An attribute whose observations were **all missing** yields **no** `declared_domain` in
-the draft — the field is **omitted**, so converting the draft calibrates it; probe never
-authors `[]`, which since D-122 denotes a **fixed empty domain** (§10.3).
-
 **Boundedness.** Per-attribute retention is bounded by `limit` above. Three additional
 deterministic **aggregate guards** (advanced probe options) bound a probe as a whole: maximum
 discovered attributes, maximum total retained distinct values, and maximum total retained
-value text. Their defaults and accounting constants are pinned during implementation review
-against representative workloads (the motivating figure: 1,554 attributes × 100,000 values
+value text. Their defaults and accounting constants are pinned public-API values, chosen against
+representative workloads (D-110; the motivating figure: 1,554 attributes × 100,000 values
 permits a theoretical 155.4M retained strings). Guards use **deterministic logical accounting,
 never available machine memory**. An aggregate breach emits `ProbeLimitExceeded` and yields
-**no draft**; aggregate pressure **never silently truncates** further attributes — only the
+**no draft**; aggregate pressure **never silently truncates** further attributes: only the
 per-attribute `limit` produces a usable, marked, truncated draft. Probe uses **no
 spill/count-sensitive calibration machinery** (it is set-based and idempotent). At the CLI
-(M7, D-122) `probe` exposes the shape, the ordinary §5.1 read settings, locale, and the
+(D-122) `probe` exposes the shape, the ordinary §5.1 read settings, locale, and the
 retention `--limit` only; the three aggregate guards remain **pinned public-API defaults
 with no CLI flags**.
 
