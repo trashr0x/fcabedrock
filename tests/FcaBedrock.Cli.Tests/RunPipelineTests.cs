@@ -231,6 +231,62 @@ public sealed class RunPipelineTests
         Assert.Empty(harness.Opened);
     }
 
+    [Theory]
+    [InlineData("plan", "no attributes")]
+    [InlineData("stats", "no attributes")]
+    [InlineData("fingerprint", "no attributes")]
+    [InlineData("calibrate", "no attributes")]
+    [InlineData("convert", "no attributes")]
+    [InlineData("plan", "base_index")]
+    [InlineData("stats", "base_index")]
+    [InlineData("fingerprint", "base_index")]
+    [InlineData("calibrate", "base_index")]
+    [InlineData("convert", "base_index")]
+    [InlineData("plan", "negative advisory")]
+    [InlineData("stats", "negative advisory")]
+    [InlineData("fingerprint", "negative advisory")]
+    [InlineData("calibrate", "negative advisory")]
+    [InlineData("convert", "negative advisory")]
+    public async Task Pipeline_WhenTheSpecBreaksTheAttributeMinimumOrAnOutputRange_ThenEveryDataCommandExitsOne(
+        string command, string rule)
+    {
+        // D-135: every command that loads a spec reads each file through the reader and resolves
+        // the composed spec, so all five data commands refuse the same three inputs with the same
+        // one registry diagnostic, and none of them writes anything.
+        var (spec, expected) = rule switch
+        {
+            "no attributes" => (
+                "[spec]\nversion = 1\n\n[binding]\nshape = \"wide\"\nhas_header = true\n",
+                "error AttributesMissing: The composed spec declares no [[attribute]]; at least one is required (§2)."),
+            "base_index" => (
+                CliFixtures.IndexBoundSpec + "\n[output.dat]\nbase_index = 2\n",
+                "error SpecFieldInvalid: [output.dat] key 'base_index' is 2; expected 1 (the default) or 0 (§8)."),
+            _ => (
+                CliFixtures.IndexBoundSpec + "\n[output.cxt]\nsize_advisory_bytes = -1\n",
+                "error SpecFieldInvalid: [output.cxt] key 'size_advisory_bytes' is -1; expected 0 (disables the "
+                + "advisory) or a positive number of bytes (§8)."),
+        };
+
+        using var temp = TempDirectory.Create();
+        var output = temp.Resolve("out");
+        string[] options = command switch
+        {
+            "calibrate" => ["--out", output],
+            "convert" => ["--out", output, "--format", "both"],
+            _ => [],
+        };
+        var harness = new CliTestHarness();
+
+        var exit = await harness.RunAsync(
+            [command, temp.Write("spec.toml", spec), temp.Write("data.csv", CliFixtures.WideData), .. options]);
+
+        Assert.Equal(1, exit);
+        Assert.Equal(string.Empty, harness.StdOut);
+        var line = Assert.Single(harness.StdErr.Split('\n', StringSplitOptions.RemoveEmptyEntries));
+        Assert.EndsWith(expected, line, StringComparison.Ordinal);
+        Assert.Empty(Directory.GetFiles(temp.Path, "out*"));
+    }
+
     // ---- diagnostic order -------------------------------------------------------------------
 
     [Fact]

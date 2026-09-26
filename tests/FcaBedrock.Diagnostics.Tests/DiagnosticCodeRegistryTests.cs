@@ -122,6 +122,15 @@ public sealed class DiagnosticCodeRegistryTests
         nameof(DiagnosticCode.OutputCxtSizeAdvisory),
     ];
 
+    // The composed-spec attribute minimum (D-135): ONE spec-resolve code, AttributesMissing, landing
+    // with its emit site in SpecResolver (82 → 83). The two [output] value rules the same decision
+    // adds (base_index 0 or 1, a size_advisory_bytes that is not negative) reuse the parse-phase
+    // SpecFieldInvalid, which is why this delta is one member and not three.
+    private static readonly string[] AttributeMinimumAdditions =
+    [
+        nameof(DiagnosticCode.AttributesMissing),
+    ];
+
     // Codes still owned by a LATER, not-yet-implemented surface. Each must stay absent until the
     // milestone that owns its emit site lands, so an early or accidental addition fails here. M7
     // Slice B landed OutputCxtSizeAdvisory at its real export emit site (above; D-123), so the only
@@ -143,16 +152,17 @@ public sealed class DiagnosticCodeRegistryTests
         "TemplateMatcherNotImplementedV1",               // retired at M6 Slice B (D-121) — M6's last
     ];
 
-    // The registry size after M7 Slice B: 81 at the M6 exit (76 after M6 Slice A, plus the six
-    // resolve codes, minus the retired TemplateMatcherNotImplementedV1 = 81), plus
-    // OutputCxtSizeAdvisory at its real export emit site (D-123) — 81 + 1 = 82.
+    // The registry size: 81 at the M6 exit (76 after M6 Slice A, plus the six resolve codes, minus
+    // the retired TemplateMatcherNotImplementedV1 = 81), plus OutputCxtSizeAdvisory at its real
+    // export emit site (D-123): 81 + 1 = 82, where M7 left it. Then AttributesMissing at its
+    // resolve emit site (D-135): 82 + 1 = 83.
     // (SpecSurfaceNotYetSupported stays live throughout: M6 Slice A narrowed it to value_type =
     // "date" rather than retiring it, so it never moved the count.)
     // Update this number ONLY together with the slice's decisions.md entry — that deliberate edit
     // is the point (D-085: a code exists once it has a real emit site, so the enum grows per
     // slice rather than drifting). Without it the presence/absence assertions below would let an
     // unrelated member in unnoticed, and the delta would not be locked.
-    private const int MembersAfterM7SliceB = 82;
+    private const int RegistrySize = 83;
 
     private static readonly string[] Defined = Enum.GetNames<DiagnosticCode>();
 
@@ -177,11 +187,15 @@ public sealed class DiagnosticCodeRegistryTests
         Assert.All(M7SliceBAdditions, name => Assert.Contains(name, Defined));
 
     [Fact]
-    public void DiagnosticCode_WhenM7SliceBLanded_ThenTheRegistryIsExactlyEightyTwo() =>
+    public void DiagnosticCode_WhenTheComposedSpecMinimumIsEnforced_ThenAttributesMissingIsDefined() =>
+        Assert.All(AttributeMinimumAdditions, name => Assert.Contains(name, Defined));
+
+    [Fact]
+    public void DiagnosticCode_WhenCounted_ThenTheRegistryIsExactlyEightyThree() =>
         // The delta lock. On its own a count proves little; combined with the presence lists above
         // and the absence lists below it pins BOTH which codes arrived, that earlier retirements
         // really stuck, and that nothing else moved — which the targeted assertions alone cannot do.
-        Assert.Equal(MembersAfterM7SliceB, Defined.Length);
+        Assert.Equal(RegistrySize, Defined.Length);
 
     [Fact]
     public void DiagnosticCode_WhenM6SliceBLanded_ThenNoM6TransitionalRemainsButDateStillDoes()

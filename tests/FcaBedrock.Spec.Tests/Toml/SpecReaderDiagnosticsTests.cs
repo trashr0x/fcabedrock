@@ -703,6 +703,127 @@ public sealed class SpecReaderDiagnosticsTests
         Assert.Equal(3, result.Diagnostics.Count(d => d.Code == DiagnosticCode.SpecFieldInvalid));
     }
 
+    // --- [output] value ranges (§8, D-135) ---
+    //
+    // §8 allows base_index 1 or 0, and gives size_advisory_bytes two readings: 0 disables the
+    // advisory and a positive value is the threshold. The reader owns both rules, because each is
+    // a property of one file's authored value: every file of an extends chain is checked as it is
+    // read, and every command that reads a spec refuses the same values.
+
+    [Theory]
+    [InlineData(2)]
+    [InlineData(-1)]
+    [InlineData(5)]
+    public void Read_WhenBaseIndexIsNeitherZeroNorOne_ThenSpecFieldInvalidAtTheValue(int baseIndex)
+    {
+        var result = SpecReader.Read($"[spec]\nversion = 1\n[output.dat]\nbase_index = {baseIndex}\n", "spec.toml");
+
+        Assert.False(result.IsOk);
+        var diagnostic = Assert.Single(result.Diagnostics);
+        Assert.Equal(DiagnosticCode.SpecFieldInvalid, diagnostic.Code);
+        Assert.Equal(DiagnosticSeverity.Error, diagnostic.Severity);
+        Assert.Equal("spec.toml", diagnostic.Location?.File);
+        Assert.Equal(4, diagnostic.Location?.Line);
+        Assert.Equal(14, diagnostic.Location?.Column);
+        Assert.Equal(
+            $"[output.dat] key 'base_index' is {baseIndex}; expected 1 (the default) or 0 (§8).",
+            diagnostic.Message);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    public void Read_WhenBaseIndexIsZeroOrOne_ThenItIsCarried(int baseIndex)
+    {
+        var result = SpecReader.Read($"[spec]\nversion = 1\n[output.dat]\nbase_index = {baseIndex}\n");
+
+        Assert.True(result.TryGetValue(out var document));
+        Assert.Empty(result.Diagnostics);
+        Assert.Equal(baseIndex, document.Output?.Dat?.BaseIndex);
+    }
+
+    [Theory]
+    [InlineData("\"1\"")]
+    [InlineData("1.0")]
+    [InlineData("5000000000")]
+    public void Read_WhenBaseIndexIsNotA32BitInteger_ThenOnlyTheTypeDiagnosticReports(string value)
+    {
+        // The type check keeps its own message and owns the value alone: a value that is not a
+        // 32-bit integer is never also reported as outside 0 or 1.
+        var result = SpecReader.Read($"[spec]\nversion = 1\n[output.dat]\nbase_index = {value}\n");
+
+        var diagnostic = Assert.Single(result.Diagnostics);
+        Assert.Equal(DiagnosticCode.SpecFieldInvalid, diagnostic.Code);
+        Assert.Equal("[output.dat] key 'base_index' expects a 32-bit integer.", diagnostic.Message);
+    }
+
+    [Theory]
+    [InlineData(-1L)]
+    [InlineData(-1_073_741_824L)]
+    [InlineData(long.MinValue)]
+    public void Read_WhenSizeAdvisoryBytesIsNegative_ThenSpecFieldInvalidAtTheValue(long threshold)
+    {
+        var result = SpecReader.Read(
+            $"[spec]\nversion = 1\n[output.cxt]\nsize_advisory_bytes = {threshold}\n", "spec.toml");
+
+        Assert.False(result.IsOk);
+        var diagnostic = Assert.Single(result.Diagnostics);
+        Assert.Equal(DiagnosticCode.SpecFieldInvalid, diagnostic.Code);
+        Assert.Equal(DiagnosticSeverity.Error, diagnostic.Severity);
+        Assert.Equal("spec.toml", diagnostic.Location?.File);
+        Assert.Equal(4, diagnostic.Location?.Line);
+        Assert.Equal(23, diagnostic.Location?.Column);
+        Assert.Equal(
+            $"[output.cxt] key 'size_advisory_bytes' is {threshold}; expected 0 (disables the advisory) " +
+            "or a positive number of bytes (§8).",
+            diagnostic.Message);
+    }
+
+    [Theory]
+    [InlineData(0L)]
+    [InlineData(1L)]
+    [InlineData(1_073_741_824L)]
+    public void Read_WhenSizeAdvisoryBytesIsZeroOrPositive_ThenItIsCarried(long threshold)
+    {
+        var result = SpecReader.Read($"[spec]\nversion = 1\n[output.cxt]\nsize_advisory_bytes = {threshold}\n");
+
+        Assert.True(result.TryGetValue(out var document));
+        Assert.Empty(result.Diagnostics);
+        Assert.Equal(threshold, document.Output?.Cxt?.SizeAdvisoryBytes);
+    }
+
+    [Fact]
+    public void Read_WhenSizeAdvisoryBytesIsNotAnInteger_ThenOnlyTheTypeDiagnosticReports()
+    {
+        var result = SpecReader.Read("[spec]\nversion = 1\n[output.cxt]\nsize_advisory_bytes = \"-1\"\n");
+
+        var diagnostic = Assert.Single(result.Diagnostics);
+        Assert.Equal(DiagnosticCode.SpecFieldInvalid, diagnostic.Code);
+        Assert.Equal("[output.cxt] key 'size_advisory_bytes' expects an integer.", diagnostic.Message);
+    }
+
+    [Fact]
+    public void Read_WhenOutOfRangeValuesShareTablesWithUnknownKeys_ThenEachReportsOnceInSourceOrder()
+    {
+        // The range checks sit beside the unknown-key check, not in place of it: each table
+        // reports its out-of-range value and its stray key, in source-position order.
+        var result = SpecReader.Read(
+            "[spec]\nversion = 1\n"
+            + "[output.cxt]\nsize_advisory_bytes = -5\nsize_advisory = 1\n"
+            + "[output.dat]\nbase_index = 7\nbase = 0\n",
+            "spec.toml");
+
+        Assert.False(result.IsOk);
+        Assert.Equal(
+            [
+                (DiagnosticCode.SpecFieldInvalid, 4),
+                (DiagnosticCode.SpecKeyUnrecognized, 5),
+                (DiagnosticCode.SpecFieldInvalid, 7),
+                (DiagnosticCode.SpecKeyUnrecognized, 8),
+            ],
+            result.Diagnostics.Select(d => (d.Code, d.Location?.Line ?? 0)));
+    }
+
     private static void AssertFailsWith(Diagnosed<FcaBedrock.Spec.Toml.SpecDocument> result, DiagnosticCode code)
     {
         Assert.False(result.IsOk);

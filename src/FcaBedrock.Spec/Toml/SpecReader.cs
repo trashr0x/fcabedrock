@@ -11,9 +11,12 @@ namespace FcaBedrock.Spec.Toml;
 /// write never silently drops authored content; the one recognized-but-unmodelled
 /// v1 surface left, <c>value_type = "date"</c>, fails with the transitional
 /// <c>SpecSurfaceNotYetSupported</c>; wrong shapes fail with
-/// <c>SpecFieldInvalid</c>. The reader enforces parse shape
-/// only — possibly-invalid <em>values</em> land in the document for the
-/// resolve/validate seam to judge (D-066/D-067). Diagnostics aggregate in two
+/// <c>SpecFieldInvalid</c>. The reader enforces parse shape and leaves
+/// possibly-invalid <em>values</em> in the document for the resolve/validate
+/// seam to judge (D-066/D-067), apart from two file-local value checks that
+/// also fail with <c>SpecFieldInvalid</c> (D-135): an authored
+/// <c>[output.dat]</c> <c>base_index</c> other than 0 or 1, and a negative
+/// <c>[output.cxt]</c> <c>size_advisory_bytes</c>. Diagnostics aggregate in two
 /// phases (EP-14): all TOML-level errors together (<c>SpecTomlInvalid</c>,
 /// terminal — a broken tree would cascade garbage), then all semantic issues
 /// from one whole-document walk, ordered by source position before

@@ -8,8 +8,10 @@ namespace FcaBedrock.Spec.Toml;
 /// <see cref="TomlTableCursor"/> and finishes, so every unconsumed key is
 /// <c>SpecKeyUnrecognized</c> (the closed D-075 deferred-key sets retired with
 /// their carriers at M6 Slice A, D-120). Possibly-invalid values are document
-/// territory (D-066) — nothing here validates semantics, with the one exception
-/// of authored shape the grammar owns (<c>formal_attribute_format</c>, §10.7).
+/// territory (D-066), so nothing here validates semantics, with two exceptions:
+/// authored shape the grammar owns (<c>formal_attribute_format</c>, §10.7), and
+/// the <c>[output]</c> values §8 allows for one file (<c>base_index</c> 0 or 1, a
+/// <c>size_advisory_bytes</c> that is not negative, D-135).
 /// </summary>
 internal static class SpecSectionReaders
 {
@@ -138,20 +140,39 @@ internal static class SpecSectionReaders
     public static CxtOutputSection ReadOutputCxt(TomlReadContext context, TableSyntaxBase table)
     {
         var cursor = new TomlTableCursor(context, "[output.cxt]", table);
-        var section = new CxtOutputSection(
-            cursor.TakeEnum("line_endings", TomlSpellings.LineEndingKinds),
-            cursor.TakeBool("trailing_newline"),
-            cursor.TakeLong("size_advisory_bytes"));
+        var lineEndings = cursor.TakeEnum("line_endings", TomlSpellings.LineEndingKinds);
+        var trailingNewline = cursor.TakeBool("trailing_newline");
+
+        // §8: 0 disables the advisory and a positive value is the threshold; a negative value
+        // has no reading (D-135).
+        var sizeAdvisory = cursor.TakeLong("size_advisory_bytes");
+        if (sizeAdvisory is < 0)
+        {
+            OutOfRange(context, cursor, "[output.cxt]", "size_advisory_bytes", sizeAdvisory.Value,
+                "0 (disables the advisory) or a positive number of bytes");
+            sizeAdvisory = null;
+        }
+
         cursor.Finish();
-        return section;
+        return new CxtOutputSection(lineEndings, trailingNewline, sizeAdvisory);
     }
 
     public static DatOutputSection ReadOutputDat(TomlReadContext context, TableSyntaxBase table)
     {
         var cursor = new TomlTableCursor(context, "[output.dat]", table);
+        var lineEndings = cursor.TakeEnum("line_endings", TomlSpellings.LineEndingKinds);
+
+        // §8/§18.2: the first formal attribute's .dat ID is 1 (FIMI) or 0 (D-135).
+        var baseIndex = cursor.TakeInt("base_index");
+        if (baseIndex is not (null or 0 or 1))
+        {
+            OutOfRange(context, cursor, "[output.dat]", "base_index", baseIndex.Value, "1 (the default) or 0");
+            baseIndex = null;
+        }
+
         var section = new DatOutputSection(
-            cursor.TakeEnum("line_endings", TomlSpellings.LineEndingKinds),
-            cursor.TakeInt("base_index"),
+            lineEndings,
+            baseIndex,
             cursor.TakeBool("nonempty_line_trailing_space"),
             cursor.TakeBool("empty_line_trailing_space"))
         {
@@ -159,6 +180,19 @@ internal static class SpecSectionReaders
         };
         cursor.Finish();
         return section;
+    }
+
+    // An authored [output] integer whose value §8 does not allow. The typed accessor has already
+    // judged the type, so only an in-type value reaches here, and it reports once, at the value,
+    // like the type diagnostic would. The carrier then holds null, as for any rejected field.
+    private static void OutOfRange(
+        TomlReadContext context, TomlTableCursor cursor, string table, string key, long value, string expected)
+    {
+        var pair = cursor.Take(key)!; // authored: the accessor just returned its value
+        context.Error(
+            DiagnosticCode.SpecFieldInvalid,
+            $"{table} key '{key}' is {value}; expected {expected} (§8).",
+            pair.Value?.Span ?? pair.Span);
     }
 
     /// <summary>

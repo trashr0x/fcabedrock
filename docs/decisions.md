@@ -247,6 +247,10 @@ changes an earlier one. A new entry MUST add its line here.
 
 - D-128: `QuantileAccumulator` uses a radix-F generation-tiered spill-run catalogue *(supersedes only D-103's catalogue-at-most-fan-in and merge-all scheduling clauses and D-124's restatement of that catalogue bound)*
 
+### M8.2 spec review
+
+- D-135: A composed spec needs an `[[attribute]]`, `base_index` is 0 or 1, and `size_advisory_bytes` is not negative; the binding resolves on its own for the probe preflight
+
 Spec-field defaults are recorded in spec §21 items 1–11 (see the final section
 of this file).
 
@@ -7011,6 +7015,92 @@ and §16.4; D-120 and D-121 record the implemented naming, template and matcher 
   catalogue bound. Every other D-103/D-124 clause stands; D-126 is unchanged. No public API, spec,
   diagnostic, registry, output-byte, benchmark-definition, job, corpus, packaging or workflow
   change.
+
+---
+
+## M8.2 spec review
+
+M8.2's review of the Bedrock spec corrects passages to their owners under D-134. A correction that
+changes accepted input needs a decision of its own, and this section records those.
+
+### D-135: A composed spec needs an `[[attribute]]`, `base_index` is 0 or 1, and `size_advisory_bytes` is not negative; the binding resolves on its own for the probe preflight
+
+- **Status:** accepted
+- **Date:** 2026-09-27
+- **Decision:** three inputs that the spec never allowed, but that the implementation accepted, are
+  rejected. The maintainer placed the fixes inside M8.2 rather than after it.
+  1. **A composed spec with no `[[attribute]]`.** §2 has required at least one `[[attribute]]`
+     since the spec's first version, but neither the reader nor the resolver checked it, so such
+     a spec validated and converted to a context with no columns. The rule applies to the composed spec (§13): a base
+     file in an `extends` chain may declare none if the composed spec gains one.
+     `SpecResolver.Resolve` owns the check, because only resolve sees the composed document; the
+     reader sees one file. The new code `AttributesMissing` (Error, spec resolve) reports it once
+     per resolve, with no location.
+     - **Its slot.** It is the first entry of §16.4's resolve family 4 (effective-attribute
+       validation): after family 1, the binding section and families 2 and 3, before any
+       per-attribute diagnostic, and before the family 5 matcher warnings. It aggregates with
+       every other resolve diagnostic; it does not stop resolution.
+     - **The earlier checks.** As before, the version check runs ahead of every family and the
+       shape check ahead of families 2 to 5. A document without `version = 1` reports that check
+       alone; one without a `[binding]` or its `shape` reports family 1 and `BindingShapeMissing`.
+       Neither is judged against the minimum.
+     - **Not `NoFormalAttributes`.** Attributes that are all excluded or filter-only meet the
+       minimum; their empty context keeps D-058's plan-phase `NoFormalAttributes` Warning.
+  2. **`base_index` other than 0 or 1.** The §8 example (`1 | 0`), §18.2 and the writer
+     documentation have only ever described these two values, but the reader accepted any 32-bit
+     integer and the `.dat` writer wrote IDs from it. `SpecSectionReaders.ReadOutputDat` now
+     reports any other authored value as `SpecFieldInvalid` (Error, spec parse), at the value. An
+     omitted field still means 1.
+  3. **A negative `size_advisory_bytes`.** §8 gives the field two readings: `0` disables the
+     advisory and a positive value is the threshold. The reader accepted any 64-bit integer; only
+     `convert` refused a negative one, with a code-less host error, because the writer throws on
+     it (D-123 point 12), while `validate`, `plan`, `stats`, `calibrate` and `fingerprint` accepted
+     it. `SpecSectionReaders.ReadOutputCxt` now reports a negative authored value as
+     `SpecFieldInvalid` (Error, spec parse), so every command refuses it the same way, and
+     `convert`'s refusal and its message are removed. The writer's `ArgumentOutOfRangeException`
+     stays as the backstop for callers that use the writer directly.
+  - **Why the reader owns rules 2 and 3.** Each judges one file's authored value, and the composer
+    reads each file of an `extends` chain on its own, so a base with an out-of-range value fails at
+    its load even when the root overrides the field. The type checks are unchanged: a value that
+    is not an integer, or for `base_index` not a 32-bit one, keeps its existing message and is not
+    also reported as out of range.
+  - **The binding-only resolver stage.** The triple `probe` checks its role map before it reads a
+    row, by resolving a document that holds only the draft's `[binding]`; the draft's attributes
+    exist only after the pass. Rule 1 rejects that document, so a new public method,
+    `SpecResolver.ResolveBinding(SpecDocument, SourceSchema?)` returning `Diagnosed<Binding>`,
+    resolves the `[binding]` alone. It applies the same `extends`, version and shape checks as
+    `Resolve` and runs the private helpers that `Resolve` runs for the binding section, so it
+    reports the same diagnostics in the same order and no condition gains a second owner. It reads
+    no template, matcher or attribute, and it fails on any Error or Fatal. `Prober` calls it
+    instead of `Resolve`. It is a second partial stage beside `ResolveReadSettings` (D-098). The
+    maintainer approved this public method for M8.2.
+  - **Registry and bytes.** The registry moves from 82 to 83 with `AttributesMissing`; rules 2 and
+    3 reuse `SpecFieldInvalid`. Each rejection exits 1, like any other Error, so no exit-code
+    meaning changes. A spec that is still accepted keeps its fingerprints and its canonical TOML,
+    `.cxt`, `.dat` and manifest bytes.
+- **Why:** each rule already had an owner in the spec, and the gaps let a spec that §2 forbids
+  validate and convert, let `.dat` IDs start from a base that §8 and §18.2 never offer, and gave
+  one spec different answers from different commands. Checking the §2 minimum at resolve, and the
+  §8 values as each file is read, puts each check where the fact it judges is visible. The binding
+  stage keeps the probe's role-map check in the resolver, which owns §5.3, without asking a
+  binding-only document to meet a rule about attributes.
+- **Rejected:** checking the attribute minimum in the reader (it would reject a base file that
+  legitimately declares no attribute); checking it in the composer (a caller that resolves an
+  `extends`-free document without composing it would never meet it); reusing `NoFormalAttributes`
+  (that Warning describes attributes that exist but plan to no column, while a spec with no
+  attribute is an authoring error); allowing any `base_index` the writer can represent (the spec
+  never offered one, and a large base overflows the writer's `int` IDs); keeping the refusal in
+  `convert` alone (the other commands accepted the value); reading a negative threshold as
+  "disabled" (a third reading that §8 does not give); an excluded placeholder attribute in the
+  probe's preflight document (an invented attribute that exists only to pass a whole-spec rule);
+  and deferring rule 1 until the preflight changed.
+- **Affects:** spec §2, §8 and §16.4; `FcaBedrock.Diagnostics` (`AttributesMissing`; registry 83);
+  `FcaBedrock.Spec` (`SpecResolver.Resolve`, the new public `SpecResolver.ResolveBinding`,
+  `SpecSectionReaders`); `FcaBedrock.Discovery` (the triple preflight in `Prober`);
+  `FcaBedrock.Cli` (`convert` loses its negative-threshold refusal); tests in the Spec, Cli,
+  Discovery, Diagnostics and Golden projects; `docs/roadmap.md` (the M8.2 scope and M7's registry
+  line); `AGENTS.md` (the registry count). No Core type, exporter, fingerprint encoding, golden
+  fixture or CLI grammar changes.
 
 ---
 

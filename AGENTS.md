@@ -237,7 +237,7 @@ Don't implement first and explain later.
 under **D-122** (the adjudicated pre-implementation contract) and **D-123** (the
 implementation decisions): the `fcabedrock` global tool with all eight commands, the
 publication transaction, the run manifest, the freeze engine, filesystem identity, and
-the argv-boundary exit floor. The diagnostic registry is **82**, and no M7 transitional
+the argv-boundary exit floor. The diagnostic registry is **83**, and no M7 transitional
 diagnostic remains. **M8 (the first scaling/benchmark pass) is next**, then M9.
 `docs/roadmap.md` is the live source for current position, test count, and the
 deferred backlog — consult it rather than duplicating the detail here.

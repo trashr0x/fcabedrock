@@ -106,11 +106,12 @@ internal static class ProbeDraft
     /// The binding-only document the triple role-map preflight resolves: the exact
     /// <c>[binding]</c> the draft will author, and no attributes at all.
     /// <para>
-    /// Discovery deliberately duplicates none of §5.3's validation. It hands the authored binding
-    /// to the one owner of those rules — <c>SpecResolver</c> — before a single row is read, so an
-    /// invalid role map fails with the <em>same</em> <c>spec validate</c> diagnostics a user would
-    /// see from <c>validate</c>, forwarded rather than re-emitted (D-067). The preflight doubles
-    /// as up-front proof of the D-107 resolve leg for the binding half of the draft.
+    /// Discovery deliberately duplicates none of §5.3's validation. Before a single row is read,
+    /// it hands the authored binding to the one owner of those rules,
+    /// <c>SpecResolver.ResolveBinding</c>, which resolves the binding alone (D-135). An invalid
+    /// role map therefore fails with the <em>same</em> <c>spec validate</c> diagnostics a user
+    /// would see from <c>validate</c>, forwarded rather than re-emitted (D-067). The preflight
+    /// doubles as up-front proof of the D-107 resolve leg for the binding half of the draft.
     /// </para>
     /// </summary>
     public static SpecDocument BindingOnly(BindingSection binding) =>

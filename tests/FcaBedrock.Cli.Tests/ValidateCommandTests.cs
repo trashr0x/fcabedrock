@@ -349,6 +349,94 @@ public sealed class ValidateCommandTests
         Assert.Equal(string.Empty, harness.StdErr);
     }
 
+    // ---- the composed-spec minimum and the [output] value ranges (D-135) -----------------
+
+    [Fact]
+    public async Task Validate_WhenTheComposedSpecHasNoAttributes_ThenExitOneWithTheResolveError()
+    {
+        // §2: the composed spec needs at least one [[attribute]]. The condition belongs to the
+        // composed spec, not to a file, so the line carries no location.
+        using var temp = TempDirectory.Create();
+        var spec = temp.Write("spec.toml", "[spec]\nversion = 1\n\n[binding]\nshape = \"wide\"\nhas_header = true\n");
+        var harness = new CliTestHarness();
+
+        var exit = await harness.RunAsync("validate", spec);
+
+        Assert.Equal(1, exit);
+        Assert.Equal(string.Empty, harness.StdOut);
+        Assert.Equal(
+            "error AttributesMissing: The composed spec declares no [[attribute]]; at least one is required (§2).\n",
+            harness.StdErr);
+    }
+
+    [Fact]
+    public async Task Validate_WhenAnAttributeLessBaseGainsAnAttributeFromTheRoot_ThenExitZero()
+    {
+        // The mirror of the chain above: the base carries the binding and no attribute, the root
+        // adds the attribute, and the composed spec meets the §2 minimum.
+        using var temp = TempDirectory.Create();
+        temp.Write("base.toml", "[spec]\nversion = 1\n\n[binding]\nshape = \"wide\"\nhas_header = true\n");
+        var spec = temp.Write("root.toml", """
+            [spec]
+            version = 1
+            extends = "base.toml"
+
+            [[attribute]]
+            name = "colour"
+            source = { kind = "column", index = 0 }
+            discretizer = { kind = "identity" }
+            scale = { kind = "nominal" }
+            declared_domain = ["red", "green"]
+            """);
+        var harness = new CliTestHarness();
+
+        var exit = await harness.RunAsync("validate", spec);
+
+        Assert.Equal(0, exit);
+        Assert.Equal(string.Empty, harness.StdErr);
+    }
+
+    [Theory]
+    [InlineData("\n[output.dat]\nbase_index = 2\n", 14, "[output.dat] key 'base_index' is 2; expected 1 (the default) or 0 (§8).")]
+    [InlineData(
+        "\n[output.cxt]\nsize_advisory_bytes = -1\n", 23,
+        "[output.cxt] key 'size_advisory_bytes' is -1; expected 0 (disables the advisory) or a positive number of bytes (§8).")]
+    public async Task Validate_WhenAnOutputValueIsOutOfRange_ThenExitOneWithTheParseError(
+        string output, int column, string message)
+    {
+        using var temp = TempDirectory.Create();
+        var spec = temp.Write("spec.toml", CliFixtures.IndexBoundSpec + output);
+        var harness = new CliTestHarness();
+
+        var exit = await harness.RunAsync("validate", spec);
+
+        Assert.Equal(1, exit);
+        Assert.Equal(string.Empty, harness.StdOut);
+        Assert.Equal(
+            $"file=\"{Path.GetFullPath(spec).Replace("\\", "\\\\")}\" line=15 column={column}: error SpecFieldInvalid: {message}\n",
+            harness.StdErr);
+    }
+
+    [Fact]
+    public async Task Validate_WhenOnlyABaseAuthorsAnOutOfRangeBaseIndex_ThenExitOneAtTheBase()
+    {
+        // Each file of a chain is read on its own, so the base fails at its load even though the
+        // root authors a valid base_index that the composed spec would carry.
+        using var temp = TempDirectory.Create();
+        var basePath = temp.Write("base.toml", CliFixtures.IndexBoundSpec + "\n[output.dat]\nbase_index = 2\n");
+        var spec = temp.Write("root.toml", "[spec]\nversion = 1\nextends = \"base.toml\"\n\n[output.dat]\nbase_index = 1\n");
+        var harness = new CliTestHarness();
+
+        var exit = await harness.RunAsync("validate", spec);
+
+        Assert.Equal(1, exit);
+        var line = Assert.Single(harness.StdErr.Split('\n', StringSplitOptions.RemoveEmptyEntries));
+        Assert.StartsWith(
+            $"file=\"{Path.GetFullPath(basePath).Replace("\\", "\\\\")}\" line=15 column=14: error SpecFieldInvalid:",
+            line,
+            StringComparison.Ordinal);
+    }
+
     // ---- diagnostic fidelity ----------------------------------------------------------
 
     [Fact]

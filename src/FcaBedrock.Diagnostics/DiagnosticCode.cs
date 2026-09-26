@@ -148,6 +148,16 @@ public enum DiagnosticCode
     /// </summary>
     SourceBindingInvalid,
 
+    /// <summary>
+    /// The composed document declares no <c>[[attribute]]</c>. §2 asks the <em>composed</em> spec
+    /// for at least one, so a base file in an <c>extends</c> chain may declare none and the reader,
+    /// which sees one file, never reports this. One per resolve, first in the effective-attribute
+    /// family, with no location. Distinct from <see cref="NoFormalAttributes"/>, which reports
+    /// attributes that are all excluded or filter-only. Error, spec resolve. Spec §2 / §16.4
+    /// (D-135).
+    /// </summary>
+    AttributesMissing,
+
     /// <summary>An <c>[[attribute]]</c> has a null or empty <c>name</c>. Spec §10.1 (D-067).</summary>
     AttributeNameMissing,
 

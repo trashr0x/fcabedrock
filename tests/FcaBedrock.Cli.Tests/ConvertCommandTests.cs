@@ -403,9 +403,10 @@ public sealed class ConvertCommandTests
     [Fact]
     public async Task Convert_WhenTheSizeAdvisoryThresholdIsNegative_ThenTheRunIsRefusedBeforeAnythingIsCreated()
     {
-        // §8 defines exactly two readings — a positive threshold, or 0 to disable — and the
-        // writer rejects a negative one. Reading it as "disabled" would invent a third; the run
-        // refuses it instead, as an ordinary code-less failure rather than an internal fault.
+        // §8 gives the threshold exactly two readings, a positive threshold or 0 to disable, so
+        // reading a negative one as "disabled" would invent a third. The spec reader refuses it
+        // (D-135), so the run stops at the read with the registry diagnostic, never reaches the
+        // writer, and creates nothing.
         using var run = ConvertRun.Wide(CliFixtures.IndexBoundSpec + "\n[output.cxt]\nsize_advisory_bytes = -1\n");
 
         var exit = await run.ConvertAsync("--format", "both");
@@ -413,7 +414,27 @@ public sealed class ConvertCommandTests
         Assert.Equal(1, exit);
         Assert.Equal(string.Empty, run.Harness.StdOut);
         Assert.Equal(
-            "error: The [output.cxt] size_advisory_bytes value cannot be negative.\n", run.Harness.StdErr);
+            $"file=\"{Path.GetFullPath(run.Spec).Replace("\\", "\\\\")}\" line=15 column=23: error SpecFieldInvalid: "
+            + "[output.cxt] key 'size_advisory_bytes' is -1; expected 0 (disables the advisory) or a positive number of bytes (§8).\n",
+            run.Harness.StdErr);
+        Assert.Empty(Directory.GetFiles(run.Directory, "out*"));
+    }
+
+    [Fact]
+    public async Task Convert_WhenBaseIndexIsNeitherZeroNorOne_ThenTheRunIsRefusedBeforeAnythingIsCreated()
+    {
+        // §8 allows base_index 1 or 0. Any other value used to write .dat ids from that base; the
+        // spec reader now refuses it (D-135), so the run publishes nothing.
+        using var run = ConvertRun.Wide(CliFixtures.IndexBoundSpec + "\n[output.dat]\nbase_index = 5\n");
+
+        var exit = await run.ConvertAsync("--format", "dat");
+
+        Assert.Equal(1, exit);
+        Assert.Equal(string.Empty, run.Harness.StdOut);
+        Assert.Equal(
+            $"file=\"{Path.GetFullPath(run.Spec).Replace("\\", "\\\\")}\" line=15 column=14: error SpecFieldInvalid: "
+            + "[output.dat] key 'base_index' is 5; expected 1 (the default) or 0 (§8).\n",
+            run.Harness.StdErr);
         Assert.Empty(Directory.GetFiles(run.Directory, "out*"));
     }
 

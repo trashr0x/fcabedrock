@@ -39,8 +39,9 @@ This roadmap records no five-target native CI, tested-archive, UCI Adult accepta
 `main`-push CI result for any revision after `3b2e4a80`. Each release candidate supplies its own
 evidence ([Release-candidate obligations](#release-candidate-obligations)).
 
-M8.2, the current milestone, changes no conversion behavior; its one change in product behavior is
-the wording of TOML syntax-error messages (D-133). M9 begins after M8.2 is accepted and
+M8.2, the current milestone, changes no output of a spec that it still accepts. Its changes in
+product behavior are the wording of TOML syntax-error messages (D-133) and the rejection of three
+kinds of malformed spec, with one new diagnostic (D-135). M9 begins after M8.2 is accepted and
 integrated. Work deferred beyond v1 is in the [deferred backlog](#deferred-backlog-not-v1).
 
 ## Milestones
@@ -207,7 +208,7 @@ best-effort basis. By default it writes one `BASE.manifest.toml` last, as the ru
 marker, and `--no-manifest` suppresses only that sidecar. Every complete input pass is hashed
 inline, and a replay pass whose hash differs from the first fails the run before anything is
 committed. `--temp-dir` is the one runtime placement option. The run and publication coordinator is
-CLI-internal, and the diagnostic registry has 82 members with no M7 transitional diagnostic left.
+CLI-internal. M7 left the registry at 82, with no M7 transitional diagnostic.
 
 M7 centralizes diagnostic presentation and progress observation so that color, progress and
 machine-readable output can land later without reworking run orchestration. Those features and the
@@ -342,10 +343,14 @@ the integrated revision was measured. `docs/benchmarks.md` has the figures and l
 
 M8.2 is the current milestone, and M9 waits for it to be accepted and integrated. It hardens how
 the repository is written, who owns each lasting fact, how evidence provenance is stated, and how
-authored text is checked. It changes no public API, CLI grammar, exit code, determinism rule,
-fingerprint, or `.cxt`, `.dat` or manifest byte. Its one new normative contract declares TOML 1.1.0,
-the grammar of the parser the spec reader has always used, and the `SpecTomlInvalid` syntax-error
-message now names that grammar (D-133). No other diagnostic changes. Otherwise, normative spec
+authored text is checked. It changes no CLI grammar, exit-code meaning or determinism rule, and no
+fingerprint or `.cxt`, `.dat` or manifest byte of a spec that it still accepts. Its one public API
+addition is the binding-only resolver stage `SpecResolver.ResolveBinding` (D-135). It declares TOML
+1.1.0, the grammar of the parser the spec reader has always used, and the `SpecTomlInvalid`
+syntax-error message now names that grammar (D-133). It rejects three inputs the spec never
+allowed: a composed spec with no `[[attribute]]` is the new `AttributesMissing` (Error, spec
+resolve), and a `base_index` other than 0 or 1 or a negative `size_advisory_bytes` is
+`SpecFieldInvalid` (D-135). No other diagnostic changes. Otherwise, normative spec
 meaning changes only where a passage contradicted the section or decision that owns its rule, or
 where a default, bound or allowed value that only an example showed is stated in prose; neither kind
 changes implemented behavior (D-134).

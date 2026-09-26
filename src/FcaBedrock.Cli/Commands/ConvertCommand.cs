@@ -31,18 +31,6 @@ namespace FcaBedrock.Cli.Commands;
 /// </summary>
 internal static class ConvertCommand
 {
-    /// <summary>
-    /// The code-less host error for an authored <c>[output.cxt] size_advisory_bytes</c> below zero.
-    /// <para>
-    /// §8 gives the field exactly two readings — a positive threshold, or <c>0</c> to disable —
-    /// and the writer rejects a negative one outright. Mapping it to "disabled" would invent a
-    /// third reading and hide invalid configuration, so the run refuses it before it creates
-    /// anything, and the refusal never becomes an unexpected-fault exit.
-    /// </para>
-    /// </summary>
-    internal const string NegativeSizeAdvisoryMessage =
-        "The [output.cxt] size_advisory_bytes value cannot be negative.";
-
     private static readonly UTF8Encoding Utf8NoBom = new(encoderShouldEmitUTF8Identifier: false);
 
     /// <summary>Runs the command; 0 on a committed run, 1 on any Error/Fatal or host failure.</summary>
@@ -65,11 +53,6 @@ internal static class ConvertCommand
         // Once, against the ROOT document and the NATIVE fingerprints — never against an
         // effective override value, which is a manifest fact and never a stored one (§14/D-077).
         diagnostics.AddRange(SpecFingerprints.VerifyStored(run.RootDocument, run.Fingerprints, run.RootKey));
-
-        if (run.Output.CxtSizeAdvisoryBytes < 0)
-        {
-            return RunPipeline.HostFailure(environment, diagnostics, NegativeSizeAdvisoryMessage, cancellation);
-        }
 
         var v2Compat = invocation.Has("--v2-compat");
         var settings = v2Compat ? run.Output.ToV2Compat(run.Shape) : run.Output;

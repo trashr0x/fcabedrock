@@ -48,6 +48,10 @@ sections, all optional except `[spec]`, `[binding]`, and at least one
 | `[[matcher]]` | 0..N | Pattern-based template application |
 | `[[attribute]]` | 1..N | Logical attributes and how to scale them |
 
+The `[[attribute]]` minimum applies to the composed spec (§13): a base file in an
+`extends` chain may declare none. A composed spec with no `[[attribute]]` is
+`AttributesMissing` (Error, spec resolve).
+
 Order within the file is informative. Fingerprints are computed over a canonical
 structure derived from the **resolved/calibrated plan**, not over the spec's TOML
 text (§14), so file formatting never affects schema or output identity.
@@ -777,9 +781,13 @@ and the trailing-newline rule — and emits `OutputCxtSizeAdvisory` (Warning, ex
 phase) when the projection is **at or above** the threshold. The projection counts
 **encoded bytes, not characters** (a non-ASCII name and CRLF line endings count at
 their real width). A `.dat`-only run emits no advisory. Default 1 GB is
-conservative; ConExp struggles well below this. Set to `0` to disable. The advisory
+conservative; ConExp struggles well below this. Set to `0` to disable; a negative
+value is `SpecFieldInvalid` (Error, spec parse). The advisory
 changes a warning, never output bytes, so it remains a non-input to all three
 fingerprints (D-077/D-122).
+
+**`base_index`**. `1` (the default) or `0`: the ID of the first formal attribute in
+`.dat` output (§18.2). Any other value is `SpecFieldInvalid` (Error, spec parse).
 
 **`.dat` trailing space.** vNext's native `.dat` output has **no** trailing
 space after the last item id on a line (`nonempty_line_trailing_space = false`)
@@ -2756,6 +2764,7 @@ never join this registry (D-122). Existing phase-owned conditions such as
 | `SpecExtendsNotFound` | Fatal | spec resolve |
 | `BindingShapeMissing` | Error | spec validate |
 | `BindingLocaleInvalid` | Error | spec validate |
+| `AttributesMissing` | Error | spec resolve |
 | `AttributeNameDuplicate` | Error | spec validate |
 | `AttributeNameMissing` | Error | spec validate |
 | `AttributeScalingMissing` | Error | spec validate |
@@ -2946,7 +2955,8 @@ is:
 1. template identity (missing / duplicate `id`);
 2. matcher reference and shape compatibility;
 3. attribute template references;
-4. effective-attribute validation;
+4. effective-attribute validation, opened by `AttributesMissing` when the composed
+   spec has no `[[attribute]]` (§2);
 5. zero-match and fully-shadowed matcher warnings,
 
 with declaration order (matchers, templates) or logical-attribute order preserved
@@ -2983,8 +2993,9 @@ at 73M records does not produce 73M diagnostics.
 The `DiagnosticCode` enum is the authority for the codes a build can actually
 raise; it grows per slice (EP-3), so it holds fewer members than this registry — a
 registry row joins the enum when the milestone owning its site lands (D-085). After
-**M7 Slice B** the enum has **82** members: 81 after M6 Slice B, plus
-`OutputCxtSizeAdvisory` at its export emit site (D-123). Exactly one row remains
+**M7 Slice B** the enum had **82** members: 81 after M6 Slice B, plus
+`OutputCxtSizeAdvisory` at its export emit site (D-123). `AttributesMissing`, at its
+resolve emit site, makes **83** (D-135). Exactly one row remains
 outstanding — `DateValueTypeNotImplementedV1` (the D-038 date carrier) — joining
 the enum when its own milestone lands. Every other row is live.
 

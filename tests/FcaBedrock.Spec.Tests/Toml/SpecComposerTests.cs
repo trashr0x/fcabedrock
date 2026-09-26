@@ -177,6 +177,29 @@ public sealed class SpecComposerTests
         Assert.False(result.TryGetValue(out _));
     }
 
+    [Theory]
+    [InlineData("[output.dat]\nbase_index = 2\n", 4, 14)]
+    [InlineData("[output.cxt]\nsize_advisory_bytes = -1\n", 4, 23)]
+    public void Compose_WhenABaseAuthorsAnOutOfRangeOutputValue_ThenItsOwnReadFailsTheChain(
+        string baseOutput, int line, int column)
+    {
+        // §8/D-135: the reader owns the [output] value ranges, and each file of a chain is read
+        // on its own, so a base fails at its load even though the root overrides both fields
+        // with valid values and the composed document would carry only those.
+        var source = new InMemorySpecTextSource().Add("base.toml", "[spec]\nversion = 1\n" + baseOutput);
+        var root = Read(DerivedMinimal + "[output.cxt]\nsize_advisory_bytes = 0\n[output.dat]\nbase_index = 1\n");
+
+        var result = SpecComposer.Compose(root, "derived.toml", source);
+
+        Assert.False(result.TryGetValue(out _));
+        var diagnostic = Assert.Single(result.Diagnostics);
+        Assert.Equal(DiagnosticCode.SpecFieldInvalid, diagnostic.Code);
+        Assert.Equal(DiagnosticSeverity.Error, diagnostic.Severity);
+        Assert.Equal("base.toml", diagnostic.Location?.File);
+        Assert.Equal(line, diagnostic.Location?.Line);
+        Assert.Equal(column, diagnostic.Location?.Column);
+    }
+
     [Fact]
     public void Compose_WhenComposed_ThenExtendsIsConsumed()
     {

@@ -102,36 +102,9 @@ public static class SpecResolver
         }
 
         var bindingDiagnostics = new List<BedrockDiagnostic>();
-        var bindingSection = document.Binding;
-        ValidateBinding(bindingSection, bindingDiagnostics);
-        // §5.1: has_header defaults are shape-specific — wide true, triple false
-        // (triple data is typically headerless; a true default would eat row 1).
-        var hasHeader = bindingSection.HasHeader ?? (shape == SourceShape.Wide);
-        var locale = bindingSection.Locale ?? "invariant";
-        var culture = ResolveCulture(locale, bindingDiagnostics);
-        var encoding = ResolveEncoding(bindingSection.Encoding, bindingDiagnostics);
-
-        // §5.3/§5.4 sequencing: the triple role→index map (and ordering) resolve
-        // before the object key, because the triple object key is the resolved
-        // subject column — which may be bound by header name (D-082).
-        var tripleColumns = shape == SourceShape.Triple
-            ? ResolveTripleColumns(bindingSection, hasHeader, schema, nameBindings, bindingDiagnostics)
-            : null;
-        var ordering = shape == SourceShape.Triple
-            ? ResolveOrdering(bindingSection, bindingDiagnostics)
-            : (TripleOrdering?)null;
-
-        var binding = new Binding(
-            shape,
-            encoding,
-            bindingSection.Delimiter ?? ',',
-            bindingSection.QuoteChar ?? '"',
-            hasHeader,
-            locale,
-            bindingSection.MissingToken ?? "?",
-            ResolveObjectKey(bindingSection, shape, tripleColumns?.Subject ?? 0, document.Defaults, schema, nameBindings, bindingDiagnostics),
-            tripleColumns,
-            ordering);
+        var (binding, culture) = ResolveBindingSection(
+            document.Binding, shape, document.Defaults, schema, nameBindings, bindingDiagnostics);
+        var hasHeader = binding.HasHeader;
 
         // §10.2/§9.2 (D-121): address every attribute's source ONCE, after binding
         // resolution and before matcher application — a source_index_range selects on the
@@ -159,6 +132,19 @@ public static class SpecResolver
         // check below runs over the EFFECTIVE section, so a template-supplied field is
         // validated exactly as the equivalent flat declaration would be (D-114/D-116).
         var attributeDiagnostics = new List<BedrockDiagnostic>();
+
+        // §2 (D-135): the composed spec declares at least one [[attribute]]. Only resolve can
+        // judge this, because a base file of an extends chain may declare none and the reader
+        // sees one file, so it opens family 4, before any per-attribute entry. Attributes that
+        // are all excluded or filter-only meet it; their empty context stays the plan-phase
+        // NoFormalAttributes Warning (D-058).
+        if (document.Attributes.Count == 0)
+        {
+            attributeDiagnostics.Add(new BedrockDiagnostic(
+                DiagnosticCode.AttributesMissing, DiagnosticSeverity.Error,
+                "The composed spec declares no [[attribute]]; at least one is required (§2)."));
+        }
+
         var attributes = new List<AttributeSpec>(document.Attributes.Count);
         var seenNames = new HashSet<string>(StringComparer.Ordinal);
         for (var i = 0; i < document.Attributes.Count; i++)
@@ -317,6 +303,125 @@ public static class SpecResolver
             bindingSection.MissingToken ?? "?",
             ordering);
         return Diagnosed<SourceReadSettings>.Ok(settings, diagnostics);
+    }
+
+    /// <summary>
+    /// Resolves only the <c>[binding]</c> of <paramref name="document"/> (§5) into a Core
+    /// <see cref="Binding"/>, for a caller that must check a binding before any attribute
+    /// exists: the triple probe's role-map preflight, which reads no row until the role map
+    /// resolves (D-135). It applies the same prefix checks as <see cref="Resolve"/> (an authored
+    /// <c>extends</c> throws <see cref="ArgumentException"/>, a missing or unsupported version is
+    /// <c>SpecVersionUnsupported</c> (Fatal), and a missing shape is <c>BindingShapeMissing</c>),
+    /// then runs the same private helpers <see cref="Resolve"/> runs for the binding section. It
+    /// therefore reports exactly what <see cref="Resolve"/> reports for that section, in the same
+    /// order, and no condition gains a second owner. <paramref name="schema"/> resolves
+    /// name-bound triple roles and object keys and range-checks index-bound ones, as in
+    /// <see cref="Resolve"/>.
+    /// <para>
+    /// Besides <c>[spec]</c> and <c>[binding]</c>, it reads one <c>[defaults]</c> value, the
+    /// <c>duplicate_object_policy</c> that a wide <c>column</c> object key carries, as
+    /// <see cref="Resolve"/> does. It reads no template, matcher or <c>[[attribute]]</c> entry and
+    /// judges none of the whole-spec rules over attributes, such as the §2 attribute minimum;
+    /// those belong to <see cref="Resolve"/>, so a document with no attribute is valid input here.
+    /// On any Error/Fatal the result is <see cref="Diagnosed{T}.Failed"/>.
+    /// </para>
+    /// </summary>
+    public static Diagnosed<Binding> ResolveBinding(SpecDocument document, SourceSchema? schema = null)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+        if (document.Spec?.Extends is { } extends)
+        {
+            throw new ArgumentException(
+                $"The document declares extends = \"{extends}\" and must be composed before resolving; " +
+                "apply SpecComposer.Compose first (§13, D-078).",
+                nameof(document));
+        }
+
+        var diagnostics = new List<BedrockDiagnostic>();
+
+        if (document.Spec?.Version is not { } version)
+        {
+            diagnostics.Add(new BedrockDiagnostic(
+                DiagnosticCode.SpecVersionUnsupported, DiagnosticSeverity.Fatal,
+                "The document declares no [spec] version; a Bedrock spec must declare version = 1 (§2/§3)."));
+            return Diagnosed<Binding>.Failed(diagnostics);
+        }
+
+        if (version != 1)
+        {
+            diagnostics.Add(new BedrockDiagnostic(
+                DiagnosticCode.SpecVersionUnsupported, DiagnosticSeverity.Fatal,
+                $"Spec version {version} is not supported; this implementation supports version 1 (§2/§3)."));
+            return Diagnosed<Binding>.Failed(diagnostics);
+        }
+
+        if (document.Binding?.Shape is not { } shape)
+        {
+            diagnostics.Add(new BedrockDiagnostic(
+                DiagnosticCode.BindingShapeMissing, DiagnosticSeverity.Error,
+                document.Binding is null
+                    ? "The document has no [binding] section (§5.1)."
+                    : "[binding] declares no shape (§5.1)."));
+            return Diagnosed<Binding>.Failed(diagnostics);
+        }
+
+        // The name bindings serve ResolvedSpec's trust boundary, which this stage never builds.
+        var (binding, _) = ResolveBindingSection(
+            document.Binding, shape, document.Defaults, schema, nameBindings: [], diagnostics);
+
+        foreach (var diagnostic in diagnostics)
+        {
+            if (diagnostic.Severity is DiagnosticSeverity.Error or DiagnosticSeverity.Fatal)
+            {
+                return Diagnosed<Binding>.Failed(diagnostics);
+            }
+        }
+
+        return Diagnosed<Binding>.Ok(binding, diagnostics);
+    }
+
+    // §5: the one resolution of the [binding] section, shared by Resolve and ResolveBinding so
+    // both report the same conditions in the same order (D-135). The Binding is built even when
+    // a diagnostic fired, because Resolve goes on to aggregate the later families; each caller
+    // uses it only when no Error or Fatal was reported.
+    private static (Binding Binding, CultureInfo Culture) ResolveBindingSection(
+        BindingSection bindingSection,
+        SourceShape shape,
+        DefaultsSection? defaults,
+        SourceSchema? schema,
+        List<ResolvedNameBinding> nameBindings,
+        List<BedrockDiagnostic> diagnostics)
+    {
+        ValidateBinding(bindingSection, diagnostics);
+        // §5.1: has_header defaults are shape-specific — wide true, triple false
+        // (triple data is typically headerless; a true default would eat row 1).
+        var hasHeader = bindingSection.HasHeader ?? (shape == SourceShape.Wide);
+        var locale = bindingSection.Locale ?? "invariant";
+        var culture = ResolveCulture(locale, diagnostics);
+        var encoding = ResolveEncoding(bindingSection.Encoding, diagnostics);
+
+        // §5.3/§5.4 sequencing: the triple role→index map (and ordering) resolve
+        // before the object key, because the triple object key is the resolved
+        // subject column — which may be bound by header name (D-082).
+        var tripleColumns = shape == SourceShape.Triple
+            ? ResolveTripleColumns(bindingSection, hasHeader, schema, nameBindings, diagnostics)
+            : null;
+        var ordering = shape == SourceShape.Triple
+            ? ResolveOrdering(bindingSection, diagnostics)
+            : (TripleOrdering?)null;
+
+        var binding = new Binding(
+            shape,
+            encoding,
+            bindingSection.Delimiter ?? ',',
+            bindingSection.QuoteChar ?? '"',
+            hasHeader,
+            locale,
+            bindingSection.MissingToken ?? "?",
+            ResolveObjectKey(bindingSection, shape, tripleColumns?.Subject ?? 0, defaults, schema, nameBindings, diagnostics),
+            tripleColumns,
+            ordering);
+        return (binding, culture);
     }
 
     // §5.1 (D-054/D-076): the quote check fires on the authored char only (the

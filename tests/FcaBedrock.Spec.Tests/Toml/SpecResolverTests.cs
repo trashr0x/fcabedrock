@@ -178,6 +178,7 @@ public sealed class SpecResolverTests
             Include: null, MissingPolicy: null, UnknownValuePolicy: null, DuplicateObjectPolicy.Dedupe,
             OrdinalDirection: null, OrdinalBoundary: null);
         var document = DocumentFixtures.Document(
+            [DocumentFixtures.Nominal("a", 0, ["x"])],
             binding: DocumentFixtures.WideBinding(objectKey: objectKey), defaults: defaults);
 
         Assert.True(Resolve(document).TryGetValue(out var spec));
@@ -191,7 +192,7 @@ public sealed class SpecResolverTests
     public void Resolve_WhenObjectKeyColumnModeWithoutDefaults_ThenPolicyIsFail()
     {
         var objectKey = new ObjectKeySection(ObjectKeyMode.Column, new NameColumnRef("id"), Columns: null, Aggregate: null);
-        var document = DocumentFixtures.Document(binding: DocumentFixtures.WideBinding(objectKey: objectKey));
+        var document = DocumentFixtures.Document([DocumentFixtures.Nominal("a", 0, ["x"])], binding: DocumentFixtures.WideBinding(objectKey: objectKey));
 
         Assert.True(Resolve(document, new SourceSchema(2, ["id", "age"])).TryGetValue(out var spec));
 
@@ -869,7 +870,7 @@ public sealed class SpecResolverTests
     [Fact]
     public void Resolve_WhenLocaleUnresolvable_ThenBindingLocaleInvalid()
     {
-        var document = DocumentFixtures.Document(binding: DocumentFixtures.WideBinding(locale: "xx-nope"));
+        var document = DocumentFixtures.Document([DocumentFixtures.Nominal("a", 0, ["x"])], binding: DocumentFixtures.WideBinding(locale: "xx-nope"));
 
         var result = Resolve(document);
 
@@ -893,7 +894,7 @@ public sealed class SpecResolverTests
 
         foreach (var (name, section, schema) in cases)
         {
-            var document = DocumentFixtures.Document(binding: DocumentFixtures.WideBinding(objectKey: section));
+            var document = DocumentFixtures.Document([DocumentFixtures.Nominal("a", 0, ["x"])], binding: DocumentFixtures.WideBinding(objectKey: section));
 
             var result = Resolve(document, schema);
 
@@ -923,6 +924,230 @@ public sealed class SpecResolverTests
         Assert.Equal(3, result.Diagnostics.Count);
     }
 
+    // --- The composed-spec attribute minimum (§2, D-135) ---
+    //
+    // §2 asks the COMPOSED spec for at least one [[attribute]]: a base file of an extends chain
+    // may declare none. So resolve owns the rule, because it sees the composed document, and
+    // the reader, which sees one file, does not. These documents come through the real composer.
+
+    [Theory]
+    [InlineData("[spec]\nversion = 1\n[binding]\nshape = \"wide\"\n", null)]
+    [InlineData("[spec]\nversion = 1\nextends = \"base.toml\"\n", "[spec]\nversion = 1\n[binding]\nshape = \"wide\"\n")]
+    public void Resolve_WhenTheComposedDocumentHasNoAttributes_ThenAttributesMissingIsTheOneError(
+        string rootToml, string? baseToml)
+    {
+        var document = baseToml is null ? Compose(rootToml) : Compose(rootToml, ("base.toml", baseToml));
+        Assert.Empty(document.Attributes);
+
+        var result = SpecResolver.Resolve(document);
+
+        Assert.False(result.TryGetValue(out _));
+        var diagnostic = Assert.Single(result.Diagnostics);
+        Assert.Equal(DiagnosticCode.AttributesMissing, diagnostic.Code);
+        Assert.Equal(DiagnosticSeverity.Error, diagnostic.Severity);
+        Assert.Null(diagnostic.Location); // a fact about the composed spec, not about one file
+        Assert.Equal("The composed spec declares no [[attribute]]; at least one is required (§2).", diagnostic.Message);
+    }
+
+    [Fact]
+    public void Resolve_WhenNoAttributesAndEveryOtherFamilyReports_ThenAttributesMissingOpensFamilyFour()
+    {
+        // §16.4's family order with the §2 minimum in its slot: it is the first entry of family
+        // 4, after the binding prefix and the reference families and before the matcher
+        // warnings, and it aggregates with all of them rather than stopping resolution.
+        var document = DocumentFixtures.Document(
+            attributes: [],
+            binding: DocumentFixtures.WideBinding(quoteChar: '\''),
+            templates: [DocumentFixtures.Template(null)],
+            matchers: [DocumentFixtures.Matcher(nameRegex: "^zz$", template: "absent")]);
+
+        var result = Resolve(document);
+
+        Assert.False(result.TryGetValue(out _));
+        Assert.Equal(
+            [
+                DiagnosticCode.TemplateIdMissing,             // family 1
+                DiagnosticCode.QuoteCharNotSupportedV1,       // binding-section prefix
+                DiagnosticCode.TemplateReferenceUnknown,      // family 2 (matcher site)
+                DiagnosticCode.AttributesMissing,             // family 4, first entry
+                DiagnosticCode.MatcherSelectsNoAttributes,    // family 5
+            ],
+            result.Diagnostics.Select(d => d.Code));
+    }
+
+    [Fact]
+    public void Resolve_WhenAPrefixCheckStopsResolution_ThenTheAttributeMinimumIsNotJudged()
+    {
+        // The version and shape checks return before family 4, so a document that fails one of
+        // them reports that check alone, never the attribute minimum as well.
+        (SpecDocument Document, DiagnosticCode Check)[] cases =
+        [
+            (DocumentFixtures.Document(spec: DocumentFixtures.SpecV1(version: null)), DiagnosticCode.SpecVersionUnsupported),
+            (DocumentFixtures.Document(spec: DocumentFixtures.SpecV1(version: 2)), DiagnosticCode.SpecVersionUnsupported),
+            (new SpecDocument(DocumentFixtures.SpecV1(), null, null, null, null, [], [], []), DiagnosticCode.BindingShapeMissing),
+        ];
+
+        foreach (var (document, check) in cases)
+        {
+            Assert.Empty(document.Attributes);
+
+            var result = Resolve(document);
+
+            Assert.Equal(check, Assert.Single(result.Diagnostics).Code);
+        }
+    }
+
+    [Fact]
+    public void Resolve_WhenAnAttributeLessBaseGainsAnAttributeFromTheRoot_ThenTheComposedSpecResolves()
+    {
+        // The base declares a binding and no attribute; the root adds one. The minimum is met by
+        // the composed spec, so neither file on its own has to meet it.
+        var document = Compose(
+            """
+            [spec]
+            version = 1
+            extends = "base.toml"
+
+            [[attribute]]
+            name = "colour"
+            source = { kind = "column", index = 0 }
+            discretizer = { kind = "identity" }
+            scale = { kind = "nominal" }
+            declared_domain = ["red", "green"]
+            """,
+            ("base.toml", "[spec]\nversion = 1\n[binding]\nshape = \"wide\"\nhas_header = true\n"));
+
+        var result = Resolve(document);
+
+        Assert.True(result.TryGetValue(out var spec));
+        Assert.Empty(result.Diagnostics);
+        Assert.Equal("colour", Assert.Single(spec.Attributes).Name);
+    }
+
+    [Fact]
+    public void Resolve_WhenEveryAttributeIsExcludedOrFilterOnly_ThenItResolvesAndPlansToNoFormalAttributes()
+    {
+        // Distinct from an empty attribute list: the entries exist, so the minimum is met, and
+        // the zero-column context they plan to keeps D-058's NoFormalAttributes Warning.
+        var document = DocumentFixtures.Document(
+        [
+            DocumentFixtures.Attribute("parked", DocumentFixtures.Column(0), include: false),
+            DocumentFixtures.Attribute("filter", DocumentFixtures.Column(1), include: false, restrictTo: [new RestrictToValue("x")]),
+        ]);
+        var schema = new SourceSchema(2, ["parked", "filter"]);
+
+        var resolved = Resolve(document, schema);
+
+        Assert.True(resolved.TryGetValue(out var spec));
+        Assert.Empty(resolved.Diagnostics);
+
+        var planned = Plan(spec, schema);
+
+        Assert.True(planned.TryGetValue(out var plan));
+        Assert.Empty(plan.FormalAttributes);
+        var warning = Assert.Single(planned.Diagnostics);
+        Assert.Equal(DiagnosticCode.NoFormalAttributes, warning.Code);
+        Assert.Equal(DiagnosticSeverity.Warning, warning.Severity);
+    }
+
+    // --- The binding-only stage (D-135) ---
+    //
+    // ResolveBinding resolves the [binding] alone, through the helpers Resolve runs for the
+    // binding section. The triple probe uses it before its draft has any attribute.
+
+    [Fact]
+    public void ResolveBinding_WhenTheDocumentHasNoAttributes_ThenTheBindingResolvesWhileResolveReportsTheMinimum()
+    {
+        var document = DocumentFixtures.Document(
+            attributes: [],
+            binding: DocumentFixtures.TripleBinding(
+                columns: new TripleColumnsSection(
+                    new NameColumnRef("s"), new NameColumnRef("p"), new NameColumnRef("v")),
+                ordering: TripleOrdering.Unordered,
+                hasHeader: true));
+        var schema = new SourceSchema(3, ["v", "s", "p"]);
+
+        var binding = SpecResolver.ResolveBinding(document, schema);
+
+        Assert.True(binding.TryGetValue(out var resolved));
+        Assert.Empty(binding.Diagnostics);
+        Assert.Equal(new TripleColumns(1, 2, 0), resolved.TripleColumns);
+        Assert.Equal(TripleOrdering.Unordered, resolved.Ordering);
+
+        Assert.Equal(
+            DiagnosticCode.AttributesMissing,
+            Assert.Single(SpecResolver.Resolve(document, schema).Diagnostics).Code);
+    }
+
+    [Fact]
+    public void ResolveBinding_WhenTheBindingIsInvalid_ThenItReportsExactlyWhatResolveReportsForTheSection()
+    {
+        // One owner per condition: the stage and full resolution share the section's helpers, so
+        // the same broken binding yields the same diagnostics, in the same order, from both.
+        var wide = DocumentFixtures.Document(
+            [DocumentFixtures.Nominal("a", 0, ["x"])],
+            binding: DocumentFixtures.WideBinding(
+                delimiter: '|', quoteChar: '|', locale: "xx-nope",
+                objectKey: new ObjectKeySection(ObjectKeyMode.Column, new NameColumnRef("id"), null, null)));
+        var triple = DocumentFixtures.Document(
+            [TriplePredicate()],
+            binding: DocumentFixtures.TripleBinding(
+                columns: new TripleColumnsSection(new IndexColumnRef(0), new IndexColumnRef(0), null),
+                ordering: null));
+
+        foreach (var document in new[] { wide, triple })
+        {
+            var full = SpecResolver.Resolve(document);
+            var stage = SpecResolver.ResolveBinding(document);
+
+            Assert.False(stage.TryGetValue(out _));
+            Assert.True(stage.Diagnostics.Count >= 2, "the fixture must break the binding more than once");
+            Assert.Equal(full.Diagnostics, stage.Diagnostics);
+        }
+    }
+
+    [Fact]
+    public void ResolveBinding_WhenAPrefixCheckFails_ThenItReportsWhatResolveReports()
+    {
+        var failing = new[]
+        {
+            DocumentFixtures.Document(spec: DocumentFixtures.SpecV1(version: null)),
+            DocumentFixtures.Document(spec: DocumentFixtures.SpecV1(version: 2)),
+            new SpecDocument(DocumentFixtures.SpecV1(), null, null, null, null, [], [], []),
+            DocumentFixtures.Document(binding: new BindingSection(
+                Shape: null, Encoding: null, Delimiter: null, QuoteChar: null, HasHeader: null,
+                Locale: null, MissingToken: null, Ordering: null, Columns: null, ObjectKey: null)),
+        };
+
+        foreach (var document in failing)
+        {
+            var stage = SpecResolver.ResolveBinding(document);
+
+            Assert.False(stage.TryGetValue(out _));
+            Assert.Equal(SpecResolver.Resolve(document).Diagnostics, stage.Diagnostics);
+        }
+
+        var uncomposed = DocumentFixtures.Document(spec: DocumentFixtures.SpecV1(extends: "base.toml"));
+        Assert.Throws<ArgumentException>(() => SpecResolver.ResolveBinding(uncomposed));
+    }
+
+    [Fact]
+    public void ResolveBinding_WhenTemplatesMatchersAndAttributesAreBroken_ThenItDoesNotReadThem()
+    {
+        // Only the binding is this stage's concern; everything else is Resolve's to judge.
+        var document = DocumentFixtures.Document(
+            [DocumentFixtures.Attribute(name: null, DocumentFixtures.Column(0))],
+            templates: [DocumentFixtures.Template(null)],
+            matchers: [DocumentFixtures.Matcher(nameRegex: "^zz$", template: "absent")]);
+
+        var stage = SpecResolver.ResolveBinding(document);
+
+        Assert.True(stage.TryGetValue(out var binding));
+        Assert.Empty(stage.Diagnostics);
+        Assert.Equal(SourceShape.Wide, binding.Shape);
+        Assert.NotEmpty(SpecResolver.Resolve(document).Diagnostics);
+    }
+
     // --- Slice D seam validation (D-054/D-060/D-061/D-063/D-064/D-076) ---
 
     [Fact]
@@ -930,7 +1155,7 @@ public sealed class SpecResolverTests
     {
         // D-054: the field parses (a retained carrier) but v1 rejects any quote
         // other than the standard double quote at the seam.
-        var document = DocumentFixtures.Document(binding: DocumentFixtures.WideBinding(quoteChar: '\''));
+        var document = DocumentFixtures.Document([DocumentFixtures.Nominal("a", 0, ["x"])], binding: DocumentFixtures.WideBinding(quoteChar: '\''));
 
         var result = Resolve(document);
 
@@ -941,7 +1166,7 @@ public sealed class SpecResolverTests
     [Fact]
     public void Resolve_WhenQuoteCharAuthoredStandard_ThenNoDiagnostic()
     {
-        var document = DocumentFixtures.Document(binding: DocumentFixtures.WideBinding(quoteChar: '"'));
+        var document = DocumentFixtures.Document([DocumentFixtures.Nominal("a", 0, ["x"])], binding: DocumentFixtures.WideBinding(quoteChar: '"'));
 
         var result = Resolve(document);
 
@@ -954,7 +1179,7 @@ public sealed class SpecResolverTests
     {
         // §5.1: the conflict is judged on the resolved pair — an authored '"'
         // delimiter collides with the defaulted quote.
-        var document = DocumentFixtures.Document(binding: DocumentFixtures.WideBinding(delimiter: '"'));
+        var document = DocumentFixtures.Document([DocumentFixtures.Nominal("a", 0, ["x"])], binding: DocumentFixtures.WideBinding(delimiter: '"'));
 
         var result = Resolve(document);
 
@@ -968,6 +1193,7 @@ public sealed class SpecResolverTests
         // D-076: two distinct §5.1 conditions — the unsupported quote and the
         // delimiter conflict — report independently.
         var document = DocumentFixtures.Document(
+            [DocumentFixtures.Nominal("a", 0, ["x"])],
             binding: DocumentFixtures.WideBinding(delimiter: '|', quoteChar: '|'));
 
         var result = Resolve(document);
@@ -1559,7 +1785,7 @@ public sealed class SpecResolverTests
         var binding = new BindingSection(SourceShape.Triple, Encoding: null, Delimiter: null, QuoteChar: null,
             HasHeader: null, Locale: null, MissingToken: null, TripleOrdering.SubjectGrouped,
             new TripleColumnsSection(new IndexColumnRef(0), new IndexColumnRef(1), new IndexColumnRef(2)), objectKey);
-        var document = DocumentFixtures.Document(binding: binding);
+        var document = DocumentFixtures.Document([TriplePredicate()], binding: binding);
 
         var result = Resolve(document);
 
@@ -2048,7 +2274,7 @@ public sealed class SpecResolverTests
     [Fact]
     public void Resolve_WhenTripleColumnsNotDistinct_ThenTripleColumnsNotDistinct()
     {
-        var document = DocumentFixtures.Document(binding: DocumentFixtures.TripleBinding(
+        var document = DocumentFixtures.Document([TriplePredicate()], binding: DocumentFixtures.TripleBinding(
             new TripleColumnsSection(new IndexColumnRef(0), new IndexColumnRef(1), new IndexColumnRef(0))));
 
         var result = Resolve(document);
@@ -2060,7 +2286,7 @@ public sealed class SpecResolverTests
     [Fact]
     public void Resolve_WhenTripleColumnsPartial_ThenSourceBindingInvalid()
     {
-        var document = DocumentFixtures.Document(binding: DocumentFixtures.TripleBinding(
+        var document = DocumentFixtures.Document([TriplePredicate()], binding: DocumentFixtures.TripleBinding(
             new TripleColumnsSection(new IndexColumnRef(0), Predicate: null, Value: null)));
 
         var result = Resolve(document);
@@ -2071,7 +2297,7 @@ public sealed class SpecResolverTests
     [Fact]
     public void Resolve_WhenTripleColumnsMixedAddressing_ThenSourceBindingInvalid()
     {
-        var document = DocumentFixtures.Document(binding: DocumentFixtures.TripleBinding(
+        var document = DocumentFixtures.Document([TriplePredicate()], binding: DocumentFixtures.TripleBinding(
             new TripleColumnsSection(new IndexColumnRef(0), new NameColumnRef("p"), new IndexColumnRef(2)),
             hasHeader: true));
 
@@ -2084,7 +2310,7 @@ public sealed class SpecResolverTests
     public void Resolve_WhenTripleColumnsAllNameWithoutHeader_ThenSourceBindingInvalid()
     {
         // has_header defaults false for triple (§5.1), so name roles cannot resolve.
-        var document = DocumentFixtures.Document(binding: DocumentFixtures.TripleBinding(
+        var document = DocumentFixtures.Document([TriplePredicate()], binding: DocumentFixtures.TripleBinding(
             new TripleColumnsSection(new NameColumnRef("s"), new NameColumnRef("p"), new NameColumnRef("o"))));
 
         var result = Resolve(document);
@@ -2098,7 +2324,7 @@ public sealed class SpecResolverTests
     public void Resolve_WhenTripleColumnsByNameWithoutSchema_ThenSourceBindingInvalid()
     {
         // has_header = true, but no header schema is supplied to resolve the names.
-        var document = DocumentFixtures.Document(binding: DocumentFixtures.TripleBinding(
+        var document = DocumentFixtures.Document([TriplePredicate()], binding: DocumentFixtures.TripleBinding(
             new TripleColumnsSection(new NameColumnRef("s"), new NameColumnRef("p"), new NameColumnRef("o")),
             hasHeader: true));
 
@@ -2112,7 +2338,7 @@ public sealed class SpecResolverTests
     [Fact]
     public void Resolve_WhenTripleColumnNameNotInHeader_ThenSourceBindingInvalid()
     {
-        var document = DocumentFixtures.Document(binding: DocumentFixtures.TripleBinding(
+        var document = DocumentFixtures.Document([TriplePredicate()], binding: DocumentFixtures.TripleBinding(
             new TripleColumnsSection(new NameColumnRef("s"), new NameColumnRef("p"), new NameColumnRef("x")),
             hasHeader: true));
 
@@ -2125,7 +2351,7 @@ public sealed class SpecResolverTests
     public void Resolve_WhenTripleColumnNameMatchesDuplicateHeader_ThenSourceBindingInvalid()
     {
         // §5.3/§10.2: a role name must resolve to exactly one column.
-        var document = DocumentFixtures.Document(binding: DocumentFixtures.TripleBinding(
+        var document = DocumentFixtures.Document([TriplePredicate()], binding: DocumentFixtures.TripleBinding(
             new TripleColumnsSection(new NameColumnRef("dup"), new NameColumnRef("p"), new NameColumnRef("o")),
             hasHeader: true));
 
@@ -2137,7 +2363,7 @@ public sealed class SpecResolverTests
     [Fact]
     public void Resolve_WhenTripleColumnIndexOutOfRange_ThenSourceBindingInvalid()
     {
-        var document = DocumentFixtures.Document(binding: DocumentFixtures.TripleBinding(
+        var document = DocumentFixtures.Document([TriplePredicate()], binding: DocumentFixtures.TripleBinding(
             new TripleColumnsSection(new IndexColumnRef(0), new IndexColumnRef(1), new IndexColumnRef(5))));
 
         var result = Resolve(document, new SourceSchema(3));
@@ -2201,7 +2427,7 @@ public sealed class SpecResolverTests
         // §5.4/D-082: ANY authored [binding.object_key] under triple is rejected,
         // not just row_index — triple identity is always the subject.
         var objectKey = new ObjectKeySection(ObjectKeyMode.Column, new IndexColumnRef(0), Columns: null, Aggregate: null);
-        var document = DocumentFixtures.Document(binding: DocumentFixtures.TripleBinding(objectKey: objectKey));
+        var document = DocumentFixtures.Document([TriplePredicate()], binding: DocumentFixtures.TripleBinding(objectKey: objectKey));
 
         var result = Resolve(document);
 
@@ -2424,4 +2650,34 @@ public sealed class SpecResolverTests
         "ordered_cuts" => new OrderedCutsDiscretizerSection(["lo", "hi"], ["hi"], BinEnds.Open),
         _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null),
     };
+
+    // Reads the root and composes it through the real §13 composer over in-memory base files,
+    // so a rule about the composed spec is judged on exactly the document a chain produces.
+    private static SpecDocument Compose(string rootToml, params (string Key, string Toml)[] bases)
+    {
+        var read = SpecReader.Read(rootToml, "root.toml");
+        Assert.True(read.TryGetValue(out var root),
+            string.Join("; ", read.Diagnostics.Select(d => $"{d.Code}: {d.Message}")));
+
+        var composed = SpecComposer.Compose(root, "root.toml", new InMemorySpecFiles(bases));
+        Assert.True(composed.TryGetValue(out var document),
+            string.Join("; ", composed.Diagnostics.Select(d => $"{d.Code}: {d.Message}")));
+        return document;
+    }
+
+    private sealed class InMemorySpecFiles((string Key, string Toml)[] files) : ISpecTextSource
+    {
+        public SpecSourceText? Load(string reference, string referrerKey)
+        {
+            foreach (var (key, toml) in files)
+            {
+                if (string.Equals(key, reference, StringComparison.Ordinal))
+                {
+                    return new SpecSourceText(key, toml);
+                }
+            }
+
+            return null;
+        }
+    }
 }

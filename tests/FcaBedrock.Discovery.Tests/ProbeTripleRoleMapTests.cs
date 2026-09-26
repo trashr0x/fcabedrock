@@ -184,14 +184,15 @@ public sealed class ProbeTripleRoleMapTests
     {
         // The forwarding claim, made exact: probe's diagnostics must be the resolver's own —
         // same codes, same severities, same messages, same order — not a re-emission, not a
-        // relabelling into a probe phase, and not wrapped in ProbeSourceReadFailed.
+        // relabelling into a probe phase, and not wrapped in ProbeSourceReadFailed. The oracle
+        // is the resolver's binding-only stage, the one the preflight calls (D-135).
         var schema = new SourceSchema(3);
         var columns = TripleProbeFixtures.Indexes(1, 1, 2);
         var session = Session(schema);
 
         var result = await Prober.ProbeTripleAsync(session, Settings, columns);
 
-        var expected = SpecResolver.Resolve(
+        var expected = SpecResolver.ResolveBinding(
             new SpecDocument(
                 new SpecSection(1, null, null, null, null, ProbeDraftExpectations.Description),
                 null,

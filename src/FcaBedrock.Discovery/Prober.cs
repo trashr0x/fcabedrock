@@ -246,9 +246,11 @@ public static class Prober
         // re-implement §5.3: it asks the resolver, which owns those rules, and forwards whatever
         // it says. A partial, mixed-mode, negative, out-of-range, non-distinct, headerless-name,
         // missing, or ambiguous map fails here — with no enumeration started, so a bad map costs
-        // no read at all.
-        var preflight = SpecResolver.Resolve(ProbeDraft.BindingOnly(binding), schema);
-        if (!preflight.TryGetValue(out var resolved))
+        // no read at all. It resolves the binding alone: the draft's attributes exist only after
+        // the pass, and whole-spec rules such as the §2 attribute minimum are not this check's
+        // concern (D-135).
+        var preflight = SpecResolver.ResolveBinding(ProbeDraft.BindingOnly(binding), schema);
+        if (!preflight.TryGetValue(out var resolvedBinding))
         {
             // Forwarded unchanged and in order: relabelling these as probe-phase, or wrapping them
             // in a probe code, would give one condition two owners (D-067/D-111).
@@ -256,7 +258,7 @@ public static class Prober
         }
 
         // Resolved indices drive the read; the draft still authors the caller's own addressing.
-        var roles = resolved.Resolved.Spec.Binding.TripleColumns!;
+        var roles = resolvedBinding.TripleColumns!;
 
         var observation = new TripleObservation(
             options, subjectGrouped: readSettings.Ordering is TripleOrdering.SubjectGrouped);
