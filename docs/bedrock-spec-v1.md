@@ -22,7 +22,9 @@ namespace structure, .NET-specifics). UI/UX. Post-context reductions
 - **Informative** sections (marked or in worked examples) describe
   intent, motivation, or example usage. They are not constraints on
   implementations.
-- TOML examples assume the file is the entire spec unless noted.
+- TOML examples may show complete files or excerpts. `...` outside a string
+  stands for omitted content. A key repeated within the same TOML table
+  instance in one example lists alternative values for that key.
   Comments inside TOML examples are informative, not part of the syntax.
 - Any field marked **(deferred)** is reserved in v1 and rejected by the
   v1 planner with a clear diagnostic, so v1 spec files using that
@@ -50,13 +52,13 @@ Order within the file is informative. Fingerprints are computed over a canonical
 structure derived from the **resolved/calibrated plan**, not over the spec's TOML
 text (§14), so file formatting never affects schema or output identity.
 
-The canonical writer (the one tool that serializes a `SpecDocument`, §14) is
+The canonical writer (the one tool that serializes a `SpecDocument`, decisions.md D-075) is
 deterministic. It renders a long top-level
 `declared_domain` array **multiline, one escaped value per line**, rather than as a single
-unbounded line, so that large machine-generated domains — for example a `probe` draft's
-`declared_domain` (§7.1) — stay readable and diff-friendly (decisions.md D-113). The wrapping cutoff is a
-private, byte-pinned formatting constant — never a spec field, a setting, or a fingerprint
-input — and wrapping never changes document semantics or any fingerprint.
+unbounded line, so that large machine-generated domains, such as a `probe` draft's
+`declared_domain` (§7.1), stay readable and diff-friendly (decisions.md D-113). The wrapping cutoff is a
+private, byte-pinned formatting constant. It is never a spec field, a setting, or a fingerprint
+input, and wrapping never changes document semantics or any fingerprint.
 
 A spec MUST declare `version` in `[spec]`. Implementations encountering
 an unknown `version` MUST refuse to load the spec and emit
@@ -75,7 +77,7 @@ description = "Mini-mushroom analysis"      # optional; free text
 ```
 
 **`version`** *(required, integer)*. Currently `1`. Bump on incompatible
-schema changes. Implementations MUST refuse unknown versions.
+schema changes. §2 defines how an unknown version is refused.
 
 **`schema_fingerprint`** *(optional, string)*. Deterministic hash of the
 formal-attribute schema this spec produces (their ordered list with full
@@ -107,12 +109,10 @@ warnings if mismatched (`SchemaFingerprintStale`, `CxtOutputFingerprintStale`,
 `DatOutputFingerprintStale`). All are SHA-256 over the plan-derived canonical
 structure described in §14.
 
-The M7 commands own **writing** these fields: `fcabedrock calibrate` writes them on
+Two commands own **writing** these fields: `fcabedrock calibrate` writes them on
 freeze, and `fcabedrock fingerprint --write` refreshes a fully frozen copy (§14,
 D-122). On an `extends` chain the stored fields belong to the derived/root file
-(§13 rule 8) — `calibrate` writes a flattened standalone spec, while
-`fingerprint --write` **preserves the root's `extends`** and changes only these
-stored fields semantically.
+(§13 rule 8), and §13 states how each command treats the chain.
 
 **`extends`** *(optional, relative path)*. See §13.
 
@@ -131,7 +131,7 @@ notes        = "Original v2 spec, modernized for vNext."
 ```
 
 All fields optional. Provenance never affects schema or output identity
-(not part of either fingerprint). It exists for citation, reproducibility
+(it is in none of the three fingerprints, §14). It exists for citation, reproducibility
 audits, and human readers.
 
 ## 5. The `[binding]` block
