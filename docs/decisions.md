@@ -85,6 +85,7 @@ changes an earlier one. A new entry MUST add its line here.
 - D-130: Authored-text integrity: one mechanical command over raw decoded text, two fixed instruction-entry checks, an include/exclude manifest and a process-level test runner *(supersedes the checker portion of D-129 rule 5)*
 - D-131: One-time heading-separator migration in the decision log, roadmap and benchmark record: colons replace em dashes, changed anchors are accepted, and no alias is kept *(supersedes the heading-anchor clause of D-129 rule 1 for this migration only)*
 - D-132: No separate public evidence file; the benchmark guide carries only the identities that qualify its current claims
+- D-134: Spec passages that contradict their rule's owner are corrected to it, and enforced defaults, bounds and allowed values shown only in examples are stated in prose
 
 ### M1 (mini-mushroom walking skeleton)
 
@@ -1176,6 +1177,40 @@ Refinements from the second audit pass.
 - **Affects:** `AGENTS.md` (the owner map), `docs/benchmarks.md`, `docs/decisions.md` (this entry
   and its index line). No product code, public API, CLI contract, diagnostic, spec text,
   fingerprint or output byte changes.
+
+### D-134: Spec passages that contradict their rule's owner are corrected to it, and enforced defaults, bounds and allowed values shown only in examples are stated in prose
+
+- **Status:** accepted
+- **Date:** 2026-09-26
+- **Decision:** M8.2's review of the Bedrock spec makes two kinds of normative text change without
+  a decision of its own for each. (1) A passage that contradicts the section or decision owning its
+  rule, where the implementation already follows that owner, is corrected to the owner. (2) A
+  default, bound or allowed value that the spec showed only in an example value or comment, which §1
+  makes informative, and that the reader or resolver already enforces, is stated in prose at the
+  section that owns the field. Neither kind changes accepted input, a diagnostic's code, severity or
+  phase, a fingerprint or an output byte. A correction that would change behavior, or that must
+  choose between two owners that disagree, still needs its own decision. Each correction is still
+  reviewed before it lands, and this entry accepts no later change by itself. First applications:
+  §7's parse/validate list no longer names formal-attribute identity collisions, which §10.2, §16.4
+  and D-067 assign to plan, and its Plan phase names that check, including a collision that only
+  calibration reveals (§11.6, D-090, D-104); §7's fully-declared conditions list `ordered_cuts`,
+  whose order and cuts are authored (§11.8, D-046) and whose kind alone does not trigger
+  §14's data-calibration exclusion, and limit the `include` condition to `identity` and
+  `free_per_value` attributes, as
+  D-104 (for `value_groups`) and the implementation already do; §5.4 states the allowed values of
+  the deferred composite key's `columns` and `aggregate`, which the reader enforces.
+- **Why:** EP-8 and the spec's status line require a reviewed, recorded change whenever spec text is
+  corrected to match the implementation. These corrections change no behavior, so one rule records
+  them instead of one entry each. Both §7 passages date from the spec's first version: the
+  fully-declared list was written before `ordered_cuts` existed, and the phase list has disagreed
+  with the §16.4 registry since both were first written.
+- **Rejected:** one entry per correction (the same rationale repeated); deferring the corrections
+  past M8.2 (the closing audit could not certify a spec known to contradict itself); changing the
+  implementation to match the contradicting passages (it would move `FormalAttributeCollision` to a
+  phase that cannot see a data-dependent collision, and force a calibration pass on specs every
+  build has treated as fully declared).
+- **Affects:** spec §5.4 and §7; `docs/roadmap.md` (the M8.2 paragraph). No code, test, public API,
+  diagnostic, fingerprint or output byte changes.
 
 ---
 

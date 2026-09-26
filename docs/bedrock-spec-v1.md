@@ -338,7 +338,8 @@ columns = ["customer_id", "session_id"]
 aggregate = "union"                          # "union" | "intersection"
 ```
 
-Rows sharing the composite key are merged into one formal object. The v1
+Rows sharing the composite key are merged into one formal object. `columns` is an
+array of strings, and `aggregate` is `"union"` or `"intersection"`. The v1
 planner emits `ObjectKeyCompositeNotImplementedV1` and stops.
 
 For triple binding the object key is **always** the resolved subject: with no
@@ -450,7 +451,7 @@ this separation (see decisions.md D-003, D-005).
    *static* spec validity (cut validation §11.2/§11.8, scale/discretizer
    compatibility — including `OrdinalOrderNotAllowedWithCuts` and
    `OrdinalBoundaryIncompatibleWithCuts` (§12.3), `value_labels` keys in domain
-   when live (§10.8), duplicate `name`s, formal-attribute identity collisions,
+   when live (§10.8), duplicate `name`s,
    `BindingShapeMissing` when `shape` is absent). Reads no data
    *rows*. It MAY inspect source *schema metadata* supplied by the caller —
    header names, column count — to validate source bindings (e.g. a
@@ -477,7 +478,9 @@ this separation (see decisions.md D-003, D-005).
    data pass, below) and produce the immutable `ConversionPlan`: the ordered
    formal-attribute schema with stable IDs, scale instances, restriction predicates,
    and ordering rules. Plan **never** plans from unresolved calibration-dependent
-   state (D-093). Pure; reads no data.
+   state (D-093). Plan detects formal-attribute identity collisions
+   (`FormalAttributeCollision`, §10.2), including one that only calibrated state
+   reveals (§11.6). Pure; reads no data.
 4. **Emit** — stream objects through the plan, producing the output. Each formed
    object is **discretized and scaled first**, then the object as a whole is kept or
    dropped by `restrict_to`; restriction reads the object's **raw values, before
@@ -491,9 +494,10 @@ this separation (see decisions.md D-003, D-005).
 **Fully-declared specs skip Calibrate.** A spec with an **authored**
 `declared_domain` (including an explicit empty `[]`, D-122) wherever a discretizer
 consumes one (`identity` / `free_per_value`), only
-`manual_cuts` / `identity` / `value_groups` / `free_per_value` discretizers
+`manual_cuts` / `ordered_cuts` / `identity` / `value_groups` / `free_per_value` discretizers
 (and `equal_width` with `range = "manual"`, whose cuts are fixed by the spec, not
-the data — §11.4), no `unknown_value_policy = "include"`, and no `value_groups`
+the data — §11.4), no `unknown_value_policy = "include"` on an `identity` or
+`free_per_value` attribute, and no `value_groups`
 `unmatched = "passthrough"` is fully determined by its own text: Parse → Plan →
 Emit, deterministic from the spec alone, no data pre-pass that affects the schema.
 Such a spec is **already calibration-ready**: it satisfies the **same** resolved

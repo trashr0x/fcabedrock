@@ -343,9 +343,12 @@ the integrated revision was measured. `docs/benchmarks.md` has the figures and l
 M8.2 is the current milestone, and M9 waits for it to be accepted and integrated. It hardens how
 the repository is written, who owns each lasting fact, how evidence provenance is stated, and how
 authored text is checked. It changes no public API, CLI grammar, exit code, determinism rule,
-fingerprint, or `.cxt`, `.dat` or manifest byte. Its one normative change declares TOML 1.1.0, the
-grammar of the parser the spec reader has always used, and the `SpecTomlInvalid` syntax-error
-message now names that grammar (D-133). No other diagnostic or normative spec meaning changes.
+fingerprint, or `.cxt`, `.dat` or manifest byte. Its one new normative contract declares TOML 1.1.0,
+the grammar of the parser the spec reader has always used, and the `SpecTomlInvalid` syntax-error
+message now names that grammar (D-133). No other diagnostic changes. Otherwise, normative spec
+meaning changes only where a passage contradicted the section or decision that owns its rule, or
+where a default, bound or allowed value that only an example showed is stated in prose; neither kind
+changes implemented behavior (D-134).
 
 Its work proceeds in this order:
 
