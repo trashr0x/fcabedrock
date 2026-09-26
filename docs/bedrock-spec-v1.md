@@ -782,9 +782,7 @@ phase) when the projection is **at or above** the threshold. The projection coun
 **encoded bytes, not characters** (a non-ASCII name and CRLF line endings count at
 their real width). A `.dat`-only run emits no advisory. Default 1 GB is
 conservative; ConExp struggles well below this. Set to `0` to disable; a negative
-value is `SpecFieldInvalid` (Error, spec parse). The advisory
-changes a warning, never output bytes, so it remains a non-input to all three
-fingerprints (D-077/D-122).
+value is `SpecFieldInvalid` (Error, spec parse).
 
 **`base_index`**. `1` (the default) or `0`: the ID of the first formal attribute in
 `.dat` output (§18.2). Any other value is `SpecFieldInvalid` (Error, spec parse).
@@ -971,9 +969,9 @@ fully shadowed, even though the winning configuration is dormant while the
 attribute is excluded.
 
 Both warnings are ordered by matcher declaration order and neither affects
-fingerprints or output. The full M6 diagnostic matrix — template identity,
+fingerprints or output. §16.4 holds the full diagnostic matrix: template identity,
 unknown references, shape incompatibility, per-effective-attribute granularity,
-and the deterministic family ordering — is §16.4.
+and the deterministic family ordering.
 
 #### Boundedness
 
@@ -1165,8 +1163,8 @@ If `declared_domain` is **omitted**, the Calibrate phase (§7) fills it from the
 observed domain in the data, and the user is warned (`ObservedDomainUsed`) because
 the resulting schema then depends on this specific input. Any **authored** domain is
 complete: an explicit empty list `[]` denotes a **fixed empty domain** — **zero
-declared value bins**, not a calibration request (D-122, revising D-071's earlier
-empty-as-absent reading). An authored `[]` suppresses observed-domain discovery, but
+declared value bins**, not a calibration request (D-122). An authored `[]`
+suppresses observed-domain discovery, but
 it does **not by itself guarantee zero formal attributes**: `unknown_value_policy =
 "include"` may still extend the domain with observed values (§10.6), and
 `missing_policy = "as_attribute"` may still add the missing column (§10.5). This
@@ -1176,17 +1174,6 @@ verbatim; `fcabedrock calibrate` freezes an **omitted** domain to the observed v
 as an explicit `declared_domain` — and an empty observed outcome freezes as `[]`
 (§7, D-122). For input-independent, spec-first workflows, declare the domain
 explicitly or freeze it with `fcabedrock calibrate`.
-
-> **Observed-domain calibration (M4 Slice A/B).** The Calibrate phase fills an
-> **omitted** `declared_domain` on an included consuming
-> discretizer from the observed data, warning with `ObservedDomainUsed` (§7). An
-> authored `[]` is a complete fixed empty domain and is never calibrated (D-122;
-> implemented at M7 Slice A). The
-> transitional `ObservedDomainCalibrationNotImplementedV1` plan reject retired at
-> M4 Slice A (D-098, superseding D-071). Cut discretizers ignore `declared_domain`
-> (above) and are unaffected. The `identity` case executes from Slice A; the numeric
-> `free_per_value` case joined at Slice B (D-101), observing canonical numeric
-> identities (§11.3/D-096).
 
 ### 10.4 restrict_to
 
@@ -1298,9 +1285,8 @@ These are *shape* checks: they reject a list that could never filter meaningfull
 without reading a row.
 
 `restrict_to` enters **both** output fingerprints via the canonical `restrictions`
-container (§14). It does **not** make a spec data-dependent — the entries are authored
-text, and §7 computes calibration and the column vocabulary over the input universe
-*before* restriction selects objects — so a restricting spec can be fully frozen (§14).
+container (§14). It does **not** make a spec data-dependent, so a restricting spec
+can be fully frozen (§7, §14).
 
 ### 10.5 missing_policy
 
@@ -1344,8 +1330,7 @@ breakage. `"include"` is for exploratory work — it resolves during the
 Calibrate phase (§7), extends the schema with each newly-observed value, and
 therefore makes `schema_fingerprint` data-dependent; implementations MUST
 recompute the fingerprint after calibration and emit `UnknownValuePolicyInclude`
-(Warning) so the data-dependence is visible. Like all Calibrate-phase resolution,
-`include` is implemented at **M4** (§7). The `UnknownValueObserved`
+(Warning) so the data-dependence is visible. The `UnknownValueObserved`
 severity follows the policy: `warn` → Warning, `fail` → Error.
 `fcabedrock calibrate` freezes `include` by folding the observed additions into an
 explicit `declared_domain` (appended after the declared values, first-observation
@@ -1395,7 +1380,7 @@ formal_attribute_format = "{display_name}::{value}" # custom separator
 
 For a dichotomic attribute, the default omits `{value}`; to opt *into*
 `bruises?-bruises` you set `formal_attribute_format = "{column}-{value}"`
-explicitly. Because the override is total, M1 byte-equality relies on the
+explicitly. Because the override is total, v2 byte equality relies on the
 dichotomic default being `{column}` alone (no explicit format in the v2-derived
 specs).
 
@@ -1739,12 +1724,11 @@ runs under these rules, which apply to both `equal_width` and `equal_frequency`:
   *declared* part of the spec, not from hardcoding invariant — the same spec
   parses identically everywhere. A value that is **present but not a usable finite
   number** — it fails to parse under that locale, or parses to NaN or ±∞ — is
-  **not** treated as missing (D-050, superseding the earlier "NaN/∞ → missing"
-  wording). It is a present-but-invalid value: the object is kept, no cross is
-  emitted for that attribute, the value is **excluded** from calibration (it never
-  influences a cut), and `SourceValueUnparseable` is reported at the severity
-  `unknown_value_policy` selects (§10.6). Only empty cells and explicit
-  `missing_token` matches are *missing* and follow `missing_policy`.
+  **not** treated as missing (D-050). It is a present-but-invalid value: the object
+  is kept, no cross is emitted for that attribute, the value is **excluded** from
+  calibration (it never influences a cut), and `SourceValueUnparseable` is reported
+  at the severity `unknown_value_policy` selects (§10.6). Only empty cells and
+  explicit `missing_token` matches are *missing* and follow `missing_policy`.
 - **Sort:** calibration sorts the surviving values ascending by IEEE-754
   total order (`double` default comparer), a stable, culture-independent order.
 - **Insufficient distinct values:** if the count of distinct surviving values is
@@ -1779,14 +1763,14 @@ strictly ascending **by construction**.
 
 **Bounded-memory (normative).** Equal-frequency and percentile-range
 (`equal_width` `percentile_p1_p99`, §11.4) calibration MUST be **exact,
-deterministic, and bounded-memory** at **M4** — it is a correctness property, not
-a later performance retrofit. When the calibration population exceeds the
+deterministic, and bounded-memory**: it is a correctness property, not a later
+performance retrofit. When the calibration population exceeds the
 working-memory budget, the implementation spills/sorts/aggregates (or uses an
 equivalent exact method); the spill and non-spill paths MUST produce
 **byte-identical** cuts and output. **Approximate quantiles are prohibited.** The
-budget itself is an implementation internal — never a TOML field or a fingerprint
-input (decisions.md D-095/D-082); the M8 scaling pass (`roadmap.md` M8) may tune it
-and benchmark algorithms, but boundedness is established here, not there.
+budget itself is an implementation internal, never a TOML field or a fingerprint
+input (decisions.md D-095/D-082). An implementation may tune the budget; tuning
+never weakens exactness, bounded memory or byte-identical output.
 
 Counting is exact, so it is also **checked**: if a per-value count, the running
 total, or a merge sum would exceed the implementation's integer range, calibration
@@ -1939,7 +1923,7 @@ entries that are present.
 `ValueGroupsLabelDuplicate` (Error, spec validate); duplicates **never** surface as
 `SpecFieldInvalid`. A **pass-through** value merely *observed* to equal an authored
 group label is data-dependent, not a static duplicate: it surfaces after
-calibration at the plan-phase `FormalAttributeCollision` (§10.7). Repeated
+calibration at the plan-phase `FormalAttributeCollision` (§10.2). Repeated
 observations of one pass-through value are **idempotent** — one bin, not a
 collision.
 
@@ -2060,10 +2044,8 @@ scale = { kind = "dichotomic", true_value = "Yes" }
 Other bin labels produce no cross. With `missing_policy = "as_attribute"`,
 a second formal attribute is emitted for missing values.
 
-**Naming.** By default the single formal attribute is named `{column}` alone
-(no value suffix) — see §10.7. This matches v2 (`bruises?`, not
-`bruises?-bruises`). A value suffix appears only if `formal_attribute_format`
-is set explicitly with `{value}`.
+**Naming.** By default the single formal attribute is named `{column}` alone, with
+no value suffix, as in v2 (`bruises?`); see §10.7.
 
 A dichotomic scale on more than 2 distinct bin labels is valid but
 unusual; consider whether `value_groups` to collapse to two labels first
@@ -2117,12 +2099,7 @@ is likewise `OrdinalOrderMissing`, and for `unmatched = "other"` the synthetic
 normalized identity as the bins (so `90`, `90.0`, `9e1` are one key); an
 **invalid** (unparseable/non-finite) or **normalization-duplicate** numeric
 `order` entry is `OrderDomainInvalid` (Error, spec validate), while a valid entry
-not among the bins stays `OrdinalOrderHasUnknownValue` (D-096). In M2 this path executed for `identity` with an
-explicit **string** `order` only; numeric value bins (`free_per_value`) activated at
-M4 Slice B (D-101) — with the natural-numeric-ascending default when `order` is absent
-— and ordinal `value_groups` activated at M4 Slice E (D-104), where the permutation
-universe is the **group labels** (plus the synthetic `Other` under `unmatched =
-"other"`), never `declared_domain`, which `value_groups` does not consult (D-055).
+not among the bins stays `OrdinalOrderHasUnknownValue` (D-096).
 
 **`drop_top`** *(default `false`)*. The "top" formal attribute (the one
 true for everything in `direction = "ge"` — i.e., `≥<lowest>`, and `≤<highest>`
@@ -2131,7 +2108,7 @@ for `direction = "le"`) is tautological for objects with non-missing data. Set
 explicit formal attribute is omitted. Over **value** bins under a **strict**
 `boundary` there is no tautological threshold — the extreme threshold (`>{highest}`
 / `<{lowest}`) is instead statically empty and is **kept** (an empty column is
-legal, §10.1) — so `drop_top` is a no-op there.
+legal, §16.4) — so `drop_top` is a no-op there.
 
 **Over cut bins (`manual_cuts` / `ordered_cuts`).** When the ordered bins come
 from a cut discretizer, each threshold sits at a bin's far edge: for `le`, bin
@@ -2167,12 +2144,7 @@ check fires only on the authored case. **Over value bins** (`identity` /
 `free_per_value` with an authored `order`, a numeric `free_per_value` with the
 derived natural numeric order, or `value_groups` with an authored group-label order)
 there is no half-open geometry, so all four
-`direction × boundary` combinations are well-defined and `boundary` is fully live;
-this value-bin ordinal path landed at M2 for `identity` (string, explicit order),
-extended to `free_per_value` at M4 Slice B (string requires an explicit order; numeric
-uses an authored or natural-ascending order, D-101), and to `value_groups` at M4
-Slice E (group labels always require an explicit order — they are strings, so there is
-no natural order to derive, D-104).
+`direction × boundary` combinations are well-defined and `boundary` is fully live.
 
 ### 12.4 Modelled but not implemented in v1
 
