@@ -1,7 +1,7 @@
 # Engineering Principles — FcaBedrock vNext
 
 Project-wide invariants to check code against before committing. These are
-**not** general "write good code" advice — each one states a choice whose
+**not** general "write good code" advice: each one states a choice whose
 opposite a competent engineer might reasonably make, and each tells you
 something to do (or not do) at a specific moment. If a principle here ever
 reads as obviously-true-and-unactionable, it has failed and should be cut.
@@ -9,23 +9,26 @@ reads as obviously-true-and-unactionable, it has failed and should be cut.
 Scope boundaries with the other docs:
 
 - `AGENTS.md` = where things live, how a session works (operational).
+- `writing-principles.md` = how we write documents and comments (style).
 - `decisions.md` = why we chose a specific thing on a specific date (rationale).
-- `roadmap.md` = what's next (sequence).
+- `roadmap.md` = current position, milestone history and deferred backlog (status).
 - **`engineering-principles.md` (this file) = what's always true, that code must conform to.**
 
 Mechanical rules a tool can check (naming, formatting, `var`, usings) live in
-`.editorconfig` and the analyzer ruleset, **not here**. If a linter can enforce
-it, it should — this doc holds only the judgment calls a linter can't make.
+`.editorconfig` and the analyzer settings in `Directory.Build.props`, **not here**.
+If a linter can enforce it, it should; this doc holds only the judgment calls a
+linter can't make.
 
-The first section (**Working discipline**, EP-1…EP-6) governs *how you work on
-the codebase* and matters most for AI-agent sessions, which tend to expand
-scope. The remaining sections (**Correctness, Architecture, Performance,
-Testing**, EP-7…EP-22) are invariants about *the system itself*. There are 22
-principles in total; the count is deliberate, not a target — add or cut only
+The first section (**Working discipline**, EP-1…EP-6 and EP-23) governs *how
+you work on the codebase* and matters most for AI-agent sessions, which tend to
+expand scope. The remaining sections (**Correctness, Architecture, Performance,
+Testing**, EP-7…EP-22) are invariants about *the system itself*. There are 23
+principles in total; the count is deliberate, not a target: add or cut only
 under the test stated above.
 
 Internal cross-references use number + short title (e.g. `EP-3 ("Do not invent
-callers…")`) so that renumbering stays painless.
+callers…")`). Principles are never renumbered; a new principle takes the next
+free number, whatever its section.
 
 ---
 
@@ -49,7 +52,7 @@ the task.
 
 The spec, decisions, roadmap, and these principles are constraints, not
 suggestions. Do not silently bend one to satisfy a local change. When a task
-conflicts with a project constraint, stop and name the conflict — challenge the
+conflicts with a project constraint, stop and name the conflict: challenge the
 request and explain the break rather than complying quietly. When the right
 behavior is unclear, verify it from code, tests, fixtures,
 `bedrock-spec-v1.md`, `roadmap.md`, or `decisions.md`; if it still can't be
@@ -65,12 +68,12 @@ you're tempted to guess.
 Do not justify a branch, option, interface, constructor parameter, compatibility
 path, or public method with an imagined future caller or hypothetical
 requirement. If the caller or requirement is real, verify it (in code, the
-roadmap, or the spec) and cite it. If it isn't, don't build for it — YAGNI is
+roadmap, or the spec) and cite it. If it isn't, don't build for it; YAGNI is
 project policy here, not a preference. (The config-surface special case of this
 rule is EP-6 ("No speculative knobs").)
 
-*Check when:* adding any surface — a branch, option, interface, public method,
-constructor parameter, or compatibility path — whose only justification is "we
+*Check when:* adding any surface (a branch, option, interface, public method,
+constructor parameter, or compatibility path) whose only justification is "we
 might need it."
 
 ### EP-4: Public surfaces are designed before implementation
@@ -80,7 +83,7 @@ spec-facing types, define the public shape first: types, signatures, the
 result/diagnostic model, ordering guarantees, streaming behavior, and
 determinism expectations. Implementation can move freely behind that surface;
 the surface itself should not churn casually. This explicitly does **not** apply
-to `internal`/`private` types within a package — internal refactoring stays
+to `internal`/`private` types within a package; internal refactoring stays
 cheap.
 
 *Check when:* adding or changing a `public` type, interface, diagnostic, writer,
@@ -91,7 +94,7 @@ source, or package seam.
 Use the established project-standard result type, diagnostic style, parser
 style, test style, benchmark style, and writer pattern. Do not introduce a
 second approach to a solved concern unless the current one genuinely can't do
-the job — and when that happens, record the new standard in `decisions.md` and
+the job, and when that happens, record the new standard in `decisions.md` and
 migrate toward it, rather than leaving two competing patterns in place.
 
 *Check when:* introducing a new library, helper pattern, test style, result
@@ -112,6 +115,27 @@ allowed when documented.
 *Check when:* adding a CLI flag, options property, constructor parameter,
 feature switch, compatibility mode, test seam, or alternative code path.
 
+### EP-23: External library behavior is verified at its source, not recalled
+
+Before code relies on how a NuGet package or a .NET library behaves, verify
+that behavior in the library's source. This matters most for details that are
+easy to recall confidently and wrongly: which exceptions a method throws, what
+it returns for null or empty input, its defaults, and its ordering, culture,
+disposal and thread-safety behavior. Recall is not evidence, and that includes
+a model's recall. A recalled exception contract is how code ends up catching an
+exception the method never throws while missing the one it does. Read the
+source on GitHub at the tag that matches the referenced version, not the
+default branch; for the base class library that is the .NET runtime
+repository at the targeted runtime's tag. Where no matching source is
+published, inspect the package itself in the local NuGet cache: its XML
+documentation and its decompiled assembly. If the behavior still cannot be
+verified, state the assumption explicitly in the change; never present recalled
+behavior as fact.
+
+*Check when:* writing a `catch`, a guard or a branch that exists because of
+what an external API is believed to do; or stating an external API's behavior
+in a comment, a review or a document.
+
 ## Correctness
 
 ### EP-7: Determinism is a test, not an aspiration
@@ -119,14 +143,14 @@ feature switch, compatibility mode, test seam, or alternative code path.
 Every path that produces output (a plan, an emitted stream, a `.cxt`/`.dat`
 file, a fingerprint) has a test proving same-input ⇒ same-output, byte-for-byte
 where applicable. **"I'll add the determinism test later" is disallowed for
-these paths specifically** — the test ships in the same commit as the path.
+these paths specifically**: the test ships in the same commit as the path.
 
 *Check when:* adding or changing anything in Conversion, Export, or the planner.
 
 ### EP-8: The spec is the contract; code conforms to the spec
 
 `bedrock-spec-v1.md` is normative. When code and spec disagree, the code is the
-bug — or the spec gets a *reviewed* change with a `decisions.md` entry. Never a
+bug, or the spec gets a *reviewed* change with a `decisions.md` entry. Never a
 silent divergence, never "the code is what it really does." Behavior is not
 allowed to be discovered by reading the implementation.
 
@@ -134,12 +158,12 @@ allowed to be discovered by reading the implementation.
 
 ### EP-9: Golden fixtures are compatibility evidence; never edit them to pass
 
-The `fixtures/v2/` files record what v2 actually produced — they are evidence of
-v2 behavior, not a definition of correctness (v2 has known bugs; see
-`lineage.md`). A golden mismatch is fixed by changing vNext code, or by
-documenting an intentional divergence with a `decisions.md` entry and
-compatibility behavior where required. **Never edit a fixture merely to make
-current output pass** — that destroys its evidentiary value.
+The `fixtures/v2/` files record what v2 produced; they are evidence of v2
+behavior, not a definition of correctness. A golden mismatch is fixed by
+changing vNext code, or by documenting an intentional divergence with a
+`decisions.md` entry and compatibility behavior where required. **Never edit a
+fixture merely to make current output pass**; that destroys its evidentiary
+value.
 
 *Check when:* a golden test fails.
 
@@ -147,7 +171,7 @@ current output pass** — that destroys its evidentiary value.
 
 Prefer a type that cannot hold a bad value over a runtime check that rejects
 one. A discriminated union, a private constructor with a smart factory, a
-`readonly struct` with validated construction — these beat scattered guard
+`readonly struct` with validated construction: these beat scattered guard
 clauses. Validate at the boundary (untrusted input), then trust the type
 inward. The opposite (defensive checks everywhere) is a real and common
 practice; we reject it.
@@ -168,21 +192,21 @@ is explicit and tested (a cut that renders as `34.25` on one machine and
 
 String identity, equality, matching, deduplication, grouping, source binding, and
 any deterministic *ordering* of strings use ordinal comparison
-(`StringComparer.Ordinal` / `StringComparison.Ordinal` — a UTF-16 code-unit
+(`StringComparer.Ordinal` / `StringComparison.Ordinal`, a UTF-16 code-unit
 compare), never a culture-aware one. Culture-aware collation, `InvariantCulture`
 included, is ICU/NLS-version dependent: the same two strings can order or match
-differently across machines and runtimes — a determinism bug on any path feeding
+differently across machines and runtimes, a determinism bug on any path feeding
 output bytes, IDs, or fingerprints (e.g. triple predicate matching, or object-key
 deduplication and `keep` name uniqueness). This is the string-side companion to EP-11 ("Floating-point and
 locale…"): `binding.locale` governs numeric/date *parsing* only (decimal
-separators), never string collation — the two are separate concerns and must not
+separators), never string collation; the two are separate concerns and must not
 be conflated. Where a spec section fixes a *non-string* order (numeric or
 positional cut order), that order governs; this principle is about string-keyed
 comparison and ordering.
 
 *Check when:* sorting, comparing, matching, deduplicating, grouping, or binding by
-any string key — object names/keys, triple subjects, predicate selectors, header
-names, declared-domain values, bin labels.
+any string key (object names/keys, triple subjects, predicate selectors, header
+names, declared-domain values, bin labels).
 
 ## Architecture
 
@@ -220,7 +244,7 @@ The distinction:
 
 A writer serializes an already-decided result and makes zero scaling, ordering,
 or policy decisions. A writer may *preserve* an order the planner already
-decided — deterministic byte output requires it to honor that order — but it
+decided (deterministic byte output requires it to honor that order), but it
 must not *decide* semantic order itself. If a writer contains an `if` about
 *what* to cross or *which* attribute comes first, that logic belongs in the
 planner. The writer's only choices are byte-level formatting (line endings,
@@ -231,11 +255,11 @@ separators).
 ### EP-16: The pipeline stays streaming; never materialize the full incidence matrix
 
 `Emit` yields objects; the set of all crosses is never held in memory at once in
-Core or Conversion. Bounded metadata collections are fine — object names, the
-attribute list, calibration cuts; emitted objects, crosses, and incidence cells
+Core or Conversion. Bounded metadata collections are fine (object names, the
+attribute list, calibration cuts); emitted objects, crosses, and incidence cells
 are not. The `.cxt` writer (which needs counts and all names before any
 incidence row) may **replay the source plus hold a bounded object-name buffer,
-or spool incidence rows to a temp sink** — but never the full matrix in memory.
+or spool incidence rows to a temp sink**, but never the full matrix in memory.
 A change that buffers all emitted objects' crosses to a `List` before writing
 violates this; materializing the (bounded) list of object names for a header
 does not.
@@ -247,11 +271,11 @@ metadata collection).
 ### EP-17: Compose small pieces at real variation points; prefer composition over inheritance
 
 Discretizers, scales, sources, and writers are small and single-purpose,
-composed by the planner. Use interfaces at real variation points or test seams —
-where isolation, determinism, or substitutability is actually needed. Do not
+composed by the planner. Use interfaces at real variation points or test seams,
+where isolation, determinism, or substitutability is needed. Do not
 create one-interface-per-class abstractions by reflex; but do not make code hard
 to test just to avoid an interface. A type that both decides cuts *and* formats
-labels *and* writes bytes is three types wearing a trenchcoat.
+labels *and* writes bytes is three types in one.
 
 Prefer composition over inheritance. Shared behavior belongs in composed
 collaborators or helpers unless there is a genuine substitutable "is-a"
@@ -265,15 +289,18 @@ relationship. Inheritance is not a code-sharing mechanism.
 
 ### EP-18: Allocation discipline is scoped to hot paths, not blanket
 
-The emit loop and the byte-level parser are allocation-audited: prefer
-`Span`/`Memory`, pooled buffers, `ValueTask`, no per-object closures or boxing.
-Cold paths (spec parsing, CLI arg handling, discovery setup, calibration) are
-written for clarity first — micro-optimizing them is wasted effort and added
-risk. **Knowing which paths are which is the principle**; "optimize everything"
-and "optimize nothing" are both wrong.
+The emit loop, calibration's data pass and quantile merge/replay,
+`probe`'s observation pass and the byte-level parser are
+allocation-audited: prefer `Span`/`Memory`, pooled buffers, `ValueTask`, no
+per-object closures or boxing. Cold paths (spec parsing, CLI arg handling,
+discovery setup, final cut construction after population traversal) are
+written for clarity first; micro-optimizing them is wasted effort and added
+risk. **Knowing which paths are which is the principle**; "optimize
+everything" and "optimize nothing" are both wrong.
 
-*Check when:* writing in Sources (parse loop) or Conversion (emit loop), audit
-allocations; elsewhere, write for clarity.
+*Check when:* writing in Sources (parse loop), Conversion (emit loop,
+calibration data pass or quantile merge/replay) or Discovery (observation
+pass), audit allocations; elsewhere, write for clarity.
 
 ### EP-19: Performance claims are measured, not asserted
 
@@ -283,14 +310,14 @@ justified by performance needs benchmark evidence; otherwise prefer the simpler
 code. Non-obvious code that exists for *determinism or correctness* rather than
 performance is governed by EP-7 ("Determinism is a test, not an aspiration") and
 EP-11 ("Floating-point and locale are determinism hazards, handled explicitly"),
-not by this one — but make the reason visible (in a test name, type name,
+not by this one, but make the reason visible (in a test name, type name,
 benchmark, nearby comment, or `decisions.md` entry) so the next reader does not
 mistake it for cleverness. Modern APIs are used where *justified*, not because
 they're modern.
 
 *Check when:* introducing any non-obvious performance construct.
 
-### EP-20: Large-scale tests are opt-in and never gate the normal suite
+### EP-20: Large-scale tests are opt-in and never run in the normal suite
 
 The 7.3M / 73M synthetic datasets live in `FcaBedrock.Benchmarks`, behind a category
 filter. `dotnet test` stays fast and runs on the mini fixtures. A multi-minute
@@ -315,13 +342,13 @@ or output-affecting behavior.
 ### EP-22: A behavior bug fix starts with a failing test
 
 Before fixing a behavior bug, write the test that fails because of it; the fix
-is correct when that test goes green and nothing else goes red — a permanent
-regression guard, which matters most on the silent determinism and byte-equality
-paths. This rule applies to behavior bugs; docs/comments-only changes are out of
-scope. Exceptions: the failure is already covered by an existing test, or it
-cannot reasonably be reproduced in the normal suite (infra issue, dead-code
-removal, emergency mitigation). If no failing test is added, document why in the
-change.
+is correct when that test goes green and nothing else goes red. The test then
+remains a permanent regression guard, which matters most on the silent
+determinism and byte-equality paths. This rule applies to behavior bugs;
+docs/comments-only changes are out of scope. Exceptions: the failure is already
+covered by an existing test, or it cannot reasonably be reproduced in the normal
+suite (infra issue, dead-code removal, emergency mitigation). If no failing test
+is added, document why in the change.
 
 *Check when:* fixing anything that changes behavior.
 
@@ -340,4 +367,4 @@ change.
   yourself writing a principle a tool could check, move it there instead.
 - **Exceptions to these principles are allowed only when explicit, local, and
   justified in the change description or `decisions.md`. A silent exception is
-  not an exception — it is drift.**
+  not an exception; it is drift.**

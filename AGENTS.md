@@ -52,7 +52,7 @@ raw value --[discretizer]--> bin label --[scale]--> formal attribute(s)
 /src/
   FcaBedrock.Diagnostics/      # Result<T,TError>, BedrockDiagnostic — leaf, referenced by all
   FcaBedrock.Core/             # domain types, scales, discretizers, planner. Zero I/O.
-  FcaBedrock.Sources/          # wide-CSV + triple adapters; IObjectRecordStream
+  FcaBedrock.Sources/          # wide-CSV + triple adapters; IRecordSource, ITripleRowSource, ISourceSession
   FcaBedrock.Discovery/        # auto-detect: produces a draft spec from data
   FcaBedrock.Conversion/       # Plan (pure) + Calibrate + Emit (streaming) pipeline
   FcaBedrock.Export/           # .cxt + .dat writers

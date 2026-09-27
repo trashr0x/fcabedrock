@@ -8,6 +8,11 @@ so vNext neither under-builds (missing learned features) nor over-builds
 (re-deriving settled answers). Cross-referenced from `decisions.md` and
 `bedrock-spec-v1.md`.
 
+FcaBedrock vNext is a sole-authored, from-scratch rewrite by Constantinos
+Orphanides. `README.md` holds the public credits, `LICENSE` the licence, and
+`fixtures/v2/ATTRIBUTION.md` and `tests/FcaBedrock.Benchmarks/Corpus/Adult.attribution.md`
+the dataset attribution.
+
 ---
 
 ## 1. FcaBedrock v2 (VB.NET, ICCS 2010)
@@ -18,68 +23,67 @@ which the tool was published at ICCS 2010 (Andrews & Orphanides). A desktop tool
 that loads tabular or 3-column data, auto-detects or accepts a `.bed` spec, and
 exports `.cxt` / `.dat`.
 
-**Feature floor (vNext must meet or exceed):**
+**Feature floor (vNext must meet or exceed it, except where noted below):**
 
-- Attribute types — **six type codes**, confirmed from `frmFcaBedrock.vb`
+- Attribute types: **six type codes**, confirmed from `frmFcaBedrock.vb`
   (`characteristic(k)`): `c` categorical, `b` boolean, `o` continuous-numeric,
   `d` **date** (distinct type using `DateTime.Parse`, *not* "continuous"), `n`
   **ordinal** (ordered categories with discrete/progressive scaling), plus
-  missing handling. Earlier notes that said "dates treated as continuous" were
-  wrong: `d` shares the *binning logic* of `o` but parses `DateTime` over a
-  date value space. Mapping to vNext's orthogonal model:
+  missing handling. `d` shares the *binning logic* of `o` but parses `DateTime`
+  over a date value space. Mapping to vNext's orthogonal model:
 
   | v2 code | meaning | vNext expression |
   | --- | --- | --- |
   | `c` | categorical | `identity` + `nominal` |
   | `b` | boolean | `identity` + `dichotomic` |
   | `o` | continuous-numeric, discrete/progressive | numeric discretizer + `nominal`/`ordinal` |
-  | `d` | date, discrete/progressive | **deferred in v1** — `value_type="date"` reserved, planner rejects (`DateValueTypeNotImplementedV1`, spec §11.7) |
+  | `d` | date, discrete/progressive | **deferred in v1**: `value_type="date"` reserved, planner rejects (`DateValueTypeNotImplementedV1`, spec §11.7) |
   | `n` | ordinal (ordered categories) | `ordered_cuts` discretizer + `nominal` (discrete) / `ordinal` (progressive) scale |
 
-  So vNext needs no new *scale* for `o`, `d`, or `n` — all fall out of the
-  discretizer × scale split. `n` is implemented (M1 slice 2) as `ordered_cuts` +
+  So vNext needs no new *scale* for `o`, `d`, or `n`: all fall out of the
+  discretizer × scale split. `n` is implemented as `ordered_cuts` +
   `nominal`/`ordinal`: for `n`, `[Attribute Categories]` holds the **ordered
   domain** and `[Category Values]` the **cut**, and the discrete/progressive
-  choice is supplied **out-of-band** (the two `.bed`s are byte-identical) — see
-  D-045/D-046. `d` is a conscious parity deferral (continuous-numeric is the v1
-  priority; date scaling reserved but not implemented — D-038). `c`, `b`, `o`,
-  `n` are the v1 target.
+  choice is supplied **out-of-band** (the two `.bed`s are byte-identical); see
+  D-045/D-046. `d` is a conscious parity deferral (D-038): continuous-numeric is
+  the v1 priority, and date scaling is reserved but not implemented. `c`, `b`,
+  `o`, `n` are the v1 target.
 - Continuous treatments: free binning (one bin per value), user-defined
   boundaries with discrete (interval) scaling, user-defined boundaries with
   progressive (cumulative) scaling, equal-width auto-bins, equal-frequency
   auto-bins, std-dev bins. **vNext v1 covers all of these except std-dev**,
-  which is intentionally *removed* (not deferred) — no current user need and not
+  which is intentionally *removed* (not deferred): no current user need and not
   in the M1 compatibility target (D-020). Note v2's source has a std-dev branch
   and SPARQL2FCA had std-dev variants, so "all v2 behavior" is qualified: v1
   targets the compat/golden behavior minus std-dev (removed) and date (deferred).
 - Attribute exclude (`[Convert Attribute] = False`).
 - Declared values via `[Category Values]`; display labels via
   `[Attribute Categories]` (raw `b` → shown `broad`). **Both matter for
-  byte-equality** — see vNext `value_labels` (D-023).
+  byte-equality**; see vNext `value_labels` (D-023).
 - Object restrict (`[Restrict To Values]`): OR within an attribute, AND across
   attributes, operating on raw values independent of bin assignment.
 - "Repeat-To": positional bulk copy of an attribute's config forward to
   attribute N (used for Internet-Ads' 1554 booleans). vNext replaces this with
-  templates + matchers (D-022-adjacent, spec §9).
-- Auto-detect (data-first) and `.bed` load (spec-first).
+  templates + matchers (spec §9; D-114 to D-121).
+- Auto-detect (data-first) and `.bed` load (spec-first). vNext's data-first
+  `probe` infers no types, and v2's guided type detection is future Discovery
+  work (D-106).
 - Missing handled by including/excluding `?` in `[Category Values]`.
 - Output: `.cxt` (Burmeister) and `.dat` (FIMI), CRLF, with v2's specific byte
   layout. These are the M1 golden fixtures.
 
-**Value-retention capacity (corrects a common misreading).** v2 retained **all** discovered
-values per attribute, not 100. The legacy backend retained up to **100,000** distinct values
-per attribute, while the UI displayed only the first **100** — two separate limits that are
-easy to conflate. All discovered values were retained and usable — Adult 21,648 distinct,
-Internet Ads up to 781, Mushroom 12, EMAGE gene values ≈ 6,800 — so the earlier "v2 kept only
-100 distinct values" note (since corrected in `roadmap.md` M5) was wrong. vNext's M5 `probe`
+**Value-retention capacity (corrects a common misreading).** v2 did not keep only 100 distinct
+values per attribute. The legacy backend retained up to **100,000** distinct values per
+attribute, while the UI displayed only the first **100**: two separate limits that are easy to
+conflate. In the workloads D-108 lists, every discovered value was retained and usable: Adult
+21,648 distinct, Internet Ads up to 781, Mushroom 12, EMAGE gene values ≈ 6,800. vNext's `probe`
 accordingly uses a large per-attribute retention limit (default 100,000) and has **no**
-presentation/display cap. (The exact legacy identifiers are recorded as audit evidence in
-decisions.md D-108.)
+presentation/display cap. D-108 records the exact legacy identifiers as audit evidence.
 
 **`.bed` format:** parallel arrays under bracketed headers
 (`[Number of Attributes]`, `[Attributes]`, `[Attribute Categories]`,
 `[Category Values]`, `[Convert Attribute]`, `[Attribute Type]`,
-`[Restrict To Values]`, `[End]`). Index-aligned and brittle — one misaligned
+`[Restrict To Values]`, `[End]`). Index-aligned and brittle: one misaligned
 line silently corrupts the spec. vNext goes record-per-attribute TOML (D-009),
 with a one-way `.bed` reader for migration.
 
@@ -98,7 +102,7 @@ leaves room for.
 
 - The discretization vs scaling distinction is conceptual in the thesis
   (Ch 4.7 booleanization/discretization vs Ch 4.8 conceptual scaling). vNext
-  makes it structural — the orthogonal discretizer × scale model (D-002).
+  makes it structural: the orthogonal discretizer × scale model (D-002).
 - Continuous attributes: user-defined disjoint ranges (interval/nominal),
   hierarchical scaling (the ordinal equivalent: `>10, >20, …`), and auto
   equal-width / equal-frequency with a user-defined bin count. v2's distinct
@@ -109,10 +113,12 @@ leaves room for.
   even if only edible appears in this file" example. vNext's `declared_domain`
   (spec §10.3).
 - Object restriction, attribute restriction, conceptual scaling,
-  generalizability, user-driven + guided automation — the Ch 7 "essential
-  features" list, effectively vNext's v1 acceptance contract.
+  generalizability, user-driven + guided automation: the Ch 7 "essential
+  features" list. It informs vNext's scope but is not its v1 acceptance
+  contract, which the roadmap owns. Guided type detection is future Discovery
+  work (D-106).
 
-**Theory ceiling (modelled, not implemented in v1 — D-010):**
+**Theory ceiling (modelled, not implemented in v1; D-010):**
 
 - Full Ganter-Wille scale taxonomy: nominal, ordinal, interordinal, biordinal,
   contranominal. v1 implements nominal/dichotomic/ordinal; the rest are
@@ -141,14 +147,14 @@ treated as a design signal for a future SPARQL adapter, not as a v1 requirement.
   query for goalkeepers, their birth country, team, team's country, and stadium
   capacity, with `FILTER`s on capacity and population. This is the concrete
   shape of the thesis's "direct triple-store adapter" future work, and the
-  template for a vNext `Sources` SPARQL adapter — one that fits both source seams: the
-  bound `IObjectRecordStream` for **conversion** and the unbound streaming source session
+  template for a vNext `Sources` SPARQL adapter, one that fits both source seams: the
+  bound record source for **conversion** and the unbound streaming source session
   **Discovery / `probe`** consumes (schema + normalized records, D-109).
 - **An explicit `Ordinal` attribute type** in the type enum. This matches v2's
-  own `n` (ordinal) type — both treat ordinal as first-class rather than a
-  continuous sub-mode. In vNext's model this is the `ordinal` scale over an
-  ordered categorical discretizer (D-038); the prototype and v2 agree it
-  deserves explicit support.
+  own `n` (ordinal) type; both treat ordinal as first-class rather than a
+  continuous sub-mode. In vNext's model this is the `ordered_cuts` discretizer
+  with the `nominal` (discrete) or `ordinal` (progressive) scale (§1, D-045,
+  D-046); the prototype and v2 agree it deserves explicit support.
 - **An explicit `ScalingType { Discrete, Progressive }` toggle**, separate from
   attribute type. This is the clearest prior-art signal for vNext's
   orthogonal discretizer × scale split (D-002): the prototype already separated
@@ -156,8 +162,8 @@ treated as a design signal for a future SPARQL adapter, not as a v1 requirement.
 - **`BinningType { EqualWidth, EqualDepth, ProgressiveStandardDeviation,
   ProgressiveSampleStandardDeviation }`.** "EqualDepth" = equal-frequency. The
   two std-dev variants differ only in population (÷n) vs sample (÷n−1) variance.
-  vNext implements equal-width and equal-frequency; std-dev was cut (D-020) —
-  this is the prior art for it, available if re-added later.
+  vNext implements equal-width and equal-frequency; std-dev was cut (D-020).
+  This is the prior art for it, available if re-added later.
 - **Bin label style** `name-{lo}to<{hi}`, with the final bin `name-{lo}to<={hi}`
   (closed at the top). Matches v2's `30to<40` family; vNext defaults to math
   notation and keeps the v2 style behind `--v2-compat` (D-011).
@@ -182,20 +188,20 @@ treated as a design signal for a future SPARQL adapter, not as a v1 requirement.
 
 The three predecessors agree on the substance and differ only in rigor:
 
-- **Feature floor** = v2's full surface. **Semantics** = the thesis. **Source
-  ambition** (SPARQL/triple-store) and the **discrete/progressive + ordinal**
-  signals = SPARQL2FCA.
-- The single most important inherited idea — orthogonal discretization vs
-  scaling — appears in embryo in SPARQL2FCA's separate `ScalingType` enum and
+- **Feature floor** = v2's surface, except where §1 notes otherwise.
+  **Semantics** = the thesis. **Source ambition** (SPARQL/triple-store) and the
+  **discrete/progressive + ordinal** signals = SPARQL2FCA.
+- The single most important inherited idea (orthogonal discretization vs
+  scaling) appears in embryo in SPARQL2FCA's separate `ScalingType` enum and
   is made the architectural spine of vNext (D-002).
-- The SPARQL adapter is deferred (D-007 scope is CSV/triples first) but its
-  shape is now concrete: a `SELECT` result set is just another `IObjectRecordStream` for
-  **conversion**, and the same adapter can expose the unbound streaming source session
-  **Discovery / `probe`** consumes (D-109) — two complementary seams — so it slots in
-  without disturbing Core/Conversion.
+- The SPARQL adapter is deferred beyond v1 (the roadmap's deferred backlog), but
+  its shape is concrete: a `SELECT` result set is another bound record source for
+  **conversion**, and the same adapter can expose the unbound streaming source
+  session that **Discovery / `probe`** consumes (D-109). These two complementary
+  seams let it slot in without disturbing Core/Conversion.
 - SPARQL2FCA's binning was prototype-grade rather than specification-grade (§3);
-  vNext's principled implementations are validated against the *intent*
-  documented in the thesis, not against the prototype's behaviour.
+  vNext's binning follows the *intent* documented in the thesis, not the
+  prototype's behaviour.
 
 > Basis for this synthesis: the original FcaBedrock v2 behaviour and example
 > files, the PhD thesis, and the SPARQL/CUBIST prototype lineage described in

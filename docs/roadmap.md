@@ -77,7 +77,7 @@ conformance (D-043). A later conformance pass reconciled the M1 code with the M2
 D-056, D-059 and the §5.1 whitespace rule) without changing a golden byte.
 
 Byte equality with v2 is the cheapest proof that the pipeline reproduces the compatibility target.
-It does not prove that v2 was semantically correct: v2 has known bugs (`docs/lineage.md`). An
+It does not prove that v2 was semantically correct. An
 intentional divergence is recorded as a decision, with the compatibility behavior kept behind
 `--v2-compat` where needed.
 
@@ -361,7 +361,7 @@ implemented behavior unchanged.
 Its work proceeds in this order:
 
 1. `docs/writing-principles.md` owns how documents and comments are written (WP-1 to WP-10),
-   `docs/engineering-principles.md` owns the engineering invariants as `EP-1` to `EP-22`, and the
+   `docs/engineering-principles.md` owns the engineering invariants as `EP-1` to `EP-23`, and the
    owner map in `AGENTS.md` names one document for each lasting fact (D-129).
 2. `eng/check-authored-text.ps1` checks authored text mechanically: strict UTF-8, control
    characters, obsolete spellings and the two instruction entry points (D-130). Links and style
@@ -441,7 +441,7 @@ Items modelled in the spec can be added later without a format break.
 - **Post-context reductions** (clarify, reduce and minimum support) in a sibling `FcaBedrock.Reduce`
   tool (D-025). The thesis flagged minimum support.
 - **Direct database and SPARQL adapters**, from the thesis's future work: new `Sources` adapters
-  that implement both source seams, the bound `IObjectRecordStream` for conversion and the unbound
+  that implement both source seams, the bound record source for conversion and the unbound
   streaming source session for `probe` (D-109), without refactoring either. SPARQL2FCA may inform
   the design (`docs/lineage.md`).
 - **XLSX input**: a separate `FcaBedrock.Sources.Excel`, deferred unless its absence becomes

@@ -921,7 +921,7 @@ Refinements from the second audit pass.
 
 ### D-129: M8.2 writing governance: in-place decision compaction, `EP-` and `WP-` identifier ownership, the authored inventory, and the mechanical checker boundary
 
-- **Status:** accepted; the checker portion of rule (5) superseded by D-130; the heading-anchor clause of rule (1) superseded by D-131 for the one-time heading-separator migration
+- **Status:** accepted; the checker portion of rule (5) superseded by D-130; the heading-anchor clause of rule (1) superseded by D-131 for the one-time heading-separator migration; rule (2) amended in place on 2026-09-28 for EP-18's hot paths, EP-20's title and the new EP-23
 - **Date:** 2026-09-22
 - **Decision:** five governance rules for the M8.2 authored-text pass.
   **(1) Compaction.** A decision entry may be shortened *in place*. Its ID, heading anchor, actual
@@ -931,10 +931,17 @@ Refinements from the second audit pass.
   repeated evidence tables. An earlier rule must never be reworded so that it reads as though it
   always contained a later correction.
   **(2) Engineering principles.** `docs/engineering-principles.md` owns the engineering invariants,
-  numbered `EP-1` through `EP-22`. Numbers, titles and meanings are fixed, and renumbering is
+  numbered `EP-1` through `EP-23`. Numbers, titles and meanings are fixed, and renumbering is
   forbidden. Every authored citation in this repository uses that family. No alias anchor
   and no compatibility stub carries any earlier spelling, and no earlier spelling or path remains in
-  authored repository state. Git is the record of what the names were.
+  authored repository state. Git is the record of what the names were. Amended in place on
+  2026-09-28: EP-18's allocation-audited paths also include the calibration data pass,
+  post-intake quantile merge/replay and `probe`'s observation pass. These traverse input records
+  or calibration value counts; final cut construction after population traversal stays a cold
+  path. EP-20's title says "never run in the normal suite" instead of the figurative "never gate
+  the normal suite", and its heading anchor changes with it. EP-23 joins working discipline:
+  external library behavior is verified at its source, not recalled, because recalled library
+  behavior such as a method's exception contract has proved wrong in practice.
   **(3) Writing policy.** `docs/writing-principles.md` is the single vendor-neutral owner of how
   this repository writes documents and comments, numbered `WP-1` onward. It binds humans and
   assistants. `AGENTS.md` carries a mandatory pointer to it, never a copy, and an instruction shim
@@ -1614,7 +1621,7 @@ fingerprints, manifests, and `extends` are implemented.
 - **Why:** `EmptyExtent` was listed at the plan phase, which is impossible for a
   per-attribute "no crosses" meaning (it needs emit-time data); and "extent/intent"
   are concept-level FCA terms, confusing when applied per-attribute/per-object. The
-  per-element emit diagnostics must aggregate (EP-20) or they flood at 73M rows.
+  per-element emit diagnostics must aggregate or they flood at 73M rows (D-007).
 - **Rejected:** keeping `EmptyExtent` / `EmptyIntent` (wrong phase, overloaded
   names); failing on zero columns (blocks the staged-editing workflow §10.1 allows).
 - **Affects:** Core (planner/emit), Diagnostics, Spec; spec §16.2 / §16.4.
@@ -1647,7 +1654,7 @@ validation); the one new architectural decision is below.
 - **Rejected:** keeping `string?` and re-deriving unparseable-vs-out-of-range in the emitter
   (duplicates the parse/culture logic out of the discretizer, double-parses the hot path); a
   second `TryDiscretize` out-param method (two ways to spell one decision, EP-5); per-row data
-  diagnostics (flood at scale, EP-20).
+  diagnostics (flood at scale, D-007).
 - **Affects:** Core (discretizers, `BinResult`), Conversion (emit aggregation), Diagnostics
   (`SourceValueUnparseable`); spec §10.6 / §11.5 / §11.8 / §16.4.
 
