@@ -85,8 +85,9 @@ schema changes. §2 defines how an unknown version is refused.
 
 **`schema_fingerprint`** *(optional, string)*. Deterministic hash of the
 formal-attribute schema this spec produces (their ordered list with full
-identifying info). Two specs with the same `schema_fingerprint` produce
-identical attribute IDs. Controls `.dat` compatibility.
+identifying info). Two specs with the same `schema_fingerprint` produce the same
+formal attributes in the same order, so their `.dat` IDs match under the same
+`base_index`. Controls `.dat` compatibility.
 
 **`cxt_output_fingerprint`** *(optional, string)*. Deterministic hash of
 everything that affects the `.cxt` byte-level output, including formal-attribute
@@ -97,19 +98,10 @@ everything that affects the `.dat` byte-level output. `.dat` carries numeric IDs
 not names, so rendered names do not enter it. Controls `.dat` byte equality.
 
 All three fingerprints SHOULD be written by tooling on save **for fully-frozen
-specs only** (§14) — a spec whose schema is data-dependent (an **omitted**
-`declared_domain` where a discretizer consumes it (`identity` / `free_per_value`) —
-an **authored** domain, including an explicit empty `[]`, is complete and does
-**not** disqualify (D-122) —
-a **data-calibrated discretizer configuration**
-(`equal_frequency`, or `equal_width` with a data-derived `range`; `equal_width`
-`range = "manual"` is spec-determined and does **not** disqualify),
-`unknown_value_policy = "include"`, or `value_groups`
-`unmatched = "passthrough"`) omits the stored fingerprints rather than
-storing a value the next
-dataset would invalidate. `restrict_to` does **not** disqualify a spec — its entries
-are authored text, and calibration precedes filtering (§7/§14). When present they are verified on load and emitted as
-warnings if mismatched (`SchemaFingerprintStale`, `CxtOutputFingerprintStale`,
+specs only**: §14 defines which specs are fully frozen, and a stored fingerprint
+for a data-dependent spec could be invalidated by the next dataset. When present
+they are verified on load and emitted as warnings if
+mismatched (`SchemaFingerprintStale`, `CxtOutputFingerprintStale`,
 `DatOutputFingerprintStale`). All are SHA-256 over the plan-derived canonical
 structure described in §14.
 
@@ -2308,7 +2300,8 @@ It does **not** depend on object-/row-affecting settings (object-key mode,
 `duplicate_object_policy`, `restrict_to`, object ordering): those change which
 *rows* appear, not which *columns* exist. Two specs with the same
 `schema_fingerprint` produce `.dat` files with identical column identity and
-IDs for the same input through the same binding.
+order for the same input through the same binding, and identical IDs when they
+also share `base_index` (§8).
 
 **Per-format output fingerprints.** Rather than one `output_fingerprint`, the
 spec carries a `cxt_output_fingerprint` and a `dat_output_fingerprint`, so that a
@@ -2446,18 +2439,20 @@ implies identical bytes but not the converse. These M4 canonical bytes and their
 SHA-256 vectors are **golden-locked before the first M4 fingerprint is produced**
 (the D-069 → Slice-E precedent). See decisions.md D-094.
 
-**Stored only for fully-frozen specs.** Tooling writes the stored fingerprints
-only when the spec is fully determined by its own text — no observed-domain
-calibration (an **omitted** `declared_domain` where a discretizer consumes it —
-`identity` / `free_per_value`; an **authored** domain, including an explicit `[]`,
-is complete and frozen-eligible, D-122), no **data-calibrated discretizer
-configuration**
-(`equal_frequency`, or `equal_width` with a data-derived `range`;
-`equal_width` `range = "manual"` is spec-determined and does **not** disqualify),
-no `unknown_value_policy = "include"`, and no `value_groups`
-`unmatched = "passthrough"`. A spec needing any of these is data-dependent, so a
-stored hash would be invalidated by the next dataset; such runs record the
-**effective** fingerprints in the run manifest (§15) instead.
+**Stored only for fully-frozen specs.** A spec is **fully frozen** when its
+**included attributes** are fully determined by its own text: no observed-domain
+calibration (an **omitted**
+`declared_domain` where a discretizer consumes it, `identity` / `free_per_value`; an
+**authored** domain, including an explicit `[]`, is complete and frozen-eligible,
+D-122), no **data-calibrated discretizer configuration** (`equal_frequency`, or
+`equal_width` with a data-derived `range`; `equal_width` `range = "manual"` is
+spec-determined and does **not** disqualify), no `unknown_value_policy = "include"`
+on an `identity` or `free_per_value` attribute, and no `value_groups`
+`unmatched = "passthrough"`. A spec that is not fully frozen is data-dependent, so a
+stored hash would be invalidated by the next dataset: §3 therefore recommends
+storing fingerprints only in a fully-frozen spec, the `fcabedrock` writing commands
+never store them in any other (below), and such runs record the **effective**
+fingerprints in the run manifest (§15) instead.
 
 `restrict_to` does **not** disqualify a spec: its entries are authored text, and §7
 computes calibration and the column vocabulary over the input universe *before*
@@ -2471,6 +2466,10 @@ starting point for curation, not a frozen artifact, so tooling writes **none** o
 stored fingerprints into it — even when its explicit domains would otherwise make it
 fully-frozen-eligible. Freezing a draft (via `fcabedrock calibrate`, or by an authoring pass
 that stores hashes) is a deliberate later step, after the user has reviewed it.
+
+**A migrated spec stores no fingerprints.** `fcabedrock migrate` reads no data, so it
+cannot plan the spec, and it writes none of the three stored fingerprints (D-079, D-122).
+Freezing the migrated spec with `fcabedrock calibrate` stores them.
 
 **Writing the stored fingerprints (M7 commands, D-122).** `fcabedrock calibrate`
 produces a fully frozen spec and writes all three native fingerprints; rerunning it
@@ -2490,7 +2489,7 @@ convert-only).
 the `[spec]` block describe the spec's **native resolved output settings only**
 — what the spec produces with no CLI overrides. A CLI override such as
 `--v2-compat` (§8) does not rewrite the spec or its stored fingerprints; it
-changes line endings, bin labels, and `.dat` trailing space at run time. The
+applies every v2 byte convention §8 lists at run time. The
 run manifest (§15) records the **effective** `cxt_output_fingerprint` /
 `dat_output_fingerprint` after overrides, which may legitimately differ from the
 spec-stored values. On load, each spec-stored fingerprint is verified against the
@@ -2664,12 +2663,12 @@ ways, and they leave different bytes on disk:
   `.cxt` passes truncate **identically** — leaving a structurally well-formed but
   **truncated** file the object-name-sequence invariant (§18.1) cannot detect, and a
   `.dat` holding only the rows written before the halt;
-- a **policy abort** (`unknown_value_policy = "fail"` meeting an unparseable value,
-  §10.6/§10.4) does **not** stop enumeration: the aggregated per-attribute diagnostic
-  (§16.4) requires reading the whole population, so the stream **completes**, the Error
-  flushes at the end, and the output is fully written — a **complete but invalid**
-  `.cxt`, and a `.dat` holding every survivor. "Abort" here is Error's operation-failed
-  semantics, not "stop reading rows".
+- a **policy abort** (`unknown_value_policy = "fail"` meeting an unparseable or
+  out-of-domain value, §10.6/§10.4) does **not** stop enumeration: the aggregated
+  per-attribute diagnostic (§16.4) requires reading the whole population, so the
+  stream **completes**, the Error flushes at the end, and the output is fully
+  written: a **complete but invalid** `.cxt`, and a `.dat` holding every survivor.
+  "Abort" here is Error's operation-failed semantics, not "stop reading rows".
 
 Either way the artifact is invalid and the caller must discard it. For `.cxt` the
 diagnostics are authoritative only **after** the replay session is disposed, which is
@@ -2738,13 +2737,15 @@ Any subset of fields may be populated.
 
 ### 16.4 Diagnostic codes (v1 registry)
 
-Every distinct condition has its own `DiagnosticCode`; each code is owned by
-exactly one phase — the "Where" column below is the phase-ownership contract
-(decisions.md D-067). The registry covers **pipeline** conditions only: ordinary
+Every distinct condition has its own `DiagnosticCode`, and the "Where" column below
+is the phase-ownership contract (decisions.md D-067): it names the one phase that
+owns a code or, when more than one phase can meet the same condition, every phase
+that may report it under that one code (for example `calibrate/emit`; D-099,
+D-111). The registry covers **pipeline** conditions only: ordinary
 host/environment failures (a missing or unreadable input, permissions, an output or
 publication failure) are **CLI-owned, code-less** errors on stderr with exit 1, and
-never join this registry (D-122). Existing phase-owned conditions such as
-`SpecExtendsNotFound` remain registry diagnostics. v1's initial set:
+never join this registry (D-122). Phase-owned conditions such as
+`SpecExtendsNotFound` are registry diagnostics. The v1 registry:
 
 | Code | Severity | Where |
 | --- | --- | --- |
@@ -2789,7 +2790,7 @@ never join this registry (D-122). Existing phase-owned conditions such as
 | `CalibrationDataInsufficient` | Error | calibrate |
 | `CalibrationCutsInvalid` | Error | calibrate |
 | `CalibrationPopulationTooLarge` | Error | calibrate |
-| `UnknownValueObserved` | Warning or Error (per `unknown_value_policy`) | calibrate/emit |
+| `UnknownValueObserved` | Warning or Error (per `unknown_value_policy`) | emit |
 | `UnknownValuePolicyInclude` | Warning | calibrate |
 | `TripleSubjectNotContiguous` | Error | probe/calibrate/emit |
 | `DuplicateObjectKey` | Error, Warning, or Info (per `duplicate_object_policy`) | emit |

@@ -354,7 +354,8 @@ resolve), and a `base_index` other than 0 or 1 or a negative `size_advisory_byte
 prose changes follow D-134's three reviewed kinds: correcting a passage to its rule owner, stating
 enforced defaults, bounds or allowed values that were shown only in examples, and stating rules
 already enforced by the reader or resolver. Spec §8 also states the exact `.cxt` size-advisory
-default applied by the CLI, 1,073,741,824 bytes, as D-134 records. These prose changes leave
+default applied by the CLI, 1,073,741,824 bytes, as D-134 records, and D-136 settles the
+stored-fingerprint limit in spec §3 and §14 as a recommendation. These prose changes leave
 implemented behavior unchanged.
 
 Its work proceeds in this order:

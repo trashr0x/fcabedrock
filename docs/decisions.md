@@ -250,6 +250,7 @@ changes an earlier one. A new entry MUST add its line here.
 ### M8.2 spec review
 
 - D-135: A composed spec needs an `[[attribute]]`, `base_index` is 0 or 1, and `size_advisory_bytes` is not negative; the binding resolves on its own for the probe preflight
+- D-136: Tooling should store fingerprints only in a fully-frozen spec, and §14 defines one
 
 Spec-field defaults are recorded in spec §21 items 1–11 (see the final section
 of this file).
@@ -1220,9 +1221,9 @@ Refinements from the second audit pass.
   implementation to match the contradicting passages (it would move `FormalAttributeCollision` to a
   phase that cannot see a data-dependent collision, and force a calibration pass on specs every
   build has treated as fully declared).
-- **Affects:** spec §5.4, §7, §8, §9.2, §10.4, §10.5, §11.2, §11.4, §11.5, §11.6 and §12.3;
-  `docs/roadmap.md` (the M8.2 paragraph). No code, test, public API, diagnostic, fingerprint or
-  output byte changes.
+- **Affects:** spec §3, §5.4, §7, §8, §9.2, §10.4, §10.5, §11.2, §11.4, §11.5, §11.6, §12.3,
+  §14, §16.2 and §16.4; `docs/roadmap.md` (the M8.2 paragraph). No code, test, public API,
+  diagnostic, fingerprint or output byte changes.
 
 ---
 
@@ -7029,7 +7030,8 @@ and §16.4; D-120 and D-121 record the implemented naming, template and matcher 
 ## M8.2 spec review
 
 M8.2's review of the Bedrock spec corrects passages to their owners under D-134. A correction that
-changes accepted input needs a decision of its own, and this section records those.
+changes accepted input, or that must choose between two owners that disagree, needs a decision of
+its own, and this section records those.
 
 ### D-135: A composed spec needs an `[[attribute]]`, `base_index` is 0 or 1, and `size_advisory_bytes` is not negative; the binding resolves on its own for the probe preflight
 
@@ -7109,6 +7111,29 @@ changes accepted input needs a decision of its own, and this section records tho
   Discovery, Diagnostics and Golden projects; `docs/roadmap.md` (the M8.2 scope and M7's registry
   line); `AGENTS.md` (the registry count). No Core type, exporter, fingerprint encoding, golden
   fixture or CLI grammar changes.
+
+### D-136: Tooling should store fingerprints only in a fully-frozen spec, and §14 defines one
+
+- **Status:** accepted
+- **Date:** 2026-09-27
+- **Decision:** §3's RFC 2119 SHOULD sets the strength of the stored-fingerprint limit: tooling
+  SHOULD write the three stored fingerprints only for a fully-frozen spec. §14 defines a
+  fully-frozen spec by the conditions under which §7 lets a spec skip Calibrate, and records that
+  the `fcabedrock` writing commands never store the fields in any other spec: `calibrate` writes
+  only frozen output, and `fingerprint --write` refuses a data-dependent spec with a code-less
+  error and exit 1. The reader still accepts the stored fields in any spec and verifies them where
+  a plan is computable, so no accepted input, diagnostic, fingerprint or output byte changes.
+- **Why:** §3 stated the limit as a SHOULD, while §14 stated it as a plain sentence about tooling,
+  which the spec otherwise reads as a requirement. D-134 leaves a choice between two owners that
+  disagree to a decision of its own. SHOULD was the only strength the spec stated in RFC 2119
+  terms, the reader never enforced a stronger rule, and the product's own writers already meet
+  the stricter behavior.
+- **Rejected:** a MUST NOT for all tooling (a new obligation on other writers that the reader would
+  not enforce); rejecting stored fields in a data-dependent spec at read or resolve (it would
+  change accepted input); leaving the two passages to disagree (the closing audit could not
+  certify the spec).
+- **Affects:** spec §3 and §14; `docs/roadmap.md` (the M8.2 paragraph). No code, test, public API,
+  diagnostic, fingerprint or output byte changes.
 
 ---
 
