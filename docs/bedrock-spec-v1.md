@@ -1634,7 +1634,7 @@ discretizer = {
   range = "min_max",                         # default
         # | "percentile_p1_p99"
         # | "manual"
-  vmin  = 0.0, vmax = 100.0,                 # required only when range = "manual"
+  # vmin = 0.0, vmax = 100.0,                # required with range = "manual", else forbidden
   precision = "exact",                       # default "exact" | { round_to = 1.0 }
 }
 ```
