@@ -771,6 +771,9 @@ Unicode operators (`<30`, `[30, 40)`, `≥50`). ASCII default chosen for
 ConExp compatibility — ConExp is Java/2009-era and not all installations
 handle UTF-8 reliably.
 
+**`line_endings`**. `"lf"` (default) or `"crlf"`, set separately in `[output.cxt]`
+and `[output.dat]` (§18.1, §18.2).
+
 **`size_advisory_bytes`**. During `.cxt` export, after the writer's
 object-name/count pass completes and **before any output bytes** (header, names, or
 incidence rows) are written, the pipeline computes the **exact final serialized
@@ -780,9 +783,9 @@ formal-attribute name, each configured line ending, the M-character incidence ro
 and the trailing-newline rule — and emits `OutputCxtSizeAdvisory` (Warning, export
 phase) when the projection is **at or above** the threshold. The projection counts
 **encoded bytes, not characters** (a non-ASCII name and CRLF line endings count at
-their real width). A `.dat`-only run emits no advisory. Default 1 GB is
-conservative; ConExp struggles well below this. Set to `0` to disable; a negative
-value is `SpecFieldInvalid` (Error, spec parse).
+their real width). A `.dat`-only run emits no advisory. The default, 1,073,741,824
+bytes (about 1 GB), is conservative; ConExp struggles well below this. Set to `0` to
+disable; a negative value is `SpecFieldInvalid` (Error, spec parse).
 
 **`base_index`**. `1` (the default) or `0`: the ID of the first formal attribute in
 `.dat` output (§18.2). Any other value is `SpecFieldInvalid` (Error, spec parse).
@@ -983,9 +986,9 @@ syntax enters Core, calibration, or per-row emission.
 
 #### Fingerprints and equivalence
 
-The resolved (post-merge) per-attribute config is what feeds into the
-schema fingerprint. Source-file template references and matcher rules
-are not part of the fingerprint themselves.
+The three fingerprints use attribute configuration only in its resolved
+(post-merge) form, through the plan (§14). Source-file template references and
+matcher rules are not fingerprint inputs themselves.
 
 It follows that semantically equivalent **flat**, **materialized** (the same
 configuration written out on every attribute), **template/matcher-authored**, and
@@ -1207,7 +1210,8 @@ restrict_to = [
 ```
 
 Range bounds are inclusive on the low side and exclusive on the high side,
-matching the bin convention. An **exact** numeric entry `{ value = n }` matches by
+matching the bin convention. An omitted `from` or `to` leaves that side unbounded.
+An **exact** numeric entry `{ value = n }` matches by
 **parsed numeric identity**, so `30`, `30.0`, and `3e1` all match a value of 30
 (`n` must be finite). The empty range `{}` matches any **usable** numeric value —
 equivalently, it excludes only missing/unparseable values.
@@ -1294,6 +1298,9 @@ can be fully frozen (§7, §14).
 missing_policy = "skip"           # default — missing produces no cross
 missing_policy = "as_attribute"   # missing produces a "<name>-missing" formal attribute
 ```
+
+**`missing_policy`** *(default per `[defaults]` or `"skip"`)*. With `"skip"`, a
+missing value produces no cross.
 
 `"as_attribute"` matches the v2 behavior of including `?` in
 `[Category Values]`: missing values produce their own formal attribute
@@ -1592,9 +1599,10 @@ Bin label format: `"<{c0}"`, `"[{c_i}, {c_{i+1}})"`, `">={c_n}"` (ASCII
 operators by default; see §8 for the `bin_label_unicode` knob). The
 exact format affects `cxt_output_fingerprint` (a `.cxt` name concern) but not
 `schema_fingerprint`.
-A v2-compat byte-equality mode is available at the writer level (CLI
-flag `--v2-compat` on `convert`), not as a spec setting, since v2
-compatibility is a one-time output concern rather than a spec property.
+Under `--v2-compat` (§8), a `convert` flag rather than a spec setting, each
+interior label renders as `"{c_i}to<{c_{i+1}}"` (for example `30to<40`); the
+open-end labels do not change. The style changes rendered names only, never a
+bin's canonical identity (§14, D-044).
 
 ### 11.3 `free_per_value`
 
@@ -1631,6 +1639,12 @@ discretizer = {
 }
 ```
 
+**`bins`** *(required, integer from 2 to 2,147,483,647)*. **`range`** *(default
+`"min_max"`)*: `"min_max"`, `"percentile_p1_p99"` or `"manual"`. **`precision`**
+*(default `"exact"`)*: `"exact"`, or `{ round_to = r }` with `r` finite and greater
+than zero. Any other value, or a missing `bins`, is `SpecFieldInvalid` (Error, spec
+parse).
+
 Calibration produces `bins - 1` cut points. Combined with `ends = "open"`
 (implicit; the auto-discretizer always uses open ends so new data outside
 the calibration range still falls in the first/last bin), this gives
@@ -1644,7 +1658,8 @@ span, the `bins - 1` cuts are computed **from the spec alone**, and no data
 calibration runs: a manual `equal_width` is a **spec-determined** discretizer,
 skips Calibrate (§7), and is **eligible for stored fingerprints** like any
 fully-declared spec (§14). Missing `vmin`/`vmax` under `range = "manual"` is
-`SpecFieldInvalid` (Error, spec parse); a non-finite or non-increasing
+`SpecFieldInvalid` (Error, spec parse), and so is authoring either one under a
+data-derived range (including an omitted `range`); a non-finite or non-increasing
 (`vmin ≥ vmax`) authored range is `EqualWidthRangeInvalid` (Error, spec validate);
 and a `precision` / `round_to` that collapses the derived cuts (two cuts round to
 the same value) is `EqualWidthCutsCollapsed` (Error, spec validate).
@@ -1702,6 +1717,11 @@ discretizer = {
 }
 ```
 
+**`bins`** *(required, integer from 2 to 2,147,483,647)*. **`tie_policy`**
+*(default `"left"`)*: `"left"` or `"right"`. **`cut_placement`** *(default
+`"right_value"`)*: `"right_value"` or `"midpoint"`. Any other value, or a missing
+`bins`, is `SpecFieldInvalid` (Error, spec parse).
+
 **`tie_policy`** is a **calibration-time** rule. When a candidate boundary would
 land inside a run of equal ("tied") values, `tie_policy` decides which side of the
 boundary receives the **entire tied-value group**: `"left"` places the whole group
@@ -1731,9 +1751,10 @@ runs under these rules, which apply to both `equal_width` and `equal_frequency`:
   explicit `missing_token` matches are *missing* and follow `missing_policy`.
 - **Sort:** calibration sorts the surviving values ascending by IEEE-754
   total order (`double` default comparer), a stable, culture-independent order.
-- **Insufficient distinct values:** if the count of distinct surviving values is
-  fewer than `bins`, calibration emits `CalibrationDataInsufficient` (Error) and
-  stops, rather than silently producing fewer bins.
+- **Insufficient distinct values (`equal_frequency` only; §11.4 exempts
+  `equal_width`):** if the count of distinct surviving values is fewer than `bins`,
+  calibration emits `CalibrationDataInsufficient` (Error) and stops, rather than
+  silently producing fewer bins.
 - **Ties:** governed by `tie_policy` (above); the result is fully determined.
 
 **Formula-stage obligation.** When the number of distinct surviving values is
@@ -1871,7 +1892,7 @@ needs at least one of them.
 Anchor (`^…$`) for full-string matching. Authored inline options are honored — e.g.
 `(?i)` for case-insensitivity — because they are part of the pattern.
 
-**`unmatched`**:
+**`unmatched`** *(default `"skip"`)*:
 
 - `"skip"` — values not matching any group produce no bin (subject to
   `unknown_value_policy`).
@@ -2110,7 +2131,7 @@ explicit formal attribute is omitted. Over **value** bins under a **strict**
 / `<{lowest}`) is instead statically empty and is **kept** (an empty column is
 legal, §16.4) — so `drop_top` is a no-op there.
 
-**Over cut bins (`manual_cuts` / `ordered_cuts`).** When the ordered bins come
+**Over cut bins.** When the ordered bins come
 from a cut discretizer, each threshold sits at a bin's far edge: for `le`, bin
 *i*'s **upper** edge (so cuts 30/40/50 give `<30`, `<40`, `<50`); for `ge`, its
 **lower** edge. An **open** end (§11.2 `ends = "open"`) has no finite edge there,

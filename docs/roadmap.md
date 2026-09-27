@@ -351,9 +351,11 @@ syntax-error message now names that grammar (D-133). It rejects three inputs the
 allowed: a composed spec with no `[[attribute]]` is the new `AttributesMissing` (Error, spec
 resolve), and a `base_index` other than 0 or 1 or a negative `size_advisory_bytes` is
 `SpecFieldInvalid` (D-135). No other diagnostic changes. Otherwise, normative spec
-meaning changes only where a passage contradicted the section or decision that owns its rule, or
-where a default, bound or allowed value that only an example showed is stated in prose; neither kind
-changes implemented behavior (D-134).
+prose changes follow D-134's three reviewed kinds: correcting a passage to its rule owner, stating
+enforced defaults, bounds or allowed values that were shown only in examples, and stating rules
+already enforced by the reader or resolver. Spec §8 also states the exact `.cxt` size-advisory
+default applied by the CLI, 1,073,741,824 bytes, as D-134 records. These prose changes leave
+implemented behavior unchanged.
 
 Its work proceeds in this order:
 

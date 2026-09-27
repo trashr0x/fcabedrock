@@ -85,7 +85,7 @@ changes an earlier one. A new entry MUST add its line here.
 - D-130: Authored-text integrity: one mechanical command over raw decoded text, two fixed instruction-entry checks, an include/exclude manifest and a process-level test runner *(supersedes the checker portion of D-129 rule 5)*
 - D-131: One-time heading-separator migration in the decision log, roadmap and benchmark record: colons replace em dashes, changed anchors are accepted, and no alias is kept *(supersedes the heading-anchor clause of D-129 rule 1 for this migration only)*
 - D-132: No separate public evidence file; the benchmark guide carries only the identities that qualify its current claims
-- D-134: Spec passages that contradict their rule's owner are corrected to it, and enforced defaults, bounds and allowed values shown only in examples are stated in prose
+- D-134: Spec passages that contradict their rule's owner are corrected to it, and enforced defaults, bounds and allowed values shown only in examples, and enforced rules stated nowhere, are stated in prose
 
 ### M1 (mini-mushroom walking skeleton)
 
@@ -1182,16 +1182,18 @@ Refinements from the second audit pass.
   and its index line). No product code, public API, CLI contract, diagnostic, spec text,
   fingerprint or output byte changes.
 
-### D-134: Spec passages that contradict their rule's owner are corrected to it, and enforced defaults, bounds and allowed values shown only in examples are stated in prose
+### D-134: Spec passages that contradict their rule's owner are corrected to it, and enforced defaults, bounds and allowed values shown only in examples, and enforced rules stated nowhere, are stated in prose
 
-- **Status:** accepted
+- **Status:** accepted; amended in place on 2026-09-27 to add the third kind
 - **Date:** 2026-09-26
-- **Decision:** M8.2's review of the Bedrock spec makes two kinds of normative text change without
-  a decision of its own for each. (1) A passage that contradicts the section or decision owning its
-  rule, where the implementation already follows that owner, is corrected to the owner. (2) A
-  default, bound or allowed value that the spec showed only in an example value or comment, which §1
-  makes informative, and that the reader or resolver already enforces, is stated in prose at the
-  section that owns the field. Neither kind changes accepted input, a diagnostic's code, severity or
+- **Decision:** M8.2's review of the Bedrock spec makes three kinds of normative text change
+  without a decision of its own for each. (1) A passage that contradicts the section or decision
+  owning its rule, where the implementation already follows that owner, is corrected to the owner.
+  (2) A default, bound or allowed value that the spec showed only in an example value or comment,
+  which §1 makes informative, and that the reader or resolver already enforces, is stated in prose
+  at the section that owns the field. (3) A rule that the reader or resolver already enforces and
+  tests pin, but that the spec stated nowhere, is stated in prose at the section that owns the
+  field. None of the three kinds changes accepted input, a diagnostic's code, severity or
   phase, a fingerprint or an output byte. A correction that would change behavior, or that must
   choose between two owners that disagree, still needs its own decision. Each correction is still
   reviewed before it lands, and this entry accepts no later change by itself. First applications:
@@ -1203,6 +1205,11 @@ Refinements from the second audit pass.
   `free_per_value` attributes, as
   D-104 (for `value_groups`) and the implementation already do; §5.4 states the allowed values of
   the deferred composite key's `columns` and `aggregate`, which the reader enforces.
+  Kind (3)'s first applications are in §11.4 and §11.5: `vmin` and `vmax` are rejected under a
+  data-derived `equal_width` range, `round_to` must be finite and greater than zero, and `bins` is
+  at most 2,147,483,647. This entry also covers §8's exact `.cxt` size-advisory default,
+  1,073,741,824 bytes: its example showed the value and its prose said only 1 GB, and the CLI, not
+  the reader or resolver, applies it.
 - **Why:** EP-8 and the spec's status line require a reviewed, recorded change whenever spec text is
   corrected to match the implementation. These corrections change no behavior, so one rule records
   them instead of one entry each. Both §7 passages date from the spec's first version: the
@@ -1213,8 +1220,9 @@ Refinements from the second audit pass.
   implementation to match the contradicting passages (it would move `FormalAttributeCollision` to a
   phase that cannot see a data-dependent collision, and force a calibration pass on specs every
   build has treated as fully declared).
-- **Affects:** spec §5.4 and §7; `docs/roadmap.md` (the M8.2 paragraph). No code, test, public API,
-  diagnostic, fingerprint or output byte changes.
+- **Affects:** spec §5.4, §7, §8, §9.2, §10.4, §10.5, §11.2, §11.4, §11.5, §11.6 and §12.3;
+  `docs/roadmap.md` (the M8.2 paragraph). No code, test, public API, diagnostic, fingerprint or
+  output byte changes.
 
 ---
 
