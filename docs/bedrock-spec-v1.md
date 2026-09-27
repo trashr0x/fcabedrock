@@ -512,7 +512,7 @@ becomes an explicit `declared_domain` (an **empty** observed outcome freezes as
 `"warn"`; `value_groups` `unmatched = "passthrough"` bins become ordered singleton
 groups and `unmatched` becomes fixed `"skip"`. Declaration/first-observation order is
 preserved (§17 rule 3) and numeric entries use the canonical numeric spellings
-(§11.3, D-096/D-101). The frozen result satisfies the fully-frozen gate (§14):
+(§11.3, D-096/D-101). The frozen result is fully frozen (§14):
 calibrate writes all three native stored fingerprints, and recalibrating its own
 output is **byte-idempotent**. On an `extends` chain, §13 states what calibrate writes.
 
@@ -1906,7 +1906,7 @@ and IS captured in the schema fingerprint.
 
 `declared_domain` is **not** consulted for `value_groups` (D-055): the `groups`
 and the `unmatched` policy together define which values are recognized, so a
-separate domain list would be a second, overlapping gate. Recognition is
+separate domain list would be a second, overlapping check. Recognition is
 therefore: a value matches a group → its group label; otherwise the `unmatched`
 policy decides (`skip` defers to `unknown_value_policy`, `other` → the synthetic
 `Other` bin, `passthrough` → the value's own raw label).
@@ -2190,30 +2190,30 @@ extends = "../base/emage.toml"
 The base spec is loaded and merged with the current spec. Merge semantics:
 
 1. `[binding]` fields are unioned, with the current spec's values
-   overriding the base's per-field. The **nested tables** — the triple
-   `columns` role map and `[binding.object_key]` — override as **whole
+   overriding the base's per-field. The **nested tables** (the triple
+   `columns` role map and `[binding.object_key]`) override as **whole
    values**: an authored current table replaces the base's entirely
    (field-mixing a key mode from one file with columns from another, or
    partially remapping triple roles into silently duplicated indices, would
-   compose incoherent hybrids — D-078), unlike `[output]`'s per-leaf merge
+   compose incoherent hybrids, D-078), unlike `[output]`'s per-leaf merge
    (rule 6).
 2. `[defaults]` fields are unioned per-field, current overrides base.
 3. `[[template]]` entries from both are concatenated. If two templates
    share an `id`, the current spec's wins: it replaces the base's entry **in
    place** (base position kept, mirroring rule 5). This is **carrier
-   composition only** — how the document lists merge — and is distinct from
+   composition only** (how the document lists merge) and is distinct from
    template resolution precedence, which §9.2 defines over the **composed**
    document.
 4. `[[matcher]]` entries from both are concatenated. Order: base
    matchers, then current matchers (so a current matcher's template layers over
-   a base matcher's for any field both author — §9.2).
+   a base matcher's for any field both author, §9.2).
 5. `[[attribute]]` entries merge by `name`, **position-preserving**: a base
    attribute keeps its original position; a derived attribute with the same
    `name` replaces it **in place** (whole-attribute replacement, no field-level
-   merge — too error-prone, so inherited fields *including* `restrict_to` are
+   merge: too error-prone, so inherited fields *including* `restrict_to` are
    dropped unless the override repeats them); a derived attribute with a new
    `name` is appended after all inherited attributes. To suppress an inherited
-   attribute, override it with `include = false` — and, replacement being
+   attribute, override it with `include = false`, and, replacement being
    whole-attribute, repeat at least `name` and `source`. Attribute order is
    column order (§17 rule 1), so position-preserving override keeps a derived
    spec's column order stable when it only re-tunes inherited attributes.
@@ -2224,10 +2224,10 @@ The base spec is loaded and merged with the current spec. Merge semantics:
    not inherited).
 8. `[spec]` is **per-spec**: the composed `version`, `description`, and any
    stored fingerprints are the current (most-derived) spec's, and `extends`
-   is consumed by composition. A base's `[spec]` contributes nothing — but
+   is consumed by composition. A base's `[spec]` contributes nothing, but
    **every spec in the chain MUST itself declare `version = 1`** (§2), checked
    per file as the chain is composed (the referencing spec before any base
-   loads, each base at its load — D-078), so a wrong-version file can never
+   loads, each base at its load, D-078), so a wrong-version file can never
    smuggle content into a v1 composed spec.
 
 Multi-level `extends` is allowed (a chain); the merge above is applied at **each**
@@ -2236,19 +2236,19 @@ step, base-most first. A referenced base spec that cannot be found is
 `SpecExtendsCycle` (Fatal).
 
 Cycle detection compares **canonical file identities** owned by the host source
-(D-078): the M7 file-backed host resolves **actual filesystem identity** where
-available — unifying supported symlink/hardlink aliases as well as `.`/`..` and case
-spellings of one file — and otherwise falls back to normalized full paths compared
+(D-078): the CLI's file-backed host resolves **actual filesystem identity** where
+available, unifying supported symlink/hardlink aliases as well as `.`/`..` and case
+spellings of one file, and otherwise falls back to normalized full paths compared
 with the actual volume/platform behavior; the fallback makes **no link-alias
 guarantee** beyond what the host filesystem exposes (D-122). Identity keys are
-internal — never output bytes, fingerprint inputs, or manifest content. Authored
-references remain relative-only; an absolute reference stays the existing not-found
-outcome.
+internal: never output bytes, fingerprint inputs, or manifest content. An authored
+reference is resolved relative to the directory of the file that contains it
+(`..` is allowed); an absolute reference is `SpecExtendsNotFound`.
 
 **Template references are late-bound.** Because composition (rule 3) completes
 before §9.2 resolution runs, a same-`id` template replacement is resolved
-**late**: an **inherited base matcher** — and an inherited attribute's
-`template = "..."` reference — resolves against the **composed winning**
+**late**: an **inherited base matcher** (and an inherited attribute's
+`template = "..."` reference) resolves against the **composed winning**
 template, not the base's original body. Base and derived matchers otherwise
 retain their composed order (rule 4). This is a consequence of compose-then-
 resolve, not an additional merge rule: overriding a template by `id` in a derived
@@ -2280,11 +2280,11 @@ underpins both fingerprints, so it is stated first:
 - **Rendered name** is the string that appears in a `.cxt` for that column,
   produced from the canonical identity by `formal_attribute_format`,
   `display_name`, and `value_labels`. These affect rendered names and
-  `cxt_output_fingerprint` only — never canonical identity, `schema_fingerprint`,
+  `cxt_output_fingerprint` only, never canonical identity, `schema_fingerprint`,
   or `dat_output_fingerprint`.
 
 **`schema_fingerprint`** is computed from the **final ordered list of planned
-formal attributes only** — their canonical identities, in plan order, as
+formal attributes only**: their canonical identities, in plan order, as
 produced by the Plan phase (§7). Nothing else is an input. Policies such as
 `missing_policy = "as_attribute"` and `unknown_value_policy = "include"` are
 **not** independent hash inputs: when they change the column set, that change is
@@ -2309,19 +2309,18 @@ spec carries a `cxt_output_fingerprint` and a `dat_output_fingerprint`, so that 
 build on `schema_fingerprint` and add the settings that change *that format's*
 bytes:
 
-- **Shared inputs** (in **both** output fingerprints — they change which objects,
+- **Shared inputs** (in **both** output fingerprints; they change which objects,
   crosses, columns, and rows appear, for either format): `schema_fingerprint`;
-  the row-shaping settings `schema_fingerprint` deliberately omits —
-  `duplicate_object_policy` (which shapes which objects appear and in what order;
-  and `restrict_to`, encoded as the canonical `restrictions` container defined
-  below, §10.4); and the conversion-affecting binding/source settings —
-  binding shape, the **resolved** column/predicate mappings (for triple, the
-  resolved role→column-index map; a role bound by header name and the equivalent
-  index bind hash identically, §5.3 — the triple `ordering` field is **not** a
-  fingerprint input, since `subject_grouped` and `unordered` emit identical
-  first-appearance bytes: an acceptance/streaming property, cf. `size_advisory_bytes`),
-  `encoding` (a real input from
-  M3, D-082 — UTF-8 specs keep their prior hash), `has_header`, `delimiter`,
+  the row-shaping settings `schema_fingerprint` deliberately omits:
+  `duplicate_object_policy` (which shapes which objects appear and in what order)
+  and `restrict_to` (encoded as the canonical `restrictions` container defined
+  below, §10.4); and the conversion-affecting binding/source settings: binding
+  shape, the **resolved** column/predicate mappings (for triple, the resolved
+  role→column-index map; a role bound by header name and the equivalent index bind
+  hash identically, §5.3; the triple `ordering` field is **not** a fingerprint
+  input, since `subject_grouped` and `unordered` emit identical first-appearance
+  bytes: an acceptance/streaming property, cf. `size_advisory_bytes`), `encoding`
+  (D-082; UTF-8 specs keep their prior hash), `has_header`, `delimiter`,
   `quote_char`, `missing_token`, source `value_type`s, `missing_policy`,
   `unknown_value_policy`, `binding.locale`, object-key mode, and discretizer/scale
   configuration.
@@ -2342,7 +2341,7 @@ produce byte-identical `.cxt` (resp. `.dat`) for identical input. Provenance (§
 is in none of the three fingerprints.
 
 **Canonical hash input.** All three fingerprints hash a fixed UTF-8 **canonical
-JSON structure generated from the resolved/calibrated plan** — never the spec's
+JSON structure generated from the resolved/calibrated plan**, never the spec's
 TOML text (D-053). The structure carries a format-version tag (so the encoding can
 evolve without silent collisions); arrays stay in planned order (column order is
 significant); object/map keys are sorted; strings use one documented JSON escaping
@@ -2351,7 +2350,7 @@ shortest round-trippable .NET formatting, so `30`, `30.0`, and `3e1` hash
 identically and a cut never renders as `34.250000001` on one machine and `34.25`
 on another. Cut-bin open ends are encoded as **structural flags**, not as `∞`
 strings: the cut-bin object's `lo_open`/`hi_open` booleans mean **unbounded
-end** — the bin runs to ±∞ on that side — never interval inclusivity, since
+end**: the bin runs to ±∞ on that side, never interval inclusivity, since
 every bounded cut bin is uniformly half-open `[lo, hi)` (§11.2); `<30`
 therefore carries `hi_open = false`. A fingerprint value is the string
 `sha256:` followed by 64 lowercase hex characters of the SHA-256 over the
@@ -2361,12 +2360,12 @@ canonical UTF-8 bytes (D-077).
 `restrictions` array in the **shared** portion of the structure (feeding **both**
 output fingerprints; **excluded** from `schema_fingerprint`, which hashes columns,
 not rows). It sits after `attributes` and `binding` in `shared`'s sorted key order,
-is present **only when non-empty**, and — as an explicit **exception** to the
-planned-order rule above — its arrays are **canonically sorted**, not left in
+is present **only when non-empty**, and, as an explicit **exception** to the
+planned-order rule above, its arrays are **canonically sorted**, not left in
 planned order, so restriction order is immaterial. Each **restriction object**
 carries the attribute's resolved `source` reusing the per-attribute source encoding
 (`{"predicate":<name>,"value_type":<type>}` or
-`{"column":<index>,"value_type":<type>}`, D-077 — no new source vocabulary), its
+`{"column":<index>,"value_type":<type>}`, D-077; no new source vocabulary), its
 `entries` array, and the attribute's resolved `unknown_value_policy` (serialized
 `{"entries":[…],"source":{…},"unknown_value_policy":<string>}`, keys sorted
 `entries` < `source` < `unknown_value_policy`):
@@ -2381,21 +2380,21 @@ carries the attribute's resolved `source` reusing the per-attribute source encod
   merged;
 - restriction objects (AND across attributes) are likewise sorted by their complete
   canonical JSON with **exact duplicates removed**. Filter-only attributes
-  (`include = false` + `restrict_to`) contribute their restriction object here — not
+  (`include = false` + `restrict_to`) contribute their restriction object here, not
   through the included-attribute column encoding.
 
 **Ordinal here means UTF-16 code units, compared before UTF-8 encoding** (EP-12's
 definition; decisions.md D-105). The sort is applied to the canonical JSON **strings**,
 never to their encoded bytes: the two orders diverge between a BMP character at or above
 U+E000 and a supplementary character (U+E000 is one code unit `0xE000`, above U+1F600's
-lead surrogate `0xD83D` — yet its UTF-8 lead byte `0xEE` sorts *below* `0xF0`). Sorting
+lead surrogate `0xD83D`; yet its UTF-8 lead byte `0xEE` sorts *below* `0xF0`). Sorting
 encoded bytes would therefore hash the same spec differently.
 
 **The `unknown_value_policy` key** is on **every** restriction object, uniformly.
 `unknown_value_policy` is live, abort-affecting configuration on a **filter-only**
 attribute (§10.4/§10.6: an unparseable filtered value is an Error under `fail` and a
 Warning under `warn`), and a filter-only attribute contributes no entry to
-`attributes` — without the key, two specs that behave differently would hash
+`attributes`; without the key, two specs that behave differently would hash
 identically. For an included-and-restricted attribute the value therefore appears both
 here and in `attributes`: deliberate encoding redundancy for one uniform object shape,
 not a double-counted input (nothing is summed).
@@ -2405,28 +2404,29 @@ document, the resolved spec, the plan, and emit all preserve authored order and
 duplicates; only this encoding sorts and collapses them, because restriction order and
 repetition are semantically immaterial (entries OR, restrictions AND).
 
-**M4 discretizer encodings (`shared.attributes[].discretizer`).** Each attribute's
+**Discretizer encodings (`shared.attributes[].discretizer`).** Each attribute's
 resolved discretizer is encoded in `shared` under the conventions above (UTF-8 no
 BOM, compact JSON, keys sorted ordinal, `kind` a key, TOML enum spellings, the
-canonical number formatter). The M4 discretizer kinds encode:
+canonical number formatter). The `free_per_value`, `equal_width`, `equal_frequency`
+and `value_groups` kinds encode:
 
 - `free_per_value` → `{"kind":"free_per_value"}` (its numeric-vs-string identity
   rides on `source.value_type`, already in `source`);
 - `equal_width` → `{"bins":<int>,"kind":"equal_width","precision":<precision>,"range":<string>}`,
   adding `"vmax":<number>,"vmin":<number>` **only** when `range = "manual"`; the
-  `<precision>` value mirrors its two TOML forms — the string `"exact"` or the object
+  `<precision>` value mirrors its two TOML forms: the string `"exact"` or the object
   `{"round_to":<number>}`;
 - `equal_frequency` → `{"bins":<int>,"cut_placement":<string>,"kind":"equal_frequency","tie_policy":<string>}`;
 - `value_groups` → `{"groups":[…],"kind":"value_groups","unmatched":<string>}`, with
-  `groups` in **declaration order** (significant — first match wins, §11.6 — so it is
+  `groups` in **declaration order** (significant: first match wins, §11.6, so it is
   **not** sorted) and each group `{"label":<string>[,"pattern":<string>][,"values":[…]]}`
   (group keys sorted `label`/`pattern`/`values`; `pattern`/`values` present **only
   when authored**; the inner `values` array preserves **authored order, duplicates
-  retained** — the arrays-in-planned-order default, only `restrictions` sort).
+  retained**: the arrays-in-planned-order default, only `restrictions` sort).
 
 **Effective bins, authored kind.** Output fingerprints hash the **effective**
-planned bins/cuts/columns/order — the resolved `bin` objects already in the
-`schema` array — and the **effective** (calibrated / `include`-extended) domain; a
+planned bins/cuts/columns/order (the resolved `bin` objects already in the
+`schema` array) and the **effective** (calibrated / `include`-extended) domain; a
 data-calibrated discretizer's **resolved cuts are not re-encoded** in its
 `discretizer` sub-object (they are already schema `bin` objects, so duplicating
 them would be redundant). That sub-object carries the **authored** kind and
@@ -2434,10 +2434,8 @@ configuration only. Because it feeds the two **output** fingerprints (via `share
 but **not** `schema_fingerprint` (columns only), an auto discretizer and its
 `calibrate`-frozen `manual_cuts` form share a `schema_fingerprint` and emit
 **byte-identical** contexts (§7, D-088), yet may legitimately carry **different**
-`cxt`/`dat` output fingerprints — sound, because a shared output fingerprint
-implies identical bytes but not the converse. These M4 canonical bytes and their
-SHA-256 vectors are **golden-locked before the first M4 fingerprint is produced**
-(the D-069 → Slice-E precedent). See decisions.md D-094.
+`cxt`/`dat` output fingerprints: sound, because a shared output fingerprint
+implies identical bytes but not the converse. See decisions.md D-094.
 
 **Stored only for fully-frozen specs.** A spec is **fully frozen** when its
 **included attributes** are fully determined by its own text: no observed-domain
@@ -2456,14 +2454,12 @@ fingerprints in the run manifest (§15) instead.
 
 `restrict_to` does **not** disqualify a spec: its entries are authored text, and §7
 computes calibration and the column vocabulary over the input universe *before*
-restriction selects objects — so a restricting spec is fully determined by its own text
-and can be frozen. (This clause previously excluded `restrict_to` only because its
-execution was unimplemented, which would have let a stored hash be invalidated by the
-feature landing; that exclusion retired with M4 Slice F, D-105.)
+restriction selects objects, so a restricting spec is fully determined by its own text
+and can be frozen.
 
 **A `probe` draft never stores fingerprints.** A draft generated by Discovery (§7.1) is a
 starting point for curation, not a frozen artifact, so tooling writes **none** of the three
-stored fingerprints into it — even when its explicit domains would otherwise make it
+stored fingerprints into it, even when its explicit domains would otherwise make it
 fully-frozen-eligible. Freezing a draft (via `fcabedrock calibrate`, or by an authoring pass
 that stores hashes) is a deliberate later step, after the user has reviewed it.
 
@@ -2471,23 +2467,21 @@ that stores hashes) is a deliberate later step, after the user has reviewed it.
 cannot plan the spec, and it writes none of the three stored fingerprints (D-079, D-122).
 Freezing the migrated spec with `fcabedrock calibrate` stores them.
 
-**Writing the stored fingerprints (M7 commands, D-122).** `fcabedrock calibrate`
+**Writing the stored fingerprints (D-122).** `fcabedrock calibrate`
 produces a fully frozen spec and writes all three native fingerprints; rerunning it
 on its own output is **byte-idempotent**, and stale stored values in the input warn
 (`*FingerprintStale`) and are corrected in the output. `fcabedrock fingerprint SPEC
 DATA` recomputes and reports the three native values with each stored field's
 `match`/`stale`/`absent` state, and `--write --out NEW_SPEC` writes a corrected
-canonical copy — **only** for a spec meeting the fully-frozen gate above. Both
-commands share one semantic gate and write path; **neither writes in place**. On an
-`extends` chain, calibrate flattens, while fingerprint-write preserves the root's
-`extends` and changes only the stored fingerprint fields semantically (§13).
-Effective override hashes are never stored in a spec (they remain manifest facts,
-below), and `fingerprint` takes no `--v2-compat` (D-011 keeps that flag
-convert-only).
+canonical copy, **only** for a fully frozen spec (above). Both commands write only
+fully frozen specs and share one write path; **neither writes in place**. On an
+`extends` chain, §13 states what each command writes. Effective override hashes are
+never stored in a spec (they remain manifest facts, below), and `fingerprint` takes
+no `--v2-compat` (D-011 keeps that flag convert-only).
 
 **Native vs effective fingerprints (CLI overrides).** Fingerprints stored in
-the `[spec]` block describe the spec's **native resolved output settings only**
-— what the spec produces with no CLI overrides. A CLI override such as
+the `[spec]` block describe the spec's **native resolved output settings only**:
+what the spec produces with no CLI overrides. A CLI override such as
 `--v2-compat` (§8) does not rewrite the spec or its stored fingerprints; it
 applies every v2 byte convention §8 lists at run time. The
 run manifest (§15) records the **effective** `cxt_output_fingerprint` /
@@ -2497,17 +2491,18 @@ spec's *native* settings only: a mismatch there is a real warning
 (`SchemaFingerprintStale` / `CxtOutputFingerprintStale` /
 `DatOutputFingerprintStale`); a difference between the spec-stored and manifest
 fingerprints under `--v2-compat` is expected, not an error. Verification is
-defined where a plan is computable — the resolved spec planned with its native
+defined where a plan is computable: the resolved spec planned with its native
 settings; a spec that fails resolve or plan reports those failures instead
 (D-077). The `schema_fingerprint` is unaffected by output-only CLI overrides.
 
 ## 15. Run manifest
 
-When `convert --out BASE` runs, a sidecar **`BASE.manifest.toml`** is emitted **by
-default** — **one manifest per run**, whatever `--format` selected. For a
+When `convert --out BASE --format cxt|dat|both` runs, it writes `BASE.cxt`, `BASE.dat`
+or both, and a sidecar **`BASE.manifest.toml`** is emitted **by default**:
+**one manifest per run**, whatever `--format` selected. For a
 manifest-bearing run the manifest publishes **last** and is the run's **public commit
 marker** (§16.2, D-122): staged residue without it is uncommitted. `--no-manifest`
-suppresses this audit sidecar **only** — implementation-private transaction state
+suppresses this audit sidecar **only**: implementation-private transaction state
 then marks the run incomplete until the complete requested artifact set commits,
 disappears only on success, and preserves identical incomplete-run detection
 (D-122). Failed, cancelled, or invalid runs **leave no committed run**; commit-phase
@@ -2520,13 +2515,13 @@ containing-path resolution, and its private transaction state are exclusively ma
 the invocation, and are left undisturbed after an interruption until a later run recovers
 them**. Other programs may read completed outputs; they MUST NOT rewrite that namespace
 while publication or recovery is in progress. **`--force` does not waive this
-precondition** — it authorizes replacing an existing distinct destination, nothing more.
+precondition**: it authorizes replacing an existing distinct destination, nothing more.
 
 Within an invocation an implementation MUST detect a distinct object substituted for a
 participant it owns, and MUST NOT let the operating system's reuse of a file identifier
 defeat that detection. **Across a crash it cannot.** An interrupted file that nothing
-touched, and a deletion followed by a replacement that inherited the same identifier —
-byte-identical or not — leave identical durable evidence, and no hash, length or
+touched, and a deletion followed by a replacement that inherited the same identifier,
+byte-identical or not, leave identical durable evidence, and no hash, length or
 timestamp distinguishes them. Cold recovery therefore cannot always tell its own
 undisturbed residue from an externally substituted object; where it cannot establish
 ownership it MUST preserve what it finds and refuse, rather than act on it.
@@ -2582,7 +2577,7 @@ The manifest captures everything needed to reproduce the conversion exactly.
 format was written, and are the **effective** values (after any CLI override such as
 `--v2-compat`), so they may differ from the spec-stored native values (§14).
 `spec_file_hash` is the raw TOML bytes, distinct from the canonical, plan-derived
-`schema_fingerprint`. `input_hash` is the raw input bytes — every complete pass hashes
+`schema_fingerprint`. `input_hash` is the raw input bytes: every complete pass hashes
 them inline and a replay hash must match before commit (§17, D-122).
 
 **`[[run.spec_files]]`** is present **only** when the spec is an `extends` chain (the
@@ -2592,9 +2587,9 @@ fields in the fixed order **`path`, then `hash`**.
 
 **Path semantics.** `spec_path` and `input_path` are the **verbatim command
 operands**. Each `[[run.outputs]] path` is the **invoked output-base spelling plus the
-ruled extension** (§8/D-122), never normalized. Chain entries record the root operand
+ruled extension** (above), never normalized. Chain entries record the root operand
 spelling and each authored referrer-relative `extends` spelling with its raw file
-hash — canonical filesystem identity keys (§13) never enter the manifest.
+hash; canonical filesystem identity keys (§13) never enter the manifest.
 
 **`[[run.calibrations]]`** is present **iff** any calibration outcome was retained. It
 holds **one entry per calibrated attribute, which retains exactly one outcome** (the
@@ -2602,13 +2597,13 @@ closed `AttributeCalibration` union): `attribute`, `kind` ∈ {`cuts`,
 `observed_domain`, `include_additions`, `passthrough_bins`}, and that kind's
 variant-specific fields, in **spec-attribute order**, with legitimate zero-discovery
 outcomes as explicit empty arrays (e.g. `values = []`). It records **all four**
-retained outcome kinds completely (D-122; this resolves the roadmap's M4 manifest
-deferral). **Array wrapping:** only long non-cut `values` arrays use the D-113
-deterministic wrapping; `command_line`, `cuts`, and every other array remain inline.
+retained outcome kinds completely (D-122). **Array wrapping:** only long non-cut
+`values` arrays use the D-113 deterministic wrapping; `command_line`, `cuts`, and
+every other array remain inline.
 
 **Serialization.** Manifest bytes are canonical and fully determined: UTF-8 without
 BOM, LF line endings, the fixed field and section order shown, and the **same
-canonical TOML literal conventions as the spec writer** (D-075/D-113) — basic
+canonical TOML literal conventions as the spec writer** (D-075/D-113): basic
 double-quoted strings with the pinned escape set, invariant shortest round-trippable
 numbers (an integral cut renders `38`, never `38.0`), `key = value` with single
 spaces, arrays in the documented single-line style with only long non-cut calibration
@@ -2616,7 +2611,7 @@ spaces, arrays in the documented single-line style with only long non-cut calibr
 RFC 3339 UTC from an injected clock; `command_line` is the argv array verbatim;
 `tool_version` is the single version string `--version` prints. Only `timestamp` and
 `command_line` are audit-variable; every other field is a deterministic fact of the
-run — a path spelling varies only when its **source** varies: the argv operands for
+run; a path spelling varies only when its **source** varies: the argv operands for
 `spec_path`/`input_path`/output paths, the authored referrer-relative `extends`
 spellings for chain entries. Concrete serializer ownership stays an
 implementation-plan choice.
@@ -2645,7 +2640,8 @@ public readonly record struct BedrockDiagnostic(
 public enum DiagnosticSeverity { Info, Warning, Error, Fatal }
 ```
 
-- **Info**: informational (e.g., "auto-discretizer calibrated to cuts X").
+- **Info**: informational (e.g., the count of rows merged under
+  `duplicate_object_policy = "dedupe"`, §6.1).
 - **Warning**: non-fatal issue (e.g., an empty column, a stale fingerprint).
 - **Error**: fatal to the operation but recoverable for the next call
   (e.g., spec validation fails, but file remains usable).
@@ -2660,7 +2656,7 @@ ways, and they leave different bytes on disk:
 
 - a **structural or grouping-storage halt** (an invalid object key, a non-contiguous
   `subject_grouped` subject, an in-path spool failure) stops the object stream, so both
-  `.cxt` passes truncate **identically** — leaving a structurally well-formed but
+  `.cxt` passes truncate **identically**, leaving a structurally well-formed but
   **truncated** file the object-name-sequence invariant (§18.1) cannot detect, and a
   `.dat` holding only the rows written before the halt;
 - a **policy abort** (`unknown_value_policy = "fail"` meeting an unparseable or
@@ -2674,7 +2670,7 @@ Either way the artifact is invalid and the caller must discard it. For `.cxt` th
 diagnostics are authoritative only **after** the replay session is disposed, which is
 when cross-pass aggregates are flushed. (decisions.md D-105.)
 
-The M7 CLI realizes this discard through **staged publication**: artifacts stage on
+The CLI realizes this discard through **staged publication**: artifacts stage on
 the destination filesystem; a failed, cancelled, or invalid run **leaves no committed
 run**; files commit atomically one-by-one with best-effort rollback; for a
 manifest-bearing run the manifest publishes **last** as the public commit marker, and
@@ -2694,33 +2690,32 @@ Windows a no-replace move with neither a replacement nor a copy flag.
 A **checked classic fallback** is permitted on Unix, and **only** for these results of
 that attempt:
 
-- **Linux** — `EINVAL` (the VFS contract requires it for a flag the filesystem does not
+- **Linux**: `EINVAL` (the VFS contract requires it for a flag the filesystem does not
   support, so it is admissible only once a valid invocation is established),
   `ENOTSUP`/`EOPNOTSUPP`, and an `ENOSYS` reported directly by a correctly bound
   `renameat2`.
-- **macOS** — the documented `ENOTSUP` alone. Darwin's `EINVAL`, its `ENOSYS`, and its
+- **macOS**: the documented `ENOTSUP` alone. Darwin's `EINVAL`, its `ENOSYS`, and its
   distinct modern `EOPNOTSUPP` MUST NOT fall back.
-- **Neither** — `EEXIST` is a collision and MUST fail. Every other result, `EXDEV`
+- **Neither**: `EEXIST` is a collision and MUST fail. Every other result, `EXDEV`
   included, is an operation failure and MUST NOT cause a second, weaker move. Windows
   has no fallback at all.
 
 The fallback MUST establish destination **entry** absence immediately before renaming,
-where only a missing destination leaf establishes absence and **any** entry — including a
-directory or a dangling symbolic link — is a collision, and MUST then perform **exactly
+where only a missing destination leaf establishes absence and **any** entry (including a
+directory or a dangling symbolic link) is a collision, and MUST then perform **exactly
 one** flagless native rename with no retry, placeholder or pre-delete.
 
 **What this does and does not guarantee.** Each individual rename is atomic; **no
 cross-file atomicity is claimed**, and none of this isolates a run from a hostile writer.
 Two intervals on Unix are explicitly **not** atomic: the fallback's absence check to its
-rename, at every destination role — public artifact, manifest, backup or private control
-name, and a source name used as a compensation destination — and the final ownership
+rename, at every destination role (public artifact, manifest, backup or private control
+name, and a source name used as a compensation destination), and the final ownership
 proof to the `unlink` that follows it, because POSIX offers no compare-and-delete by
 descriptor. Verifying the moved object's identity afterwards proves **which source
 object arrived**; it does not prove the destination stayed absent, and it cannot restore
 an overwritten foreign entry. Both intervals fall under §15's exclusive, undisturbed
 namespace precondition, which `--force` does not waive. A detected collision or identity
-mismatch MUST fail the operation and leave the objects it found in place. Serialization,
-diagnostic ownership and exit meanings are unchanged.
+mismatch MUST fail the operation and leave the objects it found in place.
 
 ### 16.3 `DiagnosticLocation`
 
@@ -2834,35 +2829,16 @@ never join this registry (D-122). Phase-owned conditions such as
 | `ProbeDomainTruncated` | Warning (aggregated) | probe |
 | `ProbeLimitExceeded` | Error | probe |
 
-`EmptyExtent` / `EmptyIntent` were dropped in favor of the unambiguous,
-correctly-phased `AttributeHasNoCrosses` (an empty column, emit) and
-`ObjectHasNoCrosses` (an empty row, emit); whole-context emptiness is
-`NoFormalAttributes` (zero columns, plan) and `NoObjectsEmitted` (zero rows after
-filtering, emit). All four still write a structurally-valid (if degenerate)
-output rather than failing.
+An empty column is `AttributeHasNoCrosses` (emit) and an empty row is
+`ObjectHasNoCrosses` (emit); whole-context emptiness is `NoFormalAttributes` (zero
+columns, plan) and `NoObjectsEmitted` (zero rows after filtering, emit). All four
+still write a structurally-valid (if degenerate) output rather than failing.
 
 **Transitional codes.** A transitional code is emitted only by milestones *before*
 the feature's implementation milestone; it is removed once the feature lands and is
 **not** part of the v1 end-state set. **No milestone transitional remains.**
-(`TemplateMatcherNotImplementedV1` — owned by spec resolve, since templates and
-matchers never resolve into Core (D-078) — retired at **M6 Slice B** (D-121) when
-the application path landed: templates and matchers now execute, so the six named
-spec-resolve rows above replaced the single reject.
-`ObjectKeyColumnNotImplementedV1` retired when wide `dedupe`
-landed at M3 Slice F; `ObservedDomainCalibrationNotImplementedV1` retired when
-observed-domain calibration landed at M4 Slice A — D-098, so an absent
-`declared_domain` under a consuming discretizer is now filled by the Calibrate
-phase, §10.3; `RestrictToNotImplementedV1` retired when `restrict_to` execution
-landed at M4 Slice F — D-105, **M4's last transitional code**, so a `restrict_to`
-now filters objects rather than rejecting the conversion, §10.4.) They are distinct
-from the permanent `*NotImplementedV1`
-reservations in §20. (`DiscretizerKindNotYetSupported` — a recognized-but-deferred
-discretizer kind rejected at read with no parameter carrier, D-070 — was
-transitional on the same terms and **retired at M4 Slice E**, D-104: the set
-narrowed as each kind landed (`free_per_value` at Slice B, D-101; `equal_width` at
-Slice C, D-102; `equal_frequency` at Slice D, D-103, which also made `equal_width`'s
-`range = "percentile_p1_p99"` spelling accepted) and emptied with `value_groups`, its
-last owner. Every §11 discretizer kind now has a carrier and executes, so an
+Transitional codes are distinct from the permanent `*NotImplementedV1` reservations
+in §20. (Every §11 discretizer kind has a carrier and executes, so an
 unrecognized kind spelling is an ordinary `SpecFieldInvalid`.) One parse-phase code
 remains transitional: `SpecSurfaceNotYetSupported`, now carrying **exactly one**
 recognized-but-unmodelled surface — **`value_type = "date"`**. The
@@ -2884,13 +2860,9 @@ Slice A (D-120):** the `display_name` / `formal_attribute_format` portion of
 (D-121):** `TemplateMatcherNotImplementedV1` is **removed entirely** — member,
 emit sites, and registry row — so **no M6 transitional remains**.
 
-**The permanent M6 conditions — all seven named and live.** M6 introduced the
-invalid states below. The seventh landed with its emit site at M6 Slice A as
-`FormalAttributeNameInvalid` (D-120); the remaining six landed as **spec-resolve**
-conditions with template/matcher application at M6 Slice B (D-121), each named in
-the table above, following this registry's standing rule that a code joins the
-enum with its emit site (D-085). Each condition's **owner phase, severity, and
-granularity** is as settled in decisions.md D-116:
+**Template, matcher and naming conditions.** Each condition below is named in the
+table above, and its **owner phase, severity, and granularity** is as settled in
+decisions.md D-116:
 
 | Condition | Code | Where | Severity | Granularity |
 | --- | --- | --- | --- | --- |
@@ -2905,7 +2877,7 @@ granularity** is as settled in decisions.md D-116:
 `FormalAttributeNameInvalid` is **aggregated per logical attribute**: its message
 carries the offending-name count plus a bounded sample of at most three rendered
 names in render order, each quoted and escaped (backslash, double quote, CR, LF),
-with a `(+N more)` tail when truncated — a pinned representation, so two runs and
+with a `(+N more)` tail when truncated: a pinned representation, so two runs and
 two machines emit byte-identical messages (§17).
 
 An unknown-reference diagnostic on an **attribute** carries the `AttributeName`
@@ -2920,9 +2892,9 @@ reports `MatcherSelectsNoAttributes` when its selector chose nothing. A matcher
 qualifies for **at most one** of the two, since `MatcherFullyShadowed` requires at
 least one selected attribute.
 
-**M6 static shape reuses `SpecFieldInvalid`** — no new parse-phase code is added
-for: an invalid template-`id` grammar (§9.1), a matcher with no `template`
-reference, an empty or uncompilable `name_regex`, a malformed
+**Static template, matcher and naming shape reuses `SpecFieldInvalid`**: no separate
+parse-phase code exists for an invalid template-`id` grammar (§9.1), a matcher with
+no `template` reference, an empty or uncompilable `name_regex`, a malformed
 `source_index_range` (wrong arity, non-integer, negative, or reversed), both or
 neither matcher selector, and the §10.7 naming-shape failures (unknown/empty
 placeholder, unmatched or malformed brace, empty format string, CR/LF in format
@@ -2931,18 +2903,18 @@ literal text, and an empty or CR/LF-bearing `display_name`).
 **Granularity and ordering for applied templates.** An effective attribute
 assembled from templates is validated by the **existing** condition owners, and
 its structured diagnostics are emitted **one per affected effective attribute, in
-attribute declaration order** — never collapsed into a per-template aggregate,
+attribute declaration order**, never collapsed into a per-template aggregate,
 because one invalid effective attribute may draw on several matching templates
 plus higher precedence tiers, so the attribute is the only sound owner. A message
 **may** name every contributing template/matcher site, and a CLI or UI **may**
 group identical diagnostics for presentation, without changing the structured
-diagnostic contract. The M7 CLI renders each diagnostic as **one deterministic
+diagnostic contract. The CLI renders each diagnostic as **one deterministic
 stderr line** in the sparse labelled form `file="…" line=N column=N attribute="…"
-record=N: severity Code: escaped-message` — only populated location fields, in that
+record=N: severity Code: escaped-message`: only populated location fields, in that
 order; string fields as JSON string literals, integers invariant; lowercase
 severity; all control characters and literal backslashes escaped; no location prefix
 when no field is populated (`warning NoObjectsEmitted: …`); code-less host errors
-render `error: escaped-message`. Library order is preserved and M7 does **no**
+render `error: escaped-message`. Library order is preserved and the CLI does **no**
 additional grouping (D-122). Within the resolve phase the deterministic family order
 is:
 
@@ -2964,23 +2936,21 @@ so only transcription failures own codes here; a migrated spec then flows throug
 the ordinary parse/resolve/validate/plan phases above. `BedDateTypeNotSupported`
 retires if the date carrier lands (D-038).
 
-**The `probe` phase (M5, implemented).** Discovery / `probe` (§7.1) is a draft-generation
-operation outside the §7 conversion pipeline. Its five codes above —
-`ProbeSourceReadFailed`, `ProbeNoAttributesDiscovered`, `ProbeAttributeNameAdjusted`,
-`ProbeDomainTruncated`, `ProbeLimitExceeded` — and the **`probe`** phase-ownership added to
-`TripleSubjectNotContiguous` and `ObjectKeyValueInvalid` (both previously `calibrate/emit`,
-now `probe/calibrate/emit`) were the M5 registry contract; **all seven sites are now live**
-(decisions.md D-111) — the five `Probe*` codes on both shapes, and the two structural codes
-at their probe-phase sites on the triple path — with the ownership and semantics below
-unchanged. `ProbeSourceReadFailed` is a stream/read failure only and MUST NOT absorb a
+**The `probe` phase.** Discovery / `probe` (§7.1) is a draft-generation
+operation outside the §7 conversion pipeline. Its five codes above
+(`ProbeSourceReadFailed`, `ProbeNoAttributesDiscovered`, `ProbeAttributeNameAdjusted`,
+`ProbeDomainTruncated`, `ProbeLimitExceeded`) apply to both shapes, and the two
+structural codes `TripleSubjectNotContiguous` and `ObjectKeyValueInvalid` report at
+their probe-phase sites on the triple path (decisions.md D-111).
+`ProbeSourceReadFailed` is a stream/read failure only and MUST NOT absorb a
 structural subject error (that stays `ObjectKeyValueInvalid` / `TripleSubjectNotContiguous`);
 `ProbeAttributeNameAdjusted` and `ProbeDomainTruncated` are aggregated (count + bounded
 sample), and plain headerless `column_N` synthesis alone is not a warning. Cancellation is
-**not** a diagnostic — a canceled probe leaves no document and no diagnostic (§7.1, D-112).
+**not** a diagnostic: a canceled probe leaves no document and no diagnostic (§7.1, D-112).
 
-**Aggregation.** Data-phase diagnostics that can fire per value or per object —
-`SourceValueUnparseable`, `UnknownValueObserved`, `AttributeHasNoCrosses`,
-`ObjectHasNoCrosses` — are emitted **aggregated**: a per-attribute (or per-source)
+**Aggregation.** Data-phase diagnostics that can fire per value or per object
+(`SourceValueUnparseable`, `UnknownValueObserved`, `AttributeHasNoCrosses`,
+`ObjectHasNoCrosses`) are emitted **aggregated**: a per-attribute (or per-source)
 count with a bounded sample, never one diagnostic per row, so a malformed column
 at 73M records does not produce 73M diagnostics.
 
@@ -2998,7 +2968,7 @@ the enum when its own milestone lands. Every other row is live.
 The following rules are normative and ensure same-spec + same-input ⇒
 same-output across runs and across machines.
 
-The "same normalized input" precondition is **verified** by the M7 host: every
+The "same normalized input" precondition is **verified** by the CLI: every
 complete data pass hashes the raw bytes it consumes **inline**, and a replay whose
 hash differs from the first pass fails the run **before any commit** (a code-less
 host error; nothing publishes). A genuinely single-pass run records that pass's hash
@@ -3017,7 +2987,7 @@ under an explicit **stable-input precondition** (D-122).
      - over **value groups** (`value_groups` with `unmatched` `skip` / `other`):
        ascending order of the authored `scale.order` (§12.3);
      - over **cut bins** (`manual_cuts` / `ordered_cuts` / `equal_width` /
-       `equal_frequency`): the discretizer's bin order (rule 3) — `scale.order`
+       `equal_frequency`): the discretizer's bin order (rule 3); `scale.order`
        is forbidden there (§12.3, D-060).
 3. **Discretizer bin order**:
    - `manual_cuts`: ascending by cut value.
@@ -3046,7 +3016,7 @@ under an explicit **stable-input precondition** (D-122).
    - **Wide** `row_index`, or `column` under `keep` / `fail` / all-unique keys:
      source **row order**.
    - **Wide** `column` under `dedupe`: **first-occurrence order of each cleaned key
-     value** (later duplicates merge onto the first; §6.1) — a generalization of row
+     value** (later duplicates merge onto the first; §6.1), a generalization of row
      order.
    - **Triple `subject_grouped`**: order of **first appearance** of each subject.
    - **Triple `unordered`**: order of **first appearance** of each cleaned subject
