@@ -742,8 +742,8 @@ repeatability test ships with the implementation (EP-7).
 ## 8. The `[output]` block
 
 Output-formatting options. All optional with sensible defaults. They feed the
-per-format output fingerprints (§14) — `[output.cxt]` and `bin_label_unicode` →
-`cxt_output_fingerprint`; `[output.dat]` → `dat_output_fingerprint` — and none
+per-format output fingerprints (§14): `[output.cxt]` and `bin_label_unicode` →
+`cxt_output_fingerprint`; `[output.dat]` → `dat_output_fingerprint`; and none
 feeds `schema_fingerprint`. The one exception is `size_advisory_bytes`: it
 changes a warning, never output bytes, so it is not a fingerprint input
 (D-077).
@@ -768,7 +768,7 @@ empty_line_trailing_space = false            # default — bare empty line for o
 **`bin_label_unicode`**. With `false` (default), bin labels and ordinal
 thresholds use ASCII operators (`<30`, `[30, 40)`, `>=50`). With `true`,
 Unicode operators (`<30`, `[30, 40)`, `≥50`). ASCII default chosen for
-ConExp compatibility — ConExp is Java/2009-era and not all installations
+ConExp compatibility: ConExp is Java/2009-era and not all installations
 handle UTF-8 reliably.
 
 **`line_endings`**. `"lf"` (default) or `"crlf"`, set separately in `[output.cxt]`
@@ -777,10 +777,10 @@ and `[output.dat]` (§18.1, §18.2).
 **`size_advisory_bytes`**. During `.cxt` export, after the writer's
 object-name/count pass completes and **before any output bytes** (header, names, or
 incidence rows) are written, the pipeline computes the **exact final serialized
-`.cxt` size in UTF-8 bytes** under the resolved writer options — the `B` header and
+`.cxt` size in UTF-8 bytes** under the resolved writer options (the `B` header and
 blank lines, the decimal count lines, every object name and rendered
 formal-attribute name, each configured line ending, the M-character incidence rows,
-and the trailing-newline rule — and emits `OutputCxtSizeAdvisory` (Warning, export
+and the trailing-newline rule) and emits `OutputCxtSizeAdvisory` (Warning, export
 phase) when the projection is **at or above** the threshold. The projection counts
 **encoded bytes, not characters** (a non-ASCII name and CRLF line endings count at
 their real width). A `.dat`-only run emits no advisory. The default, 1,073,741,824
@@ -797,12 +797,12 @@ false`). v2 emitted a trailing space on every non-empty line; that is one of
 the v2-isms reproduced only under `--v2-compat` (below), not the vNext default.
 Both knobs exist for callers whose FIMI consumer has a specific expectation.
 
-**v2 byte-equality mode** is *not* a spec setting — it's a CLI flag
+**v2 byte-equality mode** is *not* a spec setting; it's a CLI flag
 (`--v2-compat`) on the convert command that overrides `[output]` to v2's exact
 byte conventions. The complete set of v2-isms, all behind this one flag: CRLF
 line endings (`.cxt` and `.dat`), `30to<40`-style bin labels, a trailing
 space on every non-empty `.dat` line, and a **shape-dependent `.dat` final
-newline** — present for a wide source, absent for a triple source (v2's triple
+newline**, present for a wide source, absent for a triple source (v2's triple
 converter wrote no final `.dat` line terminator; §18.2, D-087). Keeping every
 v2-ism behind the single flag means the vNext default output is uniformly clean;
 v2 reproduction is one switch, not a scattering of legacy defaults.
@@ -868,23 +868,23 @@ application only supplies configuration to attributes that already exist.
 
 #### Selectors
 
-A `match` table authors **exactly one** selector — `name_regex` **or**
+A `match` table authors **exactly one** selector: `name_regex` **or**
 `source_index_range`. Authoring both, or neither, is `SpecFieldInvalid` (Error,
 spec parse). A matcher MUST also reference a template; a missing `template` key
 is likewise `SpecFieldInvalid`.
 
-**`name_regex`** selects on the complete logical `attribute.name` (§10.1) — never
+**`name_regex`** selects on the complete logical `attribute.name` (§10.1), never
 a source header, predicate text, `display_name`, or a rendered formal-attribute
 name. The pattern MUST match the **whole** logical name; explicit anchors remain
 legal but are redundant when they express that same boundary. Matching uses .NET
 regex with `RegexOptions.CultureInvariant`, is **case-sensitive** by default,
 honors authored inline options (e.g. `(?i)`), and passes
-`Regex.InfiniteMatchTimeout` explicitly — a finite, machine-speed-dependent
+`Regex.InfiniteMatchTimeout` explicitly: a finite, machine-speed-dependent
 timeout would make the same spec host-dependent, and `RegexOptions.NonBacktracking`
 is not adopted because it would silently narrow the regex language relative to
 `value_groups`. Each pattern is compiled once and reused across attribute names.
 An authored pattern MUST be non-empty and compilable; an empty or uncompilable
-pattern is `SpecFieldInvalid` (Error, spec parse) — there is no dedicated
+pattern is `SpecFieldInvalid` (Error, spec parse); there is no dedicated
 regex-error code, exactly as for `value_groups.pattern` (§11.6).
 
 > **Deliberate divergence from §11.6.** `value_groups.pattern` is **partial**
@@ -893,7 +893,7 @@ regex-error code, exactly as for `value_groups.pattern` (§11.6).
 > of names. The two are not to be "harmonized" later by accident.
 
 **`source_index_range = [lo, hi]`** selects on the **resolved physical
-wide-source column index** — inclusive on both ends, **zero-based**, the same
+wide-source column index**, inclusive on both ends, **zero-based**, the same
 index space as `source.index` (§10.2). It is evaluated **after** ordinary
 header/schema binding, so a name-bound source participates normally; a name-bound
 source with no schema supplied fails the existing source-binding condition
@@ -902,7 +902,7 @@ declared logical attribute bound to an in-range index matches, including several
 logical attributes bound to the same physical column (§10.2). The range MUST be
 exactly two TOML integers satisfying `0 ≤ lo ≤ hi`; wrong arity, a non-integer, a
 negative endpoint, or reversed endpoints are `SpecFieldInvalid` (Error, spec
-parse). An endpoint **beyond the source width is legal over-coverage** — a
+parse). An endpoint **beyond the source width is legal over-coverage**: a
 generous range simply has no further attributes to match. `source_index_range` is
 **incompatible with `shape = "triple"`** (a predicate source has no column index)
 and is an Error at spec resolve, one per incompatible matcher (§16.4).
@@ -939,7 +939,7 @@ configuration, so:
   whole-value nested `[binding]` tables, not `[output]`'s per-leaf merge.)
 - **A winning template/matcher field counts as explicitly authored** for
   validation and provenance. A template cannot make otherwise-invalid
-  configuration valid, nor suppress its established diagnostic — so a
+  configuration valid, nor suppress its established diagnostic, so a
   template-supplied `boundary = "strict"` with `direction = "ge"` over cut bins
   is invalid and reports `OrdinalBoundaryIncompatibleWithCuts` (§12.3), exactly
   as the equivalent explicit attribute would.
@@ -947,7 +947,7 @@ configuration, so:
   omitted `direction` / `boundary` only **after** the winning effective scale has
   been selected, and the filled value retains **defaulted**, not authored,
   provenance (§6, §12.3).
-- **A replaced value is semantically irrelevant** — a lower-tier value that a
+- **A replaced value is semantically irrelevant**: a lower-tier value that a
   higher tier replaces contributes neither behaviour nor validation.
 - **Application covers every attribute, including `include = false`.** Emitted
   shaping supplied through a template stays **dormant** while the attribute is
@@ -958,12 +958,12 @@ configuration, so:
 
 #### Diagnostics for matchers
 
-A matcher that selects **zero attributes** produces one Warning — a typo-catcher,
+A matcher that selects **zero attributes** produces one Warning: a typo-catcher,
 not an error, since a pattern or range may legitimately over-cover.
 
 A matcher is **fully shadowed** when it selects at least one attribute and, on
 **every** selected attribute, **every field its template authors** is overridden
-by a higher-precedence source — a later matching template authoring the same
+by a higher-precedence source: a later matching template authoring the same
 field, the attribute's directly named template, or an explicit attribute field.
 A fully-shadowed matcher produces one Warning. The determination is made at the
 **merge** level over authored fields only, and is **independent of `include =
@@ -999,8 +999,8 @@ no fingerprint and no output byte (the unmatched matcher adds only its Warning).
 
 #### Unused templates are dormant
 
-An **unused** `[[template]]` — unreferenced by any attribute and selected into by
-no matcher — is **semantically dormant**: it round-trips and converts without
+An **unused** `[[template]]`, unreferenced by any attribute and selected into by
+no matcher, is **semantically dormant**: it round-trips and converts without
 error. Parse-level shape checks and the §10.7 naming-format grammar still apply
 to its authored body, but effective-semantic combinations (missing scaling, an
 incomplete scale) are validated **only if the template applies** to some
@@ -1028,7 +1028,7 @@ newlines and the TOML key-quoting character `"`. Real-world data files
 use names like `"bruises?"`, `"feature.1"`, `"days@home"`; the spec
 accepts these as-is so it can round-trip through `.bed` migration and
 other external sources without renaming. A matcher's `name_regex` selects on
-this string, and on the whole of it — see §9.2 for the exact matching contract.
+this string, and on the whole of it; see §9.2 for the exact matching contract.
 Template `id` fields (§9.1) use the
 stricter `[A-Za-z_][A-Za-z0-9_-]*` form because they're referenced by
 code.
@@ -1044,7 +1044,7 @@ line-oriented (§18.1), so a newline there would corrupt the file's structure
 (§10.7).
 
 **`include`** *(boolean, default per `[defaults]` or `true`)*. If `false`,
-the attribute generates no formal attributes and emits no incidence — but its
+the attribute generates no formal attributes and emits no incidence, but its
 own `restrict_to` filter (§10.4) still applies. This is the **filter-only
 attribute** pattern: filter objects by a field without analyzing that field.
 An `include = false` attribute with no `restrict_to` is inert (a harmless
@@ -1053,7 +1053,7 @@ syntactically regardless of `include`, and its **source binding** is checked on
 the **same terms** as an included one: because the conversion pipeline resolves
 **schema-aware** (the two-stage source bootstrap, D-098), an out-of-range or
 unresolvable source index is reported as an aggregated `SourceBindingInvalid`
-(Error, **spec validate**, §16.4) — for included **and** filter-only attributes
+(Error, **spec validate**, §16.4), for included **and** filter-only attributes
 alike. The resolution trust boundary (`ResolvedSpec.Create`) re-checks it as a
 programmer-error backstop for hand-built graphs, and the planner's residual
 handling is an unreachable-by-construction invariant, never a user-facing
@@ -1077,14 +1077,14 @@ source = { kind = "predicate", name = "age" }
 A wide-CSV `column` source MUST supply **exactly one** of `index` or `name`
 (neither or both is `SourceBindingInvalid`); binding by `name` requires
 `has_header = true` (also `SourceBindingInvalid` otherwise), while binding by
-`index` needs no header. A `name` — here or in a triple `columns` role (§5.3) — MUST
+`index` needs no header. A `name`, here or in a triple `columns` role (§5.3), MUST
 resolve to **exactly one** column; no matching header, or a duplicate matching
 header, is `SourceBindingInvalid`.
 
 The source `kind` MUST match the binding `shape`: `column` under `wide`, `predicate`
 under `triple`. A mismatch (a `predicate` source under `wide`, or a `column` source
 under `triple`) is `SourceBindingInvalid`, which also owns invalid triple `columns`
-shape/addressing (§5.3) — a missing or partial role table, mixed index/name
+shape/addressing (§5.3): a missing or partial role table, mixed index/name
 addressing, or all-name binding without `has_header = true`.
 
 A source may declare a **value type** controlling how raw values parse before
@@ -1098,28 +1098,28 @@ source = { kind = "column", index = 1, value_type = "string" }            # no p
 `value_type` is `"string"` or `"number"`. Each discretizer either **fixes** the
 type or is **flexible**:
 
-- **String-fixing** — `identity`, `value_groups`, `ordered_cuts`: bins are category
+- **String-fixing** (`identity`, `value_groups`, `ordered_cuts`): bins are category
   strings; only `value_type = "string"` is valid (the default).
-- **Number-fixing** — `manual_cuts`, `equal_width`, `equal_frequency`: cuts are
+- **Number-fixing** (`manual_cuts`, `equal_width`, `equal_frequency`): cuts are
   numeric; only `value_type = "number"` is valid (the default).
-- **Flexible** — `free_per_value`: accepts **either**. With `"string"` (default)
+- **Flexible** (`free_per_value`): accepts **either**. With `"string"` (default)
   each distinct spelling is its own bin; with `"number"` the *parsed numeric value*
   is the bin identity, so `90`, `90.0`, and `9e1` collapse to one bin. Use
-  `free_per_value` — not `identity`, which is string-fixing — for numeric
+  `free_per_value` (not `identity`, which is string-fixing) for numeric
   distinct-value binning.
 
 The value `"date"` is **reserved but not implemented in v1** (§11.7): a spec setting
 `value_type = "date"` parses but is rejected by the v1 planner with
 `DateValueTypeNotImplementedV1`. A `value_type` that is not one of these, that a
 type-fixing discretizer disallows (e.g. `identity` + `"number"`, or `manual_cuts` +
-`"string"`), or that conflicts with the `restrict_to`-implied type — a **string**
+`"string"`), or that conflicts with the `restrict_to`-implied type, a **string**
 `value_type` paired with a numeric-entry `restrict_to` (an exact `{ value = n }`
-or a range) — is `SourceValueTypeInvalid` (Error). The mirror case, a **numeric**
+or a range), is `SourceValueTypeInvalid` (Error). The mirror case, a **numeric**
 source with a **bare string** `restrict_to` entry, is owned by
 `RestrictToNumericEntryRequired` (§10.4), not this code.
 
 A spec MUST NOT declare two attributes with the same `name`. Two attributes
-MAY share the same `source` — this is how one field carries multiple scalings
+MAY share the same `source`; this is how one field carries multiple scalings
 (e.g. `age` as nominal bins alongside `age_ordinal` as ordinal thresholds, or
 an emitted attribute plus a filter-only attribute over the same field with
 different semantics). Distinct `name`s keep the **canonical** formal-attribute
@@ -1130,7 +1130,7 @@ identities apart (§14). Two failure modes, distinct causes:
   `FormalAttributeCollision` (Error).
 - If two distinct canonical identities would render to the **same `.cxt`
   name** (e.g. a `formal_attribute_format` that drops `{column}`), the planner
-  emits `FormalAttributeNameCollision` (Error) — duplicate column names in a
+  emits `FormalAttributeNameCollision` (Error): duplicate column names in a
   `.cxt` are confusing and almost always unintended.
 
 ### 10.3 declared_domain
@@ -1143,12 +1143,12 @@ The set of raw values that are recognized as schema-bearing. Values
 *not* in this list are subject to `unknown_value_policy`. Only meaningful
 for the raw-value discretizers `identity` and `free_per_value`; ignored for
 cut-based discretizers (`manual_cuts`, `ordered_cuts`, `equal_width`, etc.) and
-for `value_groups` (whose `groups` + `unmatched` already define recognition —
+for `value_groups` (whose `groups` + `unmatched` already define recognition;
 §11.6, D-055).
 
 When `declared_domain` is explicit, its **declaration order drives the
 formal-attribute (column) order** for `identity` and `free_per_value` scaled
-nominally (§17 rule 3) — this is what makes a spec-first run reproducible and
+nominally (§17 rule 3); this is what makes a spec-first run reproducible and
 v2-byte-compatible regardless of the order values happen to appear in the data.
 
 **Numeric `free_per_value` domains.** For a numeric `free_per_value` source
@@ -1165,7 +1165,7 @@ remain verbatim strings.
 If `declared_domain` is **omitted**, the Calibrate phase (§7) fills it from the
 observed domain in the data, and the user is warned (`ObservedDomainUsed`) because
 the resulting schema then depends on this specific input. Any **authored** domain is
-complete: an explicit empty list `[]` denotes a **fixed empty domain** — **zero
+complete: an explicit empty list `[]` denotes a **fixed empty domain**, **zero
 declared value bins**, not a calibration request (D-122). An authored `[]`
 suppresses observed-domain discovery, but
 it does **not by itself guarantee zero formal attributes**: `unknown_value_policy =
@@ -1174,7 +1174,7 @@ it does **not by itself guarantee zero formal attributes**: `unknown_value_polic
 holds through every resolution tier: a template-supplied `[]` is likewise
 authored-complete (§9.2, D-114). The TOML reader/writer round-trips an authored `[]`
 verbatim; `fcabedrock calibrate` freezes an **omitted** domain to the observed values
-as an explicit `declared_domain` — and an empty observed outcome freezes as `[]`
+as an explicit `declared_domain`, and an empty observed outcome freezes as `[]`
 (§7, D-122). For input-independent, spec-first workflows, declare the domain
 explicitly or freeze it with `fcabedrock calibrate`.
 
@@ -1186,7 +1186,7 @@ AND'd. Operates on **raw values** before discretization.
 
 `restrict_to` applies whether or not the attribute is included (§10.1). A
 **filter-only attribute** (`include = false` + `restrict_to`) filters objects
-without contributing any formal attribute to the schema — the clean way to
+without contributing any formal attribute to the schema: the clean way to
 say "keep only objects whose Gene is Bmp5" without emitting a Gene column.
 
 For categorical sources (string raw values):
@@ -1195,7 +1195,7 @@ For categorical sources (string raw values):
 restrict_to = ["Bachelors", "PhD"]
 ```
 
-For continuous sources (numeric raw values) — **exact** numeric entries and
+For continuous sources (numeric raw values), **exact** numeric entries and
 **ranges** may be mixed freely:
 
 ```toml
@@ -1213,21 +1213,21 @@ Range bounds are inclusive on the low side and exclusive on the high side,
 matching the bin convention. An omitted `from` or `to` leaves that side unbounded.
 An **exact** numeric entry `{ value = n }` matches by
 **parsed numeric identity**, so `30`, `30.0`, and `3e1` all match a value of 30
-(`n` must be finite). The empty range `{}` matches any **usable** numeric value —
+(`n` must be finite). The empty range `{}` matches any **usable** numeric value;
 equivalently, it excludes only missing/unparseable values.
 
 **Execution is existential.** An object **passes** an attribute's `restrict_to`
 when **at least one** observed raw value for that source matches **at least one**
 entry (the OR within an attribute). For triple input an **absent** predicate
-matches nothing and a **missing** value matches nothing — either way the object
+matches nothing and a **missing** value matches nothing; either way the object
 fails that attribute's restriction. An object that fails **any** attribute's
 restriction is **excluded** (the AND across attributes, §10.1). Under wide
 `dedupe` (§6.1) the rows for a key are grouped **first** and the restriction is
 evaluated existentially over the **merged** object: if any of the merged
 observations matches, the **complete** object survives with **all** its
 observations and crosses (to keep only a single row, use `keep`/`fail` or
-upstream conflict resolution, not `dedupe`). Wide `row_index`/`fail`/`keep` — one
-observation per source per object — is the one-observation special case: the
+upstream conflict resolution, not `dedupe`). Wide `row_index`/`fail`/`keep`, one
+observation per source per object, is the one-observation special case: the
 single cell either matches or it does not.
 
 **Restriction-path diagnostics.** Evaluating a restriction reads raw values, so it
@@ -1235,10 +1235,10 @@ reports on them like any other data pass (D-097). On a **numeric** restriction a
 **valid non-match** and a **missing** value are **silent** (a non-match is the
 filter working, not an anomaly); an **unparseable or non-finite** input is a
 **non-match** (it can match no numeric entry) **plus** an aggregated
-`SourceValueUnparseable` at the severity `unknown_value_policy` selects — `skip`
+`SourceValueUnparseable` at the severity `unknown_value_policy` selects: `skip`
 silent, `warn` Warning, `fail` Error/abort, `include` Warning (§10.6). This is the
 **only** diagnostic path for a **filter-only** attribute (`include = false`), which
-is otherwise discarded before discretization — without it an unparseable filtered
+is otherwise discarded before discretization; without it an unparseable filtered
 value would report nothing. An **included-and-restricted** attribute keeps its
 **ordinary** malformed/unknown-value diagnostics even when the restriction excludes
 its object: restrictions **filter objects, not observations**, and each raw
@@ -1249,17 +1249,17 @@ pass never double-count the same cell).
 object's **complete** observation set, and object formation order is unchanged
 (decisions.md D-105). Concretely:
 
-- **Wide `row_index` / `fail` / `keep`** — the row is the formed object. It is
+- **Wide `row_index` / `fail` / `keep`**: the row is the formed object. It is
   classified, then filtered; a **non-surviving row is not an object**, so it triggers
   no `fail` duplicate check and consumes no `keep` assigned name (§6.1 assigns those in
   **emission** order). **`row_index` names are input positions and filtering never
   renumbers them** (§5.4): if row 0 is filtered and row 1 survives, the survivor is
   still named `1`.
-- **Wide `dedupe`** — grouping and merging **precede** restriction (above), and the
+- **Wide `dedupe`**: grouping and merging **precede** restriction (above), and the
   aggregated `DuplicateObjectKey` (Info) counts merged rows **pre-filter**: it reports
   what the *input* contained, so a merged object the restriction later drops is still
   counted.
-- **Triple** — the subject's group closes, then the restriction decides emission.
+- **Triple**: the subject's group closes, then the restriction decides emission.
   Structural checks (subject validity, `subject_grouped` contiguity) precede filtering
   and are independent of it.
 
@@ -1267,7 +1267,7 @@ Within one `restrict_to` list every entry must satisfy the attribute's single
 `value_type` (§10.2): a string-fixing source accepts only string entries, a
 number-fixing source only **numeric** entries (exact `{ value = n }` or ranges). A
 genuinely mixed string/numeric list is therefore a **validation error**
-(`SourceValueTypeInvalid` / `RestrictToNumericEntryRequired`, below) — no
+(`SourceValueTypeInvalid` / `RestrictToNumericEntryRequired`, below): no
 single-attribute `value_type` admits both.
 
 **Static validation.** A `restrict_to` list's *shape* is validated at parse/validate,
@@ -1275,14 +1275,14 @@ independently of the data it will later filter:
 
 - a numeric source (`value_type = "number"`, or a numeric-cut discretizer) whose
   `restrict_to` contains a **bare string** entry is `RestrictToNumericEntryRequired`
-  (Error) — a numeric source requires a **numeric entry** (exact `{ value = n }`
-  or a range). This code — **not** `SourceValueTypeInvalid` (§10.2) — owns the
+  (Error): a numeric source requires a **numeric entry** (exact `{ value = n }`
+  or a range). This code, **not** `SourceValueTypeInvalid` (§10.2), owns the
   numeric-source/string-entry mismatch;
-- an **invalid numeric entry** — an exact `{ value = n }` whose `n` is non-finite,
-  or a range with equal, reversed, or non-finite **provided** bounds — is
+- an **invalid numeric entry** (an exact `{ value = n }` whose `n` is non-finite,
+  or a range with equal, reversed, or non-finite **provided** bounds) is
   `RestrictToRangeInvalid` (Error). `{}` (both bounds omitted) is valid;
 - a `restrict_to` string value absent from an explicit `declared_domain` (where one
-  applies — `identity` / `free_per_value`) is `RestrictToValueNotInDomain`
+  applies: `identity` / `free_per_value`) is `RestrictToValueNotInDomain`
   (Warning), a typo-catcher.
 
 These are *shape* checks: they reject a list that could never filter meaningfully,
@@ -1316,8 +1316,8 @@ missing attribute appends after the scale's formal attributes (D-074).
 empty, equals `missing_token`, or is absent because the row is too short. A
 predicate simply **not present** for a subject is **no observation**, not missing
 (§5.3.1): under `"as_attribute"` it does **not** cross `<name>-missing`. This is the
-triple analogue of the wide cell-per-column model — where every object carries a
-value (present or missing) for every column — which triple input does not guarantee.
+triple analogue of the wide cell-per-column model, where every object carries a
+value (present or missing) for every column, which triple input does not guarantee.
 
 ### 10.6 unknown_value_policy
 
@@ -1333,7 +1333,7 @@ not silently dropped, but the conversion still completes. Switch to
 `"skip"` when you've intentionally declared a partial domain and don't
 want warnings about the values you knew you were dropping. `"fail"` is
 for production pipelines where unexpected values indicate upstream
-breakage. `"include"` is for exploratory work — it resolves during the
+breakage. `"include"` is for exploratory work; it resolves during the
 Calibrate phase (§7), extends the schema with each newly-observed value, and
 therefore makes `schema_fingerprint` data-dependent; implementations MUST
 recompute the fingerprint after calibration and emit `UnknownValuePolicyInclude`
@@ -1343,13 +1343,13 @@ severity follows the policy: `warn` → Warning, `fail` → Error.
 explicit `declared_domain` (appended after the declared values, first-observation
 order, §17 rule 3) and rewriting the policy to fixed `"warn"` (§7, D-122).
 
-**Numeric attributes.** For a **numeric-typed** source — a cut-based discretizer
-(where `declared_domain` is ignored, §10.3) **or** a numeric `free_per_value` — a
+**Numeric attributes.** For a **numeric-typed** source, a cut-based discretizer
+(where `declared_domain` is ignored, §10.3) **or** a numeric `free_per_value`, a
 value that is **present but not a usable finite number** (it fails to parse under
 `binding.locale`, or parses to NaN/±∞) is a **present-but-invalid** value (D-050,
 §11.5): the object is kept, no cross is emitted for that attribute, the value is
 **excluded from calibration**, and `SourceValueUnparseable` governs the diagnostic
-at the severity `unknown_value_policy` selects — `skip` → no cross, no diagnostic;
+at the severity `unknown_value_policy` selects: `skip` → no cross, no diagnostic;
 `warn` → no cross, Warning; `fail` → Error/abort; `include` → no cross, Warning
 (an unparseable token cannot be added to a numeric domain, so `include` behaves as
 `warn` here). For a **cut-based** discretizer there are no out-of-domain
@@ -1357,23 +1357,23 @@ at the severity `unknown_value_policy` selects — `skip` → no cross, no diagn
 numeric `free_per_value` **with** an explicit `declared_domain`, a **parseable**
 value not in the domain is instead an ordinary out-of-domain value and follows the
 categorical policy above. This same severity mapping governs an unparseable value
-met on a **restriction** path, including a **filter-only** attribute's — the only
+met on a **restriction** path, including a **filter-only** attribute's, the only
 diagnostic route for a value that never reaches discretization (D-097, §10.4).
 
 ### 10.7 formal_attribute_format
 
-**Default formal-attribute naming is scale-specific** — used when an attribute
+**Default formal-attribute naming is scale-specific**, used when an attribute
 does *not* set `formal_attribute_format` explicitly:
 
 - `nominal`: `{column}-{value}` (e.g. `gill-size-broad`)
 - `ordinal`: `{column}-{scale_op}{value}` (e.g. `age->=40`)
-- `dichotomic`: `{column}` **alone** — the single formal attribute is the column
+- `dichotomic`: `{column}` **alone**; the single formal attribute is the column
   name with no value suffix (matches v2: `bruises?`, `US-citizen`, not
   `bruises?-bruises`)
 - `missing_policy = "as_attribute"` adds `{column}-missing`
 
 An explicit `formal_attribute_format` **overrides the scale default entirely**
-and applies to **every** formal attribute that attribute produces — **including
+and applies to **every** formal attribute that attribute produces, **including
 its `missing_policy = "as_attribute"` column**, which then renders through the
 format (with `{value}` resolving to the literal `missing`, per the table below)
 instead of the default `{column}-missing`. The missing column's *position* and
@@ -1391,23 +1391,23 @@ explicitly. Because the override is total, v2 byte equality relies on the
 dichotomic default being `{column}` alone (no explicit format in the v2-derived
 specs).
 
-**Template placeholders — a closed, case-sensitive set.** These five are the
+**Template placeholders: a closed, case-sensitive set.** These five are the
 *only* placeholders; there are no others, and the set is not extensible by a
 conforming implementation:
 
-- `{name}` — the attribute's `name` field
-- `{column}` — same as `name` (alias for clarity in wide-CSV context)
-- `{display_name}` — the attribute's `display_name`, defaults to `name`
-- `{value}` — the value-side label (a discretizer bin label, a category
+- `{name}`: the attribute's `name` field
+- `{column}`: same as `name` (alias for clarity in wide-CSV context)
+- `{display_name}`: the attribute's `display_name`, defaults to `name`
+- `{value}`: the value-side label (a discretizer bin label, a category
   value, etc.)
-- `{scale_op}` — for ordinal scales, the inequality operator (`>=`, `<=`,
+- `{scale_op}`: for ordinal scales, the inequality operator (`>=`, `<=`,
   `<`, `>`, or Unicode per §8); empty for non-ordinal scales
 
 **Grammar (normative).** `{{` renders a literal `{` and `}}` renders a literal
 `}`. Parsing and substitution are a **single left-to-right pass**: text
 substituted in from `name`, `display_name`, a raw value, or a `value_labels`
 label is **never rescanned** as format syntax or brace escaping. (This is
-required for determinism — §10.1 explicitly permits a `name` containing
+required for determinism: §10.1 explicitly permits a `name` containing
 brace-like text.) So `"{{{column}}}-{value}"` renders literal braces around the
 column name.
 
@@ -1416,17 +1416,17 @@ dedicated format diagnostic:
 
 - an **unknown** placeholder (including a case variant such as `{Value}`), an
   **empty** placeholder `{}`, and an **unmatched or malformed** brace;
-- an **empty format string** — `formal_attribute_format = ""` is rejected rather
+- an **empty format string**: `formal_attribute_format = ""` is rejected rather
   than rendering every formal attribute as the empty name;
 - **CR or LF in the format's literal text.**
 
 **Literal text may be empty.** The non-empty requirement above applies to the
 format string *as a whole*, never to an individual literal span, so
-`"{name}"`, `"{value}"`, and `"{name}{value}"` — whose literal spans between and
-around the placeholders are empty — are perfectly valid.
+`"{name}"`, `"{value}"`, and `"{name}{value}"` (whose literal spans between and
+around the placeholders are empty) are perfectly valid.
 
-These checks apply **wherever the format is authored** — `[defaults]`,
-`[[template]]`, and `[[attribute]]` — including inside an **unused** template and
+These checks apply **wherever the format is authored** (`[defaults]`,
+`[[template]]`, and `[[attribute]]`) including inside an **unused** template and
 on an **excluded** attribute: authored *shape* is the parser's concern, while
 dormancy is semantic (§9.2, §10.9).
 
@@ -1437,15 +1437,15 @@ dormancy is semantic (§9.2, §10.9).
 | --- | --- |
 | `nominal` bin | the bin label (category value or cut-bin label) |
 | `ordinal` threshold | the threshold label (`{scale_op}` carries the operator) |
-| `dichotomic` (the single column) | the scale's `true_value` — **via `value_labels` when labels are live** (§10.8); the default format omits it |
+| `dichotomic` (the single column) | the scale's `true_value`, **via `value_labels` when labels are live** (§10.8); the default format omits it |
 | `missing_policy = "as_attribute"` column | the literal `missing` |
 
 For a **numeric** `free_per_value` bin (a `value_type = "number"` value-bin,
 §11.3), the `nominal`-bin `{value}` above is the **parsed numeric value** rendered
-with the §14 invariant, shortest round-trippable formatting — so `90`, `90.0`, and
+with the §14 invariant, shortest round-trippable formatting, so `90`, `90.0`, and
 `9e1` share one bin rendered `90`.
 
-`{value}` consults `value_labels` wherever labels are **live** (§10.8) — that is,
+`{value}` consults `value_labels` wherever labels are **live** (§10.8), that is,
 under `identity` / `free_per_value`. For a **dichotomic** scale this means the
 **labelled** `true_value`, not necessarily the raw authored one: with
 `true_value = "t"`, `value_labels = { t = "bruised" }`, and
@@ -1464,20 +1464,20 @@ attribute, alongside `FormalAttributeNameCollision` (§16.4). The rule exists
 because `.cxt` is line-oriented (§18.1) and its writer is deliberately dumb
 (EP-15): a newline inside a rendered name would add a phantom line, so the
 declared attribute count and the name block would disagree and every consumer
-would misparse — silently, since the canonical fingerprint encoding escapes
+would misparse, silently, since the canonical fingerprint encoding escapes
 control characters happily (§14).
 
 This backstop is **not** limited to the naming surface: it also catches CR/LF and
 emptiness arriving through raw values, calibrated domains, and `value_labels`, so
 it covers routes that exist independently of `formal_attribute_format`. Because
 the plan is shared, an invalid rendered name **fails the whole plan and therefore
-blocks `.dat` emission as well as `.cxt`** — consistent with existing
+blocks `.dat` emission as well as `.cxt`**, consistent with existing
 formal-name-collision behavior, even though `.dat` serializes no names. Exporters
 never sanitize, replace, escape, or independently validate a name (EP-15). No
 broader C0/Unicode-control prohibition is adopted in v1: only *empty*, *CR*, and
 *LF* are constrained here.
 
-This setting affects `cxt_output_fingerprint` only — not `schema_fingerprint`, and
+This setting affects `cxt_output_fingerprint` only, not `schema_fingerprint`, and
 not `dat_output_fingerprint` (`.dat` carries numeric IDs, no names). A naming
 setting that does not change any rendered name is byte- and hash-neutral.
 
@@ -1499,11 +1499,11 @@ value_labels    = { b = "broad", n = "narrow" }
 ```
 
 **Applicability.** `value_labels` is consulted only when the discretizer is
-`identity` or `free_per_value` — those are the discretizers whose bin label IS
+`identity` or `free_per_value`: those are the discretizers whose bin label IS
 the raw value. For `value_groups`, the group `label` field already serves this
 purpose; for `manual_cuts` and the auto-binning discretizers, bin labels are
 computed from cuts. Under any of those discretizers `value_labels` is **dormant
-and ignored** — never an error — exactly as `declared_domain` is ignored for
+and ignored**, never an error, exactly as `declared_domain` is ignored for
 cut-based discretizers (§10.3). This keeps an attribute toggleable: switching its
 discretizer does not force you to strip retained labels (D-049).
 
@@ -1511,7 +1511,7 @@ discretizer does not force you to strip retained labels (D-049).
 `free_per_value` discretizer). A raw value present in `declared_domain` but
 absent from `value_labels` falls through to the raw value as label. A label in
 `value_labels` for a value not in `declared_domain` is an error
-(`ValueLabelKeyNotInDomain`) — a typo-catcher. For a **numeric** `free_per_value`,
+(`ValueLabelKeyNotInDomain`), a typo-catcher. For a **numeric** `free_per_value`,
 `value_labels` keys are parsed under `binding.locale` to the **same normalized
 numeric identity** as the domain (§10.3, D-096): a key whose parsed value is not in
 the domain stays `ValueLabelKeyNotInDomain`, while two keys collapsing to **one**
@@ -1526,7 +1526,7 @@ names, not their *order* or *count*. It contributes to
 
 ### 10.9 discretizer and scale
 
-`discretizer` and `scale` are **required when `include = true`** — the two
+`discretizer` and `scale` are **required when `include = true`**, the two
 orthogonal pieces that turn raw values into formal attributes (see §11 and
 §12).
 
@@ -1537,11 +1537,11 @@ scale       = { kind = "...", ... }
 
 **`include = false` is an authoring toggle (D-049).** When `include = false` the
 attribute emits no formal attributes and no incidence, and `discretizer`/`scale`
-MAY be omitted. But any emitted-shaping config it *does* carry — `discretizer`,
+MAY be omitted. But any emitted-shaping config it *does* carry (`discretizer`,
 `scale`, `value_labels`, `declared_domain`, `formal_attribute_format`,
-`display_name`, `missing_policy`, `unknown_value_policy` — is **retained but
+`display_name`, `missing_policy`, `unknown_value_policy`) is **retained but
 ignored**, never an error. This lets you park an attribute (toggle it off without
-stripping its scale) and switch it back on later with its configuration intact —
+stripping its scale) and switch it back on later with its configuration intact:
 the round-trip the TOML reader/writer relies on. The attribute is still validated
 *syntactically* (§10.1), and `restrict_to` still applies (§10.4); only the
 emitted-shaping semantics are dormant while excluded. The states:
@@ -1584,8 +1584,8 @@ discretizer = {
 **`cuts`** *(required, array of numbers, length ≥ 1, strictly ascending)*.
 
 **`ends`** *(default `"open"`)*. With `"open"`, bins extend to ±∞ at the
-ends — three cuts produce four bins (`<c0`, `[c0,c1)`, `[c1,c2)`, `≥c2`).
-With `"closed"`, only the interior bins are produced — three cuts
+ends: three cuts produce four bins (`<c0`, `[c0,c1)`, `[c1,c2)`, `≥c2`).
+With `"closed"`, only the interior bins are produced: three cuts
 produce two bins (`[c0,c1)`, `[c1,c2)`); values outside the cuts'
 overall range produce no bin (treated as out-of-range). `ends = "closed"`
 therefore requires **at least two cuts** (one cut yields no interior bin); fewer
@@ -1617,9 +1617,9 @@ discretizer = { kind = "free_per_value" }
 Different from `identity` in that it is **type-flexible** (§10.2): with
 `value_type = "number"` its bin identity is the *parsed numeric value*, so `90`,
 `90.0`, and `9e1` collapse to one bin; with `value_type = "string"` (the default)
-each distinct spelling is its own bin. Use `free_per_value` — not `identity` — for
+each distinct spelling is its own bin. Use `free_per_value`, not `identity`, for
 numeric distinct-value bins; `identity` is string-only (§10.2). That numeric bin's
-**rendered label** — and any `{value}` in `formal_attribute_format` (§10.7) — is
+**rendered label**, and any `{value}` in `formal_attribute_format` (§10.7), is
 the parsed number formatted with the §14 invariant, shortest round-trippable rule,
 so the collapsed bin renders `90`, never `90.0` or `9e1`.
 
@@ -1667,13 +1667,13 @@ the same value) is `EqualWidthCutsCollapsed` (Error, spec validate).
 With a **data-derived** range (`min_max` / `percentile_p1_p99`), the span is drawn
 from the calibration population (§7): data with **no usable spread** (all values
 equal, or too few to bound the range) is `CalibrationDataInsufficient` (Error,
-calibrate); final cuts that — after any rounding — are non-finite or not strictly
+calibrate); final cuts that, after any rounding, are non-finite or not strictly
 ascending are `CalibrationCutsInvalid` (Error, calibrate). The `equal_frequency`
 **distinct-value guard** (§11.5) does **not** apply to `equal_width`: equal-width
 bins are placed by span, not by count, so equal width tolerates fewer distinct
 values than `bins`. Percentile-range (`percentile_p1_p99`) calibration is subject
 to the same **exact, bounded-memory** obligation as `equal_frequency` (§11.5);
-`min_max` is not — a streaming minimum and maximum is bounded by construction.
+`min_max` is not: a streaming minimum and maximum is bounded by construction.
 
 **Cut derivation (normative).** The `bins - 1` cuts are computed in binary64 over
 the resolved span. For `i = 1 … bins - 1` with `t = i / bins`, the interpolation is
@@ -1681,13 +1681,13 @@ the resolved span. For `i = 1 … bins - 1` with `t = i / bins`, the interpolati
 a sign or has a zero bound (`vmin ≥ 0` or `vmax ≤ 0`) the cut is
 `vmin + (vmax - vmin) * t`; when the span crosses zero (`vmin < 0 < vmax`) it is the
 convex combination `vmin * (1 - t) + vmax * t`. Every finite increasing range
-therefore derives **finite** cuts — `vmin = -1.7e308, vmax = 1.7e308` included — so a
+therefore derives **finite** cuts, `vmin = -1.7e308, vmax = 1.7e308` included, so a
 range is never rejected merely for being wide. `precision = { round_to = r }` then maps
 each cut to the nearest multiple of `r`, **halfway cases to even**; every computed cut
 is canonicalized so a computed negative zero renders `0` (§14/decisions.md D-096).
 The derived-cut validity rules above then apply to the result: they catch a `round_to`
-that collapses two cuts onto one value, and — at the extreme margin of the double
-range — a span too narrow to hold `bins - 1` distinct representable cuts. See
+that collapses two cuts onto one value, and, at the extreme margin of the double
+range, a span too narrow to hold `bins - 1` distinct representable cuts. See
 decisions.md D-102.
 
 **Percentile range (normative).** `range = "percentile_p1_p99"` draws its span from
@@ -1697,7 +1697,7 @@ with `C_i · 100 ≥ 99 · N`, over the same aggregated ascending `(value, count
 population §11.5 defines. The comparisons are exact integer arithmetic; percentile
 positions MUST NOT be interpolated between neighbouring order statistics, taken from
 an approximate-quantile sketch, or delegated to a machine-dependent library
-percentile — any of which would break the §7 auto/frozen byte-equivalence. `p1 = p99`
+percentile, any of which would break the §7 auto/frozen byte-equivalence. `p1 = p99`
 (including an empty population) has no usable spread and is
 `CalibrationDataInsufficient` (Error, calibrate). The selected span then feeds the
 cut derivation above unchanged: `precision` applies **after** the span is chosen.
@@ -1727,7 +1727,7 @@ land inside a run of equal ("tied") values, `tie_policy` decides which side of t
 boundary receives the **entire tied-value group**: `"left"` places the whole group
 in the lower bin (the boundary sits at the group's right edge), `"right"` in the
 upper bin. It never splits a tied group across bins. **Emit** does **no** tie
-handling of its own — it applies the ordinary §11.2 half-open `[lo, hi)` geometry
+handling of its own: it applies the ordinary §11.2 half-open `[lo, hi)` geometry
 to the resolved cuts, so at emit a value equal to a cut always falls in the upper
 bin; `tie_policy` only governed *where the cut was placed* during calibration.
 With heavy ties, bin counts may deviate substantially from `n/bins`; this is
@@ -1741,9 +1741,9 @@ runs under these rules, which apply to both `equal_width` and `equal_frequency`:
 
 - **Parsing:** raw values are parsed to `double` using `binding.locale` (§5.1),
   whose default is `invariant`. Determinism comes from the locale being a
-  *declared* part of the spec, not from hardcoding invariant — the same spec
+  *declared* part of the spec, not from hardcoding invariant; the same spec
   parses identically everywhere. A value that is **present but not a usable finite
-  number** — it fails to parse under that locale, or parses to NaN or ±∞ — is
+  number** (it fails to parse under that locale, or parses to NaN or ±∞) is
   **not** treated as missing (D-050). It is a present-but-invalid value: the object
   is kept, no cross is emitted for that attribute, the value is **excluded** from
   calibration (it never influences a cut), and `SourceValueUnparseable` is reported
@@ -1759,7 +1759,7 @@ runs under these rules, which apply to both `equal_width` and `equal_frequency`:
 
 **Formula-stage obligation.** When the number of distinct surviving values is
 **≥ `bins`**, quantile placement plus `tie_policy` MUST select **`bins - 1`
-distinct, strictly-ascending cut gaps** — it MUST NOT drop a bin merely because
+distinct, strictly-ascending cut gaps**; it MUST NOT drop a bin merely because
 several target boundaries land within one tied group (the tie policy resolves them
 to the same side, and the remaining boundaries move on to the next distinct gaps).
 The resulting numeric cuts remain subject to the post-formula validity check:
@@ -1773,7 +1773,7 @@ boundaries forbids it, or because it is not a gap at all (`"right"` on the first
 group prefers the gap *below* the whole domain; `"left"` on the last group prefers
 the gap *above* it). In every such case **feasibility wins and `tie_policy` yields**.
 Boundaries are allocated in **ascending target order**, each taking the nearest
-feasible gap within the window `[p + 1, m - 1 - (bins - 1 - k)]` — where `p` is the
+feasible gap within the window `[p + 1, m - 1 - (bins - 1 - k)]`, where `p` is the
 previously selected gap (initially `0`), `m` the distinct-value count, and `k` the
 boundary's 1-based index. The lower bound forces gaps to strictly ascend; the upper
 bound reserves one gap for every later boundary. This may place a tied group on the
@@ -1796,7 +1796,7 @@ never weakens exactness, bounded memory or byte-identical output.
 Counting is exact, so it is also **checked**: if a per-value count, the running
 total, or a merge sum would exceed the implementation's integer range, calibration
 stops with `CalibrationPopulationTooLarge` (Error, calibrate; §16.4) and yields no
-calibrated result. It is a distinct condition — too much data to count exactly —
+calibrated result. It is a distinct condition (too much data to count exactly)
 and MUST NOT be reported as `CalibrationDataInsufficient` (its opposite) or as a
 storage failure. It is a contract-totality rule: no v1-scale workload reaches it
 (decisions.md D-103).
@@ -1811,7 +1811,7 @@ a `double` rank cannot reproduce once `N` approaches 2^53. The target falls in t
 first group `i` with `C_i · bins ≥ N · k`; the desired gap `d(k)` is:
 
 - `N·k = C_i·bins` exactly (a **group edge**) → `d(k) = i`, **regardless of
-  `tie_policy`** — the boundary already separates whole groups, so no tie exists;
+  `tie_policy`**: the boundary already separates whole groups, so no tie exists;
 - otherwise (strictly inside group `i`) → `d(k) = i` for `"left"`, `d(k) = i - 1`
   for `"right"`.
 
@@ -1819,8 +1819,8 @@ The feasibility window above then allocates the actual gap. `cut_placement`
 finally values it: `"right_value"` → `v_{g+1}`; `"midpoint"` → the midpoint of
 `v_g` and `v_{g+1}`, computed **sign-aware** exactly as in §11.4 (`a + (b - a)/2`
 for a same-sign gap or one with a zero bound; `(a + b)/2` for a gap crossing zero),
-so no extreme gap can overflow. If the midpoint cannot land strictly above `v_g` —
-the two values are adjacent representable doubles — the cut is `v_{g+1}`, which is
+so no extreme gap can overflow. If the midpoint cannot land strictly above `v_g`
+(the two values are adjacent representable doubles), the cut is `v_{g+1}`, which is
 membership-identical under the half-open geometry. Every computed cut is
 canonicalized so a computed negative zero renders `0` (§14/decisions.md D-096). See
 decisions.md D-103.
@@ -1831,20 +1831,20 @@ last three pin the feasibility precedence. All use the default
 
 - `[1, 2, 2, 2, 3, 4]`, `bins = 3`, `tie_policy = "left"` → cuts `3, 4`. Two target
   boundaries fall inside the tied `2`-run; the formula must still yield **two**
-  distinct ascending cuts (the second boundary moves to the next gap) — three bins
+  distinct ascending cuts (the second boundary moves to the next gap): three bins
   result, never a collapse to two.
 - `[1, 2, 2, 2, 3]`, `bins = 2`: one boundary lands in the `2`-run. `tie_policy =
   "left"` puts the whole `2`-group in the lower bin (cut at `3`), `"right"` puts it
   in the upper bin (cut at `2`). Either way, converting on the fly and converting
   from the `calibrate`-frozen spec (the auto cut becomes `manual_cuts`) produce
   byte-identical output on this dataset (§7).
-- **Collision** — `[1, 2, 2, 2, 3]`, `bins = 3`, `tie_policy = "left"` → cuts
+- **Collision**: `[1, 2, 2, 2, 3]`, `bins = 3`, `tie_policy = "left"` → cuts
   `2, 3`. Both boundaries prefer the `2`-group's right edge; the window pushes the
   first down to the gap below it so a gap remains for the second, against `"left"`.
-- **Last-group edge** — `[1, 2, 3, 4, 5, 5, 5, 5, 5, 5]`, `bins = 2`,
+- **Last-group edge**: `[1, 2, 3, 4, 5, 5, 5, 5, 5, 5]`, `bins = 2`,
   `tie_policy = "left"` → cut `5`. The preferred gap is above the whole domain and
   therefore not a gap; the tied `5`-group lands **upper** despite `"left"`.
-- **First-group edge** — `[5, 5, 5, 5, 5, 5, 6, 7, 8, 9]`, `bins = 2`,
+- **First-group edge**: `[5, 5, 5, 5, 5, 5, 6, 7, 8, 9]`, `bins = 2`,
   `tie_policy = "right"` → cut `6`. The preferred gap is below the whole domain;
   the tied `5`-group lands **lower** despite `"right"`.
 
@@ -1876,34 +1876,34 @@ discretizer = {
 { label = "ICD-10-Cardiac", pattern = "^I[0-9]{2}" }
 ```
 
-**Group form: combined** — value matches if it's in `values` *or* matches
-`pattern`:
+**Group form: combined** (value matches if it's in `values` *or* matches
+`pattern`):
 
 ```toml
 { label = "...", values = [...], pattern = "..." }
 ```
 
-`values` and `pattern` are **independently optional and may be combined** — a group
+`values` and `pattern` are **independently optional and may be combined**; a group
 needs at least one of them.
 
 **Regex semantics.** `pattern` is a **.NET regex** evaluated with
 **culture-invariant** matching, **case-sensitive** by default, and **partial**
 (unanchored `IsMatch`): `pattern = "I[0-9]{2}"` matches anywhere in the value.
-Anchor (`^…$`) for full-string matching. Authored inline options are honored — e.g.
-`(?i)` for case-insensitivity — because they are part of the pattern.
+Anchor (`^…$`) for full-string matching. Authored inline options are honored, e.g.
+`(?i)` for case-insensitivity, because they are part of the pattern.
 
 **`unmatched`** *(default `"skip"`)*:
 
-- `"skip"` — values not matching any group produce no bin (subject to
+- `"skip"`: values not matching any group produce no bin (subject to
   `unknown_value_policy`).
-- `"other"` — values not matching any group fall into a synthetic group
+- `"other"`: values not matching any group fall into a synthetic group
   labelled `Other`.
-- `"passthrough"` — values not matching any group keep their raw value
+- `"passthrough"`: values not matching any group keep their raw value
   as the bin label (mixed grouped and ungrouped attributes). Because the set of
   pass-through bins is **discovered from the data**, this makes the schema
   data-dependent: it resolves in the Calibrate phase (§7), emits
-  `ValueGroupsPassthroughDataDependent` (Warning), and — like the other
-  data-dependent cases — means tooling stores no fingerprints for the spec unless
+  `ValueGroupsPassthroughDataDependent` (Warning), and, like the other
+  data-dependent cases, means tooling stores no fingerprints for the spec unless
   it is frozen (§14). `fcabedrock calibrate` freezes `passthrough` by appending each
   discovered bin as a singleton group (`{ label = <value>, values = [<value>] }`) in
   first-observation order and rewriting `unmatched` to fixed `"skip"` (§7, D-122).
@@ -1923,8 +1923,8 @@ policy decides (`skip` defers to `unknown_value_policy`, `other` → the synthet
 group's `label` is present and non-empty; every authored explicit value is
 non-empty; an authored `pattern` is non-empty and a valid regex; and the group
 carries **at least one** non-empty explicit value **or** a non-empty pattern. Any
-of these — a missing/empty label, an empty or invalid `pattern`, an empty explicit
-value, or a group with neither matcher — is `SpecFieldInvalid` (Error, spec parse);
+of these (a missing/empty label, an empty or invalid `pattern`, an empty explicit
+value, or a group with neither matcher) is `SpecFieldInvalid` (Error, spec parse);
 there is no dedicated regex-error code (an uncompilable pattern is one
 `SpecFieldInvalid` condition). Both of these are valid, one matcher each:
 
@@ -1938,19 +1938,19 @@ array declares no explicit groups; every usable value is therefore unmatched and
 follows the selected `unmatched` policy. The group-validity rules above apply only to
 entries that are present.
 
-**Labels must be unique.** Authored group labels must be distinct, and — when
-`unmatched = "other"` — an authored group whose label collides with the synthetic
+**Labels must be unique.** Authored group labels must be distinct, and, when
+`unmatched = "other"`, an authored group whose label collides with the synthetic
 `Other` bin is likewise a duplicate. A duplicate authored label is
 `ValueGroupsLabelDuplicate` (Error, spec validate); duplicates **never** surface as
 `SpecFieldInvalid`. A **pass-through** value merely *observed* to equal an authored
 group label is data-dependent, not a static duplicate: it surfaces after
 calibration at the plan-phase `FormalAttributeCollision` (§10.2). Repeated
-observations of one pass-through value are **idempotent** — one bin, not a
+observations of one pass-through value are **idempotent**: one bin, not a
 collision.
 
 **Ordinal over value groups.** A `value_groups` discretizer under an `ordinal`
 scale (with `unmatched` `skip` or `other`, §12.3) **requires** an explicit
-`scale.order` that is a **full permutation of the group labels** — including the
+`scale.order` that is a **full permutation of the group labels**, including the
 synthetic `Other` when `unmatched = "other"`. `value_groups` with `unmatched =
 "passthrough"` **cannot** be ordinal (its bin set is data-discovered, so no
 authored order can be a full permutation): `ordinal` + `passthrough` is
@@ -1968,8 +1968,8 @@ scale = { kind = "ordinal", direction = "ge",
 ```
 
 **`unknown_value_policy = "include"` under `unmatched = "skip"`.** An unmatched
-value is not a domain gap to fill — `value_groups` does not consult
-`declared_domain` (D-055) — so `include` has nothing to extend and **behaves as
+value is not a domain gap to fill; `value_groups` does not consult
+`declared_domain` (D-055), so `include` has nothing to extend and **behaves as
 `warn`**: no bin, `UnknownValueObserved` at Warning, and **no**
 `UnknownValuePolicyInclude` (no schema extension occurred).
 
@@ -1994,7 +1994,7 @@ part of the M1 compatibility target.
 
 ### 11.8 `ordered_cuts`
 
-Cut points over an **ordered categorical** domain — the categorical sibling of
+Cut points over an **ordered categorical** domain, the categorical sibling of
 `manual_cuts` (§11.2). Where `manual_cuts` cuts a numeric axis, `ordered_cuts`
 cuts a user-declared category order. This is how v2's `n` (ordinal) type is
 expressed in the orthogonal model.
@@ -2015,7 +2015,7 @@ be distinct and non-empty; duplicate or empty entries are `OrderDomainInvalid`
 
 **`cuts`** *(required, length ≥ 1)*. Each is a member of `order`, strictly
 ascending by position. A value equal to a cut falls into the bin **at or above**
-it — the same half-open rule as `manual_cuts` (the cut is the lower edge of the
+it: the same half-open rule as `manual_cuts` (the cut is the lower edge of the
 upper bin). A cut not present in `order` is `OrderedCutsCutNotInDomain` (Error);
 cuts out of position order or duplicated are `OrderedCutsNotAscending` (Error).
 The `ends = "closed"` ≥2-cuts rule (§11.2) applies here too
@@ -2026,15 +2026,15 @@ The `ends = "closed"` ≥2-cuts rule (§11.2) applies here too
 same `--v2-compat` interior transform (`{c_i}to<{c_{i+1}}`). The labels are schema
 strings; there is no numeric parse and no locale (categories are used verbatim).
 
-Pairs with `nominal` (discrete — one formal attribute per bin) or `ordinal`
-(progressive — cumulative thresholds; §12.3).
+Pairs with `nominal` (discrete: one formal attribute per bin) or `ordinal`
+(progressive: cumulative thresholds; §12.3).
 
 > **v2 `.bed` section roles differ for `n`.** For `o` (`manual_cuts`), both
 > `[Attribute Categories]` and `[Category Values]` carry the numeric cut spec.
 > For `n` (`ordered_cuts`), `[Attribute Categories]` carries the **ordered
 > domain** and `[Category Values]` carries the **cut** (e.g. `<,Managerial,>`).
 > Neither file records the discrete/progressive choice (the two `.bed`s are
-> byte-identical) — it is supplied out-of-band on migration.
+> byte-identical); it is supplied out-of-band on migration.
 
 ## 12. Scale reference
 
@@ -2103,17 +2103,17 @@ matches v2's progressive-scaling output.
 **`order`** *(value-bin and value-group ordinal scales only)*. Declares the natural
 order of bin labels, and applies **only** to **value-bin** discretizers (`identity`
 / `free_per_value`) and to **`value_groups`** with `unmatched` `skip` or `other`
-(§11.6): there it is **required** for non-numeric labels — always for
-`value_groups`, whose group labels are strings — and optional for numeric value-bin
+(§11.6): there it is **required** for non-numeric labels (always for
+`value_groups`, whose group labels are strings) and optional for numeric value-bin
 labels (the natural numeric **ascending** order is used if absent, D-096). It **MUST NOT** be present
 with a **cut** discretizer (`manual_cuts`, `ordered_cuts`, `equal_width`,
-`equal_frequency`), whose bin order is fixed by the cut geometry (§17 rule 3) — the
+`equal_frequency`), whose bin order is fixed by the cut geometry (§17 rule 3): the
 cut discretizer is the single source of order. An `order` over cut bins is
 `OrdinalOrderNotAllowedWithCuts` (Error, spec validate); a value-bin or value-group
 ordinal scale that needs `order` but omits it is `OrdinalOrderMissing` (Error), and
 an `order` entry not among the bin/group labels is `OrdinalOrderHasUnknownValue`
 (Error). `order` lists the **raw** bin values or **group labels** (never display
-labels) and must be a **full permutation** of them — a label with no `order` entry
+labels) and must be a **full permutation** of them: a label with no `order` entry
 is likewise `OrdinalOrderMissing`, and for `unmatched = "other"` the synthetic
 `Other` must appear in `order`. For a **numeric** value-bin `order`
 (`free_per_value`), entries are parsed under `binding.locale` to the same
@@ -2123,31 +2123,31 @@ normalized identity as the bins (so `90`, `90.0`, `9e1` are one key); an
 not among the bins stays `OrdinalOrderHasUnknownValue` (D-096).
 
 **`drop_top`** *(default `false`)*. The "top" formal attribute (the one
-true for everything in `direction = "ge"` — i.e., `≥<lowest>`, and `≤<highest>`
+true for everything in `direction = "ge"`, i.e., `≥<lowest>`, and `≤<highest>`
 for `direction = "le"`) is tautological for objects with non-missing data. Set
 `drop_top = true` to suppress it. The lattice's supremum is unaffected; only the
 explicit formal attribute is omitted. Over **value** bins under a **strict**
-`boundary` there is no tautological threshold — the extreme threshold (`>{highest}`
+`boundary` there is no tautological threshold: the extreme threshold (`>{highest}`
 / `<{lowest}`) is instead statically empty and is **kept** (an empty column is
-legal, §16.4) — so `drop_top` is a no-op there.
+legal, §16.4), so `drop_top` is a no-op there.
 
 **Over cut bins.** When the ordered bins come
 from a cut discretizer, each threshold sits at a bin's far edge: for `le`, bin
 *i*'s **upper** edge (so cuts 30/40/50 give `<30`, `<40`, `<50`); for `ge`, its
 **lower** edge. An **open** end (§11.2 `ends = "open"`) has no finite edge there,
-so its tautological threshold is labelled **`all`** rather than a value — v2's
-`age-all`. This keeps "N bins → N formal attributes" exact (four open bins → four
+so its tautological threshold is labelled **`all`** rather than a value (v2's
+`age-all`). This keeps "N bins → N formal attributes" exact (four open bins → four
 columns). `all` is **canonical**: it is emitted on the native path too, so a
-`--v2-compat` run does not change the schema (§14 — column count/identity is
+`--v2-compat` run does not change the schema (§14: column count/identity is
 style-independent); `drop_top` suppresses it. Because half-open `[lo, hi)` cut
 bins can only be crossed whole, only the boundary aligned with that half-openness
-is well-defined — `le` pairs with `<` (strict), `ge` with `>=` (inclusive); the
+is well-defined: `le` pairs with `<` (strict), `ge` with `>=` (inclusive); the
 straddling combinations (`le`+inclusive, `ge`+strict) are meaningful only over
 *value* bins (e.g. `identity` with an explicit `order`).
 
 Over cut bins the cut **geometry** determines the operator. An **omitted or
 defaulted** `boundary` (including one inherited from `[defaults].ordinal_boundary`,
-§6) does **not** request an operator — the geometry renders it (`<` for `le`, `>=`
+§6) does **not** request an operator: the geometry renders it (`<` for `le`, `>=`
 for `ge`), *regardless of the defaulted value* (so `[defaults].ordinal_boundary =
 "strict"` does not turn a `ge` cut threshold into `>`). Only an **explicitly
 authored** `boundary` requesting the straddling combination (`le`+inclusive or
@@ -2160,7 +2160,7 @@ bins trips this check just as an explicit one does. A boundary **filled from
 `[defaults].ordinal_boundary`** after the effective scale is selected remains
 **defaulted, not authored**, never selects the operator over cut bins, and never
 trips this check. The reader/writer preserves whether `boundary` was
-authored or defaulted (§6) — both so the round-trip stays faithful and so this
+authored or defaulted (§6), both so the round-trip stays faithful and so this
 check fires only on the authored case. **Over value bins** (`identity` /
 `free_per_value` with an authored `order`, a numeric `free_per_value` with the
 derived natural numeric order, or `value_groups` with an authored group-label order)
