@@ -1110,6 +1110,10 @@ or a range), is `SourceValueTypeInvalid` (Error). The mirror case, a **numeric**
 source with a **bare string** `restrict_to` entry, is owned by
 `RestrictToNumericEntryRequired` (§10.4), not this code.
 
+With no `discretizer`, an omitted source `value_type` defaults to `"string"`.
+Without a `discretizer`, a filter-only attribute (§10.4) needs
+`value_type = "number"` for numeric `restrict_to` entries.
+
 A spec MUST NOT declare two attributes with the same `name`. Two attributes
 MAY share the same `source`; this is how one field carries multiple scalings
 (e.g. `age` as nominal bins alongside `age_ordinal` as ordinal thresholds, or
@@ -3083,23 +3087,22 @@ crosses/cells in Core is not. (`.dat`, by contrast, needs no header count and
 streams in a single pass.)
 
 **Object-name sequence invariant (normative).** When the writer replays the object
-stream, the two passes MUST yield the **same object-name sequence** — the same count
+stream, the two passes MUST yield the **same object-name sequence**: the same count
 and the same order. The writer checks each pass-2 object's name against the pass-1
 name at its position and fails the write (a structural error; **the caller must discard
 the partial output**, §16.2) on a mismatch, overflow, or shortfall, so a
 non-deterministic producer cannot silently misalign the header names and the incidence
-rows. (Full producer content determinism — that a replay also yields the same
-*crosses* — is a separate determinism property, §17; the writer enforces only name/row
+rows. (Full producer content determinism, meaning that a replay also yields the same
+*crosses*, is a separate determinism property, §17; the writer enforces only name/row
 alignment.)
 
 **What this invariant does not catch.** It compares the two passes against *each other*,
-so it is blind to any failure both passes reproduce identically — of which there are two
+so it is blind to any failure both passes reproduce identically, of which there are two
 kinds, both leaving an invalid `.cxt` the invariant passes over (§16.2):
 
-- a **structural halt** (an invalid object key, a non-contiguous `subject_grouped`
-  subject, an in-path spool failure) stops the object stream at the same deterministic
-  point in each pass, so the names still align, the write returns, and a structurally
-  well-formed but **truncated** `.cxt` results;
+- a **structural or grouping-storage halt** (§16.2) stops the object stream at the
+  same deterministic point in each pass, so the names still align, the write returns,
+  and a structurally well-formed but **truncated** `.cxt` results;
 - a **`fail`-policy abort** (§10.6/§10.4) does **not** truncate at all: the aggregated
   diagnostic requires reading the whole population (§16.4), so both passes emit the
   **complete** object sequence, the write returns, and a **complete but invalid** `.cxt`
@@ -3108,8 +3111,8 @@ kinds, both leaving an invalid `.cxt` the invariant passes over (§16.2):
 In both cases the only signal is the Error in the run's diagnostics (§16.2), inspected
 after the replay session is disposed. The writer cannot discard the file: the bytes are
 already in a caller-owned sink, and a writer that decided what to publish would no longer
-be a dumb exporter (EP-15). Transactional publication belongs to the **M7
-conversion-run host**: staged artifacts, per-file atomic commits, manifest-last
+be a dumb exporter (EP-15). Transactional publication belongs to the CLI's **run and
+publication coordinator**: staged artifacts, per-file atomic commits, manifest-last
 public commit marker (§15/§16.2, D-122).
 
 ### 18.2 FIMI `.dat`
@@ -3149,7 +3152,7 @@ line_endings = "crlf"` or `--v2-compat`.
 final line terminator; the single-space separators *between* lines are
 unaffected. Under `--v2-compat` the final `.dat` newline is **shape-dependent**:
 present for a wide source (matching v2's wide converter) but **absent for a
-triple source** — v2's triple converter wrote no final `.dat` line terminator.
+triple source**; v2's triple converter wrote no final `.dat` line terminator.
 The conversion orchestrator applies this v2-compat exception per resolved shape;
 it is not a separate CLI flag, and native output ignores shape and honors
 `trailing_newline` (D-087).
@@ -3363,29 +3366,29 @@ restrict_to = [{ from = 3, to = 9 }]         # TS 3-8
 
 This single spec captures: keep only objects that were **observed for Bmp5**,
 carry **at least one strongly-detected observation**, and have a Theiler stage in
-3–8, then analyze the surviving objects along two emitted dimensions — Tissue
+3–8, then analyze the surviving objects along two emitted dimensions: Tissue
 (grouped into Endoderm/Mesoderm) and TheilerStage (four ordinal buckets). Each
 restriction filters **whole objects, not observations** (§10.4, D-097): a surviving
 object keeps **all** its observations and crosses, not only the matching ones.
 `Gene` and `Strength` are the two **filter-only** attributes (`include = false` +
 `restrict_to`): they shape *which objects* enter the context without becoming
 *columns* in it.
-`TheilerStage` is **emitted and restricted** — it is not filter-only. Note its
+`TheilerStage` is **emitted and restricted**; it is not filter-only. Note its
 `equal_frequency` cuts calibrate over the **input universe** before `restrict_to`
 filters objects (§7), so the surviving TS 3–8 objects need not span all four
 buckets and some columns may end up empty.
 
 Each restriction is **existential** (§10.4): an object survives when **at least
-one** observed value matches — a subject whose `Gene` triples include `Bmp5`, whose
-`Strength` includes `strongly detected`, and whose `TheilerStage` value lands in
-`[3, 9)`; a subject with **no** `Gene` predicate, or a missing value, fails that
-restriction and is excluded. `TheilerStage` could instead pin exact stages —
-`restrict_to = [{ value = 5 }, { value = 6 }]` keeps only TS 5 and 6 (matched by
-parsed numeric identity).
+one** observed value matches. A subject therefore survives when its `Gene` triples
+include `Bmp5`, its `Strength` includes `strongly detected`, and its `TheilerStage`
+value lands in `[3, 9)`; a subject with **no** `Gene` predicate, or a missing value,
+fails that restriction and is excluded. `TheilerStage` could instead pin exact
+stages: `restrict_to = [{ value = 5 }, { value = 6 }]` keeps only TS 5 and 6
+(matched by parsed numeric identity).
 
-> This example is **executable**: its `value_groups` grouping (M4 Slice E), its
-> `equal_frequency` calibration (Slice D), and its `restrict_to` filtering (Slice F,
-> D-105) all run. Nothing in it is transitional.
+> Every feature this example uses is implemented in v1, including its `value_groups`
+> grouping (D-104), its `equal_frequency` calibration (D-103) and its `restrict_to`
+> filtering (D-105). None of it is reserved (§20).
 
 ## 20. Modelled-but-not-implemented appendix (v1)
 
@@ -3401,22 +3404,23 @@ diagnostic code. Re-listed here for visibility.
 | Date value type (`value_type = "date"`) + date scaling | `DateValueTypeNotImplementedV1` | §11.7 |
 
 **Not modelled in v1 (no reserved carrier).** Cross-attribute restrict ("include
-attr A only when attr B = X") has **no reserved syntax** — unlike the rows above, no
+attr A only when attr B = X") has **no reserved syntax**; unlike the rows above, no
 v1 spec can express it, so there is no rejection diagnostic. It is prose-only future
 work (D-062).
 
 ## 21. Decisions log
 
 Settled questions from the design conversation, recorded so future readers
-don't re-litigate. Items 1–11 record the **spec-field defaults** in full —
+don't re-litigate. Items 1–11 record the **spec-field defaults** in full;
 this section is their home (`docs/decisions.md` cross-references them here).
-Items 12–26 are one-line pointers to the owning spec sections and
+Items 12–27 are one-line pointers to the owning spec sections and
 `docs/decisions.md` entries; item numbers are stable (they are referenced by
 number, e.g. "§21-item-16" in D-051).
 
 1. **Bin label style** → math notation (`<30`, `[30, 40)`, `≥50` or
    `>=50` depending on §8 `bin_label_unicode`). v2 style available via
-   writer-level `--v2-compat` flag for M1 byte-equality testing.
+   the `convert` flag `--v2-compat` for M1 byte-equality testing; the
+   planner applies it to rendered names, not the writer (§11.2, D-044).
 
 2. **`drop_top` default** → `false` (keep the tautological top). FCA
    classical convention. Override per-attribute when clutter outweighs
@@ -3433,9 +3437,8 @@ number, e.g. "§21-item-16" in D-051).
    The `.dat` **final newline** itself defaults to present (`[output.dat]
    trailing_newline = true`, §18.2).
 
-5. **`.cxt` size advisory threshold** → 1 GB. Configurable via
-   `[output.cxt] size_advisory_bytes`. Subject to revision once we
-   benchmark consumer tooling.
+5. **`.cxt` size advisory threshold** → 1,073,741,824 bytes (about 1 GB).
+   Configurable via `[output.cxt] size_advisory_bytes`.
 
 6. **ASCII vs Unicode operators** → ASCII default (`>=`, `<=`) for
    ConExp compat. Unicode via `[output] bin_label_unicode = true`.
@@ -3462,10 +3465,9 @@ number, e.g. "§21-item-16" in D-051).
     distinction. Required for M1 byte-equality on mini-mushroom output.
 
 11. **Ordinal "pre-school to undergrad" use case** → expressible via
-    `value_groups` discretizer with nominal scale (Interpretation A from
-    the design conversation). Bin labels can be free-form strings naming
-    the range. Overlapping ranges sharing a boundary (Interpretation C,
-    e.g., interordinal/biordinal) remain deferred.
+    `value_groups` discretizer with nominal scale. Bin labels can be
+    free-form strings naming the range. Overlapping ranges sharing a
+    boundary (e.g., interordinal/biordinal) remain deferred.
 
 12. **Triple multi-value union; scale decides folding** → §5.3.1;
     decisions.md D-030/D-031.
@@ -3482,12 +3484,13 @@ number, e.g. "§21-item-16" in D-051).
 
 17. **Processing phases** → §7; D-036 (with D-003/D-005/D-028).
 
-18. **Discretizer/scale required only when emitting** → §10.9; D-037(a)/D-049.
+18. **Discretizer/scale required only when emitting** → §10.9; D-037(b)/D-049.
 
 19. **Scale-specific default naming** → §10.7; D-037(a).
 
-20. **Locale governs numeric parsing; not an independent fingerprint input** →
-    §5.1, §11.5, §14; D-035/D-036.
+20. **Locale governs numeric parsing; not an independent `schema_fingerprint`
+    input, but a direct input of both output fingerprints** → §5.1, §11.5, §14;
+    D-035/D-036/D-051.
 
 21. **Date support deferred** → §10.2, §11.7; D-038 (v2 type-code map in
     lineage.md).

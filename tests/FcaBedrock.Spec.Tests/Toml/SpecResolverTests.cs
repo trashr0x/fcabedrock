@@ -1596,6 +1596,37 @@ public sealed class SpecResolverTests
     }
 
     [Fact]
+    public void Resolve_WhenFilterOnlySourceDeclaresNumber_ThenNumericRestrictToResolvesClean()
+    {
+        // §10.2: a source with no discretizer takes its authored value_type, so a filter-only
+        // attribute with numeric entries declares "number".
+        var document = DocumentFixtures.Document(
+            [DocumentFixtures.Attribute("stage", DocumentFixtures.Column(0, SourceValueType.Number),
+                include: false, restrictTo: [new RestrictToRange(3, 9), new RestrictToNumber(5)])]);
+
+        var result = Resolve(document);
+
+        Assert.True(result.TryGetValue(out var spec));
+        Assert.Empty(result.Diagnostics);
+        Assert.Equal(SourceValueType.Number, Assert.IsType<ColumnSource>(Assert.Single(spec.Attributes).Source).ValueType);
+    }
+
+    [Fact]
+    public void Resolve_WhenFilterOnlySourceOmitsValueType_ThenNumericRestrictToIsSourceValueTypeInvalid()
+    {
+        // §10.2: with no discretizer and no authored value_type the source is "string", and a
+        // string source with a numeric restrict_to entry is SourceValueTypeInvalid.
+        var document = DocumentFixtures.Document(
+            [DocumentFixtures.Attribute("stage", DocumentFixtures.Column(0), include: false,
+                restrictTo: [new RestrictToRange(3, 9)])]);
+
+        var result = Resolve(document);
+
+        Assert.False(result.TryGetValue(out _));
+        Assert.Equal(DiagnosticCode.SourceValueTypeInvalid, Assert.Single(result.Diagnostics).Code);
+    }
+
+    [Fact]
     public void Resolve_WhenRestrictToValueNotInExplicitDomain_ThenWarningAndStillResolves()
     {
         // §10.4 (D-063): the typo-catcher warns without failing the resolve.
