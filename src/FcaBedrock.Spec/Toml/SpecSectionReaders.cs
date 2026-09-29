@@ -6,11 +6,12 @@ namespace FcaBedrock.Spec.Toml;
 /// <summary>
 /// Readers for the non-attribute sections: each takes its known keys through a
 /// <see cref="TomlTableCursor"/> and finishes, so every unconsumed key is
-/// <c>SpecKeyUnrecognized</c> (the closed D-075 deferred-key sets retired with
-/// their carriers at M6 Slice A, D-120). Possibly-invalid values are document
-/// territory (D-066), so nothing here validates semantics, with two exceptions:
-/// authored shape the grammar owns (<c>formal_attribute_format</c>, §10.7), and
-/// the <c>[output]</c> values §8 allows for one file (<c>base_index</c> 0 or 1, a
+/// <c>SpecKeyUnrecognized</c> (D-075; no deferred-key set remains, D-078/D-120).
+/// Possibly-invalid values are document territory (D-066), so nothing here validates
+/// semantics, with three exceptions: authored shape the grammar owns
+/// (<c>formal_attribute_format</c>, §10.7), the <c>[[matcher]]</c> shape rules (a
+/// <c>template</c> reference and exactly one valid selector, §9.2), and the
+/// <c>[output]</c> values §8 allows for one file (<c>base_index</c> 0 or 1, a
 /// <c>size_advisory_bytes</c> that is not negative, D-135).
 /// </summary>
 internal static class SpecSectionReaders
@@ -250,8 +251,8 @@ internal static class SpecSectionReaders
     }
 
     /// <summary>
-    /// Reads and gates a <c>name_regex</c> (§9.2/D-115): non-empty and compilable
-    /// <b>in the wrapped whole-name form that actually executes</b>
+    /// Reads and checks a <c>name_regex</c> (§9.2/D-115): non-empty and compilable
+    /// <b>in the wrapped whole-name form that executes</b>
     /// (<see cref="MatcherSelectors.TryCompileWholeName"/>), so a pattern cannot pass
     /// parse and then fail — or match differently — at evaluation. An uncompilable
     /// pattern is one <c>SpecFieldInvalid</c>, not a regex-error code of its own: the
@@ -286,7 +287,7 @@ internal static class SpecSectionReaders
     }
 
     /// <summary>
-    /// Reads and gates a <c>source_index_range</c> (§9.2/D-115): <b>exactly two</b>
+    /// Reads and checks a <c>source_index_range</c> (§9.2/D-115): <b>exactly two</b>
     /// TOML integers satisfying <c>0 ≤ lo ≤ hi</c>. Wrong arity, a non-integer, a
     /// negative endpoint, and reversed endpoints are each <c>SpecFieldInvalid</c>.
     /// <para>

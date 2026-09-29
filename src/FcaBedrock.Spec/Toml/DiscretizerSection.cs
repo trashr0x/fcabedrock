@@ -3,12 +3,12 @@ using FcaBedrock.Core.Discretization;
 namespace FcaBedrock.Spec.Toml;
 
 /// <summary>
-/// An authored attribute <c>discretizer</c> (§11). Models every v1 kind —
+/// An authored attribute <c>discretizer</c> (§11). Models every v1 kind:
 /// <c>identity</c>, <c>manual_cuts</c>, <c>ordered_cuts</c> (D-070 tier 1),
-/// <c>free_per_value</c> (M4 Slice B, D-101), <c>equal_width</c> (M4 Slice C, D-102),
-/// <c>equal_frequency</c> (M4 Slice D, D-103), and <c>value_groups</c> (M4 Slice E,
-/// D-104). With <c>value_groups</c> carried the D-070 deferred-kind tier is empty and
-/// retired; an unknown kind spelling is an ordinary <c>SpecFieldInvalid</c> (tier 3).
+/// <c>free_per_value</c> (D-101), <c>equal_width</c> (D-102),
+/// <c>equal_frequency</c> (D-103), and <c>value_groups</c> (D-104). No kind is
+/// deferred, so an unknown kind spelling is an ordinary <c>SpecFieldInvalid</c>
+/// (D-070 tier 3).
 /// </summary>
 public abstract record DiscretizerSection;
 
@@ -66,7 +66,7 @@ public sealed record EqualFrequencyDiscretizerSection(
     CutPlacement? CutPlacement) : DiscretizerSection;
 
 /// <summary>
-/// The <c>value_groups</c> discretizer (§11.6, M4 Slice E / D-090): many-to-one value
+/// The <c>value_groups</c> discretizer (§11.6, D-090/D-104): many-to-one value
 /// grouping in declaration order, first match wins. Both fields are presence-tracked, so an
 /// omitted <c>unmatched</c> (default <c>"skip"</c>) round-trips as omitted (D-049) — the
 /// default resolves at the seam, never in the document.

@@ -8,7 +8,7 @@ namespace FcaBedrock.Spec.Toml;
 /// <c>name</c>/<c>source</c>/<c>description</c>, plus the identifying
 /// <c>id</c>. Composed per §13 rule 3 (same-<c>id</c> replacement in place, so an
 /// inherited reference re-targets late) and <b>applied</b> at the resolve seam
-/// from M6 Slice B (D-114/D-121). An <b>unused</b> template stays semantically
+/// (D-114/D-121). An <b>unused</b> template stays semantically
 /// dormant: its authored shape is parse-checked, but effective-semantic
 /// combinations are validated only if it applies to some attribute (§9.2).
 /// Deliberately flat rather than sharing a config record with

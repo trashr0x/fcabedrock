@@ -151,7 +151,9 @@ public static class RunManifestWriter
                     break;
 
                 default:
-                    // Unreachable: AttributeCalibration is mechanically closed.
+                    // No calibration produces another outcome type, but a record's protected
+                    // copy constructor lets another assembly define one (CS8878), and a caller
+                    // can pass it to the public RunCalibration constructor.
                     throw new ArgumentOutOfRangeException(
                         nameof(calibrations), calibration.Outcome, "Unknown calibration outcome.");
             }
@@ -160,8 +162,8 @@ public static class RunManifestWriter
 
     // The three non-cut kinds share one payload shape: `kind` then `values`, the
     // one manifest field the D-113 wrapping applies to. A legitimate
-    // zero-discovery outcome therefore serializes as an explicit `values = []`
-    // (D-122 part 15), which the shared rule renders inline.
+    // zero-discovery outcome serializes as an explicit `values = []`
+    // (§15, D-122 part 6), which the shared rule renders inline.
     private static void WriteValues(StringBuilder text, string kind, IReadOnlyList<string> values)
     {
         Key(text, "kind", TomlLiteral.FormatString(kind));

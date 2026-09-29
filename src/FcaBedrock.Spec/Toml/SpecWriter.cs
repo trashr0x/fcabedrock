@@ -592,8 +592,8 @@ public static class SpecWriter
                 // §11.5 presentation order: kind, bins, tie_policy, cut_placement. As everywhere
                 // else, a field is written only when authored (D-049 presence tracking), so an
                 // omitted tie_policy/cut_placement stays omitted and parse→write→parse is
-                // idempotent; the resolved defaults are spelled where they are semantically
-                // load-bearing — the §14 fingerprint (D-094) — not injected into the author's text.
+                // idempotent. The resolved defaults are spelled only where semantics are hashed, in
+                // the §14 fingerprint (D-094), never in the author's text.
                 items.Add(Item("kind", TomlLiteral.FormatString(TomlSpellings.EqualFrequencyKind)));
                 if (equalFrequency.Bins is { } frequencyBins)
                 {
@@ -770,10 +770,11 @@ public static class SpecWriter
 
                 case RestrictToNumber number:
                     // The canonical invariant shortest form, via the same TomlLiteral encoder the
-                    // range bounds and cut lists use — so 30, 30.0, and 3e1 all round-trip to
-                    // { value = 30 }, and a resolved -0 writes as 0 (the seam canonicalized it,
-                    // G-6). The canonical text must be re-readable: the reader's exact-entry shape
-                    // accepts exactly this.
+                    // range bounds and cut lists use, so 30, 30.0, and 3e1 all round-trip to
+                    // { value = 30 }. Any -0 writes as 0, because FormatDouble renders an integral
+                    // value through long (G-6; the seam also canonicalizes resolved entries). The
+                    // canonical text must be re-readable: the reader's exact-entry shape accepts
+                    // exactly this.
                     items.Add(InlineTable([Item("value", TomlLiteral.FormatDouble(number.Value))]));
                     break;
 

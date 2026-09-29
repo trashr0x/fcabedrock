@@ -10,9 +10,8 @@ namespace FcaBedrock.Spec.Toml;
 /// computes a document's <i>native</i> fingerprints — the spec's own resolved
 /// output settings, no CLI overrides — and verifies the stored <c>[spec]</c>
 /// fields against them, warning per stale field. Verification is defined only
-/// over a successful plan (a failed resolve/plan already fails the run). There
-/// is no production orchestrator yet; tests call this now and M7's CLI is the
-/// real caller (the D-067 pattern).
+/// over a successful plan (a failed resolve/plan already fails the run). The
+/// <c>fcabedrock</c> CLI commands are its production callers.
 /// </summary>
 public static class SpecFingerprints
 {

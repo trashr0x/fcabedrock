@@ -6,7 +6,7 @@ namespace FcaBedrock.Spec.Toml;
 /// <summary>
 /// The authored <c>[defaults]</c> section (§6): spec-wide fallbacks the
 /// resolver merges into attributes that omit the corresponding field
-/// (D-060(c)). <c>formal_attribute_format</c> joined with M6 Slice A (D-120).
+/// (D-060(c)).
 /// </summary>
 /// <param name="Include">Default for <c>attribute.include</c> (§6; hard default true).</param>
 /// <param name="MissingPolicy">Default missing-value policy (§6/§10.5; hard default skip).</param>

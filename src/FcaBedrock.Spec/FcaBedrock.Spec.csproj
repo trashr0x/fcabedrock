@@ -10,9 +10,9 @@
     <PackageReference Include="Tomlyn" />
   </ItemGroup>
 
-  <!-- White-box access for the Spec unit tests (spelling map / TOML literal
-       internals). A test seam only; no production behavior depends on it
-       (principle EP-6). -->
+  <!-- White-box access for the Spec unit tests (the spelling map, the TOML
+       literal internals and the SpecReader.SortSemantic ordering seam). A test
+       seam only; no production behavior depends on it (principle EP-6). -->
   <ItemGroup>
     <InternalsVisibleTo Include="FcaBedrock.Spec.Tests" />
   </ItemGroup>

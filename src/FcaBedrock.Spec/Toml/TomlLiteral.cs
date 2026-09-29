@@ -102,8 +102,8 @@ internal static class TomlLiteral
 
         var text = value.ToString(CultureInfo.InvariantCulture);
 
-        // TOML floats need a '.' or exponent; integral values were handled above,
-        // so this only guards huge integral magnitudes like 1e17 → "1E+17".
+        // TOML floats need a '.' or an exponent. Integral values up to 2^53 returned above, so
+        // only a larger integral value whose invariant text has neither gets ".0" appended.
         return text.Contains('.', StringComparison.Ordinal) || text.Contains('E', StringComparison.Ordinal)
             ? text
             : text + ".0";

@@ -5,8 +5,8 @@ namespace FcaBedrock.Spec.Toml;
 /// reference→canonical-key resolution (relative paths, case rules), so path
 /// and OS determinism hazards never enter Spec logic (EP-11);
 /// <see cref="SpecComposer"/> compares canonical keys ordinally. This package
-/// does no file I/O (D-075) — the file-backed implementation is M7 host work,
-/// not missing Slice F work (D-078); tests compose through an in-memory source.
+/// does no file I/O (D-075): the CLI host supplies the file-backed source
+/// (D-122 part 11, D-123 point 6), and tests compose through in-memory sources.
 /// </summary>
 public interface ISpecTextSource
 {

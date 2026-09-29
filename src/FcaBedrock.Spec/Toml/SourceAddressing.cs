@@ -157,7 +157,7 @@ internal static class SourceAddressing
             {
                 // Record the site-typed name binding for the ResolvedSpec trust boundary
                 // (D-098); an empty attribute name is already an AttributeNameMissing error
-                // that fails the success gate, so the binding is never consumed there.
+                // that fails the success check, so the binding is never consumed there.
                 if (!string.IsNullOrEmpty(attributeName))
                 {
                     nameBindings.Add(new AttributeSourceNameBinding(attributeName, byName, found));

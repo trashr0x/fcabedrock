@@ -40,7 +40,7 @@ public static class SpecComposer
 
         var diagnostics = new List<BedrockDiagnostic>();
 
-        // Root version gate (D-078): an unversioned/unsupported root must not
+        // Root version check (D-078): an unversioned/unsupported root must not
         // drive v1 extends semantics, and a missing-base/cycle diagnostic must
         // never fire first — so this precedes any source consultation.
         if (!CheckVersion(document, documentKey, diagnostics))
@@ -169,8 +169,8 @@ public static class SpecComposer
             derived.Locale ?? baseSection.Locale,
             derived.MissingToken ?? baseSection.MissingToken,
             derived.Ordering ?? baseSection.Ordering,
-            // The nested tables override as whole values (D-078 refinement of
-            // §13 rule 1): a per-leaf merge could compose an incoherent
+            // The nested tables override as whole values (§13 rule 1,
+            // D-078): a per-leaf merge could compose an incoherent
             // object-key mode hybrid, or a partial triple remap with silently
             // duplicated role indices.
             derived.Columns ?? baseSection.Columns,
@@ -247,8 +247,8 @@ public static class SpecComposer
     }
 
     /// <summary>
-    /// §13 rule 3, as carrier composition only (template application/resolution
-    /// precedence is M6, D-078): a derived template whose <c>id</c> matches a
+    /// §13 rule 3, as carrier composition only (template application and precedence
+    /// run later, at the resolve seam, §9.2/D-118): a derived template whose <c>id</c> matches a
     /// base entry replaces it in place (base position kept); new, id-less, and
     /// duplicate entries append after all inherited templates.
     /// </summary>

@@ -18,7 +18,7 @@ public sealed record DichotomicScaleSection(string? TrueValue) : ScaleSection;
 /// <summary>The <c>ordinal</c> scale (§12.3): cumulative threshold attributes.</summary>
 /// <param name="Direction">Threshold direction; null falls back to <c>[defaults].ordinal_direction</c> then ge (D-060(c)).</param>
 /// <param name="Boundary">Threshold boundary; null falls back to <c>[defaults].ordinal_boundary</c> then inclusive (D-060(c)).</param>
-/// <param name="Order">Explicit value-bin order (§12.3); forbidden with cut discretizers — that check is the M2 validation slice (D-060).</param>
+/// <param name="Order">Explicit value-bin order (§12.3); forbidden with cut discretizers (<c>OrdinalOrderNotAllowedWithCuts</c> at resolve, D-060).</param>
 /// <param name="DropTop">Whether the tautological top threshold is suppressed (§12.3, default false).</param>
 public sealed record OrdinalScaleSection(
     OrdinalDirection? Direction,

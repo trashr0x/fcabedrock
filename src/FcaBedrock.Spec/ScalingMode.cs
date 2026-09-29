@@ -4,8 +4,8 @@ namespace FcaBedrock.Spec;
 /// The discrete-vs-progressive choice for v2's cut types (<c>o</c>/<c>n</c>) — the
 /// nominal-vs-ordinal scale selection. v2 never recorded it in the <c>.bed</c>
 /// (the discrete and progressive files are byte-identical), so it is supplied
-/// out-of-band, like the <see cref="Toml.BindingSection"/>. Defaults to
-/// <see cref="Discrete"/>; M7's <c>migrate</c> command will surface it as a flag.
+/// out-of-band, like the <see cref="Toml.BindingSection"/>; the <c>migrate</c> command
+/// takes it as <c>--scaling discrete|progressive</c>. Defaults to <see cref="Discrete"/>.
 /// </summary>
 public enum ScalingMode
 {

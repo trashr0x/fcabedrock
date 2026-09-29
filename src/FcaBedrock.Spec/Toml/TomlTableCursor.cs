@@ -10,11 +10,10 @@ namespace FcaBedrock.Spec.Toml;
 /// <c>SpecFieldInvalid</c> on mismatch — and then call
 /// <see cref="Finish"/>, which raises <c>SpecKeyUnrecognized</c> for every
 /// unconsumed key. The allow-list is therefore exactly the set of keys a reader
-/// takes — there is no separate list to drift. (The closed D-075 deferred-key
-/// sets retired with the M6 Slice A naming carriers, D-120; the one surviving
-/// <c>SpecSurfaceNotYetSupported</c> owner is the value-level
-/// <c>value_type = "date"</c> reject, which is not a key and never came through
-/// here.)
+/// takes; there is no separate list to drift. (No D-075 deferred-key set remains,
+/// D-120. The one <c>SpecSurfaceNotYetSupported</c> owner is the value-level
+/// <c>value_type = "date"</c> check in <see cref="AttributeReader"/>, which takes the
+/// key like any other and then judges its value.)
 /// </summary>
 internal sealed class TomlTableCursor
 {
@@ -196,9 +195,9 @@ internal sealed class TomlTableCursor
     }
 
     /// <summary>
-    /// An authored date-time as a zero-offset-normalized <see cref="DateTimeOffset"/>,
-    /// or null when absent. Offset forms are taken verbatim; local forms coerce to
-    /// zero offset (deterministic across machines — D-075; the field is inert
+    /// An authored date-time as a <see cref="DateTimeOffset"/>, or null when absent (or
+    /// reported invalid). Offset forms keep their authored offset; local forms read at
+    /// zero offset (deterministic across machines, D-075; the field is inert
     /// provenance, §4).
     /// </summary>
     public DateTimeOffset? TakeDateTime(string key)

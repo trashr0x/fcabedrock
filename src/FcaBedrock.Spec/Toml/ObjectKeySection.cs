@@ -2,8 +2,8 @@ namespace FcaBedrock.Spec.Toml;
 
 /// <summary>
 /// The authored <c>[binding.object_key]</c> block (§5.4). The resolver builds
-/// the Core <c>ObjectKey</c> from it; mode-vs-shape validation is the M2
-/// validation slice (D-064).
+/// the Core <c>ObjectKey</c> from it and owns the mode-vs-shape check: any authored
+/// block under <c>shape = "triple"</c> is <c>ObjectKeyModeInvalidForShape</c> (D-064/D-082).
 /// </summary>
 /// <param name="Mode">Key mode (§5.4); null means the per-shape default (wide: row_index; triple: subject column).</param>
 /// <param name="Column">The key column for <c>column</c> mode, by index or name.</param>

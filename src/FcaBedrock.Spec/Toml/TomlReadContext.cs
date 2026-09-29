@@ -11,7 +11,10 @@ namespace FcaBedrock.Spec.Toml;
 /// </summary>
 internal sealed class TomlReadContext(string? filePath)
 {
-    /// <summary>Every diagnostic raised during the pass, in source order of discovery.</summary>
+    /// <summary>
+    /// Every diagnostic raised during the pass, in emission order;
+    /// <c>SpecReader.SortSemantic</c> later orders the semantic phase by source position.
+    /// </summary>
     public List<BedrockDiagnostic> Diagnostics { get; } = [];
 
     /// <summary>

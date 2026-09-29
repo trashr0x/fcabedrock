@@ -192,7 +192,7 @@ public static class SpecReader
     /// The one source-position ordering policy for phase-2 diagnostics (D-116), applied
     /// once at the boundary rather than scattered among readers: individual readers emit
     /// in whatever order traversal produces, and the collected result is ordered here by
-    /// <c>(Line, Column, emission ordinal)</c>. Future readers inherit it automatically.
+    /// <c>(Line, Column, emission ordinal)</c>. Every reader inherits it.
     /// <para>
     /// The emission ordinal is part of the comparison, not merely a tie-break convention,
     /// which makes the order <b>total</b> — so equal-position diagnostics keep their
@@ -210,9 +210,9 @@ public static class SpecReader
     /// span-less branch is defensive — <see cref="TomlReadContext"/> always attaches a
     /// span, so no authored document can reach it through <see cref="Read"/> — and the
     /// equal-position tie-break is invisible from the outside when the sort happens to be
-    /// stable anyway. Both are load-bearing ordering guarantees, so they are exercised
-    /// directly with constructed diagnostics rather than left to a test that cannot fail.
-    /// Production behaviour is unchanged: <see cref="Read"/> remains the only caller.
+    /// stable anyway. Both are ordering guarantees the deterministic diagnostic list relies
+    /// on (EP-7), so they are exercised directly with constructed diagnostics rather than
+    /// left to a test that cannot fail. <see cref="Read"/> is the only production caller.
     /// </para>
     /// </summary>
     internal static void SortSemantic(List<BedrockDiagnostic> diagnostics, int from)

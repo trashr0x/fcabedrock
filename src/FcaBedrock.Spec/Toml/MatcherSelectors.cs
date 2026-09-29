@@ -5,16 +5,16 @@ namespace FcaBedrock.Spec.Toml;
 
 /// <summary>
 /// The one construction site for a <c>[[matcher]]</c> <c>name_regex</c> (§9.2,
-/// D-115). The parse gate and the resolver's selector evaluation both compile
-/// through here, so a pattern can never parse successfully and then fail — or,
-/// worse, match differently — when it is actually evaluated (EP-5).
+/// D-115). The parse check and the resolver's selector evaluation both compile
+/// through here, so a pattern can never parse successfully and then fail (or,
+/// worse, match differently) when it is evaluated (EP-5).
 /// </summary>
 internal static class MatcherSelectors
 {
     /// <summary>
     /// Compiles <paramref name="pattern"/> in the <b>exact</b> form that executes.
     /// <para>
-    /// Three construction choices are load-bearing and none is incidental:
+    /// Each of the three construction choices below prevents a named failure; none is incidental:
     /// </para>
     /// <list type="bullet">
     /// <item><description>

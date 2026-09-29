@@ -10,11 +10,9 @@ namespace FcaBedrock.Spec.Toml;
 /// date-time formatting keep their single owner and cannot drift between the two
 /// writers that share this file.
 /// <para>
-/// Extracted from <see cref="SpecWriter"/> at M7 Slice E so
-/// <c>FcaBedrock.Spec.Manifest.RunManifestWriter</c> reuses the one wrapping rule
-/// rather than minting a second one (D-123 point 8, EP-5). The extraction is
-/// byte-neutral: <see cref="SpecWriter"/>'s <c>declared_domain</c> output is
-/// unchanged, and <c>DeclaredDomainWrappingTests</c> is the pin.
+/// <see cref="SpecWriter"/> and <c>FcaBedrock.Spec.Manifest.RunManifestWriter</c>
+/// share this one wrapping rule rather than each minting its own (D-123 point 8,
+/// EP-5). <c>DeclaredDomainWrappingTests</c> pins the <c>declared_domain</c> bytes.
 /// </para>
 /// </summary>
 internal static class TomlArrays
@@ -35,12 +33,13 @@ internal static class TomlArrays
     /// <see cref="InlineLineLimit"/>, otherwise deterministically multiline —
     /// one rendered item per line at a two-space indent, a trailing comma on
     /// every item line, and an unindented closing bracket. A single over-long
-    /// item wraps but is never split; an empty array stays inline as <c>[]</c>.
+    /// item wraps but is never split; an empty array stays inline as <c>[]</c> while
+    /// <c><paramref name="key"/> = []</c> fits.
     /// Formatting only — semantics and fingerprints are untouched (§14).
     /// </summary>
     /// <param name="key">
     /// The key the value will be emitted under. It participates in the
-    /// measurement, so the cutoff governs the line the writer actually emits;
+    /// measurement, so the cutoff governs the line the writer emits;
     /// callers must pass the key they are about to write, never a stand-in.
     /// </param>
     /// <param name="renderedItems">The already-escaped items, in emit order.</param>

@@ -8,7 +8,7 @@ namespace FcaBedrock.Spec.Toml;
 /// sharing a record — the merge reads the two independently, field by field, so
 /// a shared config record would buy nothing (D-078/D-121, EP-3).
 /// <para>
-/// From M6 Slice B this type is also the <b>effective</b> attribute: template
+/// This type is also the <b>effective</b> attribute: template
 /// application produces one of these per declared attribute, so every validation
 /// owner sees a template-configured attribute in exactly the shape a flat
 /// declaration would present (D-121).

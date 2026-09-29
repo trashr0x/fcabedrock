@@ -7,12 +7,10 @@ namespace FcaBedrock.Spec.Toml;
 /// <summary>
 /// Single source of truth for the TOML surface's vocabulary: one spelling table
 /// per enum, consumed in both directions by the reader and the writer so the two
-/// can never drift (EP-5), plus the kind names behind the D-070 dispatch. It no
-/// longer holds any deferred-surface set: the closed per-table D-075 sets retired
-/// with the carriers they were waiting for (extends/template/matcher at M2
-/// Slice F, D-078; the naming keys at M6 Slice A, D-120), leaving
-/// <c>SpecSurfaceNotYetSupported</c> with one value-level owner in
-/// <see cref="AttributeReader"/> — <c>value_type = "date"</c>.
+/// can never drift (EP-5), plus the kind names behind the D-070 dispatch. It holds no
+/// deferred-surface set (D-078 and D-120 removed the D-075 sets), so
+/// <c>SpecSurfaceNotYetSupported</c> has one value-level owner in
+/// <see cref="AttributeReader"/>: the <c>value_type = "date"</c> reject.
 /// </summary>
 internal static class TomlSpellings
 {
@@ -66,10 +64,8 @@ internal static class TomlSpellings
         [("open", BinEnds.Open), ("closed", BinEnds.Closed)];
 
     /// <summary>
-    /// <c>equal_width.range</c> (§11.4). The table is the accepted TOML surface; it now
-    /// equals the Core enum — <c>"percentile_p1_p99"</c> joined at M4 Slice D together
-    /// with its exact bounded-memory calibration (D-103), closing the Slice C
-    /// transitional gap in which the spelling was modelled but unreachable (D-102/G-8).
+    /// <c>equal_width.range</c> (§11.4). The table is the accepted TOML surface and
+    /// equals the Core enum, <c>"percentile_p1_p99"</c> included (D-102/D-103/G-8).
     /// </summary>
     internal static readonly (string Text, EqualWidthRange Value)[] EqualWidthRanges =
     [
@@ -113,7 +109,7 @@ internal static class TomlSpellings
     /// <summary>The reserved <c>value_type = "date"</c> spelling (§10.2/§11.7, D-038).</summary>
     internal const string DateValueType = "date";
 
-    /// <summary>M2-executable discretizer kinds (D-070 tier 1).</summary>
+    /// <summary>Executable discretizer kinds (D-070 tier 1).</summary>
     internal const string IdentityKind = "identity";
 
     /// <inheritdoc cref="IdentityKind"/>
@@ -122,16 +118,16 @@ internal static class TomlSpellings
     /// <inheritdoc cref="IdentityKind"/>
     internal const string OrderedCutsKind = "ordered_cuts";
 
-    /// <summary>The <c>free_per_value</c> discretizer kind (§11.3, M4 Slice B / D-101).</summary>
+    /// <summary>The <c>free_per_value</c> discretizer kind (§11.3, D-101).</summary>
     internal const string FreePerValueKind = "free_per_value";
 
-    /// <summary>The <c>equal_width</c> discretizer kind (§11.4, M4 Slice C / D-102).</summary>
+    /// <summary>The <c>equal_width</c> discretizer kind (§11.4, D-102).</summary>
     internal const string EqualWidthKind = "equal_width";
 
-    /// <summary>The <c>equal_frequency</c> discretizer kind (§11.5, M4 Slice D / D-103).</summary>
+    /// <summary>The <c>equal_frequency</c> discretizer kind (§11.5, D-103).</summary>
     internal const string EqualFrequencyKind = "equal_frequency";
 
-    /// <summary>The <c>value_groups</c> discretizer kind (§11.6, M4 Slice E / D-104).</summary>
+    /// <summary>The <c>value_groups</c> discretizer kind (§11.6, D-104).</summary>
     internal const string ValueGroupsKind = "value_groups";
 
     /// <summary>The <c>equal_width.precision = "exact"</c> spelling (§11.4).</summary>
@@ -140,12 +136,10 @@ internal static class TomlSpellings
     /// <summary>The <c>equal_width.precision = { round_to = r }</c> key (§11.4).</summary>
     internal const string RoundToKey = "round_to";
 
-    // The D-070 tier-2 deferred-discretizer set (and its DiscretizerKindNotYetSupported
-    // reject) retired at M4 Slice E (D-104): every v1 discretizer kind now has a carrier and
-    // executes — free_per_value at Slice B (D-101), equal_width at Slice C (D-102),
-    // equal_frequency at Slice D (D-103), value_groups here. The set is removed rather than
-    // kept empty: an empty tier is dead scaffolding whose dispatch can never fire, and tier 3
-    // (an unknown kind spelling → SpecFieldInvalid) already covers everything else.
+    // There is no D-070 tier-2 deferred-discretizer set: every v1 discretizer kind has a
+    // carrier and executes (D-101 to D-104). An empty tier would be dead scaffolding whose
+    // dispatch can never fire, and tier 3 (an unknown kind spelling → SpecFieldInvalid)
+    // covers everything else.
 
     /// <summary>Implemented scale kinds (§12.1–§12.3).</summary>
     internal const string NominalKind = "nominal";
@@ -163,14 +157,11 @@ internal static class TomlSpellings
     internal static readonly string[] DeferredScaleKinds =
         ["interordinal", "biordinal", "contranominal"];
 
-    // The D-075 deferred-surface sets (DefaultsDeferredKeys / AttributeDeferredKeys) are
-    // GONE as of M6 Slice A (D-120): display_name and formal_attribute_format have real
-    // carriers on [defaults], [[attribute]], and [[template]] alike, so nothing remains
-    // for the key-level SpecSurfaceNotYetSupported reject to hold — and, exactly as with
-    // the D-070 deferred-kind set retired at M4 Slice E, an empty set is dead scaffolding
-    // whose dispatch can never fire. The code itself stays live with its one remaining
-    // owner, `value_type = "date"` (AttributeReader.ReadValueType), until the D-038
-    // carrier lands; that site is a value-level reject, not a deferred key.
+    // There is no D-075 key-level deferred-surface set (D-120): display_name and
+    // formal_attribute_format have carriers on [defaults], [[attribute]] and [[template]],
+    // and an empty set would be dead scaffolding, as with the tier-2 kind set above.
+    // SpecSurfaceNotYetSupported keeps one owner, the value-level `value_type = "date"`
+    // reject in AttributeReader.ReadValueType (D-038 defers date support).
 
     /// <summary>Parses <paramref name="text"/> against a spelling table; exact (ordinal) match only.</summary>
     internal static bool TryParse<T>((string Text, T Value)[] table, string text, out T value)

@@ -187,7 +187,7 @@ internal static class TemplateApplication
         Regex? regex = null;
         if (match.NameRegex is { } pattern && !MatcherSelectors.TryCompileWholeName(pattern, out regex, out _))
         {
-            return; // likewise unreachable from a successful parse, which gates compilability
+            return; // likewise unreachable from a successful parse, which checks compilability
         }
 
         for (var a = 0; a < attributes.Count; a++)
@@ -250,7 +250,7 @@ internal static class TemplateApplication
     {
         if (named is null && matching.Count == 0)
         {
-            return attribute; // the flat path: byte-for-byte the pre-M6 document
+            return attribute; // the flat path: the authored section itself
         }
 
         var effective = attribute;

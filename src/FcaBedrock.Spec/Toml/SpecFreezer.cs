@@ -8,10 +8,10 @@ namespace FcaBedrock.Spec.Toml;
 /// <summary>
 /// Freezes a successfully calibrated, <b>paired</b> resolved spec into an explicit,
 /// fully frozen <see cref="SpecDocument"/> (D-122 part 10, D-123 point 9): the
-/// library face of the <c>calibrate</c> command's freeze step (§15). It consumes the
-/// retained calibration outcomes — it never reads data, recalibrates, or writes
-/// fingerprints — and materializes each data-dependent result as the accepted
-/// canonical mapping, written as an <b>explicit tier-5 attribute field</b> that
+/// library face of the <c>calibrate</c> command's freeze step (§7). It consumes the
+/// retained calibration outcomes and never reads data, recalibrates, or writes
+/// fingerprints. It materializes each data-dependent result as its canonical freeze
+/// mapping, written as an <b>explicit tier-5 attribute field</b> that
 /// overrides any template/matcher-supplied winner while preserving every unrelated
 /// authored, template-, and matcher-supplied field.
 /// <para>
@@ -28,7 +28,7 @@ namespace FcaBedrock.Spec.Toml;
 /// </para>
 /// <para>
 /// The <c>[spec]</c> section — including any stored fingerprint fields — is carried
-/// <b>verbatim</b>: freezing is the pure mapping stage, and the accepted fully-frozen
+/// <b>verbatim</b>: freezing is the pure mapping stage, and the CLI's fully-frozen
 /// write flow (re-resolve → native plan → <c>SpecFingerprints.ComputeNative</c> →
 /// store the three fields via the record <c>with</c> path → canonically serialize)
 /// recomputes and overwrites all three before final serialization. This method never
@@ -107,7 +107,7 @@ public static class SpecFreezer
         return document with { Attributes = attributes.MoveToImmutable() };
     }
 
-    // Rewrites exactly the one field the retained outcome controls (D-122 part 10), leaving every
+    // Rewrites only the fields the retained outcome controls (D-122 part 10), leaving every
     // other field — source, scale, restrict_to, value_labels, naming, description, include, and the
     // policies the outcome does not touch — carried verbatim, so a template/matcher still supplies
     // any it authored on re-resolve while the explicit frozen field (tier 5) overrides its winner.
@@ -147,7 +147,8 @@ public static class SpecFreezer
                 Discretizer = FreezePassthrough(name, bins, effective),
             },
 
-            // The union is closed (private-protected base); this is unreachable for any honest outcome.
+            // Unreachable: a CalibratedSpec retains only outcomes its substitution matched,
+            // which are the four types above.
             _ => throw new InvalidOperationException(
                 $"Attribute '{name}' carries an unrecognized calibration outcome '{outcome.GetType().Name}'."),
         };
@@ -155,8 +156,8 @@ public static class SpecFreezer
     // §10.6/D-122 part 10: an omitted consumed domain fills from the observed domain
     // (the whole population, retained first-observation order). When the paired EFFECTIVE winning
     // policy is include, that population is already complete, so include has nothing left to add and
-    // is folded to warn — exactly as the IncludeAdditions path does — otherwise the frozen attribute
-    // would still trip the include half of the fully-frozen gate and reject FromFullyDeclared. The
+    // is folded to warn, exactly as the IncludeAdditions path does. Otherwise the frozen attribute
+    // would still meet RequiresData's include condition, and FromFullyDeclared would reject it. The
     // policy is read from the effective attribute, not section.UnknownValuePolicy, because the
     // include winner may be default-, template-, or matcher-supplied (D-123 point 9). Every other
     // field, including MissingPolicy, is carried verbatim.

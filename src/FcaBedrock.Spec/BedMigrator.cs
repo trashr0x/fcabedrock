@@ -308,7 +308,7 @@ public static class BedMigrator
     // numeric. Only a token on type `o` (v2's numeric type) is eligible to become an exact
     // { value = n } entry, parsed under the effective binding locale. Everything else stays a
     // verbatim string:
-    //   - a numeric-LOOKING token on a categorical/dichotomic/nominal attribute is a string,
+    //   - a numeric-LOOKING token on a `c`, `b`, `n` or `d` attribute is a string,
     //     because v2 restricted those by raw-value equality — reinterpreting "007" as 7 would
     //     silently change which objects survive;
     //   - an unparseable or non-finite token on type `o` also stays a string, so the ordinary

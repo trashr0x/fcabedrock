@@ -10,10 +10,10 @@ namespace FcaBedrock.Spec.Toml;
 /// Reads one <c>[[attribute]]</c> (§10) — and one <c>[[template]]</c> (§9.1),
 /// whose body is the attribute config surface minus
 /// <c>name</c>/<c>source</c>/<c>description</c> — into its presence-tracked
-/// section, including the nested inline-table groups. Kind dispatch follows the
-/// D-070 three tiers for discretizers (full carrier / recognized-deferred
-/// reject / unknown-kind field error) and D-010 for the deferred scales
-/// (kind-only carrier; the planner rejects). Diagnostics raised inside an
+/// section, including the nested inline-table groups. Every v1 discretizer kind has a
+/// full carrier, and an unknown kind is an ordinary field error (D-070 tier 3; no
+/// discretizer kind is deferred, D-104). The deferred scales follow D-010 (kind-only
+/// carrier; the planner rejects). Diagnostics raised inside an
 /// attribute table carry the attribute's name as scope (§16.3).
 /// </summary>
 internal static class AttributeReader
@@ -350,8 +350,8 @@ internal static class AttributeReader
                 return null; // TakeKind reported
 
             default:
-                // D-070 tier 3, now the only tier: every v1 discretizer kind has a carrier as of
-                // M4 Slice E (D-104), so an unrecognized spelling is an ordinary field error.
+                // D-070 tier 3, the only tier: every v1 discretizer kind has a carrier (D-104),
+                // so an unrecognized spelling is an ordinary field error.
                 context.Error(
                     DiagnosticCode.SpecFieldInvalid,
                     $"discretizer kind '{kind}' is not recognized (§11).",
@@ -367,7 +367,7 @@ internal static class AttributeReader
     // owns what the values IMPLY across groups (ValueGroupsLabelDuplicate,
     // OrdinalNotAllowedWithValueGroupsPassthrough).
     //
-    // Every field is read before the gates run, so independent failures report together (EP-14):
+    // Every field is read before the checks run, so independent failures report together (EP-14):
     // a spec with a bad group AND a bad unmatched reports both.
     private static DiscretizerSection ReadValueGroups(TomlReadContext context, TomlTableCursor inner, SourceSpan tableSpan)
     {
@@ -432,9 +432,9 @@ internal static class AttributeReader
     //
     // Each field is read PRESENCE-AWARE (authored-vs-absent, not merely valid-vs-null), the same
     // discipline equal_width's vmin/vmax follow: the cursor's typed accessors collapse absent and
-    // malformed to null, and the gates below must tell them apart so a malformed field reports its
+    // malformed to null, and the checks below must tell them apart so a malformed field reports its
     // own type error once instead of also being called missing or matcher-less (D-067, one
-    // condition → one code). A field that failed its own gate returns null for the whole group —
+    // condition → one code). A field that failed its own check returns null for the whole group:
     // its Error already fails the read, and continuing would only pile on.
     private static ValueGroupSection? ReadGroup(TomlReadContext context, InlineTableSyntax table)
     {
@@ -492,10 +492,10 @@ internal static class AttributeReader
 
             // The compile check at parse (D-090): an uncompilable pattern is ONE SpecFieldInvalid
             // condition, not a code of its own. Compiled with the same options AND the same
-            // explicit InfiniteMatchTimeout ValueGroup.Create uses — that type is the semantic
-            // authority; this is the parse gate that keeps the strict factory behind a clean
-            // success gate, the same reader-gates/factory-backstops split `bins` and `precision`
-            // already follow. (The timeout cannot change which patterns COMPILE, but matching the
+            // explicit InfiniteMatchTimeout ValueGroup.Create uses; that type is the semantic
+            // authority. This parse check keeps invalid patterns away from the strict factory,
+            // the same reader-check/factory-backstop split `bins` and `precision` already
+            // follow. (The timeout cannot change which patterns COMPILE, but matching the
             // construction exactly is what stops the two sites drifting.)
             try
             {
@@ -616,7 +616,7 @@ internal static class AttributeReader
     private static DiscretizerSection ReadEqualWidth(TomlReadContext context, TomlTableCursor inner, SourceSpan tableSpan)
     {
         // Every field is read presence-aware (authored-vs-absent, not just valid-vs-null): the
-        // semantic gates below must fire on what the author actually wrote, so a malformed field
+        // semantic checks below must fire on what the author wrote, so a malformed field
         // reports its own type error once instead of also being called missing (D-067, one
         // condition → one code).
         var (range, rangeAuthored, rangeValid) = TakeEqualWidthRange(context, inner);
@@ -663,7 +663,7 @@ internal static class AttributeReader
     // (SpecFieldInvalid). There is no range/span surface: equal_frequency draws its cuts from
     // the population under every configuration (§7), so unlike equal_width it has no
     // spec-determined mode and no vmin/vmax cross-checks. Independent failures are reported
-    // together — every field is read before the gates run, so a spec with a bad bins AND a bad
+    // together: every field is read before the checks run, so a spec with a bad bins AND a bad
     // tie_policy reports both rather than stopping at the first (EP-14).
     private static DiscretizerSection ReadEqualFrequency(TomlReadContext context, TomlTableCursor inner, SourceSpan tableSpan)
     {
@@ -681,7 +681,7 @@ internal static class AttributeReader
     }
 
     // The shared bins contract (§11.4/§11.5): authored, an integer, and within 2..int.MaxValue.
-    // The document carrier keeps it `long?` (that is what TOML integers are); this gate is what
+    // The document carrier keeps it `long?` (that is what TOML integers are); this check is what
     // makes the seam's narrowing to `int` total.
     private static void ValidateBins(
         TomlReadContext context, string kind, string section, long? bins, bool authored, SourceSpan tableSpan)
@@ -703,7 +703,7 @@ internal static class AttributeReader
     }
 
     // The presence-aware reads. The cursor's typed accessors collapse absent and malformed to
-    // null, which the semantic gates above must tell apart; each reports its own type error, so a
+    // null, which the semantic checks above must tell apart; each reports its own type error, so a
     // malformed field is never also reported as missing.
     private static (long? Value, bool Authored) TakeBins(
         TomlReadContext context, TomlTableCursor cursor, string kind, string section)
@@ -767,10 +767,9 @@ internal static class AttributeReader
         return (null, true);
     }
 
-    // Reads `range`, distinguishing absent (default min_max) from an unrecognized spelling — the
-    // vmin/vmax cross-checks need to tell them apart. The accepted spellings are the TOML surface,
-    // not the Core enum: "percentile_p1_p99" is modelled in Core but not accepted until its
-    // calibration lands (D-102).
+    // Reads `range`, distinguishing absent (default min_max) from an unrecognized spelling: the
+    // vmin/vmax cross-checks need to tell them apart. The accepted spellings are
+    // TomlSpellings.EqualWidthRanges (§11.4).
     private static (EqualWidthRange Value, bool Authored, bool Valid) TakeEqualWidthRange(
         TomlReadContext context, TomlTableCursor cursor)
     {
