@@ -23,12 +23,11 @@ public enum BinOutcome
 }
 
 /// <summary>
-/// The outcome of discretizing a single raw value. A four-way result that keeps the
-/// silent no-cross case (<see cref="BinOutcome.NoBin"/>) distinct from the diagnosable
-/// ones (<see cref="BinOutcome.Unknown"/>, <see cref="BinOutcome.Unparseable"/>),
-/// replacing the old <c>string?</c> that collapsed all of these into "label or null"
-/// (decisions.md D-059). A <c>readonly record struct</c> so the emit hot path stays
-/// allocation-free (EP-18) and tests get value equality.
+/// The outcome of discretizing a single raw value. A four-way result, not a nullable
+/// label, so the silent no-cross case (<see cref="BinOutcome.NoBin"/>) stays distinct
+/// from the diagnosable ones (<see cref="BinOutcome.Unknown"/>,
+/// <see cref="BinOutcome.Unparseable"/>; decisions.md D-059). A <c>readonly record struct</c>
+/// so the emit hot path stays allocation-free (EP-18) and tests get value equality.
 /// </summary>
 public readonly record struct BinResult
 {

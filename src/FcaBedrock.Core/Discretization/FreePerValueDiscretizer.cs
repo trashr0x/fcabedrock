@@ -15,10 +15,10 @@ namespace FcaBedrock.Core.Discretization;
 /// <c>9e1</c> collapse to one bin labelled <c>90</c> and every zero spelling
 /// (including <c>-0</c>) collapses to <c>0</c> (D-092/D-096). A present-but-unparseable
 /// or non-finite numeric value is <see cref="BinResult.Unparseable"/> (§11.5), and
-/// the emitter's <c>KnownBins</c> gate turns an otherwise-valid out-of-domain bin
+/// the emitter's <c>KnownBins</c> check turns an otherwise-valid out-of-domain bin
 /// into an unknown value (§10.6).
 /// <para>
-/// Like every value-bin discretizer its bin universe <b>is</b> the declared domain
+/// Like <see cref="IdentityDiscretizer"/>, its bin universe <b>is</b> the declared domain
 /// (in declaration order); for a numeric source those domain keys are the
 /// canonical numeric identities the resolve seam normalized (D-096).
 /// </para>
@@ -52,7 +52,7 @@ public sealed record FreePerValueDiscretizer : Discretizer
         // Number mode: the bin identity is the parsed value's canonical numeric identity
         // (§11.3/D-096) — parsed with the injected culture, zero-canonicalized, then the §14
         // shortest round-trippable form. A present-but-unparseable/non-finite value is kept,
-        // no cross, diagnosable (§11.5); the KnownBins gate turns out-of-domain into unknown.
+        // no cross, diagnosable (§11.5); the KnownBins check turns out-of-domain into unknown.
         if (!CanonicalNumber.TryParse(rawValue, Culture, out var value))
         {
             return BinResult.Unparseable(rawValue);

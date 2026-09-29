@@ -11,8 +11,9 @@ namespace FcaBedrock.Discovery;
 /// <b>Options are caller contract, not spec text.</b> The four numeric options shape a
 /// draft; they are never authored into <c>[binding]</c> and never enter a fingerprint
 /// (D-108). Only <see cref="Locale"/> is a read setting, and it is authored explicitly like
-/// every other one (D-107) — inert at M5, since probe parses no numbers, but a draft that
-/// declares the locale it was produced under stays self-documenting.
+/// every other one (D-107). Probe parses no numbers, so the locale does not affect
+/// observation, but a draft that declares the locale it was produced under stays
+/// self-documenting.
 /// </para>
 /// <para>
 /// <b>Why the guards live here and not in the spec.</b> They bound one probe of one source
@@ -57,7 +58,7 @@ public sealed class ProbeOptions
     /// <param name="maxDiscoveredAttributes">Maximum attributes a probe may discover (D-110 guard 1).</param>
     /// <param name="maxTotalRetainedValues">Maximum retained values summed across attributes (D-110 guard 2).</param>
     /// <param name="maxTotalRetainedValueText">Maximum retained value text, in UTF-16 code units (D-110 guard 3).</param>
-    /// <param name="locale">The draft's <c>binding.locale</c> (§5.1); inert at M5.</param>
+    /// <param name="locale">The draft's <c>binding.locale</c> (§5.1); unused by observation, since probe parses no numbers.</param>
     public static ProbeOptions Create(
         int valueRetentionLimit = 100_000,
         int maxDiscoveredAttributes = 10_000,

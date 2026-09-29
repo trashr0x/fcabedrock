@@ -275,8 +275,8 @@ public static class FingerprintCalculator
 
     // §14/D-091/G-9/G-10: the `restrictions` container — the one §14 array that is canonically
     // SORTED rather than left in planned order, because restriction order is semantically
-    // immaterial (they AND together). Present ONLY when some attribute restricts, so every
-    // restriction-free spec keeps its exact pre-Slice-F bytes and hash.
+    // immaterial (they AND together). Present ONLY when some attribute restricts, so
+    // restriction-free specs keep their pinned bytes and stored hashes (D-077).
     //
     // Sorting and deduplication here are a FINGERPRINT PROJECTION only: the TOML document, the
     // resolved authored list, the plan, and emit all keep authored order and duplicates. Two
@@ -500,10 +500,11 @@ public static class FingerprintCalculator
                 // §14/D-094: the AUTHORED configuration only — the resolved cuts are not
                 // re-encoded here (they already ride as `bin` objects in the `schema` array,
                 // so duplicating them would invite a two-source-of-truth drift). vmin/vmax
-                // appear only under range = "manual", which is why an auto spec and its
-                // frozen manual_cuts form share a schema_fingerprint yet may carry different
-                // output fingerprints (sound: same output fingerprint ⇒ same bytes, not the
-                // converse). Keys sort ordinal: bins < kind < precision < range < vmax < vmin.
+                // appear only under range = "manual". Because this sub-object carries authored
+                // configuration, an auto spec and its frozen manual_cuts form share a
+                // schema_fingerprint yet may carry different output fingerprints (sound: same
+                // output fingerprint ⇒ same bytes, not the converse). Keys sort ordinal:
+                // bins < kind < precision < range < vmax < vmin.
                 builder.Append("{\"bins\":");
                 CanonicalJson.AppendNumber(builder, equalWidth.Bins);
                 builder.Append(",\"kind\":\"equal_width\",\"precision\":");
@@ -570,7 +571,7 @@ public static class FingerprintCalculator
 
             default:
                 // Unreachable by construction, for two independent reasons — every §11 kind is
-                // encoded above (the deferred-kind tier emptied at M4 Slice E, D-104), and
+                // encoded above (no deferred kind remains, D-104), and
                 // Discretizer is a closed union within Core, so no external assembly can add one.
                 // The remaining in-assembly variant, CalibrationPending, cannot reach a plan at all
                 // (its plan-time members throw, D-093). Hitting this is a programmer error.
@@ -673,7 +674,7 @@ public static class FingerprintCalculator
         // are ordinal-sorted (predicate/subject/value). A role bound by header name
         // resolves to the same indices as the equivalent index bind, so the two hash
         // identically. The triple `ordering` field is deliberately not encoded — both
-        // orderings emit identical first-appearance bytes (D-082, Slice A).
+        // orderings emit identical first-appearance bytes (D-082).
         if (binding.TripleColumns is { } columns)
         {
             builder.Append("\"columns\":{\"predicate\":");

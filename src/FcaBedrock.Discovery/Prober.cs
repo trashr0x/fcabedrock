@@ -81,7 +81,7 @@ public static class Prober
     }
 
     /// <summary>
-    /// Probes a triple (subject–predicate–value) source, returning a draft spec with its
+    /// Probes a triple (subject-predicate-value) source, returning a draft spec with its
     /// warnings, or diagnostics alone when no valid draft exists.
     /// <para>
     /// Same errors-are-values posture as <see cref="ProbeAsync"/>: null arguments and a
@@ -95,7 +95,7 @@ public static class Prober
     /// </para>
     /// <para>
     /// <b>Structural validity is checked, not assumed.</b> An unusable subject halts the probe
-    /// under either ordering, and an explicitly selected <c>subject_grouped</c> additionally
+    /// under either ordering, and an explicitly selected <c>subject_grouped</c> also
     /// requires contiguity — because a draft that its own same-source conversion would reject is
     /// not a draft (D-106/D-107). There is no grouping or counting pass: the rows are read once,
     /// in input order.
@@ -143,9 +143,9 @@ public static class Prober
         SourceSchema schema;
         try
         {
-            // Not a data-record pass. The schema is metadata — a column count and, when present,
-            // the ordered header names — and reading it is what D-106's "one record pass" is
-            // measured against, not part of it.
+            // Not a data-record pass. The schema is metadata (a column count and, when present,
+            // the ordered header names), and reading it does not count toward D-106's "one
+            // record pass".
             schema = await session.GetSchemaAsync(cancellationToken).ConfigureAwait(false);
         }
         catch (SourceReadException ex) { return Failed(ProbeDiagnostics.SourceReadFailed(ex)); }

@@ -91,7 +91,7 @@ public sealed record EqualWidthDiscretizer : Discretizer
         ArgumentNullException.ThrowIfNull(culture);
         ArgumentOutOfRangeException.ThrowIfLessThan(bins, 2);
 
-        // The range gate runs first: DeriveCuts requires a finite increasing span, and an
+        // The range check runs first: DeriveCuts requires a finite increasing span, and an
         // authored one that is not is the user's error, not a collapse (D-089).
         if (!double.IsFinite(vmin) || !double.IsFinite(vmax) || vmin >= vmax)
         {
@@ -186,7 +186,7 @@ public sealed record EqualWidthDiscretizer : Discretizer
     /// identity, label, or hash (G-6/D-096).
     /// </para>
     /// <para>
-    /// Callers gate the range first — the manual factory with
+    /// Callers check the range first: the manual factory with
     /// <see cref="DiagnosticCode.EqualWidthRangeInvalid"/>, the calibrator with
     /// <see cref="DiagnosticCode.CalibrationDataInsufficient"/> — so a non-finite or
     /// non-increasing span here is programmer error

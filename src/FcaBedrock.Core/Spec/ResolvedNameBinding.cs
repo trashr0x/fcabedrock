@@ -6,7 +6,7 @@ namespace FcaBedrock.Core.Spec;
 /// <c>(name, index)</c> pair would verify the header but not the member that uses
 /// it, so <see cref="ResolvedSpec.Create"/> re-checks both: the header carries
 /// exactly one ordinal occurrence of <see cref="Name"/> at <see cref="Index"/>,
-/// and the resolved member at the identified site actually carries that index.
+/// and the resolved member at the identified site carries that index.
 /// <para>
 /// The <see langword="private protected"/> base constructor blocks ordinary derivation
 /// outside this assembly, but a record's protected copy constructor does not (CS8878), so

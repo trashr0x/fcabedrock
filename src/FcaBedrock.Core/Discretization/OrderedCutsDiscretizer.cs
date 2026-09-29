@@ -117,9 +117,9 @@ public sealed record OrderedCutsDiscretizer : Discretizer
         throw new ArgumentException($"ordered_cuts cut '{value}' is not a member of order.", nameof(value));
     }
 
-    // Index-aligned with CutBinLabels.Build, exactly as in ManualCutsDiscretizer but
-    // with the cut category strings as bounds. A null bound is the unbounded end —
-    // never interval inclusivity (D-077).
+    // One structural bin per CutBinLabels.Build label, at the same index, exactly as in
+    // NumericCutBins but with the cut category strings as bounds. A null bound is the
+    // unbounded end, never interval inclusivity (D-077).
     private static IReadOnlyList<CanonicalBin> BuildStructuralBins(IReadOnlyList<string> cuts, BinEnds ends)
     {
         var bins = new List<CanonicalBin>(cuts.Count + 1);

@@ -7,7 +7,7 @@ namespace FcaBedrock.Core.Planning;
 /// strategy carried on the <see cref="ConversionPlan"/> (§5 / D-082). A
 /// <b>mechanically-closed</b> hierarchy: the <see langword="private protected"/>
 /// constructor leaves code outside this assembly no accessible base constructor, so
-/// no out-of-assembly type can derive, while Core can add SQL/SPARQL variants later.
+/// no out-of-assembly type can derive; only Core can add a variant.
 /// (A record cannot be closed this way — a non-sealed record needs a public or
 /// protected copy constructor, CS8878 — so this is a plain abstract class.)
 /// <para>

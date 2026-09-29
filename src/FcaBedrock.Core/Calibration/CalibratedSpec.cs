@@ -11,8 +11,10 @@ namespace FcaBedrock.Core.Calibration;
 /// domain), the schema snapshot the conversion was prepared against, and the
 /// retained calibration outcomes (manifest-ready, §15). Immutable; produced only
 /// by the two factories below over a <see cref="ResolvedSpec"/> token, and paired
-/// downstream by reference identity of that token (the calibrator, the emitter,
-/// and the fingerprint calculator all read <see cref="Resolution"/>).
+/// downstream by reference identity of that token: the emitter pairs its source with
+/// <see cref="Resolution"/>, and <c>SpecFingerprints.ComputeNative</c> and
+/// <c>SpecFreezer.Freeze</c> reject a state whose <see cref="Resolution"/> is not their
+/// document's resolution.
 /// </summary>
 public sealed class CalibratedSpec
 {
@@ -280,10 +282,10 @@ public sealed class CalibratedSpec
         switch (pending.Config)
         {
             // §11.4/G-8/D-102/D-103: min_max and percentile_p1_p99 are the equal_width ranges
-            // this milestone can resolve — percentile joined at Slice D with its calibration
-            // (D-103), which is the ONLY reason the Slice C guard narrows here rather than
-            // widening to "any non-manual range". `manual` is spec-determined and never pends
-            // (its own carrier constructor rejects it), so it can only be a corrupted instance.
+            // the calibrator resolves. The guard names both rather than accepting "any non-manual
+            // range", so a range with no calibration cannot reach substitution. `manual` is
+            // spec-determined and never pends (its own carrier constructor rejects it), so it can
+            // only be a corrupted instance.
             case PendingEqualWidth { Range: not (EqualWidthRange.MinMax or EqualWidthRange.PercentileP1P99) } unsupported:
                 throw new ArgumentException(
                     $"attribute '{attribute.Name}' carries a pending equal_width calibration with range '{unsupported.Range}', " +
@@ -319,7 +321,8 @@ public sealed class CalibratedSpec
             }
 
             default:
-                // A pending variant this milestone cannot substitute is a mis-sequenced call.
+                // Every PendingCalibration variant has an arm above, and ResolvedSpec.Create rejects
+                // an unknown variant at the trust boundary, so reaching here is a programmer error.
                 throw new ArgumentException(
                     $"attribute '{attribute.Name}' carries an unresolved '{pending.Kind}' calibration that this milestone cannot substitute (D-093).");
         }
@@ -334,8 +337,8 @@ public sealed class CalibratedSpec
             (outcome is null ? ", but none was provided." : $", but a {outcome.GetType().Name} was provided."));
 
     // Applies one built discretizer, attributing its data-derived diagnostics (EP-14). On failure
-    // the Error fails the whole result, so the un-substituted attribute is never planned;
-    // retaining the outcome keeps the report honest.
+    // the Error fails the whole result, so the un-substituted attribute is never planned. The
+    // outcome still counts as used, so the leftover-outcome check does not also throw for it.
     private static (AttributeSpec Effective, AttributeCalibration? Used) Build<TDiscretizer>(
         AttributeSpec attribute, CalibratedCuts cuts, List<BedrockDiagnostic> diagnostics, Diagnosed<TDiscretizer> built)
         where TDiscretizer : Discretization.Discretizer
@@ -353,11 +356,11 @@ public sealed class CalibratedSpec
     }
 
     // §10.4/D-091/D-105: the calibrated-state re-check of the restriction entry
-    // boundary. Calibration never consumes or rewrites restrict_to — the substitutions above
+    // boundary. Calibration never consumes or rewrites restrict_to: the substitutions above
     // only touch Discretizer/DeclaredDomain, so each effective attribute carries the token's
-    // already-immutable entry list by reference — but this factory is the last gate before
-    // Plan/Emit/fingerprints, and its contract states that an invalid restriction
-    // entry surviving here throws (programmer error, EP-14).
+    // already-immutable entry list by reference. This factory is still the last check before
+    // Plan/Emit/fingerprints, so an invalid restriction entry that survives to here throws
+    // (programmer error, EP-14).
     //
     // The check is EXHAUSTIVE over the three recognized variants, not just a finiteness test: a
     // half-guard that waved a null or an unknown variant through would let corrupt state reach
@@ -367,7 +370,7 @@ public sealed class CalibratedSpec
     //
     // Defence in depth, deliberately: ResolvedSpec.Create is the primary boundary and the only
     // way to mint a token, so this is unreachable through any honest chain. It is kept because
-    // the assertion is cheap, states the invariant at the boundary that actually feeds the
+    // the assertion is cheap, states the invariant at the boundary that directly feeds the
     // planner, and would catch a future internal construction path that resolved a restriction
     // differently.
     private static void RequireValidRestrictions(BedrockSpec spec, string parameterName)

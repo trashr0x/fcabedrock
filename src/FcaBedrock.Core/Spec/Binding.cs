@@ -9,8 +9,7 @@ namespace FcaBedrock.Core.Spec;
 /// <param name="Shape">Source shape (§5.1).</param>
 /// <param name="Encoding">
 /// Resolved source text encoding (§5.1). v1 accepts UTF-8 only, canonicalized to
-/// <c>"utf-8"</c> at resolve (D-082); a real fingerprint input (was a constant
-/// until M3, D-077). UTF-8 specs keep their prior hash.
+/// <c>"utf-8"</c> at resolve (D-082); a fingerprint input (§14, D-077).
 /// </param>
 /// <param name="Delimiter">Field delimiter (§5.1).</param>
 /// <param name="QuoteChar">Quote character (§5.1).</param>
@@ -25,8 +24,8 @@ namespace FcaBedrock.Core.Spec;
 /// </param>
 /// <param name="Ordering">
 /// Triple row ordering (§5.3); <c>null</c> for wide. An acceptance/streaming
-/// property, <em>not</em> a fingerprint input — both orderings emit identical
-/// first-appearance bytes (D-082, Slice A).
+/// property, <em>not</em> a fingerprint input: both orderings emit identical
+/// first-appearance bytes (§14, D-082).
 /// </param>
 public sealed record Binding(
     SourceShape Shape,

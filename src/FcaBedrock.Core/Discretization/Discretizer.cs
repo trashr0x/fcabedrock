@@ -63,11 +63,12 @@ public abstract record Discretizer
     internal virtual bool ConsultsValueLabels => false;
 
     /// <summary>
-    /// Whether <see cref="BinLabels"/> reads the declared domain — true only for
-    /// value-bin discretizers whose bin universe IS the domain (<c>identity</c>;
-    /// <c>free_per_value</c> at M4). Cut discretizers ignore it (§10.3). The
-    /// single authority for the fingerprint's effective-domain gate: an inert
-    /// authored domain must not perturb output fingerprints (D-077).
+    /// Whether <see cref="BinLabels"/> reads the declared domain: true only for
+    /// value-bin discretizers whose bin universe IS the domain (<c>identity</c> and
+    /// <c>free_per_value</c>). Cut discretizers ignore it (§10.3), and so does
+    /// <c>value_groups</c> (D-055). The single authority for whether the fingerprint
+    /// encodes the declared domain: an inert authored domain must not perturb output
+    /// fingerprints (D-077).
     /// </summary>
     internal virtual bool ConsumesDeclaredDomain => false;
 }

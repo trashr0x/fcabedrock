@@ -19,7 +19,7 @@ namespace FcaBedrock.Core.Spec;
 /// <see langword="null"/> = omitted, which requests observed-domain calibration where a
 /// discretizer consumes it; any non-null list, including <c>[]</c>, is authored-complete —
 /// <c>[]</c> is a fixed empty domain of zero declared value bins (D-122 §15, revising D-071).</param>
-/// <param name="RestrictTo">Object-level raw-value filter entries (§10.4); empty when absent. Planned and executed since M4 Slice F (D-105, realizing D-057/D-063).</param>
+/// <param name="RestrictTo">Object-level raw-value filter entries (§10.4); empty when absent. Planned and executed whether or not the attribute is included (D-105).</param>
 /// <param name="ValueLabels">Raw value → display label for names (§10.8); empty when none.</param>
 /// <param name="MissingPolicy">How missing values are handled.</param>
 /// <param name="UnknownValuePolicy">How out-of-domain values are handled.</param>
@@ -48,8 +48,8 @@ public sealed record AttributeSpec(
 
     /// <summary>
     /// The effective post-precedence <c>formal_attribute_format</c> (§10.7), or
-    /// <see langword="null"/> when the scale-specific defaults apply — which is
-    /// the normal case, and the state every pre-M6 spec resolves to. Template and
+    /// <see langword="null"/> when the scale-specific defaults apply (the normal case,
+    /// when no precedence tier authors a format). Template and
     /// matcher syntax never reaches Core; only this resolved value does (D-118).
     /// </summary>
     public NameFormat? NameFormat { get; init; }

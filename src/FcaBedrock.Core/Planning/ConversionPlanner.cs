@@ -86,8 +86,8 @@ public static class ConversionPlanner
         }
 
         // §16.4: a plan with zero columns (every attribute excluded or filter-only) is
-        // degenerate but structurally valid; warn, do not fail. An all-filter-only spec is
-        // the M4 case — it still filters objects, it just emits no columns.
+        // degenerate but structurally valid; warn, do not fail. An all-filter-only spec
+        // still filters objects; it just emits no columns.
         if (formalAttributes.Count == 0)
         {
             diagnostics.Add(new BedrockDiagnostic(
@@ -132,8 +132,8 @@ public static class ConversionPlanner
         Dictionary<FormalAttributeIdentity, int> idByIdentity,
         List<BedrockDiagnostic> diagnostics)
     {
-        // The .bed reader (the only slice-1 spec producer) guarantees these for an
-        // included attribute; a violation is an internal invariant, not user error.
+        // ResolvedSpec.Create guarantees both for an included attribute; a violation is an
+        // internal invariant, not user error.
         var discretizer = attribute.Discretizer
             ?? throw new InvalidOperationException($"Included attribute '{attribute.Name}' has no discretizer.");
         var scale = attribute.Scale
@@ -263,8 +263,8 @@ public static class ConversionPlanner
             return format.Render(attribute.Name, attribute.DisplayName, RenderValue(attribute, shape, discretizer, scale, labelStyle), shape.ScaleOp);
         }
 
-        // Scale-specific default naming (§10.7) — byte-identical to the pre-M6 path,
-        // which every existing spec and golden still takes (no fixture authors a format).
+        // Scale-specific default naming (§10.7). The v2 golden fixtures pin these bytes:
+        // none of them authors a format.
         if (shape.ValueLabel is null)
         {
             return attribute.Name; // dichotomic: column alone
@@ -279,11 +279,11 @@ public static class ConversionPlanner
     // The value side of a name (§10.7's {value} table), shared by the default and
     // explicit paths so the two cannot disagree about what a value renders as.
     //
-    // value_labels (display names) win where set — but only for discretizers that
-    // consult them (§10.8 / D-049). Under a cut discretizer the labels are dormant, so
-    // the discretizer renders the canonical bin label for the style (cut bins →
-    // v2-compat form; numeric free_per_value → its D-092 identity) and a label keyed to
-    // a bin string is ignored.
+    // value_labels (display names) win where set, but only for discretizers that
+    // consult them (§10.8 / D-049). Otherwise the discretizer renders the canonical bin
+    // label for the style: a cut bin takes the v2-compat interior form under that style,
+    // and a numeric free_per_value bin renders its D-092 identity. Under a cut
+    // discretizer the labels are dormant, so a label keyed to a bin string is ignored.
     //
     // A dichotomic shape carries no value label of its own (the default name is the
     // column alone), so {value} resolves to the scale's true_value — through
@@ -431,9 +431,10 @@ public static class ConversionPlanner
 
             // §10.3 / D-036 / D-122 §15: an OMITTED domain on a consuming discretizer is
             // filled by the Calibrate phase (ObservedDomainUsed), so the effective spec Plan
-            // receives already carries a resolved domain — the D-071 transitional plan reject
-            // retired at M4. An authored [] is a complete fixed empty domain that calibration
-            // leaves untouched. Cut discretizers ignore the domain (§10.3) and are unaffected.
+            // receives already carries a resolved domain. An authored [] is a complete fixed
+            // empty domain: observed-domain calibration leaves it untouched, although
+            // unknown_value_policy = "include" may still extend it. Cut discretizers ignore
+            // the domain (§10.3) and are unaffected.
 
             // The effective bin universe. A consuming discretizer's domain is non-null here
             // (calibration filled an omitted one before plan); a cut discretizer's is ignored.
@@ -575,9 +576,9 @@ public static class ConversionPlanner
 
     // §5.4 / D-064 / D-082 / D-083: object-key modes the v1 planner cannot execute are refused rather
     // than silently falling back to row index. Shape-aware: a triple ColumnObjectKey is the
-    // subject-derived key, executed by the triple emit (D-082); a wide ColumnObjectKey executes at M3
-    // (row_index/fail/keep single-pass, dedupe on the shared spool backend). Only composite stays a v1
-    // reject.
+    // subject-derived key, executed by the triple emit (D-082); a wide ColumnObjectKey executes in
+    // the wide emit (fail/keep single-pass, dedupe on the shared spool backend, D-083). Only
+    // composite is a v1 reject.
     private static void ValidateObjectKey(
         ObjectKey objectKey, SourceShape shape, SourceSchema schema, List<BedrockDiagnostic> diagnostics)
     {
@@ -592,7 +593,7 @@ public static class ConversionPlanner
                 break;
 
             case ColumnObjectKey column when shape == SourceShape.Wide:
-                // The wide column-key index range check now runs at spec-validate against
+                // The wide column-key index range check runs at spec-validate against
                 // the schema the two-stage bootstrap resolves against (G-1/D-098), and the
                 // ResolvedSpec trust boundary re-checks it, so an out-of-range index cannot
                 // reach here from the conversion path. A residual violation is a corrupt

@@ -11,7 +11,7 @@ namespace FcaBedrock.Core.Discretization;
 /// <para>
 /// <c>declared_domain</c> is <b>not</b> consulted (D-055): the groups plus the
 /// <c>unmatched</c> policy define recognition, so a domain would be a second
-/// overlapping gate. <c>value_labels</c> is likewise dormant (§10.8/D-049) — a group
+/// overlapping recognition rule. <c>value_labels</c> is likewise dormant (§10.8/D-049): a group
 /// label already <i>is</i> the display label. Both defaults come from the base
 /// (<c>ConsumesDeclaredDomain</c> / <c>ConsultsValueLabels</c> stay false), and its bins
 /// are ordinary <b>value</b> bins, so <c>DescribeBins</c> uses the value-bin base too
@@ -77,7 +77,7 @@ public sealed record ValueGroupsDiscretizer : Discretizer
     /// <summary>
     /// Builds the spec-determined form (<see cref="ValueGroupsUnmatched.Skip"/> or
     /// <see cref="ValueGroupsUnmatched.Other"/>) — the EP-10 backstop behind the seam's
-    /// clean diagnostic gate (the resolver owns the user-facing
+    /// clean diagnostic check (the resolver owns the user-facing
     /// <c>ValueGroupsLabelDuplicate</c>, §11.6/D-090).
     /// </summary>
     /// <exception cref="ArgumentException">
@@ -128,7 +128,7 @@ public sealed record ValueGroupsDiscretizer : Discretizer
         return new ValueGroupsDiscretizer(snapshot, ValueGroupsUnmatched.Passthrough, passthroughBins.ToImmutableArray());
     }
 
-    // The shared group snapshot + label-distinctness gate. Ordinal throughout (EP-12): "Other"
+    // The shared group snapshot + label-distinctness check. Ordinal throughout (EP-12): "Other"
     // collides with the synthetic bin, "other" does not.
     private static ImmutableArray<ValueGroup> Snapshot(IReadOnlyList<ValueGroup> groups, ValueGroupsUnmatched unmatched)
     {
@@ -179,7 +179,7 @@ public sealed record ValueGroupsDiscretizer : Discretizer
             ValueGroupsUnmatched.Skip => BinResult.Unknown(rawValue),
             ValueGroupsUnmatched.Other => BinResult.Bin(OtherLabel),
 
-            // The raw spelling is its own bin. The planned KnownBins gate turns a value that
+            // The raw spelling is its own bin. The planned KnownBins check turns a value that
             // calibration never discovered — a between-pass data change — into an unknown.
             ValueGroupsUnmatched.Passthrough => BinResult.Bin(rawValue),
             _ => throw new InvalidOperationException($"unknown value_groups unmatched policy {Unmatched}."),

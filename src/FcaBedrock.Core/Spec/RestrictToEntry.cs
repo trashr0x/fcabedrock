@@ -2,7 +2,7 @@ namespace FcaBedrock.Core.Spec;
 
 /// <summary>
 /// One <c>restrict_to</c> entry: an object-level filter on raw values, applied
-/// before discretization (spec §10.4). Executable from M4 Slice F (D-091): the
+/// before discretization (spec §10.4, D-091/D-105): the
 /// planner carries one <see cref="Planning.PlannedRestriction"/> per attribute
 /// with entries — included or filter-only — and emit filters whole objects
 /// existentially (OR within an attribute, AND across attributes).

@@ -14,8 +14,9 @@ internal enum BudgetBreach
 }
 
 /// <summary>
-/// The two record-pass aggregate guards of D-110 (the third — maximum discovered attributes —
-/// is decided from the schema before any record is read, so it needs no running total).
+/// The two record-pass aggregate guards of D-110. The third, maximum discovered attributes,
+/// needs no running total here: wide checks it against the schema before any record is read,
+/// and triple checks it as each new predicate is discovered.
 /// <para>
 /// <b>Logical accounting only.</b> Both totals count things the input determines — retained
 /// values, and their UTF-16 code units — never an available-memory figure, so the same record

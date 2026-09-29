@@ -4,7 +4,7 @@ namespace FcaBedrock.Core.Spec;
 /// Binds an attribute to a place in the source. Spec §10.2. A closed set of
 /// resolved bindings: column-by-name is a document-model state the spec
 /// resolver turns into an index (D-066); a triple <see cref="PredicateSource"/>
-/// binds by predicate string (matched against data at emit, M3/D-082).
+/// binds by predicate string (matched against data at emit, D-082).
 /// </summary>
 public abstract record SourceBinding;
 

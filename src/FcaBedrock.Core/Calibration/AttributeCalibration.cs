@@ -82,8 +82,7 @@ public sealed record IncludeAdditions : AttributeCalibration
 
 /// <summary>
 /// The <c>value_groups</c> <c>unmatched = "passthrough"</c> discovered bins
-/// (first-observation order). May be empty. Landed with the M4 value_groups slice;
-/// retained here for the exhaustive union.
+/// (first-observation order). May be empty.
 /// </summary>
 public sealed record PassthroughBins : AttributeCalibration
 {

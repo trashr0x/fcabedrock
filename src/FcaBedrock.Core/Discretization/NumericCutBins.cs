@@ -7,9 +7,10 @@ namespace FcaBedrock.Core.Discretization;
 
 /// <summary>
 /// The one execution engine for <b>numeric</b> cut bins, composed by every
-/// discretizer whose bins are numeric cut intervals — <see cref="ManualCutsDiscretizer"/>
-/// (authored cuts, §11.2) and <see cref="EqualWidthDiscretizer"/> (computed cuts,
-/// always open-ended, §11.4). It owns numeric parsing, finite-only classification,
+/// discretizer whose bins are numeric cut intervals: <see cref="ManualCutsDiscretizer"/>
+/// (authored cuts, §11.2), and <see cref="EqualWidthDiscretizer"/> and
+/// <see cref="EqualFrequencyDiscretizer"/> (computed cuts, always open-ended,
+/// §11.4/§11.5). It owns numeric parsing, finite-only classification,
 /// cut membership, the cut and bin labels, the structural interval bins, and the
 /// native/v2-compat rendering, so those formulas exist once (EP-17).
 /// <para>
@@ -106,9 +107,9 @@ internal sealed class NumericCutBins
     // so Format never sees a non-finite cut.
     private static string FormatCut(double cut) => CanonicalNumber.Format(cut);
 
-    // Index-aligned with CutBinLabels.Build: open ends add the two unbounded outer
-    // bins around the interiors; closed ends keep interiors only. A null bound is
-    // the unbounded (±∞) end — never interval inclusivity (D-077).
+    // One structural bin per CutBinLabels.Build label, at the same index: open ends add
+    // the two unbounded outer bins around the interiors; closed ends keep interiors only.
+    // A null bound is the unbounded (±∞) end, never interval inclusivity (D-077).
     private static ImmutableArray<CanonicalBin> BuildStructuralBins(IReadOnlyList<double> cuts, BinEnds ends)
     {
         var bins = ImmutableArray.CreateBuilder<CanonicalBin>(cuts.Count + 1);

@@ -80,9 +80,9 @@ internal sealed class TripleObservation(ProbeOptions options, bool subjectGroupe
             }
         }
 
-        // §7.1: an empty or missing predicate is ignored — it names no attribute, and it is not
-        // an error. The seam has already normalized empty and missing-token cells to null; the
-        // empty check is the belt to that braces for a hand-written session.
+        // §7.1: an empty or missing predicate is ignored: it names no attribute, and it is not
+        // an error. The seam already normalizes empty and missing-token cells to null; the
+        // empty check also covers a hand-written session that does not.
         if (string.IsNullOrEmpty(row.Predicate))
         {
             return null;

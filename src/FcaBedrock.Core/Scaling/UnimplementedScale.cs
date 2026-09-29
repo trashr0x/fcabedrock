@@ -2,11 +2,10 @@ namespace FcaBedrock.Core.Scaling;
 
 /// <summary>
 /// A modelled-but-deferred scale (spec §12.4/§20, D-010): <c>interordinal</c>,
-/// <c>biordinal</c>, or <c>contranominal</c>. A reject-carrier only, mirroring
-/// the D-072 triple pattern: it exists so a resolved spec can carry the authored
-/// kind to <c>ConversionPlanner</c>, which refuses it with
-/// <c>ScaleNotImplementedV1</c> (Fatal) before any planning —
-/// parse-but-fail-to-plan. Never produces shapes.
+/// <c>biordinal</c>, or <c>contranominal</c>. A reject-carrier only: it exists so a
+/// resolved spec can carry the authored kind to <c>ConversionPlanner</c>, which
+/// refuses it with <c>ScaleNotImplementedV1</c> (Fatal) before any planning
+/// (parse-but-fail-to-plan). Never produces shapes.
 /// </summary>
 public sealed record UnimplementedScale : Scale
 {

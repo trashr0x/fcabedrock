@@ -11,8 +11,8 @@ namespace FcaBedrock.Diagnostics;
 /// <remarks>
 /// For the domain, <typeparamref name="TError"/> is <see cref="BedrockDiagnostic"/>;
 /// call sites use <c>Result&lt;T, BedrockDiagnostic&gt;</c> directly. There is no
-/// separate <c>BedrockResult&lt;T&gt;</c> alias — C# cannot alias a partly-closed
-/// generic, and the wrapper would carry no runtime benefit (decisions.md D-006).
+/// separate <c>BedrockResult&lt;T&gt;</c> alias: C# cannot alias a partly-closed
+/// generic, and the wrapper would carry no runtime benefit (decisions.md D-042).
 /// Operations that aggregate several diagnostics use <see cref="Diagnosed{T}"/> instead.
 /// </remarks>
 public readonly struct Result<T, TError>

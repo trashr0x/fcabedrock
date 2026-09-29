@@ -32,22 +32,17 @@ public enum DiagnosticCode
     /// </summary>
     SpecFieldInvalid,
 
-    // DiscretizerKindNotYetSupported (D-070) retired at M4 Slice E (D-104): every v1
-    // discretizer kind is now executable — free_per_value at Slice B (D-101), equal_width at
-    // Slice C (D-102), equal_frequency at Slice D (D-103), and value_groups, its last owner,
-    // here. An unknown kind spelling stays an ordinary SpecFieldInvalid (D-070 tier 3).
+    // No discretizer-kind deferral code exists: every v1 kind executes (D-104), and an
+    // unknown kind spelling is an ordinary SpecFieldInvalid (D-070 tier 3).
 
     /// <summary>
-    /// A recognized v1 surface the reader does not yet model was authored. As of
-    /// M6 Slice A this is <b>exactly one</b> condition — <c>value_type = "date"</c>
-    /// — and it is a <em>value-level</em> reject inside the source reader, not a
-    /// key: the closed per-table deferred-<em>key</em> sets are gone, retired with
-    /// the carriers they were waiting for (extends/template/matcher at M2 Slice F,
-    /// D-078; the naming keys <c>display_name</c> / <c>formal_attribute_format</c>
-    /// at M6 Slice A, D-120). Never a fallback for unknown keys — those are
-    /// <see cref="SpecKeyUnrecognized"/>. Transitional: this code retires when the
-    /// D-038 date carrier lands and hands over to the permanent plan-phase
-    /// <c>DateValueTypeNotImplementedV1</c> (not yet an enum member — D-085).
+    /// A recognized v1 surface the reader does not yet model was authored. This is
+    /// <b>exactly one</b> condition, <c>value_type = "date"</c>, and it is a
+    /// <em>value-level</em> reject inside the source reader, never a key-level one
+    /// (D-078, D-120). Never a fallback for unknown keys; those are
+    /// <see cref="SpecKeyUnrecognized"/>. Transitional: per spec §16.4, this code retires
+    /// when the D-038 date carrier lands and hands over to the permanent plan-phase
+    /// <c>DateValueTypeNotImplementedV1</c>, which is not yet an enum member (D-085).
     /// </summary>
     SpecSurfaceNotYetSupported,
 
@@ -56,8 +51,8 @@ public enum DiagnosticCode
     /// <summary>
     /// The document has no <c>[spec]</c>/<c>version</c>, or declares a version other
     /// than <c>1</c>; the spec must be refused. Fatal. Emitted by the resolve seam,
-    /// and by composition for every spec in an <c>extends</c> chain (root gated
-    /// before any base loads; each base at its load) — per flow it fires exactly
+    /// and by composition for every spec in an <c>extends</c> chain (the root checked
+    /// before any base loads; each base at its load); per flow it fires exactly
     /// once. Spec §2/§3/§13 (D-067/D-078).
     /// </summary>
     SpecVersionUnsupported,
@@ -280,11 +275,9 @@ public enum DiagnosticCode
     /// <summary>
     /// A number-typed source (authored <c>value_type = "number"</c> or a numeric-cut
     /// discretizer) has a bare-string <c>restrict_to</c> entry; numeric restriction
-    /// uses a <b>numeric entry</b> — an exact <c>{ value = n }</c> or a range. This
-    /// code — not <see cref="SourceValueTypeInvalid"/> — owns the
-    /// numeric-source/string-entry mismatch. Spec §10.4 (D-063; renamed from
-    /// <c>RestrictToOnNumericRequiresRange</c> by D-091 now that the exact numeric
-    /// entry exists, so "requires a range" is no longer the whole rule).
+    /// uses a <b>numeric entry</b>: an exact <c>{ value = n }</c> or a range. This
+    /// code, not <see cref="SourceValueTypeInvalid"/>, owns the
+    /// numeric-source/string-entry mismatch. Spec §10.4 (D-063/D-091).
     /// </summary>
     RestrictToNumericEntryRequired,
 
@@ -374,9 +367,10 @@ public enum DiagnosticCode
     /// <see cref="FormalAttributeNameCollision"/>. The shared plan fails, so
     /// <c>.dat</c> emission is blocked as well as <c>.cxt</c>: a newline inside a
     /// name would add a phantom line to the line-oriented <c>.cxt</c>, and
-    /// exporters never sanitize (EP-15). Load-bearing beyond the M6 naming surface
-    /// — it also catches CR/LF arriving from raw values, calibrated domains, and
-    /// <c>value_labels</c>. Spec §10.7 / §16.4 (D-116/D-117).
+    /// exporters never sanitize (EP-15). The check is not limited to the naming fields
+    /// (<c>display_name</c>, <c>formal_attribute_format</c>): it also catches CR/LF
+    /// arriving from raw values, calibrated domains and <c>value_labels</c>. Spec §10.7 /
+    /// §16.4 (D-116/D-117).
     /// </summary>
     FormalAttributeNameInvalid,
 
@@ -427,8 +421,7 @@ public enum DiagnosticCode
     /// absent <c>declared_domain</c> was calibrated from the observed data (any
     /// observed count, including zero). Warning — the resulting schema depends on
     /// this specific input; declare the domain or freeze it to make the run
-    /// input-independent. Spec §7 / §10.3 / §16.4 (D-036; replaces the transitional
-    /// <c>ObservedDomainCalibrationNotImplementedV1</c>).
+    /// input-independent. Spec §7 / §10.3 / §16.4 (D-036).
     /// </summary>
     ObservedDomainUsed,
 
@@ -504,7 +497,7 @@ public enum DiagnosticCode
     /// </summary>
     DatOutputFingerprintStale,
 
-    // --- v2 .bed migration (D-009 one-way migration; Slice G) ---
+    // --- v2 .bed migration (D-009 one-way migration; D-079) ---
 
     /// <summary>
     /// The v2 <c>.bed</c> structure is unreadable: a missing bracket section, an
@@ -631,8 +624,7 @@ public enum DiagnosticCode
     /// still written; the run proceeds. Warning, once, on normal completion only — a
     /// structural halt suppresses it, because "no objects" would then describe the
     /// halt rather than the data. The row twin of the plan-phase
-    /// <see cref="NoFormalAttributes"/>. Spec §16.4 (D-058: replaces the ambiguous
-    /// whole-context <c>EmptyExtent</c>).
+    /// <see cref="NoFormalAttributes"/>. Spec §16.4 (D-058).
     /// </summary>
     NoObjectsEmitted,
 
@@ -643,7 +635,7 @@ public enum DiagnosticCode
     /// <em>before</em> objects are filtered (§7), so a surviving population need not
     /// span every bin. Warning, <b>aggregated</b>: one diagnostic carrying the count and
     /// a bounded sample of rendered names in plan order, flushed on normal completion
-    /// only. Spec §7 / §16.4 (D-058: replaces <c>EmptyIntent</c>).
+    /// only. Spec §7 / §16.4 (D-058).
     /// </summary>
     AttributeHasNoCrosses,
 

@@ -3,8 +3,8 @@ namespace FcaBedrock.Core.Scaling;
 /// <summary>
 /// Cumulative threshold scale (spec §12.3): for N ordered bins, N formal
 /// attributes, one per bin, each true when an object lies on one side of a cut.
-/// v2's progressive scaling is <see cref="OrdinalDirection.Le"/> ("below" — <c>&lt;</c>
-/// at each bin's upper edge), the M1 golden path.
+/// v2's progressive scaling is <see cref="OrdinalDirection.Le"/> ("below": <c>&lt;</c>
+/// at each bin's upper edge), the path the v2 golden fixtures pin.
 ///
 /// <para>Over half-open cut bins the boundary is fixed by direction (D-044):
 /// <c>le</c> ⇒ <c>&lt;</c> at upper edges, <c>ge</c> ⇒ <c>&gt;=</c> at lower edges — the
@@ -84,8 +84,9 @@ public sealed record OrdinalScale(
         new(ValueLabel: OpenEndLabel, ScaleOp: "", BinKey: OpenEndLabel, Bin: new ValueBin(OpenEndLabel),
             CrossingBins: [.. labels]);
 
-    // Value-bin ordinal (§12.3, D-081): identity value bins ordered by the explicit
-    // scale.order. Each order position is a threshold at that raw value; direction ×
+    // Value-bin ordinal (§12.3, D-081/D-096/D-104): identity, free_per_value or value_groups
+    // bins ordered by scale.order (authored, or the planner's natural numeric order for a
+    // numeric free_per_value). Each order position is a threshold at that raw value; direction ×
     // boundary pick the operator and which order positions it crosses:
     //   ge + inclusive → >= order[i], crosses order[i..]   (order[0]  is tautological)
     //   ge + strict    → >  order[i], crosses order[i+1..] (order[^1] is statically empty)
@@ -95,9 +96,10 @@ public sealed record OrdinalScale(
     // no open end, so there is no `all` threshold; drop_top suppresses the inclusive
     // tautological threshold (ge → the first, le → the last) and is a no-op under strict
     // (whose tautological end is instead statically empty and simply never crosses). The
-    // key/name is the raw order value via RenderName (never a display label). Order is a
-    // validated permutation of the domain by plan time (OrdinalOrderMissing /
-    // OrdinalOrderHasUnknownValue); a null Order here means a resolve/plan-guard bypass —
+    // key and the shape's ValueLabel are the raw order value, never a display label; the
+    // planner's RenderName applies value_labels to the name. Order is a validated
+    // permutation of the bin universe by plan time (OrdinalOrderMissing /
+    // OrdinalOrderHasUnknownValue); a null Order here means a resolve/plan-guard bypass,
     // a programmer error (EP-14).
     private List<FormalAttributeShape> BuildValueThresholds()
     {

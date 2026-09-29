@@ -26,8 +26,9 @@ internal sealed class ProbeTally
     public string Sample => string.Join(", ", _sample);
 
     /// <summary>
-    /// Records one occurrence. Called in physical attribute order, so both the count and the
-    /// sample are functions of the schema alone (D-112).
+    /// Records one occurrence. Callers record in physical column order (wide) or predicate
+    /// first-appearance order (triple), so the count and the sample depend only on the schema
+    /// and the record sequence (D-112).
     /// </summary>
     public void Record(string value)
     {

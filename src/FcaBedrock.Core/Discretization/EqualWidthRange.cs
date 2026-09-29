@@ -14,10 +14,8 @@ public enum EqualWidthRange
     MinMax,
 
     /// <summary>
-    /// The span is the 1st and 99th percentiles of the calibration population.
-    /// Modelled here (the D-089 range-mode contract); its TOML spelling and
-    /// calibration land at M4 Slice D, so the reader rejects <c>"percentile_p1_p99"</c>
-    /// as an unrecognized range until then (<c>SpecFieldInvalid</c>, D-070 tier 3).
+    /// The span is the 1st and 99th percentiles of the calibration population, taken as
+    /// exact order statistics (§11.4, D-089/D-103).
     /// </summary>
     PercentileP1P99,
 

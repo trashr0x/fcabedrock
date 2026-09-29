@@ -4,8 +4,9 @@
     <ProjectReference Include="..\FcaBedrock.Diagnostics\FcaBedrock.Diagnostics.csproj" />
   </ItemGroup>
 
-  <!-- White-box access for the Core unit tests (planner/scale internals). A test
-       seam only; no production behavior depends on it (principle EP-6). -->
+  <!-- White-box access for the Core unit tests (discretizer, scale, naming and
+       fingerprint-encoding internals). A test seam only; no production behavior
+       depends on it (principle EP-6). -->
   <ItemGroup>
     <InternalsVisibleTo Include="FcaBedrock.Core.Tests" />
   </ItemGroup>

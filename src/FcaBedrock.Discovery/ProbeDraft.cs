@@ -13,17 +13,17 @@ namespace FcaBedrock.Discovery;
 /// not reviewed, §14); no <c>created_at</c>, tool version, path, or machine text (the no-clock
 /// rule, D-079/EP-13 — and a clock would break byte repeatability outright, D-112); no
 /// <c>[defaults]</c>, <c>[output]</c>, templates, matchers, or <c>[binding.object_key]</c> (the
-/// defaults are already correct: wide object keys are <c>row_index</c>). The caller may enrich
-/// the returned record afterwards — it is a public document model — which is exactly why the
-/// probe API takes no provenance parameters (EP-6).
+/// defaults are already correct: a wide object key is <c>row_index</c>, and a triple object is
+/// its subject). The caller may enrich the returned record afterwards (it is a public document
+/// model), which is exactly why the probe API takes no provenance parameters (EP-6).
 /// </para>
 /// <para>
 /// <b>Everything effective is authored explicitly</b>, including settings that equal their
 /// defaults, so the draft documents the run that produced it rather than relying on the reader
 /// to know §5.1 (D-107). Presence tracking means an omitted field is genuinely omitted: an
-/// all-missing attribute writes no <c>declared_domain</c> at all, not <c>[]</c>, which the
-/// resolve seam would read as "absent" anyway but which would misrepresent the observation as
-/// an authored empty domain (§10.3, D-071).
+/// all-missing attribute writes no <c>declared_domain</c> at all, not <c>[]</c>. An authored
+/// <c>[]</c> is a fixed empty domain that suppresses observed-domain calibration, so it would
+/// misrepresent the observation as an authored empty domain (§7.1, §10.3, D-122).
 /// </para>
 /// </summary>
 internal static class ProbeDraft
@@ -64,8 +64,8 @@ internal static class ProbeDraft
                 HasHeader: readSettings.HasHeader,
                 Locale: options.Locale,
                 MissingToken: readSettings.MissingToken,
-                // Wide authors no ordering and no role map: §5.3 gives neither to this shape,
-                // and authoring one would not resolve.
+                // Wide authors no ordering and no role map: the wide shape has neither
+                // (§5.2, §7.1).
                 Ordering: null,
                 Columns: null,
                 ObjectKey: null),
@@ -210,7 +210,7 @@ internal static class ProbeDraft
         string name, SourceSection source, RetainedDomain domain, int limit) =>
         new(
             Name: name,
-            // An EXPLICIT value_type: M5 authors no typing, and `string` is the only type
+            // An EXPLICIT value_type: probe authors no typing, and `string` is the only type
             // `identity` accepts (§10.2, D-061), but writing it keeps the draft self-documenting
             // rather than default-dependent.
             Source: source,
@@ -219,9 +219,10 @@ internal static class ProbeDraft
             Template: null,
             Discretizer: new IdentityDiscretizerSection(),
             Scale: new NominalScaleSection(),
-            // An all-missing attribute is real and is authored — only its domain is unknown, so
+            // An all-missing attribute is real and is authored; only its domain is unknown, so
             // the domain is omitted and the Calibrate phase fills it from the data (§10.3).
-            // Omitted, not `[]`: presence is information (D-071).
+            // Omitted, not `[]`: an authored `[]` is a fixed empty domain that suppresses
+            // observed-domain calibration (§10.3, D-122).
             DeclaredDomain: domain.Values.Count == 0 ? null : domain.Values,
             RestrictTo: null,
             ValueLabels: null,

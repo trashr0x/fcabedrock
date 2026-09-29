@@ -21,7 +21,7 @@ public abstract record CanonicalBin;
 public sealed record ValueBin(string Label) : CanonicalBin;
 
 /// <summary>
-/// A numeric cut bin (<c>manual_cuts</c>, §11.2): <c>[Lo, Hi)</c>, where a
+/// A numeric cut bin (every numeric cut discretizer, §11.2): <c>[Lo, Hi)</c>, where a
 /// <see langword="null"/> end means <i>unbounded</i> (runs to ±∞). The D-069
 /// <c>lo_open</c>/<c>hi_open</c> fingerprint flags derive from that nullness and
 /// mean "unbounded end", never interval inclusivity — every bounded cut bin is

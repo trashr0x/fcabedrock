@@ -201,7 +201,7 @@ changes an earlier one. A new entry MUST add its line here.
 - D-107: Draft naming/binding matrix, validity guarantee, and content inventory; no stored fingerprints/clock/tool version; caller enrichment
 - D-108: Retention limit (100,000 default), strictly-greater truncation, prefix + `include` recovery, marker + always-written notes, probe options ownership; legacy retention-cap correction
 - D-109: The general unbound streaming source session; adapter/engine split; package dependency direction; required EP-4 review
-- D-110: Probe boundedness: per-attribute limit + three aggregate guards, deterministic accounting, hard-failure semantics, no spill machinery, inherited subject-metadata carve-out *(refines D-095)*
+- D-110: Probe boundedness: per-attribute limit + three aggregate guards, deterministic accounting, hard-failure semantics, no spill machinery, inherited subject-metadata carve-out *(refines D-095; guard precedence added in place on 2026-09-29)*
 - D-111: Probe diagnostic governance: five future codes, two phase widenings, `ProbeSourceReadFailed` scope, cancellation is not a diagnostic, registry 70 → expected 75 *(refines D-067/D-085/D-099)*
 - D-112: Probe determinism and cancellation: record-sequence input, no ambient state, byte/diagnostic repeatability, no partial artifact; the M5 verification suite
 - D-113: Canonical-writer deterministic multiline wrapping for long top-level `declared_domain` arrays; private byte-pinned cutoff *(refines D-075)*
@@ -4574,7 +4574,7 @@ and §17.
 
 ### D-110: Probe boundedness: per-attribute limit + three aggregate guards, deterministic accounting, hard-failure semantics, no spill machinery, inherited subject-metadata carve-out
 
-- **Status:** accepted (M5 pre-implementation audit; refines D-095)
+- **Status:** accepted (M5 pre-implementation audit; refines D-095); amended in place on 2026-09-29 to record the aggregate-guard precedence
 - **Date:** 2026-07-18
 - **Decision:** per-attribute retention is bounded by the D-108 limit. Also, three
   deterministic **aggregate guards**, exposed as advanced probe options: (1) maximum
@@ -4589,7 +4589,12 @@ and §17.
   spill / count-sensitive calibration machinery**: it is set-based and idempotent (D-106).
   The seen-subject set that triple contiguity validation needs is the **inherited EP-16
   bounded-metadata carve-out** (the object-names class the converter already retains); probe
-  invents **no fourth aggregate guard** for it.
+  invents **no fourth aggregate guard** for it. Amended in place on 2026-09-29: the three
+  aggregate guards take precedence in their numbered order, (1) attributes, then (2) values,
+  then (3) text, so the first applicable guard in that order is reported. Wide checks the
+  attribute guard against the schema before any record is read. Triple checks it when a row
+  brings a new predicate, before that row's value is retained. A newly retained value that
+  would breach both record guards reports the values guard.
 - **Why:** probe reads data at the v1 target scale (D-007), so it needs the same bounded-memory
   discipline as calibration, but because its observation is set-based it needs none of the
   spill/merge machinery (D-095) that count-sensitive calibration does. Distinguishing a

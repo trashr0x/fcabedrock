@@ -5,10 +5,13 @@ namespace FcaBedrock.Diagnostics;
 /// </summary>
 public enum DiagnosticSeverity
 {
-    /// <summary>Informational (e.g. "auto-discretizer calibrated to cuts X").</summary>
+    /// <summary>
+    /// Informational (e.g. the count of rows merged under
+    /// <c>duplicate_object_policy = "dedupe"</c>, §6.1).
+    /// </summary>
     Info,
 
-    /// <summary>Non-fatal issue (e.g. empty extent, deprecated field).</summary>
+    /// <summary>Non-fatal issue (e.g. an empty column or a stale fingerprint).</summary>
     Warning,
 
     /// <summary>Fatal to the operation but recoverable for the next call.</summary>

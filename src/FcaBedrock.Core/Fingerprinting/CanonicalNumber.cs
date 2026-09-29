@@ -3,16 +3,17 @@ using System.Globalization;
 namespace FcaBedrock.Core.Fingerprinting;
 
 /// <summary>
-/// The one §14 number-identity rule, made public for the M4 numeric surface
+/// The one §14 number-identity rule, public for the numeric identity sites
 /// (D-096/G-6). <see cref="Format"/> reproduces the existing canonical encoder
 /// (<see cref="CanonicalJson.AppendNumber(System.Text.StringBuilder,double)"/>)
 /// byte-for-byte — invariant, shortest round-trippable, so <c>90</c>, <c>90.0</c>,
 /// and <c>9e1</c> all render <c>90</c> — and, like that encoder, formats
 /// <c>-0.0</c> as <c>"-0"</c> so the <c>fp_format = 1</c> bytes never move.
-/// <see cref="CanonicalizeZero"/> is applied at the <b>new</b> M4 numeric identity
-/// sites only (numeric <c>free_per_value</c> keys/values, and — at slice F —
-/// numeric <c>restrict_to</c> entries and computed cuts), so a signed zero never
-/// leaks into a bin identity, label, or hash. The two type-correct chains
+/// <see cref="CanonicalizeZero"/> is applied at the numeric identity sites (numeric
+/// <c>free_per_value</c> keys and values, numeric <c>restrict_to</c> entries, and
+/// computed cuts), so a signed zero never leaks into their bin identities, labels, or
+/// hashes. Authored <c>manual_cuts</c> are not canonicalized: an authored <c>-0</c> cut
+/// keeps its <c>"-0"</c> canonical-JSON bytes. The two type-correct chains
 /// (D-096/G-6):
 /// <list type="bullet">
 /// <item><b>text-sourced:</b> <c>TryParse(text, culture)</c> →
@@ -43,8 +44,8 @@ public static class CanonicalNumber
     /// <summary>
     /// Maps both signed zeros to positive zero and leaves every other value
     /// unchanged (D-096): <c>-0</c> and <c>+0</c> collapse to one identity so a
-    /// signed zero never reaches a key, label, or hash. Applied at the M4 numeric
-    /// production sites; <see cref="Format"/> itself never canonicalizes (it must
+    /// signed zero never reaches a key, label, or hash. Applied at the numeric identity
+    /// sites the type summary lists; <see cref="Format"/> itself never canonicalizes (it must
     /// reproduce the existing encoder, G-6).
     /// </summary>
     public static double CanonicalizeZero(double value) => value == 0.0 ? 0.0 : value;

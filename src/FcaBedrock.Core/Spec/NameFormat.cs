@@ -36,9 +36,10 @@ public sealed class NameFormat
     }
 
     /// <summary>
-    /// The authored format string, verbatim. Round-trip fidelity is why the
-    /// <c>{column}</c> alias survives here even though it collapses to
-    /// <see cref="Placeholder.Name"/> in the token model (D-075 canonical write).
+    /// The authored format string, verbatim: a <c>{column}</c> alias keeps its authored
+    /// spelling here even though it collapses to <see cref="Placeholder.Name"/> in the
+    /// token model. The canonical write round-trips the document model's copy of the
+    /// string, not this property (D-075).
     /// </summary>
     public string Text { get; }
 

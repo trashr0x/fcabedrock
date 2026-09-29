@@ -76,9 +76,8 @@ public sealed class ResolvedSpec
         return new ResolvedSpec(Snapshot(spec), SnapshotSchema(schema), settings);
     }
 
-    // The schema is freely constructible, so the trust boundary re-checks it
-    // (round-6 Medium-4): a non-negative column count and, when a header is
-    // present, a count that matches.
+    // The schema is freely constructible, so the trust boundary re-checks it: a
+    // non-negative column count and, when a header is present, a count that matches.
     private static void ValidateSchemaStructure(SourceSchema? schema)
     {
         if (schema is null)
@@ -98,7 +97,7 @@ public sealed class ResolvedSpec
         }
     }
 
-    // (e) the locale must be "invariant" or a predefined culture — mirrors the seam's
+    // The locale must be "invariant" or a predefined culture, mirroring the seam's
     // predefinedOnly rule (EP-7); a synthesized ICU culture would make acceptance
     // OS-dependent.
     private static void ValidateLocale(string locale)
@@ -196,11 +195,12 @@ public sealed class ResolvedSpec
             RequireDefined(attribute.MissingPolicy, "attribute.MissingPolicy");
             RequireDefined(attribute.UnknownValuePolicy, "attribute.UnknownValuePolicy");
 
-            // §10.1/§10.7: {display_name} must render something, and a CR/LF there would
-            // corrupt the line-oriented .cxt. The reader rejects both on the authored path
-            // (SpecFieldInvalid), so this is the hand-built-graph backstop (EP-10) — never a
-            // user-facing route. The format itself needs no re-check: NameFormat cannot be
-            // constructed except through its validating factory.
+            // §10.1/§10.7: {display_name} must render something. The reader rejects an empty
+            // or CR/LF-bearing value on the authored path (SpecFieldInvalid), so this empty-name
+            // check is the hand-built-graph backstop (D-120, EP-10), never a user-facing route.
+            // A CR/LF is not re-checked here: the plan's rendered-name check
+            // (FormalAttributeNameInvalid) keeps it out of the .cxt. The format itself needs no
+            // re-check: NameFormat cannot be constructed except through its validating factory.
             ArgumentNullException.ThrowIfNull(attribute.DisplayName);
             if (attribute.DisplayName.Length == 0)
             {
@@ -208,7 +208,7 @@ public sealed class ResolvedSpec
                     $"attribute '{attribute.Name}' has an empty display name; it defaults to the attribute name (§10.1).");
             }
 
-            // (b) source kind ⇔ binding shape.
+            // Source kind ⇔ binding shape.
             switch (attribute.Source)
             {
                 case ColumnSource column:
@@ -236,7 +236,7 @@ public sealed class ResolvedSpec
                     throw new ArgumentException($"attribute '{attribute.Name}' has an unrecognized source binding.");
             }
 
-            // (a) every included attribute carries a discretizer and a scale.
+            // Every included attribute carries a discretizer and a scale.
             if (attribute.Include)
             {
                 if (attribute.Discretizer is null || attribute.Scale is null)
@@ -379,8 +379,9 @@ public sealed class ResolvedSpec
         }
     }
 
-    // The pending union is mechanically closed, but its variants are freely constructible,
-    // so the trust boundary re-checks each one's enum/union state (EP-10). An unknown variant
+    // The pending variants are freely constructible, and a record's protected copy
+    // constructor lets another assembly define a new one (CS8878), so the trust boundary
+    // re-checks each variant's enum/union state (EP-10). An unknown variant
     // is rejected rather than silently carried to a calibrator that cannot resolve it.
     private static void RequirePending(PendingCalibration config)
     {
@@ -440,16 +441,15 @@ public sealed class ResolvedSpec
         }
     }
 
-    // (f) restriction entries are known variants AND their numeric state is finite (D-091/D-105).
+    // Restriction entries are known variants AND their numeric state is finite (D-091/D-105).
     //
-    // The finiteness check lands HERE, at slice F, and not earlier, by design: the reader can
-    // legitimately produce a non-finite bound or exact value from authored TOML (`nan`/`inf`
-    // parse), and its diagnostic — RestrictToRangeInvalid — only gained a seam site at this
-    // slice. The resolver runs that check first and returns Diagnosed.Failed BEFORE calling any
-    // strict factory (the success gate), so an authored non-finite entry can never reach this
-    // throw; anything that does is a hand-built graph, i.e. genuine programmer error (EP-14).
-    // Downstream then trusts finiteness: emit compares parsed values without re-checking, and
-    // the fingerprint's number formatter rejects non-finite outright.
+    // The reader can legitimately produce a non-finite bound or exact value from authored TOML
+    // (`nan`/`inf` parse), and the resolve seam diagnoses it as RestrictToRangeInvalid. The
+    // resolver runs that check first and returns Diagnosed.Failed BEFORE calling any strict
+    // factory (the resolver's success check), so an authored non-finite entry can never reach
+    // this throw; anything that does is a hand-built graph, i.e. genuine programmer error
+    // (EP-14). Downstream then trusts finiteness: emit compares parsed values without
+    // re-checking, and the fingerprint's number formatter rejects non-finite outright.
     //
     // Value equality/ordering of entries is NOT checked (an empty range, overlapping ranges, and
     // duplicate entries are all legal — §10.4/D-091); only representability is.
@@ -619,7 +619,7 @@ public sealed class ResolvedSpec
         {
             Discretizer = SnapshotDiscretizer(attribute.Discretizer),
             Scale = SnapshotScale(attribute.Scale),
-            // Presence is load-bearing (D-122 §15): an omitted (null) domain stays null so the
+            // Presence is preserved (D-122 §15): an omitted (null) domain stays null so the
             // Calibrate phase still fills it; an authored [] stays a fixed empty domain.
             DeclaredDomain = attribute.DeclaredDomain is { } declaredDomain ? declaredDomain.ToImmutableArray() : null,
             RestrictTo = SnapshotRestrictTo(attribute.RestrictTo),
@@ -665,15 +665,16 @@ public sealed class ResolvedSpec
     private static double? CanonicalizeBound(double? bound) =>
         bound is { } value ? CanonicalNumber.CanonicalizeZero(value) : null;
 
-    // The M1 discretizers store their snapshots as ImmutableArray from construction, so the
-    // only mutable state reachable through the graph is a culture-bearing discretizer's
-    // CultureInfo (read during parsing — manual_cuts and, at M4, numeric free_per_value).
-    // Reconstruct those with a read-only culture clone so a programmatic caller cannot mutate
-    // NumberFormat after resolution and change classification (D-098 recursive immutability,
-    // EP-7/EP-11). The cultureless kinds (identity, ordered_cuts, and — at M4 Slice E —
-    // value_groups, whose matching is ordinal + culture-invariant and whose factories snapshot
-    // both the group list and each group's authored values) are already fully immutable and are
-    // reused as-is; re-creating them would allocate without changing a single reachable byte.
+    // Discretizers store their snapshots as ImmutableArray from construction, so the only
+    // mutable state reachable through the graph is a culture-bearing discretizer's CultureInfo
+    // (read during parsing: manual_cuts, numeric free_per_value, equal_width, equal_frequency
+    // and the pending calibration carrier). Reconstruct those with a read-only culture clone so
+    // a programmatic caller cannot mutate NumberFormat after resolution and change
+    // classification (D-098 recursive immutability, EP-7/EP-11). The cultureless kinds
+    // (identity, ordered_cuts, and value_groups, whose matching is ordinal + culture-invariant
+    // and whose factories snapshot both the group list and each group's authored values) are
+    // already fully immutable and are reused as-is; re-creating them would allocate without
+    // changing a single reachable byte.
     private static Discretizer? SnapshotDiscretizer(Discretizer? discretizer) => discretizer switch
     {
         ManualCutsDiscretizer cuts => ManualCutsDiscretizer.Create(cuts.Cuts, cuts.Ends, ReadOnlyCulture(cuts.Culture)).Value!,

@@ -69,7 +69,7 @@ public sealed record ValueGroup
 
     /// <summary>
     /// Builds a group, validating it as the EP-10 backstop behind the reader's
-    /// <c>SpecFieldInvalid</c> gate (§11.6/D-090 — the reader owns the user-facing
+    /// <c>SpecFieldInvalid</c> check (§11.6/D-090: the reader owns the user-facing
     /// diagnostic; reaching this factory with invalid arguments is programmer error).
     /// </summary>
     /// <exception cref="ArgumentException">
@@ -90,7 +90,7 @@ public sealed record ValueGroup
         }
 
         // Snapshot before validating, so a caller mutating its list afterwards can neither
-        // slip an empty value past this gate nor change what the group matches (D-098).
+        // slip an empty value past this check nor change what the group matches (D-098).
         IReadOnlyList<string>? snapshot = null;
         if (values is not null)
         {
