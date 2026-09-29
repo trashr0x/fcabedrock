@@ -24,7 +24,7 @@ public sealed record DefaultsSection(
 {
     /// <summary>
     /// The spec-wide <c>formal_attribute_format</c> override (§6/§10.7), or null
-    /// when omitted — in which case the scale-specific defaults apply (there is no
+    /// when omitted, in which case the scale-specific defaults apply (there is no
     /// hard-coded <c>{column}-{value}</c>). An attribute's own or template-supplied
     /// format wins over it (§9.2 precedence). Unlike the whole-section attribute/template merge,
     /// <c>[defaults]</c> composes per field, so <c>SpecComposer.MergeDefaults</c>

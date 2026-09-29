@@ -11,7 +11,7 @@ namespace FcaBedrock.Core.Spec;
 /// <summary>
 /// The opaque resolution token (D-098/G-1): a sealed, non-positional class
 /// produced only by the validating factory <see cref="Create"/>. It is the single
-/// preparation identity for one conversion — pairing downstream (the calibrator,
+/// preparation identity for one conversion: pairing downstream (the calibrator,
 /// the emitter, the fingerprint calculator) is by <b>reference identity</b> of
 /// this instance, never of a caller-owned <see cref="BedrockSpec"/>. A forger
 /// cannot mint the <em>same</em> token, only a parallel internally-consistent
@@ -21,7 +21,7 @@ namespace FcaBedrock.Core.Spec;
 /// hand-built graphs (EP-10): it deep-snapshots the spec graph into recursively
 /// immutable storage (no public property returns a castable mutable backing
 /// array), copies the schema and settings, and exhaustively validates every
-/// structural invariant the downstream phases trust — so the planner's residual
+/// structural invariant the downstream phases trust, so the planner's residual
 /// range checks become unreachable-by-construction. The resolve seam keeps
 /// authored errors on the diagnostic channel; this boundary is the programmer-error
 /// backstop and throws <see cref="ArgumentException"/> on any violation. A
@@ -254,7 +254,7 @@ public sealed class ResolvedSpec
     }
 
     // D-096/D-098: a numeric free_per_value's resolved declared_domain, value_labels keys, and
-    // scale.order entries MUST be canonical numeric identities — the resolve seam guarantees this, and
+    // scale.order entries MUST be canonical numeric identities; the resolve seam guarantees this, and
     // the emitter/planner/fingerprint trust it (emit produces canonical bin keys, so a non-canonical
     // domain bin would be unmatchable and a non-canonical label key would silently never render). The
     // trust boundary re-checks it for hand-built graphs (EP-10): each key must be a finite number whose
@@ -316,7 +316,7 @@ public sealed class ResolvedSpec
                 RequirePrecision(equalWidth.Precision);
 
                 // §11.4/D-094: vmin/vmax are the authored manual span and exist exactly for
-                // range = "manual" — the fingerprint's omission rule reads this directly, so a
+                // range = "manual"; the fingerprint's omission rule reads this directly, so a
                 // hand-built graph must not desync them from the range mode.
                 var manualRange = equalWidth.Range == EqualWidthRange.Manual;
                 if (manualRange != (equalWidth.VMin is not null) || manualRange != (equalWidth.VMax is not null))
@@ -337,7 +337,7 @@ public sealed class ResolvedSpec
 
                 // §11.6/D-090: authored labels must be distinct, and none may collide with the
                 // synthetic Other under unmatched = "other". The factories enforce both, so this
-                // is defence in depth — but a DISCOVERED passthrough bin equal to an authored
+                // is defence in depth, but a DISCOVERED passthrough bin equal to an authored
                 // label is deliberately NOT checked here: that collision is data-dependent and
                 // belongs to plan (FormalAttributeCollision), not to the trust boundary.
                 RequireDistinctLabels(valueGroups.Groups, valueGroups.Unmatched);
@@ -349,7 +349,7 @@ public sealed class ResolvedSpec
     }
 
     // A group is only constructible through its validating factory, so its own matcher validity
-    // holds by construction; what a hand-built graph can still get wrong is the collection —
+    // holds by construction; what a hand-built graph can still get wrong is the collection:
     // nulls, and (on the freely-constructible pending carrier) label distinctness.
     private static void RequireGroups(IReadOnlyList<ValueGroup> groups)
     {
@@ -452,7 +452,7 @@ public sealed class ResolvedSpec
     // re-checking, and the fingerprint's number formatter rejects non-finite outright.
     //
     // Value equality/ordering of entries is NOT checked (an empty range, overlapping ranges, and
-    // duplicate entries are all legal — §10.4/D-091); only representability is.
+    // duplicate entries are all legal, §10.4/D-091); only representability is.
     private static void ValidateRestrictEntries(AttributeSpec attribute)
     {
         foreach (var entry in attribute.RestrictTo)
@@ -629,14 +629,14 @@ public sealed class ResolvedSpec
         };
 
     // §10.4/G-6/D-096: the rebuild canonicalizes signed zero on exact values and provided range
-    // bounds, so a resolved spec carries CANONICAL numeric restriction identities by construction
-    // — the same guarantee the boundary already enforces for numeric free_per_value keys
+    // bounds, so a resolved spec carries CANONICAL numeric restriction identities by construction,
+    // the same guarantee the boundary already enforces for numeric free_per_value keys
     // (ValidateNumericFreePerValueKeys), reached by normalizing rather than throwing because
     // there is nothing to reject: -0.0 and 0.0 are the same value.
     //
     // The seam canonicalizes what it resolves, so through the ordinary pipeline this is a no-op.
     // It matters for a PROGRAMMATIC caller: -0.0 would otherwise survive and, because
-    // CanonicalJson.AppendNumber faithfully formats it "-0" (untouched, G-6 — that is what keeps
+    // CanonicalJson.AppendNumber faithfully formats it "-0" (untouched, G-6; that is what keeps
     // authored manual-cut bytes and fp_format = 1 stable), two specs that MATCH identically
     // (IEEE: 0.0 == -0.0) would produce different canonical bytes and hashes, and would fail to
     // deduplicate. Same behaviour ⇒ same fingerprint is exactly EP-7, so the boundary makes it
@@ -686,9 +686,9 @@ public sealed class ResolvedSpec
         EqualWidthDiscretizer equalWidth => EqualWidthDiscretizer.Rebuild(equalWidth, ReadOnlyCulture(equalWidth.Culture)),
         EqualFrequencyDiscretizer equalFrequency => EqualFrequencyDiscretizer.Rebuild(equalFrequency, ReadOnlyCulture(equalFrequency.Culture)),
 
-        // The pending config holds only immutable values — including PendingValueGroupsPassthrough,
+        // The pending config holds only immutable values, including PendingValueGroupsPassthrough,
         // whose constructor snapshots its groups and whose every ValueGroup snapshots its own
-        // authored values — so only the culture needs re-homing.
+        // authored values, so only the culture needs re-homing.
         CalibrationPending pending => new CalibrationPending(pending.Config, ReadOnlyCulture(pending.Culture)),
         _ => discretizer,
     };
@@ -735,7 +735,7 @@ public sealed class ResolvedSpec
     // ObjectKey is a public, externally-derivable record hierarchy (not private-protected
     // closed), so the trust boundary validates its union exhaustively: an unknown subtype would
     // otherwise slip past the planner (no rejecting default) and be treated as row_index at emit
-    // (`plan.ObjectKey as ColumnObjectKey` → null) — a silent semantic fallback (D-098, EP-10).
+    // (`plan.ObjectKey as ColumnObjectKey` → null), a silent semantic fallback (D-098, EP-10).
     private static void RequireDefined(ObjectKey objectKey)
     {
         ArgumentNullException.ThrowIfNull(objectKey);

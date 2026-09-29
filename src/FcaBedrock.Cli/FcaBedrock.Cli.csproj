@@ -15,7 +15,7 @@
     <Description>Formal Concept Analysis preprocessing - the fcabedrock command.</Description>
     <!-- Required, not optional: .editorconfig makes SYSLIB1054 a warning (and warnings
          are errors), so OS file identity must go through the LibraryImport source
-         generator, whose marshalling stubs need unsafe code — verified by build:
+         generator, whose marshalling stubs need unsafe code, verified by build:
          removing this line fails with SYSLIB1062 + CS0227. No unsafe code is hand-written
          anywhere in this package. -->
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>

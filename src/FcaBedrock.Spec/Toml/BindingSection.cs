@@ -7,11 +7,11 @@ namespace FcaBedrock.Spec.Toml;
 /// here as authored (possibly-invalid states are document territory, D-066);
 /// the resolver applies the §5.1 defaults and shape rules.
 /// </summary>
-/// <param name="Shape">Source shape (§5.1); required — absent is <c>BindingShapeMissing</c>.</param>
+/// <param name="Shape">Source shape (§5.1); required: absent is <c>BindingShapeMissing</c>.</param>
 /// <param name="Encoding">Source text encoding (§5.1, default <c>"utf-8"</c>); resolved/validated at the seam (D-082).</param>
 /// <param name="Delimiter">Field delimiter (§5.1, default <c>','</c>).</param>
 /// <param name="QuoteChar">Quote character (§5.1, default <c>'"'</c>).</param>
-/// <param name="HasHeader">Whether the first row is a header (§5.1; the default is shape-specific — wide true, triple false).</param>
+/// <param name="HasHeader">Whether the first row is a header (§5.1; the default is shape-specific: wide true, triple false).</param>
 /// <param name="Locale">Locale for data parsing (§5.1, default <c>"invariant"</c>).</param>
 /// <param name="MissingToken">Token marking a missing value (§5.1, default <c>"?"</c>).</param>
 /// <param name="Ordering">Triple row ordering (§5.3); triple shape only.</param>

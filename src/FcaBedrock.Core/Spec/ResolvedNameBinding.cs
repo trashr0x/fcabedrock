@@ -29,7 +29,7 @@ public abstract record ResolvedNameBinding
 }
 
 /// <summary>
-/// The site is a named attribute's <c>source</c> — it must exist, be unique, and
+/// The site is a named attribute's <c>source</c>: it must exist, be unique, and
 /// be a <see cref="ColumnSource"/> whose index matches (§10.2).
 /// </summary>
 public sealed record AttributeSourceNameBinding : ResolvedNameBinding
@@ -43,7 +43,7 @@ public sealed record AttributeSourceNameBinding : ResolvedNameBinding
 }
 
 /// <summary>
-/// The site is the binding's object key — it must be a <see cref="ColumnObjectKey"/>
+/// The site is the binding's object key: it must be a <see cref="ColumnObjectKey"/>
 /// whose index matches (§5.4).
 /// </summary>
 public sealed record ObjectKeyNameBinding : ResolvedNameBinding
@@ -55,7 +55,7 @@ public sealed record ObjectKeyNameBinding : ResolvedNameBinding
 }
 
 /// <summary>
-/// The site is one triple role — the <see cref="TripleColumns"/> field for
+/// The site is one triple role: the <see cref="TripleColumns"/> field for
 /// <see cref="Role"/> must carry the recorded index (§5.3).
 /// </summary>
 public sealed record TripleRoleNameBinding : ResolvedNameBinding

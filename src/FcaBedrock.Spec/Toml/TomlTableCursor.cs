@@ -6,8 +6,8 @@ namespace FcaBedrock.Spec.Toml;
 /// <summary>
 /// A strict, consumption-tracking view over one TOML table's key/value pairs
 /// (a section body or an inline table). Section readers take their known keys
-/// through the typed accessors — each type-checks the CST node and raises
-/// <c>SpecFieldInvalid</c> on mismatch — and then call
+/// through the typed accessors (each type-checks the CST node and raises
+/// <c>SpecFieldInvalid</c> on mismatch) and then call
 /// <see cref="Finish"/>, which raises <c>SpecKeyUnrecognized</c> for every
 /// unconsumed key. The allow-list is therefore exactly the set of keys a reader
 /// takes; there is no separate list to drift. (No D-075 deferred-key set remains,
@@ -59,7 +59,7 @@ internal sealed class TomlTableCursor
 
     /// <summary>
     /// Whether <paramref name="key"/> is authored on this table, <b>without</b> consuming it.
-    /// For choosing which shape an inline table is before reading it — the
+    /// For choosing which shape an inline table is before reading it: the
     /// <c>restrict_to</c> entry forms <c>{ value = n }</c> and <c>{ from, to }</c> are
     /// distinguished this way, so a malformed <c>value</c> reports as a bad exact entry
     /// instead of silently degrading into a valid unrestricted <c>{}</c> range (§10.4).
@@ -160,7 +160,7 @@ internal sealed class TomlTableCursor
         return null;
     }
 
-    /// <summary>An authored number — integer or float node — or null when absent (or reported invalid).</summary>
+    /// <summary>An authored number (integer or float node) or null when absent (or reported invalid).</summary>
     public double? TakeDouble(string key)
     {
         if (Take(key) is not { } pair)
@@ -237,7 +237,7 @@ internal sealed class TomlTableCursor
 
     /// <summary>
     /// An authored string array, or null when absent. An authored empty array
-    /// returns an empty list — the omitted-vs-<c>[]</c> distinction survives (D-071).
+    /// returns an empty list: the omitted-vs-<c>[]</c> distinction survives (D-071).
     /// </summary>
     public IReadOnlyList<string>? TakeStringArray(string key)
     {
@@ -273,7 +273,7 @@ internal sealed class TomlTableCursor
 
     /// <summary>
     /// An authored integer array, or null when absent. Carried at authored
-    /// arity — element count is value territory for the owning consumer (D-066).
+    /// arity: element count is value territory for the owning consumer (D-066).
     /// </summary>
     public IReadOnlyList<long>? TakeLongArray(string key)
     {
@@ -376,7 +376,7 @@ internal sealed class TomlTableCursor
 
     /// <summary>
     /// Raises <c>SpecKeyUnrecognized</c> for every key no reader consumed, so the
-    /// allow-list is exactly the set of keys a reader takes — there is no separate
+    /// allow-list is exactly the set of keys a reader takes; there is no separate
     /// list to drift.
     /// </summary>
     public void Finish()

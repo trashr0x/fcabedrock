@@ -16,8 +16,8 @@ namespace FcaBedrock.Spec.Toml;
 /// authored, template-, and matcher-supplied field.
 /// <para>
 /// The composed document (<see cref="ResolvedDocument.Document"/>) carries the
-/// attribute sections in their <em>pre-application</em> form — the resolver folds
-/// templates/matchers into an effective section it discards — so a template- or
+/// attribute sections in their <em>pre-application</em> form: the resolver folds
+/// templates/matchers into an effective section it discards, so a template- or
 /// matcher-won base value (an <c>include</c> prefix domain, a <c>value_groups</c>
 /// group set) is invisible there. Those effective values are therefore read from the
 /// paired <see cref="CalibratedSpec.Spec"/>, the effective resolved state, before the
@@ -27,7 +27,7 @@ namespace FcaBedrock.Spec.Toml;
 /// rejects an un-composed document), so no root <c>extends</c> survives.
 /// </para>
 /// <para>
-/// The <c>[spec]</c> section — including any stored fingerprint fields — is carried
+/// The <c>[spec]</c> section (including any stored fingerprint fields) is carried
 /// <b>verbatim</b>: freezing is the pure mapping stage, and the CLI's fully-frozen
 /// write flow (re-resolve → native plan → <c>SpecFingerprints.ComputeNative</c> →
 /// store the three fields via the record <c>with</c> path → canonically serialize)
@@ -50,12 +50,12 @@ public static class SpecFreezer
     /// </summary>
     /// <param name="resolved">The resolved document snapshot paired with its resolution token.</param>
     /// <param name="calibrated">The calibrated state produced from the <em>same</em> resolution.</param>
-    /// <returns>The explicit, fully frozen document (no stored fingerprints written — that is the write flow's step).</returns>
+    /// <returns>The explicit, fully frozen document (no stored fingerprints written; that is the write flow's step).</returns>
     /// <exception cref="ArgumentNullException"><paramref name="resolved"/> or <paramref name="calibrated"/> is null.</exception>
     /// <exception cref="ArgumentException">
     /// <paramref name="calibrated"/> was not produced from <paramref name="resolved"/>'s
     /// resolution (<c>ReferenceEquals(resolved.Resolved, calibrated.Resolution)</c> is
-    /// false) — a programmer error, mirroring the <c>SpecFingerprints.ComputeNative</c>
+    /// false): a programmer error, mirroring the <c>SpecFingerprints.ComputeNative</c>
     /// pairing posture (EP-14), not a diagnostic.
     /// </exception>
     public static SpecDocument Freeze(ResolvedDocument resolved, CalibratedSpec calibrated)
@@ -77,7 +77,7 @@ public static class SpecFreezer
         var document = resolved.Document;
 
         // Retained outcomes and the effective (post-application) Core attributes, both keyed by
-        // attribute name — a total key over both, because a successfully resolved spec has unique,
+        // attribute name: a total key over both, because a successfully resolved spec has unique,
         // non-empty attribute names (AttributeNameDuplicate / AttributeNameMissing are resolve
         // Errors, so they cannot reach a successful calibration). The effective index is what the
         // composed document cannot supply: the template/matcher-won base values (D-123 point 9).
@@ -94,7 +94,7 @@ public static class SpecFreezer
         }
 
         // Apply outcomes by attribute identity, preserving attribute order; an attribute with no
-        // outcome (and every non-attribute section) is reused by reference — the sections are
+        // outcome (and every non-attribute section) is reused by reference: the sections are
         // immutable, so the returned graph exposes no new mutable backing state.
         var attributes = ImmutableArray.CreateBuilder<AttributeSection>(document.Attributes.Count);
         foreach (var section in document.Attributes)
@@ -108,8 +108,8 @@ public static class SpecFreezer
     }
 
     // Rewrites only the fields the retained outcome controls (D-122 part 10), leaving every
-    // other field — source, scale, restrict_to, value_labels, naming, description, include, and the
-    // policies the outcome does not touch — carried verbatim, so a template/matcher still supplies
+    // other field (source, scale, restrict_to, value_labels, naming, description, include, and the
+    // policies the outcome does not touch) carried verbatim, so a template/matcher still supplies
     // any it authored on re-resolve while the explicit frozen field (tier 5) overrides its winner.
     private static AttributeSection FreezeAttribute(
         AttributeSection section, string name, AttributeCalibration outcome, IReadOnlyDictionary<string, AttributeSpec> effective) =>
@@ -126,7 +126,7 @@ public static class SpecFreezer
             // Observed domain → an explicit declared_domain in retained first-observation order; an
             // empty outcome becomes an authored [] (a fixed empty domain), never a re-omitted null.
             // When the effective winning policy is include, the observed domain has captured the whole
-            // population, so include is folded to warn — otherwise the frozen attribute would still be
+            // population, so include is folded to warn; otherwise the frozen attribute would still be
             // data-dependent (D-122 part 10).
             ObservedDomain observed => FreezeObservedDomain(section, name, observed, effective),
 
@@ -178,7 +178,7 @@ public static class SpecFreezer
     }
 
     // §10.6/D-122 part 15: the frozen final domain for an include-additions attribute is the effective
-    // one the calibrated spec already holds — the effective pre-existing prefix (which may itself be
+    // one the calibrated spec already holds: the effective pre-existing prefix (which may itself be
     // template/matcher-won) with the retained additions appended exactly once. Reading it here (rather
     // than re-appending) is why additions are never duplicated. Unreachable-null is a corrupt pair.
     private static IReadOnlyList<string> EffectiveIncludeDomain(string name, IReadOnlyDictionary<string, AttributeSpec> effective)

@@ -9,7 +9,7 @@ namespace FcaBedrock.Core.Fingerprinting;
 
 /// <summary>
 /// Computes the three spec fingerprints (spec §14) as SHA-256 over the pinned
-/// canonical JSON generated from the resolved plan — never from TOML text
+/// canonical JSON generated from the resolved plan, never from TOML text
 /// (D-053/D-069/D-077). Output is <c>"sha256:" + 64 lowercase hex chars</c> of
 /// the UTF-8 (no BOM) canonical bytes. <c>schema_fingerprint</c> hashes only the
 /// ordered planned canonical identities (D-035); the per-format output
@@ -38,7 +38,7 @@ public static class FingerprintCalculator
     /// writer settings (§14, D-051). The shared inputs are read from the plan's
     /// calibrated spec (D-094 effective-configuration rule).
     /// <para><b>Precondition:</b> <paramref name="inputs"/>.<see cref="CxtFingerprintInputs.LabelStyle"/>
-    /// must equal <paramref name="plan"/>.<see cref="ConversionPlan.LabelStyle"/> —
+    /// must equal <paramref name="plan"/>.<see cref="ConversionPlan.LabelStyle"/>;
     /// <see cref="FormalAttribute.RenderedName"/> already bakes the style in, so a
     /// mismatched pair would hash an inconsistent, unreproducible combination. This is
     /// validated (throws <see cref="ArgumentException"/>) rather than merely documented.</para>
@@ -125,7 +125,7 @@ public static class FingerprintCalculator
 
         // trailing_newline sorts last of the dat keys (alphabetical) and is emitted ONLY
         // when disabled. Omitting it at the historical default (true) keeps every pinned
-        // .dat fingerprint byte-identical — the backward-compat contract (D-087) — while a
+        // .dat fingerprint byte-identical, the backward-compat contract (D-087), while a
         // false value produces a distinct hash. This deliberately diverges from the cxt
         // twin (BuildCxtOutputJson), which has always emitted trailing_newline
         // unconditionally; the divergence is what preserves the pre-D-087 dat pins.
@@ -243,7 +243,7 @@ public static class FingerprintCalculator
 
     // The D-051 shared inputs: the conversion-affecting binding/source settings
     // and per-attribute discretizer/scale configuration. The `attributes` array
-    // carries INCLUDED attributes only — an excluded one contributes no column —
+    // carries INCLUDED attributes only (an excluded one contributes no column)
     // while `restrictions` (§14/D-091) carries every restricting attribute,
     // included or filter-only, because restrict_to shapes which OBJECTS appear.
     // Keys sort ordinal: attributes < binding < restrictions.
@@ -273,7 +273,7 @@ public static class FingerprintCalculator
         builder.Append('}');
     }
 
-    // §14/D-091/G-9/G-10: the `restrictions` container — the one §14 array that is canonically
+    // §14/D-091/G-9/G-10: the `restrictions` container, the one §14 array that is canonically
     // SORTED rather than left in planned order, because restriction order is semantically
     // immaterial (they AND together). Present ONLY when some attribute restricts, so
     // restriction-free specs keep their pinned bytes and stored hashes (D-077).
@@ -281,7 +281,7 @@ public static class FingerprintCalculator
     // Sorting and deduplication here are a FINGERPRINT PROJECTION only: the TOML document, the
     // resolved authored list, the plan, and emit all keep authored order and duplicates. Two
     // specs differing only in restriction order or in a repeated entry are the same conversion,
-    // so they must hash alike — that is the whole point of sorting.
+    // so they must hash alike; that is the whole point of sorting.
     private static void AppendRestrictions(StringBuilder builder, BedrockSpec spec)
     {
         List<string>? objects = null;
@@ -304,13 +304,13 @@ public static class FingerprintCalculator
         AppendSortedDistinct(builder, objects);
     }
 
-    // One restriction object: {"entries":[…],"source":{…},"unknown_value_policy":"…"} — keys
+    // One restriction object: {"entries":[…],"source":{…},"unknown_value_policy":"…"}; keys
     // sorted ordinal (entries < source < unknown_value_policy).
     //
     // The policy key is G-9. D-097 makes unknown_value_policy LIVE, abort-vs-complete-affecting
     // configuration on a filter-only attribute (an unparseable filtered value is an Error under
     // `fail` and a Warning under `warn`), and a filter-only attribute never enters
-    // `shared.attributes` — so without this key two specs that behave differently would hash
+    // `shared.attributes`, so without this key two specs that behave differently would hash
     // identically. It is encoded on EVERY restriction object for one uniform shape; on an
     // included-and-restricted attribute it therefore also appears in `shared.attributes`. That
     // redundancy is deliberate: it repeats a value, it does not double-COUNT one (D-035).
@@ -327,7 +327,7 @@ public static class FingerprintCalculator
         AppendSortedDistinct(builder, entries);
         builder.Append(",\"source\":");
 
-        // The D-077 resolved source encoding, verbatim — no new source vocabulary for
+        // The D-077 resolved source encoding, verbatim: no new source vocabulary for
         // restrictions (D-091). A filter-only attribute's source is resolved exactly like an
         // included one's.
         AppendSource(builder, attribute);
@@ -358,7 +358,7 @@ public static class FingerprintCalculator
                 break;
 
             case RestrictToRange range:
-                // BOTH keys always present, an omitted bound as null — so {} encodes as
+                // BOTH keys always present, an omitted bound as null, so {} encodes as
                 // {"from":null,"to":null} and is distinguishable from any bounded range.
                 builder.Append("{\"from\":");
                 AppendNullableNumber(builder, range.From);
@@ -389,15 +389,15 @@ public static class FingerprintCalculator
         }
     }
 
-    // §14/G-10: sorts complete canonical-JSON strings with StringComparer.Ordinal — a UTF-16
+    // §14/G-10: sorts complete canonical-JSON strings with StringComparer.Ordinal, a UTF-16
     // code-unit compare over the JSON text, applied BEFORE the whole structure is UTF-8 encoded
     // (EP-12's definition of "ordinal"). This is not the same order as comparing UTF-8 bytes:
     // the two diverge between a BMP character at or above U+E000 and a supplementary character
-    // (U+E000 is one code unit 0xE000, above U+1F600's lead surrogate 0xD83D — but its UTF-8
+    // (U+E000 is one code unit 0xE000, above U+1F600's lead surrogate 0xD83D, but its UTF-8
     // lead byte 0xEE sorts below 0xF0). Sorting encoded bytes would therefore produce different
     // hashes for the same spec; the pinned non-ASCII vector locks this.
     //
-    // Exact canonical duplicates are removed — canonically-identical entries ARE one entry
+    // Exact canonical duplicates are removed: canonically-identical entries ARE one entry
     // (D-091). Overlapping-but-distinct ranges are NOT merged: they are distinct strings, so
     // they simply both survive. Merging would lose authored intent for no determinism gain.
     private static void AppendSortedDistinct(StringBuilder builder, List<string> items)
@@ -435,7 +435,7 @@ public static class FingerprintCalculator
 
         // Effective domain only: cut discretizers ignore declared_domain (§10.3),
         // so an inert authored domain must not perturb the hash (D-077). A consuming
-        // discretizer's effective domain is non-null here — calibration filled an omitted
+        // discretizer's effective domain is non-null here: calibration filled an omitted
         // one, and an authored [] hashes as the empty array it is (D-122 §15).
         builder.Append("{\"declared_domain\":");
         AppendStringArray(builder, discretizer.ConsumesDeclaredDomain ? attribute.DeclaredDomain ?? [] : []);
@@ -463,7 +463,7 @@ public static class FingerprintCalculator
                 break;
 
             case FreePerValueDiscretizer:
-                // §14/D-094: no config beyond the kind — its numeric-vs-string identity rides
+                // §14/D-094: no config beyond the kind; its numeric-vs-string identity rides
                 // on source.value_type (already in "source"), and its bins/domain are effective
                 // (declared_domain, above). The effective numeric domain carries canonical keys.
                 builder.Append("{\"kind\":\"free_per_value\"}");
@@ -497,7 +497,7 @@ public static class FingerprintCalculator
                 break;
 
             case EqualWidthDiscretizer equalWidth:
-                // §14/D-094: the AUTHORED configuration only — the resolved cuts are not
+                // §14/D-094: the AUTHORED configuration only; the resolved cuts are not
                 // re-encoded here (they already ride as `bin` objects in the `schema` array,
                 // so duplicating them would invite a two-source-of-truth drift). vmin/vmax
                 // appear only under range = "manual". Because this sub-object carries authored
@@ -525,7 +525,7 @@ public static class FingerprintCalculator
 
             case EqualFrequencyDiscretizer equalFrequency:
                 // §14/D-094: the AUTHORED configuration only, with the resolved defaults spelled
-                // ("left"/"right_value"). The calibrated cuts are not re-encoded here — they
+                // ("left"/"right_value"). The calibrated cuts are not re-encoded here: they
                 // already ride as `bin` objects in the `schema` array (the same effective-vs-
                 // authored rule as equal_width), which is why an auto spec and its frozen
                 // manual_cuts twin share a schema_fingerprint yet may carry different output
@@ -541,17 +541,17 @@ public static class FingerprintCalculator
 
             case ValueGroupsDiscretizer valueGroups:
                 // §14/D-094: the AUTHORED configuration only. `groups` stays in DECLARATION
-                // order — never sorted — because first-match order is semantic (§11.6), which
+                // order, never sorted, because first-match order is semantic (§11.6), which
                 // makes it the §14 arrays-in-planned-order default rather than an exception.
                 // Each group object sorts its keys label < pattern < values, and `pattern` /
                 // `values` appear ONLY when authored, so an omitted `values` and an authored
                 // `values = []` are byte-distinct (G-11). Inner values keep authored order with
-                // duplicates retained — authored config, not a canonicalized set.
+                // duplicates retained: authored config, not a canonicalized set.
                 //
                 // Discovered passthrough bins are deliberately absent: they are effective, not
                 // authored, and already ride as `bin` objects in the `schema` array (the same
                 // effective-vs-authored rule the cut kinds follow). What IS encoded is
-                // "unmatched":"passthrough" — the authored config that made the schema
+                // "unmatched":"passthrough", the authored config that made the schema
                 // data-dependent. Top-level keys sort ordinal: groups < kind < unmatched.
                 builder.Append("{\"groups\":[");
                 for (var i = 0; i < valueGroups.Groups.Count; i++)
@@ -570,7 +570,7 @@ public static class FingerprintCalculator
                 break;
 
             default:
-                // Unreachable by construction, for two independent reasons — every §11 kind is
+                // Unreachable by construction, for two independent reasons: every §11 kind is
                 // encoded above (no deferred kind remains, D-104), and
                 // Discretizer is a closed union within Core, so no external assembly can add one.
                 // The remaining in-assembly variant, CalibrationPending, cannot reach a plan at all
@@ -579,7 +579,7 @@ public static class FingerprintCalculator
         }
     }
 
-    // §14/D-094: precision mirrors its two TOML forms — the string "exact" or the object
+    // §14/D-094: precision mirrors its two TOML forms: the string "exact" or the object
     // {"round_to":<number>}.
     private static void AppendPrecision(StringBuilder builder, CutPrecision precision)
     {
@@ -673,7 +673,7 @@ public static class FingerprintCalculator
         // precedent). "columns" sorts before "delimiter" ('c' < 'd'); its role keys
         // are ordinal-sorted (predicate/subject/value). A role bound by header name
         // resolves to the same indices as the equivalent index bind, so the two hash
-        // identically. The triple `ordering` field is deliberately not encoded — both
+        // identically. The triple `ordering` field is deliberately not encoded: both
         // orderings emit identical first-appearance bytes (D-082).
         if (binding.TripleColumns is { } columns)
         {
@@ -743,7 +743,7 @@ public static class FingerprintCalculator
         builder.Append(']');
     }
 
-    // The JSON vocabulary is the spec's TOML vocabulary (D-077) — locked on this
+    // The JSON vocabulary is the spec's TOML vocabulary (D-077), locked on this
     // side by the canonical goldens + spelling test in Core.Tests; the TOML-side
     // tables are locked by TomlSpellingsTests.
 
@@ -829,8 +829,8 @@ public static class FingerprintCalculator
         _ => throw new InvalidOperationException($"No fingerprint spelling for value_groups unmatched {unmatched}."),
     };
 
-    // §14/D-094: one group object, keys sorted label < pattern < values. Presence — not
-    // emptiness — decides whether `pattern`/`values` appear, so an omitted `values` and an
+    // §14/D-094: one group object, keys sorted label < pattern < values. Presence, not
+    // emptiness, decides whether `pattern`/`values` appear, so an omitted `values` and an
     // authored `values = []` encode differently (G-11).
     private static void AppendValueGroup(StringBuilder builder, ValueGroup group)
     {

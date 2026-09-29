@@ -26,16 +26,16 @@ internal static class TomlArrays
         renderedItems.Count == 0 ? "[]" : $"[{string.Join(", ", renderedItems)}]";
 
     /// <summary>
-    /// The D-113 rendering for the two arrays that may wrap — the canonical
+    /// The D-113 rendering for the two arrays that may wrap (the canonical
     /// writer's top-level <c>declared_domain</c> and the run manifest's non-cut
-    /// calibration <c>values</c>: inline while the complete
+    /// calibration <c>values</c>): inline while the complete
     /// <c><paramref name="key"/> = […]</c> line fits
-    /// <see cref="InlineLineLimit"/>, otherwise deterministically multiline —
-    /// one rendered item per line at a two-space indent, a trailing comma on
-    /// every item line, and an unindented closing bracket. A single over-long
+    /// <see cref="InlineLineLimit"/>, otherwise deterministically multiline
+    /// (one rendered item per line at a two-space indent, a trailing comma on
+    /// every item line, and an unindented closing bracket). A single over-long
     /// item wraps but is never split; an empty array stays inline as <c>[]</c> while
     /// <c><paramref name="key"/> = []</c> fits.
-    /// Formatting only — semantics and fingerprints are untouched (§14).
+    /// Formatting only: semantics and fingerprints are untouched (§14).
     /// </summary>
     /// <param name="key">
     /// The key the value will be emitted under. It participates in the
@@ -45,8 +45,8 @@ internal static class TomlArrays
     /// <param name="renderedItems">The already-escaped items, in emit order.</param>
     internal static string Wrappable(string key, IReadOnlyList<string> renderedItems)
     {
-        // Measured over the complete line the writer would emit — the same
-        // `key = value` shape the emitters produce — so the cutoff cannot drift
+        // Measured over the complete line the writer would emit, the same
+        // `key = value` shape the emitters produce, so the cutoff cannot drift
         // from the rendering it governs. The transient inline string is a
         // cold-path cost.
         var inline = Inline(renderedItems);
@@ -66,7 +66,7 @@ internal static class TomlArrays
 
     /// <summary>
     /// The length, in UTF-16 code units, of the longest complete line a
-    /// wrappable array emits inline (D-113) — key, spaces, equals sign,
+    /// wrappable array emits inline (D-113): key, spaces, equals sign,
     /// brackets, quotes, commas, separators, and escape sequences, excluding the
     /// terminating LF. A line of this length or shorter stays inline; a longer
     /// one wraps. A private canonical-writer formatting constant, byte-pinned by

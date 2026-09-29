@@ -5,14 +5,14 @@ namespace FcaBedrock.Core.Discretization;
 
 /// <summary>
 /// One <c>value_groups</c> group (spec §11.6, D-022/D-090): a <see cref="Label"/> plus
-/// at least one matcher — an explicit <see cref="Values"/> list, a regex
-/// <see cref="Pattern"/>, or both. A value matches when it equals one explicit value
+/// at least one matcher (an explicit <see cref="Values"/> list, a regex
+/// <see cref="Pattern"/>, or both). A value matches when it equals one explicit value
 /// <b>or</b> the pattern matches it (OR within a group); the discretizer walks groups
 /// in declaration order and the first match wins.
 /// <para>
 /// <b>Authored presence survives</b> (D-094/G-11): <see cref="Values"/> is
-/// <see langword="null"/> when <c>values</c> was omitted and a list — possibly
-/// <b>empty</b> — when it was authored, because the §14 encoding writes <c>values</c>
+/// <see langword="null"/> when <c>values</c> was omitted and a list (possibly
+/// <b>empty</b>) when it was authored, because the §14 encoding writes <c>values</c>
 /// only when authored and an authored <c>values = []</c> must be byte-distinct from an
 /// omitted one. Authored order and duplicates are retained: this is authored
 /// configuration, not a canonicalized set.
@@ -20,7 +20,7 @@ namespace FcaBedrock.Core.Discretization;
 /// <para>
 /// <b>Regex semantics</b> (§11.6/D-090): the pattern is compiled <b>once</b>, here,
 /// with <see cref="RegexOptions.CultureInvariant"/>, default backtracking, and
-/// <see cref="Regex.InfiniteMatchTimeout"/> — passed <b>explicitly</b>, because the
+/// <see cref="Regex.InfiniteMatchTimeout"/>, passed <b>explicitly</b>, because the
 /// constructor overloads that omit it inherit the host's ambient
 /// <c>REGEX_DEFAULT_MATCH_TIMEOUT</c>, which would make the same spec over the same
 /// input complete on one machine and throw <see cref="RegexMatchTimeoutException"/>
@@ -40,7 +40,7 @@ namespace FcaBedrock.Core.Discretization;
 /// </summary>
 public sealed record ValueGroup
 {
-    // Compiled once at construction and reused for every observed value — the calibrator's
+    // Compiled once at construction and reused for every observed value: the calibrator's
     // passthrough discovery and the emitter's classification share this one matcher, so the
     // two phases cannot disagree about what "matched" means (D-090).
     private readonly Regex? _regex;
@@ -53,13 +53,13 @@ public sealed record ValueGroup
         _regex = regex;
     }
 
-    /// <summary>The authored group label — the bin label this group produces (§11.6).</summary>
+    /// <summary>The authored group label, the bin label this group produces (§11.6).</summary>
     public string Label { get; }
 
     /// <summary>
     /// The authored explicit values in authored order with duplicates retained, or
     /// <see langword="null"/> when <c>values</c> was not authored. An authored empty list is
-    /// preserved as empty (G-11) — it is a valid matcher-free half of a group whose
+    /// preserved as empty (G-11): it is a valid matcher-free half of a group whose
     /// <see cref="Pattern"/> carries the matching.
     /// </summary>
     public IReadOnlyList<string>? Values { get; }
@@ -76,8 +76,8 @@ public sealed record ValueGroup
     /// <paramref name="label"/> is empty; any entry of <paramref name="values"/> is empty;
     /// <paramref name="pattern"/> is empty or not a valid .NET regex; or the group carries
     /// no usable matcher. The matcher predicate is exactly
-    /// <c>(values is { Count: &gt; 0 }) || pattern is not null</c> — applied after the
-    /// individual empty-value/empty-pattern checks — so an authored <c>values = []</c>
+    /// <c>(values is { Count: &gt; 0 }) || pattern is not null</c>, applied after the
+    /// individual empty-value/empty-pattern checks, so an authored <c>values = []</c>
     /// alone is invalid while <c>values = []</c> alongside a valid pattern is valid
     /// (G-11). An authored empty list is never normalized to null.
     /// </exception>
@@ -150,7 +150,7 @@ public sealed record ValueGroup
     /// <summary>
     /// Whether <paramref name="value"/> belongs to this group: ordinal equality against any
     /// authored explicit value, <b>or</b> an unanchored regex match. The single matching
-    /// authority — calibration discovery and emit classification both route through it.
+    /// authority: calibration discovery and emit classification both route through it.
     /// </summary>
     internal bool Matches(string value)
     {

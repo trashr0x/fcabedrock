@@ -13,8 +13,8 @@ namespace FcaBedrock.Spec.Toml;
 /// <see cref="Core.Spec.BedrockSpec"/>, validating in the same pass and
 /// aggregating all diagnostics (D-066/D-067). Defaults merge here (§5.1/§6,
 /// D-060(c)) and by-name column bindings resolve to indices against the
-/// supplied schema. Never throws for valid inputs under its contract — every
-/// cannot-resolve state maps to a seam-owned diagnostic (D-067) — but the
+/// supplied schema. Never throws for valid inputs under its contract: every
+/// cannot-resolve state maps to a seam-owned diagnostic (D-067). But the
 /// contract takes a <em>composed or extends-free</em> document: one that still
 /// carries an authored <c>[spec].extends</c> is invalid input (the caller
 /// skipped <see cref="SpecComposer.Compose"/>, §13/D-078) and throws
@@ -59,7 +59,7 @@ public static class SpecResolver
 
         var nameBindings = new List<ResolvedNameBinding>();
 
-        // §2/§3: unknown versions are refused outright — nothing below is
+        // §2/§3: unknown versions are refused outright; nothing below is
         // meaningful under unknown semantics.
         if (document.Spec?.Version is not { } version)
         {
@@ -91,7 +91,7 @@ public static class SpecResolver
         var templates = TemplateTable.Build(document.Templates, identity);
 
         // §5.1: shape is the one binding field with no default; without it nothing
-        // downstream is buildable — including matcher shape compatibility, which is why
+        // downstream is buildable, including matcher shape compatibility, which is why
         // families 2–5 do not run here.
         if (document.Binding?.Shape is not { } shape)
         {
@@ -109,12 +109,12 @@ public static class SpecResolver
         var hasHeader = binding.HasHeader;
 
         // §10.2/§9.2 (D-121): address every attribute's source ONCE, after binding
-        // resolution and before matcher application — a source_index_range selects on the
+        // resolution and before matcher application; a source_index_range selects on the
         // resolved physical index, so addressing must precede selection, while its
         // SourceBindingInvalid still belongs in the attribute's family-4 slot below.
         var addressed = SourceAddressing.Address(document.Attributes, shape, schema, hasHeader, nameBindings);
 
-        // Family 2 — matcher reference and selector/shape compatibility, matcher
+        // Family 2: matcher reference and selector/shape compatibility, matcher
         // declaration order. Fills `matching`: per attribute, the templates that apply.
         var matcherDiagnostics = new List<BedrockDiagnostic>();
         var matching = new List<MatchedTemplate>[document.Attributes.Count];
@@ -126,11 +126,11 @@ public static class SpecResolver
         var matchers = TemplateApplication.Evaluate(
             document.Matchers, document.Attributes, addressed, templates, shape, matching, matcherDiagnostics);
 
-        // Family 3 — attribute template references, attribute declaration order.
+        // Family 3: attribute template references, attribute declaration order.
         var referenceDiagnostics = new List<BedrockDiagnostic>();
         var namedTemplates = ResolveNamedTemplates(document.Attributes, templates, referenceDiagnostics);
 
-        // Family 4 — effective-attribute validation, attribute declaration order. Every
+        // Family 4: effective-attribute validation, attribute declaration order. Every
         // check below runs over the EFFECTIVE section, so a template-supplied field is
         // validated exactly as the equivalent flat declaration would be (D-114/D-116).
         var attributeDiagnostics = new List<BedrockDiagnostic>();
@@ -154,7 +154,7 @@ public static class SpecResolver
             var section = document.Attributes[i];
 
             // §10.2 (D-080): duplicate authored names reject at the seam, over the
-            // document model — a duplicate whose sibling field fails to resolve still
+            // document model: a duplicate whose sibling field fails to resolve still
             // surfaces (ResolveAttribute would drop the broken one and hide the clash).
             // Empty names are owned by AttributeNameMissing, so they are skipped here;
             // one diagnostic per extra occurrence. Applies to both shapes. Read from the
@@ -167,8 +167,8 @@ public static class SpecResolver
                     new DiagnosticLocation(AttributeName: section.Name)));
             }
 
-            // Applied to EVERY declared attribute — included, excluded, and filter-only
-            // alike (§9.2/D-114) — which is also what makes the family-5 shadow map
+            // Applied to EVERY declared attribute, included, excluded, and filter-only
+            // alike (§9.2/D-114), which is also what makes the family-5 shadow map
             // complete: a field winning on an excluded attribute still counts as a win.
             var effective = TemplateApplication.Apply(section, namedTemplates[i], matching[i], matchers);
 
@@ -178,7 +178,7 @@ public static class SpecResolver
             }
         }
 
-        // Family 5 — the two matcher warnings, one traversal in declaration order.
+        // Family 5: the two matcher warnings, one traversal in declaration order.
         var warnings = new List<BedrockDiagnostic>();
         TemplateApplication.AddWarnings(matchers, warnings);
 
@@ -199,7 +199,7 @@ public static class SpecResolver
     /// Family 3 (§16.4): resolves each attribute's directly named <c>template</c>
     /// (§9.2 tier 4), reporting one <c>TemplateReferenceUnknown</c> per referencing
     /// attribute in declaration order, with the <c>AttributeName</c> location. An
-    /// unknown reference contributes nothing to the merge — it is an Error, not a
+    /// unknown reference contributes nothing to the merge; it is an Error, not a
     /// silent no-op.
     /// </summary>
     private static TemplateSection?[] ResolveNamedTemplates(
@@ -396,7 +396,7 @@ public static class SpecResolver
         List<BedrockDiagnostic> diagnostics)
     {
         ValidateBinding(bindingSection, diagnostics);
-        // §5.1: has_header defaults are shape-specific — wide true, triple false
+        // §5.1: has_header defaults are shape-specific: wide true, triple false
         // (triple data is typically headerless; a true default would eat row 1).
         var hasHeader = bindingSection.HasHeader ?? (shape == SourceShape.Wide);
         var locale = bindingSection.Locale ?? "invariant";
@@ -405,7 +405,7 @@ public static class SpecResolver
 
         // §5.3/§5.4 sequencing: the triple role→index map (and ordering) resolve
         // before the object key, because the triple object key is the resolved
-        // subject column — which may be bound by header name (D-082).
+        // subject column, which may be bound by header name (D-082).
         var tripleColumns = shape == SourceShape.Triple
             ? ResolveTripleColumns(bindingSection, hasHeader, schema, nameBindings, diagnostics)
             : null;
@@ -429,7 +429,7 @@ public static class SpecResolver
 
     // §5.1 (D-054/D-076): the quote check fires on the authored char only (the
     // default is the supported quote); the conflict check compares the resolved
-    // pair. Distinct conditions — both report when both hold.
+    // pair. Distinct conditions: both report when both hold.
     private static void ValidateBinding(BindingSection binding, List<BedrockDiagnostic> diagnostics)
     {
         if (binding.QuoteChar is { } quote && quote != '"')
@@ -496,7 +496,7 @@ public static class SpecResolver
 
             // §6.1: duplicate_object_policy does not apply to triple (the subject is never a
             // duplicate-object condition). Carry the inert default so defaults.duplicate_object_policy
-            // never reaches the triple key — otherwise it would perturb the output fingerprint
+            // never reaches the triple key; otherwise it would perturb the output fingerprint
             // while triple emit ignores it, breaking "fingerprint = output bytes" (§14/D-077).
             return new ColumnObjectKey(subjectColumn, DuplicateObjectPolicy.Fail);
         }
@@ -575,7 +575,7 @@ public static class SpecResolver
 
     // §5.1/D-082: v1 accepts UTF-8 only. Recognized spellings canonicalize to
     // "utf-8" so casing/spelling never perturbs the hash (UTF-8 specs keep their
-    // bytes); any other encoding fails at resolve — no non-UTF-8 decoding in v1.
+    // bytes); any other encoding fails at resolve: no non-UTF-8 decoding in v1.
     private static string ResolveEncoding(string? authored, List<BedrockDiagnostic> diagnostics)
     {
         if (authored is null)
@@ -669,7 +669,7 @@ public static class SpecResolver
                 return null;
 
             case NameColumnRef byName when schema?.Header is { } header:
-                // §5.3/§10.2: a name must resolve to exactly one column — no match
+                // §5.3/§10.2: a name must resolve to exactly one column; no match
                 // and a duplicate match are both invalid.
                 var resolved = SourceAddressing.ResolveUniqueHeader(header, byName.Name);
                 if (resolved >= 0)
@@ -695,7 +695,7 @@ public static class SpecResolver
         }
     }
 
-    // §5.3: ordering is required for triple. Not a fingerprint input (D-082) — an
+    // §5.3: ordering is required for triple. Not a fingerprint input (D-082): an
     // acceptance/streaming property; the document carries the Core enum directly.
     private static TripleOrdering ResolveOrdering(BindingSection binding, List<BedrockDiagnostic> diagnostics)
     {
@@ -742,7 +742,7 @@ public static class SpecResolver
 
         var source = BuildSource(addressed.Source, section.Discretizer);
 
-        // §10.2/D-061: the EFFECTIVE source value type — authored, else fixed by the
+        // §10.2/D-061: the EFFECTIVE source value type: authored, else fixed by the
         // effective discretizer, which may itself have arrived from a template. Derived
         // here rather than in the addressing pass precisely because it depends on the
         // post-application discretizer (D-121): addressing is source-only and runs before
@@ -763,7 +763,7 @@ public static class SpecResolver
             discretizer = ResolveDiscretizer(section.Discretizer, label, culture, valueType, diagnostics);
 
             // §10.3/§10.8/D-096: a numeric free_per_value's declared_domain and value_labels keys
-            // are the §5.1 exception to verbatim strings — parsed under binding.locale to their
+            // are the §5.1 exception to verbatim strings: parsed under binding.locale to their
             // canonical numeric identity, with the invalid/duplicate cases diagnosed here. The
             // resolved Core graph carries canonical keys; the document keeps the authored spellings
             // for round-trip (D-096). scale.order is normalized inside ResolveScale.
@@ -776,7 +776,7 @@ public static class SpecResolver
             scale = ResolveScale(section.Scale, label, defaults, numericFreePerValue ? culture : null, diagnostics);
         }
 
-        // else: parked with nulls, never an error (§10.9 / D-049) — the authored
+        // else: parked with nulls, never an error (§10.9 / D-049); the authored
         // config stays in the document model for round-trip.
 
         ValidateAttributeConstraints(section, label, include, valueType, defaults, diagnostics);
@@ -810,7 +810,7 @@ public static class SpecResolver
 
     // The effective format, reparsed for Core. Every authored format was validated at
     // parse against this same grammar owner (AttributeReader.ReadNameFormat), so a
-    // failure here means the document did not come through the reader — a programmer
+    // failure here means the document did not come through the reader: a programmer
     // error on a hand-built document, not authored input, and therefore the exception
     // channel rather than a diagnostic (EP-14; there is no resolve-phase condition for it,
     // and giving SpecFieldInvalid a second phase would break D-067's one-code-one-phase
@@ -836,7 +836,7 @@ public static class SpecResolver
     // type. Addressing decided *which* column or predicate (before application, since a
     // matcher range selects on the resolved index); this decides how its raw values
     // parse, which depends on the effective discretizer and therefore has to happen
-    // after. Null when the source could not be addressed — its one SourceBindingInvalid
+    // after. Null when the source could not be addressed; its one SourceBindingInvalid
     // was already recorded by the pass and fails the result.
     private static SourceBinding? BuildSource(AddressedSource? addressed, DiscretizerSection? discretizer) => addressed switch
     {
@@ -858,7 +858,7 @@ public static class SpecResolver
                 ? SourceValueType.Number
                 : SourceValueType.String);
 
-    // The authored value_type of any source kind (§10.2 — both column and predicate
+    // The authored value_type of any source kind (§10.2: both column and predicate
     // sources carry one), or null when none is authored / no source.
     private static SourceValueType? AuthoredValueType(SourceSection? source) => source switch
     {
@@ -870,7 +870,7 @@ public static class SpecResolver
     // §10.3/§5.1 (D-096): normalize a numeric free_per_value declared_domain to canonical
     // numeric identities under binding.locale, preserving declaration order (§17 rule 3, over
     // the first occurrence of each identity). An unparseable, non-finite, or normalization-duplicate
-    // entry is DeclaredDomainInvalid (one per bad entry — spec-validate diagnostics aggregate).
+    // entry is DeclaredDomainInvalid (one per bad entry: spec-validate diagnostics aggregate).
     // Presence is preserved (D-122 §15): an omitted domain resolves to null (calibrated later),
     // an authored [] resolves to the empty list (authored-complete), and otherwise the canonical
     // list is what the resolved Core graph and fingerprint carry (the document keeps the authored
@@ -919,8 +919,8 @@ public static class SpecResolver
 
     // §10.8 (D-096): normalize a numeric free_per_value value_labels map to canonical numeric
     // key identities under binding.locale. Two keys collapsing to one identity are
-    // ValueLabelKeyDuplicate; a key whose (canonical) identity is not in the normalized domain —
-    // including an unparseable key, which names no numeric identity — stays ValueLabelKeyNotInDomain
+    // ValueLabelKeyDuplicate; a key whose (canonical) identity is not in the normalized domain
+    // (including an unparseable key, which names no numeric identity) stays ValueLabelKeyNotInDomain
     // (the typo-catcher). The resolved dictionary is keyed by canonical identity so the planner
     // renders bins by the same identity (§11.3/D-092).
     private static IReadOnlyDictionary<string, string> NormalizeNumericValueLabels(
@@ -942,7 +942,7 @@ public static class SpecResolver
         {
             if (!CanonicalNumber.TryParse(rawKey, culture, out var value))
             {
-                // Unparseable numeric label key names no domain identity — the typo-catcher.
+                // Unparseable numeric label key names no domain identity (the typo-catcher).
                 diagnostics.Add(new BedrockDiagnostic(
                     DiagnosticCode.ValueLabelKeyNotInDomain, DiagnosticSeverity.Error,
                     $"value_labels key '{rawKey}' on numeric free_per_value attribute '{attribute}' is not a finite number in its declared_domain (§10.8).",
@@ -1013,8 +1013,8 @@ public static class SpecResolver
     }
 
     // The static attribute checks (D-067/D-076). They read the document
-    // sections directly — authored-vs-default provenance exists only there
-    // (D-060) — and run whether or not the source/discretizer/scale resolved,
+    // sections directly (authored-vs-default provenance exists only there,
+    // D-060) and run whether or not the source/discretizer/scale resolved,
     // so one bad field does not mask another (EP-14).
     private static void ValidateAttributeConstraints(
         AttributeSection section,
@@ -1040,12 +1040,12 @@ public static class SpecResolver
     }
 
     // §10.2 (D-061): a type-fixing discretizer disallows the other authored
-    // value_type; only an authored type can conflict — the derived default is
+    // value_type; only an authored type can conflict: the derived default is
     // the fixed type by construction. Parked (excluded) config never blocks
     // (D-049). Every §11 kind reaches this seam (D-104), so the
     // switch below is the complete matrix: identity/ordered_cuts/value_groups are
     // string-fixing, manual_cuts/equal_width/equal_frequency number-fixing, and
-    // free_per_value alone is type-FLEXIBLE — it has no arm because neither
+    // free_per_value alone is type-FLEXIBLE; it has no arm because neither
     // authored type conflicts with it. Source-kind agnostic: value_type is a
     // source-level property of both column and predicate sources (§10.2).
     private static void ValidateValueType(
@@ -1083,10 +1083,10 @@ public static class SpecResolver
         }
     }
 
-    // §11.6 (D-090): the two value_groups rules the seam owns — the reader owns each group's own
+    // §11.6 (D-090): the two value_groups rules the seam owns: the reader owns each group's own
     // validity, and these are the CROSS-group / cross-field ones it cannot see.
     //
-    // (a) Authored labels must be distinct, and — under unmatched = "other" — none may collide
+    // (a) Authored labels must be distinct, and (under unmatched = "other") none may collide
     //     with the synthetic Other bin. Ordinal comparison (EP-12): "Other" collides, "other"
     //     does not. Duplicates own ValueGroupsLabelDuplicate and never surface as
     //     SpecFieldInvalid (D-090); one diagnostic per duplicate occurrence. A pass-through value
@@ -1128,7 +1128,7 @@ public static class SpecResolver
 
     // The single decision point for the §11.6 label rules, in authored order: one entry per
     // conflict, flagged as a synthetic-Other collision or a plain duplicate. Two callers with
-    // different jobs share it so they cannot drift (EP-5) — ValidateValueGroups turns each entry
+    // different jobs share it so they cannot drift (EP-5): ValidateValueGroups turns each entry
     // into the user-facing ValueGroupsLabelDuplicate, and ResolveValueGroups uses "any conflict"
     // to decline building the discretizer WITHOUT reporting the same condition a second time
     // (D-067, one condition → one code). Groups with no usable label are skipped: the reader owns
@@ -1201,7 +1201,7 @@ public static class SpecResolver
     }
 
     // §10.4 (D-063/D-091): restrict_to validation. Entry-type checks run regardless of
-    // include — restrict_to filters even when the attribute is excluded (filter-only), and a
+    // include: restrict_to filters even when the attribute is excluded (filter-only), and a
     // parked numeric-cut discretizer legitimately types it ("a numeric source … or a
     // numeric-cut discretizer", §10.4/D-076). The domain typo-catcher fires only against a live
     // domain: included, string-typed identity/free_per_value with an explicit non-empty
@@ -1231,12 +1231,12 @@ public static class SpecResolver
             // (EP-14 aggregation; the D-076 precedent where the quote check and the
             // delimiter/quote conflict co-fire). Compatibility with the source's value_type is
             // one condition; the entry's own validity is another, and an entry can be wrong on
-            // both counts at once — e.g. `{ value = nan }` on a string source.
+            // both counts at once, e.g. `{ value = nan }` on a string source.
             ValidateRestrictEntryCompatibility(entry, valueType, attribute, diagnostics);
             ValidateRestrictEntryValidity(entry, attribute, diagnostics);
         }
 
-        // §10.4/§10.8 (D-063/D-101): the typo-catcher fires against a live string domain — the
+        // §10.4/§10.8 (D-063/D-101): the typo-catcher fires against a live string domain: the
         // domain-consulting string discretizers are identity and (string) free_per_value; a numeric
         // free_per_value is number-typed, so the value-type condition below already excludes it. The domain
         // is verbatim strings here (numeric normalization applies only to numeric free_per_value).
@@ -1262,7 +1262,7 @@ public static class SpecResolver
 
     // §10.2/§10.4: does this entry FORM suit the attribute's single value_type? A string-fixing
     // source accepts only bare strings; a number-fixing source only numeric entries (exact or
-    // range). The two mismatches have different owners — D-063 gives the numeric-source /
+    // range). The two mismatches have different owners: D-063 gives the numeric-source /
     // bare-string case its own code rather than folding it into SourceValueTypeInvalid.
     private static void ValidateRestrictEntryCompatibility(
         RestrictToEntry entry, SourceValueType valueType, string attribute, List<BedrockDiagnostic> diagnostics)
@@ -1286,7 +1286,7 @@ public static class SpecResolver
     }
 
     // §10.4/D-091: is this entry well-formed in itself, whatever source it sits on? Independent
-    // of the value_type check above — an entry on the wrong source can also be internally
+    // of the value_type check above: an entry on the wrong source can also be internally
     // invalid, and silently dropping the second finding would hide a second edit the author has
     // to make.
     private static void ValidateRestrictEntryValidity(
@@ -1310,7 +1310,7 @@ public static class SpecResolver
     }
 
     // §10.4/D-091: a range's PROVIDED bounds must be finite and strictly ordered from < to. An
-    // omitted bound is open (null), not infinity, so {} — neither bound authored — is valid and
+    // omitted bound is open (null), not infinity, so {} (neither bound authored) is valid and
     // means "any usable numeric value"; one-sided ranges are equally valid. from == to is
     // rejected rather than treated as empty: under the half-open [from, to) convention it can
     // match nothing, so it is authored nonsense, and from > to likewise. One diagnostic per
@@ -1351,12 +1351,12 @@ public static class SpecResolver
             new DiagnosticLocation(AttributeName: attribute)));
 
     // §10.4/G-6/D-096: valid exact values and provided bounds are zero-canonicalized at
-    // resolution, so an authored -0 resolves — and therefore matches, plans, and hashes —
+    // resolution, so an authored -0 resolves (and therefore matches, plans, and hashes)
     // identically to 0. This is the "already-numeric" arm of the D-101 chain (the values arrive
     // as TOML doubles; there is no text to parse), and it is scoped to the numeric identities
     // D-101 canonicalizes: CanonicalJson.AppendNumber and every authored manual-cut byte are untouched.
     //
-    // Authored ORDER and DUPLICATES survive verbatim — resolved Core state mirrors the document
+    // Authored ORDER and DUPLICATES survive verbatim: resolved Core state mirrors the document
     // (D-057). Canonical sorting/deduplication is a fingerprint projection only (§14) and must
     // not rewrite what the author wrote. A non-finite value is left as-is: it is already
     // diagnosed (RestrictToRangeInvalid) and the Error fails the result before any strict
@@ -1386,8 +1386,8 @@ public static class SpecResolver
         bound is { } value ? CanonicalNumber.CanonicalizeZero(value) : null;
 
     // §12.3 (D-060): over cut bins the discretizer geometry is the single source
-    // of order and operator. Both checks read the document sections — the
-    // authored-vs-default boundary provenance exists only there (D-060(c)) —
+    // of order and operator. Both checks read the document sections (the
+    // authored-vs-default boundary provenance exists only there, D-060(c))
     // and fire only on active attributes (parked scale config never blocks,
     // D-049). equal_width and equal_frequency are cut kinds on exactly the same terms
     // (their computed cuts fix the bin order, §12.3/D-102/D-103).
@@ -1402,7 +1402,7 @@ public static class SpecResolver
             return;
         }
 
-        // Presence is the violation (§12.3 "MUST NOT be present") — an authored
+        // Presence is the violation (§12.3 "MUST NOT be present"): an authored
         // empty order is still an order declaration over cut bins.
         if (ordinal.Order is not null)
         {
@@ -1415,7 +1415,7 @@ public static class SpecResolver
         // Only a per-attribute authored boundary can straddle; an omitted or
         // [defaults]-inherited boundary is defaulted and never selects the
         // operator over cut bins (D-060(c)). The direction may itself be
-        // defaulted — the geometry is judged on the resolved direction.
+        // defaulted; the geometry is judged on the resolved direction.
         var direction = ordinal.Direction ?? defaults?.OrdinalDirection ?? OrdinalDirection.Ge;
         var straddles = ordinal.Boundary is { } boundary
             && ((direction == OrdinalDirection.Le && boundary == OrdinalBoundary.Inclusive)
@@ -1430,13 +1430,13 @@ public static class SpecResolver
     }
 
     // §12.3 (D-081): over a non-cut discretizer an authored scale.order is the
-    // value-bin ordering; its entries must be distinct and non-empty — the same
+    // value-bin ordering; its entries must be distinct and non-empty: the same
     // structural rule ordered_cuts.order already carries via OrderDomainInvalid,
     // broadened here to any authored order. The order-vs-domain permutation
     // (missing / unknown values) is a plan-phase check (OrdinalOrderMissing /
     // OrdinalOrderHasUnknownValue); this seam owns only the list's internal
     // validity. A cut discretizer's order is OrdinalOrderNotAllowedWithCuts
-    // (ValidateOrdinalOverCuts), so those kinds are skipped here — no double
+    // (ValidateOrdinalOverCuts), so those kinds are skipped here: no double
     // report. The caller runs this only for an included attribute, so a parked order
     // never blocks (D-049), exactly like the ordinal-over-cuts checks.
     private static void ValidateOrdinalOrderShape(
@@ -1469,8 +1469,8 @@ public static class SpecResolver
         }
     }
 
-    // §12.3/§17 r3: the discretizers whose bins are cut intervals, so the cut geometry —
-    // not scale.order — fixes the bin order. The one place the seam's cut-kind set lives, so
+    // §12.3/§17 r3: the discretizers whose bins are cut intervals, so the cut geometry,
+    // not scale.order, fixes the bin order. The one place the seam's cut-kind set lives, so
     // the ordinal-over-cuts checks and the value-bin order check stay exact complements and
     // never double-report. equal_frequency's bins are cut intervals like any other (D-103),
     // so it needs no ordinal implementation of its own: the cut geometry is the ordering
@@ -1492,7 +1492,7 @@ public static class SpecResolver
                 return new IdentityDiscretizer();
 
             case FreePerValueDiscretizerSection:
-                // §11.3/D-061: type-flexible — the resolved value_type decides string-vs-numeric
+                // §11.3/D-061: type-flexible: the resolved value_type decides string-vs-numeric
                 // identity; the culture parses numeric values (unused in string mode).
                 return new FreePerValueDiscretizer(valueType, culture);
 
@@ -1523,17 +1523,17 @@ public static class SpecResolver
         }
     }
 
-    // §11.4 (D-089/D-102): the range mode decides the phase. "manual" is spec-determined —
+    // §11.4 (D-089/D-102): the range mode decides the phase. "manual" is spec-determined:
     // the D-056-style factory derives and validates the cuts here, and its diagnostics
     // (EqualWidthRangeInvalid / EqualWidthCutsCollapsed) merge into this pass. A data-derived
     // range cannot resolve without data, so it resolves to the CalibrationPending carrier the
-    // Calibrate phase replaces (D-093) — not a second unresolved-discretizer shape.
+    // Calibrate phase replaces (D-093), not a second unresolved-discretizer shape.
     // <para>
     // The reader owns the field shapes (bins presence/range, the range spelling, the vmin/vmax
-    // presence rules — SpecFieldInvalid, §11.4), so a document that reached this seam carries
+    // presence rules: SpecFieldInvalid, §11.4), so a document that reached this seam carries
     // them. The guards below are the backstop for a hand-built section that bypassed the
     // reader: they resolve to the same AttributeScalingMissing the other unbuildable
-    // discretizer carriers use (§10.9) rather than throwing or — worse — dropping the
+    // discretizer carriers use (§10.9) rather than throwing or, worse, dropping the
     // attribute silently. The strict factories then only ever see valid arguments.
     // </para>
     private static Discretizer? ResolveEqualWidth(
@@ -1566,14 +1566,14 @@ public static class SpecResolver
         return new CalibrationPending(new PendingEqualWidth(bins, range, precision), culture);
     }
 
-    // §11.5 (D-088/D-103): equal_frequency is always data-calibrated — its cuts come from the
-    // population under every configuration — so it has no spec-determined mode and always
+    // §11.5 (D-088/D-103): equal_frequency is always data-calibrated: its cuts come from the
+    // population under every configuration, so it has no spec-determined mode and always
     // resolves to the CalibrationPending carrier the Calibrate phase replaces (D-093). The
     // §11.5 defaults resolve here (tie_policy = "left", cut_placement = "right_value") so the
-    // carrier — and therefore the calibrator and the §14 fingerprint — see one concrete
+    // carrier (and therefore the calibrator and the §14 fingerprint) see one concrete
     // configuration; the document keeps the authored/omitted distinction (D-049).
     //
-    // The reader owns the field shapes (bins presence/range, the two spellings —
+    // The reader owns the field shapes (bins presence/range, the two spellings:
     // SpecFieldInvalid, §11.5), so a document that reached this seam carries them. The guard
     // below is the backstop for a hand-built section that bypassed the reader: it resolves to
     // the same AttributeScalingMissing the other unbuildable discretizer carriers use (§10.9)
@@ -1600,7 +1600,7 @@ public static class SpecResolver
 
     // §11.6 (D-090/D-104): the unmatched policy decides the phase. skip/other are
     // spec-determined and resolve straight to the executable discretizer; passthrough discovers
-    // its bins from the data, so — like a data-derived equal_width range — it resolves to the
+    // its bins from the data, so, like a data-derived equal_width range, it resolves to the
     // CalibrationPending carrier the Calibrate phase replaces (D-093).
     //
     // The reader owns every field shape (groups presence, each group's label/values/pattern
@@ -1611,7 +1611,7 @@ public static class SpecResolver
     // backstop for a
     // hand-built section that bypassed the reader: they resolve to the same
     // AttributeScalingMissing the other unbuildable discretizer carriers use (§10.9) rather than
-    // throwing — an authored error must never leave on the exception channel (EP-14).
+    // throwing; an authored error must never leave on the exception channel (EP-14).
     private static Discretizer? ResolveValueGroups(
         ValueGroupsDiscretizerSection section,
         string attribute,
@@ -1640,7 +1640,7 @@ public static class SpecResolver
             try
             {
                 // Authored presence flows straight through: a null Values stays null (omitted) and
-                // an authored empty list stays empty (G-11) — Create never normalizes one to the
+                // an authored empty list stays empty (G-11); Create never normalizes one to the
                 // other, and the pattern text is retained verbatim.
                 groups.Add(ValueGroup.Create(group.Label, group.Values, group.Pattern));
             }
@@ -1711,7 +1711,7 @@ public static class SpecResolver
 
             case DeferredScaleSection deferred:
                 // §12.4 / D-010: resolves into the Core reject-carrier; the planner
-                // owns the refusal (ScaleNotImplementedV1, Fatal) — not this seam.
+                // owns the refusal (ScaleNotImplementedV1, Fatal), not this seam.
                 return new UnimplementedScale(deferred.Kind);
 
             default:

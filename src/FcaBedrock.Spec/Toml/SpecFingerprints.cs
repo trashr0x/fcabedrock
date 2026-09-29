@@ -7,8 +7,8 @@ namespace FcaBedrock.Spec.Toml;
 
 /// <summary>
 /// The spec-load face of fingerprinting (spec §3/§14, D-051/D-069/D-077):
-/// computes a document's <i>native</i> fingerprints — the spec's own resolved
-/// output settings, no CLI overrides — and verifies the stored <c>[spec]</c>
+/// computes a document's <i>native</i> fingerprints (the spec's own resolved
+/// output settings, no CLI overrides) and verifies the stored <c>[spec]</c>
 /// fields against them, warning per stale field. Verification is defined only
 /// over a successful plan (a failed resolve/plan already fails the run). The
 /// <c>fcabedrock</c> CLI commands are its production callers.
@@ -22,7 +22,7 @@ public static class SpecFingerprints
     /// (<c>lf</c>, <c>trailing_newline = true</c>, <c>base_index = 1</c>, no
     /// trailing spaces, <c>bin_label_unicode = false</c>), the label style is
     /// always <see cref="LabelStyle.Native"/> (v2-compat is a CLI override,
-    /// D-011), and <c>size_advisory_bytes</c> is ignored — advisory, not
+    /// D-011), and <c>size_advisory_bytes</c> is ignored: advisory, not
     /// byte-affecting (D-077).
     /// <para><b>Precondition:</b> <paramref name="plan"/> was produced with
     /// <see cref="LabelStyle.Native"/>, so its rendered names pair with the
@@ -75,7 +75,7 @@ public static class SpecFingerprints
     /// <paramref name="computed"/> (§14): an absent stored field is silent (the
     /// fields are optional, §3); a matching one is silent (no "verified" noise,
     /// EP-3); a differing one warns with its own code. The three checks are
-    /// independent — every stale field reports (the D-076 co-fire stance).
+    /// independent: every stale field reports (the D-076 co-fire stance).
     /// Comparison is ordinal string equality of the full stored value, so a
     /// malformed stored string simply reads as stale (D-077).
     /// </summary>

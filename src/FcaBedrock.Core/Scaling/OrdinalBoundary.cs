@@ -8,7 +8,7 @@ namespace FcaBedrock.Core.Scaling;
 /// </summary>
 public enum OrdinalBoundary
 {
-    /// <summary>Non-strict comparison (<c>&gt;=</c> / <c>&lt;=</c>) — the default.</summary>
+    /// <summary>Non-strict comparison (<c>&gt;=</c> / <c>&lt;=</c>), the default.</summary>
     Inclusive,
 
     /// <summary>Strict comparison (<c>&gt;</c> / <c>&lt;</c>).</summary>

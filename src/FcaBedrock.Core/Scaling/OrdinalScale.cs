@@ -7,7 +7,7 @@ namespace FcaBedrock.Core.Scaling;
 /// at each bin's upper edge), the path the v2 golden fixtures pin.
 ///
 /// <para>Over half-open cut bins the boundary is fixed by direction (D-044):
-/// <c>le</c> ⇒ <c>&lt;</c> at upper edges, <c>ge</c> ⇒ <c>&gt;=</c> at lower edges — the
+/// <c>le</c> ⇒ <c>&lt;</c> at upper edges, <c>ge</c> ⇒ <c>&gt;=</c> at lower edges, the
 /// only whole-bin-clean pairings, so <see cref="Boundary"/> is not read there. Over
 /// <b>value</b> bins (<c>identity</c>, <c>free_per_value</c> or <c>value_groups</c>,
 /// thresholded on <see cref="Order"/>) there is no half-open geometry, so all four

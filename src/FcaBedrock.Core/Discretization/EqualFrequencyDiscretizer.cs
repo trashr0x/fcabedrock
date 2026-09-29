@@ -10,7 +10,7 @@ namespace FcaBedrock.Core.Discretization;
 /// <see cref="Bins"/> bins come from <c>bins - 1</c> calibrated cuts, always with
 /// <b>open</b> ends (§11.5 shares §11.4's implicit auto-discretizer geometry, so data
 /// outside the calibration span still falls in the first or last bin). Execution
-/// composes the shared <see cref="NumericCutBins"/> engine — identical geometry,
+/// composes the shared <see cref="NumericCutBins"/> engine: identical geometry,
 /// labels, structural bins, and rendering to a <see cref="ManualCutsDiscretizer"/>
 /// over the same cuts, which is what makes the D-088 auto/frozen byte-equivalence
 /// structural rather than a property two code paths maintain (D-093).
@@ -25,7 +25,7 @@ namespace FcaBedrock.Core.Discretization;
 /// </para>
 /// <para>
 /// <see cref="TiePolicy"/> and <see cref="CutPlacement"/> are retained
-/// <b>authored configuration</b> — they shaped the cuts during calibration and are
+/// <b>authored configuration</b>: they shaped the cuts during calibration and are
 /// spent by the time this type exists (§11.5: Emit does no tie handling of its own).
 /// They survive only for the fingerprint's authored-config rule (D-094).
 /// </para>
@@ -50,16 +50,16 @@ public sealed record EqualFrequencyDiscretizer : Discretizer
     /// <summary>The authored bin count (≥ 2); the discretizer produces exactly this many bins.</summary>
     public int Bins { get; }
 
-    /// <summary>The authored (or defaulted) tie policy — preserved for the fingerprint's authored-config rule (D-094).</summary>
+    /// <summary>The authored (or defaulted) tie policy, preserved for the fingerprint's authored-config rule (D-094).</summary>
     public TiePolicy TiePolicy { get; }
 
-    /// <summary>The authored (or defaulted) cut placement — preserved for the fingerprint's authored-config rule (D-094).</summary>
+    /// <summary>The authored (or defaulted) cut placement, preserved for the fingerprint's authored-config rule (D-094).</summary>
     public CutPlacement CutPlacement { get; }
 
     /// <summary>The effective calibrated cuts: <c>Bins - 1</c> values, finite and strictly ascending.</summary>
     public IReadOnlyList<double> Cuts => _bins.Cuts;
 
-    /// <summary>The culture used to parse raw data values (never ambient — EP-11).</summary>
+    /// <summary>The culture used to parse raw data values (never ambient, EP-11).</summary>
     public CultureInfo Culture => _bins.Culture;
 
     /// <summary>
@@ -79,7 +79,7 @@ public sealed record EqualFrequencyDiscretizer : Discretizer
 
         // §11.5: `bins` bins come from exactly `bins - 1` cuts. A wrong-sized outcome is a
         // calibrator-contract violation, not a data-derived failure: it would build a discretizer
-        // whose Bins disagrees with its own geometry — the fingerprint would encode "bins":4 beside
+        // whose Bins disagrees with its own geometry; the fingerprint would encode "bins":4 beside
         // a schema array of another width. That state must be unrepresentable, so it throws rather
         // than diagnosing (the D-093 programmer-error posture, EP-10). Cut *validity* below stays a
         // diagnostic: correctly-sized cuts the data could not make ascending are expected.
@@ -108,7 +108,7 @@ public sealed record EqualFrequencyDiscretizer : Discretizer
     /// Rebuilds <paramref name="source"/> over <paramref name="culture"/>, reusing its
     /// already-validated state. The <c>ResolvedSpec</c> trust boundary's recursive-immutable
     /// snapshot uses this to re-home the discretizer on a read-only culture clone (D-098),
-    /// without re-selecting cuts — the retained cuts are the identity (there is no data here
+    /// without re-selecting cuts: the retained cuts are the identity (there is no data here
     /// to re-select from, which is exactly why they must be carried, not recomputed).
     /// </summary>
     internal static EqualFrequencyDiscretizer Rebuild(EqualFrequencyDiscretizer source, CultureInfo culture) =>
@@ -126,6 +126,6 @@ public sealed record EqualFrequencyDiscretizer : Discretizer
         NumericCutBins.RenderBinLabel(canonicalLabel, style);
 
     // Diagnostic text only: the values here may be non-finite (that is what is being
-    // reported), so CanonicalNumber.Format — which refuses them — cannot be used.
+    // reported), so CanonicalNumber.Format, which refuses them, cannot be used.
     private static string Describe(double value) => value.ToString(CultureInfo.InvariantCulture);
 }

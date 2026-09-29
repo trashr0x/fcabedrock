@@ -5,7 +5,7 @@ namespace FcaBedrock.Spec.Toml;
 
 /// <summary>
 /// Where an attribute's raw values come from, once its <c>source</c> has been
-/// addressed against the binding and any supplied schema (§10.2) — and
+/// addressed against the binding and any supplied schema (§10.2), and
 /// <em>only</em> that. Deliberately carries the <b>authored</b> <c>value_type</c>
 /// rather than an effective one: addressing happens before template application,
 /// while the effective value type depends on the effective discretizer (D-061),
@@ -29,13 +29,13 @@ internal readonly record struct AddressedAttribute(AddressedSource? Source, Bedr
 
 /// <summary>
 /// The single owner of attribute source addressing (D-121). Runs <b>once</b> per
-/// resolve — after binding resolution, before matcher application — and produces,
+/// resolve (after binding resolution, before matcher application) and produces,
 /// per attribute in declaration order, either an <see cref="AddressedSource"/> or
 /// the one <c>SourceBindingInvalid</c> that explains the failure.
 /// <para>
 /// It exists because a <c>source_index_range</c> matcher selects on the
 /// <b>resolved physical column index</b> (§9.2/D-115), which means addressing must
-/// precede application — while the resulting binding diagnostic must still be
+/// precede application, while the resulting binding diagnostic must still be
 /// reported exactly once, in the attribute's ordinary validation slot. Splitting
 /// "address the source" from "report and consume it" is what makes both true:
 /// <c>SpecResolver.ResolveAttribute</c> consumes this result and never re-resolves
@@ -43,7 +43,7 @@ internal readonly record struct AddressedAttribute(AddressedSource? Source, Bedr
 /// </para>
 /// <para>
 /// There is no circularity, because <c>source</c> can never arrive from a template
-/// (the closed §9.1 field list, D-114) — binding always precedes application. The
+/// (the closed §9.1 field list, D-114): binding always precedes application. The
 /// pass opens no source and reads no data row (§7 phase 1): it consults only the
 /// authored document plus optional schema metadata.
 /// </para>
@@ -93,7 +93,7 @@ internal static class SourceAddressing
                 return Invalid(label, "has a predicate source, which requires a triple binding");
 
             case PredicateSourceSection predicate:
-                // The predicate is a data selector, not a header name — no schema
+                // The predicate is a data selector, not a header name: no schema
                 // resolution; it only must be a non-empty string (§5.3/§10.2).
                 return predicate.Name is { Length: > 0 } predicateName
                     ? new AddressedAttribute(new AddressedPredicate(predicateName, predicate.ValueType), null)
@@ -182,7 +182,7 @@ internal static class SourceAddressing
 
     /// <summary>
     /// §10.2/§5.3: a header name must resolve to exactly one column. Returns the sole
-    /// index, -1 when no header matches, or -2 when several do — the -2 case is the
+    /// index, -1 when no header matches, or -2 when several do; the -2 case is the
     /// duplicate-matching-header reject shared by wide sources, wide column object
     /// keys, and triple roles (ordinal compare, EP-12).
     /// </summary>

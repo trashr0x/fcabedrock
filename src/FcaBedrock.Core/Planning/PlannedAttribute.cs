@@ -10,7 +10,7 @@ namespace FcaBedrock.Core.Planning;
 /// baked in by the planner; the emitter only looks values up here.
 /// </summary>
 /// <param name="Name">The logical attribute name.</param>
-/// <param name="Source">Where to read the raw value — a resolved wide column or a triple predicate selector.</param>
+/// <param name="Source">Where to read the raw value: a resolved wide column or a triple predicate selector.</param>
 /// <param name="Discretizer">Maps a raw value to a bin label.</param>
 /// <param name="KnownBins">
 /// Recognized bin labels. A discretized value outside this set is an unknown value

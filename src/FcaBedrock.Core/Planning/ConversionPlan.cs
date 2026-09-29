@@ -8,7 +8,7 @@ namespace FcaBedrock.Core.Planning;
 /// <summary>
 /// The immutable, inspectable result of planning: the deterministic ordered
 /// formal-attribute schema, the per-attribute emit pipelines, and the executable
-/// restrictions. Pure data — produced by <see cref="ConversionPlanner"/>, consumed
+/// restrictions. Pure data, produced by <see cref="ConversionPlanner"/>, consumed
 /// by the emitter and the writers (spec §7, decisions.md D-004/D-005).
 /// <para>
 /// A sealed class with an <b>internal</b> constructor (planner-owned), so a plan
@@ -46,7 +46,7 @@ public sealed class ConversionPlan
     public IReadOnlyList<PlannedAttribute> Attributes { get; }
 
     /// <summary>
-    /// The executable object-level restrictions, in spec-attribute order — one per
+    /// The executable object-level restrictions, in spec-attribute order: one per
     /// attribute with a non-empty <c>restrict_to</c>, included or filter-only; empty
     /// when the spec restricts nothing (§10.4/D-091).
     /// </summary>
@@ -62,7 +62,7 @@ public sealed class ConversionPlan
     /// </summary>
     public SourceExecution Execution { get; }
 
-    /// <summary>The calibrated state this plan was produced from — the plan ↔ spec/schema pairing (D-098).</summary>
+    /// <summary>The calibrated state this plan was produced from: the plan ↔ spec/schema pairing (D-098).</summary>
     public CalibratedSpec Calibrated { get; }
 
     /// <summary>The label style the rendered names were baked with (D-044); pairs with the cxt output fingerprint (§14).</summary>

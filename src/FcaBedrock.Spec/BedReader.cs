@@ -5,9 +5,9 @@ namespace FcaBedrock.Spec;
 
 /// <summary>
 /// Parses the v2 <c>.bed</c> bracket-section format into a <see cref="BedDocument"/>
-/// for one-way migration (decisions.md D-009/D-079). Structural problems — a
+/// for one-way migration (decisions.md D-009/D-079). Structural problems (a
 /// missing section, an entry-count shortfall, an unparseable count or convert
-/// flag — are <c>BedStructureInvalid</c> (Fatal) diagnostics, aggregated where the
+/// flag) are <c>BedStructureInvalid</c> (Fatal) diagnostics, aggregated where the
 /// parse can continue past them (EP-14); the optional file path is only a label
 /// for diagnostic locations, mirroring <see cref="Toml.SpecReader"/>.
 /// </summary>
@@ -44,7 +44,7 @@ public static class BedReader
         if (count is not { } attributeCount)
         {
             // Every other section is sized by the count; without it nothing more
-            // can be checked — but the missing-section sweep above already ran.
+            // can be checked, but the missing-section sweep above already ran.
             return Diagnosed<BedDocument>.Failed(diagnostics);
         }
 

@@ -16,7 +16,7 @@ namespace FcaBedrock.Core.Planning;
 /// <see cref="ConversionPlan"/>. Pure and data-free (spec §7 step 3). Centralizes
 /// every ordering rule (decisions.md D-004): attribute order follows the spec,
 /// formal-attribute order follows the discretizer's bins then the scale's
-/// enumeration, and names are rendered here (not in the writers — EP-15).
+/// enumeration, and names are rendered here (not in the writers, EP-15).
 /// </summary>
 public static class ConversionPlanner
 {
@@ -57,7 +57,7 @@ public static class ConversionPlanner
         {
             // §10.4/D-091: restrict_to is include-INDEPENDENT, so this runs before the
             // include-skip below. A filter-only attribute (include = false + restrict_to)
-            // contributes only here — no PlannedAttribute, no formal column — while an
+            // contributes only here (no PlannedAttribute, no formal column) while an
             // included-and-restricted attribute contributes both. Restrictions are built in
             // spec-attribute order (EP-7); that order never reorders columns or objects.
             if (attribute.RestrictTo.Count > 0)
@@ -107,7 +107,7 @@ public static class ConversionPlanner
     }
 
     // §5 / D-082: the plan carries a shape-specific SourceExecution. Wide → the singleton;
-    // triple → the resolved ordering verbatim (no fallback — ordering is required by the spec and the
+    // triple → the resolved ordering verbatim (no fallback: ordering is required by the spec and the
     // resolver produces a non-null value or fails with a diagnostic; a null ordering on a triple
     // binding is a corrupt/internally-inconsistent Core state, so it throws via the invariant path,
     // like ResolveColumnIndex, rather than silently defaulting and masking the invalid binding). Not a
@@ -147,7 +147,7 @@ public static class ConversionPlanner
         var knownBins = scheme.Labels.ToFrozenSet(StringComparer.Ordinal);
 
         // §12.3/§17-r2/D-096: a numeric free_per_value value-bin ordinal with no authored
-        // scale.order uses the natural numeric ascending order of its (canonical) domain — the
+        // scale.order uses the natural numeric ascending order of its (canonical) domain: the
         // one value-bin case exempt from the explicit-order requirement (ValidateValueBinOrder
         // enforces it everywhere else). An authored order is a validated permutation and used
         // verbatim.
@@ -181,7 +181,7 @@ public static class ConversionPlanner
         // §10.5 / D-068 / D-074: the missing column appends after the scale's columns
         // (uniformly across scale kinds); its bin key is the literal "missing" with an
         // empty operator (§14). The rendered name bypasses value_labels and label
-        // style — "missing" is not a raw value. §10.7/D-117: an explicit format is a
+        // style: "missing" is not a raw value. §10.7/D-117: an explicit format is a
         // TOTAL override, so it renders this column too ({value} = the literal
         // "missing", {scale_op} empty) instead of the default "{column}-missing"; the
         // column's position and canonical identity are unaffected.
@@ -286,7 +286,7 @@ public static class ConversionPlanner
     // discretizer the labels are dormant, so a label keyed to a bin string is ignored.
     //
     // A dichotomic shape carries no value label of its own (the default name is the
-    // column alone), so {value} resolves to the scale's true_value — through
+    // column alone), so {value} resolves to the scale's true_value, through
     // value_labels when they are live, which is the labelled-dichotomic case §10.7
     // spells out: true_value = "t" labelled "bruised" renders "bruises?-bruised".
     private static string RenderValue(
@@ -302,7 +302,7 @@ public static class ConversionPlanner
             : discretizer.RenderBinLabel(raw, labelStyle);
     }
 
-    // §10.7/D-117: after final substitution — on the default path too, because raw
+    // §10.7/D-117: after final substitution, on the default path too, because raw
     // values, calibrated domains, and value_labels can inject CR/LF independently of
     // any authored format.
     private static void RecordIfInvalid(string name, List<string> invalidNames)
@@ -338,7 +338,7 @@ public static class ConversionPlanner
             new DiagnosticLocation(AttributeName: attributeName));
     }
 
-    // Exactly four escapes — backslash, double quote, CR, LF — and no other transform,
+    // Exactly four escapes (backslash, double quote, CR, LF) and no other transform,
     // so an empty name is visible as "" and a newline is legible rather than breaking
     // the diagnostic across lines. Built char by char so the escapes cannot be applied
     // in the wrong order (a naive replace chain would double-escape backslashes).
@@ -362,7 +362,7 @@ public static class ConversionPlanner
 
     // §10.2 / D-082: a wide attribute resolves to a range-checked column index; a triple
     // attribute carries its predicate selector verbatim (matched against data at emit, not
-    // a column — so no schema range-check; a mistyped predicate surfaces at emit, D-082).
+    // a column, so no schema range-check; a mistyped predicate surfaces at emit, D-082).
     // The resolver guarantees ColumnSource↔wide / PredicateSource↔triple (SourceBindingInvalid).
     private static AttributeSource ResolveAttributeSource(string attributeName, SourceBinding source, SourceSchema schema) =>
         source switch
@@ -374,8 +374,8 @@ public static class ConversionPlanner
         };
 
     // §10.2/D-061: the attribute's single effective value_type, fixed at the resolve seam and
-    // carried on the resolved source. It selects the restriction's matching mode — string ⇒
-    // ordinal equality, number ⇒ parsed numeric identity (§10.4) — and is read straight off the
+    // carried on the resolved source. It selects the restriction's matching mode, string ⇒
+    // ordinal equality, number ⇒ parsed numeric identity (§10.4), and is read straight off the
     // source rather than re-derived from the discretizer, because a FILTER-ONLY attribute's
     // discretizer is parked (D-049) and may be absent entirely.
     private static SourceValueType ValueTypeOf(SourceBinding source) => source switch
@@ -412,14 +412,14 @@ public static class ConversionPlanner
             if (!attribute.Include)
             {
                 // §10.9 / D-049: include = false is an authoring toggle. Any emitted
-                // config the attribute retains is parked — ignored here, never an
+                // config the attribute retains is parked: ignored here, never an
                 // error. Its restrict_to stays live: shape-validated at the resolve
                 // seam and planned as a PlannedRestriction above (D-091/D-105).
                 continue;
             }
 
             // §12.4 / D-010: deferred scales are parsable carriers the v1 planner
-            // refuses — a permanent reservation, unlike the transitional rejects.
+            // refuses, a permanent reservation, unlike the transitional rejects.
             if (attribute.Scale is Scaling.UnimplementedScale unimplemented)
             {
                 diagnostics.Add(new BedrockDiagnostic(
@@ -438,7 +438,7 @@ public static class ConversionPlanner
 
             // The effective bin universe. A consuming discretizer's domain is non-null here
             // (calibration filled an omitted one before plan); a cut discretizer's is ignored.
-            // An authored [] is a genuine empty universe — not coalesced away — so the ordinal
+            // An authored [] is a genuine empty universe, not coalesced away, so the ordinal
             // checks below still apply to it (D-122 §15).
             var declaredDomain = attribute.DeclaredDomain ?? [];
 
@@ -446,7 +446,7 @@ public static class ConversionPlanner
             // a full permutation of the declared_domain, or they would silently ignore the
             // authored order/boundary. A complete empty universe (an authored []) is NOT exempt:
             // an omitted order there is OrdinalOrderMissing and order = [] is the valid empty
-            // permutation. Cut discretizers ignore the domain and never take this path — their
+            // permutation. Cut discretizers ignore the domain and never take this path; their
             // order is OrdinalOrderNotAllowedWithCuts.
             if (attribute.Discretizer is IdentityDiscretizer
                 && attribute.Scale is OrdinalScale ordinal)
@@ -456,7 +456,7 @@ public static class ConversionPlanner
             }
 
             // §12.3 / D-096: free_per_value value bins take the same ordinal path. A NUMERIC
-            // free_per_value with an absent scale.order is exempt from OrdinalOrderMissing — it
+            // free_per_value with an absent scale.order is exempt from OrdinalOrderMissing: it
             // derives natural numeric ascending order at plan (DeriveNaturalNumericOrder); every
             // other case (string free_per_value, or a numeric one with an authored order) still
             // requires an explicit full-permutation order. Domain/order keys are canonical numeric
@@ -470,7 +470,7 @@ public static class ConversionPlanner
             }
 
             // §12.3 / §11.6 / D-090: value groups take the same value-bin ordinal path, but their
-            // universe is the GROUP LABELS — not declared_domain, which value_groups ignores
+            // universe is the GROUP LABELS, not declared_domain, which value_groups ignores
             // entirely (D-055). The labels come from the discretizer's own BinLabels, so `Other`
             // is included exactly when unmatched = "other" and the permutation rule needs no
             // second copy of the bin-order logic. ordinal + passthrough is rejected at the seam
@@ -489,7 +489,7 @@ public static class ConversionPlanner
 
     // §12.3 / §17-r2 / D-096: the one value-bin-ordinal exemption. When a numeric free_per_value
     // ordinal authors no scale.order, its bin order is the natural NUMERIC ascending order of its
-    // canonical domain keys — parsed back to their numeric value and sorted (distinct identities,
+    // canonical domain keys, parsed back to their numeric value and sorted (distinct identities,
     // so the sort is total and deterministic, EP-7/EP-11). Every other discretizer/scale/order state
     // is returned unchanged.
     private static Scale DeriveNaturalNumericOrder(Discretizer discretizer, Scale scale, IReadOnlyList<string> domain)
@@ -505,7 +505,7 @@ public static class ConversionPlanner
         {
             // ResolvedSpec.Create validates that every numeric free_per_value domain key is a canonical
             // numeric identity (D-096/D-098), so parsing them back to sort always succeeds; a failure
-            // here is corrupt Core state (an unvalidated hand-built spec), not user input — throw rather
+            // here is corrupt Core state (an unvalidated hand-built spec), not user input: throw rather
             // than silently sort a bad key as 0.
             if (!CanonicalNumber.TryParse(domain[i], CultureInfo.InvariantCulture, out var value))
             {
@@ -522,7 +522,7 @@ public static class ConversionPlanner
     }
 
     // §12.3 / D-081 / D-090: a value-bin or value-group ordinal must author a scale.order that
-    // is a full permutation of its bin universe — every bin gets a threshold (a bin with no
+    // is a full permutation of its bin universe: every bin gets a threshold (a bin with no
     // order entry is OrdinalOrderMissing; an order entry outside the universe is
     // OrdinalOrderHasUnknownValue, one per stray entry). The order lists raw bin values or
     // group labels, never display labels. Duplicate/empty order entries are caught earlier at
@@ -597,7 +597,7 @@ public static class ConversionPlanner
                 // the schema the two-stage bootstrap resolves against (G-1/D-098), and the
                 // ResolvedSpec trust boundary re-checks it, so an out-of-range index cannot
                 // reach here from the conversion path. A residual violation is a corrupt
-                // Core state (an unvalidated hand-built spec), not user input — throw.
+                // Core state (an unvalidated hand-built spec), not user input: throw.
                 if (column.Index >= schema.ColumnCount)
                 {
                     throw new InvalidOperationException(

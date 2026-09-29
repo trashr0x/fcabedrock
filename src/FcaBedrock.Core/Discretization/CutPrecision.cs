@@ -30,7 +30,7 @@ public sealed record ExactPrecision : CutPrecision;
 /// <summary>
 /// <c>precision = { round_to = r }</c> (§11.4): each computed cut is rounded to
 /// the nearest multiple of <see cref="RoundTo"/>, halfway cases to even
-/// (<see cref="MidpointRounding.ToEven"/> — pinned, EP-11). Rounding may collapse
+/// (<see cref="MidpointRounding.ToEven"/>, pinned, EP-11). Rounding may collapse
 /// two cuts onto one value; that is diagnosed where the cuts are derived
 /// (<c>EqualWidthCutsCollapsed</c> at spec validate, <c>CalibrationCutsInvalid</c>
 /// at calibrate), never here.
@@ -45,7 +45,7 @@ public sealed record RoundToPrecision : CutPrecision
     /// <summary>
     /// Builds the precision for <paramref name="roundTo"/>. Throws
     /// <see cref="ArgumentOutOfRangeException"/> unless it is finite and strictly
-    /// greater than zero — the reader rejects the authored form first
+    /// greater than zero. The reader rejects the authored form first
     /// (<c>SpecFieldInvalid</c>, §11.4); this is the EP-10 backstop, so an unusable
     /// rounding step is unrepresentable.
     /// </summary>

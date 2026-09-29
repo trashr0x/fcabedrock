@@ -65,7 +65,7 @@ internal static class CanonicalJson
 
     /// <summary>
     /// Appends the parsed numeric value in invariant, shortest round-trippable
-    /// form — <c>30</c>, <c>30.0</c> and <c>3e1</c> all collapse to <c>30</c>
+    /// form: <c>30</c>, <c>30.0</c> and <c>3e1</c> all collapse to <c>30</c>
     /// (D-053/EP-11). Canonical JSON has no NaN/∞ representation; cut validation
     /// guarantees finiteness, so a non-finite value here is a programmer error.
     /// </summary>

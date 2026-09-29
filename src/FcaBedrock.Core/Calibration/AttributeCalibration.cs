@@ -3,7 +3,7 @@ using System.Collections.Immutable;
 namespace FcaBedrock.Core.Calibration;
 
 /// <summary>
-/// One attribute's retained calibration outcome (manifest-ready, D-093/§15) — the
+/// One attribute's retained calibration outcome (manifest-ready, D-093/§15): the
 /// resolved data-dependent schema element a data-reading pass discovered.
 /// The <see langword="private protected"/> base constructor blocks ordinary derivation
 /// outside this assembly, but a record's protected copy constructor does not (CS8878).

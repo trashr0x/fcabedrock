@@ -1,7 +1,7 @@
 namespace FcaBedrock.Spec;
 
 /// <summary>
-/// The raw parsed contents of a v2 <c>.bed</c> file — index-aligned parallel
+/// The raw parsed contents of a v2 <c>.bed</c> file: index-aligned parallel
 /// arrays, one entry per attribute (the brittle v2 layout that decisions.md D-009
 /// replaces with TOML). Notably it carries <b>no</b> binding (delimiter, header,
 /// shape): the v2 format never recorded those, so the caller supplies a

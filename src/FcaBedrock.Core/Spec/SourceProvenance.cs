@@ -10,7 +10,7 @@ namespace FcaBedrock.Core.Spec;
 /// carries a <see cref="DescriptorProvenance"/> derived from its
 /// <see cref="Binding"/> (settings + triple roles); and a deliberately
 /// descriptor-less adapter or test fake carries the explicit
-/// <see cref="Unvalidated"/> opt-out — weaker validation is <em>named</em>, never
+/// <see cref="Unvalidated"/> opt-out. Weaker validation is <em>named</em>, never
 /// silent. Calibrate/emit guards switch exhaustively and throw on an unknown
 /// variant rather than degrading to the unvalidated path.
 /// </summary>

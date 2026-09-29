@@ -2,7 +2,7 @@ namespace FcaBedrock.Core.Fingerprinting;
 
 /// <summary>
 /// The <c>.dat</c>-only fingerprint inputs (spec §8/§14, D-051/D-069): the
-/// <c>.dat</c> writer settings alone. Rendered names never enter — <c>.dat</c>
+/// <c>.dat</c> writer settings alone. Rendered names never enter: <c>.dat</c>
 /// carries numeric ids, not names (D-051).
 /// </summary>
 /// <param name="BaseIndex">First formal-attribute id (§8/§17).</param>

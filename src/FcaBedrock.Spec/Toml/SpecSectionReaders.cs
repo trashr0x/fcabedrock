@@ -34,7 +34,7 @@ internal static class SpecSectionReaders
     /// Reads one <c>[[matcher]]</c> (§9.2), including its static shape: a matcher
     /// MUST reference a template and MUST author exactly one selector. These are
     /// authored-shape rules, so they are parse-owned under the ordinary
-    /// <c>SpecFieldInvalid</c> — §9.2/D-116 mint no matcher-specific parse code.
+    /// <c>SpecFieldInvalid</c>; §9.2/D-116 mint no matcher-specific parse code.
     /// They fire even on a matcher that will go on to select nothing, exactly as the
     /// naming-format grammar fires inside an unused template (§10.7).
     /// </summary>
@@ -50,7 +50,7 @@ internal static class SpecSectionReaders
 
         // Has before Take: TakeString already reports a non-string value, so checking
         // authorship separately is what keeps a malformed template from also reporting
-        // as a missing one (one condition, one diagnostic — D-067).
+        // as a missing one (one condition, one diagnostic, D-067).
         var templateAuthored = cursor.Has("template");
         var section = new MatcherSection(match, cursor.TakeString("template"));
         if (!templateAuthored)
@@ -198,7 +198,7 @@ internal static class SpecSectionReaders
 
     /// <summary>
     /// Reads a matcher's <c>match</c> table and enforces §9.2's <b>exactly one
-    /// selector</b> rule. Both selectors, or neither, is <c>SpecFieldInvalid</c> —
+    /// selector</b> rule. Both selectors, or neither, is <c>SpecFieldInvalid</c>:
     /// AND/OR semantics for two authored selectors would be ambiguous, so one is the
     /// clear contract (D-115).
     /// </summary>
@@ -235,7 +235,7 @@ internal static class SpecSectionReaders
                     : "matcher match authors no selector; a matcher authors exactly one of name_regex or source_index_range (§9.2).",
                 table.Span);
 
-            // Consume both so Finish does not ALSO report them as unrecognized keys —
+            // Consume both so Finish does not ALSO report them as unrecognized keys:
             // the arity is the condition, and the keys themselves are recognized surface.
             _ = inner.Take("name_regex");
             _ = inner.Take("source_index_range");
@@ -254,7 +254,7 @@ internal static class SpecSectionReaders
     /// Reads and checks a <c>name_regex</c> (§9.2/D-115): non-empty and compilable
     /// <b>in the wrapped whole-name form that executes</b>
     /// (<see cref="MatcherSelectors.TryCompileWholeName"/>), so a pattern cannot pass
-    /// parse and then fail — or match differently — at evaluation. An uncompilable
+    /// parse and then fail, or match differently, at evaluation. An uncompilable
     /// pattern is one <c>SpecFieldInvalid</c>, not a regex-error code of its own: the
     /// same stance <c>value_groups.pattern</c> takes (§11.6/D-090).
     /// </summary>
@@ -292,8 +292,8 @@ internal static class SpecSectionReaders
     /// negative endpoint, and reversed endpoints are each <c>SpecFieldInvalid</c>.
     /// <para>
     /// An endpoint beyond the source width is <b>not</b> checked here and never is:
-    /// over-coverage is legal (§9.2) — the Internet-Ads idiom writes a generous range
-    /// — and it simply has no further attribute to match.
+    /// over-coverage is legal (§9.2) (the Internet-Ads idiom writes a generous range)
+    /// and it simply has no further attribute to match.
     /// </para>
     /// <para>
     /// Parsed element-wise rather than through <c>TakeLongArray</c> so one malformed

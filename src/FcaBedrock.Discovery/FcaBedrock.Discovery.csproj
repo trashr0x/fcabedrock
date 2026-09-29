@@ -2,7 +2,7 @@
 
   <!-- D-109: Discovery consumes the unbound source session (Sources) and authors a
        draft document (Spec) over Core types, reporting through Diagnostics. It must
-       NOT reference Conversion or Export — the caller runs conversion, and the caller
+       NOT reference Conversion or Export: the caller runs conversion, and the caller
        serializes the returned SpecDocument and owns all file output. -->
   <ItemGroup>
     <ProjectReference Include="..\FcaBedrock.Sources\FcaBedrock.Sources.csproj" />

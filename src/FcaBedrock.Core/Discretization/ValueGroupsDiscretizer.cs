@@ -6,7 +6,7 @@ namespace FcaBedrock.Core.Discretization;
 /// Many-to-one value grouping (spec §11.6, D-022/D-055/D-090): each raw value takes the
 /// label of the <b>first</b> declared group that matches it, and
 /// <see cref="Unmatched"/> decides the rest. Declaration order is therefore
-/// <b>semantic</b>, not presentation — a value matching several groups falls into the
+/// <b>semantic</b>, not presentation: a value matching several groups falls into the
 /// first (§11.6), and that choice is captured in the schema fingerprint.
 /// <para>
 /// <c>declared_domain</c> is <b>not</b> consulted (D-055): the groups plus the
@@ -31,7 +31,7 @@ public sealed record ValueGroupsDiscretizer : Discretizer
     private const string OtherLabel = "Other";
 
     // Iterated on the emit hot path, so the struct enumerator (not the boxed interface) is
-    // what Discretize walks — no per-value allocation (EP-18).
+    // what Discretize walks: no per-value allocation (EP-18).
     private readonly ImmutableArray<ValueGroup> _groups;
     private readonly ImmutableArray<string> _passthroughBins;
     private readonly ImmutableArray<string> _binLabels;
@@ -44,7 +44,7 @@ public sealed record ValueGroupsDiscretizer : Discretizer
         _passthroughBins = passthroughBins;
 
         // §17 rule 3: declared groups in declaration order, then the synthetic Other, or the
-        // discovered passthrough bins in first-observation order. Fixed at construction — the
+        // discovered passthrough bins in first-observation order. Fixed at construction: the
         // bin universe cannot drift from what Discretize produces.
         var labels = ImmutableArray.CreateBuilder<string>(groups.Length + passthroughBins.Length + 1);
         foreach (var group in groups)
@@ -61,7 +61,7 @@ public sealed record ValueGroupsDiscretizer : Discretizer
         _binLabels = labels.ToImmutable();
     }
 
-    /// <summary>The declared groups in <b>declaration order</b> — first match wins, so the order is semantic.</summary>
+    /// <summary>The declared groups in <b>declaration order</b>: first match wins, so the order is semantic.</summary>
     public IReadOnlyList<ValueGroup> Groups => _groups;
 
     /// <summary>The resolved (authored or defaulted) policy for values matching no group.</summary>
@@ -76,7 +76,7 @@ public sealed record ValueGroupsDiscretizer : Discretizer
 
     /// <summary>
     /// Builds the spec-determined form (<see cref="ValueGroupsUnmatched.Skip"/> or
-    /// <see cref="ValueGroupsUnmatched.Other"/>) — the EP-10 backstop behind the seam's
+    /// <see cref="ValueGroupsUnmatched.Other"/>): the EP-10 backstop behind the seam's
     /// clean diagnostic check (the resolver owns the user-facing
     /// <c>ValueGroupsLabelDuplicate</c>, §11.6/D-090).
     /// </summary>
@@ -114,7 +114,7 @@ public sealed record ValueGroupsDiscretizer : Discretizer
     /// minted outside the calibrate→plan sequence (D-093).
     /// <para>
     /// A discovered bin equal to an authored group label is deliberately <b>not</b> rejected
-    /// here — that collision is data-dependent, so it belongs to plan as
+    /// here: that collision is data-dependent, so it belongs to plan as
     /// <c>FormalAttributeCollision</c> (§11.6/D-090), not to a construction backstop.
     /// </para>
     /// </summary>
@@ -172,7 +172,7 @@ public sealed record ValueGroupsDiscretizer : Discretizer
 
         return Unmatched switch
         {
-            // No bin of its own — unknown_value_policy governs it (§10.6). Because there is no
+            // No bin of its own: unknown_value_policy governs it (§10.6). Because there is no
             // declared_domain to extend (D-055), `include` yields a Warning and no schema
             // extension: it behaves as `warn` (§11.6/D-090), which falls out of this Unknown
             // rather than being a special case anywhere.
@@ -180,13 +180,13 @@ public sealed record ValueGroupsDiscretizer : Discretizer
             ValueGroupsUnmatched.Other => BinResult.Bin(OtherLabel),
 
             // The raw spelling is its own bin. The planned KnownBins check turns a value that
-            // calibration never discovered — a between-pass data change — into an unknown.
+            // calibration never discovered (a between-pass data change) into an unknown.
             ValueGroupsUnmatched.Passthrough => BinResult.Bin(rawValue),
             _ => throw new InvalidOperationException($"unknown value_groups unmatched policy {Unmatched}."),
         };
     }
 
     // §17 rule 3, fixed at construction. value_groups ignores declared_domain (D-055), so the
-    // parameter is unread — the groups and the unmatched policy are the whole bin universe.
+    // parameter is unread: the groups and the unmatched policy are the whole bin universe.
     internal override IReadOnlyList<string> BinLabels(IReadOnlyList<string> declaredDomain) => _binLabels;
 }

@@ -59,7 +59,7 @@ public enum DiagnosticCode
 
     /// <summary>
     /// An authored <c>[spec].extends</c> reference could not be resolved to a base
-    /// spec by the composition source. Fatal — the composed spec cannot be built.
+    /// spec by the composition source. Fatal: the composed spec cannot be built.
     /// Spec §13 (D-027/D-078).
     /// </summary>
     SpecExtendsNotFound,
@@ -82,8 +82,8 @@ public enum DiagnosticCode
     /// <summary>
     /// Two <c>[[template]]</c> entries in the composed document (§13) declare the same
     /// <c>id</c>; ids must be unique because they are referenced by name. One per
-    /// <em>extra</em> declaration, in composed template order — the
-    /// <c>AttributeNameDuplicate</c> granularity. Error, spec resolve. Spec §9.1 /
+    /// <em>extra</em> declaration, in composed template order (the
+    /// <c>AttributeNameDuplicate</c> granularity). Error, spec resolve. Spec §9.1 /
     /// §13 / §16.4 (D-114/D-116/D-121).
     /// </summary>
     TemplateIdDuplicate,
@@ -107,7 +107,7 @@ public enum DiagnosticCode
     MatcherSelectorInvalidForShape,
 
     /// <summary>
-    /// A <c>[[matcher]]</c>'s selector matches no declared logical attribute — the
+    /// A <c>[[matcher]]</c>'s selector matches no declared logical attribute: the
     /// typo-catcher, not an error, since a pattern or range may legitimately over-cover
     /// (§9.2/D-115). Selector-driven: it is independent of whether the referenced
     /// template resolves, so an adjacent Error on the same matcher does not suppress it.
@@ -119,7 +119,7 @@ public enum DiagnosticCode
     /// <summary>
     /// A <c>[[matcher]]</c> selects at least one attribute but, on <em>every</em>
     /// selected attribute, <em>every</em> field its template authors is overridden by a
-    /// higher-precedence source (§9.2) — so the matcher changes nothing. The
+    /// higher-precedence source (§9.2), so the matcher changes nothing. The
     /// determination is made at the <b>merge</b> level and is independent of
     /// <c>include = false</c> dormancy: a field that wins on an excluded attribute
     /// prevents this warning. One per matcher, interleaved with
@@ -186,7 +186,7 @@ public enum DiagnosticCode
     /// <summary>
     /// A numeric <c>free_per_value</c> <c>declared_domain</c> entry is unparseable,
     /// non-finite (NaN/±∞), or a normalization duplicate of another entry (two
-    /// spellings, one numeric identity, e.g. <c>90</c> and <c>90.0</c>) — the §5.1
+    /// spellings, one numeric identity, e.g. <c>90</c> and <c>90.0</c>): the §5.1
     /// exception to verbatim strings, parsed under <c>binding.locale</c>. Spec §10.3
     /// / §16.4 (D-096).
     /// </summary>
@@ -213,14 +213,14 @@ public enum DiagnosticCode
     /// <summary>
     /// An <c>equal_width</c> <c>range = "manual"</c> span is unusable: a non-finite
     /// <c>vmin</c>/<c>vmax</c>, or <c>vmin >= vmax</c>. Every finite increasing range is
-    /// accepted — the sign-aware interpolation cannot overflow one (G-7) — so this owns
+    /// accepted: the sign-aware interpolation cannot overflow one (G-7), so this owns
     /// only genuinely unusable authored spans. Spec §11.4 / §16.4 (D-089).
     /// </summary>
     EqualWidthRangeInvalid,
 
     /// <summary>
     /// An <c>equal_width</c> <c>range = "manual"</c> derives cuts that are not finite and
-    /// strictly ascending once <c>precision</c> is applied — a <c>round_to</c> collapsing
+    /// strictly ascending once <c>precision</c> is applied: a <c>round_to</c> collapsing
     /// two cuts onto one value. The spec-validate twin of
     /// <see cref="CalibrationCutsInvalid"/>, which owns the data-derived case. Spec §11.4
     /// / §16.4 (D-089).
@@ -256,7 +256,7 @@ public enum DiagnosticCode
     /// <summary>
     /// The resolved <c>binding.delimiter</c> equals the resolved
     /// <c>binding.quote_char</c>; the two must differ. Fires independently of
-    /// <see cref="QuoteCharNotSupportedV1"/> — both report when both conditions
+    /// <see cref="QuoteCharNotSupportedV1"/>: both report when both conditions
     /// hold (D-076). Spec §5.1.
     /// </summary>
     BindingDelimiterQuoteConflict,
@@ -284,7 +284,7 @@ public enum DiagnosticCode
     /// <summary>
     /// A <c>restrict_to</c> numeric entry is invalid: an exact <c>{ value = n }</c>
     /// whose <c>n</c> is non-finite, or a range whose provided bounds are equal,
-    /// reversed, or non-finite. The empty range <c>{}</c> — both bounds omitted — is
+    /// reversed, or non-finite. The empty range <c>{}</c> (both bounds omitted) is
     /// valid and matches any usable numeric value. Error. Spec §10.4 / §16.4
     /// (D-091).
     /// </summary>
@@ -292,7 +292,7 @@ public enum DiagnosticCode
 
     /// <summary>
     /// A <c>restrict_to</c> string value is absent from the attribute's explicit
-    /// non-empty <c>declared_domain</c> — a typo-catcher, Warning only; the resolve
+    /// non-empty <c>declared_domain</c>: a typo-catcher, Warning only; the resolve
     /// still succeeds. Spec §10.4 (D-063).
     /// </summary>
     RestrictToValueNotInDomain,
@@ -314,8 +314,8 @@ public enum DiagnosticCode
     OrdinalBoundaryIncompatibleWithCuts,
 
     /// <summary>
-    /// A <c>value_groups</c> discretizer declares the same group <c>label</c> twice, or —
-    /// under <c>unmatched = "other"</c> — a group whose label collides with the synthetic
+    /// A <c>value_groups</c> discretizer declares the same group <c>label</c> twice, or
+    /// (under <c>unmatched = "other"</c>) a group whose label collides with the synthetic
     /// <c>Other</c> bin. Ordinal comparison (EP-12), so <c>"Other"</c> collides and
     /// <c>"other"</c> does not. Error, one per duplicate. Duplicates never surface as
     /// <c>SpecFieldInvalid</c>; a pass-through value merely <em>observed</em> to equal a label
@@ -408,7 +408,7 @@ public enum DiagnosticCode
     ObjectKeyCompositeNotImplementedV1,
 
     /// <summary>
-    /// A plan produced zero formal attributes — every attribute is excluded or
+    /// A plan produced zero formal attributes: every attribute is excluded or
     /// filter-only. A degenerate but structurally-valid schema; the run
     /// proceeds. Warning. Spec §16.4.
     /// </summary>
@@ -419,7 +419,7 @@ public enum DiagnosticCode
     /// <summary>
     /// A consuming discretizer (<c>identity</c> / <c>free_per_value</c>) with an
     /// absent <c>declared_domain</c> was calibrated from the observed data (any
-    /// observed count, including zero). Warning — the resulting schema depends on
+    /// observed count, including zero). Warning: the resulting schema depends on
     /// this specific input; declare the domain or freeze it to make the run
     /// input-independent. Spec §7 / §10.3 / §16.4 (D-036).
     /// </summary>
@@ -436,7 +436,7 @@ public enum DiagnosticCode
     /// <summary>
     /// A <c>value_groups</c> discretizer with <c>unmatched = "passthrough"</c> discovered its
     /// bins from the data (any discovered count, including zero), so the column set depends on
-    /// this specific input. Warning — fires whenever the mode executes, because the
+    /// this specific input. Warning: fires whenever the mode executes, because the
     /// data-dependence exists regardless of how many bins were found. Spec §7 / §11.6 / §16.4
     /// (D-055/D-090).
     /// </summary>
@@ -457,8 +457,8 @@ public enum DiagnosticCode
 
     /// <summary>
     /// Cuts derived from a calibration population are not finite and strictly ascending
-    /// after any rounding — the calibrate-phase twin of
-    /// <see cref="EqualWidthCutsCollapsed"/>. Error, per attribute (no calibrated
+    /// after any rounding (the calibrate-phase twin of
+    /// <see cref="EqualWidthCutsCollapsed"/>). Error, per attribute (no calibrated
     /// result). Spec §11.4 / §11.5 / §16.4 (D-088/D-089).
     /// </summary>
     CalibrationCutsInvalid,
@@ -466,7 +466,7 @@ public enum DiagnosticCode
     /// <summary>
     /// The calibration population is too large to count exactly: a per-value count, the
     /// running total, or a merge sum would overflow <see cref="long"/> (spec §16.4,
-    /// D-103/G-13). Error, calibrate, in-path — no calibrated result. A distinct
+    /// D-103/G-13). Error, calibrate, in-path (no calibrated result). A distinct
     /// condition from <see cref="CalibrationDataInsufficient"/> (too little data) and
     /// from a storage failure, so it must not masquerade as either (EP-14). A
     /// contract-totality row: unreachable below ~9.2e18 observations.
@@ -478,7 +478,7 @@ public enum DiagnosticCode
     /// <summary>
     /// The stored <c>schema_fingerprint</c> does not match the fingerprint
     /// recomputed from the resolved plan: the spec's schema changed since it was
-    /// frozen. Warning — the run proceeds; recompute or remove the stored value.
+    /// frozen. Warning: the run proceeds; recompute or remove the stored value.
     /// Spec §3 / §14 / §16.4.
     /// </summary>
     SchemaFingerprintStale,
@@ -510,8 +510,8 @@ public enum DiagnosticCode
     /// <summary>
     /// An included attribute uses the v2 date type <c>d</c>, which is deferred from
     /// v1 (D-038) and has no spec carrier; the migration fails rather than silently
-    /// producing a spec missing an included attribute. The recognized-but-deferred
-    /// tier — a typo'd type code is <see cref="BedTypeUnrecognized"/>. Spec §16.4 (D-079).
+    /// producing a spec missing an included attribute. This is the recognized-but-deferred
+    /// tier; a typo'd type code is <see cref="BedTypeUnrecognized"/>. Spec §16.4 (D-079).
     /// </summary>
     BedDateTypeNotSupported,
 
@@ -535,7 +535,7 @@ public enum DiagnosticCode
     /// An excluded attribute's v2 config cannot be transcribed (the
     /// <see cref="BedDateTypeNotSupported"/>/<see cref="BedTypeUnrecognized"/>/
     /// <see cref="BedAttributeConfigInvalid"/> conditions) and was degraded to a
-    /// bare excluded attribute — name, source, <c>include = false</c>. Warning:
+    /// bare excluded attribute: name, source, <c>include = false</c>. Warning:
     /// dormant config never blocks migration (D-049), but it is never dropped
     /// silently either. Spec §16.4 (D-049/D-079).
     /// </summary>
@@ -543,7 +543,7 @@ public enum DiagnosticCode
 
     /// <summary>
     /// A v2 missing-token category (D-068) carried a display label, which has no v1
-    /// carrier — the missing column is canonically <c>{column}-missing</c>
+    /// carrier: the missing column is canonically <c>{column}-missing</c>
     /// (§10.5/D-074); the label is dropped with this Warning. Spec §16.4 (D-068/D-079).
     /// </summary>
     BedMissingTokenLabelDropped,
@@ -599,7 +599,7 @@ public enum DiagnosticCode
     /// <summary>
     /// Under <c>keep</c>, a <c>column</c> object's assigned name needed <c>#N</c> escalation because
     /// its candidate name (the cleaned key, or <c>&lt;key&gt;#&lt;record-index&gt;</c>) was already
-    /// assigned — a literal data key colliding with a generated name, or vice versa. Warning-only,
+    /// assigned: a literal data key colliding with a generated name, or vice versa. Warning-only,
     /// aggregated (count + a bounded <c>key→name</c> sample); distinct from <c>DuplicateObjectKey</c>,
     /// which reports repeated cleaned keys. Spec §6.1 / §16.4 (D-083/D-085).
     /// </summary>
@@ -619,9 +619,9 @@ public enum DiagnosticCode
     GroupingStorageFailed,
 
     /// <summary>
-    /// The conversion emitted zero objects — an empty input, or <c>restrict_to</c>
+    /// The conversion emitted zero objects: an empty input, or <c>restrict_to</c>
     /// excluded every object (§10.4). A degenerate but structurally-valid context is
-    /// still written; the run proceeds. Warning, once, on normal completion only — a
+    /// still written; the run proceeds. Warning, once, on normal completion only: a
     /// structural halt suppresses it, because "no objects" would then describe the
     /// halt rather than the data. The row twin of the plan-phase
     /// <see cref="NoFormalAttributes"/>. Spec §16.4 (D-058).
@@ -629,7 +629,7 @@ public enum DiagnosticCode
     NoObjectsEmitted,
 
     /// <summary>
-    /// One or more planned formal attributes were never crossed by any emitted object —
+    /// One or more planned formal attributes were never crossed by any emitted object:
     /// an empty <b>column</b>. Expected after <c>restrict_to</c> filtering, since
     /// calibration and the column vocabulary are computed over the input universe
     /// <em>before</em> objects are filtered (§7), so a surviving population need not
@@ -640,10 +640,10 @@ public enum DiagnosticCode
     AttributeHasNoCrosses,
 
     /// <summary>
-    /// One or more emitted objects carry no crosses at all — an empty <b>row</b>.
+    /// One or more emitted objects carry no crosses at all: an empty <b>row</b>.
     /// Legal (§10.1) and still written. Warning, <b>aggregated</b>: one diagnostic
     /// carrying the count and a bounded sample of object names in emission order,
-    /// flushed on normal completion only. Counts <em>emitted</em> objects only — an
+    /// flushed on normal completion only. Counts <em>emitted</em> objects only: an
     /// object <c>restrict_to</c> excluded never had a row to be empty. Spec §16.4
     /// (D-058).
     /// </summary>
@@ -652,13 +652,13 @@ public enum DiagnosticCode
     // --- Export ---
 
     /// <summary>
-    /// The exact final serialized <c>.cxt</c> size in UTF-8 bytes — projected after the writer's
-    /// object-name/count pass and <b>before any output byte</b> — is at or above the configured
+    /// The exact final serialized <c>.cxt</c> size in UTF-8 bytes (projected after the writer's
+    /// object-name/count pass and <b>before any output byte</b>) is at or above the configured
     /// <c>[output.cxt] size_advisory_bytes</c> threshold (§8). The projection counts <em>encoded
     /// bytes</em> (a non-ASCII name or a CRLF line ending counts at its real width), never
     /// characters. Warning, owned by the <b>export</b> phase and raised at the <c>.cxt</c> emit
     /// site; a <c>.dat</c>-only run raises none. A threshold of exactly <c>0</c> disables it.
-    /// Changing a warning only — never output bytes — it stays a non-input to all three
+    /// Changing a warning only, never output bytes, it stays a non-input to all three
     /// fingerprints (D-077). Spec §8 / §16.4 / §18.1 (D-085 enum timing; D-122 part 7 / D-123).
     /// </summary>
     OutputCxtSizeAdvisory,
@@ -667,7 +667,7 @@ public enum DiagnosticCode
 
     /// <summary>
     /// A stream or read failure while a <c>probe</c> acquired a source's schema or records.
-    /// Error, no draft — even when records were already observed, since a partially-read source
+    /// Error, no draft, even when records were already observed, since a partially-read source
     /// would author a draft that silently understates the data. <b>Scope is storage, not
     /// content</b>: it MUST NOT absorb a structural subject error, which stays
     /// <see cref="ObjectKeyValueInvalid"/> / <see cref="TripleSubjectNotContiguous"/>, and it is
@@ -705,7 +705,7 @@ public enum DiagnosticCode
     ProbeDomainTruncated,
 
     /// <summary>
-    /// A <c>probe</c> breached one of the three aggregate boundedness guards — maximum
+    /// A <c>probe</c> breached one of the three aggregate boundedness guards: maximum
     /// discovered attributes, maximum total retained distinct values, or maximum total retained
     /// value text. Error and <b>no draft</b>: aggregate pressure never silently truncates a
     /// further attribute, because a partial draft would read as a complete one. Only the

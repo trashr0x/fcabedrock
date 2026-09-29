@@ -19,7 +19,7 @@ internal sealed class TemplateTable
     /// <para>
     /// A duplicate keeps the <b>first</b> declaration as the lookup, so aggregation
     /// continues to produce useful downstream diagnostics rather than collapsing into
-    /// a cascade of unknown references — the Errors still fail the resolve. An
+    /// a cascade of unknown references; the Errors still fail the resolve. An
     /// <em>invalid</em> id never reaches here from a successful parse (§9.1: a
     /// malformed id is <c>SpecFieldInvalid</c>), so the only shapes handled are
     /// "absent" and "already seen".
@@ -64,7 +64,7 @@ internal readonly record struct MatchedTemplate(int MatcherOrdinal, TemplateSect
 
 /// <summary>
 /// One <c>[[matcher]]</c>'s evaluated state (§9.2): its resolved template, how many
-/// attributes its selector chose, and whether any field it authors won anywhere —
+/// attributes its selector chose, and whether any field it authors won anywhere,
 /// the three facts the family-5 warning traversal needs.
 /// </summary>
 internal sealed class MatcherEvaluation
@@ -95,8 +95,8 @@ internal sealed class MatcherEvaluation
 /// <para>
 /// The whole design rests on one idea (D-114): applying a template is
 /// <b>deterministic syntactic sugar for ordinary per-attribute configuration</b>.
-/// So application produces an effective <see cref="AttributeSection"/> — the same
-/// document type a flat spec produces — and every existing validation owner then
+/// So application produces an effective <see cref="AttributeSection"/> (the same
+/// document type a flat spec produces) and every existing validation owner then
 /// runs over it unchanged. Provenance falls out for free rather than needing a
 /// parallel model: a template-won <c>boundary</c> simply <em>is</em> a non-null
 /// <c>Scale.Boundary</c> on the effective section, which is exactly what
@@ -113,7 +113,7 @@ internal static class TemplateApplication
     /// <summary>
     /// Evaluates every matcher in declaration order against the declared attributes,
     /// emitting the family-2 diagnostics (unknown reference, selector/shape
-    /// incompatibility) and filling <paramref name="matching"/> — per attribute, the
+    /// incompatibility) and filling <paramref name="matching"/>: per attribute, the
     /// templates that apply to it, in matcher declaration order.
     /// <para>
     /// Selection reads only composed configuration plus the already-computed
@@ -201,7 +201,7 @@ internal static class TemplateApplication
             if (template is not null)
             {
                 // An unknown reference contributes no configuration, but its selection
-                // still counted above — the zero-match warning is selector-only.
+                // still counted above: the zero-match warning is selector-only.
                 matching[a].Add(new MatchedTemplate(evaluation.Ordinal, template));
             }
         }
@@ -211,14 +211,14 @@ internal static class TemplateApplication
     {
         if (regex is not null)
         {
-            // §9.2/D-115: the selector reads the complete logical attribute name — never a
+            // §9.2/D-115: the selector reads the complete logical attribute name, never a
             // source header, predicate text, display_name, or a rendered formal name. An
             // attribute with no usable name has no logical name to test, and is already an
             // AttributeNameMissing Error, so it is never selected.
             return attribute.Name is { Length: > 0 } name && regex.IsMatch(name);
         }
 
-        // §9.2/D-115: inclusive, zero-based, over the RESOLVED physical column index — so
+        // §9.2/D-115: inclusive, zero-based, over the RESOLVED physical column index, so
         // several logical attributes bound to one column all match, a name-bound source
         // participates once the schema resolved it, and an endpoint beyond the source
         // width is legal over-coverage with simply nothing left to match. A source that
@@ -230,9 +230,9 @@ internal static class TemplateApplication
     }
 
     /// <summary>
-    /// Folds tiers 3–5 into one effective <see cref="AttributeSection"/> — matching
+    /// Folds tiers 3–5 into one effective <see cref="AttributeSection"/> (matching
     /// matcher templates in declaration order, then the directly named template, then
-    /// the attribute's own explicit fields — and records, per matcher, whether any
+    /// the attribute's own explicit fields) and records, per matcher, whether any
     /// field it authors won.
     /// <para>
     /// Tiers 1–2 (built-ins and <c>[defaults]</c>) deliberately stay <b>below</b> this
@@ -255,7 +255,7 @@ internal static class TemplateApplication
 
         var effective = attribute;
 
-        // The ten §9.1 eligible fields, each folded independently. Presence — not value —
+        // The ten §9.1 eligible fields, each folded independently. Presence, not value,
         // decides every one of them (D-114), so an explicit `false`, an authored `[]`, and
         // a value equal to its own default all override a lower tier, while an omission
         // inherits and can never erase. Compounds (discretizer, scale, declared_domain,
@@ -339,7 +339,7 @@ internal static class TemplateApplication
 
         if (named is not null && authors(named))
         {
-            return named; // tier 4 — a direct reference beats every pattern
+            return named; // tier 4: a direct reference beats every pattern
         }
 
         for (var i = matching.Count - 1; i >= 0; i--)
@@ -356,13 +356,13 @@ internal static class TemplateApplication
 
     /// <summary>
     /// Family 5 (§16.4): the two matcher warnings, produced by <b>one</b> traversal in
-    /// matcher declaration order — so they interleave by matcher rather than grouping
+    /// matcher declaration order, so they interleave by matcher rather than grouping
     /// by code, and a matcher qualifies for at most one.
     /// <para>
     /// Zero-match is selector-only: it fires whether or not the referenced template
     /// resolved, because over-covering is the condition it catches. Fully-shadowed is a
     /// <b>merge-level</b> determination and is deliberately independent of
-    /// <c>include = false</c> dormancy (§9.2/D-116) — a field that wins on an excluded
+    /// <c>include = false</c> dormancy (§9.2/D-116): a field that wins on an excluded
     /// attribute means the matcher is doing something, even though the winning
     /// configuration is dormant while the attribute is excluded.
     /// </para>
@@ -392,8 +392,8 @@ internal static class TemplateApplication
     /// ordinal</b> and its <b>template reference</b>, both deterministic. One helper for
     /// every such message, so the identity cannot drift between them.
     /// <para>
-    /// The reference is null only on a hand-built document — parse requires a matcher's
-    /// <c>template</c> key — so that branch says so rather than rendering an empty
+    /// The reference is null only on a hand-built document: parse requires a matcher's
+    /// <c>template</c> key, so that branch says so rather than rendering an empty
     /// quoted string. <c>TemplateReferenceUnknown</c> does not use this helper: its own
     /// prose already names both, and prefixing it would repeat the reference twice.
     /// </para>

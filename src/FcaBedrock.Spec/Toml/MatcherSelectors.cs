@@ -22,21 +22,21 @@ internal static class MatcherSelectors
     /// author's pattern. The group is <b>non-capturing</b>, so it shifts no capture
     /// number a backreference might use, and it is <b>required</b> rather than
     /// cosmetic: bare anchors around an alternation would bind as
-    /// <c>\Aa|b\z</c> — "starts with a, or ends with b" — instead of the intended
+    /// <c>\Aa|b\z</c> ("starts with a, or ends with b") instead of the intended
     /// whole-name "a or b". An author's own redundant anchors stay legal.
     /// </description></item>
     /// <item><description>
     /// <see cref="RegexOptions.CultureInvariant"/>, matching <c>value_groups</c>
     /// (D-090/D-104): culture-aware casing is ICU/NLS-version dependent, so the same
     /// spec could select different attributes on two machines (EP-12). Case sensitivity
-    /// is therefore the .NET default, and an authored inline <c>(?i)</c> still applies
-    /// — it sits at the start of the enclosing group and so covers the whole pattern.
+    /// is therefore the .NET default, and an authored inline <c>(?i)</c> still applies:
+    /// it sits at the start of the enclosing group and so covers the whole pattern.
     /// </description></item>
     /// <item><description>
     /// <see cref="Regex.InfiniteMatchTimeout"/> passed <b>explicitly</b>: the overloads
     /// that omit it inherit the host's ambient <c>REGEX_DEFAULT_MATCH_TIMEOUT</c>, which
     /// would make the same spec host-dependent on the exception channel (EP-7/EP-14).
-    /// <c>RegexOptions.NonBacktracking</c> is deliberately not adopted — it would
+    /// <c>RegexOptions.NonBacktracking</c> is deliberately not adopted: it would
     /// silently narrow the regex language relative to <c>value_groups</c> (D-115).
     /// </description></item>
     /// </list>

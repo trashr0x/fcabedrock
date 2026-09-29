@@ -5,7 +5,7 @@ using FcaBedrock.Diagnostics;
 namespace FcaBedrock.Core.Discretization;
 
 /// <summary>
-/// Cut points over an <i>ordered categorical</i> domain (spec §11.8) — the
+/// Cut points over an <i>ordered categorical</i> domain (spec §11.8): the
 /// categorical sibling of <see cref="ManualCutsDiscretizer"/>, modelling v2's
 /// <c>n</c> type. <see cref="Order"/> declares the domain low→high;
 /// <see cref="Cuts"/> are members of it. A raw value not in <see cref="Order"/>

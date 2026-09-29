@@ -52,10 +52,10 @@ internal sealed class NumericCutBins
     /// <summary>Whether the outer bins extend to ±∞ (<see cref="BinEnds.Open"/>) or are dropped.</summary>
     public BinEnds Ends { get; }
 
-    /// <summary>The culture raw values parse under (never ambient — EP-11).</summary>
+    /// <summary>The culture raw values parse under (never ambient, EP-11).</summary>
     public CultureInfo Culture { get; }
 
-    /// <summary>The canonical cut labels — invariant schema strings, not locale numbers (§14).</summary>
+    /// <summary>The canonical cut labels: invariant schema strings, not locale numbers (§14).</summary>
     public IReadOnlyList<string> CutLabels => _cutLabels;
 
     /// <summary>The ordered canonical bin labels (§11.2).</summary>
@@ -64,7 +64,7 @@ internal sealed class NumericCutBins
     /// <summary>
     /// Classifies one non-missing raw value: parsed under <see cref="Culture"/>,
     /// finite-only. A value that fails to parse or is non-finite is
-    /// <see cref="BinResult.Unparseable"/> — kept, no cross, diagnosable (§11.5 /
+    /// <see cref="BinResult.Unparseable"/>: kept, no cross, diagnosable (§11.5 /
     /// D-050); a value outside a <see cref="BinEnds.Closed"/> range gets no bin
     /// (§11.2).
     /// </summary>

@@ -32,8 +32,8 @@ public abstract record PendingCalibration
 /// <see cref="EqualWidthDiscretizer"/> over the derived cuts (D-093). Holds only
 /// immutable values.
 /// <para>
-/// <see cref="EqualWidthRange.Manual"/> never pends — it is spec-determined and
-/// resolves straight to an executable discretizer (§7) — so it is rejected here
+/// <see cref="EqualWidthRange.Manual"/> never pends: it is spec-determined and
+/// resolves straight to an executable discretizer (§7), so it is rejected here
 /// (EP-10: the mis-sequenced state is unrepresentable rather than merely diagnosed).
 /// </para>
 /// </summary>
@@ -42,7 +42,7 @@ public sealed record PendingEqualWidth : PendingCalibration
     /// <summary>Carries <paramref name="bins"/>/<paramref name="range"/>/<paramref name="precision"/> into calibration.</summary>
     /// <exception cref="ArgumentOutOfRangeException">
     /// <paramref name="range"/> is <see cref="EqualWidthRange.Manual"/> (spec-determined,
-    /// never pending) or undefined, or <paramref name="bins"/> is below 2 — the reader
+    /// never pending) or undefined, or <paramref name="bins"/> is below 2. The reader
     /// owns the authored forms (<c>SpecFieldInvalid</c>, §11.4); these are the EP-10 backstops.
     /// </exception>
     public PendingEqualWidth(int bins, EqualWidthRange range, CutPrecision precision)
@@ -96,7 +96,7 @@ public sealed record PendingEqualFrequency : PendingCalibration
     /// <summary>Carries <paramref name="bins"/>/<paramref name="tiePolicy"/>/<paramref name="cutPlacement"/> into calibration.</summary>
     /// <exception cref="ArgumentOutOfRangeException">
     /// <paramref name="bins"/> is below 2, or <paramref name="tiePolicy"/> /
-    /// <paramref name="cutPlacement"/> is undefined — the reader owns the authored forms
+    /// <paramref name="cutPlacement"/> is undefined. The reader owns the authored forms
     /// (<c>SpecFieldInvalid</c>, §11.5); these are the EP-10 backstops.
     /// </exception>
     public PendingEqualFrequency(int bins, TiePolicy tiePolicy, CutPlacement cutPlacement)
@@ -138,7 +138,7 @@ public sealed record PendingEqualFrequency : PendingCalibration
 /// <see cref="PassthroughBins"/> (D-093).
 /// <para>
 /// Recursively immutable: this constructor snapshots the group list, and each
-/// <see cref="ValueGroup"/> already snapshots its own authored values — so no caller-owned
+/// <see cref="ValueGroup"/> already snapshots its own authored values, so no caller-owned
 /// list survives on the graph. Unlike the numeric carriers there is no bin count or policy to
 /// validate; a group's own validity is <see cref="ValueGroup.Create"/>'s contract, and label
 /// distinctness is checked where the executable form is built (and re-checked at the
@@ -172,7 +172,7 @@ public sealed record PendingValueGroupsPassthrough : PendingCalibration
 /// resolve seam can place on a resolved attribute, but one that can never plan or
 /// emit. It is the single type <c>CalibratedSpec.Create</c> must replace with an
 /// executable discretizer (or throw). Its <see cref="Discretize"/> and plan-time
-/// members throw <see cref="InvalidOperationException"/> — reaching them is a
+/// members throw <see cref="InvalidOperationException"/>: reaching them is a
 /// mis-sequenced call (calibration was skipped).
 /// </summary>
 public sealed record CalibrationPending : Discretizer
@@ -189,7 +189,7 @@ public sealed record CalibrationPending : Discretizer
     /// <summary>The pending calibration configuration.</summary>
     public PendingCalibration Config { get; }
 
-    /// <summary>The culture used once the auto-discretizer resolves (never ambient — EP-11).</summary>
+    /// <summary>The culture used once the auto-discretizer resolves (never ambient, EP-11).</summary>
     public CultureInfo Culture { get; }
 
     /// <inheritdoc/>

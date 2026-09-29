@@ -5,7 +5,7 @@ namespace FcaBedrock.Spec.Toml;
 /// <summary>
 /// Applies §13 composition: walks the <c>extends</c> chain via an
 /// <see cref="ISpecTextSource"/> and folds the merge base-most first
-/// (§13/D-052), producing a flat document with <c>extends</c> consumed — the
+/// (§13/D-052), producing a flat document with <c>extends</c> consumed, the
 /// input <see cref="SpecResolver.Resolve"/> requires. Composition is a
 /// document→document step preceding the seam and belongs to the spec-resolve
 /// phase for §16.4 ownership (D-078). The merge operates on authored surface
@@ -42,7 +42,7 @@ public static class SpecComposer
 
         // Root version check (D-078): an unversioned/unsupported root must not
         // drive v1 extends semantics, and a missing-base/cycle diagnostic must
-        // never fire first — so this precedes any source consultation.
+        // never fire first, so this precedes any source consultation.
         if (!CheckVersion(document, documentKey, diagnostics))
         {
             return Diagnosed<SpecDocument>.Failed(diagnostics);
@@ -110,7 +110,7 @@ public static class SpecComposer
 
     /// <summary>
     /// §2/§13: every spec in an extends chain must itself declare
-    /// <c>version = 1</c> — a base's content must not enter a composed v1 spec
+    /// <c>version = 1</c>; a base's content must not enter a composed v1 spec
     /// under unknown semantics. The composed document's own version (the
     /// derived file's) is re-checked only by the resolve seam, so per flow the
     /// condition fires exactly once (D-078).
@@ -142,15 +142,15 @@ public static class SpecComposer
     private static SpecDocument MergeStep(SpecDocument baseDocument, SpecDocument derived) =>
         new(
             // [spec] is per-spec (§13/D-078): version, description, and stored
-            // fingerprints all come from the derived file — base-stored
-            // fingerprints are ignored (§13) — and extends is consumed here.
+            // fingerprints all come from the derived file, base-stored
+            // fingerprints are ignored (§13), and extends is consumed here.
             derived.Spec is { } spec ? spec with { Extends = null } : null,
             derived.Provenance, // never inherited (§13 rule 7)
             MergeBinding(baseDocument.Binding, derived.Binding),
             MergeDefaults(baseDocument.Defaults, derived.Defaults),
             MergeOutput(baseDocument.Output, derived.Output),
             MergeTemplates(baseDocument.Templates, derived.Templates),
-            [.. baseDocument.Matchers, .. derived.Matchers], // §13 rule 4: base then derived — the order §9.2's field-wise last-match-wins reads at resolve
+            [.. baseDocument.Matchers, .. derived.Matchers], // §13 rule 4: base then derived, the order §9.2's field-wise last-match-wins reads at resolve
             MergeAttributes(baseDocument.Attributes, derived.Attributes));
 
     private static BindingSection? MergeBinding(BindingSection? baseSection, BindingSection? derived)
@@ -193,7 +193,7 @@ public static class SpecComposer
             derived.OrdinalBoundary ?? baseSection.OrdinalBoundary)
         {
             // §13 rule 2 is a PER-FIELD merge, so a new [defaults] field has to be
-            // carried explicitly — unlike [[attribute]]/[[template]], whose whole-section
+            // carried explicitly, unlike [[attribute]]/[[template]], whose whole-section
             // replacement (rules 3/5) carries new init properties for free. Without this
             // line a base-supplied format would vanish the moment a derived [defaults]
             // authored any other field (the D-087 MergeDat precedent, D-120).
@@ -208,7 +208,7 @@ public static class SpecComposer
             return derived ?? baseSection;
         }
 
-        // §13 rule 6: [output] merges per leaf field — a base [output.cxt]
+        // §13 rule 6: [output] merges per leaf field: a base [output.cxt]
         // line-ending and a derived [output.cxt] trailing-newline both survive.
         return new OutputSection(
             derived.BinLabelUnicode ?? baseSection.BinLabelUnicode,
@@ -262,7 +262,7 @@ public static class SpecComposer
         foreach (var template in derived)
         {
             // Only the base region is searched, and each id replaces at most
-            // once — authoring duplicates are preserved into the composed
+            // once: authoring duplicates are preserved into the composed
             // document rather than silently collapsed (D-078).
             var index = template.Id is { } id && !replaced.Contains(id)
                 ? IndexOfTemplate(result, baseRegion, id)
@@ -283,7 +283,7 @@ public static class SpecComposer
 
     /// <summary>
     /// §13 rule 5 / D-052: position-preserving whole-attribute override by
-    /// <c>name</c> — a derived same-name attribute replaces the base's in place
+    /// <c>name</c>: a derived same-name attribute replaces the base's in place
     /// (the derived section verbatim; inherited fields are dropped unless
     /// repeated); new names append after all inherited attributes, in derived
     /// order. Unnamed attributes never match; duplicates are preserved for

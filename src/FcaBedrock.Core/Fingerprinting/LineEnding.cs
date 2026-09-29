@@ -9,9 +9,9 @@ namespace FcaBedrock.Core.Fingerprinting;
 /// </summary>
 public enum LineEnding
 {
-    /// <summary>Unix <c>\n</c> — hashes as <c>"lf"</c>.</summary>
+    /// <summary>Unix <c>\n</c>, hashes as <c>"lf"</c>.</summary>
     Lf,
 
-    /// <summary>Windows <c>\r\n</c> — hashes as <c>"crlf"</c>.</summary>
+    /// <summary>Windows <c>\r\n</c>, hashes as <c>"crlf"</c>.</summary>
     Crlf,
 }

@@ -6,14 +6,14 @@ namespace FcaBedrock.Spec.Toml;
 
 /// <summary>
 /// Writes a <see cref="SpecDocument"/> as canonical TOML (D-075): only authored
-/// (non-null) sections and fields are emitted — presence tracking survives
+/// (non-null) sections and fields are emitted (presence tracking survives
 /// verbatim (D-049/D-071), including an authored value that equals its default
-/// and an authored empty <c>declared_domain = []</c> — in a fixed section and
+/// and an authored empty <c>declared_domain = []</c>) in a fixed section and
 /// key order (spec presentation order), with inline tables for the nested
 /// groups, LF line endings, and invariant shortest number formatting
 /// (<see cref="TomlLiteral"/>). The canonical form is a deliberate
 /// normalization: the round-trip contract is document-model fidelity, not byte
-/// fidelity of the authored file — §2 makes formatting informative and
+/// fidelity of the authored file; §2 makes formatting informative and
 /// fingerprints hash the plan, never TOML text (D-053).
 /// </summary>
 public static class SpecWriter
@@ -458,7 +458,7 @@ public static class SpecWriter
         }
 
         // §-order: formal_attribute_format (§10.7) between unknown_value_policy (§10.6)
-        // and value_labels (§10.8). D-113 wrapping stays declared_domain-only — a format
+        // and value_labels (§10.8). D-113 wrapping stays declared_domain-only: a format
         // is one short string, never a long array.
         if (attribute.FormalAttributeFormat is { } format)
         {
@@ -614,10 +614,10 @@ public static class SpecWriter
 
             case ValueGroupsDiscretizerSection valueGroups:
                 // §11.6 presentation order: kind, groups, unmatched. The groups array keeps
-                // DECLARATION order and each group's values keep AUTHORED order with duplicates —
+                // DECLARATION order and each group's values keep AUTHORED order with duplicates,
                 // never canonical-sorted, because first-match order is semantic (§11.6) and the
                 // values are authored config, not a set. As everywhere else a field is written only
-                // when authored (D-049 presence tracking), so an omitted unmatched stays omitted —
+                // when authored (D-049 presence tracking), so an omitted unmatched stays omitted:
                 // injecting the "skip" default into the author's text would change the document,
                 // and the §14 fingerprint (D-094) is where the resolved default is spelled.
                 items.Add(Item("kind", TomlLiteral.FormatString(TomlSpellings.ValueGroupsKind)));
@@ -667,7 +667,7 @@ public static class SpecWriter
         return InlineTable(items);
     }
 
-    // §11.6: one group — kind-free inline table in presentation order label, values, pattern.
+    // §11.6: one group: kind-free inline table in presentation order label, values, pattern.
     // Presence, not emptiness, decides whether values/pattern are written: an omitted `values`
     // stays omitted and an authored `values = []` writes `values = []`, which is what keeps
     // parse→write→parse idempotent and the two states byte-distinct downstream (G-11/D-094).
@@ -692,7 +692,7 @@ public static class SpecWriter
         return InlineTable(items);
     }
 
-    // §11.4: the two canonical precision forms — the bare string "exact", or the inline
+    // §11.4: the two canonical precision forms: the bare string "exact", or the inline
     // table { round_to = <number> }.
     private static string FormatPrecision(CutPrecision precision) => precision switch
     {
@@ -755,7 +755,7 @@ public static class SpecWriter
     }
 
     // §10.4/D-091: the canonical presentation of each authored entry form. List order and
-    // duplicates are preserved — they are authoring state, and the writer never sorts (D-075);
+    // duplicates are preserved: they are authoring state, and the writer never sorts (D-075);
     // only the fingerprint projects a sorted, deduplicated view (§14).
     private static string FormatRestrictTo(IReadOnlyList<RestrictToEntry> entries)
     {
@@ -804,7 +804,7 @@ public static class SpecWriter
     private static string FormatValueLabels(IReadOnlyDictionary<string, string> labels)
     {
         // Enumeration order is the document's stored (authored) order; the writer
-        // never sorts (D-075) — label order is semantically inert (§10.8).
+        // never sorts (D-075): label order is semantically inert (§10.8).
         var items = new List<string>(labels.Count);
         foreach (var (key, value) in labels)
         {
@@ -848,7 +848,7 @@ public static class SpecWriter
     /// line fits the pinned cutoff, otherwise deterministically multiline. No
     /// other array in spec output wraps: cut lists, <c>scale.order</c>,
     /// <c>value_groups</c>, <c>restrict_to</c>, and every nested or inline array
-    /// keep <see cref="Array"/>'s inline rendering. Formatting only — semantics
+    /// keep <see cref="Array"/>'s inline rendering. Formatting only: semantics
     /// and fingerprints are untouched (§14).
     /// </summary>
     private static string FormatDeclaredDomain(IReadOnlyList<string> values)

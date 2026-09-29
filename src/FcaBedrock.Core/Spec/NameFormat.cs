@@ -8,17 +8,17 @@ namespace FcaBedrock.Core.Spec;
 /// A validated <c>formal_attribute_format</c> (§10.7): the authored string plus
 /// the token sequence the planner renders. One grammar implementation serves both
 /// the Spec reader (which validates every authored format, wherever it is
-/// authored) and <c>ConversionPlanner</c> (which renders through it) — two copies
+/// authored) and <c>ConversionPlanner</c> (which renders through it): two copies
 /// would be two chances to disagree about bytes (EP-5, D-117).
 /// <para>
-/// The placeholder set is <b>closed and case-sensitive</b> — exactly
+/// The placeholder set is <b>closed and case-sensitive</b>: exactly
 /// <c>{name}</c>, its alias <c>{column}</c>, <c>{display_name}</c>,
 /// <c>{value}</c>, and <c>{scale_op}</c>; there is no <c>{scale}</c> and no
 /// extension point. <c>{{</c> and <c>}}</c> render literal braces.
 /// </para>
 /// <para>
 /// Parsing is a <b>single left-to-right pass</b> into literal and placeholder
-/// tokens, and rendering walks those tokens — so substituted text is
+/// tokens, and rendering walks those tokens, so substituted text is
 /// <b>structurally</b> incapable of being rescanned as format syntax. That is a
 /// determinism requirement, not a nicety: §10.1 explicitly permits an attribute
 /// <c>name</c> containing brace-like text, which a second pass would re-expand
@@ -53,7 +53,7 @@ public sealed class NameFormat
     /// <param name="format">The authored format string.</param>
     /// <param name="parsed">The validated format on success.</param>
     /// <param name="error">
-    /// On failure, the reason — a sentence fragment the caller folds into its own
+    /// On failure, the reason: a sentence fragment the caller folds into its own
     /// <c>SpecFieldInvalid</c> message (EP-14; §10.7 mints no format-specific code).
     /// </param>
     /// <returns><see langword="true"/> when <paramref name="format"/> is valid.</returns>
@@ -68,7 +68,7 @@ public sealed class NameFormat
         if (format.Length == 0)
         {
             // The whole-format rule (§10.7): an empty format would render every formal
-            // attribute of the attribute as the empty name — rejected here rather than
+            // attribute of the attribute as the empty name; it is rejected here rather than
             // left for the plan-time backstop, so the author gets a parse-time span.
             error = "the format string is empty";
             return false;
@@ -127,7 +127,7 @@ public sealed class NameFormat
 
     /// <summary>
     /// Renders one formal-attribute name by walking the tokens once. The
-    /// substituted text is never rescanned — there is no string to rescan, only
+    /// substituted text is never rescanned: there is no string to rescan, only
     /// tokens to concatenate (§10.7).
     /// </summary>
     /// <param name="name">The logical attribute name (<c>{name}</c>/<c>{column}</c>).</param>
@@ -155,7 +155,7 @@ public sealed class NameFormat
     }
 
     // Reads one {placeholder} starting at the '{' in `start`. A '{' before the closing
-    // brace is malformed rather than a nested placeholder — placeholders do not nest, and
+    // brace is malformed rather than a nested placeholder: placeholders do not nest, and
     // treating it as literal text is exactly the silent-rendering trap §10.7 rejects.
     private static bool TakePlaceholder(
         string format,
@@ -196,7 +196,7 @@ public sealed class NameFormat
             return false;
         }
 
-        // Ordinal, case-sensitive (EP-12): {Value} is a typo, not a synonym — the closed
+        // Ordinal, case-sensitive (EP-12): {Value} is a typo, not a synonym; the closed
         // set fails fast at parse rather than silently rendering different bytes.
         switch (name)
         {
@@ -226,7 +226,7 @@ public sealed class NameFormat
     }
 
     // Empty literal spans are valid but carry nothing, so they are never emitted as
-    // tokens — "{name}{value}" is two placeholders, not five tokens (§10.7).
+    // tokens: "{name}{value}" is two placeholders, not five tokens (§10.7).
     private static void Flush(ImmutableArray<Token>.Builder tokens, StringBuilder literal)
     {
         if (literal.Length == 0)

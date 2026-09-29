@@ -5,11 +5,11 @@ namespace FcaBedrock.Discovery;
 /// in first-observation order, with ordinal identity (EP-12) and set-based idempotent intake
 /// (D-106). Deliberately the same semantics as the calibrator's private domain observer, so a
 /// probed domain and the domain a conversion of the same source calibrates are identical rather
-/// than coincidentally equal — a cross-check test pins that.
+/// than coincidentally equal; a cross-check test pins that.
 /// <para>
 /// <b>Bounded by construction.</b> The distinct-value set never grows past <c>limit</c>: at
-/// capacity a value that is not already in it proves a further distinct value exists — which is
-/// all D-108's strictly-greater rule permits probe to claim — and is then dropped rather than
+/// capacity a value that is not already in it proves a further distinct value exists (which is
+/// all D-108's strictly-greater rule permits probe to claim) and is then dropped rather than
 /// remembered. Probe therefore never knows, and never reports, an exact over-limit count;
 /// counting distinct values would require the very retention the limit exists to bound.
 /// </para>
@@ -32,7 +32,7 @@ internal sealed class RetainedDomain(int limit)
     /// Classifies <paramref name="value"/> for retention without retaining it, returning true
     /// exactly when it is genuinely new and there is room. Split from <see cref="Retain"/> so
     /// the caller can charge the aggregate budget in between and abort on a breach without ever
-    /// leaving this domain half-updated. A repeat costs one lookup and changes nothing —
+    /// leaving this domain half-updated. A repeat costs one lookup and changes nothing:
     /// repeated values affect neither order nor accounting.
     /// </summary>
     public bool TryReserve(string value)

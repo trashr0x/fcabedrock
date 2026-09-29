@@ -2,7 +2,7 @@ namespace FcaBedrock.Core.Scaling;
 
 /// <summary>
 /// Maps bin labels to zero or more formal attributes (the scale half of the
-/// orthogonal discretizer × scale model — decisions.md D-002). A closed set
+/// orthogonal discretizer × scale model, decisions.md D-002). A closed set
 /// within Core; external assemblies construct the concrete kinds but cannot
 /// derive new ones (the plan-time member is internal).
 /// </summary>

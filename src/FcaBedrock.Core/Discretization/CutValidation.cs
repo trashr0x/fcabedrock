@@ -17,8 +17,8 @@ internal static class CutValidation
     /// <summary>
     /// Validates numeric <c>manual_cuts</c> (spec §11.2): at least one cut
     /// (<see cref="DiagnosticCode.DiscretizerCutsTooFew"/>), a finite strictly-ascending
-    /// sequence (<see cref="DiagnosticCode.DiscretizerCutsNotAscending"/>), and — for
-    /// <see cref="BinEnds.Closed"/> — at least two cuts
+    /// sequence (<see cref="DiagnosticCode.DiscretizerCutsNotAscending"/>), and, for
+    /// <see cref="BinEnds.Closed"/>, at least two cuts
     /// (<see cref="DiagnosticCode.DiscretizerEndsClosedTooFewCuts"/>).
     /// </summary>
     public static IReadOnlyList<BedrockDiagnostic> ValidateManual(IReadOnlyList<double> cuts, BinEnds ends)
@@ -35,8 +35,8 @@ internal static class CutValidation
         }
 
         // The cuts must be a finite, strictly-ascending sequence: a single contract. NaN/±∞ are
-        // not finite cut points — they produce nonsense bin edges (<NaN, >=Infinity) and break
-        // the order — so a non-finite cut fails here even when numerically "ascending" (e.g.
+        // not finite cut points: they produce nonsense bin edges (<NaN, >=Infinity) and break
+        // the order, so a non-finite cut fails here even when numerically "ascending" (e.g.
         // [1, +∞]) or single (e.g. [NaN], which the pairwise ascending check would not catch).
         if (cuts.Count >= 1 && (cuts.Any(c => !double.IsFinite(c)) || !StrictlyAscending(cuts)))
         {

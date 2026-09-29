@@ -7,7 +7,7 @@ namespace FcaBedrock.Core.Calibration;
 
 /// <summary>
 /// The single Plan input (D-093): the <b>effective</b> spec (every included
-/// attribute executable — no <see cref="CalibrationPending"/>, no absent consumed
+/// attribute executable: no <see cref="CalibrationPending"/>, no absent consumed
 /// domain), the schema snapshot the conversion was prepared against, and the
 /// retained calibration outcomes (manifest-ready, §15). Immutable; produced only
 /// by the two factories below over a <see cref="ResolvedSpec"/> token, and paired
@@ -42,7 +42,7 @@ public sealed class CalibratedSpec
     /// <summary>
     /// Pass-through for a spec fully determined by its own text (§7). Requires a
     /// schema-aware <paramref name="resolved"/> (conversion is schema-aware) and
-    /// throws <see cref="ArgumentException"/> when <see cref="RequiresData"/> — a
+    /// throws <see cref="ArgumentException"/> when <see cref="RequiresData"/>: a
     /// mis-sequenced call that skipped the calibrator (D-093 programmer-error
     /// posture).
     /// </summary>
@@ -111,7 +111,7 @@ public sealed class CalibratedSpec
         }
 
         // Index provided outcomes by attribute, rejecting unknown/excluded attributes
-        // and duplicate outcomes (programmer error — the calibrator is the only caller).
+        // and duplicate outcomes (programmer error: the calibrator is the only caller).
         var byAttribute = new Dictionary<string, AttributeCalibration>(StringComparer.Ordinal);
         foreach (var outcome in calibrations)
         {
@@ -231,7 +231,7 @@ public sealed class CalibratedSpec
         var consumes = attribute.Discretizer is { } discretizer && ConsumesDomain(discretizer);
 
         // Omitted (null) consumed domain → filled from the observed domain (complete population).
-        // An authored [] is NOT omitted — it is a complete fixed empty domain (D-122 §15) and
+        // An authored [] is NOT omitted: it is a complete fixed empty domain (D-122 §15) and
         // falls through to the include check / no-calibration path below.
         if (consumes && attribute.DeclaredDomain is null)
         {
@@ -305,7 +305,7 @@ public sealed class CalibratedSpec
 
             case PendingValueGroupsPassthrough config:
             {
-                // §11.6/D-090/D-093: the discovered bins are the resolved identity — the authored
+                // §11.6/D-090/D-093: the discovered bins are the resolved identity; the authored
                 // groups are preserved verbatim and the bins appended in first-observation order.
                 // Unlike the cut variants there is no data-derived failure mode: any set of
                 // discovered raw spellings (including none) is a valid bin set, so this arm has no

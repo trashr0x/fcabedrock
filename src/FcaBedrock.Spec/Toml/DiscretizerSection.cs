@@ -17,7 +17,7 @@ public sealed record IdentityDiscretizerSection : DiscretizerSection;
 
 /// <summary>
 /// The <c>free_per_value</c> discretizer (§11.3): one bin per distinct value. No
-/// authored parameters — its numeric-vs-string identity rides on the source
+/// authored parameters: its numeric-vs-string identity rides on the source
 /// <c>value_type</c> (§10.2, D-061), and any numeric <c>declared_domain</c> /
 /// <c>value_labels</c> / <c>scale.order</c> keys stay authored verbatim in the
 /// document, normalized to canonical numeric identities only in the resolved Core
@@ -52,7 +52,7 @@ public sealed record EqualWidthDiscretizerSection(
 
 /// <summary>
 /// The <c>equal_frequency</c> discretizer (§11.5): <c>bins</c> bins whose cuts are placed
-/// for approximately equal counts. Always data-calibrated — it authors no span, so there
+/// for approximately equal counts. Always data-calibrated: it authors no span, so there
 /// is no spec-determined mode (§7). Every field is presence-tracked, so an omitted
 /// <c>tie_policy</c> (default <c>"left"</c>) or <c>cut_placement</c> (default
 /// <c>"right_value"</c>) round-trips as omitted (D-049).
@@ -68,7 +68,7 @@ public sealed record EqualFrequencyDiscretizerSection(
 /// <summary>
 /// The <c>value_groups</c> discretizer (§11.6, D-090/D-104): many-to-one value
 /// grouping in declaration order, first match wins. Both fields are presence-tracked, so an
-/// omitted <c>unmatched</c> (default <c>"skip"</c>) round-trips as omitted (D-049) — the
+/// omitted <c>unmatched</c> (default <c>"skip"</c>) round-trips as omitted (D-049): the
 /// default resolves at the seam, never in the document.
 /// </summary>
 /// <param name="Groups">The authored groups in declaration order (order is semantic); null when not authored.</param>
@@ -80,7 +80,7 @@ public sealed record ValueGroupsDiscretizerSection(
 /// <summary>
 /// One authored <c>value_groups</c> group (§11.6). Every field is an authored-presence
 /// carrier and is <b>not</b> normalized in the document model: <see cref="Values"/> is null
-/// when <c>values</c> was omitted and a list — possibly empty — when authored, which the §14
+/// when <c>values</c> was omitted and a list (possibly empty) when authored, which the §14
 /// encoding and the round-trip both depend on (G-11/D-094). Authored value order and
 /// duplicates are preserved verbatim.
 /// </summary>

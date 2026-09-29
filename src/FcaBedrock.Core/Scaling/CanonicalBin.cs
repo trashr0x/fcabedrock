@@ -1,7 +1,7 @@
 namespace FcaBedrock.Core.Scaling;
 
 /// <summary>
-/// The structural form of a formal attribute's canonical bin/threshold key —
+/// The structural form of a formal attribute's canonical bin/threshold key:
 /// what the schema fingerprint encodes as its <c>"bin"</c> field (spec §14,
 /// decisions.md D-069/D-077). The string
 /// <see cref="FcaBedrock.Core.Planning.FormalAttributeIdentity.BinKey"/> remains
@@ -24,7 +24,7 @@ public sealed record ValueBin(string Label) : CanonicalBin;
 /// A numeric cut bin (every numeric cut discretizer, §11.2): <c>[Lo, Hi)</c>, where a
 /// <see langword="null"/> end means <i>unbounded</i> (runs to ±∞). The D-069
 /// <c>lo_open</c>/<c>hi_open</c> fingerprint flags derive from that nullness and
-/// mean "unbounded end", never interval inclusivity — every bounded cut bin is
+/// mean "unbounded end", never interval inclusivity: every bounded cut bin is
 /// uniformly closed-open (§11.2), so inclusivity carries no information (D-077).
 /// </summary>
 /// <param name="Lo">The finite lower cut, or <see langword="null"/> for −∞.</param>

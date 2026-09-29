@@ -7,7 +7,7 @@ namespace FcaBedrock.Core.Spec;
 /// One logical attribute and how it becomes zero or more formal attributes. Spec
 /// §10. <see cref="Discretizer"/>/<see cref="Scale"/> are required when
 /// <see cref="Include"/> is true; when it is false they may still be present but
-/// are parked — the planner ignores all emitted config of an excluded attribute
+/// are parked: the planner ignores all emitted config of an excluded attribute
 /// (§10.9 / D-049, an authoring toggle).
 /// </summary>
 /// <param name="Name">Unique logical name.</param>
@@ -17,7 +17,7 @@ namespace FcaBedrock.Core.Spec;
 /// <param name="Scale">Bin label → formal attribute(s) (when included).</param>
 /// <param name="DeclaredDomain">Schema-bearing raw values, in column order (§10.3).
 /// <see langword="null"/> = omitted, which requests observed-domain calibration where a
-/// discretizer consumes it; any non-null list, including <c>[]</c>, is authored-complete —
+/// discretizer consumes it; any non-null list, including <c>[]</c>, is authored-complete:
 /// <c>[]</c> is a fixed empty domain of zero declared value bins (D-122 §15, revising D-071).</param>
 /// <param name="RestrictTo">Object-level raw-value filter entries (§10.4); empty when absent. Planned and executed whether or not the attribute is included (D-105).</param>
 /// <param name="ValueLabels">Raw value → display label for names (§10.8); empty when none.</param>

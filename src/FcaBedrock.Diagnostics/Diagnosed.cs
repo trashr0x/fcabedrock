@@ -3,7 +3,7 @@ using System.Diagnostics.CodeAnalysis;
 namespace FcaBedrock.Diagnostics;
 
 /// <summary>
-/// The project-standard carrier for operations that aggregate diagnostics — a
+/// The project-standard carrier for operations that aggregate diagnostics: a
 /// value plus every diagnostic produced, not just the first (principle EP-14).
 /// Used by validation and planning so callers can surface all problems at once.
 /// </summary>

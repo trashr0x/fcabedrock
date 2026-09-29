@@ -10,7 +10,7 @@ public enum UnknownValuePolicy
     /// <summary>No cross, object kept, no diagnostic.</summary>
     Skip,
 
-    /// <summary>No cross, object kept, emit <c>UnknownValueObserved</c> (Warning) — the default.</summary>
+    /// <summary>No cross, object kept, emit <c>UnknownValueObserved</c> (Warning), the default.</summary>
     Warn,
 
     /// <summary>Abort: <c>UnknownValueObserved</c> (Error).</summary>

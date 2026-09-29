@@ -19,6 +19,6 @@ public sealed record MatcherSection(MatchSection? Match, string? Template);
 /// executes, and a <c>source_index_range</c> is exactly two integers
 /// satisfying <c>0 ≤ lo ≤ hi</c>.
 /// </summary>
-/// <param name="NameRegex">Whole-logical-name pattern (§9.2/§10.1) — never a header, predicate text, display name, or rendered formal name.</param>
+/// <param name="NameRegex">Whole-logical-name pattern (§9.2/§10.1), never a header, predicate text, display name, or rendered formal name.</param>
 /// <param name="SourceIndexRange">Inclusive, zero-based range over resolved physical column indexes, authored as <c>[lo, hi]</c>.</param>
 public sealed record MatchSection(string? NameRegex, IReadOnlyList<long>? SourceIndexRange);

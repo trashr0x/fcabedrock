@@ -36,7 +36,7 @@ internal static class TomlSyntaxHelpers
         return [.. parts];
     }
 
-    /// <summary>A numeric node's value — integer and float nodes both map to double; null otherwise.</summary>
+    /// <summary>A numeric node's value: integer and float nodes both map to double; null otherwise.</summary>
     internal static double? AsDouble(ValueSyntax? value) => value switch
     {
         IntegerValueSyntax integer => integer.Value,

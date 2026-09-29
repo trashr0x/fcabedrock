@@ -10,16 +10,16 @@ namespace FcaBedrock.Discovery;
 /// subject checks that keep a draft convertible.
 /// <para>
 /// <b>Same observation semantics as wide</b> (D-106): set-based, idempotent, ordinal identity,
-/// first-observation order, and cleaned values taken as the seam delivers them — no
-/// retokenizing, trimming, missing-normalization, or typing here. The difference is only
+/// first-observation order, and cleaned values taken as the seam delivers them (no
+/// retokenizing, trimming, missing-normalization, or typing here). The difference is only
 /// <em>where</em> attributes come from: wide's are the schema's columns, known before the pass;
-/// triple's are the predicates, discovered <em>during</em> it — which is why the attribute guard
+/// triple's are the predicates, discovered <em>during</em> it, which is why the attribute guard
 /// is charged here rather than from the schema (D-110).
 /// </para>
 /// <para>
 /// <b>Structural validation is symmetric with conversion</b> (D-106/D-111). Subject usability is
 /// checked on <em>every</em> row under <em>both</em> orderings, before predicate filtering,
-/// through the shared Core predicate the calibrate and emit halts use — otherwise probe could
+/// through the shared Core predicate the calibrate and emit halts use; otherwise probe could
 /// author a draft that its own same-source conversion rejects (D-107). Contiguity is checked only
 /// under an explicitly selected <c>subject_grouped</c>: under <c>unordered</c> interleaved
 /// subjects are legal, and probe runs no grouping pass to make them contiguous.
@@ -32,8 +32,8 @@ internal sealed class TripleObservation(ProbeOptions options, bool subjectGroupe
     private readonly RetentionBudget _budget =
         new(options.MaxTotalRetainedValues, options.MaxTotalRetainedValueText);
 
-    // The contiguity state. `_completed` is D-110's inherited EP-16 bounded-metadata carve-out —
-    // the object-names class the converter already retains — so it is charged to no guard and
+    // The contiguity state. `_completed` is D-110's inherited EP-16 bounded-metadata carve-out,
+    // the object-names class the converter already retains, so it is charged to no guard and
     // creates no fourth one. It stays empty under `unordered`, where nothing consults it.
     private readonly HashSet<string> _completed = new(StringComparer.Ordinal);
     private string? _currentSubject;
@@ -46,8 +46,8 @@ internal sealed class TripleObservation(ProbeOptions options, bool subjectGroupe
     public RetainedDomain Domain(string predicate) => _domains[predicate];
 
     /// <summary>
-    /// Observes one cleaned row, returning the diagnostic that must end the pass — a structural
-    /// subject problem or a breached guard — or null to continue. Every one of those outcomes
+    /// Observes one cleaned row, returning the diagnostic that must end the pass (a structural
+    /// subject problem or a breached guard) or null to continue. Every one of those outcomes
     /// yields no draft (D-107/D-110).
     /// </summary>
     public BedrockDiagnostic? Observe(TripleRow row)
@@ -97,7 +97,7 @@ internal sealed class TripleObservation(ProbeOptions options, bool subjectGroupe
             //
             // The DYNAMIC message, not wide's exact-count one: stopping right here is what keeps
             // the guard bounded, and it is also exactly what leaves the source's real predicate
-            // count unknown — so the diagnostic claims only the bound it can justify.
+            // count unknown, so the diagnostic claims only the bound it can justify.
             if (_predicates.Count == options.MaxDiscoveredAttributes)
             {
                 return ProbeDiagnostics.DynamicAttributeLimitExceeded(options.MaxDiscoveredAttributes);
@@ -116,7 +116,7 @@ internal sealed class TripleObservation(ProbeOptions options, bool subjectGroupe
             return null;
         }
 
-        // Charged before retention so a breach leaves this domain exactly as it was — see
+        // Charged before retention so a breach leaves this domain exactly as it was. See
         // WideObservation for why a half-updated domain would be a trap.
         var breach = _budget.TryCharge(value.Length);
         if (breach is not BudgetBreach.None)

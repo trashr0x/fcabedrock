@@ -14,9 +14,9 @@ namespace FcaBedrock.Spec;
 /// (D-009 "load v2, save as TOML"; D-079). The v2 type codes become
 /// (discretizer, scale) section pairs (D-002); a wide binding binds each attribute
 /// to its positional column, a triple binding binds it to the predicate named for
-/// it (§19.3/D-086) — matching v2's tabular and 3-column loads. The migrator
+/// it (§19.3/D-086), matching v2's tabular and 3-column loads. The migrator
 /// carries what the document model can represent and
-/// defers semantic validation to the resolve seam (D-067) — only transcription
+/// defers semantic validation to the resolve seam (D-067); only transcription
 /// failures diagnose here. <c>include = false</c> attributes park their full
 /// config (D-049); unrecoverable parked config degrades to a bare excluded
 /// attribute with a <c>BedParkedConfigDropped</c> Warning, never silently.
@@ -24,12 +24,12 @@ namespace FcaBedrock.Spec;
 /// carried include-independently (§10.1/D-057) and mapped by v2 <b>type</b>
 /// (D-091): a finite token on the numeric type <c>o</c> becomes an exact
 /// <c>{ value = n }</c> parsed under <c>binding.locale</c>, while every other
-/// token — including a numeric-looking one on a categorical attribute, and an
-/// unparseable one on <c>o</c> — stays a verbatim string. A
+/// token (including a numeric-looking one on a categorical attribute, and an
+/// unparseable one on <c>o</c>) stays a verbatim string. A
 /// <c>[Category Values]</c> entry of a <c>c</c> or <c>b</c> attribute equal to the
 /// effective <c>binding.missing_token</c> becomes <c>missing_policy = "as_attribute"</c>
 /// (D-068). The discrete-vs-progressive choice for <c>o</c>/<c>n</c> is supplied
-/// out-of-band via <see cref="ScalingMode"/> — the <c>.bed</c> never recorded it.
+/// out-of-band via <see cref="ScalingMode"/>: the <c>.bed</c> never recorded it.
 /// Date type <c>d</c> is a parity deferral (D-038).
 /// </summary>
 public static class BedMigrator
@@ -56,7 +56,7 @@ public static class BedMigrator
         var missingToken = binding.MissingToken is { Length: 0 } ? null : binding.MissingToken ?? "?";
 
         // The effective binding locale for numeric restrict tokens (D-091/D-079). Null means the
-        // authored locale does not resolve — see RestrictCulture.
+        // authored locale does not resolve. See RestrictCulture.
         var restrictCulture = RestrictCulture(binding);
 
         var diagnostics = new List<BedrockDiagnostic>();
@@ -111,7 +111,7 @@ public static class BedMigrator
 
         // include = false is an authoring toggle (D-049): dormant config never blocks
         // migration, so an untranscribable parked config degrades to a bare excluded
-        // attribute — reported, never silent. restrict_to survives the degrade: it is
+        // attribute, reported, never silent. restrict_to survives the degrade: it is
         // live, include-independent config (§10.1/D-076), not parked emitted-shaping.
         var reasons = string.Join(" ", mapped.Diagnostics.Select(d => d.Message));
         diagnostics.Add(Warn(
@@ -238,7 +238,7 @@ public static class BedMigrator
     // missing_policy = "as_attribute" and leaves declared_domain/value_labels; a
     // display label on that entry has no v1 carrier ({column}-missing is canonical,
     // §10.5/D-074) and drops with a Warning. Display labels (§10.8) keep only
-    // non-identity mappings, keyed by raw value — v2 order, last spelling wins.
+    // non-identity mappings, keyed by raw value; v2 order, last spelling wins.
     private static (IReadOnlyList<string> Domain, IReadOnlyDictionary<string, string>? Labels, bool Missing, List<BedrockDiagnostic> Warnings)
         SplitMissingToken(BedDocument document, int index, string? missingToken)
     {
@@ -282,7 +282,7 @@ public static class BedMigrator
     // Name + shape-appropriate source + the include-independent restrict_to
     // (§10.1/D-057); everything else unauthored. The full maps build on this via
     // `with`. A wide (or shape-absent) binding binds by positional column; a triple
-    // binding binds by predicate name — the v2 attribute name (§19.3/D-086).
+    // binding binds by predicate name, the v2 attribute name (§19.3/D-086).
     private static AttributeSection Bare(BedDocument document, int index, SourceShape? shape, CultureInfo? restrictCulture) =>
         new(
             Name: document.Names[index],
@@ -301,7 +301,7 @@ public static class BedMigrator
             UnknownValuePolicy: null);
 
     // The v2 restrict line: raw values, comma-separated, OR'd within the attribute (lineage.md).
-    // Tokens carry verbatim (no trim — restrict matches raw values, and order/duplicates are
+    // Tokens carry verbatim (no trim: restrict matches raw values, and order/duplicates are
     // authoring state); a blank line means no filter, so restrict_to stays unauthored.
     //
     // §10.4/D-091: migration is directed by the v2 attribute TYPE, not by whether a token looks
@@ -309,7 +309,7 @@ public static class BedMigrator
     // { value = n } entry, parsed under the effective binding locale. Everything else stays a
     // verbatim string:
     //   - a numeric-LOOKING token on a `c`, `b`, `n` or `d` attribute is a string,
-    //     because v2 restricted those by raw-value equality — reinterpreting "007" as 7 would
+    //     because v2 restricted those by raw-value equality: reinterpreting "007" as 7 would
     //     silently change which objects survive;
     //   - an unparseable or non-finite token on type `o` also stays a string, so the ordinary
     //     resolve seam reports RestrictToNumericEntryRequired rather than the migrator inventing
@@ -341,13 +341,13 @@ public static class BedMigrator
     }
 
     // The locale numeric restrict tokens parse under: binding.locale ?? "invariant", resolved
-    // with the SAME predefined-only rule as the resolve seam (EP-7 — a synthesized ICU culture
+    // with the SAME predefined-only rule as the resolve seam (EP-7: a synthesized ICU culture
     // would make migration OS-dependent).
     //
     // §5.1/D-079/D-091: an INVALID authored locale returns null, and the caller then leaves every
     // token a verbatim string. Deliberately: no invariant fallback (that would parse tokens under
     // a locale the author did not ask for), no exception (migration is transcription and must
-    // complete), and no migrate-phase diagnostic — full resolution owns BindingLocaleInvalid, and
+    // complete), and no migrate-phase diagnostic; full resolution owns BindingLocaleInvalid, and
     // minting a second code here would give one condition two owners (D-067). The verbatim
     // strings then attract whatever restriction diagnostics apply independently.
     private static CultureInfo? RestrictCulture(BindingSection binding)
@@ -372,7 +372,7 @@ public static class BedMigrator
         mode == ScalingMode.Progressive
             ? new OrdinalScaleSection(
                 // direction is the migration's choice, so it is authored; boundary/
-                // order/drop_top stay unauthored — over cut bins an authored boundary
+                // order/drop_top stay unauthored: over cut bins an authored boundary
                 // or order is a D-060 validation error, and the resolver's defaults
                 // already reproduce v2's le-threshold rendering.
                 Direction: OrdinalDirection.Le, Boundary: null, Order: null, DropTop: null)
@@ -381,7 +381,7 @@ public static class BedMigrator
     // The v2 cut spec is the [Category Values] tokens with sentinel ends: a leading
     // "<" and/or trailing ">" mark open ends; the interior tokens are the cuts.
     // ends is always authored: the resolver defaults an absent ends to open, but a
-    // sentinel-less v2 cut spec means closed — omission would silently flip it.
+    // sentinel-less v2 cut spec means closed; omission would silently flip it.
     private static IReadOnlyList<string> CutTokens(IReadOnlyList<string> tokens, out BinEnds ends)
     {
         var open = tokens.Count > 0 && (tokens[0] == "<" || tokens[^1] == ">");

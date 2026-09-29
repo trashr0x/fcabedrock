@@ -3,11 +3,11 @@ namespace FcaBedrock.Core.Scaling;
 /// <summary>
 /// What a <see cref="FcaBedrock.Core.Discretization.Discretizer"/> hands a
 /// <see cref="Scale"/> at plan time: the ordered bins plus the structure an
-/// ordinal scale needs (the cut edges and which ends are open). Internal — the
+/// ordinal scale needs (the cut edges and which ends are open). Internal: the
 /// discretizer↔scale contract, not a public surface (EP-4).
 /// </summary>
 /// <param name="Labels">
-/// The ordered bin labels — the crossing/match keys the emitter sees from
+/// The ordered bin labels: the crossing/match keys the emitter sees from
 /// <see cref="FcaBedrock.Core.Discretization.Discretizer.Discretize"/>.
 /// </param>
 /// <param name="Thresholds">
@@ -27,7 +27,7 @@ namespace FcaBedrock.Core.Scaling;
 /// Whether these bins come from a <b>cut</b> discretizer (half-open intervals with
 /// geometry-fixed thresholds) or are <b>value</b> bins. An
 /// <see cref="OrdinalScale"/> thresholds on the cut geometry for the former and on
-/// the explicit <c>scale.order</c> for the latter (§12.3, D-060/D-081) — the one
+/// the explicit <c>scale.order</c> for the latter (§12.3, D-060/D-081). This is the one
 /// bit that selects the ordinal path.
 /// </param>
 internal sealed record BinScheme(

@@ -18,7 +18,7 @@ namespace FcaBedrock.Spec.Toml;
 /// <c>[output.dat]</c> <c>base_index</c> other than 0 or 1, and a negative
 /// <c>[output.cxt]</c> <c>size_advisory_bytes</c>. Diagnostics aggregate in two
 /// phases (EP-14): all TOML-level errors together (<c>SpecTomlInvalid</c>,
-/// terminal — a broken tree would cascade garbage), then all semantic issues
+/// terminal: a broken tree would cascade garbage), then all semantic issues
 /// from one whole-document walk, ordered by source position before
 /// <see cref="Read"/> returns (<see cref="SortSemantic"/>, D-116/D-120).
 /// </summary>
@@ -78,7 +78,7 @@ public static class SpecReader
 
         foreach (var pair in syntax.KeyValues)
         {
-            // No root-level keys are v1 surface (§2) — everything lives in sections.
+            // No root-level keys are v1 surface (§2): everything lives in sections.
             context.Error(
                 DiagnosticCode.SpecKeyUnrecognized,
                 "Root-level keys are not part of a Bedrock spec; keys live in sections (§2).",
@@ -195,7 +195,7 @@ public static class SpecReader
     /// <c>(Line, Column, emission ordinal)</c>. Every reader inherits it.
     /// <para>
     /// The emission ordinal is part of the comparison, not merely a tie-break convention,
-    /// which makes the order <b>total</b> — so equal-position diagnostics keep their
+    /// which makes the order <b>total</b>, so equal-position diagnostics keep their
     /// relative order regardless of the underlying sort's stability, and two reads of one
     /// document produce identical ordered lists (EP-7). Diagnostics with no span (document
     /// level) compare as line 0, column 0 and therefore come first, in emission order.
@@ -207,8 +207,8 @@ public static class SpecReader
     /// </para>
     /// <para>
     /// <b>Internal rather than private as a deliberate test seam</b> (EP-6): the
-    /// span-less branch is defensive — <see cref="TomlReadContext"/> always attaches a
-    /// span, so no authored document can reach it through <see cref="Read"/> — and the
+    /// span-less branch is defensive (<see cref="TomlReadContext"/> always attaches a
+    /// span, so no authored document can reach it through <see cref="Read"/>) and the
     /// equal-position tie-break is invisible from the outside when the sort happens to be
     /// stable anyway. Both are ordering guarantees the deterministic diagnostic list relies
     /// on (EP-7), so they are exercised directly with constructed diagnostics rather than

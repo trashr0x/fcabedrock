@@ -16,15 +16,15 @@ namespace FcaBedrock.Spec.Manifest;
 /// It shares the spec writer's canonical literal and array machinery
 /// (<see cref="TomlLiteral"/>, <see cref="TomlArrays"/>) rather than minting a
 /// second set of escaping, number, date-time, array, or wrapping rules (D-075/
-/// D-113, EP-5) — which is why the model and this writer live in
+/// D-113, EP-5), which is why the model and this writer live in
 /// <c>FcaBedrock.Spec</c> and the CLI never formats TOML itself.
 /// </para>
 /// <para>
 /// Pure and synchronous: it formats the supplied immutable facts and does no I/O,
 /// source enumeration, calibration, planning, hashing, fingerprinting, clock
 /// access, environment access, path resolution, or mutation. Retained
-/// <see cref="AttributeCalibration"/> outcomes are read directly — never
-/// re-derived (D-093) — and every caller-supplied path, hash, argv element, and
+/// <see cref="AttributeCalibration"/> outcomes are read directly, never
+/// re-derived (D-093), and every caller-supplied path, hash, argv element, and
 /// version string is preserved verbatim modulo ordinary TOML string escaping,
 /// which changes representation only.
 /// </para>
@@ -51,7 +51,7 @@ public static class RunManifestWriter
         Key(text, "tool_version", TomlLiteral.FormatString(run.ToolVersion));
 
         // A bare TOML offset date-time. RunSection admits only a whole-second UTC
-        // instant, so this renders `…Z` with no fractional part — the §15 form —
+        // instant, so this renders `…Z` with no fractional part (the §15 form)
         // without the writer normalizing an audit value.
         Key(text, "timestamp", TomlLiteral.FormatDateTime(run.Timestamp));
 
@@ -63,7 +63,7 @@ public static class RunManifestWriter
         Key(text, "spec_file_hash", TomlLiteral.FormatString(run.SpecFileHash));
         Key(text, "schema_fingerprint", TomlLiteral.FormatString(run.SchemaFingerprint));
 
-        // Present iff that format was written — the model enforces the pairing
+        // Present iff that format was written. The model enforces the pairing
         // against the output set, so presence here is never inferred.
         if (run.CxtOutputFingerprint is { } cxt)
         {
@@ -80,7 +80,7 @@ public static class RunManifestWriter
     }
 
     // Canonical format order, CXT before DAT (D-122 part 6), walked explicitly
-    // rather than read off enum declaration order or a sort comparer — so the
+    // rather than read off enum declaration order or a sort comparer, so the
     // emitted order is a stated property of this writer and is independent of the
     // order the caller happened to assemble the outputs in.
     private static void WriteOutputs(StringBuilder text, IReadOnlyList<RunOutput> outputs)
@@ -116,7 +116,7 @@ public static class RunManifestWriter
     }
 
     // The whole family is absent when no outcome was retained; otherwise one entry
-    // per retained outcome in the supplied CalibratedSpec.Calibrations order — no
+    // per retained outcome in the supplied CalibratedSpec.Calibrations order: no
     // sorting, grouping, deduplication, re-resolution, or re-derivation.
     private static void WriteCalibrations(StringBuilder text, IReadOnlyList<RunCalibration> calibrations)
     {

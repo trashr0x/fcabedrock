@@ -13,9 +13,9 @@ namespace FcaBedrock.Core.Spec;
 /// </summary>
 public enum TripleOrdering
 {
-    /// <summary>Rows for one subject are contiguous — single-pass streaming.</summary>
+    /// <summary>Rows for one subject are contiguous: single-pass streaming.</summary>
     SubjectGrouped,
 
-    /// <summary>Subjects may be interleaved — grouped via external sort-merge/spool.</summary>
+    /// <summary>Subjects may be interleaved: grouped via external sort-merge/spool.</summary>
     Unordered,
 }

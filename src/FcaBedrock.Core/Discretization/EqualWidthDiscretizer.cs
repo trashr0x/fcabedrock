@@ -12,7 +12,7 @@ namespace FcaBedrock.Core.Discretization;
 /// from <c>bins - 1</c> interpolated cuts over the span the <see cref="Range"/>
 /// mode supplies, always with <b>open</b> ends (§11.4: the auto-discretizer's ends
 /// are implicit, so data outside the calibration span still falls in the first or
-/// last bin). Execution composes the shared <see cref="NumericCutBins"/> engine —
+/// last bin). Execution composes the shared <see cref="NumericCutBins"/> engine:
 /// identical geometry, labels, structural bins, and rendering to a
 /// <see cref="ManualCutsDiscretizer"/> over the same cuts, which is what makes the
 /// D-088 auto/frozen byte-equivalence structural (D-093).
@@ -55,7 +55,7 @@ public sealed record EqualWidthDiscretizer : Discretizer
     /// <summary>The authored bin count (≥ 2); the discretizer produces exactly this many bins.</summary>
     public int Bins { get; }
 
-    /// <summary>The authored range mode — preserved for the fingerprint's authored-config rule (D-094).</summary>
+    /// <summary>The authored range mode, preserved for the fingerprint's authored-config rule (D-094).</summary>
     public EqualWidthRange Range { get; }
 
     /// <summary>The authored span minimum; non-null exactly when <see cref="Range"/> is <see cref="EqualWidthRange.Manual"/>.</summary>
@@ -70,7 +70,7 @@ public sealed record EqualWidthDiscretizer : Discretizer
     /// <summary>The effective resolved cuts: <c>Bins - 1</c> values, finite and strictly ascending.</summary>
     public IReadOnlyList<double> Cuts => _bins.Cuts;
 
-    /// <summary>The culture used to parse raw data values (never ambient — EP-11).</summary>
+    /// <summary>The culture used to parse raw data values (never ambient, EP-11).</summary>
     public CultureInfo Culture => _bins.Culture;
 
     /// <summary>
@@ -81,7 +81,7 @@ public sealed record EqualWidthDiscretizer : Discretizer
     /// <see cref="DiagnosticCode.EqualWidthCutsCollapsed"/> when the derived cuts are
     /// not finite and strictly ascending after <paramref name="precision"/> (a
     /// <c>round_to</c> collapsing two cuts onto one value). Wired into the resolve
-    /// seam (D-067) — the reader owns the field shapes, including <c>bins</c>, so
+    /// seam (D-067). The reader owns the field shapes, including <c>bins</c>, so
     /// <paramref name="bins"/> below 2 is the EP-10 programmer-error backstop.
     /// </summary>
     public static Diagnosed<EqualWidthDiscretizer> CreateManual(
@@ -125,7 +125,7 @@ public sealed record EqualWidthDiscretizer : Discretizer
     /// <c>CalibratedSpec.Create</c> (same assembly), which owns the pending →
     /// executable substitution (D-093). Diagnostics (EP-14):
     /// <see cref="DiagnosticCode.CalibrationCutsInvalid"/> when the calibrated cuts are
-    /// not finite and strictly ascending — the calibrate-phase twin of
+    /// not finite and strictly ascending, the calibrate-phase twin of
     /// <see cref="DiagnosticCode.EqualWidthCutsCollapsed"/> (D-088/D-089).
     /// </summary>
     internal static Diagnosed<EqualWidthDiscretizer> FromCalibratedCuts(
@@ -137,7 +137,7 @@ public sealed record EqualWidthDiscretizer : Discretizer
 
         // §11.4: `bins` bins come from exactly `bins - 1` cuts. A wrong-sized outcome is a
         // calibrator-contract violation, not a data-derived failure: it would build a discretizer
-        // whose Bins disagrees with its own geometry — the fingerprint would encode "bins":4 beside
+        // whose Bins disagrees with its own geometry; the fingerprint would encode "bins":4 beside
         // a two-bin schema array. That state must be unrepresentable, so it throws rather than
         // diagnosing (the D-093 programmer-error posture, EP-10). Cut *validity* below stays a
         // diagnostic: correctly-sized cuts that the data could not make ascending are expected.
@@ -167,7 +167,7 @@ public sealed record EqualWidthDiscretizer : Discretizer
     /// <summary>
     /// The one <c>equal_width</c> cut formula (spec §11.4; the G-5 pinned expression
     /// order). Internal: <see cref="CreateManual"/> is the single boundary through
-    /// which cuts are derived — the Conversion calibrator invokes that factory over
+    /// which cuts are derived; the Conversion calibrator invokes that factory over
     /// the <b>calibrated</b> span rather than re-deriving, so auto and frozen cuts are
     /// the same numbers by construction (D-088) with no second copy of the formula and
     /// no public surface beyond the approved inventory (EP-4).
@@ -177,7 +177,7 @@ public sealed record EqualWidthDiscretizer : Discretizer
     /// span (or one with a zero bound) uses <c>vmin + (vmax - vmin) * t</c>, whose
     /// difference is bounded by the larger magnitude; a span crossing zero uses the
     /// convex combination <c>vmin * (1 - t) + vmax * t</c>, whose terms are each
-    /// bounded by their own operand — so a range like
+    /// bounded by their own operand, so a range like
     /// <c>[-1.7e308, 1.7e308]</c> derives finite cuts rather than an overflow
     /// (G-7: every finite increasing range is accepted; the derived-cut check is
     /// defense in depth). <paramref name="precision"/> then rounds
@@ -188,7 +188,7 @@ public sealed record EqualWidthDiscretizer : Discretizer
     /// <para>
     /// Callers check the range first: the manual factory with
     /// <see cref="DiagnosticCode.EqualWidthRangeInvalid"/>, the calibrator with
-    /// <see cref="DiagnosticCode.CalibrationDataInsufficient"/> — so a non-finite or
+    /// <see cref="DiagnosticCode.CalibrationDataInsufficient"/>, so a non-finite or
     /// non-increasing span here is programmer error
     /// (<see cref="ArgumentOutOfRangeException"/>, EP-10). The returned cuts may still
     /// be unusable after rounding; the caller validates them
@@ -233,7 +233,7 @@ public sealed record EqualWidthDiscretizer : Discretizer
     /// Rebuilds <paramref name="source"/> over <paramref name="culture"/>, reusing its
     /// already-validated state. The <c>ResolvedSpec</c> trust boundary's recursive-immutable
     /// snapshot uses this to re-home the discretizer on a read-only culture clone (D-098),
-    /// without re-deriving cuts — the retained cuts are the identity.
+    /// without re-deriving cuts: the retained cuts are the identity.
     /// </summary>
     internal static EqualWidthDiscretizer Rebuild(EqualWidthDiscretizer source, CultureInfo culture) =>
         new(source.Bins, source.Range, source.VMin, source.VMax, source.Precision, source.Cuts, culture);
@@ -250,6 +250,6 @@ public sealed record EqualWidthDiscretizer : Discretizer
         NumericCutBins.RenderBinLabel(canonicalLabel, style);
 
     // Diagnostic text only: the values here may be non-finite (that is what is being
-    // reported), so CanonicalNumber.Format — which refuses them — cannot be used.
+    // reported), so CanonicalNumber.Format, which refuses them, cannot be used.
     private static string Describe(double value) => value.ToString(CultureInfo.InvariantCulture);
 }

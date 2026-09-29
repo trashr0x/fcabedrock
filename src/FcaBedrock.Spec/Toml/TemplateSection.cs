@@ -12,7 +12,7 @@ namespace FcaBedrock.Spec.Toml;
 /// dormant: its authored shape is parse-checked, but effective-semantic
 /// combinations are validated only if it applies to some attribute (§9.2).
 /// Deliberately flat rather than sharing a config record with
-/// <see cref="AttributeSection"/> (D-078, EP-3), and closed to these ten fields —
+/// <see cref="AttributeSection"/> (D-078, EP-3), and closed to these ten fields;
 /// v1 templates never nest.
 /// </summary>
 /// <param name="Id">Template id referenced by matchers and attribute <c>template</c> (§9.1); required, and grammar-checked at parse.</param>
@@ -46,9 +46,9 @@ public sealed record TemplateSection(
 
     /// <summary>
     /// Authored <c>formal_attribute_format</c> (§9.1/§10.7), or null when
-    /// omitted. Parse-validated wherever authored — including inside an unused
+    /// omitted. Parse-validated wherever authored, including inside an unused
     /// template, since shape is the parser's concern and dormancy is semantic
-    /// (§10.7/D-049) — and applied through the same whole-value merge, so a
+    /// (§10.7/D-049), and applied through the same whole-value merge, so a
     /// template-supplied format drives rendered <c>.cxt</c> names (D-121).
     /// </summary>
     public string? FormalAttributeFormat { get; init; }

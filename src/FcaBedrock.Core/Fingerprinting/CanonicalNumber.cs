@@ -6,8 +6,8 @@ namespace FcaBedrock.Core.Fingerprinting;
 /// The one §14 number-identity rule, public for the numeric identity sites
 /// (D-096/G-6). <see cref="Format"/> reproduces the existing canonical encoder
 /// (<see cref="CanonicalJson.AppendNumber(System.Text.StringBuilder,double)"/>)
-/// byte-for-byte — invariant, shortest round-trippable, so <c>90</c>, <c>90.0</c>,
-/// and <c>9e1</c> all render <c>90</c> — and, like that encoder, formats
+/// byte-for-byte (invariant, shortest round-trippable, so <c>90</c>, <c>90.0</c>,
+/// and <c>9e1</c> all render <c>90</c>) and, like that encoder, formats
 /// <c>-0.0</c> as <c>"-0"</c> so the <c>fp_format = 1</c> bytes never move.
 /// <see cref="CanonicalizeZero"/> is applied at the numeric identity sites (numeric
 /// <c>free_per_value</c> keys and values, numeric <c>restrict_to</c> entries, and
@@ -25,7 +25,7 @@ namespace FcaBedrock.Core.Fingerprinting;
 public static class CanonicalNumber
 {
     /// <summary>
-    /// The parsed value in invariant, shortest round-trippable form — identical
+    /// The parsed value in invariant, shortest round-trippable form: identical
     /// bytes to the canonical JSON number encoder, <c>-0</c> included. Throws
     /// <see cref="ArgumentOutOfRangeException"/> for a non-finite value (canonical
     /// JSON has no NaN/∞ representation), so callers zero-canonicalize but never
@@ -53,8 +53,8 @@ public static class CanonicalNumber
     /// <summary>
     /// Parses <paramref name="text"/> under <paramref name="culture"/> using
     /// <see cref="NumberStyles.Float"/> (EP-11: never ambient), accepting only a
-    /// finite result. Returns <see langword="false"/> — with <paramref name="value"/>
-    /// set to <c>0</c> — on a parse failure or a non-finite result. Does <b>not</b>
+    /// finite result. Returns <see langword="false"/> (with <paramref name="value"/>
+    /// set to <c>0</c>) on a parse failure or a non-finite result. Does <b>not</b>
     /// canonicalize zero itself; the caller applies <see cref="CanonicalizeZero"/>,
     /// keeping the parse reusable (D-096/G-6).
     /// </summary>

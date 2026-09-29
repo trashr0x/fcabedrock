@@ -7,9 +7,9 @@ using Tomlyn.Syntax;
 namespace FcaBedrock.Spec.Toml;
 
 /// <summary>
-/// Reads one <c>[[attribute]]</c> (§10) — and one <c>[[template]]</c> (§9.1),
+/// Reads one <c>[[attribute]]</c> (§10), and one <c>[[template]]</c> (§9.1),
 /// whose body is the attribute config surface minus
-/// <c>name</c>/<c>source</c>/<c>description</c> — into its presence-tracked
+/// <c>name</c>/<c>source</c>/<c>description</c>, into its presence-tracked
 /// section, including the nested inline-table groups. Every v1 discretizer kind has a
 /// full carrier, and an unknown kind is an ordinary field error (D-070 tier 3; no
 /// discretizer kind is deferred, D-104). The deferred scales follow D-010 (kind-only
@@ -57,7 +57,7 @@ internal static class AttributeReader
     /// here they are simply not taken and fall to <c>SpecKeyUnrecognized</c>
     /// (the D-075 listed-name-in-the-wrong-table stance); the naming keys are read
     /// and shape-checked exactly as on an attribute, including inside an unused
-    /// template (§10.7 — shape is parse's, dormancy is semantic).
+    /// template (§10.7: shape is parse's, dormancy is semantic).
     /// </summary>
     public static TemplateSection ReadTemplate(TomlReadContext context, TableSyntaxBase table)
     {
@@ -82,8 +82,8 @@ internal static class AttributeReader
 
     /// <summary>
     /// Reads a <c>[[template]]</c> <c>id</c> (§9.1) and checks its grammar: an
-    /// authored id must match <c>[A-Za-z_][A-Za-z0-9_-]*</c> — the stricter §10.1
-    /// form — because it is referenced by name from matchers and attributes rather
+    /// authored id must match <c>[A-Za-z_][A-Za-z0-9_-]*</c> (the stricter §10.1
+    /// form) because it is referenced by name from matchers and attributes rather
     /// than being free-text like an attribute <c>name</c>.
     /// <para>
     /// Only a <em>malformed</em> id is a parse failure. An <b>omitted</b> id is not:
@@ -97,7 +97,7 @@ internal static class AttributeReader
     {
         if (cursor.Take("id") is not { } pair)
         {
-            return null; // omitted — a resolve-phase condition, not a parse one
+            return null; // omitted: a resolve-phase condition, not a parse one
         }
 
         if (pair.Value is not StringValueSyntax { Value: { } text })
@@ -122,7 +122,7 @@ internal static class AttributeReader
         return text;
     }
 
-    // §9.1/§10.1: [A-Za-z_][A-Za-z0-9_-]* — ASCII only and ordinal by construction
+    // §9.1/§10.1: [A-Za-z_][A-Za-z0-9_-]*, ASCII only and ordinal by construction
     // (EP-12); an empty id fails the leading-character rule rather than needing its own
     // branch. Hand-written rather than a Regex: the grammar is four character classes,
     // and this way it cannot inherit an ambient match timeout (D-115's concern).
@@ -148,7 +148,7 @@ internal static class AttributeReader
     /// <summary>
     /// Reads an authored <c>display_name</c> (§10.1): a string that must be
     /// non-empty and contain neither CR nor LF. The reason is structural, not
-    /// stylistic — a display name can reach a rendered formal-attribute name, and
+    /// stylistic: a display name can reach a rendered formal-attribute name, and
     /// <c>.cxt</c> is line-oriented (§18.1), so a newline would add a phantom line
     /// (D-117). A rejected value carries null, exactly like any other malformed
     /// field; its Error already fails the read.
@@ -192,7 +192,7 @@ internal static class AttributeReader
 
     /// <summary>
     /// Reads an authored <c>formal_attribute_format</c> (§10.7) and validates it
-    /// against the one grammar owner, <c>NameFormat.TryCreate</c> — so the reader
+    /// against the one grammar owner, <c>NameFormat.TryCreate</c>, so the reader
     /// and the planner can never disagree about which formats are legal (EP-5).
     /// Every §10.7 shape failure is the ordinary <c>SpecFieldInvalid</c>; §10.7
     /// deliberately mints no format-specific code. The document keeps the authored
@@ -360,9 +360,9 @@ internal static class AttributeReader
         }
     }
 
-    // §11.6 (D-090/D-104): value_groups' authored fields. Parse owns every field shape — the
+    // §11.6 (D-090/D-104): value_groups' authored fields. Parse owns every field shape: the
     // groups array and each group's label/values/pattern validity (including the regex compile
-    // check and the G-11 matcher predicate) and the unmatched spelling — all as SpecFieldInvalid,
+    // check and the G-11 matcher predicate) and the unmatched spelling, all as SpecFieldInvalid,
     // the one code §11.6 assigns; there is deliberately no dedicated regex-error code. The seam
     // owns what the values IMPLY across groups (ValueGroupsLabelDuplicate,
     // OrdinalNotAllowedWithValueGroupsPassthrough).
@@ -401,7 +401,7 @@ internal static class AttributeReader
             return null;
         }
 
-        // Declaration order is preserved because it is semantic — first match wins (§11.6).
+        // Declaration order is preserved because it is semantic: first match wins (§11.6).
         var groups = new List<ValueGroupSection>(array.Items.ChildrenCount);
         foreach (var item in array.Items)
         {
@@ -547,8 +547,8 @@ internal static class AttributeReader
     }
 
     // An omitted `values` and an authored `values = []` are DIFFERENT authored states the
-    // document must keep apart — the §14 encoding writes `values` only when authored, so the two
-    // are byte-distinct (G-11/D-094) — hence the explicit authored flag rather than "null means
+    // document must keep apart: the §14 encoding writes `values` only when authored, so the two
+    // are byte-distinct (G-11/D-094), hence the explicit authored flag rather than "null means
     // absent". Authored order and duplicates are preserved verbatim.
     private static (IReadOnlyList<string>? Value, bool Authored) TakeGroupValues(
         TomlReadContext context, TomlTableCursor cursor)
@@ -609,7 +609,7 @@ internal static class AttributeReader
         return null;
     }
 
-    // §11.4 (D-089/D-102): equal_width's authored fields. Parse owns the field shapes —
+    // §11.4 (D-089/D-102): equal_width's authored fields. Parse owns the field shapes:
     // bins presence and its 2..int.MaxValue range, the range spelling, the vmin/vmax
     // presence rules, and the precision form (SpecFieldInvalid). The seam owns the
     // semantics the values imply (EqualWidthRangeInvalid / EqualWidthCutsCollapsed).
@@ -658,7 +658,7 @@ internal static class AttributeReader
             bins, rangeAuthored && rangeValid ? range : null, vmin, vmax, precision);
     }
 
-    // §11.5 (D-103): equal_frequency's authored fields. Parse owns the field shapes — bins
+    // §11.5 (D-103): equal_frequency's authored fields. Parse owns the field shapes: bins
     // presence and its 2..int.MaxValue range, and the tie_policy/cut_placement spellings
     // (SpecFieldInvalid). There is no range/span surface: equal_frequency draws its cuts from
     // the population under every configuration (§7), so unlike equal_width it has no
@@ -676,7 +676,7 @@ internal static class AttributeReader
 
         // The carrier holds only what resolved: an authored-but-unrecognized spelling carries
         // null (its Error already fails the read), so an omitted field and a rejected one are
-        // indistinguishable downstream — which is correct, since neither can be written back.
+        // indistinguishable downstream, which is correct, since neither can be written back.
         return new EqualFrequencyDiscretizerSection(bins, tiePolicy, cutPlacement);
     }
 
@@ -894,12 +894,12 @@ internal static class AttributeReader
         }
     }
 
-    // §10.4/D-091: three authored entry forms — a bare string, an exact { value = n }, and a
+    // §10.4/D-091: three authored entry forms: a bare string, an exact { value = n }, and a
     // { from, to } range (of which {} is the valid open/open member). A bare NUMBER is not an
     // entry form: numeric exactness is spelled { value = n }, so `restrict_to = [30]` is an
     // invalid entry, not an exact 30.
     //
-    // Authored list order and duplicates are preserved verbatim in the document model — order is
+    // Authored list order and duplicates are preserved verbatim in the document model: order is
     // authoring state, and only the fingerprint projects a canonically sorted, deduplicated view
     // (§14). Semantic validity (type-vs-source, finiteness, range ordering) belongs to the
     // resolve seam; this reader owns SHAPE only.
@@ -943,7 +943,7 @@ internal static class AttributeReader
     }
 
     // Picks the entry shape from the authored keys BEFORE reading them: an inline table with a
-    // `value` key is an exact entry, anything else is a range. Shape-first matters — reading
+    // `value` key is an exact entry, anything else is a range. Shape-first matters: reading
     // { value = "x" } as a range would take neither `from` nor `to`, yielding a valid
     // unrestricted {} range (which matches every numeric value) plus a stray-key diagnostic.
     // That is the silent-widening trap: a typo'd filter would keep every object. Choosing by
@@ -960,7 +960,7 @@ internal static class AttributeReader
         }
 
         // Integer and float TOML nodes both parse through the one numeric path, so
-        // { value = 30 }, { value = 30.0 }, and { value = 3e1 } are equivalent inputs — all
+        // { value = 30 }, { value = 30.0 }, and { value = 3e1 } are equivalent inputs, all
         // canonicalizing to the writer's { value = 30 }. A non-numeric `value` is
         // SpecFieldInvalid (raised by TakeDouble), never a leaked factory/parser exception.
         var number = cursor.TakeDouble("value");

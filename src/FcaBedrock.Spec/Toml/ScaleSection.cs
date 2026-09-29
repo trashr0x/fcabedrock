@@ -12,7 +12,7 @@ public abstract record ScaleSection;
 public sealed record NominalScaleSection : ScaleSection;
 
 /// <summary>The <c>dichotomic</c> scale (§12.2).</summary>
-/// <param name="TrueValue">The bin label mapping to "true"; required — absent is <c>AttributeScalingMissing</c> at resolve.</param>
+/// <param name="TrueValue">The bin label mapping to "true"; required: absent is <c>AttributeScalingMissing</c> at resolve.</param>
 public sealed record DichotomicScaleSection(string? TrueValue) : ScaleSection;
 
 /// <summary>The <c>ordinal</c> scale (§12.3): cumulative threshold attributes.</summary>
@@ -31,7 +31,7 @@ public sealed record OrdinalScaleSection(
 /// <c>biordinal</c>, or <c>contranominal</c>, carried kind-only (the spec
 /// defines no parameters for them). Resolves into the Core deferred-scale
 /// marker so <c>ConversionPlanner</c> rejects with
-/// <c>ScaleNotImplementedV1</c> (Fatal) — parse-but-fail-to-plan.
+/// <c>ScaleNotImplementedV1</c> (Fatal): parse-but-fail-to-plan.
 /// </summary>
 /// <param name="Kind">The authored kind name.</param>
 public sealed record DeferredScaleSection(string Kind) : ScaleSection;

@@ -6,10 +6,10 @@ internal enum BudgetBreach
     /// <summary>The retention fits; both totals were charged.</summary>
     None,
 
-    /// <summary>Guard 2 — maximum total retained distinct values.</summary>
+    /// <summary>Guard 2: maximum total retained distinct values.</summary>
     Values,
 
-    /// <summary>Guard 3 — maximum total retained value text.</summary>
+    /// <summary>Guard 3: maximum total retained value text.</summary>
     Text,
 }
 
@@ -18,8 +18,8 @@ internal enum BudgetBreach
 /// needs no running total here: wide checks it against the schema before any record is read,
 /// and triple checks it as each new predicate is discovered.
 /// <para>
-/// <b>Logical accounting only.</b> Both totals count things the input determines — retained
-/// values, and their UTF-16 code units — never an available-memory figure, so the same record
+/// <b>Logical accounting only.</b> Both totals count things the input determines: retained
+/// values, and their UTF-16 code units, never an available-memory figure, so the same record
 /// sequence breaches on every machine or on none (EP-7/EP-11).
 /// </para>
 /// <para>
@@ -45,8 +45,8 @@ internal sealed class RetentionBudget(long maxValues, long maxText)
     /// or reports which guard it would have breached (values before text, D-110's precedence).
     /// Equality with a maximum is legal; only exceeding one breaches.
     /// <para>
-    /// Compared before adding — <c>max - total &lt; increment</c> rather than
-    /// <c>total + increment &gt; max</c> — so the sum itself is unreachable when it would
+    /// Compared before adding: <c>max - total &lt; increment</c> rather than
+    /// <c>total + increment &gt; max</c>, so the sum itself is unreachable when it would
     /// overflow, whatever maxima the caller chose.
     /// </para>
     /// </summary>

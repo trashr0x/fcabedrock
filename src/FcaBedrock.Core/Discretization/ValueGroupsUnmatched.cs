@@ -3,7 +3,7 @@ namespace FcaBedrock.Core.Discretization;
 /// <summary>
 /// What a <c>value_groups</c> discretizer does with a value matching no declared
 /// group (spec §11.6, D-055/D-090). The three policies differ in whether the
-/// unmatched value produces a bin at all, and — when it does — whether that bin is
+/// unmatched value produces a bin at all, and, when it does, whether that bin is
 /// fixed by the spec or discovered from data.
 /// </summary>
 public enum ValueGroupsUnmatched

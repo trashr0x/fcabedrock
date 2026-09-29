@@ -2,7 +2,7 @@ namespace FcaBedrock.Discovery;
 
 /// <summary>
 /// Occurrence count plus a bounded first-observed sample, for probe's two aggregated warnings
-/// (§16.4, D-111). One diagnostic carrying "how many, and here are the first few" — never one
+/// (§16.4, D-111). One diagnostic carrying "how many, and here are the first few", never one
 /// per attribute, so a 10,000-column source cannot produce 10,000 warnings.
 /// <para>
 /// The same shape and sample cap as Conversion's <c>DiagnosticTally</c>, re-implemented rather
@@ -19,7 +19,7 @@ internal sealed class ProbeTally
     /// <summary>The number of recorded occurrences.</summary>
     public int Count { get; private set; }
 
-    /// <summary>Whether anything was recorded — the flush condition.</summary>
+    /// <summary>Whether anything was recorded (the flush condition).</summary>
     public bool Any => Count > 0;
 
     /// <summary>A comma-joined sample of the first <see cref="SampleCap"/> recorded values.</summary>

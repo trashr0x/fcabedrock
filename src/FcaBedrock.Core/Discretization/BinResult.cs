@@ -9,16 +9,16 @@ namespace FcaBedrock.Core.Discretization;
 /// </summary>
 public enum BinOutcome
 {
-    /// <summary>No bin: out of a closed range — object kept, no cross, silent (spec §11.2).</summary>
+    /// <summary>No bin: out of a closed range; object kept, no cross, silent (spec §11.2).</summary>
     NoBin,
 
     /// <summary>A recognized bin; its label is available via <see cref="BinResult.TryGetLabel"/>.</summary>
     Bin,
 
-    /// <summary>A value outside the discretizer's domain — subject to <c>unknown_value_policy</c> (§10.6 / §11.8).</summary>
+    /// <summary>A value outside the discretizer's domain, subject to <c>unknown_value_policy</c> (§10.6 / §11.8).</summary>
     Unknown,
 
-    /// <summary>A present-but-unparseable numeric value — subject to <c>unknown_value_policy</c> (§11.5).</summary>
+    /// <summary>A present-but-unparseable numeric value, subject to <c>unknown_value_policy</c> (§11.5).</summary>
     Unparseable,
 }
 
@@ -53,7 +53,7 @@ public readonly record struct BinResult
     public static BinResult Bin(string label) =>
         new(BinOutcome.Bin, label ?? throw new ArgumentNullException(nameof(label)));
 
-    /// <summary>No bin: an out-of-range value under closed ends — kept, no cross, silent (§11.2).</summary>
+    /// <summary>No bin: an out-of-range value under closed ends; kept, no cross, silent (§11.2).</summary>
     public static readonly BinResult NoBin = new(BinOutcome.NoBin, null);
 
     /// <summary>A value outside the discretizer's domain (§10.6 / §11.8), carrying it as the sample.</summary>

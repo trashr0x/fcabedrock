@@ -5,7 +5,7 @@ namespace FcaBedrock.Spec.Toml;
 /// <summary>
 /// The Spec-layer pairing wrapper (D-098/G-1): a resolved <see cref="ResolvedSpec"/>
 /// token paired with an immutable deep snapshot of the document it was resolved
-/// from. Sealed with an <b>internal</b> constructor — only <see cref="SpecResolver"/>
+/// from. Sealed with an <b>internal</b> constructor: only <see cref="SpecResolver"/>
 /// (and Spec.Tests via the existing IVT) can mint one, so an unrelated document can
 /// never be paired with a resolution, and post-resolve mutation of the caller's
 /// document cannot reach fingerprinting (<c>SpecFingerprints.ComputeNative</c>

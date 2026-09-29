@@ -12,15 +12,15 @@ namespace FcaBedrock.Discovery;
 /// <para>
 /// <b>Probe is outside the conversion pipeline.</b> <c>convert</c> calibrates but never
 /// discovers, and probe never runs as a side effect of a conversion (D-003/D-036). It infers
-/// nothing structural either — no delimiter sniffing, header detection, shape detection, or
-/// value typing — so the caller states the shape and read settings, and every discovered
+/// nothing structural either: no delimiter sniffing, header detection, shape detection, or
+/// value typing, so the caller states the shape and read settings, and every discovered
 /// attribute is authored as string-valued <c>identity</c> + <c>nominal</c> (D-106).
 /// </para>
 /// <para>
 /// <b>The draft is guaranteed usable, not merely well-formed</b> (D-107): a successful probe
 /// returns a document with at least one attribute that rereads under the strict reader,
 /// resolves against the probed schema, and converts the same source under the same effective
-/// settings — all four legs proven by test, since probe itself runs no conversion.
+/// settings, all four legs proven by test, since probe itself runs no conversion.
 /// </para>
 /// <para>
 /// <b>Probe touches no files.</b> It consumes a source session (<see cref="IWideSourceSession"/>
@@ -86,7 +86,7 @@ public static class Prober
     /// <para>
     /// Same errors-are-values posture as <see cref="ProbeAsync"/>: null arguments and a
     /// session/settings pair that is not both triple are programmer errors and throw. An invalid
-    /// <paramref name="columns"/> map is <b>not</b> one of those — a role map is authored spec
+    /// <paramref name="columns"/> map is <b>not</b> one of those: a role map is authored spec
     /// content, so it is diagnosed, not thrown. It is checked by resolving the exact
     /// <c>[binding]</c> this probe would author <em>before</em> any row is read, and the
     /// resolver's own §5.3 diagnostics are forwarded unchanged: probe re-validates
@@ -96,7 +96,7 @@ public static class Prober
     /// <para>
     /// <b>Structural validity is checked, not assumed.</b> An unusable subject halts the probe
     /// under either ordering, and an explicitly selected <c>subject_grouped</c> also
-    /// requires contiguity — because a draft that its own same-source conversion would reject is
+    /// requires contiguity, because a draft that its own same-source conversion would reject is
     /// not a draft (D-106/D-107). There is no grouping or counting pass: the rows are read once,
     /// in input order.
     /// </para>
@@ -225,7 +225,7 @@ public static class Prober
         SourceSchema schema;
         try
         {
-            // Metadata, not a data pass — and needed before the preflight, because a name-addressed
+            // Metadata, not a data pass, and needed before the preflight, because a name-addressed
             // role map resolves against this header and an index-addressed one is range-checked
             // against this column count.
             schema = await session.GetSchemaAsync(cancellationToken).ConfigureAwait(false);
@@ -238,14 +238,14 @@ public static class Prober
         catch (InvalidDataException ex) { return Failed(ProbeDiagnostics.SourceReadFailed(ex)); }
 
         // The binding this probe will author, built once and used for both the preflight and the
-        // draft — so what was validated and what is written are the same object, not two
+        // draft, so what was validated and what is written are the same object, not two
         // constructions that could drift.
         var binding = ProbeDraft.TripleBinding(readSettings, options, columns);
 
         // The binding-only role-map preflight, BEFORE any row is read. Discovery does not
         // re-implement §5.3: it asks the resolver, which owns those rules, and forwards whatever
         // it says. A partial, mixed-mode, negative, out-of-range, non-distinct, headerless-name,
-        // missing, or ambiguous map fails here — with no enumeration started, so a bad map costs
+        // missing, or ambiguous map fails here, with no enumeration started, so a bad map costs
         // no read at all. It resolves the binding alone: the draft's attributes exist only after
         // the pass, and whole-spec rules such as the §2 attribute minimum are not this check's
         // concern (D-135).
@@ -268,7 +268,7 @@ public static class Prober
         }
 
         // Unlike wide, whose attributes are known from the schema, triple's vocabulary is only
-        // known once the pass has finished — so the empty case is decided here rather than up front.
+        // known once the pass has finished, so the empty case is decided here rather than up front.
         if (observation.Predicates.Count == 0)
         {
             return Failed(ProbeDiagnostics.NoPredicatesDiscovered());
@@ -277,7 +277,7 @@ public static class Prober
         var predicates = PredicateNaming.Plan(observation.Predicates);
         var warnings = new List<BedrockDiagnostic>();
 
-        // Flushed at end of pass in predicate first-appearance order — the same fixed shape as
+        // Flushed at end of pass in predicate first-appearance order, the same fixed shape as
         // wide's physical-column order, so counts and bounded samples depend only on the record
         // sequence (D-112).
         var adjusted = new ProbeTally();
@@ -321,14 +321,14 @@ public static class Prober
     {
         // Enumerated by hand rather than with `await foreach` so the catch clauses here wrap
         // ONLY the session's own record acquisition. An `await foreach`'s try block would also
-        // cover the observation body, where an exception is a bug in this engine — and EP-14
+        // cover the observation body, where an exception is a bug in this engine, and EP-14
         // forbids dressing a bug up as an infrastructure diagnostic.
         //
-        // Acquisition is TWO calls before the first record arrives — ReadAsync and
-        // GetAsyncEnumerator — and both are guarded (see OpenRecords). A compiler-generated
+        // Acquisition is TWO calls before the first record arrives (ReadAsync and
+        // GetAsyncEnumerator) and both are guarded (see OpenRecords). A compiler-generated
         // async iterator cannot throw from either, which is exactly why leaving them unguarded
         // looks safe: every adapter in this repo happens to be one. A hand-written
-        // IWideSourceSession — the whole point of the D-109 seam — can fail there, and its
+        // IWideSourceSession, the whole point of the D-109 seam, can fail there, and its
         // failure is no less a read failure for arriving one call earlier.
         var (records, openFailure) = OpenRecords(session, cancellationToken);
         if (records is null)
@@ -347,7 +347,7 @@ public static class Prober
                 if (moved)
                 {
                     // Current is a provider-owned call on the same enumerator, so it can fail for
-                    // the same reasons MoveNextAsync can — an enumerator that materializes its row
+                    // the same reasons MoveNextAsync can: an enumerator that materializes its row
                     // lazily does its real work right here. Read inside the boundary and observed
                     // outside it, so a failure to PRODUCE the record is classified while a failure
                     // to OBSERVE it stays an engine bug.
@@ -358,7 +358,7 @@ public static class Prober
             // The complete provider/read-failure set, written as explicit narrow clauses: expected
             // provider/read failures become a diagnostic, and everything else keeps its own
             // identity. In particular OperationCanceledException matches none of these and
-            // propagates unwrapped (D-111/D-112), and NotSupportedException is absent by design —
+            // propagates unwrapped (D-111/D-112), and NotSupportedException is absent by design:
             // the CSV adapter already normalizes Sep's row/buffer ceiling to SourceReadException,
             // so catching it here would also swallow genuine "this source cannot do that"
             // programmer errors.
@@ -375,7 +375,7 @@ public static class Prober
             }
 
             // `moved` implies Current was read. A provider that yields null violates the seam's own
-            // non-nullable element contract, and must surface as the bug it is — treating null as
+            // non-nullable element contract, and must surface as the bug it is: treating null as
             // end-of-sequence would silently stop the pass early and author a draft that
             // understates the data, the exact outcome D-112 forbids.
             var breach = observation.Observe(record!);
@@ -384,7 +384,7 @@ public static class Prober
                 continue;
             }
 
-            // A breached guard stops the pass immediately — reading on would retain nothing more
+            // A breached guard stops the pass immediately: reading on would retain nothing more
             // and produce nothing usable (D-110).
             return breach is BudgetBreach.Values
                 ? ProbeDiagnostics.ValueLimitExceeded(options.MaxTotalRetainedValues)
@@ -395,7 +395,7 @@ public static class Prober
     /// <summary>
     /// Opens the record stream, guarding the two acquisition calls that run before the first
     /// <c>MoveNextAsync</c>. Returns the enumerator, or no enumerator and the diagnostic that
-    /// explains why — the two are mutually exclusive, so a null enumerator always carries one.
+    /// explains why; the two are mutually exclusive, so a null enumerator always carries one.
     /// </summary>
     private static (IAsyncEnumerator<ObjectRecord>? Records, BedrockDiagnostic? Failure) OpenRecords(
         IWideSourceSession session, CancellationToken cancellationToken)
@@ -415,7 +415,7 @@ public static class Prober
     /// <summary>
     /// The triple twin of <see cref="ObserveAsync"/>: one enumeration, the same four guarded
     /// provider-owned calls, and the same rule that observation happens outside the catch
-    /// boundary — a structural subject problem is data, not a read failure, and must not be
+    /// boundary; a structural subject problem is data, not a read failure, and must not be
     /// classified as one (D-111).
     /// </summary>
     private static async ValueTask<BedrockDiagnostic?> ObserveTripleAsync(

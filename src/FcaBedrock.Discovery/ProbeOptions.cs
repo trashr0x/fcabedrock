@@ -18,7 +18,7 @@ namespace FcaBedrock.Discovery;
 /// <para>
 /// <b>Why the guards live here and not in the spec.</b> They bound one probe of one source
 /// (the motivating arithmetic: 1,554 attributes × 100,000 values would permit 155.4M retained
-/// strings). Their accounting is deterministic and logical — counts and UTF-16 code units,
+/// strings). Their accounting is deterministic and logical: counts and UTF-16 code units,
 /// never an available-memory figure, which would make the same input succeed on one machine
 /// and fail on another (EP-7/EP-11).
 /// </para>
@@ -51,7 +51,7 @@ public sealed class ProbeOptions
     /// cross-limit validation, because the guards measure different things and no combination
     /// of them is incoherent. A null <paramref name="locale"/> throws
     /// <see cref="ArgumentNullException"/> and one the resolve seam would reject throws
-    /// <see cref="ArgumentException"/> — validated here so a draft can never fail its own
+    /// <see cref="ArgumentException"/>, validated here so a draft can never fail its own
     /// reread/resolve guarantee (D-107) on a field the caller chose.
     /// </summary>
     /// <param name="valueRetentionLimit">Maximum distinct values retained per attribute (D-108).</param>
@@ -109,7 +109,7 @@ public sealed class ProbeOptions
     public long MaxTotalRetainedValueText { get; }
 
     /// <summary>
-    /// The <c>binding.locale</c> the draft authors (§5.1). Retained verbatim as supplied — the
+    /// The <c>binding.locale</c> the draft authors (§5.1). Retained verbatim as supplied: the
     /// resolve seam accepts <c>invariant</c> case-insensitively, so a caller's spelling
     /// survives into the draft rather than being silently rewritten.
     /// </summary>
@@ -119,7 +119,7 @@ public sealed class ProbeOptions
     // hoisted into a shared public helper: neither package should grow a locale API for one
     // internal agreement. A cross-check test pins the two against each other, so
     // drift fails a test rather than silently producing a draft that cannot resolve itself.
-    // predefinedOnly matters — under ICU, GetCultureInfo synthesizes a culture for almost any
+    // predefinedOnly matters: under ICU, GetCultureInfo synthesizes a culture for almost any
     // well-formed tag, which would make acceptance OS-dependent (EP-7/EP-11).
     private static bool IsAcceptedLocale(string locale)
     {

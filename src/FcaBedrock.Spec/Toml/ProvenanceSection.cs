@@ -2,7 +2,7 @@ namespace FcaBedrock.Spec.Toml;
 
 /// <summary>
 /// The authored <c>[provenance]</c> section (§4). Documentation-only: carried
-/// inert through resolution — nothing in Core reads it.
+/// inert through resolution; nothing in Core reads it.
 /// </summary>
 /// <param name="Author">Who authored the spec.</param>
 /// <param name="CreatedAt">When the spec was created.</param>

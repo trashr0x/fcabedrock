@@ -14,7 +14,7 @@ namespace FcaBedrock.Core.Spec;
 /// programmer-error backstop and throws exactly:
 /// <list type="bullet">
 /// <item><see cref="ArgumentNullException"/> for a null <c>encoding</c> or
-/// <c>missingToken</c> (an empty <c>missingToken</c> is <em>valid</em> — §5.1
+/// <c>missingToken</c> (an empty <c>missingToken</c> is <em>valid</em>: §5.1
 /// disables token-based missing detection; only null is rejected);</item>
 /// <item><see cref="ArgumentException"/> for an inconsistent shape/ordering pair
 /// (<c>ordering</c> must be non-null exactly when <c>shape == Triple</c>), a
@@ -101,8 +101,8 @@ public sealed class SourceReadSettings
 
     /// <summary>
     /// Builds wide read settings from the §5.1 delimited-source defaults, overriding only
-    /// what the caller states. A convenience over <see cref="Create"/> — which remains the
-    /// single owner of validation, normalization, and the exception contract — for callers
+    /// what the caller states. A convenience over <see cref="Create"/> (which remains the
+    /// single owner of validation, normalization, and the exception contract) for callers
     /// that describe a CSV/TSV source directly instead of resolving one from a spec document.
     /// There is no <c>ordering</c> parameter: it is null for a wide shape by
     /// <see cref="Create"/>'s own rule.
@@ -114,7 +114,7 @@ public sealed class SourceReadSettings
 
     /// <summary>
     /// Builds triple read settings from the §5.1/§7.1 delimited-source defaults, overriding
-    /// only what the caller states — the triple twin of <see cref="CreateWide"/>. Note the
+    /// only what the caller states (the triple twin of <see cref="CreateWide"/>). Note the
     /// shape-specific default: <c>hasHeader</c> is <see langword="false"/> for a triple
     /// source (§5.1, D-082), and <c>ordering</c> is required, defaulting to
     /// <see cref="TripleOrdering.Unordered"/>.

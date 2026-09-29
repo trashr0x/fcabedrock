@@ -9,7 +9,7 @@ namespace FcaBedrock.Discovery;
 /// required an adjustment worth warning about.
 /// </summary>
 /// <param name="Index">The 0-based physical column, and the selector when <paramref name="BindByName"/> is null.</param>
-/// <param name="Name">The logical attribute name — §10.1-valid and ordinal-unique across the draft.</param>
+/// <param name="Name">The logical attribute name, §10.1-valid and ordinal-unique across the draft.</param>
 /// <param name="BindByName">The header cell the <c>source</c> selects by name, or null to select by index.</param>
 /// <param name="NameAdjusted">Whether this column's <em>name</em> was synthesized from an unusable header or disambiguated (D-111: routine headerless <c>column_N</c> synthesis is not an adjustment).</param>
 internal sealed record DiscoveredColumn(int Index, string Name, string? BindByName, bool NameAdjusted);
@@ -20,7 +20,7 @@ internal sealed record DiscoveredColumn(int Index, string Name, string? BindByNa
 /// <para>
 /// <b>The invariant that drives every branch: no source selector is ever silently changed.</b>
 /// A name that must be adjusted is adjusted; the column it reads is not. That is why a
-/// duplicate, blank, unusable, or headerless column binds by <em>physical index</em> — a
+/// duplicate, blank, unusable, or headerless column binds by <em>physical index</em>: a
 /// duplicate or blank header does not resolve to exactly one column (<c>SourceBindingInvalid</c>,
 /// §10.2), so binding it by name would produce a draft that fails its own reread/resolve
 /// guarantee (D-107). A unique usable header still binds by name, which keeps the reorder
@@ -31,7 +31,7 @@ internal static class AttributeNaming
 {
     /// <summary>
     /// §10.1 attribute-name validity: any non-empty string containing no newline and no
-    /// <c>"</c> (the TOML key-quoting character). Deliberately permissive — real headers look
+    /// <c>"</c> (the TOML key-quoting character). Deliberately permissive: real headers look
     /// like <c>bruises?</c>, <c>feature.1</c>, <c>days@home</c>, and a draft must round-trip
     /// them unrenamed.
     /// <para>
@@ -40,8 +40,8 @@ internal static class AttributeNaming
     /// <em>usable</em> attribute name but an unusable object name, and a control character
     /// other than CR/LF is unusable as an object name but harmless in a TOML string. Two
     /// predicates, two owners, deliberately not merged. Discovery owns this one because the
-    /// resolve seam does not enforce it — <c>SpecResolver</c> checks only missing and
-    /// duplicate names — so probe's naming matrix is its sole enforcement point.
+    /// resolve seam does not enforce it: <c>SpecResolver</c> checks only missing and
+    /// duplicate names, so probe's naming matrix is its sole enforcement point.
     /// </para>
     /// </summary>
     public static bool IsUsableName(string? name)
@@ -75,7 +75,7 @@ internal static class AttributeNaming
         {
             // A header shorter than the column count is only reachable from a hand-built schema
             // (the CSV adapter derives the count FROM the header), and such a column is simply
-            // headerless — the same case as a source with no header row at all.
+            // headerless, the same case as a source with no header row at all.
             var cell = schema.Header is { } header && i < header.Count ? header[i] : null;
             cells[i] = cell;
             if (IsUsableName(cell))
@@ -105,7 +105,7 @@ internal static class AttributeNaming
             else if (IsUsableName(cell))
             {
                 // A duplicate usable header keeps its own text as the candidate. The first
-                // column to claim it keeps it verbatim — its NAME is untouched, so it is not a
+                // column to claim it keeps it verbatim: its NAME is untouched, so it is not a
                 // name adjustment even though its binding fell back to the index; later
                 // claimants are disambiguated below, and those are.
                 candidates[i] = cell;
@@ -120,8 +120,8 @@ internal static class AttributeNaming
         }
 
         // Reserve every by-name column's logical name BEFORE assigning any fallback or
-        // disambiguated one. Those names are fixed — a name-bound column's name is its
-        // selector's text — so resolving collisions against the complete set is what keeps an
+        // disambiguated one. Those names are fixed: a name-bound column's name is its
+        // selector's text, so resolving collisions against the complete set is what keeps an
         // adversarial header (one that already spells a fallback or a `#k` suffix) from
         // colliding with a name synthesized later in the same pass.
         var used = new HashSet<string>(StringComparer.Ordinal);
@@ -157,8 +157,8 @@ internal static class AttributeNaming
 
     /// <summary>
     /// The D-107 disambiguation ladder: the candidate itself, then <c>#&lt;source-index&gt;</c>,
-    /// then ordinal <c>#1</c>, <c>#2</c>, … to the first unused. Escalation is bounded — at most
-    /// one more step than there are assigned names — and depends only on the source's own
+    /// then ordinal <c>#1</c>, <c>#2</c>, … to the first unused. Escalation is bounded (at most
+    /// one more step than there are assigned names) and depends only on the source's own
     /// ordering, so the same input always yields the same names.
     /// <para>
     /// Shared with <see cref="PredicateNaming"/> rather than re-derived there: the two shapes

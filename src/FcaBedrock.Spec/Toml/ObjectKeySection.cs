@@ -24,7 +24,7 @@ public enum ObjectKeyMode
     /// <summary>Object names come from a source column.</summary>
     Column,
 
-    /// <summary>Object names combine several columns (deferred — permanent v1 reject, D-064).</summary>
+    /// <summary>Object names combine several columns (deferred: permanent v1 reject, D-064).</summary>
     Composite,
 }
 
@@ -40,7 +40,7 @@ public enum CompositeAggregate
 
 /// <summary>
 /// An authored column reference (§5.4/§10.2): by 0-based index or by header
-/// name. Name refs are resolved to indices by <see cref="SpecResolver"/> —
+/// name. Name refs are resolved to indices by <see cref="SpecResolver"/>:
 /// resolved Core types carry indices only (D-066).
 /// </summary>
 public abstract record ColumnRef;

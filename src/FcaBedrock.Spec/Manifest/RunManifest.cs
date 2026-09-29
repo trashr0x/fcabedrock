@@ -4,7 +4,7 @@ using FcaBedrock.Core.Calibration;
 namespace FcaBedrock.Spec.Manifest;
 
 /// <summary>
-/// The output format one committed artifact was written in — the closed set §15's
+/// The output format one committed artifact was written in: the closed set §15's
 /// <c>[[run.outputs]] format</c> field admits. A closed type rather than a free
 /// string so the <c>"cxt"</c>/<c>"dat"</c> spellings and the canonical
 /// CXT-before-DAT emit order are owned by the writer that serializes them
@@ -22,7 +22,7 @@ public enum RunOutputFormat
 /// <summary>
 /// One committed artifact (§15 <c>[[run.outputs]]</c>): its format, the invoked
 /// output-base spelling plus the ruled extension, and its raw-bytes hash. The
-/// path and hash are caller-supplied facts carried verbatim — never normalized,
+/// path and hash are caller-supplied facts carried verbatim, never normalized,
 /// absolutized, or recomputed.
 /// </summary>
 public sealed record RunOutput
@@ -56,8 +56,8 @@ public sealed record RunOutput
 
 /// <summary>
 /// One file of an <c>extends</c> chain (§15 <c>[[run.spec_files]]</c>): the
-/// authored spelling — the root operand, or a referrer-relative <c>extends</c>
-/// reference — and that file's raw-bytes hash. Canonical filesystem identity keys
+/// authored spelling (the root operand, or a referrer-relative <c>extends</c>
+/// reference) and that file's raw-bytes hash. Canonical filesystem identity keys
 /// (§13) never enter the manifest, so the spelling is carried verbatim.
 /// </summary>
 public sealed record SpecFileEntry
@@ -89,12 +89,12 @@ public sealed record SpecFileEntry
 /// The outcome is held by reference and read directly (D-093): the attribute
 /// name, the cuts, and the values are the calibrator's retained facts, never
 /// re-derived, re-resolved, or copied into a second union. An empty
-/// <see cref="CalibratedCuts"/> is refused — it is not a successful outcome, so
-/// no §15 entry describes it — while an empty <see cref="ObservedDomain"/>,
+/// <see cref="CalibratedCuts"/> is refused (it is not a successful outcome, so
+/// no §15 entry describes it) while an empty <see cref="ObservedDomain"/>,
 /// <see cref="IncludeAdditions"/>, or <see cref="PassthroughBins"/> is a
 /// legitimate zero-discovery result and serializes as an explicit empty array.
 /// The one extra fact is
-/// <see cref="Discretizer"/> — <c>equal_frequency</c> or <c>equal_width</c> —
+/// <see cref="Discretizer"/> (<c>equal_frequency</c> or <c>equal_width</c>)
 /// which the outcome cannot carry and which must never be guessed from the cuts,
 /// the effective manual-cut state, the attribute name, or any other document
 /// state.
@@ -105,14 +105,14 @@ public sealed record RunCalibration
     /// <summary>Associates a retained outcome with its authored discretizer spelling, when it has one.</summary>
     /// <param name="outcome">The retained calibration outcome.</param>
     /// <param name="discretizer">
-    /// The authored discretizer kind spelling — required for
+    /// The authored discretizer kind spelling: required for
     /// <see cref="CalibratedCuts"/>, and <see langword="null"/> for every other
     /// kind, whose §15 entry carries no <c>discretizer</c> field.
     /// </param>
     /// <exception cref="ArgumentNullException"><paramref name="outcome"/> is null.</exception>
     /// <exception cref="ArgumentException">
-    /// <paramref name="outcome"/> is an empty <see cref="CalibratedCuts"/> — not a
-    /// successful calibration outcome, so it has no manifest entry — or
+    /// <paramref name="outcome"/> is an empty <see cref="CalibratedCuts"/> (not a
+    /// successful calibration outcome, so it has no manifest entry) or
     /// <paramref name="discretizer"/> is absent for a cuts outcome or supplied for
     /// a non-cut outcome that has nowhere to serialize it.
     /// </exception>
@@ -126,7 +126,7 @@ public sealed record RunCalibration
         // bins - 1 (D-102). Admitting it here would mint an audit entry for a run
         // that cannot exist and would blur the line between a
         // legitimate zero-discovery non-cut outcome and an unsuccessful cut
-        // calibration — so the state is unrepresentable rather than serialized.
+        // calibration, so the state is unrepresentable rather than serialized.
         if (outcome is CalibratedCuts { Cuts.Count: 0 })
         {
             throw new ArgumentException(
@@ -170,7 +170,7 @@ public sealed record RunCalibration
 /// <summary>
 /// The §15 <c>[run]</c> table: the run's audit and reproduction facts, in the
 /// order they are emitted. Every value is a caller-supplied fact carried
-/// verbatim — this type acquires no clock, version, argv, path, hash, or
+/// verbatim: this type acquires no clock, version, argv, path, hash, or
 /// fingerprint of its own.
 /// </summary>
 public sealed record RunSection
@@ -180,7 +180,7 @@ public sealed record RunSection
     /// <param name="timestamp">
     /// The run timestamp: a <b>whole-second UTC</b> instant. §15 defines the field
     /// as whole-second RFC 3339 UTC from an injected clock, and names it an audit
-    /// field — so a fractional or offset value is rejected here rather than
+    /// field, so a fractional or offset value is rejected here rather than
     /// silently rewritten; producing a whole-second UTC instant is the clock
     /// seam's obligation.
     /// </param>
@@ -310,8 +310,8 @@ internal static class ManifestCollections
 /// retained <c>[[run.calibrations]]</c> (empty when no outcome was retained).
 /// <para>
 /// The model carries every §15 field without loss and decides nothing:
-/// serialization is <c>RunManifestWriter.Write</c>'s job, and acquisition — clock,
-/// version, argv, paths, hashes, fingerprints — is the composing host's. Every
+/// serialization is <c>RunManifestWriter.Write</c>'s job, and acquisition (clock,
+/// version, argv, paths, hashes, fingerprints) is the composing host's. Every
 /// caller-owned collection is snapshotted at construction, so a later mutation of
 /// the caller's list cannot reach the emitted bytes, and element order and
 /// explicit emptiness are preserved exactly.
@@ -321,14 +321,14 @@ public sealed record RunManifest
 {
     /// <summary>Assembles one run manifest.</summary>
     /// <param name="run">The <c>[run]</c> facts.</param>
-    /// <param name="outputs">The committed artifacts — one or two, at most one per format.</param>
+    /// <param name="outputs">The committed artifacts: one or two, at most one per format.</param>
     /// <param name="specFiles">The <c>extends</c> chain root-first then bases; empty when there is no chain.</param>
     /// <param name="calibrations">The retained outcomes in <c>CalibratedSpec.Calibrations</c> order; empty when none.</param>
     /// <exception cref="ArgumentNullException">An argument, or a collection element, is null.</exception>
     /// <exception cref="ArgumentException">
     /// <paramref name="outputs"/> is empty or repeats a format, or a per-format
     /// output fingerprint on <paramref name="run"/> is present without its format
-    /// (or absent with it) — §15 makes each fingerprint present <b>iff</b> that
+    /// (or absent with it): §15 makes each fingerprint present <b>iff</b> that
     /// format was written.
     /// </exception>
     public RunManifest(
@@ -364,8 +364,8 @@ public sealed record RunManifest
 
     // §15: a manifest-bearing run committed the artifacts --format selected, so it
     // records one or two, never two of a kind; and the per-format fingerprint
-    // fields are present iff that format was written. Checking both here — the one
-    // place that sees the [run] table and the output set together — keeps a
+    // fields are present iff that format was written. Checking both here (the one
+    // place that sees the [run] table and the output set together) keeps a
     // structurally impossible manifest unrepresentable (EP-10) rather than letting
     // the writer emit an incoherent audit record.
     private static void RequireCoherentOutputs(RunSection run, IReadOnlyList<RunOutput> outputs)

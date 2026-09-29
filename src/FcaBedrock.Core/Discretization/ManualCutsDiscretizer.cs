@@ -33,13 +33,13 @@ public sealed record ManualCutsDiscretizer : Discretizer
     /// <summary>Whether the outer bins extend to ±∞ (<see cref="BinEnds.Open"/>) or are dropped.</summary>
     public BinEnds Ends => _bins.Ends;
 
-    /// <summary>The culture used to parse raw data values (never ambient — EP-11).</summary>
+    /// <summary>The culture used to parse raw data values (never ambient, EP-11).</summary>
     public CultureInfo Culture => _bins.Culture;
 
     /// <summary>
     /// Validates the cut spec and, if valid, builds the discretizer (spec §11.2,
     /// D-056). On any problem returns <see cref="Diagnosed{T}.Failed"/> with the
-    /// cut diagnostics and never constructs — so the discretizer's invariants
+    /// cut diagnostics and never constructs, so the discretizer's invariants
     /// (non-empty / ascending / closed-ends ≥ 2) always hold. Wired into the
     /// resolve seam (D-067), the one path both TOML and migrated specs take.
     /// </summary>

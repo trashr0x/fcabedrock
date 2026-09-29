@@ -3,7 +3,7 @@ namespace FcaBedrock.Core.Discretization;
 /// <summary>
 /// Where an <c>equal_width</c> discretizer's span comes from (spec §11.4). The
 /// mode decides the <b>phase</b> and the stored-fingerprint eligibility (D-089):
-/// <see cref="Manual"/> is spec-determined — its cuts come from <c>vmin</c>/<c>vmax</c>
+/// <see cref="Manual"/> is spec-determined, its cuts come from <c>vmin</c>/<c>vmax</c>
 /// alone, it skips Calibrate (§7), and it is fully-frozen-eligible (§14); the
 /// data-derived modes draw the span from the calibration population and make the
 /// spec data-dependent.
