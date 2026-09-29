@@ -4,9 +4,10 @@ namespace FcaBedrock.Spec.Toml;
 
 /// <summary>
 /// An authored attribute <c>source</c> (§10.2). The document keeps the
-/// authored form — including possibly-invalid states (D-066); the resolver
-/// turns it into a Core <c>ColumnSource</c> (index + value type) or diagnoses
-/// <c>SourceBindingInvalid</c>.
+/// authored form, including possibly-invalid states (D-066); the resolver
+/// turns it into a Core <c>ColumnSource</c> (column index) or
+/// <c>PredicateSource</c> (predicate name), each with the effective value type,
+/// or diagnoses <c>SourceBindingInvalid</c>.
 /// </summary>
 public abstract record SourceSection;
 

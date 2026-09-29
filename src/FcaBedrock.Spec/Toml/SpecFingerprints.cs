@@ -30,6 +30,10 @@ public static class SpecFingerprints
     /// native label style this method hashes (see
     /// <see cref="FingerprintCalculator.ComputeCxtOutputFingerprint"/>).</para>
     /// </summary>
+    /// <exception cref="ArgumentException">
+    /// <paramref name="plan"/> was not produced from <paramref name="resolved"/>'s resolution
+    /// (D-098), or was produced with a label style other than <see cref="LabelStyle.Native"/>.
+    /// </exception>
     public static ComputedFingerprints ComputeNative(ResolvedDocument resolved, ConversionPlan plan)
     {
         ArgumentNullException.ThrowIfNull(resolved);

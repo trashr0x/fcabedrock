@@ -37,10 +37,12 @@ public sealed record AttributeSpec(
 {
     /// <summary>
     /// The resolved display name behind <c>{display_name}</c> (§10.1/§10.7),
-    /// defaulting to <see cref="Name"/>. Non-empty and CR/LF-free: the reader
-    /// enforces it on the authored path and <c>ResolvedSpec.Create</c> backstops
-    /// hand-built graphs. Additive and non-positional, so every construction site
-    /// that predates naming stays valid and unchanged (D-087's precedent).
+    /// defaulting to <see cref="Name"/>. The reader rejects an empty or CR/LF-bearing
+    /// authored value. <c>ResolvedSpec.Create</c> rejects only an empty one; a CR/LF from
+    /// a hand-built graph is caught when a rendered name carries it
+    /// (<c>FormalAttributeNameInvalid</c>, plan). It is an init property rather than a
+    /// positional parameter (the D-087 pattern), so positional construction and
+    /// deconstruction do not include it.
     /// </summary>
     public string DisplayName { get; init; } = Name;
 

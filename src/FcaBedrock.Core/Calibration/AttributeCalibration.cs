@@ -5,10 +5,11 @@ namespace FcaBedrock.Core.Calibration;
 /// <summary>
 /// One attribute's retained calibration outcome (manifest-ready, D-093/§15) — the
 /// resolved data-dependent schema element a data-reading pass discovered.
-/// Mechanically closed (the <see langword="private protected"/> base constructor
-/// admits no out-of-assembly variant), so the substitution/manifest switches are
-/// exhaustive. Every list-bearing variant snapshots its list into
-/// <see cref="ImmutableArray{T}"/>-backed storage at construction.
+/// The <see langword="private protected"/> base constructor blocks ordinary derivation
+/// outside this assembly, but a record's protected copy constructor does not (CS8878).
+/// <see cref="CalibratedSpec.Create"/> rejects an outcome of any other type, and the
+/// freeze and manifest switches throw on one. Every list-bearing variant snapshots its
+/// list into <see cref="ImmutableArray{T}"/>-backed storage at construction.
 /// </summary>
 public abstract record AttributeCalibration
 {
@@ -23,9 +24,10 @@ public abstract record AttributeCalibration
 }
 
 /// <summary>
-/// Resolved auto cuts (equal_width data ranges, equal_frequency), ascending and
-/// finite. Landed with the M4 numeric-discretizer slices; retained here for the
-/// exhaustive union.
+/// Resolved auto cuts (equal_width data ranges, equal_frequency). The constructor does
+/// not validate them: <see cref="CalibratedSpec.Create"/> throws for a count other than
+/// <c>bins - 1</c> and reports cuts that are not finite and strictly ascending as
+/// <c>CalibrationCutsInvalid</c>.
 /// </summary>
 public sealed record CalibratedCuts : AttributeCalibration
 {
@@ -41,10 +43,11 @@ public sealed record CalibratedCuts : AttributeCalibration
 }
 
 /// <summary>
-/// The observed domain that fills an absent <c>declared_domain</c> (raw
-/// first-observation order). May be empty (no observations). Never co-occurs with
-/// <see cref="IncludeAdditions"/> for one attribute — an absent domain makes every
-/// observed value part of the observed domain.
+/// The observed domain that fills an omitted <c>declared_domain</c>, in
+/// first-observation order: each observed value as read, or its canonical numeric
+/// identity for a numeric <c>free_per_value</c> source (D-101). May be empty (no
+/// observations). Never co-occurs with <see cref="IncludeAdditions"/> for one
+/// attribute: an omitted domain makes every observed value part of the observed domain.
 /// </summary>
 public sealed record ObservedDomain : AttributeCalibration
 {

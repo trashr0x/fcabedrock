@@ -8,9 +8,9 @@ namespace FcaBedrock.Core.Spec;
 /// exactly one ordinal occurrence of <see cref="Name"/> at <see cref="Index"/>,
 /// and the resolved member at the identified site actually carries that index.
 /// <para>
-/// Mechanically closed — the <see langword="private protected"/> base constructor
-/// leaves no accessible base constructor to out-of-assembly types, so the trust
-/// boundary's site switch is exhaustive by construction (EP-10).
+/// The <see langword="private protected"/> base constructor blocks ordinary derivation
+/// outside this assembly, but a record's protected copy constructor does not (CS8878), so
+/// the trust boundary's site switch rejects any other variant (EP-10).
 /// </para>
 /// </summary>
 public abstract record ResolvedNameBinding

@@ -39,7 +39,7 @@ public sealed record ManualCutsDiscretizerSection(IReadOnlyList<double>? Cuts, B
 /// <c>precision</c> (default <c>"exact"</c>) round-trips as omitted (D-049).
 /// </summary>
 /// <param name="Bins">The authored bin count; carried as <c>long?</c> and range-checked to 2..<see cref="int.MaxValue"/> before it becomes an <c>int</c>.</param>
-/// <param name="Range">The authored range mode; null when not authored. Slice C recognizes <c>"min_max"</c> and <c>"manual"</c> only.</param>
+/// <param name="Range">The authored range mode (<c>"min_max"</c>, <c>"percentile_p1_p99"</c> or <c>"manual"</c>, §11.4); null when not authored.</param>
 /// <param name="VMin">The authored span minimum; required under <c>range = "manual"</c>, forbidden otherwise.</param>
 /// <param name="VMax">The authored span maximum; required under <c>range = "manual"</c>, forbidden otherwise.</param>
 /// <param name="Precision">The authored cut rounding (<c>"exact"</c> or <c>{ round_to = r }</c>); null when not authored.</param>

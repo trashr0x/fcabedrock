@@ -9,8 +9,9 @@ namespace FcaBedrock.Core.Discretization;
 /// categorical sibling of <see cref="ManualCutsDiscretizer"/>, modelling v2's
 /// <c>n</c> type. <see cref="Order"/> declares the domain low→high;
 /// <see cref="Cuts"/> are members of it. A raw value not in <see cref="Order"/>
-/// gets no bin. No numeric parse and no locale: the category strings are used
-/// verbatim as cut values (EP-11 n/a).
+/// gets no bin and is an unknown value (<see cref="BinResult.Unknown"/>), subject to
+/// <c>unknown_value_policy</c> (§11.8). No numeric parse and no locale: the category
+/// strings are used verbatim as cut values (EP-11 n/a).
 /// <para>
 /// Constructed only through <see cref="Create"/>, which validates the order and
 /// cut spec (<see cref="CutValidation.ValidateOrdered"/>) so an invalid one is

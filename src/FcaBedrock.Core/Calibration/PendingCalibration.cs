@@ -7,11 +7,12 @@ namespace FcaBedrock.Core.Calibration;
 
 /// <summary>
 /// The configuration a data-reading calibration must resolve for an
-/// auto-discretizer (D-093). A mechanically-closed union — the
-/// <see langword="private protected"/> base constructor admits no out-of-assembly
-/// variant. The concrete variants land with the slices that own their parameter
-/// types (M4 slices C/D/E); slice A ships only this abstract base and the
-/// <see cref="CalibrationPending"/> carrier.
+/// auto-discretizer (D-093). The variants are <see cref="PendingEqualWidth"/>,
+/// <see cref="PendingEqualFrequency"/> and <see cref="PendingValueGroupsPassthrough"/>;
+/// <see cref="CalibrationPending"/> carries one on a resolved attribute. The
+/// <see langword="private protected"/> base constructor blocks ordinary derivation outside
+/// this assembly, but a record's protected copy constructor does not (CS8878), so
+/// <c>ResolvedSpec.Create</c> rejects any other variant.
 /// </summary>
 public abstract record PendingCalibration
 {

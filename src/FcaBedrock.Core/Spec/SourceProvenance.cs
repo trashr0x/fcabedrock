@@ -2,9 +2,10 @@ namespace FcaBedrock.Core.Spec;
 
 /// <summary>
 /// What a source can prove about its preparation for the resolve → bind →
-/// calibrate → emit chain (D-098/G-1). A three-state, mechanically-closed union
-/// (the <see langword="private protected"/> base constructor admits no
-/// out-of-assembly variant): a bound source carries a <see cref="TokenProvenance"/>
+/// calibrate → emit chain (D-098/G-1). A three-state union (the
+/// <see langword="private protected"/> base constructor blocks ordinary derivation outside
+/// this assembly, though a record's protected copy constructor does not, CS8878): a bound
+/// source carries a <see cref="TokenProvenance"/>
 /// (full reference-identity pairing); a direct-constructed production source
 /// carries a <see cref="DescriptorProvenance"/> derived from its
 /// <see cref="Binding"/> (settings + triple roles); and a deliberately

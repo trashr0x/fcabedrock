@@ -16,7 +16,11 @@ public readonly struct Diagnosed<T>
         Diagnostics = diagnostics;
     }
 
-    /// <summary>The produced value. May be absent when <see cref="HasErrors"/>.</summary>
+    /// <summary>
+    /// The produced value, or <c>default</c> when none was produced (always the case for
+    /// <see cref="Failed"/>). A value may accompany errors; <see cref="TryGetValue"/> exposes
+    /// it only when it is present and error-free.
+    /// </summary>
     public T? Value { get; }
 
     /// <summary>Every diagnostic produced, in production order.</summary>

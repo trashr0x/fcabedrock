@@ -69,15 +69,15 @@ public sealed class CalibratedSpec
     /// the fingerprints see one consistent state: an omitted (null) consumed domain plus its
     /// <see cref="ObservedDomain"/> becomes the effective domain, and
     /// <see cref="IncludeAdditions"/> are appended to an authored domain (incl. <c>[]</c>). Returns
-    /// <see cref="Diagnosed{T}"/> — data-derived cut invalidity comes back as Error
-    /// diagnostics so the calibrator can aggregate them (none at M4 Slice A; the
-    /// cut-calibrated discretizers that produce them landed at M4 Slices C/D —
-    /// D-102/D-103). Throws
-    /// <see cref="ArgumentException"/> only for calibrator-contract mismatches
-    /// (programmer error): an outcome naming an unknown/excluded attribute, a
-    /// kind-mismatched/duplicate/unexpected outcome, a leftover
-    /// <see cref="CalibrationPending"/>, or a required completeness marker that is
-    /// missing. Completeness is required per calibration mode: an omitted-domain (null)
+    /// <see cref="Diagnosed{T}"/>: data-derived cut invalidity (<c>CalibrationCutsInvalid</c>)
+    /// comes back as Error diagnostics so the calibrator can aggregate them (D-102/D-103).
+    /// Throws <see cref="ArgumentException"/> only for programmer errors: a schema-less
+    /// <paramref name="resolved"/>, an invalid <c>restrict_to</c> entry, or a
+    /// calibrator-contract mismatch (an outcome naming an unknown/excluded attribute, a
+    /// kind-mismatched/duplicate/unexpected outcome, a calibrated cut count other than
+    /// <c>bins - 1</c>, a leftover <see cref="CalibrationPending"/>, or a required
+    /// completeness marker that is missing). Completeness is required per calibration
+    /// mode: an omitted-domain (null)
     /// consuming attribute must carry exactly one <see cref="ObservedDomain"/> (never
     /// co-occurring with <see cref="IncludeAdditions"/>), and an authored-domain (incl. <c>[]</c>)
     /// consuming attribute under <c>unknown_value_policy = "include"</c> must carry

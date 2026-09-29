@@ -26,8 +26,8 @@ namespace FcaBedrock.Spec;
 /// <c>{ value = n }</c> parsed under <c>binding.locale</c>, while every other
 /// token — including a numeric-looking one on a categorical attribute, and an
 /// unparseable one on <c>o</c> — stays a verbatim string. A
-/// <c>[Category Values]</c> entry equal to the effective
-/// <c>binding.missing_token</c> becomes <c>missing_policy = "as_attribute"</c>
+/// <c>[Category Values]</c> entry of a <c>c</c> or <c>b</c> attribute equal to the
+/// effective <c>binding.missing_token</c> becomes <c>missing_policy = "as_attribute"</c>
 /// (D-068). The discrete-vs-progressive choice for <c>o</c>/<c>n</c> is supplied
 /// out-of-band via <see cref="ScalingMode"/> — the <c>.bed</c> never recorded it.
 /// Date type <c>d</c> is a parity deferral (D-038).

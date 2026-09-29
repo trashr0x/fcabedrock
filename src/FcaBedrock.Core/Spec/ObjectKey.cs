@@ -1,10 +1,12 @@
 namespace FcaBedrock.Core.Spec;
 
 /// <summary>
-/// How object names are derived. Spec §5.4. A closed set: <see cref="RowIndexObjectKey"/> and
-/// <see cref="ColumnObjectKey"/> execute (wide <c>fail</c>/<c>keep</c> at M3 Slice E; wide
-/// <c>dedupe</c> at Slice F; a triple <see cref="ColumnObjectKey"/> is the subject key), while
-/// <see cref="CompositeObjectKey"/> is a permanent v1 reject (D-024/D-064).
+/// How object names are derived. Spec §5.4. Three modes: <see cref="RowIndexObjectKey"/> and
+/// <see cref="ColumnObjectKey"/> execute (a wide column key under every
+/// <c>duplicate_object_policy</c>; a triple <see cref="ColumnObjectKey"/> is the subject key),
+/// while <see cref="CompositeObjectKey"/> is a permanent v1 reject (D-024/D-064). The
+/// hierarchy is not mechanically closed, so <see cref="ResolvedSpec.Create"/> rejects an
+/// unrecognized subtype.
 /// </summary>
 public abstract record ObjectKey;
 

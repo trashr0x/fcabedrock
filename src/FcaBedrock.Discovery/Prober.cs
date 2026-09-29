@@ -23,9 +23,9 @@ namespace FcaBedrock.Discovery;
 /// settings — all four legs proven by test, since probe itself runs no conversion.
 /// </para>
 /// <para>
-/// <b>Probe touches no files.</b> It consumes an <see cref="IWideSourceSession"/> — an ordered
-/// schema plus cleaned records — and returns a document; the caller serializes it through
-/// <c>SpecWriter</c> and owns all output (D-109).
+/// <b>Probe touches no files.</b> It consumes a source session (<see cref="IWideSourceSession"/>
+/// or <see cref="ITripleSourceSession"/>): an ordered schema plus cleaned records. It returns a
+/// document; the caller serializes it through <c>SpecWriter</c> and owns all output (D-109).
 /// </para>
 /// </summary>
 public static class Prober

@@ -1,6 +1,10 @@
 namespace FcaBedrock.Core.Spec;
 
-/// <summary>How an attribute treats a raw value outside its declared domain. Spec §10.6.</summary>
+/// <summary>
+/// How an attribute treats a raw value outside its declared domain. It also sets the
+/// severity of a present-but-unparseable numeric value (<c>SourceValueUnparseable</c>),
+/// where <c>include</c> behaves as <c>warn</c>. Spec §10.6.
+/// </summary>
 public enum UnknownValuePolicy
 {
     /// <summary>No cross, object kept, no diagnostic.</summary>

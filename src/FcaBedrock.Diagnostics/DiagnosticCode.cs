@@ -1,10 +1,10 @@
 namespace FcaBedrock.Diagnostics;
 
 /// <summary>
-/// Stable identifier for a distinct diagnostic condition. The full registry is
-/// this enum (spec §16.4 lists the illustrative initial set). Only codes with a
-/// real emit site in the current milestone are present; the enum grows per slice
-/// rather than front-loading codes no path produces yet (principle EP-3).
+/// Stable identifier for a distinct diagnostic condition. Spec §16.4 is the v1 registry
+/// and owns each code's severity and phase; this enum holds the codes a build can raise.
+/// A registry row joins the enum only with a real emit site, rather than front-loading a
+/// code no path produces yet (principle EP-3, D-085).
 /// </summary>
 public enum DiagnosticCode
 {
@@ -12,7 +12,9 @@ public enum DiagnosticCode
 
     /// <summary>
     /// The document is not valid TOML 1.1.0 (syntax error, duplicate key, malformed
-    /// datetime, …). Fatal: no document is produced. Spec §2 / §16.4 (D-075).
+    /// datetime, …). Fatal: no document is produced. A non-error message from the TOML
+    /// parser is reported under this code as a Warning, and the read continues. Spec §2 /
+    /// §16.4 (D-075).
     /// </summary>
     SpecTomlInvalid,
 
@@ -141,10 +143,15 @@ public enum DiagnosticCode
     BindingLocaleInvalid,
 
     /// <summary>
-    /// A wide column source is unresolvable: both or neither of <c>index</c>/<c>name</c>;
-    /// <c>name</c> with <c>has_header = false</c>, with no header schema supplied, or not
-    /// found in the header; an <c>index</c> that is negative or out of the supplied
-    /// schema's range. One code, message variants. Spec §10.2 (D-066/D-067).
+    /// A source binding is unresolvable. For an attribute <c>source</c>: none declared; a
+    /// <c>column</c> source under triple or a <c>predicate</c> source under wide; a predicate
+    /// with no name; both or neither of <c>index</c>/<c>name</c>; a <c>name</c> with
+    /// <c>has_header = false</c>, with no header schema supplied, or matching no header
+    /// column or several; or an <c>index</c> that is negative or out of the supplied
+    /// schema's range. For the binding itself (no attribute location): a partial triple
+    /// <c>columns</c> role map, mixed index/name addressing, or a role failing the same
+    /// name/index checks; a missing triple <c>ordering</c>; or a <c>binding.encoding</c>
+    /// other than UTF-8. One code, message variants. Spec §5.3 / §10.2 (D-066/D-067/D-085).
     /// </summary>
     SourceBindingInvalid,
 
@@ -198,7 +205,11 @@ public enum DiagnosticCode
     /// </summary>
     ValueLabelKeyDuplicate,
 
-    /// <summary><c>manual_cuts</c>/<c>ordered_cuts</c> cuts are not strictly ascending. Spec §11.2 / §11.8.</summary>
+    /// <summary>
+    /// <c>manual_cuts</c> cuts are not finite and strictly ascending (a NaN or ±∞ cut also
+    /// fails). An <c>ordered_cuts</c> position-order failure is
+    /// <see cref="OrderedCutsNotAscending"/> instead. Spec §11.2 (D-056).
+    /// </summary>
     DiscretizerCutsNotAscending,
 
     /// <summary>A cut discretizer was given fewer than one cut. Spec §11.2 / §11.8.</summary>
@@ -224,7 +235,13 @@ public enum DiagnosticCode
     /// <summary><c>ends = "closed"</c> requires at least two cuts; fewer were given. Spec §11.2 / §11.8.</summary>
     DiscretizerEndsClosedTooFewCuts,
 
-    /// <summary><c>ordered_cuts.order</c> has duplicate or empty entries. Spec §11.8.</summary>
+    /// <summary>
+    /// An <c>order</c> list is invalid: <c>ordered_cuts.order</c>, or an ordinal
+    /// <c>scale.order</c> over a non-cut discretizer, has duplicate or empty entries; or a
+    /// numeric <c>free_per_value</c> <c>scale.order</c> entry is unparseable, non-finite, or
+    /// a normalization duplicate under <c>binding.locale</c>. Spec §11.8 / §12.3
+    /// (D-056/D-081/D-096).
+    /// </summary>
     OrderDomainInvalid,
 
     /// <summary>An <c>ordered_cuts</c> cut is not a member of <c>order</c>. Spec §11.8.</summary>
@@ -251,12 +268,12 @@ public enum DiagnosticCode
 
     /// <summary>
     /// The source's <c>value_type</c> is invalid for the attribute: an authored type
-    /// a type-fixing discretizer disallows (<c>identity</c>/<c>ordered_cuts</c> are
-    /// string-fixing, <c>manual_cuts</c> number-fixing, D-061), or a string-typed
-    /// source whose <c>restrict_to</c> contains a numeric entry — an exact
-    /// <c>{ value = n }</c> or a range (the mirror case is
-    /// <see cref="RestrictToNumericEntryRequired"/>). Spec §10.2 / §10.4
-    /// (D-061/D-063/D-091).
+    /// a type-fixing discretizer disallows (<c>identity</c>/<c>value_groups</c>/
+    /// <c>ordered_cuts</c> are string-fixing, <c>manual_cuts</c>/<c>equal_width</c>/
+    /// <c>equal_frequency</c> number-fixing, D-061), or a string-typed source whose
+    /// <c>restrict_to</c> contains a numeric entry: an exact <c>{ value = n }</c> or a range
+    /// (the mirror case is <see cref="RestrictToNumericEntryRequired"/>). Spec §10.2 /
+    /// §10.4 (D-061/D-063/D-091).
     /// </summary>
     SourceValueTypeInvalid,
 
@@ -364,18 +381,21 @@ public enum DiagnosticCode
     FormalAttributeNameInvalid,
 
     /// <summary>
-    /// A value-bin ordinal scale (<c>identity</c> — the only M2 value-bin
-    /// discretizer, D-070) needs an explicit <c>scale.order</c> but omits it, or a
-    /// <c>declared_domain</c> value has no <c>order</c> entry (every value bin needs
-    /// a threshold — <c>order</c> must be a full permutation of the domain). Spec
-    /// §12.3 (D-081).
+    /// A value-bin or value-group ordinal scale (over <c>identity</c>,
+    /// <c>free_per_value</c> or <c>value_groups</c>) needs an explicit <c>scale.order</c>
+    /// but omits it, or a bin has no <c>order</c> entry (every bin needs a threshold, so
+    /// <c>order</c> must be a full permutation of the bins). A numeric
+    /// <c>free_per_value</c> with no <c>scale.order</c> takes natural numeric ascending
+    /// order instead and never reports this. Spec §12.3 (D-081/D-090/D-096).
     /// </summary>
     OrdinalOrderMissing,
 
     /// <summary>
-    /// A <c>scale.order</c> entry is not among the attribute's bin labels (its
-    /// <c>declared_domain</c> for <c>identity</c>); <c>order</c> lists raw domain
-    /// values, never display labels. Spec §12.3 (D-081).
+    /// A <c>scale.order</c> entry is not among the attribute's bins: its
+    /// <c>declared_domain</c> for <c>identity</c> and <c>free_per_value</c>, or its group
+    /// labels (plus <c>Other</c> under <c>unmatched = "other"</c>) for <c>value_groups</c>.
+    /// One per stray entry. <c>order</c> lists raw bin values or group labels, never
+    /// display labels. Spec §12.3 (D-081/D-090).
     /// </summary>
     OrdinalOrderHasUnknownValue,
 
@@ -431,12 +451,14 @@ public enum DiagnosticCode
 
     /// <summary>
     /// A data-derived calibration population cannot bound its discretizer's
-    /// configuration: an <c>equal_width</c> data range (<c>min_max</c>) with no usable
-    /// spread — no usable numeric values at all, or every value equal, so <c>vmin</c>
-    /// would equal <c>vmax</c>. Error, per attribute, in-path (no calibrated result).
-    /// The <c>equal_frequency</c> distinct-value guard reuses this code at its slice;
-    /// it does <b>not</b> apply to <c>equal_width</c>, whose bins are placed by span,
-    /// not by count (D-089). Spec §7 / §11.4 / §16.4 (D-088/D-089).
+    /// configuration. An <c>equal_width</c> data range (<c>min_max</c> or
+    /// <c>percentile_p1_p99</c>) has no usable numeric value at all, or no spread (every
+    /// value equal for <c>min_max</c>; equal 1st and 99th percentiles for
+    /// <c>percentile_p1_p99</c>). An <c>equal_frequency</c> population has fewer distinct
+    /// usable values than the requested bins; that distinct-value guard does <b>not</b>
+    /// apply to <c>equal_width</c>, whose bins are placed by span, not by count (D-089).
+    /// Error, per attribute, in-path (no calibrated result). Spec §7 / §11.4 / §11.5 /
+    /// §16.4 (D-088/D-089/D-103).
     /// </summary>
     CalibrationDataInsufficient,
 
@@ -501,8 +523,8 @@ public enum DiagnosticCode
     BedDateTypeNotSupported,
 
     /// <summary>
-    /// An included attribute's v2 type code is outside the six-code set
-    /// (c/b/o/n/d) — a corrupt or hand-mangled <c>.bed</c>. Spec §16.4 (D-038's
+    /// An included attribute's v2 type code is none of <c>c</c>, <c>b</c>, <c>o</c>,
+    /// <c>n</c> or <c>d</c>: a corrupt or hand-mangled <c>.bed</c>. Spec §16.4 (D-038's
     /// type-code map; D-079).
     /// </summary>
     BedTypeUnrecognized,
@@ -542,17 +564,21 @@ public enum DiagnosticCode
     UnknownValueObserved,
 
     /// <summary>
-    /// A present-but-unparseable numeric value (parse failure, NaN, or ±∞) was observed:
-    /// the object is kept, no cross is emitted. Severity follows <c>unknown_value_policy</c>
-    /// (<c>skip</c> silent). Aggregated per attribute. Spec §10.6 / §11.5 / §16.4 (D-050).
+    /// A present-but-unparseable numeric value (parse failure, NaN, or ±∞) was observed.
+    /// When discretizing, the object is kept and no cross is emitted; on a numeric
+    /// <c>restrict_to</c> the value is a non-match (§10.4, D-097). Severity follows
+    /// <c>unknown_value_policy</c> (<c>skip</c> silent). Aggregated per attribute; calibrate
+    /// and emit each report their own aggregate (D-100). Spec §10.6 / §11.5 / §16.4 (D-050).
     /// </summary>
     SourceValueUnparseable,
 
     /// <summary>
     /// A triple <c>subject_grouped</c> source is not contiguous: a subject recurs after
-    /// an intervening subject (its group already closed). Error — the conversion halts,
-    /// the file is usable next call (§16.2); <c>ordering = "unordered"</c> accepts
-    /// interleaved input instead. Spec §5.3 / §16.4 (D-082).
+    /// an intervening subject (its group already closed). Error at the first recurrence,
+    /// with its record index as the location: the read halts there, and the file is usable
+    /// next call (§16.2). Probe, calibrate and emit each report it (D-099/D-111);
+    /// <c>ordering = "unordered"</c> accepts interleaved input instead. Spec §5.3 / §16.4
+    /// (D-082).
     /// </summary>
     TripleSubjectNotContiguous,
 
@@ -560,7 +586,10 @@ public enum DiagnosticCode
     /// A data-derived object name (a triple subject or a wide column key) is unusable:
     /// empty, whitespace-only, a <c>missing_token</c>, contains a newline/control
     /// character, or its mapped column is absent from the row (a newline would corrupt
-    /// the line-structured <c>.cxt</c>, §18.1). Error, per row. Spec §5.4 / §16.4 (D-085).
+    /// the line-structured <c>.cxt</c>, §18.1). Error at the first offending row, with its
+    /// record index as the location: the read halts there. Emit reports it for both
+    /// shapes; calibrate and probe check triple subjects only (D-099/D-111). Spec §5.4 /
+    /// §16.4 (D-085).
     /// </summary>
     ObjectKeyValueInvalid,
 
@@ -584,13 +613,15 @@ public enum DiagnosticCode
     ObjectKeyNameDisambiguated,
 
     /// <summary>
-    /// A conversion that grouped on the external sort-merge spool path (triple <c>unordered</c> or wide
-    /// <c>dedupe</c>) hit a storage failure. Two channels (D-082): an <b>in-path</b> failure — storage
-    /// still needed for correct row delivery — is <b>Error</b> and halts this conversion; a
-    /// <b>cleanup-class</b> failure — storage that can no longer affect delivered rows (consumed-run
-    /// deletes, teardown) — is <b>Warning</b> and the conversion completes. Aggregated to one final
-    /// per stable identity <c>(operation, kind)</c> with a combined count and bounded path samples, and
-    /// promoted to the worst severity across replay passes. Spec §16.4 (D-082/D-085).
+    /// Spool storage failed during calibrate or emit: on the external sort-merge grouping path
+    /// (triple <c>unordered</c> or wide <c>dedupe</c>) or in calibration's spill storage (D-095).
+    /// Two channels (D-082): an <b>in-path</b> failure (storage still needed for a correct
+    /// result) is <b>Error</b>, which halts the conversion or leaves calibration with no
+    /// calibrated result; a <b>cleanup-class</b> failure (storage that can no longer affect the
+    /// result: consumed-run deletes, teardown) is <b>Warning</b> and the phase completes.
+    /// Aggregated to one final per stable identity <c>(operation, kind)</c> with a combined count
+    /// and bounded path samples, and promoted to the worst severity across replay passes. Spec
+    /// §16.4 (D-082/D-085/D-095).
     /// </summary>
     GroupingStorageFailed,
 
@@ -654,19 +685,21 @@ public enum DiagnosticCode
     ProbeSourceReadFailed,
 
     /// <summary>
-    /// A <c>probe</c> found nothing to author an attribute from — a wide source with zero
-    /// columns. Error and no draft, because a draft must contain at least one attribute
-    /// (D-107). Distinct from an empty <em>domain</em>: an all-missing column is a real
-    /// attribute and succeeds with its domain omitted. Spec §7.1 / §16.4 (D-107/D-111).
+    /// A <c>probe</c> found nothing to author an attribute from: a wide source with zero
+    /// columns, or a triple source with no present predicate. Error and no draft, because a
+    /// draft must contain at least one attribute (D-107). Distinct from an empty
+    /// <em>domain</em>: an all-missing column is a real attribute and succeeds with its domain
+    /// omitted. Spec §7.1 / §16.4 (D-107/D-111).
     /// </summary>
     ProbeNoAttributesDiscovered,
 
     /// <summary>
-    /// A <c>probe</c> synthesized an attribute name from a blank or §10.1-unusable header, or
-    /// disambiguated one against an already-taken name. Warning, <b>aggregated</b> (count plus a
-    /// bounded sample in physical source order); the source selector is never changed, only the
-    /// logical name. Plain headerless <c>column_N</c> synthesis alone is routine and is
-    /// <b>not</b> warned. Spec §7.1 / §10.1 / §16.4 (D-107/D-111).
+    /// A <c>probe</c> synthesized an attribute name from a blank or §10.1-unusable header or an
+    /// unusable predicate, or disambiguated one against an already-taken name. Warning,
+    /// <b>aggregated</b> (count plus a bounded sample, in physical column order for wide and
+    /// predicate first-appearance order for triple); the source selector is never changed,
+    /// only the logical name. Plain headerless <c>column_N</c> synthesis alone is routine and
+    /// is <b>not</b> warned. Spec §7.1 / §10.1 / §16.4 (D-107/D-111).
     /// </summary>
     ProbeAttributeNameAdjusted,
 

@@ -24,7 +24,10 @@ public static class ConversionPlanner
     /// Plans the conversion from resolved <b>calibrated state</b> (D-093/D-098): the
     /// effective spec and its schema come from <paramref name="calibrated"/>, so Plan
     /// cannot be handed an unrelated schema and "plan an uncalibrated spec" is a
-    /// compile error. Aggregates all plan diagnostics (EP-14). <paramref name="labelStyle"/>
+    /// compile error. Aggregates plan diagnostics (EP-14) in two stages: every static
+    /// check (object key, deferred scale, value-bin ordinal order) reports first, and the
+    /// per-attribute checks (collisions, invalid rendered names) run only when no static
+    /// check is an Error or Fatal. <paramref name="labelStyle"/>
     /// selects how cut bin labels render in names (spec §8/§14); it affects rendered
     /// names only, never identity (EP-15, D-044), and is carried on the plan so the cxt
     /// output fingerprint pairs with it.

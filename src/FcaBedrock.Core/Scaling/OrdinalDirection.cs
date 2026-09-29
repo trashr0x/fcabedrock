@@ -8,9 +8,17 @@ namespace FcaBedrock.Core.Scaling;
 /// </summary>
 public enum OrdinalDirection
 {
-    /// <summary>"At or above" — <c>&gt;=</c> thresholds at lower edges; tautological end is the open bottom.</summary>
+    /// <summary>
+    /// "At or above": over cut bins, <c>&gt;=</c> thresholds at lower edges, with the open
+    /// bottom as the tautological end. Over value bins <see cref="OrdinalBoundary"/> picks
+    /// <c>&gt;=</c> or <c>&gt;</c> (§12.3).
+    /// </summary>
     Ge,
 
-    /// <summary>"Below" — <c>&lt;</c> thresholds at upper edges; tautological end is the open top. Matches v2 progressive.</summary>
+    /// <summary>
+    /// "Below": over cut bins, <c>&lt;</c> thresholds at upper edges, with the open top as
+    /// the tautological end; matches v2 progressive. Over value bins
+    /// <see cref="OrdinalBoundary"/> picks <c>&lt;=</c> or <c>&lt;</c> (§12.3).
+    /// </summary>
     Le,
 }

@@ -34,12 +34,14 @@ public static class SpecResolver
     /// <see cref="ResolvedDocument"/> (D-098/G-1): the resolved
     /// <see cref="ResolvedSpec"/> token plus an immutable snapshot of the document.
     /// <paramref name="schema"/> is needed only when something binds a column by
-    /// header name (§10.2/§5.4); when it is supplied, direct column indexes are also
-    /// range-checked against it — the conversion pipeline resolves schema-aware via
+    /// header name (§5.3/§5.4/§10.2); when it is supplied, direct column indexes are
+    /// also range-checked against it. The conversion pipeline resolves schema-aware via
     /// the two-stage source bootstrap, so all binding range checks are seam-owned
-    /// (G-1). Strict factories run only behind the success gate: on any Error/Fatal
-    /// the result is <see cref="Diagnosed{T}.Failed"/> and no strict factory is
-    /// called (round-7 High-1).
+    /// (G-1). On any Error/Fatal the result is <see cref="Diagnosed{T}.Failed"/> and the
+    /// trust-boundary factories (<c>SourceReadSettings.Create</c>,
+    /// <c>ResolvedSpec.Create</c>) are never called, so an authored error never leaves as
+    /// an exception (round-7 High-1). The per-attribute strict factories run earlier,
+    /// only on arguments the reader and this pass have already checked.
     /// </summary>
     public static Diagnosed<ResolvedDocument> Resolve(SpecDocument document, SourceSchema? schema = null)
     {
@@ -232,12 +234,13 @@ public static class SpecResolver
     /// Stage-1 bootstrap resolution (D-098/G-1): resolves only the §5.1
     /// schema-independent read settings a source session needs before the schema is
     /// known, via the same private helpers as full resolution (so no condition gains
-    /// a second owner). Enforces the same prefix gates as <see cref="Resolve"/> — an
+    /// a second owner). Enforces the same prefix checks as <see cref="Resolve"/>: an
     /// authored <c>extends</c> throws <see cref="ArgumentException"/> (uncomposed), and
     /// a missing/unsupported version returns <c>SpecVersionUnsupported</c> (Fatal) with
-    /// no settings — so the bootstrap never opens a source for a document whose
-    /// semantics are unknown. Strict factory (<see cref="SourceReadSettings.Create"/>)
-    /// runs only behind the success gate.
+    /// no settings, so the bootstrap never opens a source for a document whose
+    /// semantics are unknown. A missing shape likewise returns <c>BindingShapeMissing</c>
+    /// with no settings. The strict factory (<see cref="SourceReadSettings.Create"/>)
+    /// runs only behind the success check, so any Error/Fatal yields a failed result.
     /// </summary>
     public static Diagnosed<SourceReadSettings> ResolveReadSettings(SpecDocument document)
     {

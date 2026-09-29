@@ -9,9 +9,10 @@ namespace FcaBedrock.Core.Scaling;
 /// <para>Over half-open cut bins the boundary is fixed by direction (D-044):
 /// <c>le</c> ⇒ <c>&lt;</c> at upper edges, <c>ge</c> ⇒ <c>&gt;=</c> at lower edges — the
 /// only whole-bin-clean pairings, so <see cref="Boundary"/> is not read there. Over
-/// <b>value</b> bins (<c>identity</c> with an explicit <see cref="Order"/>) there is
-/// no half-open geometry, so all four <c>direction × boundary</c> combinations are
-/// well-defined and both knobs are live (§12.3, D-081).</para>
+/// <b>value</b> bins (<c>identity</c>, <c>free_per_value</c> or <c>value_groups</c>,
+/// thresholded on <see cref="Order"/>) there is no half-open geometry, so all four
+/// <c>direction × boundary</c> combinations are well-defined and both knobs are live
+/// (§12.3, D-081/D-096/D-104).</para>
 ///
 /// <para>The threshold of an open end (±∞) has no finite cut and renders
 /// <c>all</c> (spec §12.3); it is kept unless <see cref="DropTop"/>. Value schemes

@@ -11,10 +11,10 @@ namespace FcaBedrock.Core.Planning;
 /// (A record cannot be closed this way — a non-sealed record needs a public or
 /// protected copy constructor, CS8878 — so this is a plain abstract class.)
 /// <para>
-/// Pure value with explicit equality on the concrete subtypes, so
-/// <see cref="ConversionPlan"/> record equality behaves across independently obtained
-/// instances. <b>Not</b> a fingerprint input: the execution/streaming strategy never
-/// changes output bytes (§17 / D-082).
+/// Pure value with explicit equality on the concrete subtypes, so two independently
+/// obtained equivalent executions compare equal (<see cref="ConversionPlan"/> itself
+/// compares by reference). <b>Not</b> a fingerprint input: the execution/streaming
+/// strategy never changes output bytes (§17 / D-082).
 /// </para>
 /// </summary>
 public abstract class SourceExecution

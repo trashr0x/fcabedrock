@@ -2,9 +2,10 @@ namespace FcaBedrock.Core.Discretization;
 
 /// <summary>
 /// The rounding applied to a computed <c>equal_width</c> cut (spec §11.4
-/// <c>precision</c>). A mechanically-closed union — the
-/// <see langword="private protected"/> base constructor admits no out-of-assembly
-/// variant, so the derivation and fingerprint switches are exhaustive. Immutable
+/// <c>precision</c>). The <see langword="private protected"/> base constructor blocks
+/// ordinary derivation outside this assembly, but a record's protected copy constructor
+/// does not (CS8878), so <c>ResolvedSpec.Create</c> and the fingerprint encoder reject any
+/// other variant. Immutable
 /// and culture-free: rounding is pure binary64 arithmetic, never a locale concern
 /// (EP-11).
 /// </summary>

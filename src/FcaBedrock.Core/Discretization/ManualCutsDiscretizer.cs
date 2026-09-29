@@ -9,9 +9,10 @@ namespace FcaBedrock.Core.Discretization;
 /// <see cref="NumericCutBins"/> engine, which owns the parsing, classification,
 /// labelling, and rendering every numeric-cut discretizer shares (EP-17, D-093):
 /// raw values are parsed to <see cref="double"/> with the injected
-/// <see cref="CultureInfo"/> (never ambient — EP-11); a value that fails to parse or
-/// is non-finite gets no bin (§11.5), as does an out-of-range value under
-/// <see cref="BinEnds.Closed"/> (§11.2). Cut labels are invariant schema strings,
+/// <see cref="CultureInfo"/> (never ambient, EP-11); a value that fails to parse or
+/// is non-finite is <see cref="BinResult.Unparseable"/> (kept, no cross, diagnosable,
+/// §11.5), while an out-of-range value under <see cref="BinEnds.Closed"/> gets no bin
+/// (§11.2). Cut labels are invariant schema strings,
 /// not locale numbers (§14), so the same spec yields the same labels everywhere.
 /// <para>
 /// Constructed only through <see cref="Create"/>, which validates the cut spec

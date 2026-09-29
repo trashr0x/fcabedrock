@@ -6,8 +6,9 @@ namespace FcaBedrock.Core.Scaling;
 /// decisions.md D-069/D-077). The string
 /// <see cref="FcaBedrock.Core.Planning.FormalAttributeIdentity.BinKey"/> remains
 /// the identity/collision unit; this is its machine-readable twin, produced by
-/// the same planner walk so the two cannot drift. A closed hierarchy: external
-/// assemblies construct the leaves but cannot derive new ones.
+/// the same planner walk so the two cannot drift. The planner produces only the three
+/// sealed leaves below. The hierarchy is not closed to other assemblies, so the schema
+/// encoder throws on any other subtype.
 /// </summary>
 public abstract record CanonicalBin;
 

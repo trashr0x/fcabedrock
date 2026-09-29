@@ -9,21 +9,28 @@ namespace FcaBedrock.Spec.Toml;
 /// input <see cref="SpecResolver.Resolve"/> requires. Composition is a
 /// document→document step preceding the seam and belongs to the spec-resolve
 /// phase for §16.4 ownership (D-078). The merge operates on authored surface
-/// only: <c>null</c> is "not authored", and <c>derived ?? base</c> is the only
-/// override operator, so an unauthored derived field never overrides an
-/// authored base field.
+/// only, where <c>null</c> is "not authored". Within <c>[binding]</c>,
+/// <c>[defaults]</c> and <c>[output]</c> it is <c>derived ?? base</c> (per leaf field,
+/// and per whole value for the nested <c>[binding]</c> tables), so an unauthored
+/// derived field there never overrides an authored base one. A same-<c>id</c>
+/// <c>[[template]]</c> or same-<c>name</c> <c>[[attribute]]</c> replaces the base
+/// entry whole and in place, <c>[spec]</c> and <c>[provenance]</c> come from the
+/// derived file alone, and <c>[[matcher]]</c> entries concatenate, base then
+/// derived (§13).
 /// </summary>
 public static class SpecComposer
 {
     /// <summary>
     /// Composes <paramref name="document"/>, whose canonical key is
     /// <paramref name="documentKey"/>. A document with no authored
-    /// <c>extends</c> passes through unchanged (after the version gate). Fatal
-    /// on a missing or unsupported <c>[spec].version</c> anywhere in the chain
-    /// — the root is gated before any base loads (D-078) — on a base that
-    /// cannot be found (<c>SpecExtendsNotFound</c>), on a cycle
-    /// (<c>SpecExtendsCycle</c>, including self-extends), and on a base that
-    /// fails to parse (its diagnostics aggregate with base-file locations).
+    /// <c>extends</c> passes through unchanged (after the version check). The result
+    /// fails with a Fatal <c>SpecVersionUnsupported</c> on a missing or unsupported
+    /// <c>[spec].version</c> anywhere in the chain (the root is checked before any
+    /// base loads, D-078), with a Fatal <c>SpecExtendsNotFound</c> on a base that
+    /// cannot be found, and with a Fatal <c>SpecExtendsCycle</c> on a cycle,
+    /// including self-extends. It also fails on a base that does not parse, carrying
+    /// that base's own diagnostics with base-file locations. Parse warnings of every
+    /// loaded base are carried in the result either way.
     /// </summary>
     public static Diagnosed<SpecDocument> Compose(SpecDocument document, string documentKey, ISpecTextSource source)
     {

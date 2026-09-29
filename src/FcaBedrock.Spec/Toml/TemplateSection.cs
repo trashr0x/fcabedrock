@@ -37,8 +37,9 @@ public sealed record TemplateSection(
 {
     /// <summary>
     /// Authored <c>display_name</c> (§9.1/§10.1), or null when omitted. Like every
-    /// other field here it participates in the §9.2 merge as a whole value: it
-    /// beats <c>[defaults]</c> and loses to an explicit attribute
+    /// other field here it participates in the §9.2 merge as a whole value: it beats
+    /// the default (the attribute <c>name</c>; <c>[defaults]</c> has no
+    /// <c>display_name</c>) and loses to an explicit attribute
     /// <c>display_name</c> (D-114/D-121).
     /// </summary>
     public string? DisplayName { get; init; }

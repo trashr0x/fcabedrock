@@ -5,8 +5,8 @@ using Tomlyn.Syntax;
 namespace FcaBedrock.Spec.Toml;
 
 /// <summary>
-/// Parses authored Bedrock-spec TOML into a presence-tracked
-/// <see cref="SpecDocument"/> (D-066/D-075). Strict over the v1 vocabulary:
+/// Parses authored Bedrock-spec TOML, under the TOML 1.1.0 grammar (D-133), into a
+/// presence-tracked <see cref="SpecDocument"/> (D-066/D-075). Strict over the v1 vocabulary:
 /// unknown keys and tables fail the read (<c>SpecKeyUnrecognized</c>) so a
 /// write never silently drops authored content; the one recognized-but-unmodelled
 /// v1 surface left, <c>value_type = "date"</c>, fails with the transitional
