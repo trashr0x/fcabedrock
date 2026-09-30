@@ -2,7 +2,7 @@ namespace FcaBedrock.Sources;
 
 /// <summary>
 /// One object's row of raw field values, as produced by a source. A missing field
-/// (empty, or equal to the binding's <c>missing_token</c> after trimming — spec
+/// (empty, or equal to the binding's <c>missing_token</c> after trimming, spec
 /// §5.1) is surfaced as <see langword="null"/>, so the source owns missing
 /// detection and downstream stages stay free of binding details.
 /// </summary>
@@ -12,7 +12,7 @@ public sealed class ObjectRecord
 
     /// <summary>
     /// Constructs a record over <paramref name="fields"/>. <b>Construction transfers exclusive,
-    /// immutable ownership</b> of the caller-provided array — it is captured by reference, not copied.
+    /// immutable ownership</b> of the caller-provided array: it is captured by reference, not copied.
     /// A source must never mutate or reuse the array after yielding the record: downstream stages may
     /// hold it past the yield (e.g. the dedupe grouping wraps a record as a zero-copy live row and may
     /// buffer/spill it, D-082/D-083), so a buffer-reusing source would corrupt every such row.
@@ -31,9 +31,9 @@ public sealed class ObjectRecord
 
     /// <summary>
     /// The raw value at a 0-based column, or <see langword="null"/> when the cell is missing
-    /// (empty / <c>missing_token</c>) <b>or absent</b> — an <paramref name="index"/> at or beyond
+    /// (empty / <c>missing_token</c>) <b>or absent</b>: an <paramref name="index"/> at or beyond
     /// <see cref="FieldCount"/> is a ragged short row, whose mapped cell is treated as absent (§5.4,
-    /// D-085), not an error. A negative index is never a "missing cell" — it is a programmer error.
+    /// D-085), not an error. A negative index is never a "missing cell"; it is a programmer error.
     /// </summary>
     public string? Field(int index)
     {

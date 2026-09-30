@@ -3,7 +3,7 @@ namespace FcaBedrock.Conversion;
 /// <summary>
 /// One <see cref="QuantileAccumulator"/>'s spill-run catalogue, tiered by <b>generation</b>
 /// (D-128). Original spills enter generation 0; when a generation holds <c>F</c> runs, exactly
-/// those <c>F</c> — oldest first — become one run of the next generation. Promotion is by
+/// those <c>F</c> (oldest first) become one run of the next generation. Promotion is by
 /// original-leaf count, never by byte size, and a higher-generation run is never used to fill a
 /// lower batch, so a generation-<c>g</c> run represents exactly <c>F^g</c> original spills.
 /// <para>
@@ -16,7 +16,7 @@ namespace FcaBedrock.Conversion;
 /// </para>
 /// <para>
 /// <b>The bound.</b> <c>L = 1 + floor(log_F(long.MaxValue))</c> is computed by repeated integer
-/// division — never a floating logarithm, which rounds, and never <c>F^L</c>, which overflows.
+/// division: never a floating logarithm, which rounds, and never <c>F^L</c>, which overflows.
 /// <c>K = (F - 1) * L</c> in widened checked arithmetic (F = 16: L = 16, K = 240; F = 2: L = 63,
 /// K = 63). At quiescence the count <b>equals</b> the sum of the base-<c>F</c> digits of the
 /// number of successful original spills, so it is at most <c>K</c>; during one insertion and its
@@ -52,7 +52,7 @@ internal sealed class QuantileRunCatalog
     /// <summary>
     /// Creates a catalogue with an explicit level ceiling. Production always passes
     /// <see cref="LevelsFor"/>; a lower ceiling exists only so the level-<c>L</c> fail-closed rule
-    /// can be exercised without <c>F^L</c> spills (EP-6 — a construction seam, not a behaviour
+    /// can be exercised without <c>F^L</c> spills (EP-6; a construction seam, not a behaviour
     /// branch: nothing below reads which constructor was used).
     /// </summary>
     public QuantileRunCatalog(int fanIn, int levels)
@@ -109,7 +109,7 @@ internal sealed class QuantileRunCatalog
     public void Insert(SpoolRunHandle run) => Add(generation: 0, run);
 
     /// <summary>
-    /// The <c>F</c> runs of a full generation, oldest first — the exact batch a carry merges. The
+    /// The <c>F</c> runs of a full generation, oldest first: the exact batch a carry merges. The
     /// list is the catalogue's own bounded scratch (capacity <c>F</c>), refilled on each call, so
     /// no per-carry allocation accumulates. The catalogue is <b>not</b> modified: a batch is only
     /// consumed when <see cref="Carry"/> commits its successful output.
@@ -137,7 +137,7 @@ internal sealed class QuantileRunCatalog
     /// Commits a completed carry: the <c>F</c> runs of <paramref name="generation"/> are replaced
     /// by <paramref name="output"/> at the next generation. Called <b>only after</b> the merge has
     /// returned successfully, so a failed or cancelled carry leaves the catalogue exactly as it
-    /// was and the workspace — which tracks every undeleted path — owns the cleanup. A partial
+    /// was and the workspace (which tracks every undeleted path) owns the cleanup. A partial
     /// carry is never resumed.
     /// </summary>
     public void Carry(int generation, SpoolRunHandle output)
@@ -183,7 +183,7 @@ internal sealed class QuantileRunCatalog
 
     /// <summary>
     /// Replaces everything with the one consolidated run. The generation tiering has done its work
-    /// by this point — the run covers every leaf — so it is simply the catalogue's single entry.
+    /// by this point (the run covers every leaf), so it is simply the catalogue's single entry.
     /// </summary>
     public void ReplaceWithFinal(SpoolRunHandle run)
     {

@@ -12,19 +12,19 @@ namespace FcaBedrock.Conversion;
 /// <see cref="EmittedObject"/> per <b>surviving</b> formed object (spec §7 step 4). Single-pass
 /// and allocation-streaming: the incidence matrix is never materialized (EP-16). All ordering and
 /// naming are already decided by the planner; emit only looks values up. Data diagnostics
-/// (unknown / unparseable values) are <b>aggregated per attribute</b> — a count with a bounded
+/// (unknown / unparseable values) are <b>aggregated per attribute</b>, a count with a bounded
 /// sample, flushed in plan order after the stream, never one diagnostic per row (spec §16.4,
-/// D-059) — and appended to the caller-supplied collector.
+/// D-059), and appended to the caller-supplied collector.
 /// <para>
 /// <b>Restriction (§10.4/D-091).</b> Emit applies the plan's <c>restrict_to</c> filters to whole
 /// formed objects: each object is classified first, then filtered, so a surviving object keeps
-/// <b>all</b> its crosses — restrictions filter objects, not observations. Calibration and the
+/// <b>all</b> its crosses; restrictions filter objects, not observations. Calibration and the
 /// column vocabulary were computed over the input universe <em>before</em> filtering (§7), so
 /// some columns may legitimately end up empty (<c>AttributeHasNoCrosses</c>).
 /// </para>
 /// <para>
 /// <b>Artifact validity (§16.2/§18.1, G-12).</b> This emitter reports failures as diagnostics; it
-/// does not — and cannot — retract bytes a writer has already put into a caller-owned sink. A
+/// does not, and cannot, retract bytes a writer has already put into a caller-owned sink. A
 /// run's output is valid <b>only if</b> its collected diagnostics contain no Error or Fatal once
 /// the run is complete (for the <c>.cxt</c> two-pass, only after
 /// <see cref="EmitReplaySession"/> disposal, which is when the final cross-pass aggregates land).
@@ -51,13 +51,13 @@ public static class Emitter
     /// Emits the formal objects for <paramref name="plan"/> over <paramref name="source"/>. Object
     /// names follow <c>plan.ObjectKey</c>: <c>row_index</c> uses the source row index, while a wide
     /// <c>column</c> key names each object from its cleaned key cell and applies
-    /// <c>duplicate_object_policy</c> — <c>fail</c> (a repeat halts with <c>DuplicateObjectKey</c>),
+    /// <c>duplicate_object_policy</c>: <c>fail</c> (a repeat halts with <c>DuplicateObjectKey</c>),
     /// <c>keep</c> (each row its own object, colliding names disambiguated by the converter), or
     /// <c>dedupe</c> (rows sharing a cleaned key collapse to one object, crosses unioned onto the first,
-    /// first-occurrence order — §5.4/§6.1, EP-15). <c>row_index</c>/<c>fail</c>/<c>keep</c> stream
+    /// first-occurrence order, §5.4/§6.1, EP-15). <c>row_index</c>/<c>fail</c>/<c>keep</c> stream
     /// single-pass in source-row order; <c>dedupe</c> uses the shared grouping/spool backend (§17 rule 4).
     /// The matrix is never materialized (EP-16). Emit diagnostics accrue to <paramref name="diagnostics"/>
-    /// once per enumeration — a replaying caller (the <c>.cxt</c> two-pass) brackets this with
+    /// once per enumeration; a replaying caller (the <c>.cxt</c> two-pass) brackets this with
     /// <see cref="EmitReplay.Begin"/>.
     /// </summary>
     public static IAsyncEnumerable<EmittedObject> EmitAsync(
@@ -147,7 +147,7 @@ public static class Emitter
 
         await foreach (var record in source.ReadAsync(cancellationToken).ConfigureAwait(false))
         {
-            // §10.4/G-2 sequencing — the row IS the formed object here, so: classify, then filter,
+            // §10.4/G-2 sequencing. The row IS the formed object here, so: classify, then filter,
             // then (only for a survivor) name.
             //
             // 1. Classify every included attribute. This runs for EVERY row, filtered or not:
@@ -165,7 +165,7 @@ public static class Emitter
             restrictions.ObserveWide(record, matched);
 
             // 3. A non-surviving row is not an object: no key check, no `fail` duplicate check, no
-            //    `keep` name assignment — nothing downstream may observe it. recordIndex still
+            //    `keep` name assignment; nothing downstream may observe it. recordIndex still
             //    advances below, because it is the SOURCE position, not a survivor rank (§5.4).
             if (!RestrictionFilter.Passes(matched))
             {
@@ -178,7 +178,7 @@ public static class Emitter
             if (columnKey is null)
             {
                 // row_index: the source-assigned input position, verbatim. Filtering NEVER
-                // renumbers it (§5.4/G-2) — if row 0 is filtered and row 1 survives, the survivor
+                // renumbers it (§5.4/G-2): if row 0 is filtered and row 1 survives, the survivor
                 // is still named "1".
                 name = record.Name;
             }
@@ -188,7 +188,7 @@ public static class Emitter
                 if (!ObjectNames.IsUsable(key))
                 {
                     // §5.4/§16.4/D-085: an empty / missing_token / whitespace / control-char key cell,
-                    // or a cell absent from a ragged row, cannot name an object — halt this conversion.
+                    // or a cell absent from a ragged row, cannot name an object; halt this conversion.
                     diagnostics.Add(new BedrockDiagnostic(
                         DiagnosticCode.ObjectKeyValueInvalid, DiagnosticSeverity.Error,
                         $"The wide object key at record {recordIndex} is empty, whitespace-only, a missing token, absent, or contains a control character; it cannot name an object (§5.4).",
@@ -201,7 +201,7 @@ public static class Emitter
                     case DuplicateObjectPolicy.Fail:
                         if (!failSeen!.Add(key!))
                         {
-                            // §6.1: a duplicate key means the key does not identify objects — stop.
+                            // §6.1: a duplicate key means the key does not identify objects; stop.
                             // Only survivors are recorded, so a filtered row's key never trips this
                             // (G-2): it is not an object, so it cannot duplicate one.
                             diagnostics.Add(new BedrockDiagnostic(
@@ -238,7 +238,7 @@ public static class Emitter
                 }
             }
 
-            // The surviving object keeps ALL its crosses — not only the observations that matched.
+            // The surviving object keeps ALL its crosses, not only the observations that matched.
             var emitted = new EmittedObject(name, [.. crossed]);
             observability.Record(emitted);
             yield return emitted;
@@ -247,7 +247,7 @@ public static class Emitter
 
         // Aggregated data-phase diagnostics: one per attribute, in plan order, so the diagnostic
         // sequence is deterministic (EP-7) and bounded regardless of row count. Reached only on normal
-        // completion — a structural yield break above (invalid/duplicate key) skips these, suppressing
+        // completion: a structural yield break above (invalid/duplicate key) skips these, suppressing
         // any pending keep warnings from the partial stream (matching the triple path).
         var aborted = FlushData(plan, unparseable, unknown, restrictions, diagnostics);
 
@@ -268,7 +268,7 @@ public static class Emitter
     /// backend (never the matrix, EP-16); the intake hook tallies duplicates in source order for one
     /// aggregated <c>DuplicateObjectKey</c> (Info). An unusable key halts with
     /// <c>ObjectKeyValueInvalid</c> (Error), and grouping storage failures surface via the two-channel
-    /// model — never exceptions across the seam (D-082).
+    /// model, never exceptions across the seam (D-082).
     /// </summary>
     private static async IAsyncEnumerable<EmittedObject> EmitDedupeAsync(
         ConversionPlan plan,
@@ -355,7 +355,7 @@ public static class Emitter
                     }
                     else if (!string.Equals(key, currentKey, StringComparison.Ordinal))
                     {
-                        // §6.1/§10.4/G-2: the key change closes the merged group — grouping strictly
+                        // §6.1/§10.4/G-2: the key change closes the merged group; grouping strictly
                         // precedes filtering, so the restriction is evaluated existentially over ALL
                         // the merged observations. One match preserves the WHOLE object with all its
                         // crosses; otherwise the complete group is dropped, after grouping and
@@ -396,7 +396,7 @@ public static class Emitter
                 // bounded source-order sample; silent when every key is unique. Flushed on normal
                 // completion. The count is PRE-FILTER by construction (G-2): the intake hook observes
                 // the raw stream as it is grouped, so a merged object that restriction later drops has
-                // still already been counted here — the tally reports what the INPUT contained, which
+                // still already been counted here; the tally reports what the INPUT contained, which
                 // is what a duplicate-key report is for.
                 FlushPolicyAggregate(duplicates, DiagnosticCode.DuplicateObjectKey, DiagnosticSeverity.Info,
                     "record(s) reused a cleaned key and merged onto the first occurrence", "dedupe", diagnostics);
@@ -406,7 +406,7 @@ public static class Emitter
         }
         finally
         {
-            // Storage aggregates always flush — even on early disposal — so cleanup Warnings recorded
+            // Storage aggregates always flush (even on early disposal), so cleanup Warnings recorded
             // during the grouping's disposal-time teardown reach the caller/session (D-082/EP-14).
             FlushStorage(reports, diagnostics);
         }
@@ -414,7 +414,7 @@ public static class Emitter
 
     // The keyed prefix for dedupe: each record wrapped as a live DedupeRow (zero copy; 0-based index; the
     // source Name is never parsed/persisted), truncated inclusive at the first row whose key field is
-    // unusable — mirroring the triple unordered source (D-085), so the offender ranks strictly last and
+    // unusable, mirroring the triple unordered source (D-085), so the offender ranks strictly last and
     // the emitter halts there after the valid prefix.
     private static async IAsyncEnumerable<DedupeRow> ReadKeyedPrefixAsync(
         IRecordSource source,
@@ -455,7 +455,7 @@ public static class Emitter
     /// row's predicate to the attribute(s) that bind it, and unions their crosses (§5.3.1 / §17 rule 8);
     /// object order is first-appearance of each cleaned subject (§17 rule 4). Structural failures
     /// (invalid subject, non-contiguity) and grouping <b>storage</b> failures are reported to
-    /// <paramref name="diagnostics"/> and stop the stream — never exceptions across the seam
+    /// <paramref name="diagnostics"/> and stop the stream, never exceptions across the seam
     /// (D-082/EP-14). Single-pass over the grouped rows, no matrix (EP-16). A replaying caller (the
     /// <c>.cxt</c> two-pass) brackets this with <see cref="EmitReplay.Begin"/>.
     /// </summary>
@@ -565,7 +565,7 @@ public static class Emitter
 
                     // §5.4 / §18.1 / D-085: the subject is the object name; a null (empty / missing_token
                     // / short, per the source), whitespace-only, or control-char-bearing subject has no
-                    // usable identity — halt this conversion.
+                    // usable identity; halt this conversion.
                     if (!ObjectNames.IsUsable(row.Subject))
                     {
                         diagnostics.Add(new BedrockDiagnostic(
@@ -586,7 +586,7 @@ public static class Emitter
                     {
                         // Close the finished object in first-appearance order, then enforce contiguity.
                         // §10.4/G-2: the subject's COMPLETE group is the formed object, so the
-                        // restriction decides emission only now — with every predicate/value
+                        // restriction decides emission only now, with every predicate/value
                         // observation for the subject seen. An absent restricted predicate therefore
                         // never matched, and the object fails. `completed` still records the subject
                         // either way: contiguity is a STRUCTURAL property of the input, independent of
@@ -656,7 +656,7 @@ public static class Emitter
         }
         finally
         {
-            // Storage aggregates always flush — even on early disposal — so the in-path Error surfaces
+            // Storage aggregates always flush (even on early disposal), so the in-path Error surfaces
             // and cleanup Warnings from teardown reach the caller/session (D-082/EP-14). One per identity,
             // worst severity, first-occurrence order.
             FlushStorage(reports, diagnostics);
@@ -759,7 +759,7 @@ public static class Emitter
     }
 
     // The one data-diagnostic flush order, shared by all three emit paths so they cannot drift
-    // (EP-7 — the diagnostic sequence is part of deterministic output): every planned attribute's
+    // (EP-7: the diagnostic sequence is part of deterministic output): every planned attribute's
     // unparseable then unknown aggregate in PLAN order, followed by the filter-only restriction
     // aggregates in restriction (spec-attribute) order.
     //
@@ -769,12 +769,12 @@ public static class Emitter
     // pass in the first group and the restriction path stays silent for it (D-097). Each raw
     // observation is therefore counted at most once per attribute per pass.
     //
-    // Called only past each path's halt guard — a structural halt suppresses all of it.
+    // Called only past each path's halt guard: a structural halt suppresses all of it.
     //
-    // Returns TRUE when any aggregate flushed at Error/Fatal — i.e. an `unknown_value_policy =
+    // Returns TRUE when any aggregate flushed at Error/Fatal, i.e. an `unknown_value_policy =
     // "fail"` abort (§10.6/§10.4/D-097). The caller uses it to suppress the whole-stream
-    // observability aggregates: that is the same rule G-12 states for the artifact itself — any
-    // Error/Fatal invalidates the run — so once the run is invalid, "your context has empty
+    // observability aggregates: that is the same rule G-12 states for the artifact itself (any
+    // Error/Fatal invalidates the run), so once the run is invalid, "your context has empty
     // columns" describes an artifact the caller must discard anyway.
     //
     // The `fail` abort deliberately does NOT truncate the stream. These diagnostics are
@@ -855,7 +855,7 @@ public static class Emitter
 
     // Unknown categorical value severity (§10.6). "include" resolves at calibrate; a
     // between-pass unknown reaching emit under it degrades to Warning (D-088 include-crash
-    // closure) — the explicit Include → Warning fallback.
+    // closure), the explicit Include → Warning fallback.
     private static DiagnosticSeverity? UnknownSeverity(UnknownValuePolicy policy) => policy switch
     {
         UnknownValuePolicy.Skip => null,

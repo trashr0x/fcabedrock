@@ -26,7 +26,7 @@ internal sealed class GroupingReports
         _storage.Record(operation, kind, pathSample, DiagnosticSeverity.Warning);
 
     /// <summary>
-    /// Records an in-path storage failure as an <b>Error</b> at its first-occurrence position — called by
+    /// Records an in-path storage failure as an <b>Error</b> at its first-occurrence position, called by
     /// the detecting site before the cleanup its unwinding triggers, so the ledger stays chronologically
     /// ordered (the same failure also throws to halt the stream).
     /// </summary>
@@ -40,7 +40,7 @@ internal sealed class GroupingReports
 
 /// <summary>
 /// Bounded, insertion-ordered aggregation of storage failures by stable identity
-/// <c>(operation, kind)</c> — a count, up to three path samples in first-occurrence order, and the
+/// <c>(operation, kind)</c>: a count, up to three path samples in first-occurrence order, and the
 /// worst severity seen (D-082/D-059). Never a per-failure diagnostic (EP-16): a delete storm over
 /// 73M-record spool runs yields one aggregate, not millions. Shared by the emitter's per-enumeration
 /// flush and the replay session's cross-pass promotion.
@@ -75,7 +75,7 @@ internal sealed class StorageFailureLedger
         }
     }
 
-    /// <summary>The aggregates, one per identity, in first-occurrence order (never hash-map order — D-059).</summary>
+    /// <summary>The aggregates, one per identity, in first-occurrence order (never hash-map order, D-059).</summary>
     public IReadOnlyList<(GroupingStorageFailure Failure, DiagnosticSeverity Severity)> Aggregates()
     {
         var result = new List<(GroupingStorageFailure, DiagnosticSeverity)>(_order.Count);

@@ -42,13 +42,13 @@ internal sealed class QuantileAccumulator
 
     /// <summary>
     /// Retained bytes independent of capacity, padded upward over the real x64 layout so
-    /// <c>actual ≤ modeled</c> holds (the <see cref="ResidentModel"/> posture — these are
+    /// <c>actual ≤ modeled</c> holds (the <see cref="ResidentModel"/> posture; these are
     /// correctness constants, not knobs):
     /// <list type="bullet">
-    /// <item>this accumulator object — header 16 + 128 bytes of fields (nine references, a
+    /// <item>this accumulator object: header 16 + 128 bytes of fields (nine references, a
     /// <c>CancellationToken</c>, two ints, two longs, and a <c>SpoolRunHandle?</c>) = 144 → 160;</item>
-    /// <item>the <c>Dictionary</c> object — header 16 + 64 bytes of fields = 80 → 96;</item>
-    /// <item>its two array headers plus the sort buffer's — 3 × 24 → 3 × 32.</item>
+    /// <item>the <c>Dictionary</c> object: header 16 + 64 bytes of fields = 80 → 96;</item>
+    /// <item>its two array headers plus the sort buffer's: 3 × 24 → 3 × 32.</item>
     /// </list>
     /// 160 + 96 + 96 = 352, rounded up to 384.
     /// <para>
@@ -63,8 +63,8 @@ internal sealed class QuantileAccumulator
 
     /// <summary>
     /// The per-attribute overshoot floor: the modeled cost of an accumulator holding a single
-    /// entry. A share below this cannot be honored — an accumulator that can retain nothing
-    /// cannot count — so the bound is stated as <c>max(budget, A · FloorBytes)</c> rather than
+    /// entry. A share below this cannot be honored (an accumulator that can retain nothing
+    /// cannot count), so the bound is stated as <c>max(budget, A · FloorBytes)</c> rather than
     /// pretending a tiny budget shrinks it away. Computed from the runtime's <b>actual</b>
     /// accepted capacity for one requested entry, not a guess at its prime rounding.
     /// </summary>
@@ -116,7 +116,7 @@ internal sealed class QuantileAccumulator
     /// <summary>The accepted fixed capacity (the runtime's real prime-rounded value).</summary>
     public int Capacity => _capacity;
 
-    /// <summary>The resolved culture the population was parsed under (never ambient — EP-11).</summary>
+    /// <summary>The resolved culture the population was parsed under (never ambient, EP-11).</summary>
     public CultureInfo Culture => _culture;
 
     /// <summary>The checked total observation count <c>N</c>.</summary>
@@ -127,8 +127,8 @@ internal sealed class QuantileAccumulator
 
     /// <summary>
     /// This attribute's <c>T_i</c>: the cumulative exact serialized bytes of its <b>successful
-    /// original spills</b>, framing included. It never counts consolidation output, and never falls
-    /// — deletion, consolidation, replay and finalization all leave it where it was, because it
+    /// original spills</b>, framing included. It never counts consolidation output, and never falls:
+    /// deletion, consolidation, replay and finalization all leave it where it was, because it
     /// records what this attribute has written to the workspace, not what is still there.
     /// <para>
     /// Read by the owning <see cref="CalibrationBudget"/> to form the workspace-wide
@@ -147,7 +147,7 @@ internal sealed class QuantileAccumulator
     /// <summary>
     /// Adds one present observation to the population. A value that does not parse to a
     /// <b>finite</b> number under the resolved locale is excluded and tallied for this phase's
-    /// own aggregated <c>SourceValueUnparseable</c> (§7/§11.5, D-100) — it never influences a
+    /// own aggregated <c>SourceValueUnparseable</c> (§7/§11.5, D-100); it never influences a
     /// cut. Existing-key increments allocate nothing.
     /// </summary>
     public void Observe(string raw, DiagnosticTally unparseable)
@@ -159,7 +159,7 @@ internal sealed class QuantileAccumulator
         }
 
         // Fold ±0 HERE, not merely at cut placement. Dictionary/Equals/CompareTo all treat the two
-        // zero spellings as one value, so they aggregate either way and m is right either way —
+        // zero spellings as one value, so they aggregate either way and m is right either way,
         // but WHICH spelling survives into the dictionary key, and from there into a spilled run
         // and the merged row, would depend on which arrived first. Canonicalizing at intake means
         // only +0 can ever exist downstream, so the value a cut or label is derived from is pinned
@@ -171,7 +171,7 @@ internal sealed class QuantileAccumulator
     /// Ends intake: flushes any resident entries of a spilled accumulator as a final run and
     /// <b>releases both retained buffers</b>, so a post-intake merge never runs alongside the
     /// accumulator state it replaced. A zero-spill accumulator instead sorts in the buffer it
-    /// already owns and drops only the dictionary — it has nothing to merge.
+    /// already owns and drops only the dictionary: it has nothing to merge.
     /// </summary>
     public void EndIntake()
     {
@@ -215,13 +215,13 @@ internal sealed class QuantileAccumulator
 
     /// <summary>
     /// The <c>equal_frequency</c> cuts (§11.5), or <see langword="null"/> when the population has
-    /// fewer than <c>bins</c> distinct values — the §11.5 distinct-value guard, which stops rather
+    /// fewer than <c>bins</c> distinct values: the §11.5 distinct-value guard, which stops rather
     /// than silently producing fewer bins. <paramref name="distinctCount"/> reports <c>m</c> either
     /// way, for the diagnostic.
     /// <para>
     /// The two passes are what make a spilled population as exact as an in-memory one: the
     /// feasibility window needs the <b>global</b> <c>m</c> before it can allocate the first
-    /// boundary, and cut placement needs the values adjoining each <b>selected</b> gap after it —
+    /// boundary, and cut placement needs the values adjoining each <b>selected</b> gap after it;
     /// neither is knowable from a single forward walk. Between the passes, allocation is pure
     /// arithmetic over <c>bins - 1</c> values, so nothing population-sized is ever retained.
     /// </para>
@@ -265,7 +265,7 @@ internal sealed class QuantileAccumulator
 
         // Pass 2: the values adjoining each selected gap. Gaps ascend and are distinct, but two
         // may be adjacent (g and g+1), so one group can be both one gap's lower value and the
-        // previous gap's upper — each gap is therefore tested independently.
+        // previous gap's upper; each gap is therefore tested independently.
         var lower = new double[boundaries];
         var upper = new double[boundaries];
         Replay((index, row, _) =>
@@ -294,7 +294,7 @@ internal sealed class QuantileAccumulator
 
     /// <summary>
     /// The exact <c>p1</c>/<c>p99</c> order statistics (§11.4 <c>percentile_p1_p99</c>), or
-    /// <see langword="false"/> when the population is empty or the two coincide — a span with no
+    /// <see langword="false"/> when the population is empty or the two coincide: a span with no
     /// spread cannot bound equal-width bins. Same two-pass shape as
     /// <see cref="TryExtractEqualFrequencyCuts"/>: pass 1 fixes the positions, pass 2 reads their
     /// values.
@@ -363,12 +363,12 @@ internal sealed class QuantileAccumulator
     }
 
     // Sizes the fixed-capacity dictionary for this accumulator's byte share. EnsureCapacity
-    // reports the runtime's REAL (prime-rounded) capacity, which is what the model must charge —
+    // reports the runtime's REAL (prime-rounded) capacity, which is what the model must charge:
     // the request would under-count. Because the runtime rounds UP to a prime, the accepted
     // capacity can overshoot the share; when it does, the request is reduced and retried until it
     // fits. The discarded probe is a sizing transient, excluded from the tier-1 bound exactly as
     // D-082 excludes the List resize-copy transient (the guarantee is over the stable post-sizing
-    // graph). At a request of one the floor applies and the overshoot is FloorBytes — bounded and
+    // graph). At a request of one the floor applies and the overshoot is FloorBytes, bounded and
     // per-attribute.
     private static (Dictionary<double, long> Counts, int Capacity) Size(long share)
     {
@@ -383,7 +383,7 @@ internal sealed class QuantileAccumulator
             }
 
             // Reduce MULTIPLICATIVELY, not by one. Decrementing would re-round to the very same
-            // prime on the next probe and crawl one integer at a time across the gap below it —
+            // prime on the next probe and crawl one integer at a time across the gap below it:
             // ~130k probes at a 64 MiB share, each allocating a multi-megabyte dictionary. The
             // ~0.8 factor clears a typical prime gap in one step (correctness does not depend on
             // that: any factor below 1 terminates, it only costs extra probes), and the
@@ -445,7 +445,7 @@ internal sealed class QuantileAccumulator
     }
 
     // Completes the carry chain the new leaf may have started: while a generation holds exactly the
-    // fan-in, those F runs — oldest first — merge into one run of the next generation, and the
+    // fan-in, those F runs (oldest first) merge into one run of the next generation, and the
     // cascade continues upward. Promotion is by original-leaf count, never by byte size, and a
     // higher-generation run is never used to fill a lower batch.
     //
@@ -454,13 +454,13 @@ internal sealed class QuantileAccumulator
     // co-residence (D-103), which is why the release-before-merge rule is stated for the
     // POST-intake phase only.
     //
-    // The baseline is the workspace's T_so_far at THIS boundary — every accumulator's original
+    // The baseline is the workspace's T_so_far at THIS boundary: every accumulator's original
     // spills up to now, not a prediction of their final payload. T only grows, so a later merge is
     // never measured against a smaller allowance than an earlier one.
     //
     // A level is committed only after its merge RETURNS: on a storage failure or cancellation the
-    // catalogue is untouched, the calibration aborts, and the workspace — which tracks every
-    // undeleted path — owns the cleanup. A partial carry is never resumed.
+    // catalogue is untouched, the calibration aborts, and the workspace (which tracks every
+    // undeleted path) owns the cleanup. A partial carry is never resumed.
     private void Carry(QuantileRunCatalog catalog)
     {
         var merger = new ValueCountMerger(_workspace, _options, _attributeName);
@@ -556,7 +556,7 @@ internal sealed class QuantileAccumulator
     }
 
     // Every count total is checked (G-13): a per-value increment, the running N, and the replay's
-    // cumulative. Overflow is a distinct condition — too much data to count exactly — and must
+    // cumulative. Overflow is a distinct condition (too much data to count exactly) and must
     // reach the caller as CalibrationPopulationTooLarge, never as CalibrationDataInsufficient (its
     // opposite), a storage failure, or a bare OverflowException.
     private long AddChecked(long a, long b)
@@ -579,7 +579,7 @@ internal sealed class QuantileAccumulator
 /// Divides the calibration memory budget across the attributes that need an exact
 /// count-sensitive population, and reports the modeled aggregate (D-095/D-103).
 /// <para>
-/// The share is floor-clamped — <c>share = max(FloorBytes, budget / A)</c> — so a pathologically
+/// The share is floor-clamped: <c>share = max(FloorBytes, budget / A)</c>, so a pathologically
 /// small budget still yields a usable accumulator per attribute rather than a zero or negative
 /// share. The honest consequence is stated rather than hidden: the guaranteed bound is
 /// <c>max(budget, A · FloorBytes)</c>, not the budget alone.
@@ -617,7 +617,7 @@ internal sealed class CalibrationBudget
     /// allowance must be measured against.
     /// <para>
     /// Both sides of that inequality have to describe the same set of files, and the retained side
-    /// — <see cref="SpoolWorkspace{TRow}.LiveBytes"/> — is the whole workspace's, because one
+    /// (<see cref="SpoolWorkspace{TRow}.LiveBytes"/>) is the whole workspace's, because one
     /// workspace serves the whole calibration. Using a single attribute's payload as the baseline
     /// instead would divide the allowance by the number of attributes spilling into it: with A
     /// comparable accumulators the retained bytes grow with A while the allowance does not, so a

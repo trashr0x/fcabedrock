@@ -10,12 +10,12 @@ namespace FcaBedrock.Conversion;
 /// honestly rather than over-claimed:
 /// </para>
 /// <list type="bullet">
-/// <item><b>Tier 1 — byte-exact.</b> <see cref="AccumulatorSized"/> and
+/// <item><b>Tier 1: byte-exact.</b> <see cref="AccumulatorSized"/> and
 /// <see cref="AggregateResident"/> report the accumulator state the fixed model charges
 /// (the dictionary arrays and the sort buffer), which tests re-derive independently.</item>
-/// <item><b>Tier 2 — structurally bounded.</b> <see cref="RunCatalog"/>, with
+/// <item><b>Tier 2: structurally bounded.</b> <see cref="RunCatalog"/>, with
 /// <see cref="IGroupingObserver"/>'s reader/writer and pending-deletion signals, reports
-/// I/O and bookkeeping bounded by <i>count and fixed shape</i> — not by a
+/// I/O and bookkeeping bounded by <i>count and fixed shape</i>, not by a
 /// pinned byte constant, because a <c>FileStream</c>'s internal strategy/handle graph is
 /// runtime-owned and any "≈ 8 KiB" claim would be unvalidatable.</item>
 /// </list>
@@ -26,13 +26,13 @@ internal interface ICalibrationObserver : IGroupingObserver
     /// One attribute's accumulator finished sizing: the <b>accepted</b> capacity
     /// (<c>Dictionary.EnsureCapacity</c>'s real prime-rounded value, not the request) and the
     /// modeled bytes charged for it. Sizing-probe transients are excluded (the D-082
-    /// precedent) — this reports the stable retained graph.
+    /// precedent): this reports the stable retained graph.
     /// </summary>
     void AccumulatorSized(string attribute, int capacity, long modeledBytes);
 
     /// <summary>
     /// The modeled resident total across every live accumulator, reported at each spill and
-    /// phase transition. Drops to zero for an accumulator once its intake state is released —
+    /// phase transition. Drops to zero for an accumulator once its intake state is released,
     /// which, for a spilled accumulator, happens strictly before its post-intake merge.
     /// </summary>
     void AggregateResident(long modeledBytes);
@@ -54,7 +54,7 @@ internal interface ICalibrationObserver : IGroupingObserver
 /// A dedicated type rather than letting <see cref="OverflowException"/> travel: the
 /// calibrator must attribute the failure to the offending attribute and must not
 /// mis-report an unrelated overflow from elsewhere as a population diagnostic. Like
-/// <see cref="GroupingStorageException"/> it never crosses the public seam (EP-14) — the
+/// <see cref="GroupingStorageException"/> it never crosses the public seam (EP-14): the
 /// calibrator converts it to a diagnostic.
 /// </para>
 /// </summary>

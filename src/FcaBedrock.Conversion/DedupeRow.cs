@@ -33,7 +33,7 @@ internal readonly struct DedupeRow
     public int FieldCount { get; }
 
     /// <summary>
-    /// The retained <see cref="ObjectRecord.Name"/> length — for resident-memory accounting only (a live
+    /// The retained <see cref="ObjectRecord.Name"/> length, for resident-memory accounting only (a live
     /// row keeps its record's unique row-index name alive); <c>0</c> for a decoded row. Exposes the
     /// length, never the value, so serialization still never touches the name.
     /// </summary>
@@ -55,7 +55,7 @@ internal readonly struct DedupeRow
 
     /// <summary>
     /// The raw value at a 0-based column, or <see langword="null"/> when the cell is missing or absent
-    /// (an <paramref name="index"/> at or beyond <see cref="FieldCount"/> — a ragged short row). Mirrors
+    /// (an <paramref name="index"/> at or beyond <see cref="FieldCount"/>: a ragged short row). Mirrors
     /// <see cref="ObjectRecord.Field"/>: a negative index is a programmer error.
     /// </summary>
     public string? Field(int index)
@@ -72,7 +72,7 @@ internal readonly struct DedupeRow
 
 /// <summary>
 /// The wide <c>dedupe</c> row codec (D-083): serializes a <see cref="DedupeRow"/>'s field count, index,
-/// and fields (never a name), via <see cref="DedupeRow.Field"/> — identically for live and decoded
+/// and fields (never a name), via <see cref="DedupeRow.Field"/>, identically for live and decoded
 /// rows, so spilling round-trips a row's values exactly (EP-7/EP-12). A decoded row's field count is
 /// validated against the record buffer so a corrupt count cannot force an oversized allocation.
 /// </summary>
@@ -95,7 +95,7 @@ internal sealed class DedupeRowCodec : IRowCodec<DedupeRow>
     // array are accounted separately by ResidentModel.BufferBytes): the ObjectRecord and its two reference
     // fields; its Name string; the field array (header + one reference per field, null or not); and each
     // non-null field string. On a decoded row (no record/name) this conservatively over-charges an absent
-    // record/name — only live rows are ever budgeted.
+    // record/name; only live rows are ever budgeted.
     public long MeasureResident(DedupeRow row)
     {
         var resident = ResidentModel.ObjectCost(2 * ResidentModel.Reference);                                // ObjectRecord object + its _fields/Name refs
@@ -132,7 +132,7 @@ internal sealed class DedupeRowCodec : IRowCodec<DedupeRow>
         var index = RowFraming.ReadInt32(source, ref offset);
 
         // Each field is at least 4 bytes (its length prefix), so a valid field count cannot exceed the
-        // record size / 4 — bounding the array allocation against a corrupt count.
+        // record size / 4, bounding the array allocation against a corrupt count.
         if (fieldCount < 0 || 4L * fieldCount > source.Length)
         {
             throw new SpoolFramingException($"A spool record declared an invalid field count ({fieldCount}).");

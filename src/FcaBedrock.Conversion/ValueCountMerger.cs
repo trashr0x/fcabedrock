@@ -2,10 +2,10 @@ namespace FcaBedrock.Conversion;
 
 /// <summary>
 /// Merges sorted <see cref="ValueCount"/> runs into <b>one</b> ascending, count-aggregated
-/// run with bounded fan-in (D-095/D-103) — the count-sensitive twin of
+/// run with bounded fan-in (D-095/D-103): the count-sensitive twin of
 /// <see cref="RunMerger{TRow}"/>, which orders by <c>(Rank, Seq)</c> and never folds rows.
 /// Merging here is not just interleaving: rows carrying the <b>same</b> value are summed
-/// into one output row, so the consolidated run is a true aggregated population — exactly
+/// into one output row, so the consolidated run is a true aggregated population, exactly
 /// the distinct ascending <c>(value, count)</c> sequence the §11.5 quantile walk needs.
 /// <para>
 /// It applies the grouping backend's 3T storage model to <b>every</b> output it writes, each
@@ -19,7 +19,7 @@ namespace FcaBedrock.Conversion;
 /// <b>Both sides of that check are the workspace's.</b> Live bytes come from the
 /// <see cref="SpoolWorkspace{TRow}"/>, which a whole calibration shares across its
 /// count-sensitive attributes, so the <c>baselineT</c> a caller supplies must be that same
-/// workspace's cumulative original-spill payload — every accumulator's, not the calling
+/// workspace's cumulative original-spill payload: every accumulator's, not the calling
 /// attribute's alone. Passing one attribute's total while several spill into the workspace
 /// compares a set against a fraction of its own baseline and refuses valid populations
 /// (<see cref="CalibrationBudget.SpilledBytes"/> is where the calibration path forms it).
@@ -107,8 +107,8 @@ internal sealed class ValueCountMerger
 
     // A streaming k-way merge over one batch (≤ fan-in readers, one writer, a PriorityQueue of
     // ≤ fan-in entries), folding equal values into a single row. Within a run values are
-    // strictly ascending and distinct — every run is either a spilled dictionary snapshot or a
-    // prior aggregation — so once a reader advances past a value it can never return to it, and
+    // strictly ascending and distinct (every run is either a spilled dictionary snapshot or a
+    // prior aggregation), so once a reader advances past a value it can never return to it, and
     // the fold below is exhaustive for that value.
     private IEnumerable<RankedRow<ValueCount>> Aggregate(
         IReadOnlyList<SpoolRunHandle> batch, CancellationToken cancellationToken)
@@ -187,7 +187,7 @@ internal sealed class ValueCountMerger
 
     // Merged counts are checked (G-13): summing two runs' counts for one value is exactly where
     // a population beyond long can first appear, and it must surface as
-    // CalibrationPopulationTooLarge — never as a storage failure, and never as an
+    // CalibrationPopulationTooLarge, never as a storage failure, and never as an
     // OverflowException escaping the seam.
     private long AddChecked(long a, long b)
     {

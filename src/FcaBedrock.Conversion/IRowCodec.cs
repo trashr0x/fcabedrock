@@ -6,7 +6,7 @@ namespace FcaBedrock.Conversion;
 /// <summary>
 /// Serializes one row type to and from a fixed-size byte buffer for spilling (D-082). Strings are
 /// encoded as a length (in UTF-16 code units, <c>-1</c> for null) plus their raw UTF-16 code units, so
-/// lone surrogates round-trip exactly — spilling never changes a value's identity or the output bytes
+/// lone surrogates round-trip exactly: spilling never changes a value's identity or the output bytes
 /// (EP-7/EP-12). <see cref="Measure"/> returns one row's exact serialized size as a
 /// <see langword="long"/>, and <see cref="Write"/> writes exactly that many
 /// bytes. <see cref="Read"/> validates every field against the record buffer bounds, so a
@@ -25,7 +25,7 @@ internal interface IRowCodec<TRow>
 
     /// <summary>
     /// A conservative upper bound on the heap bytes of the objects this row <b>references</b> (retained
-    /// beyond the array slot) while buffered — used for the resident memory budget, distinct from
+    /// beyond the array slot) while buffered, used for the resident memory budget, distinct from
     /// <see cref="Measure"/> (the serialized size). The <c>RankedRow</c> slot and the buffer's
     /// <c>List</c>/backing array are <b>not</b> counted here; the grouping loop adds
     /// <see cref="ResidentModel.BufferBytes"/> for those. This charges the retained record/name/field
@@ -41,7 +41,7 @@ internal interface IRowCodec<TRow>
 /// retained live-object bytes ≤ the modeled bytes on that target, and <b>not</b> performance knobs (the
 /// buffer budget and fan-in may be tuned, never these; changing a layout constant requires re-validating
 /// the object layout). The model has two parts: per-row <b>retained referenced objects</b>
-/// (<see cref="IRowCodec{TRow}.MeasureResident"/>) and the <b>buffer</b> itself — the <c>List</c> object
+/// (<see cref="IRowCodec{TRow}.MeasureResident"/>) and the <b>buffer</b> itself, the <c>List</c> object
 /// plus its backing array (<see cref="BufferBytes"/>). All arithmetic saturates so large field
 /// counts/lengths cannot overflow. The bound is over the stable retained graph at a grouping checkpoint;
 /// the <c>List</c> resize copy transient (old+new array co-resident) is excluded as transient allocator
@@ -58,7 +58,7 @@ internal static class ResidentModel
 
     /// <summary>
     /// A non-null string's retained cost: object header + length field + UTF-16 payload (2 B/char) + the
-    /// null terminator, rounded up to 8-byte alignment — conservative over the real
+    /// null terminator, rounded up to 8-byte alignment, conservative over the real
     /// <c>roundUp8(header + 4 + 2·length + 2)</c>.
     /// </summary>
     public static long StringCost(int length) => SaturatingAdd(ObjectHeader, RoundUpTo8((2L * length) + 2));

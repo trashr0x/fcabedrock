@@ -9,7 +9,7 @@ namespace FcaBedrock.Export;
 /// Writes the Burmeister <c>.cxt</c> format (spec §18.1): the <c>B</c> header, the
 /// object and formal-attribute counts and names, then the incidence matrix. The
 /// layout needs the object names before any row, so the writer makes two passes
-/// over the replayable object stream, buffering only the (bounded) object names —
+/// over the replayable object stream, buffering only the (bounded) object names,
 /// never the matrix (EP-16). Dumb: it emits the planner's order and names verbatim (EP-15).
 /// <para>
 /// <b>Object-name sequence invariant (§18.1, D-082).</b> Pass 2 must replay the same object-name
@@ -69,7 +69,7 @@ public static class CxtWriter
         ArgumentNullException.ThrowIfNull(diagnostics);
         ArgumentOutOfRangeException.ThrowIfNegative(sizeAdvisoryBytes);
 
-        // Pass 1: object names + count (bounded metadata only — §18.1, EP-16).
+        // Pass 1: object names + count (bounded metadata only, §18.1, EP-16).
         var objectNames = new List<string>();
         await foreach (var obj in openObjects().WithCancellation(cancellationToken).ConfigureAwait(false))
         {
@@ -81,7 +81,7 @@ public static class CxtWriter
 
         // Size advisory (§8, D-122 part 7): projected from the pass-1 names and the planned formal
         // attributes and appended BEFORE any output byte is written. Only a positive threshold can
-        // fire — exactly 0 disables, and a negative threshold already threw above — and the warning
+        // fire (exactly 0 disables, and a negative threshold already threw above), and the warning
         // fires when the exact serialized size is at or above it. A warning only: it never changes
         // output bytes or any fingerprint (D-077).
         if (sizeAdvisoryBytes > 0)
@@ -117,7 +117,7 @@ public static class CxtWriter
             writer.Write(lineEnding);
         }
 
-        // Pass 2: incidence rows — replay the source rather than buffering the matrix. Each replayed
+        // Pass 2: incidence rows. Replay the source rather than buffering the matrix. Each replayed
         // object's Name must match pass 1's at the same position (§18.1, D-082): a replay that yields a
         // different object-name sequence (count or order) would misalign the header names and the rows,
         // so it fails the write. (Full producer/content determinism is a EP-7 concern, not the writer's.)
@@ -163,7 +163,7 @@ public static class CxtWriter
     // invariant-culture count lines, every object name, every rendered formal-attribute name, the
     // objects×attributes single-byte incidence characters, and the trailing-newline rule. It counts
     // ENCODED bytes (a non-ASCII name or a CRLF ending counts at its real width), needs no pass-2
-    // information (so it precedes the first output byte — D-122 part 7), and runs under `checked`
+    // information (so it precedes the first output byte, D-122 part 7), and runs under `checked`
     // 64-bit arithmetic so an objects×attributes product cannot silently overflow. The
     // projection == emitted-bytes equality is a tested property (Export.Tests), which permanently
     // couples this to the writer above.
@@ -220,7 +220,7 @@ public static class CxtWriter
     }
 
     // The size-advisory diagnostic (§8 / §16.4, D-122 part 7 / D-123): Warning, export-phase, no
-    // location (the writer has no file/attribute/record context) and no structured context — the
+    // location (the writer has no file/attribute/record context) and no structured context; the
     // message carries both the projected size and the threshold, formatted in the invariant culture
     // so the bytes are deterministic (EP-11/EP-12).
     private static BedrockDiagnostic SizeAdvisory(long projectedBytes, long thresholdBytes) =>

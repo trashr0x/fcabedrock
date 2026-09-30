@@ -4,7 +4,7 @@ using FcaBedrock.Diagnostics;
 namespace FcaBedrock.Conversion;
 
 /// <summary>
-/// The kind of spool operation a storage failure arose from — an <b>application-defined</b>
+/// The kind of spool operation a storage failure arose from: an <b>application-defined</b>
 /// classification (D-082). Combined with <see cref="SpoolFailureKind"/> it forms the stable logical
 /// identity of a grouping storage failure; runtime exception types and localized OS text are
 /// supporting context only and never split or merge these.
@@ -31,7 +31,7 @@ internal enum GroupingOperation
 }
 
 /// <summary>
-/// A small, stable classification of <i>why</i> a spool operation failed — mapped from the runtime
+/// A small, stable classification of <i>why</i> a spool operation failed, mapped from the runtime
 /// exception where needed (D-082). Distinct conditions stay distinct (disk-full vs. corrupt framing,
 /// both surfacing as <see cref="IOException"/>) and one condition stays one (delete-denied whether it
 /// surfaces as <see cref="UnauthorizedAccessException"/> or <see cref="IOException"/>).

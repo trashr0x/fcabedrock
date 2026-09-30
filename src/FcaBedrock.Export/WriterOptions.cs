@@ -3,7 +3,7 @@ namespace FcaBedrock.Export;
 /// <summary>
 /// Byte-level formatting knobs for the writers (spec §8). The defaults are the
 /// vNext-native output; <see cref="V2Compat"/> reproduces v2's exact bytes. These
-/// are the writers' only choices — all semantics are decided before export (EP-15).
+/// are the writers' only choices: all semantics are decided before export (EP-15).
 /// </summary>
 public sealed record WriterOptions
 {
@@ -32,7 +32,7 @@ public sealed record WriterOptions
     /// <summary>
     /// v2 byte conventions common to both formats: CRLF and a trailing space on non-empty
     /// <c>.dat</c> lines (§8, D-011). This is the v2 <em>baseline</em>; v2's shape-dependent
-    /// <c>.dat</c> final newline — present for wide, absent for triple (D-087) — is applied
+    /// <c>.dat</c> final newline, present for wide, absent for triple (D-087), is applied
     /// by the conversion orchestrator per resolved shape, not baked into this preset, so the
     /// preset keeps <see cref="TrailingNewline"/> at its default.
     /// </summary>

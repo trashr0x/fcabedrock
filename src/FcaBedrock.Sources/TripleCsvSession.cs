@@ -3,7 +3,7 @@ using FcaBedrock.Core.Spec;
 namespace FcaBedrock.Sources;
 
 /// <summary>
-/// The stage-2 triple source session (D-098/G-1) — the triple twin of
+/// The stage-2 triple source session (D-098/G-1): the triple twin of
 /// <see cref="WideCsvSession"/>. Constructible from triple
 /// <see cref="SourceReadSettings"/> alone, reads the schema so the resolver can
 /// bind roles by header name, and binds to a resolution carrying the token. The
@@ -52,12 +52,12 @@ public sealed class TripleCsvSession : ITripleSourceSession
     public SourceShape Shape => _settings.Shape;
 
     /// <summary>
-    /// The immutable read settings this session tokenizes with — delimited-source detail, kept
+    /// The immutable read settings this session tokenizes with: delimited-source detail, kept
     /// off the source-neutral seam.
     /// </summary>
     public SourceReadSettings ReadSettings => _settings;
 
-    /// <summary>Reads (and caches) the source schema — column count and, when present, header names.</summary>
+    /// <summary>Reads (and caches) the source schema: column count and, when present, header names.</summary>
     public async ValueTask<SourceSchema> GetSchemaAsync(CancellationToken cancellationToken = default)
     {
         if (_schema is { } cached)
@@ -73,14 +73,14 @@ public sealed class TripleCsvSession : ITripleSourceSession
 
     /// <summary>
     /// Streams the cleaned triple rows without any spec (D-109), reading the three roles
-    /// through <paramref name="columns"/> — resolved indexes into the ordered schema, supplied
+    /// through <paramref name="columns"/>: resolved indexes into the ordered schema, supplied
     /// per read. Independent of <see cref="GetSchemaAsync"/> and <see cref="Bind"/>, caches
     /// nothing, and reopens the stream factory on each call, so the sequence is replayable.
     /// <para>
     /// This session neither resolves role <em>names</em> nor defaults the map: a caller passes
     /// an already-resolved one (the settled default is <c>TripleColumns(0, 1, 2)</c>, passed
     /// explicitly). Throws <see cref="ArgumentNullException"/> for a null map and
-    /// <see cref="ArgumentOutOfRangeException"/> for a negative role — programmer errors, not
+    /// <see cref="ArgumentOutOfRangeException"/> for a negative role: programmer errors, not
     /// data problems. Role <em>distinctness</em> is deliberately not checked here: it is a
     /// spec-validate concern (<c>TripleColumnsNotDistinct</c>) with a single owner, and reading
     /// a repeated role is mechanically well-defined.

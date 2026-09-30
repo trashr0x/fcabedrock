@@ -7,7 +7,7 @@ using nietras.SeparatedValues;
 namespace FcaBedrock.Sources;
 
 /// <summary>
-/// The one delimited-source read path, shared by every CSV/TSV schema and record read —
+/// The one delimited-source read path, shared by every CSV/TSV schema and record read:
 /// bound sources (<see cref="WideCsvSource"/>, <see cref="TripleCsvSource"/>) and unbound
 /// sessions (<see cref="WideCsvSession"/>, <see cref="TripleCsvSession"/>) alike. Sep owns
 /// tokenization (D-041); this type layers the FCA semantics on top of it: header handling,
@@ -48,7 +48,7 @@ internal static class CsvReadPipeline
             return new SourceSchema(header.Length, header.ToImmutableArray());
         }
 
-        // No header — either because none was declared, or because the source holds no record
+        // No header: either because none was declared, or because the source holds no record
         // at all. The latter keeps a *header-less* schema rather than gaining an empty header,
         // matching Sep, which likewise reports no header for empty input.
         return Advance(reader) ? new SourceSchema(ColumnCount(reader)) : new SourceSchema(0);
@@ -92,7 +92,7 @@ internal static class CsvReadPipeline
     /// <summary>
     /// Streams cleaned triple rows in input order, reading the three roles through
     /// <paramref name="columns"/>. A role mapped past a ragged short row's end is
-    /// <see langword="null"/> — absent, not an error (§5.4, D-085).
+    /// <see langword="null"/>: absent, not an error (§5.4, D-085).
     /// </summary>
     public static async IAsyncEnumerable<TripleRow> ReadTripleRowsAsync(
         Func<Stream> openStream, char delimiter, bool hasHeader, string missingToken,
@@ -171,14 +171,14 @@ internal static class CsvReadPipeline
     // call is not enough to answer that: Sep reads through the caller's stream, so a stream whose
     // Read throws NotSupportedException (a non-readable stream, say) surfaces through the very
     // same call. Wrapping that would disguise a programmer/contract error as an expected read
-    // failure — exactly what the typed read-failure channel forbids — and would later mistranslate into
+    // failure (exactly what the typed read-failure channel forbids) and would later mistranslate into
     // ProbeSourceReadFailed. So normalize only failures thrown from within Sep itself.
     //
     // Verified against pinned Sep 0.15.0: the limit failure's TargetSite is
     // SepThrow.NotSupportedException_BufferOrRowLengthExceedsMaximumSupported (assembly "Sep"),
     // while a throwing stream's TargetSite is its own Read. Origin is preferred over matching
     // Sep's message text or throw-helper name, which would couple us to its internals; and an
-    // unrecognized failure fails OPEN — it propagates unwrapped rather than being absorbed.
+    // unrecognized failure fails OPEN: it propagates unwrapped rather than being absorbed.
     private static bool IsTokenizerFailure(Exception ex) =>
         ex.TargetSite?.DeclaringType?.Assembly == typeof(Sep).Assembly;
 
@@ -233,7 +233,7 @@ internal static class CsvReadPipeline
     // comparison: an empty value (unquoted blank or quoted "") or one equal to the verbatim
     // missing_token. A quoted value with deliberate interior whitespace is preserved and is not
     // missing unless it equals the token exactly. An empty missing_token disables token matching
-    // only — an empty cell stays missing.
+    // only; an empty cell stays missing.
     private static string? Normalize(string value, string missingToken) =>
         value.Length == 0 || string.Equals(value, missingToken, StringComparison.Ordinal)
             ? null

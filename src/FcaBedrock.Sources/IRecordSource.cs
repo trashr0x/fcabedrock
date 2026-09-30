@@ -4,13 +4,13 @@ namespace FcaBedrock.Sources;
 
 /// <summary>
 /// A replayable stream of object records. <see cref="ReadAsync"/> may be called
-/// more than once (each call re-reads from the start) — the <c>.cxt</c> writer
+/// more than once (each call re-reads from the start); the <c>.cxt</c> writer
 /// relies on this for its two-pass layout (spec §18.1) instead of buffering the
 /// matrix (EP-16).
 /// <para>
 /// <b>Field-array ownership (the seam contract for custom / SQL / SPARQL sources).</b>
 /// An implementation must give each yielded <see cref="ObjectRecord"/> a field array it
-/// then relinquishes — construction transfers exclusive, immutable ownership (see
+/// then relinquishes: construction transfers exclusive, immutable ownership (see
 /// <see cref="ObjectRecord(string, string?[])"/>). A source must not mutate or reuse a
 /// buffer across rows, because downstream stages may retain a record past the yield
 /// (e.g. the wide <c>dedupe</c> grouping buffers/spills it zero-copy, D-082/D-083).
@@ -23,7 +23,7 @@ public interface IRecordSource
     /// carries a <see cref="TokenProvenance"/>, a direct-constructed production source
     /// a <see cref="DescriptorProvenance"/>, and a descriptor-less adapter/test fake
     /// the explicit <see cref="SourceProvenance.Unvalidated"/> opt-out. Every
-    /// implementor states its provenance explicitly (no default) — the calibrate/emit
+    /// implementor states its provenance explicitly (no default); the calibrate/emit
     /// guard pairs the source to the resolution against this.
     /// </summary>
     SourceProvenance Provenance { get; }

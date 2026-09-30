@@ -4,9 +4,9 @@ namespace FcaBedrock.Sources;
 
 /// <summary>
 /// The general <b>unbound</b> streaming source session (D-109): a source that can be read
-/// <em>before</em> any spec exists to bind it. Its stable boundary is deliberately narrow —
+/// <em>before</em> any spec exists to bind it. Its stable boundary is deliberately narrow:
 /// source shape, an ordered schema, streamed cleaned records, cancellation, and the typed
-/// <see cref="SourceReadException"/> failure channel — and nothing more.
+/// <see cref="SourceReadException"/> failure channel, and nothing more.
 /// <para>
 /// <b>What this seam deliberately does not expose.</b> No read settings, stream, file, spec,
 /// provenance, or conversion source; no CSV-specific concept. A future SQL/SPARQL adapter has
@@ -26,14 +26,14 @@ namespace FcaBedrock.Sources;
 public interface ISourceSession
 {
     /// <summary>
-    /// The shape of the records this session streams (§5.1) — the one piece of structural
+    /// The shape of the records this session streams (§5.1): the one piece of structural
     /// information the seam exposes, since a caller must know which of the two read methods
     /// applies. Probe never <em>infers</em> shape; the caller selects it (D-106).
     /// </summary>
     SourceShape Shape { get; }
 
     /// <summary>
-    /// Reads the source schema — column count and, when present, the ordered header names.
+    /// Reads the source schema: column count and, when present, the ordered header names.
     /// Column order is the source's own and is the addressing space every index-based
     /// selector and triple role map resolves into.
     /// </summary>
@@ -47,8 +47,8 @@ public interface ISourceSession
 public interface IWideSourceSession : ISourceSession
 {
     /// <summary>
-    /// Streams the cleaned object records in input order. <b>Repeatable</b> — each call
-    /// re-reads from the start and yields the same sequence — and <b>cleaned</b>: fields
+    /// Streams the cleaned object records in input order. <b>Repeatable</b> (each call
+    /// re-reads from the start and yields the same sequence) and <b>cleaned</b>: fields
     /// carry the §5.1 quote-aware trim and missing normalization already applied, exactly
     /// as the bound <see cref="IRecordSource"/> path applies them, so a probe and the
     /// conversion of the spec it drafts observe identical values.
@@ -63,7 +63,7 @@ public interface IWideSourceSession : ISourceSession
 }
 
 /// <summary>
-/// An unbound session over a <b>triple</b> (subject–predicate–value) source (§5.3).
+/// An unbound session over a <b>triple</b> (subject-predicate-value) source (§5.3).
 /// </summary>
 public interface ITripleSourceSession : ISourceSession
 {
@@ -74,8 +74,8 @@ public interface ITripleSourceSession : ISourceSession
     /// role on a ragged short row is <see langword="null"/>, never an error (§5.4, D-085).
     /// <para>
     /// <b>Roles are a per-read argument, not session identity.</b> They index the ordered
-    /// <see cref="ISourceSession.GetSchemaAsync"/> schema — schema-relative, hence portable to
-    /// a non-delimited adapter — so the same session may be read under different role maps,
+    /// <see cref="ISourceSession.GetSchemaAsync"/> schema (schema-relative, hence portable to
+    /// a non-delimited adapter), so the same session may be read under different role maps,
     /// and doing so constrains no later binding. This seam neither infers nor
     /// resolves roles from header names: a caller supplies an already-resolved map.
     /// </para>

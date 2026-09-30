@@ -6,14 +6,14 @@ namespace FcaBedrock.Conversion;
 
 /// <summary>
 /// Presents an interleaved (predicate-major) triple stream as one whose rows are contiguous by
-/// cleaned subject, in first-appearance order — the slow path for <c>ordering = "unordered"</c>
+/// cleaned subject, in first-appearance order: the slow path for <c>ordering = "unordered"</c>
 /// (D-082). It composes with <c>Emitter.EmitTripleAsync</c> unchanged: because the rows it
 /// yields are already subject-contiguous, that emitter's contiguity check is a no-op and all its
 /// subject-validity / classification / union logic applies verbatim. Grouping buffers <i>rows</i> via
 /// <see cref="FirstAppearanceGrouping"/> (spilling to a bounded spool workspace above the budget),
 /// never the incidence matrix (EP-16). Its <see cref="GroupingOptions"/> and per-enumeration
 /// <see cref="GroupingReports"/> are supplied by the emitter, which owns ordering selection and
-/// reporting (D-082) — never constructed by an external selector without an active sink.
+/// reporting (D-082), never constructed by an external selector without an active sink.
 /// </summary>
 internal sealed class UnorderedTripleRowSource : ITripleRowSource
 {
@@ -56,7 +56,7 @@ internal sealed class UnorderedTripleRowSource : ITripleRowSource
     // A structural subject error must halt conversion at that source record; rows *after* it must
     // not influence output (D-085). So the prefix handed to the grouper stops at the first unusable
     // subject (inclusive): later rows are never read, mirroring subject_grouped, whose emitter stops
-    // pulling at the invalid row. The offending row is yielded last and — being first-seen last —
+    // pulling at the invalid row. The offending row is yielded last and, being first-seen last,
     // the grouper ranks it last, so EmitTripleAsync reaches it after the valid prefix and raises
     // ObjectKeyValueInvalid there. This only stops reading; it never raises (ObjectNames.IsUsable is
     // the same boundary the emitter halts on). A no-op when every subject is usable.

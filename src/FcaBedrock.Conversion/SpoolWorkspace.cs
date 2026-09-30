@@ -5,7 +5,7 @@ namespace FcaBedrock.Conversion;
 /// <summary>
 /// Owns the per-enumeration spool directory and its run files (D-082). <b>Lazily created</b>: the
 /// directory is established only when the first spill is required, so a zero-spill enumeration touches
-/// no disk at all — even under an unusable temp root. Ownership is precise: a uniquely-named directory
+/// no disk at all, even under an unusable temp root. Ownership is precise: a uniquely-named directory
 /// is created fresh (never adopting an existing one) and only that recorded path is ever deleted.
 /// In-path failures (workspace create, run write/open) throw <see cref="GroupingStorageException"/>;
 /// cleanup failures (consumed-run delete, teardown) go to the non-throwing cleanup channel, except
@@ -84,7 +84,7 @@ internal sealed class SpoolWorkspace<TRow>
     /// <summary>
     /// Opens a run reader. Throws on open failure (in-path, <see cref="GroupingOperation.MergeRead"/>). If
     /// the open succeeds but reader construction faults (the ctor reads <c>stream.Length</c>), the opened
-    /// stream is disposed via the cleanup channel — never leaked — with the primary MergeRead failure kept.
+    /// stream is disposed via the cleanup channel (never leaked), with the primary MergeRead failure kept.
     /// </summary>
     public SpoolRunReader<TRow> OpenRun(SpoolRunHandle handle)
     {
@@ -105,7 +105,7 @@ internal sealed class SpoolWorkspace<TRow>
         finally
         {
             // Construction failed after the open (e.g. the reader ctor's stream.Length faulted): the opened
-            // stream is still owned here — dispose it via the cleanup channel so it never leaks; a close
+            // stream is still owned here. Dispose it via the cleanup channel so it never leaks; a close
             // failure is a CleanupClose Warning recorded after the primary MergeRead, never in its place.
             if (stream is not null)
             {
@@ -233,7 +233,7 @@ internal sealed class SpoolWorkspace<TRow>
     }
 
     // Attempts one run delete. Success updates live accounting; failure records a cleanup Warning
-    // (every failed attempt increments the (CleanupDelete, DeleteFailed) aggregate — samples stay capped).
+    // (every failed attempt increments the (CleanupDelete, DeleteFailed) aggregate; samples stay capped).
     private bool TryDelete(string path, long size)
     {
         try
@@ -265,7 +265,7 @@ internal sealed class SpoolWorkspace<TRow>
             }
             catch (Exception ex) when (ex is not OutOfMemoryException and not StackOverflowException and not OperationCanceledException)
             {
-                // Any failure to establish the owner-restricted workspace halts — never proceed
+                // Any failure to establish the owner-restricted workspace halts: never proceed
                 // unprotected (D-082 confidentiality). Includes ACL-establishment failure.
                 _reports.RecordInPathFailure(GroupingOperation.Workspace, SpoolFailureKind.WorkspaceCreation, root);
                 throw new GroupingStorageException(

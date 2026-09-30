@@ -4,11 +4,11 @@ namespace FcaBedrock.Conversion;
 /// Merges sorted spool runs into one <c>(Rank, Seq)</c>-ordered stream with <b>bounded fan-in</b>
 /// (D-082). While more than <see cref="GroupingOptions.MaxMergeFanIn"/> runs remain, batches of at most
 /// the fan-in are merged into intermediate runs (their inputs deleted as consumed) until the count
-/// falls to the fan-in, then a single streaming k-way merge yields the result — so a merge holds at
+/// falls to the fan-in, then a single streaming k-way merge yields the result, so a merge holds at
 /// most fan-in readers plus one writer open at once. Before each intermediate batch, the
 /// <b>degraded-cleanup escalation</b> enforces the pinned peak: if retained live bytes plus the batch's
 /// worst-case output would exceed <c>3T</c> (T = the initial spill payload), it halts (Error) before
-/// creating any output — so cleanup falling permanently behind can never grow disk past 3T.
+/// creating any output, so cleanup falling permanently behind can never grow disk past 3T.
 /// </summary>
 internal sealed class RunMerger<TRow>
 {

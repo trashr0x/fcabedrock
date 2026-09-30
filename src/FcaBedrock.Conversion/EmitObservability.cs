@@ -9,13 +9,13 @@ namespace FcaBedrock.Conversion;
 /// <c>AttributeHasNoCrosses</c> (empty columns). Shared by every emit path so the four cannot
 /// drift.
 /// <para>
-/// All three are expected outcomes rather than faults — most sharply after <c>restrict_to</c>
+/// All three are expected outcomes rather than faults, most sharply after <c>restrict_to</c>
 /// filtering, because calibration and the column vocabulary are computed over the <b>input
 /// universe</b> before objects are filtered (§7), so the surviving population need not span every
 /// bin. They are Warnings and the (degenerate but structurally valid) output is still written.
 /// </para>
 /// <para>
-/// Bounded (EP-16): a <see cref="bool"/> per planned column plus a count and a three-item sample —
+/// Bounded (EP-16): a <see cref="bool"/> per planned column plus a count and a three-item sample,
 /// never the incidence matrix, and never one diagnostic per row or column.
 /// </para>
 /// </summary>
@@ -36,7 +36,7 @@ internal sealed class EmitObservability
         _emitted++;
         if (emitted.CrossedFormalAttributeIds.Count == 0)
         {
-            _emptyObjects.Record(emitted.Name); // sample is emission order — the first three
+            _emptyObjects.Record(emitted.Name); // sample is emission order: the first three
             return;
         }
 
@@ -57,7 +57,7 @@ internal sealed class EmitObservability
     /// <item>a <b>structural halt</b> and a <b>grouping-storage failure</b>: every caller reaches
     /// this past its halt guard, so the stream never got here; after a halt it is truncated, and
     /// "no objects" would describe the halt rather than the data (D-105);</item>
-    /// <item>a <b>policy abort</b> — <paramref name="aborted"/>, set when a data aggregate flushed
+    /// <item>a <b>policy abort</b>: <paramref name="aborted"/>, set when a data aggregate flushed
     /// at Error under <c>unknown_value_policy = "fail"</c>, including a filter-only restriction's
     /// (§10.4/§10.6/D-097). The stream did complete, but the run is <b>invalid</b>: G-12's rule is
     /// that any Error/Fatal means the caller must discard the artifact, so describing the shape of

@@ -11,7 +11,7 @@ namespace FcaBedrock.Conversion;
 /// The split is deliberate (EP-11): <b>rank selection is exact integer
 /// arithmetic</b> (no floating target is ever formed), while <b>cut placement is
 /// binary64</b> (the cut is a data value, so it lives in the data's own type). Mixing the
-/// two is the classic quantile bug — a rank target rounded through a <c>double</c> silently
+/// two is the classic quantile bug: a rank target rounded through a <c>double</c> silently
 /// picks the wrong order statistic once <c>N</c> approaches 2^53.
 /// </para>
 /// <para>
@@ -29,7 +29,7 @@ internal static class QuantileSelection
     /// cumulative count is <paramref name="cumulative"/>: the exact rational comparison
     /// <c>C_i·bins ≥ N·k</c>.
     /// <para>
-    /// The target <c>N·k / bins</c> is <b>never materialized</b> — neither as a
+    /// The target <c>N·k / bins</c> is <b>never materialized</b>: neither as a
     /// <see cref="double"/> nor a <see cref="decimal"/>. Both sides are cross-multiplied into
     /// <see cref="UInt128"/> instead, which is exact by construction: counts are non-negative
     /// checked <see cref="long"/> (≤ 2^63) and <c>bins</c>/<c>k</c> are positive
@@ -61,7 +61,7 @@ internal static class QuantileSelection
     /// below the cut (<c>d = i</c>), <see cref="TiePolicy.Right"/> above it
     /// (<c>d = i - 1</c>).</item>
     /// </list>
-    /// The result is a <i>preference</i>: it may be <c>0</c> or <c>m</c> — not a gap at all —
+    /// The result is a <i>preference</i>: it may be <c>0</c> or <c>m</c> (not a gap at all),
     /// which <see cref="AllocateGap"/> resolves. That is normal, not an error (G-5).
     /// </summary>
     public static int DesiredGap(int groupIndex, bool isEdge, TiePolicy tiePolicy) =>
@@ -78,12 +78,12 @@ internal static class QuantileSelection
     /// precedence amendment): <c>lo</c> forces gaps to strictly ascend, and <c>hi</c>
     /// reserves one free gap for every later boundary, so <c>bins - 1</c> distinct ascending
     /// gaps always exist once <c>m ≥ bins</c>. Cuts are therefore strictly ascending
-    /// <b>by construction</b> — a descending allocation is unrepresentable, and the
+    /// <b>by construction</b>: a descending allocation is unrepresentable, and the
     /// post-hoc validity check is defense in depth, not the guarantee.
     /// </para>
     /// <para>
     /// A clamp is not a failure and is never diagnosed: it is exactly how §11.5's own
-    /// examples resolve — a colliding boundary, a saturated tied run, and both domain edges
+    /// examples resolve; a colliding boundary, a saturated tied run, and both domain edges
     /// (<c>d = 0</c> from <see cref="TiePolicy.Right"/> on the first tied group, <c>d = m</c>
     /// from <see cref="TiePolicy.Left"/> on the last) all land on the opposite side of their
     /// preference here.
@@ -105,13 +105,13 @@ internal static class QuantileSelection
     /// <item><see cref="CutPlacement.Midpoint"/> → the midpoint, by the pinned sign-aware
     /// expression order (G-5): a same-sign gap (or one with a zero bound) uses
     /// <c>a + (b - a) / 2</c>; a gap crossing zero uses <c>(a + b) / 2</c>. Each form is
-    /// overflow-safe for its own case — the subtraction would overflow an opposite-sign
-    /// extreme gap, and the sum would overflow a same-sign extreme one — so neither form
+    /// overflow-safe for its own case (the subtraction would overflow an opposite-sign
+    /// extreme gap, and the sum would overflow a same-sign extreme one), so neither form
     /// alone is correct and they must not be folded together or reordered.</item>
     /// </list>
     /// <para>
-    /// If the midpoint cannot land strictly above <paramref name="lower"/> — the values are
-    /// adjacent representable doubles, so no double lies between them — it falls back to
+    /// If the midpoint cannot land strictly above <paramref name="lower"/> (the values are
+    /// adjacent representable doubles, so no double lies between them), it falls back to
     /// <paramref name="upper"/>. Under §11.2 half-open <c>[lo, hi)</c> geometry that is
     /// membership-identical to the midpoint's intent, and it keeps the cut inside its gap so
     /// the strict ascent of the whole cut list survives. A midpoint landing exactly on
@@ -150,7 +150,7 @@ internal static class QuantileSelection
     /// <c>C_i·100 ≥ percent·N</c> (§11.4 <c>percentile_p1_p99</c>, D-089/D-103).
     /// <para>
     /// The same <see cref="UInt128"/> cross-multiplication as
-    /// <see cref="TargetReached"/> — <c>p1</c>/<c>p99</c> are <b>exact order statistics</b>,
+    /// <see cref="TargetReached"/>: <c>p1</c>/<c>p99</c> are <b>exact order statistics</b>,
     /// never interpolated between neighbours and never taken from a machine-dependent
     /// percentile library, both of which would break the D-088 auto/frozen byte-equivalence.
     /// </para>

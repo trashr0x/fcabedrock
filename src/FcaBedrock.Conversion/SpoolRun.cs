@@ -164,7 +164,7 @@ internal sealed class SpoolRunReader<TRow> : IDisposable
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            // A device/read fault after the run opened — an owned storage failure, never escaping the seam.
+            // A device/read fault after the run opened: an owned storage failure, never escaping the seam.
             throw new GroupingStorageException(_operation, SpoolFailures.Classify(ex), _path, $"Failed to read spool run '{_path}'.", ex);
         }
 

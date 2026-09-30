@@ -20,7 +20,7 @@ namespace FcaBedrock.Conversion;
 /// pass-through bins (<c>ValueGroupsPassthroughDataDependent</c>). Set-idempotent, so bounded by
 /// the attribute vocabulary: schema-scale metadata (EP-16).</item>
 /// <item><b>Count-insensitive cuts</b> (<c>equal_width</c> <c>range = "min_max"</c>,
-/// D-102): a streaming minimum and maximum — two doubles, never the population.</item>
+/// D-102): a streaming minimum and maximum (two doubles, never the population).</item>
 /// <item><b>Count-sensitive cuts</b> (<c>equal_frequency</c> and <c>equal_width</c>
 /// <c>range = "percentile_p1_p99"</c>, D-103): the exact aggregated population, bounded by
 /// the <see cref="QuantileAccumulator"/>'s fixed-capacity fill-and-spill model (D-095).</item>
@@ -32,7 +32,7 @@ namespace FcaBedrock.Conversion;
 /// </para>
 /// <para>
 /// <b>Source passes.</b> Wide always reads once. Triple reads once for
-/// <c>subject_grouped</c>, and once more — a grouped pass — for <c>unordered</c> input
+/// <c>subject_grouped</c>, and once more (a grouped pass) for <c>unordered</c> input
 /// <i>only</i> when a count-sensitive need exists, because §5.3.1 counts each distinct
 /// cleaned <c>(subject, predicate, value)</c> once per subject and that cannot be decided
 /// while a subject's rows are scattered. Sources are replayable by contract; this is the
@@ -141,8 +141,8 @@ public static class Calibrator
         {
             var targets = run.BuildTargets(wide: true);
 
-            // §7: every wide row is an independent observation — no deduplication by object key,
-            // no duplicate_object_policy, no grouping. The population is row-scoped, which is
+            // §7: every wide row is an independent observation (no deduplication by object key,
+            // no duplicate_object_policy, no grouping). The population is row-scoped, which is
             // also why wide calibration never reads or validates the object-key column (D-099).
             await foreach (var record in source.ReadAsync(cancellationToken).ConfigureAwait(false))
             {
@@ -207,9 +207,9 @@ public static class Calibrator
             // when none exists, the raw pass covers everything and no second read is made.
             var countSensitive = targets.Any(t => t.Observer.IsCountSensitive);
 
-            // Pass 1 (always): the raw-order stream. Discovery-class observation happens here —
-            // §17 rule 3 fixes first-observation order as RAW input order, which grouping would
-            // reorder — together with the G-3 structural checks. Under subject_grouped the
+            // Pass 1 (always): the raw-order stream. Discovery-class observation happens here
+            // (§17 rule 3 fixes first-observation order as RAW input order, which grouping would
+            // reorder), together with the G-3 structural checks. Under subject_grouped the
             // subject runs are already contiguous, so this same pass also does the §5.3.1
             // subject-local deduplication for count-sensitive needs; under unordered it does NOT
             // touch them at all (the grouped pass below owns them exclusively).
@@ -224,8 +224,8 @@ public static class Calibrator
             {
                 // Pass 2 (unordered + count-sensitive only): the same rows, grouped by subject on
                 // the bounded backend, so each subject's distinct cleaned observations can be
-                // counted once. Discovery-class observers are NOT fed here — they were fed from
-                // the raw stream — so no attribute is observed twice and no diagnostic is
+                // counted once. Discovery-class observers are NOT fed here (they were fed from
+                // the raw stream), so no attribute is observed twice and no diagnostic is
                 // double-reported.
                 if (!subjectGrouped && countSensitive)
                 {
@@ -251,13 +251,13 @@ public static class Calibrator
         return run.Complete(calibrated);
     }
 
-    // The raw-order triple pass: discovery-class observation, the G-3 structural checks, and —
-    // under subject_grouped ONLY — inline subject-local dedup for count-sensitive needs. Returns
+    // The raw-order triple pass: discovery-class observation, the G-3 structural checks, and,
+    // under subject_grouped ONLY, inline subject-local dedup for count-sensitive needs. Returns
     // the structural diagnostic that halted it, or null.
     //
     // Exactly one pass may feed a given observer (D-103): discovery-class observers belong to this
     // pass (§17 rule 3 needs raw order), and count-sensitive observers belong to whichever pass can
-    // see a subject's rows together — this one under subject_grouped, the grouped pass under
+    // see a subject's rows together: this one under subject_grouped, the grouped pass under
     // unordered. Feeding a count-sensitive observer here under unordered would add every raw row's
     // multiplicity on top of the grouped pass's deduped contribution: the counts, and therefore the
     // cuts, would be wrong, and an unparseable value would be tallied twice in one phase.
@@ -271,7 +271,7 @@ public static class Calibrator
         var completed = new HashSet<string>(StringComparer.Ordinal);
 
         // Non-null exactly when this pass owns the count-sensitive observers, which is also what
-        // makes `fresh` below false — and so those observers untouched — under unordered.
+        // makes `fresh` below false (and so those observers untouched) under unordered.
         var seen = subjectGrouped && countSensitive
             ? new HashSet<(string Predicate, string? Value)>()
             : null;
@@ -322,7 +322,7 @@ public static class Calibrator
             // §5.3.1: each distinct cleaned (subject, predicate, value) contributes once. The key
             // is the RAW cleaned spelling, not the parsed number: "90" and "90.0" are distinct
             // observations that both count, and after parsing both increment the same numeric
-            // value's count. Computed once per ROW — several attributes may share a predicate, and
+            // value's count. Computed once per ROW: several attributes may share a predicate, and
             // the observation is deduplicated, not the attribute.
             var fresh = seen is not null && seen.Add((predicate, row.Value));
             foreach (var target in matched)
@@ -437,7 +437,7 @@ public static class Calibrator
     /// <summary>
     /// One calibration invocation's mutable state: the spool workspace and its storage ledger,
     /// the budget shared across count-sensitive accumulators, and the diagnostics. Created per
-    /// call — never on <see cref="GroupingOptions"/>, which is immutable configuration — so
+    /// call (never on <see cref="GroupingOptions"/>, which is immutable configuration), so
     /// concurrent calibrations cannot cross-contaminate (the D-082 posture).
     /// </summary>
     private sealed class CalibrationRun
@@ -448,7 +448,7 @@ public static class Calibrator
         private readonly SpoolWorkspace<ValueCount> _workspace;
 
         // Owned by the run, not by Finish: an attribute's diagnostics are produced one at a time,
-        // and a LATER attribute's merge/replay failure must not discard an earlier one's (EP-14 —
+        // and a LATER attribute's merge/replay failure must not discard an earlier one's (EP-14:
         // aggregating operations collect every diagnostic, not just the fatal one).
         private readonly List<BedrockDiagnostic> _diagnostics = [];
         private CalibrationBudget? _budget;
@@ -476,7 +476,7 @@ public static class Calibrator
         /// <summary>
         /// The included attributes needing a data pass, in spec-attribute order. Cut discretizers
         /// ignore <c>declared_domain</c> (§10.3), so the discovery-class and cut classes never
-        /// overlap and every attribute has exactly one observer — which is what keeps a value
+        /// overlap and every attribute has exactly one observer, which is what keeps a value
         /// from being tallied twice across the triple passes.
         /// </summary>
         public List<CalibrationTarget> BuildTargets(bool wide)
@@ -545,7 +545,7 @@ public static class Calibrator
 
             _budget?.ReportAggregate();
 
-            // Phase 2: finalize one attribute at a time — merges are sequential, so at most one
+            // Phase 2: finalize one attribute at a time; merges are sequential, so at most one
             // attribute's readers/writer exist at once.
             foreach (var target in targets)
             {
@@ -582,7 +582,7 @@ public static class Calibrator
             }
 
             // An Error here (a fail-policy unparseable, or an attribute whose population could not
-            // bound its cuts) aborts with no calibrated result (D-095/D-100) — and it must abort
+            // bound its cuts) aborts with no calibrated result (D-095/D-100), and it must abort
             // BEFORE Create, since a target that produced no outcome would otherwise reach the
             // completeness boundary as a contract violation rather than the data error it is.
             if (HasError(diagnostics))
@@ -637,7 +637,7 @@ public static class Calibrator
                 case IdentityDiscretizer or FreePerValueDiscretizer:
                 {
                     // Omitted (null) domain requests observed-domain calibration; an authored
-                    // domain — including [] — is complete and only reads data under include
+                    // domain (including []) is complete and only reads data under include
                     // (D-122 §15). So an authored [] under warn builds no observer.
                     var absentDomain = attribute.DeclaredDomain is null;
                     var include = attribute.UnknownValuePolicy == UnknownValuePolicy.Include;
@@ -692,7 +692,7 @@ public static class Calibrator
             new(attributeName, culture, _budget!, _workspace, Options, _observer, _cancellationToken);
 
         // Discovery-class outcomes and their mode-triggered warnings: they fire whenever the mode
-        // executes, zero discoveries included — the data-dependence exists regardless of the count.
+        // executes, zero discoveries included; the data-dependence exists regardless of the count.
         private static void FinishDomain(
             CalibrationTarget target, DomainObserver observer, List<AttributeCalibration> outcomes, List<BedrockDiagnostic> diagnostics)
         {
@@ -715,7 +715,7 @@ public static class Calibrator
         }
 
         // §11.6/D-055/D-090: the pass-through bins resolve once the pass completes. Like the other
-        // discovery-class outcomes this warning is mode-triggered — it fires whenever passthrough
+        // discovery-class outcomes this warning is mode-triggered: it fires whenever passthrough
         // calibration executes, ZERO discoveries included, because the column set depends on this
         // input either way. An empty outcome is retained, not skipped: it is the legitimate
         // zero-discovery completeness marker CalibratedSpec.Create requires, and dropping it would
@@ -723,7 +723,7 @@ public static class Calibrator
         //
         // There is deliberately no data-insufficiency guard: unlike a cut discretizer, whose bins
         // need a span or enough distinct values, value_groups' declared groups already stand on
-        // their own — discovering no ungrouped value means every value matched a group, which is a
+        // their own; discovering no ungrouped value means every value matched a group, which is a
         // perfectly good outcome, not a failure.
         private static void FinishPassthrough(
             CalibrationTarget target, PassthroughObserver observer, List<AttributeCalibration> outcomes, List<BedrockDiagnostic> diagnostics)
@@ -737,8 +737,8 @@ public static class Calibrator
         }
 
         // §11.4/D-089/D-102: the equal_width data range resolves once the pass completes. A
-        // population with no usable spread cannot bound the span — no usable numeric values at all,
-        // or every value equal — and is CalibrationDataInsufficient (Error, no calibrated result).
+        // population with no usable spread cannot bound the span (no usable numeric values at all,
+        // or every value equal) and is CalibrationDataInsufficient (Error, no calibrated result).
         // There is deliberately NO distinct-value guard: equal-width bins are placed by span, not by
         // count, so fewer distinct values than bins is valid as long as min < max.
         private static void FinishMinMax(
@@ -762,7 +762,7 @@ public static class Calibrator
         }
 
         // §11.5/§11.4 (D-088/D-089/D-103): the count-sensitive cuts resolve once the pass
-        // completes — merge to one consolidated run, then the two-pass walk over it.
+        // completes (merge to one consolidated run, then the two-pass walk over it).
         private static void FinishQuantile(
             CalibrationTarget target, QuantileObserver observer, List<AttributeCalibration> outcomes, List<BedrockDiagnostic> diagnostics)
         {
@@ -815,8 +815,8 @@ public static class Calibrator
         }
 
         // The one equal_width derivation route for BOTH data-derived ranges: Core's public
-        // CreateManual factory over the calibrated span. Only the cuts are kept — the instance is
-        // a throwaway whose range mode is irrelevant — and CalibratedSpec.Create builds the real
+        // CreateManual factory over the calibrated span. Only the cuts are kept (the instance is
+        // a throwaway whose range mode is irrelevant), and CalibratedSpec.Create builds the real
         // discretizer, preserving the authored data-derived range and its absent vmin/vmax
         // (D-094). The span check above means CreateManual's own range diagnostic is unreachable,
         // so its only possible failure is a cut collapse, which this phase owns as
@@ -855,7 +855,7 @@ public static class Calibrator
             Config: PendingEqualFrequency or PendingEqualWidth { Range: EqualWidthRange.PercentileP1P99 },
         };
 
-        // §10.6/§16.4: the severity unknown_value_policy assigns an aggregated SourceValueUnparseable —
+        // §10.6/§16.4: the severity unknown_value_policy assigns an aggregated SourceValueUnparseable:
         // skip silent (null), fail Error, warn/include Warning (an unparseable value cannot join a
         // numeric domain, so include behaves as warn, D-097).
         private static DiagnosticSeverity? SeverityFor(UnknownValuePolicy policy) => policy switch
@@ -890,7 +890,7 @@ public static class Calibrator
         /// <summary>
         /// Whether this observer's result depends on <b>how many</b> observations carry a value,
         /// not merely which values occur. Count-sensitive observers are the only ones that need
-        /// the §5.3.1 subject-local triple deduplication — and therefore the only reason an
+        /// the §5.3.1 subject-local triple deduplication, and therefore the only reason an
         /// unordered triple source is read a second time.
         /// </summary>
         public virtual bool IsCountSensitive => false;
@@ -963,7 +963,7 @@ public static class Calibrator
     //
     // Discovery-class, not count-sensitive: a bin either exists or it does not, so how MANY times
     // a value occurs is irrelevant and the set is idempotent under repetition. That is what keeps
-    // it off the count-sensitive path entirely — no quantile accumulator, no value counts, no
+    // it off the count-sensitive path entirely: no quantile accumulator, no value counts, no
     // spill runs, no merge or replay, no subject-local triple deduplication, and no contribution
     // to the budget divisor. Its bound is the attribute vocabulary: schema-scale metadata, the
     // same documented EP-16 carve-out as an observed domain (D-095), not a population charged to
@@ -971,13 +971,13 @@ public static class Calibrator
     //
     // Matching is delegated to Core rather than reimplemented: the observer classifies each value
     // through a ValueGroupsDiscretizer built over the SAME authored groups under the `skip`
-    // policy, whose BinResult answers exactly the question discovery asks — a Bin means some group
+    // policy, whose BinResult answers exactly the question discovery asks: a Bin means some group
     // claimed the value, an Unknown means none did (§11.6). So calibration and emit cannot drift
     // about what "unmatched" means: it is literally the same type, matcher, and first-match walk,
     // with each group's regex compiled once at construction rather than per observed value.
     //
-    // The probe instance is a throwaway whose own unmatched policy is irrelevant — only its
-    // matched-vs-not answer is read — the same shape as DeriveEqualWidth building a throwaway
+    // The probe instance is a throwaway whose own unmatched policy is irrelevant (only its
+    // matched-vs-not answer is read), the same shape as DeriveEqualWidth building a throwaway
     // CreateManual instance purely for its cuts (D-102). `skip` is the policy that makes "no group
     // matched" observable; `other`/`passthrough` would bin it and hide the answer.
     private sealed class PassthroughObserver : CalibrationObserver
@@ -1003,11 +1003,11 @@ public static class Calibrator
 
             if (_probe.Discretize(raw).Outcome != BinOutcome.Unknown)
             {
-                return; // some group claimed it, so it is grouped — not a pass-through bin.
+                return; // some group claimed it, so it is grouped, not a pass-through bin.
             }
 
             // Ordinal dedup (EP-12); §17 rule 3 fixes the order as first-observation order, which
-            // for triple input is RAW input order — hence discovery lives on the raw pass.
+            // for triple input is RAW input order; hence discovery lives on the raw pass.
             if (_seen.Add(raw))
             {
                 _values.Add(raw);
@@ -1016,7 +1016,7 @@ public static class Calibrator
     }
 
     // The equal_width data range (§7/§11.4): a streaming minimum and maximum over the finite
-    // parsed population. It retains two doubles and never the population — no sort, no spill, no
+    // parsed population. It retains two doubles and never the population: no sort, no spill, no
     // distinct-value tracking (D-095's bounded-memory rule is satisfied by construction here;
     // the count-sensitive quantile machinery belongs to equal_frequency/percentile). Order- and
     // count-insensitive, which is why a triple min/max pass needs no subject-local deduplication:

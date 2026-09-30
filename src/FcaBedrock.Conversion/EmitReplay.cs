@@ -65,7 +65,7 @@ public sealed class EmitReplaySession : IDisposable
 {
     private readonly Func<ICollection<BedrockDiagnostic>, IAsyncEnumerable<EmittedObject>> _emit;
     // Lifecycle state driven by CompareExchange so enumeration-start and disposal are mutually-exclusive
-    // atomic transitions — no start-vs-dispose race on the non-thread-safe storage ledger.
+    // atomic transitions: no start-vs-dispose race on the non-thread-safe storage ledger.
     private const int Idle = 0;
     private const int Active = 1;
     private const int Disposed = 2;
@@ -120,7 +120,7 @@ public sealed class EmitReplaySession : IDisposable
     private async IAsyncEnumerable<EmittedObject> Pass([EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         // Atomically claim enumeration (Idle → Active) at first MoveNext. A concurrent start or a
-        // disposal loses the race — so two deferred streams can never advance at once, and a start
+        // disposal loses the race, so two deferred streams can never advance at once, and a start
         // racing a dispose resolves deterministically.
         var prev = Interlocked.CompareExchange(ref _state, Active, Idle);
         ObjectDisposedException.ThrowIf(prev == Disposed, this);

@@ -4,13 +4,13 @@ namespace FcaBedrock.Conversion;
 
 /// <summary>
 /// Reorders a row stream so rows sharing a key are contiguous and the groups appear in
-/// <b>first-appearance order</b> of the key — the shared core of the slow (non-single-pass) path for
+/// <b>first-appearance order</b> of the key: the shared core of the slow (non-single-pass) path for
 /// triple <c>ordering = "unordered"</c> (D-082) and wide <c>duplicate_object_policy = "dedupe"</c>
 /// (D-083). It buffers input rows and stable-sorts them by each distinct key's first-appearance rank;
 /// when the resident buffer exceeds <see cref="GroupingOptions.MaxBufferedBytes"/> it spills a sorted
 /// run to an owner-restricted spool workspace and merges the runs with bounded fan-in, so a zero-spill
 /// enumeration stays entirely in memory (and touches no disk) while a large one stays bounded (EP-16).
-/// The single cleaned-key structure is the rank map — one name-cardinality collection, not two.
+/// The single cleaned-key structure is the rank map: one name-cardinality collection, not two.
 /// <para>
 /// Deliberately <b>validity-agnostic</b>: it never inspects a key for "usability" and never raises a
 /// diagnostic (a <c>null</c> key is ranked like any other). A structural-error boundary is the caller's
@@ -115,7 +115,7 @@ internal static class FirstAppearanceGrouping
 
             if (runs.Count == 0)
             {
-                // Zero-spill: sort and yield in memory — no workspace, no disk.
+                // Zero-spill: sort and yield in memory (no workspace, no disk).
                 Sort(buffer);
                 foreach (var entry in buffer)
                 {

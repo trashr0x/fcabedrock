@@ -4,8 +4,8 @@ namespace FcaBedrock.Sources;
 
 /// <summary>
 /// The stage-2 wide source session (D-098/G-1): constructible from
-/// <see cref="SourceReadSettings"/> alone — no resolved binding, no attribute
-/// indexes — and able to read the schema so the resolver can bind by header name.
+/// <see cref="SourceReadSettings"/> alone (no resolved binding, no attribute
+/// indexes) and able to read the schema so the resolver can bind by header name.
 /// <para>
 /// <b>Lifecycle.</b> The first successful <see cref="GetSchemaAsync"/> caches an
 /// immutable schema snapshot; subsequent calls return it without reopening the
@@ -60,12 +60,12 @@ public sealed class WideCsvSession : IWideSourceSession
 
     /// <summary>
     /// The immutable read settings this session tokenizes with. Delimited-source detail, so it
-    /// lives here rather than on <see cref="ISourceSession"/> — a non-delimited adapter has no
+    /// lives here rather than on <see cref="ISourceSession"/>: a non-delimited adapter has no
     /// delimiter, quote, or header to report.
     /// </summary>
     public SourceReadSettings ReadSettings => _settings;
 
-    /// <summary>Reads (and caches) the source schema — column count and, when present, header names.</summary>
+    /// <summary>Reads (and caches) the source schema: column count and, when present, header names.</summary>
     public async ValueTask<SourceSchema> GetSchemaAsync(CancellationToken cancellationToken = default)
     {
         if (_schema is { } cached)

@@ -11,8 +11,8 @@ namespace FcaBedrock.Conversion;
 ///
 /// <para>Two independent signals drive the aggregated emit diagnostics:
 /// <list type="bullet">
-/// <item><c>duplicate</c> — the cleaned key was already seen (a repeated key) → <c>DuplicateObjectKey</c>.</item>
-/// <item><c>disambiguated</c> — the candidate name was already assigned and had to be bumped with
+/// <item><c>duplicate</c>: the cleaned key was already seen (a repeated key) → <c>DuplicateObjectKey</c>.</item>
+/// <item><c>disambiguated</c>: the candidate name was already assigned and had to be bumped with
 /// <c>#1</c>, <c>#2</c>, … → <c>ObjectKeyNameDisambiguated</c>. This can fire for a <b>first</b>
 /// occurrence whose literal key collides with a generated name, independently of <c>duplicate</c>.</item>
 /// </list></para>
@@ -38,8 +38,8 @@ internal sealed class ColumnKeyNamer
             ? $"{cleanedKey}#{recordIndex.ToString(CultureInfo.InvariantCulture)}"
             : cleanedKey;
 
-        // If the candidate is already assigned — a literal data key colliding with a generated name,
-        // or vice versa — append #1, #2, … and take the first unused; unique by construction (§6.1).
+        // If the candidate is already assigned (a literal data key colliding with a generated name,
+        // or vice versa), append #1, #2, … and take the first unused; unique by construction (§6.1).
         disambiguated = _assigned.Contains(candidate);
         if (disambiguated)
         {

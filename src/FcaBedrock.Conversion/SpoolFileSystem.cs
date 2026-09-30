@@ -9,14 +9,14 @@ namespace FcaBedrock.Conversion;
 /// failures to exercise the two-channel storage-failure model (EP-6). Implementations own confidentiality
 /// (the spool holds raw source data): a workspace is created owner-restricted, and open run handles use
 /// <see cref="FileShare.None"/> with non-inheritable OS handles. Callers own the
-/// <see cref="GroupingOperation"/> classification — these methods throw raw exceptions, which the caller
+/// <see cref="GroupingOperation"/> classification: these methods throw raw exceptions, which the caller
 /// maps to a <see cref="GroupingStorageException"/> via <see cref="SpoolFailures.Classify"/>.
 /// </summary>
 internal interface ISpoolFileSystem
 {
     /// <summary>
     /// Creates a uniquely-named, owner-restricted workspace directory under <paramref name="root"/> and
-    /// returns its path (create-new — never adopts an existing directory). Throws if the directory or
+    /// returns its path (create-new: never adopts an existing directory). Throws if the directory or
     /// its restrictive ACL cannot be established (so an un-protectable workspace halts rather than
     /// proceeding unprotected).
     /// </summary>
@@ -84,7 +84,7 @@ internal sealed class SpoolFileSystem : ISpoolFileSystem
 
     public void DeleteWorkspace(string path) => Directory.Delete(path, recursive: true);
 
-    // An explicit owner-only DACL with inheritance disabled — FileShare.None cannot protect runs whose
+    // An explicit owner-only DACL with inheritance disabled: FileShare.None cannot protect runs whose
     // handles are closed between merge stages, so the directory ACL is the durable guard (persists even
     // for hard-kill orphans). Threat model: other non-privileged local users; not administrators/root.
     [SupportedOSPlatform("windows")]

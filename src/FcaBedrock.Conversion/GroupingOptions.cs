@@ -53,7 +53,7 @@ internal sealed class GroupingOptions
     /// <summary>The temp root for spool workspaces; <see langword="null"/> = the OS temp path.</summary>
     public string? TempDirectory { get; }
 
-    /// <summary>The spool filesystem (real by default; a test seam for failure injection — EP-6).</summary>
+    /// <summary>The spool filesystem (real by default; a test seam for failure injection, EP-6).</summary>
     public ISpoolFileSystem FileSystem { get; }
 
     /// <summary>An optional observer for resource-bound assertions (a test seam; no production effect).</summary>

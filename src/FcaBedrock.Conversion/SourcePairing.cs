@@ -8,14 +8,14 @@ namespace FcaBedrock.Conversion;
 /// calibrate/emit pass validates that the source was prepared against the same
 /// resolution. Three states (<see cref="SourceProvenance"/>):
 /// <list type="bullet">
-/// <item>token → reference-identity with the resolution (full pairing — settings,
+/// <item>token → reference-identity with the resolution (full pairing: settings,
 /// roles, missing token, and schema are all inside the token, so no schema read);</item>
 /// <item>descriptor → settings value-equality, role-map equality, and ordinal
 /// schema-value equality against the resolution (closes same-header/different-setting
 /// and same-header/different-role mispairing for direct-constructed sources);</item>
 /// <item>unvalidated → schema-value equality only (the named opt-out).</item>
 /// </list>
-/// Any mismatch — including an unknown provenance variant — throws
+/// Any mismatch (including an unknown provenance variant) throws
 /// <see cref="InvalidOperationException"/> (the D-082 call-contract posture); it never
 /// degrades to the unvalidated path.
 /// </summary>
