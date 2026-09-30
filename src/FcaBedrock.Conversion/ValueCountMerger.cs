@@ -8,16 +8,15 @@ namespace FcaBedrock.Conversion;
 /// into one output row, so the consolidated run is a true aggregated population — exactly
 /// the distinct ascending <c>(value, count)</c> sequence the §11.5 quantile walk needs.
 /// <para>
-/// It ports the grouping backend's 3T storage model verbatim: before <b>every</b> output —
-/// each intermediate batch <i>and</i> the final consolidated run — pending deletions are
-/// retried, the output is projected conservatively as the sum of its inputs (aggregation
-/// only shrinks), and the batch halts in-path <b>without opening the output</b> if live
-/// bytes plus that projection would exceed <c>3·T</c>. Merge output coexists with its
-/// inputs until they delete, so the final write is no safer than an intermediate one and
-/// gets the same gate.
+/// It applies the grouping backend's 3T storage model to <b>every</b> output it writes, each
+/// intermediate batch <i>and</i> the final consolidated run: pending deletions are retried, the
+/// output is projected conservatively as the sum of its inputs (aggregation only shrinks), and the
+/// batch halts in-path <b>without opening the output</b> if live bytes plus that projection would
+/// exceed <c>3·T</c>. Merge output coexists with its inputs until they delete, so the final write
+/// is no safer than an intermediate one and gets the same check.
 /// </para>
 /// <para>
-/// <b>Both sides of that gate are the workspace's.</b> Live bytes come from the
+/// <b>Both sides of that check are the workspace's.</b> Live bytes come from the
 /// <see cref="SpoolWorkspace{TRow}"/>, which a whole calibration shares across its
 /// count-sensitive attributes, so the <c>baselineT</c> a caller supplies must be that same
 /// workspace's cumulative original-spill payload — every accumulator's, not the calling
@@ -43,9 +42,9 @@ internal sealed class ValueCountMerger
     /// Reduces <paramref name="runs"/> to exactly one ascending count-aggregated run,
     /// multi-stage when the count exceeds the fan-in, deleting each consumed input.
     /// <paramref name="baselineT"/> is the cumulative <b>raw spill</b> payload of the whole
-    /// workspace this merger writes into — every accumulator sharing it, at this boundary
+    /// workspace this merger writes into: every accumulator sharing it, at this boundary
     /// (consolidation output never inflates it, and it never falls). A single input needs no
-    /// merge and is returned untouched — nothing is opened, so no gate applies.
+    /// merge and is returned untouched: nothing is opened, so no check applies.
     /// </summary>
     /// <exception cref="GroupingStorageException">An in-path storage failure, or the 3T escalation.</exception>
     /// <exception cref="CalibrationPopulationOverflowException">A merged count sum exceeds <see cref="long"/>.</exception>
@@ -70,7 +69,7 @@ internal sealed class ValueCountMerger
         return runs[0];
     }
 
-    // One batch (≤ fan-in inputs) → one aggregated run, gated by the 3T preflight.
+    // One batch (≤ fan-in inputs) → one aggregated run, checked by the 3T preflight.
     private SpoolRunHandle MergeBatch(
         SpoolRunHandle[] batch, long bound, long baselineT, CancellationToken cancellationToken)
     {

@@ -3,13 +3,13 @@ using FcaBedrock.Core.Spec;
 namespace FcaBedrock.Sources;
 
 /// <summary>
-/// A triple (subject–predicate–value) CSV/TSV <see cref="ITripleRowSource"/>. Sibling to
+/// A triple (subject-predicate-value) CSV/TSV <see cref="ITripleRowSource"/>. Sibling to
 /// <see cref="WideCsvSource"/>: Sep owns DSV tokenization (D-041); this type layers the
 /// declared delimiter, header handling, the resolved role→column map, and missing
-/// normalization. It is deliberately dumb — no grouping, no subject/contiguity validation,
+/// normalization. It is deliberately dumb: no grouping, no subject/contiguity validation,
 /// no object-key semantics (D-082); those belong to the Conversion layer. Constructed from a
-/// replayable stream factory so it can be re-read for the <c>.cxt</c> two-pass and the
-/// <c>unordered</c> first-appearance grouping (D-082) without temp files.
+/// replayable stream factory, so the <c>.cxt</c> two-pass and the grouped calibration
+/// pass over <c>unordered</c> input (D-103) re-read it instead of keeping a temporary copy.
 /// </summary>
 public sealed class TripleCsvSource : ITripleRowSource
 {

@@ -8,7 +8,8 @@ namespace FcaBedrock.Conversion;
 /// no disk at all — even under an unusable temp root. Ownership is precise: a uniquely-named directory
 /// is created fresh (never adopting an existing one) and only that recorded path is ever deleted.
 /// In-path failures (workspace create, run write/open) throw <see cref="GroupingStorageException"/>;
-/// cleanup failures (consumed-run delete, teardown) go to the non-throwing cleanup channel.
+/// cleanup failures (consumed-run delete, teardown) go to the non-throwing cleanup channel, except
+/// that a capped workspace escalates a failed delete past its cap in-path (see <see cref="DeleteRun"/>).
 /// </summary>
 internal sealed class SpoolWorkspace<TRow>
 {
@@ -24,11 +25,10 @@ internal sealed class SpoolWorkspace<TRow>
     /// <summary>
     /// Creates the workspace. <c>maxPendingDeletions</c> optionally caps retained
     /// failed-deletion entries; exceeding it records an in-path Error and throws (D-103).
-    /// <see langword="null"/> is the emit-path grouping backend's existing, deliberately
-    /// uncapped behavior (EP-1: this slice bounds the new quantile engine's workspace usage and
-    /// does not reopen the emit path). The cap exists because the 3T byte rule alone does
-    /// <b>not</b> bound this metadata: with repeated-key runs, live bytes and <c>T</c> grow
-    /// together and never trip the escalation while pending entries grow without bound.
+    /// <see langword="null"/> leaves the workspace uncapped, as the emit-path grouping backend
+    /// uses it; D-103 bounds only the quantile engine's workspace. The cap exists because the 3T
+    /// byte rule alone does <b>not</b> bound this metadata: with repeated-key runs, live bytes and
+    /// <c>T</c> grow together and never trip the escalation while pending entries grow without bound.
     /// </summary>
     public SpoolWorkspace(GroupingOptions options, IRowCodec<TRow> codec, GroupingReports reports, int? maxPendingDeletions = null)
     {
@@ -156,8 +156,8 @@ internal sealed class SpoolWorkspace<TRow>
     /// for retry at the next batch boundary (a transient failure must not permanently retain the
     /// run). When a <c>maxPendingDeletions</c> cap is configured and a <b>new</b> failed entry
     /// would exceed it, the delete channel escalates in-path: an Error is recorded and
-    /// <see cref="GroupingStorageException"/> thrown, halting the caller (D-103). Uncapped —
-    /// the emit path — this method never throws, exactly as before.
+    /// <see cref="GroupingStorageException"/> thrown, halting the caller (D-103). Uncapped (the
+    /// emit path), this method never throws.
     /// </summary>
     public void DeleteRun(SpoolRunHandle handle)
     {

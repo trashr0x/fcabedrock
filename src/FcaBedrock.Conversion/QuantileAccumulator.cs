@@ -33,10 +33,10 @@ internal sealed class QuantileAccumulator
 {
     /// <summary>
     /// Retained bytes per accepted entry on x64: the dictionary entry struct (24 = hashCode 4 +
-    /// next 4 + key 8 + value 8), its bucket int (4), and the sort-buffer element (16 — the
+    /// next 4 + key 8 + value 8), its bucket int (4), and the sort-buffer element (16, the
     /// <see cref="ValueCount"/> stride). A <b>correctness</b> constant for the .NET 10 CoreCLR
-    /// x64 layout, padded upward, like <see cref="ResidentModel"/>'s — never a performance knob
-    /// (M8 may tune the budget; changing this requires re-validating the layout).
+    /// x64 layout, padded upward, like <see cref="ResidentModel"/>'s, and never a performance knob
+    /// (the budget may be tuned; changing this requires re-validating the layout).
     /// </summary>
     public const long SlotBytes = 44;
 
@@ -53,10 +53,10 @@ internal sealed class QuantileAccumulator
     /// 160 + 96 + 96 = 352, rounded up to 384.
     /// <para>
     /// Only the accumulator object's own allocation is charged here. What its <c>_catalog</c> /
-    /// <c>_consolidated</c> slots <i>point to</i> is the run catalogue — <b>tier 2</b>, bounded
+    /// <c>_consolidated</c> slots <i>point to</i> is the run catalogue: <b>tier 2</b>, bounded
     /// by count and shape (bounded by the fixed catalogue ceiling K = (F-1)*L; simultaneously open
-    /// readers stay bounded by the merge fan-in), never by a byte constant; the 8-byte slots
-    /// themselves live in this object and are counted above.
+    /// readers stay bounded by the merge fan-in), never by a byte constant. The slots themselves (a
+    /// reference and a nullable <see cref="SpoolRunHandle"/>) live in this object and are counted above.
     /// </para>
     /// </summary>
     public const long FixedBytes = 384;
@@ -450,9 +450,9 @@ internal sealed class QuantileAccumulator
     // higher-generation run is never used to fill a lower batch.
     //
     // This is the one case where a merge runs DURING intake, so this accumulator's dictionary and
-    // sort buffer are co-resident with the merge's readers/writer — the same tier-2 co-residence
-    // class the shipped online consolidation already had, and why the release-before-merge rule is
-    // stated for the POST-intake phase only.
+    // sort buffer are co-resident with the merge's readers/writer. Tier 2 accounts for that
+    // co-residence (D-103), which is why the release-before-merge rule is stated for the
+    // POST-intake phase only.
     //
     // The baseline is the workspace's T_so_far at THIS boundary — every accumulator's original
     // spills up to now, not a prediction of their final payload. T only grows, so a later merge is
@@ -622,7 +622,7 @@ internal sealed class CalibrationBudget
     /// instead would divide the allowance by the number of attributes spilling into it: with A
     /// comparable accumulators the retained bytes grow with A while the allowance does not, so a
     /// perfectly ordinary population is refused with a degraded-cleanup diagnostic on healthy
-    /// storage. Summing here restores one consistently scoped guarantee — <b>not</b> a per-attribute
+    /// storage. Summing here gives one consistently scoped guarantee: <b>not</b> a per-attribute
     /// multiplier, and not a larger allowance than D-082 states.
     /// </para>
     /// <para>

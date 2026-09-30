@@ -34,15 +34,15 @@ namespace FcaBedrock.Conversion;
 /// <item>a <b>structural or grouping-storage halt</b> stops the object stream, so both <c>.cxt</c>
 /// passes truncate identically (the object-name-sequence invariant cannot catch it) and a
 /// <c>.dat</c> holds only the rows before the halt;</item>
-/// <item>an <b>`unknown_value_policy = "fail"` abort</b> does <b>not</b> stop the stream — the
+/// <item>an <b>`unknown_value_policy = "fail"` abort</b> does <b>not</b> stop the stream: the
 /// aggregated per-attribute diagnostic (§16.4) is computed over the whole population, so
 /// enumeration completes and the Error flushes at the end, leaving a <em>complete but invalid</em>
-/// artifact. "Abort" is Error's operation-failed semantics (§16.2), not "stop reading rows"; this
-/// preserves the pre-Slice-F included-attribute <c>fail</c> behaviour (D-050/D-059).</item>
+/// artifact. "Abort" is Error's operation-failed semantics (§16.2), not "stop reading rows", for a
+/// filter-only restriction as for an included attribute (D-050/D-059, D-105).</item>
 /// </list>
 /// The whole-stream observability warnings are suppressed on both (they would describe an artifact
-/// the caller must discard). Transactional publication is M7's conversion-run abstraction, not a
-/// writer or emitter concern (EP-15).
+/// the caller must discard). Transactional publication belongs to the CLI's run and publication
+/// coordinator (§18.1, D-122 part 9), not to a writer or the emitter (EP-15).
 /// </para>
 /// </summary>
 public static class Emitter
@@ -69,14 +69,15 @@ public static class Emitter
 
     /// <summary>
     /// Emits the formal objects for a wide <paramref name="plan"/> under an explicit
-    /// <see cref="ConversionRuntimeOptions"/> — the public <c>--temp-dir</c> capability (D-123 point
-    /// 11). Identical to
-    /// <see cref="EmitAsync(ConversionPlan, IRecordSource, ICollection{BedrockDiagnostic}, CancellationToken)"/>
-    /// except that a non-null <see cref="ConversionRuntimeOptions.TempDirectory"/> chooses the dedupe
-    /// spool workspace root; it never changes emitted objects, crosses, diagnostics, ordering, or
-    /// output bytes (D-082). The null <paramref name="runtimeOptions"/> check is eager, and delegating
-    /// to the internal (non-iterator) wide overload keeps the existing plan/source/diagnostics and
-    /// plan-variant guards eager exactly as today.
+    /// <see cref="ConversionRuntimeOptions"/>, the public <c>--temp-dir</c> capability (D-123 point
+    /// 11). A non-null <see cref="ConversionRuntimeOptions.TempDirectory"/> chooses the dedupe spool
+    /// workspace root. When spool storage succeeds, the result is that of
+    /// <see cref="EmitAsync(ConversionPlan, IRecordSource, ICollection{BedrockDiagnostic}, CancellationToken)"/>:
+    /// the root never changes emitted objects, crosses, diagnostics, ordering, or output bytes
+    /// (D-082). A storage failure under the chosen root is reported as <c>GroupingStorageFailed</c>,
+    /// whose path samples name that root or paths under it. The null
+    /// <paramref name="runtimeOptions"/> check is eager, and so are the plan, source, diagnostics
+    /// and plan-variant guards, because this delegates to the internal (non-iterator) wide overload.
     /// </summary>
     public static IAsyncEnumerable<EmittedObject> EmitAsync(
         ConversionPlan plan,
@@ -90,7 +91,8 @@ public static class Emitter
     }
 
     // Internal overload: the grouping budget/fan-in is a spill-forcing test seam for the dedupe path
-    // (EP-6); production uses GroupingOptions.Default. Non-iterator, so the guards + dispatch run eagerly.
+    // (EP-6); production passes GroupingOptions.Default, or ConversionRuntimeOptions' mapping, which
+    // changes only the temp root. Non-iterator, so the guards + dispatch run eagerly.
     internal static IAsyncEnumerable<EmittedObject> EmitAsync(
         ConversionPlan plan,
         IRecordSource source,
@@ -466,13 +468,13 @@ public static class Emitter
 
     /// <summary>
     /// Emits the formal objects for a triple <paramref name="plan"/> under an explicit
-    /// <see cref="ConversionRuntimeOptions"/> — the public <c>--temp-dir</c> capability (D-123 point
+    /// <see cref="ConversionRuntimeOptions"/>, the public <c>--temp-dir</c> capability (D-123 point
     /// 11). As
     /// <see cref="EmitTripleAsync(ConversionPlan, ITripleRowSource, ICollection{BedrockDiagnostic}, CancellationToken)"/>,
     /// with the temp-directory capability applied to the <c>unordered</c> grouping spool placement
-    /// only — byte- and fingerprint-neutral (D-082). The null <paramref name="runtimeOptions"/> check
-    /// is eager; the existing plan/source/diagnostics and plan-variant guards live in the internal
-    /// async iterator, so — as today for the triple path — they run when enumeration advances, not at
+    /// only: byte- and fingerprint-neutral (D-082). The null <paramref name="runtimeOptions"/> check
+    /// is eager; the plan, source, diagnostics and plan-variant guards live in the internal async
+    /// iterator, so, as for the other triple overload, they run when enumeration advances, not at
     /// call time.
     /// </summary>
     public static IAsyncEnumerable<EmittedObject> EmitTripleAsync(
@@ -486,8 +488,9 @@ public static class Emitter
         return EmitTripleAsync(plan, source, diagnostics, runtimeOptions.ToGroupingOptions(), cancellationToken);
     }
 
-    // Internal overload: the grouping budget/fan-in is a test seam for forcing spills (EP-6); production
-    // uses GroupingOptions.Default.
+    // Internal overload: the grouping budget/fan-in is a test seam for forcing spills (EP-6);
+    // production passes GroupingOptions.Default, or ConversionRuntimeOptions' mapping, which changes
+    // only the temp root.
     internal static async IAsyncEnumerable<EmittedObject> EmitTripleAsync(
         ConversionPlan plan,
         ITripleRowSource source,
@@ -776,9 +779,9 @@ public static class Emitter
     //
     // The `fail` abort deliberately does NOT truncate the stream. These diagnostics are
     // AGGREGATED (count + bounded sample, §16.4/D-059), which structurally requires reading to
-    // the end, and the included-attribute `fail` path has always completed and reported at the
-    // flush; halting mid-stream would change that established behaviour. "Abort" here is
-    // §16.2's Error semantics — the OPERATION failed — not "stop reading rows".
+    // the end, and the included-attribute `fail` path completes and reports at the flush, as the
+    // filter-only one does (D-105). "Abort" here is §16.2's Error semantics (the OPERATION
+    // failed), not "stop reading rows".
     private static bool FlushData(
         ConversionPlan plan,
         DiagnosticTally[] unparseable,
@@ -821,9 +824,9 @@ public static class Emitter
     }
 
     // Aggregated object-key policy diagnostic (§6.1, D-083/D-085): one diagnostic with a bounded count +
-    // source-order sample, flushed after the stream on normal completion (EP-7/EP-16). No location — the
+    // source-order sample, flushed after the stream on normal completion (EP-7/EP-16). No location: the
     // condition spans the object stream, not a single record or attribute. Used by keep (Warning) and
-    // dedupe (Info); the keep messages are byte-identical to their prior form.
+    // dedupe (Info).
     private static void FlushPolicyAggregate(
         DiagnosticTally tally, DiagnosticCode code, DiagnosticSeverity severity, string reason, string policy, ICollection<BedrockDiagnostic> diagnostics)
     {

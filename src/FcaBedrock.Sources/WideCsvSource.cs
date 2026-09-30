@@ -50,9 +50,9 @@ public sealed class WideCsvSource : IRecordSource
         }
 
         // The source is object-key-agnostic: it always names records by row index, and the emitter
-        // derives column-key names + duplicate policy from the plan (§5.4/§6.1, EP-15) — including
-        // dedupe, which now executes. Only a composite object key is a planner reject (Fatal), reached
-        // because the pipeline builds the source before it plans.
+        // derives column-key names + duplicate policy from the plan (§5.4/§6.1, EP-15), dedupe
+        // included. Only a composite object key is a planner reject (Fatal), reached because the
+        // pipeline builds the source before it plans.
         _openStream = openStream;
         _binding = binding;
         _delimiter = binding.Delimiter;
@@ -64,7 +64,7 @@ public sealed class WideCsvSource : IRecordSource
     /// <inheritdoc/>
     // A bound source's token is fixed at construction; a direct source derives its
     // descriptor lazily from the binding (once) so a fake with an unusual binding never
-    // trips validation unless the guard actually reads Provenance.
+    // trips validation unless the guard reads Provenance.
     public SourceProvenance Provenance =>
         _provenance ??= new DescriptorProvenance(
             SourceReadSettings.Create(

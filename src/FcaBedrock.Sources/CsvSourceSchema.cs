@@ -4,7 +4,7 @@ namespace FcaBedrock.Sources;
 
 /// <summary>
 /// Schema-value equality for the source sessions (D-098 stage 2). Schema <em>reading</em>
-/// belongs to <see cref="CsvReadPipeline"/>, which every schema and record path now shares,
+/// belongs to <see cref="CsvReadPipeline"/>, which every schema and record path shares,
 /// so a session's cached schema and its bound source's records cannot disagree about the
 /// header or where the data starts.
 /// </summary>

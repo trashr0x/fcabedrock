@@ -2,13 +2,18 @@ namespace FcaBedrock.Conversion;
 
 /// <summary>
 /// The public, runtime-only configuration surface for a conversion run's temporary storage (D-122
-/// part 8 / D-123 point 11) — the minimal capability behind the CLI's <c>--temp-dir</c>. Its single
+/// part 8 / D-123 point 11): the minimal capability behind the CLI's <c>--temp-dir</c>. Its single
 /// setting, <see cref="TempDirectory"/>, chooses the root under which the grouping backend's spool
 /// workspace is created <b>when a spill is required</b>. It is a runtime capability, never a
-/// spec/fingerprint input: it changes no calibrated state, emitted object, diagnostic, ordering,
-/// output byte, fingerprint, or manifest — the storage strategy never changes bytes (D-082). The
-/// memory budget and merge fan-in stay internal pending M8 measurement (EP-6). Immutable and safe to
-/// share between runs; it carries no mutable reporting state.
+/// spec/fingerprint input. For runs whose other facts are identical, and when spool storage
+/// succeeds, it changes no calibrated state, emitted object, diagnostic, ordering, output byte, or
+/// fingerprint; the storage strategy never changes bytes (D-082). If those runs also read the same
+/// instant from the injected clock, their run manifests differ at most in the recorded command
+/// line, which holds the CLI arguments verbatim; the manifest's timestamp comes from that clock,
+/// not from this setting. The chosen root can also decide whether storage fails: a storage failure
+/// under it is reported as <c>GroupingStorageFailed</c>, whose path samples name that root or paths
+/// under it. The memory budget and merge fan-in stay internal (EP-6); D-124 kept their defaults.
+/// Immutable and safe to share between runs; it carries no mutable reporting state.
 /// </summary>
 public sealed record ConversionRuntimeOptions
 {
@@ -16,7 +21,7 @@ public sealed record ConversionRuntimeOptions
 
     /// <summary>
     /// The temp root for spool workspaces. <see langword="null"/> (the default) means the OS temp
-    /// path — the existing behaviour. A non-null value must be a non-empty, non-whitespace path; it
+    /// path. A non-null value must be a non-empty, non-whitespace path; it
     /// is not required to exist and is neither created nor normalized here (the spool filesystem
     /// lazily creates the owner-restricted <c>fcabedrock-spool-*</c> workspace and maps storage
     /// failures to the established D-082 diagnostics). Validated at this public boundary: a non-null

@@ -13,11 +13,12 @@ namespace FcaBedrock.Conversion;
 /// schema elements and produces the retained, immutable <see cref="CalibratedSpec"/> that
 /// Plan consumes without re-derivation. Three classes of need, each with its own bound:
 /// <list type="bullet">
-/// <item><b>Discovery-class</b> (<c>identity</c> / <c>free_per_value</c>, D-098/D-101):
-/// filling an absent <c>declared_domain</c> (<c>ObservedDomainUsed</c>) or extending an
-/// explicit one under <c>unknown_value_policy = "include"</c>
-/// (<c>UnknownValuePolicyInclude</c>). Set-idempotent, so bounded by the attribute
-/// vocabulary — schema-scale metadata (EP-16).</item>
+/// <item><b>Discovery-class</b> (<c>identity</c> / <c>free_per_value</c>, D-098/D-101, and
+/// <c>value_groups</c> with <c>unmatched = "passthrough"</c>, D-104): filling an absent
+/// <c>declared_domain</c> (<c>ObservedDomainUsed</c>), extending an explicit one under
+/// <c>unknown_value_policy = "include"</c> (<c>UnknownValuePolicyInclude</c>), or discovering
+/// pass-through bins (<c>ValueGroupsPassthroughDataDependent</c>). Set-idempotent, so bounded by
+/// the attribute vocabulary: schema-scale metadata (EP-16).</item>
 /// <item><b>Count-insensitive cuts</b> (<c>equal_width</c> <c>range = "min_max"</c>,
 /// D-102): a streaming minimum and maximum — two doubles, never the population.</item>
 /// <item><b>Count-sensitive cuts</b> (<c>equal_frequency</c> and <c>equal_width</c>
@@ -45,8 +46,9 @@ public static class Calibrator
     /// <paramref name="resolved"/>.<see cref="ResolvedSpec.Schema"/> non-null
     /// (<see cref="ArgumentException"/>); throws <see cref="InvalidOperationException"/>
     /// when the shape is not wide, or when the source was not prepared against this
-    /// resolution (the pairing guard, before any row). Expected failures are
-    /// diagnostics (EP-14); cancellation propagates.
+    /// resolution (the pairing guard, before any row). Data, calibration and spool-storage
+    /// failures are diagnostics (EP-14); a source read failure (such as
+    /// <see cref="SourceReadException"/>) and cancellation propagate as exceptions.
     /// </summary>
     public static ValueTask<Diagnosed<CalibratedSpec>> CalibrateAsync(
         ResolvedSpec resolved, IRecordSource source, CancellationToken cancellationToken = default) =>
@@ -54,10 +56,12 @@ public static class Calibrator
 
     /// <summary>
     /// Calibrates a triple resolved spec over its source. Enforces the G-3 triple structural
-    /// checks — a structurally unusable subject (<c>ObjectKeyValueInvalid</c>) halts any read,
-    /// and non-contiguity (<c>TripleSubjectNotContiguous</c>) halts a <c>subject_grouped</c>
-    /// read — with the same codes/severities as emit; a structural Error yields no calibrated
-    /// result. Requires a triple resolution.
+    /// checks with the same codes/severities as emit: a structurally unusable subject
+    /// (<c>ObjectKeyValueInvalid</c>) halts any read, and non-contiguity
+    /// (<c>TripleSubjectNotContiguous</c>) halts a <c>subject_grouped</c> read. A structural Error
+    /// yields no calibrated result. Requires a triple resolution (<see cref="InvalidOperationException"/>
+    /// otherwise); the other argument, pairing-guard, failure and cancellation rules are those of
+    /// <see cref="CalibrateAsync(ResolvedSpec, IRecordSource, CancellationToken)"/>.
     /// </summary>
     public static ValueTask<Diagnosed<CalibratedSpec>> CalibrateTripleAsync(
         ResolvedSpec resolved, ITripleRowSource source, CancellationToken cancellationToken = default) =>
@@ -65,15 +69,16 @@ public static class Calibrator
 
     /// <summary>
     /// Calibrates a wide resolved spec over its source under an explicit
-    /// <see cref="ConversionRuntimeOptions"/> — the public <c>--temp-dir</c> capability (D-123 point
-    /// 11). Identical in every observable respect to
-    /// <see cref="CalibrateAsync(ResolvedSpec, IRecordSource, CancellationToken)"/> except that a
-    /// non-null <see cref="ConversionRuntimeOptions.TempDirectory"/> chooses the spool workspace root;
-    /// it never changes the calibrated result, diagnostics, ordering, or any fingerprint (D-082). The
-    /// null <paramref name="runtimeOptions"/> check is eager (it is required to map the options); all
-    /// existing argument validation, the fully-declared no-data fast path, source pairing, pass
-    /// counts, cancellation, storage-failure mapping, cleanup, and diagnostic order are preserved by
-    /// delegating to the internal overload unchanged.
+    /// <see cref="ConversionRuntimeOptions"/>, the public <c>--temp-dir</c> capability (D-123 point
+    /// 11). A non-null <see cref="ConversionRuntimeOptions.TempDirectory"/> chooses the spool
+    /// workspace root. When spool storage succeeds, the result is that of
+    /// <see cref="CalibrateAsync(ResolvedSpec, IRecordSource, CancellationToken)"/>: the root never
+    /// changes the calibrated result, diagnostics, ordering, or any fingerprint (D-082). A storage
+    /// failure under the chosen root is reported as <c>GroupingStorageFailed</c>, whose path samples
+    /// name that root or paths under it. The null <paramref name="runtimeOptions"/> check is eager
+    /// (it is required to map the options); argument validation, the fully-declared no-data fast
+    /// path, source pairing, pass counts, cancellation, storage-failure mapping, cleanup, and
+    /// diagnostic order are those of the three-argument overload, through the same implementation.
     /// </summary>
     public static ValueTask<Diagnosed<CalibratedSpec>> CalibrateAsync(
         ResolvedSpec resolved,
@@ -89,10 +94,10 @@ public static class Calibrator
     /// Calibrates a triple resolved spec over its source under an explicit
     /// <see cref="ConversionRuntimeOptions"/>. As
     /// <see cref="CalibrateTripleAsync(ResolvedSpec, ITripleRowSource, CancellationToken)"/>, with the
-    /// temp-directory capability applied to spool storage placement only — byte- and
+    /// temp-directory capability applied to spool storage placement only: byte- and
     /// fingerprint-neutral (D-082, D-123 point 11). Rejects a null <paramref name="runtimeOptions"/>
-    /// eagerly; all G-3 structural checks, pass counts, cancellation, cleanup, and diagnostic order
-    /// are preserved by the internal overload.
+    /// eagerly; the G-3 structural checks, pass counts, cancellation, cleanup, and diagnostic order
+    /// are those of the three-argument overload, through the same implementation.
     /// </summary>
     public static ValueTask<Diagnosed<CalibratedSpec>> CalibrateTripleAsync(
         ResolvedSpec resolved,
@@ -104,8 +109,9 @@ public static class Calibrator
         return CalibrateTripleAsync(resolved, source, runtimeOptions.ToGroupingOptions(), observer: null, cancellationToken);
     }
 
-    // The spill-forcing / accounting test seams (EP-6), mirroring the emitter's internal
-    // overloads: production always takes the public entry points above.
+    // The implementation behind the public entry points above, and the spill-forcing / accounting
+    // test seam (EP-6), mirroring the emitter's internal overloads: production reaches it only
+    // through those entry points, whose options differ from the defaults at most in the temp root.
     internal static async ValueTask<Diagnosed<CalibratedSpec>> CalibrateAsync(
         ResolvedSpec resolved,
         IRecordSource source,
@@ -458,7 +464,7 @@ public static class Calibrator
 
             // Lazy by construction: a calibration that never spills touches no disk at all, even
             // under an unusable temp root. The pending-deletion cap is the calibration
-            // workspace's alone (EP-1: the emit path keeps its existing uncapped semantics).
+            // workspace's alone; the emit path's grouping workspaces stay uncapped (D-103).
             _workspace = new SpoolWorkspace<ValueCount>(
                 options, ValueCountCodec.Instance, GroupingReports, QuantileAccumulator.MaxPendingDeletions(options.MaxMergeFanIn));
         }
@@ -596,14 +602,18 @@ public static class Calibrator
         /// </summary>
         public void Fail(BedrockDiagnostic diagnostic) => _diagnostics.Add(diagnostic);
 
-        /// <summary>Releases every accumulator's retained state and tears the workspace down (non-throwing).</summary>
+        /// <summary>
+        /// Attempts to delete every remaining spool run and then the workspace directory through the
+        /// non-throwing cleanup channel. A storage failure during a deletion is not thrown: the run file
+        /// or directory can remain, and the failure is recorded as a cleanup Warning (D-095).
+        /// </summary>
         public void Cleanup() => _workspace.Cleanup();
 
         /// <summary>
         /// Snapshots the storage ledger onto the accumulated diagnostics and builds the result.
         /// Called <b>after</b> <see cref="Cleanup"/>, so a failure confined to workspace teardown is
         /// still reported rather than being recorded after the value was already built (D-095).
-        /// The ledger flushes last, in first-occurrence order (the existing rule): a cleanup-only
+        /// The ledger flushes last, in first-occurrence order (D-082, D-095): a cleanup-only
         /// failure is a Warning and calibration may still succeed; an in-path one is an Error that
         /// fails the result even if the walk itself completed.
         /// </summary>
@@ -808,7 +818,7 @@ public static class Calibrator
         // CreateManual factory over the calibrated span. Only the cuts are kept — the instance is
         // a throwaway whose range mode is irrelevant — and CalibratedSpec.Create builds the real
         // discretizer, preserving the authored data-derived range and its absent vmin/vmax
-        // (D-094). The span gate above means CreateManual's own range diagnostic is unreachable,
+        // (D-094). The span check above means CreateManual's own range diagnostic is unreachable,
         // so its only possible failure is a cut collapse, which this phase owns as
         // CalibrationCutsInvalid (D-088/D-089).
         private static void DeriveEqualWidth(
@@ -894,8 +904,8 @@ public static class Calibrator
     }
 
     // Accumulates the distinct non-missing observed values for one attribute in
-    // first-observation order (ordinal dedup, EP-12). Bounded by the attribute vocabulary —
-    // schema-scale metadata, documented and not budget-gated (EP-16, D-095). In numeric mode
+    // first-observation order (ordinal dedup, EP-12). Bounded by the attribute vocabulary:
+    // schema-scale metadata, documented and not charged to the budget (EP-16, D-095). In numeric mode
     // (numeric free_per_value, D-096) each present value is parsed under the injected culture and
     // reduced to its canonical numeric identity before dedup, so equivalent spellings occupy one
     // bin at their first occurrence.
@@ -955,9 +965,9 @@ public static class Calibrator
     // a value occurs is irrelevant and the set is idempotent under repetition. That is what keeps
     // it off the count-sensitive path entirely — no quantile accumulator, no value counts, no
     // spill runs, no merge or replay, no subject-local triple deduplication, and no contribution
-    // to the budget divisor. Its bound is the attribute vocabulary — schema-scale metadata, the
-    // same documented EP-16 carve-out as an observed domain (D-095), not a budget-gated
-    // population.
+    // to the budget divisor. Its bound is the attribute vocabulary: schema-scale metadata, the
+    // same documented EP-16 carve-out as an observed domain (D-095), not a population charged to
+    // the budget.
     //
     // Matching is delegated to Core rather than reimplemented: the observer classifies each value
     // through a ValueGroupsDiscretizer built over the SAME authored groups under the `skip`

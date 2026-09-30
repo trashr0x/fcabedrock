@@ -7,8 +7,8 @@ namespace FcaBedrock.Conversion;
 /// Serializes one row type to and from a fixed-size byte buffer for spilling (D-082). Strings are
 /// encoded as a length (in UTF-16 code units, <c>-1</c> for null) plus their raw UTF-16 code units, so
 /// lone surrogates round-trip exactly — spilling never changes a value's identity or the output bytes
-/// (EP-7/EP-12). <see cref="Measure"/> returns the exact serialized size (checked <see langword="long"/>
-/// so it composes across many rows without overflow), and <see cref="Write"/> writes exactly that many
+/// (EP-7/EP-12). <see cref="Measure"/> returns one row's exact serialized size as a
+/// <see langword="long"/>, and <see cref="Write"/> writes exactly that many
 /// bytes. <see cref="Read"/> validates every field against the record buffer bounds, so a
 /// safely-identifiable corrupt record surfaces as a storage failure rather than a malformed row.
 /// </summary>
@@ -38,9 +38,9 @@ internal interface IRowCodec<TRow>
 /// <summary>
 /// Conservative x64 managed-heap upper-bound constants for the resident buffer accounting (D-082). These
 /// are <b>correctness</b> constants for the .NET 10 CoreCLR x64 object layout, padded upward so actual
-/// retained live-object bytes ≤ the modeled bytes on that target — <b>not</b> performance knobs (M8 tunes
-/// the buffer budget and fan-in, never these; changing a layout constant requires re-validating the
-/// object layout). The model has two parts: per-row <b>retained referenced objects</b>
+/// retained live-object bytes ≤ the modeled bytes on that target, and <b>not</b> performance knobs (the
+/// buffer budget and fan-in may be tuned, never these; changing a layout constant requires re-validating
+/// the object layout). The model has two parts: per-row <b>retained referenced objects</b>
 /// (<see cref="IRowCodec{TRow}.MeasureResident"/>) and the <b>buffer</b> itself — the <c>List</c> object
 /// plus its backing array (<see cref="BufferBytes"/>). All arithmetic saturates so large field
 /// counts/lengths cannot overflow. The bound is over the stable retained graph at a grouping checkpoint;
@@ -205,8 +205,8 @@ internal static class RowFraming
 }
 
 /// <summary>
-/// The wide-source row codec would live here too; C2 ships only <see cref="TripleRowCodec"/> (triple
-/// <c>unordered</c>). The wide <c>DedupeRow</c> codec lands with the dedupe emit path (C3).
+/// The triple row codec (triple <c>unordered</c> grouping). The wide <c>dedupe</c> codec is
+/// <see cref="DedupeRowCodec"/>, beside <see cref="DedupeRow"/>.
 /// </summary>
 internal sealed class TripleRowCodec : IRowCodec<Sources.TripleRow>
 {

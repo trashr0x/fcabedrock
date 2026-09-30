@@ -11,10 +11,10 @@ namespace FcaBedrock.Sources;
 /// <b>What this seam deliberately does not expose.</b> No read settings, stream, file, spec,
 /// provenance, or conversion source; no CSV-specific concept. A future SQL/SPARQL adapter has
 /// no delimiter, quote, or header to describe, so those live on the concrete CSV sessions
-/// (<see cref="WideCsvSession.ReadSettings"/> / <see cref="TripleCsvSession.ReadSettings"/>)
-/// and reach a caller through the caller, never through this interface. Consumers
-/// therefore depend on <em>records</em>, which is what makes discovery determinism a property
-/// of the record sequence rather than of any file's bytes (D-112).
+/// (<see cref="WideCsvSession.ReadSettings"/> / <see cref="TripleCsvSession.ReadSettings"/>),
+/// and a consumer that needs them receives them from its own caller, never through this
+/// interface. Consumers therefore depend on <em>records</em>, which is what makes discovery
+/// determinism a property of the record sequence rather than of any file's bytes (D-112).
 /// </para>
 /// <para>
 /// <b>Complements, not replaces, the bound seam.</b> <see cref="IRecordSource"/> /

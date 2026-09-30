@@ -15,8 +15,9 @@ namespace FcaBedrock.Export;
 /// <b>Object-name sequence invariant (§18.1, D-082).</b> Pass 2 must replay the same object-name
 /// sequence (count and order) as pass 1; each pass-2 object's <c>Name</c> is checked against the pass-1
 /// name at its position, and a mismatch, overflow, or shortfall throws
-/// <see cref="InvalidOperationException"/> — a divergent replay cannot silently misalign names and rows.
-/// On any throw the output is partial and the caller must discard it (atomic publication is M7).
+/// <see cref="InvalidOperationException"/>, so a divergent replay cannot silently misalign names and rows.
+/// On any throw the output is partial and the caller must discard it; the CLI does so through staged
+/// publication (§16.2).
 /// </para>
 /// <para>
 /// <b>Size advisory (§8, D-122 part 7 / D-123).</b> The advisory-carrying overload projects the
@@ -37,19 +38,20 @@ public static class CxtWriter
         WriterOptions options,
         Stream output,
         CancellationToken cancellationToken = default) =>
-        // The advisory-free public overload: existing callers stay source-compatible and
-        // byte-identical. It delegates with the advisory disabled (sizeAdvisoryBytes: 0), so the
-        // projection is never computed and the throwaway sink is never written to (D-123).
+        // The advisory-free public overload delegates with the advisory disabled
+        // (sizeAdvisoryBytes: 0), so the projection is never computed and the throwaway sink is
+        // never written to (D-123).
         WriteAsync(plan, openObjects, options, output, new List<BedrockDiagnostic>(), sizeAdvisoryBytes: 0, cancellationToken);
 
     /// <summary>
-    /// Writes the <c>.cxt</c> output for <paramref name="plan"/>, additionally appending
+    /// Writes the <c>.cxt</c> output for <paramref name="plan"/> and appends
     /// <see cref="DiagnosticCode.OutputCxtSizeAdvisory"/> (Warning) to <paramref name="diagnostics"/>
     /// when the exact projected output size is <b>at or above</b> <paramref name="sizeAdvisoryBytes"/>
     /// (§8, D-122 part 7). A threshold of exactly <c>0</c> disables the advisory; a negative threshold
-    /// is rejected. The projection is computed after the object-name pass but <b>before any output
-    /// byte</b>, and the advisory changes diagnostics only — never output bytes, never a fingerprint
-    /// (D-077). The write path is otherwise identical to the advisory-free overload.
+    /// throws <see cref="ArgumentOutOfRangeException"/>. The projection is computed after the
+    /// object-name pass but <b>before any output byte</b>, and the advisory changes diagnostics only:
+    /// never output bytes, never a fingerprint (D-077). The write path is otherwise identical to the
+    /// advisory-free overload.
     /// </summary>
     public static async Task WriteAsync(
         ConversionPlan plan,
@@ -232,7 +234,7 @@ public static class CxtWriter
                 thresholdBytes));
 
     // The object-name sequence invariant failed: pass 2's replay diverged from pass 1's names. A
-    // structural error — the caller discards the partial output (atomic publication is M7).
+    // structural error: the caller discards the partial output (§16.2, §18.1).
     private static InvalidOperationException NameSequenceMismatch(int position, string? expected, string? actual) =>
         new($"The .cxt replay produced a different object-name sequence at position {position}: pass 1 had {Describe(expected)}, pass 2 had {Describe(actual)}. The object stream must replay identically (§18.1).");
 

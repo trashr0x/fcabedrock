@@ -15,9 +15,10 @@ namespace FcaBedrock.Conversion;
 /// Deliberately <b>validity-agnostic</b>: it never inspects a key for "usability" and never raises a
 /// diagnostic (a <c>null</c> key is ranked like any other). A structural-error boundary is the caller's
 /// concern (it truncates its input before grouping). Storage failures use two channels (D-082):
-/// in-path failures throw <see cref="GroupingStorageException"/> (the emitter records an Error and
-/// halts); cleanup failures accrue to the <c>reports</c> channel as Warnings while enumeration
-/// continues. Spilling is byte-neutral: the codec round-trips values exactly (EP-7).
+/// in-path failures are recorded as an Error in <c>reports</c> by the detecting site and then throw
+/// <see cref="GroupingStorageException"/>, which the caller catches only to halt; cleanup failures
+/// accrue to the <c>reports</c> channel as Warnings while enumeration continues. Spilling is
+/// byte-neutral: the codec round-trips values exactly (EP-7).
 /// </para>
 /// </summary>
 internal static class FirstAppearanceGrouping

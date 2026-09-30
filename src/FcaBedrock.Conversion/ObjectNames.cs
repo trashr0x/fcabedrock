@@ -6,7 +6,7 @@ namespace FcaBedrock.Conversion;
 /// Object-name usability for the Conversion layer, so the emit halt and the
 /// <c>unordered</c> grouping boundary agree on exactly one definition (D-085).
 /// <para>
-/// The definition itself now lives in Core as <see cref="ObjectNameValidity"/>: probe
+/// The definition itself lives in Core as <see cref="ObjectNameValidity"/>: probe
 /// (Discovery) must apply the <em>identical</em> predicate, or a draft could accept a
 /// subject the conversion it promises then rejects. This type is the
 /// Conversion-local name for that one authority — it forwards, never re-implements.

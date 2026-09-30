@@ -7,13 +7,12 @@ namespace FcaBedrock.Conversion;
 /// original-leaf count, never by byte size, and a higher-generation run is never used to fill a
 /// lower batch, so a generation-<c>g</c> run represents exactly <c>F^g</c> original spills.
 /// <para>
-/// <b>Why the tiering, and what it replaces.</b> The prior policy merged the <i>whole</i>
-/// catalogue — the growing consolidated run included — every time the catalogue reached the
-/// fan-in, so each value could be rewritten once per merge and total spool traffic grew
-/// quadratically in the spill count at a fixed capacity. Tiering rewrites a value at most once
-/// per level, which is logarithmic in the spill count. It buys that with a catalogue bounded by a
-/// fixed ceiling rather than by the fan-in, and that is a real change to the letter of the
-/// D-103/D-124 catalogue clause, recorded as one.
+/// <b>Why the tiering.</b> Merging the <i>whole</i> catalogue, the growing consolidated run
+/// included, every time it reached the fan-in would rewrite each value once per merge, so total
+/// spool traffic would grow quadratically in the spill count at a fixed capacity. Tiering rewrites
+/// a value at most once per level, which is logarithmic in the spill count. The cost is a
+/// catalogue bounded by a fixed ceiling rather than by the fan-in; D-128 supersedes the D-103/D-124
+/// catalogue clause accordingly.
 /// </para>
 /// <para>
 /// <b>The bound.</b> <c>L = 1 + floor(log_F(long.MaxValue))</c> is computed by repeated integer
@@ -27,10 +26,10 @@ namespace FcaBedrock.Conversion;
 /// require level <c>L</c> is a programmer error, never growth.
 /// </para>
 /// <para>
-/// <b>Tier 2, not tier 1.</b> An entry is a <see cref="SpoolRunHandle"/> — a <c>(path, size)</c>
+/// <b>Tier 2, not tier 1.</b> An entry is a <see cref="SpoolRunHandle"/>, a <c>(path, size)</c>
 /// value, never an open operating-system handle. This object and its arrays are bounded by count
-/// and fixed shape exactly as the list it replaces was, and the accumulator holds one reference
-/// to it. Level storage is allocated per level on first use, so an accumulator that never reaches
+/// and fixed shape, and the accumulator holds one reference to it. Level storage is allocated per
+/// level on first use, so an accumulator that never reaches
 /// a generation never pays for it, and a zero-spill accumulator never builds a catalogue at all.
 /// No ancestry is retained: a consumed slot is cleared, so nothing keeps a run alive after its
 /// carry.

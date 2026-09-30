@@ -6,9 +6,10 @@ namespace FcaBedrock.Conversion;
 /// The one canonical internal row type for wide <c>dedupe</c> grouping (D-083), used across intake,
 /// buffering, key extraction, measurement, (de)serialization, grouping output, and accumulation. A
 /// <b>live</b> row wraps the source's <see cref="ObjectRecord"/> with <b>zero copy</b> (no per-row
-/// field-array clone; a zero-spill conversion never touches the codec); a <b>decoded</b> row holds a
-/// deserialized field array directly. No <see cref="ObjectRecord"/> is ever fabricated and there is no
-/// placeholder/sentinel name — the codec serializes fields + index only, via <see cref="Field"/>,
+/// field-array clone; a zero-spill conversion only measures rows and never serializes one); a
+/// <b>decoded</b> row holds a deserialized field array directly. No <see cref="ObjectRecord"/> is ever
+/// fabricated and there is no placeholder/sentinel name: the codec serializes fields + index only, via
+/// <see cref="Field"/>,
 /// identically for both states. Consistently <see langword="readonly"/> with controlled factory
 /// construction for the two states.
 /// </summary>

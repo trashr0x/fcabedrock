@@ -4,17 +4,17 @@ namespace FcaBedrock.Conversion;
 /// Immutable configuration for one grouping backend run (D-082): the in-memory budget, the merge
 /// fan-in, an optional temp root, and test seams (an <see cref="ISpoolFileSystem"/> for failure
 /// injection and an <see cref="IGroupingObserver"/> for resource assertions). It carries <b>no mutable
-/// reporting state</b> — that is per-enumeration (<see cref="GroupingReports"/>), wired fresh by the
-/// emitter — so <see cref="Default"/> is safely shared and concurrent conversions cannot
-/// cross-contaminate. These are runtime knobs, never spec/fingerprint inputs: the storage strategy
-/// never changes output bytes. Provisional defaults; M8 tunes them against real distributions (EP-19).
+/// reporting state</b>: that is per-enumeration (<see cref="GroupingReports"/>), created fresh by the
+/// emitter and by each calibration run, so <see cref="Default"/> is safely shared and concurrent
+/// conversions cannot cross-contaminate. These are runtime knobs, never spec/fingerprint inputs: the
+/// storage strategy never changes output bytes. D-124 measured the defaults and kept them (EP-19).
 /// </summary>
 internal sealed class GroupingOptions
 {
-    /// <summary>Provisional in-memory budget before an intake spill (64 MiB); M8 tunes.</summary>
+    /// <summary>The in-memory budget before an intake spill (64 MiB); D-124 keeps this default.</summary>
     public const long DefaultMaxBufferedBytes = 64L * 1024 * 1024;
 
-    /// <summary>Provisional bounded merge fan-in; M8 tunes.</summary>
+    /// <summary>The bounded merge fan-in; D-124 keeps this default.</summary>
     public const int DefaultMaxMergeFanIn = 16;
 
     public GroupingOptions(
@@ -61,9 +61,9 @@ internal sealed class GroupingOptions
 }
 
 /// <summary>
-/// A test-only observer of the grouping backend's spool activity — run creation/open/close/delete and
-/// the pre-merge-batch live-bytes accounting (D-082 resource proofs). No production behavior depends on
-/// it (EP-6); production runs leave it <see langword="null"/>.
+/// An observer of the grouping backend's spool activity for tests and the benchmark suite: run
+/// creation/open/close/delete and the pre-merge-batch live-bytes accounting (D-082 resource proofs).
+/// No production behavior depends on it (EP-6); production runs leave it <see langword="null"/>.
 /// </summary>
 internal interface IGroupingObserver
 {

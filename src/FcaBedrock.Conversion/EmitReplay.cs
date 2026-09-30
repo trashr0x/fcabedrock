@@ -7,12 +7,12 @@ namespace FcaBedrock.Conversion;
 
 /// <summary>
 /// The sink-aware replay entrypoint for the <c>.cxt</c> two-pass write (§18.1). The Burmeister writer
-/// enumerates the emitted-object stream twice — once for names, once for the incidence matrix —
+/// enumerates the emitted-object stream twice (once for names, once for the incidence matrix),
 /// re-running the emit each pass and never buffering the matrix (EP-16). <see cref="Begin"/> brackets one
 /// conversion attempt in an <see cref="EmitReplaySession"/> that collects data diagnostics once (first
-/// pass) and, crucially, <b>aggregates grouping storage failures across passes</b>, flushing one final
-/// per identity at disposal — so a storage failure that can only occur in pass 2 (external spool
-/// activity) is never lost, which the old first-pass-only helper could not guarantee.
+/// pass) and <b>aggregates grouping storage failures across passes</b>, flushing one final per identity
+/// at disposal, so a storage failure that can only occur in pass 2 (external spool activity) is never
+/// lost.
 /// </summary>
 public static class EmitReplay
 {

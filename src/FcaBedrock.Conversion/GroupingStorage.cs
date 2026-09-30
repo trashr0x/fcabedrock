@@ -74,11 +74,12 @@ internal sealed record GroupingStorageFailure(
     IReadOnlyList<string> PathSamples);
 
 /// <summary>
-/// The internal, in-path (halting) grouping storage failure — thrown only from stream advancement
-/// (never from disposal). It is recorded into the per-enumeration <see cref="GroupingReports"/> ledger as
-/// an <b>Error</b> at its first-occurrence position (by the site that detects it, before any cleanup that
-/// its unwinding triggers), and additionally thrown so the emitter halts — the emitter catches it only to
-/// stop, not to record. Never public (EP-14): storage failures cross the seam as
+/// The internal, in-path (halting) grouping storage failure, thrown only while a grouping stream
+/// advances or a calibration step (intake, merge, replay, release) runs, never from disposal or
+/// teardown. It is recorded into the per-enumeration <see cref="GroupingReports"/> ledger as an
+/// <b>Error</b> at its first-occurrence position (by the site that detects it, before any cleanup that
+/// its unwinding triggers), and also thrown so the emitter or calibration run halts; each catches it
+/// only to stop, not to record. Never public (EP-14): storage failures cross the seam as
 /// <see cref="DiagnosticCode.GroupingStorageFailed"/> diagnostics, not exceptions.
 /// </summary>
 internal sealed class GroupingStorageException : Exception
@@ -103,7 +104,7 @@ internal sealed class GroupingStorageException : Exception
 /// <see cref="DiagnosticCode.GroupingStorageFailed"/> diagnostic (§16.4 / D-082). The rendered message
 /// is application-authored and deterministic: identity, count, and up to three path samples in
 /// first-occurrence order. Shared by the emitter's per-enumeration flush (the single-pass <c>.dat</c>
-/// path) and the replay session's cross-pass final flush.
+/// path), the replay session's cross-pass final flush, and the calibration run's completion.
 /// </summary>
 internal static class GroupingStorageDiagnostics
 {

@@ -11,8 +11,9 @@ public sealed record WriterOptions
     public string LineEnding { get; init; } = "\n";
 
     /// <summary>
-    /// Whether the final line is terminated (spec §18.1/§18.2 — both formats). Default true.
-    /// Native <c>.dat</c> honors the authored <c>[output.dat] trailing_newline</c> (D-087).
+    /// Whether the final line is terminated (spec §18.1/§18.2), for both formats. Default true.
+    /// For native output, the CLI sets it from the authored <c>[output.cxt]</c> and
+    /// <c>[output.dat]</c> <c>trailing_newline</c> controls (D-087).
     /// </summary>
     public bool TrailingNewline { get; init; } = true;
 

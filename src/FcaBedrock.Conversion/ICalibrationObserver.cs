@@ -1,12 +1,12 @@
 namespace FcaBedrock.Conversion;
 
 /// <summary>
-/// A test-only observer of the count-sensitive calibration's resource use (D-095/D-103
-/// resource proofs), extending the spool backend's <see cref="IGroupingObserver"/> so one
-/// object can watch both tiers. No production behavior depends on it (EP-6); production runs
-/// leave it <see langword="null"/>.
+/// An observer of the count-sensitive calibration's resource use for tests and the benchmark
+/// suite (D-095/D-103 resource proofs), extending the spool backend's
+/// <see cref="IGroupingObserver"/> so one object can watch both tiers. No production behavior
+/// depends on it (EP-6); production runs leave it <see langword="null"/>.
 /// <para>
-/// The signals mirror the <b>two-tier</b> contract the calibration actually offers, stated
+/// The signals mirror the <b>two-tier</b> contract the calibration offers, stated
 /// honestly rather than over-claimed:
 /// </para>
 /// <list type="bullet">
@@ -48,7 +48,8 @@ internal interface ICalibrationObserver : IGroupingObserver
 /// <summary>
 /// The calibration population exceeded exact <see cref="long"/> counting (§16.4
 /// <c>CalibrationPopulationTooLarge</c>, D-103/G-13). Internal and thrown only from the
-/// checked count sites — a per-value increment, the running total, or a merge sum.
+/// checked count sites: a per-value increment, the running total, the replay's
+/// cumulative, or a merge sum.
 /// <para>
 /// A dedicated type rather than letting <see cref="OverflowException"/> travel: the
 /// calibrator must attribute the failure to the offending attribute and must not

@@ -4,15 +4,15 @@ namespace FcaBedrock.Conversion;
 
 /// <summary>
 /// The per-enumeration mutable storage-failure state for one grouping run (D-082). Created fresh by the
-/// emitter at each enumeration start (never on <see cref="GroupingOptions"/>, which is immutable
-/// configuration), so concurrent conversions cannot cross-contaminate. It is a <b>single
+/// emitter at each enumeration start, and by each calibration run (never on <see cref="GroupingOptions"/>,
+/// which is immutable configuration), so concurrent conversions cannot cross-contaminate. It is a <b>single
 /// insertion-ordered ledger</b> holding both channels' events at their first-logical-occurrence position:
 /// <b>cleanup-class</b> failures (consumed-run deletes, workspace teardown, reader close / open-cleanup)
 /// as <b>Warning</b>, recorded as they occur while the enumeration continues; and <b>in-path</b> failures
 /// as <b>Error</b>, recorded by the detecting site before the cleanup its unwinding triggers (the same
-/// failure additionally throws <see cref="GroupingStorageException"/> so the emitter halts). The emitter
-/// renders <see cref="Aggregates"/> after the stream — one per identity, worst severity, first-occurrence
-/// order.
+/// failure also throws <see cref="GroupingStorageException"/> so the emitter or calibration run halts).
+/// The emitter and the calibration run render <see cref="Aggregates"/> after the stream: one per identity,
+/// worst severity, first-occurrence order.
 /// </summary>
 internal sealed class GroupingReports
 {

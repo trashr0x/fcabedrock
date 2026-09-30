@@ -14,20 +14,18 @@ namespace FcaBedrock.Sources;
 /// the §5.1 missing normalization, row-index object naming, and the triple role map.
 /// <para>
 /// <b>Why one owner.</b> Schema and records must never disagree about what the header is or
-/// where the data starts. When those mechanics were copied across four call sites they could
-/// drift; here a header is consumed in exactly one place, so schema-vs-record parity is
-/// structural rather than a property four files maintain (the D-102 posture).
+/// where the data starts. A header is consumed in exactly one place, so schema-vs-record parity
+/// is structural rather than a property several call sites must maintain (the D-102 posture).
 /// </para>
 /// <para>
 /// <b>Header tolerance.</b> Sep is always opened in its <em>headerless</em> mode
 /// and the header, when the settings declare one, is consumed here as the first parsed
 /// record. Sep's own header mode throws <see cref="ArgumentException"/> on a duplicate or
-/// multiply-blank header name, which made §5.3/§10.2 — where such a header is legal, binds by
-/// index, and yields <c>SourceBindingInvalid</c> only for an ambiguous <em>name</em> binding —
-/// unreachable. Consuming the header ourselves realizes that already-normative behavior. It is
-/// byte-neutral for every header Sep accepts today: its header cells and the same physical row
-/// read as a record are identical after trim/unescape (verified across whitespace, quoting,
-/// escaping, embedded delimiters/newlines, CRLF, blank cells, and Unicode).
+/// multiply-blank header name, which would make §5.3/§10.2 unreachable: there such a header is
+/// legal, binds by index, and yields <c>SourceBindingInvalid</c> only for an ambiguous
+/// <em>name</em> binding. Consuming the header here realizes that normative behavior. For every
+/// header Sep's header mode accepts, the cells read here are the ones it would report: Sep
+/// documents the same trim and unescape for header names as for fields.
 /// </para>
 /// </summary>
 internal static class CsvReadPipeline
@@ -122,10 +120,13 @@ internal static class CsvReadPipeline
     }
 
     // Sep is opened headerless unconditionally (see the type remarks); the remaining tokenizer
-    // options are exactly the pinned ones. Trim = Outer trims an UNQUOTED field's surrounding
-    // whitespace before unescape while preserving whitespace INSIDE a quoted field — spec §5.1.
-    // DisableColCountCheck lets a short/ragged row through rather than throwing across the
-    // Sources seam, so an absent mapped cell surfaces as data the Conversion layer diagnoses.
+    // options are exactly the pinned ones. Trim = Outer removes leading and trailing spaces before
+    // unescape: spaces around an UNQUOTED field, or outside a quoted field's quotes, are removed,
+    // and whitespace INSIDE the quotes is kept (spec §5.1). Sep documents that it trims only
+    // U+0020, not tabs or other whitespace. DisableColCountCheck lets a short/ragged row through
+    // rather than throwing across the Sources seam: an absent mapped cell reaches the Conversion
+    // layer as null, which it reads by role (§5.3.1, §5.4): a missing value, no observation for a
+    // triple predicate, or ObjectKeyValueInvalid for an object key or triple subject.
     private static SepReader Open(Func<Stream> openStream, char delimiter)
     {
         var stream = openStream();
@@ -140,18 +141,18 @@ internal static class CsvReadPipeline
         }
         catch (NotSupportedException ex) when (IsTokenizerFailure(ex))
         {
-            // Only the path this method introduces is handled here; every other exception keeps
-            // its existing identity and disposal behavior (EP-1).
+            // Only the tokenizer's own refusal is handled here: every other exception propagates
+            // as itself, and this method does not dispose the stream for it (EP-1).
             stream.Dispose();
             throw new SourceReadException("The source could not be opened for reading.", ex);
         }
     }
 
     // Sep signals its row/buffer ceiling ("Buffer or row has reached maximum supported length of
-    // 16777216", also raised for an unterminated quote) as a NotSupportedException. That is an
-    // expected provider read failure, normalized HERE so no consumer needs to know Sep exists.
-    // Nothing else is caught: cancellation, argument/state errors, and every other
-    // framework exception propagate as themselves (EP-14).
+    // 16777216", also raised when an unterminated quote runs a field past that length) as a
+    // NotSupportedException. That is an expected provider read failure, normalized HERE so no
+    // consumer needs to know Sep exists. Nothing else is caught: cancellation, argument/state
+    // errors, and every other framework exception propagate as themselves (EP-14).
     private static bool Advance(SepReader reader)
     {
         try

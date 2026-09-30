@@ -14,8 +14,8 @@ namespace FcaBedrock.Sources;
 /// <b>Unbound reads.</b> As an <see cref="ITripleSourceSession"/> the session also streams
 /// rows without a spec (D-109), taking the role map <em>per read</em>. Roles therefore never
 /// enter session identity: reading under one map neither constrains nor is constrained by a
-/// later <see cref="Bind"/> under another, which keeps the D-098 bound flow — where a session
-/// is constructed before its authored role map is even resolvable — exactly as it was.
+/// later <see cref="Bind"/> under another. The D-098 bound flow needs that, because a session
+/// is constructed before its authored role map is even resolvable.
 /// </para>
 /// </summary>
 public sealed class TripleCsvSession : ITripleSourceSession

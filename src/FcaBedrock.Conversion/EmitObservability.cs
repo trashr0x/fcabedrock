@@ -54,10 +54,9 @@ internal sealed class EmitObservability
     /// <b>Only for a normally-completed, valid run.</b> Three things suppress all three warnings:
     /// </para>
     /// <list type="bullet">
-    /// <item>a <b>structural halt</b> and a <b>grouping-storage failure</b> — every caller reaches
+    /// <item>a <b>structural halt</b> and a <b>grouping-storage failure</b>: every caller reaches
     /// this past its halt guard, so the stream never got here; after a halt it is truncated, and
-    /// "no objects" would describe the halt rather than the data (the established §16.4 rule,
-    /// applied unchanged);</item>
+    /// "no objects" would describe the halt rather than the data (D-105);</item>
     /// <item>a <b>policy abort</b> — <paramref name="aborted"/>, set when a data aggregate flushed
     /// at Error under <c>unknown_value_policy = "fail"</c>, including a filter-only restriction's
     /// (§10.4/§10.6/D-097). The stream did complete, but the run is <b>invalid</b>: G-12's rule is
