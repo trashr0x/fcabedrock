@@ -1,3 +1,5 @@
+using System.Globalization;
+
 namespace FcaBedrock.Core.Spec;
 
 /// <summary>
@@ -8,19 +10,20 @@ namespace FcaBedrock.Core.Spec;
 /// field; value equality over the settings drives session binding and descriptor
 /// provenance validation.
 /// <para>
-/// <b>Failure contract.</b> The resolve seam diagnoses authored errors (missing
-/// shape, unsupported quote, delimiter/quote conflict, unsupported encoding)
-/// <em>before</em> calling <see cref="Create"/>; <see cref="Create"/> is the EP-10
-/// programmer-error backstop and throws exactly:
+/// <b>Failure contract.</b> The spec reader refuses a delimiter outside the v1 alphabet, and
+/// the resolve seam diagnoses the other authored errors (missing shape, unsupported quote,
+/// delimiter/quote conflict, unsupported encoding), <em>before</em> <see cref="Create"/> is
+/// called; <see cref="Create"/> is the EP-10 programmer-error backstop and throws exactly:
 /// <list type="bullet">
 /// <item><see cref="ArgumentNullException"/> for a null <c>encoding</c> or
 /// <c>missingToken</c> (an empty <c>missingToken</c> is <em>valid</em>: §5.1
 /// disables token-based missing detection; only null is rejected);</item>
-/// <item><see cref="ArgumentException"/> for an inconsistent shape/ordering pair
-/// (<c>ordering</c> must be non-null exactly when <c>shape == Triple</c>), a
-/// <c>delimiter == quoteChar</c>, or an <c>encoding</c> outside the accepted UTF-8
-/// spellings (which normalize to <c>"utf-8"</c>, mirroring the seam's
-/// <c>ResolveEncoding</c>);</item>
+/// <item><see cref="ArgumentException"/> for a <c>delimiter</c> outside the v1 delimiter
+/// alphabet (<see cref="IsInDelimiterAlphabet"/>; checked after the quote and before the
+/// delimiter/quote pair), an inconsistent shape/ordering pair (<c>ordering</c> must be
+/// non-null exactly when <c>shape == Triple</c>), a <c>delimiter == quoteChar</c>, or an
+/// <c>encoding</c> outside the accepted UTF-8 spellings (which normalize to <c>"utf-8"</c>,
+/// mirroring the seam's <c>ResolveEncoding</c>);</item>
 /// <item><see cref="NotSupportedException"/> for a <c>quoteChar</c> other than the
 /// standard double quote.</item>
 /// </list>
@@ -47,13 +50,13 @@ public sealed class SourceReadSettings
     /// <summary>The canonical text encoding (§5.1); always <c>"utf-8"</c> in v1.</summary>
     public string Encoding { get; }
 
-    /// <summary>The field delimiter (§5.1).</summary>
+    /// <summary>The field delimiter (§5.1); always in the v1 alphabet (<see cref="IsInDelimiterAlphabet"/>).</summary>
     public char Delimiter { get; }
 
     /// <summary>The quote character (§5.1); always the standard double quote in v1.</summary>
     public char QuoteChar { get; }
 
-    /// <summary>Whether the first record is a header (§5.1).</summary>
+    /// <summary>Whether the first non-blank record is a header (§5.1, §5.1.1).</summary>
     public bool HasHeader { get; }
 
     /// <summary>The token marking a missing value (§5.1); may be empty.</summary>
@@ -61,6 +64,22 @@ public sealed class SourceReadSettings
 
     /// <summary>The triple row ordering (§5.3); non-null exactly for a triple shape.</summary>
     public TripleOrdering? Ordering { get; }
+
+    /// <summary>
+    /// Whether <paramref name="value"/> belongs to the v1 delimiter alphabet (§5.1.1): TAB
+    /// (U+0009), or a character from U+001F through U+007E other than '#' (U+0023). 96
+    /// characters. Pure; never throws.
+    /// <para>
+    /// This is alphabet membership only. It is <see langword="true"/> for the double quote,
+    /// which is not a usable delimiter because the delimiter must differ from
+    /// <see cref="QuoteChar"/> and v1 fixes the quote to '"'. A <see langword="true"/> result
+    /// therefore does not establish a valid delimiter/quote pair; <see cref="Create"/> checks the
+    /// pair. The alphabet is a fixed product rule; '#' is excluded because the v1 reader reserves
+    /// it.
+    /// </para>
+    /// </summary>
+    public static bool IsInDelimiterAlphabet(char value) =>
+        value == '\t' || (value >= '\u001F' && value <= '\u007E' && value != '#');
 
     /// <summary>
     /// Builds validated read settings (the EP-10 backstop; see the type remarks for
@@ -78,6 +97,15 @@ public sealed class SourceReadSettings
         {
             throw new NotSupportedException(
                 $"SourceReadSettings supports only the '\"' quote character; got '{quoteChar}'.");
+        }
+
+        if (!IsInDelimiterAlphabet(delimiter))
+        {
+            throw new ArgumentException(
+                string.Create(
+                    CultureInfo.InvariantCulture,
+                    $"delimiter U+{(int)delimiter:X4} is not in the v1 delimiter alphabet (TAB, or U+001F through U+007E except '#')."),
+                nameof(delimiter));
         }
 
         if (delimiter == quoteChar)

@@ -171,4 +171,104 @@ public sealed class SourceReadSettingsTests
     [Fact]
     public void CreateWide_WhenMissingTokenEmpty_ThenValid() =>
         Assert.Equal("", SourceReadSettings.CreateWide(missingToken: "").MissingToken);
+
+    // --- The v1 delimiter alphabet (§5.1.1): TAB, or U+001F through U+007E except '#' ---
+
+    // The 95 usable delimiters: the alphabet without the double quote, written out literally so the
+    // expectation never comes from the rule under test.
+    private static readonly string UsableDelimiters =
+        "\t" + (char)0x1F + " !$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~";
+
+    [Fact]
+    public void IsInDelimiterAlphabet_OverEveryChar_ThenMatchesTheLiteralV1Rule()
+    {
+        // The alphabet is the 95 usable delimiters plus the double quote: 96 members.
+        var alphabet = new HashSet<char>(UsableDelimiters) { '"' };
+        Assert.Equal(96, alphabet.Count);
+
+        for (var code = 0; code <= char.MaxValue; code++)
+        {
+            var c = (char)code;
+            Assert.True(alphabet.Contains(c) == SourceReadSettings.IsInDelimiterAlphabet(c), $"U+{code:X4}");
+        }
+
+        // Alphabet membership only: the quote is a member although it is not a usable delimiter.
+        Assert.True(SourceReadSettings.IsInDelimiterAlphabet('"'));
+        foreach (var code in new[] { 0x23, 0x0D, 0x0A, 0x7F, 0x1E, 0xA0 })
+        {
+            Assert.False(SourceReadSettings.IsInDelimiterAlphabet((char)code), $"U+{code:X4}");
+        }
+
+        foreach (var code in new[] { 0x1F, 0x20, 0x3A, 0x09 })
+        {
+            Assert.True(SourceReadSettings.IsInDelimiterAlphabet((char)code), $"U+{code:X4}");
+        }
+    }
+
+    [Fact]
+    public void Create_WhenEveryUsableDelimiter_ThenEachIsAccepted()
+    {
+        Assert.Equal(95, UsableDelimiters.Distinct().Count());
+        foreach (var delimiter in UsableDelimiters)
+        {
+            Assert.Equal(delimiter, Wide(delimiter: delimiter).Delimiter);
+        }
+    }
+
+    [Theory]
+    [InlineData(0x23)] // '#'
+    [InlineData(0x0D)] // CR
+    [InlineData(0x0A)] // LF
+    [InlineData(0x7F)]
+    [InlineData(0x1E)]
+    [InlineData(0xA0)] // no-break space
+    [InlineData(0xE9)] // 'é'
+    public void Create_WhenDelimiterOutsideTheAlphabet_ThenArgumentException(int code)
+    {
+        var delimiter = (char)code;
+
+        var thrown = Assert.Throws<ArgumentException>(() => Wide(delimiter: delimiter));
+
+        Assert.Equal("delimiter", thrown.ParamName);
+        Assert.StartsWith(
+            $"delimiter U+{code:X4} is not in the v1 delimiter alphabet (TAB, or U+001F through U+007E except '#').",
+            thrown.Message,
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void CreateTriple_WhenDelimiterOutsideTheAlphabet_ThenArgumentException() =>
+        Assert.Equal("delimiter", Assert.Throws<ArgumentException>(() => SourceReadSettings.CreateTriple(delimiter: '#')).ParamName);
+
+    // The exception precedence is fixed: null arguments, the quote, the alphabet, the
+    // delimiter/quote pair, the encoding, then the shape/ordering pair.
+    [Fact]
+    public void Create_WhenNullEncodingAndDelimiterOutsideTheAlphabet_ThenArgumentNullFirst() =>
+        Assert.Throws<ArgumentNullException>(() =>
+            SourceReadSettings.Create(SourceShape.Wide, null!, '#', '"', true, "?", null));
+
+    [Fact]
+    public void Create_WhenQuoteUnsupportedAndDelimiterOutsideTheAlphabet_ThenNotSupportedExceptionFirst() =>
+        Assert.Throws<NotSupportedException>(() => Wide(delimiter: '#', quote: '\''));
+
+    [Fact]
+    public void Create_WhenDelimiterOutsideTheAlphabetAndEncodingUnsupported_ThenTheAlphabetIsReported() =>
+        Assert.Equal("delimiter", Assert.Throws<ArgumentException>(() => Wide(encoding: "latin-1", delimiter: '#')).ParamName);
+
+    [Fact]
+    public void Create_WhenDelimiterOutsideTheAlphabetAndOrderingInconsistent_ThenTheAlphabetIsReported() =>
+        Assert.Equal(
+            "delimiter",
+            Assert.Throws<ArgumentException>(() =>
+                SourceReadSettings.Create(SourceShape.Triple, "utf-8", '#', '"', false, "?", ordering: null)).ParamName);
+
+    [Fact]
+    public void Create_WhenDelimiterIsTheQuoteAndEncodingUnsupported_ThenTheConflictIsReported()
+    {
+        // '"' is in the alphabet, so the delimiter/quote check is the one that refuses it.
+        var thrown = Assert.Throws<ArgumentException>(() => Wide(encoding: "latin-1", delimiter: '"'));
+
+        Assert.Equal("delimiter", thrown.ParamName);
+        Assert.StartsWith("delimiter must differ from quoteChar.", thrown.Message, StringComparison.Ordinal);
+    }
 }

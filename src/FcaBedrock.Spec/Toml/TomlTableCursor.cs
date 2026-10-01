@@ -195,6 +195,29 @@ internal sealed class TomlTableCursor
     }
 
     /// <summary>
+    /// An authored single character that <paramref name="accept"/> admits, or null when absent
+    /// (or reported invalid). A non-string, a string that is not exactly one UTF-16 code unit
+    /// and a refused character are each <c>SpecFieldInvalid</c> at the value, stating
+    /// <paramref name="expected"/>.
+    /// </summary>
+    public char? TakeChar(string key, Func<char, bool> accept, string expected)
+    {
+        ArgumentNullException.ThrowIfNull(accept);
+        if (Take(key) is not { } pair)
+        {
+            return null;
+        }
+
+        if (pair.Value is StringValueSyntax { Value: { Length: 1 } value } && accept(value[0]))
+        {
+            return value[0];
+        }
+
+        Invalid(pair, key, expected);
+        return null;
+    }
+
+    /// <summary>
     /// An authored date-time as a <see cref="DateTimeOffset"/>, or null when absent (or
     /// reported invalid). Offset forms keep their authored offset; local forms read at
     /// zero offset (deterministic across machines, D-075; the field is inert

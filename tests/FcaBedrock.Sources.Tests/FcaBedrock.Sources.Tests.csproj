@@ -6,4 +6,10 @@
     <ProjectReference Include="..\..\src\FcaBedrock.Sources\FcaBedrock.Sources.csproj" />
   </ItemGroup>
 
+  <!-- The Sources project file itself, as text: SourcesProjectContractTests asserts the exact
+       friend grant against the real file as well as against the compiled assembly. -->
+  <ItemGroup>
+    <Content Include="$(RepoRoot)src\FcaBedrock.Sources\FcaBedrock.Sources.csproj" Link="project\FcaBedrock.Sources.csproj.txt" CopyToOutputDirectory="PreserveNewest" Visible="false" />
+  </ItemGroup>
+
 </Project>

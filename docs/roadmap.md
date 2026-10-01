@@ -39,9 +39,13 @@ This roadmap records no five-target native CI, tested-archive, UCI Adult accepta
 `main`-push CI result for any revision after `3b2e4a80`. Each release candidate supplies its own
 evidence ([Release-candidate obligations](#release-candidate-obligations)).
 
-M8.2, the current milestone, changes no output of a spec that it still accepts. Its changes in
-product behavior are the wording of TOML syntax-error messages (D-133) and the rejection of three
-kinds of malformed spec, with one new diagnostic (D-135). M9 begins after M8.2 is accepted and
+M8.2, the current milestone, changes how delimited data is read (spec §5.1.1, D-041, D-054), so it
+can change the output of a spec it still accepts: blank records are skipped everywhere, the
+whitespace removed around fields and numbers is the full Unicode whitespace set, quoting is
+validated and malformed quoting is refused, the delimiter alphabet is fixed, and quoted CR content
+read through a stream that returns short reads is no longer reordered (D-137). Its other
+product-behavior changes are the wording of TOML syntax-error messages (D-133) and the rejection of
+three kinds of malformed spec, with one new diagnostic (D-135). M9 begins after M8.2 is accepted and
 integrated. Work deferred beyond v1 is in the [deferred backlog](#deferred-backlog-not-v1).
 
 ## Milestones
@@ -343,9 +347,18 @@ the integrated revision was measured. `docs/benchmarks.md` has the figures and l
 
 M8.2 is the current milestone, and M9 waits for it to be accepted and integrated. It hardens how
 the repository is written, who owns each lasting fact, how evidence provenance is stated, and how
-authored text is checked. It changes no CLI grammar, exit-code meaning or determinism rule, and no
-fingerprint or `.cxt`, `.dat` or manifest byte of a spec that it still accepts. Its one public API
-addition is the binding-only resolver stage `SpecResolver.ResolveBinding` (D-135). It declares TOML
+authored text is checked. It changes no CLI command or option, exit-code meaning, determinism rule
+or fingerprint format. Reading delimited data by spec §5.1.1 (D-041, D-054) can change `.cxt`,
+`.dat` and manifest bytes of a spec it still accepts when the input has blank records, whitespace
+other than spaces around fields or numbers, or outer whitespace beside a quoted field; it refuses
+malformed quoting and delimiters outside the v1 alphabet, keeping all 95 delimiters that were usable
+before. Ordinary CSV and TSV whose fields are unquoted or correctly quoted, with only spaces around
+them and no blank lines, read as before, and so do the v2 fixtures. A library caller whose stream
+returns short reads can also see corrected quoted CR content; no CLI file read was observed to be
+affected (D-137). The reading change's elapsed cost on small inputs is not bounded (D-138);
+`docs/benchmarks.md` has its comparison with the previous reader. Its public API additions are
+the binding-only resolver stage `SpecResolver.ResolveBinding` (D-135) and the delimiter-alphabet
+predicate `SourceReadSettings.IsInDelimiterAlphabet` (D-054). It declares TOML
 1.1.0, the grammar of the parser the spec reader has always used, and the `SpecTomlInvalid`
 syntax-error message now names that grammar (D-133). It rejects three inputs the spec never
 allowed: a composed spec with no `[[attribute]]` is the new `AttributesMissing` (Error, spec

@@ -1,3 +1,4 @@
+using FcaBedrock.Core.Spec;
 using FcaBedrock.Diagnostics;
 using Tomlyn.Syntax;
 
@@ -79,13 +80,16 @@ internal static class SpecSectionReaders
         return section;
     }
 
+    // §5.1.1's alphabet, stated where a delimiter outside it is reported.
+    private const string DelimiterExpectation = "TAB or one character from U+001F to U+007E other than '#' (§5.1.1)";
+
     public static BindingSection ReadBinding(TomlReadContext context, TableSyntaxBase table)
     {
         var cursor = new TomlTableCursor(context, "[binding]", table);
         var section = new BindingSection(
             cursor.TakeEnum("shape", TomlSpellings.Shapes),
             cursor.TakeString("encoding"),
-            cursor.TakeChar("delimiter"),
+            cursor.TakeChar("delimiter", SourceReadSettings.IsInDelimiterAlphabet, DelimiterExpectation),
             cursor.TakeChar("quote_char"),
             cursor.TakeBool("has_header"),
             cursor.TakeString("locale"),

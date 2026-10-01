@@ -144,13 +144,28 @@ public static class Calibrator
             // §7: every wide row is an independent observation (no deduplication by object key,
             // no duplicate_object_policy, no grouping). The population is row-scoped, which is
             // also why wide calibration never reads or validates the object-key column (D-099).
-            await foreach (var record in source.ReadAsync(cancellationToken).ConfigureAwait(false))
+            var records = source.ReadAsync(cancellationToken).GetAsyncEnumerator(cancellationToken);
+            try
             {
-                foreach (var target in targets)
+                while (await records.MoveNextAsync().ConfigureAwait(false))
                 {
-                    target.Observer.Observe(record.Field(target.ColumnIndex));
+                    var record = records.Current;
+                    foreach (var target in targets)
+                    {
+                        target.Observer.Observe(record.Field(target.ColumnIndex));
+                    }
                 }
             }
+            catch
+            {
+                // A storage failure, an overflow, a read failure or cancellation is already this
+                // pass's outcome: closing the records cannot replace it.
+                await SourceEnumeration.CloseAfterSelectedResultAsync(records).ConfigureAwait(false);
+                throw;
+            }
+
+            // Every record was read: a failure to close the records fails this pass.
+            await records.DisposeAsync().ConfigureAwait(false);
 
             calibrated = run.Finish(targets, structural: null);
         }
@@ -268,6 +283,40 @@ public static class Calibrator
         bool countSensitive,
         CancellationToken cancellationToken)
     {
+        var rows = source.ReadRowsAsync(cancellationToken).GetAsyncEnumerator(cancellationToken);
+        BedrockDiagnostic? structural;
+        try
+        {
+            structural = await ObserveRawRowsAsync(rows, byPredicate, subjectGrouped, countSensitive).ConfigureAwait(false);
+        }
+        catch
+        {
+            // An observer failure, a read failure or cancellation is already this pass's outcome:
+            // closing the rows cannot replace it.
+            await SourceEnumeration.CloseAfterSelectedResultAsync(rows).ConfigureAwait(false);
+            throw;
+        }
+
+        if (structural is not null)
+        {
+            // The structural halt is the pass's result; a failure to close the rows cannot replace it.
+            await SourceEnumeration.CloseAfterSelectedResultAsync(rows).ConfigureAwait(false);
+            return structural;
+        }
+
+        // Every row was read: a failure to close the rows fails this pass.
+        await rows.DisposeAsync().ConfigureAwait(false);
+        return null;
+    }
+
+    // The raw pass's loop: the structural diagnostic that halted it, or null when it read every
+    // row. The caller closes the rows.
+    private static async ValueTask<BedrockDiagnostic?> ObserveRawRowsAsync(
+        IAsyncEnumerator<TripleRow> rows,
+        Dictionary<string, List<CalibrationTarget>> byPredicate,
+        bool subjectGrouped,
+        bool countSensitive)
+    {
         var completed = new HashSet<string>(StringComparer.Ordinal);
 
         // Non-null exactly when this pass owns the count-sensitive observers, which is also what
@@ -278,8 +327,10 @@ public static class Calibrator
         string? currentSubject = null;
         var started = false;
 
-        await foreach (var row in source.ReadRowsAsync(cancellationToken).ConfigureAwait(false))
+        while (await rows.MoveNextAsync().ConfigureAwait(false))
         {
+            var row = rows.Current;
+
             // G-3/D-099: an unusable triple subject halts any calibration read (§5.4/§16.4).
             if (!ObjectNames.IsUsable(row.Subject))
             {

@@ -336,7 +336,50 @@ public static class Prober
             return openFailure;
         }
 
-        await using var _ = records.ConfigureAwait(false);
+        BedrockDiagnostic? selected;
+        try
+        {
+            selected = await ObserveRecordsAsync(records, observation, options).ConfigureAwait(false);
+        }
+        catch
+        {
+            // An exception is already the pass's outcome (an engine bug, or cancellation, which
+            // propagates unwrapped): closing the records cannot replace it.
+            await CloseAfterSelectedResultAsync(records).ConfigureAwait(false);
+            throw;
+        }
+
+        if (selected is not null)
+        {
+            // A read failure, a breached guard or a structural halt selected the result, and a
+            // failure to close the records cannot replace it.
+            await CloseAfterSelectedResultAsync(records).ConfigureAwait(false);
+            return selected;
+        }
+
+        // The pass reached the end of the records. A session may still fail when it is closed,
+        // and that is a read failure of this pass, in the same narrow set: no draft follows.
+        try
+        {
+            await records.DisposeAsync().ConfigureAwait(false);
+        }
+        catch (SourceReadException ex) { return ProbeDiagnostics.SourceReadFailed(ex); }
+        catch (IOException ex) { return ProbeDiagnostics.SourceReadFailed(ex); }
+        catch (UnauthorizedAccessException ex) { return ProbeDiagnostics.SourceReadFailed(ex); }
+        catch (ObjectDisposedException ex) { return ProbeDiagnostics.SourceReadFailed(ex); }
+        catch (DecoderFallbackException ex) { return ProbeDiagnostics.SourceReadFailed(ex); }
+        catch (InvalidDataException ex) { return ProbeDiagnostics.SourceReadFailed(ex); }
+
+        return null;
+    }
+
+    /// <summary>
+    /// The wide record pass: the diagnostic that ended it early, or null when it read every
+    /// record. The caller closes the records.
+    /// </summary>
+    private static async ValueTask<BedrockDiagnostic?> ObserveRecordsAsync(
+        IAsyncEnumerator<ObjectRecord> records, WideObservation observation, ProbeOptions options)
+    {
         while (true)
         {
             bool moved;
@@ -430,7 +473,50 @@ public static class Prober
             return openFailure;
         }
 
-        await using var _ = rows.ConfigureAwait(false);
+        BedrockDiagnostic? selected;
+        try
+        {
+            selected = await ObserveRowsAsync(rows, observation).ConfigureAwait(false);
+        }
+        catch
+        {
+            // An exception is already the pass's outcome (an engine bug, or cancellation, which
+            // propagates unwrapped): closing the rows cannot replace it.
+            await CloseAfterSelectedResultAsync(rows).ConfigureAwait(false);
+            throw;
+        }
+
+        if (selected is not null)
+        {
+            // A read failure, a breached guard or a structural halt selected the result, and a
+            // failure to close the rows cannot replace it.
+            await CloseAfterSelectedResultAsync(rows).ConfigureAwait(false);
+            return selected;
+        }
+
+        // The pass reached the end of the rows. A session may still fail when it is closed,
+        // and that is a read failure of this pass, in the same narrow set: no draft follows.
+        try
+        {
+            await rows.DisposeAsync().ConfigureAwait(false);
+        }
+        catch (SourceReadException ex) { return ProbeDiagnostics.SourceReadFailed(ex); }
+        catch (IOException ex) { return ProbeDiagnostics.SourceReadFailed(ex); }
+        catch (UnauthorizedAccessException ex) { return ProbeDiagnostics.SourceReadFailed(ex); }
+        catch (ObjectDisposedException ex) { return ProbeDiagnostics.SourceReadFailed(ex); }
+        catch (DecoderFallbackException ex) { return ProbeDiagnostics.SourceReadFailed(ex); }
+        catch (InvalidDataException ex) { return ProbeDiagnostics.SourceReadFailed(ex); }
+
+        return null;
+    }
+
+    /// <summary>
+    /// The triple row pass: the diagnostic that ended it early, or null when it read every row.
+    /// The caller closes the rows.
+    /// </summary>
+    private static async ValueTask<BedrockDiagnostic?> ObserveRowsAsync(
+        IAsyncEnumerator<TripleRow> rows, TripleObservation observation)
+    {
         while (true)
         {
             bool moved;
@@ -483,4 +569,18 @@ public static class Prober
 
     private static Diagnosed<SpecDocument> Failed(BedrockDiagnostic diagnostic) =>
         Diagnosed<SpecDocument>.Failed([diagnostic]);
+
+    // Closes a record or row stream after the pass has selected its result. A failure to close
+    // cannot replace that result (a diagnostic, or an exception already in flight), so it is not
+    // reported; the operation still ends with the result it selected.
+    private static async ValueTask CloseAfterSelectedResultAsync<T>(IAsyncEnumerator<T> source)
+    {
+        try
+        {
+            await source.DisposeAsync().ConfigureAwait(false);
+        }
+        catch (Exception)
+        {
+        }
+    }
 }

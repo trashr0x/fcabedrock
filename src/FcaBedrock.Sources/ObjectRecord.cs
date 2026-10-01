@@ -2,8 +2,8 @@ namespace FcaBedrock.Sources;
 
 /// <summary>
 /// One object's row of raw field values, as produced by a source. A missing field
-/// (empty, or equal to the binding's <c>missing_token</c> after trimming, spec
-/// §5.1) is surfaced as <see langword="null"/>, so the source owns missing
+/// (empty after decoding, or equal to the binding's <c>missing_token</c>, spec §5.1,
+/// §5.1.1) is surfaced as <see langword="null"/>, so the source owns missing
 /// detection and downstream stages stay free of binding details.
 /// </summary>
 public sealed class ObjectRecord

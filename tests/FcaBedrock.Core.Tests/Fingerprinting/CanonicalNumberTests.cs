@@ -102,4 +102,83 @@ public sealed class CanonicalNumberTests
     [Fact]
     public void TryParse_WhenCultureNull_ThenThrows() =>
         Assert.Throws<ArgumentNullException>(() => CanonicalNumber.TryParse("1", null!, out _));
+
+    // Spec §5.1/§5.1.1: numeric interpretation ignores whitespace W (the 25 char.IsWhiteSpace
+    // units) at the value's ends. NumberStyles.Float alone accepts only U+0009 to U+000D and
+    // U+0020 there, so the other members of W are the ones this pins.
+    [Theory]
+    [InlineData(0x00A0)]
+    [InlineData(0x0085)]
+    [InlineData(0x1680)]
+    [InlineData(0x2000)]
+    [InlineData(0x2028)]
+    [InlineData(0x202F)]
+    [InlineData(0x205F)]
+    [InlineData(0x3000)]
+    [InlineData(0x0009)]
+    public void TryParse_WhenSurroundedByUnicodeWhitespace_ThenParses(int code)
+    {
+        var pad = (char)code;
+
+        Assert.True(CanonicalNumber.TryParse($"{pad}30{pad}{pad}", CultureInfo.InvariantCulture, out var value));
+        Assert.Equal(30.0, value);
+    }
+
+    [Theory]
+    [InlineData(0x00A0)]
+    [InlineData(0x3000)]
+    [InlineData(0x0020)]
+    [InlineData(0x2029)]
+    public void TryParse_WhenAllWhitespace_ThenFalseAndZero(int code)
+    {
+        Assert.False(CanonicalNumber.TryParse(new string((char)code, 3), CultureInfo.InvariantCulture, out var value));
+        Assert.Equal(0.0, value);
+    }
+
+    [Theory]
+    [InlineData(0x200B)] // zero-width space
+    [InlineData(0xFEFF)] // zero-width no-break space
+    [InlineData(0x180E)] // Mongolian vowel separator
+    public void TryParse_WhenPrefixedByAFormatCharacterThatIsNotWhitespace_ThenFalseAndZero(int code)
+    {
+        Assert.False(CanonicalNumber.TryParse($"{(char)code}30", CultureInfo.InvariantCulture, out var value));
+        Assert.Equal(0.0, value);
+    }
+
+    [Theory]
+    [InlineData("Infinity")]
+    [InlineData("1e400")]
+    [InlineData("NaN")]
+    public void TryParse_WhenPaddedButNotFinite_ThenFalseAndZero(string number)
+    {
+        var pad = (char)0x00A0;
+
+        Assert.False(CanonicalNumber.TryParse($"{pad}{number}{pad}", CultureInfo.InvariantCulture, out var value));
+        Assert.Equal(0.0, value);
+    }
+
+    [Fact]
+    public void TryParse_WhenNegativeZeroIsPadded_ThenTheSignIsKept()
+    {
+        // TryParse never canonicalizes zero; the caller does (signed zero has its own owner).
+        Assert.True(CanonicalNumber.TryParse($"{(char)0x00A0}-0{(char)0x3000}", CultureInfo.InvariantCulture, out var value));
+        Assert.Equal(BitConverter.DoubleToInt64Bits(-0.0), BitConverter.DoubleToInt64Bits(value));
+    }
+
+    [Fact]
+    public void TryParse_WhenPaddedUnderAnExplicitCulture_ThenTheCultureGoverns()
+    {
+        var text = $"{(char)0x00A0}1,5{(char)0x00A0}";
+
+        Assert.True(CanonicalNumber.TryParse(text, CultureInfo.GetCultureInfo("fr-FR"), out var value));
+        Assert.Equal(1.5, value);
+        Assert.False(CanonicalNumber.TryParse(text, CultureInfo.InvariantCulture, out _));
+    }
+
+    [Fact]
+    public void TryParse_WhenTextIsNull_ThenFalseAndZero()
+    {
+        Assert.False(CanonicalNumber.TryParse(null!, CultureInfo.InvariantCulture, out var value));
+        Assert.Equal(0.0, value);
+    }
 }

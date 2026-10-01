@@ -35,7 +35,8 @@ public sealed class WideCsvSession : IWideSourceSession
     /// Creates a session over <paramref name="openStream"/> with wide
     /// <paramref name="settings"/>. Throws <see cref="ArgumentException"/> when the
     /// settings are not wide, or <see cref="NotSupportedException"/> for a non-standard
-    /// quote, as the bound source constructors do.
+    /// quote, as the bound source constructors do. The settings' delimiter is always in the
+    /// v1 alphabet, because <see cref="SourceReadSettings.Create"/> enforces it.
     /// </summary>
     public WideCsvSession(Func<Stream> openStream, SourceReadSettings settings)
     {

@@ -161,6 +161,24 @@ public sealed class SpecComposerTests
         Assert.Equal("base.toml", diagnostic.Location?.File);
     }
 
+    [Fact]
+    public void Compose_WhenABaseSpecHasAHashDelimiter_ThenSpecFieldInvalidInThatFile()
+    {
+        // A base spec is read by the same reader, so the §5.1.1 alphabet refuses its delimiter there.
+        var source = new InMemorySpecTextSource().Add(
+            "base.toml", "[spec]\nversion = 1\n[binding]\nshape = \"wide\"\ndelimiter = \"#\"\n");
+
+        var result = SpecComposer.Compose(Read(DerivedMinimal), "derived.toml", source);
+
+        Assert.False(result.TryGetValue(out _));
+        var diagnostic = Assert.Single(result.Diagnostics);
+        Assert.Equal(DiagnosticCode.SpecFieldInvalid, diagnostic.Code);
+        Assert.Equal(DiagnosticSeverity.Error, diagnostic.Severity);
+        Assert.Contains("[binding] key 'delimiter'", diagnostic.Message, StringComparison.Ordinal);
+        Assert.Equal("base.toml", diagnostic.Location?.File);
+        Assert.Equal(5, diagnostic.Location?.Line);
+    }
+
     [Theory]
     [InlineData("[spec]\nversion = 3\n")]
     [InlineData("[binding]\nshape = \"wide\"\n")] // no [spec] at all

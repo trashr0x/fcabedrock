@@ -64,16 +64,16 @@ someone else's data — and it is not part of the dataset or covered by its lice
 
 ## One property of the published file, recorded rather than smoothed away
 
-`adult.data` ends with a **doubled newline**. It therefore carries the 32,561 census rows everyone
-cites *plus one empty final row* — 32,562 records — and a reader is right to yield that row: under
-RFC 4180 a doubled line break ends one record and begins another. Converting the file as published
-produces a 32,562nd object with no crosses, and an `ObjectHasNoCrosses` warning saying so.
+`adult.data` ends with a **doubled newline**, so after the 32,561 census rows everyone cites it
+holds *one empty final line*. That line is a blank record, which the reader skips (spec §5.1.1),
+so converting the file as published produces 32,561 objects. Before acquisition revision 3 the
+suite counted the empty line as a 32,562nd record, and the conversion produced a 32,562nd object
+with no crosses and an `ObjectHasNoCrosses` warning.
 
-The suite records the count the pipeline actually reads, not the count the literature quotes. Two
-alternatives were rejected: trimming the trailing line at preparation would mean the recorded digest
-no longer describes the published bytes, and counting only non-empty lines would make every derived
-rate slightly wrong while hiding the fact. A benchmark over real data is worth having precisely
-because real data has corners like this one.
+The suite records the count the pipeline actually reads, by the reader's own blank rule. Trimming
+the trailing line at preparation was rejected: the recorded digest would no longer describe the
+published bytes. A benchmark over real data is worth having precisely because real data has corners
+like this one.
 
 ## Why a real corpus is in the matrix at all
 

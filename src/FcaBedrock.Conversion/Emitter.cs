@@ -145,104 +145,123 @@ public static class Emitter
         var keepDisambiguations = new DiagnosticTally();
         var recordIndex = 0;
 
-        await foreach (var record in source.ReadAsync(cancellationToken).ConfigureAwait(false))
+        // The upstream records are closed in the finally below, ordered by how this iterator
+        // leaves (SourceEnumeration): a halt or an exception in flight wins over a close failure.
+        var records = source.ReadAsync(cancellationToken).GetAsyncEnumerator(cancellationToken);
+        var exit = SourceExit.Running;
+        try
         {
-            // §10.4/G-2 sequencing. The row IS the formed object here, so: classify, then filter,
-            // then (only for a survivor) name.
-            //
-            // 1. Classify every included attribute. This runs for EVERY row, filtered or not:
-            //    restrictions filter objects, not observations (D-097), so an included attribute's
-            //    ordinary unparseable/unknown diagnostics are owned here regardless of whether the
-            //    row survives.
-            var crossed = new SortedSet<int>();
-            for (var i = 0; i < count; i++)
+            while (await records.MoveNextAsync().ConfigureAwait(false))
             {
-                Accumulate(plan.Attributes[i], record, crossed, unknown[i], unparseable[i]);
-            }
+                var record = records.Current;
 
-            // 2. Evaluate every restriction over this row's observations.
-            RestrictionFilter.Reset(matched);
-            restrictions.ObserveWide(record, matched);
+                // §10.4/G-2 sequencing. The row IS the formed object here, so: classify, then filter,
+                // then (only for a survivor) name.
+                //
+                // 1. Classify every included attribute. This runs for EVERY row, filtered or not:
+                //    restrictions filter objects, not observations (D-097), so an included attribute's
+                //    ordinary unparseable/unknown diagnostics are owned here regardless of whether the
+                //    row survives.
+                var crossed = new SortedSet<int>();
+                for (var i = 0; i < count; i++)
+                {
+                    Accumulate(plan.Attributes[i], record, crossed, unknown[i], unparseable[i]);
+                }
 
-            // 3. A non-surviving row is not an object: no key check, no `fail` duplicate check, no
-            //    `keep` name assignment; nothing downstream may observe it. recordIndex still
-            //    advances below, because it is the SOURCE position, not a survivor rank (§5.4).
-            if (!RestrictionFilter.Passes(matched))
-            {
+                // 2. Evaluate every restriction over this row's observations.
+                RestrictionFilter.Reset(matched);
+                restrictions.ObserveWide(record, matched);
+
+                // 3. A non-surviving row is not an object: no key check, no `fail` duplicate check, no
+                //    `keep` name assignment; nothing downstream may observe it. recordIndex still
+                //    advances below, because it is the SOURCE position, not a survivor rank (§5.4).
+                if (!RestrictionFilter.Passes(matched))
+                {
+                    recordIndex++;
+                    continue;
+                }
+
+                // 4. The row survives, so it becomes an object and takes a name.
+                string name;
+                if (columnKey is null)
+                {
+                    // row_index: the source-assigned input position, verbatim. Filtering NEVER
+                    // renumbers it (§5.4/G-2): if row 0 is filtered and row 1 survives, the survivor
+                    // is still named "1".
+                    name = record.Name;
+                }
+                else
+                {
+                    var key = record.Field(columnKey.Index);
+                    if (!ObjectNames.IsUsable(key))
+                    {
+                        // §5.4/§16.4/D-085: an empty / missing_token / whitespace / control-char key cell,
+                        // or a cell absent from a ragged row, cannot name an object; halt this conversion.
+                        diagnostics.Add(new BedrockDiagnostic(
+                            DiagnosticCode.ObjectKeyValueInvalid, DiagnosticSeverity.Error,
+                            $"The wide object key at record {recordIndex} is empty, whitespace-only, a missing token, absent, or contains a control character; it cannot name an object (§5.4).",
+                            new DiagnosticLocation(RecordIndex: recordIndex)));
+                        exit = SourceExit.Selected;
+                        yield break;
+                    }
+
+                    switch (columnKey.Policy)
+                    {
+                        case DuplicateObjectPolicy.Fail:
+                            if (!failSeen!.Add(key!))
+                            {
+                                // §6.1: a duplicate key means the key does not identify objects; stop.
+                                // Only survivors are recorded, so a filtered row's key never trips this
+                                // (G-2): it is not an object, so it cannot duplicate one.
+                                diagnostics.Add(new BedrockDiagnostic(
+                                    DiagnosticCode.DuplicateObjectKey, DiagnosticSeverity.Error,
+                                    $"The wide object key '{key}' at record {recordIndex} duplicates an earlier record; duplicate_object_policy = \"fail\" (§6.1).",
+                                    new DiagnosticLocation(RecordIndex: recordIndex)));
+                                exit = SourceExit.Selected;
+                                yield break;
+                            }
+
+                            name = key!;
+                            break;
+
+                        case DuplicateObjectPolicy.Keep:
+                            // §6.1: keep names are assigned in EMISSION order, so a filtered row
+                            // consumes no assigned name and produces no suffix or diagnostic (G-2).
+                            name = keepNamer!.Assign(key!, recordIndex, out var duplicate, out var disambiguated);
+                            if (duplicate)
+                            {
+                                keepDuplicates.Record(key!);
+                            }
+
+                            if (disambiguated)
+                            {
+                                keepDisambiguations.Record($"{key}→{name}");
+                            }
+
+                            break;
+
+                        default:
+                            // dedupe dispatches to EmitDedupeAsync before reaching here; the streaming path
+                            // sees only fail/keep. Kept for definite assignment of `name`.
+                            throw new InvalidOperationException(
+                                $"duplicate_object_policy '{columnKey.Policy}' is not a single-pass streaming policy.");
+                    }
+                }
+
+                // The surviving object keeps ALL its crosses, not only the observations that matched.
+                var emitted = new EmittedObject(name, [.. crossed]);
+                observability.Record(emitted);
+                exit = SourceExit.Suspended;
+                yield return emitted;
+                exit = SourceExit.Running;
                 recordIndex++;
-                continue;
             }
 
-            // 4. The row survives, so it becomes an object and takes a name.
-            string name;
-            if (columnKey is null)
-            {
-                // row_index: the source-assigned input position, verbatim. Filtering NEVER
-                // renumbers it (§5.4/G-2): if row 0 is filtered and row 1 survives, the survivor
-                // is still named "1".
-                name = record.Name;
-            }
-            else
-            {
-                var key = record.Field(columnKey.Index);
-                if (!ObjectNames.IsUsable(key))
-                {
-                    // §5.4/§16.4/D-085: an empty / missing_token / whitespace / control-char key cell,
-                    // or a cell absent from a ragged row, cannot name an object; halt this conversion.
-                    diagnostics.Add(new BedrockDiagnostic(
-                        DiagnosticCode.ObjectKeyValueInvalid, DiagnosticSeverity.Error,
-                        $"The wide object key at record {recordIndex} is empty, whitespace-only, a missing token, absent, or contains a control character; it cannot name an object (§5.4).",
-                        new DiagnosticLocation(RecordIndex: recordIndex)));
-                    yield break;
-                }
-
-                switch (columnKey.Policy)
-                {
-                    case DuplicateObjectPolicy.Fail:
-                        if (!failSeen!.Add(key!))
-                        {
-                            // §6.1: a duplicate key means the key does not identify objects; stop.
-                            // Only survivors are recorded, so a filtered row's key never trips this
-                            // (G-2): it is not an object, so it cannot duplicate one.
-                            diagnostics.Add(new BedrockDiagnostic(
-                                DiagnosticCode.DuplicateObjectKey, DiagnosticSeverity.Error,
-                                $"The wide object key '{key}' at record {recordIndex} duplicates an earlier record; duplicate_object_policy = \"fail\" (§6.1).",
-                                new DiagnosticLocation(RecordIndex: recordIndex)));
-                            yield break;
-                        }
-
-                        name = key!;
-                        break;
-
-                    case DuplicateObjectPolicy.Keep:
-                        // §6.1: keep names are assigned in EMISSION order, so a filtered row
-                        // consumes no assigned name and produces no suffix or diagnostic (G-2).
-                        name = keepNamer!.Assign(key!, recordIndex, out var duplicate, out var disambiguated);
-                        if (duplicate)
-                        {
-                            keepDuplicates.Record(key!);
-                        }
-
-                        if (disambiguated)
-                        {
-                            keepDisambiguations.Record($"{key}→{name}");
-                        }
-
-                        break;
-
-                    default:
-                        // dedupe dispatches to EmitDedupeAsync before reaching here; the streaming path
-                        // sees only fail/keep. Kept for definite assignment of `name`.
-                        throw new InvalidOperationException(
-                            $"duplicate_object_policy '{columnKey.Policy}' is not a single-pass streaming policy.");
-                }
-            }
-
-            // The surviving object keeps ALL its crosses, not only the observations that matched.
-            var emitted = new EmittedObject(name, [.. crossed]);
-            observability.Record(emitted);
-            yield return emitted;
-            recordIndex++;
+            exit = SourceExit.Completed;
+        }
+        finally
+        {
+            await SourceEnumeration.EndAsync(records, exit).ConfigureAwait(false);
         }
 
         // Aggregated data-phase diagnostics: one per attribute, in plan order, so the diagnostic
@@ -422,14 +441,30 @@ public static class Emitter
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         var index = 0;
-        await foreach (var record in source.ReadAsync(cancellationToken).ConfigureAwait(false))
+        var records = source.ReadAsync(cancellationToken).GetAsyncEnumerator(cancellationToken);
+        var exit = SourceExit.Running;
+        try
         {
-            var row = DedupeRow.Live(record, index++);
-            yield return row;
-            if (!ObjectNames.IsUsable(row.Field(keyIndex)))
+            while (await records.MoveNextAsync().ConfigureAwait(false))
             {
-                yield break;
+                var row = DedupeRow.Live(records.Current, index++);
+                exit = SourceExit.Suspended;
+                yield return row;
+                exit = SourceExit.Running;
+                if (!ObjectNames.IsUsable(row.Field(keyIndex)))
+                {
+                    // A truncation selects no result (the emitter halts on the offender it now
+                    // holds), so a failure to close the records here fails the operation.
+                    exit = SourceExit.Stopped;
+                    yield break;
+                }
             }
+
+            exit = SourceExit.Completed;
+        }
+        finally
+        {
+            await SourceEnumeration.EndAsync(records, exit).ConfigureAwait(false);
         }
     }
 
@@ -540,7 +575,8 @@ public static class Emitter
         try
         {
             var enumerator = rows.ReadRowsAsync(cancellationToken).GetAsyncEnumerator(cancellationToken);
-            await using (enumerator.ConfigureAwait(false))
+            var exit = SourceExit.Running;
+            try
             {
                 while (true)
                 {
@@ -595,7 +631,9 @@ public static class Emitter
                         {
                             var closed = new EmittedObject(currentSubject!, [.. crossed]);
                             observability.Record(closed);
+                            exit = SourceExit.Suspended;
                             yield return closed;
+                            exit = SourceExit.Running;
                         }
 
                         completed.Add(currentSubject!);
@@ -637,6 +675,13 @@ public static class Emitter
                         restrictions.ObserveTriple(predicate, row.Value, matched);
                     }
                 }
+
+                // A halt or a storage failure selected the result; otherwise the rows reported their end.
+                exit = storageFailed || halted ? SourceExit.Selected : SourceExit.Completed;
+            }
+            finally
+            {
+                await SourceEnumeration.EndAsync(enumerator, exit).ConfigureAwait(false);
             }
 
             if (!storageFailed && !halted)

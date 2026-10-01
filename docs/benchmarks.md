@@ -12,12 +12,16 @@ host at 730,000 and 7.3M records, with no machine identity recorded and no 73M r
 evidence (reports, logs, traces and archives) is held outside Git. Where this guide quotes a digest,
 the digest identifies the recorded bytes; it does not promise that they are still available.
 
-Two limits apply throughout. First, the `CLI host` rows describe the build that produced them, not
+Three limits apply throughout. First, the `CLI host` rows describe the build that produced them, not
 the shipped command: a later publication correction reaches that measured interval, and the
 comparison meant to bound its cost was inconclusive
 ([Command latency after the publication correction](#command-latency-after-the-publication-correction)).
 Second, the tiered spill schedule has no 73M result
 ([Tiered spill schedule for count-sensitive calibration](#tiered-spill-schedule-for-count-sensitive-calibration)).
+Third, the delimited reading change of 2026-10-01 reaches every case that reads delimited input, so
+every earlier result describes the reader before it. Only its comparison with the previous reader
+was measured after it, and that comparison does not bound its elapsed cost on small inputs
+([Delimited reading rules: comparison with the previous reader](#delimited-reading-rules-comparison-with-the-previous-reader)).
 
 ## What is measured
 
@@ -93,7 +97,14 @@ that no longer matches is refused rather than measured. These digests identify t
 | `ads-small` | 10,000 | 1,559 | 31,306,637 | 1 | `a18e2b06b7aa7b3971c5de5c6af501e4b27ff037da387cb3ef3f729f7877390d` |
 | `longtext-small` | 10,000 | 4 | 10,673,639 | 1 | `eb2bafe58228bf1c7479748b7224bd018cd884adef401fbe068f40cb314444cc` |
 | `longtext-working` | 730,000 | 4 | 781,351,597 | 1 | `daf06a6167e2a8fb2f7bb63306ec2518ed4682a7d7ad575a9c091a20ba08c84a` |
-| `adult` † | 32,562 | 15 | 3,974,305 | 2 | `5b00264637dbfec36bdeaab5676b0b309ff9eb788d63554ca0a249491c86603d` |
+| `lexical-quoted-multiline-small` | 10,000 | 6 | 1,233,359 | 1 | `033156e9595c402b8784ea2feced5882530a35594756b2bec4a482e958bbbf46` |
+| `lexical-tab-small` | 10,000 | 16 | 1,322,294 | 1 | `73416763e9e32898ba82904e333329c4e0818c241b164cc697bb87e69210fa3d` |
+| `lexical-space-small` | 10,000 | 16 | 1,322,294 | 1 | `4dba04384203ae5e1490dc8722f0dea9eaaa6dc6a2fed8ff25d324f819fc1f38` |
+| `lexical-many-fields-small` | 2,000 | 200 | 1,559,645 | 1 | `27423e8caaf663a9541ff5c74789af5c5749b9d15774d4eea7ee72736e67380c` |
+| `lexical-long-fields-small` | 500 | 4 | 10,002,012 | 1 | `c6e15ec0b0d6091765f14e2a78aa42d30bd10723247b13a675094c863a63d81f` |
+| `lexical-unicode-whitespace-small` | 10,000 | 16 | 2,122,294 | 1 | `baab84cb8f63ab3e27c6ab0aa7f92b099fb18e9e91d252246003fe9e2e87542a` |
+| `lexical-blank-runs-small` | 10,000 | 16 | 1,332,294 | 1 | `701c5f90046353abd0d2e5511826d17e0735811583f858c90c102bb714fe82c3` |
+| `adult` † | 32,561 | 15 | 3,974,305 | 3 | `5b00264637dbfec36bdeaab5676b0b309ff9eb788d63554ca0a249491c86603d` |
 
 † The only **acquired** corpus. Its length and digest are **pinned in the source** (`AdultCorpus.cs`)
 and enforced on every acquisition and reuse, so this row names one specific file rather than
@@ -101,8 +112,8 @@ whatever a later download returns. The pin establishes byte identity, not publis
 
 - **W16** is sixteen wide columns: four numeric (strictly increasing, heavily tied, skewed, wide
   signed decimal), eight categorical over eight-value domains, and four binary. It carries both
-  missing forms (an explicit token and an empty cell) and two values that force the RFC 4180
-  quoting path.
+  missing forms (an explicit token and an empty cell) and two values that force the quoted-field path
+  (spec §5.1.1).
 - **T10** is ten triple rows per subject in two layouts of the same observations: contiguous, and
   block-interleaved with first-appearance subject order unchanged. It carries a multi-valued
   predicate, an exact duplicate row, one numeric value in two equivalent spellings, and a predicate
@@ -116,11 +127,21 @@ whatever a later download returns. The pin establishes byte identity, not publis
 - **longtext** is four columns of long values (eight fixed 512-character blobs and a per-row note of
   64 to 1,024 characters), the only family that can reach probe's retained-text guard before its
   retained-value guard.
+- **lexical** is seven small wide cases, each stressing one part of the delimited-text grammar
+  (spec §5.1.1) rather than a scale: quoted fields with doubled quotes and line breaks
+  (`quoted-multiline`), TAB and space delimiters (`tab`, `space`), 200 short fields per record
+  (`many-fields`), four 5,000-character fields per record (`long-fields`), fields padded with a
+  no-break space and an ideographic space (`unicode-whitespace`), and a blank line after every
+  record (`blank-runs`). The first five read the same under the previous reading rules; the last
+  two measure the Unicode-whitespace and blank-record rules themselves, so they have no comparison
+  with the previous reader. Each case's expected drain summary comes from its generator's value
+  definitions, not from a reader.
 - **adult** is the UCI Adult training split, acquired rather than generated; its attribution and
   licence are in `tests/FcaBedrock.Benchmarks/Corpus/Adult.attribution.md`. The published file ends
-  with a doubled newline, so it holds the 32,561 census rows usually cited plus one empty final row.
-  A reader is right to yield that row, so the recorded count is 32,562, and the conversion produces a
-  32,562nd object with no crosses.
+  with a doubled newline, so after its 32,561 census rows it holds one empty final line. That line
+  is a blank record, which the reader skips (spec §5.1.1), so the recorded count is 32,561 and the
+  conversion produces 32,561 objects. Results recorded before acquisition revision 3 counted the
+  empty line as a 32,562nd record and object.
 
 ## Selection and routine CI
 
@@ -135,7 +156,7 @@ The suite has four tier categories. `Small` is the default; `Working`, `Scale` a
 | `External` | no | `--anyCategories External` | its corpus is **acquired**, not generated |
 
 `Working` and `Scale` are opt-in because of their cost. `External` is opt-in because of a
-dependency: its three cases read only 32,562 records, but the corpus comes from
+dependency: its three cases read only 32,561 records, but the corpus comes from
 `archive.ics.uci.edu`, and an outage there must not fail a build that has nothing to do with it.
 Opting in is not skipping: a selected case whose corpus is absent is a hard failure that names the
 exact `prepare` command.
@@ -185,13 +206,15 @@ it measured, and later changes limit how far it reaches:
 
 | Result set | Code it describes | Does it describe today's code? |
 | --- | --- | --- |
-| Baseline measurements, tuning runs, and the re-measurement after the calibration fix (from 2026-09-06; .NET 10.0.11) | a working state based on `38b3dda`; no commit recorded | component rows: yes, by reachability, because every executable product change committed since `38b3dda` is in count-sensitive calibration or CLI publication; † rows (count-sensitive calibration): no, the tiered spill schedule (D-128) changed that path; `CLI host` rows: no, the publication correction (D-125) changed publication |
+| Baseline measurements, tuning runs, and the re-measurement after the calibration fix (from 2026-09-06; .NET 10.0.11) | a working state based on `38b3dda`; no commit recorded | not after the delimited reading change (2026-10-01), which reaches every case that reads delimited input; its reach into planning was not examined. Before that change: component rows yes, by reachability, because every executable product change committed since `38b3dda` was in count-sensitive calibration or CLI publication; † rows (count-sensitive calibration): no, the tiered spill schedule (D-128) changed that path; `CLI host` rows: no, the publication correction (D-125) changed publication |
 | Publication-latency comparison (2026-09-09) | `4216610b` against its unchanged pre-fix control | no: it describes those two builds, and it was inconclusive at the 5% bound |
-| Shipped-code validation and memory traces (2026-09-10; traces on .NET 10.0.10) | `50f6aa62`, whose `src/` equals that of `3d71524b` | yes, except the auto-calibrated rows and traces, which predate the tiered spill schedule |
-| Tiered spill schedule assessment (adopted 2026-09-21; a Windows host; environment not recorded) | a candidate whose source equals `47e2ce71` apart from one documentation comment | yes, for the three measured count-sensitive calibration cases at 730,000 and 7.3M records; no 73M run |
+| Shipped-code validation and memory traces (2026-09-10; traces on .NET 10.0.10) | `50f6aa62`, whose `src/` equals that of `3d71524b` | not after the delimited reading change, which reaches every one of these commands. Before it: yes, except the auto-calibrated rows and traces, which predate the tiered spill schedule |
+| Tiered spill schedule assessment (adopted 2026-09-21; a Windows host; environment not recorded) | a candidate whose source equals `47e2ce71` apart from one documentation comment | not after the delimited reading change, which reaches these cases. Before it: yes, for the three measured count-sensitive calibration cases at 730,000 and 7.3M records; no 73M run |
+| Delimited reading comparison (2026-10-01; .NET 10.0.12) | the delimited reading change, uncommitted on `a450b144`, against `a450b144` with only the lexical cases' benchmark source added | yes, for the cases it compared: the measured source is this change's, apart from later documentation and tests that no measured case executes; no build of the committed revision was measured |
 
-The details are in [Command latency after the publication correction](#command-latency-after-the-publication-correction)
-and [Tiered spill schedule for count-sensitive calibration](#tiered-spill-schedule-for-count-sensitive-calibration).
+The details are in [Command latency after the publication correction](#command-latency-after-the-publication-correction),
+[Tiered spill schedule for count-sensitive calibration](#tiered-spill-schedule-for-count-sensitive-calibration)
+and [Delimited reading rules: comparison with the previous reader](#delimited-reading-rules-comparison-with-the-previous-reader).
 
 ## Findings
 
@@ -710,6 +733,125 @@ committed file only in one token of an XML documentation comment, which the comm
 replaces with the citation `(D-128)`, so no executable source differs. No build of the committed
 revision was measured, and the assessment records no build-to-commit tie or runtime identity.
 
+## Delimited reading rules: comparison with the previous reader
+
+The delimited reading change (spec §5.1.1; D-041, D-054 and D-137) was compared with the previous
+reader on 2026-10-01. Each result is the ratio of the change's BenchmarkDotNet reported median to
+the previous reader's for the same case, checked against a limit set for this comparison. **The
+comparison does not bound the change's elapsed cost on small inputs.** In four of the eight Small
+cases that read the same records under both readers, at least one measured ratio is above the 1.30
+limit, and measurements of the same case disagree widely. Every larger case stays within its limit.
+The change is accepted with its small-input cost unbounded (D-138). No claim is made that that cost
+is within 30%, that the change has no regression, or about installed-command latency.
+
+**What was compared.** The previous reader is commit `a450b144` with only the lexical cases'
+benchmark source added: the lexical corpus generator, its independent oracle, the seven lexical
+benchmark classes and their registration, identical on both sides. The change was measured on the
+same commit before it was committed. Both sides read the same prepared corpora
+([Corpora](#corpora)), and every measured iteration was validated against its independent
+expectation after disposal.
+
+| | |
+| --- | --- |
+| OS | Windows 11 (10.0.26300) |
+| CPU | AMD Ryzen 5 5600X: 1 CPU, 6 physical / 12 logical cores |
+| Runtime | .NET 10.0.12, X64 RyuJIT x86-64-v3, Concurrent Workstation GC |
+| SDK | 10.0.401 |
+| BenchmarkDotNet | 0.15.8, out-of-process toolchain, Release |
+| Power plan | High performance |
+| Storage | corpora and results on the system volume |
+
+**How it was measured.** The jobs and the measured interval are the suite's own (D-124). The Small
+cases run the fresh-iteration Throughput job: one invocation per iteration and unroll factor one,
+with BenchmarkDotNet choosing the warmup and iteration counts adaptively. The Working and 7.3M cases
+run the long-run Monitoring job: one launch, two warmups and five iterations of one invocation
+each. A drain iteration constructs a fresh session over the prepared, unopened input, reads its
+schema and drains every record, all inside timing. Resolving the read settings and deriving the
+independent expectation happen before timing, and validation happens after it. Allocation is
+managed allocated bytes per operation, not peak memory. Each Small case was measured three times,
+each Working case twice and each 7.3M case once, every time on the previous reader and then on the
+change.
+
+The limits set for this comparison:
+
+- Drains that read the same records under both readers: time ratio at most 1.30, allocation ratio
+  at most 1.10.
+- `QuotedMultilineSourceDrainSmall`, the quote-heavy case: time ratio at most 1.50, allocation
+  ratio at most 1.10.
+- Six Working calibration and conversion cases: time ratio at most 1.10. No allocation limit
+  applies to them; their allocation ratios are shown for context.
+- `UnicodeWhitespaceSourceDrainSmall` and `BlankRunsSourceDrainSmall`, whose meaning changed, have
+  no previous-reader result. Their time per MB of input is compared with that of the change's
+  slowest same-records Small case in the same measurement, `WideSourceDrainSmall` both times, with a
+  limit of 2.
+
+Ratios above their limit are in bold.
+
+| Small case | Time ratios | Time limit | Allocation ratio |
+| --- | --- | ---: | ---: |
+| `SpaceDelimitedSourceDrainSmall` | **2.4233**, **2.4289**, 0.2758 | 1.30 | 0.9999 |
+| `TabDelimitedSourceDrainSmall` | **2.4730**, 0.8177, **2.3812** | 1.30 | 0.9999 |
+| `ManyFieldsSourceDrainSmall` | 0.7469, **2.4597**, 0.7256 | 1.30 | 0.9995 |
+| `WideSourceDrainSmall` | 0.9088, 0.9242, **3.0519** | 1.30 | 1.0378 |
+| `TripleSourceDrainGroupedSmall` | 1.1832, 1.1799, 1.2953 | 1.30 | 1.0002 |
+| `TripleSourceDrainUnorderedSmall` | 1.1804, 1.2306, 1.2697 | 1.30 | 1.0002 |
+| `LongFieldsSourceDrainSmall` | 1.0259, 0.9823, 1.0041 | 1.30 | 1.0000 |
+| `QuotedMultilineSourceDrainSmall` | 1.2181, 1.2918, 1.3443 | 1.50 | 1.0000 |
+
+| Working case | Time ratios | Time limit | Allocation ratio |
+| --- | --- | ---: | ---: |
+| `WideSourceDrainWorking` | 0.8562, 0.8572 | 1.30 | 1.0371, 1.0373 |
+| `TripleSourceDrainUnorderedWorking` | 1.0724, 0.9932 | 1.30 | 1.0000 |
+| `CalibrateWideWorking` | 0.9465, 0.9400 | 1.10 | 1.0310 |
+| `CalibrateTripleUnorderedWorking` | 1.0241, 0.9931 | 1.10 | 1.0000 |
+| `CalibrateTripleGroupedWorking` | 1.0429, 1.0495 | 1.10 | 1.0000 |
+| `WideConvertDatWorking` | 0.9556, 0.9363 | 1.10 | 1.0175 |
+| `TripleConvertDatGroupedWorking` | 1.0362, 1.0208 | 1.10 | 1.0000 |
+| `TripleConvertDatUnorderedWorking` | 0.9889, 1.0123 | 1.10 | 1.0000 |
+
+| 7.3M case | Time ratio | Time limit | Allocation ratio |
+| --- | ---: | ---: | ---: |
+| `WideSourceDrainScale7M` | 0.8552 | 1.30 | 1.0370 |
+| `TripleSourceDrainUnorderedScale7M` | 1.0435 | 1.30 | 1.0000 |
+
+| Changed-meaning case | Time per MB against the slowest same-records Small case | Limit |
+| --- | --- | ---: |
+| `UnicodeWhitespaceSourceDrainSmall` | 0.2657, 0.4314 | 2.00 |
+| `BlankRunsSourceDrainSmall` | 0.5064, 0.1581 | 2.00 |
+
+The wide drains allocate 3.7% to 3.8% more than the previous reader, about 27 bytes more per record
+at each of the three tiers, and every other drain stays within 0.05% of the previous reader's
+allocation.
+
+**What the Small results show, and what they do not.** The recorded iteration times change level by
+large factors, between processes and within one. Some Small runs stay at one level throughout, and
+others move to a faster level partway through. The previous reader's build measured
+`TabDelimitedSourceDrainSmall` at 4.22, 12.70 and 4.27 ms and `WideSourceDrainSmall` at 12.66, 12.85
+and 3.86 ms; the change measured `SpaceDelimitedSourceDrainSmall` at 10.26, 10.44 and 3.54 ms. Every
+ratio above 1.30 combines a relatively fast previous-reader median with a slow median for the
+change, and the 0.2758 for `SpaceDelimitedSourceDrainSmall` is the reverse. BenchmarkDotNet's
+adaptive stopping measured from 15 to 100 iterations per Small run, with many counts between, so a
+reported median depends on when, or whether, its process reached a faster level. A median can also
+mix levels: one grouped triple run of the previous reader reported 3.86 ms while its last iterations
+took about 1.1 ms. No fast level of the change was observed for `TabDelimitedSourceDrainSmall` or
+`WideSourceDrainSmall`. Tiered JIT compilation, on-stack replacement or dynamic profile-guided
+optimization could produce such levels, but none was instrumented, so the cause is inferred, not
+measured. These results show neither a stable threefold slowdown nor a small-input cost within
+1.30, and a short command or a small library read may run at the slower level.
+
+**Measurement conditions.** BenchmarkDotNet generates, restores and builds its worker project
+before measuring, as it always does; no other build, test or measurement ran during the
+measurements. CPU use sampled once a second for 60 seconds before and after each measurement window
+averaged 1.2% to 1.7%. Those samples bracket the windows; they do not show continuously zero
+competing load.
+
+**Scope.** The larger drains and the six calibration and conversion cases are the closest of these
+to the 7.3M and 73M targets, but they come from one machine and at most two measurements each. Not
+compared: the grouped triple drain at 7.3M, any 73M case, `CLI host`, Adult, and the categorical
+`include` recovery and `value_groups` pass-through calibrations. The change reaches every case that
+reads delimited input, so the results earlier in this guide describe the previous reader; only the
+cases here were measured after the change.
+
 ## What has not been measured
 
 - **No admissible published elapsed result, derived throughput rate or overhead estimate is
@@ -719,6 +861,9 @@ revision was measured, and the assessment records no build-to-commit tie or runt
   ([Command latency after the publication correction](#command-latency-after-the-publication-correction)).
 - **The tiered spill schedule has no 73M result**, and no `CLI host` row or whole-command trace has
   been recorded since it.
+- **The delimited reading change's elapsed cost on small inputs is not bounded**, and no result
+  earlier in this guide was re-measured after the change
+  ([Delimited reading rules: comparison with the previous reader](#delimited-reading-rules-comparison-with-the-previous-reader)).
 - **The five `probe` timings are baseline observations.** The probe cases were later re-validated
   under the corrected per-attribute oracle, which establishes correctness, not a new elapsed figure.
 - **A bounded successful probe scan at 7.3M or 73M is not represented.** Every synthetic family's

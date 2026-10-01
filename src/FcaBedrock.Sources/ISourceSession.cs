@@ -48,15 +48,18 @@ public interface IWideSourceSession : ISourceSession
 {
     /// <summary>
     /// Streams the cleaned object records in input order. <b>Repeatable</b> (each call
-    /// re-reads from the start and yields the same sequence) and <b>cleaned</b>: fields
-    /// carry the §5.1 quote-aware trim and missing normalization already applied, exactly
-    /// as the bound <see cref="IRecordSource"/> path applies them, so a probe and the
-    /// conversion of the spec it drafts observe identical values.
+    /// re-reads from the start and yields the same sequence) and <b>cleaned</b>: fields are
+    /// decoded by spec §5.1.1 (quote-aware, with outer whitespace removed) and
+    /// missing-normalized, exactly as the bound <see cref="IRecordSource"/> path does, so a
+    /// probe and the conversion of the spec it drafts observe identical values.
     /// <para>
     /// A header record, when the source has one, is consumed as schema and never yielded as
-    /// data; the first data record is index 0. Expected provider/read failures surface as
-    /// <see cref="SourceReadException"/>; cancellation surfaces as
-    /// <see cref="OperationCanceledException"/> and is never wrapped.
+    /// data; blank records are skipped; the first data record is index 0. Malformed quoting and
+    /// the reader's length limit, like other expected provider/read failures, surface as
+    /// <see cref="SourceReadException"/>; a cleanup failure after another failure is kept in
+    /// that failure's <see cref="Exception.Data"/> and never replaces it. Cancellation surfaces
+    /// as <see cref="OperationCanceledException"/>, is never wrapped, and no record is yielded
+    /// after it is observed.
     /// </para>
     /// </summary>
     IAsyncEnumerable<ObjectRecord> ReadAsync(CancellationToken cancellationToken = default);

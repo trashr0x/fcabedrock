@@ -300,6 +300,39 @@ public sealed class ProbeCommandTests
     }
 
     [Fact]
+    public async Task ProbeTriple_WhenTheHaltIsSelectedAndCloseFails_ThenTheDiagnosticNotAnOutputFailure()
+    {
+        // The second open is the row pass, whose stream fails when it is closed. The structural halt
+        // the pass selected is the outcome; the close failure behind it is not reported, and above
+        // all it is not mistaken for a broken output sink.
+        using var temp = TempDirectory.Create();
+        var data = temp.Write("data.csv", "s1,p,v\n,p,w\ns3,p,v\n");
+        var opens = 0;
+        var harness = new CliTestHarness
+        {
+            OpenInput = path => ++opens == 2 ? new CloseFailingStream(File.ReadAllBytes(path)) : File.OpenRead(path),
+        };
+
+        var exit = await harness.RunAsync("probe", data, "--shape", "triple", "--out", "-");
+
+        Assert.Equal(2, opens);
+        Assert.Equal(1, exit);
+        Assert.Equal(string.Empty, harness.StdOut);
+        var line = Assert.Single(harness.StdErr.Split('\n', StringSplitOptions.RemoveEmptyEntries));
+        Assert.Contains("error ObjectKeyValueInvalid:", line, StringComparison.Ordinal);
+    }
+
+    /// <summary>An in-memory input stream whose close fails, as a released handle's can.</summary>
+    private sealed class CloseFailingStream(byte[] data) : MemoryStream(data, writable: false)
+    {
+        protected override void Dispose(bool disposing)
+        {
+            base.Dispose(disposing);
+            throw new IOException("injected: close failed");
+        }
+    }
+
+    [Fact]
     public async Task Probe_WhenTheRoleMapIsInvalid_ThenTheResolversOwnDiagnosticsAreForwarded()
     {
         // The role map is checked by resolving the exact [binding] the probe would author,
@@ -379,6 +412,32 @@ public sealed class ProbeCommandTests
         Assert.Equal(2, exit);
         Assert.Equal(string.Empty, harness.StdOut);
         Assert.StartsWith($"error: unknown option '{guard}'", harness.StdErr, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData(0x23)] // '#'
+    [InlineData(0xE9)] // 'é'
+    [InlineData(0xA0)] // no-break space
+    [InlineData(0x7F)]
+    [InlineData(0x1E)]
+    public async Task Probe_WhenTheDelimiterIsOutsideTheAlphabet_ThenUsageExit2AndNoInputOpened(int code)
+    {
+        // §5.1.1: the alphabet is checked by the parser, so the refusal is a usage failure and
+        // the data file is never opened.
+        using var temp = TempDirectory.Create();
+        var data = temp.Write("data.csv", CliFixtures.WideData);
+        var harness = new CliTestHarness();
+
+        var exit = await harness.RunAsync("probe", data, "--shape", "wide", "--out", "-", "--delimiter", ((char)code).ToString());
+
+        Assert.Equal(2, exit);
+        Assert.Equal(string.Empty, harness.StdOut);
+        // The host line escapes the quote character it names, so the prefix stops before it.
+        Assert.StartsWith(
+            "error: option '--delimiter' accepts TAB or one character from U+001F to U+007E other than '#' and the quote character '",
+            harness.StdErr,
+            StringComparison.Ordinal);
+        Assert.Empty(harness.Opened);
     }
 
     // ---- delivery: which stream, which bytes ----------------------------------------------

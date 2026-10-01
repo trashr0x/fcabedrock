@@ -25,7 +25,7 @@ internal enum OptionValueKind
     /// <summary>A whole invariant number of at least 1 (§7.1 retention limits are positive).</summary>
     PositiveInteger,
 
-    /// <summary>A single §5.1 delimiter character: one non-newline character other than the quote.</summary>
+    /// <summary>A §5.1.1 delimiter: one character of the v1 alphabet (TAB, or U+001F through U+007E except '#'), other than the quote.</summary>
     Delimiter,
 
     /// <summary>§5.1 <c>binding.locale</c>: <c>invariant</c>, or a predefined culture name.</summary>

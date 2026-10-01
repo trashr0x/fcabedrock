@@ -1,12 +1,14 @@
+using System.Globalization;
 using FcaBedrock.Core.Spec;
 
 namespace FcaBedrock.Sources;
 
 /// <summary>
 /// A triple (subject-predicate-value) CSV/TSV <see cref="ITripleRowSource"/>. Sibling to
-/// <see cref="WideCsvSource"/>: Sep owns DSV tokenization (D-041); this type layers the
-/// declared delimiter, header handling, the resolved role→column map, and missing
-/// normalization. It is deliberately dumb: no grouping, no subject/contiguity validation,
+/// <see cref="WideCsvSource"/>: Sep splits candidate records (D-041) and
+/// <c>CsvReadPipeline</c> validates and decodes every field, unused columns included, by spec
+/// §5.1.1; this type layers the declared delimiter, header handling, the resolved
+/// role→column map, and missing normalization. It is deliberately dumb: no grouping, no subject/contiguity validation,
 /// no object-key semantics (D-082); those belong to the Conversion layer. Constructed from a
 /// replayable stream factory, so the <c>.cxt</c> two-pass and the grouped calibration
 /// pass over <c>unordered</c> input (D-103) re-read it instead of keeping a temporary copy.
@@ -24,7 +26,10 @@ public sealed class TripleCsvSource : ITripleRowSource
     /// <summary>
     /// Constructs a direct production source over <paramref name="binding"/>; its
     /// <see cref="Provenance"/> is a <see cref="DescriptorProvenance"/> derived from the
-    /// binding (settings + role map, D-098).
+    /// binding (settings + role map, D-098). Before any stream is opened it throws
+    /// <see cref="ArgumentException"/> for a non-triple binding, a delimiter outside the v1
+    /// alphabet, a delimiter equal to the quote or a missing role map, and
+    /// <see cref="NotSupportedException"/> for a non-standard quote.
     /// </summary>
     public TripleCsvSource(Func<Stream> openStream, Binding binding)
         : this(openStream, binding, provenance: null)
@@ -49,6 +54,20 @@ public sealed class TripleCsvSource : ITripleRowSource
         if (binding.QuoteChar != '"')
         {
             throw new NotSupportedException("TripleCsvSource supports only the '\"' quote character (RFC 4180).");
+        }
+
+        if (!SourceReadSettings.IsInDelimiterAlphabet(binding.Delimiter))
+        {
+            throw new ArgumentException(
+                string.Create(
+                    CultureInfo.InvariantCulture,
+                    $"binding.Delimiter U+{(int)binding.Delimiter:X4} is not in the v1 delimiter alphabet (TAB, or U+001F through U+007E except '#')."),
+                nameof(binding));
+        }
+
+        if (binding.Delimiter == binding.QuoteChar)
+        {
+            throw new ArgumentException("binding.Delimiter must differ from binding.QuoteChar.", nameof(binding));
         }
 
         _columns = binding.TripleColumns

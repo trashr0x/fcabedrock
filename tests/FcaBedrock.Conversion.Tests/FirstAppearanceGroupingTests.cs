@@ -29,6 +29,82 @@ public sealed class FirstAppearanceGroupingTests
         Assert.Equal([0, 1, 2, 3, 4], result.Select(r => r.Tag));
     }
 
+    // ---- the intake's upstream lifetime, through the real emitter -----------------------------
+    //
+    // The intake reads its whole upstream into spill storage before its first yield and closes the
+    // upstream before anything is yielded. A spill storage failure is the operation's result and a
+    // failure to close the upstream cannot replace it; after a complete intake a sole close failure
+    // fails the grouping. The upstream is closed exactly once.
+
+    private static GroupingOptions FailingSpill() =>
+        new(maxBufferedBytes: 1, fileSystem: new FakeSpoolFileSystem { OnCreateRun = _ => new IOException("injected: the spool device is full") });
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task GroupByFirstAppearanceAsync_WhenTheIntakeSpillFailsWhileTheUnorderedTruncationIsSuspended_ThenTheStorageFailureIsKept(bool closeFails)
+    {
+        var emit = await UnorderedTripleRowSourceTests.UnorderedEmitAsync();
+        var fault = new UpstreamFault { DisposeFailure = closeFails ? UpstreamFault.CloseFailure() : null };
+
+        var (objects, diagnostics, error) = await EmitDrain.RunAsync(emit(fault, UnorderedTripleRowSourceTests.TripleOk, null, FailingSpill()));
+
+        Assert.Equal(0, objects);
+        Assert.Equal(["GroupingStorageFailed"], EmitDrain.ErrorCodes(diagnostics));
+        Assert.Null(error);
+        Assert.Equal(1, fault.DisposeCalls);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task GroupByFirstAppearanceAsync_WhenTheIntakeSpillFailsWhileTheDedupePrefixIsSuspended_ThenTheStorageFailureIsKept(bool closeFails)
+    {
+        var binding = ConversionFixtures.WideWithKey(0, FcaBedrock.Core.Spec.DuplicateObjectPolicy.Dedupe);
+        var spec = new FcaBedrock.Core.Spec.BedrockSpec(binding, [ConversionFixtures.Nominal("a", 1, "x", "y")]);
+        var schema = await ConversionFixtures.SourceOver("k1,x\n", binding).GetSchemaAsync();
+        Assert.True(ConversionFixtures.PlanFor(spec, schema).TryGetValue(out var plan));
+        var fault = new UpstreamFault { DisposeFailure = closeFails ? UpstreamFault.CloseFailure() : null };
+
+        var (objects, diagnostics, error) = await EmitDrain.RunAsync(d => Emitter.EmitAsync(
+            plan, new FaultyRecordSource(ConversionFixtures.SourceOver("k1,x\nk2,y\nk3,x\n", binding), fault), d, FailingSpill()));
+
+        Assert.Equal(0, objects);
+        Assert.Equal(["GroupingStorageFailed"], EmitDrain.ErrorCodes(diagnostics));
+        Assert.Null(error);
+        Assert.Equal(1, fault.DisposeCalls);
+    }
+
+    [Fact]
+    public async Task GroupByFirstAppearanceAsync_WhenAGenericUpstreamEndsAndOnlyItsCloseFails_ThenTheCloseFailureFailsTheGrouping()
+    {
+        var emit = await UnorderedTripleRowSourceTests.UnorderedEmitAsync();
+        var close = UpstreamFault.CloseFailure();
+        var fault = new UpstreamFault { DisposeFailure = close };
+
+        var (objects, diagnostics, error) = await EmitDrain.RunAsync(emit(
+            fault, UnorderedTripleRowSourceTests.TripleOk, [new FcaBedrock.Sources.TripleRow(0, "s1", "p", "v")], GroupingOptions.Default));
+
+        Assert.Equal(0, objects);
+        Assert.Empty(EmitDrain.ErrorCodes(diagnostics));
+        Assert.Same(close, error);
+        Assert.Equal(1, fault.DisposeCalls);
+    }
+
+    [Fact]
+    public async Task GroupByFirstAppearanceAsync_WhenTheUnorderedSourceIsDrainedNormally_ThenEveryObjectIsEmittedAndTheUpstreamClosedOnce()
+    {
+        var emit = await UnorderedTripleRowSourceTests.UnorderedEmitAsync();
+        var fault = new UpstreamFault();
+
+        var (objects, diagnostics, error) = await EmitDrain.RunAsync(emit(fault, UnorderedTripleRowSourceTests.TripleOk, null, GroupingOptions.Default));
+
+        Assert.Equal(2, objects);
+        Assert.Empty(EmitDrain.ErrorCodes(diagnostics));
+        Assert.Null(error);
+        Assert.Equal(1, fault.DisposeCalls);
+    }
+
     [Fact]
     public async Task GroupByFirstAppearanceAsync_WhenNullKeys_ThenPassThroughRankedByFirstAppearance()
     {

@@ -58,16 +58,34 @@ internal static class FirstAppearanceGrouping
             long retainedBytes = 0; // Σ per-row retained referenced objects (the buffer/backing array is added separately)
             var runs = new List<SpoolRunHandle>();
 
-            await foreach (var row in rows.WithCancellation(cancellationToken).ConfigureAwait(false))
+            // The intake owns the upstream enumeration and closes it before anything is yielded.
+            var source = rows.GetAsyncEnumerator(cancellationToken);
+            try
             {
-                var key = keyOf(row);
-                int rank;
-                bool firstAppearance;
-                if (key is null)
+                while (await source.MoveNextAsync().ConfigureAwait(false))
                 {
-                    if (nullRank < 0)
+                    var row = source.Current;
+                    var key = keyOf(row);
+                    int rank;
+                    bool firstAppearance;
+                    if (key is null)
                     {
-                        nullRank = nextRank++;
+                        if (nullRank < 0)
+                        {
+                            nullRank = nextRank++;
+                            firstAppearance = true;
+                        }
+                        else
+                        {
+                            firstAppearance = false;
+                        }
+
+                        rank = nullRank;
+                    }
+                    else if (!rankByKey.TryGetValue(key, out rank))
+                    {
+                        rank = nextRank++;
+                        rankByKey[key] = rank;
                         firstAppearance = true;
                     }
                     else
@@ -75,43 +93,41 @@ internal static class FirstAppearanceGrouping
                         firstAppearance = false;
                     }
 
-                    rank = nullRank;
-                }
-                else if (!rankByKey.TryGetValue(key, out rank))
-                {
-                    rank = nextRank++;
-                    rankByKey[key] = rank;
-                    firstAppearance = true;
-                }
-                else
-                {
-                    firstAppearance = false;
-                }
+                    // Intake hook (D-083): fires in source order for every row, so the dedupe emitter can
+                    // detect duplicates without a second ordinal seen-set. No-op for triple (null hook).
+                    onRow?.Invoke(row, firstAppearance);
 
-                // Intake hook (D-083): fires in source order for every row, so the dedupe emitter can
-                // detect duplicates without a second ordinal seen-set. No-op for triple (null hook).
-                onRow?.Invoke(row, firstAppearance);
+                    buffer.Add(new RankedRow<TRow>(rank, seq++, row));
+                    retainedBytes = ResidentModel.SaturatingAdd(retainedBytes, codec.MeasureResident(row));
 
-                buffer.Add(new RankedRow<TRow>(rank, seq++, row));
-                retainedBytes = ResidentModel.SaturatingAdd(retainedBytes, codec.MeasureResident(row));
+                    // Conservative resident accounting = the buffer (List object + its real-capacity backing
+                    // array) + the retained referenced objects; over the padded x64 constants this bounds the
+                    // actual retained live-object graph (D-082).
+                    var residentBytes = ResidentModel.SaturatingAdd(ResidentModel.BufferBytes(buffer.Capacity, slotBytes), retainedBytes);
 
-                // Conservative resident accounting = the buffer (List object + its real-capacity backing
-                // array) + the retained referenced objects; over the padded x64 constants this bounds the
-                // actual retained live-object graph (D-082).
-                var residentBytes = ResidentModel.SaturatingAdd(ResidentModel.BufferBytes(buffer.Capacity, slotBytes), retainedBytes);
-
-                // Spill when the resident accounting exceeds the budget; an over-budget single row spills
-                // alone. Replace the buffer (not Clear) so the freed backing-array capacity is not retained
-                // past retainedBytes = 0 (D-082).
-                if (residentBytes > options.MaxBufferedBytes)
-                {
-                    Sort(buffer);
-                    options.Observer?.BufferSpilled(residentBytes);
-                    runs.Add(workspace.WriteRun(buffer, GroupingOperation.Spill));
-                    buffer = [];
-                    retainedBytes = 0;
+                    // Spill when the resident accounting exceeds the budget; an over-budget single row spills
+                    // alone. Replace the buffer (not Clear) so the freed backing-array capacity is not retained
+                    // past retainedBytes = 0 (D-082).
+                    if (residentBytes > options.MaxBufferedBytes)
+                    {
+                        Sort(buffer);
+                        options.Observer?.BufferSpilled(residentBytes);
+                        runs.Add(workspace.WriteRun(buffer, GroupingOperation.Spill));
+                        buffer = [];
+                        retainedBytes = 0;
+                    }
                 }
             }
+            catch
+            {
+                // A spill failure, a read failure or cancellation is already this enumeration's
+                // outcome: closing the upstream cannot replace it.
+                await SourceEnumeration.CloseAfterSelectedResultAsync(source).ConfigureAwait(false);
+                throw;
+            }
+
+            // Every row was read: a failure to close the upstream fails the grouping.
+            await source.DisposeAsync().ConfigureAwait(false);
 
             if (runs.Count == 0)
             {

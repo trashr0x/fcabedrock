@@ -140,7 +140,7 @@ The binding tells the spec how to apply itself to a concrete data source.
 [binding]
 shape         = "wide"                       # "wide" | "triple"
 encoding      = "utf-8"                      # default "utf-8"
-delimiter     = ","                          # default ","; any single char
+delimiter     = ","                          # default ","; TAB or U+001F..U+007E except "#"
 quote_char    = "\""                         # default "\""
 has_header    = true                         # default true for "wide", false for "triple"
 locale        = "invariant"                  # default "invariant"
@@ -154,18 +154,20 @@ missing_token = "?"                          # default "?"; "" disables token de
 **`encoding`** *(default `"utf-8"`)*. Any encoding accepted by the
 implementation. Implementations MUST support at least UTF-8.
 
-**`delimiter`** *(default `","`)*. A single non-newline character; common
-alternatives `"\t"`, `";"`, `"|"`. It MUST differ from `quote_char`
-(`BindingDelimiterQuoteConflict` otherwise).
+**`delimiter`** *(default `","`)*. One character of the v1 delimiter alphabet
+(§5.1.1), for example `","`, `"\t"`, `";"`, `"|"`, a space or `":"`. A value
+outside the alphabet, including CR, LF and every non-ASCII character, is
+`SpecFieldInvalid` (Error), reported at the value when the spec is read. It MUST
+differ from `quote_char` (`BindingDelimiterQuoteConflict` otherwise).
 
-**`quote_char`** *(default `"\""`)*. RFC 4180-style quoting; `""` inside a quoted
-field is an escaped quote. **v1 supports only the standard double quote `"`**; a
+**`quote_char`** *(default `"\""`)*. The character that opens and closes a quoted
+field; `""` inside a quoted field is an escaped quote (§5.1.1). **v1 supports only the standard double quote `"`**; a
 custom `quote_char` parses but is rejected with `QuoteCharNotSupportedV1`. (The
 field is retained so a later version can lift the restriction without a format
 change.)
 
 **`has_header`** *(default is **shape-specific**: `true` for `shape = "wide"`,
-`false` for `shape = "triple"`)*. If true, the first non-empty record is consumed
+`false` for `shape = "triple"`)*. If true, the first non-blank record (§5.1.1) is consumed
 as a header and is available for binding columns/roles by name; if false, every
 record is data. Triple data is typically headerless, hence the `false` default
 there: a `true` default would silently consume the first triple as a header. The
@@ -183,20 +185,25 @@ hardcoding invariant. (Date parsing is reserved for the deferred date value
 type, §11.7.) Recommended: keep `"invariant"` unless you specifically need a
 locale's conventions.
 
-**`missing_token`** *(default `"?"`)*. Any string equal to this token,
-after whitespace trimming, is treated as missing. To disable
-token-based missing detection, set `missing_token = ""`. Empty string
-cells are *always* missing regardless of this setting.
+**`missing_token`** *(default `"?"`)*. A data cell whose decoded value
+(§5.1.1) equals this token exactly (ordinal) is missing. To disable
+token-based missing detection, set `missing_token = ""`. A data cell whose
+decoded value is empty is *always* missing regardless of this setting. Header
+cells are never missing-normalized.
 
-**Whitespace.** Leading and trailing whitespace around an **unquoted** data field
-value is trimmed before any interpretation: missing-token detection, matching
-against `declared_domain` / `value_labels` keys / `restrict_to` / a `dichotomic`
+**Whitespace.** Whitespace (W) is the 25 characters U+0009 through U+000D, U+0020,
+U+0085, U+00A0, U+1680, U+2000 through U+200A, U+2028, U+2029, U+202F, U+205F and
+U+3000; U+200B, U+FEFF and U+180E are not whitespace. Leading and trailing W is
+removed around an **unquoted** data field and outside a **quoted** field's quotes
+(§5.1.1) before any interpretation: missing-token detection, matching against
+`declared_domain` / `value_labels` keys / `restrict_to` / a `dichotomic`
 `true_value` / `value_groups`, numeric parsing, and, for triple input, deriving
 the object name from the **subject** and matching the **predicate** selector.
-Whitespace inside a **quoted** field is preserved (deliberate spaces survive). The spec-side strings you write in
-the TOML are taken **verbatim** and never trimmed; only the data-side field value
-is. The rule is uniform across all matching, so a value never fails to match
-purely because of surrounding spaces in the source file.
+Whitespace inside a **quoted** field is preserved (deliberate spaces survive). The
+spec-side strings you write in the TOML are taken **verbatim** and never trimmed;
+only the data-side field value is. The rule is uniform across all matching, so a
+value never fails to match purely because of surrounding whitespace in the source
+file.
 
 **Numeric spec-side entries are the one exception to "verbatim".** A **numeric**
 entry written in the spec (a numeric `restrict_to` value (§10.4), or a numeric
@@ -204,8 +211,87 @@ entry written in the spec (a numeric `restrict_to` value (§10.4), or a numeric
 `scale.order` entry (§12.3)) is **parsed** under `binding.locale` to its numeric
 identity rather than compared as an opaque string, so `90`, `90.0`, and `9e1`
 denote the same value and all zero spellings canonicalize to `0` (D-096). This is
-a value-identity rule, not a whitespace one; surrounding whitespace remains
-insignificant.
+a value-identity rule, not a whitespace one; W at the ends of such an entry
+remains insignificant (§5.1.1).
+
+### 5.1.1 Reading delimited text
+
+This is the Bedrock delimited-text grammar: RFC 4180-style quoting with the
+extensions stated here (outer whitespace, the delimiter alphabet, Unicode text,
+three line endings, blank-record skipping, ragged rows). It is not strict RFC 4180
+conformance. W is the whitespace of §5.1. Outer whitespace (O) is W without the
+selected delimiter, CR and LF: a delimiter or line break is structural before any
+whitespace rule applies, so a TAB or space delimiter always separates fields.
+
+**Delimiter alphabet.** The v1 delimiter alphabet is TAB (U+0009) and every
+character from U+001F through U+007E except `#` (U+0023): 96 characters. It
+includes `"`, which cannot be a delimiter while v1 fixes `quote_char` to `"`
+(`BindingDelimiterQuoteConflict`), so 95 are usable. `#` is excluded because the
+v1 reader reserves it, a v1 limitation rather than a rule of delimited text. The
+alphabet is a fixed product rule and does not widen with a reader upgrade.
+
+**Records.** Outside quoted content, CRLF is one record terminator, and a lone CR
+or a lone LF also terminates a record. Inside quoted content CR and LF are literal
+and are kept exactly, in their order. U+0085, U+2028 and U+2029 are whitespace,
+never terminators. End of input outside quoted content ends the last record; a
+final terminator creates no further record, and empty input has no records.
+Nothing is normalized, case-folded or inferred.
+
+**Field grammar.** A field is unquoted or quoted.
+
+- An unquoted field contains no `"`. Leading and trailing W is removed; interior
+  characters are kept; an empty field is allowed.
+- A quoted field may begin with O, which is ignored, then `"`. Everything up to the
+  closing `"` is content: delimiters, whitespace and line breaks included. `""`
+  inside the content is one `"`. After the closing `"` only O may follow before the
+  delimiter, the record end or the end of input, and it is ignored. The decoded
+  content is never trimmed.
+- These are malformed and refuse the input: a `"` after other unquoted content
+  (`a"b`, `a"b"`), any character other than O after a closing quote, including a
+  second quote (`"a"x`, `"a" "b"`), and end of input inside a quoted field (`"a`,
+  `"""`).
+
+Every field of every record is checked, including columns no attribute uses.
+Examples with a comma delimiter: `  " x "  ` is ` x `; `""` is empty; `""""` is
+`"`. With a TAB delimiter, a record of two TABs is three empty fields; with a space
+delimiter, ` a ` is an empty field, `a` and an empty field.
+
+**Blank records.** A record with no `"`, no delimiter and only O characters, the
+empty record included, is blank and is skipped before the header, between records
+and at the end. `""`, `" "`, a quoted field holding only line breaks, and a record
+made only of delimiters are not blank.
+
+**Header and schema.** With `has_header = true` the first non-blank record is the
+header, decoded by the field grammar and never missing-normalized; empty and
+duplicate names are legal (§10.2). A quoted empty header has one column. Without a
+header the first non-blank record gives the schema width; no later record changes
+it, and later records may be shorter or longer (§5.3.1, §5.4). A source with no
+non-blank record has no header and no columns.
+
+**Record indices.** Data records are numbered from 0 in input order, counting
+neither the header nor blank records. Row-index object names (§5.4), triple record
+indices and diagnostic `record=` locations use this number; a later filter never
+renumbers it.
+
+**Numbers.** Numeric interpretation of a decoded data value ignores W at the
+value's ends: a quoted `" 30 "` is that string for string matching and parses as 30
+for a numeric attribute. The value itself is not changed. A numeric spec-side entry
+(§5.1) is parsed the same way.
+
+**Reading failures.** Malformed quoting, a record longer than the reader's limit
+(about 16 million UTF-16 code units for one record or the reader's buffer holding
+it; the exact figure depends on the reader and the machine) and an unreadable
+source are read failures, not diagnostics: `convert` and the other data-reading
+commands report a code-less error and exit 1, and `probe` reports
+`ProbeSourceReadFailed`. A never-closed quote can run into the length limit before
+the end of input. A read failure can be reported before an earlier malformed field
+has been examined, but a malformed record is never read as data. An unsupported
+`delimiter` is a spec or option error before the source is opened.
+
+**Cancellation.** A cancelled read ends with the cancellation, never with a read
+failure or a diagnostic, and makes no further record or schema available once the
+cancellation is observed. How soon it is observed is not specified; a blocked read
+of the underlying source is not interrupted.
 
 ### 5.2 Wide-CSV binding
 
@@ -301,7 +387,7 @@ mode = "row_index"                           # "row_index" | "column" | "composi
 ```
 
 **`mode = "row_index"`** *(default for wide; not allowed for triple)*.
-Object names are `0`, `1`, `2`, … in input order. Keys are unique by
+Object names are `0`, `1`, `2`, …: the data record index (§5.1.1), in input order. Keys are unique by
 construction; `duplicate_object_policy` does not apply. Declaring `row_index`
 under `shape = "triple"` is `ObjectKeyModeInvalidForShape` (Error, spec validate).
 
@@ -410,7 +496,7 @@ For `column` mode, given input where key `P001` appears at rows 1 and 3:
   the **converter** (the object-key resolver, **not** the writer; EP-15 "exporters
   are dumb"), in object emission order (§17 rule 4), and are **unique by
   construction**: the first occurrence of a cleaned key takes the key itself; a later
-  occurrence takes `<key>#<record-index>` (0-based source record index, e.g. `P001`,
+  occurrence takes `<key>#<record-index>` (0-based data record index (§5.1.1), e.g. `P001`,
   …, `P001#2`). If any candidate is already assigned, colliding with a literal data
   key or an earlier generated name, the converter appends `#1`, `#2`, … (ascending
   integers from 1) and takes the first unused; all comparisons are ordinal (EP-12).

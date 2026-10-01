@@ -257,7 +257,7 @@ public sealed class ProbeShapeParityTests
         // The asymmetry that is deliberate: wide probe is row-index based, so blank and
         // whitespace-only CELLS are ordinary data — never `ObjectKeyValueInvalid`. Only a triple
         // subject names an object (D-106).
-        var result = await ProbeFixtures.ProbeCsvAsync("a\n\" \"\n\n");
+        var result = await ProbeFixtures.ProbeCsvAsync("a\n\" \"\n\"\"\n\n");
 
         Assert.DoesNotContain(
             result.Diagnostics,

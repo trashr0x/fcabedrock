@@ -173,8 +173,8 @@ internal static class CommandLineParser
         OptionValueKind.PositiveInteger when !IsPositiveInteger(value) =>
             $"option '{option.Name}' accepts a whole number of at least 1, not '{value}'.",
         OptionValueKind.Delimiter when !IsDelimiter(value) =>
-            $"option '{option.Name}' accepts a single non-newline character other than the quote character"
-                + $" '\"', not '{value}'.",
+            $"option '{option.Name}' accepts TAB or one character from U+001F to U+007E other than '#'"
+                + $" and the quote character '\"', not '{value}'.",
         OptionValueKind.Locale when !IsLocale(value) =>
             $"option '{option.Name}' accepts invariant or a known culture name, not '{value}'.",
         _ => null,
@@ -208,10 +208,11 @@ internal static class CommandLineParser
     private static bool IsPositiveInteger(string value) =>
         int.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out var parsed) && parsed >= 1;
 
-    // §5.1: a single non-newline character that differs from the quote character, which v1
-    // fixes at '"'. Exactly one UTF-16 unit, because the resolved setting is a `char`.
+    // §5.1.1: one character of the v1 delimiter alphabet (SourceReadSettings.IsInDelimiterAlphabet)
+    // other than the quote character, which v1 fixes at '"'. Exactly one UTF-16 unit, because the
+    // resolved setting is a `char`.
     private static bool IsDelimiter(string value) =>
-        value.Length == 1 && value[0] is not ('\r' or '\n' or '"');
+        value.Length == 1 && SourceReadSettings.IsInDelimiterAlphabet(value[0]) && value[0] != '"';
 
     // The predicate SpecResolver and ProbeOptions both apply (§5.1): "invariant"
     // case-insensitively, or a PREDEFINED culture — predefinedOnly matters, because under ICU

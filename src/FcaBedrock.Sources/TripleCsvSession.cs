@@ -28,7 +28,8 @@ public sealed class TripleCsvSession : ITripleSourceSession
     /// Creates a session over <paramref name="openStream"/> with triple
     /// <paramref name="settings"/>. Throws <see cref="ArgumentException"/> when the
     /// settings are not triple, or <see cref="NotSupportedException"/> for a
-    /// non-standard quote.
+    /// non-standard quote. The settings' delimiter is always in the v1 alphabet, because
+    /// <see cref="SourceReadSettings.Create"/> enforces it.
     /// </summary>
     public TripleCsvSession(Func<Stream> openStream, SourceReadSettings settings)
     {

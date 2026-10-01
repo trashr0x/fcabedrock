@@ -64,6 +64,19 @@ public sealed class ResolvedSpecTests
     }
 
     [Fact]
+    public void Create_WhenBindingDelimiterIsOutsideTheAlphabet_ThenNoSettingsCanPairWithIt()
+    {
+        // ResolvedSpec needs no alphabet check of its own: settings that equal the binding's
+        // scalars cannot be built for a '#' delimiter, and settings for any other delimiter are
+        // refused as inconsistent with the binding.
+        var spec = new BedrockSpec(SpecFixtures.WideRowIndex(delimiter: '#'), [SpecFixtures.Nominal("g", 0, ["b"])]);
+
+        Assert.Throws<ArgumentException>(() => SpecFixtures.Settings(spec.Binding));
+        Assert.Throws<ArgumentException>(() =>
+            ResolvedSpec.Create(spec, new SourceSchema(1), SourceReadSettings.CreateWide(), []));
+    }
+
+    [Fact]
     public void Create_WhenTripleRolesNotDistinct_ThenThrows()
     {
         var binding = new Binding(SourceShape.Triple, "utf-8", ',', '"', HasHeader: false, "invariant", "?",

@@ -201,6 +201,28 @@ public sealed class ValidateCommandTests
         Assert.Contains("SourceBindingInvalid", harness.StdErr, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task Validate_WhenTheSpecDelimiterIsHash_ThenSpecFieldInvalidExit1AndNoDataOpened()
+    {
+        // §5.1.1: '#' is outside the delimiter alphabet, so the spec read refuses it at the value
+        // and the data file is never opened.
+        using var temp = TempDirectory.Create();
+        var spec = temp.Write(
+            "spec.toml", CliFixtures.IndexBoundSpec.Replace("shape = \"wide\"", "shape = \"wide\"\ndelimiter = \"#\"", StringComparison.Ordinal));
+        var data = temp.Write("data.csv", CliFixtures.WideData);
+        var harness = new CliTestHarness();
+
+        var exit = await harness.RunAsync("validate", spec, data);
+
+        Assert.Equal(1, exit);
+        Assert.DoesNotContain(data, harness.Opened);
+        var line = Assert.Single(harness.StdErr.Split('\n', StringSplitOptions.RemoveEmptyEntries));
+        Assert.Contains(
+            "error SpecFieldInvalid: [binding] key 'delimiter' expects TAB or one character from U+001F to U+007E other than '#' (§5.1.1).",
+            line,
+            StringComparison.Ordinal);
+    }
+
     // ---- exit codes ------------------------------------------------------------------
 
     [Fact]

@@ -350,6 +350,106 @@ public sealed class InputHashTests
         Assert.Equal(1, tracker.CompletedPasses);
     }
 
+    // ---- through the delimited reader (spec §5.1.1) ------------------------------------------
+    //
+    // The reader decodes the bytes it is handed and never re-reads, skips or rewrites them, so a
+    // pass it completes hashes exactly the original bytes: a byte order mark, invalid bytes and CR
+    // CR included.
+
+    public static TheoryData<string, byte[]> ReaderInputs() => new()
+    {
+        { "a byte order mark", [0xEF, 0xBB, 0xBF, .. Encoding.UTF8.GetBytes("a,b\n1,2\n")] },
+        { "an invalid byte", [.. Encoding.UTF8.GetBytes("a,b"), 0xFF, .. Encoding.UTF8.GetBytes("c\n\nd,e\n")] },
+        { "quoted CR CR between multibyte characters", Encoding.UTF8.GetBytes("x,\"é\r\r中" + char.ConvertFromUtf32(0x1F600) + "\",z\n \n") },
+    };
+
+    private static async Task<List<string>> ReadThroughReaderAsync(InputHashTracker tracker)
+    {
+        var session = new FcaBedrock.Sources.WideCsvSession(
+            tracker.OpenHashed, FcaBedrock.Core.Spec.SourceReadSettings.CreateWide(hasHeader: false, missingToken: string.Empty));
+        var records = new List<string>();
+        await foreach (var record in session.ReadAsync(TestContext.Current.CancellationToken))
+        {
+            records.Add(string.Join("|", Enumerable.Range(0, record.FieldCount).Select(record.Field)));
+        }
+
+        return records;
+    }
+
+    [Theory]
+    [MemberData(nameof(ReaderInputs))]
+    public async Task Digest_WhenTheReaderDrainsTheInput_ThenItIsOverTheOriginalBytes(string what, byte[] bytes)
+    {
+        var tracker = TrackerOver(bytes);
+
+        _ = await ReadThroughReaderAsync(tracker);
+
+        Assert.True(tracker.CompletedPasses == 1, what);
+        Assert.Equal(ExpectedDigest(bytes), tracker.Digest);
+    }
+
+    [Fact]
+    public async Task CompletedPasses_WhenTheProviderReadsZeroMoreThanOnceAtTheEnd_ThenOnePassIsCountedOnce()
+    {
+        var bytes = Encoding.UTF8.GetBytes("a,b\n1,2\n");
+        var zeroReads = 0;
+        var tracker = new InputHashTracker(_ => new ZeroCountingStream(bytes, () => zeroReads++), "data.csv");
+
+        _ = await ReadThroughReaderAsync(tracker);
+
+        Assert.True(zeroReads > 1, $"the end of the input was read {zeroReads} time(s)");
+        Assert.Equal(1, tracker.CompletedPasses);
+        Assert.Equal(ExpectedDigest(bytes), tracker.Digest);
+    }
+
+    [Fact]
+    public async Task CompletedPasses_WhenTheReaderReadsTheInputTwice_ThenTwoPassesCompleteWithTheSameRecords()
+    {
+        // The .cxt writer's two passes: both read the same records and both complete.
+        var bytes = Encoding.UTF8.GetBytes("\nh1,h2\n\n1,\"a\r\nb\"\n  \n2,x\n");
+        var tracker = TrackerOver(bytes);
+
+        var first = await ReadThroughReaderAsync(tracker);
+        var second = await ReadThroughReaderAsync(tracker);
+
+        Assert.Equal(first, second);
+        Assert.Equal(2, tracker.CompletedPasses);
+        Assert.False(tracker.HasMismatch);
+        Assert.Equal(ExpectedDigest(bytes), tracker.Digest);
+    }
+
+    [Fact]
+    public async Task CompletedPasses_WhenASchemaReadOfALargeInputStopsEarly_ThenNoPassCompletes()
+    {
+        var bytes = Encoding.UTF8.GetBytes("h1,h2\n" + string.Concat(Enumerable.Range(0, 200_000).Select(i => $"{i},v\n")));
+        var tracker = TrackerOver(bytes);
+        var session = new FcaBedrock.Sources.WideCsvSession(tracker.OpenHashed, FcaBedrock.Core.Spec.SourceReadSettings.CreateWide());
+
+        var schema = await session.GetSchemaAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal(["h1", "h2"], schema.Header);
+        Assert.Equal(0, tracker.CompletedPasses);
+        Assert.Null(tracker.Digest);
+    }
+
+    /// <summary>An in-memory stream that reports each read that returned zero for a non-empty request.</summary>
+    private sealed class ZeroCountingStream(byte[] bytes, Action onZero) : MemoryStream(bytes, writable: false)
+    {
+        public override int Read(byte[] buffer, int offset, int count) => Count(base.Read(buffer, offset, count), count);
+
+        public override int Read(Span<byte> buffer) => Count(base.Read(buffer), buffer.Length);
+
+        private int Count(int read, int requested)
+        {
+            if (read == 0 && requested > 0)
+            {
+                onZero();
+            }
+
+            return read;
+        }
+    }
+
     /// <summary>A stream that hands out a prefix and then fails, like a truncated read.</summary>
     private sealed class FailingStream(byte[] bytes, int failAfter) : MemoryStream(bytes, writable: false)
     {

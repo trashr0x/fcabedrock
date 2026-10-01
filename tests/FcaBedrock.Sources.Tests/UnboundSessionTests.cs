@@ -93,7 +93,7 @@ public sealed class UnboundSessionTests
     [Fact]
     public async Task WideUnbound_YieldsTheSameCleanedRecordsAsTheBoundPath()
     {
-        // Quote-aware trim, a quoted interior-space value, an escaped quote, the missing token,
+        // Spec §5.1.1 decoding, a quoted interior-space value, an escaped quote, the missing token,
         // an empty cell, and a ragged short row — all in one input.
         const string Text = "  a  ,\" b \",\"x\"\"y\"\n?,,plain\nshort\n";
         var session = WideSession(Text);
@@ -402,13 +402,17 @@ public sealed class UnboundSessionTests
     public async Task WideUnbound_WhenRowExceedsSepsLimit_ThenSourceReadExceptionWithInnerCause()
     {
         // Sep 0.15.0 signals its row/buffer ceiling as NotSupportedException ("Buffer or row has
-        // reached maximum supported length of 16777216"). The adapter normalizes it here so no
-        // consumer needs to know Sep exists.
+        // reached maximum supported length of 16777216"). The adapter normalizes it, with its own
+        // limit message, so no consumer needs to know Sep exists.
         var session = WideSession(new string('x', 20 * 1024 * 1024) + "\n");
 
         var thrown = await Assert.ThrowsAsync<SourceReadException>(() => DrainAsync(session.ReadAsync()));
 
         Assert.IsType<NotSupportedException>(thrown.InnerException);
+        Assert.StartsWith(
+            "The source could not be read: a record exceeded the reader's row and buffer limit",
+            thrown.Message,
+            StringComparison.Ordinal);
     }
 
     [Fact]

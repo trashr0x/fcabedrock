@@ -8,4 +8,13 @@
     <PackageReference Include="Sep" />
   </ItemGroup>
 
+  <!-- White-box access for the Sources unit tests (the reading grammar's in-work cancellation
+       checkpoints, which a read through the public API cannot reach deterministically). A test
+       seam only; no production behavior depends on it (principle EP-6), and no production
+       package is granted friend access (the D-098 posture). SourcesProjectContractTests asserts
+       this exact grant, in the project text and in the compiled assembly. -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="FcaBedrock.Sources.Tests" />
+  </ItemGroup>
+
 </Project>

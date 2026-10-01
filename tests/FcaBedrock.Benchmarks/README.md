@@ -119,7 +119,7 @@ Every case below is Small-category unless its family says otherwise; the UCI Adu
 
 | Surface | Families |
 | --- | --- |
-| Source drain | W16 wide, Ads-width (1,559 columns), long-text, UCI Adult |
+| Source drain | W16 wide, Ads-width (1,559 columns), long-text, the seven lexical grammar cases, UCI Adult |
 | Calibrate | four shapes in one pass; count-sensitive triple; sixteen simultaneous quantile attributes |
 | Plan | the pure planner: narrow (33 formal attributes) against Ads-width (1,568) |
 | Emit + `.dat` | W16, both T10 layouts, keyed dedupe, Ads-width, long-text, Adult, the v2 minis |

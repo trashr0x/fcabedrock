@@ -21,7 +21,7 @@ namespace FcaBedrock.Benchmarks.Corpus;
 /// roughly ±1,000,000 at two decimal places, including negatives. The eight <c>c*</c> columns each
 /// draw from an eight-value domain; <c>c3</c> carries deterministic <b>empty</b> cells (the other
 /// missing form), and <c>c6</c>'s domain contains one value bearing the delimiter and one bearing
-/// a double quote, so every generated file exercises the RFC 4180 quoting path without inflating
+/// a double quote, so every generated file exercises the quoted-field path (spec §5.1.1) without inflating
 /// that column's cardinality. The four <c>b*</c> columns are yes/no.
 /// </para>
 /// </summary>
@@ -112,8 +112,8 @@ internal static class W16Corpus
     public static bool BinaryIsYes(long row, int binary) => (Determinism.Draw(row, 20 + binary) & 1) == 0;
 
     /// <summary>
-    /// The <b>cleaned</b> value of one cell — exactly what a source yields after the §5.1
-    /// quote-aware trim and missing normalization, so an oracle compares against the same thing the
+    /// The <b>cleaned</b> value of one cell — exactly what a source yields after spec §5.1.1
+    /// decoding and missing normalization, so an oracle compares against the same thing the
     /// pipeline sees. <see langword="null"/> is missing (an empty cell or the missing token).
     /// </summary>
     public static string? CleanedValue(long row, int column) => column switch

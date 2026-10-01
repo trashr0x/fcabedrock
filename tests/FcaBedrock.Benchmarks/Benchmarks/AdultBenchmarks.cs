@@ -10,7 +10,7 @@ namespace FcaBedrock.Benchmarks;
 /// missing cells and all.
 /// <para>
 /// <b>Every Adult case is <see cref="BenchmarkCategories.External"/>, and so opt-in.</b> Not
-/// because it is slow — 32,562 records is Small-sized work — but because its corpus is acquired
+/// because it is slow — 32,561 records is Small-sized work — but because its corpus is acquired
 /// from a third-party host rather than generated here, and a routine run must be able to complete
 /// without reaching one. Run these with
 /// <c>--anyCategories External</c>; a bare run, a broad name filter, and an <c>*Adult*</c> filter

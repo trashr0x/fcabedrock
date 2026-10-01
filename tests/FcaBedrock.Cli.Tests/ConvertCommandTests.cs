@@ -316,6 +316,25 @@ public sealed class ConvertCommandTests
     }
 
     [Fact]
+    public async Task Convert_WhenTheSpecDelimiterIsHash_ThenSpecFieldInvalidExit1()
+    {
+        // §5.1.1: the spec read refuses a '#' delimiter, so nothing is read or published.
+        using var run = ConvertRun.Wide(
+            CliFixtures.IndexBoundSpec.Replace("shape = \"wide\"", "shape = \"wide\"\ndelimiter = \"#\"", StringComparison.Ordinal));
+
+        var exit = await run.ConvertAsync("--format", "both");
+
+        Assert.Equal(1, exit);
+        Assert.Equal(string.Empty, run.Harness.StdOut);
+        Assert.Contains(
+            "error SpecFieldInvalid: [binding] key 'delimiter' expects TAB or one character from U+001F to U+007E other than '#' (§5.1.1).",
+            run.Harness.StdErr,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain(run.Data, run.Harness.Opened);
+        Assert.Empty(Directory.GetFiles(run.Directory, "out*"));
+    }
+
+    [Fact]
     public async Task Convert_WhenAnEmitErrorOccurs_ThenEveryStagedArtifactIsDiscarded()
     {
         // unknown_value_policy = "fail" turns the out-of-domain value into an Error at emit. The

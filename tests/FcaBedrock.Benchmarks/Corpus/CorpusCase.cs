@@ -82,11 +82,18 @@ internal sealed record CorpusCase(
     public bool RecordsDeclared => Origin == CorpusOrigin.Generated;
 
     /// <summary>
+    /// The record count of a generated case whose own geometry fixes its size, rather than the
+    /// tier's count; null for every other case. The lexical many-field and long-field variants use
+    /// it: their shapes are defined per record, and their size stays small-tier work.
+    /// </summary>
+    public long? RecordCount { get; init; }
+
+    /// <summary>
     /// The number of input records this case's data file carries, or <c>0</c> for an external case
     /// whose count is not known until it has been prepared — read the prepared catalog entry for
     /// the measured value.
     /// </summary>
-    public long Records => RecordsDeclared ? CorpusTiers.Records(Tier) : 0L;
+    public long Records => RecordsDeclared ? RecordCount ?? CorpusTiers.Records(Tier) : 0L;
 
     /// <summary>The benchmark tier category a case of this tier must carry.</summary>
     public string TierCategory => CorpusTiers.Category(Tier);
@@ -122,6 +129,9 @@ internal static class CorpusCases
 
     /// <summary>The externally acquired UCI Adult corpus.</summary>
     public const string AdultFamily = "adult";
+
+    /// <summary>The small grammar-stressing wide family (spec §5.1.1), one case per variant.</summary>
+    public const string LexicalFamily = "lexical";
 
     /// <summary>The W16 case for a tier, converted under the fully declared spec.</summary>
     public static CorpusCase W16(CorpusTier tier) => new(
@@ -175,6 +185,26 @@ internal static class CorpusCases
         LongTextCorpus.ColumnCount,
         LongTextSpecs.Declared,
         LongTextCorpus.Write);
+
+    /// <summary>
+    /// The lexical case for a variant (Small tier only). A variant whose record count is not the
+    /// tier's declares its own.
+    /// </summary>
+    public static CorpusCase Lexical(string variant)
+    {
+        var definition = LexicalCorpus.Variant(variant);
+        return new CorpusCase(
+            LexicalFamily,
+            definition.Name,
+            CorpusTier.Small,
+            LexicalCorpus.GeneratorRevision,
+            definition.Columns,
+            LexicalCorpus.Spec(definition),
+            (stream, records, token) => LexicalCorpus.Write(definition, stream, records, token))
+        {
+            RecordCount = definition.Records == CorpusTiers.Records(CorpusTier.Small) ? null : definition.Records,
+        };
+    }
 
     /// <summary>The externally acquired UCI Adult case.</summary>
     public static CorpusCase Adult { get; } = new(
@@ -245,6 +275,13 @@ internal static class CorpusCases
 
         cases.Add(LongText(CorpusTier.Small));
         cases.Add(LongText(CorpusTier.Working));
+
+        // The lexical family is grammar coverage, not scale, so it exists at the small tier only.
+        foreach (var variant in LexicalCorpus.Variants)
+        {
+            cases.Add(Lexical(variant.Name));
+        }
+
         cases.Add(Adult);
         return cases;
     }

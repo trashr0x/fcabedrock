@@ -89,7 +89,7 @@ changes an earlier one. A new entry MUST add its line here.
 
 ### M1 (mini-mushroom walking skeleton)
 
-- D-041: Sep as the DSV tokenizer for the wide-CSV source
+- D-041: Sep as the DSV tokenizer for the wide-CSV source *(amended in place on 2026-10-01: raw-mode splitting under Sources-owned reading rules; the reader adaptation is D-137)*
 - D-042: Drop the `BedrockResult<T>` alias; use `Result<T, BedrockDiagnostic>`
 - D-043: Two test axes: golden = v2-compat evidence, conformance = native spec
 - D-044: Bin-label style is a plan-time render hook, not a writer flag
@@ -104,7 +104,7 @@ changes an earlier one. A new entry MUST add its line here.
 - D-051: Per-format output fingerprints (cxt + dat) replace the single output_fingerprint
 - D-052: `extends` overrides attributes position-preservingly
 - D-053: Fingerprints hash a plan-derived canonical JSON structure, not TOML text *(pinned by D-069)*
-- D-054: v1 supports only the standard double `quote_char`
+- D-054: v1 supports only the standard double `quote_char` *(delimiter alphabet fixed in place on 2026-10-01)*
 - D-055: `value_groups` does not use `declared_domain`
 - D-056: Cut validation in M2
 - D-057: `restrict_to` round-trips in M2; execution deferred to M4 *(carriage realized by D-079; execution realized by D-105)*
@@ -171,13 +171,13 @@ changes an earlier one. A new entry MUST add its line here.
 
 ### M4 Slice A (calibration preparation)
 
-- D-098: M4 preparation contract: two-stage source bootstrap, token-paired provenance, calibrated state *(realizes D-093; makes the schema-aware-resolve move D-083 reserved)*
+- D-098: M4 preparation contract: two-stage source bootstrap, token-paired provenance, calibrated state *(realizes D-093; makes the schema-aware-resolve move D-083 reserved; delimiter-alphabet refusal added in place on 2026-10-01)*
 - D-099: Triple structural validity widens to calibrate/emit *(refines D-082/D-085/D-095; probe phase added by D-111)*
 - D-100: Per-phase `SourceValueUnparseable` aggregation across calibrate and emit *(refines D-097)*
 
 ### M4 Slice B (free_per_value + numeric identity)
 
-- D-101: `free_per_value` executable: string + numeric identity, `CanonicalNumber`, scoped zero canonicalization, seam-normalized numeric keys, natural-order default *(realizes D-061/D-092/D-096)*
+- D-101: `free_per_value` executable: string + numeric identity, `CanonicalNumber`, scoped zero canonicalization, seam-normalized numeric keys, natural-order default *(realizes D-061/D-092/D-096; whitespace-tolerant `TryParse` added in place on 2026-10-01)*
 
 ### M4 Slice C (equal_width + the shared cut engine)
 
@@ -193,7 +193,7 @@ changes an earlier one. A new entry MUST add its line here.
 
 ### M4 Slice F (restrict_to execution + emit observability)
 
-- D-105: `restrict_to` executable: exact numeric entries, existential object filtering, sequencing, filter-only diagnostics, emit observability, the policy-bearing `restrictions` container, and caller-discard output *(realizes D-021/D-057/D-063/D-076/D-079/D-091/D-097; amends D-091 in place; completes M4)*
+- D-105: `restrict_to` executable: exact numeric entries, existential object filtering, sequencing, filter-only diagnostics, emit observability, the policy-bearing `restrictions` container, and caller-discard output *(realizes D-021/D-057/D-063/D-076/D-079/D-091/D-097; amends D-091 in place; completes M4; data record indices added in place on 2026-10-01)*
 
 ### M5 (discovery / probe) pre-implementation audit
 
@@ -225,7 +225,7 @@ changes an earlier one. A new entry MUST add its line here.
 
 ### M7 (CLI) pre-implementation adjudication
 
-- D-122: M7 CLI contract: commands, process model, publication, manifest, freeze, authored-empty domains, per-command semantics, non-goals, distribution, and the exit floor *(revises D-071's empty-domain reading; refines D-026/D-078/D-088; realizes the CLI faces of D-005/D-028/D-067/D-077; implementation architecture realized by D-123; reach of parts 4–5 qualified by D-125)*
+- D-122: M7 CLI contract: commands, process model, publication, manifest, freeze, authored-empty domains, per-command semantics, non-goals, distribution, and the exit floor *(revises D-071's empty-domain reading; refines D-026/D-078/D-088; realizes the CLI faces of D-005/D-028/D-067/D-077; implementation architecture realized by D-123; reach of parts 4–5 qualified by D-125; part 10's headerless schema record amended in place on 2026-10-01)*
 
 ### M7 (CLI) implementation
 
@@ -233,7 +233,7 @@ changes an earlier one. A new entry MUST add its line here.
 
 ### M8 (first scaling / benchmark pass)
 
-- D-124: M8 benchmark architecture: one internal BenchmarkDotNet host, an explicit corpus/oracle layer, tier-gated selection with a pinned opt-in external corpus, two benchmark-only friend grants, and the conforming calibration fix the suite found *(invalidation/recheck rule amended for D-125's correction only, and live status corrected, by D-126; catalogue-at-most-fan-in restatement superseded by D-128)*
+- D-124: M8 benchmark architecture: one internal BenchmarkDotNet host, an explicit corpus/oracle layer, tier-gated selection with a pinned opt-in external corpus, two benchmark-only friend grants, and the conforming calibration fix the suite found *(invalidation/recheck rule amended for D-125's correction only, and live status corrected, by D-126; catalogue-at-most-fan-in restatement superseded by D-128; evidence policy qualified for the delimited reading change's small-input elapsed cost only by D-138)*
 
 ### M7 publication ownership (corrected under M8's first native gate)
 
@@ -251,6 +251,11 @@ changes an earlier one. A new entry MUST add its line here.
 
 - D-135: A composed spec needs an `[[attribute]]`, `base_index` is 0 or 1, and `size_advisory_bytes` is not negative; the binding resolves on its own for the probe preflight
 - D-136: Tooling should store fingerprints only in a fully-frozen spec, and §14 defines one
+
+### M8.2 delimited reading
+
+- D-137: Preserve decoded delimited input across short reads with the pinned Sep reader
+- D-138: Accept the delimited reading change with its small-input elapsed cost unbounded *(qualifies D-124's evidence policy for that change only)*
 
 Spec-field defaults are recorded in spec §21 items 1–11 (see the final section
 of this file).
@@ -1238,7 +1243,7 @@ Refinements from the second audit pass.
 
 ### D-041: Sep as the DSV tokenizer for the wide-CSV source
 
-- **Status:** accepted
+- **Status:** accepted; amended in place on 2026-10-01 for raw-mode splitting under Sources-owned reading rules
 - **Date:** 2026-06-24
 - **Decision:** `FcaBedrock.Sources.WideCsvSource` delegates raw DSV tokenization
   (field splitting, RFC 4180 quoting, custom separators) to **Sep**
@@ -1247,7 +1252,19 @@ Refinements from the second audit pass.
   missing detection (`missing_token`/empty → `null`), row-index object naming, and
   re-readability (a `Func<Stream>` so the `.cxt` two-pass can replay). Sep is the
   only new runtime dependency; it is one `PackageVersion` in
-  `Directory.Packages.props` referenced only by `Sources`.
+  `Directory.Packages.props` referenced only by `Sources`. Amended in place on 2026-10-01: Sep does
+  not enforce Bedrock quoting. It counts quotes only to decide whether a delimiter or line break is
+  structural, so it accepts malformed quoting, and its own trim removes only U+0020. Sep stays the
+  provider for buffering, candidate-record splitting and SIMD scanning, opened headerless with
+  `Unescape = false`, `Trim = SepTrim.None` and `DisableColCountCheck = true`. `CsvReadPipeline`
+  validates and decodes every raw field of every candidate record against spec §5.1.1 before the
+  record is exposed and skips blank records. From the moment the stream factory returns it owns
+  three resources: the acquired stream, the `StreamReader` that decodes it and the Sep reader. It
+  disposes them Sep reader first, then the `StreamReader`, then the stream, each once, and still
+  attempts the remaining disposals after one fails; a selected primary failure is never replaced
+  by a cleanup failure, and a cleanup failure with no primary fails the read. Sep reads through a
+  whole-span reader (D-137). The delimiter alphabet is a product rule (D-054), not Sep's accepted
+  set. The provider rationale below stands; the RFC 4180 attribution of the grammar does not.
 - **Why:** hand-rolling correct RFC 4180 quoting (escaped quotes, embedded
   delimiters/newlines) is a classic bug farm, and the v1 scale target (D-007, up
   to ~73M records) wants a parser already hardened and benchmarked for span-based,
@@ -1530,13 +1547,27 @@ fingerprints, manifests, and `extends` are implemented.
 
 ### D-054: v1 supports only the standard double quote_char
 
-- **Status:** accepted (refines D-041 / §5.1)
+- **Status:** accepted (refines D-041 / §5.1); amended in place on 2026-10-01 for the fixed v1 delimiter alphabet
 - **Date:** 2026-06-28
 - **Decision:** v1 accepts only `quote_char = "\""`; a custom `quote_char` parses
   but is rejected with `QuoteCharNotSupportedV1`. `delimiter` is a single
   non-newline character and MUST differ from `quote_char`
   (`BindingDelimiterQuoteConflict`). The `quote_char` field is retained so a later
-  version can lift the restriction without a format change (the D-010 pattern).
+  version can lift the restriction without a format change (the D-010 pattern). Amended in place
+  on 2026-10-01: `delimiter` is one character of the fixed v1 alphabet, TAB or U+001F through U+007E
+  except `#` (96 characters, `"` included), and must differ from `quote_char`, so 95 are usable
+  with the fixed quote. The usable delimiter set, the fixed v1 alphabet with the double quote
+  excluded by the existing quote-conflict rule, equals the set accepted by pinned Sep 0.15.0.
+  `SourceReadSettings.IsInDelimiterAlphabet` owns alphabet membership only. The spec reader
+  reports an authored value outside the alphabet as `SpecFieldInvalid` at the value (CR and LF
+  included); the CLI's `--delimiter` rejects it, and `"`, with usage exit 2; and
+  `SourceReadSettings.Create` and the `Binding`-based source constructors throw
+  `ArgumentException` before any stream is opened. `QuoteCharNotSupportedV1` and
+  `BindingDelimiterQuoteConflict` keep their resolve phase, so a `|` delimiter with a `|` quote
+  reports both, while a `#` delimiter fails when the spec is read and never reaches resolve. The
+  earlier "single non-newline character" promise was never delivered: Sep rejected every other
+  character, and only after the stream was open. The alphabet is a literal rule that does not
+  widen with a provider upgrade; `#` is excluded because Sep reserves it, a v1 limitation.
 - **Why:** the Sep tokenizer (D-041) is exercised and golden-tested only with the
   standard quote; promising arbitrary quote chars in v1 would be an unverified
   contract. Narrowing now, with a reserved field, keeps the door open.
@@ -3580,7 +3611,7 @@ cite them.
 ### D-098: M4 preparation contract: two-stage source bootstrap, token-paired provenance, calibrated state
 
 - **Status:** accepted (M4 Slice A; realizes D-093; the D-083-reserved schema-aware-resolve move;
-  the G-1 governance item)
+  the G-1 governance item); amended in place on 2026-10-01 for the delimiter-alphabet refusal
 - **Date:** 2026-07-15
 - **Decision:** M4's Calibrate phase needs one preparation identity threaded from resolve
   through emit, and a source cannot exist before resolution (a source constructor needs the
@@ -3594,7 +3625,9 @@ cite them.
      `SpecVersionUnsupported` (Fatal) with no settings, so the bootstrap never opens a source for
      a document whose semantics are unknown. `SourceReadSettings.Create` is the EP-10 backstop
      with an exact exception contract (empty `missingToken` valid; UTF-8 spellings normalize;
-     `delimiter == quoteChar`/non-`"` quote/inconsistent shape-ordering throw).
+     `delimiter == quoteChar`/non-`"` quote/inconsistent shape-ordering throw). Amended in place
+     on 2026-10-01: `Create` also throws `ArgumentException` for a delimiter outside the v1 alphabet
+     (D-054), after the quote check and before the delimiter/quote check.
   2. **Session** (reads schema, holds no resolved indexes): `WideCsvSession` /
      `TripleCsvSession(openStream, settings)` expose `GetSchemaAsync` with a pinned lifecycle:
      the first successful read caches an immutable snapshot; a canceled/failed read (factory
@@ -3709,7 +3742,7 @@ cite them.
 
 ### D-101: `free_per_value` executable: string + numeric identity, `CanonicalNumber`, scoped zero canonicalization, seam-normalized numeric keys, natural-order default
 
-- **Status:** accepted (M4 Slice B; realizes D-061/D-092/D-096; the G-6/G-8 governance items)
+- **Status:** accepted (M4 Slice B; realizes D-061/D-092/D-096; the G-6/G-8 governance items); amended in place on 2026-10-01 for whitespace-tolerant `TryParse`
 - **Date:** 2026-07-16
 - **Decision:** the `free_per_value` discretizer (§11.3) becomes executable and leaves the
   transitional read-reject set (G-8). It is **type-flexible** (D-061): with
@@ -3725,7 +3758,9 @@ cite them.
     shortest encoder **byte-for-byte** (`-0.0` still formats `"-0"`, so the `fp_format = 1` encoder
     and every stored hash are untouched), `CanonicalizeZero(double)` maps both signed zeros to positive
     zero, and `TryParse(text, culture, out value)` parses `NumberStyles.Float`, finite-only, without
-    canonicalizing (the caller applies `CanonicalizeZero`). `CanonicalJson.AppendNumber` is left
+    canonicalizing (the caller applies `CanonicalizeZero`). Amended in place on 2026-10-01: `TryParse`
+    first ignores leading and trailing whitespace (spec §5.1 W) on a temporary span; the text, its
+    identity rules and the zero `value` of a false result are unchanged. `CanonicalJson.AppendNumber` is left
     unchanged. Every **new** M4 numeric identity is canonicalized via the type-correct chains
     (text-sourced `TryParse → CanonicalizeZero → Format`; already-numeric `CanonicalizeZero → Format`);
     Slice B uses the text-sourced chain for numeric `free_per_value` domain/label/order keys at the
@@ -4205,7 +4240,7 @@ cite them.
 ### D-105: `restrict_to` executable: exact numeric entries, existential object filtering, sequencing, filter-only diagnostics, emit observability, the policy-bearing `restrictions` container, and caller-discard output
 
 - **Status:** accepted (M4 Slice F; realizes D-091/D-097; the G-2/G-6/G-9/G-10/G-12
-  governance items; **completes M4**)
+  governance items; **completes M4**); amended in place on 2026-10-01 for data record indices
 - **Date:** 2026-07-17
 - **Decision:** `restrict_to` executes.
   - **Exact numeric entries.** The public Core carrier is
@@ -4248,7 +4283,9 @@ cite them.
     policy, name assignment. A non-surviving row **is not an object**, so it trips no
     `fail` duplicate check and consumes no `keep` assigned name (which are assigned in
     *emission* order, §6.1). **`row_index` names are input positions and filtering never
-    renumbers them**: if row 0 is filtered and row 1 survives, the survivor is still `1`.
+    renumbers them**: if row 0 is filtered and row 1 survives, the survivor is still `1`. Amended
+    in place on 2026-10-01: an input position is a data record index (spec §5.1.1); blank records
+    and a consumed header are not counted.
     Wide `dedupe`: grouping strictly **precedes** filtering. One restriction is evaluated
     existentially over all merged observations, one match preserves the whole object with
     every cross, and a non-surviving group is dropped only after grouping and
@@ -5515,7 +5552,7 @@ and §16.4; D-120 and D-121 record the implemented naming, template and matcher 
 - **Status:** accepted (M7 pre-implementation contract; **revises D-071**;
   refines D-026/D-078/D-088; realizes the CLI faces of D-005/D-028/D-067/D-077); its
   implementation architecture realized by D-123; the reach of parts 4–5 qualified by D-125
-  (2026-09-09)
+  (2026-09-09); part 10's headerless schema record amended in place on 2026-10-01
 - **Date:** 2026-07-22
 - **Decision:** the complete M7 CLI contract is settled **before any M7 code**, in
   fifteen parts.
@@ -5644,7 +5681,8 @@ and §16.4; D-120 and D-121 record the implemented naming, template and matcher 
   **10. Per-command semantics.**
   - **`validate SPEC [DATA]`**: without DATA, the existing no-schema resolution
     behavior applies **verbatim**; with DATA it reads **only enough for authoritative
-    schema acquisition** (the header, or the first record when headerless). It does
+    schema acquisition** (the header, or the first non-blank record when headerless; amended in
+    place on 2026-10-01, spec §5.1.1). It does
     not plan, does not verify stored fingerprints, and writes nothing.
   - **`plan SPEC DATA`**: DATA is **required for every plan**; rows are read only
     when calibration requires them, and "dry run" means **no artifact publication**,
@@ -5951,7 +5989,8 @@ and §16.4; D-120 and D-121 record the implemented naming, template and matcher 
   D-126:* the remaining-work status first recorded here was stale, and this entry's
   invalidation/recheck rule is amended for D-125's correction only. *Superseded 2026-09-21 by D-128*
   for the restated per-accumulator catalogue-at-most-fan-in bound only. M8's evidence closed at
-  `3b2e4a80` (D-126).
+  `3b2e4a80` (D-126). *Qualified 2026-10-01 by D-138* for the delimited reading change's
+  small-input elapsed cost only.
 - **Date:** 2026-09-06
 - **Decision:** M8 is measured by **one internal BenchmarkDotNet executable**
   (`tests/FcaBedrock.Benchmarks`) plus a small tested corpus/oracle layer
@@ -7146,6 +7185,135 @@ its own, and this section records those.
   certify the spec).
 - **Affects:** spec §3 and §14; `docs/roadmap.md` (the M8.2 paragraph). No code, test, public API,
   diagnostic, fingerprint or output byte changes.
+
+---
+
+## M8.2 delimited reading
+
+M8.2 changes how delimited data is read (spec §5.1.1; D-041 and D-054 are amended in place). This
+section records the reader adaptation that change needs (D-137) and the acceptance of the change
+with its small-input elapsed cost unbounded (D-138).
+
+### D-137: Preserve decoded delimited input across short reads with the pinned Sep reader
+
+- **Status:** accepted
+- **Date:** 2026-10-01
+- **Decision:** Sep reads through a whole-span reader. `WholeSpanTextReader` (internal,
+  `FcaBedrock.Sources`) wraps the `StreamReader` that decodes an acquired stream, and it is the
+  reader Sep 0.15.0 receives on the one construction path used by schema, replay, bound, unbound,
+  wide and triple reads. Each `Read(Span<char>)` fills the requested span from the decoder,
+  calling it again after every short return, until the span is full or the decoder returns zero
+  at the end of input; the characters, their order and the decoder's configuration are unchanged,
+  and nothing is buffered, parsed or rewritten. It owns nothing: disposing it never disposes the
+  decoder or the stream, which the read chain disposes (D-041). It carries the read operation's
+  cancellation token and checks it before each inner read and after each successful one; an
+  exception from the inner read wins over a cancellation observed after it, a partly filled span
+  is never returned after a later failure, and an inner count outside the requested span is an
+  `InvalidOperationException` (a broken decoder, not a data error). These checks bound the
+  reading a cancelled operation still does. That no record is exposed after cancellation is
+  observed is the reading pipeline's own promise, kept by its checks after each advance and before
+  exposure, because Sep serves already-buffered records without reading. Sep's asynchronous fill
+  has the same defect, so any asynchronous route needs the same whole-span rule and its own review
+  and proof. Proof obligations, by kind: a provider characterization test, named with the pinned
+  version, reads a short-reading input through Sep directly and records the reordering, and is
+  reviewed at every Sep version change, including when its old result stops reproducing; product
+  regression tests read legal CR CR content and CR record terminators through the sources over a
+  short-reading stream against independently generated expectations, and stay whatever happens to
+  the adapter; contract tests cover argument checks, empty requests, NUL and end of input,
+  repeated end of input, failure after a partial fill, invalid inner counts, cancellation before
+  and after refills, and disposal that disposes nothing. The reader may be removed only when a
+  pinned Sep release keeps decoded character order under legal short reads, shown by the
+  characterization test passing without it, with the product regression tests still green.
+- **Why:** after a read that returns fewer characters than requested and ends in CR, Sep 0.15.0
+  reads one more character to see whether a CR LF pair was split. When that character is another
+  CR it holds it back and keeps filling the buffer, then restores it at the start of the next
+  fill, after the characters read in between. Valid quoted content loses a CR and a later record
+  gains one, or record terminators are reordered. The result is well formed, so validating fields
+  cannot detect it, and skipping blank records hides a phantom row but not the lost CR. When
+  every read fills its span, the only short read is the last one, after which there is no next
+  character, so nothing is held back. Short reads are legal from any stream that returns fewer
+  bytes than requested before its end (pipes, network streams, wrappers), and the public sources
+  accept any `Func<Stream>`. In bounded tests a file stream (0 of 286 positions) and whole reads
+  (0 of 3,000) showed no reordering and a stream capped at 1,000 bytes per read showed it at 3 of
+  3,000 positions, each where a CR pair straddled a read; no CLI file read was observed to be
+  affected, and neither immunity of every file stream nor failure of every short-reading stream
+  is claimed. The fill code is identical in the tagged sources of Sep 0.15.0 and 0.17.1
+  (compared on 2026-09-30), so moving the pin to 0.17.1 alone would not remove the defect; no
+  other version was compared. What the reader
+  preserves is the decoder's character sequence; it makes no claim that decoding is independent
+  of how the stream splits its bytes (a non-UTF-8 byte-order mark is still recognized only when
+  the first byte read is long enough, a separate encoding question), and raw input hashes stay
+  hashes of the original bytes. Its costs: each refill adds a virtual call, a count check and the
+  token checks, and because Sep no longer sees a `StreamReader`, a tiny seekable input read
+  directly through the Sources API rents Sep's default initial buffer instead of one sized to the
+  input (the CLI's hashing stream is not seekable, so the CLI never had that hint).
+- **Rejected:** a `StreamReader` subclass overriding the span and array reads (it is a real
+  `StreamReader`, so Sep would keep its small-input length hint, but it inherits a dozen virtual
+  read members whose contracts would then differ from its span read, and composition is preferred
+  where the hint's value is small); larger stream, decoder or Sep buffers (they move the boundary,
+  not the defect); accepting only stream types assumed to return whole reads (it narrows the public
+  `Func<Stream>` contract without proof); rewriting or rejecting CR CR (it contradicts spec
+  §5.1.1); upgrading Sep to 0.17.1 (its tagged source has the same fill code); replacing the
+  provider or writing a tokenizer (withdrawn on maintenance grounds, D-041).
+- **Affects:** `FcaBedrock.Sources` (`WholeSpanTextReader`; the owned read chain behind
+  `CsvReadPipeline`); tests in `FcaBedrock.Sources.Tests`. No public API, diagnostic, spec rule,
+  fingerprint, hash format or package pin changes.
+
+### D-138: Accept the delimited reading change with its small-input elapsed cost unbounded
+
+- **Status:** accepted (approved by Constantinos Orphanides on 2026-10-01). It qualifies D-124's
+  evidence policy for the delimited reading change only (D-137 and the 2026-10-01 amendments of
+  D-041 and D-054). D-124's jobs and measured interval are unchanged, and D-126 keeps its own scope,
+  D-125's publication correction.
+- **Date:** 2026-10-01
+- **Decision:** The delimited reading change is accepted although its comparison with the previous
+  reader does not bound its elapsed cost on small inputs.
+  1. **The limits and the results.** The comparison took the ratio of the change's BenchmarkDotNet
+     reported median to the previous reader's, case by case, and set these limits for it: a time
+     ratio at most 1.30 and an allocation ratio at most 1.10 for drains that read the same records
+     under both readers; a time ratio at most 1.50 for the quote-heavy case; a time ratio at most 1.10
+     for six Working calibration and conversion cases; and, for the two cases whose meaning
+     changed, time per MB at most twice that of the change's slowest same-records Small case. A
+     limit had to hold in every measurement of its case. `SpaceDelimitedSourceDrainSmall`,
+     `TabDelimitedSourceDrainSmall`, `ManyFieldsSourceDrainSmall` and `WideSourceDrainSmall` each
+     have at least one time ratio above 1.30; every other limit holds. These results stand as
+     measured: the limits are not raised, and no measurement is set aside. `docs/benchmarks.md`
+     has every ratio.
+  2. **What is accepted.** A possible material elapsed cost on small inputs, on a process's first
+     reads or across repeated small reads, with no quantitative bound. The acceptance does not
+     depend on a further measurement of this change.
+  3. **Claims not made.** That the change's small-input cost is within 30%, that it has no
+     regression, or anything about installed-command latency.
+  4. **What still applies.** Every other limit keeps its measured result and scope: allocation, the
+     quote-heavy limit, the Small cases within 1.30, the Working drains and the six Working
+     calibration and conversion cases, the 7.3M drains, the two changed-meaning cases, and every
+     functional, oracle and identity requirement. This acceptance does not cover an incomplete
+     case, an oracle or identity mismatch, an allocation above its limit or a functional defect.
+  5. **Scope.** The change as measured on 2026-10-01 against `a450b144`. Documentation and tests
+     added after that measurement run in no measured case. A later change to a measured path, a
+     repaired or optimized successor and a different job are not covered, and a new measurement of
+     this change needs its own decision before it runs.
+- **Why:** the change corrects what input means: the field grammar, blank records, Unicode
+  whitespace around fields and numbers, the delimiter alphabet, and the order of decoded characters
+  across short reads. Wrong input meaning can change objects, attributes and incidence; Adult's
+  trailing blank line was one real case. The larger drains and the six Working calibration and
+  conversion cases, the measured cases nearest the scale targets (D-007), stay within their limits.
+  The ratios above 1.30 come with large swings in the previous reader's own timings: one build of
+  it measured the same case at 4.2 ms and 12.7 ms, so the comparison cannot bound a small cost in
+  either direction. A longer warmup would bound only a warmed cost and leave the cost of a short run
+  open. The maintainer chose correct input meaning with a stated, unbounded small-input cost over
+  more measurement, or over source changes aimed at how the runtime compiles the reader.
+- **Rejected:** counting the four cases as within the limit, or setting their measurements aside as
+  invalid; raising the limits to the measured ratios; a longer fixed warmup or a fixed iteration
+  count (no count is known to settle every case, and it could hide the early cost in question);
+  runs with tiered compilation held fixed (a runtime configuration the product does not ship);
+  medians taken only from runs at matching levels (it changes the statistic after the data were
+  seen and drops the time spent at the slower level); optimizing the reader to steer JIT
+  compilation (a runtime design choice with its own first-use cost, aimed at no identified
+  hotspot); applying D-126 (it governs D-125's publication correction only).
+- **Affects:** `docs/benchmarks.md` (the comparison and its scope), `docs/roadmap.md` (the M8.2
+  status), `docs/decisions.md` (this entry, its index line and the cross-references in D-124). No
+  production code, benchmark definition, job, corpus, oracle or limit changes.
 
 ---
 

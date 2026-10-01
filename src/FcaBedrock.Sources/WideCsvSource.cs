@@ -1,11 +1,13 @@
+using System.Globalization;
 using FcaBedrock.Core.Spec;
 
 namespace FcaBedrock.Sources;
 
 /// <summary>
-/// A wide-CSV/TSV <see cref="IRecordSource"/>. DSV tokenization is delegated to
-/// Sep (decisions.md D-041); this type layers the FCA semantics: the declared
-/// delimiter, header handling, missing detection, and row-index object naming.
+/// A wide-CSV/TSV <see cref="IRecordSource"/>. Sep splits candidate records
+/// (decisions.md D-041) and <c>CsvReadPipeline</c> validates and decodes every field by
+/// spec §5.1.1; this type layers the FCA semantics: the declared delimiter, header
+/// handling, missing detection, and row-index object naming.
 /// Constructed from a replayable stream factory so it can be re-read for the
 /// <c>.cxt</c> two-pass and tested without temp files.
 /// </summary>
@@ -21,7 +23,10 @@ public sealed class WideCsvSource : IRecordSource
     /// <summary>
     /// Constructs a direct production source over <paramref name="binding"/>; its
     /// <see cref="Provenance"/> is a <see cref="DescriptorProvenance"/> derived from the
-    /// binding (D-098).
+    /// binding (D-098). Before any stream is opened it throws
+    /// <see cref="ArgumentException"/> for a non-wide binding, a delimiter outside the v1
+    /// alphabet or a delimiter equal to the quote, and <see cref="NotSupportedException"/> for
+    /// a non-standard quote.
     /// </summary>
     public WideCsvSource(Func<Stream> openStream, Binding binding)
         : this(openStream, binding, provenance: null)
@@ -47,6 +52,20 @@ public sealed class WideCsvSource : IRecordSource
         if (binding.QuoteChar != '"')
         {
             throw new NotSupportedException("WideCsvSource supports only the '\"' quote character (RFC 4180).");
+        }
+
+        if (!SourceReadSettings.IsInDelimiterAlphabet(binding.Delimiter))
+        {
+            throw new ArgumentException(
+                string.Create(
+                    CultureInfo.InvariantCulture,
+                    $"binding.Delimiter U+{(int)binding.Delimiter:X4} is not in the v1 delimiter alphabet (TAB, or U+001F through U+007E except '#')."),
+                nameof(binding));
+        }
+
+        if (binding.Delimiter == binding.QuoteChar)
+        {
+            throw new ArgumentException("binding.Delimiter must differ from binding.QuoteChar.", nameof(binding));
         }
 
         // The source is object-key-agnostic: it always names records by row index, and the emitter

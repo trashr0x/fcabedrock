@@ -64,7 +64,7 @@ fcabedrock validate spec.toml data.csv
 ```
 
 Schema validation only. With DATA it reads just enough to acquire the schema
-(the header, or the first record when headerless) and checks name bindings.
+(the header, or the first non-blank record when headerless) and checks name bindings.
 DATA is optional; the spec alone validates too:
 
 ```text

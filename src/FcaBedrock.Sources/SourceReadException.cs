@@ -7,8 +7,10 @@ namespace FcaBedrock.Sources;
 /// and a consumer must be able to recognize one without knowing which adapter produced it:
 /// Discovery must never catch a Sep type to learn that a CSV row was unreadable.
 /// <para>
-/// <b>Scope.</b> Adapter/provider read failures only, with the provider's own exception
-/// retained as <see cref="Exception.InnerException"/>. This type is deliberately <em>not</em>
+/// <b>Scope.</b> Adapter/provider read failures only. When the adapter normalizes a
+/// provider's own failure, that exception is retained as <see cref="Exception.InnerException"/>;
+/// a failure the adapter detects itself, such as malformed quoting (spec §5.1.1), has none.
+/// This type is deliberately <em>not</em>
 /// a catch-all: <see cref="OperationCanceledException"/> always propagates unwrapped and is
 /// never a read failure (D-111/D-112), and programmer errors (<see cref="ArgumentException"/>,
 /// <see cref="InvalidOperationException"/>, <see cref="NullReferenceException"/>, violated

@@ -64,13 +64,30 @@ internal sealed class UnorderedTripleRowSource : ITripleRowSource
         IAsyncEnumerable<TripleRow> rows,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        await foreach (var row in rows.WithCancellation(cancellationToken).ConfigureAwait(false))
+        var source = rows.GetAsyncEnumerator(cancellationToken);
+        var exit = SourceExit.Running;
+        try
         {
-            yield return row;
-            if (!ObjectNames.IsUsable(row.Subject))
+            while (await source.MoveNextAsync().ConfigureAwait(false))
             {
-                yield break;
+                var row = source.Current;
+                exit = SourceExit.Suspended;
+                yield return row;
+                exit = SourceExit.Running;
+                if (!ObjectNames.IsUsable(row.Subject))
+                {
+                    // A truncation selects no result (the emitter halts on the offender), so a
+                    // failure to close the rows here fails the operation.
+                    exit = SourceExit.Stopped;
+                    yield break;
+                }
             }
+
+            exit = SourceExit.Completed;
+        }
+        finally
+        {
+            await SourceEnumeration.EndAsync(source, exit).ConfigureAwait(false);
         }
     }
 }

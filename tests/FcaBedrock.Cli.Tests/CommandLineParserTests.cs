@@ -345,14 +345,15 @@ public sealed class CommandLineParserTests
     [InlineData("probe", "\t")]
     [InlineData("probe", "-")]
     [InlineData("probe", " ")]
-    [InlineData("probe", "é")]
+    [InlineData("probe", "\u001F")]
+    [InlineData("probe", ":")]
     [InlineData("migrate", ",")]
     [InlineData("migrate", "\t")]
     [InlineData("migrate", "|")]
     public void Parse_WhenDelimiterIsOneUsableCharacter_ThenItParses(string command, string delimiter)
     {
-        // §5.1: a single non-newline character other than the quote. Tab and pipe are the
-        // named common alternatives, and a lone dash must keep working.
+        // §5.1.1: one character of the v1 alphabet other than the quote. Tab and pipe are the
+        // named common alternatives, and a lone dash, a space, U+001F and ':' must keep working.
         var invocation = command == "probe"
             ? Accept("probe", "d.csv", "--shape", "wide", "--out", "o", "--delimiter", delimiter)
             : Accept("migrate", "x.bed", "--out", "o", "--delimiter", delimiter);
@@ -369,6 +370,12 @@ public sealed class CommandLineParserTests
     [InlineData("probe", "\"")]
     [InlineData("probe", "tab")]
     [InlineData("probe", "\U0001F600")]
+    [InlineData("probe", "é")]
+    [InlineData("probe", "#")]
+    [InlineData("probe", "\u00A0")]
+    [InlineData("probe", "\u007F")]
+    [InlineData("probe", "\u001E")]
+    [InlineData("migrate", "#")]
     [InlineData("migrate", "||")]
     [InlineData("migrate", "")]
     [InlineData("migrate", "\n")]
@@ -377,13 +384,36 @@ public sealed class CommandLineParserTests
     {
         // A multi-character value cannot reach the char-typed source settings at all, and the
         // quote character is excluded by §5.1's delimiter/quote conflict rule. A non-BMP
-        // character is two UTF-16 units and likewise cannot be a delimiter.
+        // character is two UTF-16 units and likewise cannot be a delimiter, and a character
+        // outside the v1 alphabet (§5.1.1) is refused.
         var failure = command == "probe"
             ? Reject("probe", "d.csv", "--shape", "wide", "--out", "o", "--delimiter", delimiter)
             : Reject("migrate", "x.bed", "--out", "o", "--delimiter", delimiter);
 
         Assert.Equal(command, failure.Command);
-        Assert.Contains("a single non-newline character", failure.Message, StringComparison.Ordinal);
+        Assert.Contains("TAB or one character from U+001F to U+007E", failure.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Parse_WhenDelimiterIsAnyOfThe95UsableCharacters_ThenItParses()
+    {
+        // All 95 delimiters that were usable before the §5.1.1 alphabet was fixed stay usable:
+        // TAB, and U+001F through U+007E without '#' and the quote.
+        var accepted = 0;
+        for (var code = 0; code <= 0x7E; code++)
+        {
+            if (code != 0x09 && (code < 0x1F || code == 0x22 || code == 0x23))
+            {
+                continue;
+            }
+
+            var delimiter = ((char)code).ToString();
+            Assert.Equal(delimiter, Accept("probe", "d.csv", "--shape", "wide", "--out", "o", "--delimiter", delimiter).Value("--delimiter"));
+            Assert.Equal(delimiter, Accept("migrate", "x.bed", "--out", "o", "--delimiter", delimiter).Value("--delimiter"));
+            accepted++;
+        }
+
+        Assert.Equal(95, accepted);
     }
 
     [Theory]

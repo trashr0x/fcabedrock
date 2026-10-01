@@ -52,16 +52,18 @@ public static class CanonicalNumber
 
     /// <summary>
     /// Parses <paramref name="text"/> under <paramref name="culture"/> using
-    /// <see cref="NumberStyles.Float"/> (EP-11: never ambient), accepting only a
-    /// finite result. Returns <see langword="false"/> (with <paramref name="value"/>
-    /// set to <c>0</c>) on a parse failure or a non-finite result. Does <b>not</b>
-    /// canonicalize zero itself; the caller applies <see cref="CanonicalizeZero"/>,
-    /// keeping the parse reusable (D-096/G-6).
+    /// <see cref="NumberStyles.Float"/> (EP-11: never ambient) after ignoring leading and
+    /// trailing whitespace (spec §5.1 W, the <see cref="char.IsWhiteSpace(char)"/> set) on a
+    /// temporary span, accepting only a finite result. The text itself is not changed. Returns
+    /// <see langword="false"/> (with <paramref name="value"/> set to <c>0</c>) on a parse
+    /// failure, a non-finite result, or text that is empty or all whitespace. Does <b>not</b>
+    /// canonicalize zero itself; the caller applies <see cref="CanonicalizeZero"/>, keeping the
+    /// parse reusable (D-096/G-6).
     /// </summary>
     public static bool TryParse(string text, CultureInfo culture, out double value)
     {
         ArgumentNullException.ThrowIfNull(culture);
-        if (double.TryParse(text, NumberStyles.Float, culture, out value) && double.IsFinite(value))
+        if (double.TryParse(text.AsSpan().Trim(), NumberStyles.Float, culture, out value) && double.IsFinite(value))
         {
             return true;
         }

@@ -41,20 +41,20 @@ internal static class AdultCorpus
     /// catalog, so a corpus acquired under an older definition is refused rather than silently
     /// reused.
     /// <para>
-    /// Revision 2 corrects <see cref="CountRecords"/>: revision 1 skipped the published file's
-    /// empty final row and therefore recorded 32,561 records where the reader yields 32,562. The
-    /// bytes are unchanged, but a stale entry would still carry the superseded count — and the
-    /// count is a denominator, so an entry recorded under the old rule must be refused exactly as a
-    /// changed corpus would be.
+    /// Revision 2 corrected <see cref="CountRecords"/> to count the published file's empty final
+    /// line, which the reader then yielded as a record (32,562). Revision 3 follows the reader
+    /// again: it skips blank records (spec §5.1.1), so that line is not a record and the count is
+    /// 32,561. The bytes are unchanged, but a stale entry would still carry the superseded count —
+    /// and the count is a denominator, so an entry recorded under an older rule must be refused
+    /// exactly as a changed corpus would be.
     /// </para>
     /// <para>
-    /// It is still 2 after the <see cref="DataSha256"/> pin was added: the pin records the identity
-    /// of the bytes this revision already wrote and already catalogued, so nothing prepared under
-    /// it became stale. <b>Changing the accepted identity is a different matter and bumps this</b>
-    /// — see <see cref="DataSha256"/>.
+    /// The <see cref="DataSha256"/> pin, added under revision 2, records the identity of the bytes
+    /// every revision has written, so adding it did not change the revision. <b>Changing the
+    /// accepted identity is a different matter and bumps this</b> — see <see cref="DataSha256"/>.
     /// </para>
     /// </summary>
-    public const int AcquisitionRevision = 2;
+    public const int AcquisitionRevision = 3;
 
     /// <summary>The physical column count of <c>adult.data</c>.</summary>
     public const int ColumnCount = 15;
@@ -151,19 +151,17 @@ internal static class AdultCorpus
     }
 
     /// <summary>
-    /// The number of records the file carries: <b>every</b> line, blank ones included.
+    /// The number of records the file carries: every line that is not blank.
     /// <para>
-    /// <b>The published training split ends with a doubled newline</b>, so it holds 32,561 census
-    /// rows and one empty final row — 32,562 records. That empty row is really in the file, and a
-    /// reader that yields it is right to: under RFC 4180 a doubled line break ends one record and
-    /// begins another. Converting it produces a 32,562nd object with no crosses.
+    /// <b>The published training split ends with a doubled newline</b>, so after its 32,561 census
+    /// rows it holds one empty final line. That line is a blank record, which the reader skips
+    /// (spec §5.1.1), so it is not counted and the file carries 32,561 records.
     /// </para>
     /// <para>
-    /// This counter deliberately does <em>not</em> skip it. The record count is the denominator every
-    /// Adult rate is divided by, so it has to be the number of records the pipeline actually reads;
-    /// a count that quietly dropped a row the reader yields would make every rate slightly wrong and
-    /// hide a real property of the published file. The property is documented in
-    /// <c>Adult.attribution.md</c> and in the evidence pack rather than smoothed away here.
+    /// The record count is the denominator every Adult rate is divided by, so it has to be the
+    /// number of records the pipeline actually reads, by the reader's own blank rule. The file's
+    /// property is documented in <c>Adult.attribution.md</c> rather than smoothed away by altering
+    /// the bytes.
     /// </para>
     /// </summary>
     public static long CountRecords(string dataPath)
@@ -172,11 +170,21 @@ internal static class AdultCorpus
 
         var records = 0L;
         using var reader = new StreamReader(dataPath);
-        while (reader.ReadLine() is not null)
+        while (reader.ReadLine() is { } line)
         {
-            records++;
+            if (!IsBlank(line))
+            {
+                records++;
+            }
         }
 
         return records;
     }
+
+    /// <summary>
+    /// Spec §5.1.1's blank record for this quote-free, comma-delimited file: a line of whitespace
+    /// only (a comma is not whitespace, so such a line has no delimiter either). The drain oracle
+    /// applies the same rule.
+    /// </summary>
+    internal static bool IsBlank(string line) => string.IsNullOrWhiteSpace(line);
 }

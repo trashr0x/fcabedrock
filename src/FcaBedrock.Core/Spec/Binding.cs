@@ -13,7 +13,7 @@ namespace FcaBedrock.Core.Spec;
 /// </param>
 /// <param name="Delimiter">Field delimiter (§5.1).</param>
 /// <param name="QuoteChar">Quote character (§5.1).</param>
-/// <param name="HasHeader">Whether the first record is a header (§5.1).</param>
+/// <param name="HasHeader">Whether the first non-blank record is a header (§5.1, §5.1.1).</param>
 /// <param name="Locale">Locale for numeric/date parsing (§5.1); never string collation (EP-12).</param>
 /// <param name="MissingToken">Token marking a missing value (§5.1).</param>
 /// <param name="ObjectKey">How object names are derived (§5.4).</param>

@@ -1,5 +1,7 @@
+using System.Globalization;
 using FcaBedrock.Core.Scaling;
 using FcaBedrock.Core.Spec;
+using FcaBedrock.Diagnostics;
 using FcaBedrock.Spec.Toml;
 
 namespace FcaBedrock.Spec.Tests.Toml;
@@ -474,6 +476,106 @@ public sealed class SpecReaderTests
 
         Assert.True(result.IsOk);
         Assert.Empty(result.Diagnostics);
+    }
+
+    // --- The v1 delimiter alphabet (§5.1.1) is enforced when the spec is read ---
+
+    private const string DelimiterExpectationMessage =
+        "[binding] key 'delimiter' expects TAB or one character from U+001F to U+007E other than '#' (§5.1.1).";
+
+    // A TOML basic-string escape for one UTF-16 unit, so control and non-ASCII characters never
+    // appear raw in this file.
+    private static string TomlEscape(int code) => "\\u" + code.ToString("X4", CultureInfo.InvariantCulture);
+
+    [Theory]
+    [InlineData(0x23)] // '#'
+    [InlineData(0xA0)] // no-break space
+    [InlineData(0xE9)] // 'é'
+    [InlineData(0x0D)] // CR
+    [InlineData(0x0A)] // LF
+    [InlineData(0x7F)]
+    [InlineData(0x1E)]
+    public void Read_WhenDelimiterIsOutsideTheAlphabet_ThenSpecFieldInvalidAtTheValue(int code)
+    {
+        var result = SpecReader.Read(
+            $"[spec]\nversion = 1\n[binding]\nshape = \"wide\"\ndelimiter = \"{TomlEscape(code)}\"\n", "spec.toml");
+
+        Assert.False(result.TryGetValue(out _));
+        var diagnostic = Assert.Single(result.Diagnostics);
+        Assert.Equal(DiagnosticCode.SpecFieldInvalid, diagnostic.Code);
+        Assert.Equal(DiagnosticSeverity.Error, diagnostic.Severity);
+        Assert.Equal(DelimiterExpectationMessage, diagnostic.Message);
+        Assert.Equal("spec.toml", diagnostic.Location?.File);
+        Assert.Equal(5, diagnostic.Location?.Line);
+        Assert.Equal(13, diagnostic.Location?.Column); // the value, not the key
+    }
+
+    [Theory]
+    [InlineData("1")]                 // not a string
+    [InlineData("\"\"")]              // empty
+    [InlineData("\"ab\"")]            // two characters
+    [InlineData("\"\\U0001F600\"")]   // one character, two UTF-16 units
+    public void Read_WhenDelimiterIsNotOneUtf16Unit_ThenSpecFieldInvalidStatingTheAlphabet(string value)
+    {
+        var result = SpecReader.Read($"[binding]\ndelimiter = {value}\n");
+
+        var diagnostic = Assert.Single(result.Diagnostics);
+        Assert.Equal(DiagnosticCode.SpecFieldInvalid, diagnostic.Code);
+        Assert.Equal(DelimiterExpectationMessage, diagnostic.Message);
+    }
+
+    [Fact]
+    public void Read_WhenEveryUsableDelimiterIsAuthored_ThenEachReadsClean()
+    {
+        for (var code = 0; code <= 0x7E; code++)
+        {
+            if (code != 0x09 && (code < 0x1F || code == 0x22 || code == 0x23))
+            {
+                continue;
+            }
+
+            var document = ReadOk($"[binding]\ndelimiter = \"{TomlEscape(code)}\"\n");
+            Assert.Equal((char)code, document.Binding?.Delimiter);
+        }
+    }
+
+    [Fact]
+    public void Read_WhenDelimiterIsTheQuote_ThenReadSucceedsAndResolveReportsTheConflict()
+    {
+        // '"' is in the alphabet: the read accepts it, and the existing resolve check refuses it.
+        var document = ReadOk("[spec]\nversion = 1\n[binding]\nshape = \"wide\"\ndelimiter = \"\\\"\"\n");
+
+        var resolved = SpecResolver.Resolve(document);
+
+        Assert.False(resolved.TryGetValue(out _));
+        Assert.Contains(resolved.Diagnostics, d => d.Code == DiagnosticCode.BindingDelimiterQuoteConflict);
+        Assert.DoesNotContain(resolved.Diagnostics, d => d.Code == DiagnosticCode.SpecFieldInvalid);
+    }
+
+    [Fact]
+    public void Read_WhenHashDelimiterAndHashQuote_ThenTheReadFailsAndNoResolveDiagnosticExists()
+    {
+        var result = SpecReader.Read("[spec]\nversion = 1\n[binding]\nshape = \"wide\"\ndelimiter = \"#\"\nquote_char = \"#\"\n");
+
+        Assert.False(result.TryGetValue(out _));
+        var diagnostic = Assert.Single(result.Diagnostics);
+        Assert.Equal(DiagnosticCode.SpecFieldInvalid, diagnostic.Code);
+        Assert.Equal(DelimiterExpectationMessage, diagnostic.Message);
+        Assert.DoesNotContain(result.Diagnostics, d =>
+            d.Code is DiagnosticCode.QuoteCharNotSupportedV1 or DiagnosticCode.BindingDelimiterQuoteConflict);
+    }
+
+    [Fact]
+    public void Resolve_WhenPipeDelimiterAndPipeQuote_ThenBothResolveDiagnostics()
+    {
+        // '|' is in the alphabet, so the read is clean and both resolve checks still co-fire.
+        var document = ReadOk("[spec]\nversion = 1\n[binding]\nshape = \"wide\"\ndelimiter = \"|\"\nquote_char = \"|\"\n");
+
+        var resolved = SpecResolver.Resolve(document);
+
+        Assert.False(resolved.TryGetValue(out _));
+        Assert.Contains(resolved.Diagnostics, d => d.Code == DiagnosticCode.QuoteCharNotSupportedV1);
+        Assert.Contains(resolved.Diagnostics, d => d.Code == DiagnosticCode.BindingDelimiterQuoteConflict);
     }
 
     private static FcaBedrock.Spec.Toml.SpecDocument ReadOk(string toml)

@@ -1,3 +1,4 @@
+using FcaBedrock.Benchmarks.Corpus;
 using FcaBedrock.Core.Planning;
 
 namespace FcaBedrock.Benchmarks.Oracles;
@@ -37,15 +38,19 @@ internal static class AdultOracle
         {
             lineNumber++;
 
-            // Blank lines are NOT skipped: the published file ends with a doubled newline, so its
-            // final empty row is a record the reader yields, and an oracle that dropped it would be
-            // shaped to disagree with correct behaviour. An empty line splits to one empty field,
-            // which cleans to missing and therefore contributes no present field and no characters.
+            // Blank lines are skipped, as the reader skips blank records (spec §5.1.1): the
+            // published file ends with a doubled newline, and its empty final line is not a
+            // record. The quote check comes first, so a line with a quote is never judged blank.
             if (line.Contains('"', StringComparison.Ordinal))
             {
                 throw new InvalidOperationException(
                     $"adult drain oracle: line {lineNumber} contains a quote character, so a naive split is "
                     + "not a valid reader for this file and this oracle would be wrong rather than independent.");
+            }
+
+            if (AdultCorpus.IsBlank(line))
+            {
+                continue;
             }
 
             summary = summary.AddRecord();

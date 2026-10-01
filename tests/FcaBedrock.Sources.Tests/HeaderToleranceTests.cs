@@ -5,8 +5,8 @@ namespace FcaBedrock.Sources.Tests;
 
 // Header tolerance for BOTH shapes. Sep's own header mode throws ArgumentException
 // on a duplicate or multiply-blank header name, which made §5.3/§10.2 — where such a header is
-// legal and binds by index — unreachable. The header is now consumed as the first parsed record,
-// realizing that already-normative behavior. Unique-header and headerless behavior is unchanged;
+// legal and binds by index — unreachable. The header is now consumed as the first non-blank
+// record (spec §5.1.1), realizing that already-normative behavior. Unique-header and headerless behavior is unchanged;
 // these tests pin both the expansion and the neutrality.
 public sealed class HeaderToleranceTests
 {
@@ -228,8 +228,8 @@ public sealed class HeaderToleranceTests
     [Fact]
     public async Task Header_WhenPresent_ThenCellsKeepSection51TrimAndUnescape()
     {
-        // Header cells are the post-Sep trim/unescape text verbatim: an unquoted cell loses its
-        // surrounding whitespace, a quoted one keeps its interior, and "" unescapes to a quote.
+        // Header cells are the spec §5.1.1 decoded text: an unquoted cell loses its surrounding
+        // whitespace, a quoted one keeps its interior, and "" unescapes to a quote.
         var schema = await WideSession("  a  ,\" b \",\"x\"\"y\"\n1,2,3\n").GetSchemaAsync();
 
         Assert.Equal(["a", " b ", "x\"y"], schema.Header);
@@ -261,9 +261,18 @@ public sealed class HeaderToleranceTests
     }
 
     [Fact]
-    public async Task Schema_WhenSingleEmptyLineHeader_ThenOneBlankHeaderCell()
+    public async Task Schema_WhenOnlyABlankLine_ThenNoHeaderAndNoColumns()
     {
         var schema = await WideSession("\n").GetSchemaAsync();
+
+        Assert.Equal(0, schema.ColumnCount);
+        Assert.Null(schema.Header);
+    }
+
+    [Fact]
+    public async Task Schema_WhenQuotedEmptyHeader_ThenOneEmptyHeaderCell()
+    {
+        var schema = await WideSession("\"\"\n").GetSchemaAsync();
 
         Assert.Equal(1, schema.ColumnCount);
         Assert.Equal([""], schema.Header);

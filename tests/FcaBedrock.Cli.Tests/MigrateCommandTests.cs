@@ -117,6 +117,23 @@ public sealed class MigrateCommandTests
     }
 
     [Fact]
+    public async Task Migrate_WhenTheDelimiterIsOutsideTheAlphabet_ThenUsageExit2AndNoInputOpened()
+    {
+        // §5.1.1: the parser refuses '#', so migrate never authors a spec the reader would refuse,
+        // and the .bed file is never opened.
+        using var temp = TempDirectory.Create();
+        var bed = WriteMushroomBed(temp);
+        var harness = new CliTestHarness();
+
+        var exit = await harness.RunAsync("migrate", bed, "--out", "-", "--shape", "wide", "--delimiter", "#");
+
+        Assert.Equal(2, exit);
+        Assert.Equal(string.Empty, harness.StdOut);
+        Assert.StartsWith("error: option '--delimiter' accepts TAB or one character from U+001F to U+007E", harness.StdErr, StringComparison.Ordinal);
+        Assert.Empty(harness.Opened);
+    }
+
+    [Fact]
     public async Task Migrate_WhenShapeIsOmitted_ThenWideIsAuthored()
     {
         using var temp = TempDirectory.Create();

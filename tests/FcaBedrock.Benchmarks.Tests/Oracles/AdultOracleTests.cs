@@ -50,6 +50,23 @@ public sealed class AdultOracleTests
     }
 
     [Fact]
+    public async Task ExpectedDrain_WhenABlankLineIsPresent_ThenItIsNotARecord()
+    {
+        // The oracle applies the reader's blank rule (spec §5.1.1), so the published file's empty
+        // final line and any whitespace-only line add no record and no field.
+        using var temp = TempDirectory.Create();
+        var withBlanks = temp.File("blanks.data");
+        var withoutBlanks = temp.File("rows.data");
+        await File.WriteAllTextAsync(withBlanks, " \t\n" + AdultRows.Replace("\n28,", "\n\n28,", StringComparison.Ordinal) + "\n", TestContext.Current.CancellationToken);
+        await File.WriteAllTextAsync(withoutBlanks, AdultRows, TestContext.Current.CancellationToken);
+
+        var expected = AdultOracle.ExpectedDrain(withoutBlanks);
+
+        Assert.Equal(3, expected.Records);
+        Assert.Equal(expected, AdultOracle.ExpectedDrain(withBlanks));
+    }
+
+    [Fact]
     public void RequirePlanShape_WhenOneAttributeContributesNothing_ThenItThrows()
     {
         // THE counterexample. `occupation` crosses nothing in any bin and carries no missing

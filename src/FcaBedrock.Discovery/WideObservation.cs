@@ -12,7 +12,7 @@ namespace FcaBedrock.Discovery;
 /// probed domain equal to the domain a conversion of the same source calibrates.
 /// </para>
 /// <para>
-/// <b>Cleaned values only.</b> The session has already applied the §5.1 quote-aware trim and
+/// <b>Cleaned values only.</b> The session has already applied spec §5.1.1 decoding and
 /// missing normalization, so a <see langword="null"/> field here is missing (an empty cell, a
 /// cell equal to the effective <c>missing_token</c>, or a cell a ragged short row never reached)
 /// and a missing value is not an observation. Discovery re-does none of that: it does not

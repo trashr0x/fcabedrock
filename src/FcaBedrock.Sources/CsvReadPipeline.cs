@@ -7,235 +7,516 @@ using nietras.SeparatedValues;
 namespace FcaBedrock.Sources;
 
 /// <summary>
-/// The one delimited-source read path, shared by every CSV/TSV schema and record read:
-/// bound sources (<see cref="WideCsvSource"/>, <see cref="TripleCsvSource"/>) and unbound
-/// sessions (<see cref="WideCsvSession"/>, <see cref="TripleCsvSession"/>) alike. Sep owns
-/// tokenization (D-041); this type layers the FCA semantics on top of it: header handling,
-/// the §5.1 missing normalization, row-index object naming, and the triple role map.
+/// The one delimited-source read path, shared by every CSV/TSV schema and record read: bound
+/// sources (<see cref="WideCsvSource"/>, <see cref="TripleCsvSource"/>) and unbound sessions
+/// (<see cref="WideCsvSession"/>, <see cref="TripleCsvSession"/>) alike. It reads by spec §5.1.1:
+/// Sep splits candidate records (D-041), and this type validates and decodes every raw field of
+/// every candidate before the record is exposed, skips blank records, consumes the header, numbers
+/// the data records, applies the §5.1 missing normalization and maps the triple roles.
 /// <para>
 /// <b>Why one owner.</b> Schema and records must never disagree about what the header is or
 /// where the data starts. A header is consumed in exactly one place, so schema-vs-record parity
 /// is structural rather than a property several call sites must maintain (the D-102 posture).
 /// </para>
 /// <para>
-/// <b>Header tolerance.</b> Sep is always opened in its <em>headerless</em> mode
-/// and the header, when the settings declare one, is consumed here as the first parsed
-/// record. Sep's own header mode throws <see cref="ArgumentException"/> on a duplicate or
+/// <b>Header tolerance.</b> Sep is always opened in its <em>headerless</em> mode, and the header,
+/// when the settings declare one, is the first non-blank record, decoded here by the field
+/// grammar. Sep's own header mode throws <see cref="ArgumentException"/> on a duplicate or
 /// multiply-blank header name, which would make §5.3/§10.2 unreachable: there such a header is
 /// legal, binds by index, and yields <c>SourceBindingInvalid</c> only for an ambiguous
-/// <em>name</em> binding. Consuming the header here realizes that normative behavior. For every
-/// header Sep's header mode accepts, the cells read here are the ones it would report: Sep
-/// documents the same trim and unescape for header names as for fields.
+/// <em>name</em> binding.
+/// </para>
+/// <para>
+/// <b>Each candidate.</b> A one-column candidate is tested for blankness (a candidate with a
+/// delimiter is never blank). Then one quote search covers the whole candidate: a candidate with no
+/// quote is valid as a whole, because a quote-free field is a valid unquoted field that holds no
+/// delimiter, CR or LF, so its fields, unused ones included, need no further validation, and each
+/// decoded value is the field without W at either end. A candidate with a quote is examined field
+/// by field with the full grammar (<see cref="DelimitedFieldGrammar"/>). Wide reads decode every
+/// field; triple reads decode the three roles and validate every other column without decoding it.
+/// Line numbers are counted here, one per candidate plus the line breaks inside quoted fields; Sep's
+/// own line numbers are not used.
+/// </para>
+/// <para>
+/// <b>Cancellation.</b> The operation token is checked before the stream is acquired, after Sep's
+/// initialization, before and after every advance (blank candidates included), inside owned work
+/// on a long candidate (<see cref="CancellationBudget"/>), and before a schema or record is
+/// exposed. The whole-span reader's checks bound how much a cancelled read still reads; these
+/// checks keep a cancelled read from exposing anything, because Sep serves candidates it already
+/// holds without reading. No raw Sep span or row is held across a yield or an await.
 /// </para>
 /// </summary>
 internal static class CsvReadPipeline
 {
     /// <summary>
     /// Reads the source schema: the ordered header names when the settings declare a header,
-    /// otherwise the first data record's column count.
+    /// otherwise the first non-blank record's column count. A source with no non-blank record has
+    /// no header and no columns.
     /// </summary>
     public static async ValueTask<SourceSchema> ReadSchemaAsync(
         Func<Stream> openStream, char delimiter, bool hasHeader, CancellationToken cancellationToken)
     {
         await Task.Yield();
-        cancellationToken.ThrowIfCancellationRequested();
+        cancellationToken.ThrowIfCancellationRequested(); // before acquisition
 
-        using var reader = Open(openStream, delimiter);
-        if (ConsumeHeader(reader, hasHeader) is { } header)
+        var owner = DelimitedSourceReader.Open(openStream, delimiter, cancellationToken);
+        try
         {
-            // Immutable storage, explicitly: a session hands this same snapshot to every caller,
-            // so no castable mutable array may survive into it (D-098).
-            return new SourceSchema(header.Length, header.ToImmutableArray());
-        }
+            var lines = new LineState();
+            while (true)
+            {
+                if (!owner.MoveNext())
+                {
+                    return new SourceSchema(0);
+                }
 
-        // No header: either because none was declared, or because the source holds no record
-        // at all. The latter keeps a *header-less* schema rather than gaining an empty header,
-        // matching Sep, which likewise reports no header for empty input.
-        return Advance(reader) ? new SourceSchema(ColumnCount(reader)) : new SourceSchema(0);
+                var row = owner.Reader.Current;
+                lines.StartCandidate();
+                var count = row.ColCount;
+                var span = row.Span;
+                SourceSchema? schema;
+                if (CancellationBudget.IsLong(span.Length, count))
+                {
+                    var budget = new CancellationBudget(owner.CancellationToken);
+                    schema = SchemaCandidate(row, count, span, delimiter, hasHeader, ref lines, ref budget);
+                }
+                else
+                {
+                    var none = default(NoCheckpoints);
+                    schema = SchemaCandidate(row, count, span, delimiter, hasHeader, ref lines, ref none);
+                }
+
+                if (schema is null)
+                {
+                    continue; // a blank candidate
+                }
+
+                owner.ThrowIfCancellationRequested(); // before the schema is exposed
+                return schema;
+            }
+        }
+        catch (Exception ex)
+        {
+            owner.Fail(ex);
+            throw;
+        }
+        finally
+        {
+            owner.Close(); // a sole cleanup failure fails the schema read, so a session caches nothing
+        }
     }
 
     /// <summary>
-    /// Streams cleaned wide object records in input order, naming each by its 0-based data-row
-    /// index (invariant digits). A declared header is consumed as schema, never yielded, and
-    /// does not advance the index: the first data record is always <c>0</c>.
+    /// Streams cleaned wide object records in input order, naming each by its 0-based data record
+    /// index (invariant digits). A declared header is consumed, never yielded, and blank records
+    /// are skipped; neither advances the index, so the first data record is always <c>0</c>.
     /// </summary>
     public static async IAsyncEnumerable<ObjectRecord> ReadRecordsAsync(
         Func<Stream> openStream, char delimiter, bool hasHeader, string missingToken,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         await Task.Yield();
-        cancellationToken.ThrowIfCancellationRequested();
+        cancellationToken.ThrowIfCancellationRequested(); // before acquisition
 
-        using var reader = Open(openStream, delimiter);
-        ConsumeHeader(reader, hasHeader);
-
-        var rowIndex = 0;
-        while (true)
+        var owner = DelimitedSourceReader.Open(openStream, delimiter, cancellationToken);
+        try
         {
-            // Checked BEFORE each advance, not after: an already-canceled read of an empty or
-            // header-only source must still cancel rather than complete as an empty success, and
-            // cancellation must win over a read failure on the row that would have been next.
-            cancellationToken.ThrowIfCancellationRequested();
-            if (!Advance(reader))
+            var lines = new LineState();
+            var needHeader = hasHeader;
+            var index = 0;
+            while (true)
             {
-                break;
-            }
+                // The candidate loop runs inside a try that records the primary failure; the yield
+                // stays outside it, because C# forbids a yield inside a try with a catch.
+                ObjectRecord? record = null;
+                try
+                {
+                    while (owner.MoveNext())
+                    {
+                        var row = owner.Reader.Current;
+                        lines.StartCandidate();
+                        var count = row.ColCount;
+                        var span = row.Span;
+                        string?[]? fields;
+                        if (CancellationBudget.IsLong(span.Length, count))
+                        {
+                            var budget = new CancellationBudget(owner.CancellationToken);
+                            fields = RecordCandidate(row, count, span, delimiter, ref needHeader, missingToken, index, ref lines, ref budget);
+                        }
+                        else
+                        {
+                            var none = default(NoCheckpoints);
+                            fields = RecordCandidate(row, count, span, delimiter, ref needHeader, missingToken, index, ref lines, ref none);
+                        }
 
-            // The fields are extracted by a helper because Sep's row is a ref struct: it must
-            // not be a local in this iterator, whose locals outlive the yield.
-            yield return new ObjectRecord(
-                rowIndex.ToString(CultureInfo.InvariantCulture), ReadFields(reader, missingToken));
-            rowIndex++;
+                        if (fields is null)
+                        {
+                            continue; // a blank candidate, or the consumed header
+                        }
+
+                        owner.ThrowIfCancellationRequested(); // before the record is exposed
+                        record = new ObjectRecord(index.ToString(CultureInfo.InvariantCulture), fields);
+                        index++;
+                        break;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    owner.Fail(ex);
+                    throw;
+                }
+
+                if (record is null)
+                {
+                    break;
+                }
+
+                yield return record;
+            }
+        }
+        finally
+        {
+            owner.Close();
         }
     }
 
     /// <summary>
     /// Streams cleaned triple rows in input order, reading the three roles through
-    /// <paramref name="columns"/>. A role mapped past a ragged short row's end is
-    /// <see langword="null"/>: absent, not an error (§5.4, D-085).
+    /// <paramref name="columns"/> and numbering the rows by their 0-based data record index. A role
+    /// mapped past a ragged short row's end is <see langword="null"/>: absent, not an error (§5.4,
+    /// D-085).
     /// </summary>
     public static async IAsyncEnumerable<TripleRow> ReadTripleRowsAsync(
         Func<Stream> openStream, char delimiter, bool hasHeader, string missingToken,
         TripleColumns columns, [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         await Task.Yield();
-        cancellationToken.ThrowIfCancellationRequested();
+        cancellationToken.ThrowIfCancellationRequested(); // before acquisition
 
-        using var reader = Open(openStream, delimiter);
-        ConsumeHeader(reader, hasHeader);
-
-        var recordIndex = 0;
-        while (true)
+        var owner = DelimitedSourceReader.Open(openStream, delimiter, cancellationToken);
+        try
         {
-            // Same ordering as the wide iterator, for the same reasons.
-            cancellationToken.ThrowIfCancellationRequested();
-            if (!Advance(reader))
+            var lines = new LineState();
+            var needHeader = hasHeader;
+            var index = 0;
+            while (true)
             {
-                break;
-            }
-
-            yield return ReadTripleRow(reader, recordIndex, missingToken, columns);
-            recordIndex++;
-        }
-    }
-
-    // Sep is opened headerless unconditionally (see the type remarks); the remaining tokenizer
-    // options are exactly the pinned ones. Trim = Outer removes leading and trailing spaces before
-    // unescape: spaces around an UNQUOTED field, or outside a quoted field's quotes, are removed,
-    // and whitespace INSIDE the quotes is kept (spec §5.1). Sep documents that it trims only
-    // U+0020, not tabs or other whitespace. DisableColCountCheck lets a short/ragged row through
-    // rather than throwing across the Sources seam: an absent mapped cell reaches the Conversion
-    // layer as null, which it reads by role (§5.3.1, §5.4): a missing value, no observation for a
-    // triple predicate, or ObjectKeyValueInvalid for an object key or triple subject.
-    private static SepReader Open(Func<Stream> openStream, char delimiter)
-    {
-        var stream = openStream();
-        try
-        {
-            return Sep.New(delimiter)
-                .Reader(o => o with
+                TripleRow? result = null;
+                try
                 {
-                    HasHeader = false, Unescape = true, Trim = SepTrim.Outer, DisableColCountCheck = true,
-                })
-                .From(stream);
+                    while (owner.MoveNext())
+                    {
+                        var row = owner.Reader.Current;
+                        lines.StartCandidate();
+                        var count = row.ColCount;
+                        var span = row.Span;
+                        bool retained;
+                        string? subject, predicate, value;
+                        if (CancellationBudget.IsLong(span.Length, count))
+                        {
+                            var budget = new CancellationBudget(owner.CancellationToken);
+                            retained = TripleCandidate(row, count, span, delimiter, ref needHeader, missingToken, columns, index, ref lines, ref budget, out subject, out predicate, out value);
+                        }
+                        else
+                        {
+                            var none = default(NoCheckpoints);
+                            retained = TripleCandidate(row, count, span, delimiter, ref needHeader, missingToken, columns, index, ref lines, ref none, out subject, out predicate, out value);
+                        }
+
+                        if (!retained)
+                        {
+                            continue; // a blank candidate, or the consumed header
+                        }
+
+                        owner.ThrowIfCancellationRequested(); // before the row is exposed
+                        result = new TripleRow(index, subject, predicate, value);
+                        index++;
+                        break;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    owner.Fail(ex);
+                    throw;
+                }
+
+                if (result is not { } emitted)
+                {
+                    break;
+                }
+
+                yield return emitted;
+            }
         }
-        catch (NotSupportedException ex) when (IsTokenizerFailure(ex))
+        finally
         {
-            // Only the tokenizer's own refusal is handled here: every other exception propagates
-            // as itself, and this method does not dispose the stream for it (EP-1).
-            stream.Dispose();
-            throw new SourceReadException("The source could not be opened for reading.", ex);
+            owner.Close();
         }
     }
 
-    // Sep signals its row/buffer ceiling ("Buffer or row has reached maximum supported length of
-    // 16777216", also raised when an unterminated quote runs a field past that length) as a
-    // NotSupportedException. That is an expected provider read failure, normalized HERE so no
-    // consumer needs to know Sep exists. Nothing else is caught: cancellation, argument/state
-    // errors, and every other framework exception propagate as themselves (EP-14).
-    private static bool Advance(SepReader reader)
+    /// <summary>
+    /// One candidate of a schema read: null for a blank candidate, else the header (decoded, never
+    /// missing-normalized) or, headerless, the candidate's width after validating it.
+    /// </summary>
+    internal static SourceSchema? SchemaCandidate<TBudget>(
+        SepReader.Row row, int count, ReadOnlySpan<char> span, char delimiter, bool hasHeader,
+        ref LineState lines, ref TBudget budget)
+        where TBudget : struct, IWorkBudget
     {
-        try
-        {
-            return reader.MoveNext();
-        }
-        catch (NotSupportedException ex) when (IsTokenizerFailure(ex))
-        {
-            throw new SourceReadException(
-                "The source could not be read: a row exceeded the maximum supported length "
-                + "(an unterminated quote will also produce this).", ex);
-        }
-    }
-
-    // "Did the TOKENIZER refuse, or did the stream we were handed misbehave?" Being inside a Sep
-    // call is not enough to answer that: Sep reads through the caller's stream, so a stream whose
-    // Read throws NotSupportedException (a non-readable stream, say) surfaces through the very
-    // same call. Wrapping that would disguise a programmer/contract error as an expected read
-    // failure (exactly what the typed read-failure channel forbids) and would later mistranslate into
-    // ProbeSourceReadFailed. So normalize only failures thrown from within Sep itself.
-    //
-    // Verified against pinned Sep 0.15.0: the limit failure's TargetSite is
-    // SepThrow.NotSupportedException_BufferOrRowLengthExceedsMaximumSupported (assembly "Sep"),
-    // while a throwing stream's TargetSite is its own Read. Origin is preferred over matching
-    // Sep's message text or throw-helper name, which would couple us to its internals; and an
-    // unrecognized failure fails OPEN: it propagates unwrapped rather than being absorbed.
-    private static bool IsTokenizerFailure(Exception ex) =>
-        ex.TargetSite?.DeclaringType?.Assembly == typeof(Sep).Assembly;
-
-    // Consumes the header record exactly once when one is declared, returning its cells
-    // VERBATIM after Sep's trim/unescape. Header cells are never missing-normalized: a header
-    // that happens to equal missing_token (e.g. "?") is that literal name, and binds by name
-    // when unique (§10.2). Returns null when no header is declared, or when the source holds
-    // no record to take one from.
-    private static string[]? ConsumeHeader(SepReader reader, bool hasHeader)
-    {
-        if (!hasHeader || !Advance(reader))
+        if (count == 1 && DelimitedFieldGrammar.IsBlankCandidate(row[0].Span, delimiter, ref budget))
         {
             return null;
         }
 
-        var row = reader.Current;
-        var cells = new string[row.ColCount];
-        for (var i = 0; i < cells.Length; i++)
+        var quoteFree = DelimitedFieldGrammar.IsQuoteFree(span, ref budget);
+        if (!hasHeader)
         {
-            cells[i] = row[i].ToString();
+            if (!quoteFree)
+            {
+                ValidateRow(row, count, delimiter, 0, ref lines, ref budget);
+            }
+
+            return new SourceSchema(count);
         }
 
-        return cells;
+        var cells = new string[count];
+        for (var i = 0; i < cells.Length; i++)
+        {
+            var raw = row[i].Span;
+            int quote;
+            if (quoteFree || (quote = DelimitedFieldGrammar.FirstQuote(raw, ref budget)) < 0)
+            {
+                cells[i] = DelimitedFieldGrammar.MaterializeUnquoted(raw, delimiter, ref budget);
+            }
+            else
+            {
+                cells[i] = DelimitedFieldGrammar.DecodeField(raw, quote, delimiter, ref budget, out var fault, out var breaks)
+                    ?? throw Fault(row, delimiter, null, i, fault, ref lines, ref budget);
+                lines.AddBreakCount(breaks);
+            }
+        }
+
+        // Immutable storage, explicitly: a session hands this same snapshot to every caller, so no
+        // castable mutable array may survive into it (D-098).
+        return new SourceSchema(cells.Length, cells.ToImmutableArray());
     }
 
-    private static int ColumnCount(SepReader reader) => reader.Current.ColCount;
-
-    private static string?[] ReadFields(SepReader reader, string missingToken)
+    /// <summary>
+    /// One candidate of a wide record read: null for a blank candidate or the consumed header, else
+    /// every field decoded and missing-normalized.
+    /// </summary>
+    internal static string?[]? RecordCandidate<TBudget>(
+        SepReader.Row row, int count, ReadOnlySpan<char> span, char delimiter, ref bool needHeader, string missingToken,
+        int index, ref LineState lines, ref TBudget budget)
+        where TBudget : struct, IWorkBudget
     {
-        var row = reader.Current;
-        var fields = new string?[row.ColCount];
-        for (var i = 0; i < fields.Length; i++)
+        if (count == 1 && DelimitedFieldGrammar.IsBlankCandidate(row[0].Span, delimiter, ref budget))
         {
-            fields[i] = Normalize(row[i].ToString(), missingToken);
+            return null;
+        }
+
+        var quoteFree = DelimitedFieldGrammar.IsQuoteFree(span, ref budget);
+        if (needHeader)
+        {
+            needHeader = false;
+            if (!quoteFree)
+            {
+                ValidateRow(row, count, delimiter, null, ref lines, ref budget);
+            }
+
+            return null;
+        }
+
+        var fields = new string?[count];
+        for (var i = 0; i < count; i++)
+        {
+            var raw = row[i].Span;
+            string value;
+            int quote;
+            if (quoteFree || (quote = DelimitedFieldGrammar.FirstQuote(raw, ref budget)) < 0)
+            {
+                value = DelimitedFieldGrammar.MaterializeUnquoted(raw, delimiter, ref budget);
+            }
+            else
+            {
+                value = DelimitedFieldGrammar.DecodeField(raw, quote, delimiter, ref budget, out var fault, out var breaks)
+                    ?? throw Fault(row, delimiter, index, i, fault, ref lines, ref budget);
+                lines.AddBreakCount(breaks);
+            }
+
+            fields[i] = Normalize(value, missingToken);
         }
 
         return fields;
     }
 
-    private static TripleRow ReadTripleRow(
-        SepReader reader, int recordIndex, string missingToken, TripleColumns columns)
+    /// <summary>
+    /// One candidate of a triple read: false for a blank candidate or the consumed header, else the
+    /// three roles decoded and missing-normalized, with every other column validated and none of
+    /// them decoded.
+    /// </summary>
+    internal static bool TripleCandidate<TBudget>(
+        SepReader.Row row, int count, ReadOnlySpan<char> span, char delimiter, ref bool needHeader, string missingToken,
+        TripleColumns columns, int index, ref LineState lines, ref TBudget budget,
+        out string? subject, out string? predicate, out string? value)
+        where TBudget : struct, IWorkBudget
     {
-        var row = reader.Current;
-        var count = row.ColCount;
-        var subject = columns.Subject < count ? Normalize(row[columns.Subject].ToString(), missingToken) : null;
-        var predicate = columns.Predicate < count ? Normalize(row[columns.Predicate].ToString(), missingToken) : null;
-        var value = columns.Value < count ? Normalize(row[columns.Value].ToString(), missingToken) : null;
-        return new TripleRow(recordIndex, subject, predicate, value);
+        subject = null;
+        predicate = null;
+        value = null;
+        if (count == 1 && DelimitedFieldGrammar.IsBlankCandidate(row[0].Span, delimiter, ref budget))
+        {
+            return false;
+        }
+
+        var quoteFree = DelimitedFieldGrammar.IsQuoteFree(span, ref budget);
+        if (needHeader)
+        {
+            needHeader = false;
+            if (!quoteFree)
+            {
+                ValidateRow(row, count, delimiter, null, ref lines, ref budget);
+            }
+
+            return false;
+        }
+
+        for (var i = 0; i < count; i++)
+        {
+            if (i != columns.Subject && i != columns.Predicate && i != columns.Value)
+            {
+                // An unused column is validated, never decoded. In a quote-free candidate the
+                // candidate-wide search has already established that it is a valid unquoted field,
+                // so nothing in it is examined again; passing over it is still owned work, charged
+                // one unit, so a long run of unused columns is cancellable like any other owned work.
+                if (quoteFree)
+                {
+                    budget.Charge(1);
+                    continue;
+                }
+
+                var unused = row[i].Span;
+                var check = DelimitedFieldGrammar.Check(unused, delimiter, ref budget);
+                if (!check.IsValid)
+                {
+                    throw Fault(row, delimiter, index, i, check, ref lines, ref budget);
+                }
+
+                lines.AddBreaks(unused, check, ref budget);
+                continue;
+            }
+
+            var raw = row[i].Span;
+            string decoded;
+            int quote;
+            if (quoteFree || (quote = DelimitedFieldGrammar.FirstQuote(raw, ref budget)) < 0)
+            {
+                decoded = DelimitedFieldGrammar.MaterializeUnquoted(raw, delimiter, ref budget);
+            }
+            else
+            {
+                decoded = DelimitedFieldGrammar.DecodeField(raw, quote, delimiter, ref budget, out var fault, out var breaks)
+                    ?? throw Fault(row, delimiter, index, i, fault, ref lines, ref budget);
+                lines.AddBreakCount(breaks);
+            }
+
+            var normalized = Normalize(decoded, missingToken);
+            if (i == columns.Subject)
+            {
+                subject = normalized;
+            }
+
+            if (i == columns.Predicate)
+            {
+                predicate = normalized;
+            }
+
+            if (i == columns.Value)
+            {
+                value = normalized;
+            }
+        }
+
+        return true;
     }
 
-    // The value is already quote-aware-trimmed by Sep (§5.1), so missing detection is a direct
-    // comparison: an empty value (unquoted blank or quoted "") or one equal to the verbatim
-    // missing_token. A quoted value with deliberate interior whitespace is preserved and is not
-    // missing unless it equals the token exactly. An empty missing_token disables token matching
-    // only; an empty cell stays missing.
+    // A candidate with a quote somewhere, validated field by field without decoding: a consumed
+    // header, or the record that gives a headerless schema its width.
+    private static void ValidateRow<TBudget>(
+        SepReader.Row row, int count, char delimiter, int? index, ref LineState lines, ref TBudget budget)
+        where TBudget : struct, IWorkBudget
+    {
+        for (var i = 0; i < count; i++)
+        {
+            var raw = row[i].Span;
+            var check = DelimitedFieldGrammar.Check(raw, delimiter, ref budget);
+            if (!check.IsValid)
+            {
+                throw Fault(row, delimiter, index, i, check, ref lines, ref budget);
+            }
+
+            lines.AddBreaks(raw, check, ref budget);
+        }
+    }
+
+    // The read failure for a malformed field. The physical line of the defect is recomputed only
+    // here, on the failure path; the rescan charges the same budget, so a cancellation observed
+    // during it wins over the defect that has been found but not yet raised.
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static SourceReadException Fault<TBudget>(
+        SepReader.Row row, char delimiter, int? index, int column, in FieldCheck check, ref LineState lines, ref TBudget budget)
+        where TBudget : struct, IWorkBudget
+    {
+        long before = 0;
+        for (var i = 0; i < column; i++)
+        {
+            var raw = row[i].Span;
+            var earlier = DelimitedFieldGrammar.Check(raw, delimiter, ref budget);
+            before += earlier.Quoted ? DelimitedFieldGrammar.CountLineBreaks(raw, ref budget) : 0;
+        }
+
+        var faultLine = lines.Start + before + DelimitedFieldGrammar.CountLineBreaks(row[column].Span[..check.FaultOffset], ref budget);
+        return new SourceReadException(DelimitedFieldGrammar.FaultMessage(check.Fault, index, lines.Start, column, faultLine));
+    }
+
+    // Missing detection over the decoded value (§5.1): an empty value, or one equal to the verbatim
+    // missing_token. A quoted value with deliberate whitespace is present unless it equals the token
+    // exactly. An empty missing_token disables token matching only; an empty value stays missing.
     private static string? Normalize(string value, string missingToken) =>
         value.Length == 0 || string.Equals(value, missingToken, StringComparison.Ordinal)
             ? null
             : value;
+
+    /// <summary>
+    /// The physical-line counter of one read: one line per candidate, blank ones included, plus the
+    /// line breaks inside quoted fields. <see cref="Start"/> is the current candidate's first line.
+    /// </summary>
+    internal struct LineState
+    {
+        private long _next;
+
+        public long Start { get; private set; }
+
+        public void StartCandidate()
+        {
+            if (_next == 0)
+            {
+                _next = 1;
+            }
+
+            Start = _next;
+            _next++;
+        }
+
+        public void AddBreakCount(int breaks) => _next += breaks;
+
+        public void AddBreaks<TBudget>(ReadOnlySpan<char> raw, in FieldCheck check, ref TBudget budget)
+            where TBudget : struct, IWorkBudget
+        {
+            if (check.Quoted)
+            {
+                _next += DelimitedFieldGrammar.CountLineBreaks(raw, ref budget);
+            }
+        }
+    }
 }

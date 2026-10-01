@@ -9,7 +9,7 @@ namespace FcaBedrock.Cli.Commands;
 /// <c>validate SPEC [DATA]</c> (D-122 part 10).
 /// <para>
 /// Without DATA the existing no-schema resolution applies verbatim. With DATA the source
-/// schema — the header, or the first record when headerless — is acquired and the spec is
+/// schema — the header, or the first non-blank record when headerless — is acquired and the spec is
 /// resolved against it, so bindings by header name are actually checked.
 /// </para>
 /// <para>

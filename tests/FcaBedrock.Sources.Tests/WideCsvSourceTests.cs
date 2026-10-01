@@ -83,7 +83,7 @@ public sealed class WideCsvSourceTests
         Assert.Equal("z", records[0].Field(1));
     }
 
-    // --- Whitespace handling (spec §5.1): trim unquoted, preserve quoted ---
+    // --- Whitespace handling (spec §5.1.1): trim W around unquoted fields and outside quotes; keep quoted content ---
 
     [Fact]
     public async Task ReadAsync_WhenUnquotedFieldHasSurroundingWhitespace_ThenTrimmed()
