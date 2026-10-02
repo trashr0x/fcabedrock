@@ -19,7 +19,7 @@ public sealed class UsageTextTests
 {
     private static readonly string[] ExpectedHelpLines =
     [
-        "fcabedrock - Formal Concept Analysis preprocessing (FcaBedrock vNext)",
+        "fcabedrock: Formal Concept Analysis preprocessing (FcaBedrock vNext)",
         "",
         "usage: fcabedrock <command> [operands] [options]",
         "",
@@ -33,33 +33,33 @@ public sealed class UsageTextTests
         "  migrate      Migrate a v2 .bed file to a Bedrock spec.",
         "  fingerprint  Report the three native fingerprints and each stored field's state.",
         "",
-        "convert - Convert a data source into a formal context using a Bedrock spec.",
+        "convert: Convert a data source into a formal context using a Bedrock spec.",
         "  usage: fcabedrock convert SPEC DATA --out BASE --format cxt|dat|both [--v2-compat] [--no-manifest] [--force] [--temp-dir DIR]",
         "    note: --out names a base; the ruled extension is appended, and there is no default or inferred format.",
         "    note: --force authorizes replacing an existing distinct destination.",
         "",
-        "validate - Validate a Bedrock spec, optionally against a data source's schema.",
+        "validate: Validate a Bedrock spec, optionally against a data source's schema.",
         "  usage: fcabedrock validate SPEC [DATA]",
-        "    note: With DATA, only the source schema is acquired; no data rows are read and nothing is written.",
+        "    note: With DATA, only the source schema is acquired (the header, or the first non-blank record when headerless); later records are not examined and nothing is written.",
         "",
-        "plan - Print the conversion plan and the three native fingerprints; write nothing.",
+        "plan: Print the conversion plan and the three native fingerprints; write nothing.",
         "  usage: fcabedrock plan SPEC DATA [--temp-dir DIR]",
         "    note: DATA is required for every plan; rows are read only when calibration requires them.",
         "",
-        "stats - Print formal-context statistics; write nothing.",
+        "stats: Print formal-context statistics; write nothing.",
         "  usage: fcabedrock stats SPEC DATA [--temp-dir DIR]",
         "",
-        "calibrate - Freeze every data-dependent outcome into a standalone spec.",
+        "calibrate: Freeze every data-dependent outcome into a standalone spec.",
         "  usage: fcabedrock calibrate SPEC DATA --out PATH|- [--force] [--temp-dir DIR]",
         "    note: --out - writes to stdout; --force is a file-target option and is rejected with --out -.",
         "",
-        "probe - Generate a draft spec from a data source.",
+        "probe: Generate a draft spec from a data source.",
         "  usage: fcabedrock probe DATA --shape wide|triple --out PATH|- [--force] [--delimiter CHAR] [--header true|false] [--missing-token TOKEN] [--locale TAG|invariant] [--limit N] [--ordering subject_grouped|unordered] [--subject N|NAME] [--predicate N|NAME] [--value N|NAME]",
         "    note: --ordering, --subject, --predicate and --value require --shape triple.",
         "    note: --subject, --predicate and --value are supplied together in one addressing mode: all zero-based indices, or all header names, and names require --header true.",
         "    note: --out - writes to stdout; --force is a file-target option and is rejected with --out -.",
         "",
-        "migrate - Migrate a v2 .bed file to a Bedrock spec.",
+        "migrate: Migrate a v2 .bed file to a Bedrock spec.",
         "  usage: fcabedrock migrate BED --out PATH|- [--force] [--shape wide|triple] [--delimiter CHAR] [--header true|false] [--locale TAG|invariant] [--missing-token TOKEN] [--scaling discrete|progressive] [--object-key row_index|column] [--object-key-column N|NAME] [--subject N|NAME] [--predicate N|NAME] [--value N|NAME]",
         "    note: --shape defaults to wide and --scaling defaults to discrete.",
         "    note: --object-key and --object-key-column require the wide shape, and --object-key-column is required exactly when --object-key column.",
@@ -67,7 +67,7 @@ public sealed class UsageTextTests
         "    note: Triple output always authors ordering = \"unordered\"; there is no --ordering option.",
         "    note: --out - writes to stdout; --force is a file-target option and is rejected with --out -.",
         "",
-        "fingerprint - Report the three native fingerprints and each stored field's state.",
+        "fingerprint: Report the three native fingerprints and each stored field's state.",
         "  usage: fcabedrock fingerprint SPEC DATA [--write --out NEW_SPEC|-] [--force] [--temp-dir DIR]",
         "    note: --out and --force are valid only with --write, and --write requires --out.",
         "    note: There is no --v2-compat: v2 byte compatibility is a convert-only override.",
@@ -127,7 +127,7 @@ public sealed class UsageTextTests
     {
         Assert.Equal(
             "usage: fcabedrock validate SPEC [DATA]\n"
-            + "  note: With DATA, only the source schema is acquired; no data rows are read and nothing is written.\n",
+            + "  note: With DATA, only the source schema is acquired (the header, or the first non-blank record when headerless); later records are not examined and nothing is written.\n",
             UsageText.For("validate"));
     }
 
@@ -147,7 +147,7 @@ public sealed class UsageTextTests
     {
         foreach (var command in CommandTable.Commands)
         {
-            var block = $"\n{command.Name} - {command.Summary}\n  usage: fcabedrock {UsageText.Signature(command)}\n";
+            var block = $"\n{command.Name}: {command.Summary}\n  usage: fcabedrock {UsageText.Signature(command)}\n";
             var first = UsageText.Help.IndexOf(block, StringComparison.Ordinal);
 
             Assert.True(first >= 0, $"help does not contain the block for '{command.Name}'");

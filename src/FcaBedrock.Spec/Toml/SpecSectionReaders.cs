@@ -215,7 +215,7 @@ internal static class SpecSectionReaders
             {
                 context.Error(
                     DiagnosticCode.SpecFieldInvalid,
-                    "[[matcher]] declares no match table; a matcher authors exactly one selector — name_regex or source_index_range (§9.2).",
+                    "[[matcher]] declares no match table; a matcher authors exactly one selector: name_regex or source_index_range (§9.2).",
                     anchor);
             }
 

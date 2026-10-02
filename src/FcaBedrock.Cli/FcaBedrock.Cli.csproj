@@ -12,7 +12,7 @@
     <PackAsTool>true</PackAsTool>
     <ToolCommandName>fcabedrock</ToolCommandName>
     <PackageId>FcaBedrock.Cli</PackageId>
-    <Description>Formal Concept Analysis preprocessing - the fcabedrock command.</Description>
+    <Description>Formal Concept Analysis preprocessing: the fcabedrock command.</Description>
     <!-- Required, not optional: .editorconfig makes SYSLIB1054 a warning (and warnings
          are errors), so OS file identity must go through the LibraryImport source
          generator, whose marshalling stubs need unsafe code, verified by build:

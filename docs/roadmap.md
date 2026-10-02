@@ -44,8 +44,9 @@ can change the output of a spec it still accepts: blank records are skipped ever
 whitespace removed around fields and numbers is the full Unicode whitespace set, quoting is
 validated and malformed quoting is refused, the delimiter alphabet is fixed, and quoted CR content
 read through a stream that returns short reads is no longer reordered (D-137). Its other
-product-behavior changes are the wording of TOML syntax-error messages (D-133) and the rejection of
-three kinds of malformed spec, with one new diagnostic (D-135). M9 begins after M8.2 is accepted and
+product-behavior changes are the wording of TOML syntax-error messages (D-133), the rejection of
+three kinds of malformed spec, with one new diagnostic (D-135), and wording edits to some diagnostic
+messages, the `--help` text and the package description. M9 begins after M8.2 is accepted and
 integrated. Work deferred beyond v1 is in the [deferred backlog](#deferred-backlog-not-v1).
 
 ## Milestones
@@ -363,7 +364,10 @@ predicate `SourceReadSettings.IsInDelimiterAlphabet` (D-054). It declares TOML
 syntax-error message now names that grammar (D-133). It rejects three inputs the spec never
 allowed: a composed spec with no `[[attribute]]` is the new `AttributesMissing` (Error, spec
 resolve), and a `base_index` other than 0 or 1 or a negative `size_advisory_bytes` is
-`SpecFieldInvalid` (D-135). No other diagnostic changes. Otherwise, normative spec
+`SpecFieldInvalid` (D-135). No other diagnostic code, severity or phase changes. The wording of some
+diagnostic and internal exception messages changes to remove dashes used as punctuation and
+references to past milestones, `--help` headings take the form `name: summary`, and the package
+description loses its dash (WP-1, WP-6). Otherwise, normative spec
 prose changes follow D-134's three reviewed kinds: correcting a passage to its rule owner, stating
 enforced defaults, bounds or allowed values that were shown only in examples, and stating rules
 already enforced by the reader or resolver. Spec §8 also states the exact `.cxt` size-advisory

@@ -622,7 +622,7 @@ public static class SpecResolver
         if (names is not (0 or 3))
         {
             AddBindingInvalid(diagnostics,
-                "triple binding.columns must use one addressing mode — all indices or all names, not a mix (§5.3).");
+                "triple binding.columns must use one addressing mode: all indices or all names, not a mix (§5.3).");
             return new TripleColumns(0, 1, 2);
         }
 
@@ -1060,7 +1060,7 @@ public static class SpecResolver
         var problem = section.Discretizer switch
         {
             IdentityDiscretizerSection when value == SourceValueType.Number =>
-                "declares value_type = \"number\", but identity is string-fixing — numeric distinct-value binning uses free_per_value",
+                "declares value_type = \"number\", but identity is string-fixing; numeric distinct-value binning uses free_per_value",
             OrderedCutsDiscretizerSection when value == SourceValueType.Number =>
                 "declares value_type = \"number\", but ordered_cuts is string-fixing (categories are used verbatim)",
             ManualCutsDiscretizerSection when value == SourceValueType.String =>
@@ -1272,7 +1272,7 @@ public static class SpecResolver
             case RestrictToValue value when valueType == SourceValueType.Number:
                 diagnostics.Add(new BedrockDiagnostic(
                     DiagnosticCode.RestrictToNumericEntryRequired, DiagnosticSeverity.Error,
-                    $"Attribute '{attribute}' is number-typed, but restrict_to entry \"{value.Value}\" is a bare string; numeric restriction uses a numeric entry — exact {{ value = n }} or a range (§10.4).",
+                    $"Attribute '{attribute}' is number-typed, but restrict_to entry \"{value.Value}\" is a bare string; numeric restriction uses a numeric entry: exact {{ value = n }} or a range (§10.4).",
                     new DiagnosticLocation(AttributeName: attribute)));
                 break;
 

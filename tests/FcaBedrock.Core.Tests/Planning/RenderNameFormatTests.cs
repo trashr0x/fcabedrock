@@ -250,7 +250,7 @@ public sealed class RenderNameFormatTests
         Assert.Equal(DiagnosticSeverity.Error, diagnostic.Severity);
         Assert.Equal("gill-size", diagnostic.Location?.AttributeName);
         Assert.Equal(
-            "Attribute 'gill-size' renders 1 invalid formal-attribute name(s) — empty or containing CR/LF: \"\" (§10.7).",
+            "Attribute 'gill-size' renders 1 invalid formal-attribute name(s), empty or containing CR/LF: \"\" (§10.7).",
             diagnostic.Message);
     }
 
@@ -333,7 +333,7 @@ public sealed class RenderNameFormatTests
 
         var diagnostic = Assert.Single(result.Diagnostics, d => d.Code == DiagnosticCode.FormalAttributeNameInvalid);
         Assert.Equal(
-            "Attribute 'gill-size' renders 5 invalid formal-attribute name(s) — empty or containing CR/LF: " +
+            "Attribute 'gill-size' renders 5 invalid formal-attribute name(s), empty or containing CR/LF: " +
             "\"a\\nb\", \"\", \"c\\rd\" (+2 more) (§10.7).",
             diagnostic.Message);
     }

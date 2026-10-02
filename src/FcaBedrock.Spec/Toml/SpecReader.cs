@@ -144,7 +144,7 @@ public static class SpecReader
                 case ("attribute", false):
                     context.Error(
                         DiagnosticCode.SpecFieldInvalid,
-                        "Attributes are written as [[attribute]] — an array of tables (§10).",
+                        "Attributes are written as [[attribute]], an array of tables (§10).",
                         nameKey.Span);
                     break;
 

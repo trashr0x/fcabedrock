@@ -116,7 +116,7 @@ public static class BedMigrator
         var reasons = string.Join(" ", mapped.Diagnostics.Select(d => d.Message));
         diagnostics.Add(Warn(
             DiagnosticCode.BedParkedConfigDropped,
-            $"Excluded attribute '{document.Names[index]}': v2 config was not migrated ({reasons}) — parked bare (include = false).",
+            $"Excluded attribute '{document.Names[index]}': v2 config was not migrated ({reasons}); parked bare (include = false).",
             document.Names[index]));
         attributes.Add(Bare(document, index, shape, restrictCulture) with { Include = false });
     }
@@ -262,7 +262,7 @@ public static class BedMigrator
                 {
                     warnings.Add(Warn(
                         DiagnosticCode.BedMissingTokenLabelDropped,
-                        $"Attribute '{name}': the missing-token category '{values[j]}' carried display label '{label}', which has no v1 carrier (the missing column is '{name}-missing', §10.5) — label dropped.",
+                        $"Attribute '{name}': the missing-token category '{values[j]}' carried display label '{label}', which has no v1 carrier (the missing column is '{name}-missing', §10.5); label dropped.",
                         name));
                 }
 

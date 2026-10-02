@@ -116,14 +116,14 @@ internal static class UsageText
     private static string BuildHelp()
     {
         var builder = new StringBuilder();
-        builder.Append(Tool).Append(" - Formal Concept Analysis preprocessing (FcaBedrock vNext)\n\n");
+        builder.Append(Tool).Append(": Formal Concept Analysis preprocessing (FcaBedrock vNext)\n\n");
         builder.Append("usage: ").Append(Tool).Append(" <command> [operands] [options]\n\n");
         builder.Append("commands:\n");
         AppendCommandList(builder);
 
         foreach (var command in CommandTable.Commands)
         {
-            builder.Append('\n').Append(command.Name).Append(" - ").Append(command.Summary).Append('\n');
+            builder.Append('\n').Append(command.Name).Append(": ").Append(command.Summary).Append('\n');
             AppendUsage(builder, command, indent: "  ");
         }
 

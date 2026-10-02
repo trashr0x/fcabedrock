@@ -116,7 +116,7 @@ public static class SpecFingerprints
         diagnostics.Add(new BedrockDiagnostic(
             code,
             DiagnosticSeverity.Warning,
-            $"Stored {field} '{stored}' does not match the computed '{computed}'; the spec changed since it was frozen — recompute or remove it (§14).",
+            $"Stored {field} '{stored}' does not match the computed '{computed}'; the spec changed since it was frozen: recompute or remove it (§14).",
             filePath is null ? null : new DiagnosticLocation(File: filePath)));
     }
 

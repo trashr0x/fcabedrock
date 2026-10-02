@@ -124,7 +124,7 @@ internal static class GroupingStorageDiagnostics
             message.Append(" (e.g. ").AppendJoin(", ", failure.PathSamples).Append(')');
         }
 
-        message.Append(" — the conversion used external sort-merge spool storage (§16.4, D-082).");
+        message.Append("; the conversion used external sort-merge spool storage (§16.4, D-082).");
 
         return new BedrockDiagnostic(
             DiagnosticCode.GroupingStorageFailed, severity, message.ToString(), Location: null, Context: failure);

@@ -732,7 +732,7 @@ public static class Calibrator
                     // equal_width range = "manual" is spec-determined and never pends, so a
                     // pending variant with no observer is a corrupted carrier (D-093).
                     throw new InvalidOperationException(
-                        $"'{pending.Kind}' calibration is not implemented in this milestone; it lands with its own M4 slice (D-093).");
+                        $"A pending '{pending.Kind}' calibration has no observer; the carrier is corrupted (D-093).");
 
                 default:
                     return null;

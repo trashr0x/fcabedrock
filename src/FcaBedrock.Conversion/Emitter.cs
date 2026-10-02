@@ -882,7 +882,7 @@ public static class Emitter
 
         diagnostics.Add(new BedrockDiagnostic(
             code, severity,
-            $"{tally.Count} {reason} (e.g. {tally.Sample}) — duplicate_object_policy = \"{policy}\" (§6.1)."));
+            $"{tally.Count} {reason} (e.g. {tally.Sample}); duplicate_object_policy = \"{policy}\" (§6.1)."));
     }
 
     // Renders the per-enumeration storage-failure ledger as aggregated GroupingStorageFailed diagnostics

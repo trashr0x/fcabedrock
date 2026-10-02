@@ -333,7 +333,7 @@ public static class ConversionPlanner
         return new BedrockDiagnostic(
             DiagnosticCode.FormalAttributeNameInvalid,
             DiagnosticSeverity.Error,
-            $"Attribute '{attributeName}' renders {invalidNames.Count} invalid formal-attribute name(s) — " +
+            $"Attribute '{attributeName}' renders {invalidNames.Count} invalid formal-attribute name(s), " +
             $"empty or containing CR/LF: {string.Join(", ", samples)}{truncated} (§10.7).",
             new DiagnosticLocation(AttributeName: attributeName));
     }

@@ -231,7 +231,7 @@ public sealed class ToolPackTests(ToolPackage package)
         Same(package.Version, Value(metadata, "version"), "the nuspec version");
         Same("Constantinos Orphanides", Value(metadata, "authors"), "the package authors");
         Same(
-            "Formal Concept Analysis preprocessing - the fcabedrock command.",
+            "Formal Concept Analysis preprocessing: the fcabedrock command.",
             Value(metadata, "description"),
             "the package description");
 

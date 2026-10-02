@@ -139,7 +139,7 @@ internal static class CommandTable
             [new CliPositional("SPEC", Required: true), new CliPositional("DATA", Required: false)],
             [],
             [
-                "With DATA, only the source schema is acquired; no data rows are read and nothing is written.",
+                "With DATA, only the source schema is acquired (the header, or the first non-blank record when headerless); later records are not examined and nothing is written.",
             ],
             ValidateCommand.RunAsync),
 

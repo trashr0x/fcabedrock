@@ -289,7 +289,7 @@ public sealed class CalibratedSpec
             case PendingEqualWidth { Range: not (EqualWidthRange.MinMax or EqualWidthRange.PercentileP1P99) } unsupported:
                 throw new ArgumentException(
                     $"attribute '{attribute.Name}' carries a pending equal_width calibration with range '{unsupported.Range}', " +
-                    "which is not a data-derived range this milestone can substitute (D-093/D-103).");
+                    "which is not a data-derived range, so it cannot be substituted (D-093/D-103).");
 
             case PendingEqualWidth config:
             {
@@ -324,7 +324,7 @@ public sealed class CalibratedSpec
                 // Every PendingCalibration variant has an arm above, and ResolvedSpec.Create rejects
                 // an unknown variant at the trust boundary, so reaching here is a programmer error.
                 throw new ArgumentException(
-                    $"attribute '{attribute.Name}' carries an unresolved '{pending.Kind}' calibration that this milestone cannot substitute (D-093).");
+                    $"attribute '{attribute.Name}' carries an unresolved '{pending.Kind}' calibration whose pending variant has no substitution (D-093).");
         }
     }
 
