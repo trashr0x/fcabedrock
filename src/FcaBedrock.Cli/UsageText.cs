@@ -4,7 +4,7 @@ namespace FcaBedrock.Cli;
 
 /// <summary>
 /// Help and usage text, generated from <see cref="CommandTable"/> so it describes exactly
-/// the grammar <see cref="CommandLineParser"/> enforces — an option added to the table
+/// the grammar <see cref="CommandLineParser"/> enforces: an option added to the table
 /// appears here automatically, and one removed disappears (D-123 part 2).
 /// <para>
 /// Plain and terminal-independent (D-122 part 3): no colour, no width detection, no
@@ -22,7 +22,7 @@ internal static class UsageText
     /// <summary>The short usage shown when no command, or no known command, was given.</summary>
     public static string General { get; } = BuildGeneral();
 
-    /// <summary>The usage block for <paramref name="command"/> — its signature and its conditional-grammar notes.</summary>
+    /// <summary>The usage block for <paramref name="command"/>: its signature and its conditional-grammar notes.</summary>
     public static string For(string command)
     {
         if (CommandTable.Find(command) is not { } found)
@@ -64,7 +64,7 @@ internal static class UsageText
             }
 
             // Grouped options are contiguous in the table and render as one bracketed
-            // unit, because that is how they are actually usable: `[--write --out NEW_SPEC|-]`.
+            // unit, because that is how they are usable: `[--write --out NEW_SPEC|-]`.
             builder.Append('[');
             builder.Append(Spell(option));
             while (i + 1 < command.Options.Count && command.Options[i + 1].UsageGroup == option.UsageGroup)
@@ -79,7 +79,7 @@ internal static class UsageText
         return builder.ToString();
     }
 
-    // The advertised value form is derived from the option's KIND wherever the kind fixes it —
+    // The advertised value form is derived from the option's KIND wherever the kind fixes it:
     // an enumerated option advertises exactly the set the parser accepts, and the constrained
     // kinds advertise their own contract. Only free text carries a hand-written placeholder,
     // so help cannot advertise a form the parser does not accept (D-122 part 10 spellings).

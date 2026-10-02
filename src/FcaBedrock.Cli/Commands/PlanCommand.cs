@@ -6,7 +6,7 @@ namespace FcaBedrock.Cli.Commands;
 /// <summary>
 /// <c>plan SPEC DATA [--temp-dir DIR]</c> (D-122 part 10).
 /// <para>
-/// A dry run in the sense that it <b>publishes no artifact</b> — not in the sense that it
+/// A dry run in the sense that it <b>publishes no artifact</b>, not in the sense that it
 /// avoids the source. DATA is required for every plan, the schema is always acquired, and
 /// rows are enumerated exactly when calibration needs them.
 /// </para>

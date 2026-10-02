@@ -21,7 +21,7 @@ namespace FcaBedrock.Cli.Commands;
 /// </para>
 /// <para>
 /// <b>The <c>[binding]</c> it authors is exactly what the invocation supplied</b>, plus the two
-/// facts a migrated spec cannot omit: the shape, and — under triple — the ordering the grammar
+/// facts a migrated spec cannot omit: the shape, and (under triple) the ordering the grammar
 /// deliberately has no flag for. Authoring a default the user did not ask for would destroy the
 /// omitted-versus-authored distinction the document model exists to preserve (D-049/D-066/D-075).
 /// </para>
@@ -47,7 +47,7 @@ internal static class MigrateCommand
         try
         {
             // Strict UTF-8 with no byte-order mark or exactly one leading UTF-8 mark. A rejection
-            // lands here — before the reader, the migrator, and any publication — so no target is
+            // lands here, before the reader, the migrator, and any publication, so no target is
             // ever created or replaced by an input the CLI would not accept.
             text = SpecTextDecoding.ReadAllText(environment.OpenInput, bedPath);
         }
@@ -69,8 +69,8 @@ internal static class MigrateCommand
                     additionalInputs: [], committedReport: null, cancellation).ConfigureAwait(false);
         }
 
-        // derived_from is the invoked operand exactly as typed — never normalized, never made
-        // absolute — because it is authored provenance, not a resolved path (D-122 part 10).
+        // derived_from is the invoked operand exactly as typed, never normalized, never made
+        // absolute, because it is authored provenance, not a resolved path (D-122 part 10).
         var migrated = BedMigrator.Migrate(bed, Binding(invocation), Scaling(invocation), derivedFrom: bedPath);
         diagnostics.AddRange(migrated.Diagnostics);
 
@@ -82,7 +82,7 @@ internal static class MigrateCommand
     }
 
     // Presence-faithful: a field is authored only when argv supplied it. Encoding and the quote
-    // character are never authored — v1 fixes both and exposes no flag for either (EP-6, §5.1).
+    // character are never authored: v1 fixes both and exposes no flag for either (EP-6, §5.1).
     private static BindingSection Binding(CommandInvocation invocation)
     {
         var triple = string.Equals(invocation.Value("--shape"), "triple", StringComparison.Ordinal);
@@ -108,8 +108,8 @@ internal static class MigrateCommand
             ObjectKey: ObjectKey(invocation));
     }
 
-    // The parser closed every direction of §5.3 — supplied together, one addressing mode, names
-    // requiring --header true — so the trio is read back verbatim and nothing is re-checked.
+    // The parser closed every direction of §5.3 (supplied together, one addressing mode, names
+    // requiring --header true), so the trio is read back verbatim and nothing is re-checked.
     private static TripleColumnsSection? Roles(CommandInvocation invocation) =>
         invocation.Value("--subject") is { } subject
             ? new TripleColumnsSection(
@@ -130,7 +130,7 @@ internal static class MigrateCommand
 
     // The parser's own all-digits classification, mirrored so the supplied addressing mode is
     // preserved exactly as typed. NumberStyles.None admits no sign, whitespace, separator, or
-    // exponent, so a header literally named "0" is unreachable by name — the settled grammar.
+    // exponent, so a header literally named "0" is unreachable by name: the settled grammar.
     private static ColumnRef Column(string reference) =>
         int.TryParse(reference, NumberStyles.None, CultureInfo.InvariantCulture, out var index)
             ? new IndexColumnRef(index)
@@ -143,8 +143,8 @@ internal static class MigrateCommand
             : ScalingMode.Discrete;
 
     // The narrow named-type set for reading ONE authored file, matching the established CLI
-    // boundaries. DecoderFallbackException and InvalidDataException are named specifically —
-    // the first derives from ArgumentException and the second from SystemException — so a real
+    // boundaries. DecoderFallbackException and InvalidDataException are named specifically:
+    // the first derives from ArgumentException and the second from SystemException, so a real
     // read failure stays on the code-less exit-1 path without admitting a broad base: those
     // bases are the documented call-contract channel of the reader and the migrator, and
     // absorbing one would disguise a defect as a broken file (EP-14).

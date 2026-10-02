@@ -27,7 +27,7 @@ namespace FcaBedrock.Cli.Commands;
 /// <b>Vocabulary.</b> <c>&lt;src&gt;</c> is <c>column index=&lt;int&gt;</c> or
 /// <c>predicate name=&lt;str&gt;</c>. <c>&lt;bin&gt;</c> is <c>value label=&lt;str&gt;</c>,
 /// <c>numeric_cut lo=&lt;num|none&gt; hi=&lt;num|none&gt;</c>, or
-/// <c>text_cut lo=&lt;str|none&gt; hi=&lt;str|none&gt;</c> — an unbounded end is the explicit bare
+/// <c>text_cut lo=&lt;str|none&gt; hi=&lt;str|none&gt;</c>; an unbounded end is the explicit bare
 /// token <c>none</c>, never a blank or an infinity spelling. <c>&lt;kind&gt;</c> reuses §15's
 /// settled calibration vocabulary (<c>cuts</c>, <c>observed_domain</c>,
 /// <c>include_additions</c>, <c>passthrough_bins</c>). <c>&lt;e&gt;</c> is
@@ -42,7 +42,7 @@ namespace FcaBedrock.Cli.Commands;
 /// rules keeps one line one record, and printable Unicode survives verbatim.
 /// </para>
 /// <para>
-/// <b>What is deliberately absent.</b> No CLR type name, no <c>enum.ToString()</c> — every
+/// <b>What is deliberately absent.</b> No CLR type name, no <c>enum.ToString()</c>: every
 /// fixed token is spelled here, where the contract is (the <c>DiagnosticRenderer</c>
 /// precedent). No set or dictionary is enumerated, so no hash-order artifact can reach the
 /// bytes: the recognized-bin set and the bin→ids map are not reported. No culture-sensitive
@@ -109,7 +109,7 @@ internal static class PlanReport
         builder.Append('\n');
     }
 
-    // The zero-based plan position is FormalAttribute.Id — the same number the .dat column
+    // The zero-based plan position is FormalAttribute.Id: the same number the .dat column
     // order and the emitter's crossed-id lists use, not a re-derived counter.
     private static void AppendFormalAttribute(
         StringBuilder builder, FormalAttribute formal, Dictionary<string, AttributeSource> sources)
@@ -185,7 +185,7 @@ internal static class PlanReport
     }
 
     // §15's kinds, verbatim, so one vocabulary describes a retained outcome wherever it is
-    // reported. A legitimately empty outcome renders `values=[]` explicitly — the zero-discovery
+    // reported. A legitimately empty outcome renders `values=[]` explicitly: the zero-discovery
     // marker is data, not an omission (D-104).
     private static void AppendCalibration(StringBuilder builder, int index, AttributeCalibration calibration)
     {

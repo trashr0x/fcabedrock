@@ -4,7 +4,7 @@ namespace FcaBedrock.Cli;
 
 /// <summary>
 /// The one spelling of a raw-bytes hash in the CLI (§15): the literal <c>sha256:</c> followed by
-/// 64 <b>lowercase</b> hexadecimal digits, over the exact bytes as they were read or written —
+/// 64 <b>lowercase</b> hexadecimal digits, over the exact bytes as they were read or written:
 /// byte-order mark, original line endings, and non-ASCII sequences all included, with nothing
 /// decoded, normalized, or canonicalized first.
 /// <para>

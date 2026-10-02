@@ -14,7 +14,7 @@ namespace FcaBedrock.Cli;
 /// </para>
 /// <para>
 /// <b>What counts as a pass.</b> A pass <em>completes</em> only when the wrapper observes
-/// end of stream — a zero-length result for a non-empty read request. Anything that stops
+/// end of stream: a zero-length result for a non-empty read request. Anything that stops
 /// earlier (schema acquisition on a source larger than one buffer, a failed or cancelled
 /// read, disposal mid-stream) is discarded, because its digest would cover a prefix rather
 /// than the input. A single genuinely completed pass is accepted as stable; a replay that
@@ -23,7 +23,7 @@ namespace FcaBedrock.Cli;
 /// <b>before</b> anything is written.
 /// </para>
 /// <para>
-/// The digest is over the exact bytes consumed — a byte-order mark, the original line
+/// The digest is over the exact bytes consumed: a byte-order mark, the original line
 /// endings, delimiters, and non-ASCII UTF-8 all included. Nothing is decoded, normalized, or
 /// canonicalized, and the spec file is never hashed here.
 /// </para>
@@ -50,7 +50,7 @@ internal sealed class InputHashTracker
     /// <summary>How many passes reached end of stream. Incomplete passes never count.</summary>
     public int CompletedPasses { get; private set; }
 
-    /// <summary>The first completed pass's digest — 64 lowercase hex characters — or null when none completed.</summary>
+    /// <summary>The first completed pass's digest (64 lowercase hex characters) or null when none completed.</summary>
     public string? Digest => _first;
 
     /// <summary>

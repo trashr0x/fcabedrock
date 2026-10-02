@@ -8,7 +8,7 @@ namespace FcaBedrock.Cli;
 /// <summary>
 /// The strictly necessary platform interop behind <see cref="FileIdentity"/>. .NET exposes
 /// no managed API for a file's OS identity, and D-122 part 11 names symlink <b>and
-/// hardlink</b> aliasing as behaviour the host must resolve where the platform exposes it —
+/// hardlink</b> aliasing as behaviour the host must resolve where the platform exposes it,
 /// which path normalization cannot do. No dependency is added; both entry points are
 /// source-generated (<c>LibraryImport</c>, since <c>DllImport</c> is a build error here).
 /// </summary>
@@ -30,7 +30,7 @@ internal static partial class FileIdentityInterop
     /// <summary>
     /// Opens <paramref name="fullPath"/> for an <b>identity-bound removal</b>: read access to prove
     /// what the object is, <c>DELETE</c> access to remove it through this very handle, and no
-    /// sharing at all — so between the proof and the removal nobody can rename the name away,
+    /// sharing at all, so between the proof and the removal nobody can rename the name away,
     /// delete the object, or put a different one there.
     /// <para>
     /// Returns null when nothing is at that path. Deletion is <em>not</em> requested here: the
@@ -94,8 +94,8 @@ internal static partial class FileIdentityInterop
     /// <summary>
     /// OS identity for an <b>already open</b> handle, or null when the host has none.
     /// <para>
-    /// The handle route is not an optimization: a file created <see cref="FileShare.None"/> — as
-    /// every data-bearing stage is — cannot be identified through its path while it is held, and
+    /// The handle route is not an optimization: a file created <see cref="FileShare.None"/> (as
+    /// every data-bearing stage is) cannot be identified through its path while it is held, and
     /// identifying it after the close would describe whatever occupies the name by then rather
     /// than the object that was created.
     /// </para>
@@ -151,7 +151,7 @@ internal static partial class FileIdentityInterop
         ArgumentNullException.ThrowIfNull(fullPath);
 
         // The path is marshalled by hand as NUL-terminated UTF-8 so the signature stays
-        // fully blittable; the buffer is opaque bytes for the same reason — no struct stat
+        // fully blittable; the buffer is opaque bytes for the same reason: no struct stat
         // layout is declared, only the two offsets that are stable across the supported
         // platforms.
         var path = new byte[Encoding.UTF8.GetByteCount(fullPath) + 1];
@@ -164,7 +164,7 @@ internal static partial class FileIdentityInterop
 
     // st_ino is a 64-bit field at offset 8 on Linux, macOS and FreeBSD alike. st_dev sits at
     // offset 0 and is 64-bit there too, except on Darwin where it is a 32-bit dev_t followed by
-    // st_mode/st_nlink — fields that CHANGE (chmod, a new hardlink), so reading 8 bytes there
+    // st_mode/st_nlink, fields that CHANGE (chmod, a new hardlink), so reading 8 bytes there
     // would make identity unstable rather than merely wider.
     private static FileIdentityKey ReadStat(ReadOnlySpan<byte> buffer)
     {
@@ -267,7 +267,7 @@ internal sealed class UnixFileIdentityProbe : IFileIdentityProbe
         }
         catch (DllNotFoundException)
         {
-            // No libc under this name — a capability the host does not offer.
+            // No libc under this name: a capability the host does not offer.
             return null;
         }
         catch (EntryPointNotFoundException)

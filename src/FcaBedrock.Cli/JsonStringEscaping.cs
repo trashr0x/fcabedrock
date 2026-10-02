@@ -25,7 +25,7 @@ namespace FcaBedrock.Cli;
 /// </summary>
 internal static class JsonStringEscaping
 {
-    /// <summary>Appends <paramref name="value"/> escaped, <b>without</b> surrounding quotes — the message form.</summary>
+    /// <summary>Appends <paramref name="value"/> escaped, <b>without</b> surrounding quotes: the message form.</summary>
     public static void AppendEscaped(StringBuilder builder, string value)
     {
         foreach (var ch in value)
@@ -69,7 +69,7 @@ internal static class JsonStringEscaping
         }
     }
 
-    /// <summary>Appends <paramref name="value"/> as a quoted JSON string literal — the string-location form.</summary>
+    /// <summary>Appends <paramref name="value"/> as a quoted JSON string literal: the string-location form.</summary>
     public static void AppendLiteral(StringBuilder builder, string value)
     {
         builder.Append('"');

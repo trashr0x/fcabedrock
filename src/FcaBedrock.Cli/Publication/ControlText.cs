@@ -6,26 +6,26 @@ namespace FcaBedrock.Cli.Publication;
 /// The canonical body every control whose <em>role</em> is its whole meaning carries: the intent
 /// descriptor, each phase marker, and each stage claim.
 /// <para>
-/// These used to be zero-byte files whose existence was the entire signal. That could not survive
-/// the empty-occupant race: an empty file put at a control's name refuses this transaction's
-/// create-new, and afterwards nothing distinguishes it from the control this run would have made
-/// there — so a resumed run removed it on a length. Nor could it survive an empty object simply
+/// An empty file whose existence alone was the signal would not survive the empty-occupant race:
+/// an empty file put at a control's name refuses this transaction's create-new, and afterwards
+/// nothing distinguishes it from the control this run would have made there, so a resumed run
+/// would remove it on its length. Nor would it survive an empty object simply
 /// <em>replacing</em> an acknowledged claim, which would then be believed as authority over the
 /// stage beside it. Binding the run token, the base, the authoritative record's
-/// digest, the exact role, and — for a claim — the identity it acknowledges into fixed bytes makes
+/// digest, the exact role, and (for a claim) the identity it acknowledges into fixed bytes makes
 /// the question answerable: discovery and removal require <b>these exact bytes</b>, and an occupant
 /// that is empty, partial, or bound to anything else is preserved.
 /// </para>
 /// <para>
-/// This supersedes the earlier zero-byte mechanism. It is a statement about the transaction, not
-/// about the object, so it is no stronger than the authoritative record's own byte proof — an actor
-/// who can copy the record can copy this too. It is exactly strong enough for what it must decide,
-/// and no weaker than the proof the record already relies on.
+/// It is a statement about the transaction, not about the object, so it is no stronger than the
+/// authoritative record's own byte proof: an actor who can copy the record can copy this too. It
+/// is exactly strong enough for what it must decide, and no weaker than the proof the record
+/// already relies on.
 /// </para>
 /// </summary>
 internal static class ControlDocument
 {
-    /// <summary>The role a phase marker carries — the phase's own name.</summary>
+    /// <summary>The role a phase marker carries: the phase's own name.</summary>
     public static string RoleOf(TransactionPhase phase) => PublicationTargets.PhaseName(phase);
 
     /// <summary>
@@ -39,8 +39,8 @@ internal static class ControlDocument
 
     /// <summary>
     /// The exact bytes a control in <c>role</c> holds for this transaction: the run token, the
-    /// base, the role itself, the authoritative record's digest, and — where the control
-    /// acknowledges an object, as a stage claim does — that object's identity digest. Null
+    /// base, the role itself, the authoritative record's digest, and (where the control
+    /// acknowledges an object, as a stage claim does) that object's identity digest. Null
     /// <c>acknowledged</c> is a control that acknowledges nothing but the transaction itself.
     /// </summary>
     public static byte[] Bytes(
@@ -74,13 +74,13 @@ internal static class ControlDocument
 }
 
 /// <summary>
-/// The text conventions the private control documents share — the transaction record and the
+/// The text conventions the private control documents share: the transaction record and the
 /// per-target identity evidence.
 /// <para>
 /// <b>One reader, one writer, one strictness.</b> Both documents are validated by the same
 /// decisive rule: re-formatting the fields parsed out of a file must reproduce its decoded text
 /// exactly. That only proves anything if both use the same escaping, the same line discipline,
-/// and the same closed-set matching — so those live here rather than being spelled twice
+/// and the same closed-set matching, so those live here rather than being spelled twice
 /// (EP-5).
 /// </para>
 /// <para>
@@ -146,7 +146,7 @@ internal static class ControlText
 
     /// <summary>
     /// Consumes the line at <paramref name="index"/> when it equals <c>key = "candidate"</c> for
-    /// exactly one candidate, and returns that candidate — so a value is <b>selected from a closed
+    /// exactly one candidate, and returns that candidate, so a value is <b>selected from a closed
     /// set</b> rather than unescaped out of the file.
     /// </summary>
     public static string? Match(string[] lines, ref int index, string key, IReadOnlyList<string> candidates)

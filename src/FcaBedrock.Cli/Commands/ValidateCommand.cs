@@ -9,15 +9,15 @@ namespace FcaBedrock.Cli.Commands;
 /// <c>validate SPEC [DATA]</c> (D-122 part 10).
 /// <para>
 /// Without DATA the existing no-schema resolution applies verbatim. With DATA the source
-/// schema — the header, or the first non-blank record when headerless — is acquired and the spec is
-/// resolved against it, so bindings by header name are actually checked.
+/// schema (the header, or the first non-blank record when headerless) is acquired and the spec is
+/// resolved against it, so bindings by header name are checked.
 /// </para>
 /// <para>
-/// <b>Validate is schema validation, not a dry run of conversion.</b> It reads no data
-/// rows, and it does not plan, calibrate, freeze, verify stored fingerprints, hash inputs,
-/// compute fingerprints, emit, publish, or mutate anything. A file whose schema is valid
-/// but whose later rows are malformed validates successfully — that is the boundary, not
-/// an oversight.
+/// <b>Validate is schema validation, not a dry run of conversion.</b> It examines no record
+/// after the one that gives the schema, and it does not plan, calibrate, freeze, verify stored
+/// fingerprints, hash the data, compute fingerprints, emit, publish, or mutate anything. A file
+/// whose schema is valid but whose later records are malformed validates successfully: that is
+/// the boundary, not an oversight.
 /// </para>
 /// </summary>
 internal static class ValidateCommand
@@ -44,14 +44,14 @@ internal static class ValidateCommand
         {
             // A missing or unreadable operand is an ordinary host failure, not a pipeline
             // condition: code-less, exit 1, and the registry does not grow for it
-            // (D-122 part 2). The message names the operand and nothing else — no
+            // (D-122 part 2). The message names the operand and nothing else: no
             // exception type, no localized OS text, no internal path.
             return HostFailure(environment, diagnostics, $"cannot read the spec file '{specPath}'.");
         }
 
         // Phase boundaries observe the host token, so a signal delivered after dispatch stops
-        // this command too. Without DATA nothing else here is cancellable — the read, parse,
-        // compose and resolve stages are synchronous — so the first signal would otherwise be
+        // this command too. Without DATA nothing else here is cancellable; the read, parse,
+        // compose and resolve stages are synchronous, so the first signal would otherwise be
         // suppressed and then ignored, and the run would report success after the user
         // cancelled it.
         var cancellation = environment.Signals.Token;
@@ -70,7 +70,7 @@ internal static class ValidateCommand
         if (!composed.TryGetValue(out var effective))
         {
             // A missing or unreadable extends base is a phase-owned condition
-            // (SpecExtendsNotFound), so it keeps its registry code — unlike the root
+            // (SpecExtendsNotFound), so it keeps its registry code, unlike the root
             // operand above, which the CLI owns.
             return Finish(environment, diagnostics, cancellation);
         }
@@ -107,8 +107,8 @@ internal static class ValidateCommand
     }
 
     // The ONLY source call validate makes. The session is never bound and its record
-    // stream is never enumerated, so no row is read: each row-reading path opens the
-    // stream factory again, and this command opens it exactly once.
+    // stream is never enumerated: each row-reading path opens the stream factory again,
+    // and this command opens it exactly once, for the schema read.
     private static ISourceSession Open(SourceReadSettings settings, string dataPath, CliEnvironment environment)
     {
         Stream OpenStream() => environment.OpenInput(dataPath);
@@ -117,8 +117,8 @@ internal static class ValidateCommand
             : new WideCsvSession(OpenStream, settings);
     }
 
-    // Expected input failures only. OperationCanceledException is deliberately absent —
-    // cancellation is exit 3, not an input error — and so are argument/state errors from
+    // Expected input failures only. OperationCanceledException is deliberately absent
+    // (cancellation is exit 3, not an input error) and so are argument/state errors from
     // the session constructors, which are programmer errors the host reports as exit 4.
     // InvalidDataException (a non-UTF-8 byte-order mark) derives from SystemException rather
     // than IOException, so it is named; DecoderFallbackException (malformed UTF-8) arrives

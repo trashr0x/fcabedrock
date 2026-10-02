@@ -5,7 +5,7 @@ using Microsoft.Win32.SafeHandles;
 
 namespace FcaBedrock.Cli.Publication;
 
-/// <summary>What an exclusive, non-overwriting rename attempt actually did.</summary>
+/// <summary>What an exclusive, non-overwriting rename attempt did.</summary>
 internal enum ExclusiveRename
 {
     /// <summary>The rename happened, without replacing anything.</summary>
@@ -15,7 +15,7 @@ internal enum ExclusiveRename
     Collision,
 
     /// <summary>
-    /// This filesystem cannot perform the flagged, atomically non-replacing operation — the one
+    /// This filesystem cannot perform the flagged, atomically non-replacing operation: the one
     /// result that permits the guarded classic fallback (D-125, approved choice B).
     /// </summary>
     CapabilityAbsent,
@@ -32,7 +32,7 @@ internal readonly record struct ExclusiveRenameResult(ExclusiveRename Outcome, i
 /// <summary>What a directory lookup found at a name, without following a final symbolic link.</summary>
 internal enum EntryLookup
 {
-    /// <summary>The leaf does not exist — the <b>only</b> result that establishes absence.</summary>
+    /// <summary>The leaf does not exist: the <b>only</b> result that establishes absence.</summary>
     Absent,
 
     /// <summary>An entry of some kind is there: a file, a directory, or a dangling symbolic link.</summary>
@@ -63,7 +63,7 @@ internal interface IPublicationRenamePrimitives
 
     /// <summary>
     /// A native <c>lstat</c> of <paramref name="path"/>'s leaf. It does not follow a final symbolic
-    /// link, so a dangling link is <see cref="EntryLookup.Present"/> rather than absent —
+    /// link, so a dangling link is <see cref="EntryLookup.Present"/> rather than absent;
     /// <c>File.Exists</c> returning false cannot say that.
     /// </summary>
     EntryLookup Lookup(string path);
@@ -76,11 +76,11 @@ internal interface IPublicationRenamePrimitives
 }
 
 /// <summary>
-/// The exclusive-first native rename and its narrowly gated fallback (D-125, approved choice B).
+/// The exclusive-first native rename and its narrowly guarded fallback (D-125, approved choice B).
 /// <para>
 /// <b>Every publication rename is a same-directory, same-filesystem metadata rename.</b> It is
 /// never a content copy, a clone, a link/unlink pair, a copy/delete pair, a destination pre-delete,
-/// or a managed <c>File.Move</c> — the managed Unix non-overwrite path performs its own
+/// or a managed <c>File.Move</c>: the managed Unix non-overwrite path performs its own
 /// check-then-rename and can end in <c>link</c>+<c>unlink</c> or copy+delete, which is precisely
 /// what this seam must not do.
 /// </para>
@@ -89,7 +89,7 @@ internal interface IPublicationRenamePrimitives
 /// classic rename an actor that violates the exclusive-namespace precondition can create the
 /// destination, and the classic rename can then replace it. A post-move identity match proves which
 /// <em>source</em> object arrived; it cannot prove the destination stayed absent, nor restore an
-/// overwritten foreign entry. This applies at every destination role — a public artifact or
+/// overwritten foreign entry. This applies at every destination role: a public artifact or
 /// manifest, a backup or private control name, and a source name used as a compensation
 /// destination. Windows keeps its stronger native no-replace behaviour and has no fallback at all.
 /// </para>
@@ -99,7 +99,7 @@ internal static class PublicationRename
     /// <summary>
     /// Renames <paramref name="source"/> to <paramref name="destination"/> without overwriting,
     /// through the exclusive primitive where the filesystem has one and through the guarded classic
-    /// fallback where — and only where — the capability matrix permits it.
+    /// fallback where, and only where, the capability matrix permits it.
     /// </summary>
     /// <param name="primitives">The native calls.</param>
     /// <param name="source">The full source path.</param>
@@ -155,7 +155,7 @@ internal static class PublicationRename
         PublicationObjectReference? sourceReference)
     {
         // 1. The failed exclusive attempt is not evidence that the namespace stayed still. Where the
-        //    caller holds the authorizing reference, the source must still BE that object — a name
+        //    caller holds the authorizing reference, the source must still BE that object: a name
         //    that now resolves elsewhere authorizes nothing.
         if (sourceReference is not null && !sourceReference.IsStillAt(source))
         {
@@ -163,7 +163,7 @@ internal static class PublicationRename
         }
 
         // 2. Destination ENTRY absence, immediately before the rename. Only a missing leaf
-        //    establishes it; any entry at all — including a directory or a dangling symbolic link —
+        //    establishes it; any entry at all (including a directory or a dangling symbolic link)
         //    is a collision, and a lookup that failed establishes nothing.
         switch (primitives.Lookup(destination))
         {
@@ -237,9 +237,10 @@ internal static partial class PublicationNative
     }
 
     /// <summary>
-    /// The exception a native failure becomes. The <em>types</em> are exactly the ones the managed
-    /// move raised before, so every existing failure classification, message and exit is unchanged
-    /// (<see cref="FailureFamily"/>); no operating-system text ever reaches the user.
+    /// The exception a native failure becomes. The <em>types</em> are the environment family
+    /// (<see cref="FailureFamily"/>), so a native rename failure takes the same classification,
+    /// message and exit as any other publication filesystem failure; no operating-system text ever
+    /// reaches the user.
     /// </summary>
     public static Exception Failure(int error)
     {
@@ -278,7 +279,7 @@ internal static partial class PublicationNative
     private const int ErrorAlreadyExists = 183;
 
     // The traditional path limit. At or above it the Win32 call needs the extended prefix, exactly
-    // as the managed move applies it — so replacing that wrapper changes no path's reach.
+    // as the managed move applies it, so these native calls reach the same paths the managed move does.
     private const int MaxShortPath = 260;
 
     [SupportedOSPlatform("windows")]
@@ -317,7 +318,7 @@ internal static partial class PublicationNative
         return Path.IsPathFullyQualified(path) ? @"\\?\" + path : path;
     }
 
-    /// <summary>Windows: one <c>MoveFileExW</c> with no flags — no replacement, and no copy.</summary>
+    /// <summary>Windows: one <c>MoveFileExW</c> with no flags (no replacement, and no copy).</summary>
     [SupportedOSPlatform("windows")]
     private sealed class WindowsPrimitives : IPublicationRenamePrimitives
     {
@@ -366,7 +367,7 @@ internal static partial class PublicationNative
 
     // ---- Unix ----------------------------------------------------------------------------------
 
-    // Linux and Darwin agree on these three; the ones they disagree about are spelled per platform.
+    // Linux and Darwin agree on these values; the ones they disagree about are spelled per platform.
     private const int UnixENoEnt = 2;
     private const int UnixEPerm = 1;
     private const int UnixEAccess = 13;
@@ -410,7 +411,7 @@ internal static partial class PublicationNative
 
     /// <summary>
     /// Unix: the exclusive primitive first, and the capability matrix decided from the errno that
-    /// call reported — never from a name, a message, or a later operation.
+    /// call reported, never from a name, a message, or a later operation.
     /// </summary>
     [UnsupportedOSPlatform("windows")]
     private sealed class UnixPrimitives : IPublicationRenamePrimitives
@@ -444,7 +445,7 @@ internal static partial class PublicationNative
             if (LStat(ref name[0], ref MemoryMarshal.GetReference(buffer)) == 0)
             {
                 // Something is there. A regular file, a directory, or a symbolic link whose target
-                // does not exist — lstat does not follow the final link, which is exactly why
+                // does not exist: lstat does not follow the final link, which is exactly why
                 // `File.Exists == false` cannot establish absence.
                 return EntryLookup.Present;
             }
@@ -464,7 +465,7 @@ internal static partial class PublicationNative
     }
 
     /// <summary>
-    /// The exhaustive permission gate: which errno from an <em>exclusive rename attempt</em> means
+    /// The exhaustive permission check: which errno from an <em>exclusive rename attempt</em> means
     /// "this filesystem cannot do that operation", and which means the operation simply failed.
     /// Anything not named here is an ordinary failure, and an ordinary failure never switches
     /// primitives.
@@ -481,7 +482,7 @@ internal static partial class PublicationNative
         if (error == UnixEExist)
         {
             // A collision, and on Linux one the VFS decides before the filesystem's own rename is
-            // even called. It is never a capability signal — not even if a later look finds the
+            // even called. It is never a capability signal, not even if a later look finds the
             // destination gone again.
             return ExclusiveRename.Collision;
         }
@@ -496,7 +497,7 @@ internal static partial class PublicationNative
         }
 
         // Linux's VFS contract requires a filesystem to answer EINVAL for a flag it does not
-        // support, so EINVAL is the capability answer here — and the invocation is valid by
+        // support, so EINVAL is the capability answer here, and the invocation is valid by
         // construction: one fixed flag, a correctly bound entry point, and two distinct sibling
         // leaves in a directory this transaction already resolved and guarded.
         //

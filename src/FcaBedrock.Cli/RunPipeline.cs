@@ -11,7 +11,7 @@ using FcaBedrock.Spec.Toml;
 namespace FcaBedrock.Cli;
 
 /// <summary>What <see cref="RunPipeline.PrepareAsync"/> produced, with the diagnostics collected so far.</summary>
-/// <param name="Diagnostics">Every diagnostic, in phase and library order — never sorted, grouped, or deduplicated.</param>
+/// <param name="Diagnostics">Every diagnostic, in phase and library order, never sorted, grouped, or deduplicated.</param>
 internal abstract record PipelineOutcome(IReadOnlyList<BedrockDiagnostic> Diagnostics);
 
 /// <summary>Preparation succeeded; the run is ready to report on.</summary>
@@ -28,11 +28,11 @@ internal sealed record PipelineHostFailure(string Message, IReadOnlyList<Bedrock
 
 /// <summary>
 /// The state one prepared run carries: what <c>plan</c>, <c>stats</c>, and <c>fingerprint</c>
-/// read, plus the facts <c>convert</c> additionally needs to emit, fingerprint the effective
+/// read, plus the facts <c>convert</c> also needs to emit, fingerprint the effective
 /// output, and compose a manifest.
 /// <para>
-/// <b>It is one run's state or nothing.</b> Every member here comes from the same preparation —
-/// the same resolution token, the same calibrated state, the same bound source — and the two
+/// <b>It is one run's state or nothing.</b> Every member here comes from the same preparation
+/// (the same resolution token, the same calibrated state, the same bound source) and the two
 /// derived plans are produced from <see cref="Calibrated"/> by <see cref="PlanEffective"/>, so a
 /// document, a calibration, a plan, a source, or a fingerprint from a different run cannot be
 /// paired with these (D-098).
@@ -41,17 +41,17 @@ internal sealed record PipelineHostFailure(string Message, IReadOnlyList<Bedrock
 internal sealed class PreparedRun
 {
     /// <summary>
-    /// The <b>root</b> document, as authored — the owner of the stored <c>[spec]</c> fields
+    /// The <b>root</b> document, as authored: the owner of the stored <c>[spec]</c> fields
     /// every comparison and report reads. Deliberately not the composed document: a base
     /// file's stored fingerprints are never the root's (§13 rule 8 / D-078).
     /// </summary>
     public required SpecDocument RootDocument { get; init; }
 
-    /// <summary>The root's canonical key — the <c>file</c> location stale warnings carry.</summary>
+    /// <summary>The root's canonical key: the <c>file</c> location stale warnings carry.</summary>
     public required string RootKey { get; init; }
 
     /// <summary>
-    /// The composed document paired with its resolution token — the effective state the native
+    /// The composed document paired with its resolution token: the effective state the native
     /// fingerprints were computed over.
     /// </summary>
     public required ResolvedDocument Resolved { get; init; }
@@ -62,7 +62,7 @@ internal sealed class PreparedRun
     /// </summary>
     public required CalibratedSpec Calibrated { get; init; }
 
-    /// <summary>The resolved source shape — the D-087 v2-compat <c>.dat</c> final newline reads it.</summary>
+    /// <summary>The resolved source shape; the D-087 v2-compat <c>.dat</c> final newline reads it.</summary>
     public required SourceShape Shape { get; init; }
 
     /// <summary>The native plan (<see cref="LabelStyle.Native"/>), planned once.</summary>
@@ -91,20 +91,20 @@ internal sealed class PreparedRun
         init;
     }
 
-    /// <summary>The emit delegate for the native plan — what the report commands enumerate.</summary>
+    /// <summary>The emit delegate for the native plan: what the report commands enumerate.</summary>
     public Func<ICollection<BedrockDiagnostic>, IAsyncEnumerable<EmittedObject>> Emit => EmitWith(Plan);
 
     /// <summary>The input-stability tracker, re-checked after any further pass.</summary>
     public required InputHashTracker Input { get; init; }
 
-    /// <summary>The SPEC operand, verbatim — §15 records it as authored.</summary>
+    /// <summary>The SPEC operand, verbatim; §15 records it as authored.</summary>
     public required string SpecPath { get; init; }
 
-    /// <summary>The DATA operand, verbatim — the host-failure messages name it, and §15 records it.</summary>
+    /// <summary>The DATA operand, verbatim; the host-failure messages name it, and §15 records it.</summary>
     public required string DataPath { get; init; }
 
     /// <summary>
-    /// Plans this run's <em>same</em> calibrated state under <paramref name="style"/> — the only
+    /// Plans this run's <em>same</em> calibrated state under <paramref name="style"/>: the only
     /// way a second plan is produced, which is what keeps the native/effective pair exact
     /// (D-044/D-077). Planning is pure, so the second plan costs no data pass.
     /// </summary>
@@ -126,9 +126,8 @@ internal sealed class PreparedRun
 /// every required phase and the stability check succeed.
 /// </para>
 /// <para>
-/// <b>Not a validate refactor.</b> <c>validate</c> deliberately stops at schema acquisition —
-/// it never plans, calibrates, hashes, or verifies stored fingerprints — so it keeps its own
-/// path and its bytes are untouched.
+/// <b><c>validate</c> keeps its own path.</b> It deliberately stops at schema acquisition: it
+/// never plans, calibrates, hashes the data, or verifies stored fingerprints.
 /// </para>
 /// </summary>
 internal static class RunPipeline
@@ -137,7 +136,7 @@ internal static class RunPipeline
     internal const string TempDirectoryMessage =
         "the --temp-dir value must be a non-empty, non-whitespace path.";
 
-    /// <summary>The code-less host error for an unusable <c>--temp-dir</c>, or a spec/data read failure.</summary>
+    /// <summary>The code-less host error for a root SPEC open or read failure.</summary>
     internal static string SpecReadMessage(string specPath) => $"cannot read the spec file '{specPath}'.";
 
     /// <summary>The code-less host error for a DATA open or read failure.</summary>
@@ -160,7 +159,7 @@ internal static class RunPipeline
 
         // Runtime options first: an unusable value is a caller mistake, and failing it here
         // means no file is opened for a run that cannot proceed. The parser accepts any text
-        // for --temp-dir, so the empty case lands on the library's validating boundary — whose
+        // for --temp-dir, so the empty case lands on the library's validating boundary, whose
         // ArgumentException is caught HERE, because an ordinary environment/option failure must
         // not reach the unexpected-fault exit (D-122 part 8).
         ConversionRuntimeOptions runtimeOptions;
@@ -224,7 +223,7 @@ internal static class RunPipeline
         }
 
         // Every data pass goes through the tracker, so hashing is inline with the bytes the
-        // source was reading anyway — never a separate hash-only read (D-122 part 5).
+        // source was reading anyway, never a separate hash-only read (D-122 part 5).
         var input = new InputHashTracker(environment.OpenInput, dataPath);
         var triple = readSettings.Shape == SourceShape.Triple;
         ISourceSession session = triple
@@ -331,7 +330,7 @@ internal static class RunPipeline
     }
 
     /// <summary>
-    /// Renders a failed preparation: accumulated diagnostics first, then — for a host failure —
+    /// Renders a failed preparation: accumulated diagnostics first, then (for a host failure)
     /// the one sanitized code-less line. Always exit 1; a failed <c>Diagnosed</c> carries an
     /// Error or Fatal by construction, and a host failure is exit 1 by contract.
     /// </summary>
@@ -345,7 +344,7 @@ internal static class RunPipeline
             return HostFailure(environment, host.Diagnostics, host.Message, cancellation);
         }
 
-        // A cancelled run reports nothing at all — the same rule the success path follows, so a
+        // A cancelled run reports nothing at all: the same rule the success path follows, so a
         // signal arriving as a phase failed cannot turn a cancellation into a reported failure.
         cancellation.ThrowIfCancellationRequested();
 
@@ -374,7 +373,7 @@ internal static class RunPipeline
     /// <summary>
     /// The single exit point of a successful report command: observe cancellation one last time,
     /// render the diagnostics in library order, and write the <b>already complete</b> report in
-    /// one logical write — but only when nothing failed. An Error or Fatal produces exit 1 and
+    /// one logical write, but only when nothing failed. An Error or Fatal produces exit 1 and
     /// no report bytes at all; Warnings and Info leave the report and exit 0 intact.
     /// </summary>
     public static int Complete(
@@ -416,7 +415,7 @@ internal static class RunPipeline
 
     /// <summary>
     /// Expected open/read failures for the <b>DATA</b> operand, applied identically at every
-    /// real data pass — schema acquisition, calibration, and the stats counting enumeration.
+    /// real data pass: schema acquisition, calibration, and the stats counting enumeration.
     /// An unreadable source must not change its public exit classification merely because the
     /// failure landed after the schema was acquired.
     /// <para>
@@ -425,7 +424,7 @@ internal static class RunPipeline
     /// is the whole point: <see cref="DecoderFallbackException"/> derives from
     /// <see cref="ArgumentException"/> and <see cref="ObjectDisposedException"/> from
     /// <see cref="InvalidOperationException"/>, so naming each one keeps a real read failure on
-    /// the code-less exit-1 path <em>without</em> admitting its broad base — those bases are
+    /// the code-less exit-1 path <em>without</em> admitting its broad base; those bases are
     /// the documented call-contract channel of the calibrator, the emitter, and the
     /// calibrated-state factories (D-093/D-098), and absorbing them would disguise a defect as
     /// a broken data file (EP-14).

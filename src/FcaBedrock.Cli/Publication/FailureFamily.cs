@@ -5,7 +5,7 @@ namespace FcaBedrock.Cli.Publication;
 /// <para>
 /// An exporter writes a staged artifact while enumerating the data source, so one
 /// <see cref="IOException"/> escaping that call could equally mean "the source could not be read"
-/// or "the stage could not be written" — and the two get opposite messages, one naming the DATA
+/// or "the stage could not be written", and the two get opposite messages, one naming the DATA
 /// operand and one naming the output. Tagging the failure where it happens is what keeps a full
 /// disk from being reported as a broken input file.
 /// </para>
@@ -13,7 +13,7 @@ namespace FcaBedrock.Cli.Publication;
 /// </summary>
 internal sealed class PublicationStreamException : Exception
 {
-    /// <summary>Wraps <paramref name="inner"/>, the failure the output stream actually raised.</summary>
+    /// <summary>Wraps <paramref name="inner"/>, the failure the output stream raised.</summary>
     public PublicationStreamException(Exception inner)
         : base("The publication output stream failed.", inner)
     {
@@ -24,19 +24,19 @@ internal sealed class PublicationStreamException : Exception
 /// Marks a failure as a <b>contract or state defect at a publication boundary</b>.
 /// <para>
 /// An <see cref="ObjectDisposedException"/>, <see cref="ArgumentException"/>, or
-/// <see cref="NotSupportedException"/> raised by an already-open publication stream — or by an
-/// internal residue read — is a product bug, not an environment failure, and belongs on the
+/// <see cref="NotSupportedException"/> raised by an already-open publication stream (or by an
+/// internal residue read) is a product bug, not an environment failure, and belongs on the
 /// sanitized unexpected-fault exit. Two of those types would otherwise be indistinguishable from
 /// something else: the host maps a bare <see cref="ObjectDisposedException"/> to "cannot write to
 /// standard output", and preflight maps a bare <see cref="ArgumentException"/> to "the output
 /// operand is not a usable path". Wrapping at the origin is what keeps both of those readings for
-/// the cases they are actually about.
+/// the cases they are about.
 /// </para>
 /// <para>It never escapes the CLI as itself: the host renders one fixed sanitized line.</para>
 /// </summary>
 internal sealed class PublicationFaultException : Exception
 {
-    /// <summary>Wraps <paramref name="inner"/>, the contract defect the boundary actually raised.</summary>
+    /// <summary>Wraps <paramref name="inner"/>, the contract defect the boundary raised.</summary>
     public PublicationFaultException(Exception inner)
         : base("A publication boundary violated its contract.", inner)
     {
@@ -44,10 +44,10 @@ internal sealed class PublicationFaultException : Exception
 }
 
 /// <summary>
-/// What kind of thing a failure at a publication boundary is — the one place that decides it.
+/// What kind of thing a failure at a publication boundary is: the one place that decides it.
 /// <para>
 /// Every predicate is a flat test over the exception's own type: none inspects an inner exception,
-/// unwraps a tag, or reads any state. Deciding the kind is all this type does — <em>where</em> a
+/// unwraps a tag, or reads any state. Deciding the kind is all this type does; <em>where</em> a
 /// kind is admitted is a property of each catch site, not of the family.
 /// </para>
 /// <para>
@@ -60,10 +60,12 @@ internal sealed class PublicationFaultException : Exception
 internal static class FailureFamily
 {
     /// <summary>
-    /// The broad family an unusable output <b>operand</b> can raise. Admitted at exactly one
-    /// boundary — preflight's own path resolution — where an <see cref="ArgumentException"/> or
-    /// <see cref="NotSupportedException"/> genuinely describes what the user typed. Everywhere
-    /// else the same types are contract defects and must reach the unexpected-fault exit (EP-14).
+    /// The broad family an unusable <b>operand</b> path can raise. Admitted only where a path the
+    /// user typed is resolved (preflight's own path resolution, and the full-path resolution of the
+    /// input operands a command hands to preflight), because there an
+    /// <see cref="ArgumentException"/> or <see cref="NotSupportedException"/> genuinely describes
+    /// what the user typed. Everywhere else the same types are contract defects and must reach the
+    /// unexpected-fault exit (EP-14).
     /// </summary>
     internal static bool IsPublicationFailure(Exception exception) =>
         exception is IOException
@@ -77,7 +79,7 @@ internal static class FailureFamily
     /// revoked, access was withdrawn, the file is not there.
     /// <para>
     /// Deliberately narrow. It governs every publication-filesystem call the
-    /// transaction makes — create, confidential create, flush, rename, delete, bounded read — and
+    /// transaction makes (create, confidential create, flush, rename, delete, bounded read) and
     /// every already-open stream it owns: artifact stages, the transaction record, its evidence,
     /// and the phase markers. At each of those, an <see cref="ArgumentException"/> means an invalid
     /// range or a path this code composed wrongly, and an <see cref="ObjectDisposedException"/>
@@ -92,9 +94,9 @@ internal static class FailureFamily
     /// The contract and state defects a publication boundary can raise: a
     /// write to a disposed stream, an invalid range, an unsupported operation. They are product
     /// bugs, so they are tagged at their origin and reach the sanitized unexpected-fault exit
-    /// rather than being read as a full disk, an unusable output operand, or — for
+    /// rather than being read as a full disk, an unusable output operand, or (for
     /// <see cref="ObjectDisposedException"/>, which the host otherwise attributes to its own
-    /// writers — a failure of standard output.
+    /// writers) a failure of standard output.
     /// </summary>
     internal static bool IsContractFault(Exception exception) =>
         exception is ObjectDisposedException or ArgumentException or NotSupportedException;

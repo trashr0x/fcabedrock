@@ -3,14 +3,14 @@ using System.Text;
 namespace FcaBedrock.Cli;
 
 /// <summary>
-/// The one decoder for authored document text the CLI reads: a TOML spec (§2 — "a Bedrock
+/// The one decoder for authored document text the CLI reads: a TOML spec (§2: "a Bedrock
 /// spec is a UTF-8 TOML 1.1.0 document") and a v2 <c>.bed</c> alike.
 /// <para>
 /// <b>Strict UTF-8, with no byte-order mark or exactly one leading UTF-8 mark.</b> A UTF-16
 /// or UTF-32 mark is rejected rather than silently transcoded, and a malformed sequence is
 /// rejected rather than repaired into <c>U+FFFD</c>: a repair would change authored content
 /// with no diagnostic, and that content becomes attribute names, domain values, and labels.
-/// Exactly one leading mark is consumed — a second consecutive mark is ordinary content.
+/// Exactly one leading mark is consumed: a second consecutive mark is ordinary content.
 /// </para>
 /// <para>
 /// Spelled out here because the convenient overloads are all permissive:

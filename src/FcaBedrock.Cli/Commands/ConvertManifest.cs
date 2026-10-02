@@ -8,7 +8,7 @@ namespace FcaBedrock.Cli.Commands;
 /// <para>
 /// <b>It composes; it never formats.</b> The canonical bytes belong to
 /// <see cref="RunManifestWriter"/> in <c>FcaBedrock.Spec</c>, which shares the spec writer's
-/// literal, array, and wrapping machinery — so the CLI writes no TOML and there is no second
+/// literal, array, and wrapping machinery, so the CLI writes no TOML and there is no second
 /// canonical emitter (D-123 point 8, EP-5).
 /// </para>
 /// <para>
@@ -21,7 +21,7 @@ namespace FcaBedrock.Cli.Commands;
 internal static class ConvertManifest
 {
     /// <summary>Assembles the manifest for <paramref name="run"/>.</summary>
-    /// <param name="run">The prepared run — the owner of every reproduction fact.</param>
+    /// <param name="run">The prepared run: the owner of every reproduction fact.</param>
     /// <param name="environment">The injected clock, version, and audit argv.</param>
     /// <param name="outputs">The staged artifacts, in canonical format order.</param>
     /// <param name="cxtFingerprint">The <b>effective</b> <c>.cxt</c> fingerprint, or null when no <c>.cxt</c> was written.</param>
@@ -69,7 +69,7 @@ internal static class ConvertManifest
     }
 
     // Present only for an extends chain (§15): a single spec file leaves the whole family absent.
-    // Otherwise every file in load order — root first, then bases — with its authored spelling.
+    // Otherwise every file in load order (root first, then bases) with its authored spelling.
     private static List<SpecFileEntry> SpecFiles(IReadOnlyList<SpecChainFile> chain)
     {
         var entries = new List<SpecFileEntry>();
@@ -102,13 +102,13 @@ internal static class ConvertManifest
     }
 
     /// <summary>
-    /// The authored discretizer kind behind a cuts outcome — <c>equal_width</c> or
-    /// <c>equal_frequency</c> — read from the <b>pre-calibration</b> resolved spec's
+    /// The authored discretizer kind behind a cuts outcome (<c>equal_width</c> or
+    /// <c>equal_frequency</c>) read from the <b>pre-calibration</b> resolved spec's
     /// <see cref="CalibrationPending"/> carrier for that attribute.
     /// <para>
     /// This is the only place it can honestly come from. The retained outcome carries the cut
     /// values alone, and the effective spec has already had the pending carrier replaced by an
-    /// executable discretizer — so guessing from the cut values, from the substituted
+    /// executable discretizer, so guessing from the cut values, from the substituted
     /// discretizer, or from anything else would be inventing an audit fact.
     /// </para>
     /// </summary>

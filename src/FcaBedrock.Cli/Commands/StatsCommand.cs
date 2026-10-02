@@ -20,12 +20,12 @@ namespace FcaBedrock.Cli.Commands;
 /// <para>
 /// <b>Bounded by the column count, not the context.</b> Counting keeps four integers and one
 /// <c>bool</c> per planned column; no emitted object, no row's cross list, and no incidence
-/// cell is retained (EP-16). There is no second pass: the plan's stop condition forbids one, so
-/// <c>EmitReplay</c> is deliberately not used.
+/// cell is retained (EP-16). There is no second pass: D-122 part 10 allows exactly one bounded
+/// emit-counting pass, so <c>EmitReplay</c> is deliberately not used.
 /// </para>
 /// <para>
-/// Emit diagnostics become authoritative when the single enumeration completes — the
-/// single-pass boundary, as for <c>.dat</c> (§16.2/D-105) — and keep their order. Warnings and
+/// Emit diagnostics become authoritative when the single enumeration completes, the
+/// single-pass boundary, as for <c>.dat</c> (§16.2/D-105), and keep their order. Warnings and
 /// Info leave the report and exit 0 intact; an Error or Fatal suppresses the report and exits
 /// 1.
 /// </para>
@@ -51,7 +51,7 @@ internal static class StatsCommand
         var cancellation = environment.Signals.Token;
         var diagnostics = new List<BedrockDiagnostic>(prepared.Diagnostics);
 
-        // Once, as for plan — and before the counting pass, so the stale warnings keep their
+        // Once, as for plan, and before the counting pass, so the stale warnings keep their
         // place ahead of the emit diagnostics in library order.
         diagnostics.AddRange(SpecFingerprints.VerifyStored(run.RootDocument, run.Fingerprints, run.RootKey));
 
@@ -66,8 +66,8 @@ internal static class StatsCommand
                 environment, diagnostics, RunPipeline.DataReadMessage(run.DataPath), cancellation);
         }
 
-        // The counting pass is the run's second (or later) complete pass, so stability is
-        // re-checked here — before any diagnostic or report byte is written.
+        // The counting pass may follow earlier complete passes, so stability is
+        // re-checked here, before any diagnostic or report byte is written.
         if (run.Input.HasMismatch)
         {
             return RunPipeline.HostFailure(
@@ -147,11 +147,11 @@ internal static class StatsCommand
     /// The exact ratio <c>crosses / (objects × formal_attributes)</c> to six fractional digits.
     /// <para>
     /// <b>Integer-exact fixed point, not floating point.</b> The scaled numerator and the cell
-    /// count are held in <see cref="Int128"/> — <c>objects × formal_attributes</c> alone can pass
+    /// count are held in <see cref="Int128"/>: <c>objects × formal_attributes</c> alone can pass
     /// 2^63 at the v1 target scale (D-007), and a <c>double</c> would round the ratio before the
     /// sixth digit was decided. The seventh digit is resolved by comparing twice the remainder
     /// with the divisor, so a value strictly above half rounds up, one strictly below truncates,
-    /// and an <b>exact</b> half goes to even — no binary approximation participates anywhere.
+    /// and an <b>exact</b> half goes to even: no binary approximation participates anywhere.
     /// </para>
     /// <para>
     /// A zero cell count has no ratio, so it renders <see cref="ZeroCellDensity"/> and the other

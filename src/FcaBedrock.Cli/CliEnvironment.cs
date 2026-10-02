@@ -3,10 +3,10 @@ using FcaBedrock.Cli.Publication;
 namespace FcaBedrock.Cli;
 
 /// <summary>
-/// Observes command progress. M7 ships <b>no</b> progress meter (D-122 part 3), so the
-/// only production implementation is <see cref="NoProgressObserver"/>; the seam exists
-/// because progress is a committed follow-up and D-122 requires it to centralize now, so
-/// that adding it later is a renderer/observer implementation rather than a
+/// Observes command progress. The CLI has <b>no</b> progress meter (D-122 part 3), so the
+/// only production implementation is <see cref="NoProgressObserver"/>. The seam exists
+/// because D-122 part 3 requires progress observation to be centralized: a progress meter,
+/// which is in the deferred backlog, then needs only an observer implementation, not a
 /// run-orchestration refactor. Every command is bracketed here by
 /// <see cref="CliHost"/>, so no handler has to remember to report.
 /// </summary>
@@ -19,7 +19,7 @@ internal interface IProgressObserver
     void CommandCompleted(string command, int exitCode);
 }
 
-/// <summary>The no-op observer: M7's production behaviour — progress is silent.</summary>
+/// <summary>The no-op observer, used in production: progress is silent.</summary>
 internal sealed class NoProgressObserver : IProgressObserver
 {
     private NoProgressObserver()
@@ -66,17 +66,17 @@ internal sealed class CliEnvironment
     /// <summary>
     /// The <b>complete</b> process command-line array including its actual argv[0],
     /// captured separately from the parser's ordinary arguments and
-    /// recorded verbatim by the run manifest. A non-<c>fcabedrock</c> argv[0] — a full
-    /// host-executable path, a shim — is preserved unchanged: <c>command_line</c> is an
-    /// audit record of what the process actually received, and synthesizing a constant
+    /// recorded verbatim by the run manifest. A non-<c>fcabedrock</c> argv[0] (a full
+    /// host-executable path, a shim) is preserved unchanged: <c>command_line</c> is an
+    /// audit record of what the process received, and synthesizing a constant
     /// would discard exactly the information the field exists to keep.
     /// </summary>
     public required IReadOnlyList<string> AuditArgv { get; init; }
 
     /// <summary>
     /// Opens a named input for reading. Production opens the real file;
-    /// argv tests return pass-specific streams, which is what makes input behaviour —
-    /// including, later, input-stability replay — deterministic rather than racy. Every
+    /// argv tests return pass-specific streams, which is what makes input behaviour,
+    /// input-stability replay included, deterministic rather than racy. Every
     /// file the CLI <em>reads</em> goes through here: the root spec, each <c>extends</c>
     /// base, and the data source. It is no public API and no user option.
     /// </summary>

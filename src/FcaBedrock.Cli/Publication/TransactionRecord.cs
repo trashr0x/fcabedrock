@@ -6,7 +6,7 @@ namespace FcaBedrock.Cli.Publication;
 /// <summary>
 /// One file the transaction owns: which target it belongs to, and in which role.
 /// <para>
-/// The private path is <b>not stored</b> — it is recomputed from the target, the role, and the
+/// The private path is <b>not stored</b>: it is recomputed from the target, the role, and the
 /// run token (<see cref="PublicationTargets.PrivateName"/>). A record therefore cannot name a
 /// path at all; it can only select from the fixed set of names this code could have produced
 /// for this base in this directory, which is what makes recovery provably safe.
@@ -16,7 +16,7 @@ namespace FcaBedrock.Cli.Publication;
 /// <see cref="PublicationTargets.StageRole"/> or <see cref="PublicationTargets.BackupRole"/>.
 /// </param>
 /// <param name="TargetFileName">One of this base's three artifacts targets, or, in the single-file
-/// family, the base file name itself — nothing else parses, so no path can be injected.</param>
+/// family, the base file name itself; nothing else parses, so no path can be injected.</param>
 internal sealed record TransactionFileEntry(string Role, string TargetFileName);
 
 /// <summary>
@@ -27,8 +27,8 @@ internal sealed record TransactionFileEntry(string Role, string TargetFileName);
 /// <b>Validity is byte-reconstruction <em>and</em> a reachable transaction shape.</b> A
 /// discovered file is a record of this run's base only if (1) re-formatting the entries parsed
 /// out of it reproduces its decoded text exactly, and (2) those entries describe a transaction
-/// this implementation could actually have created. Canonical spelling alone is not ownership
-/// evidence: a byte-perfect file can still claim a combination no run produces — an empty
+/// this implementation could have created. Canonical spelling alone is not ownership
+/// evidence: a byte-perfect file can still claim a combination no run produces, such as an empty
 /// selection, a manifest staged with no artifact, backups in the wrong order, a backup for an
 /// artifact that is not being published. Such a file authorizes nothing, is left byte-identical,
 /// and refuses the run.
@@ -37,13 +37,13 @@ internal sealed record TransactionFileEntry(string Role, string TargetFileName);
 /// <b>It is private state, not an artifact.</b> Its token, its paths, and its serialization
 /// never enter output bytes, a fingerprint, or the run manifest, and no library ever reads it.
 /// The <c>.toml</c> suffix is the ruled file name (D-123), not a claim on the canonical TOML
-/// contract the spec writer owns — this is a fixed six-line-per-entry private format written
+/// contract the spec writer owns; this is a fixed four-line-per-entry private format written
 /// and validated only here.
 /// </para>
 /// </summary>
 internal sealed class TransactionRecord
 {
-    /// <summary>The bit separating the families in a shape code — the first the artifacts family,
+    /// <summary>The bit separating the families in a shape code: the first the artifacts family,
     /// which uses the six low bits, can never set (D-123 point 7).</summary>
     internal const int FamilyBit = 0x40;
 
@@ -70,7 +70,7 @@ internal sealed class TransactionRecord
     public IReadOnlyList<TransactionFileEntry> Files { get; }
 
     /// <summary>
-    /// Every target this transaction touches, first mention first — the union of its staged finals
+    /// Every target this transaction touches, first mention first: the union of its staged finals
     /// and any target it merely demotes, such as the old manifest of a <c>--no-manifest</c> run.
     /// </summary>
     public IEnumerable<string> Targets
@@ -94,7 +94,7 @@ internal sealed class TransactionRecord
     /// <para>
     /// A reserved backup is the record's durable statement that the target <b>pre-existed</b> at
     /// preflight, which is what lets rollback decide between restoring old bytes and removing a
-    /// file this run introduced — without inspecting anything it cannot trust.
+    /// file this run introduced, without inspecting anything it cannot trust.
     /// </para>
     /// </summary>
     public string? BackupOf(string directory, string targetFileName)
@@ -112,7 +112,7 @@ internal sealed class TransactionRecord
     }
 
     /// <summary>
-    /// The private path of <paramref name="entry"/> inside <paramref name="directory"/> —
+    /// The private path of <paramref name="entry"/> inside <paramref name="directory"/>:
     /// derived, never read from the record.
     /// </summary>
     public string PathOf(string directory, TransactionFileEntry entry) =>
@@ -128,11 +128,11 @@ internal sealed class TransactionRecord
         new(token, baseFileName, files);
 
     /// <summary>
-    /// Which family this record belongs to, derived from its own entries — never stored, so no
+    /// Which family this record belongs to, derived from its own entries, never stored, so no
     /// record's emitted text changes and no version moves (D-123 point 7). It is total: a
     /// single-file target's file name <em>is</em> the base file name and an artifact target's
     /// never can be, and <see cref="IsReachable"/> rejects a record that mixes them or names
-    /// neither — so every record that parses has the family of its first entry.
+    /// neither, so every record that parses has the family of its first entry.
     /// </summary>
     public PublicationFamily Family =>
         Files.Count > 0 && KindOf(Files[0].TargetFileName, BaseFileName) is { } kind
@@ -141,13 +141,13 @@ internal sealed class TransactionRecord
 
     /// <summary>
     /// The code naming this record's shape: which targets it stages, and which it backs up. It is
-    /// what the pre-record intent descriptor carries — the entry <em>order</em> needs
+    /// what the pre-record intent descriptor carries; the entry <em>order</em> needs
     /// no encoding, because each family only ever writes one arrangement: an artifacts transaction
     /// writes backups in <see cref="PublicationTargets.BackupOrder"/>, then stages in
     /// <see cref="PublicationTargets.CommitOrder"/>; a single-file one writes its one optional
     /// backup, then its required stage.
-    /// The families occupy <b>disjoint</b> ranges: artifacts shapes are the six legacy bits
-    /// <c>0x00</c>–<c>0x3F</c>, unmoved, and a single-file shape sets <see cref="FamilyBit"/> plus
+    /// The families occupy <b>disjoint</b> ranges: artifacts shapes use the six low bits
+    /// (<c>0x00</c>–<c>0x3F</c>), and a single-file shape sets <see cref="FamilyBit"/> plus
     /// its own two, so only <c>0x41</c> and <c>0x43</c> are reachable there.
     /// </summary>
     public int ShapeCode
@@ -185,9 +185,10 @@ internal sealed class TransactionRecord
     }
 
     /// <summary>
-    /// The 128-bit digest of this record's exact bytes, as lowercase hex — the second half of the
-    /// intent descriptor, which is what makes that descriptor self-validating: a name whose digest
-    /// disagrees with its own shape, token, and base is not one this code wrote.
+    /// The 128-bit digest of this record's exact bytes, as lowercase hex. The intent descriptor's
+    /// name carries it beside the token and the shape, which is what makes that descriptor
+    /// self-validating: a name whose digest disagrees with its own shape, token, and base is not
+    /// one this code wrote.
     /// </summary>
     public string Digest => Convert.ToHexStringLower(SHA256.HashData(ToBytes()).AsSpan(0, 16));
 
@@ -221,7 +222,7 @@ internal sealed class TransactionRecord
         ArgumentNullException.ThrowIfNull(token);
         ArgumentNullException.ThrowIfNull(baseFileName);
 
-        // Disjoint ranges, so the family bit selects the decoding; IsReachable gates both.
+        // Disjoint ranges, so the family bit selects the decoding; IsReachable checks both.
         if (shape >= 0 && (shape & FamilyBit) != 0)
         {
             var single = SingleShape(baseFileName, shape);
@@ -311,7 +312,7 @@ internal sealed class TransactionRecord
         var roles = new[] { PublicationTargets.StageRole, PublicationTargets.BackupRole };
         var files = new List<TransactionFileEntry>();
 
-        // Each entry is exactly "", "[[file]]", role, target — so anything else after the header
+        // Each entry is exactly "", "[[file]]", role, target, so anything else after the header
         // block fails the blank-separator step below rather than needing its own rejection.
         while (index < lines.Length - 1)
         {
@@ -360,8 +361,8 @@ internal sealed class TransactionRecord
     /// Whether <paramref name="files"/> is a shape production could have written for
     /// <paramref name="baseFileName"/>.
     /// <para>
-    /// Preflight builds exactly one arrangement per family: backups first — for the artifacts
-    /// family the manifest ahead of what it certifies — then stages in canonical order. Anything
+    /// Preflight builds exactly one arrangement per family: backups first (for the artifacts
+    /// family the manifest ahead of what it certifies), then stages in canonical order. Anything
     /// else is unreachable, so it is not authority to delete or move a file, however well spelled
     /// it is. <b>A record never mixes families</b>, and each has its own narrower clause: neither
     /// relaxes the other, and <see cref="PublicationTargetKind.Single"/> is deliberately outside
@@ -411,7 +412,7 @@ internal sealed class TransactionRecord
         if (family == PublicationFamily.Single)
         {
             // One stage for the one target, optionally preceded by its one backup. A backup with
-            // no stage, two stages, or two backups is unreachable — encoded, only 0x41 and 0x43.
+            // no stage, two stages, or two backups is unreachable: encoded, only 0x41 and 0x43.
             return stages.Count == 1 && backups.Count <= 1;
         }
 

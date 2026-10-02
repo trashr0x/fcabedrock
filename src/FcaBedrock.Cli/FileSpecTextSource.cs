@@ -6,7 +6,7 @@ namespace FcaBedrock.Cli;
 /// <summary>
 /// One file of the composed spec, as the run manifest needs it (§15 <c>[[run.spec_files]]</c>).
 /// </summary>
-/// <param name="FullPath">The resolved path — used for filesystem identity, never serialized.</param>
+/// <param name="FullPath">The resolved path, used for filesystem identity, never serialized.</param>
 /// <param name="Spelling">
 /// The authored spelling: the verbatim SPEC operand for the root, or the authored
 /// referrer-relative <c>extends</c> reference for a base. Canonical identity keys and normalized
@@ -16,8 +16,8 @@ namespace FcaBedrock.Cli;
 internal sealed record SpecChainFile(string FullPath, string Spelling, string Hash);
 
 /// <summary>
-/// The file-backed <see cref="ISpecTextSource"/> — the host work D-078 reserved for M7,
-/// realizing §13 / D-122 part 11.
+/// The file-backed <see cref="ISpecTextSource"/>, realizing §13 / D-122 part 11. It is a CLI
+/// type because the Spec package does no file I/O (D-078).
 /// <para>
 /// <b>Two different things, kept apart.</b> A file's <em>identity</em> is a
 /// <see cref="FileIdentityKey"/>: opaque, OS-derived where available, and the only thing
@@ -25,7 +25,7 @@ internal sealed record SpecChainFile(string FullPath, string Spelling, string Ha
 /// is what <see cref="SpecComposer"/> receives, and it is a readable full path, because
 /// the composer hands it straight to <see cref="SpecReader"/> as the diagnostic
 /// <c>file</c> location and embeds it in the <c>SpecExtendsNotFound</c> /
-/// <c>SpecExtendsCycle</c> messages — an identity key there would surface as a
+/// <c>SpecExtendsCycle</c> messages; an identity key there would surface as a
 /// user-facing "path" and would have to be rewritten out of library diagnostics, which
 /// the CLI must never do. The first spelling seen for an identity becomes that identity's
 /// canonical key, so every later alias resolves to it and the composer's ordinal
@@ -33,8 +33,8 @@ internal sealed record SpecChainFile(string FullPath, string Spelling, string Ha
 /// </para>
 /// <para>
 /// <b>Resolution paths are retained separately</b> from canonical keys, so a relative
-/// <c>extends</c> is always resolved against the directory of the file that authored it —
-/// multilevel chains stay referrer-relative — and no key is ever implicitly reinterpreted
+/// <c>extends</c> is always resolved against the directory of the file that authored it
+/// (multilevel chains stay referrer-relative) and no key is ever implicitly reinterpreted
 /// as a path.
 /// </para>
 /// <para>
@@ -43,8 +43,8 @@ internal sealed record SpecChainFile(string FullPath, string Spelling, string Ha
 /// read. Authored path text is never normalized or rewritten here.
 /// </para>
 /// <para>
-/// <b>Every file it loads is retained as a §15 chain fact</b> — the authored spelling, the
-/// raw-bytes hash, and the resolved path — in load order, which is root-first-then-bases. The
+/// <b>Every file it loads is retained as a §15 chain fact</b> (the authored spelling, the
+/// raw-bytes hash, and the resolved path) in load order, which is root-first-then-bases. The
 /// hash covers the bytes <em>as read</em>, byte-order mark and original line endings included,
 /// and is taken from the very read that produced the text: the run manifest never costs a
 /// second open, and a chain file is never re-read merely to hash it (D-122 part 5).
@@ -69,7 +69,7 @@ internal sealed class FileSpecTextSource : ISpecTextSource
     }
 
     /// <summary>
-    /// Registers the root spec operand and returns its canonical key — the key
+    /// Registers the root spec operand and returns its canonical key: the key
     /// <see cref="SpecReader.Read(string, string?)"/> and
     /// <see cref="SpecComposer.Compose"/> must both be given, so the root participates in
     /// the same identity space as every base and cannot be re-entered under an alias.
@@ -81,8 +81,8 @@ internal sealed class FileSpecTextSource : ISpecTextSource
     }
 
     /// <summary>
-    /// Reads the text of <paramref name="path"/> as <b>strict UTF-8</b>. §2 is explicit —
-    /// "a Bedrock spec is a UTF-8 TOML 1.1.0 document" — so encoding is part of the format
+    /// Reads the text of <paramref name="path"/> as <b>strict UTF-8</b>. §2 is explicit:
+    /// "a Bedrock spec is a UTF-8 TOML 1.1.0 document", so encoding is part of the format
     /// boundary, not a convenience: a UTF-16/UTF-32 byte-order mark is rejected rather than
     /// silently transcoded, and a malformed byte sequence is rejected rather than repaired
     /// into U+FFFD, which would change authored content with no diagnostic. An optional
@@ -97,15 +97,15 @@ internal sealed class FileSpecTextSource : ISpecTextSource
     }
 
     /// <summary>
-    /// Every file loaded through this host, in load order — the root first, then each base as
+    /// Every file loaded through this host, in load order: the root first, then each base as
     /// the chain was walked, which is exactly §15's <c>[[run.spec_files]]</c> order. A single
     /// file leaves one entry, and the caller decides that no chain means no section.
     /// </summary>
     public IReadOnlyList<SpecChainFile> Chain => _chain;
 
     // One read serves both the text and the hash; `spelling` is what the manifest records, so
-    // it is the caller's authored form — the SPEC operand for the root, the authored
-    // referrer-relative reference for a base — never the resolved path.
+    // it is the caller's authored form (the SPEC operand for the root, the authored
+    // referrer-relative reference for a base), never the resolved path.
     private string ReadAs(string path, string spelling)
     {
         byte[] bytes;

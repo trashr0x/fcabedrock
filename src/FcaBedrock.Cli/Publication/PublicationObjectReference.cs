@@ -10,7 +10,7 @@ namespace FcaBedrock.Cli.Publication;
 /// file id, identifies an object only while that object exists. Unlink the last name of a file on
 /// ext4 and the inode is free immediately; the very next creation in that group can be handed the
 /// same number. A proof taken from a closed handle and re-checked later therefore cannot tell "the
-/// object I created" from "a different object wearing its identifier" — the substitution this
+/// object I created" from "a different object wearing its identifier": the substitution this
 /// transaction exists to refuse. Holding the object open closes that hole at the source: while a
 /// reference is alive the identifier cannot be reissued, so a substitute necessarily compares
 /// unequal and every existing proof becomes sound without changing what it compares.
@@ -23,8 +23,8 @@ namespace FcaBedrock.Cli.Publication;
 /// (<see cref="PublicationNative.TryOpenReference"/>).
 /// </para>
 /// <para>
-/// <b>What it cannot do.</b> It says nothing about an interval in which no process held it — the
-/// namespace across a crash is the caller's precondition, not this type's guarantee — and on Unix
+/// <b>What it cannot do.</b> It says nothing about an interval in which no process held it (the
+/// namespace across a crash is the caller's precondition, not this type's guarantee), and on Unix
 /// it cannot make the final proof-to-unlink interval atomic, because POSIX has no
 /// compare-and-delete by descriptor.
 /// </para>
@@ -44,7 +44,7 @@ internal sealed class PublicationObjectReference : IDisposable
 
     /// <summary>
     /// Takes a reference to whatever is at <paramref name="fullPath"/> right now, or answers null
-    /// when the host cannot supply one — a missing file, a refusal, or a platform with no identity
+    /// when the host cannot supply one: a missing file, a refusal, or a platform with no identity
     /// at all. <b>A failed acquisition grants no mutation authority</b>; every caller fails closed
     /// on it rather than proceeding on an identity it cannot anchor.
     /// </summary>
@@ -72,7 +72,7 @@ internal sealed class PublicationObjectReference : IDisposable
 
     /// <summary>
     /// Takes a reference and proves it is the object <paramref name="expected"/> names, for use
-    /// while the acquiring creation handle is <b>still open</b> — which is what makes the reference
+    /// while the acquiring creation handle is <b>still open</b>, which is what makes the reference
     /// provably the object that creation produced rather than one that replaced it in between.
     /// Answers null when the reference cannot be taken or the proof fails.
     /// </summary>
@@ -100,7 +100,7 @@ internal sealed class PublicationObjectReference : IDisposable
 
     /// <summary>
     /// Whether <paramref name="path"/> still resolves to the very object this reference holds. A
-    /// name that now resolves elsewhere — or to nothing — answers false, and authorizes nothing.
+    /// name that now resolves elsewhere (or to nothing) answers false, and authorizes nothing.
     /// </summary>
     public bool IsStillAt(string path)
     {
@@ -120,7 +120,7 @@ internal sealed class PublicationObjectReference : IDisposable
 /// across the transaction.
 /// <para>
 /// <b>Two rules make the invariant hold.</b> A path is never released and then re-acquired by name
-/// while it still authorizes something — a rename <em>re-keys</em> the same reference instead. And
+/// while it still authorizes something: a rename <em>re-keys</em> the same reference instead. And
 /// a reference is released only once its object's last authorized use is done: on Windows that is
 /// after the handle-bound removal has set the disposition, so the deletion completes and the name
 /// becomes reusable rather than staying delete-pending under a reference nobody needs any more.
@@ -154,7 +154,7 @@ internal sealed class PublicationReferences(IPublicationFileSystem files) : IDis
         return acquired;
     }
 
-    /// <summary>Takes ownership of a reference acquired elsewhere — from a creation handle.</summary>
+    /// <summary>Takes ownership of a reference acquired elsewhere, from a creation handle.</summary>
     public void Adopt(string path, PublicationObjectReference reference)
     {
         ArgumentNullException.ThrowIfNull(path);

@@ -1,7 +1,7 @@
 namespace FcaBedrock.Cli.Publication;
 
-// The transaction's nested cleanup decisions, ownership proofs, and recovery gate.
-// They stay nested together so private same-class access and captured state remain unchanged.
+// The transaction's nested cleanup decisions, ownership proofs, and recovery guard.
+// They stay nested in the transaction because they use its private members and captured state.
 internal sealed partial class PublicationTransaction
 {
     /// <summary>What one target's cleanup will do, decided before anything moves.</summary>
@@ -14,11 +14,11 @@ internal sealed partial class PublicationTransaction
         bool Owns);
 
     /// <summary>
-    /// One transaction's files and the questions worth asking about them — in particular the two
+    /// One transaction's files and the questions worth asking about them, in particular the two
     /// that decide whether anything may be deleted: is the file at this target the object this
     /// transaction <b>staged</b>, or the object it <b>renamed aside</b>?
     /// <para>
-    /// Each is stated as a proof over an <em>object</em> — its identity and its bytes — rather than
+    /// Each is stated as a proof over an <em>object</em> (its identity and its bytes) rather than
     /// over a path, because that is exactly what the removal primitive can observe through the very
     /// handle it deletes through. The path-shaped forms are decisions, not
     /// authorizations.
@@ -81,7 +81,7 @@ internal sealed partial class PublicationTransaction
         /// carries the created object's identity digest in its own name. The published evidence
         /// says the same thing once the artifact is closed. With neither, nothing on disk
         /// distinguishes an object this run had just created from one whose presence refused its
-        /// create-new — so nothing is removed, the cleanup reports itself incomplete, and the run
+        /// create-new, so nothing is removed, the cleanup reports itself incomplete, and the run
         /// says so rather than guessing from a length or a name.
         /// </para>
         /// </summary>
@@ -101,11 +101,11 @@ internal sealed partial class PublicationTransaction
         };
 
         /// <summary>
-        /// Whether an object is the exact object this transaction staged — the only thing that
+        /// Whether an object is the exact object this transaction staged: the only thing that
         /// authorizes deleting a published final.
         /// <para>
         /// The stage must be <b>absent</b> as well: while it is still there the commit rename has
-        /// not run, so a file at the target is something else — an external hardlink of the stage
+        /// not run, so a file at the target is something else: an external hardlink of the stage
         /// included, which would otherwise match the evidence.
         /// </para>
         /// </summary>
@@ -125,7 +125,7 @@ internal sealed partial class PublicationTransaction
             && Is(identity, PublicationTargets.BackupRole, targetFileName, value.Backup);
 
         /// <summary>
-        /// Anchors <paramref name="path"/> for this pass — see
+        /// Anchors <paramref name="path"/> for this pass; see
         /// <see cref="PublicationTransaction.Anchor"/>. False means an object is there and cannot
         /// be held, so nothing about it may be decided or done.
         /// </summary>
@@ -144,7 +144,7 @@ internal sealed partial class PublicationTransaction
         /// The restoring rename is the case this exists for: its source reference is what still
         /// holds the moved object, and it is deliberately not re-filed under the destination until
         /// the result has been proved. Anchoring by the destination path instead would take a
-        /// second reference to the same object — release-and-reacquire-by-name in all but name,
+        /// second reference to the same object: release-and-reacquire-by-name in all but name,
         /// which is precisely what the lifetime rule forbids.
         /// </para>
         /// </summary>
@@ -174,8 +174,8 @@ internal sealed partial class PublicationTransaction
 
             // The authoritative evidence arrives by a rename whose result this run proved, and it
             // is self-validating besides: the bytes must be this run's own evidence for this target
-            // and must agree with the record. A raced-in occupant at that name — one whose presence
-            // refused the publishing rename — can prove neither.
+            // and must agree with the record. A raced-in occupant at that name (one whose presence
+            // refused the publishing rename) can prove neither.
             return RemoveOwned(
                 files,
                 path,
@@ -186,8 +186,8 @@ internal sealed partial class PublicationTransaction
 
         /// <summary>
         /// A pending evidence file is removed in process by the run that created it, against the
-        /// identity that creation reported. A resumed run has no such statement — nothing durable
-        /// names that object — so it preserves whatever is there and reports the cleanup
+        /// identity that creation reported. A resumed run has no such statement: nothing durable
+        /// names that object, so it preserves whatever is there and reports the cleanup
         /// incomplete, rather than inferring ownership from the name or the bytes.
         /// </summary>
         public bool RemovePendingEvidence(PublicationTargetKind kind) =>
@@ -195,7 +195,7 @@ internal sealed partial class PublicationTransaction
 
         /// <summary>
         /// A stage claim goes only when the object at its name is exactly this transaction's claim
-        /// for this target kind and this acknowledged identity — proved, like every removal, from
+        /// for this target kind and this acknowledged identity, proved, like every removal, from
         /// the handle the deletion acts through. An object substituted at that name inside the
         /// removal itself fails that proof and survives.
         /// </summary>
@@ -229,8 +229,8 @@ internal sealed partial class PublicationTransaction
             ControlDocument.Matches(bytes, token, record.BaseFileName, role, record.Digest);
 
         /// <summary>
-        /// The pending record, once the authoritative one exists. Its acknowledgement — the intent
-        /// descriptor — is what names the object, so a run that no longer has one removes nothing
+        /// The pending record, once the authoritative one exists. Its acknowledgement (the intent
+        /// descriptor) is what names the object, so a run that no longer has one removes nothing
         /// and says the cleanup is incomplete.
         /// </summary>
         public bool RemovePendingRecord(RecoveryGuard guard)
@@ -274,7 +274,7 @@ internal sealed partial class PublicationTransaction
                 IdentityEvidence.Of(token, role, targetFileName, identity), expected, StringComparison.Ordinal);
 
         // A DECISION about a path, taken fresh: what is there right now. It never authorizes a
-        // mutation on its own, which is why it does not itself require an anchor — classification
+        // mutation on its own, which is why it does not itself require an anchor: classification
         // asks these questions of a location it has not yet taken any reference to, and its only
         // possible answer is to refuse.
         //
@@ -293,7 +293,7 @@ internal sealed partial class PublicationTransaction
     }
 
     /// <summary>
-    /// The gate every recovery mutation passes: the exact host token, and a fresh check that the
+    /// The guard every recovery mutation passes: the exact host token, and a fresh check that the
     /// path is not one of this run's inputs.
     /// </summary>
     private sealed class RecoveryGuard(

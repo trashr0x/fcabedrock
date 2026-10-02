@@ -11,7 +11,7 @@ internal enum PublicationTargetKind
     /// <summary>The FIMI <c>.dat</c> context (§18.2).</summary>
     Dat,
 
-    /// <summary>The run manifest (§15) — committed last, the run's public commit marker.</summary>
+    /// <summary>The run manifest (§15): committed last, the run's public commit marker.</summary>
     Manifest,
 
     /// <summary>
@@ -26,7 +26,7 @@ internal enum PublicationTargetKind
 }
 
 /// <summary>
-/// Which semantic family a target — and so a whole transaction — belongs to (D-123 point 7).
+/// Which semantic family a target, and so a whole transaction, belongs to (D-123 point 7).
 /// <para>
 /// Both families share one publication authority, record format, and recovery routine, but a
 /// caller may complete only its <b>own</b>: at one exact output base a convert record and a
@@ -53,7 +53,7 @@ internal enum PublicationFamily
 /// Each phase is recorded by a <b>create-new marker file</b> rather than by rewriting the record: a
 /// rewritten record could be caught half-written and would brick the location, whereas a marker is
 /// only ever created or not. The transition counts as having happened once that marker holds the
-/// exact canonical bytes for its role (<see cref="ControlDocument"/>) — a marker whose body did not
+/// exact canonical bytes for its role (<see cref="ControlDocument"/>): a marker whose body did not
 /// land whole records no phase and is preserved, not repaired and not removed.
 /// </para>
 /// </summary>
@@ -87,13 +87,13 @@ internal enum TransactionPhase
 /// </summary>
 /// <param name="Kind">Which artifact.</param>
 /// <param name="Spelling">
-/// The <b>verbatim</b> <c>BASE</c> operand plus the ruled extension — the spelling
+/// The <b>verbatim</b> <c>BASE</c> operand plus the ruled extension: the spelling
 /// <c>[[run.outputs]] path</c> records (§15). Never normalized, absolutized, or rewritten.
 /// </param>
 /// <param name="FullPath">The resolved absolute path the filesystem seam is given.</param>
 internal sealed record PublicationTarget(PublicationTargetKind Kind, string Spelling, string FullPath)
 {
-    /// <summary>The target's file name — the unit every private name is derived from.</summary>
+    /// <summary>The target's file name: the unit every private name is derived from.</summary>
     public string FileName => Path.GetFileName(FullPath);
 }
 
@@ -102,7 +102,7 @@ internal sealed record PublicationTarget(PublicationTargetKind Kind, string Spel
 /// <para>
 /// <b>Every private name is computed, never parsed out of a file.</b> A stage, a backup, a phase
 /// marker, and the transaction record are each a fixed function of the base file name, the
-/// target, the role, and the run's token — which is what lets a discovered record prove
+/// target, the role, and the run's token, which is what lets a discovered record prove
 /// ownership: it can only name files this function could have produced for <em>this</em> base, in
 /// <em>this</em> directory.
 /// </para>
@@ -135,14 +135,14 @@ internal static class PublicationTargets
     /// <summary>The token length in characters: 16 random bytes, lowercase hex.</summary>
     internal const int TokenLength = 32;
 
-    /// <summary>The length of a 128-bit digest in characters — the record digest and each identity value.</summary>
+    /// <summary>The length of a 128-bit digest in characters: the record digest and each identity value.</summary>
     internal const int DigestLength = 32;
 
     /// <summary>
     /// The strict upper bound on a transaction record's size, in bytes.
     /// <para>
-    /// A record holds three header lines plus at most six file entries — three targets × two
-    /// roles — and every value it carries is a file name bounded by the host's own name limit.
+    /// A record holds three header lines plus at most six file entries (three targets × two
+    /// roles) and every value it carries is a file name bounded by the host's own name limit.
     /// The realistic worst case is a few kilobytes; 64 KiB is comfortably above it and still far
     /// below anything that could matter as an allocation. A file larger than this is, by
     /// construction, not a record this code wrote.
@@ -168,14 +168,14 @@ internal static class PublicationTargets
     /// <summary>
     /// Every kind, for mapping between a kind and a name. Deliberately <b>not</b> an ordering:
     /// <see cref="CommitOrder"/> and <see cref="BackupOrder"/> are the artifacts family's alone.
-    /// The artifacts kinds come first, so a lookup by extension cannot be shadowed — theirs are
+    /// The artifacts kinds come first, so a lookup by extension cannot be shadowed: theirs are
     /// non-empty and distinct, and only <see cref="PublicationTargetKind.Single"/>'s is empty.
     /// </summary>
     internal static readonly PublicationTargetKind[] AllKinds =
         [PublicationTargetKind.Cxt, PublicationTargetKind.Dat, PublicationTargetKind.Manifest,
             PublicationTargetKind.Single];
 
-    /// <summary>The family <paramref name="kind"/> belongs to — the one authority on the question.</summary>
+    /// <summary>The family <paramref name="kind"/> belongs to: the one authority on the question.</summary>
     public static PublicationFamily FamilyOf(PublicationTargetKind kind) =>
         kind == PublicationTargetKind.Single ? PublicationFamily.Single : PublicationFamily.Artifacts;
 
@@ -203,7 +203,7 @@ internal static class PublicationTargets
 
     /// <summary>
     /// The target for <paramref name="kind"/> under the verbatim <paramref name="baseOperand"/>.
-    /// The extension is <b>appended</b> to the operand exactly as given — an operand that already
+    /// The extension is <b>appended</b> to the operand exactly as given; an operand that already
     /// carries an extension keeps it and gains another (D-122 part 5: no inference from an
     /// extension, so none is ever stripped either).
     /// </summary>
@@ -214,7 +214,7 @@ internal static class PublicationTargets
         return new PublicationTarget(kind, spelling, Path.GetFullPath(spelling));
     }
 
-    /// <summary>The base operand's own resolved file name — the record's namespace.</summary>
+    /// <summary>The base operand's own resolved file name: the record's namespace.</summary>
     public static string BaseFileName(string baseOperand)
     {
         ArgumentNullException.ThrowIfNull(baseOperand);
@@ -249,7 +249,7 @@ internal static class PublicationTargets
     /// record is then published with a single rename.
     /// </para>
     /// <para>
-    /// A well-formed pending file is authoritative for nothing — it precedes every stage — so it
+    /// A well-formed pending file is authoritative for nothing: it precedes every stage, so it
     /// is safe for a later run to remove, which is what makes record creation recoverable.
     /// </para>
     /// </summary>
@@ -276,16 +276,16 @@ internal static class PublicationTargets
     /// <summary>
     /// The intent descriptor's file name: the control file created immediately
     /// <em>after</em> the pending record, whose name confines it to this base and classifies it as
-    /// this run's descriptor — carrying the run token, the whole one-byte record shape (the two
+    /// this run's descriptor, carrying the run token, the whole one-byte record shape (the two
     /// families take disjoint ranges of it, so the family bit rides in this name like any other),
     /// the 128-bit digest of the exact record bytes that shape produces, and the identity digest of
-    /// the object the pending record's create-new actually produced.
+    /// the object the pending record's create-new produced.
     /// <para>
     /// <b>The name classifies; it does not prove.</b> Ownership rests on the descriptor's exact
     /// canonical bytes (<see cref="ControlDocument"/>), which bind the token, the base, the
     /// authoritative record's digest, and this role. Discovery and removal both require those exact
     /// bytes: an empty, partial, refused, invalid, or substituted object at this name is preserved
-    /// and authorizes no mutation — least of all removal of the pending record it would otherwise
+    /// and authorizes no mutation, least of all removal of the pending record it would otherwise
     /// have named.
     /// </para>
     /// <para>
@@ -333,8 +333,8 @@ internal static class PublicationTargets
 
     /// <summary>
     /// One target's durable identity evidence. The name is a function of the
-    /// base, the artifact kind, and the run token <b>only</b> — never of a runtime identity value
-    /// — so every control path a transaction will ever own is resolvable before it begins.
+    /// base, the artifact kind, and the run token <b>only</b>, never of a runtime identity value,
+    /// so every control path a transaction will ever own is resolvable before it begins.
     /// </summary>
     public static string EvidenceName(string baseFileName, PublicationTargetKind kind, string token) =>
         baseFileName + EvidenceInfix + KindCode(kind) + "-" + token;
@@ -347,12 +347,12 @@ internal static class PublicationTargets
     /// The <b>stage claim</b> for one artifact: the control file created
     /// immediately <em>after</em> the stage object exists. Its name confines it to this base and
     /// classifies it as this run's claim for this artifact kind, and repeats the identity digest of
-    /// the object that creation actually produced.
+    /// the object that creation produced.
     /// <para>
     /// <b>The name classifies; it does not prove.</b> Ownership rests on the claim's exact
     /// canonical bytes (<see cref="ControlDocument"/>), which bind the token, the base, the
     /// authoritative record's digest, this role <em>with its target kind</em>, and that same stage
-    /// identity — so name and body must agree. Discovery and removal both require those exact
+    /// identity, so name and body must agree. Discovery and removal both require those exact
     /// bytes: an empty, partial, refused, invalid, or substituted object at this name is preserved,
     /// authorizes no mutation of the stage beside it, and is not removed as this run's residue.
     /// </para>
@@ -403,7 +403,7 @@ internal static class PublicationTargets
     }
 
     /// <summary>
-    /// The identity-digest role for the pending transaction record — the object the intent
+    /// The identity-digest role for the pending transaction record: the object the intent
     /// descriptor's name binds itself to.
     /// </summary>
     internal const string RecordRole = "record";
@@ -532,9 +532,9 @@ internal static class PublicationTargets
         value is >= 0 and < 256 ? Convert.ToHexStringLower([(byte)value]) : throw new ArgumentOutOfRangeException(nameof(value));
 
     /// <summary>
-    /// True when <paramref name="fileName"/> claims this run's private namespace — the record or a
+    /// True when <paramref name="fileName"/> claims this run's private namespace: the record or a
     /// phase marker for <paramref name="baseFileName"/>, or a stage/backup sibling of a canonical
-    /// target admitted by either family — <b>whatever follows the marker</b>. A single-file target
+    /// target admitted by either family, <b>whatever follows the marker</b>. A single-file target
     /// <em>is</em> the base file name, so its siblings arrive by the marker test, not the loop.
     /// <para>
     /// Deliberately broader than the well-formed grammar: a file called

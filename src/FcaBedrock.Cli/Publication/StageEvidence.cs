@@ -26,13 +26,13 @@ internal static class IdentityEvidence
     /// <summary>The value meaning "the host reported no filesystem identity for this object".</summary>
     public const string Unavailable = "unknown";
 
-    /// <summary>The digest length in characters — 128 bits as lowercase hex.</summary>
+    /// <summary>The digest length in characters: 128 bits as lowercase hex.</summary>
     public const int Length = 32;
 
     /// <summary>
     /// The digest of <paramref name="key"/> for <paramref name="role"/> on
     /// <paramref name="targetFileName"/>, or <see cref="Unavailable"/> when the platform reported
-    /// no OS identity — never a path fallback, which identifies a <em>name</em> and would prove
+    /// no OS identity, never a path fallback, which identifies a <em>name</em> and would prove
     /// nothing about the object at it.
     /// </summary>
     public static string Of(string token, string role, string targetFileName, FileIdentityKey? key)
@@ -63,7 +63,7 @@ internal static class IdentityEvidence
 /// <para>
 /// <b>Why it exists.</b> A derived file name identifies a <em>path</em>. Rollback and recovery
 /// must delete a published final only when it is the very object this transaction staged, and
-/// restore a backup only when it is the very object this transaction renamed aside — a
+/// restore a backup only when it is the very object this transaction renamed aside: a
 /// substituted, restored, or newly appeared file at the same path is not that object. Since a
 /// rename preserves a file's OS identity, the identity captured from the stage's own open handle
 /// is exactly the proof that survives the commit rename.
@@ -74,12 +74,12 @@ internal static class IdentityEvidence
 /// named here is held open by a <see cref="PublicationObjectReference"/> for as long as this
 /// evidence authorizes anything about it. Across a crash there is no reference to hold, and this
 /// evidence alone cannot tell the transaction's own untouched residue from a replacement that
-/// inherited the identifier — an exclusive, undisturbed namespace is the caller's precondition,
+/// inherited the identifier; an exclusive, undisturbed namespace is the caller's precondition,
 /// not something this file can establish.
 /// </para>
 /// <para>
 /// <b>Fixed path, atomic publication.</b> Its name is a function of the base, the role, and the
-/// run token alone — never of a runtime identity value — so the complete set of control paths is
+/// run token alone, never of a runtime identity value, so the complete set of control paths is
 /// resolvable and collision-checkable <em>before</em> the transaction begins. The bytes are
 /// written under a pending name and published with one non-overwriting rename, so the
 /// authoritative name never holds a partial encoding; an interrupted pending file is removed only
@@ -202,7 +202,7 @@ internal sealed class StageEvidence
             && hasStage != string.Equals(Stage, IdentityEvidence.NotApplicable, StringComparison.Ordinal);
     }
 
-    // `none`, `unknown`, or a 128-bit lowercase-hex digest — a closed set, so no value is ever
+    // `none`, `unknown`, or a 128-bit lowercase-hex digest: a closed set, so no value is ever
     // unescaped out of the file.
     private static string? ReadValue(string[] lines, ref int index, string key)
     {

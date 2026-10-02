@@ -15,16 +15,16 @@ namespace FcaBedrock.Cli.Commands;
 /// <c>convert SPEC DATA --out BASE --format cxt|dat|both [--v2-compat] [--no-manifest] [--force]
 /// [--temp-dir DIR]</c> (D-122 parts 4–7).
 /// <para>
-/// The shared preparation runs exactly as it does for the report commands — schema, conditional
+/// The shared preparation runs exactly as it does for the report commands (schema, conditional
 /// calibration, one native plan, the three native fingerprints, and the single stored-fingerprint
-/// verification — and only then does conversion diverge: with <c>--v2-compat</c> the <em>same</em>
+/// verification) and only then does conversion diverge: with <c>--v2-compat</c> the <em>same</em>
 /// calibrated state is planned once more for emission, so the native side that verifies the spec
 /// and the effective side that produces the bytes stay exactly paired (D-044/D-077).
 /// </para>
 /// <para>
 /// <b>Nothing becomes public until the whole run is known good.</b> Artifacts are staged and
 /// hashed, the diagnostics become authoritative when the replay session is disposed, the input
-/// digest is re-checked, and only a run with no Error or Fatal reaches the commit — where the
+/// digest is re-checked, and only a run with no Error or Fatal reaches the commit, where the
 /// manifest publishes last as the run's public marker. <b>Stdout is exactly empty on every
 /// success</b>; diagnostics go to stderr, in library order, once.
 /// </para>
@@ -50,7 +50,7 @@ internal static class ConvertCommand
         var run = prepared.Run;
         var diagnostics = new List<BedrockDiagnostic>(prepared.Diagnostics);
 
-        // Once, against the ROOT document and the NATIVE fingerprints — never against an
+        // Once, against the ROOT document and the NATIVE fingerprints, never against an
         // effective override value, which is a manifest fact and never a stored one (§14/D-077).
         diagnostics.AddRange(SpecFingerprints.VerifyStored(run.RootDocument, run.Fingerprints, run.RootKey));
 
@@ -61,8 +61,8 @@ internal static class ConvertCommand
         if (v2Compat)
         {
             // One extra plan from the same calibrated state. A successful one carries exactly the
-            // native plan's diagnostics — the label style reaches only rendered names (D-044), and
-            // every rendered-name defect is an Error that would have failed the plan — so nothing
+            // native plan's diagnostics: the label style reaches only rendered names (D-044), and
+            // every rendered-name defect is an Error that would have failed the plan, so nothing
             // is added here and no diagnostic is reported twice. A FAILING one is different: it
             // found a defect the native labels do not have, and that is the run's failure.
             var planned = run.PlanEffective(LabelStyle.V2Compat);
@@ -112,7 +112,7 @@ internal static class ConvertCommand
             inputs.Add(new PublicationInput(file.Spelling, file.FullPath));
         }
 
-        // The complete preflight — identity collisions, residue, existing targets — finishes
+        // The complete preflight (identity collisions, residue, existing targets) finishes
         // before any record, stage, or backup can exist.
         var preparation = PublicationTransaction.Preflight(
             environment.PublicationFiles,
@@ -137,7 +137,7 @@ internal static class ConvertCommand
         }
 
         // The transaction holds live references to every object whose identity authorizes a
-        // mutation, so it is disposed on every exit — success, host failure, cancellation and
+        // mutation, so it is disposed on every exit: success, host failure, cancellation and
         // unexpected fault alike. Releasing them is not cleanup that can be skipped: on Windows a
         // surviving reference keeps a completed deletion pending (D-125).
         using var owned = transaction;
@@ -204,8 +204,8 @@ internal static class ConvertCommand
         PublicationFailure? failure;
 
         // ONE session brackets the whole conversion attempt, whatever --format selected: data
-        // diagnostics are collected by its first pass only — so `both` never double-counts the
-        // conversion the two formats share — while grouping storage failures are intercepted on
+        // diagnostics are collected by its first pass only (so `both` never double-counts the
+        // conversion the two formats share) while grouping storage failures are intercepted on
         // every real pass and flushed, aggregated, at disposal (D-082/D-105).
         using (var replay = EmitReplay.Begin(run.EmitWith(plan), diagnostics))
         {
@@ -288,7 +288,7 @@ internal static class ConvertCommand
         }
 
         // Every stage is now written and flushed. Sealing publishes each target's durable identity
-        // evidence and then records that fact — which is what lets a later run tell "a commit
+        // evidence and then records that fact, which is what lets a later run tell "a commit
         // rename consumed this stage" from "this stage was never created", and what proves which
         // exact object each target holds before rollback may remove one.
         if (transaction.Seal(cancellation) is { } marked)
@@ -307,7 +307,7 @@ internal static class ConvertCommand
             return RunPipeline.HostFailure(environment, diagnostics, committed.Message, cancellation);
         }
 
-        // Committed. Warnings and Info are rendered and the exit stays 0 — and no cancellation
+        // Committed. Warnings and Info are rendered and the exit stays 0, and no cancellation
         // check runs here, because a signal arriving after the commit point must not report a
         // published run as cancelled.
         DiagnosticRenderer.Write(environment.Error, diagnostics);

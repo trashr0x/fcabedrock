@@ -21,8 +21,8 @@ namespace FcaBedrock.Cli;
 /// still renders as <c>file=""</c>), always in that order regardless of construction
 /// order, fields separated by a single ASCII space; string fields as JSON string
 /// literals and integers invariant; lowercase severity; the message JSON-escaped
-/// without surrounding quotes. When no field is populated the whole prefix — including
-/// the <c>": "</c> — is omitted and the line starts at the severity. Code-less host
+/// without surrounding quotes. When no field is populated the whole prefix (including
+/// the <c>": "</c>) is omitted and the line starts at the severity. Code-less host
 /// errors render <c>error: escaped-message</c>.
 /// </para>
 /// <para>
@@ -48,7 +48,7 @@ internal static class DiagnosticRenderer
     }
 
     /// <summary>
-    /// The rendered line for a CLI-owned, code-less host/environment failure —
+    /// The rendered line for a CLI-owned, code-less host/environment failure:
     /// a missing or unreadable input, a publication failure, an unexpected internal
     /// fault. These never join the diagnostic registry (D-122 part 2).
     /// </summary>
@@ -69,7 +69,7 @@ internal static class DiagnosticRenderer
         }
     }
 
-    /// <summary>True when any diagnostic is Error or worse — the exit-1 predicate.</summary>
+    /// <summary>True when any diagnostic is Error or worse: the exit-1 predicate.</summary>
     public static bool HasErrors(IEnumerable<BedrockDiagnostic> diagnostics)
     {
         foreach (var diagnostic in diagnostics)

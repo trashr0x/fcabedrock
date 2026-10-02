@@ -38,14 +38,14 @@ internal sealed record CommandInvocation(
 /// <para>
 /// <b>Why hand-written.</b> <c>System.CommandLine</c>'s help text, usage phrasing, and
 /// implicit behaviours (response files, aliases, suggestions) are library-owned bytes
-/// sitting inside M7's byte-locked stdout/stderr surface, and would drift with an upgrade —
+/// sitting inside the CLI's byte-locked stdout/stderr surface, and would drift with an upgrade:
 /// the same hazard that kept Tomlyn's serializer out of the canonical writer (D-075).
 /// </para>
 /// <para>
 /// <b>The grammar is exactly what D-122 settled and nothing more.</b> No aliases, no
 /// abbreviations, no <c>--name=value</c> form, no response files, no environment
-/// fallbacks, no hidden options, no permissive coercions. Unknown options — including the
-/// excluded surface (<c>--sample</c>, <c>--gzip</c>, colour/progress/machine spellings) —
+/// fallbacks, no hidden options, no permissive coercions. Unknown options, including the
+/// excluded surface (<c>--sample</c>, <c>--gzip</c>, colour/progress/machine spellings),
 /// are usage errors (D-122 part 12).
 /// </para>
 /// </summary>
@@ -56,7 +56,7 @@ internal static class CommandLineParser
 
     private static readonly string[] RoleOptions = ["--subject", "--predicate", "--value"];
 
-    /// <summary>Parses <paramref name="argv"/> — the ordinary application arguments, not the audit argv.</summary>
+    /// <summary>Parses <paramref name="argv"/>: the ordinary application arguments, not the audit argv.</summary>
     public static ParseOutcome Parse(IReadOnlyList<string> argv)
     {
         ArgumentNullException.ThrowIfNull(argv);
@@ -125,7 +125,7 @@ internal static class CommandLineParser
                 continue;
             }
 
-            // A value is the NEXT token, taken verbatim — an empty one is legal
+            // A value is the NEXT token, taken verbatim; an empty one is legal
             // (`--missing-token ""` disables token detection, §5.1). A token that begins
             // with `--` is never a value: it is the next option, so the option before it
             // is missing its value. There is no `--name=value` escape.
@@ -198,13 +198,13 @@ internal static class CommandLineParser
         return false;
     }
 
-    // NumberStyles.None: no sign, no whitespace, no thousands separators, no exponent —
+    // NumberStyles.None: no sign, no whitespace, no thousands separators, no exponent;
     // "5" parses, " 5", "+5", "-5", "5.0" and "1e3" do not. Overflow fails too.
     private static bool IsIndex(string value) =>
         int.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out _);
 
     // The retention limit reaches ProbeOptions.Create, whose validated boundary is 1 (D-108),
-    // so zero is a caller mistake to report here — not an exception in ProbeOptions.Create.
+    // so zero is a caller mistake to report here, not an exception in ProbeOptions.Create.
     private static bool IsPositiveInteger(string value) =>
         int.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out var parsed) && parsed >= 1;
 
@@ -215,7 +215,7 @@ internal static class CommandLineParser
         value.Length == 1 && SourceReadSettings.IsInDelimiterAlphabet(value[0]) && value[0] != '"';
 
     // The predicate SpecResolver and ProbeOptions both apply (§5.1): "invariant"
-    // case-insensitively, or a PREDEFINED culture — predefinedOnly matters, because under ICU
+    // case-insensitively, or a PREDEFINED culture; predefinedOnly matters, because under ICU
     // GetCultureInfo synthesizes a culture for almost any well-formed tag, which would make
     // acceptance OS-dependent (EP-7/EP-11) and let a draft fail its own reread.
     private static bool IsLocale(string value)
@@ -307,8 +307,8 @@ internal static class CommandLineParser
 
     private static string Spell(SourceShape shape) => shape == SourceShape.Triple ? "triple" : "wide";
 
-    // §5.3 / D-122 part 10: the three roles are supplied together, in ONE addressing mode —
-    // all zero-based indices or all header names — and name addressing requires an
+    // §5.3 / D-122 part 10: the three roles are supplied together, in ONE addressing mode
+    // (all zero-based indices or all header names) and name addressing requires an
     // explicit --header true (the shape-specific default is not enough to bind by name).
     private static UsageFailure? CheckRoleOptions(CliCommand command, Dictionary<string, string?> options)
     {

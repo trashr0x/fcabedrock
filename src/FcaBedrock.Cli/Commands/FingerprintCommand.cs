@@ -31,12 +31,12 @@ namespace FcaBedrock.Cli.Commands;
 /// </para>
 /// <para>
 /// <b><c>--write</c> shares that one preparation path and adds only a rewrite.</b> It refuses a
-/// spec that is not <b>fully frozen</b> — <see cref="CalibratedSpec.RequiresData"/> is the §14
-/// gate — with a code-less host error and exit 1, having opened no output. Otherwise it rewrites
+/// spec that is not <b>fully frozen</b> (<see cref="CalibratedSpec.RequiresData"/> applies the §14
+/// definition) with a code-less host error and exit 1, having opened no output. Otherwise it rewrites
 /// the <b>authored root</b> document's three stored fingerprint fields and nothing else, so the
 /// root's <c>extends</c> and every other section survive verbatim (§13 rule 8): deliberately the
 /// opposite of <c>calibrate</c>, which writes the flattened composed document. It freezes,
-/// re-resolves, and replans nothing, and — like report mode — never calls <c>VerifyStored</c>.
+/// re-resolves, and replans nothing, and (like report mode) never calls <c>VerifyStored</c>.
 /// </para>
 /// <para>
 /// The report is built <b>before</b> the rewrite, from the input root's stored values, so its
@@ -74,13 +74,10 @@ internal static class FingerprintCommand
                 environment, prepared.Diagnostics, report.ToString(), environment.Signals.Token);
         }
 
-        // Confined to the write block, introduced only after report mode has already returned, so
-        // the two report-mode `environment.Signals.Token` argument expressions above stay exactly
-        // as they were and report mode's bytes cannot move.
         var cancellation = environment.Signals.Token;
 
-        // The §14 gate, after preparation because RequiresData needs the schema-aware resolution.
-        // A data-dependent spec therefore reads DATA before being refused — deliberate, and still
+        // The §14 check, after preparation because RequiresData needs the schema-aware resolution.
+        // A data-dependent spec therefore reads DATA before being refused: deliberate, and still
         // exit 1 with nothing opened for output, no target created, and no transaction begun.
         if (CalibratedSpec.RequiresData(run.Resolved.Resolved.Spec))
         {
@@ -91,7 +88,7 @@ internal static class FingerprintCommand
                 cancellation);
         }
 
-        // The ROOT document, as authored — never the composed one — with only the three stored
+        // The ROOT document, as authored, never the composed one, with only the three stored
         // fields replaced. Everything else the record carries, `extends` included, is untouched.
         var written = run.RootDocument with
         {
@@ -115,7 +112,7 @@ internal static class FingerprintCommand
 
     /// <summary>
     /// The composed spec chain as publication inputs, in <see cref="PreparedRun.SpecChain"/>
-    /// order — root first, then each base as the chain was walked. Base paths are
+    /// order: root first, then each base as the chain was walked. Base paths are
     /// referrer-relative and are already resolved, so they are passed through verbatim and
     /// are never re-derived against the process working directory.
     /// </summary>

@@ -42,7 +42,7 @@ internal static class Program
         catch (Exception)
         {
             // A failure in the wiring above cannot reach CliHost's own handler, so the
-            // exit-4 contract is honoured here too — one sanitized line, nothing leaked.
+            // exit-4 contract is honoured here too: one sanitized line, nothing leaked.
             // The write itself is best-effort for the same reason CliHost's is.
             try
             {
@@ -71,7 +71,7 @@ internal static class Program
     // console keeps its own writer, which already speaks the console's encoding.
     //
     // The writer is not disposed: it wraps a standard handle owned by the process, and
-    // the finally above flushes it. Line endings never come from here — every rendered
+    // the finally above flushes it. Line endings never come from here: every rendered
     // string carries its own LF, so output is identical on every platform.
     private static TextWriter CreateWriter(Func<Stream> openStandard, bool redirected, TextWriter console) =>
         redirected

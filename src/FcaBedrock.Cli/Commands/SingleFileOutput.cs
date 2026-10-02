@@ -18,7 +18,7 @@ namespace FcaBedrock.Cli.Commands;
 /// <b>The two destinations are deliberately separate sequences.</b> Stdout keeps the
 /// established check-cancellation, render, then write shape. <b>For a file target no diagnostic
 /// becomes externally visible until the run reaches either a non-cancelled reportable failure or
-/// a successful commit</b> — otherwise a run that produced a Warning and was then cancelled would
+/// a successful commit</b>; otherwise a run that produced a Warning and was then cancelled would
 /// exit 3 with a non-empty stderr, and a formally silent cancellation would carry visible partial
 /// output. Past the commit point no cancellation check runs at all: a signal arriving then must
 /// not report a published file as cancelled.
@@ -33,7 +33,7 @@ namespace FcaBedrock.Cli.Commands;
 internal static class SingleFileOutput
 {
     /// <summary>
-    /// The canonical bytes' encoder. Output encoding only — all <em>decoding</em> of authored
+    /// The canonical bytes' encoder. Output encoding only; all <em>decoding</em> of authored
     /// text belongs to <see cref="SpecTextDecoding"/> (EP-5).
     /// </summary>
     private static readonly UTF8Encoding Utf8NoBom = new(encoderShouldEmitUTF8Identifier: false);
@@ -43,7 +43,7 @@ internal static class SingleFileOutput
     /// <para>
     /// <paramref name="document"/> is null exactly when the command's library call produced none,
     /// which by the <c>Diagnosed</c> contract means <paramref name="diagnostics"/> carries an
-    /// Error or Fatal — so it is only ever dereferenced past the gate that returns on one.
+    /// Error or Fatal, so it is only ever dereferenced past the check that returns on one.
     /// </para>
     /// </summary>
     /// <returns>0 on a delivered document, 1 on any Error/Fatal or host failure.</returns>
@@ -120,7 +120,7 @@ internal static class SingleFileOutput
         // input the identity-collision check compares the target against (D-122 part 4): probe's
         // DATA, migrate's BED, calibrate's and fingerprint's SPEC and DATA alike. The rule is total
         // over the command table rather than a per-command guess, so it cannot be forgotten. The
-        // caller adds anything it resolved itself — a composed extends chain, whose base paths are
+        // caller adds anything it resolved itself: a composed extends chain, whose base paths are
         // referrer-relative and must not be re-derived against the process working directory.
         List<PublicationInput> inputs;
         try
@@ -160,7 +160,7 @@ internal static class SingleFileOutput
         }
 
         // The transaction holds live references to every object whose identity authorizes a
-        // mutation, so it is released on every exit — success, host failure, cancellation and
+        // mutation, so it is released on every exit: success, host failure, cancellation and
         // unexpected fault alike. That is not skippable cleanup: on Windows a surviving reference
         // keeps an already-requested deletion pending (D-125).
         using var owned = transaction;
@@ -231,7 +231,7 @@ internal static class SingleFileOutput
     }
 
     // The output side is tagged at its origin so a stage write failure is reported as the output
-    // failure it is; anything else — a cancellation, a contract defect — is left untouched for
+    // failure it is; anything else (a cancellation, a contract defect) is left untouched for
     // the caller to classify.
     private static Func<Stream, Task> Writer(byte[] bytes, CancellationToken cancellation) => async stream =>
     {

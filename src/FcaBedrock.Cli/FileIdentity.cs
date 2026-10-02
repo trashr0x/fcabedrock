@@ -4,9 +4,9 @@ namespace FcaBedrock.Cli;
 /// The identity of one file, as this run understands it. Two spellings of the same file produce
 /// equal keys, and two files that <b>both exist</b> never do.
 /// <para>
-/// <b>That qualification is load-bearing</b> (D-125). An identifier describes an object, and it is
+/// <b>That qualification limits what a key proves</b> (D-125). An identifier describes an object, and it is
 /// unique only among objects existing at the same time: once a file's last name is unlinked, the
-/// host may hand the very same device and inode — or volume plus file id — to the next creation. A
+/// host may hand the very same device and inode (or volume plus file id) to the next creation. A
 /// key is therefore a fact about an object, never a durable name for one, and a key captured
 /// earlier proves nothing about a later observation unless something kept that object alive in
 /// between. In publication that something is
@@ -14,7 +14,7 @@ namespace FcaBedrock.Cli;
 /// </para>
 /// <para>
 /// <b>An equivalence relation by construction.</b> A key is either an OS identity triple or
-/// a single canonical path string, and equality is exact comparison of one of those — never
+/// a single canonical path string, and equality is exact comparison of one of those, never
 /// a comparison mode negotiated between two operands. So equality is reflexive, symmetric,
 /// transitive, and hash-consistent, which is what a dictionary key must be and what keeps
 /// canonicalization independent of insertion order.
@@ -50,7 +50,7 @@ internal readonly struct FileIdentityKey : IEquatable<FileIdentityKey>
     }
 
     /// <summary>
-    /// Real OS identity — Windows volume serial plus the 128-bit file id, or Unix
+    /// Real OS identity: Windows volume serial plus the 128-bit file id, or Unix
     /// device plus inode. This is what unifies supported symlink <b>and hardlink</b>
     /// aliases, which path comparison cannot see.
     /// </summary>
@@ -58,7 +58,7 @@ internal readonly struct FileIdentityKey : IEquatable<FileIdentityKey>
 
     /// <summary>
     /// The fallback, used only when OS identity is genuinely unavailable: one canonical
-    /// path — the final link target, with every component in its real on-disk spelling —
+    /// path (the final link target, with every component in its real on-disk spelling)
     /// compared exactly. It makes no hardlink guarantee (D-122 part 11).
     /// </summary>
     public static FileIdentityKey FromPath(string canonicalPath)
@@ -80,7 +80,7 @@ internal readonly struct FileIdentityKey : IEquatable<FileIdentityKey>
     /// </para>
     /// <para>
     /// <b>How far that proof reaches is bounded</b> (D-125). It holds for as long as the object is
-    /// kept alive — which within an invocation is what
+    /// kept alive, which within an invocation is what
     /// <see cref="FcaBedrock.Cli.Publication.PublicationObjectReference"/> is for. It does <b>not</b>
     /// reach across a crash: an invocation that held no reference cannot afterwards distinguish its
     /// own untouched residue from a replacement that inherited the identifier, and no amount of
@@ -141,17 +141,17 @@ internal interface IFileIdentityProbe
 /// <summary>
 /// The shared filesystem-identity service (D-123 part 6): OS identity for
 /// existing files where the platform exposes it, one canonical path only as a fallback. It
-/// is consumed by the file-backed <c>extends</c> host now and by publication collision
-/// checks later, so "is this the same file?" has one answer in the whole CLI.
+/// is consumed by the file-backed <c>extends</c> host and by publication collision
+/// checks, so "is this the same file?" has one answer in the whole CLI.
 /// <para>
 /// <b>The fallback asks the filesystem rather than assuming a rule.</b> Each path component
-/// is replaced by its real on-disk spelling, obtained from the directory that actually
-/// contains it, and any link-bearing component — file or directory — is replaced by its
+/// is replaced by its real on-disk spelling, obtained from the directory that
+/// contains it, and any link-bearing component (file or directory) is replaced by its
 /// final target. So case behaviour is measured where each entry lives (it is a per-directory
 /// property on NTFS, and a per-volume one elsewhere), a case-varying ancestor cannot make two
 /// distinct files compare equal, and a self-aliasing directory link collapses instead of
 /// generating ever-longer paths. Whatever cannot be determined keeps the supplied spelling,
-/// which can only fail to unify two spellings — never unify two different files.
+/// which can only fail to unify two spellings, never unify two different files.
 /// </para>
 /// <para>
 /// <b>Results are memoized per normalized path.</b> That makes identity a deterministic
@@ -160,7 +160,7 @@ internal interface IFileIdentityProbe
 /// </para>
 /// <para>
 /// A failed identity call is a <b>capability fallback</b>, never a crash and never a
-/// diagnostic. Only the expected capability failures are absorbed — a missing file, a
+/// diagnostic. Only the expected capability failures are absorbed: a missing file, a
 /// permission or sharing refusal, an absent library or entry point. Marshalling and
 /// contract defects propagate rather than hiding behind the fallback.
 /// </para>
@@ -203,7 +203,7 @@ internal sealed class FileIdentity
 
     /// <summary>
     /// The canonical form of <paramref name="fullPath"/>: the final target of every link on
-    /// the way, with each component in the spelling the containing directory actually stores.
+    /// the way, with each component in the spelling the containing directory stores.
     /// Exposed for the fallback's own tests; it is never a user-facing path.
     /// </summary>
     internal string CanonicalPath(string fullPath) => Canonicalize(fullPath, depth: 0);
@@ -271,7 +271,7 @@ internal sealed class FileIdentity
             if (!File.Exists(path) && !Directory.Exists(path))
             {
                 // Nothing exists under this spelling, so no directory can say anything about
-                // it — enumerating would cost a scan and answer nothing.
+                // it; enumerating would cost a scan and answer nothing.
                 return null;
             }
 

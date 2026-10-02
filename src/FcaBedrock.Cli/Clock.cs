@@ -3,7 +3,7 @@ namespace FcaBedrock.Cli;
 /// <summary>
 /// The CLI's time seam. Core is pure and takes no ambient clock (EP-13), and the run
 /// manifest's <c>timestamp</c> is whole-second RFC 3339 UTC from an <b>injected</b>
-/// clock (§15, D-122 part 6) — so the process boundary is the one place a real clock
+/// clock (§15, D-122 part 6), so the process boundary is the one place a real clock
 /// may be read, and it is read through this interface.
 /// </summary>
 internal interface IClock

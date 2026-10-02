@@ -12,7 +12,7 @@ namespace FcaBedrock.Cli.Commands;
 /// plus triple-only <c>[--ordering …] [--subject …] [--predicate …] [--value …]</c>
 /// (D-122 part 10; spec §7.1).
 /// <para>
-/// <b>M7 adds no discovery semantics — only a command surface over M5's</b> (roadmap M7). So
+/// <b>The CLI adds no discovery semantics, only a command surface over Discovery's</b> (roadmap M7). So
 /// this handler maps argv to typed settings, calls one <see cref="Prober"/> entry exactly once,
 /// and hands the result to <see cref="SingleFileOutput"/>. It infers nothing structural,
 /// re-validates no §5.3 role map, restates no default, implements no boundedness guard, and
@@ -21,7 +21,7 @@ namespace FcaBedrock.Cli.Commands;
 /// <para>
 /// <b>Every DATA read failure past the argv boundary is Discovery's</b>, a missing file
 /// included: the CLI opens nothing itself, so the first open happens inside the library's own
-/// schema acquisition and its failure is that library's <c>ProbeSourceReadFailed</c> — one
+/// schema acquisition and its failure is that library's <c>ProbeSourceReadFailed</c>: one
 /// condition, one owner, no second classification and no double report (D-067).
 /// </para>
 /// </summary>
@@ -60,9 +60,9 @@ internal static class ProbeCommand
             .ConfigureAwait(false);
     }
 
-    // Overrides only. Every omitted setting keeps the factory's own §5.1/§7.1 value — including
+    // Overrides only. Every omitted setting keeps the factory's own §5.1/§7.1 value, including
     // the shape-specific has_header and the encoding and quote character the CLI exposes no flag
-    // for — so no default is restated here and the draft still authors every effective setting.
+    // for, so no default is restated here and the draft still authors every effective setting.
     private static SourceReadSettings Settings(CommandInvocation invocation, bool triple)
     {
         var library = triple ? SourceReadSettings.CreateTriple() : SourceReadSettings.CreateWide();

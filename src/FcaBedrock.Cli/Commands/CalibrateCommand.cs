@@ -18,12 +18,12 @@ namespace FcaBedrock.Cli.Commands;
 /// <para>
 /// <b>Flattening is structural.</b> The composed document the freezer rewrites has already had
 /// <c>extends</c> consumed by composition, so the written spec is one standalone frozen file
-/// (§13/§14) — the deliberate opposite of <c>fingerprint --write</c>, which rewrites the authored
+/// (§13/§14): the deliberate opposite of <c>fingerprint --write</c>, which rewrites the authored
 /// root and preserves its <c>extends</c>.
 /// </para>
 /// <para>
 /// <b>Stale stored hashes warn and are corrected.</b> The stored fields are verified once against
-/// the root document, exactly as <c>plan</c> does, and the freeze then overwrites all three — so
+/// the root document, exactly as <c>plan</c> does, and the freeze then overwrites all three, so
 /// the warning describes the input and the output no longer deserves it (D-122 part 10).
 /// </para>
 /// </summary>
@@ -45,7 +45,7 @@ internal static class CalibrateCommand
 
         var run = prepared.Run;
 
-        // Verified once, against the root document, after a successful native plan — the same
+        // Verified once, against the root document, after a successful native plan: the same
         // position and the same argument triple `plan` uses (§14/D-077).
         var stale = SpecFingerprints.VerifyStored(run.RootDocument, run.Fingerprints, run.RootKey);
 
@@ -64,7 +64,7 @@ internal static class CalibrateCommand
 
     /// <summary>
     /// Freeze → re-resolve → plan → compute → store, over already-retained state only: it reads no
-    /// data source, opens no stream, touches no filesystem, and never serializes — turning a
+    /// data source, opens no stream, touches no filesystem, and never serializes: turning a
     /// document into bytes belongs to <see cref="SingleFileOutput"/> alone.
     /// <para>
     /// <c>Stored</c> is null exactly when the re-resolve or the replan failed, in which case the
@@ -103,8 +103,8 @@ internal static class CalibrateCommand
 
         var computed = SpecFingerprints.ComputeNative(resolved, plan);
 
-        // [spec] survives a successful resolve — SpecVersionUnsupported is Fatal when it is absent
-        // — so only the three stored fields change; version, description, and every other section
+        // [spec] survives a successful resolve: SpecVersionUnsupported is Fatal when it is absent,
+        // so only the three stored fields change; version, description, and every other section
         // are carried by the record `with`.
         var stored = frozen with
         {
@@ -121,12 +121,12 @@ internal static class CalibrateCommand
 
     /// <summary>
     /// The delivered diagnostic list: <paramref name="initial"/> in order, then
-    /// <paramref name="stale"/> in order, then — in re-resolve-then-replan order — every post-freeze
+    /// <paramref name="stale"/> in order, then (in re-resolve-then-replan order) every post-freeze
     /// diagnostic whose key is not already accounted for by <paramref name="initial"/>.
     /// <para>
     /// The re-resolve and the replan run the <em>same two phases again</em>, over the frozen
     /// document. Blind appending would duplicate everything both runs produce; blind suppression
-    /// would lose what exists only after the freeze — chiefly <c>MatcherFullyShadowed</c>, which
+    /// would lose what exists only after the freeze: chiefly <c>MatcherFullyShadowed</c>, which
     /// the freeze itself creates by writing explicit fields that shadow a matcher's every
     /// contribution. Order-preserving multiset difference keeps each distinct statement exactly
     /// once, which is the same suppression rule the preparation path already applies to a re-run
@@ -164,8 +164,8 @@ internal static class CalibrateCommand
 
     // Context is excluded deliberately: it is typed object?, so record equality would compare it by
     // reference and two otherwise identical diagnostics would never match. It is also unreachable
-    // here — its only producer is the conversion emit/replay path, which neither a resolve nor a
-    // plan runs — so excluding it cannot discard information this composition could have seen.
+    // here: its only producer is the conversion emit/replay path, which neither a resolve nor a
+    // plan runs, so excluding it cannot discard information this composition could have seen.
     private static (DiagnosticCode Code, DiagnosticSeverity Severity, string Message,
                     DiagnosticLocation? Location) Key(BedrockDiagnostic diagnostic) =>
         (diagnostic.Code, diagnostic.Severity, diagnostic.Message, diagnostic.Location);
@@ -194,7 +194,7 @@ internal static class CalibrateCommand
 
     /// <summary>
     /// The composed spec chain as publication inputs, in <see cref="PreparedRun.SpecChain"/>
-    /// order — root first, then each base as the chain was walked. Base paths are
+    /// order: root first, then each base as the chain was walked. Base paths are
     /// referrer-relative and are already resolved, so they are passed through verbatim and
     /// are never re-derived against the process working directory.
     /// </summary>

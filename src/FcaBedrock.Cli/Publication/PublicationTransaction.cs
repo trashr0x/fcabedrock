@@ -1,13 +1,13 @@
 namespace FcaBedrock.Cli.Publication;
 
 /// <summary>One file a run reads, for the canonical-identity collision check.</summary>
-/// <param name="Spelling">How the invocation named it — the operand, or an authored <c>extends</c> reference.</param>
+/// <param name="Spelling">How the invocation named it: the operand, or an authored <c>extends</c> reference.</param>
 /// <param name="FullPath">Its resolved absolute path.</param>
 internal sealed record PublicationInput(string Spelling, string FullPath);
 
 /// <summary>
 /// A validated intent descriptor: the control file whose exact canonical bytes authorize removing
-/// exactly one pending record object — the one whose identity its name repeats.
+/// exactly one pending record object: the one whose identity its name repeats.
 /// </summary>
 internal sealed record IntentClaim(
     string Token, string Path, string PendingPath, string PendingIdentity, TransactionRecord Described);
@@ -15,7 +15,7 @@ internal sealed record IntentClaim(
 /// <summary>
 /// A discovered prior transaction: what it owns, how far it durably got, and its evidence.
 /// <para>
-/// <c>StageClaims</c> maps a target file name to the identity digest its stage claim carries — the
+/// <c>StageClaims</c> maps a target file name to the identity digest its stage claim carries: the
 /// durable statement that this transaction's create-new produced <em>that object</em> at that
 /// private path, which a derived name alone can never say.
 /// </para>
@@ -63,11 +63,11 @@ internal static class PublicationMessages
     public static string ExistingTarget(string spelling) =>
         $"the output '{spelling}' already exists; use --force to replace it.";
 
-    /// <summary>An output that is canonically the same file as an input — refused even with <c>--force</c>.</summary>
+    /// <summary>An output that is canonically the same file as an input: refused even with <c>--force</c>.</summary>
     public static string InputCollision(string output, string input) =>
         $"the output '{output}' and the input '{input}' are the same file.";
 
-    /// <summary>Two outputs that are canonically the same file — refused even with <c>--force</c>.</summary>
+    /// <summary>Two outputs that are canonically the same file: refused even with <c>--force</c>.</summary>
     public static string OutputCollision(string first, string second) =>
         $"the outputs '{first}' and '{second}' are the same file.";
 
@@ -79,7 +79,7 @@ internal static class PublicationMessages
     public static string RecoveryFailed(string baseSpelling) =>
         $"cannot clean up an incomplete fcabedrock run for the output base '{baseSpelling}'.";
 
-    /// <summary>Publication could not be started — the location is unusable, or a control file refused to be created.</summary>
+    /// <summary>Publication could not be started: the location is unusable, or a control file refused to be created.</summary>
     public static string RecordFailed(string baseSpelling) =>
         $"cannot start publication for the output base '{baseSpelling}'.";
 
@@ -100,22 +100,22 @@ internal static class PublicationMessages
 /// names the stages and backups it owns; the <em>intent descriptor</em> names the one pending
 /// record object that may precede it; each <em>stage claim</em> is written only <b>after</b> its
 /// create-new succeeded and names the identity of the object that creation produced; and per-target
-/// <em>identity evidence</em> names the exact filesystem objects — the staged one and the backed-up
+/// <em>identity evidence</em> names the exact filesystem objects: the staged one and the backed-up
 /// one.
 /// </para>
 /// <para>
 /// <b>A private name classifies and confines a control; it never proves one.</b> The descriptor,
 /// the phase markers, and the stage claims are each authoritative only through their exact
 /// canonical bytes (<see cref="ControlDocument"/>), which bind the run token, the base, the
-/// authoritative record's digest, the exact role or phase, and — for a claim — the stage identity
+/// authoritative record's digest, the exact role or phase, and (for a claim) the stage identity
 /// it acknowledges. Discovery and removal both require those exact bytes, so an empty, partial,
 /// refused, invalid, or substituted object at any of those names is preserved and authorizes no
-/// mutation. This supersedes the earlier zero-byte mechanism.
+/// mutation.
 /// </para>
 /// <para>
 /// <b>A refused acquisition creates nothing.</b> Where a create-new or a publishing rename is
 /// refused, the occupant that refused it is exactly the object this transaction did <em>not</em>
-/// create — so no durable state naming it is written, none is left behind by a failed withdrawal,
+/// create, so no durable state naming it is written, none is left behind by a failed withdrawal,
 /// and neither this run's rollback nor any later recovery may remove it.
 /// </para>
 /// <para>
@@ -130,7 +130,7 @@ internal static class PublicationMessages
 /// <b>Preflight settles everything before anything new moves.</b> Residue is validated in full;
 /// nothing recovery would touch may be an input; a single prior transaction is completed; and only
 /// <em>then</em> are identities reacquired and the complete current-run collision, existing-target,
-/// and control-path checks run — so a recovery that restores a target cannot slip an aliased output
+/// and control-path checks run, so a recovery that restores a target cannot slip an aliased output
 /// past the one identity check. A participant this run would rename aside but
 /// cannot identify is refused <em>there</em>, before a record, a stage, or one pass of conversion
 /// work exists.
@@ -140,22 +140,22 @@ internal static class PublicationMessages
 /// describes an object that exists; unlink a file's last name and the host may hand the very same
 /// number to the next creation, so a proof taken from a closed handle can be a proof about a
 /// substitute. Every object whose identity authorizes a later mutation is therefore held open from
-/// the moment that identity is captured until its last authorized use — the reference acquired
+/// the moment that identity is captured until its last authorized use: the reference acquired
 /// while the creating or approving handle is still open and proved equal to it, transferred with
 /// overlapping references, and never released and re-acquired by name. A substitute cannot then be
-/// handed the original's identifier, and every proof below compares exactly what it always
-/// compared. These are object-lifetime references, not writer streams or reader locks: the writer's
-/// flush-and-close boundary is precisely where it was.
+/// handed the original's identifier, so every identity comparison below stays sound. These are
+/// object-lifetime references, not writer streams or reader locks: they do not move the writer's
+/// flush-and-close boundary.
 /// </para>
 /// <para>
 /// <b>Then: record, stage, seal, back up, commit.</b> Forced replacement renames each existing
-/// target aside to a transaction-owned backup — a same-directory metadata rename, never a copy and
-/// never a rehash — and an old public manifest marker is demoted <em>before</em> any artifact it
+/// target aside to a transaction-owned backup (a same-directory metadata rename, never a copy and
+/// never a rehash) and an old public manifest marker is demoted <em>before</em> any artifact it
 /// could certify is published, including when a <c>--no-manifest</c> run merely introduces one.
 /// Commit is per-file non-overwriting atomic rename in canonical order, manifest
 /// last, with the host token observed and both sides of every rename verified;
 /// a rename whose result is not the object it moved is put straight
-/// back, so no unowned file is ever left at a published path — least of all at the manifest, which
+/// back, so no unowned file is ever left at a published path, least of all at the manifest, which
 /// <em>is</em> the run's public commit marker. No cross-file atomicity is claimed.
 /// </para>
 /// </summary>
@@ -218,7 +218,7 @@ internal sealed partial class PublicationTransaction : IDisposable
         _references = references;
     }
 
-    /// <summary>True once every requested artifact — the manifest last, when written — is committed.</summary>
+    /// <summary>True once every requested artifact (the manifest last, when written) is committed.</summary>
     public bool Committed { get; private set; }
 
     /// <summary>
@@ -236,8 +236,8 @@ internal sealed partial class PublicationTransaction : IDisposable
     /// <param name="files">The injected filesystem.</param>
     /// <param name="identityFactory">
     /// Produces the shared filesystem-identity service. It is a factory rather than an
-    /// instance because identity is memoized per path — including the canonical-path fallback for a
-    /// path that does not exist — so every check that must see the location as it is <b>now</b>
+    /// instance because identity is memoized per path, including the canonical-path fallback for a
+    /// path that does not exist, so every check that must see the location as it is <b>now</b>
     /// takes a fresh service.
     /// </param>
     /// <param name="baseOperand">The verbatim <c>--out BASE</c> operand.</param>
@@ -266,10 +266,10 @@ internal sealed partial class PublicationTransaction : IDisposable
         }
         catch (Exception exception) when (FailureFamily.IsPublicationFailure(exception))
         {
-            // An unusable output LOCATION — an operand that is not a path at all, a missing or
-            // unreadable directory. This is the one boundary where an ArgumentException or a
-            // NotSupportedException genuinely describes the user's operand rather than an internal
-            // defect, which is why the broad family is admitted only here.
+            // An unusable output LOCATION: an operand that is not a path at all, a missing or
+            // unreadable directory. Here an ArgumentException or a NotSupportedException genuinely
+            // describes the user's operand rather than an internal defect, which is why the broad
+            // family is admitted; it is admitted only where a path the user typed is resolved.
             return new PublicationRefused(PublicationMessages.RecordFailed(baseOperand));
         }
     }
@@ -278,8 +278,8 @@ internal sealed partial class PublicationTransaction : IDisposable
     /// The same preflight for one arbitrary file (D-122 part 4, D-123 point 7): the target is the
     /// <c>--out PATH</c> operand exactly as given, because
     /// <see cref="PublicationTargetKind.Single"/>'s extension is empty. The <b>same</b>
-    /// transaction, record format, and recovery routine as <see cref="Preflight"/> — not a sibling
-    /// protocol — differing only in the target set and the family it may complete.
+    /// transaction, record format, and recovery routine as <see cref="Preflight"/>, not a sibling
+    /// protocol, differing only in the target set and the family it may complete.
     /// </summary>
     public static PublicationPreparation PreflightSingle(
         IPublicationFileSystem files, Func<FileIdentity> identityFactory, string outPath,
@@ -296,7 +296,7 @@ internal sealed partial class PublicationTransaction : IDisposable
         }
         catch (Exception exception) when (FailureFamily.IsPublicationFailure(exception))
         {
-            // The same one boundary where the broad family describes the user's own operand.
+            // As in Preflight: here the broad family describes the user's own operand.
             return new PublicationRefused(PublicationMessages.RecordFailed(outPath));
         }
     }
@@ -367,8 +367,8 @@ internal sealed partial class PublicationTransaction : IDisposable
         //
         // And it does not take the object back out either. Removal is bound to the
         // exact object the create returned; where the seam cannot name that object, there is no
-        // proof to remove it by — and "it is zero bytes" is the same path-and-length guess this
-        // protocol removed everywhere else. The pending record is left exactly as it is, which is
+        // proof to remove it by, and "it is zero bytes" is a path-and-length guess this protocol
+        // never acts on. The pending record is left exactly as it is, which is
         // unacknowledged state under the fail-closed interval: nothing names it, so no run touches
         // it and every retry says the same thing.
         if (!IdentityEvidence.IsIdentity(identity))
@@ -428,30 +428,30 @@ internal sealed partial class PublicationTransaction : IDisposable
     /// Stages <paramref name="kind"/>: a create-new confidential sibling on the destination
     /// filesystem, written by <paramref name="write"/> through the inline hasher, flushed to disk,
     /// and only then finalized. The identity of the object created is captured from its own open
-    /// handle — before a byte is written and before the writer is ever invoked — and is the
+    /// handle (before a byte is written and before the writer is ever invoked) and is the
     /// evidence rollback and recovery later use to prove what this transaction
     /// published.
     /// <para>
     /// <b>Nothing durable names the stage path until the acquisition has succeeded.</b>
     /// A refused create-new therefore leaves the occupant that refused it with no
-    /// claim, no evidence, and no other statement that this transaction created it — so neither
+    /// claim, no evidence, and no other statement that this transaction created it, so neither
     /// this rollback nor any later recovery may remove it. Only once the object exists is the stage
-    /// claim written, and its exact canonical bytes — token, base, record digest, this role with
-    /// its target kind, and that object's identity — are what discovery and removal require. A
+    /// claim written, and its exact canonical bytes (token, base, record digest, this role with
+    /// its target kind, and that object's identity) are what discovery and removal require. A
     /// claim that is empty, partial, or substituted proves nothing: it authorizes no mutation of
     /// the stage beside it and is itself preserved.
     /// </para>
     /// <para>
     /// <b>A stage this host cannot identify is refused before the writer runs</b>. Such
-    /// a stage can never be proved at commit, so writing it — and then renaming every last-good
-    /// output aside for a run that cannot possibly publish — is avoidable work and an avoidable
+    /// a stage can never be proved at commit, so writing it (and then renaming every last-good
+    /// output aside for a run that cannot possibly publish) is avoidable work and an avoidable
     /// outage.
     /// </para>
     /// <para>
     /// <b>Failure origin is preserved.</b> Creating, writing, flushing, or closing the stage is an
     /// <em>output</em> failure and becomes <see cref="PublicationMessages.StageFailed"/>; anything
-    /// else <paramref name="write"/> raises — a source read failure, a cancellation, a contract
-    /// defect — is rethrown untouched for the caller to classify.
+    /// else <paramref name="write"/> raises (a source read failure, a cancellation, a contract
+    /// defect) is rethrown untouched for the caller to classify.
     /// </para>
     /// </summary>
     public async Task<PublicationFailure?> StageAsync(PublicationTargetKind kind, Func<Stream, Task> write)
@@ -480,7 +480,7 @@ internal sealed partial class PublicationTransaction : IDisposable
         }
 
         // Held from creation. The stage's identity is the evidence every later step verifies it by
-        // — through the seal, the commit rename, and any rollback that removes what it published —
+        // (through the seal, the commit rename, and any rollback that removes what it published),
         // so the object stays anchored for exactly that long.
         if (stage.Reference is { } reference)
         {
@@ -492,7 +492,7 @@ internal sealed partial class PublicationTransaction : IDisposable
 
         if (!IdentityEvidence.IsIdentity(digest))
         {
-            // Known unpublishable before one record is read or one byte is written —
+            // Known unpublishable before one record is read or one byte is written,
             // so the writer is never invoked, DATA is never enumerated for it, and no target is
             // renamed aside.
             //
@@ -501,7 +501,7 @@ internal sealed partial class PublicationTransaction : IDisposable
             // that object; "it is zero bytes" is a length, not a proof, and this protocol does not
             // reclaim on one. It stays beside its record as unacknowledged state under the
             // fail-closed interval. The message is the one Seal and Commit give for the same cause
-            // — the host cannot prove what it would publish — rather than one about writing, which
+            // (the host cannot prove what it would publish), rather than one about writing, which
             // is not what failed.
             CloseQuietly(stage.Content);
             return new PublicationFailure(PublicationMessages.CommitFailed(target.Spelling));
@@ -512,8 +512,8 @@ internal sealed partial class PublicationTransaction : IDisposable
 
         // The claim states, in BOTH its name and its body, the identity of the object this
         // acquisition produced. The name keeps it unpredictable; the body is what discovery and
-        // removal require exactly, so an empty object that refuses this create-new — or one that
-        // later replaces the claim outright — is neither believed as authority over the stage
+        // removal require exactly, so an empty object that refuses this create-new (or one that
+        // later replaces the claim outright) is neither believed as authority over the stage
         // beside it nor removed as this transaction's residue.
         if (!CreateControlFile(claim, ClaimDocument(kind, digest)))
         {
@@ -533,8 +533,8 @@ internal sealed partial class PublicationTransaction : IDisposable
         try
         {
             // The exporter enumerates the SOURCE while writing the stage, so the two failure
-            // origins meet here. Only the tagged one is an output failure; everything else —
-            // a source read, a cancellation, a contract defect — belongs to the caller and is
+            // origins meet here. Only the tagged one is an output failure; everything else
+            // (a source read, a cancellation, a contract defect) belongs to the caller and is
             // rethrown untouched.
             try
             {
@@ -582,8 +582,8 @@ internal sealed partial class PublicationTransaction : IDisposable
     /// <b>every</b> stage is written and flushed.
     /// <para>
     /// The evidence is what makes ownership provable rather than inferred, so it must be durable
-    /// before the staged marker — the fact that authorizes reading a missing stage as "a commit
-    /// rename consumed it" — and therefore before any commit mutation. Each backup-bearing target
+    /// before the staged marker (the fact that authorizes reading a missing stage as "a commit
+    /// rename consumed it") and therefore before any commit mutation. Each backup-bearing target
     /// is re-observed here and must still be the object preflight approved, and every staged target
     /// must carry usable stage identity: this runs after <see cref="Begin"/> and staging, so a
     /// failure rolls back this run's own private residue, but it is <em>before</em> any final
@@ -612,7 +612,7 @@ internal sealed partial class PublicationTransaction : IDisposable
             }
 
             // Every staged target already published its evidence as its stage closed; what remains
-            // is a participant this run only demotes — the old manifest of a --no-manifest run.
+            // is a participant this run only demotes: the old manifest of a --no-manifest run.
             if (!_evidence.ContainsKey(targetFileName) && !PublishEvidence(KindOf(targetFileName), targetFileName))
             {
                 return new PublicationFailure(PublicationMessages.RecordFailed(_baseSpelling));
@@ -643,11 +643,11 @@ internal sealed partial class PublicationTransaction : IDisposable
     /// <summary>The prefixed raw-bytes hash of the staged <paramref name="kind"/>.</summary>
     public string HashOf(PublicationTargetKind kind) => _hashes[kind];
 
-    /// <summary>The verbatim invoked spelling of <paramref name="kind"/>'s target — what §15 records.</summary>
+    /// <summary>The verbatim invoked spelling of <paramref name="kind"/>'s target: what §15 records.</summary>
     public string Spelling(PublicationTargetKind kind) => _targets[kind].Spelling;
 
     /// <summary>
-    /// Backs up every target the record claims — the demoted manifest first — commits each staged
+    /// Backs up every target the record claims (the demoted manifest first), commits each staged
     /// artifact by non-overwriting atomic rename in canonical order with the manifest last, and
     /// then, past the commit point, removes the backups, the evidence, the markers, and finally the
     /// record.
@@ -665,7 +665,7 @@ internal sealed partial class PublicationTransaction : IDisposable
     /// transaction created and sealed, and after the rename the published final must be that object.
     /// Where a rename's result is <em>not</em> what it moved, that exact object is
     /// renamed straight back: it is not this transaction's to delete, and leaving it at a published
-    /// path would mean a failed run had put an unrelated file where its output belongs — at the
+    /// path would mean a failed run had put an unrelated file where its output belongs: at the
     /// manifest, the path that <em>is</em> the public commit marker, it would certify a run that
     /// never happened.
     /// </para>
@@ -699,9 +699,9 @@ internal sealed partial class PublicationTransaction : IDisposable
             }
 
             // The interval between the check and the rename is irreducible, so the rename's RESULT
-            // is checked too — and, unlike before, its result is undone: the
-            // object that actually moved is put back at the public path it came from, so a failed
-            // forced replacement never leaves a user's file stranded under a private name.
+            // is checked too. A wrong result triggers an attempt to put the object that moved back
+            // at the public path it came from; if that compensation fails, _hazard is set so rollback
+            // preserves the private state needed to classify the residue.
             if (!Matches(backupPath, PublicationTargets.BackupRole, entry.TargetFileName, expected))
             {
                 // The object that moved is NOT the one preflight approved, so the reference stays
@@ -723,15 +723,15 @@ internal sealed partial class PublicationTransaction : IDisposable
 
             if (Exists(_files, target.FullPath))
             {
-                // Something now occupies the destination that preflight found free — or freed by
-                // its own backup rename. The non-overwriting rename would refuse it anyway; failing
+                // Something now occupies the destination that preflight found free (or freed by
+                // its own backup rename). The non-overwriting rename would refuse it anyway; failing
                 // here keeps the file untouched and leaves the reason exact.
                 return new PublicationFailure(PublicationMessages.CommitFailed(target.Spelling));
             }
 
             // The stage must still be the exact object this transaction created, wrote, hashed, and
             // sealed. Renaming whatever occupies that path would publish bytes the manifest does
-            // not describe — a successful run certifying a file it never wrote.
+            // not describe: a successful run certifying a file it never wrote.
             var sealedStage = _evidence.TryGetValue(target.FileName, out var evidence) ? evidence.Stage : null;
             if (sealedStage is null
                 || !IdentityEvidence.IsIdentity(sealedStage)
@@ -746,8 +746,8 @@ internal sealed partial class PublicationTransaction : IDisposable
                 return new PublicationFailure(PublicationMessages.CommitFailed(target.Spelling));
             }
 
-            // And the published final must be that same object before the next artifact — or the
-            // manifest, last — can commit. If it is not, the object that landed there is put back
+            // And the published final must be that same object before the next artifact (or the
+            // manifest, last) can commit. If it is not, the object that landed there is put back
             // at the stage path it was taken from: preserved, out of the public namespace, and
             // recognizable to the rollback that follows.
             if (!Matches(target.FullPath, PublicationTargets.StageRole, target.FileName, sealedStage))
@@ -794,9 +794,9 @@ internal sealed partial class PublicationTransaction : IDisposable
 
         _rolledBack = true;
 
-        // The durable rollback phase GATES the destructive work; it is not an annotation on it.
+        // The durable rollback phase is the destructive work's PRECONDITION; it is not an annotation on it.
         // Rolling back without it can leave every stage consumed and every final
-        // populated — the shape a completed commit leaves — with `staged` as the only durable
+        // populated (the shape a completed commit leaves) with `staged` as the only durable
         // fact, and the next run would then finish that failed run forward.
         //
         // Refusing to start is strictly safer: the location keeps its less advanced phase, every
@@ -883,8 +883,8 @@ internal sealed partial class PublicationTransaction : IDisposable
 
     /// <summary>
     /// The proof that an object is the one this transaction created in <paramref name="role"/> for
-    /// <paramref name="targetFileName"/>. It is stated over the object — its identity and its
-    /// bytes — rather than over a path, because that is what the removal primitive can observe
+    /// <paramref name="targetFileName"/>. It is stated over the object (its identity and its
+    /// bytes) rather than over a path, because that is what the removal primitive can observe
     /// through the very handle it deletes through.
     /// </summary>
     private RemovalProof IdentityIs(string role, string targetFileName, string digest) =>
@@ -899,7 +899,7 @@ internal sealed partial class PublicationTransaction : IDisposable
             && bytes.AsSpan().SequenceEqual(expected);
 
     // A decision, not a removal: what IS at this path right now, taken fresh. Removal re-asks the
-    // same question of the object it has open, which is the observation that actually authorizes
+    // same question of the object it has open, which is the observation that authorizes
     // destroying it.
     private bool MatchesObject(string path, RemovalProof proof) =>
         proof(_identityFactory().KeyFor(path), ReadControl(_files, path));
@@ -908,7 +908,7 @@ internal sealed partial class PublicationTransaction : IDisposable
         RemoveOwned(_files, path, proof, Guard(), _references);
 
     // A record publication that never completed. The pending object goes only when it is provably
-    // the object this run created there — whatever state its bytes are in — so an occupant that
+    // the object this run created there, whatever state its bytes are in, so an occupant that
     // refused the create-new is preserved.
     private void AbandonPending(string pending, RemovalProof isPendingObject)
     {
@@ -974,8 +974,8 @@ internal sealed partial class PublicationTransaction : IDisposable
         var identity = IdentityEvidence.Of(
             _token, PublicationTargets.EvidenceRole, targetFileName, file.Identity);
 
-        // The object this creation produced, whatever state its bytes are left in — the proof that
-        // removes it — and the finished document it must be before it may be published.
+        // The object this creation produced, whatever state its bytes are left in (the proof that
+        // removes it) and the finished document it must be before it may be published.
         var isThatObject = IdentityIs(PublicationTargets.EvidenceRole, targetFileName, identity);
         var isTheEvidence = IdentityAndBytes(PublicationTargets.EvidenceRole, targetFileName, identity, bytes);
         var written = WriteControl(file.Content, bytes);
@@ -1005,7 +1005,7 @@ internal sealed partial class PublicationTransaction : IDisposable
 
     // Writes a control document to an already-open stream. The narrow predicate is deliberate: at
     // a write call an ArgumentException means the caller passed an invalid range and an
-    // ObjectDisposedException means it wrote to a closed stream — contract defects that must reach
+    // ObjectDisposedException means it wrote to a closed stream: contract defects that must reach
     // the sanitized unexpected-fault exit rather than be disguised as an environment
     // failure.
     private bool WriteControl(Stream stream, byte[] bytes)
@@ -1056,7 +1056,7 @@ internal sealed partial class PublicationTransaction : IDisposable
     }
 
     // Closing on the way out of a failure: the original exception is the one that matters, so a
-    // deferred failure here — of either family — is absorbed rather than replacing it. Letting a
+    // deferred failure here (of either family) is absorbed rather than replacing it. Letting a
     // contract fault out of this path would overwrite a tagged fault with an untagged one, and the
     // host would then read it as its own writer failing.
     private static void CloseQuietly(Stream stream)
@@ -1096,15 +1096,15 @@ internal sealed partial class PublicationTransaction : IDisposable
         ControlDocument.Bytes(
             _token, _baseFileName, ControlDocument.ClaimRole(kind), _record.Digest, stageDigest);
 
-    // A control file whose ROLE is its whole meaning — an intent descriptor, a phase marker, a
-    // stage claim — created and then given the exact canonical bytes that make it authoritative;
+    // A control file whose ROLE is its whole meaning (an intent descriptor, a phase marker, a
+    // stage claim) created and then given the exact canonical bytes that make it authoritative;
     // its name only confines and classifies it. Acquisition failures are the environment family,
     // and failures on the already-open stream are judged the same way, so a contract defect at
     // either boundary still reaches the sanitized unexpected-fault exit.
     //
     // A create-new that was REFUSED leaves nothing and touches nothing. One that succeeded and then
-    // could not be made durable is this run's own object — proved by the identity its own creation
-    // reported — so it is taken back out through the same identity-bound removal everything else
+    // could not be made durable is this run's own object, proved by the identity its own creation
+    // reported, so it is taken back out through the same identity-bound removal everything else
     // uses. That matters most for the stage claim and the intent descriptor, whose names carry a
     // runtime digest no later run can predict and which would otherwise strand the base.
     private bool CreateControlFile(string path, byte[] content)
@@ -1138,7 +1138,7 @@ internal sealed partial class PublicationTransaction : IDisposable
                 _token, PublicationTargets.EvidenceRole, Path.GetFileName(path), file.Identity));
 
         // Its bytes are what a later run proves it by, so a control whose body did not land whole
-        // is not a control at all — it is taken back out here, and if even that cannot be done it is
+        // is not a control at all: it is taken back out here, and if even that cannot be done it is
         // preserved and the state stays classifiable.
         if (WriteControl(file.Content, content))
         {

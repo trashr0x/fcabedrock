@@ -10,12 +10,12 @@ internal sealed partial class PublicationTransaction
     /// The durable phase decides, not the file layout. <see cref="TransactionPhase.Preparing"/>
     /// removes owned residue and <b>never touches a final</b>, because no ownership evidence is in
     /// force yet. <see cref="TransactionPhase.Committed"/> and a fully committed
-    /// <see cref="TransactionPhase.Staged"/> transaction go forward. Everything else — including
-    /// every <see cref="TransactionPhase.RollingBack"/> transaction, whatever the files look like
-    /// — is rolled back.
+    /// <see cref="TransactionPhase.Staged"/> transaction go forward. Everything else (including
+    /// every <see cref="TransactionPhase.RollingBack"/> transaction, whatever the files look like)
+    /// is rolled back.
     /// </para>
     /// <para>
-    /// <b>A resumed run holds no reference from the invocation that died</b>, so it takes its own —
+    /// <b>A resumed run holds no reference from the invocation that died</b>, so it takes its own:
     /// every one it will need, before it decides anything, and therefore before it mutates any
     /// earlier participant. That is what stops a decision made about one object from being carried
     /// out against a different object that inherited its identifier in between (D-125). A
@@ -36,7 +36,7 @@ internal sealed partial class PublicationTransaction
     {
         // Preparatory record state, when no record ever became authoritative. The intent descriptor
         // is the only thing that authorizes removing that pending file, and it authorizes removing
-        // exactly one thing: the object whose identity its own name states — the object this
+        // exactly one thing: the object whose identity its own name states, the object this
         // transaction's create-new produced. A file that refused that create-new has no descriptor
         // naming it and stays, whatever its length or its bytes.
         if (residue is { Prior: null, Intent: { } intent })
@@ -56,7 +56,7 @@ internal sealed partial class PublicationTransaction
 
             // Anchored before either removal is attempted, and BOTH before the first of them: the
             // pending object's identity is the whole authority here, so it must name an object that
-            // cannot be swapped underneath it — and the descriptor must be held before its own
+            // cannot be swapped underneath it, and the descriptor must be held before its own
             // pending record is removed, or a failure to anchor it would be discovered only after
             // the object it authorizes had already gone.
             //
@@ -97,7 +97,7 @@ internal sealed partial class PublicationTransaction
         // Anchored before the DIRECTION is decided, not merely before the first mutation: the
         // ownership question below authorizes forward cleanup over rollback, and an answer taken
         // from an identity nobody holds is exactly the authority D-125 withdraws. Finish anchors
-        // again — it has in-process callers of its own — and Ensure is idempotent, so a reference
+        // again (it has in-process callers of its own) and Ensure is idempotent, so a reference
         // taken here is kept rather than released and taken a second time.
         if (!AnchorParticipants(view))
         {
@@ -105,7 +105,7 @@ internal sealed partial class PublicationTransaction
         }
 
         // The DURABLE PHASE decides the direction, never the file layout. Committed
-        // always finishes forward and RollingBack always finishes backward — a durable rollback
+        // always finishes forward and RollingBack always finishes backward: a durable rollback
         // intent is the whole point of the marker, and letting an ownership inference override it
         // would restore the hazard the phase-body rule closed. Only the ambiguous Staged phase, where
         // the run may have stopped on either side of its commit point, asks what the files prove.
@@ -120,14 +120,14 @@ internal sealed partial class PublicationTransaction
     }
 
     /// <summary>
-    /// Anchors every participant a <see cref="Finish"/> pass can consult or mutate — each target's
-    /// final, its backup where it has one, and its stage where it has one — and answers whether all
+    /// Anchors every participant a <see cref="Finish"/> pass can consult or mutate (each target's
+    /// final, its backup where it has one, and its stage where it has one) and answers whether all
     /// of them are now held.
     /// <para>
     /// <b>All of them, before any of them moves.</b> That ordering is the point: a pass that
     /// anchored each target as it reached it could remove the first target's final and only then
     /// discover it cannot hold the second's backup, having already spent the authority it can no
-    /// longer complete. Anchoring first means a participant that cannot be held costs nothing —
+    /// longer complete. Anchoring first means a participant that cannot be held costs nothing:
     /// the location is exactly as it was found, the record survives, and a later attempt reaches
     /// the same state and reaches the same answer (D-125).
     /// </para>
@@ -161,8 +161,8 @@ internal sealed partial class PublicationTransaction
 
     /// <summary>
     /// Whether the <b>complete</b> intended publication state is proven: every staged final is
-    /// this transaction's own published object, and every backup-only participant — the demoted
-    /// old manifest — is in the state a crossed commit point leaves it, namely absent.
+    /// this transaction's own published object, and every backup-only participant (the demoted
+    /// old manifest) is in the state a crossed commit point leaves it, namely absent.
     /// <para>
     /// The aggregate is what matters. Judging only the targets that carry stages
     /// would let a run whose new artifact is published <em>and</em> whose old public marker has
@@ -194,7 +194,7 @@ internal sealed partial class PublicationTransaction
     private static bool Clear(TransactionView view, RecoveryGuard guard)
     {
         // Anchor every object this pass may remove before it removes any of them, so no removal can
-        // destroy evidence another one's proof still depends on — and so a participant that cannot
+        // destroy evidence another one's proof still depends on, and so a participant that cannot
         // be held is discovered while the location is still exactly as it was found. One that is
         // present and unanchorable ends the pass here: nothing is removed, the record stays in
         // place, and a later attempt reaches the same state and says the same thing.
@@ -223,9 +223,9 @@ internal sealed partial class PublicationTransaction
 
     /// <summary>
     /// The one routine that ends a transaction, used by in-process rollback, by post-commit
-    /// cleanup, and by a later run resuming either — so those three can never drift apart.
+    /// cleanup, and by a later run resuming either, so those three can never drift apart.
     /// <para>
-    /// <b>Every decision is taken from the state as found, before anything moves — and proved
+    /// <b>Every decision is taken from the state as found, before anything moves, and proved
     /// again at the moment it acts.</b> Going <b>forward</b>, the backups are superseded and are
     /// dropped. Going <b>backward</b>, each target is returned to the state preflight found it in,
     /// and the restoring rename's own result is proved before any evidence can be discarded.
@@ -243,7 +243,7 @@ internal sealed partial class PublicationTransaction
     /// filesystem can have changed underneath it.
     /// </para>
     /// <para>
-    /// Both rest on the anchor gate that precedes them: every present participant is held open
+    /// Both rest on the anchor check that precedes them: every present participant is held open
     /// before the first decision is taken, and one that cannot be held ends the pass with nothing
     /// touched (D-125).
     /// </para>
@@ -256,13 +256,13 @@ internal sealed partial class PublicationTransaction
     private static bool Finish(TransactionView view, bool forward, RecoveryGuard guard, bool hazard)
     {
         // 0. Anchor every participant this pass can consult or mutate, BEFORE the decision pass and
-        //    therefore before any of them is mutated — which is what makes a decision still true of
+        //    therefore before any of them is mutated, which is what makes a decision still true of
         //    the same object when it is acted on. A running transaction already holds most of these
         //    and simply keeps them; a resumed one takes them here. A participant that is present
         //    and cannot be held ends the pass with the location untouched: acquiring the later
         //    references only as each target came up would mean an earlier target had already been
         //    removed or restored by the time the failure surfaced, which is the ordering D-125
-        //    requires and the reason this is a gate rather than a per-target check.
+        //    requires and the reason this is an up-front check rather than a per-target one.
         if (!AnchorParticipants(view))
         {
             return false;
@@ -283,7 +283,7 @@ internal sealed partial class PublicationTransaction
                 view.Owns(targetFileName)));
         }
 
-        // 2. The finals — each proof re-taken against a fresh observation at its own boundary.
+        // 2. The finals: each proof re-taken against a fresh observation at its own boundary.
         foreach (var decision in decisions)
         {
             var finalPath = view.FinalPath(decision.TargetFileName);
@@ -301,7 +301,7 @@ internal sealed partial class PublicationTransaction
             var present = view.Exists(finalPath);
 
             // The manifest final IS the run's public commit marker (D-122), and a run that
-            // introduced one — no backup means nothing was there at preflight — must end its
+            // introduced one (no backup means nothing was there at preflight) must end its
             // backward path with that path clear. A file there this transaction cannot prove is
             // either the object its own rejected commit rename put there and could not take back,
             // or one that appeared during the run; it is never deleted, but erasing the private
@@ -339,20 +339,20 @@ internal sealed partial class PublicationTransaction
 
             if (!decision.BackupPresent)
             {
-                // No backup file left: the old object is either already home — the ordinary case,
-                // including a backup rename that never ran — or beyond this transaction's reach
+                // No backup file left: the old object is either already home (the ordinary case,
+                // including a backup rename that never ran) or beyond this transaction's reach
                 // entirely. Both are finished states, and neither authorizes touching anything.
                 continue;
             }
 
-            // Restore only the object this transaction renamed aside — verified against the
-            // durable evidence, at this instant — and only into a path nothing else occupies.
+            // Restore only the object this transaction renamed aside (verified against the
+            // durable evidence, at this instant) and only into a path nothing else occupies.
             //
             // And only an object this transaction is holding open. The reference is what the move
             // revalidates its source against and what proves afterwards which object arrived; a
             // rename made without one would be authorized by an identifier the host is free to have
-            // reissued, which is the authority D-125 withdraws (the gate above has already refused
-            // that case, and this states it where the mutation actually happens).
+            // reissued, which is the authority D-125 withdraws (the check above has already refused
+            // that case, and this states it where the mutation happens).
             var anchor = view.References.Of(backupPath);
             var restored = decision.BackupIsExpected
                 && view.BackupIsExpected(decision.TargetFileName)
@@ -386,7 +386,7 @@ internal sealed partial class PublicationTransaction
         }
 
         // 3. The stages last, so an interruption cannot leave a decision half-taken against
-        //    evidence that is already gone — and only where this transaction can prove which
+        //    evidence that is already gone, and only where this transaction can prove which
         //    object it created at that private path.
         foreach (var entry in view.Record.Files)
         {
@@ -412,7 +412,7 @@ internal sealed partial class PublicationTransaction
     /// <para>
     /// Descending order is what keeps an interrupted cleanup at a <em>less</em> advanced phase:
     /// removing <c>staged</c> first would transiently leave <c>committed</c> alone, a combination
-    /// no transaction reaches. Stopping on failure is the other half of the same guarantee —
+    /// no transaction reaches. Stopping on failure is the other half of the same guarantee:
     /// continuing past a <c>committed</c> marker that could not be deleted would go on to delete
     /// the <c>staged</c> marker and the evidence beneath it, manufacturing exactly that
     /// unrecognizable state and stranding the base until a human intervened. What survives instead
@@ -422,8 +422,8 @@ internal sealed partial class PublicationTransaction
     /// Every one of these is an object, not a path, and every one goes only when it is provably
     /// still its own exact bytes: the descriptor, the markers and the claims their canonical
     /// role-specific documents, evidence and the record their own encodings. A raced-in occupant at
-    /// any of those names refused this transaction's create-new or rename — and an empty, partial,
-    /// or substituted object proves nothing whatever its length — so it is preserved and the
+    /// any of those names refused this transaction's create-new or rename (and an empty, partial,
+    /// or substituted object proves nothing whatever its length), so it is preserved and the
     /// cleanup reports itself incomplete.
     /// </para>
     /// </summary>

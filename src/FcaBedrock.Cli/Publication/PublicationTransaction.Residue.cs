@@ -7,7 +7,7 @@ internal sealed partial class PublicationTransaction
     /// <summary>
     /// Splits everything claiming this base's private namespace into <b>one</b> transaction this
     /// code could have written, its preparatory intent, and anything else. False means "anything
-    /// else was found" — the caller refuses and touches nothing.
+    /// else was found": the caller refuses and touches nothing.
     /// <para>
     /// <b>Discovery follows the directory, not the spelling.</b> An entry whose base differs only
     /// in case belongs to this namespace exactly when the containing directory says the two
@@ -80,8 +80,8 @@ internal sealed partial class PublicationTransaction
             }
 
             // Valid, and still not this caller's to complete. A record of the other family at this
-            // exact base names files this command never asked to write, so it is refused here —
-            // before any state is assembled — and preserved byte-for-byte with everything it owns.
+            // exact base names files this command never asked to write, so it is refused here
+            // (before any state is assembled) and preserved byte-for-byte with everything it owns.
             if (parsed.Family != expectedFamily)
             {
                 return false;
@@ -120,8 +120,8 @@ internal sealed partial class PublicationTransaction
             }
 
             // And its BODY must be the canonical descriptor for that transaction. An empty file, a
-            // partial write, or a different role is not this control — it is neither trusted nor
-            // removed — the exact-bytes rule superseding the earlier zero-byte mechanism.
+            // partial write, or a different role is not this control: it is neither trusted nor
+            // removed (the exact-bytes rule of ControlDocument).
             if (!ControlDocument.Matches(
                     ReadControl(files, path),
                     claim.Token,
@@ -194,12 +194,12 @@ internal sealed partial class PublicationTransaction
         foreach (var (path, name) in privateFiles)
         {
             // A stage claim's name carries the identity digest of the object its create-new
-            // produced, so it cannot be predicted into `owned` — it is recognized by grammar and
+            // produced, so it cannot be predicted into `owned`; it is recognized by grammar and
             // then bound to this record's token. Its BODY must then be exactly this
             // transaction's claim for this target kind and this identity: name, record, kind and
             // acknowledged identity all agreeing. An empty, partial, or substituted object at that
             // name is none of those, so it is neither believed as authority over the stage beside
-            // it nor removed — the run refuses with the location as it was found.
+            // it nor removed: the run refuses with the location as it was found.
             if (PublicationTargets.StageClaimOf(name, claimed) is { } stageClaim)
             {
                 if (record is null
@@ -255,9 +255,9 @@ internal sealed partial class PublicationTransaction
             }
 
             // A genuine phase marker carries the canonical body for THIS transaction and THIS
-            // phase. A file with the right name and any other contents — empty included — is not
+            // phase. A file with the right name and any other contents (empty included) is not
             // transaction state: it must neither select a recovery direction nor be removed as
-            // control residue — the exact-bytes rule superseding the earlier zero-byte mechanism.
+            // control residue (the exact-bytes rule of ControlDocument).
             if (record is null
                 || !ControlDocument.Matches(
                     ReadControl(files, path),
@@ -381,14 +381,14 @@ internal sealed partial class PublicationTransaction
     }
 
     /// <summary>
-    /// Whether the files on disk are a layout <paramref name="phase"/> can actually produce
+    /// Whether the files on disk are a layout <paramref name="phase"/> can produce.
     /// Phase markers and evidence are small, discoverable files, not
     /// authenticated authority, so a state no run reaches must authorize no cleanup at all.
     /// <para>
     /// The refusals are exactly the tuples that could otherwise send a destructive step at a file
     /// this transaction does not own; every other combination is either reachable or provably
     /// inert. Before the staged marker the transaction claims <b>nothing</b>, so a final may be in
-    /// any state — which is what lets the forward- and rollback-cleanup tails, where the markers
+    /// any state, which is what lets the forward- and rollback-cleanup tails, where the markers
     /// are removed before the record, converge instead of bricking the base.
     /// </para>
     /// </summary>
@@ -428,7 +428,7 @@ internal sealed partial class PublicationTransaction
             }
 
             // A surviving backup must still be the object this transaction renamed aside. Where
-            // the file at that path is a different object, no phase authorizes acting on it —
+            // the file at that path is a different object, no phase authorizes acting on it:
             // forward cleanup least of all.
             if (backupPresent && !view.BackupIsExpected(targetFileName))
             {
@@ -441,7 +441,7 @@ internal sealed partial class PublicationTransaction
             }
 
             // Committed means every stage was consumed by its rename and every selected final is
-            // published — and provably so, since a transaction whose stage or backup identity
+            // published, and provably so, since a transaction whose stage or backup identity
             // cannot be established never reaches a backup rename at all.
             if (hasStage && !view.Owns(targetFileName))
             {
@@ -456,9 +456,9 @@ internal sealed partial class PublicationTransaction
 
         // The aggregate a per-target pass cannot see: a Staged transaction whose
         // staged outputs are all its own published objects, beside a demoted old manifest that is
-        // visible again. Production reaches neither cleanup tail that way — a completed rollback
+        // visible again. Production reaches neither cleanup tail that way: a completed rollback
         // would have removed those published artifacts, and a crossed commit point leaves the old
-        // marker gone — so this mixed set authorizes nothing and is left byte-identical.
+        // marker gone, so this mixed set authorizes nothing and is left byte-identical.
         if (phase == TransactionPhase.Staged && DemotedMarkerVisible(view) && StagedOutputsAllOwned(view))
         {
             return false;

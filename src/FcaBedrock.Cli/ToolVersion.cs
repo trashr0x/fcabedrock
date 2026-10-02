@@ -4,7 +4,7 @@ namespace FcaBedrock.Cli;
 
 /// <summary>
 /// The single tool-version string (D-122 part 1): the same value <c>--version</c>
-/// prints and the run manifest records as <c>tool_version</c> (§15) — one fact, one
+/// prints and the run manifest records as <c>tool_version</c> (§15): one fact, one
 /// owner, so the two can never disagree.
 /// <para>
 /// Form: <c>fcabedrock-vnext &lt;version&gt;</c>, where the version is the assembly's

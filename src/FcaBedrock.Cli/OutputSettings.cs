@@ -12,8 +12,8 @@ namespace FcaBedrock.Cli;
 /// <para>
 /// <b>One owner for the defaults, one owner for the override.</b> The §8/§21 defaults are applied
 /// here (<c>lf</c>, trailing newline, <c>base_index = 1</c>, no trailing spaces,
-/// <c>bin_label_unicode = false</c>, a 1 GiB <c>.cxt</c> size advisory), and <c>--v2-compat</c> —
-/// the sole settled conversion override (D-011) — is applied here too, as a whole replacement of
+/// <c>bin_label_unicode = false</c>, a 1 GiB <c>.cxt</c> size advisory), and <c>--v2-compat</c>,
+/// the sole settled conversion override (D-011), is applied here too, as a whole replacement of
 /// the writer settings rather than a scattering of per-knob conditions.
 /// </para>
 /// <para>
@@ -40,13 +40,13 @@ internal sealed record OutputSettings
     /// <summary>
     /// The <c>.cxt</c> size-advisory threshold in bytes: a positive value warns at or above it,
     /// exactly <c>0</c> disables it, and a negative value is invalid configuration the caller
-    /// refuses (it is not a fingerprint input either way — D-077).
+    /// refuses (it is not a fingerprint input either way, D-077).
     /// </summary>
     public required long CxtSizeAdvisoryBytes { get; init; }
 
     /// <summary>
-    /// The resolved <c>bin_label_unicode</c> flag. It is a plan/fingerprint input only — no
-    /// writer consults it — so <c>--v2-compat</c>, whose ruled overrides are all writer byte
+    /// The resolved <c>bin_label_unicode</c> flag. It is a plan/fingerprint input only; no
+    /// writer consults it, so <c>--v2-compat</c>, whose ruled overrides are all writer byte
     /// conventions, leaves it exactly as authored.
     /// </summary>
     public required bool BinLabelUnicode { get; init; }
@@ -80,7 +80,7 @@ internal sealed record OutputSettings
     /// <summary>
     /// The complete v2 byte convention (§8/D-011), superseding every authored writer setting:
     /// CRLF in both formats, one-based <c>.dat</c> ids with a trailing space on every non-empty
-    /// line, and the D-087 shape-dependent <c>.dat</c> final newline — present for a wide source,
+    /// line, and the D-087 shape-dependent <c>.dat</c> final newline: present for a wide source,
     /// absent for a triple one, because v2's triple converter wrote none.
     /// <para>
     /// The size advisory and <c>bin_label_unicode</c> are deliberately untouched: neither is a v2

@@ -1,7 +1,8 @@
 namespace FcaBedrock.Cli.Publication;
 
 // The transaction's preflight inspection, collision checks, and prior-run preparation.
-// These members decide before a transaction exists and remain mutation-free.
+// These members run before this run's transaction exists; the only mutation they start is the
+// recovery of a validated prior transaction (PrepareLocation).
 internal sealed partial class PublicationTransaction
 {
     private static PublicationPreparation Inspect(
@@ -45,7 +46,7 @@ internal sealed partial class PublicationTransaction
         var demotesManifest = !manifestIsFinal && Exists(files, manifest.FullPath);
 
         // A demoted marker is renamed aside and then deleted, so it is every bit as much a
-        // mutated participant as a replaced artifact — and `--force` never authorizes destroying
+        // mutated participant as a replaced artifact, and `--force` never authorizes destroying
         // an input. It joins the collision set BEFORE any of it happens.
         var participants = new List<PublicationTarget>(finals);
         if (demotesManifest)
@@ -95,19 +96,19 @@ internal sealed partial class PublicationTransaction
         var token = PublicationTargets.NewToken();
         var record = TransactionRecord.Create(token, baseFileName, entries);
 
-        // Every control path this transaction can ever own — its record, its markers, its evidence,
-        // and its stages and backups — is a function of the base, the role, and the token, so the
+        // Every control path this transaction can ever own (its record, its markers, its evidence,
+        // and its stages and backups) is a function of the base, the role, and the token, so the
         // complete set is resolvable here and is collision-checked before a single file is created.
         // (The stage claim is the one exception: its name carries the 128-bit identity digest of an
         // object that does not exist yet. It cannot be resolved in advance and, by the same
-        // construction, cannot name a pre-existing file — and its own create-new refuses an occupant
+        // construction, cannot name a pre-existing file, and its own create-new refuses an occupant
         // rather than replacing it.)
         if (ControlCollision(identity, directory, record, token, participants, inputs))
         {
             return new PublicationRefused(PublicationMessages.RecordFailed(baseOperand));
         }
 
-        // What each backup-bearing target IS, at the one moment the collision check approved it —
+        // What each backup-bearing target IS, at the one moment the collision check approved it,
         // and, from that same moment, a live reference to each so the answer stays about the object
         // rather than about the name (D-125). The registry outlives this method: it becomes the
         // transaction's, or it is released here.
@@ -145,7 +146,7 @@ internal sealed partial class PublicationTransaction
             references));
     }
 
-    // The single-file tail: one target, so no manifest to demote and no selection to make — the
+    // The single-file tail: one target, so no manifest to demote and no selection to make; the
     // record reserves one stage and, when something is there, the backup rollback restores from.
     private static PublicationPreparation InspectSingle(
         IPublicationFileSystem files, Func<FileIdentity> identityFactory, string outPath,
@@ -220,7 +221,7 @@ internal sealed partial class PublicationTransaction
     /// <b>The expected family is authority, not an inference:</b> at one exact base a convert and
     /// a single-file record are both well formed, and each names files the other command never
     /// asked to write, so a valid foreign record is refused as unknown residue before any state is
-    /// assembled, any collision is evaluated, or <see cref="Recover"/> runs — preserved as found.
+    /// assembled, any collision is evaluated, or <see cref="Recover"/> runs, preserved as found.
     /// </summary>
     private static PublicationPreparation? PrepareLocation(
         IPublicationFileSystem files, Func<FileIdentity> identityFactory, string baseOperand,
@@ -234,7 +235,7 @@ internal sealed partial class PublicationTransaction
 
         // One registry spans classification and the recovery that acts on its verdict, so a prior
         // run's participants are anchored from the moment they are first judged until the moment
-        // they are mutated — no interval in between where an identifier could be reissued (D-125).
+        // they are mutated: no interval in between where an identifier could be reissued (D-125).
         // It is a PRIOR run's set, and it is released here: this run's own participants are
         // approved and anchored afterwards, by preflight, against the location recovery leaves.
         using var references = new PublicationReferences(files);
@@ -262,7 +263,7 @@ internal sealed partial class PublicationTransaction
             return new PublicationRefused(collision);
         }
 
-        // A validated prior transaction is completed FIRST — it belongs to that run, not this one.
+        // A validated prior transaction is completed FIRST: it belongs to that run, not this one.
         if (!Recover(
                 files,
                 references,
@@ -399,7 +400,7 @@ internal sealed partial class PublicationTransaction
 
     /// <summary>
     /// Every private path one transaction owns whose name is a function of the base, the role, and
-    /// the token — derived, never read from anywhere.
+    /// the token: derived, never read from anywhere.
     /// <para>
     /// Two are deliberately absent: the intent descriptor and each stage claim carry, in their own
     /// names, the 128-bit identity digest of an object that does not exist until the acquisition

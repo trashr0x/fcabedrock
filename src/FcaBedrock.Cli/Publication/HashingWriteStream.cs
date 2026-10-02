@@ -13,9 +13,10 @@ namespace FcaBedrock.Cli.Publication;
 /// <para>
 /// <b>Hash after the write succeeds.</b> Each override delegates to the inner stream <em>first</em>
 /// and appends only once that call returns, so a failed or refused write contributes nothing.
-/// Every write entry point is overridden and each one delegates to the inner stream's matching
-/// method — never to another override — so a byte cannot be counted twice by a base-class
-/// implementation quietly routing one API through another.
+/// Each write path reaches the inner stream through exactly one call: the array
+/// <c>WriteAsync</c> overload forwards to the memory overload, and every other write override
+/// calls the inner stream's matching method. So a byte is hashed once whichever entry point a
+/// caller uses, including one that a base-class implementation routes through another.
 /// </para>
 /// <para>
 /// <b>A digest exists only for a completed write.</b> <see cref="Complete"/> is an explicit step

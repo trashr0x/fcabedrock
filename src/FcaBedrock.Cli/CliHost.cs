@@ -5,7 +5,7 @@ namespace FcaBedrock.Cli;
 /// argv-level test drives this method; <see cref="Program"/> adds only real-world wiring,
 /// so nothing testable lives outside it.
 /// <para>
-/// Exit codes: <b>0</b> success — warnings and info never move it off 0; <b>1</b> any
+/// Exit codes: <b>0</b> success (warnings and info never move it off 0); <b>1</b> any
 /// Error/Fatal diagnostic or an ordinary host/runtime/input/output failure; <b>2</b> usage;
 /// <b>3</b> cooperative cancellation, with no diagnostic; <b>4</b> an unexpected internal
 /// fault.
@@ -16,16 +16,16 @@ internal static class CliHost
     /// <summary>
     /// The one message an unexpected internal fault produces. Deliberately constant: an
     /// exception's own text can carry the type, a stack, an internal path, or
-    /// culture-dependent OS wording, none of which belongs on a user's stderr — and a
+    /// culture-dependent OS wording, none of which belongs on a user's stderr, and a
     /// fixed string keeps exit 4 byte-lockable.
     /// </summary>
     internal const string UnexpectedFaultMessage = "an unexpected internal error occurred.";
 
-    /// <summary>The message for a failure to write the primary result — an ordinary environment failure.</summary>
+    /// <summary>The message for a failure to write the primary result, an ordinary environment failure.</summary>
     internal const string OutputFailureMessage = "cannot write to standard output.";
 
     /// <summary>Runs one invocation and returns its process exit code.</summary>
-    /// <param name="argv">The ordinary application arguments — <b>not</b> the audit argv, which carries argv[0].</param>
+    /// <param name="argv">The ordinary application arguments, <b>not</b> the audit argv, which carries argv[0].</param>
     /// <param name="environment">The injected world.</param>
     public static async Task<int> RunAsync(string[] argv, CliEnvironment environment)
     {
@@ -44,7 +44,7 @@ internal static class CliHost
 
                 case UsageFailure failure:
                     // Both writes are attempted, then judged together: a usage error the
-                    // user never receives is not a usage outcome — the run failed to deliver
+                    // user never receives is not a usage outcome: the run failed to deliver
                     // required output, which is an ordinary host failure (exit 1). Nothing is
                     // re-reported through the channel that just failed.
                     var reason = Write(environment.Error, DiagnosticRenderer.RenderHostError(failure.Message));
@@ -62,12 +62,12 @@ internal static class CliHost
         catch (OperationCanceledException exception) when (IsHostCancellation(exception, environment))
         {
             // Cooperative cancellation: cleanup has run, no run was committed, and by
-            // contract nothing is reported — a cancelled run is not a failed one.
+            // contract nothing is reported: a cancelled run is not a failed one.
             return 3;
         }
         catch (Exception exception) when (exception is IOException or ObjectDisposedException)
         {
-            // An output sink that broke — a closed pipe, a released handle. That is an
+            // An output sink that broke: a closed pipe, a released handle. That is an
             // ordinary environment failure, not an internal bug, so it keeps exit 1.
             // Command input failures never reach here: each command classifies its own.
             return OutputFailure(environment);
@@ -85,7 +85,7 @@ internal static class CliHost
     /// Completes output for a real process run: flushes the primary sink, and downgrades a
     /// deferred flush failure to the ordinary output-failure exit rather than letting it
     /// escape after another code was already chosen. Redirected output is buffered, so the
-    /// flush — not the write — is where a broken pipe usually surfaces.
+    /// flush, not the write, is where a broken pipe usually surfaces.
     /// </summary>
     internal static int Complete(int exitCode, TextWriter output, TextWriter error)
     {
@@ -155,7 +155,7 @@ internal static class CliHost
     private static async Task<int> ExecuteAsync(CommandInvocation invocation, CliEnvironment environment)
     {
         // Cancellation is honoured uniformly at the command boundary, so a signal that
-        // arrived during parsing stops every command — including the ones whose own work
+        // arrived during parsing stops every command, including the ones whose own work
         // has no natural cancellation point.
         environment.Signals.Token.ThrowIfCancellationRequested();
 

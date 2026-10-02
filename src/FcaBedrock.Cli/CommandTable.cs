@@ -44,7 +44,7 @@ internal sealed record CliPositional(string Label, bool Required);
 /// </summary>
 /// <param name="Name">The exact spelling, including the leading <c>--</c>. No aliases, no abbreviations.</param>
 /// <param name="Kind">What follows the name.</param>
-/// <param name="ValueLabel">The usage placeholder — <see cref="OptionValueKind.Text"/> only; every other kind derives its own.</param>
+/// <param name="ValueLabel">The usage placeholder (<see cref="OptionValueKind.Text"/> only); every other kind derives its own.</param>
 /// <param name="AllowedValues">The closed value set for <see cref="OptionValueKind.Enumerated"/>, which is also its advertised spelling.</param>
 /// <param name="Required">Whether the option must be supplied.</param>
 /// <param name="UsageGroup">Options sharing a non-zero group render inside one bracket, in table order.</param>
@@ -100,8 +100,8 @@ internal sealed record CliCommand(
 /// The eight settled commands (D-122 part 1) as data. This table is the single source
 /// for the parser, the conditional rules, and the byte-locked usage/help text.
 /// <para>
-/// <b>All eight execute.</b> Every row supplies a handler, and the type system says so: a
-/// future row omitting one is a compile error rather than a runtime message.
+/// <b>Every command has a handler.</b> The type system requires one: a row that omits it
+/// does not compile.
 /// </para>
 /// </summary>
 internal static class CommandTable

@@ -20,9 +20,9 @@
          anywhere in this package. -->
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <!-- The package carries its OWN readme, not the repository's: the root README
-         is repository-facing (a `## Status` section Slice K rewrote, and path
-         references that mean nothing to a package-only reader), so a purpose-built
-         `README.md` beside this file is packed to the package root instead. -->
+         is repository-facing (a `## Status` section, and path references that mean
+         nothing to a package-only reader), so a purpose-built `README.md` beside this
+         file is packed to the package root instead. -->
     <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
 
@@ -47,13 +47,13 @@
        are granted friend access, and no production package gains InternalsVisibleTo (the
        D-098 posture):
 
-         FcaBedrock.Cli.Tests   - the argv-boundary tests drive CliHost directly.
-         FcaBedrock.Benchmarks  - the M8 suite measures CliHost, InputHashTracker and
-                                  HashingWriteStream themselves (D-124). Measuring the
-                                  public executable instead would change the accepted
-                                  boundary from host throughput to process latency, and
-                                  copying the host's behaviour into the suite would make
-                                  the measurement about the copy.
+         FcaBedrock.Cli.Tests:  the argv-boundary tests drive CliHost directly.
+         FcaBedrock.Benchmarks: the benchmark suite measures CliHost, InputHashTracker and
+                                HashingWriteStream themselves (D-124). Measuring the
+                                public executable instead would change the accepted
+                                boundary from host throughput to process latency, and
+                                copying the host's behaviour into the suite would make
+                                the measurement about the copy.
 
        FcaBedrock.Benchmarks.Tests is deliberately NOT granted: it reaches what it needs
        through the benchmark assembly. CliProjectContractTests asserts this exact set, in

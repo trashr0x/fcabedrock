@@ -17,7 +17,7 @@ internal interface ISignalSource : IDisposable
 /// <para>
 /// First interrupt: request cooperative cancellation and <b>suppress</b> the platform's
 /// default termination, so cleanup runs, no run is committed, and the process exits 3.
-/// A repeated interrupt no longer suppresses it — the platform terminates immediately,
+/// A repeated interrupt no longer suppresses it: the platform terminates immediately,
 /// and by the publication ordering only uncommitted residue can survive (D-122 part 2).
 /// </para>
 /// </summary>
@@ -85,7 +85,7 @@ internal sealed class PosixSignalSource : ISignalSource
 
         // Construction is failure-atomic. If the platform refuses the second signal, the
         // first registration is already live and the caller would never receive an instance
-        // to dispose — so a partially built source releases everything it acquired, and the
+        // to dispose, so a partially built source releases everything it acquired, and the
         // coordinator with it, before the original failure propagates.
         try
         {

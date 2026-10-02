@@ -20,7 +20,7 @@ namespace FcaBedrock.Cli.Publication;
 /// <b>Successful creation is what creates ownership</b>. A derived
 /// private name predicts a path; only this value says which object now sits at it. Every control
 /// file the transaction later publishes, verifies, or removes is bound to the identity reported
-/// here, so a create-new that was <em>refused</em> — and therefore reported nothing — can never
+/// here, so a create-new that was <em>refused</em> (and therefore reported nothing) can never
 /// authorize touching the occupant that refused it.
 /// </para>
 /// <para>
@@ -28,7 +28,7 @@ namespace FcaBedrock.Cli.Publication;
 /// that exists; once that object is gone the host may hand the same number to the next creation, so
 /// a value re-checked after the creation handle closed could describe a substitute rather than the
 /// original (D-125). The reference is therefore acquired while that handle is still open and proved
-/// equal to it, and where it cannot be — no reference, or a proof that fails — this reports
+/// equal to it, and where it cannot be (no reference, or a proof that fails), this reports
 /// <b>no identity at all</b>, so the existing fail-closed path refuses the run instead of
 /// proceeding on an identity it cannot anchor. The reference is the caller's to dispose, exactly
 /// as the stream is.
@@ -46,7 +46,7 @@ internal readonly record struct CreatedFile(
 /// <param name="identity">The object's OS identity, read from the removal's own handle.</param>
 /// <param name="bytes">
 /// The object's bytes, read from that same handle, or null when it is larger than
-/// <see cref="PublicationTargets.MaxRecordBytes"/> — which no control document ever is.
+/// <see cref="PublicationTargets.MaxRecordBytes"/>, which no control document ever is.
 /// </param>
 internal delegate bool RemovalProof(FileIdentityKey? identity, byte[]? bytes);
 
@@ -71,13 +71,14 @@ internal interface IPublicationFileSystem
 
     /// <summary>
     /// Creates <paramref name="path"/> for writing, <b>failing when it already exists</b>, and
-    /// reports the identity of the object it created. The create-new semantics are load-bearing:
+    /// reports the identity of the object it created. Create-new is a safety requirement here:
     /// a stage, a backup, and the transaction record may never silently replace something already
     /// there, and the reported identity is what makes a <em>successful</em> creation
-    /// — rather than a derived name — the thing that confers ownership.
+    /// (rather than a derived name) the thing that confers ownership.
     /// <para>
-    /// For <b>control</b> files only — the transaction record and its phase markers. They carry
-    /// file names already visible in the directory listing and no converted data.
+    /// For <b>control</b> files only: the transaction record, the per-target identity evidence, the
+    /// intent descriptor, the phase markers and the stage claims. They carry file names already
+    /// visible in the directory listing and no converted data.
     /// </para>
     /// </summary>
     CreatedFile CreateNew(string path);
@@ -89,15 +90,15 @@ internal interface IPublicationFileSystem
     /// Used for every <b>data-bearing</b> stage. A staged artifact holds converted user data and
     /// may survive a crash as recovery residue, so an unpredictable name is not enough: a name is
     /// not an access-control boundary, and the directory it sits in may be listable by others.
-    /// The restriction is <b>durable</b> — a Unix creation mode, a Windows owner-only DACL — not
+    /// The restriction is <b>durable</b> (a Unix creation mode, a Windows owner-only DACL), not
     /// merely a share mode, which lasts only as long as the handle (D-082).
     /// </para>
     /// </summary>
     CreatedFile CreateNewConfidential(string path);
 
     /// <summary>
-    /// Takes a live reference to whatever is at <paramref name="path"/> right now — an existing
-    /// participant this run is about to approve, or one a recovery pass must decide about — so its
+    /// Takes a live reference to whatever is at <paramref name="path"/> right now (an existing
+    /// participant this run is about to approve, or one a recovery pass must decide about), so its
     /// identifier cannot be recycled underneath the proof that identity later authorizes (D-125).
     /// <para>
     /// Null means no reference could be taken, and a caller that cannot anchor an identity does not
@@ -123,8 +124,8 @@ internal interface IPublicationFileSystem
     /// <b>How far "without overwriting" reaches is platform-visible</b> (D-125,
     /// <see cref="PublicationRename"/>). Windows and any filesystem with an exclusive rename
     /// primitive refuse an existing destination atomically. Where a Unix filesystem reports that it
-    /// cannot perform the flagged operation at all, the seam falls back — once, under an exact
-    /// error gate — to a checked classic rename whose absence check and rename are not one atomic
+    /// cannot perform the flagged operation at all, the seam falls back (once, and only for an exact
+    /// set of error results) to a checked classic rename whose absence check and rename are not one atomic
     /// act. The caller's post-move identity verification still proves which <em>source</em> object
     /// arrived; it does not close that final-name interval.
     /// </para>
@@ -139,7 +140,7 @@ internal interface IPublicationFileSystem
     void Move(string source, string destination, PublicationObjectReference? sourceReference = null);
 
     /// <summary>
-    /// Removes the object at <paramref name="path"/> — and <b>only</b> the object
+    /// Removes the object at <paramref name="path"/>, and <b>only</b> the object
     /// <paramref name="isExpected"/> accepts.
     /// <para>
     /// <c>unlink</c> names a path, not a file, and a delete leaves no result whose identity could
@@ -151,8 +152,8 @@ internal interface IPublicationFileSystem
     /// <para>
     /// <b>The guarantee is platform-divergent, and deliberately stated as such.</b> On Windows the
     /// handle carries <c>DELETE</c> access with no sharing and the deletion is requested against
-    /// that handle, so no interval exists at all. On Unix, POSIX offers no unlink-by-descriptor —
-    /// there is no <c>funlink</c>, and <c>unlinkat</c> still takes a name — so the object is proved
+    /// that handle, so no interval exists at all. On Unix, POSIX offers no unlink-by-descriptor
+    /// (there is no <c>funlink</c>, and <c>unlinkat</c> still takes a name), so the object is proved
     /// from the open handle immediately before the path is unlinked, and any observable mismatch
     /// fails closed. <b>The Unix removal is not atomic</b>; that interval is a platform constraint,
     /// not a design choice.
@@ -160,15 +161,15 @@ internal interface IPublicationFileSystem
     /// <para>
     /// <b>Release sequencing is the caller's, and it matters on Windows</b> (D-125). The Windows
     /// disposition names the object, not the path, and takes effect when its <em>last</em> handle
-    /// closes — so a live reference this transaction still holds keeps the deletion pending and the
+    /// closes, so a live reference this transaction still holds keeps the deletion pending and the
     /// name occupied. The reference overlaps the removal handle for the whole of its life, which is
     /// what transfers the proof safely; the caller then releases it as soon as this answers true,
     /// which completes the deletion of exactly that object and frees the name for the restore that
     /// may follow. Nothing sleeps, forces a collection, or opens a reference gap to achieve it.
     /// </para>
     /// <para>
-    /// Returns <see langword="true"/> when the path no longer holds that object — removed, or
-    /// already absent — and <see langword="false"/> when the object there is not the expected one,
+    /// Returns <see langword="true"/> when the path no longer holds that object (removed, or
+    /// already absent) and <see langword="false"/> when the object there is not the expected one,
     /// in which case <b>nothing is touched</b>.
     /// </para>
     /// </summary>
@@ -199,7 +200,7 @@ internal interface IPublicationFileSystem
     /// <see langword="null"/> when the file is larger.
     /// <para>
     /// The bound is a security property, not an optimization: a transaction record is discovered
-    /// by <em>name</em>, and an unrelated — possibly hostile — file can wear that name. Reading
+    /// by <em>name</em>, and an unrelated (possibly hostile) file can wear that name. Reading
     /// it whole would let a lookalike dictate an unbounded allocation before a single validity
     /// rule has run. An over-long file is simply not a record this run wrote, so it is refused
     /// unread and left untouched.
@@ -240,14 +241,14 @@ internal sealed class PublicationFileSystem : IPublicationFileSystem
         Created(OperatingSystem.IsWindows() ? CreateOwnerOnlyWindows(path) : CreateOwnerOnlyUnix(path), path);
 
     // Read from THIS handle, before any byte is written and long before it closes. The path
-    // cannot answer the question — the file is held FileShare.None — and asking after the close
+    // cannot answer the question: the file is held FileShare.None, and asking after the close
     // would describe whatever occupies the name by then.
     //
     // The reference is then taken while that same creation handle is STILL OPEN and proved equal to
     // it, so it provably holds the object this creation produced. Until it exists the identity is
     // only a number; from here on it is anchored, and no later creation can be handed it. Where the
     // reference cannot be taken or proved, no identity is reported at all and the caller fails
-    // closed — the same answer a host with no identity capability gets, for the same reason.
+    // closed: the same answer a host with no identity capability gets, for the same reason.
     private static CreatedFile Created(FileStream stream, string path)
     {
         var identity = FileIdentityInterop.TryGetIdentity(stream.SafeFileHandle);
@@ -308,7 +309,7 @@ internal sealed class PublicationFileSystem : IPublicationFileSystem
         return true;
     }
 
-    // POSIX exposes no unlink-by-descriptor — no `funlink`, and `unlinkat` still takes a name — so
+    // POSIX exposes no unlink-by-descriptor: no `funlink`, and `unlinkat` still takes a name, so
     // this is NOT atomic and is not claimed to be. What it does guarantee: the object's identity
     // and bytes are proved from the open handle, that proof is the last thing done before the
     // unlink, any mismatch fails closed without touching anything, and the handle is still held
@@ -408,7 +409,7 @@ internal sealed class PublicationFileSystem : IPublicationFileSystem
 
     // An explicit owner-only DACL with inheritance disabled, applied at creation, exactly as the
     // spool workspace does (D-082): FileShare.None guards only a live handle, and the disclosure
-    // case is precisely a stage that OUTLIVES its process as crash residue. Fail-closed — if the
+    // case is precisely a stage that OUTLIVES its process as crash residue. Fail-closed: if the
     // DACL cannot be established the creation throws rather than proceeding unprotected.
     [SupportedOSPlatform("windows")]
     private static FileStream CreateOwnerOnlyWindows(string path)
