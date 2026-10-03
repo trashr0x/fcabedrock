@@ -5,12 +5,12 @@ namespace FcaBedrock.Discovery.Tests;
 
 /// <summary>
 /// D-112: probe's input is a <b>record sequence</b>, not a file, so its determinism must be
-/// defined over that sequence — otherwise a future in-memory or SQL adapter could not inherit
+/// defined over that sequence; otherwise a future in-memory or SQL adapter could not inherit
 /// the guarantee. Same ordered schema + same records + same settings + same options ⇒ identical
 /// document, identical canonical bytes, identical diagnostics in identical order with identical
 /// bounded samples.
 /// <para>
-/// Also here: the two structural claims that make the guarantee affordable — exactly one cleaned
+/// Also here: the two structural claims that make the guarantee affordable: exactly one cleaned
 /// record pass, and no coupling to CSV, streams, or Sep.
 /// </para>
 /// </summary>
@@ -67,8 +67,8 @@ public sealed class ProbeDeterminismTests
     {
         // The in-memory session has no stream, file, delimiter, encoding, or Sep anywhere: it
         // implements only the D-109 seam. That it works at all is the proof that Discovery
-        // consumes records, not bytes — and the shape a future SQL/SPARQL adapter would take.
-        // The second column's null is a missing value the seam already normalized — probe redoes
+        // consumes records, not bytes, and the shape a future SQL/SPARQL adapter would take.
+        // The second column's null is a missing value the seam already normalized; probe redoes
         // no cleaning, so it simply is not an observation and "big" stands alone.
         var session = ProbeFixtures.Fake(new SourceSchema(2, ["colour", "size"]), ["red", "big"], ["blue", null]);
 
@@ -83,7 +83,7 @@ public sealed class ProbeDeterminismTests
     public async Task Probe_WhenSuccessful_ThenEnumeratesRecordsExactlyOnce()
     {
         // "One pass" is a claim about record ENUMERATIONS (D-106). The schema read is metadata
-        // and is counted separately — mistaking it for a second data pass is the exact spurious
+        // and is counted separately; mistaking it for a second data pass is the exact spurious
         // failure this separation avoids.
         var session = ProbeFixtures.Fake(new SourceSchema(2, ["a", "b"]), ["1", "2"], ["3", "4"]);
 
@@ -97,7 +97,7 @@ public sealed class ProbeDeterminismTests
     [Fact]
     public async Task Probe_WhenTruncating_ThenStillEnumeratesRecordsExactlyOnce()
     {
-        // No grouped or count-sensitive second pass, ever — not even to discover what was
+        // No grouped or count-sensitive second pass, ever, not even to discover what was
         // dropped. Probe is set-based, so a second pass could tell it nothing new.
         var session = ProbeFixtures.Fake(
             new SourceSchema(1, ["a"]), ["p"], ["q"], ["r"], ["s"]);

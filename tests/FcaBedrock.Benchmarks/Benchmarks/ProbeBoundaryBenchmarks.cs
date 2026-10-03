@@ -43,7 +43,7 @@ public class ProbeRetentionBoundaryBenchmark : ProbeBenchmark
     private static int LargestDomain { get; } =
         ProbeAccountingOracle.W16LargestDomain(CorpusTiers.Records(CorpusTier.Small));
 
-    // One below the largest domain truncates exactly the columns that reach it — which columns
+    // One below the largest domain truncates exactly the columns that reach it. Which columns
     // those are is a fact about the generator, so it is derived from the generator rather than
     // assumed to be only the one the limit was chosen from.
     private static IReadOnlyList<string> TruncatingBelow { get; } =
@@ -71,7 +71,7 @@ public class ProbeRetentionBoundaryBenchmark : ProbeBenchmark
 /// A breach yields no draft at all, which is the point of the guard: a partial draft that read as
 /// complete would silently lose part of the schema. So the two cases here are genuinely different
 /// outcomes rather than a fast and a slow version of one, and the breaching case is labelled as an
-/// expected failure — it has a duration, and it has no draft.
+/// expected failure: it has a duration, and it has no draft.
 /// </para>
 /// </summary>
 [BenchmarkCategory(BenchmarkCategories.Probe, BenchmarkCategories.Small)]
@@ -110,7 +110,7 @@ public class ProbeAggregateValueBoundaryBenchmark : ProbeBenchmark
 /// <para>
 /// This guard exists for the pathology the value guard cannot see: a handful of values, each
 /// enormous. Only a corpus whose values are long can reach it before the value guard, which is why
-/// the long-text family exists at all — and why this boundary is straddled here rather than on W16.
+/// the long-text family exists at all, and why this boundary is straddled here rather than on W16.
 /// </para>
 /// </summary>
 [BenchmarkCategory(BenchmarkCategories.Probe, BenchmarkCategories.Small)]

@@ -6,7 +6,7 @@ namespace FcaBedrock.Core.Tests.Fingerprinting;
 public sealed class CanonicalNumberTests
 {
     // Format reproduces the existing canonical encoder byte-for-byte (invariant, shortest
-    // round-trippable) — the same pins CanonicalJson.AppendNumber carries (G-6).
+    // round-trippable): the same pins CanonicalJson.AppendNumber carries (G-6).
     [Theory]
     [InlineData(90.0, "90")]
     [InlineData(0.1, "0.1")]

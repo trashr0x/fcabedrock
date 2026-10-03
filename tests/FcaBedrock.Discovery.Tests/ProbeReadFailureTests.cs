@@ -32,7 +32,7 @@ public sealed class ProbeReadFailureTests
         Assert.Equal(DiagnosticSeverity.Error, diagnostic.Severity);
         Assert.Contains(expectedTypeName, diagnostic.Message, StringComparison.Ordinal);
 
-        // No draft, ever — not even a partial one.
+        // No draft, ever, not even a partial one.
         Assert.True(result.HasErrors);
         Assert.False(result.TryGetValue(out _));
         Assert.Null(result.Value);
@@ -53,7 +53,7 @@ public sealed class ProbeReadFailureTests
     // Failures that must NOT be absorbed. Each names a real hazard: an invalid operation or a
     // bad argument is a contract bug in the caller or the adapter, a null dereference is a bug
     // in either, and NotSupportedException is deliberately excluded because the CSV adapter
-    // already normalizes Sep's row/buffer ceiling to SourceReadException — catching it here
+    // already normalizes Sep's row/buffer ceiling to SourceReadException; catching it here
     // would silently swallow genuine "this source cannot do that" errors instead.
     public static TheoryData<Func<Exception>> UnexpectedFailures()
     {
@@ -96,8 +96,8 @@ public sealed class ProbeReadFailureTests
     public async Task Probe_WhenReadAsyncItselfThrows_ThenReportsProbeSourceReadFailed(string typeName, Func<Exception> failure)
     {
         // Record acquisition is two calls, not one, and the first is ReadAsync. A compiler-
-        // generated async iterator can never fail here — its body does not run until the first
-        // MoveNextAsync — so every adapter in this repo hides the gap. A hand-written session,
+        // generated async iterator can never fail here (its body does not run until the first
+        // MoveNextAsync), so every adapter in this repo hides the gap. A hand-written session,
         // which the D-109 seam exists to permit, can fail on the call itself.
         var session = new SyncThrowingReadSession(Schema, failure);
 
@@ -148,7 +148,7 @@ public sealed class ProbeReadFailureTests
     public async Task Probe_WhenCurrentThrows_ThenReportsProbeSourceReadFailed(string typeName, Func<Exception> failure)
     {
         // The third provider-owned call in the pass. An enumerator that materializes its row
-        // lazily does its real work in Current, not MoveNextAsync — so a read failure can land
+        // lazily does its real work in Current, not MoveNextAsync, so a read failure can land
         // here just as easily. Compiler-generated iterators cache the value and never throw from
         // Current, which is why only a hand-written enumerator can express this.
         var session = new ThrowingCurrentSession(Schema, failure, throwAt: 0);
@@ -193,8 +193,8 @@ public sealed class ProbeReadFailureTests
         Assert.IsNotType<SourceReadException>(thrown);
     }
 
-    // The other side of the boundary — that OBSERVING a record is outside the classification
-    // region, so an engine defect propagates rather than becoming a polite diagnostic — is not
+    // The other side of the boundary (that OBSERVING a record is outside the classification
+    // region, so an engine defect propagates rather than becoming a polite diagnostic) is not
     // expressible as a test here: ObjectRecord is sealed, so no record can be built whose
     // accessor throws, and nothing in the observation body can raise an admitted exception type.
     // It is verified by direct inspection of the catch boundary instead.
@@ -217,7 +217,7 @@ public sealed class ProbeReadFailureTests
     public async Task Probe_WhenReadFailsAfterPartialObservation_ThenNoDraftLeaks()
     {
         // The tempting bug: records were already observed, so "return what we have" looks
-        // helpful. It is not — a draft built from a truncated read understates the data while
+        // helpful. It is not: a draft built from a truncated read understates the data while
         // reading as complete (D-112).
         var session = new ProbeFixtures.FakeWideSession(
             Schema,
@@ -260,7 +260,7 @@ public sealed class ProbeReadFailureTests
     public async Task Probe_WhenReadFails_ThenTheMessageCarriesNoProviderTextOrPath()
     {
         // Deterministic wording: the exception TYPE says which channel failed, but its message
-        // may name a machine-specific path, a locale-formatted number, or a stack trace — none
+        // may name a machine-specific path, a locale-formatted number, or a stack trace, none
         // of which may reach a diagnostic that must be byte-repeatable (D-112).
         var session = new ProbeFixtures.FakeWideSession(
             Schema, [], schemaFailure: () => new IOException(@"C:\Users\someone\secret\data.csv is locked"));
@@ -310,7 +310,7 @@ public sealed class ProbeReadFailureTests
         Assert.DoesNotContain(result.Diagnostics, d => d.Code == DiagnosticCode.ProbeSourceReadFailed);
     }
 
-    // A session whose ReadAsync is an ordinary method, so its body runs — and can fail — on the
+    // A session whose ReadAsync is an ordinary method, so its body runs (and can fail) on the
     // call itself rather than on the first MoveNextAsync. Written by hand precisely because the
     // `async IAsyncEnumerable` iterators used everywhere else structurally cannot reach this case.
     private sealed class SyncThrowingReadSession(SourceSchema schema, Func<Exception> failure) : IWideSourceSession
@@ -343,7 +343,7 @@ public sealed class ProbeReadFailureTests
         }
     }
 
-    // A session whose enumerator fails from Current rather than from MoveNextAsync — the shape of
+    // A session whose enumerator fails from Current rather than from MoveNextAsync: the shape of
     // an adapter that materializes each row lazily. Compiler-generated iterators cache the yielded
     // value, so Current cannot throw in them; only a hand-written enumerator reaches this path.
     private sealed class ThrowingCurrentSession(SourceSchema schema, Func<Exception> failure, int throwAt)

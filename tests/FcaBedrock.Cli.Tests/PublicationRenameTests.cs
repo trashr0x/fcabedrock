@@ -49,7 +49,7 @@ public sealed class PublicationRenameTests
 
     // macOS: ONLY the documented ENOTSUP. Apple documents EINVAL as an invalid flag rather than an
     // unsupported one, and neither its ENOSYS nor its distinct modern EOPNOTSUPP is documented as
-    // this call's capability answer — so Linux's readings are not copied across.
+    // this call's capability answer, so Linux's readings are not copied across.
     [InlineData(DarwinENotSup, true, "CapabilityAbsent")]
     [InlineData(EInval, true, "Failed")]
     [InlineData(DarwinENoSys, true, "Failed")]
@@ -102,7 +102,7 @@ public sealed class PublicationRenameTests
 
         Assert.Throws<IOException>(() => PublicationRename.Move(primitives, source, destination, null));
 
-        // EEXIST is a refusal, not a capability answer — so no second, weaker attempt happens even
+        // EEXIST is a refusal, not a capability answer, so no second, weaker attempt happens even
         // though a classic rename would have succeeded at replacing it.
         Assert.Equal(["exclusive"], primitives.Calls);
         Assert.Equal("keep me", File.ReadAllText(destination));
@@ -186,7 +186,7 @@ public sealed class PublicationRenameTests
         {
             Injected = new ExclusiveRenameResult(ExclusiveRename.CapabilityAbsent, EInval),
 
-            // The entry arrives after the capability answer and before the absence check — the
+            // The entry arrives after the capability answer and before the absence check: the
             // interval the check exists for.
             BeforeLookup = () => Create(destination, kind),
         };
@@ -245,7 +245,7 @@ public sealed class PublicationRenameTests
             Injected = new ExclusiveRenameResult(ExclusiveRename.CapabilityAbsent, EInval),
 
             // A failed exclusive attempt is not evidence that the namespace stayed still, so the
-            // source is revalidated against the reference before anything else happens — which is
+            // source is revalidated against the reference before anything else happens, which is
             // why this substitution is placed the instant that attempt reports back.
             AfterExclusive = () =>
             {
@@ -269,7 +269,7 @@ public sealed class PublicationRenameTests
         // THE EXCLUDED RACE, witnessed rather than claimed safe. Between the last absence check and
         // the classic rename an actor that violates the exclusive-namespace precondition can create
         // the destination, and the flagless rename replaces it. The post-move identity match still
-        // proves which SOURCE object arrived — and that is all it proves: the foreign entry is gone
+        // proves which SOURCE object arrived, and that is all it proves: the foreign entry is gone
         // and nothing here can restore it. Windows never reaches this path at all.
         using var temp = TempDirectory.Create();
         var source = temp.Write("source", "payload");
@@ -293,7 +293,7 @@ public sealed class PublicationRenameTests
         Assert.True(reference.IsStillAt(destination));
 
         // And the foreign entry did not survive ANYWHERE. This is the disclosed limit of the
-        // fallback — an excluded race under the exclusive-namespace precondition — rather than a
+        // fallback (an excluded race under the exclusive-namespace precondition) rather than a
         // guarantee the implementation fails to keep.
         Assert.DoesNotContain(
             Directory.GetFiles(temp.Path),
@@ -386,7 +386,7 @@ public sealed class PublicationRenameTests
 
     // The fallback has no Windows implementation because Windows has no capability gap: its
     // no-replace behaviour IS the primitive. Skipping there is a genuinely absent platform API, not
-    // a waiver — the Windows path is covered by the fast-path witness above and by the whole
+    // a waiver: the Windows path is covered by the fast-path witness above and by the whole
     // publication suite.
     private static void SkipWithoutUnixPrimitives()
     {
@@ -397,7 +397,7 @@ public sealed class PublicationRenameTests
     }
 
     /// <summary>
-    /// The production primitives, observed — and, where a test says so, with the exclusive attempt's
+    /// The production primitives, observed, and, where a test says so, with the exclusive attempt's
     /// result replaced by an exact one. The absence check and the classic rename are always the
     /// real ones, so a fallback proved here is a fallback through actual native calls.
     /// </summary>
@@ -417,7 +417,7 @@ public sealed class PublicationRenameTests
         /// <summary>Runs immediately before the absence check.</summary>
         public Action? BeforeLookup { get; set; }
 
-        /// <summary>Runs immediately before the classic rename — after the absence check.</summary>
+        /// <summary>Runs immediately before the classic rename, after the absence check.</summary>
         public Action? BeforeClassic { get; set; }
 
         public ExclusiveRenameResult Exclusive(string source, string destination)

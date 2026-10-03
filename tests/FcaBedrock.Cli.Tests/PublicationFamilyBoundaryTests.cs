@@ -145,7 +145,7 @@ public sealed class PublicationFamilyBoundaryTests
     public void SingleCallerAtAnArtifactName_WhenAConvertRunOwnsTheEnclosingBase_ThenBothRefuseAndNothingIsDestroyed()
     {
         // `single --out out.cxt` beside `convert --out out`. The single-file caller's prefix is
-        // `out.cxt`, so it never sees the convert record at all — only a private name inside its
+        // `out.cxt`, so it never sees the convert record at all, only a private name inside its
         // own namespace that no record of ITS base accounts for.
         using var run = Boundary.Create();
         Overlap(run);
@@ -185,7 +185,7 @@ public sealed class PublicationFamilyBoundaryTests
     [Fact]
     public void Caller_WhenOnlyAForeignFamilyIntentDescriptorExists_ThenItIsRefusedAndPreserved()
     {
-        // No record — only the intent descriptor a single-file run writes before publishing one.
+        // No record, only the intent descriptor a single-file run writes before publishing one.
         // Its shape byte `41` reconstructs a single-file record, so the convert caller refuses it
         // on family authority alone, before any state is assembled.
         using var run = Boundary.Create();
@@ -265,7 +265,7 @@ public sealed class PublicationFamilyBoundaryTests
             return;
         }
 
-        // Staged, and — for the rolling-back row — with the durable rollback intent beside it.
+        // Staged, and (for the rolling-back row) with the durable rollback intent beside it.
         residue.WriteRecord([("stage", target)]);
         residue.WritePrivate("stage", target, StageBytes);
         residue.WriteEvidence(kind, target, IdentityEvidence.NotApplicable, residue.Identity("stage", target));
@@ -357,7 +357,7 @@ internal sealed class Boundary : IDisposable
             force,
             CancellationToken.None);
 
-    /// <summary>Every file name paired with its exact bytes — the before/after preservation oracle.</summary>
+    /// <summary>Every file name paired with its exact bytes: the before/after preservation oracle.</summary>
     public Dictionary<string, byte[]> Snapshot() =>
         System.IO.Directory.GetFiles(Directory)
             .ToDictionary(path => Path.GetFileName(path), File.ReadAllBytes, StringComparer.Ordinal);

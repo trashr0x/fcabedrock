@@ -252,7 +252,7 @@ public sealed class SpecComposerTests
     [Fact]
     public void Compose_WhenObjectKeyAuthoredInBoth_ThenDerivedTableReplacesWhole()
     {
-        // D-078 refinement of §13 rule 1: no leftover base fields — a per-leaf
+        // D-078 refinement of §13 rule 1: no leftover base fields; a per-leaf
         // merge would compose a row_index-mode key still carrying base's column.
         var source = new InMemorySpecTextSource().Add("base.toml",
             "[spec]\nversion = 1\n[binding]\nshape = \"wide\"\n" +
@@ -303,7 +303,7 @@ public sealed class SpecComposerTests
     public void Compose_WhenDatTrailingNewlineOnlyInBase_ThenDerivedInheritsIt()
     {
         // §13 rule 6 leaves-merge per field: the D-087 dat trailing_newline composes like
-        // its cxt twin — a derived that overrides only base_index still inherits the base's
+        // its cxt twin: a derived that overrides only base_index still inherits the base's
         // trailing_newline.
         var source = new InMemorySpecTextSource().Add("base.toml",
             "[spec]\nversion = 1\n[output.dat]\ntrailing_newline = false\nbase_index = 0\n");
@@ -342,7 +342,7 @@ public sealed class SpecComposerTests
     public void Compose_WhenAttributesCarryNumericRestrictions_ThenEveryFormComposesAndResolves()
     {
         // §13/D-052/D-091: composition is whole-attribute replacement over the document model, so
-        // the exact numeric entry must survive a fold like any other carrier — a base's inherited
+        // the exact numeric entry must survive a fold like any other carrier: a base's inherited
         // numeric restriction, and a derived override that replaces one.
         var source = new InMemorySpecTextSource()
             .Add("base.toml", """
@@ -422,7 +422,7 @@ public sealed class SpecComposerTests
     public void Compose_WhenDerivedDuplicatesAnAttributeName_ThenResolveSeamRejects()
     {
         // Fail-closed duplicate discipline (D-078): the merge never collapses
-        // authoring duplicates — AttributeNameDuplicate owns the reject at the
+        // authoring duplicates; AttributeNameDuplicate owns the reject at the
         // resolve seam (D-080), exactly as it would for the same duplicate in a
         // flat file.
         var source = new InMemorySpecTextSource().Add("base.toml",
@@ -442,7 +442,7 @@ public sealed class SpecComposerTests
     [Fact]
     public void Compose_WhenBaseHasProvenance_ThenComposedCarriesDerivedProvenanceOnly()
     {
-        // §13 rule 7: provenance is per-spec, never inherited — derived has
+        // §13 rule 7: provenance is per-spec, never inherited: derived has
         // none, so the composed document has none.
         var composed = ComposeBaseDerived();
 
@@ -474,7 +474,7 @@ public sealed class SpecComposerTests
     [Fact]
     public void Compose_WhenMatchersInBoth_ThenBaseThenDerivedOrder()
     {
-        // §13 rule 4: concatenation, base first — which is what gives a derived matcher
+        // §13 rule 4: concatenation, base first, which is what gives a derived matcher
         // precedence under §9.2's field-wise last-match-wins. The resolved consequence is
         // asserted in Compose_WhenBaseAndDerivedMatchersBothApply_…; this pins the carrier
         // order it depends on.
@@ -511,7 +511,7 @@ public sealed class SpecComposerTests
     [Fact]
     public void Compose_WhenComposedEqualsFlatSpec_ThenCanonicalTextIsIdentical()
     {
-        // §13: a derived spec and its flat equivalent are the same document —
+        // §13: a derived spec and its flat equivalent are the same document,
         // proven at the canonical-text level (the fingerprint face is locked in
         // SpecFingerprintsTests).
         var composed = ComposeOk(Read(TomlFixtures.MiniMushroomDerived), "derived.toml",
@@ -635,7 +635,7 @@ public sealed class SpecComposerTests
     public void Compose_WhenBaseDefaultsAuthorsNameFormat_ThenADerivedDefaultsAuthoringOtherFieldsPreservesIt()
     {
         // §13 rule 2 is a PER-FIELD merge, so a new [defaults] field must be carried
-        // explicitly in MergeDefaults — and this is the case that would silently regress
+        // explicitly in MergeDefaults, and this is the case that would silently regress
         // otherwise: the derived [defaults] EXISTS and authors something else, so the base's
         // format is only preserved if the merge names it.
         var composed = ComposeNaming(
@@ -668,7 +668,7 @@ public sealed class SpecComposerTests
     public void Compose_WhenBaseDefaultsFormatIsInherited_ThenItReachesTheResolvedAttributes()
     {
         // The resolver-visible end of the same contract: an inherited [defaults] format is
-        // not merely carried in the document — it becomes the attribute's effective format,
+        // not merely carried in the document; it becomes the attribute's effective format,
         // exactly as a flat spec authoring it directly would.
         var composed = ComposeNaming(
             baseDefaults: "formal_attribute_format = \"{value}\"",
@@ -724,8 +724,8 @@ public sealed class SpecComposerTests
     {
         // §9.2/§13: composition is authored-document→authored-document and application is
         // resolve-time, so an `extends` split and its flat equivalent must resolve to the
-        // SAME effective attributes. Both sides are built independently — one file versus
-        // two — rather than deriving one from the other.
+        // SAME effective attributes. Both sides are built independently (one file versus
+        // two) rather than deriving one from the other.
         const string attributes =
             "[[attribute]]\nname = \"feature_1\"\nsource = { kind = \"column\", index = 0 }\n\n"
             + "[[attribute]]\nname = \"feature_2\"\nsource = { kind = \"column\", index = 1 }\n";
@@ -751,7 +751,7 @@ public sealed class SpecComposerTests
     {
         // §13 rule 4: base matchers precede derived ones in composed order, so for a field
         // BOTH author the derived matcher's template wins under §9.2's field-wise
-        // last-author-wins — while a field only the base authors survives untouched.
+        // last-author-wins, while a field only the base authors survives untouched.
         var source = new InMemorySpecTextSource().Add("base.toml",
             "[spec]\nversion = 1\n\n[binding]\nshape = \"wide\"\nhas_header = false\n\n"
             + "[[template]]\nid = \"b\"\ndiscretizer = { kind = \"identity\" }\nscale = { kind = \"nominal\" }\n"
@@ -774,7 +774,7 @@ public sealed class SpecComposerTests
     {
         // §13's late-binding consequence: composition (rule 3) completes before §9.2
         // resolution runs, so replacing a template by `id` re-targets every reference to
-        // it — including an INHERITED base matcher that never mentions the derived file.
+        // it, including an INHERITED base matcher that never mentions the derived file.
         var source = new InMemorySpecTextSource().Add("base.toml",
             "[spec]\nversion = 1\n\n[binding]\nshape = \"wide\"\nhas_header = false\n\n"
             + "[[template]]\nid = \"t\"\ndiscretizer = { kind = \"identity\" }\nscale = { kind = \"nominal\" }\n"
@@ -790,7 +790,7 @@ public sealed class SpecComposerTests
         var attribute = Assert.Single(ResolveOk(composed).Attributes);
         Assert.Equal(["derived"], attribute.DeclaredDomain);
 
-        // The replacement really was in place — one template, at the base position.
+        // The replacement really was in place: one template, at the base position.
         Assert.Equal("t", Assert.Single(composed.Templates).Id);
     }
 
@@ -834,7 +834,7 @@ public sealed class SpecComposerTests
     }
 
     // A base/derived pair differing only in their [defaults] bodies, over one resolvable
-    // attribute — the smallest document that isolates the per-field defaults merge.
+    // attribute: the smallest document that isolates the per-field defaults merge.
     private static SpecDocument ComposeNaming(string baseDefaults, string? derivedDefaults)
     {
         var source = new InMemorySpecTextSource().Add("base.toml",

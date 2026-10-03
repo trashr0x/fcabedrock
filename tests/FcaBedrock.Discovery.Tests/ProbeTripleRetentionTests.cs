@@ -7,8 +7,8 @@ namespace FcaBedrock.Discovery.Tests;
 /// <summary>
 /// D-108 retention and D-110 boundedness for the triple shape.
 /// <para>
-/// The retention semantics are shape-independent by construction — one <c>RetainedDomain</c>, one
-/// budget, shared by both engines — so this suite is not a second copy of the wide arithmetic. It
+/// The retention semantics are shape-independent by construction (one <c>RetainedDomain</c>, one
+/// budget, shared by both engines), so this suite is not a second copy of the wide arithmetic. It
 /// pins the parts that only triple can express: the attribute guard charged as predicates are
 /// <b>discovered</b> rather than counted from a schema, and the guard precedence at the moment a
 /// brand-new predicate arrives carrying a brand-new value.
@@ -123,7 +123,7 @@ public sealed class ProbeTripleRetentionTests
         // Unlike wide, this cannot be decided from the schema: the vocabulary is only known as it
         // is read, so the guard is charged at discovery and fails on the first predicate past it.
         //
-        // Twelve distinct predicates against a maximum of three, deliberately — because the
+        // Twelve distinct predicates against a maximum of three, deliberately, because the
         // message must NOT name a total. Probe stops at the fourth, so four is all it ever counts;
         // saying "would discover 4" would read as the complete vocabulary and invite a retry at 4
         // that fails identically, while counting the real twelve would mean reading on, which is
@@ -280,7 +280,7 @@ public sealed class ProbeTripleRetentionTests
     {
         // The precedence case only triple can produce: one row introduces a new predicate AND a
         // new value, so both guards are consulted on the same row. Attributes are decided first
-        // (D-110), and the attribute is never created — so nothing is retained under it either.
+        // (D-110), and the attribute is never created, so nothing is retained under it either.
         var result = await TripleProbeFixtures.ProbeTripleCsvAsync(
             "s,p,x\ns,q,y\n",
             options: ProbeOptions.Create(maxDiscoveredAttributes: 1, maxTotalRetainedValues: 1L));

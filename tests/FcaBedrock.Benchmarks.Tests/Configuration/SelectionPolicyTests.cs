@@ -43,7 +43,7 @@ public sealed class SelectionPolicyTests
     {
         // The External equivalent, and the shape that matters most: naming the CASE is not opting
         // in. Someone filtering for `*Adult*` has said which case they mean, not that this run may
-        // depend on a third-party host - and if it could opt in, the routine CI Dry run's own
+        // depend on a third-party host, and if it could opt in, the routine CI Dry run's own
         // `--filter *` would drag the download back into every native job.
         var policy = SelectionPolicy.FromArguments(["--filter", filter]);
 
@@ -54,8 +54,8 @@ public sealed class SelectionPolicyTests
     [Fact]
     public void Policy_WhenOnlyASurfaceCategoryIsNamed_ThenExternalIsStillExcluded()
     {
-        // Naming some other category lifts the Small default - that is deliberate, and tested
-        // below for Working - but it must not reach either opt-in tier.
+        // Naming some other category lifts the Small default (that is deliberate, and tested
+        // below for Working), but it must not reach either opt-in tier.
         var policy = SelectionPolicy.FromArguments(["--anyCategories", BenchmarkCategories.Source]);
 
         Assert.True(policy.CategorySelectionPresent);
@@ -71,7 +71,7 @@ public sealed class SelectionPolicyTests
     [InlineData("--anyCategories external --filter *")]
     public void Policy_WhenExternalIsNamed_ThenExternalIsSelected(string commandLine)
     {
-        // Both category options, both value forms, and case-insensitively - the same shapes the
+        // Both category options, both value forms, and case-insensitively: the same shapes the
         // Scale opt-in is tested through, because it is the same guarantee.
         var policy = SelectionPolicy.FromArguments(commandLine.Split(' '));
 
@@ -223,7 +223,7 @@ public sealed class SelectionPolicyTests
     {
         // One table for all three tiers, because it is one rule: `Working`, `Scale` and `External`
         // are reachable by naming their own category and by nothing else (D-124). A surface
-        // category lifts the Small default — that is deliberate — but it must not carry an opt-in
+        // category lifts the Small default (that is deliberate), but it must not carry an opt-in
         // tier with it.
         var policy = SelectionPolicy.FromArguments(arguments);
 

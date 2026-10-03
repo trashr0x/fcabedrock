@@ -10,8 +10,8 @@ namespace FcaBedrock.Cli.Tests;
 /// <c>RunManifestWriter</c>, the CLI's manifest composer, the CLI's hash helper, or the
 /// transaction record writer to build an expectation: the text is written out literally, and
 /// every hash is recomputed in this file straight from the bytes on disk with
-/// <see cref="SHA256"/>. The three fingerprints are pinned constants — byte locks over the
-/// fixture spec, which is exactly what makes an encoder change fail here.
+/// <see cref="SHA256"/>. The three fingerprints are pinned constants (byte locks over the
+/// fixture spec), which is exactly what makes an encoder change fail here.
 /// </para>
 /// </summary>
 public sealed class ConvertManifestTests
@@ -166,7 +166,7 @@ public sealed class ConvertManifestTests
     [Fact]
     public async Task Manifest_WhenAnOutcomeDiscoveredNothing_ThenItIsAnExplicitEmptyArray()
     {
-        // A legitimate zero-discovery outcome is recorded, not dropped — the
+        // A legitimate zero-discovery outcome is recorded, not dropped: the
         // difference between "calibrated and found nothing" and "never calibrated".
         using var run = ConvertRun.Wide(CliFixtures.PlanEmptyOutcomesSpec, CliFixtures.PlanEmptyOutcomesData);
 
@@ -264,8 +264,8 @@ public sealed class ConvertManifestTests
 
         Assert.Equal(0, exit);
 
-        // Root first, then bases, each with the spelling that named it — the root operand and
-        // the authored referrer-relative references — never a normalized or absolutized path.
+        // Root first, then bases, each with the spelling that named it (the root operand and
+        // the authored referrer-relative references), never a normalized or absolutized path.
         Assert.Contains(
             $"""
             [[run.spec_files]]
@@ -329,7 +329,7 @@ public sealed class ConvertManifestTests
     public async Task Manifest_WhenTheRunIsV2Compatible_ThenOnlyTheOutputFingerprintsBecomeEffective()
     {
         // §14/§15: the schema fingerprint is style-independent and stays the native one, while the
-        // two output fingerprints are the effective values the override produced — which is why
+        // two output fingerprints are the effective values the override produced, which is why
         // they are a manifest fact and never a stored one.
         using var run = ConvertRun.Wide();
         var report = new CliTestHarness();

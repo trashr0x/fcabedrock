@@ -55,7 +55,7 @@ public sealed class HeaderBindingTests
 
         var result = Resolve(document, schema);
 
-        // The existing code, at its existing phase — not a tokenizer exception, and not a new code.
+        // The existing code, at its existing phase: not a tokenizer exception, and not a new code.
         Assert.Contains(result.Diagnostics, d => d.Code == DiagnosticCode.SourceBindingInvalid);
         Assert.False(result.TryGetValue(out _));
     }

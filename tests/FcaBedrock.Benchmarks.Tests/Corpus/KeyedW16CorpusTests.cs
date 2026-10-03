@@ -87,7 +87,7 @@ public sealed class KeyedW16CorpusTests
     public void FirstOccurrenceOrder_ShouldBeAscendingObjectIndex()
     {
         // The object order a dedupe emits is first-occurrence order (§17 rule 4). The first
-        // occurrence of key k{i} is row i, so objects come out in ascending index - which is what
+        // occurrence of key k{i} is row i, so objects come out in ascending index, which is what
         // lets the oracle index them by that number.
         var objects = KeyedW16Corpus.Objects(Records);
         for (var index = 0L; index < objects; index++)

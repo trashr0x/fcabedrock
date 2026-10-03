@@ -57,13 +57,13 @@ internal sealed class CliTestHarness
     /// <summary>Replaces the input opener; the default opens real files.</summary>
     public Func<string, Stream>? OpenInput { get; set; }
 
-    /// <summary>Replaces the captured stdout writer — used to inject sink failures.</summary>
+    /// <summary>Replaces the captured stdout writer (used to inject sink failures).</summary>
     public TextWriter? OutOverride { get; set; }
 
-    /// <summary>Replaces the captured stderr writer — used to inject sink failures.</summary>
+    /// <summary>Replaces the captured stderr writer (used to inject sink failures).</summary>
     public TextWriter? ErrorOverride { get; set; }
 
-    /// <summary>Every path the CLI asked to open, in order — one entry per open, not per distinct path.</summary>
+    /// <summary>Every path the CLI asked to open, in order: one entry per open, not per distinct path.</summary>
     public List<string> Opened { get; } = [];
 
     /// <summary>
@@ -109,7 +109,7 @@ internal sealed class CliTestHarness
 }
 
 /// <summary>
-/// A text sink that fails the way a closed pipe or released handle does — immediately on
+/// A text sink that fails the way a closed pipe or released handle does: immediately on
 /// write, or only when the buffered bytes are finally flushed.
 /// </summary>
 internal sealed class ThrowingWriter(bool failOnWrite, bool failOnFlush) : TextWriter
@@ -154,8 +154,8 @@ internal sealed class ThrowingWriter(bool failOnWrite, bool failOnFlush) : TextW
 
 /// <summary>
 /// The real publication filesystem with two test affordances: it records every operation in
-/// order, and it can be told to fail one boundary — the Nth operation of a given kind, optionally
-/// only for a chosen file name.
+/// order, and it can be told to fail one boundary (the Nth operation of a given kind, optionally
+/// only for a chosen file name).
 /// <para>
 /// It delegates to the production implementation rather than simulating a filesystem, so a test
 /// that injects a commit failure still observes the real bytes, the real renames, and the real
@@ -170,14 +170,14 @@ internal sealed class RecordingPublicationFileSystem : IPublicationFileSystem
     /// <summary>Every mutating or observing operation, as <c>kind:fileName</c>, in order.</summary>
     public List<string> Operations { get; } = [];
 
-    /// <summary>The operation kind to fail — <c>CreateNew</c>, <c>Flush</c>, <c>Move</c>, or <c>Delete</c>.</summary>
+    /// <summary>The operation kind to fail: <c>CreateNew</c>, <c>Flush</c>, <c>Move</c>, or <c>Delete</c>.</summary>
     public string? FailKind { get; set; }
 
     /// <summary>When set, only operations whose (source) file name matches this are counted and failed.</summary>
     public string? FailName { get; set; }
 
     /// <summary>
-    /// As <see cref="FailName"/>, but matched as a prefix — how a test names a control file or a
+    /// As <see cref="FailName"/>, but matched as a prefix: how a test names a control file or a
     /// stage whose token it cannot predict.
     /// </summary>
     public string? FailNamePrefix { get; set; }
@@ -191,7 +191,7 @@ internal sealed class RecordingPublicationFileSystem : IPublicationFileSystem
     /// <summary>
     /// Fail <b>every</b> matching occurrence rather than only <see cref="FailOccurrence"/>. A
     /// commit rename and the rollback restore that follows it share a destination, so failing one
-    /// occurrence exercises only the commit — the interesting case is when the restore fails too.
+    /// occurrence exercises only the commit; the interesting case is when the restore fails too.
     /// </summary>
     public bool FailEveryMatch { get; set; }
 
@@ -200,14 +200,14 @@ internal sealed class RecordingPublicationFileSystem : IPublicationFileSystem
 
     /// <summary>
     /// Fails creation of any file whose name starts with this, independently of
-    /// <see cref="FailKind"/> — so a commit failure and a phase-marker failure can be injected in
+    /// <see cref="FailKind"/>, so a commit failure and a phase-marker failure can be injected in
     /// the same run.
     /// </summary>
     public string? FailCreateNewPrefix { get; set; }
 
     /// <summary>
     /// Fails <b>removal</b> of any file whose name starts with this, independently of
-    /// <see cref="FailKind"/> — how a test reaches one specific control-file removal whose
+    /// <see cref="FailKind"/>: how a test reaches one specific control-file removal whose
     /// position in the run it cannot count.
     /// <para>
     /// A removal is one seam call, <c>Remove(path, proof)</c>, so this fails that call by the name
@@ -228,7 +228,7 @@ internal sealed class RecordingPublicationFileSystem : IPublicationFileSystem
 
     /// <summary>
     /// The destination file-name <b>prefix</b> whose successful move triggers
-    /// <see cref="CancelAfterMove"/> — how a test names a backup, whose token is unpredictable.
+    /// <see cref="CancelAfterMove"/>: how a test names a backup, whose token is unpredictable.
     /// </summary>
     public string? CancelAfterMoveToPrefix { get; set; }
 
@@ -247,8 +247,8 @@ internal sealed class RecordingPublicationFileSystem : IPublicationFileSystem
     /// <c>kind:fileName</c> form used in <see cref="Operations"/>.
     /// <para>
     /// This is how a test creates a genuine race: something else changes the location between the
-    /// transaction's last look and its next move — a target that appears, one that disappears, one
-    /// replaced by a different object — and the run must survive it without destroying anything it
+    /// transaction's last look and its next move (a target that appears, one that disappears, one
+    /// replaced by a different object), and the run must survive it without destroying anything it
     /// does not own.
     /// </para>
     /// </summary>
@@ -278,7 +278,7 @@ internal sealed class RecordingPublicationFileSystem : IPublicationFileSystem
     public Action<string>? MutateWith { get; set; }
 
     /// <summary>
-    /// The exception a residue READ raises, and which operation raises it — how a test reaches the
+    /// The exception a residue READ raises, and which operation raises it: how a test reaches the
     /// classification path's own failure families. The name is matched as a prefix, so
     /// a test can name a control file whose token it cannot predict.
     /// </summary>
@@ -298,8 +298,8 @@ internal sealed class RecordingPublicationFileSystem : IPublicationFileSystem
     public bool SuppressStageIdentity { get; set; }
 
     /// <summary>
-    /// The same capability absence for <b>control</b> creations — the pending transaction record
-    /// and each pending evidence file — so the root of the transaction can be shown to fail closed
+    /// The same capability absence for <b>control</b> creations (the pending transaction record
+    /// and each pending evidence file), so the root of the transaction can be shown to fail closed
     /// rather than publishing something it cannot prove.
     /// </summary>
     public bool SuppressControlIdentity { get; set; }
@@ -312,12 +312,12 @@ internal sealed class RecordingPublicationFileSystem : IPublicationFileSystem
     public bool SuppressReferences { get; set; }
 
     /// <summary>
-    /// Report no lifetime reference for <b>one</b> participant — the objects whose file name starts
-    /// with this — while every other acquisition, path observation and removal open still succeeds.
+    /// Report no lifetime reference for <b>one</b> participant (the objects whose file name starts
+    /// with this) while every other acquisition, path observation and removal open still succeeds.
     /// <para>
     /// A run-wide suppression can only show a pass refusing before it began. What a recovery pass
     /// has to be held to is narrower and harder: <em>this</em> object cannot be held, everything
-    /// else can, and the pass must still mutate nothing — including the participants it could have
+    /// else can, and the pass must still mutate nothing, including the participants it could have
     /// held and would otherwise have reached first.
     /// </para>
     /// </summary>
@@ -337,7 +337,7 @@ internal sealed class RecordingPublicationFileSystem : IPublicationFileSystem
     /// <summary>
     /// The operation to simulate a crash after, as the <c>kind:fileName</c> form used in
     /// <see cref="Operations"/>. The real operation completes, and every later operation then
-    /// fails — which is what the on-disk state looks like when the process simply disappears:
+    /// fails, which is what the on-disk state looks like when the process simply disappears:
     /// nothing that follows, including rollback, can change anything.
     /// </summary>
     public string? CrashAfter { get; set; }
@@ -362,7 +362,7 @@ internal sealed class RecordingPublicationFileSystem : IPublicationFileSystem
         var file = _real.CreateNew(path);
         if (SuppressControlIdentity)
         {
-            // A host with no identity capability reports none AND anchors nothing — the two go
+            // A host with no identity capability reports none AND anchors nothing; the two go
             // together, because an identity is only reported when a reference holds it.
             file.Reference?.Dispose();
             file = file with { Identity = null, Reference = null };
@@ -378,7 +378,7 @@ internal sealed class RecordingPublicationFileSystem : IPublicationFileSystem
         var name = Path.GetFileName(path);
 
         // Recorded under its own label so a test can prove WHICH creation the transaction asked
-        // for — the confidentiality boundary is a property of the call, not of the bytes.
+        // for: the confidentiality boundary is a property of the call, not of the bytes.
         // The injectable failure kind stays `CreateNew` so failure injection is
         // unaffected by the distinction.
         Fail("CreateNew", path, label: "Confidential");
@@ -395,13 +395,13 @@ internal sealed class RecordingPublicationFileSystem : IPublicationFileSystem
     }
 
     /// <summary>
-    /// The identity each confidential creation reported, by stage file name — how a test proves
+    /// The identity each confidential creation reported, by stage file name: how a test proves
     /// the evidence a run publishes describes the object that creation produced.
     /// </summary>
     public Dictionary<string, FileIdentityKey?> StageIdentities { get; } = new(StringComparer.Ordinal);
 
-    // Every created stream is wrapped, so a crash can be placed at a genuine STREAM boundary —
-    // partial write, flush, close — and not merely at the filesystem-seam calls around it.
+    // Every created stream is wrapped, so a crash can be placed at a genuine STREAM boundary
+    // (partial write, flush, close) and not merely at the filesystem-seam calls around it.
     private Stream Wrap(Stream stream, string name) =>
         new FaultyStream(
             stream,
@@ -454,7 +454,7 @@ internal sealed class RecordingPublicationFileSystem : IPublicationFileSystem
     /// <inheritdoc/>
     public bool Remove(string path, RemovalProof isExpected)
     {
-        // Recorded and raced as `Delete:<name>` — this IS the deletion boundary, and the mutation
+        // Recorded and raced as `Delete:<name>`: this IS the deletion boundary, and the mutation
         // hook runs before the real removal opens anything, which is exactly the same-operation
         // substitution this rule is about. Production must then refuse the replacement, because
         // its proof is taken from the handle it deletes through rather than from an earlier look.
@@ -493,7 +493,7 @@ internal sealed class RecordingPublicationFileSystem : IPublicationFileSystem
 
     private void Fail(string kind, string path, string? destination = null, string? label = null)
     {
-        // Once the simulated crash has fired, nothing else reaches the disk — the process is
+        // Once the simulated crash has fired, nothing else reaches the disk: the process is
         // conceptually gone, so even rollback cannot run.
         if (Crashed)
         {
@@ -536,7 +536,7 @@ internal sealed class RecordingPublicationFileSystem : IPublicationFileSystem
 
     /// <summary>
     /// <paramref name="operation"/> with every run token folded to <c>T</c>, so a transition can
-    /// be named — and asserted, and crashed after — without the test knowing an unpredictable
+    /// be named (and asserted, and crashed after) without the test knowing an unpredictable
     /// value.
     /// </summary>
     public static string Fold(string operation)
@@ -559,7 +559,7 @@ internal sealed class RecordingPublicationFileSystem : IPublicationFileSystem
     }
 
     /// <summary>
-    /// Records a stream-level boundary — a first write, a flush, a close — and crashes after it if
+    /// Records a stream-level boundary (a first write, a flush, a close) and crashes after it if
     /// asked. These are transitions of their own: a record or a stage stops being empty and starts
     /// being partial at exactly one of them.
     /// </summary>
@@ -605,8 +605,8 @@ internal sealed class RecordingPublicationFileSystem : IPublicationFileSystem
 }
 
 /// <summary>
-/// A destination stream that can fail the way a full disk or a revoked handle does — on the first
-/// write, or only when the buffered bytes are finally closed out — and that reports its own write,
+/// A destination stream that can fail the way a full disk or a revoked handle does (on the first
+/// write, or only when the buffered bytes are finally closed out) and that reports its own write,
 /// flush, and close boundaries so a crash can be placed at one of them.
 /// <para>
 /// Once the owning filesystem has crashed, every operation on the stream fails too: a process that
@@ -676,7 +676,7 @@ internal sealed class FaultyStream(
             var crashed = owner.Crashed;
 
             // A crashed process stops WRITING but does not keep its handles: the operating system
-            // reclaims them. Releasing here is what makes the simulation faithful — otherwise the
+            // reclaims them. Releasing here is what makes the simulation faithful; otherwise the
             // stage or record would stay locked and the retry would fail to clean it up for a
             // reason no real crash produces.
             try

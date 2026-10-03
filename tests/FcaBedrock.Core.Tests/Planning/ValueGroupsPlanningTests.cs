@@ -47,7 +47,7 @@ public sealed class ValueGroupsPlanningTests
         return plan!;
     }
 
-    // The (op, binKey) identity pairs the plan produced, in plan order — the canonical identity,
+    // The (op, binKey) identity pairs the plan produced, in plan order: the canonical identity,
     // independent of how any of it renders.
     private static (string Op, string Bin)[] Identities(ConversionPlan plan) =>
         [.. plan.FormalAttributes.Select(a => (a.Identity.Operator, a.Identity.BinKey))];
@@ -99,7 +99,7 @@ public sealed class ValueGroupsPlanningTests
     public void Plan_WhenGroupsEmptyAndSkip_ThenZeroColumnsAndOnlyTheNoFormalAttributesWarning()
     {
         // The other half: under `skip` an empty group list recognizes nothing, so the attribute
-        // contributes no column. That is a legal degenerate plan (§10.1/D-058) — one Warning, not
+        // contributes no column. That is a legal degenerate plan (§10.1/D-058): one Warning, not
         // an Error, and the plan still succeeds.
         var result = Plan(EmptyGroupsSpec(ValueGroupsUnmatched.Skip, new NominalScale()));
         var plan = Ok(result);
@@ -123,7 +123,7 @@ public sealed class ValueGroupsPlanningTests
         var plan = Ok(Plan(spec));
 
         // One column whose identity carries the dichotomic empty bin key (the attribute itself IS
-        // the column — §12.2); the true group crosses it and the other group does not.
+        // the column, §12.2); the true group crosses it and the other group does not.
         var column = Assert.Single(plan.FormalAttributes);
         Assert.Equal(("", ""), (column.Identity.Operator, column.Identity.BinKey));
         Assert.Equal("dichotomic", column.Identity.Scale);
@@ -151,7 +151,7 @@ public sealed class ValueGroupsPlanningTests
     [Fact]
     public void Plan_WhenOrdinalOverGroupsWithAFullPermutation_ThenThresholdsFollowTheAuthoredOrder()
     {
-        // §12.3: the order is over GROUP LABELS, and it — not declaration order — drives the
+        // §12.3: the order is over GROUP LABELS, and it (not declaration order) drives the
         // ordinal enumeration. Authoring School/Undergrad/Postgrad ascending with ge+inclusive
         // gives ≥School (tautological), ≥Undergrad, ≥Postgrad.
         var plan = Ok(Plan(Spec(ValueGroupsUnmatched.Skip, Ordinal(["School", "Undergrad", "Postgrad"]))));
@@ -180,7 +180,7 @@ public sealed class ValueGroupsPlanningTests
     public void Plan_WhenOrdinalAndOther_ThenOtherMustBeInTheOrderAndItsPositionIsAuthored()
     {
         // §11.6/§12.3: the synthetic Other joins the permutation universe. Its ordinal POSITION is
-        // whatever the author gives it — here first, not last — even though its BIN order (§17 r3)
+        // whatever the author gives it (here first, not last) even though its BIN order (§17 r3)
         // is always after the declared groups. The two orders are independent, which is exactly
         // what this pins.
         var plan = Ok(Plan(Spec(ValueGroupsUnmatched.Other, Ordinal(["Other", "School", "Undergrad", "Postgrad"]))));
@@ -194,7 +194,7 @@ public sealed class ValueGroupsPlanningTests
     public void Plan_WhenOrdinalOrderMissingEntirely_ThenOrdinalOrderMissing()
     {
         // Unlike numeric free_per_value there is no natural order to derive: group labels are
-        // strings, so §12.3 requires an explicit order — always.
+        // strings, so §12.3 requires an explicit order, always.
         var result = Plan(Spec(ValueGroupsUnmatched.Skip, Ordinal(order: null)));
 
         Assert.False(result.IsOk);
@@ -239,7 +239,7 @@ public sealed class ValueGroupsPlanningTests
     [Fact]
     public void Plan_WhenOrderNamesARawValueInsteadOfItsGroupLabel_ThenOrdinalOrderHasUnknownValue()
     {
-        // §12.3: the order lists GROUP LABELS, never the raw values the groups match — an easy
+        // §12.3: the order lists GROUP LABELS, never the raw values the groups match: an easy
         // authoring mistake that must not silently half-work.
         var result = Plan(Spec(ValueGroupsUnmatched.Skip, Ordinal(["11th", "Bachelors", "PhD"])));
 
@@ -259,7 +259,7 @@ public sealed class ValueGroupsPlanningTests
     public void Plan_WhenGroupsEmptyAndSkipWithEmptyOrder_ThenValid()
     {
         // groups = [] under `skip`: the bin universe is empty and [] is its only full
-        // permutation, so the order is complete — no OrdinalOrderMissing (which is the
+        // permutation, so the order is complete: no OrdinalOrderMissing (which is the
         // *omitted*-order condition) and no stray-entry error. The attribute plans zero columns,
         // accounted for by the NoFormalAttributes Warning alone.
         var result = Plan(EmptyGroupsSpec(ValueGroupsUnmatched.Skip, Ordinal([])));
@@ -307,7 +307,7 @@ public sealed class ValueGroupsPlanningTests
         OrdinalDirection direction, OrdinalBoundary boundary, string op)
     {
         // §12.3: value bins have no half-open geometry, so all four combinations are well-defined
-        // and `boundary` is fully live — unlike over cut bins, where the geometry fixes the
+        // and `boundary` is fully live, unlike over cut bins, where the geometry fixes the
         // operator and the straddling pairs are invalid.
         var plan = Ok(Plan(Spec(ValueGroupsUnmatched.Skip, Ordinal(["School", "Undergrad", "Postgrad"], direction, boundary))));
 
@@ -395,7 +395,7 @@ public sealed class ValueGroupsPlanningTests
     public void Plan_WhenADiscoveredPassthroughBinEqualsAnAuthoredGroupLabel_ThenFormalAttributeCollision()
     {
         // §11.6/D-090: a pass-through value merely OBSERVED to equal an authored label is
-        // data-dependent, so it surfaces here at plan — not as a static ValueGroupsLabelDuplicate.
+        // data-dependent, so it surfaces here at plan, not as a static ValueGroupsLabelDuplicate.
         // The observed bin is forced to equal the authored label, which is what makes this a real
         // collision rather than an assertion about nothing.
         var spec = new BedrockSpec(SpecFixtures.WideRowIndex(), [
@@ -431,8 +431,8 @@ public sealed class ValueGroupsPlanningTests
     [Fact]
     public void Plan_WhenValueLabelsAuthoredUnderValueGroups_ThenDormantInNamingAndNeverAnError()
     {
-        // §10.8/D-049: value_groups does not consult value_labels — a group label already IS the
-        // display label — so an authored map is inert: it must not rename a column and must not
+        // §10.8/D-049: value_groups does not consult value_labels (a group label already IS the
+        // display label), so an authored map is inert: it must not rename a column and must not
         // fail validation, even when a key matches a group label exactly.
         var spec = new BedrockSpec(SpecFixtures.WideRowIndex(), [
             new AttributeSpec("edu", new ColumnSource(0, SourceValueType.String), Include: true,

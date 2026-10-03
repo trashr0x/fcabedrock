@@ -13,7 +13,7 @@ namespace FcaBedrock.Benchmarks.Tests.Corpus;
 /// resolve, and convert the very source it was discovered from.
 /// <para>
 /// The Discovery suite already proves the round trip on its own small fixtures. What is added here
-/// is the end of the sentence — <em>and convert</em> — over the benchmark corpora, which are the ones
+/// is the end of the sentence (<em>and convert</em>) over the benchmark corpora, which are the ones
 /// the probe timings are quoted against. A draft that serialized cleanly but could not convert its
 /// own source would make every probe measurement a measurement of something nobody can use.
 /// </para>

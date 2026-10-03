@@ -1,4 +1,4 @@
-# eng/ — the packaging and smoke commands
+# eng/: the packaging and smoke commands
 
 Two distributions of one program, and the commands that produce and check them. Nothing here is a
 build system: every distribution command is a thin wrapper over `dotnet`, or a documented `dotnet`
@@ -24,7 +24,7 @@ two distributions disagree about what the program is called.
 # The running platform.
 ./eng/publish-selfcontained.ps1
 
-# A specific runtime identifier. PREPARATION ONLY - see below.
+# A specific runtime identifier. PREPARATION ONLY; see below.
 ./eng/publish-selfcontained.ps1 -Rid linux-x64
 ```
 
@@ -42,7 +42,7 @@ ordinal name order.
 
 > **Cross-publishing is not evidence.** A folder produced for another platform shows that the SDK can
 > emit files for it and says nothing about whether the result runs there. Only a publish executed
-> *on* the target platform, followed by the smoke below, is evidence — which is why the required
+> *on* the target platform, followed by the smoke below, is evidence, which is why the required
 > native targets run on their own machines rather than being cross-published from one.
 >
 > The archive says so too: a zip records the platform that created it, and an extractor reads the DOS
@@ -66,7 +66,7 @@ dotnet test tests/FcaBedrock.Cli.Tests -c Release --filter-class '*ToolSmokeTest
 
 # The self-contained distribution: run the publish script above for the RUNNING rid, check the
 # runtime is bundled, inspect the archive it produced, EXTRACT that archive, and make every
-# behavioural check against the extracted apphost - the SDK's environment removed, context bytes
+# behavioural check against the extracted apphost: the SDK's environment removed, context bytes
 # compared against this process's, a real BCP-47 locale resolved, a refused convert committing
 # nothing.
 $env:FCABEDROCK_SELFCONTAINED_SMOKE = '1'

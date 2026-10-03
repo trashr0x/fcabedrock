@@ -13,8 +13,8 @@ namespace FcaBedrock.Conversion.Tests;
 /// Several count-sensitive attributes calibrating <b>at the same time</b> (§11.5, D-082/D-095/D-103).
 /// <para>
 /// One <c>CalibrationRun</c> owns one spool workspace, and every count-sensitive accumulator spills
-/// into it. So the D-082 degraded-cleanup allowance — retained run bytes plus the next merge output
-/// must not exceed <c>3T</c> — has exactly one honest reading here: both sides are the
+/// into it. So the D-082 degraded-cleanup allowance (retained run bytes plus the next merge output
+/// must not exceed <c>3T</c>) has exactly one honest reading here: both sides are the
 /// <b>workspace's</b>. <c>T</c> is the cumulative original-spill payload of every accumulator sharing
 /// that workspace, and it is what the retained bytes of that same workspace are measured against.
 /// </para>
@@ -22,8 +22,8 @@ namespace FcaBedrock.Conversion.Tests;
 /// Reading <c>T</c> as one attribute's payload while the retained bytes are everyone's makes the
 /// allowance shrink as attributes are added: with A comparable accumulators the left side grows with
 /// A and the right side does not, so a valid population is refused with a storage diagnostic on
-/// perfectly healthy storage. These tests pin the externally visible consequence — the same cuts,
-/// the same order, the same diagnostics, and the same bytes as the in-memory path — rather than the
+/// perfectly healthy storage. These tests pin the externally visible consequence (the same cuts,
+/// the same order, the same diagnostics, and the same bytes as the in-memory path) rather than the
 /// private arithmetic that produces it.
 /// </para>
 /// <para>
@@ -172,7 +172,7 @@ public sealed class MultiAttributeCalibrationTests
 
         // `seq` is 1..24, one observation each, so its equal-frequency boundaries are arithmetic:
         // boundary k of 4 falls exactly at the edge after 24k/4 observations, and RightValue places
-        // the cut on the upper value — 7, 13, 19. `rev` is the same population arriving backwards,
+        // the cut on the upper value: 7, 13, 19. `rev` is the same population arriving backwards,
         // three bins: 9 and 17. Hand-derived from the corpus, not from the calibrator.
         Assert.Equal([7.0, 13.0, 19.0], CutsOf(spilled, "seq"));
         Assert.Equal([9.0, 17.0], CutsOf(spilled, "rev"));
@@ -238,7 +238,7 @@ public sealed class MultiAttributeCalibrationTests
     public async Task Convert_WhenSeveralAttributesSpill_ThenAutoAndFrozenAgreeByteForByte()
     {
         // D-088 under the multi-attribute spill path: freezing changes when the cuts resolve, never
-        // which — including when every cut was resolved from a spilled population.
+        // which, including when every cut was resolved from a spilled population.
         var auto = MultiAttributeSpec();
         var calibrated = await CalibrateOkAsync(auto, Csv, TinyBudget());
 
@@ -467,7 +467,7 @@ public sealed class MultiAttributeCalibrationTests
     public async Task CalibrateTriple_WhenSeveralPredicatesSpill_ThenSubjectLocalDeduplicationSurvives(bool interleaved)
     {
         // §5.3.1 under the multi-attribute spill path, proved by consequence in both directions
-        // rather than by reading a private counter — and under an ordering that also drives the
+        // rather than by reading a private counter, and under an ordering that also drives the
         // grouping backend, so the count-calibration workspace and a grouping workspace are live in
         // the same run.
         var ordering = interleaved ? TripleOrdering.Unordered : TripleOrdering.SubjectGrouped;

@@ -94,7 +94,7 @@ public sealed class UnboundSessionTests
     public async Task WideUnbound_YieldsTheSameCleanedRecordsAsTheBoundPath()
     {
         // Spec §5.1.1 decoding, a quoted interior-space value, an escaped quote, the missing token,
-        // an empty cell, and a ragged short row — all in one input.
+        // an empty cell, and a ragged short row, all in one input.
         const string Text = "  a  ,\" b \",\"x\"\"y\"\n?,,plain\nshort\n";
         var session = WideSession(Text);
         var schema = await session.GetSchemaAsync();
@@ -153,7 +153,7 @@ public sealed class UnboundSessionTests
     [Fact]
     public async Task TripleUnbound_RoleMapIsPerReadAndNeverSessionIdentity()
     {
-        // The same session read under two different maps, then bound under a third — proving roles
+        // The same session read under two different maps, then bound under a third, proving roles
         // are an argument, not state, and that an unbound read constrains no later Bind.
         var session = TripleSession("v0,p,s0\n");
         var schema = await session.GetSchemaAsync();
@@ -202,7 +202,7 @@ public sealed class UnboundSessionTests
     [Fact]
     public async Task WideUnbound_WhenMissingTokenDisabled_ThenOnlyEmptyCellsAreMissing()
     {
-        // §5.1: an empty missing_token disables TOKEN matching only — empty cells stay missing.
+        // §5.1: an empty missing_token disables TOKEN matching only; empty cells stay missing.
         var session = WideSession("?,,x\n", missingToken: "");
 
         var records = await DrainAsync(session.ReadAsync());
@@ -444,7 +444,7 @@ public sealed class UnboundSessionTests
         Assert.Equal(2, attempts);
     }
 
-    // A stream that claims to be readable but throws NotSupportedException from Read — a
+    // A stream that claims to be readable but throws NotSupportedException from Read: a
     // provider/programmer contract failure, NOT Sep's row/buffer ceiling.
     private sealed class UnreadableStream : Stream
     {

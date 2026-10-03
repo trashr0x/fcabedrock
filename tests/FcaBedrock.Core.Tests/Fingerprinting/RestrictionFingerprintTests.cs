@@ -21,7 +21,7 @@ public sealed class RestrictionFingerprintTests
     //
     // Two attributes exercising both halves of the D-091 rule at once: `age` is
     // included-AND-restricted (it contributes a column AND a restriction), while `Gene` is
-    // filter-only (include = false + restrict_to) and contributes ONLY a restriction — which is
+    // filter-only (include = false + restrict_to) and contributes ONLY a restriction, which is
     // why it appears in `restrictions` but never in `attributes`.
 
     private const string WideSchemaArray =
@@ -33,7 +33,7 @@ public sealed class RestrictionFingerprintTests
     // restriction object is entries < source < unknown_value_policy.
     //
     // Entry order is CANONICAL, not authored: the spec authors [ {value=30}, {from=10,to=20},
-    // {to=5} ] (below) and they encode sorted by complete canonical JSON — '{"from":1…' before
+    // {to=5} ] (below) and they encode sorted by complete canonical JSON: '{"from":1…' before
     // '{"from":n…' ('1' < 'n'), and both before '{"value"…' ('f' < 'v'). Restriction objects sort
     // the same way, so `age` precedes `Gene`.
     private const string WideShared =
@@ -72,8 +72,8 @@ public sealed class RestrictionFingerprintTests
 
     private static DatFingerprintInputs NativeDat() => new(1, LineEnding.Lf, false, false);
 
-    // Builds the canonical bytes the way the PUBLIC API does: over `plan.Calibrated.Spec` — the
-    // ResolvedSpec snapshot — not over the caller's raw spec. That distinction is the whole point
+    // Builds the canonical bytes the way the PUBLIC API does: over `plan.Calibrated.Spec` (the
+    // ResolvedSpec snapshot), not over the caller's raw spec. That distinction is the whole point
     // of the -0 vectors below: the snapshot is where signed zero is canonicalized (D-105), so a
     // helper that passed the raw spec would test a path production never takes.
     private static string Cxt(BedrockSpec spec)
@@ -98,7 +98,7 @@ public sealed class RestrictionFingerprintTests
 
     [Fact]
     public void BuildDatOutputJson_WhenAttributesRestrict_ThenCarriesTheSameSharedRestrictions() =>
-        // restrict_to shapes which OBJECTS appear, so it feeds BOTH output fingerprints (§14) —
+        // restrict_to shapes which OBJECTS appear, so it feeds BOTH output fingerprints (§14):
         // identical `shared` bytes on the .dat side.
         Assert.Equal(
             "{\"dat\":{\"base_index\":1,\"empty_line_trailing_space\":false,\"line_endings\":\"lf\","
@@ -109,7 +109,7 @@ public sealed class RestrictionFingerprintTests
     [Fact]
     public void BuildDatOutputJson_WhenFilterOnlyPolicyIsFail_ThenTheCompleteBytesCarryTheFailPolicy() =>
         // The G-9 policy key on the .dat side too, as complete pinned bytes rather than a
-        // substring — the container must be byte-identical across both output fingerprints, and
+        // substring: the container must be byte-identical across both output fingerprints, and
         // only `Gene`'s restriction policy differs from the warn golden above.
         Assert.Equal(
             "{\"dat\":{\"base_index\":1,\"empty_line_trailing_space\":false,\"line_endings\":\"lf\","
@@ -124,8 +124,8 @@ public sealed class RestrictionFingerprintTests
     public void ComputeCxtOutputFingerprint_WhenAttributesRestrict_ThenMatchesTheHardcodedVector()
     {
         // A HARD vector over a payload that contains `restrictions` (D-094). The literal was
-        // computed OUTSIDE the production helper — `printf '%s' <bytes> | sha256sum` over the
-        // pinned UTF-8 canonical bytes above — and that external method was cross-checked by
+        // computed OUTSIDE the production helper (`printf '%s' <bytes> | sha256sum` over the
+        // pinned UTF-8 canonical bytes above), and that external method was cross-checked by
         // reproducing an already-pinned vector
         // (ComputeSchemaFingerprint_WhenTrivialPlan_ThenMatchesHardcodedVector's
         // sha256:73104676…3b4f) before being trusted here. So this pins the bytes AND the hashing,
@@ -152,7 +152,7 @@ public sealed class RestrictionFingerprintTests
     public void BuildDatOutputJson_WhenNoAttributeRestricts_ThenTheContainerIsAbsentEntirely()
     {
         // The .dat twin of the omission rule above. The container feeds BOTH output fingerprints
-        // (§14), so "absent, not an empty array" has to hold on both sides — otherwise a
+        // (§14), so "absent, not an empty array" has to hold on both sides; otherwise a
         // restriction-free spec would keep its .cxt hash while its .dat hash moved.
         var json = Dat(new BedrockSpec(SpecFixtures.WideRowIndex(), [SpecFixtures.Nominal("a", 0, ["x"])]));
 
@@ -162,7 +162,7 @@ public sealed class RestrictionFingerprintTests
     [Fact]
     public void ComputeOutputFingerprints_WhenTheOnlyEntryIsTheUnboundedRange_ThenBothOutputsMoveButSchemaDoesNot()
     {
-        // `{}` is ONE entry — the full usable-numeric range (§10.4/D-091) — not an empty list.
+        // `{}` is ONE entry (the full usable-numeric range, §10.4/D-091), not an empty list.
         // So it populates the container and moves both output fingerprints, which is exactly the
         // contrast that makes the absent/empty omission rule above meaningful rather than
         // vacuous. Columns are untouched, so the schema hash is shared.
@@ -189,7 +189,7 @@ public sealed class RestrictionFingerprintTests
     [Fact]
     public void ComputeSchemaFingerprint_WhenRestrictionsChange_ThenItIsUnaffected()
     {
-        // §14: restrict_to changes which ROWS appear, not which COLUMNS exist — so it is excluded
+        // §14: restrict_to changes which ROWS appear, not which COLUMNS exist, so it is excluded
         // from schema_fingerprint by construction. Two specs differing only in their restrictions
         // must share it.
         var restricted = FingerprintCalculator.ComputeSchemaFingerprint(Plan(WideRestrictedSpec()));
@@ -215,7 +215,7 @@ public sealed class RestrictionFingerprintTests
     [Fact]
     public void BuildCxtOutputJson_WhenRangeBoundsAreOpen_ThenBothKeysAlwaysAppearWithNulls()
     {
-        // Both keys always present, an omitted bound as null — so {} is {"from":null,"to":null}
+        // Both keys always present, an omitted bound as null, so {} is {"from":null,"to":null}
         // and stays distinguishable from every bounded range.
         var spec = Restricting([new RestrictToRange(null, null), new RestrictToRange(90, null)]);
 
@@ -238,8 +238,8 @@ public sealed class RestrictionFingerprintTests
     [Fact]
     public void BuildCxtOutputJson_WhenExactNumberIsIntegral_ThenTheFormatterDropsTheFractionalPart()
     {
-        // §14: the invariant shortest round-trippable formatter — the same one that keeps cuts
-        // stable — so an integral exact value encodes bare.
+        // §14: the invariant shortest round-trippable formatter (the same one that keeps cuts
+        // stable), so an integral exact value encodes bare.
         //
         // Spelling convergence (30 / 30.0 / 3e1) is deliberately NOT asserted here: those are one
         // and the same C# double, so a carrier-level test of it would be vacuous. Spelling exists
@@ -304,7 +304,7 @@ public sealed class RestrictionFingerprintTests
     public void BuildCxtOutputJson_WhenEntriesAuthoredInAnyOrder_ThenTheEncodingIsTheSame()
     {
         // Restriction order is semantically immaterial (entries OR, restrictions AND), so two
-        // specs that differ only in authored order are the SAME conversion and must hash alike —
+        // specs that differ only in authored order are the SAME conversion and must hash alike:
         // the whole reason `restrictions` is the one §14 array that sorts.
         var authored = Restricting([new RestrictToNumber(30), new RestrictToRange(10, 20), new RestrictToRange(null, 5)]);
         var shuffled = Restricting([new RestrictToRange(null, 5), new RestrictToNumber(30), new RestrictToRange(10, 20)]);
@@ -316,7 +316,7 @@ public sealed class RestrictionFingerprintTests
     public void BuildCxtOutputJson_WhenCanonicallyIdenticalEntriesRepeat_ThenTheyDeduplicate()
     {
         // Canonically-identical entries ARE one entry (D-091). Authored duplicates survive in the
-        // document and the plan — only this projection removes them.
+        // document and the plan; only this projection removes them.
         var once = Cxt(Restricting([new RestrictToNumber(30)]));
         var thrice = Cxt(Restricting([new RestrictToNumber(30), new RestrictToNumber(30.0), new RestrictToNumber(3e1)]));
 
@@ -326,7 +326,7 @@ public sealed class RestrictionFingerprintTests
     [Fact]
     public void BuildCxtOutputJson_WhenRangesOverlapButDiffer_ThenTheyAreNotMerged()
     {
-        // Overlapping ranges are distinct authored intent and stay separate — merging them would
+        // Overlapping ranges are distinct authored intent and stay separate; merging them would
         // lose that intent for no determinism gain (D-091 rejected alternative).
         var json = Cxt(Restricting([new RestrictToRange(10, 30), new RestrictToRange(20, 40)]));
 
@@ -337,7 +337,7 @@ public sealed class RestrictionFingerprintTests
     [Fact]
     public void BuildCxtOutputJson_WhenTwoAttributesShareAnIdenticalRestrictionObject_ThenTheyDeduplicate()
     {
-        // Exact duplicate restriction OBJECTS are removed too — same source, same entries, same
+        // Exact duplicate restriction OBJECTS are removed too: same source, same entries, same
         // policy is the same constraint stated twice.
         var spec = new BedrockSpec(SpecFixtures.WideRowIndex(), [
             SpecFixtures.Excluded("a", 0) with { RestrictTo = [new RestrictToValue("x")] },
@@ -359,8 +359,8 @@ public sealed class RestrictionFingerprintTests
     {
         // G-10, the discriminating vector. "" (a BMP private-use char, ONE UTF-16 code unit
         // 0xE000) versus "\U0001F600" (supplementary, encoded as the surrogate pair 0xD83D
-        // 0xDE00). Under UTF-16 ordinal — what StringComparer.Ordinal compares, and what EP-12
-        // means by "ordinal" — 0xD83D < 0xE000, so the emoji sorts FIRST.
+        // 0xDE00). Under UTF-16 ordinal (what StringComparer.Ordinal compares, and what EP-12
+        // means by "ordinal"), 0xD83D < 0xE000, so the emoji sorts FIRST.
         //
         // Sorting the UTF-8 ENCODING would reverse this: U+E000 encodes EE 80 80 and U+1F600
         // encodes F0 9F 98 80, so 0xEE < 0xF0 would put the private-use char first. This test
@@ -385,7 +385,7 @@ public sealed class RestrictionFingerprintTests
         // G-9, the reason the policy key exists. On a filter-only attribute unknown_value_policy
         // is LIVE, abort-vs-complete-affecting configuration (D-097: an unparseable filtered value
         // is an Error under `fail` and a Warning under `warn`), and a filter-only attribute never
-        // enters `shared.attributes` — so without this key these two specs, which behave
+        // enters `shared.attributes`, so without this key these two specs, which behave
         // differently, would hash identically.
         //
         // BOTH output fingerprints must move: `restrictions` lives in `shared`, which feeds each

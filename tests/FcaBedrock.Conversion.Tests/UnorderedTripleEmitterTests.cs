@@ -62,7 +62,7 @@ public sealed class UnorderedTripleEmitterTests
     public async Task Unordered_WhenSubjectFirstSeenViaUnboundPredicate_ThenItLeadsInFirstAppearance()
     {
         // A subject whose first row binds no attribute still forms its object at that first-appearance
-        // position (§10.1 / §17 rule 4), ahead of a subject that appears later — the interleaved run
+        // position (§10.1 / §17 rule 4), ahead of a subject that appears later; the interleaved run
         // (Alpha recurs after Beta) would be TripleSubjectNotContiguous under subject_grouped.
         var spec = new BedrockSpec(ConversionFixtures.Triple(TripleOrdering.Unordered),
             [ConversionFixtures.PredicateNominal("a", "a", ["x", "y"])]);

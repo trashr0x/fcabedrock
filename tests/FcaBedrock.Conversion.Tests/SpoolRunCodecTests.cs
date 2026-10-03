@@ -48,7 +48,7 @@ public sealed class SpoolRunCodecTests
     [Fact]
     public void TryRead_WhenFieldLengthOverrunsRecord_ThenThrowsCorruptRun()
     {
-        // A well-framed record whose subject string length (1000) overruns the record — a small,
+        // A well-framed record whose subject string length (1000) overruns the record: a small,
         // safely-identifiable corruption, not a huge allocation.
         var record = new byte[24];
         var span = record.AsSpan();
@@ -159,7 +159,7 @@ public sealed class SpoolRunCodecTests
         return result;
     }
 
-    // A readable stream with a non-zero length whose Read faults — a device/read error after open.
+    // A readable stream with a non-zero length whose Read faults: a device/read error after open.
     private sealed class ThrowOnReadStream : Stream
     {
         public override bool CanRead => true;

@@ -25,7 +25,7 @@ internal static class CliFixtures
         """;
 
     /// <summary>
-    /// Bound by header name, so it can only resolve once a schema exists — the difference
+    /// Bound by header name, so it can only resolve once a schema exists: the difference
     /// between <c>validate SPEC</c> and <c>validate SPEC DATA</c>.
     /// </summary>
     public const string NameBoundSpec = """
@@ -201,7 +201,7 @@ internal static class CliFixtures
     /// <summary>
     /// The legitimately empty calibration outcomes: an all-missing column observes nothing, a
     /// declared value under <c>include</c> adds nothing, and a fully grouped column discovers
-    /// no pass-through bin. Empty <b>cuts</b> are deliberately absent — a cut outcome of the
+    /// no pass-through bin. Empty <b>cuts</b> are deliberately absent: a cut outcome of the
     /// wrong length is a calibrator-contract violation, never a success (D-102).
     /// </summary>
     public const string PlanEmptyOutcomesSpec = """
@@ -239,7 +239,7 @@ internal static class CliFixtures
     /// <summary>
     /// Triple sources plus every character class the line-oriented report must survive: a
     /// quote, a backslash, and a tab in an attribute name; a backslash and non-ASCII text in
-    /// domain values; a non-ASCII predicate selector; and CR/LF inside a restriction entry —
+    /// domain values; a non-ASCII predicate selector; and CR/LF inside a restriction entry,
     /// which is where a line break can legally appear, since a rendered <em>name</em>
     /// containing one is rejected at plan (§10.7).
     /// </summary>
@@ -352,7 +352,7 @@ internal static class CliFixtures
     /// <summary>
     /// Count-sensitive calibration over interleaved triple input: <c>equal_frequency</c> needs
     /// each distinct <c>(subject, predicate, value)</c> counted once, which under
-    /// <c>ordering = "unordered"</c> forces the calibrator's grouped second pass — the
+    /// <c>ordering = "unordered"</c> forces the calibrator's grouped second pass: the
     /// <b>calibration</b> side of the machinery <c>--temp-dir</c> configures.
     /// </summary>
     public const string TripleCountSensitiveSpec = """
@@ -550,7 +550,7 @@ internal static class CliFixtures
 
     /// <summary>
     /// The root of a two-file chain: it authors <c>[binding]</c> and the <c>extends</c>
-    /// reference, and no attribute of its own — so flattening is observable, and the base is a
+    /// reference, and no attribute of its own, so flattening is observable, and the base is a
     /// genuine publication input rather than an incidental one.
     /// </summary>
     public const string CalibrateChainRootSpec = """
@@ -578,7 +578,7 @@ internal static class CliFixtures
     /// <summary>
     /// <see cref="CalibrateCutsSpec"/> with three deliberately wrong, well-formed stored values.
     /// Its calibration is a successful <c>min_max</c> and therefore silent, and it can produce no
-    /// resolve diagnostic — so the three stale warnings are the run's <b>only</b> stderr.
+    /// resolve diagnostic, so the three stale warnings are the run's <b>only</b> stderr.
     /// </summary>
     public const string CalibrateStaleHashesSpec = """
         [spec]
@@ -603,7 +603,7 @@ internal static class CliFixtures
     /// own. <b>Before</b> the freeze the matcher supplies <c>discretizer</c>, so it won somewhere
     /// and stays silent; the calibration is a successful <c>min_max</c> and is silent too.
     /// <b>After</b> the freeze an explicit <c>manual_cuts</c> shadows the template's only field,
-    /// so the re-resolve newly emits exactly one <c>MatcherFullyShadowed</c> — the post-freeze
+    /// so the re-resolve newly emits exactly one <c>MatcherFullyShadowed</c>: the post-freeze
     /// diagnostic the composition must retain.
     /// </summary>
     public const string CalibrateShadowedMatcherSpec = """
@@ -742,7 +742,7 @@ internal static class CliFixtures
             """,
 
         // The three cut modes: each calibrates SUCCESSFULLY over GateData, and a successful cut
-        // calibration is silent — so these rows render the host error and nothing else.
+        // calibration is silent, so these rows render the host error and nothing else.
         "equal-frequency" => """
             name = "age"
             source = { kind = "column", index = 1, value_type = "number" }
@@ -777,7 +777,7 @@ internal static class CliFixtures
 
     /// <summary>
     /// A fully-frozen root that authors <c>extends</c> plus <c>[provenance]</c>,
-    /// <c>[defaults]</c>, and <c>[output]</c> — so a write can be shown to preserve the root's
+    /// <c>[defaults]</c>, and <c>[output]</c>, so a write can be shown to preserve the root's
     /// <c>extends</c> and every non-<c>[spec]</c> section, and so the base is a collision input.
     /// </summary>
     public const string FrozenChainRootSpec = """

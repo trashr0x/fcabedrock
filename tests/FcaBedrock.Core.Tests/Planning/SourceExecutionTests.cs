@@ -9,7 +9,7 @@ public sealed class SourceExecutionTests
     [Fact]
     public void SourceExecution_Constructors_AreNeitherPublicNorProtected()
     {
-        // D-082: the hierarchy is mechanically closed — no accessible base constructor outside this
+        // D-082: the hierarchy is mechanically closed: no accessible base constructor outside this
         // assembly, so no out-of-assembly type can derive. private protected reflects as FamANDAssem;
         // assert nothing is public / protected / protected internal.
         var ctors = typeof(SourceExecution).GetConstructors(

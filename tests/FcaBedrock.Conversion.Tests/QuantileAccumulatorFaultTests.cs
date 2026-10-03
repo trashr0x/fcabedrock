@@ -222,7 +222,7 @@ public sealed class QuantileAccumulatorFaultTests
 
         // Seeding the running total to the top of the range makes the next observation's checked
         // add overflow. The accumulator has already spilled and carried, and the new key forces one
-        // more spill first, so this is the population path with storage active — and it must not
+        // more spill first, so this is the population path with storage active, and it must not
         // surface as a storage failure.
         Feed(rig.Accumulator, Capacity * 4);
         rig.Accumulator.SeedTotalForTest(long.MaxValue);

@@ -14,7 +14,7 @@ namespace FcaBedrock.Spec.Tests.Toml;
 /// </summary>
 public sealed class DeclaredDomainWrappingTests
 {
-    // `declared_domain = ` — the key, spaces, and equals sign that every
+    // `declared_domain = `: the key, spaces, and equals sign that every
     // measurement includes. Spelled out here rather than imported so the tests
     // do not inherit the writer's own arithmetic.
     private const string KeyPrefix = "declared_domain = ";
@@ -67,7 +67,7 @@ public sealed class DeclaredDomainWrappingTests
         var quoted = new[] { new string('a', 36) + "\"", new string('b', 37) };
         Assert.Equal(plain[0].Length, quoted[0].Length);
 
-        // The quote escapes to \" — one code unit more than the plain twin.
+        // The quote escapes to \", one code unit more than the plain twin.
         var quotedInline = KeyPrefix + "[\"" + new string('a', 36) + "\\\"\", \"" + quoted[1] + "\"]";
         Assert.Equal(Cutoff + 1, quotedInline.Length);
 

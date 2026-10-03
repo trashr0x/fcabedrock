@@ -35,7 +35,7 @@ public sealed class SelfContainedSmokeTests
 
     /// <summary>
     /// Where the packaging script writes, when the caller needs to know. CI sets it so the archive
-    /// this test verifies is the same file the workflow then uploads — the bytes a user downloads
+    /// this test verifies is the same file the workflow then uploads: the bytes a user downloads
     /// are the bytes something ran. Unset, the test uses its own disposable directory.
     /// </summary>
     private const string OutputRootVariable = "FCABEDROCK_SELFCONTAINED_OUTPUT";
@@ -101,7 +101,7 @@ public sealed class SelfContainedSmokeTests
         var publish = Path.Combine(outputRoot, rid);
         var archive = Path.Combine(outputRoot, $"fcabedrock-{rid}.zip");
 
-        // (1) Publish and archive for the RUNNING runtime identifier — through the SAME script CI
+        // (1) Publish and archive for the RUNNING runtime identifier, through the SAME script CI
         // runs and a developer runs, so what is proved below is the distribution command's output
         // rather than a second, more forgiving publish written here. The script overrides
         // PackAsTool and nothing else: no trimming, no single file, no AOT, and no invariant
@@ -157,7 +157,7 @@ public sealed class SelfContainedSmokeTests
         Assert.True(
             new FileInfo(archive).Length > 10L * 1024 * 1024, "the archive is too small to carry a runtime.");
 
-        // (5b) Extract THAT archive — the user's `unzip` step — and take the apphost from what came
+        // (5b) Extract THAT archive (the user's `unzip` step) and take the apphost from what came
         // out of it. Everything below runs the extracted binary, so the distribution being proved is
         // the one that gets downloaded rather than the folder it was made from.
         var extracted = DistributionArchive.ExtractTo(archive, Path.Combine(root.Path, "extracted"));

@@ -217,7 +217,7 @@ public class CliHostConvertCxtWorking : CliHostConvertBenchmark
 /// The <c>--format both</c> command at the working tier: one transaction publishing two artifacts.
 /// <para>
 /// The publication transaction's job is that both artifacts and the manifest appear together or not
-/// at all, so a case that publishes two of them is where that costs something — a second export over
+/// at all, so a case that publishes two of them is where that costs something: a second export over
 /// a replayed emission, a second staged file, a second inline hash, and a commit that has to order
 /// three files rather than two. Both artifacts are validated against their own independent
 /// expectations, because a transaction that committed one correct file and one wrong one would

@@ -109,7 +109,7 @@ public sealed class FirstAppearanceGroupingTests
     public async Task GroupByFirstAppearanceAsync_WhenNullKeys_ThenPassThroughRankedByFirstAppearance()
     {
         // A null key is ranked like any other by its first appearance (index 1 here) and never
-        // throws — the caller, not the grouper, decides whether a null key is a structural error.
+        // throws: the caller, not the grouper, decides whether a null key is a structural error.
         Row[] input = [new("a", 0), new(null, 1), new("b", 2), new("a", 3), new(null, 4)];
 
         var result = await CollectAsync(input);
@@ -134,7 +134,7 @@ public sealed class FirstAppearanceGroupingTests
     {
         // A one-byte budget spills every row (each over budget → its own run), forcing the full
         // spill/merge path. The codec round-trips keys (incl. null) exactly, so the order is identical
-        // to the in-memory path — spilling never changes results (EP-7).
+        // to the in-memory path: spilling never changes results (EP-7).
         Row[] input =
         [
             new("a", 0), new("b", 1), new("a", 2), new("c", 3), new("b", 4),

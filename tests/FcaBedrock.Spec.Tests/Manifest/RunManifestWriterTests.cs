@@ -668,8 +668,8 @@ public sealed class RunManifestWriterTests
     public void RunCalibration_WhenCalibratedCutsAreEmpty_ThenThrows()
     {
         // §15 records one entry per *successfully* calibrated attribute. An empty calibrated-cut
-        // list is not one — the calibrated-state boundary rejects any count other than bins - 1
-        // (D-102) — so the carrier refuses it outright rather than emitting a `cuts = []` entry
+        // list is not one (the calibrated-state boundary rejects any count other than bins - 1,
+        // D-102), so the carrier refuses it outright rather than emitting a `cuts = []` entry
         // for a run that cannot exist. The explicit empty-array form stays required for the three
         // legitimate zero-discovery non-cut kinds, which the exact-document evidence above pins.
         Assert.Throws<ArgumentException>(() => new RunCalibration(new CalibratedCuts("age", []), "equal_width"));
@@ -782,7 +782,7 @@ public sealed class RunManifestWriterTests
 
     private const int Cutoff = 100;
 
-    // `values = ` — the key, spaces, and equals sign every measurement includes. Spelled out
+    // `values = `: the key, spaces, and equals sign every measurement includes. Spelled out
     // here rather than imported so the tests do not inherit the writer's own arithmetic.
     private const string ValuesKeyPrefix = "values = ";
 

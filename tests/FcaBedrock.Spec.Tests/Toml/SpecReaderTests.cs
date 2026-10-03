@@ -178,7 +178,7 @@ public sealed class SpecReaderTests
     public void Read_WhenExactEntrySpelledVariously_ThenAllParseToOneNumericIdentity(string spelling)
     {
         // §10.4/D-091: integers and floats both go through the one numeric path, so these are
-        // equivalent INPUTS — this is the layer where spelling still exists and can diverge
+        // equivalent INPUTS: this is the layer where spelling still exists and can diverge
         // (after parsing they are the same double, so only the reader can prove it).
         var document = ReadOk(Attribute($"restrict_to = [{{ value = {spelling} }}]"));
 

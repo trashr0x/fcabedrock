@@ -10,12 +10,12 @@ namespace FcaBedrock.Cli.Tests;
 /// <b>Why after, not before.</b> Failing before an operation proves the transaction handles a
 /// refusal; it cannot produce the state a crash leaves, which is the state that decides whether a
 /// retry rolls back or finishes forward. Here the real operation completes and every later one
-/// then fails — so even rollback cannot run, and the directory holds exactly what an abrupt
+/// then fails, so even rollback cannot run, and the directory holds exactly what an abrupt
 /// termination at that instant would leave.
 /// </para>
 /// <para>
 /// <b>What convergence means.</b> After the retry the location holds the complete previous set or
-/// the complete new set — never a mixture, never a marker certifying bytes it does not describe,
+/// the complete new set: never a mixture, never a marker certifying bytes it does not describe,
 /// and never surviving transaction residue.
 /// </para>
 /// </summary>
@@ -57,7 +57,7 @@ public sealed class PublicationCrashMatrixTests
     public async Task Publication_WhenOnlySomeTargetsPreExistAndTheRunCrashesEverywhere_ThenARetryConverges()
     {
         // The pre-existing-final shape generalized: a subset pre-exists, so a crash before staging leaves
-        // "some finals present, no stages" — the state that must never read as a partial commit.
+        // "some finals present, no stages", the state that must never read as a partial commit.
         await AssertConvergesAtEveryTransitionAsync(
             format: "both", manifest: true, preexisting: true, force: true, only: ".cxt");
     }
@@ -70,8 +70,8 @@ public sealed class PublicationCrashMatrixTests
         string format, bool manifest, string failCommitTo)
     {
         // A successful run never rolls back, so a matrix derived from one cannot reach
-        // a single rollback transition. This one drives a real rollback — a forced replacement
-        // whose commit fails part-way — and stops at every step of the undo: deleting a stage,
+        // a single rollback transition. This one drives a real rollback (a forced replacement
+        // whose commit fails part-way) and stops at every step of the undo: deleting a stage,
         // deleting the artifact it had already published, renaming each backup home, and clearing
         // the markers and the record.
         var transitions = await RollbackTransitionsAsync(format, manifest, failCommitTo);
@@ -96,7 +96,7 @@ public sealed class PublicationCrashMatrixTests
                 scenario, old, format, manifest, transitions[index], index, transitions.Count);
 
             // A plain retry, with no commit failure this time. Whatever the interrupted rollback
-            // had done, the location must end as one coherent run — or refuse deterministically
+            // had done, the location must end as one coherent run, or refuse deterministically
             // with the previous set intact, where the interruption fell inside an unacknowledged
             // acquisition.
             var retry = new CliTestHarness();
@@ -199,7 +199,7 @@ public sealed class PublicationCrashMatrixTests
             // unsafe intermediate state by publishing over it.
             AssertRecoverableInterruption(scenario, old, format, manifest, transitions[index], index, transitions.Count);
 
-            // The retry is an ordinary invocation — no residue knowledge, no special flags beyond
+            // The retry is an ordinary invocation: no residue knowledge, no special flags beyond
             // the ones the original run had.
             var retry = new CliTestHarness();
             var exit = await scenario.RunAsync(retry, format, manifest, force);
@@ -212,8 +212,8 @@ public sealed class PublicationCrashMatrixTests
     /// <summary>
     /// What a plain retry is allowed to do, and nothing else.
     /// <para>
-    /// <b>Either it converges</b> — no residue at all, and the location holding the complete
-    /// previous set or the complete new run — <b>or it refuses, deterministically, having
+    /// <b>Either it converges</b> (no residue at all, and the location holding the complete
+    /// previous set or the complete new run) <b>or it refuses, deterministically, having
     /// destroyed nothing.</b>
     /// </para>
     /// <para>
@@ -319,8 +319,8 @@ public sealed class PublicationCrashMatrixTests
             owned.Count == 0 || hasAuthority,
             $"{context}: owned residue exists with no record to account for it: {string.Join(", ", owned)}");
 
-        // Past the commit point the previous run is superseded on purpose — that is what dropping
-        // the backups means — so the survival rule applies only before it. Crossing it is read
+        // Past the commit point the previous run is superseded on purpose (that is what dropping
+        // the backups means), so the survival rule applies only before it. Crossing it is read
         // from the published files rather than from a marker, because marker cleanup runs after
         // the commit point and would make the signal disappear exactly when it is needed.
         if (Scenario.IsCompleteNewRun(state, format, manifest))
@@ -494,8 +494,8 @@ public sealed class PublicationCrashMatrixTests
         /// Every artifact this configuration publishes is present and carries this run's bytes,
         /// and any marker it refused to write is gone.
         /// <para>
-        /// Files the configuration never touches — an old <c>.cxt</c> beside a <c>--format dat</c>
-        /// run — are deliberately not consulted: leaving them is correct, and a manifest that
+        /// Files the configuration never touches (an old <c>.cxt</c> beside a <c>--format dat</c>
+        /// run) are deliberately not consulted: leaving them is correct, and a manifest that
         /// lists only what was written certifies them truthfully.
         /// </para>
         /// </summary>

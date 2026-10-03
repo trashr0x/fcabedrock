@@ -10,7 +10,7 @@ namespace FcaBedrock.Conversion.Tests;
 /// ownership split.
 /// <para>
 /// Expected survivors are worked out <b>by hand</b> from the spec's rules in each test, never by
-/// invoking the production matcher to build an expectation table — a test that asked the code
+/// invoking the production matcher to build an expectation table: a test that asked the code
 /// under test what the answer is would pass for any implementation.
 /// </para>
 /// </summary>
@@ -22,7 +22,7 @@ public sealed class RestrictionEmitterTests
     public async Task Emit_WhenTheRestrictionListIsEmpty_ThenNothingIsFilteredOut()
     {
         // §10.4: "empty or absent ⇒ no filter". This pins the planner's non-empty guard against
-        // the opposite reading — existential matching over ZERO entries is vacuously FALSE, which
+        // the opposite reading: existential matching over ZERO entries is vacuously FALSE, which
         // would silently exclude every object rather than admitting them all. An authored
         // `restrict_to = []` reaches Core as exactly this state (see SpecResolverTests).
         var spec = Wide(Filter("Gene", 0), ConversionFixtures.Nominal("t", 1, "x"));
@@ -37,7 +37,7 @@ public sealed class RestrictionEmitterTests
     [Fact]
     public async Task Emit_WhenStringRestriction_ThenMatchesOrdinallyAndCaseSensitively()
     {
-        // §10.4/EP-12: ordinal, case-sensitive equality — no case folding, no locale, no regex.
+        // §10.4/EP-12: ordinal, case-sensitive equality: no case folding, no locale, no regex.
         // Rows: "Bmp5" (match), "bmp5" (case differs → no), "BMP5" (no), "Wnt1" (other → no).
         var spec = Wide(Filter("Gene", 0, new RestrictToValue("Bmp5")), ConversionFixtures.Nominal("t", 1, "x"));
 
@@ -50,8 +50,8 @@ public sealed class RestrictionEmitterTests
     public async Task Emit_WhenUnquotedFieldHasSurroundingWhitespace_ThenItIsTrimmedBeforeMatching()
     {
         // §5.1, which names restrict_to explicitly: leading/trailing whitespace around an
-        // UNQUOTED data field is trimmed before any interpretation — including restriction
-        // matching — so a value never fails to match purely because of spaces in the source.
+        // UNQUOTED data field is trimmed before any interpretation (including restriction
+        // matching), so a value never fails to match purely because of spaces in the source.
         // Inside a QUOTED field the whitespace is preserved (deliberate spaces survive) and the
         // value genuinely differs, so it does not match.
         //
@@ -103,7 +103,7 @@ public sealed class RestrictionEmitterTests
     public async Task Emit_WhenExactNumericRestriction_ThenMatchesByParsedIdentityWithNoTolerance(string raw, bool survives)
     {
         // §10.4/D-091: the observation is parsed under the binding locale and compared by exact
-        // numeric identity. Spelling collapses; nearness does not — 29.999999999 is NOT 30.
+        // numeric identity. Spelling collapses; nearness does not: 29.999999999 is NOT 30.
         var spec = Wide(FilterNumeric("age", 0, new RestrictToNumber(30)), ConversionFixtures.Nominal("t", 1, "x"));
 
         var objects = await EmitAsync(spec, $"{raw},x");
@@ -118,7 +118,7 @@ public sealed class RestrictionEmitterTests
     public async Task Emit_WhenExactZeroRestriction_ThenEveryZeroSpellingMatches(string raw, bool survives)
     {
         // G-6: the observation is zero-canonicalized after parsing, and the entry was
-        // zero-canonicalized at the seam — so both signed zeros are one identity.
+        // zero-canonicalized at the seam, so both signed zeros are one identity.
         var spec = Wide(FilterNumeric("age", 0, new RestrictToNumber(0)), ConversionFixtures.Nominal("t", 1, "x"));
 
         var objects = await EmitAsync(spec, $"{raw},x");
@@ -173,7 +173,7 @@ public sealed class RestrictionEmitterTests
     [InlineData("?", false)]       // missing matches nothing
     public async Task Emit_WhenEmptyRange_ThenItMatchesAnyUsableNumericValueOnly(string raw, bool survives)
     {
-        // §10.4: {} matches any usable numeric value — equivalently, it excludes only
+        // §10.4: {} matches any usable numeric value; equivalently, it excludes only
         // missing/unparseable values. It is NOT "match everything".
         var spec = Wide(FilterNumeric("age", 0, new RestrictToRange(null, null)), ConversionFixtures.Nominal("t", 1, "x"));
 
@@ -195,7 +195,7 @@ public sealed class RestrictionEmitterTests
     }
 
     [Theory]
-    // Under de-DE ',' is the decimal separator, so "1,5" is 1.5 — but the field would then split
+    // Under de-DE ',' is the decimal separator, so "1,5" is 1.5, but the field would then split
     // on the comma, so the discriminating vector is the DECIMAL POINT: NumberStyles.Float allows
     // no group separators, so "1.5" does not parse under de-DE at all and cannot match.
     [InlineData("invariant", "1.5", true)]
@@ -207,7 +207,7 @@ public sealed class RestrictionEmitterTests
     public async Task Emit_WhenNumericRestrictionUnderALocale_ThenObservationsParseUnderThatLocale(
         string locale, string raw, bool survives)
     {
-        // §5.1/§10.4/EP-11: the observation parses under binding.locale — derived once per emit,
+        // §5.1/§10.4/EP-11: the observation parses under binding.locale, derived once per emit,
         // never ambient. A discriminating vector, so an invariant-hardcoded matcher fails here.
         var binding = ConversionFixtures.Wide(hasHeader: false) with { Locale = locale };
         var spec = new BedrockSpec(binding,
@@ -243,7 +243,7 @@ public sealed class RestrictionEmitterTests
     public async Task Emit_WhenSurvivingObject_ThenItKeepsEveryCrossNotJustMatchingObservations()
     {
         // §10.4/D-097, the headline rule: restrictions filter OBJECTS, not observations. The
-        // surviving object keeps all its crosses — including the ones from attributes that had
+        // surviving object keeps all its crosses, including the ones from attributes that had
         // nothing to do with the filter.
         var spec = Wide(
             Filter("Gene", 0, new RestrictToValue("Bmp5")),
@@ -292,7 +292,7 @@ public sealed class RestrictionEmitterTests
     public async Task Emit_WhenFilteredRowDuplicatesAKeyUnderFail_ThenItDoesNotTripTheDuplicateCheck()
     {
         // G-2: a non-surviving row is not an object, so it cannot duplicate one. The filtered row
-        // repeats key "p1" — under `fail` that would halt if the check ran before the filter.
+        // repeats key "p1"; under `fail` that would halt if the check ran before the filter.
         var spec = WideKeyed(
             DuplicateObjectPolicy.Fail,
             Filter("Gene", 1, new RestrictToValue("Bmp5")),
@@ -309,7 +309,7 @@ public sealed class RestrictionEmitterTests
     {
         // §6.1/G-2: keep names are assigned in EMISSION order, so a filtered row consumes no
         // assigned name and produces no suffix and no diagnostic. Here the FILTERED row is the
-        // first occurrence of "p1" — if it had consumed the name, the survivor would be renamed
+        // first occurrence of "p1"; if it had consumed the name, the survivor would be renamed
         // "p1#2" instead of taking the bare key.
         var spec = WideKeyed(
             DuplicateObjectPolicy.Keep,
@@ -327,7 +327,7 @@ public sealed class RestrictionEmitterTests
     public async Task Emit_WhenSurvivingRowsShareAKeyUnderKeep_ThenTheSuffixUsesTheSourceRecordIndex()
     {
         // The complement: two SURVIVORS sharing a key do disambiguate, and the suffix is the
-        // 0-based SOURCE record index (§6.1) — record 2, not survivor rank 1.
+        // 0-based SOURCE record index (§6.1): record 2, not survivor rank 1.
         var spec = WideKeyed(
             DuplicateObjectPolicy.Keep,
             Filter("Gene", 1, new RestrictToValue("Bmp5")),
@@ -345,8 +345,8 @@ public sealed class RestrictionEmitterTests
     public async Task EmitDedupe_WhenALaterMergedRowSuppliesTheMatch_ThenTheWholeObjectSurvives()
     {
         // §6.1/§10.4/G-2: grouping strictly PRECEDES filtering, and the restriction is evaluated
-        // existentially over the MERGED observations. The match arrives on the group's SECOND row
-        // — an implementation that filtered rows before grouping would drop the first row, and one
+        // existentially over the MERGED observations. The match arrives on the group's SECOND row:
+        // an implementation that filtered rows before grouping would drop the first row, and one
         // that only checked the first row would drop the group entirely.
         var spec = WideKeyed(
             DuplicateObjectPolicy.Dedupe,
@@ -366,7 +366,7 @@ public sealed class RestrictionEmitterTests
     public async Task EmitDedupe_WhenAMergedObjectIsFiltered_ThenItsDuplicateInfoIsStillCountedPreFilter()
     {
         // G-2: the intake hook observes the RAW stream as it is grouped, so the aggregated
-        // DuplicateObjectKey (Info) count is pre-filter — it reports what the INPUT contained,
+        // DuplicateObjectKey (Info) count is pre-filter: it reports what the INPUT contained,
         // which is what a duplicate-key report is for. p2's two rows merge and are then dropped
         // by the filter, and the merge is still counted.
         var spec = WideKeyed(
@@ -391,7 +391,7 @@ public sealed class RestrictionEmitterTests
     public async Task EmitTriple_WhenSubjectGroupCloses_ThenTheRestrictionDecidesEmission(TripleOrdering ordering)
     {
         // §10.4/G-2: the subject's COMPLETE group is the formed object, so emission is decided at
-        // group close — with every observation seen. Both orderings behave identically.
+        // group close, with every observation seen. Both orderings behave identically.
         var spec = Triple(ordering,
             TripleFilter("Gene", "Gene", new RestrictToValue("Bmp5")),
             ConversionFixtures.PredicateNominal("Tissue", "Tissue", ["endoderm"]));
@@ -410,8 +410,8 @@ public sealed class RestrictionEmitterTests
     [InlineData(TripleOrdering.Unordered)]
     public async Task EmitTriple_WhenTheRestrictedPredicateIsAbsent_ThenTheSubjectFails(TripleOrdering ordering)
     {
-        // §10.4: an ABSENT predicate supplies no observation at all — distinct from a present
-        // missing value — so its restriction never matches and the object is excluded. s2 has a
+        // §10.4: an ABSENT predicate supplies no observation at all (distinct from a present
+        // missing value), so its restriction never matches and the object is excluded. s2 has a
         // Tissue but no Gene.
         var spec = Triple(ordering,
             TripleFilter("Gene", "Gene", new RestrictToValue("Bmp5")),
@@ -432,14 +432,14 @@ public sealed class RestrictionEmitterTests
     public async Task EmitTriple_WhenAPredicateIsMultiValued_ThenMatchingIsExistentialAndCrossesUnion(TripleOrdering ordering)
     {
         // §5.3.1/§10.4: a subject may carry SEVERAL values for one predicate. The restriction ORs
-        // across them (one match is enough), and the object keeps the full union of crosses — a
+        // across them (one match is enough), and the object keeps the full union of crosses: a
         // single-valued fixture could not tell existential matching from first-value matching.
         var spec = Triple(ordering,
             TripleFilter("Gene", "Gene", new RestrictToValue("Bmp5")),
             ConversionFixtures.PredicateNominal("Tissue", "Tissue", ["endoderm", "mesoderm"]));
 
-        // s1 has Gene = {Wnt1, Bmp5} — the MATCH is the second value — and two Tissues.
-        // s2 has Gene = {Wnt1, Shh} — neither matches.
+        // s1 has Gene = {Wnt1, Bmp5} (the MATCH is the second value) and two Tissues.
+        // s2 has Gene = {Wnt1, Shh}: neither matches.
         var data = ordering == TripleOrdering.SubjectGrouped
             ? "s1,Gene,Wnt1\ns1,Gene,Bmp5\ns1,Tissue,endoderm\ns1,Tissue,mesoderm\ns2,Gene,Wnt1\ns2,Gene,Shh\ns2,Tissue,endoderm"
             : "s1,Gene,Wnt1\ns2,Gene,Wnt1\ns1,Gene,Bmp5\ns2,Gene,Shh\ns1,Tissue,endoderm\ns2,Tissue,endoderm\ns1,Tissue,mesoderm";
@@ -456,7 +456,7 @@ public sealed class RestrictionEmitterTests
     [InlineData(TripleOrdering.Unordered)]
     public async Task EmitTriple_WhenNumericRestrictions_ThenExactRangeAndEmptyRangeAllMatchAsOnWide(TripleOrdering ordering)
     {
-        // The shared matcher must behave identically on the triple paths — exact identity,
+        // The shared matcher must behave identically on the triple paths: exact identity,
         // half-open ranges, {} as any-usable-numeric, and unparseable/missing as non-matches. The
         // wide vectors above cannot prove that: they never route through ObserveTriple.
         //

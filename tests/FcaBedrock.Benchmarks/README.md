@@ -11,7 +11,7 @@ shaped this way.
 ## Running it
 
 Corpora are **prepared explicitly**, never as a side effect of a run. A `prepare` argument is
-either a tier — which prepares every case of that size — or a single case id:
+either a tier, which prepares every case of that size, or a single case id:
 
 ```
 dotnet run -c Release --project tests/FcaBedrock.Benchmarks -- prepare small
@@ -32,7 +32,7 @@ benchmark measurement performs any network access. Attribution and licence are i
 Because it is acquired rather than generated, Adult is **not** in the default selection and not in
 routine CI; see [Selection](#selection).
 
-Then use the ordinary BenchmarkDotNet command line — there is no wrapper grammar:
+Then use the ordinary BenchmarkDotNet command line; there is no wrapper grammar:
 
 ```
 # every default (Small) case
@@ -79,10 +79,10 @@ Two category axes. A **tier** says which corpus a case reads (`Small`, `Working`
 `External`); a **surface** says which production path it measures (`Source`, `Convert`, `Mini`, …).
 
 * With no category named, the selection is **Small**.
-* `Working` and `Scale` are **opt-in by category and by nothing else** — `--filter '*'` will not
+* `Working` and `Scale` are **opt-in by category and by nothing else**: `--filter '*'` will not
   reach either, because those cases read 730,000, 7.3M, and 73M records and cost minutes to hours.
-* `External` is opt-in the same way, for a different reason. Its cases are quick — about 32,000
-  records — but its corpus is **acquired** from a third-party host rather than generated here, so a
+* `External` is opt-in the same way, for a different reason. Its cases are quick (about 32,000
+  records), but its corpus is **acquired** from a third-party host rather than generated here, so a
   routine run must be able to complete without one being reachable. Not even `--filter '*Adult*'`
   opts in: naming the case says which case you mean, not that this run may depend on a download.
 * A job named with `--job` replaces the suite's own, so a run never executes each case twice.
@@ -113,8 +113,8 @@ evidence-availability failure, not a defect in the build.
 | Code | Meaning |
 | --- | --- |
 | 0 | Every selected case built, executed, and validated. |
-| 1 | A build, execution, or critical validation failure — no publishable result. |
-| 2 | Nothing was selected, so nothing was measured (or an unknown tier was named). Usually an opt-in tier reached only by a name filter — name its category. |
+| 1 | A build, execution, or critical validation failure; no publishable result. |
+| 2 | Nothing was selected, so nothing was measured (or an unknown tier was named). Usually an opt-in tier reached only by a name filter: name its category. |
 
 ## What is measured
 
@@ -161,7 +161,7 @@ disposal. Data generation, output reset, oracle derivation, harness hashing, and
 outside it.
 
 Every completed iteration is validated **after** disposal and **outside** timing. A validation
-failure throws, so a case that produced the wrong bytes has no throughput result — correctness is
+failure throws, so a case that produced the wrong bytes has no throughput result. Correctness is
 never deferred to global cleanup, where one late failure would silently cover every iteration before
 it.
 

@@ -51,7 +51,7 @@ internal sealed class FakeSpoolFileSystem : ISpoolFileSystem
     {
         if (OnDeleteRun?.Invoke(path) is { } ex)
         {
-            throw ex; // leaves the file on disk — live bytes accumulate
+            throw ex; // leaves the file on disk: live bytes accumulate
         }
 
         _inner.DeleteRun(path);
@@ -205,7 +205,7 @@ internal static class StorageFaults
     public static UnauthorizedAccessException AccessDenied() => new("simulated access denied");
 }
 
-// A readable stream with a non-zero length whose Read faults — a device/read error after a run opens.
+// A readable stream with a non-zero length whose Read faults: a device/read error after a run opens.
 internal sealed class ThrowingReadStream : Stream
 {
     public override bool CanRead => true;
@@ -220,7 +220,7 @@ internal sealed class ThrowingReadStream : Stream
     public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
 }
 
-// Delegates reads to an inner stream but faults on Dispose — a close-time device error. The inner (real)
+// Delegates reads to an inner stream but faults on Dispose: a close-time device error. The inner (real)
 // handle is released first, so the run file can still be deleted; only the synthetic close failure is
 // raised, which the merge routes to the CleanupClose cleanup channel (a Warning, never escaping disposal).
 internal sealed class ThrowOnDisposeStream : Stream
@@ -253,7 +253,7 @@ internal sealed class ThrowOnDisposeStream : Stream
 }
 
 // A read stream whose Length faults (a device error observed while the SpoolRunReader ctor reads
-// stream.Length), tracking disposal and optionally faulting on Dispose too — for the OpenRun
+// stream.Length), tracking disposal and optionally faulting on Dispose too, for the OpenRun
 // construction-failure handle-cleanup paths.
 internal sealed class ThrowOnLengthStream : Stream
 {

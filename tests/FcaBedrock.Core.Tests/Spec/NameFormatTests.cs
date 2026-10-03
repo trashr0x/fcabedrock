@@ -21,7 +21,7 @@ public sealed class NameFormatTests
 
     [Fact]
     public void Render_WhenColumnAndName_ThenTheAliasIsIndistinguishable() =>
-        // §10.7 calls {column} "same as name" — so the two must render identically, not
+        // §10.7 calls {column} "same as name", so the two must render identically, not
         // merely similarly. Asserted on one format carrying both.
         Assert.Equal("age/age", Render("{column}/{name}"));
 
@@ -46,7 +46,7 @@ public sealed class NameFormatTests
     {
         // The determinism rule (§10.7/D-117): substitution is a SINGLE left-to-right pass,
         // and §10.1 explicitly permits a name containing brace-like text. A second pass
-        // would re-expand the injected "{value}" into the real value — the exact hole this
+        // would re-expand the injected "{value}" into the real value: the exact hole this
         // guarantee closes. Structural here: rendering walks tokens, never a string.
         Assert.True(NameFormat.TryCreate("{{{column}}}-{value}", out var format, out _));
 
@@ -61,7 +61,7 @@ public sealed class NameFormatTests
     public void TryCreate_WhenLiteralSpansAreEmpty_ThenValid(string format)
     {
         // §10.7's explicitly separated rules: the non-empty requirement belongs to the
-        // format string AS A WHOLE and to display_name — never to an individual literal
+        // format string AS A WHOLE and to display_name, never to an individual literal
         // span. Requiring non-empty literals would reject every one of these.
         Assert.True(NameFormat.TryCreate(format, out var parsed, out var error));
         Assert.Null(error);
@@ -102,8 +102,8 @@ public sealed class NameFormatTests
     [Fact]
     public void Render_WhenCalledTwice_ThenIdenticalBytes()
     {
-        // EP-7: rendering is pure over its inputs — same format + same substitutions ⇒ same
-        // name, so a rendered .cxt name cannot drift between two runs of one plan.
+        // EP-7: rendering is pure over its inputs (same format + same substitutions ⇒ same
+        // name), so a rendered .cxt name cannot drift between two runs of one plan.
         var format = Parse("{display_name}-{scale_op}{value}");
 
         Assert.Equal(

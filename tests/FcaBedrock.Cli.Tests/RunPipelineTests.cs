@@ -523,7 +523,7 @@ public sealed class RunPipelineTests
     //
     // An unreadable source must not change its public exit classification merely because the
     // failure landed after schema acquisition. Each case below lets the schema pass succeed and
-    // then fails the LATER open — calibration for `plan`, the counting enumeration for `stats`.
+    // then fails the LATER open: calibration for `plan`, the counting enumeration for `stats`.
 
     /// <summary>The established source-neutral provider/open/read families (the `Prober` boundary).</summary>
     public static TheoryData<string> ExpectedDataFailures() =>
@@ -557,7 +557,7 @@ public sealed class RunPipelineTests
     [MemberData(nameof(ExpectedDataFailures))]
     public async Task Stats_WhenTheCountingPassCannotBeRead_ThenItIsTheSameCodelessDataFailure(string family)
     {
-        // Fully declared, so open 0 is the schema and open 1 is the counting enumeration —
+        // Fully declared, so open 0 is the schema and open 1 is the counting enumeration:
         // the pass that lives in the handler rather than the shared pipeline.
         using var temp = TempDirectory.Create();
         var spec = temp.Write("spec.toml", CliFixtures.IndexBoundSpec);
@@ -627,7 +627,7 @@ public sealed class RunPipelineTests
     {
         // The counterexamples that keep the classification honest. DecoderFallbackException
         // derives from ArgumentException and ObjectDisposedException from
-        // InvalidOperationException, and both are exit 1 above — so the classifier must be
+        // InvalidOperationException, and both are exit 1 above, so the classifier must be
         // matching those specific types, not their bases. A plain instance of either base is a
         // contract/state defect and must still be the sanitized internal fault.
         foreach (var family in new[] { nameof(ArgumentException), nameof(InvalidOperationException) })
@@ -721,7 +721,7 @@ public sealed class RunPipelineTests
     }
 
     // Serves the spec from memory, the DATA normally until <paramref name="failFrom"/>, and then
-    // throws the named family from the open — so a test can let schema acquisition succeed and
+    // throws the named family from the open, so a test can let schema acquisition succeed and
     // fail only a later pass.
     private static Func<string, Stream> FailOnDataOpen(
         string specPath, string specText, string dataPath, string dataText, int failFrom, string family)
@@ -769,7 +769,7 @@ public sealed class RunPipelineTests
     }
 
     // Serves the spec from memory and the DATA from a per-open script, so successive passes can
-    // differ deterministically — no file mutation, no timing race. The last entry
+    // differ deterministically: no file mutation, no timing race. The last entry
     // repeats once the script runs out.
     private static Func<string, Stream> PassIndexed(
         string specPath, string specText, string dataPath, params string[] dataPasses)

@@ -9,12 +9,12 @@ namespace FcaBedrock.Benchmarks;
 
 /// <summary>
 /// Drains a triple source session: the production reader from an unopened input through schema
-/// acquisition, every cleaned subject–predicate–value row, and the end of the stream.
+/// acquisition, every cleaned subject-predicate-value row, and the end of the stream.
 /// <para>
 /// The triple counterpart of the wide drain, and the two together are what separate a <em>reading</em>
 /// cost from a <em>grouping</em> cost. A triple row carries three fields against a wide record's
 /// sixteen, and a tier's rows are the same count on both families, so the difference between the two
-/// drains is the per-field and per-record overhead of the reader alone — with none of the
+/// drains is the per-field and per-record overhead of the reader alone, with none of the
 /// conversion, calibration, or grouping that the triple path is usually blamed for.
 /// </para>
 /// <para>

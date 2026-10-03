@@ -56,7 +56,7 @@ public sealed class NativeNamingPipelineTests
         Assert.Equal(baseline.Fingerprints.DatOutputFingerprint, formatted.Fingerprints.DatOutputFingerprint);
         Assert.Equal(baseline.Fingerprints.SchemaFingerprint, formatted.Fingerprints.SchemaFingerprint);
 
-        // The names really did change — and through value_labels, since identity consults them.
+        // The names really did change, and through value_labels, since identity consults them.
         Assert.Contains("\nbroad\nnarrow\n", formatted.Cxt, StringComparison.Ordinal);
         Assert.Contains("\ngill-size-broad\ngill-size-narrow\n", baseline.Cxt, StringComparison.Ordinal);
     }
@@ -110,7 +110,7 @@ public sealed class NativeNamingPipelineTests
     public async Task Convert_WhenFormatRendersIdentically_ThenEveryByteAndHashIsUnchanged()
     {
         // An explicit "{column}-{value}" on a nominal attribute reproduces the scale
-        // default exactly — different document, identical output (§10.7).
+        // default exactly: different document, identical output (§10.7).
         var baseline = await ConvertAsync(Spec());
         var explicitDefault = await ConvertAsync(Spec("formal_attribute_format = \"{column}-{value}\"\n"));
 
@@ -188,7 +188,7 @@ public sealed class NativeNamingPipelineTests
     public async Task Convert_WhenARenderedNameIsInvalid_ThenThePlanFailsAndNeitherOutputIsProduced()
     {
         // §10.7: the plan is shared, so an invalid rendered name blocks .dat as well as
-        // .cxt. Asserted at the pipeline level — the writers are never reached, which is
+        // .cxt. Asserted at the pipeline level: the writers are never reached, which is
         // what "exporters never sanitize" (EP-15) means operationally.
         var plan = await PlanOnlyAsync(
             Header

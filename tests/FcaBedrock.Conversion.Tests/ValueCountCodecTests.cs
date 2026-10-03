@@ -5,7 +5,7 @@ namespace FcaBedrock.Conversion.Tests;
 /// <summary>
 /// The <see cref="ValueCount"/> spool codec (D-095/D-103): a fixed 16-byte payload with no
 /// reference fields, reusing the existing framing and integrity semantics rather than a second
-/// storage system. Spilling must be byte-neutral — a value that round-trips inexactly would
+/// storage system. Spilling must be byte-neutral: a value that round-trips inexactly would
 /// move a cut, and with it the output bytes (EP-7).
 /// </summary>
 public sealed class ValueCountCodecTests
@@ -47,7 +47,7 @@ public sealed class ValueCountCodecTests
     public void MeasureResident_WhenAnyRow_ThenZeroBecauseNothingIsReferenced()
     {
         // The value and count live inline in the array slot, which the accumulator's own model
-        // charges — so there is nothing for the codec's retained-object accounting to add.
+        // charges, so there is nothing for the codec's retained-object accounting to add.
         Assert.Equal(0, Codec.MeasureResident(new ValueCount(double.MaxValue, long.MaxValue)));
         Assert.Equal(16, Unsafe.SizeOf<ValueCount>());
     }
@@ -56,7 +56,7 @@ public sealed class ValueCountCodecTests
     public void Comparer_WhenBothZeroSpellings_ThenTheyCompareEqualSoIntakeMustPickOne()
     {
         // The actual .NET guarantee, pinned because it is the reason intake canonicalization
-        // exists — and because it is easy to assume the opposite. double.CompareTo does NOT
+        // exists, and because it is easy to assume the opposite. double.CompareTo does NOT
         // implement IEEE totalOrder for signed zeros: it compares -0.0 and +0.0 EQUAL, and
         // Equals folds them too. So a run holding -0.0 and another holding +0.0 would aggregate
         // correctly, but WHICH spelling survives into the merged row would depend on heap order.

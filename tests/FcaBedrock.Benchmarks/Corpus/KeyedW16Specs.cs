@@ -9,7 +9,7 @@ namespace FcaBedrock.Benchmarks.Corpus;
 /// It is the W16 declared spec with three differences and no others: every column index is shifted
 /// one place right to make room for the key column, <c>[binding.object_key]</c> names that column,
 /// and <c>[defaults] duplicate_object_policy = "dedupe"</c> selects the merging path. The attribute
-/// list — its order, its discretizers, its scales, its domains — is deliberately identical, so the
+/// list (its order, its discretizers, its scales, its domains) is deliberately identical, so the
 /// <b>formal-attribute layout is the same one</b> <see cref="W16Specs"/> freezes, and a deduped
 /// object's expected crosses are just the union of its rows' plain W16 crosses. A test asserts that
 /// identity rather than leaving it to inspection.

@@ -53,7 +53,7 @@ internal static class BedFixtures
         "[End]\n";
 
     // mini-adult_employment_ordinal_{discrete,progressive}.bed (byte-identical): age
-    // is type o (numeric cuts), employment is type n (ordered cuts — [Attribute
+    // is type o (numeric cuts), employment is type n (ordered cuts: [Attribute
     // Categories] is the ordered domain, [Category Values] is the cut at Managerial).
     public const string EmploymentOrdinalBed =
         "[Number of Attributes]\n" +

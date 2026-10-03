@@ -24,7 +24,7 @@ public sealed class SourceReadSettingsTests
 
     [Fact]
     public void Create_WhenMissingTokenEmpty_ThenValid() =>
-        // §5.1: an empty missing_token disables token-based missing detection — valid, not rejected.
+        // §5.1: an empty missing_token disables token-based missing detection: valid, not rejected.
         Assert.Equal("", Wide(missingToken: "").MissingToken);
 
     [Fact]
@@ -134,7 +134,7 @@ public sealed class SourceReadSettingsTests
 
     [Fact]
     public void CreateWide_WhenDefaulted_ThenValueEqualsTheEquivalentCreate() =>
-        // The conveniences are exactly Create with the §5.1 defaults filled in — no second
+        // The conveniences are exactly Create with the §5.1 defaults filled in: no second
         // normalization path, so value equality (and the hash) cannot drift between them.
         Assert.Equal(
             SourceReadSettings.Create(SourceShape.Wide, "utf-8", ',', '"', true, "?", ordering: null),

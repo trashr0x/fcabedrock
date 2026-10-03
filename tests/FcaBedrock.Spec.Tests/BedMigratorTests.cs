@@ -164,7 +164,7 @@ public sealed class BedMigratorTests
     public void Migrate_WhenTripleBinding_ThenSourcesArePredicateNamedByAttribute()
     {
         // D-086: under a triple binding an attribute binds by predicate name, not a
-        // column index — the migrator authors a PredicateSourceSection carrying the
+        // column index; the migrator authors a PredicateSourceSection carrying the
         // v2 attribute name (spec §19.3). Covers the o/c/n/b type families via Bare.
         var document = MigrateOk(BedFixtures.EmploymentOrdinalBed, TripleBinding());
 
@@ -407,7 +407,7 @@ public sealed class BedMigratorTests
     public void Migrate_WhenRestrictLineNonEmpty_ThenStringEntriesCarriedVerbatim()
     {
         // v2 restrict is raw-value equality, OR'd within the attribute; tokens
-        // carry verbatim (no per-token trim) — including on an excluded attribute,
+        // carry verbatim (no per-token trim), including on an excluded attribute,
         // where restrict_to is live filter-only config (§10.1/D-076), not parked.
         var document = MigrateOk(Bed(
             new BedAttr("name", "c", "chara,markos,katia", Restrict: "chara, katia"),
@@ -467,7 +467,7 @@ public sealed class BedMigratorTests
         Assert.Equal(expected, entry.Value);
 
         // Assert.Equal cannot tell -0.0 from 0.0 (they compare equal), so the sign bit is checked
-        // separately — it is the whole point of the "-0" vector, and it must stay accurate for
+        // separately: it is the whole point of the "-0" vector, and it must stay accurate for
         // genuinely negative values too.
         Assert.Equal(double.IsNegative(expected), double.IsNegative(entry.Value));
     }
@@ -501,7 +501,7 @@ public sealed class BedMigratorTests
     public void Migrate_WhenNumericTypeTokenIsNotAFiniteNumber_ThenStaysVerbatimAndTheSeamRejects(string token)
     {
         // §10.4/D-091: an unparseable or non-finite token on type `o` is NOT dropped and NOT
-        // reinterpreted — it stays a verbatim string so the ORDINARY resolve seam owns the
+        // reinterpreted: it stays a verbatim string so the ORDINARY resolve seam owns the
         // mismatch (RestrictToNumericEntryRequired). The migrator mints no diagnostic of its own.
         var migrated = BedMigrator.Migrate(
             ReadBed(Bed(new BedAttr("age", "o", "<,30,50,>", Restrict: token))), WideBinding());
@@ -518,7 +518,7 @@ public sealed class BedMigratorTests
     [Fact]
     public void Migrate_WhenNumericTypeHasBlankRestrictLine_ThenRestrictToStaysUnauthored()
     {
-        // A blank v2 restrict line means "no filter", so restrict_to stays UNAUTHORED (null) —
+        // A blank v2 restrict line means "no filter", so restrict_to stays UNAUTHORED (null),
         // not an empty list, and not a list holding one empty-string entry. The
         // omitted-vs-authored distinction is presence-tracked (D-049) and survives to the writer.
         var attribute = MigrateOk(Bed(new BedAttr("age", "o", "<,30,50,>"))).Attributes[0];
@@ -542,7 +542,7 @@ public sealed class BedMigratorTests
     [Fact]
     public void Migrate_WhenRestrictTokensRepeatOrCarryWhitespace_ThenOrderAndDuplicatesAndSpacingSurvive()
     {
-        // Restriction matches RAW values, so tokens are never trimmed — on a categorical
+        // Restriction matches RAW values, so tokens are never trimmed: on a categorical
         // attribute the leading space IS part of the identity. Order and duplicates are
         // authoring state the document preserves verbatim; only the fingerprint projects a
         // sorted, deduplicated view (§14), and it must not rewrite what the author wrote.
@@ -559,7 +559,7 @@ public sealed class BedMigratorTests
         // §5.1/D-091 (round-6 Medium-3): an unresolvable locale must NOT fall back to invariant
         // (that would parse tokens under a locale the author never asked for), must not throw
         // (migration is transcription and must complete), and must mint no migrate-phase
-        // diagnostic — full resolution owns BindingLocaleInvalid. Every token stays a string.
+        // diagnostic: full resolution owns BindingLocaleInvalid. Every token stays a string.
         var migrated = BedMigrator.Migrate(
             ReadBed(Bed(new BedAttr("age", "o", "<,30,50,>", Restrict: "30,40"))),
             WideBinding(locale: "not-a-locale"));
@@ -581,7 +581,7 @@ public sealed class BedMigratorTests
     [Fact]
     public void Migrate_WhenExcludedNumericAttributeRestricts_ThenTheFilterOnlyEntriesStillMigrateNumerically()
     {
-        // §10.1/D-049/D-076: restrict_to is live, include-independent config — the filter-only
+        // §10.1/D-049/D-076: restrict_to is live, include-independent config: the filter-only
         // pattern. Its type-directed mapping does not depend on the attribute being emitted.
         var attribute = MigrateOk(Bed(new BedAttr("age", "o", "<,30,50,>", Restrict: "30", Convert: false)))
             .Attributes[0];
@@ -605,7 +605,7 @@ public sealed class BedMigratorTests
     [Fact]
     public void Migrate_WhenCustomMissingToken_ThenEffectiveTokenDetectedNotHardcodedQuestionMark()
     {
-        // D-068: detection uses the effective binding.missing_token — "NA" here, so
+        // D-068: detection uses the effective binding.missing_token ("NA" here), so
         // "NA" leaves the domain and a literal "?" stays an ordinary category value.
         var attribute = MigrateOk(
             Bed(new BedAttr("strength", "c", "weak,NA,?")),
@@ -619,7 +619,7 @@ public sealed class BedMigratorTests
     public void Migrate_WhenMissingTokenAuthoredEmpty_ThenDetectionDisabled()
     {
         // §5.1: missing_token = "" disables token-based missing detection, so no
-        // category entry can be "the missing token" — "?" stays a domain value.
+        // category entry can be "the missing token": "?" stays a domain value.
         var attribute = MigrateOk(
             Bed(new BedAttr("strength", "c", "weak,?")),
             WideBinding(missingToken: "")).Attributes[0];
@@ -632,7 +632,7 @@ public sealed class BedMigratorTests
     public void Migrate_WhenMissingTokenEntryHasDisplayLabel_ThenWarningBedMissingTokenLabelDropped()
     {
         // The missing column is canonically "{column}-missing" (§10.5/D-074); a v2
-        // display label on the token has no carrier and drops — audibly.
+        // display label on the token has no carrier and drops, audibly.
         var migrated = BedMigrator.Migrate(
             ReadBed(Bed(new BedAttr("strength", "c", "weak,?,strong", Categories: "weak,unknown,strong"))),
             WideBinding());
@@ -692,7 +692,7 @@ public sealed class BedMigratorTests
     [Fact]
     public void Migrate_WhenIncludedTypeD_ThenErrorBedDateTypeNotSupported()
     {
-        // Date is a parity deferral (D-038): failing is honest — a spec silently
+        // Date is a parity deferral (D-038): failing is honest; a spec silently
         // missing an included attribute would change the analysis (the D-068 hazard).
         var migrated = BedMigrator.Migrate(
             ReadBed(Bed(new BedAttr("dob", "d", "<,01/01/1980,01/01/2000,>"))), WideBinding());
@@ -821,8 +821,8 @@ public sealed class BedMigratorTests
         string type, string values)
     {
         // Dormant config never blocks migration (D-049), but it is never dropped
-        // silently either: the degrade reports, and the no-silent-drop floor —
-        // name, source, include = false — survives.
+        // silently either: the degrade reports, and the no-silent-drop floor
+        // (name, source, include = false) survives.
         var migrated = BedMigrator.Migrate(
             ReadBed(Bed(new BedAttr("parked", type, values, Convert: false, Restrict: "keep,these"))),
             WideBinding());
@@ -841,7 +841,7 @@ public sealed class BedMigratorTests
         Assert.Null(attribute.Scale);
         Assert.Null(attribute.DeclaredDomain);
         Assert.Null(attribute.ValueLabels);
-        // restrict_to is live, include-independent config (§10.1/D-076) — it is not
+        // restrict_to is live, include-independent config (§10.1/D-076): it is not
         // parked emitted-shaping, so it survives the degrade.
         Assert.Equal([new RestrictToValue("keep"), new RestrictToValue("these")], attribute.RestrictTo);
     }

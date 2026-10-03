@@ -7,7 +7,7 @@ namespace FcaBedrock.Cli.Tests;
 /// <summary>
 /// The file-backed <c>extends</c> host: §13 composition over real files, with cycle
 /// detection that alias spellings cannot evade (D-122 part 11). Composition itself stays
-/// <see cref="SpecComposer"/>'s — the host adds path resolution and identity, and no
+/// <see cref="SpecComposer"/>'s: the host adds path resolution and identity, and no
 /// parallel composer, cycle detector, or diagnostic.
 /// </summary>
 public sealed class FileSpecTextSourceTests
@@ -178,7 +178,7 @@ public sealed class FileSpecTextSourceTests
     public void Compose_WhenACycleIsSpelledThroughASelfAliasingDirectory_ThenItIsStillDetected()
     {
         // real/self -> real, and the spec extends "./self/root.toml". Without resolving link
-        // components each load would invent a longer path — self/self/root.toml, and so on —
+        // components each load would invent a longer path (self/self/root.toml, and so on)
         // until the OS refused, reporting not-found or a fault instead of the cycle.
         using var temp = TempDirectory.Create();
         var real = Path.Combine(temp.Path, "real");

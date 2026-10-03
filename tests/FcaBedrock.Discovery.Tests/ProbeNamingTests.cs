@@ -65,7 +65,7 @@ public sealed class ProbeNamingTests
     {
         // Neither column may bind by name: a name matching two columns is SourceBindingInvalid
         // (§10.2), so a by-name draft would fail its own resolve guarantee. The first claimant
-        // keeps the header text verbatim — its NAME is untouched — and only the second is
+        // keeps the header text verbatim (its NAME is untouched) and only the second is
         // adjusted, which is what the warning counts.
         var result = await ProbeFixtures.ProbeCsvAsync("a,a\n1,2\n");
 
@@ -158,8 +158,8 @@ public sealed class ProbeNamingTests
     public async Task Probe_WhenAHeaderAlreadySpellsAFallbackName_ThenTheFallbackEscalatesInstead()
     {
         // The adversarial case D-107 calls out: a real header that happens to spell the name the
-        // fallback would synthesize. Resolving against the COMPLETE set of logical names — the
-        // by-name columns' names are reserved before any fallback is assigned — is what keeps
+        // fallback would synthesize. Resolving against the COMPLETE set of logical names (the
+        // by-name columns' names are reserved before any fallback is assigned) is what keeps
         // the unique usable header's own name intact.
         var result = await ProbeFixtures.ProbeCsvAsync("column_1,\n1,2\n");
         var bindings = Bindings(ProbeFixtures.Draft(result));
@@ -171,7 +171,7 @@ public sealed class ProbeNamingTests
     [Fact]
     public async Task Probe_WhenAHeaderAlreadySpellsADisambiguatedName_ThenTheLadderStepsPastIt()
     {
-        // "a" duplicates, so the second occurrence wants "a#1" — which column 2 already owns as
+        // "a" duplicates, so the second occurrence wants "a#1", which column 2 already owns as
         // a real header. The ladder must step past it rather than mint a duplicate.
         var result = await ProbeFixtures.ProbeCsvAsync("a,a,a#1\n1,2,3\n");
         var bindings = Bindings(ProbeFixtures.Draft(result));
@@ -225,7 +225,7 @@ public sealed class ProbeNamingTests
     public async Task Probe_WhenSchemaHeaderIsShorterThanTheColumnCount_ThenTrailingColumnsAreHeaderless()
     {
         // Only reachable from a hand-built schema (the CSV adapter derives the count FROM the
-        // header), but representable — so it is defined rather than an index-out-of-range.
+        // header), but representable, so it is defined rather than an index-out-of-range.
         var session = ProbeFixtures.Fake(new SourceSchema(3, ["a"]), ["1", "2", "3"]);
 
         var result = await Prober.ProbeAsync(session, ProbeFixtures.WideSettings());

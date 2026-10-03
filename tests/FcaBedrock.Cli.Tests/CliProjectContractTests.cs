@@ -5,8 +5,8 @@ namespace FcaBedrock.Cli.Tests;
 
 /// <summary>
 /// The package boundary and public-surface contract (D-122 part 9 / D-123 part 1). The
-/// build-time facts — tool packaging, the reference set, the absence of a package
-/// dependency and of invariant globalization — have no runtime surface, so they are
+/// build-time facts (tool packaging, the reference set, the absence of a package
+/// dependency and of invariant globalization) have no runtime surface, so they are
 /// asserted against the real project file, which the test project copies to its output.
 /// </summary>
 public sealed class CliProjectContractTests
@@ -70,7 +70,7 @@ public sealed class CliProjectContractTests
     {
         // binding.locale accepts BCP-47 tags and SpecResolver resolves them with
         // predefinedOnly: true, which needs ICU. The property element must be absent
-        // entirely — the prose comment that explains why is not a setting.
+        // entirely: the prose comment that explains why is not a setting.
         Assert.DoesNotContain("<InvariantGlobalization>", ProjectFile(), StringComparison.Ordinal);
     }
 

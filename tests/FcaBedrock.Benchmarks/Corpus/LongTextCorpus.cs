@@ -7,8 +7,8 @@ namespace FcaBedrock.Benchmarks.Corpus;
 /// The <b>long-string</b> pressure family: four columns whose values are long rather than numerous.
 /// <para>
 /// It exists for one pathology the other families cannot express. Probe's boundedness guards count
-/// two different things — retained <em>values</em> and retained <em>text</em> (D-110 guards 2 and 3)
-/// — and the second exists precisely because a few enormous strings can exhaust memory while the
+/// two different things, retained <em>values</em> and retained <em>text</em> (D-110 guards 2 and 3),
+/// and the second exists precisely because a few enormous strings can exhaust memory while the
 /// value count stays trivial. A corpus of short tokens can never reach that guard first, so it
 /// cannot show whether the accounting works; this one can.
 /// </para>
@@ -18,11 +18,11 @@ namespace FcaBedrock.Benchmarks.Corpus;
 /// per-field allocation cost stops hiding behind everything else.
 /// </para>
 /// <list type="bullet">
-/// <item><c>id</c> — the row index; strictly increasing, so object identity is trivially checkable.</item>
-/// <item><c>tag</c> — an eight-value short domain; the cheap control column.</item>
-/// <item><c>blob</c> — one of eight <b>fixed</b> 512-character values: few distinct values, each
+/// <item><c>id</c>: the row index; strictly increasing, so object identity is trivially checkable.</item>
+/// <item><c>tag</c>: an eight-value short domain; the cheap control column.</item>
+/// <item><c>blob</c>: one of eight <b>fixed</b> 512-character values: few distinct values, each
 /// large, which is the guard-3 shape.</item>
-/// <item><c>note</c> — a per-row string of 64 to 1,024 characters, distinct on almost every row:
+/// <item><c>note</c>: a per-row string of 64 to 1,024 characters, distinct on almost every row:
 /// high value count <em>and</em> high text volume at once.</item>
 /// </list>
 /// </summary>

@@ -26,7 +26,7 @@ public sealed class ProbeCommandTests
     // A triple source WITH a header, which is what header-name role addressing requires (§5.3).
     private const string NamedTriple = "s,p,v\no1,colour,red\no2,colour,green\n";
 
-    // o1 recurs after o2 intervened — legal under `unordered`, a contiguity Error under an
+    // o1 recurs after o2 intervened: legal under `unordered`, a contiguity Error under an
     // explicitly selected `subject_grouped` (§5.3.1).
     private const string InterleavedTriple = "o1,colour,red\no2,colour,green\no1,size,1\n";
 
@@ -266,7 +266,7 @@ public sealed class ProbeCommandTests
     public async Task Probe_WhenADraftIsProduced_ThenItStoresNoFingerprintTimestampOrToolVersion()
     {
         // §7.1: a probe draft is never a frozen artifact, there is no clock, and no tool version
-        // is stamped — even though the harness has both a fixed clock and a version string.
+        // is stamped, even though the harness has both a fixed clock and a version string.
         using var temp = TempDirectory.Create();
         var data = temp.Write("data.csv", CliFixtures.WideData);
         var harness = new CliTestHarness();
@@ -285,7 +285,7 @@ public sealed class ProbeCommandTests
     public async Task Probe_WhenTheDataFileIsMissing_ThenProbeSourceReadFailedIsReportedAndExitIsOne()
     {
         // The CLI opens nothing itself, so the first open happens inside the library's schema
-        // acquisition and the failure is Discovery's own diagnostic — never a second
+        // acquisition and the failure is Discovery's own diagnostic: never a second
         // classification, and never a code-less host line beside it (D-067).
         using var temp = TempDirectory.Create();
         var harness = new CliTestHarness();

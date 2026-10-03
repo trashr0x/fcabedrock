@@ -320,7 +320,7 @@ dotnet_diagnostic.IDE0060.severity = warning
 # IDE0062: Make local function static
 dotnet_diagnostic.IDE0062.severity = warning
 
-# IDE0073: File header — not required; the root LICENSE covers the whole MIT repo.
+# IDE0073: File header. Not required; the root LICENSE covers the whole MIT repo.
 dotnet_diagnostic.IDE0073.severity = none
 
 # IDE0161: Convert to file-scoped namespace

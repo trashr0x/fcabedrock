@@ -15,15 +15,15 @@ namespace FcaBedrock.Benchmarks;
 /// <para>
 /// <b>The measured interval</b> starts with the corpus prepared and nothing open. It covers opening
 /// the session, reading the schema, observing every cleaned record once, and building the draft
-/// document. Serializing the draft to canonical TOML is deliberately outside it — that is the
-/// caller's job (D-109), not probe's — as is checking the draft afterwards.
+/// document. Serializing the draft to canonical TOML is deliberately outside it (that is the
+/// caller's job, D-109, not probe's), as is checking the draft afterwards.
 /// </para>
 /// <para>
 /// The three <b>outcomes</b> below are measured as separate cases because they are separate
 /// results, not degrees of the same one. A successful probe retains every distinct value and
 /// authors complete domains. A <b>truncated</b> probe hits the per-attribute retention limit and
 /// authors a prefix plus <c>unknown_value_policy = "include"</c>, so converting its draft still
-/// recovers the full schema — it is a usable draft that says so. A <b>guard breach</b> exceeds an
+/// recovers the full schema: it is a usable draft that says so. A <b>guard breach</b> exceeds an
 /// aggregate limit and yields <em>no draft at all</em>, because a partial draft that read as
 /// complete would be worse than none. Timing them together would average three different things.
 /// </para>
@@ -177,13 +177,13 @@ public class ProbeWideWorking : ProbeBenchmark
 /// A triple probe at 730,000 rows: the high predicate-cardinality case, and it truncates.
 /// <para>
 /// The arithmetic is worth stating, because it is not the obvious one. The tier has 73,000 subjects,
-/// so <c>Stage</c> takes at most 73,000 distinct <em>numeric</em> values — comfortably inside the
+/// so <c>Stage</c> takes at most 73,000 distinct <em>numeric</em> values, comfortably inside the
 /// 100,000 default. But probe retains distinct <b>raw</b> values, and every subject writes its stage
 /// twice, once as <c>N</c> and once as <c>N.0</c>. That is up to 146,000 distinct retained strings
 /// for one predicate, and the retention limit is reached.
 /// </para>
 /// <para>
-/// It is exactly the distinction §5.3.1 turns on — one numeric value, two raw observations — arriving
+/// It is exactly the distinction §5.3.1 turns on (one numeric value, two raw observations), arriving
 /// here as a probe outcome rather than a calibration one, and it is the honest working-tier result.
 /// Opt-in.
 /// </para>
@@ -224,7 +224,7 @@ public class ProbeWideScale7M : ProbeBenchmark
 
 /// <summary>
 /// A wide probe at 73M records. <c>n_seq</c> and <c>n_wide</c> both far exceed the default
-/// per-attribute retention limit, so the draft truncates — and that is the honest target-scale
+/// per-attribute retention limit, so the draft truncates, and that is the honest target-scale
 /// outcome, not a configuration to tune around.
 /// <para>
 /// Truncation is what makes this case measurable at all. Retention is bounded at 100,000 values per
@@ -253,7 +253,7 @@ public class ProbeWideScale73M : ProbeBenchmark
 /// million distinct raw values across its two spellings and truncates, while <c>Tissue</c>,
 /// <c>Signal</c>, and the unmatched predicate stay tiny.
 /// <para>
-/// The mixed shape is the interesting one — one enormous predicate beside three bounded ones — and it
+/// The mixed shape is the interesting one (one enormous predicate beside three bounded ones), and it
 /// is what a real triple store looks like. Opt-in.
 /// </para>
 /// </summary>

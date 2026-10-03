@@ -7,7 +7,7 @@ namespace FcaBedrock.Benchmarks.Corpus;
 internal enum TripleLayout
 {
     /// <summary>
-    /// Every subject's ten rows are contiguous — the <c>subject_grouped</c> single-pass fast path.
+    /// Every subject's ten rows are contiguous: the <c>subject_grouped</c> single-pass fast path.
     /// </summary>
     Grouped,
 
@@ -51,7 +51,7 @@ internal static class T10Corpus
 
     /// <summary>
     /// Subjects per interleaving block. Large enough that a subject genuinely recurs after many
-    /// intervening ones — so the grouping backend is exercised, not bypassed — and small enough
+    /// intervening ones (so the grouping backend is exercised, not bypassed), and small enough
     /// that first-appearance order stays trivially checkable.
     /// </summary>
     public const int InterleaveBlock = 64;

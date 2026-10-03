@@ -102,7 +102,7 @@ public sealed class EqualFrequencyConversionTests
     [InlineData(TiePolicy.Right, 2.0)]
     public async Task Calibrate_WhenBoundaryLandsInsideATiedRun_ThenTiePolicyDecidesTheSide(TiePolicy tie, double expected)
     {
-        // §11.5's second example: [1,2,2,2,3] with bins = 2 — "left" puts the whole 2-group in the
+        // §11.5's second example: [1,2,2,2,3] with bins = 2. "left" puts the whole 2-group in the
         // lower bin (cut 3), "right" in the upper (cut 2). Neither ever splits the group.
         var calibrated = await CalibrateOkAsync(Wide(Pending("score", 0, 2, new NominalScale(), tie)), "1\n2\n2\n2\n3");
 
@@ -123,7 +123,7 @@ public sealed class EqualFrequencyConversionTests
     [Fact]
     public async Task Calibrate_WhenEveryRowIsAnIndependentObservation_ThenRepeatsShiftTheCuts()
     {
-        // §7: wide rows are independent observations — no dedup by object key, no
+        // §7: wide rows are independent observations: no dedup by object key, no
         // duplicate_object_policy. Repeating a value must therefore move the counts, and with them
         // the cuts: [1,2,3,4] alone splits at 3, but weighting 1 heavily drags the boundary down.
         var plain = await CalibrateOkAsync(Wide(Pending("score", 0, 2, new NominalScale())), "1\n2\n3\n4");
@@ -137,7 +137,7 @@ public sealed class EqualFrequencyConversionTests
     public async Task Calibrate_WhenDuplicateObjectKeysExist_ThenTheCountsAreUnaffected()
     {
         // The corollary: the wide population is row-scoped, so an object-key column plays no part
-        // in it — the same rows under a keyed binding calibrate identically (D-099).
+        // in it; the same rows under a keyed binding calibrate identically (D-099).
         var keyed = new BedrockSpec(
             ConversionFixtures.WideWithKey(0, DuplicateObjectPolicy.Keep),
             [Pending("score", 1, 2, new NominalScale())]);
@@ -150,7 +150,7 @@ public sealed class EqualFrequencyConversionTests
     [Fact]
     public async Task Calibrate_WhenLocaleIsAuthored_ThenValuesParseUnderIt()
     {
-        // EP-11: never the ambient locale — the resolved binding.locale governs. The delimiter is
+        // EP-11: never the ambient locale; the resolved binding.locale governs. The delimiter is
         // a semicolon precisely because de-DE's decimal separator is a comma: a comma-delimited
         // source could not carry these values at all.
         var spec = new BedrockSpec(
@@ -170,7 +170,7 @@ public sealed class EqualFrequencyConversionTests
     {
         // §11.5's distinct-value guard: count-placed bins genuinely cannot exist without enough
         // distinct values to separate them, so calibration stops rather than silently producing
-        // fewer bins. (equal_width has no such guard — its bins are placed by span, D-089.)
+        // fewer bins. (equal_width has no such guard: its bins are placed by span, D-089.)
         var result = await CalibrateAsync(Wide(Pending("score", 0, 3, new NominalScale())), "1\n1\n2\n2");
 
         Assert.False(result.IsOk); // in-path Error: no calibrated result (D-095)
@@ -201,8 +201,8 @@ public sealed class EqualFrequencyConversionTests
     public async Task Calibrate_WhenUnparseableUnderANonFatalPolicy_ThenExcludedAndAggregated(
         UnknownValuePolicy policy, DiagnosticSeverity severity)
     {
-        // §11.5/D-100: present-but-unparseable values are excluded from the population — they never
-        // influence a cut — and reported as this phase's own aggregated SourceValueUnparseable.
+        // §11.5/D-100: present-but-unparseable values are excluded from the population (they never
+        // influence a cut) and reported as this phase's own aggregated SourceValueUnparseable.
         var result = await CalibrateAsync(Wide(Pending("score", 0, 2, new NominalScale(), policy: policy)), "1\nwibble\n2\n3");
 
         Assert.True(result.TryGetValue(out var calibrated));
@@ -238,7 +238,7 @@ public sealed class EqualFrequencyConversionTests
     [Fact]
     public async Task Calibrate_WhenNonFiniteValues_ThenExcludedFromThePopulation()
     {
-        // §7: a numeric value contributes only when it parses to a FINITE number — NaN and ±∞ are
+        // §7: a numeric value contributes only when it parses to a FINITE number. NaN and ±∞ are
         // present-but-invalid, not missing, and never influence a cut. The population is therefore
         // {1,2,3} and the cut is 3, exactly as in the unparseable case above.
         var calibrated = await CalibrateOkAsync(Wide(Pending("score", 0, 2, new NominalScale())), "1\nNaN\nInfinity\n2\n3");
@@ -250,7 +250,7 @@ public sealed class EqualFrequencyConversionTests
     public async Task Calibrate_WhenNoObservedDomainIsNeeded_ThenNoDomainWarningAndNoDomainConsumed()
     {
         // §10.3: cut discretizers ignore declared_domain, so the observed-domain machinery must
-        // not fire — only the cut outcome is produced.
+        // not fire; only the cut outcome is produced.
         var result = await CalibrateAsync(Wide(Pending("score", 0, 2, new NominalScale())), "1\n2\n3");
 
         Assert.True(result.TryGetValue(out var calibrated));
@@ -341,13 +341,13 @@ public sealed class EqualFrequencyConversionTests
     }
 
     // The discriminating vector for unordered count-sensitive ownership: s0 observes 1 three
-    // times, s1 observes 2, s2 observes 3. Deduped the population is {1,2,3} — N = 3, C = [1,2,3]
-    // — and boundary 1 targets 3, strictly inside group 2 (2 < 3 < 4), so "left" gives d = 2 and
+    // times, s1 observes 2, s2 observes 3. Deduped the population is {1,2,3} (N = 3, C = [1,2,3]),
+    // and boundary 1 targets 3, strictly inside group 2 (2 < 3 < 4), so "left" gives d = 2 and
     // the cut is v_3 = 3.
     //
     // If the raw pass ALSO fed the count-sensitive observer, the counts would be raw multiplicity
     // plus the deduped contribution: 1→4, 2→2, 3→2, N = 8, C = [4,6,8]. Boundary 1 would then
-    // target 8 = C_1·bins exactly — an edge → d = 1 → cut v_2 = 2. The two paths disagree, which
+    // target 8 = C_1·bins exactly: an edge → d = 1 → cut v_2 = 2. The two paths disagree, which
     // is what makes this vector a proof rather than a coincidence.
     private const string TripleRepeatsInterleaved =
         "s0,score,1\ns1,score,2\ns2,score,3\ns0,score,1\ns0,score,1";
@@ -404,7 +404,7 @@ public sealed class EqualFrequencyConversionTests
     [Fact]
     public async Task CalibrateTriple_WhenBothOrderingsCarryTheSameObservations_ThenIdenticalCuts()
     {
-        // §17: the triple encoding is just another shape — a subject's rows being scattered cannot
+        // §17: the triple encoding is just another shape; a subject's rows being scattered cannot
         // change the population, only how it must be gathered.
         var grouped = await CalibrateTripleAsync(
             Triple(TripleOrdering.SubjectGrouped, PendingPredicate("score", "score", 2, new NominalScale())), TripleGrouped);
@@ -420,7 +420,7 @@ public sealed class EqualFrequencyConversionTests
     public async Task CalibrateTriple_WhenTheSameValueOccursUnderDifferentSubjects_ThenEachSubjectContributesOnce()
     {
         // The dedup is subject-LOCAL, never a dataset-wide seen set (D-095): two subjects both
-        // observing 1 contribute two counts, not one — collapsing those would be wrong AND
+        // observing 1 contribute two counts, not one; collapsing those would be wrong AND
         // unbounded.
         var result = await CalibrateTripleAsync(
             Triple(TripleOrdering.SubjectGrouped, PendingPredicate("score", "score", 2, new NominalScale())),
@@ -437,7 +437,7 @@ public sealed class EqualFrequencyConversionTests
     public async Task CalibrateTriple_WhenSpellingsDifferForOneSubject_ThenBothCountBeforeNumericAggregation()
     {
         // §5.3.1's key is the RAW cleaned observation, not the parsed number: "2" and "2.0" are two
-        // distinct observations, so both survive the dedup — and only then do they aggregate onto
+        // distinct observations, so both survive the dedup, and only then do they aggregate onto
         // the same numeric value. Population {1, 2, 2, 3}: N = 4, C = [1,3,4]; k = 1 targets 4,
         // strictly inside group 2 (2 < 4 < 6) → "left" → d = 2 → cut 3.
         var result = await CalibrateTripleAsync(
@@ -520,7 +520,7 @@ public sealed class EqualFrequencyConversionTests
     [Fact]
     public async Task CalibrateTriple_WhenUnorderedAndOnlyCountInsensitiveNeedsExist_ThenNoGroupedPass()
     {
-        // An observed domain is set-idempotent, so it does not need a subject's rows together —
+        // An observed domain is set-idempotent, so it does not need a subject's rows together;
         // running the grouped pass anyway would cost a whole read for nothing.
         var spec = Triple(TripleOrdering.Unordered,
             ConversionFixtures.PredicateNominal("g", "g", null));
@@ -583,7 +583,7 @@ public sealed class EqualFrequencyConversionTests
         var (plan, objects, _) = await CalibratePlanEmitAsync(
             Wide(Pending("score", 0, 3, new DichotomicScale("<3"), TiePolicy.Left)), TiedCsv);
 
-        // §12.2: one column, named for the attribute alone — the chosen bin is the column's
+        // §12.2: one column, named for the attribute alone; the chosen bin is the column's
         // meaning, not part of its name.
         Assert.Equal(["score"], plan.FormalAttributes.Select(f => f.RenderedName));
         Assert.Equal([0], objects[0].CrossedFormalAttributeIds); // 1 → in the <3 bin
@@ -596,7 +596,7 @@ public sealed class EqualFrequencyConversionTests
     public async Task Plan_WhenOrdinalOverCalibratedCuts_ThenCutGeometryOrdersTheBins(
         OrdinalDirection direction, string[] expected)
     {
-        // §12.3: the cut geometry is the ordering authority — equal_frequency needs no ordinal
+        // §12.3: the cut geometry is the ordering authority: equal_frequency needs no ordinal
         // implementation of its own, and the open end renders the tautological `all` (D-047).
         var (plan, _, _) = await CalibratePlanEmitAsync(
             Wide(Pending("score", 0, 3, new OrdinalScale(direction))), TiedCsv);
@@ -626,7 +626,7 @@ public sealed class EqualFrequencyConversionTests
     [Fact]
     public async Task Emit_WhenAValueIsUnparseable_ThenTheObjectSurvivesWithNoCrossAndADiagnostic()
     {
-        // §11.5/D-050: present-but-invalid, not missing — the object is kept, no cross is emitted,
+        // §11.5/D-050: present-but-invalid, not missing: the object is kept, no cross is emitted,
         // and the emit phase reports its OWN aggregate (the calibrate phase reported its own).
         var (_, objects, diagnostics) = await CalibratePlanEmitAsync(
             Wide(Pending("score", 0, 2, new NominalScale())), "1\n2\n3\nwibble");
@@ -685,7 +685,7 @@ public sealed class EqualFrequencyConversionTests
 
         // D-088: converting an equal_frequency spec on the fly and converting its calibrate-frozen
         // form (manual_cuts over the resolved cuts, ends = "open") MUST produce byte-identical
-        // .cxt and .dat on the calibration dataset — freezing changes WHEN the cuts resolve, never
+        // .cxt and .dat on the calibration dataset: freezing changes WHEN the cuts resolve, never
         // WHICH. Both label styles, because v2-compat rendering is a separate path.
         foreach (var (options, style) in new[]
                  {
@@ -755,7 +755,7 @@ public sealed class EqualFrequencyConversionTests
         var resident = await CalibrateOkAsync(spec, csv);
         var spilled = await CalibrateOkAsync(spec, csv, TinyBudget());
 
-        // §11.5: the spill and non-spill paths MUST produce identical cuts — an approximation
+        // §11.5: the spill and non-spill paths MUST produce identical cuts; an approximation
         // under memory pressure would break both determinism and the D-088 equivalence.
         Assert.Equal(CutsOf(resident, "score"), CutsOf(spilled, "score"));
     }
@@ -779,7 +779,7 @@ public sealed class EqualFrequencyConversionTests
     [Fact]
     public async Task Calibrate_WhenNothingSpills_ThenNoSpoolStorageIsTouched()
     {
-        // The zero-spill path stays entirely in memory — even under an unusable temp root, which is
+        // The zero-spill path stays entirely in memory, even under an unusable temp root, which is
         // what proves no workspace was created (the lazy-workspace invariant).
         var fileSystem = new FakeSpoolFileSystem { OnCreateWorkspace = () => StorageFaults.AccessDenied() };
         var options = new GroupingOptions(fileSystem: fileSystem);
@@ -799,7 +799,7 @@ public sealed class EqualFrequencyConversionTests
 
         var result = await CalibrateAsync(Wide(Pending("score", 0, 3, new NominalScale())), TiedCsv, options);
 
-        // In-path: Error, no calibrated result — and it crosses the seam as a diagnostic, never as
+        // In-path: Error, no calibrated result, and it crosses the seam as a diagnostic, never as
         // a GroupingStorageException (EP-14).
         Assert.False(result.IsOk);
         var diagnostic = Assert.Single(result.Diagnostics, d => d.Code == DiagnosticCode.GroupingStorageFailed);
@@ -830,7 +830,7 @@ public sealed class EqualFrequencyConversionTests
         var options = new GroupingOptions(maxBufferedBytes: 308, fileSystem: fileSystem);
 
         // 8 distinct values at capacity 3 → three spills, then the post-intake merge's output is
-        // the fourth run created — the first one this filesystem refuses.
+        // the fourth run created: the first one this filesystem refuses.
         var result = await CalibrateAsync(Wide(Pending("score", 0, 2, new NominalScale())), "1\n2\n3\n4\n5\n6\n7\n8", options);
 
         Assert.False(result.IsOk); // in-path: no calibrated result
@@ -846,7 +846,7 @@ public sealed class EqualFrequencyConversionTests
         // fine and then the device faults mid-read. It must still cross the seam as a diagnostic,
         // never as a GroupingStorageException.
         //
-        // This fault is unconditional, so it fires at the merger's first input open — the replay
+        // This fault is unconditional, so it fires at the merger's first input open; the replay
         // reader is never reached. The replay channel is proved separately, at the accumulator,
         // where the fault can be armed AFTER consolidation completes (QuantileAccumulatorTests).
         var fileSystem = new FakeSpoolFileSystem
@@ -904,7 +904,7 @@ public sealed class EqualFrequencyConversionTests
         // failure.
         //
         // The fan-in is left at the default deliberately: at a small fan-in "z" would consolidate
-        // online during intake and fail there — before any attribute finalizes — which would test
+        // online during intake and fail there (before any attribute finalizes), which would test
         // a different path entirely. Only a post-intake merge failure exercises this ordering.
         var fileSystem = new FakeSpoolFileSystem { OnOpenRun = _ => StorageFaults.AccessDenied() };
         var options = new GroupingOptions(maxBufferedBytes: 308, fileSystem: fileSystem);
@@ -923,7 +923,7 @@ public sealed class EqualFrequencyConversionTests
     public async Task Calibrate_WhenOnlyTheWorkspaceTeardownFails_ThenTheWarningStillReachesTheResult()
     {
         // The ledger is snapshotted AFTER cleanup, so a failure confined to final workspace
-        // deletion — recorded by teardown itself — is still reported rather than being written
+        // deletion (recorded by teardown itself) is still reported rather than being written
         // after the returned value was already built (D-095's cleanup-Warning channel).
         var fileSystem = new FakeSpoolFileSystem { OnDeleteWorkspace = _ => StorageFaults.AccessDenied() };
         var options = new GroupingOptions(maxBufferedBytes: 308, maxMergeFanIn: 2, fileSystem: fileSystem);
@@ -987,7 +987,7 @@ public sealed class EqualFrequencyConversionTests
     }
 
     // One framed spool record: a length prefix, then rank (int32) + seq (int64) + the codec's
-    // fixed 16-byte payload. Hand-built so the count is unreachable by any real observation — and
+    // fixed 16-byte payload. Hand-built so the count is unreachable by any real observation, and
     // framed correctly, so the merger genuinely decodes it rather than rejecting it as corrupt.
     private static byte[] ForgedRun(double value, long count)
     {
@@ -1019,7 +1019,7 @@ public sealed class EqualFrequencyConversionTests
 
         Assert.True(result.TryGetValue(out _));
 
-        // Tier 2 is bounded by COUNT and SHAPE — never a pinned byte constant, because a
+        // Tier 2 is bounded by COUNT and SHAPE, never a pinned byte constant, because a
         // FileStream's internal graph is runtime-owned and any such claim would be unvalidatable.
         Assert.True(observer.PeakOpenReaders <= 2, $"readers peaked at {observer.PeakOpenReaders}");
 

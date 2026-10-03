@@ -5,7 +5,7 @@ namespace FcaBedrock.Benchmarks.Corpus;
 /// <summary>
 /// The pinned arithmetic every synthetic corpus is generated from.
 /// <para>
-/// A benchmark corpus must regenerate byte-for-byte on any machine, runtime, and OS, forever —
+/// A benchmark corpus must regenerate byte-for-byte on any machine, runtime, and OS, forever;
 /// otherwise a later comparison silently measures different work. So the value stream is defined by
 /// <b>explicit integer arithmetic</b> rather than by any runtime pseudo-random source:
 /// <see cref="System.Random"/> is documented as free to change its algorithm between .NET versions

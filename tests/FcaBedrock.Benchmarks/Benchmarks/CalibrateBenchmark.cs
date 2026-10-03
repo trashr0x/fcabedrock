@@ -247,7 +247,7 @@ public class CalibrateTripleUnorderedScale7M : CalibrateBenchmark
 /// <para>
 /// The observed-domain case starts empty; this one starts from a declared prefix and appends. The
 /// retained order is therefore the declared values first and the discovered ones in
-/// first-observation order after them, and that ordering is what the expectation asserts — a
+/// first-observation order after them, and that ordering is what the expectation asserts: a
 /// recovery that appended in the wrong order would still produce the right SET.
 /// </para>
 /// </summary>
@@ -268,7 +268,7 @@ public class CalibrateIncludeWorking : CalibrateBenchmark
 /// distinct raw value becomes its own bin.
 /// <para>
 /// The kind whose column set always depends on the input, and which therefore always reports
-/// <c>ValueGroupsPassthroughDataDependent</c> — a Warning that states a fact about the mode rather
+/// <c>ValueGroupsPassthroughDataDependent</c>: a Warning that states a fact about the mode rather
 /// than a problem with the data, which is why the validation accepts it and asserts the bins instead.
 /// </para>
 /// </summary>

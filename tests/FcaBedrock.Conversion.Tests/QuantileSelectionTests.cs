@@ -6,8 +6,8 @@ namespace FcaBedrock.Conversion.Tests;
 /// The pinned §11.5 numeric rules (D-088/D-103, the G-5 formulas): exact-rational rank
 /// selection, the feasibility window, and sign-aware cut placement.
 /// <para>
-/// Every expected value here is <b>derived by hand in the test</b> — from the literal
-/// population, the stated integer arithmetic, or a bit pattern — never by calling the
+/// Every expected value here is <b>derived by hand in the test</b> (from the literal
+/// population, the stated integer arithmetic, or a bit pattern), never by calling the
 /// production rank/window/placement helper the test is checking. A test that re-ran the
 /// formula would agree with any formula, including a wrong one.
 /// </para>
@@ -33,7 +33,7 @@ public sealed class QuantileSelectionTests
         // Equal, so the boundary already separates whole groups: no tie exists to resolve.
         Assert.True(QuantileSelection.TargetIsEdge(cumulative: 4, total: 6, bins: 3, k: 2));
 
-        // Boundary k = 1 targets 6, which is strictly inside group 2 (3 < 6 < 12) — not an edge.
+        // Boundary k = 1 targets 6, which is strictly inside group 2 (3 < 6 < 12), not an edge.
         Assert.False(QuantileSelection.TargetIsEdge(cumulative: 4, total: 6, bins: 3, k: 1));
     }
 
@@ -63,7 +63,7 @@ public sealed class QuantileSelectionTests
         var doubleRankTarget = (double)total * 2 / 3;
 
         // Above 2^52 doubles are spaced 1 apart, so the exact target 6004799503160659.333…
-        // rounds DOWN to exactly the cumulative — and the naive test says "reached".
+        // rounds DOWN to exactly the cumulative, and the naive test says "reached".
         Assert.Equal(6_004_799_503_160_659d, doubleRankTarget);
         Assert.True(cumulative >= doubleRankTarget);
 
@@ -117,7 +117,7 @@ public sealed class QuantileSelectionTests
     {
         // The reservation term is what makes the distinct-gap obligation total: with m = 4 and
         // bins = 4, three boundaries must fit in gaps 1..3, so boundary 1 cannot take gap 3 even
-        // if it prefers it — hi = 4-1-(4-1-1) = 1. A greedy allocator without the reservation
+        // if it prefers it: hi = 4-1-(4-1-1) = 1. A greedy allocator without the reservation
         // would strand the later boundaries.
         Assert.Equal(1, QuantileSelection.AllocateGap(desired: 3, previousGap: 0, distinctCount: 4, bins: 4, k: 1));
         Assert.Equal(2, QuantileSelection.AllocateGap(desired: 3, previousGap: 1, distinctCount: 4, bins: 4, k: 2));
@@ -129,7 +129,7 @@ public sealed class QuantileSelectionTests
     {
         // The window's two guarantees, over every (m, bins) shape with m >= bins and every
         // desired preference in 0..m: gaps strictly ascend, and each is a real gap (1..m-1).
-        // Ascent is therefore structural — the post-hoc validity check is defense in depth.
+        // Ascent is therefore structural; the post-hoc validity check is defense in depth.
         for (var m = 2; m <= 8; m++)
         {
             for (var bins = 2; bins <= m; bins++)
@@ -177,7 +177,7 @@ public sealed class QuantileSelectionTests
     {
         // Opposite signs at the extremes: now the SUBTRACTION overflows (b - a = 3.4e308 = +∞)
         // and the average form is the safe one. This is why the two branches cannot be folded
-        // into one expression — each is the safe form for exactly the case the other breaks on.
+        // into one expression: each is the safe form for exactly the case the other breaks on.
         var cut = QuantileSelection.PlaceCut(-1.7e308, 1.7e308, CutPlacement.Midpoint);
 
         Assert.True(double.IsFinite(cut));
@@ -190,7 +190,7 @@ public sealed class QuantileSelectionTests
     {
         // Real arithmetic says (-1.7e308 + 1.6e308)/2 = -5e306, but neither bound is exactly
         // representable, so binary64 lands a few ULPs away. The contract is finiteness and
-        // membership — the cut must lie strictly inside its own gap — not a decimal ideal, so the
+        // membership (the cut must lie strictly inside its own gap), not a decimal ideal, so the
         // exact result is pinned by its bit pattern rather than by a tolerance that would hide a
         // reordered expression.
         var cut = QuantileSelection.PlaceCut(-1.7e308, 1.6e308, CutPlacement.Midpoint);
@@ -206,7 +206,7 @@ public sealed class QuantileSelectionTests
     public void PlaceCut_WhenMidpointFallsOnAdjacentRepresentableDoubles_ThenFallsBackToTheUpperValue()
     {
         // No double lies strictly between 1.0 and its successor, so the midpoint cannot land above
-        // the lower value; the cut falls back to the upper one — membership-identical under the
+        // the lower value; the cut falls back to the upper one: membership-identical under the
         // half-open [lo, hi) geometry, and it keeps the cut inside its own gap.
         var upper = Math.BitIncrement(1.0);
 
@@ -221,14 +221,14 @@ public sealed class QuantileSelectionTests
     {
         // The genuine "midpoint == upper" case, which needs the rounding to land there rather than
         // merely an interior value. `lower` is chosen with an ODD mantissa and the two values are
-        // ADJACENT, so the exact midpoint is half an ulp above `lower` — a perfect tie — and
+        // ADJACENT, so the exact midpoint is half an ulp above `lower` (a perfect tie), and
         // round-half-to-even carries it up onto `upper`, whose mantissa is even.
         var lower = Math.BitIncrement(1.0);          // mantissa …0001 (odd)
         var upper = Math.BitIncrement(lower);        // mantissa …0010 (even)
 
         var cut = QuantileSelection.PlaceCut(lower, upper, CutPlacement.Midpoint);
 
-        // It landed strictly above `lower`, so the adjacent-double fallback did NOT fire — the cut
+        // It landed strictly above `lower`, so the adjacent-double fallback did NOT fire: the cut
         // is the midpoint's own rounded result, and equalling `upper` is already
         // membership-correct under half-open geometry, so it must not be "corrected".
         Assert.True(cut > lower);

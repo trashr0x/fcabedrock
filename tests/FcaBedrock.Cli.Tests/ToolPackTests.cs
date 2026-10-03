@@ -34,7 +34,7 @@ public sealed class ToolPackTests(ToolPackage package)
     private const string CanonicalStemSample = "0123456789abcdef0123456789abcdef";
 
     // The eight production assemblies. Each ships its assembly, its symbols and its documentation,
-    // and all three are NAMED here rather than tolerated — a stray build or test payload has
+    // and all three are NAMED here rather than tolerated: a stray build or test payload has
     // nowhere to hide behind "it is not a DLL".
     private static readonly string[] ProductionAssemblies =
     [
@@ -48,7 +48,7 @@ public sealed class ToolPackTests(ToolPackage package)
         "FcaBedrock.Spec",
     ];
 
-    // Sep, Tomlyn, and Sep's transitive float parser — assemblies only.
+    // Sep, Tomlyn, and Sep's transitive float parser: assemblies only.
     private static readonly string[] DependencyAssemblies = ["Sep.dll", "Tomlyn.dll", "csFastFloat.dll"];
 
     // The eleven-DLL contract as an EXACT set, so both a dropped assembly and an unannounced new
@@ -71,7 +71,7 @@ public sealed class ToolPackTests(ToolPackage package)
         }
 
         // A ZIP may repeat a name and package paths alias case-insensitively, so a second entry for
-        // a name is a defect — never something to silently take the first or the last of.
+        // a name is a defect, never something to silently take the first or the last of.
         var aliased = entries
             .GroupBy(entry => entry, StringComparer.OrdinalIgnoreCase)
             .Where(group => group.Count() > 1)
@@ -82,8 +82,8 @@ public sealed class ToolPackTests(ToolPackage package)
 
         // The three parts two packs of identical sources disagree on are accounted for by SHAPE and
         // never by content: no byte of the nupkg, of the producer-named core-properties part, or of
-        // the relationship part is pinned anywhere. The partition stays deliberately LOOSE — anything
-        // under the core-properties directory is classified here — so that a rogue metadata part is
+        // the relationship part is pinned anywhere. The partition stays deliberately LOOSE (anything
+        // under the core-properties directory is classified here), so that a rogue metadata part is
         // caught by the exact rule below with a message that names it, instead of slipping into the
         // payload comparison as an anonymous "unexpected" entry.
         var infrastructure = entries.Where(IsInfrastructure).ToList();
@@ -101,7 +101,7 @@ public sealed class ToolPackTests(ToolPackage package)
 
         // The sole producer-named entry must be one of NuGet's two canonical core-properties
         // leaves. Its VALUE is not pinned; its shape is. Accepting any '*.psmdcp' leaf would admit
-        // an arbitrary metadata part — 'CON.psmdcp' among them, which Windows resolves to a console
+        // an arbitrary metadata part ('CON.psmdcp' among them), which Windows resolves to a console
         // device rather than a file when the package is extracted.
         Check(
             IsCorePropertiesPart(coreProperties[0]),
@@ -379,10 +379,10 @@ public sealed class ToolPackTests(ToolPackage package)
         "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9",
     ];
 
-    // A package entry name is a RELATIVE, forward-slash, canonical path. Anything else — rooted,
+    // A package entry name is a RELATIVE, forward-slash, canonical path. Anything else (rooted,
     // backslashed, drive- or URI-spelled, empty, a `.`/`..` or empty segment, a control character,
     // a reserved device name, or a segment Windows would alias by trimming a trailing space or
-    // dot — is refused before it can be trusted as a lookup key or reduced to a file name.
+    // dot) is refused before it can be trusted as a lookup key or reduced to a file name.
     private static bool IsSafeEntryName(string name)
     {
         if (string.IsNullOrEmpty(name) || name[0] == '/' || Path.IsPathRooted(name))

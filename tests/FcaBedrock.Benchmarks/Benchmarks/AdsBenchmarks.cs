@@ -95,7 +95,7 @@ public class AdsConvertDatSmall : AdsConvertDatBenchmark
 /// <summary>
 /// Probes the Ads-width source: 1,559 discovered attributes, each with a tiny domain.
 /// <para>
-/// This is the guard-1 shape — many attributes rather than many values — and it is the one the W16
+/// This is the guard-1 shape (many attributes rather than many values), and it is the one the W16
 /// and T10 families cannot produce. Probe's per-attribute accounting is what scales here, so the
 /// case checks that a wide schema still yields a <em>complete</em> draft under the default limits:
 /// 1,559 attributes is well inside the 10,000-attribute guard, and each column's handful of values

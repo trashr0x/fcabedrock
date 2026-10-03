@@ -192,7 +192,7 @@ public sealed class EqualFrequencySpecTests
 
     [Fact]
     public void Write_WhenEveryFieldAuthored_ThenCanonicalPresentationOrder() =>
-        // §11.5 presentation order: kind, bins, tie_policy, cut_placement — regardless of the
+        // §11.5 presentation order: kind, bins, tie_policy, cut_placement, regardless of the
         // order the author wrote them in.
         Assert.Equal(
             "{ kind = \"equal_frequency\", bins = 4, tie_policy = \"right\", cut_placement = \"midpoint\" }",
@@ -259,7 +259,7 @@ public sealed class EqualFrequencySpecTests
     [Fact]
     public void Resolve_WhenEqualFrequency_ThenAlwaysTheCalibrationPendingCarrier()
     {
-        // §7/§11.5: there is no spec-determined mode — every configuration is data-dependent, so
+        // §7/§11.5: there is no spec-determined mode: every configuration is data-dependent, so
         // it can never resolve to an executable discretizer.
         var result = Resolve(Section());
 
@@ -356,7 +356,7 @@ public sealed class EqualFrequencySpecTests
 
     [Fact]
     public void Resolve_WhenOrdinalWithoutOrder_ThenAcceptedBecauseCutGeometryOrdersTheBins() =>
-        // The complement: no authored order means no conflict — OrdinalOrderMissing is a value-bin
+        // The complement: no authored order means no conflict. OrdinalOrderMissing is a value-bin
         // rule, and these are cut bins.
         Assert.True(Resolve(Section(), new OrdinalScaleSection(null, null, null, null)).IsOk);
 }

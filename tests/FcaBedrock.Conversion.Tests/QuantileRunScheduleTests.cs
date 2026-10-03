@@ -5,14 +5,14 @@ namespace FcaBedrock.Conversion.Tests;
 
 /// <summary>
 /// Drives the <b>real</b> accumulator and workspace over the counting filesystem and holds the
-/// observed transitions against the independent model — never a handle simulator, and never the
+/// observed transitions against the independent model: never a handle simulator, and never the
 /// product's own idea of what it did.
 /// <para>
 /// The central assertion is that wherever the two modelled schedules differ, the observation matches
 /// the <b>generation-tiered</b> schedule and the superseded whole-catalogue schedule <b>rejects</b>
 /// it: a product reverted to whole-catalogue consolidation is classified as
 /// <c>QuantileRunScheduleKind.WholeCatalogue</c> and fails here. Nothing in that proof can pass by
-/// agreeing with itself — the expected schedules come from the independent model.
+/// agreeing with itself: the expected schedules come from the independent model.
 /// </para>
 /// </summary>
 public sealed class QuantileRunScheduleTests
@@ -193,7 +193,7 @@ public sealed class QuantileRunScheduleTests
         }
 
         // The two models predict different schedules for this population, so the observation
-        // identifies which one the product follows — and the permanent requirement is the
+        // identifies which one the product follows, and the permanent requirement is the
         // generation-tiered schedule. A product reverted to whole-catalogue consolidation is
         // classified WholeCatalogue and fails on this line.
         Assert.Equal(QuantileRunScheduleKind.GenerationTiered, scheduleKind);
@@ -235,7 +235,7 @@ public sealed class QuantileRunScheduleTests
     private static void RequireRunBytesAndPasses(QuantileRunScheduleDriver driver, QuantileRunObservation observed)
     {
         // Every run's size, measured at the counting seam, is a whole number of framed records and
-        // agrees with the size the workspace reported — two independent readings of one fact.
+        // agrees with the size the workspace reported: two independent readings of one fact.
         var reported = observed.Writes.Select(write => write.Bytes).ToList();
         var counted = driver.Files.All
             .Where(run => run.Created)

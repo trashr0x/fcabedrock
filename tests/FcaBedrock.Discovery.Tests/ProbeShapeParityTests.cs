@@ -65,7 +65,7 @@ public sealed class ProbeShapeParityTests
         Assert.All(wide.Attributes, a => Assert.IsType<ColumnSourceSection>(a.Source));
         Assert.All(triple.Attributes, a => Assert.IsType<PredicateSourceSection>(a.Source));
 
-        // Both author an explicit string value_type — the typing claim is shape-independent.
+        // Both author an explicit string value_type: the typing claim is shape-independent.
         Assert.All(
             wide.Attributes.Select(a => ((ColumnSourceSection)a.Source!).ValueType),
             t => Assert.Equal(SourceValueType.String, t));
@@ -103,7 +103,7 @@ public sealed class ProbeShapeParityTests
         AssertSemanticParity(ProbeFixtures.Draft(wideResult), ProbeFixtures.Draft(tripleResult));
         Assert.Equal(["q", "r"], ProbeFixtures.Draft(tripleResult).Attributes[0].DeclaredDomain);
 
-        // Same diagnostics, in the same order — the aggregates flush identically in both engines.
+        // Same diagnostics, in the same order: the aggregates flush identically in both engines.
         Assert.Equal(
             wideResult.Diagnostics.Select(d => d.Code),
             tripleResult.Diagnostics.Select(d => d.Code));
@@ -205,7 +205,7 @@ public sealed class ProbeShapeParityTests
     [Fact]
     public async Task Probe_WhenBothShapesAreExercised_ThenEveryProbeCodeStillHasALiveSite()
     {
-        // Every code Discovery owns, produced from a real probe in this run — so a code cannot
+        // Every code Discovery owns, produced from a real probe in this run, so a code cannot
         // quietly lose its emit site while the registry test keeps counting it.
         var seen = new HashSet<DiagnosticCode>();
 
@@ -254,7 +254,7 @@ public sealed class ProbeShapeParityTests
     public async Task Probe_WhenWideInputIsStructurallyOdd_ThenNoObjectKeyValidationHappens()
     {
         // The asymmetry that is deliberate: wide probe is row-index based, so blank and
-        // whitespace-only CELLS are ordinary data — never `ObjectKeyValueInvalid`. Only a triple
+        // whitespace-only CELLS are ordinary data, never `ObjectKeyValueInvalid`. Only a triple
         // subject names an object (D-106).
         var result = await ProbeFixtures.ProbeCsvAsync("a\n\" \"\n\"\"\n\n");
 

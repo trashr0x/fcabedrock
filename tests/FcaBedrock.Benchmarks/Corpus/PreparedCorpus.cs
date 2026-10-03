@@ -6,7 +6,7 @@ internal sealed record PreparedCorpus(CorpusEntry Entry, string DataPath, string
     /// <summary>The exact number of input records the data file carries.</summary>
     public long Records => Entry.Records;
 
-    /// <summary>The exact input byte length — the denominator every MiB/s figure is derived from.</summary>
+    /// <summary>The exact input byte length: the denominator every MiB/s figure is derived from.</summary>
     public long InputBytes => Entry.Data.ByteLength;
 }
 
@@ -55,7 +55,7 @@ internal static class CorpusPreparer
         var specPath = Path.Combine(BenchmarkPaths.CorpusDirectory, expected.Spec.FileName);
 
         // The catalog entry is written LAST, so an interrupted generation leaves files with no
-        // entry — which TryLoad refuses, so the next run regenerates rather than measuring a
+        // entry, which TryLoad refuses, so the next run regenerates rather than measuring a
         // truncated corpus.
         Delete(CorpusCatalog.PathFor(corpus.Id));
 
@@ -105,7 +105,7 @@ internal static class CorpusPreparer
 
     /// <summary>
     /// Loads <paramref name="expected"/> from disk when every recorded fact still holds.
-    /// <see langword="null"/> otherwise — an absent, unreadable, superseded, or altered corpus.
+    /// <see langword="null"/> otherwise: an absent, unreadable, superseded, or altered corpus.
     /// </summary>
     public static PreparedCorpus? TryLoad(CorpusEntry expected)
     {
@@ -155,7 +155,7 @@ internal static class CorpusPreparer
     /// <summary>
     /// The identity a freshly prepared case must have. The spec's digest is known up front because
     /// the spec is committed source; the data's is known up front only for a
-    /// <see cref="CorpusCase.DataIdentity">pinned</see> case, and is otherwise left unset — the
+    /// <see cref="CorpusCase.DataIdentity">pinned</see> case, and is otherwise left unset: the
     /// <c>-1</c> length is the sentinel for "recorded after generation, not required in advance".
     /// </summary>
     public static CorpusEntry Describe(CorpusCase corpus)
@@ -195,7 +195,7 @@ internal static class CorpusPreparer
 
     // A freshly prepared file that is not the pinned one is refused outright: no catalog entry is
     // written, and the file is removed so nothing on disk looks prepared. Recording the new digest
-    // instead - "it downloaded, so it must be right" - is exactly the silent re-basing the pin
+    // instead ("it downloaded, so it must be right") is exactly the silent re-basing the pin
     // exists to prevent: it would rewrite the identity every recorded measurement is stated
     // against, and the next run would compare two different corpora without saying so.
     private static void RequireIdentity(CorpusCase corpus, CorpusIdentity actual, string dataPath)

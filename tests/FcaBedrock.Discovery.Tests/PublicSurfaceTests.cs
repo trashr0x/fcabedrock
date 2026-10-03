@@ -30,7 +30,7 @@ public sealed class PublicSurfaceTests
     [Fact]
     public void Prober_WhenInspected_ThenExposesOnlyTheTwoShapeEntryPoints()
     {
-        // One method per record shape, mirroring CalibrateAsync/CalibrateTripleAsync (EP-5) —
+        // One method per record shape, mirroring CalibrateAsync/CalibrateTripleAsync (EP-5),
         // deliberately not a single method over a session union, for which this codebase has no
         // precedent. Nothing else: no overloads taking a path, a stream, or provenance.
         var methods = typeof(Prober)
@@ -82,7 +82,7 @@ public sealed class PublicSurfaceTests
         Assert.Equal(["session", "readSettings", "options", "cancellationToken"], parameters.Select(p => p.Name));
 
         // The two trailing parameters are optional; the first two are not. A caller must state
-        // the source and the settings the draft will author — neither has a sane default.
+        // the source and the settings the draft will author: neither has a sane default.
         Assert.False(parameters[0].IsOptional);
         Assert.False(parameters[1].IsOptional);
         Assert.True(parameters[2].IsOptional);

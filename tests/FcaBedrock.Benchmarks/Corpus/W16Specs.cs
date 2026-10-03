@@ -7,7 +7,7 @@ namespace FcaBedrock.Benchmarks.Corpus;
 /// layout an oracle derives expectations from.
 /// <para>
 /// The specs are ordinary TOML text read through the production <c>SpecReader</c>, so the benchmark
-/// exercises the real authoring surface rather than a hand-built Core graph — and the layout below
+/// exercises the real authoring surface rather than a hand-built Core graph, and the layout below
 /// is asserted against the produced plan, so a planner change cannot silently drift the oracle out
 /// of agreement with the code it validates.
 /// </para>
@@ -26,7 +26,7 @@ internal static class W16Specs
     /// <summary>
     /// The <b>declared</b> W16 spec: fully spec-determined, so no data-reading calibration pass
     /// runs and the emit benchmark measures emission alone. Six logical attributes covering every
-    /// scaling shape a small case needs — cut bins over a tied numeric and over a skewed one,
+    /// scaling shape a small case needs: cut bins over a tied numeric and over a skewed one,
     /// nominal value bins, a dichotomic column, a value-bin column carrying the
     /// <c>as_attribute</c> missing column, and the quoted-domain column.
     /// </summary>

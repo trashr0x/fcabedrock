@@ -39,7 +39,7 @@ public sealed class SpoolConfidentialityTests
             var path = Path.Combine(workspace, "run.spool");
             using var stream = SpoolFileSystem.Default.CreateRunForWrite(path);
 
-            // FileShare.None: a second open — even read-only — is a sharing violation.
+            // FileShare.None: a second open (even read-only) is a sharing violation.
             Assert.Throws<IOException>(() => File.Open(path, FileMode.Open, FileAccess.Read, FileShare.Read));
         }
         finally

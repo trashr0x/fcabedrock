@@ -14,7 +14,7 @@ internal sealed record ToolProcessResult(int ExitCode, string StandardOutput, st
 /// Every wait is tokened and every path is bounded: a call ends within its own timeout plus one
 /// <c>CleanupTimeout</c> budget. A cleanup that itself fails raises a
 /// <see cref="ToolProcessCleanupException"/> carrying the trigger, the kill and probe outcomes and
-/// both safe output tails — a finite, described failure instead of a hang or a context-free escape.
+/// both safe output tails: a finite, described failure instead of a hang or a context-free escape.
 /// </para>
 /// </summary>
 internal static class ToolProcess
@@ -49,7 +49,7 @@ internal static class ToolProcess
     /// PowerShell 7 on this machine's PATH, or null when it has none.
     /// <para>
     /// Resolved to a real file rather than left to the process launcher, so "no pwsh here" is an
-    /// answer a caller can act on — a reported skip — instead of a launch failure it has to
+    /// answer a caller can act on (a reported skip) instead of a launch failure it has to
     /// interpret. Windows PowerShell is deliberately not a fallback: the packaging script is written
     /// for PowerShell 7 and uses its types and its automatic variables.
     /// </para>
@@ -74,7 +74,7 @@ internal static class ToolProcess
 
     /// <summary>Runs <paramref name="fileName"/> to completion and returns its exit code and output.</summary>
     /// <remarks>
-    /// A non-zero exit is a result, not an exception — the caller decides whether it matters.
+    /// A non-zero exit is a result, not an exception: the caller decides whether it matters.
     /// Arguments go through <see cref="ProcessStartInfo.ArgumentList"/> only, which is the whole
     /// Windows-quoting answer, and environment entries are applied to the child alone.
     /// </remarks>
@@ -120,7 +120,7 @@ internal static class ToolProcess
             ?? throw new InvalidOperationException($"'{fileName}' could not be started.");
 
         // Both pipes are read before anything is awaited: reading them in sequence would deadlock
-        // on a child as talkative as `dotnet pack`. CancellationToken.None is deliberate — a pending
+        // on a child as talkative as `dotnet pack`. CancellationToken.None is deliberate: a pending
         // pipe read cannot be relied on to observe cancellation, so the bound comes from the
         // deadlines below, which abandon the WAIT and never the READ.
         var stdoutTask = process.StandardOutput.ReadToEndAsync(CancellationToken.None);
@@ -137,10 +137,10 @@ internal static class ToolProcess
         }
         catch (OperationCanceledException trigger)
         {
-            // C1 — classify HERE, exactly once. The caller's cancellation wins only if its token
+            // C1: classify HERE, exactly once. The caller's cancellation wins only if its token
             // was already cancellation-requested at this instant; otherwise the trigger is this
             // helper's own timeout. Everything downstream carries the captured value, so a
-            // cancellation arriving later — mid-kill, mid-probe, mid-drain — cannot rewrite it.
+            // cancellation arriving later (mid-kill, mid-probe, mid-drain) cannot rewrite it.
             var callerCancelled = cancellationToken.IsCancellationRequested;
 
             await CleanUpAsync(
@@ -178,7 +178,7 @@ internal static class ToolProcess
         return result;
     }
 
-    /// <summary>The command line as it is reported in a failure — never re-parsed, only displayed.</summary>
+    /// <summary>The command line as it is reported in a failure: never re-parsed, only displayed.</summary>
     internal static string Display(string fileName, IReadOnlyList<string> arguments)
     {
         ArgumentNullException.ThrowIfNull(arguments);
@@ -199,17 +199,17 @@ internal static class ToolProcess
         TimeSpan effective,
         CancellationToken cancellationToken)
     {
-        // C1 — the classification is the immutable one captured at catch entry, never a fresh
+        // C1: the classification is the immutable one captured at catch entry, never a fresh
         // token read: by the time cleanup runs, the token may say something the trigger did not.
         var cause = callerCancelled ? "caller-cancelled" : "timed-out";
 
-        // C2 — observe the drain FIRST, before anything can abandon it. Attaching this up front,
+        // C2: observe the drain FIRST, before anything can abandon it. Attaching this up front,
         // rather than only on a throwing path, is what completes the funnel: every later exit
         // leaves an abandoned read observed, so a faulted pipe read can never surface as an
         // unobserved task exception. It neither consumes nor replaces `drain`, still awaited at C5.
         Observe(drain);
 
-        // C3 — kill, retaining every failure the .NET 10 reference pack documents for
+        // C3: kill, retaining every failure the .NET 10 reference pack documents for
         // Kill(Boolean). The AggregateException case is the partial descendant-tree failure this
         // helper is most likely to meet. No blanket catch, no discard, no rethrow: control ALWAYS
         // reaches C5, so a partial kill failure never bypasses cleanup.
@@ -235,19 +235,19 @@ internal static class ToolProcess
             killError = exception;
         }
 
-        // C4 — a probe that never throws and never returns a Boolean. Its only use is diagnostic.
+        // C4: a probe that never throws and never returns a Boolean. Its only use is diagnostic.
         var probe = ProbeExit(process);
 
-        // C5 — one deadline over exit observation and BOTH drains, entered unconditionally: a
+        // C5: one deadline over exit observation and BOTH drains, entered unconditionally: a
         // failed kill is precisely the case where a possibly live child must still be observed.
         // One 30 s budget spans all of it, independent of `effective` and of the caller's token.
         Exception? waitError = null;
         using var cleanup = new CancellationTokenSource(CleanupTimeout);
 
-        // C6 — every fault funnels into one variable. The deadline's OperationCanceledException
+        // C6: every fault funnels into one variable. The deadline's OperationCanceledException
         // (unambiguous: the reads use CancellationToken.None, so `cleanup` is the only token in
-        // play) and any other failure — a faulted pipe read surfaced through WaitAsync, a Process
-        // API failure — are the same thing here: a cleanup failure. Nothing escapes.
+        // play) and any other failure (a faulted pipe read surfaced through WaitAsync, a Process
+        // API failure) are the same thing here: a cleanup failure. Nothing escapes.
         try
         {
             await process.WaitForExitAsync(cleanup.Token);
@@ -271,13 +271,13 @@ internal static class ToolProcess
 
         var commandLine = Display(fileName, arguments);
 
-        // C7 — cleanup succeeded, so the ORIGINAL outcome is surfaced unchanged. This holds even
+        // C7: cleanup succeeded, so the ORIGINAL outcome is surfaced unchanged. This holds even
         // when C3 or C4 failed: a kill that raced a natural exit changes nothing.
         if (waitError is null)
         {
             // Only the CAPTURED classification decides. A caller cancellation that arrived while
             // cleanup was draining is a later event, not the trigger, so the token is consulted
-            // solely to raise the cancellation it was already requesting at catch entry — never
+            // solely to raise the cancellation it was already requesting at catch entry, never
             // to convert a captured timeout into one.
             if (callerCancelled)
             {
@@ -292,7 +292,7 @@ internal static class ToolProcess
                 """);
         }
 
-        // C8 — one bounded contextual exception, built only from already-materialized values.
+        // C8: one bounded contextual exception, built only from already-materialized values.
         throw new ToolProcessCleanupException(
             $"""
             {commandLine} was {cause} after {effective} and its cleanup did not complete within {CleanupTimeout}.
@@ -362,7 +362,7 @@ internal static class ToolProcess
 /// The one failure a bounded cleanup can still produce: the child was cancelled or timed out, and
 /// observing its exit or draining its output did not finish inside the cleanup deadline.
 /// <para>
-/// It is contextual by construction — the trigger, the classification, the command line, each
+/// It is contextual by construction: the trigger, the classification, the command line, each
 /// retained error and both safe output tails are properties, so a failure is diagnosable without a
 /// debugger and without re-running anything.
 /// </para>
@@ -393,7 +393,7 @@ internal sealed class ToolProcessCleanupException : Exception
         StandardError = standardError;
     }
 
-    /// <summary><c>caller-cancelled</c> or <c>timed-out</c> — classified once, at catch entry.</summary>
+    /// <summary><c>caller-cancelled</c> or <c>timed-out</c>, classified once, at catch entry.</summary>
     public string Cause { get; }
 
     /// <summary>The initiating cancellation or timeout; never the inner exception, always retained.</summary>
@@ -421,7 +421,7 @@ internal sealed class ToolProcessCleanupException : Exception
     public string StandardError { get; }
 
     // Zero retained errors leave no inner exception; one becomes the inner exception; two or three
-    // aggregate in a fixed order — kill, exit probe, wait/drain — so the shape is deterministic.
+    // aggregate in a fixed order (kill, exit probe, wait/drain), so the shape is deterministic.
     private static Exception? SelectInner(Exception? killError, Exception? exitProbeError, Exception? waitError)
     {
         var errors = new List<Exception>(3);
@@ -473,7 +473,7 @@ public sealed class ToolPackage : IAsyncLifetime
     /// <summary>The single packed <c>.nupkg</c>.</summary>
     public string NupkgPath { get; private set; } = string.Empty;
 
-    /// <summary>The directory holding it — usable verbatim as a local NuGet feed.</summary>
+    /// <summary>The directory holding it, usable verbatim as a local NuGet feed.</summary>
     public string FeedDirectory { get; private set; } = string.Empty;
 
     /// <summary>The package version, parsed from the packed file name.</summary>
@@ -662,7 +662,7 @@ public sealed class ToolPackage : IAsyncLifetime
 
 /// <summary>
 /// The one collection both tool-package classes join, so the shared <see cref="ToolPackage"/> is
-/// created once and the two classes can never pack — or install — concurrently.
+/// created once and the two classes can never pack (or install) concurrently.
 /// </summary>
 [CollectionDefinition(Name)]
 public sealed class ToolPackageCollection : ICollectionFixture<ToolPackage>

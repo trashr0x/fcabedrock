@@ -203,7 +203,7 @@ public sealed class SpecReaderDiagnosticsTests
     public void Read_WhenTemplateAuthorsNamingKeys_ThenBothAreCarriedNotRejected()
     {
         // §9.1: a template body is the attribute config surface, so the naming keys carry
-        // and validate there on exactly the same terms as on an attribute — including
+        // and validate there on exactly the same terms as on an attribute, including
         // inside a template nothing references, since shape is parse's concern while
         // semantic dormancy is the resolver's (§10.7/D-049).
         var result = SpecReader.Read(
@@ -218,7 +218,7 @@ public sealed class SpecReaderDiagnosticsTests
 
     [Theory]
     [InlineData("display_name = \"\"")]                              // §10.1: an authored one must be non-empty
-    [InlineData("display_name = \"one\\ntwo\"")]                     // §10.1: no CR/LF — .cxt is line-oriented
+    [InlineData("display_name = \"one\\ntwo\"")]                     // §10.1: no CR/LF; .cxt is line-oriented
     [InlineData("display_name = 7")]                                 // wrong type
     [InlineData("formal_attribute_format = \"\"")]                   // §10.7: the whole format must be non-empty
     [InlineData("formal_attribute_format = \"{Value}\"")]            // case variant of a closed-set placeholder
@@ -230,7 +230,7 @@ public sealed class SpecReaderDiagnosticsTests
     [InlineData("formal_attribute_format = 7")]                      // wrong type
     public void Read_WhenNamingKeyMalformed_ThenSpecFieldInvalid(string line)
     {
-        // §10.7/§16.4: every naming-shape failure is the ordinary SpecFieldInvalid —
+        // §10.7/§16.4: every naming-shape failure is the ordinary SpecFieldInvalid:
         // D-116 deliberately mints no format-specific or display-name-specific code.
         var result = SpecReader.Read(Attribute(line));
 
@@ -242,7 +242,7 @@ public sealed class SpecReaderDiagnosticsTests
     [Fact]
     public void Read_WhenExcludedAttributeAuthorsBadFormat_ThenStillSpecFieldInvalid()
     {
-        // §10.7: checked wherever authored, INCLUDING on an excluded attribute — authored
+        // §10.7: checked wherever authored, INCLUDING on an excluded attribute: authored
         // shape is the parser's concern while dormancy is semantic (the D-049 split).
         var result = SpecReader.Read(Attribute("include = false\nformal_attribute_format = \"{nope}\""));
 
@@ -299,7 +299,7 @@ public sealed class SpecReaderDiagnosticsTests
     public void Read_WhenTemplateIdIsOmitted_ThenParseIsSilentAndItBecomesAResolveCondition()
     {
         // §9.1 splits the two deliberately: a malformed id is a field SHAPE failure
-        // (parse), while an omitted one is "this template is unreachable" — a
+        // (parse), while an omitted one is "this template is unreachable": a
         // document-level condition the resolver owns as TemplateIdMissing (§16.4).
         var result = SpecReader.Read("[[template]]\ninclude = true\n");
 
@@ -419,7 +419,7 @@ public sealed class SpecReaderDiagnosticsTests
     [Fact]
     public void Read_WhenSeveralProblems_ThenAllAggregateInOnePass()
     {
-        // EP-14: one read reports everything — a bad shape spelling, an unknown key, and an
+        // EP-14: one read reports everything: a bad shape spelling, an unknown key, and an
         // unrecognized discretizer kind together, each on its own condition.
         var result = SpecReader.Read(
             "[binding]\nshape = \"wibble\"\nmissing_polcy = \"skip\"\n" +
@@ -436,8 +436,8 @@ public sealed class SpecReaderDiagnosticsTests
     {
         // D-116/D-120: the semantic pass reports in SOURCE-POSITION order, applied once at
         // the SpecReader boundary rather than left as an artifact of traversal. Here the
-        // bad keys are authored in reverse READER order — the reader takes name/source/
-        // display_name/description before it ever reaches missing_policy — so a
+        // bad keys are authored in reverse READER order (the reader takes name/source/
+        // display_name/description before it ever reaches missing_policy), so a
         // traversal-ordered result would report line 8 before line 6. Position wins.
         var result = SpecReader.Read(
             "[spec]\nversion = 1\n\n[[attribute]]\nname = \"a\"\n"
@@ -453,7 +453,7 @@ public sealed class SpecReaderDiagnosticsTests
     {
         // The equal-position case reached through the PUBLIC surface: both of these
         // anchor on the same inline-table span, so only the emission-ordinal tie-break
-        // decides their order. Asserted on the exact message sequence — asserting that
+        // decides their order. Asserted on the exact message sequence: asserting that
         // the positions are sorted would be a tautology, since swapping two diagnostics
         // at one position leaves the position list identical.
         var result = SpecReader.Read(Attribute("discretizer = { kind = \"equal_width\", vmin = 1, vmax = 2 }"));
@@ -504,7 +504,7 @@ public sealed class SpecReaderDiagnosticsTests
 
         SpecReader.SortSemantic(diagnostics, 0);
 
-        // "second"/"first" name their EMISSION order, not their sorted order — so a
+        // "second"/"first" name their EMISSION order, not their sorted order, so a
         // content-based reordering would be visible here.
         Assert.Equal(["second", "first", "located"], Messages(diagnostics));
     }
@@ -512,7 +512,7 @@ public sealed class SpecReaderDiagnosticsTests
     [Fact]
     public void SortSemantic_WhenManyDiagnosticsShareOnePosition_ThenEmissionOrderSurvivesExactly()
     {
-        // The emission ordinal is part of the comparison, not a convention — which makes
+        // The emission ordinal is part of the comparison, not a convention, which makes
         // the order total, so it does not depend on the sort's stability. Twenty elements
         // is past the threshold where .NET's introsort stops being an insertion sort, so
         // dropping the tie-break would visibly reorder these rather than happening to work.
@@ -642,7 +642,7 @@ public sealed class SpecReaderDiagnosticsTests
     public void Read_WhenExactRestrictValueIsNotNumeric_ThenSpecFieldInvalid(string value)
     {
         // The reported condition must be "this exact entry's value is not a number", raised by
-        // the ordinary numeric accessor — never a leaked factory/parser exception (EP-14).
+        // the ordinary numeric accessor, never a leaked factory/parser exception (EP-14).
         AssertFailsWith(
             SpecReader.Read(Attribute($"restrict_to = [{{ value = {value} }}]")),
             DiagnosticCode.SpecFieldInvalid);
@@ -653,7 +653,7 @@ public sealed class SpecReaderDiagnosticsTests
     {
         // The silent-widening trap this shape-first reader exists to avoid. Reading
         // { value = "x" } as a RANGE would take neither `from` nor `to` and yield
-        // RestrictToRange(null, null) — the {} entry, which matches EVERY usable numeric value.
+        // RestrictToRange(null, null): the {} entry, which matches EVERY usable numeric value.
         // A typo'd filter would then keep every object instead of failing loudly.
         var result = SpecReader.Read(Attribute("restrict_to = [{ value = \"thirty\" }]"));
 
@@ -673,7 +673,7 @@ public sealed class SpecReaderDiagnosticsTests
     public void Read_WhenExactEntryAlsoCarriesRangeKeys_ThenTheStrayKeysAreUnrecognized()
     {
         // Shape is chosen by the presence of `value`; `from`/`to` alongside it are then
-        // unconsumed keys, which the cursor's Finish classifies as SpecKeyUnrecognized — the
+        // unconsumed keys, which the cursor's Finish classifies as SpecKeyUnrecognized: the
         // established owner for a key no reader takes (D-075).
         AssertFailsWith(
             SpecReader.Read(Attribute("restrict_to = [{ value = 30, from = 10 }]")),

@@ -84,7 +84,7 @@ public sealed class SpecConformanceTests
     public async Task NativeCxt_WhenNumericCuts_ThenInteriorBinsUseMathNotation()
     {
         // §11.2: native interior bins render "[a, b)" (with the comma-space), not v2's
-        // "ato<b" — the contract the v2 goldens deliberately do not exercise.
+        // "ato<b": the contract the v2 goldens deliberately do not exercise.
         var lines = (await NativeCxtAsync(Adult)).Split('\n');
 
         Assert.Contains("age-<30", lines);

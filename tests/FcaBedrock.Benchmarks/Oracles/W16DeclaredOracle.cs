@@ -7,7 +7,7 @@ namespace FcaBedrock.Benchmarks.Oracles;
 /// <para>
 /// It re-derives the expected incidence from two things only: the corpus's own value definition
 /// (<see cref="W16Corpus"/>) and the <em>documented</em> semantics of the spec that case is
-/// converted under — open-ended cut geometry, nominal value bins, a dichotomic column crossed by
+/// converted under: open-ended cut geometry, nominal value bins, a dichotomic column crossed by
 /// its true value, and an <c>as_attribute</c> missing column appended after its attribute's value
 /// bins. It calls no discretizer, no scale, no planner, no emitter, and no writer, which is what
 /// makes it evidence rather than a restatement of the code it validates.
@@ -20,7 +20,7 @@ internal static class W16DeclaredOracle
     {
         var ids = new List<int>(6);
 
-        // n_ties: skipped entirely when missing — the default missing_policy emits no cross.
+        // n_ties: skipped entirely when missing; the default missing_policy emits no cross.
         if (!W16Corpus.TiesIsMissing(row))
         {
             ids.Add(W16Specs.TiesBase + DatExpectation.BinIndex(W16Corpus.Ties(row), W16Specs.TiesCuts));

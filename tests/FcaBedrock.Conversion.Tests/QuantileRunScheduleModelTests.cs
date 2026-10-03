@@ -4,7 +4,7 @@ namespace FcaBedrock.Conversion.Tests;
 /// Checks the independent schedule model against hand-derived values before anything relies on it
 /// as an oracle: the bound arithmetic, the generation-tiered schedule's digit-sum occupancy and
 /// carry sequence, the whole-catalogue schedule's closed forms, and small literal populations under
-/// both — all from literal leaf maps and base-F arithmetic, never from the product.
+/// both, all from literal leaf maps and base-F arithmetic, never from the product.
 /// </summary>
 public sealed class QuantileRunScheduleModelTests
 {
@@ -76,7 +76,7 @@ public sealed class QuantileRunScheduleModelTests
     public void GenerationTiered_WhenEightHundredAndSevenLeavesAtFanInSixteen_ThenSevenTwoThreeAcrossLevels()
     {
         // 807 = 3·16² + 2·16 + 7, so the surviving runs are 7 at generation 0, 2 at generation 1 and
-        // 3 at generation 2 — twelve in all — after 50 level-0 carries and 3 level-1 carries.
+        // 3 at generation 2 (twelve in all) after 50 level-0 carries and 3 level-1 carries.
         Assert.Equal([7, 2, 3], QuantileRunScheduleModel.GenerationOccupancy(16, 807));
 
         var schedule = QuantileRunScheduleModel.GenerationTiered(16, Literal(807, 1));
@@ -195,7 +195,7 @@ public sealed class QuantileRunScheduleModelTests
     [Fact]
     public void FoldingAdversary_WhenTwoIdenticalLeavesPrecedeADisjointPair_ThenTheHandDerivedCountsFollow()
     {
-        // {1,2,3}, {1,2,3}, {4,5,6}, {7} — identical folded output sizes must not cause promotion by
+        // {1,2,3}, {1,2,3}, {4,5,6}, {7}: identical folded output sizes must not cause promotion by
         // size, and the generation-tiered schedule must not repeatedly re-merge the oldest dominant
         // run.
         static QuantileSpillLeaf Leaf(params double[] values) => new([.. values.Select(value => new QuantileModelRow(value, 1))]);

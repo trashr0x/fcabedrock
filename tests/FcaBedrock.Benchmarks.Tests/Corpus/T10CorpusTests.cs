@@ -8,7 +8,7 @@ namespace FcaBedrock.Benchmarks.Tests.Corpus;
 
 /// <summary>
 /// The triple family carries the properties the triple path has to get right, so these check that
-/// the corpus really has them — a "multi-valued" column that happened to be single-valued, or an
+/// the corpus really has them: a "multi-valued" column that happened to be single-valued, or an
 /// "interleaved" file whose subjects were contiguous after all, would quietly turn the benchmark
 /// into a weaker one than it claims to be.
 /// </summary>

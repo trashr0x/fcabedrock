@@ -8,7 +8,7 @@ namespace FcaBedrock.Benchmarks.Corpus;
 /// It exists for one reason: <b>no path may forget the spool directory</b>. The backend's default is
 /// the OS temporary directory, so a case that built its own <see cref="GroupingOptions"/> to vary a
 /// budget would silently spill to a different volume from the one every other byte of the run lives
-/// on — and the comparison between that case and its neighbours would then include a difference
+/// on, and the comparison between that case and its neighbours would then include a difference
 /// nobody chose. Routing every construction through here makes that impossible to get wrong once,
 /// rather than possible to get wrong per case.
 /// </para>

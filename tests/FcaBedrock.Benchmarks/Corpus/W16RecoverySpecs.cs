@@ -5,7 +5,7 @@ namespace FcaBedrock.Benchmarks.Corpus;
 /// recovery and <b>value-groups pass-through</b>.
 /// <para>
 /// All three discover their column set from the data, and all three are the kinds a real spec
-/// reaches for when the author does not know every value in advance — but they discover it in
+/// reaches for when the author does not know every value in advance, but they discover it in
 /// different ways, and the difference is what these specs isolate. An <em>observed</em> domain starts
 /// empty and takes what it finds; <b>include</b> starts from a declared prefix and appends the rest,
 /// so the retained order is the declared values followed by the newly discovered ones in

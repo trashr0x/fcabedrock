@@ -116,7 +116,7 @@ public sealed class W16CorpusTests
     public async Task Write_WhenReadBackThroughTheProductionSource_ThenEveryCleanedValueMatchesTheDefinition()
     {
         // The cross-check that makes the definition trustworthy as an oracle: the real reader,
-        // over the real bytes, must see exactly what CleanedValue says is there - including the
+        // over the real bytes, must see exactly what CleanedValue says is there, including the
         // unquoted forms of the two escaped values and both missing forms.
         using var temp = TempDirectory.Create();
         var dataPath = temp.File("w16.csv");

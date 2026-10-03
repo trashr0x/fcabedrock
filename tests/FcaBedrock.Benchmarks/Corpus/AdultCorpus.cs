@@ -44,14 +44,14 @@ internal static class AdultCorpus
     /// Revision 2 corrected <see cref="CountRecords"/> to count the published file's empty final
     /// line, which the reader then yielded as a record (32,562). Revision 3 follows the reader
     /// again: it skips blank records (spec §5.1.1), so that line is not a record and the count is
-    /// 32,561. The bytes are unchanged, but a stale entry would still carry the superseded count —
+    /// 32,561. The bytes are unchanged, but a stale entry would still carry the superseded count,
     /// and the count is a denominator, so an entry recorded under an older rule must be refused
     /// exactly as a changed corpus would be.
     /// </para>
     /// <para>
     /// The <see cref="DataSha256"/> pin, added under revision 2, records the identity of the bytes
     /// every revision has written, so adding it did not change the revision. <b>Changing the
-    /// accepted identity is a different matter and bumps this</b> — see <see cref="DataSha256"/>.
+    /// accepted identity is a different matter and bumps this</b>: see <see cref="DataSha256"/>.
     /// </para>
     /// </summary>
     public const int AcquisitionRevision = 3;
@@ -95,7 +95,7 @@ internal static class AdultCorpus
     public const string DataSha256 = "5b00264637dbfec36bdeaab5676b0b309ff9eb788d63554ca0a249491c86603d";
 
     /// <summary>
-    /// The pinned identity of the consumed entry, enforced on a fresh acquisition and on reuse —
+    /// The pinned identity of the consumed entry, enforced on a fresh acquisition and on reuse,
     /// the second independently of the catalog's own recorded digest, so a changed file beside a
     /// rewritten catalog that agrees with it is still refused.
     /// </summary>
@@ -108,7 +108,7 @@ internal static class AdultCorpus
 
     /// <summary>
     /// Downloads the archive and writes <see cref="EntryName"/> to <paramref name="destination"/>
-    /// verbatim — no re-encoding, no line-ending change, no trimming. The written bytes are the
+    /// verbatim: no re-encoding, no line-ending change, no trimming. The written bytes are the
     /// published bytes, which is what makes the recorded digest mean something.
     /// </summary>
     /// <param name="destination">The stream the entry is copied to.</param>

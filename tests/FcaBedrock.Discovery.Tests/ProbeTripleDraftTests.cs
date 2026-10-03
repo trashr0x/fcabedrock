@@ -10,8 +10,8 @@ namespace FcaBedrock.Discovery.Tests;
 /// draft must not contain.
 /// <para>
 /// The triple-specific additions to the positive half are the explicitly authored
-/// <c>ordering</c> and role map — a self-documenting draft must not rely on a reader knowing
-/// §5.3's defaults — and predicate-kind sources carrying the exact predicate text. The negative
+/// <c>ordering</c> and role map (a self-documenting draft must not rely on a reader knowing
+/// §5.3's defaults) and predicate-kind sources carrying the exact predicate text. The negative
 /// half gains one entry: <b>no <c>[binding.object_key]</c></b>, because the triple default is
 /// already the subject, and authoring it would restate a default as though it were a choice.
 /// </para>
@@ -100,7 +100,7 @@ public sealed class ProbeTripleDraftTests
     [Fact]
     public async Task ProbeTriple_WhenSuccessful_ThenAuthorsNoObjectKeySection()
     {
-        // §5.4's triple default is the subject column, which is exactly what probe observed —
+        // §5.4's triple default is the subject column, which is exactly what probe observed,
         // so there is nothing to author, and authoring it would be noise the user must review.
         var draft = ProbeFixtures.Draft(await TripleProbeFixtures.ProbeTripleCsvAsync(Csv));
 
@@ -243,7 +243,7 @@ public sealed class ProbeTripleDraftTests
     [Fact]
     public async Task ProbeTriple_WhenDiagnosticsAreProduced_ThenTheirOrderIsFixed()
     {
-        // Naming, then truncation — the same fixed order as wide, so a caller may rely on the
+        // Naming, then truncation: the same fixed order as wide, so a caller may rely on the
         // sequence rather than sorting defensively.
         const string messy = "s1,\"q\"\"1\",a\ns1,\"q\"\"1\",b\n";
 

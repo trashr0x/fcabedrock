@@ -33,7 +33,7 @@ internal static class W16PressureSpecs
     /// buffer bound is <c>max(budget, attributeCount x FloorBytes)</c> (D-095/D-103): the floor arm
     /// only becomes visible when there are enough attributes for it to exceed the budget, and four
     /// numeric columns are not enough. Sixteen attributes over the same four columns give that
-    /// pressure honestly — every one is a real, independently configured attribute the calibrator
+    /// pressure honestly: every one is a real, independently configured attribute the calibrator
     /// must resolve, not a duplicate of another.
     /// </para>
     /// <para>
@@ -48,7 +48,7 @@ internal static class W16PressureSpecs
     public static int ManyQuantileAttributeCount => NumericColumns.Count * QuantileBinCounts.Count;
 
     /// <summary>
-    /// The same spec truncated to its first <paramref name="attributes"/> entries — the axis a
+    /// The same spec truncated to its first <paramref name="attributes"/> entries: the axis a
     /// controlled check varies when the <b>number</b> of simultaneous count-sensitive accumulators
     /// must be the only difference between two runs.
     /// <para>

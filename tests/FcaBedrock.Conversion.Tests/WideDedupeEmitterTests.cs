@@ -5,7 +5,7 @@ using FcaBedrock.Diagnostics;
 namespace FcaBedrock.Conversion.Tests;
 
 // Wide object_key.mode = "column" under duplicate_object_policy = "dedupe" (§6.1, D-083): rows sharing
-// a cleaned key collapse to one object, crosses unioned onto the first, in first-occurrence order — run
+// a cleaned key collapse to one object, crosses unioned onto the first, in first-occurrence order, run
 // on the shared grouping/spool backend. Driven end-to-end through WideCsvSource; the spill-forcing
 // overload proves spilling is byte-neutral.
 public sealed class WideDedupeEmitterTests
@@ -179,7 +179,7 @@ public sealed class WideDedupeEmitterTests
     {
         // Wide, mostly-empty rows stress the resident accounting (Measure undercounts the retained
         // per-field references). budget = 1 measures the max record size and the max resident row; under
-        // budget = B every initial run stays within B + maxRecord (independent — from the actual files)
+        // budget = B every initial run stays within B + maxRecord (independent: from the actual files)
         // and the resident peak stays within 2·B + one max-resident row: at a spill the buffer is at most
         // one List backing-array doubling (≤ B) past budget, plus one more row's retained bytes (F2).
         var spec = new BedrockSpec(ConversionFixtures.WideWithKey(0, DuplicateObjectPolicy.Dedupe),

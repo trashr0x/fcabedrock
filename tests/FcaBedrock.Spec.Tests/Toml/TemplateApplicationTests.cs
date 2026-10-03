@@ -50,7 +50,7 @@ public sealed class TemplateApplicationTests
         DocumentFixtures.Document([attribute], defaults: defaults, templates: templates, matchers: matchers);
 
     // Matches whatever single attribute the case declares, so selection is never the
-    // variable under test — precedence is.
+    // variable under test; precedence is.
     private static MatcherSection MatchAll(string template = "t") =>
         DocumentFixtures.Matcher(nameRegex: ".*", template: template);
 
@@ -84,8 +84,8 @@ public sealed class TemplateApplicationTests
     public void Apply_WhenTwoMatchingTemplatesAuthorAField_ThenTheLastDeclaredWins()
     {
         // Tier 3 internal ordering: field-wise LAST-author-wins across matchers, in
-        // declaration order (§9.2). The diagnostic consequence — the defeated earlier
-        // matcher is fully shadowed and the winner is silent — is asserted at the
+        // declaration order (§9.2). The diagnostic consequence (the defeated earlier
+        // matcher is fully shadowed and the winner is silent) is asserted at the
         // resolver level in SpecResolverTests, since it is a diagnostic contract rather
         // than a merge one.
         var attribute = ResolveSingle(With(
@@ -176,7 +176,7 @@ public sealed class TemplateApplicationTests
     [Fact]
     public void Apply_WhenAHigherTierAuthorsFalse_ThenItOverridesAnEarlierTrue()
     {
-        // An explicit `false` is a VALUE, and presence is what the merge reads — so it
+        // An explicit `false` is a VALUE, and presence is what the merge reads, so it
         // overrides, exactly as a `true` would.
         var attribute = ResolveSingle(With(
             Bare(),
@@ -194,8 +194,8 @@ public sealed class TemplateApplicationTests
     public void Apply_WhenAHigherTierAuthorsAnEmptyDomain_ThenItOverridesToAnAuthoredCompleteEmpty()
     {
         // §10.3's authored `[]` is a presence state distinct from omission (D-114 whole-value
-        // layering): the higher-tier template's [] overrides the earlier ["x"], and — under
-        // D-122 §15 — resolves as authored-complete (a fixed empty domain, NOT omitted/calibrated),
+        // layering): the higher-tier template's [] overrides the earlier ["x"], and, under
+        // D-122 §15, resolves as authored-complete (a fixed empty domain, NOT omitted/calibrated),
         // so the resolved domain is a non-null empty list rather than ["x"] or null.
         var attribute = ResolveSingle(With(
             Bare(),
@@ -215,7 +215,7 @@ public sealed class TemplateApplicationTests
     {
         // The presence rule for restrict_to specifically: omission INHERITS (§9.2/D-114). The
         // second template authors a DIFFERENT field, so its application is proven rather than
-        // assumed — a template that never applied at all would otherwise pass this test too.
+        // assumed; a template that never applied at all would otherwise pass this test too.
         var attribute = ResolveSingle(With(
             DocumentFixtures.Nominal("a", 0, ["x"]),
             [
@@ -231,7 +231,7 @@ public sealed class TemplateApplicationTests
     [Fact]
     public void Apply_WhenAHigherTierAuthorsAnEmptyRestrictTo_ThenItClearsThePopulatedOne()
     {
-        // §9.2/D-114: an authored empty collection is a presence state, so it OVERRIDES — and
+        // §9.2/D-114: an authored empty collection is a presence state, so it OVERRIDES, and
         // §10.4's "empty or absent ⇒ no filter" then makes the resolved attribute filter nothing.
         var attribute = ResolveSingle(With(
             DocumentFixtures.Nominal("a", 0, ["x"]),
@@ -306,7 +306,7 @@ public sealed class TemplateApplicationTests
     {
         // §9.2 example 3: `scale` is replaced ENTIRE, never deep-merged. The explicit
         // scale authors direction only, so the template's `order` must NOT survive into
-        // it — and the resulting orderless value-bin ordinal is then a legitimate
+        // it, and the resulting orderless value-bin ordinal is then a legitimate
         // OrdinalOrderMissing at plan, not a silently-repaired hybrid.
         var attribute = ResolveSingle(With(
             DocumentFixtures.Attribute("a", DocumentFixtures.Column(0),
@@ -320,7 +320,7 @@ public sealed class TemplateApplicationTests
         var ordinal = Assert.IsType<OrdinalScale>(attribute.Scale);
         Assert.Equal(OrdinalDirection.Le, ordinal.Direction);
         Assert.Null(ordinal.Order);
-        // The template's boundary is gone too — the whole value lost, not just `order`.
+        // The template's boundary is gone too: the whole value lost, not just `order`.
         Assert.Equal(OrdinalBoundary.Inclusive, ordinal.Boundary);
     }
 
@@ -365,7 +365,7 @@ public sealed class TemplateApplicationTests
     {
         // D-114's provenance rule, and the sharpest test of it: over cut bins the
         // geometry fixes the operator, so an EXPLICITLY authored straddling boundary
-        // (ge + strict) is invalid. A template-supplied one must trip the same check —
+        // (ge + strict) is invalid. A template-supplied one must trip the same check:
         // "configuration applied through a template behaves as though written on the
         // attribute" (§12.3).
         var result = Resolve(With(
@@ -397,7 +397,7 @@ public sealed class TemplateApplicationTests
         Assert.True(result.TryGetValue(out var spec), Describe(result.Diagnostics));
         Assert.DoesNotContain(result.Diagnostics, d => d.Code == DiagnosticCode.OrdinalBoundaryIncompatibleWithCuts);
 
-        // The default still FILLED — it is defaulted, not ignored.
+        // The default still FILLED: it is defaulted, not ignored.
         var ordinal = Assert.IsType<OrdinalScale>(Assert.Single(spec.Attributes).Scale);
         Assert.Equal(OrdinalBoundary.Strict, ordinal.Boundary);
     }
@@ -428,7 +428,7 @@ public sealed class TemplateApplicationTests
     {
         // D-061 over the EFFECTIVE discretizer (D-121): the attribute authors a bare-string
         // restrict_to and no discretizer; the template supplies manual_cuts, which is
-        // number-fixing — so the string entry must be rejected exactly as it would be if
+        // number-fixing, so the string entry must be rejected exactly as it would be if
         // the discretizer had been written on the attribute. This is the case that fails
         // if value typing is computed before application rather than after.
         var result = Resolve(With(
@@ -465,7 +465,7 @@ public sealed class TemplateApplicationTests
         // §9.2/D-049: application covers EVERY attribute. On an excluded one the emitted
         // shaping a template supplies is retained-but-dormant (no scaling validation
         // fires, and no discretizer/scale is resolved), while a template-supplied
-        // restrict_to is live — the filter-only pattern (§10.4).
+        // restrict_to is live: the filter-only pattern (§10.4).
         var attribute = ResolveSingle(With(
             DocumentFixtures.Attribute("a", DocumentFixtures.Column(0), include: false),
             [DocumentFixtures.Template("t", restrictTo: [new RestrictToValue("keep")])],
@@ -541,7 +541,7 @@ public sealed class TemplateApplicationTests
     public void Apply_WhenOneInvalidTemplateReachesThreeAttributes_ThenEachAttributeReports()
     {
         // §16.4/D-116: an effective attribute may draw on several templates plus higher
-        // tiers, so the ATTRIBUTE is the only sound owner — one diagnostic per affected
+        // tiers, so the ATTRIBUTE is the only sound owner: one diagnostic per affected
         // effective attribute, in attribute declaration order, never one per template.
         var document = DocumentFixtures.Document(
             [Bare("a"), Bare("b"), Bare("c")],

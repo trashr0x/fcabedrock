@@ -22,8 +22,8 @@ public sealed class PublicationReferenceTests
     public void Reference_WhenTheOriginalIsClosed_ThenAReplacementCanInheritItsIdentifier()
     {
         // The control that gives every other case its meaning. It asserts a POSSIBILITY, not a
-        // certainty — whether the identifier is reissued is the allocator's business, and on some
-        // filesystems it never is — so it records what happened rather than requiring reuse.
+        // certainty (whether the identifier is reissued is the allocator's business, and on some
+        // filesystems it never is), so it records what happened rather than requiring reuse.
         using var temp = TempDirectory.Create();
         var path = temp.Write("object", "original");
 
@@ -60,7 +60,7 @@ public sealed class PublicationReferenceTests
     public void Reference_WhenTheReplacementIsByteIdentical_ThenItIsStillNotTheSameObject()
     {
         // The sharpest case: nothing about the content is wrong, and a content check would accept
-        // it. Only identity — anchored — tells the two apart.
+        // it. Only identity, anchored, tells the two apart.
         using var temp = TempDirectory.Create();
         var path = temp.Write("object", "identical");
 
@@ -99,7 +99,7 @@ public sealed class PublicationReferenceTests
         {
             // It is a genuinely different kind of open, which is why it can be taken at this
             // instant at all: the reference asks only for attributes and is outside the share
-            // check, while a path re-observation asks for data read and — on Windows — is refused
+            // check, while a path re-observation asks for data read and (on Windows) is refused
             // by the FileShare.None creation handle. What is asserted is the property both
             // platforms share: the anchor, not the path, is what names the object here.
             //
@@ -120,13 +120,13 @@ public sealed class PublicationReferenceTests
         Assert.False(File.Exists(staged));
 
         // The proof-bound removal, through a handle opened with no sharing at all while this
-        // reference is still open — the combination that has to work for any of this to be usable.
+        // reference is still open: the combination that has to work for any of this to be usable.
         var removed = files.Remove(published, (identity, _) => identity == created.Reference.Identity);
         Assert.True(removed);
 
         // On Windows the disposition names the object and takes effect when its LAST handle closes,
         // so the name is still occupied until the reference is released. Releasing it completes the
-        // deletion — and releasing it can delete nothing else, because the disposition is bound to
+        // deletion, and releasing it can delete nothing else, because the disposition is bound to
         // that object.
         created.Reference.Dispose();
 
@@ -140,7 +140,7 @@ public sealed class PublicationReferenceTests
     [Fact]
     public void Reference_WhenTheRemovalIsRefused_ThenTheObjectAndItsNameSurvive()
     {
-        // The other half: a proof that does not accept the object leaves everything untouched —
+        // The other half: a proof that does not accept the object leaves everything untouched:
         // no disposition, no deletion, nothing pending.
         using var temp = TempDirectory.Create();
         var files = PublicationFileSystem.Instance;
@@ -157,7 +157,7 @@ public sealed class PublicationReferenceTests
     [Fact]
     public void Reference_WhenAConfidentialStageIsCreated_ThenItIsAnchoredWithoutDisturbingItsOwnHandle()
     {
-        // The data-bearing creation, which is held FileShare.None and — on Windows — carries an
+        // The data-bearing creation, which is held FileShare.None and (on Windows) carries an
         // owner-only DACL. The reference has to coexist with both, because it is taken while that
         // very handle is open.
         using var temp = TempDirectory.Create();

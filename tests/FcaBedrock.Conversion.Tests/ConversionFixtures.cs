@@ -20,7 +20,7 @@ internal static class ConversionFixtures
     public static Diagnosed<ConversionPlan> PlanFor(BedrockSpec spec, SourceSchema schema, LabelStyle style = LabelStyle.Native) =>
         ConversionPlanner.Plan(CalibratedSpec.FromFullyDeclared(ResolveFor(spec, schema)), style);
 
-    // The resolved token for a hand-built spec + schema (empty name bindings — the
+    // The resolved token for a hand-built spec + schema (empty name bindings: the
     // Conversion fixtures bind by index/predicate, never by header name).
     public static ResolvedSpec ResolveFor(BedrockSpec spec, SourceSchema schema) =>
         ResolvedSpec.Create(
@@ -42,7 +42,7 @@ internal static class ConversionFixtures
     public static readonly IReadOnlyDictionary<string, string> NoLabels = new Dictionary<string, string>();
 
     // The three whole-stream observability warnings (§16.4/D-105). They fire on normal
-    // completion whenever a context has no rows, an empty row, or an empty column — all of
+    // completion whenever a context has no rows, an empty row, or an empty column, all of
     // which these deliberately tiny fixtures produce by construction (a one-row fixture over a
     // two-value domain leaves a column uncrossed; a fixture probing "missing → no cross" emits
     // an object with no crosses at all). They are expected outcomes, not faults (§7: the column
@@ -101,7 +101,7 @@ internal static class ConversionFixtures
         "m4,class,e\nm4,bruises?,f\nm4,gill-size,n\nm4,veil-type,p\nm4,ring-number,n";
 
     // The same 25 triples as MushroomTripleData, reordered predicate-major (subject-interleaved):
-    // every subject recurs non-contiguously, so subject_grouped would reject it — the unordered path
+    // every subject recurs non-contiguously, so subject_grouped would reject it; the unordered path
     // must reproduce the same objects (first-appearance m0..m4) and crosses.
     public const string MushroomTripleDataInterleaved =
         "m0,class,e\nm1,class,e\nm2,class,e\nm3,class,e\nm4,class,e\n" +
@@ -158,7 +158,7 @@ internal static class ConversionFixtures
             domain, RestrictTo: [], NoLabels, missing, UnknownValuePolicy.Warn);
 
     // A numeric manual_cuts attribute (open ends, nominal) with a configurable unknown-value
-    // policy — for exercising the malformed-numeric path (§11.5 / D-050).
+    // policy, for exercising the malformed-numeric path (§11.5 / D-050).
     public static AttributeSpec NumericCuts(string name, int index, UnknownValuePolicy policy, params double[] cuts) =>
         NumericCuts(name, index, policy, MissingPolicy.Skip, cuts);
 

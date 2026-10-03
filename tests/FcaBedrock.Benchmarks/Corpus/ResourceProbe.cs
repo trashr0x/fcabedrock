@@ -66,7 +66,7 @@ internal static class ResourceProbe
         return (calibrated, recorder.Trace());
     }
 
-    /// <summary>The modelled floor a single accumulator entry costs — the honestly stated bound arm.</summary>
+    /// <summary>The modelled floor a single accumulator entry costs: the honestly stated bound arm.</summary>
     public static long AccumulatorFloorBytes => QuantileAccumulator.FloorBytes;
 
     // Records the signals and changes nothing: production leaves the observer null (EP-6).

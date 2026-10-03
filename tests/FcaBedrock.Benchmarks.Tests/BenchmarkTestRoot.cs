@@ -10,7 +10,7 @@ namespace FcaBedrock.Benchmarks.Tests;
 /// A module initializer, not a fixture, because <see cref="BenchmarkPaths.Root"/> resolves lazily
 /// and then stays resolved for the life of the process: the redirect has to be in place before the
 /// first access, and a module initializer runs before any test does. Without it these tests would
-/// read and write the developer's real corpus directory — deleting prepared corpora, and letting a
+/// read and write the developer's real corpus directory, deleting prepared corpora and letting a
 /// stale one decide a test's outcome.
 /// </para>
 /// </summary>

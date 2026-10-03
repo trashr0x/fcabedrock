@@ -14,7 +14,7 @@ namespace FcaBedrock.Benchmarks;
 /// <b>The measured interval</b> starts with the corpus prepared on disk and <em>nothing open</em>.
 /// It covers constructing the session, reading the schema, opening the underlying stream (a session
 /// opens lazily, per read), tokenizing and cleaning every field, and running the enumerator to
-/// completion — which is what closes the stream. Resolving the spec's read settings, deriving the
+/// completion, which is what closes the stream. Resolving the spec's read settings, deriving the
 /// oracle, and validating the result all sit outside it: none of them is source work.
 /// </para>
 /// <para>

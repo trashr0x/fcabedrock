@@ -61,7 +61,7 @@ public sealed class InternetAdsExitTests
     [Fact]
     public void Corpus_MirrorsTheAdDataLayout_ProvenAgainstLiteralContractBoundaries()
     {
-        // The generator's own dimension constants must equal the frozen literals — a wrong
+        // The generator's own dimension constants must equal the frozen literals: a wrong
         // constant is caught here directly rather than validating itself downstream.
         Assert.Equal(Columns, AdCorpus.ColumnCount);
         Assert.Equal(FirstTerm, AdCorpus.FirstTermIndex);
@@ -121,14 +121,14 @@ public sealed class InternetAdsExitTests
     {
         var declarative = await ConvertAsync(AdSpecs.Declarative());
 
-        // No Error/Fatal, and NO diagnostic at all in any stage — the fully applied declarative
+        // No Error/Fatal, and NO diagnostic at all in any stage: the fully applied declarative
         // form is clean (the matcher wins on the bare terms, so no shadow warning; it selects
         // 1,554, so no zero-match warning).
         AssertNoErrors(declarative);
         AssertExactDiagnostics(declarative);
 
         // Independent ordered inventory: exactly 1,559 attributes, each position's name and source
-        // index locked against the literal contract, globally unique, complete 0…1558 coverage —
+        // index locked against the literal contract, globally unique, complete 0…1558 coverage,
         // nothing synthesized from source width.
         AssertAuthoredInventory(declarative.Spec.Attributes);
 
@@ -217,12 +217,12 @@ public sealed class InternetAdsExitTests
 
         // Stored-culture sensitivity: identical cuts but a different PARSING culture are
         // semantically different discretizers (they parse "80,5" vs "80.5"), so the projection
-        // must distinguish them — this is stored culture, not ambient formatting.
+        // must distinguish them: this is stored culture, not ambient formatting.
         Assert.NotEqual(DescribeDiscretizer(d1), DescribeDiscretizer(dFr));
         Assert.Contains("culture=fr-FR", DescribeDiscretizer(dFr), StringComparison.Ordinal);
 
         // Ambient-culture invariance: under a comma-decimal AMBIENT culture the projection text is
-        // unchanged — "80.5", never "80,5" — and both the invariant and the fr-FR-stored
+        // unchanged ("80.5", never "80,5"), and both the invariant and the fr-FR-stored
         // projections are ambient-independent.
         var invariant = DescribeDiscretizer(d1);
         var stored = DescribeDiscretizer(dFr);
@@ -251,7 +251,7 @@ public sealed class InternetAdsExitTests
         var uncurated = await ConvertAsync(AdSpecs.Uncurated(withTemplateMatcher: true));
 
         // Before the warning: every selected term resolved to the DRAFT's explicit identity +
-        // nominal + observed domain — not the template's dichotomic/["1","0"]. Nominal proves the
+        // nominal + observed domain, not the template's dichotomic/["1","0"]. Nominal proves the
         // scale field lost; the observed domain (["0","1"] on odd-index terms) proves the domain
         // field lost.
         AssertTermsAreDraftNominal(uncurated.Spec);
@@ -285,7 +285,7 @@ public sealed class InternetAdsExitTests
         AssertIdentical(matcherWon, materialized);
 
         // Clean scale boundary with literal 3/4 and 1557/1558 pins: index 3 nominal (string),
-        // 4 and 1557 dichotomic (matcher), 1558 nominal — and exactly 1,554 dichotomic, all inside
+        // 4 and 1557 dichotomic (matcher), 1558 nominal, and exactly 1,554 dichotomic, all inside
         // [4, 1557].
         AssertMatcherBoundary(matcherWon.Spec);
         AssertMatcherTermConfig(matcherWon.Spec);
@@ -461,7 +461,7 @@ public sealed class InternetAdsExitTests
     [Fact]
     public async Task Provenance_IsAuthoredOnEveryGeneratedFormAndIsFingerprintInert()
     {
-        // Every generated exit spec authors the exact Kushmerick/UCI provenance — parsed and
+        // Every generated exit spec authors the exact Kushmerick/UCI provenance, parsed and
         // asserted on the document, not merely present in the header text.
         foreach (var toml in new[]
                  {
@@ -479,7 +479,7 @@ public sealed class InternetAdsExitTests
         }
 
         // Inertness, proven directly: the SAME resolved document with vs without provenance
-        // produces identical schema/cxt/dat fingerprints AND byte-identical .cxt/.dat — provenance
+        // produces identical schema/cxt/dat fingerprints AND byte-identical .cxt/.dat: provenance
         // reaches no fingerprint and no output byte (§4/§14).
         var read = SpecReader.Read(AdSpecs.Declarative());
         Assert.True(read.TryGetValue(out var document), Describe(read.Diagnostics));
@@ -499,7 +499,7 @@ public sealed class InternetAdsExitTests
     // Inventory / boundary oracles (literal contract, independent of the generator's constants)
     // ---------------------------------------------------------------------
 
-    /// <summary>The independently derived logical name for physical column <paramref name="i"/> —
+    /// <summary>The independently derived logical name for physical column <paramref name="i"/>:
     /// literal boundaries, its own copy of the naming rule, so a generator naming bug is caught.</summary>
     private static string ExpectedAuthoredName(int i) => i switch
     {
@@ -513,7 +513,7 @@ public sealed class InternetAdsExitTests
 
     /// <summary>Locks the ordered inventory of an authored form: exactly 1,559 attributes, each
     /// position's name and 0-based source index, global name/index uniqueness, and complete
-    /// 0…1558 coverage — all against literals.</summary>
+    /// 0…1558 coverage, all against literals.</summary>
     private static void AssertAuthoredInventory(IReadOnlyList<AttributeSpec> attributes)
     {
         Assert.Equal(Columns, attributes.Count);
@@ -553,7 +553,7 @@ public sealed class InternetAdsExitTests
     }
 
     /// <summary>On the all-string de-shadow form the matcher effect is a clean scale boundary:
-    /// index 3 nominal, 4…1557 dichotomic, 1558 nominal — exactly 1,554 dichotomic, all inside the
+    /// index 3 nominal, 4…1557 dichotomic, 1558 nominal: exactly 1,554 dichotomic, all inside the
     /// literal [4, 1557].</summary>
     private static void AssertMatcherBoundary(BedrockSpec spec)
     {
@@ -812,7 +812,7 @@ public sealed class InternetAdsExitTests
     }
 
     /// <summary>The complete ordered (stage, code) stream across EVERY stage must equal
-    /// <paramref name="expected"/> exactly — so an unapproved warning in any stage fails.</summary>
+    /// <paramref name="expected"/> exactly, so an unapproved warning in any stage fails.</summary>
     private static void AssertExactDiagnostics(Converted c, params (string Stage, DiagnosticCode Code)[] expected)
     {
         var actual = c.Stages
@@ -971,7 +971,7 @@ public sealed class InternetAdsExitTests
     }
 
     // =====================================================================
-    // Harness — the real production chain, plus native fingerprints
+    // Harness: the real production chain, plus native fingerprints
     // =====================================================================
 
     private static async Task<Converted> ConvertAsync(string toml, string? csv = null)
@@ -1028,7 +1028,7 @@ public sealed class InternetAdsExitTests
         await DatWriter.WriteAsync(emit(datDiagnostics), WriterOptions.Native, datStream);
 
         // A third replay to capture the emitted objects for incidence inspection (bounded: 6
-        // objects over a tiny corpus — a test convenience, not the streaming production path).
+        // objects over a tiny corpus; a test convenience, not the streaming production path).
         var objects = new List<EmittedObject>();
         await foreach (var emitted in emit(new List<BedrockDiagnostic>()))
         {

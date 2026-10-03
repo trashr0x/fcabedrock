@@ -76,7 +76,7 @@ internal static class CorpusCatalog
 
     /// <summary>
     /// Parses catalog text. Returns <see langword="null"/> for anything this reader does not fully
-    /// understand — an unknown format version, a missing key, an unparseable number. A catalog we
+    /// understand: an unknown format version, a missing key, an unparseable number. A catalog we
     /// cannot read is treated exactly like an absent one: the corpus is re-prepared, never guessed at.
     /// </summary>
     public static CorpusEntry? TryParse(string text)

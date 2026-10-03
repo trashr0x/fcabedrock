@@ -13,7 +13,7 @@ namespace FcaBedrock.Benchmarks.Oracles;
 /// <para>
 /// A width case's incidence is <em>sparse</em>: a row crosses three numeric bins, at most the local
 /// and class flags, and only the handful of term flags that happen to be set. That is the property
-/// worth checking — a bug that crossed every declared column would still produce a plausible-looking
+/// worth checking: a bug that crossed every declared column would still produce a plausible-looking
 /// file, and only an expectation derived from the data can tell the difference.
 /// </para>
 /// </summary>

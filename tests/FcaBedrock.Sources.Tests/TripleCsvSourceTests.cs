@@ -52,8 +52,8 @@ public sealed class TripleCsvSourceTests
     [Fact]
     public async Task ReadRowsAsync_WhenRoleEqualsMissingToken_ThenNullUniformlyForEveryRole()
     {
-        // §5.1 / D-082: missing_token normalizes to null uniformly — subject and predicate too,
-        // not only value. The Conversion layer decides what a null role means per role.
+        // §5.1 / D-082: missing_token normalizes to null uniformly (subject and predicate too,
+        // not only value). The Conversion layer decides what a null role means per role.
         var rows = await ReadAllAsync(Source("?,?,?", Triple()));
 
         var row = Assert.Single(rows);

@@ -9,7 +9,7 @@ namespace FcaBedrock.Cli.Tests;
 /// digest says which <em>object</em> is at it.
 /// <para>
 /// Every case here is driven through the real argv boundary and the real filesystem, with the
-/// injected seam used only to place a genuine race — a file that appears at a destination between
+/// injected seam used only to place a genuine race: a file that appears at a destination between
 /// the transaction's last look and its next move, or in the middle of the move itself. What is
 /// asserted is the files, their bytes, the exit code, the stderr line, and what a plain retry then
 /// does; never merely the order of the calls.
@@ -25,7 +25,7 @@ public sealed class PublicationOwnershipTests
     public async Task Publication_WhenAStageAcquisitionIsRefused_ThenNoDurableStateNamesTheOccupant()
     {
         // The claim is written AFTER the create-new succeeds and carries that object's identity. A
-        // refusal therefore writes no claim at all — which is what stops a later recovery from
+        // refusal therefore writes no claim at all, which is what stops a later recovery from
         // deleting the very file whose presence caused the refusal.
         using var run = ConvertRun.Wide();
         run.Harness.PublicationFiles.MutateBefore = "Confidential:out.cxt.fcabedrock-stage-T";
@@ -60,7 +60,7 @@ public sealed class PublicationOwnershipTests
     {
         // THE undecidable interval: the acquisition has succeeded and nothing durable says so yet.
         // On disk this is indistinguishable from "an object was already there and refused the
-        // create-new" — the two histories leave the same bytes at the same name. Ownership is not
+        // create-new": the two histories leave the same bytes at the same name. Ownership is not
         // inferred from the length, the name, or the token: nothing is removed, the record survives
         // so the state stays classifiable, and the run says plainly that it cannot finish the
         // clean-up. The previous set is intact throughout.
@@ -125,7 +125,7 @@ public sealed class PublicationOwnershipTests
         //
         // Reaching this at all needs the operation-aware race hook: at the instant of the call,
         // this run's token exists nowhere on disk, so an ordinary adversary could not name the path
-        // it is about to create. The test is handed the name anyway — a deliberately stronger
+        // it is about to create. The test is handed the name anyway: a deliberately stronger
         // adversary than the filesystem affords.
         using var run = ConvertRun.Wide();
         run.Harness.PublicationFiles.MutateBefore = "CreateNew:out.fcabedrock-pending-T";
@@ -156,14 +156,14 @@ public sealed class PublicationOwnershipTests
     [Theory]
     [InlineData(Keep)]
 
-    // An occupant that is EXACTLY the document the descriptor's own digest names — the sharpest
+    // An occupant that is EXACTLY the document the descriptor's own digest names: the sharpest
     // form of "grammar and prefix knowledge are not proof". Nothing about its content is wrong;
     // only its identity is.
     [InlineData(null)]
     public async Task Publication_WhenASurvivingIntentDoesNotNameTheOccupant_ThenItIsPreserved(string? content)
     {
         // A descriptor outliving its run authorizes removing exactly one thing: the object whose
-        // identity its name states. A different object at that path — however plausible its bytes —
+        // identity its name states. A different object at that path (however plausible its bytes)
         // is not that object, so it stays and the run says the clean-up cannot finish.
         using var run = ConvertRun.Wide();
         var token = new string('a', 32);
@@ -333,7 +333,7 @@ public sealed class PublicationOwnershipTests
     {
         // The same substitution at the other boundary: inside the claim's actual Delete. The
         // removal's proof is read from the handle it holds, so the fresh empty object is what the
-        // proof sees — and it is not this transaction's claim.
+        // proof sees, and it is not this transaction's claim.
         using var run = ConvertRun.Wide();
         run.Harness.PublicationFiles.MutateBefore = "Delete:out.fcabedrock-sc-c-T-T";
         run.Harness.PublicationFiles.MutateWith = operation =>
@@ -365,7 +365,7 @@ public sealed class PublicationOwnershipTests
     {
         // Every field the claim binds, and a body that simply did not land whole. None of them is
         // this transaction's claim for this target kind and this identity, so none is trusted or
-        // removed — and the stage beside it stays put.
+        // removed, and the stage beside it stays put.
         using var run = ConvertRun.Wide();
         var residue = Residue.Create(run.Directory, "out", new string('a', 32));
         residue.WriteRecord([("stage", "out.cxt")]);
@@ -405,7 +405,7 @@ public sealed class PublicationOwnershipTests
     // Created, nothing written: not a claim, and nothing else says the acquisition happened.
     [InlineData("CreateNew:out.fcabedrock-sc-c-T-T", false)]
 
-    // The body is one write, so from that call onwards it is on disk whole — the claim is genuine
+    // The body is one write, so from that call onwards it is on disk whole: the claim is genuine
     // at each of these, and a retry finishes the interrupted run rather than refusing it.
     [InlineData("StreamWrite:out.fcabedrock-sc-c-T-T", true)]
     [InlineData("StreamFlush:out.fcabedrock-sc-c-T-T", true)]
@@ -415,7 +415,7 @@ public sealed class PublicationOwnershipTests
     {
         // Create, write, flush and close are four distinct crash boundaries. A state whose body
         // landed whole is a claim and converges automatically; one whose body did not is
-        // unacknowledged and falls to the fail-closed interval — preserved, refused, and
+        // unacknowledged and falls to the fail-closed interval: preserved, refused, and
         // byte-identical on every retry.
         using var run = ConvertRun.Wide();
         run.Harness.PublicationFiles.CrashAfter = transition;
@@ -602,7 +602,7 @@ public sealed class PublicationOwnershipTests
 
         await File.WriteAllTextAsync(residue.MarkerPath("staged"), forged, new UTF8Encoding(false));
 
-        // Refused with the location exactly as it was found — twice over.
+        // Refused with the location exactly as it was found, twice over.
         for (var attempt = 0; attempt < 2; attempt++)
         {
             var harness = new CliTestHarness();
@@ -619,7 +619,7 @@ public sealed class PublicationOwnershipTests
     public async Task Publication_WhenAControlBodyIsSubstitutedInsideItsRemoval_ThenItSurvives()
     {
         // The removal's proof is read from the handle it holds, so a body swapped in at the delete
-        // boundary is what the proof sees — and it fails. On Windows the deletion is requested
+        // boundary is what the proof sees, and it fails. On Windows the deletion is requested
         // against that handle and there is no interval at all; on Unix the proof is the last thing
         // before the unlink. Either way the substitute survives.
         using var run = ConvertRun.Wide();
@@ -641,7 +641,7 @@ public sealed class PublicationOwnershipTests
     public async Task Publication_WhenThePendingRecordCannotBeIdentified_ThenItIsNeverReclaimed()
     {
         // The host cannot say which object its own create-new produced, so the transaction fails
-        // closed — and it does NOT take the object back out. Removal is bound to the exact created
+        // closed, and it does NOT take the object back out. Removal is bound to the exact created
         // object; where the seam cannot name it there is no proof, and "it is zero bytes" is a
         // length, not a proof. So no removal is even attempted, and the object stays.
         using var run = ConvertRun.Wide();
@@ -697,7 +697,7 @@ public sealed class PublicationOwnershipTests
     public async Task Publication_WhenAStageCannotBeIdentified_ThenItIsNeverReclaimedAndTheOldSetIsExact()
     {
         // The same rule at the stage. The run stops before its writer, before DATA is enumerated
-        // for it, before the second format is begun, and before any target is renamed aside — and
+        // for it, before the second format is begun, and before any target is renamed aside, and
         // the object it created stays beside its record rather than being reclaimed on a length.
         using var run = ConvertRun.Wide();
         Assert.Equal(0, await run.ConvertAsync("--format", "both"));
@@ -723,7 +723,7 @@ public sealed class PublicationOwnershipTests
             second.StdErr);
 
         // The identity branch itself reclaims nothing. The rollback that follows does REACH the
-        // stage's removal — and that is the point of the substitution: the proof it takes from the
+        // stage's removal, and that is the point of the substitution: the proof it takes from the
         // handle is of the fresh empty object, which is not the stage this run created, so the
         // removal refuses and the replacement survives.
         var operations = second.PublicationFiles.Operations;
@@ -843,7 +843,7 @@ public sealed class PublicationOwnershipTests
 
         Assert.Equal(1, exit);
 
-        // The substitute is not at the target — the restoring rename was undone — the record
+        // The substitute is not at the target (the restoring rename was undone), the record
         // survives so the state stays classifiable rather than looking finished, and the object
         // itself is preserved somewhere rather than deleted.
         var expected = alias ? CliFixtures.WideData : Keep;
@@ -873,7 +873,7 @@ public sealed class PublicationOwnershipTests
     // The committed phase marker.
     [InlineData("out.fcabedrock-committed-T", "out.fcabedrock-committed-")]
 
-    // The transaction record itself — the very last removal a run performs.
+    // The transaction record itself: the very last removal a run performs.
     [InlineData("out.fcabedrock-transaction-T.toml", "out.fcabedrock-transaction-")]
     public async Task Publication_WhenAnObjectIsSubstitutedInsideItsRemoval_ThenTheSubstituteSurvives(
         string transition, string pattern)
@@ -882,7 +882,7 @@ public sealed class PublicationOwnershipTests
         // checked afterwards. So the proof is not taken before the delete and acted on by it: the
         // removal opens the object, reads its identity and bytes from that handle, and deletes
         // through the same handle. A file that took the name in between is what the proof sees, and
-        // it fails — so the deletion never happens at all.
+        // it fails, so the deletion never happens at all.
         using var run = ConvertRun.Wide();
         Assert.Equal(0, await run.ConvertAsync("--format", "cxt"));
 
@@ -970,7 +970,7 @@ public sealed class PublicationOwnershipTests
     public async Task Publication_WhenAnUnrelatedObjectOccupiesThePendingRecordPathAtItsRemoval_ThenTheProofRefusesAndPreservesIt()
     {
         // The pending record's own removal, at the tail of a resumed cleanup. Its descriptor
-        // authorizes removing exactly one thing — the object whose identity that name states — and
+        // authorizes removing exactly one thing (the object whose identity that name states), and
         // a file that took the path afterwards is not that object. The proof is read from the
         // handle the deletion acts through, so the occupant is what it judges: the removal is
         // attempted, refused, and the teardown stops before the record it would otherwise erase.
@@ -986,7 +986,7 @@ public sealed class PublicationOwnershipTests
         var recordBytes = await File.ReadAllBytesAsync(residue.RecordPath);
 
         // The first existence probe of that path is the prior-collision check's, which runs after
-        // classification accepted the state and before recovery mutates anything — so the occupant
+        // classification accepted the state and before recovery mutates anything, so the occupant
         // arrives inside exactly the window this proof exists for.
         run.Harness.PublicationFiles.MutateBefore = "Exists:out.fcabedrock-pending-T";
         run.Harness.PublicationFiles.Mutate = () => File.WriteAllText(pending, Keep);
@@ -1125,8 +1125,8 @@ public sealed class PublicationOwnershipTests
     [Fact]
     public async Task Publication_WhenAPostCommitRemovalRaisesAContractFault_ThenTheCommittedRunStands()
     {
-        // Past the commit point the run is public. The fault still reaches exit 4 — it is a product
-        // bug wherever it happens — but nothing unwinds what was published.
+        // Past the commit point the run is public. The fault still reaches exit 4 (it is a product
+        // bug wherever it happens), but nothing unwinds what was published.
         using var run = ConvertRun.Wide();
         run.Harness.PublicationFiles.FailDeletePrefix = "out.fcabedrock-committed-";
         run.Harness.PublicationFiles.FailWith = static () => new ObjectDisposedException("publication");
@@ -1209,8 +1209,8 @@ public sealed class PublicationOwnershipTests
     {
         // The host says, at the created handle, that it cannot identify the object. That is the
         // whole answer: this stage can never be committed, so the writer is never invoked, DATA is
-        // never enumerated for it, the second format is never begun, and — the part a snapshot
-        // taken after a successful rollback hides — no prior target is renamed aside.
+        // never enumerated for it, the second format is never begun, and (the part a snapshot
+        // taken after a successful rollback hides) no prior target is renamed aside.
         using var run = ConvertRun.Wide();
         Assert.Equal(0, await run.ConvertAsync("--format", "both"));
         var before = run.Snapshot();
@@ -1314,13 +1314,13 @@ public sealed class PublicationOwnershipTests
         // The manifest's final rename IS the run's public commit point. Detecting the substitution
         // afterwards is not enough on its own: the non-overwriting rename has already put an
         // unrelated object at the marker path, and an ordinary rollback would preserve it there
-        // while erasing every private control that could classify it — a failed run wearing a
+        // while erasing every private control that could classify it: a failed run wearing a
         // success marker, with no residue to reveal it.
         using var run = ConvertRun.Wide();
         byte[] impostor;
         if (stale)
         {
-            // A perfectly parseable manifest from a different run — the sharpest case, because
+            // A perfectly parseable manifest from a different run: the sharpest case, because
             // nothing about its CONTENT is wrong. Only its identity is.
             Assert.Equal(0, await run.ConvertAsync("--format", "cxt"));
             impostor = await File.ReadAllBytesAsync(run.Target(".manifest.toml"));
@@ -1367,7 +1367,7 @@ public sealed class PublicationOwnershipTests
             DiagnosticRenderer.RenderHostError($"cannot publish the output '{run.Target(".manifest.toml")}'."),
             second.StdErr);
 
-        // The impostor is preserved — never deleted as owned — but it is NOT the public marker, and
+        // The impostor is preserved (never deleted as owned), but it is NOT the public marker, and
         // the previous state is exactly what it was.
         Assert.Contains(
             Directory.GetFiles(run.Directory),
@@ -1385,7 +1385,7 @@ public sealed class PublicationOwnershipTests
     public async Task Publication_WhenTheManifestSubstituteCannotBeMovedBack_ThenTheAuthorityIsKept()
     {
         // Compensation itself failing is the last case. The impostor cannot be deleted and cannot
-        // be moved off the marker path — so the one thing left that must hold is that nothing
+        // be moved off the marker path, so the one thing left that must hold is that nothing
         // erases the private state a later run needs to recognize it, and that a retry keeps
         // reaching the same answer.
         using var run = ConvertRun.Wide();
@@ -1449,7 +1449,7 @@ public sealed class PublicationOwnershipTests
             "an impostor",
             await File.ReadAllTextAsync(Single(run.Directory, "out.manifest.toml.fcabedrock-stage-*")));
 
-        // The retry cannot remove an object it does not own, so it says so — every time, without
+        // The retry cannot remove an object it does not own, so it says so, every time, without
         // touching anything.
         var retry = new CliTestHarness();
         Assert.Equal(
@@ -1467,7 +1467,7 @@ public sealed class PublicationOwnershipTests
     {
         // The sharpest substitution there is, and the one no content check can catch: the object at
         // the stage path is replaced by a DIFFERENT object holding exactly the bytes this run wrote.
-        // Its hash is the one the manifest would certify, so only identity can refuse it — and
+        // Its hash is the one the manifest would certify, so only identity can refuse it, and
         // identity can only refuse it because the original is still held open, which is what stops
         // the replacement from being handed the original's identifier (D-125).
         using var run = ConvertRun.Wide();

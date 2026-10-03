@@ -6,7 +6,7 @@ namespace FcaBedrock.Benchmarks.Configuration;
 /// Two axes, deliberately separate. A <b>tier</b> category says how much data a case reads, and is
 /// what the default-selection and opt-in rules act on. A <b>surface</b> category says which
 /// production path it measures, so a reader can ask for "every source-drain case" without knowing
-/// class names. Filtering itself is BenchmarkDotNet's job — these are just the vocabulary.
+/// class names. Filtering itself is BenchmarkDotNet's job; these are just the vocabulary.
 /// </para>
 /// </summary>
 internal static class BenchmarkCategories
@@ -16,7 +16,7 @@ internal static class BenchmarkCategories
     /// <summary>10,000-record cases. The default selection: fast, hand-checkable, always prepared.</summary>
     public const string Small = "Small";
 
-    /// <summary>730,000-record cases — the working baseline. Opt in by naming this category.</summary>
+    /// <summary>730,000-record cases: the working baseline. Opt in by naming this category.</summary>
     public const string Working = "Working";
 
     /// <summary>

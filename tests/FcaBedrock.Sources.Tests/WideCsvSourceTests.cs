@@ -40,7 +40,7 @@ public sealed class WideCsvSourceTests
     public async Task ReadAsync_YieldedRecords_RetainFieldValuesAfterFullAndRepeatedEnumeration()
     {
         // Field-array ownership (D-082/D-083): each yielded record owns its array, so its values stay
-        // stable after the enumeration completes and after a second enumeration — the wide dedupe
+        // stable after the enumeration completes and after a second enumeration; the wide dedupe
         // grouping buffers/spills records past the yield, so a buffer-reusing source would corrupt them.
         // Asserted only through the public Field() accessor, not the private array field.
         var source = Source("a,b\nc,d\ne,f", Wide(hasHeader: false));

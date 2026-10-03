@@ -88,14 +88,14 @@ internal static class AdsCorpus
     public static bool TermIsSet(long row, int term) =>
         Determinism.Draw(row, 1_000 + term) % 1_000 < TermDensityPerMille;
 
-    /// <summary>True when the row is in the positive class — about one row in seven.</summary>
+    /// <summary>True when the row is in the positive class: about one row in seven.</summary>
     public static bool IsAd(long row) => Determinism.Draw(row, 64) % 7 == 0;
 
     /// <summary>The class label for a row.</summary>
     public static string ClassLabel(long row) => IsAd(row) ? AdLabel : NonAdLabel;
 
     /// <summary>
-    /// The <b>cleaned</b> value of one cell — what a source yields after the §5.1 trim. This family
+    /// The <b>cleaned</b> value of one cell: what a source yields after the §5.1 trim. This family
     /// carries no missing cells: its interesting property is width, and mixing a second pressure
     /// into it would make a measurement harder to attribute, not more realistic.
     /// </summary>

@@ -10,7 +10,7 @@ namespace FcaBedrock.Benchmarks;
 /// missing cells and all.
 /// <para>
 /// <b>Every Adult case is <see cref="BenchmarkCategories.External"/>, and so opt-in.</b> Not
-/// because it is slow — 32,561 records is Small-sized work — but because its corpus is acquired
+/// because it is slow (32,561 records is Small-sized work) but because its corpus is acquired
 /// from a third-party host rather than generated here, and a routine run must be able to complete
 /// without reaching one. Run these with
 /// <c>--anyCategories External</c>; a bare run, a broad name filter, and an <c>*Adult*</c> filter
@@ -18,8 +18,8 @@ namespace FcaBedrock.Benchmarks;
 /// case <em>fails</em>: it is never skipped.
 /// </para>
 /// <para>
-/// Its expectation is derived by a <b>second, independent reader</b> written for the purpose — split
-/// on the delimiter, trim, treat an empty cell or the missing token as missing — rather than by
+/// Its expectation is derived by a <b>second, independent reader</b> written for the purpose (split
+/// on the delimiter, trim, treat an empty cell or the missing token as missing) rather than by
 /// enumerating a generator, because there is no generator. Adult's fields carry no quoting, which is
 /// what makes that simple reader a legitimate oracle rather than an approximation; the oracle
 /// asserts that property instead of assuming it.
@@ -118,7 +118,7 @@ public class AdultConvertCxt
 
     /// <summary>
     /// Validates diagnostics and intra-run determinism. The <b>line</b> count of a <c>.cxt</c> is not
-    /// its object count — the format prefixes five header lines and every object and attribute name —
+    /// its object count (the format prefixes five header lines and every object and attribute name),
     /// so the object-count assertion is left to the <c>.dat</c> case, where a line really is an
     /// object, rather than restated here in a form that would only look like a check.
     /// </summary>

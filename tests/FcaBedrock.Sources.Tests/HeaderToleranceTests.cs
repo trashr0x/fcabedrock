@@ -83,7 +83,7 @@ public sealed class HeaderToleranceTests
         var bound = await RenderRecordsAsync(boundSource.ReadAsync());
         var boundSchema = await boundSource.GetSchemaAsync();
 
-        // Header verbatim — never missing-normalized, never renamed or de-duplicated.
+        // Header verbatim: never missing-normalized, never renamed or de-duplicated.
         Assert.Equal(expected, string.Join("|", schema.Header!));
         Assert.Equal(schema.Header, boundSchema.Header);
         Assert.Equal(3, schema.ColumnCount);

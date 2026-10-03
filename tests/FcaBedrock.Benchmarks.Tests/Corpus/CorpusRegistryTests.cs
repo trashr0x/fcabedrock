@@ -92,7 +92,7 @@ public sealed class CorpusRegistryTests
     public void EveryTier_ShouldMapToExactlyOneBenchmarkCategory()
     {
         // Micro is Small-category work: fast, generated from the same pinned arithmetic as the rest,
-        // and not a target-scale claim. External is not - its corpus is acquired from a third-party
+        // and not a target-scale claim. External is not: its corpus is acquired from a third-party
         // host, so it is opt-in for a reason that has nothing to do with size.
         Assert.Equal(BenchmarkCategories.Small, CorpusTiers.Category(CorpusTier.Micro));
         Assert.Equal(BenchmarkCategories.Small, CorpusTiers.Category(CorpusTier.Small));

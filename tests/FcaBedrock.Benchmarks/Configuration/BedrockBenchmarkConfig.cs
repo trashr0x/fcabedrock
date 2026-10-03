@@ -27,7 +27,7 @@ internal static class BedrockBenchmarkConfig
     /// would reuse warmed state, would defeat per-iteration validation, and could not have its
     /// output reset between runs. One invocation per iteration is what makes
     /// <c>[IterationSetup]</c>/<c>[IterationCleanup]</c> the documented fresh-state bracket, and it
-    /// is where the reset-and-validate work lives — outside the measured interval.
+    /// is where the reset-and-validate work lives, outside the measured interval.
     /// </para>
     /// </summary>
     public static Job FreshIteration { get; } = Job.Default
@@ -77,7 +77,7 @@ internal static class BedrockBenchmarkConfig
 
         var config = ManualConfig.Create(DefaultConfig.Instance)
             // Managed allocated bytes and GC counts per operation. This is process-wide managed
-            // allocation - not peak live memory, not native allocation, and not another process's
+            // allocation: not peak live memory, not native allocation, and not another process's
             // memory. The two other memory meanings (modelled retained bytes from the internal
             // observers, and sampled whole-command working set) are separate evidence and are never
             // read off this column.
@@ -101,7 +101,7 @@ internal static class BedrockBenchmarkConfig
         //
         // Otherwise the job follows the selection: opting into a tier whose operations take seconds
         // opts into the job those cases need. One job per invocation rather than one per category,
-        // deliberately - a config that attached a job per class would union with this one and run
+        // deliberately: a config that attached a job per class would union with this one and run
         // every selected case twice.
         return policy.JobRequested ? config : config.AddJob(policy.LongRunRequested ? LongRun : FreshIteration);
     }

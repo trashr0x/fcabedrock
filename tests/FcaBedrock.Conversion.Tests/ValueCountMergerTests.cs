@@ -2,7 +2,7 @@ namespace FcaBedrock.Conversion.Tests;
 
 /// <summary>
 /// The count-aggregating k-way merger (D-095/D-103): equal values fold into one row, counts are
-/// checked, fan-in is bounded, and every output — intermediate <b>and</b> final — passes the 3T
+/// checked, fan-in is bounded, and every output (intermediate <b>and</b> final) passes the 3T
 /// preflight before it is opened.
 /// </summary>
 public sealed class ValueCountMergerTests
@@ -121,7 +121,7 @@ public sealed class ValueCountMergerTests
         var b = WriteRun(harness, (1, 1));
 
         // Two runs each holding a legal count for the SAME value: the sum is where a population
-        // beyond long first appears, and it must be attributable — never a storage failure, and
+        // beyond long first appears, and it must be attributable: never a storage failure, and
         // never a bare OverflowException escaping the seam.
         var ex = Assert.Throws<CalibrationPopulationOverflowException>(() =>
             new ValueCountMerger(harness.Workspace, harness.Options, "score")
@@ -181,7 +181,7 @@ public sealed class ValueCountMergerTests
     public void Consolidate_WhenDeletionsFailPersistentlyOnRepeatedKeyRuns_ThenThePendingCapHaltsInPath()
     {
         // The counterexample the byte rule cannot catch: every run holds the SAME key, so merging
-        // shrinks the payload and live bytes never approach 3T — yet each failed delete retains
+        // shrinks the payload and live bytes never approach 3T, yet each failed delete retains
         // another pending entry. Only a fixed cap bounds that bookkeeping.
         var fileSystem = new FakeSpoolFileSystem { OnDeleteRun = _ => StorageFaults.AccessDenied() };
         var observer = new RecordingObserver();
@@ -195,7 +195,7 @@ public sealed class ValueCountMergerTests
         Assert.Equal(GroupingOperation.CleanupDelete, ex.Operation);
         Assert.Equal(SpoolFailureKind.DeleteFailed, ex.Kind);
 
-        // The bookkeeping stayed bounded right up to the halt — including the retry pass's copy.
+        // The bookkeeping stayed bounded right up to the halt, including the retry pass's copy.
         Assert.True(harness.Workspace.PendingDeletionCount <= 4, $"pending deletions reached {harness.Workspace.PendingDeletionCount}");
         Assert.True(observer.PeakPendingDeletions <= 4);
     }
@@ -218,7 +218,7 @@ public sealed class ValueCountMergerTests
     [Fact]
     public void Consolidate_WhenRepeated_ThenTheOutputIsDeterministic()
     {
-        // EP-7: same runs in, same aggregated bytes out — the merge's tie handling must not depend
+        // EP-7: same runs in, same aggregated bytes out; the merge's tie handling must not depend
         // on which reader happens to reach a shared value first.
         static List<ValueCount> Run()
         {

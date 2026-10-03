@@ -11,9 +11,9 @@ namespace FcaBedrock.Discovery.Tests;
 /// which exceptions become <c>ProbeSourceReadFailed</c>, which propagate as the bugs they are,
 /// and why cancellation is neither.
 /// <para>
-/// The triple path has its own four provider-owned calls — <c>GetSchemaAsync</c>,
+/// The triple path has its own four provider-owned calls (<c>GetSchemaAsync</c>,
 /// <c>ReadRowsAsync</c>, <c>GetAsyncEnumerator</c>, and the <c>MoveNextAsync</c>/<c>Current</c>
-/// pair — so it needs its own coverage rather than inheriting the wide suite's. The
+/// pair), so it needs its own coverage rather than inheriting the wide suite's. The
 /// counterexamples matter most: a catch-all would convert genuine bugs into polite diagnostics a
 /// caller would try to handle (EP-14), and ArchUnitNET does not reliably surface catch-handler
 /// metadata, so behaviour is the enforcement.
@@ -96,8 +96,8 @@ public sealed class ProbeTripleReadFailureTests
         string typeName, Func<Exception> failure)
     {
         // Row acquisition is two calls before the first row arrives, and this is the first. A
-        // compiler-generated async iterator can never fail here — which is exactly why leaving it
-        // unguarded looks safe — but a hand-written session, the whole point of the D-109 seam,
+        // compiler-generated async iterator can never fail here (which is exactly why leaving it
+        // unguarded looks safe), but a hand-written session, the whole point of the D-109 seam,
         // can.
         var session = new SyncThrowingReadSession(Schema, failure);
 
@@ -124,7 +124,7 @@ public sealed class ProbeTripleReadFailureTests
         string typeName, Func<Exception> failure)
     {
         // An enumerator that materializes its row lazily does its real work in Current, not
-        // MoveNextAsync — so a read failure can land there just as easily.
+        // MoveNextAsync, so a read failure can land there just as easily.
         var session = new ThrowingCurrentSession(Schema, failure, throwAt: 0);
 
         var result = await Prober.ProbeTripleAsync(session, Settings);
@@ -204,7 +204,7 @@ public sealed class ProbeTripleReadFailureTests
     public async Task ProbeTriple_WhenReadFailsAfterPartialObservation_ThenNoDraftLeaks()
     {
         // The tempting bug: predicates and values were already observed, so "return what we have"
-        // looks helpful. It is not — a draft from a truncated read understates the data while
+        // looks helpful. It is not: a draft from a truncated read understates the data while
         // reading as complete (D-112).
         var session = new TripleProbeFixtures.FakeTripleSession(
             Schema,

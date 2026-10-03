@@ -56,7 +56,7 @@ public sealed class AdsCorpusTests
     public void Write_ShouldNeedNoEscapingAtAll()
     {
         // Every value is a digit run, a fixed decimal, or one of two class labels, so the quoting
-        // path is unreachable here by construction - which is what keeps this family's bytes a
+        // path is unreachable here by construction, which is what keeps this family's bytes a
         // function of its width alone. The W16 family owns the quoting case.
         var text = Encoding.UTF8.GetString(Generate(50));
 

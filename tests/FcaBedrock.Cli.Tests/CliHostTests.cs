@@ -165,7 +165,7 @@ public sealed class CliHostTests
     [Fact]
     public async Task RunAsync_WhenCancellationArrivesMidRun_ThenExitThreeWithNoOutputAtAll()
     {
-        // The signal lands after the command has started — while the spec is being read —
+        // The signal lands after the command has started, while the spec is being read,
         // so it is observed by the source seam during schema acquisition, not by the
         // host's command-boundary check, and the run still ends at exit 3 in silence.
         using var temp = TempDirectory.Create();
@@ -329,7 +329,7 @@ public sealed class CliHostTests
     [Fact]
     public async Task RunAsync_WhenStandardErrorFailsWritingUsage_ThenExitOneRatherThanTwo()
     {
-        // The user received no usage text at all, so this is a host output failure — not an
+        // The user received no usage text at all, so this is a host output failure, not an
         // invalid invocation the user could act on.
         var harness = new CliTestHarness { ErrorOverride = new ThrowingWriter(failOnWrite: true, failOnFlush: false) };
 
@@ -381,7 +381,7 @@ public sealed class CliHostTests
     [Fact]
     public void Complete_WhenTheDeferredFlushFails_ThenTheOutputFailureExitReplacesTheChosenCode()
     {
-        // Redirected output is buffered, so this is where a closed pipe usually surfaces —
+        // Redirected output is buffered, so this is where a closed pipe usually surfaces:
         // after the host already chose 0. It must not escape, and it must not stay 0.
         var output = new ThrowingWriter(failOnWrite: false, failOnFlush: true);
         var error = new StringWriter();

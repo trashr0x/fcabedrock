@@ -11,7 +11,7 @@ namespace FcaBedrock.Conversion.Tests;
 
 /// <summary>
 /// Restriction execution proven at the <b>serialized bytes</b>, not merely at the plan or the
-/// emitted-object list (§10.4/§18/D-105) — object names and row counts are only observable for
+/// emitted-object list (§10.4/§18/D-105): object names and row counts are only observable for
 /// real in a written artifact.
 /// <para>
 /// Also the §7 calibration-before-filtering proof and the §19.4 worked example end to end.
@@ -104,7 +104,7 @@ public sealed class RestrictionWriterTests
         //
         // The discriminator: "mesoderm" appears only on rows the restriction excludes. A
         // filter-then-calibrate implementation would observe only {endoderm} and plan one column;
-        // the correct order observes {endoderm, mesoderm} and plans two — the second of which
+        // the correct order observes {endoderm, mesoderm} and plans two, the second of which
         // then legitimately carries no crosses.
         var spec = new BedrockSpec(ConversionFixtures.Wide(hasHeader: false),
         [
@@ -143,7 +143,7 @@ public sealed class RestrictionWriterTests
     [InlineData(DuplicateObjectPolicy.Dedupe)]
     public async Task Emit_WhenRestrictionsExecute_ThenTheSourceIsStillEnumeratedExactlyOnce(DuplicateObjectPolicy policy)
     {
-        // EP-16/D-105: restriction evaluation rides the EXISTING pass — it reads the same rows the
+        // EP-16/D-105: restriction evaluation rides the EXISTING pass: it reads the same rows the
         // classification already reads, and the dedupe path reuses the existing grouping/spool
         // backend. Counted directly rather than inferred from equal output, because equal output
         // is exactly what a wasteful second pass would also produce.
@@ -236,14 +236,14 @@ public sealed class RestrictionWriterTests
             objects.Add(emitted);
         }
 
-        // s5 survives on its SECOND Strength observation — existential matching over a
+        // s5 survives on its SECOND Strength observation: existential matching over a
         // multi-valued predicate, which a single-valued fixture could not distinguish.
         Assert.Equal(["s1", "s5"], objects.Select(o => o.Name));
         Assert.Equal([0, 2], objects[0].CrossedFormalAttributeIds); // endoderm + TS<6
         Assert.Equal([1, 2], objects[1].CrossedFormalAttributeIds); // mesoderm + TS<6
 
         // §19.4's own note: the TS vocabulary was fixed before filtering, so the surviving
-        // TS 3-8 objects need not span every bucket — TheilerStage->=6 is legitimately empty.
+        // TS 3-8 objects need not span every bucket; TheilerStage->=6 is legitimately empty.
         var warning = Assert.Single(diagnostics, d => d.Code == DiagnosticCode.AttributeHasNoCrosses);
         Assert.Contains("TheilerStage->=6", warning.Message, StringComparison.Ordinal);
     }

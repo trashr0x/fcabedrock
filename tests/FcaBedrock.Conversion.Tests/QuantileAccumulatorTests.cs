@@ -39,7 +39,7 @@ public sealed class QuantileAccumulatorTests
     }
 
     // The observer watches BOTH tiers, so it is wired to the spool options as well as the
-    // accumulator — otherwise the run/write signals never fire and a resource assertion would
+    // accumulator; otherwise the run/write signals never fire and a resource assertion would
     // pass vacuously.
     private static Harness Build(
         long budget = GroupingOptions.DefaultMaxBufferedBytes,
@@ -109,8 +109,8 @@ public sealed class QuantileAccumulatorTests
         var observer = new RecordingCalibrationObserver();
         using var harness = Build(budget: 1, observer: observer);
 
-        // A share below the floor cannot be honored — an accumulator retaining nothing cannot
-        // count — so the overshoot is the documented per-attribute FloorBytes, not a failure.
+        // A share below the floor cannot be honored (an accumulator retaining nothing cannot
+        // count), so the overshoot is the documented per-attribute FloorBytes, not a failure.
         var (_, capacity, modeled) = Assert.Single(observer.Sized);
         Assert.True(capacity >= 1);
         Assert.Equal(TestModeled(capacity), modeled);
@@ -134,8 +134,8 @@ public sealed class QuantileAccumulatorTests
                     $"a{i}", CultureInfo.InvariantCulture, shared, workspace, options, observer, CancellationToken.None);
             }
 
-            // Independently recomputed from the OBSERVED capacities — not from the production
-            // formula — and checked against the honestly-stated bound (D-095's tier 1).
+            // Independently recomputed from the OBSERVED capacities (not from the production
+            // formula) and checked against the honestly-stated bound (D-095's tier 1).
             var aggregate = observer.Sized.Sum(s => TestModeled(s.Capacity));
             Assert.Equal(attributes, observer.Sized.Count);
             Assert.True(
@@ -162,7 +162,7 @@ public sealed class QuantileAccumulatorTests
     // --- Tier 1: the modeled bound proved against the REAL x64 layout -----------
     //
     // The RowCodecResidentTests posture (D-082): the actual retained bytes are derived from raw
-    // .NET-10-CoreCLR-x64 layout literals stated HERE — never from the production constants — so
+    // .NET-10-CoreCLR-x64 layout literals stated HERE (never from the production constants), so
     // the bound is proved against reality rather than recomputed from the same formula. An
     // under-charged FixedBytes or SlotBytes therefore fails here rather than passing silently.
 
@@ -179,9 +179,9 @@ public sealed class QuantileAccumulatorTests
 
     // The QuantileAccumulator object itself, which FixedBytes also claims to cover. Its own
     // allocation is tier 1; what its reference SLOTS point to is partitioned:
-    //   tier 1 — _counts, _sortBuffer (the population state, charged in full below);
-    //   tier 2 — _runs and _consolidated, i.e. the run catalog, which the D-095 contract bounds by
-    //            COUNT and shape (≤ fan-in handles), never by a byte constant.
+    //   tier 1: _counts, _sortBuffer (the population state, charged in full below);
+    //   tier 2: _runs and _consolidated, i.e. the run catalog, which the D-095 contract bounds by
+    //           COUNT and shape (≤ fan-in handles), never by a byte constant.
     // Either way the 8-byte slot lives in this object and is counted here; only the pointees differ.
     private const long RealAccumulatorRefs = 9 * 8;      // name, culture, workspace, options, observer, budget, runs, counts, sortBuffer
     private const long RealAccumulatorToken = 8;         // CancellationToken wraps one source ref
@@ -195,7 +195,7 @@ public sealed class QuantileAccumulatorTests
 
     // A Dictionary sized to `capacity` allocates buckets and entries at exactly that prime, and the
     // accumulator's sort buffer is a ValueCount[capacity] alongside them. Everything FixedBytes
-    // claims — the accumulator object, the Dictionary object, and the three array headers — is
+    // claims (the accumulator object, the Dictionary object, and the three array headers) is
     // accounted here, so the partition is complete rather than partial.
     private static long RealRetainedBytes(int capacity, long elementBytes) =>
         RealAccumulatorObject
@@ -246,7 +246,7 @@ public sealed class QuantileAccumulatorTests
     [Fact]
     public void FloorBytes_WhenDerivedIndependently_ThenMatchesTheProductionConstant()
     {
-        // The floor is Modeled(the runtime's ACCEPTED capacity for one requested entry) — derived
+        // The floor is Modeled(the runtime's ACCEPTED capacity for one requested entry), derived
         // here from the runtime directly, so a production floor that guessed at the prime rounding
         // (rather than asking) would fail.
         var acceptedForOne = new Dictionary<double, long>(1).EnsureCapacity(1);
@@ -272,7 +272,7 @@ public sealed class QuantileAccumulatorTests
         var after = GC.GetAllocatedBytesForCurrentThread();
 
         // The sizing probes are transients the GC reclaims (the D-082 exclusion), so this measures
-        // allocation rather than the stable graph — which is why it is a SANITY check: the retained
+        // allocation rather than the stable graph, which is why it is a SANITY check: the retained
         // state cannot exceed what was allocated, and the modeled bytes must cover the retained
         // state. Both directions are asserted against the accepted capacity.
         var modeled = QuantileAccumulator.Modeled(harness.Accumulator.Capacity);
@@ -321,7 +321,7 @@ public sealed class QuantileAccumulatorTests
     [Fact]
     public void Intake_WhenManyTinySpills_ThenTheRunCatalogStaysWithinTheFixedCeiling()
     {
-        // Without consolidation the catalogue would retain one handle per spill — memory
+        // Without consolidation the catalogue would retain one handle per spill: memory
         // proportional to the population, exactly what the bounded model forbids. The catalogue
         // bound is logarithmic in the spill count and never beyond K = (F-1)*L (D-128); both bounds
         // below are computed independently of the product, and open readers stay within the fan-in.
@@ -453,7 +453,7 @@ public sealed class QuantileAccumulatorTests
     public static TheoryData<string, double[], int, TiePolicy, CutPlacement, double[]> Vectors() => new()
     {
         // 1. §11.5's own example: two boundaries fall inside the tied 2-run, and the formula must
-        //    still yield TWO distinct ascending cuts — three bins, never a collapse to two.
+        //    still yield TWO distinct ascending cuts: three bins, never a collapse to two.
         { "spec-example-left", [1, 2, 2, 2, 3, 4], 3, TiePolicy.Left, CutPlacement.RightValue, [3, 4] },
 
         // 2. §11.5's second example, both policies: the tied 2-group goes low (cut 3) or high (cut 2).
@@ -461,18 +461,18 @@ public sealed class QuantileAccumulatorTests
         { "spec-example-tie-right", [1, 2, 2, 2, 3], 2, TiePolicy.Right, CutPlacement.RightValue, [2] },
 
         // 3. An exact group edge: N·k = 4 = C_2·bins, so the policy does not apply and the even
-        //    split {1,2},{3,4} results — where a naive "always apply the policy" rule gives 2.
+        //    split {1,2},{3,4} results, where a naive "always apply the policy" rule gives 2.
         { "exact-group-edge", [1, 2, 3, 4], 2, TiePolicy.Right, CutPlacement.RightValue, [3] },
 
-        // 4. G-5 example 1 — collision: both boundaries prefer gap 2, so the window pushes the
+        // 4. G-5 example 1 (collision): both boundaries prefer gap 2, so the window pushes the
         //    first down to gap 1 (against "left") to keep a gap for the second.
         { "g5-collision", [1, 2, 2, 2, 3], 3, TiePolicy.Left, CutPlacement.RightValue, [2, 3] },
 
-        // 5. G-5 example 2 — last-group edge: d = m = 5 is not a gap, so the tied 5-group lands
+        // 5. G-5 example 2 (last-group edge): d = m = 5 is not a gap, so the tied 5-group lands
         //    upper despite "left".
         { "g5-last-edge", [1, 2, 3, 4, 5, 5, 5, 5, 5, 5], 2, TiePolicy.Left, CutPlacement.RightValue, [5] },
 
-        // 6. G-5 example 3 — first-group edge: d = 0 is not a gap, so the tied 5-group lands lower
+        // 6. G-5 example 3 (first-group edge): d = 0 is not a gap, so the tied 5-group lands lower
         //    despite "right".
         { "g5-first-edge", [5, 5, 5, 5, 5, 5, 6, 7, 8, 9], 2, TiePolicy.Right, CutPlacement.RightValue, [6] },
 
@@ -519,8 +519,8 @@ public sealed class QuantileAccumulatorTests
 
         // Every vector under a budget so small the population cannot stay resident: §11.5 requires
         // the spill and non-spill paths to produce identical cuts. Vectors whose distinct count is
-        // at or below the floor capacity stay resident even here — the floor is the runtime's
-        // smallest dictionary bucket, not something a budget can shrink — so the spill path itself
+        // at or below the floor capacity stay resident even here (the floor is the runtime's
+        // smallest dictionary bucket, not something a budget can shrink), so the spill path itself
         // is proved by the assertion below and by the saturated case that follows.
         using var harness = Build(budget: TestModeled(1), fanIn: 2);
         Feed(harness.Accumulator, population);
@@ -536,7 +536,7 @@ public sealed class QuantileAccumulatorTests
     {
         // The case the consolidated-run replay exists for: the feasibility window overrides the
         // tie preference, which needs the GLOBAL distinct count before the first boundary is
-        // allocated and the gap-adjacent values after it — neither knowable from one forward walk.
+        // allocated and the gap-adjacent values after it, neither knowable from one forward walk.
         // An easy distribution's byte equality would not prove the replay works; this does.
         double[] population = [1, 2, 2, 2, 3, 4];
         using var spilled = Build(budget: TestModeled(1), fanIn: 2, name: "spilled");
@@ -560,7 +560,7 @@ public sealed class QuantileAccumulatorTests
     //
     // Both the merger's input reads and the replay reader go through SpoolWorkspace.OpenRun, so
     // they share the MergeRead operation label and an UNCONDITIONAL fault would always land on the
-    // merger first — proving the wrong channel. These arm the fault only after EndIntake and
+    // merger first, proving the wrong channel. These arm the fault only after EndIntake and
     // PrepareReplay have completed cleanly, so the consolidated run exists and the very next read
     // is the replay's own.
 
@@ -570,7 +570,7 @@ public sealed class QuantileAccumulatorTests
         public void Dispose() => Workspace.Cleanup();
     }
 
-    // Spills, consolidates, and stops at the brink of extraction — the caller then arms its fault.
+    // Spills, consolidates, and stops at the brink of extraction; the caller then arms its fault.
     private static ReplayHarness ConsolidatedAndReadyToReplay()
     {
         var fileSystem = new FakeSpoolFileSystem();
@@ -610,7 +610,7 @@ public sealed class QuantileAccumulatorTests
     {
         using var harness = ConsolidatedAndReadyToReplay();
 
-        // The replay reader's READ faults after a successful open — a device error mid-walk.
+        // The replay reader's READ faults after a successful open: a device error mid-walk.
         harness.FileSystem.WrapReadStream = (_, inner) =>
         {
             inner.Dispose();
@@ -719,7 +719,7 @@ public sealed class QuantileAccumulatorTests
         // 98 ones, then 5 and 1000: N = 100, C = [98, 99, 100].
         // p1  = first i with C_i·100 >= 100  → C_1 = 98 → value 1.
         // p99 = first i with C_i·100 >= 9900 → C_1·100 = 9800 < 9900; C_2·100 = 9900 >= 9900 → value 5.
-        // The 1000 outlier is deliberately outside the span — that is what percentile clipping is for.
+        // The 1000 outlier is deliberately outside the span: that is what percentile clipping is for.
         Feed(harness.Accumulator, [.. Enumerable.Repeat(1.0, 98), 5.0, 1000.0]);
         harness.Accumulator.EndIntake();
         harness.Accumulator.PrepareReplay();

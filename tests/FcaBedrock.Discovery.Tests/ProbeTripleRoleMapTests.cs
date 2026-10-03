@@ -10,7 +10,7 @@ namespace FcaBedrock.Discovery.Tests;
 /// says.
 /// <para>
 /// <b>Why a preflight rather than a probe-phase check.</b> §5.3's role-map rules already have an
-/// owner — <c>spec validate</c> — and a second implementation in Discovery would be a second
+/// owner (<c>spec validate</c>), and a second implementation in Discovery would be a second
 /// thing to keep correct, with its own wording and its own drift (D-067). Resolving the real
 /// binding instead makes single ownership structural: a bad map produces the <em>same</em>
 /// diagnostics here as from <c>validate</c>, no probe code is minted, and no §16.4 phase cell
@@ -145,7 +145,7 @@ public sealed class ProbeTripleRoleMapTests
     public async Task ProbeTriple_WhenANameMapIsUsedWithoutAHeader_ThenFailsBeforeReadingAnyRow()
     {
         // §5.3: name addressing needs a header to resolve against. The settings say there is
-        // none, so the map cannot mean anything — diagnosed, not guessed at.
+        // none, so the map cannot mean anything: diagnosed, not guessed at.
         var session = Session(new SourceSchema(3));
 
         var result = await Prober.ProbeTripleAsync(
@@ -169,7 +169,7 @@ public sealed class ProbeTripleRoleMapTests
     public async Task ProbeTriple_WhenANameMatchesTwoHeaderColumns_ThenFailsBeforeReadingAnyRow()
     {
         // §10.2: a name binding must resolve to exactly one column. A duplicate header is
-        // readable (the tolerant open) but not addressable by name — which is precisely why the
+        // readable (the tolerant open) but not addressable by name, which is precisely why the
         // wide matrix falls back to index binding for duplicates.
         var session = Session(new SourceSchema(3, ["dup", "dup", "val"]));
 
@@ -182,8 +182,8 @@ public sealed class ProbeTripleRoleMapTests
     [Fact]
     public async Task ProbeTriple_WhenTheMapIsInvalid_ThenTheResolverDiagnosticsAreForwardedUnchanged()
     {
-        // The forwarding claim, made exact: probe's diagnostics must be the resolver's own —
-        // same codes, same severities, same messages, same order — not a re-emission, not a
+        // The forwarding claim, made exact: probe's diagnostics must be the resolver's own
+        // (same codes, same severities, same messages, same order), not a re-emission, not a
         // relabelling into a probe phase, and not wrapped in ProbeSourceReadFailed. The oracle
         // is the resolver's binding-only stage, the one the preflight calls (D-135).
         var schema = new SourceSchema(3);

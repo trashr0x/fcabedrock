@@ -24,7 +24,7 @@ public sealed class GroupingBackendTests
     public async Task Backend_WhenZeroSpillUnderUnusableRoot_ThenSucceedsWithoutTouchingDisk()
     {
         // Lazy workspace: a tiny input under the default 64 MiB budget never spills, so CreateWorkspace
-        // (which would fail) is never called — zero-spill needs no disk access at all.
+        // (which would fail) is never called: zero-spill needs no disk access at all.
         var fs = new FakeSpoolFileSystem { OnCreateWorkspace = () => new IOException("unusable temp root") };
         var options = new GroupingOptions(fileSystem: fs);
 
@@ -105,7 +105,7 @@ public sealed class GroupingBackendTests
     public async Task Backend_WhenDeleteDeniedViaDifferentExceptionTypes_ThenOneIdentity()
     {
         // Classification stability: delete failures surfacing as UnauthorizedAccessException and
-        // IOException are one identity (CleanupDelete, DeleteFailed) — the operation, not the exception
+        // IOException are one identity (CleanupDelete, DeleteFailed): the operation, not the exception
         // type, classifies deletes.
         var toggle = 0;
         var fs = new FakeSpoolFileSystem
@@ -231,7 +231,7 @@ public sealed class GroupingBackendTests
 
         var (objects, diagnostics) = await RunUnorderedAsync(Rows(12, subjects: 4), options);
 
-        Assert.Equal(4, objects.Count); // completed — no escalation
+        Assert.Equal(4, objects.Count); // completed, no escalation
         Assert.DoesNotContain(diagnostics, d => d.Severity == DiagnosticSeverity.Error);
         var failure = AssertSingleStorageFailure(diagnostics, DiagnosticSeverity.Warning);
         Assert.Equal(GroupingOperation.CleanupDelete, failure.Operation);
@@ -334,7 +334,7 @@ public sealed class GroupingBackendTests
     public async Task Backend_WhenReaderLengthFails_ThenMergeReadErrorAndStreamDisposed()
     {
         // OpenRun succeeds but the SpoolRunReader ctor's stream.Length read faults: an in-path MergeRead
-        // Error, and the already-open stream is disposed (never leaked) — F2 / Codex point 2.
+        // Error, and the already-open stream is disposed, never leaked (F2 / Codex point 2).
         var streams = new List<ThrowOnLengthStream>();
         var fs = new FakeSpoolFileSystem
         {
@@ -361,7 +361,7 @@ public sealed class GroupingBackendTests
     {
         // The reader ctor's stream.Length faults (in-path MergeRead), and disposing the opened stream
         // during cleanup ALSO faults (CleanupClose). Both surface, in first-occurrence order: MergeRead
-        // then CleanupClose — the in-path failure is recorded before its cleanup (Codex point 3).
+        // then CleanupClose. The in-path failure is recorded before its cleanup (Codex point 3).
         var fs = new FakeSpoolFileSystem { WrapReadStream = (_, stream) => new ThrowOnLengthStream(stream, throwOnDispose: true) };
         var options = new GroupingOptions(maxBufferedBytes: 1, maxMergeFanIn: 2, fileSystem: fs);
 
@@ -382,7 +382,7 @@ public sealed class GroupingBackendTests
         // Multi-stage merge, budget = 1: 6 intake spills (creates 1–6), then level-1 merge writes create
         // 7, 8, 9. Consumed-run deletes always fail (a CleanupDelete Warning first appears at the create-7
         // batch's deletes); the create-8 merge write then fails (a MergeWrite Error). The ledger keeps the
-        // true order [CleanupDelete Warning, MergeWrite Error] — the opposite of the MergeRead-first case
+        // true order [CleanupDelete Warning, MergeWrite Error], the opposite of the MergeRead-first case
         // above, proving chronology, not a fixed rule (Codex point 3, assertion 2).
         var creates = 0;
         var fs = new FakeSpoolFileSystem
@@ -459,7 +459,7 @@ public sealed class GroupingBackendTests
         return Assert.IsType<GroupingStorageFailure>(diagnostic.Context);
     }
 
-    // A well-framed record whose subject string length overruns it — a small, safely-identifiable
+    // A well-framed record whose subject string length overruns it: a small, safely-identifiable
     // corruption (never a huge allocation).
     private static byte[] CorruptRecord()
     {

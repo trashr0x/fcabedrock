@@ -88,8 +88,8 @@ internal static class AdultOracle
     /// missing one.
     /// </para>
     /// <para>
-    /// A recognized bin that crosses nothing is not a defect — the false pole of <c>sex</c> and of
-    /// <c>class</c> is exactly that — so what must be non-empty is the <em>union</em> over an
+    /// A recognized bin that crosses nothing is not a defect (the false pole of <c>sex</c> and of
+    /// <c>class</c> is exactly that), so what must be non-empty is the <em>union</em> over an
     /// attribute's bins plus its missing column, never each bin.
     /// </para>
     /// </summary>

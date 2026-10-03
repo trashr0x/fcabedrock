@@ -77,8 +77,8 @@ public sealed class EmitterTests
     [Fact]
     public async Task EmitAsync_WhenNumericUnparseableUnderAsAttribute_ThenNoMissingCross()
     {
-        // D-050 boundary: a present-but-unparseable numeric is NOT missing — no
-        // missing cross; it stays a SourceValueUnparseable at the policy's severity.
+        // D-050 boundary: a present-but-unparseable numeric is NOT missing (no
+        // missing cross); it stays a SourceValueUnparseable at the policy's severity.
         var spec = new BedrockSpec(ConversionFixtures.Wide(hasHeader: false),
             [ConversionFixtures.NumericCuts("age", 0, UnknownValuePolicy.Warn, MissingPolicy.AsAttribute, 30, 40, 50)]);
 

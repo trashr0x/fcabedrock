@@ -69,7 +69,7 @@ public sealed class CalibratorTests
     public async Task CalibrateAsync_WhenAuthoredEmptyDomainUnderWarn_ThenNoObservedCalibration()
     {
         // An authored [] is a complete fixed empty domain: no observed-domain discovery, no
-        // outcome, no ObservedDomainUsed — the effective domain stays the empty universe.
+        // outcome, no ObservedDomainUsed; the effective domain stays the empty universe.
         var spec = new BedrockSpec(ConversionFixtures.Wide(hasHeader: false), [Identity("g", 0, [])]);
         var (resolved, source) = await WidePrep(spec, "a\nb\na");
 
@@ -87,7 +87,7 @@ public sealed class CalibratorTests
     public async Task CalibrateAsync_WhenAuthoredEmptyDomainUnderInclude_ThenAdditionsOnly()
     {
         // Authored [] under include: the empty domain seeds nothing, so every observed value is an
-        // addition — an IncludeAdditions outcome, never ObservedDomain (D-122 §15).
+        // addition: an IncludeAdditions outcome, never ObservedDomain (D-122 §15).
         var spec = new BedrockSpec(ConversionFixtures.Wide(hasHeader: false),
             [Identity("g", 0, [], UnknownValuePolicy.Include)]);
         var (resolved, source) = await WidePrep(spec, "a\nb\na\nc");
@@ -248,7 +248,7 @@ public sealed class CalibratorTests
     [Fact]
     public async Task CalibrateAsync_WhenStringFreePerValueAbsentDomain_ThenObservedVerbatimDistinctSpellings()
     {
-        // String free_per_value observes raw spellings verbatim (no numeric collapse) — like identity.
+        // String free_per_value observes raw spellings verbatim (no numeric collapse), like identity.
         var spec = new BedrockSpec(ConversionFixtures.Wide(hasHeader: false),
             [new AttributeSpec("g", new ColumnSource(0, SourceValueType.String), Include: true,
                 new FreePerValueDiscretizer(SourceValueType.String, CultureInfo.InvariantCulture),
@@ -375,7 +375,7 @@ public sealed class CalibratorTests
     [Fact]
     public async Task CalibrateAsync_WhenSourceSettingsDiffer_ThenThrows()
     {
-        // Same header/arity but a different missing_token — the descriptor settings mismatch is caught
+        // Same header/arity but a different missing_token: the descriptor settings mismatch is caught
         // before any row is read (D-098).
         var spec = new BedrockSpec(ConversionFixtures.Wide(hasHeader: false), [Identity("g", 0, null)]);
         var resolved = ConversionFixtures.ResolveFor(spec, new SourceSchema(1));
@@ -470,7 +470,7 @@ public sealed class CalibratorTests
 
     private static Stream Stream(string text) => new MemoryStream(System.Text.Encoding.UTF8.GetBytes(text));
 
-    // A source whose schema is known but whose rows throw — proves the no-data fast path.
+    // A source whose schema is known but whose rows throw: proves the no-data fast path.
     private sealed class RowsThrowingSource(SourceSchema schema) : IRecordSource
     {
         public SourceProvenance Provenance => SourceProvenance.Unvalidated;

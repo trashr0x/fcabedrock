@@ -113,7 +113,7 @@ internal static class GoldenConversion
             var plan = await PlanAsync("calibrate", Calibrator.CalibrateTripleAsync(resolvedDoc.Resolved, source), labelStyle);
 
             // Every active triple golden is subject-interleaved, so the planner must have
-            // resolved an unordered execution (§5.3 / D-082) — asserted on every run.
+            // resolved an unordered execution (§5.3 / D-082), asserted on every run.
             Assert.Equal(new TripleExecution(TripleOrdering.Unordered), plan.Execution);
             return new PreparedConversion(plan, sink => Emitter.EmitTripleAsync(plan, source, sink));
         }

@@ -7,8 +7,8 @@ namespace FcaBedrock.Discovery.Tests;
 /// <summary>
 /// The three D-110 aggregate boundedness guards, each at its boundary and one step past it.
 /// <para>
-/// Two properties matter more than the arithmetic. First, <b>equality is legal</b> — a probe
-/// that exactly fills a guard succeeds — because a "&gt;=" rule would fail runs that fit.
+/// Two properties matter more than the arithmetic. First, <b>equality is legal</b> (a probe
+/// that exactly fills a guard succeeds), because a "&gt;=" rule would fail runs that fit.
 /// Second, a breach is a <b>hard failure with no draft</b>, never a quiet truncation of some
 /// other attribute: only the per-attribute limit produces a usable, marked, truncated draft, so
 /// aggregate pressure must never yield a partial draft that reads as complete.
@@ -115,7 +115,7 @@ public sealed class ProbeGuardTests
     [Fact]
     public async Task Probe_WhenAnAttributeIsAlreadyTruncated_ThenItsDroppedTailIsNotCharged()
     {
-        // A per-attribute-truncated tail is never retained, so it must never be charged either —
+        // A per-attribute-truncated tail is never retained, so it must never be charged either;
         // otherwise the per-attribute limit would silently consume the aggregate budget.
         var result = await ProbeFixtures.ProbeCsvAsync(
             "a\nq\nr\ns\nt\nu\n",
@@ -208,7 +208,7 @@ public sealed class ProbeGuardTests
     {
         // Settled precedence: attributes, then values, then text (D-110). Without a fixed order
         // the reported cause would depend on evaluation accident. Both budgets are exhausted by
-        // "x", so the retention of "yy" breaches BOTH — which is the only situation in which
+        // "x", so the retention of "yy" breaches BOTH, which is the only situation in which
         // precedence is observable at all.
         var result = await ProbeFixtures.ProbeCsvAsync(
             "a\nx\nyy\n",

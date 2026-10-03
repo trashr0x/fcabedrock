@@ -153,7 +153,7 @@ public sealed class DependencyRulesTests
     {
         // D-109 pins Discovery's allowed reference set to {Sources, Spec, Core, Diagnostics}. The
         // two it must NOT reach are the ones it would be most tempting to: Conversion (whose
-        // private domain observer has exactly the semantics probe needs — so probe re-implements
+        // private domain observer has exactly the semantics probe needs, so probe re-implements
         // them and a cross-check test pins the two equal) and Export (the caller owns all output).
         var forbidden = ProductionExcept(
             "FcaBedrock.Discovery", "FcaBedrock.Sources", "FcaBedrock.Spec",
@@ -218,7 +218,7 @@ public sealed class DependencyRulesTests
         // precedence syntax all die at the resolve seam. Core receives only effective
         // per-attribute configuration, which is exactly why an equivalent flat,
         // materialized, matcher-driven, or extends-composed spec produces the identical
-        // Core graph — and therefore the identical plan, fingerprints, and bytes.
+        // Core graph, and therefore the identical plan, fingerprints, and bytes.
         //
         // A NAME-based rule rather than a reference-based one, deliberately:
         // Core_ShouldOnlyDependOnDiagnostics already proves Core cannot reference Spec at
@@ -228,7 +228,7 @@ public sealed class DependencyRulesTests
         // Non-vacuity in both directions. A "no type matches" rule is worthless if the
         // predicate matches nothing anywhere, so: Core must have real types to inspect,
         // AND the same predicate must genuinely fire on the assembly that legitimately
-        // owns this vocabulary — Spec, where the sections and the application internals
+        // owns this vocabulary: Spec, where the sections and the application internals
         // live. Without the second assertion a typo in the predicate would pass forever.
         Assert.NotEmpty(Asm("FcaBedrock.Core").GetTypes());
         Assert.Contains(Asm("FcaBedrock.Spec").GetTypes(), IsTemplateOrMatcherNamed);

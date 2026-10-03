@@ -249,8 +249,8 @@ public sealed class ResolvedSpecTests
     [Fact]
     public void Create_WhenRestrictToEntryIsAnUnknownVariant_ThenThrows()
     {
-        // RestrictToEntry is deliberately not mechanically closed — the Spec document model reuses
-        // it (D-057) — so the trust boundary rejects an unrecognized variant explicitly. Silently
+        // RestrictToEntry is deliberately not mechanically closed (the Spec document model reuses
+        // it, D-057), so the trust boundary rejects an unrecognized variant explicitly. Silently
         // carrying one would reach the emitter's matcher, which cannot classify it.
         var attr = SpecFixtures.Nominal("g", 0, ["b"]) with { RestrictTo = [new UnknownRestrictToEntry()] };
         var spec = new BedrockSpec(SpecFixtures.WideRowIndex(), [attr]);
@@ -312,7 +312,7 @@ public sealed class ResolvedSpecTests
     [Fact]
     public void Create_WhenRangeBoundsAreOmitted_ThenSucceedsBecauseOpenIsNullNotInfinity()
     {
-        // §10.4: an open end is null — NOT ±infinity — so {} and one-sided ranges are valid and
+        // §10.4: an open end is null (NOT ±infinity), so {} and one-sided ranges are valid and
         // must not be caught by the non-finite check.
         var attr = SpecFixtures.NumericCuts("age", 0, [30.0], new NominalScale()) with
         {
@@ -357,7 +357,7 @@ public sealed class ResolvedSpecTests
     [Fact]
     public void Create_WhenObjectKeyIsUnknownSubtype_ThenThrows()
     {
-        // ObjectKey is a public, externally-derivable record — the trust boundary must reject an
+        // ObjectKey is a public, externally-derivable record: the trust boundary must reject an
         // unknown subtype rather than let it fall through the planner to a silent row_index at emit.
         var binding = SpecFixtures.WideRowIndex() with { ObjectKey = new UnknownObjectKey() };
         var spec = new BedrockSpec(binding, [SpecFixtures.Nominal("g", 0, ["b"])]);
@@ -390,7 +390,7 @@ public sealed class ResolvedSpecTests
     {
         // The numeric free_per_value discretizer is rebuilt with a read-only culture clone, so a
         // caller mutating the originally-mutable culture cannot change parsing/classification after
-        // resolution (D-098 recursive immutability, EP-11) — analogous to the manual-cuts case.
+        // resolution (D-098 recursive immutability, EP-11), analogous to the manual-cuts case.
         var culture = (CultureInfo)CultureInfo.GetCultureInfo("en-US").Clone(); // a mutable clone
         var discretizer = new FreePerValueDiscretizer(SourceValueType.Number, culture);
         var spec = new BedrockSpec(SpecFixtures.WideRowIndex(),
@@ -418,7 +418,7 @@ public sealed class ResolvedSpecTests
     public void Create_WhenEqualWidthParsingCultureMutatedAfterResolution_ThenClassificationUnaffected()
     {
         // The equal_width discretizer is rebuilt over a read-only culture clone, exactly like
-        // manual_cuts and free_per_value — a caller mutating its own culture cannot change which
+        // manual_cuts and free_per_value: a caller mutating its own culture cannot change which
         // bin a value lands in after resolution (D-098 recursive immutability, EP-11).
         var culture = (CultureInfo)CultureInfo.GetCultureInfo("en-US").Clone(); // a mutable clone
         var discretizer = EqualWidthDiscretizer.CreateManual(4, 0, 100, CutPrecision.Exact, culture).Value!;
@@ -449,8 +449,8 @@ public sealed class ResolvedSpecTests
     [Fact]
     public void Create_WhenCalibrationPendingResolved_ThenCarrierSurvivesOnAReadOnlyCulture()
     {
-        // The pending carrier must survive resolution intact — it is what Calibrate replaces
-        // (D-093) — with its culture re-homed like any other.
+        // The pending carrier must survive resolution intact (it is what Calibrate replaces,
+        // D-093) with its culture re-homed like any other.
         var culture = (CultureInfo)CultureInfo.GetCultureInfo("en-US").Clone();
         var pending = new CalibrationPending(new PendingEqualWidth(4, EqualWidthRange.MinMax, CutPrecision.Exact), culture);
 
@@ -602,7 +602,7 @@ public sealed class ResolvedSpecTests
     [Fact]
     public void Create_WhenStringFreePerValueNonNumericKeys_ThenSucceedsVerbatim()
     {
-        // String free_per_value keys are verbatim strings — never subject to numeric canonicalization.
+        // String free_per_value keys are verbatim strings, never subject to numeric canonicalization.
         var spec = new BedrockSpec(SpecFixtures.WideRowIndex(),
             [new AttributeSpec("g", new ColumnSource(0, SourceValueType.String), Include: true,
                 new FreePerValueDiscretizer(SourceValueType.String, CultureInfo.InvariantCulture),
@@ -636,7 +636,7 @@ public sealed class ResolvedSpecTests
         var resolved = Create(ValueGroupsSpec(discretizer), new SourceSchema(1));
 
         // Cultureless and immutable-by-construction (both factories snapshot the groups and each
-        // group snapshots its own values), so — like identity and ordered_cuts — the trust boundary
+        // group snapshots its own values), so, like identity and ordered_cuts, the trust boundary
         // reuses the instance rather than rebuilding it: there is no mutable state to re-home.
         Assert.Same(discretizer, resolved.Spec.Attributes[0].Discretizer);
     }
@@ -648,7 +648,7 @@ public sealed class ResolvedSpecTests
         // matching, planning, emission, or fingerprints:
         //   (1) the factory rejects an undefined member outright (asserted in
         //       ValueGroupsDiscretizerTests), and
-        //   (2) Unmatched is get-only — no setter and no `with`-settable init — so a cast value
+        //   (2) Unmatched is get-only (no setter and no `with`-settable init), so a cast value
         //       cannot be grafted onto an already-built instance the way it can onto a positional
         //       record. That is what makes the trust boundary's RequireDefined arm defence in
         //       depth rather than the only line of defence.
@@ -712,7 +712,7 @@ public sealed class ResolvedSpecTests
     [Fact]
     public void Create_WhenValueGroupsResolved_ThenAuthoredNullAndAuthoredEmptyValuesBothSurvive()
     {
-        // The presence distinction must survive the trust boundary intact — the §14 encoding reads
+        // The presence distinction must survive the trust boundary intact: the §14 encoding reads
         // it directly, so collapsing [] to null here would silently change fingerprint bytes (G-11).
         var omitted = ValueGroup.Create("Pattern", null, "^I[0-9]{2}");
         var authoredEmpty = ValueGroup.Create("Empty", [], "^J[0-9]{2}");

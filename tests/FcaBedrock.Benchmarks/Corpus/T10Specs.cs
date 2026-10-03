@@ -89,7 +89,7 @@ internal static class T10Specs
 
         // Concatenated rather than interpolated: a raw interpolated string would need every brace of
         // TOML's inline tables doubled, which makes the spec text here harder to read than the file
-        // it produces — and this text is meant to read as a spec.
+        // it produces, and this text is meant to read as a spec.
         spec.Append(
             """
             [[attribute]]

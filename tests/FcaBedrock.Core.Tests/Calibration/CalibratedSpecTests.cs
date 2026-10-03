@@ -48,7 +48,7 @@ public sealed class CalibratedSpecTests
 
     [Fact]
     public void RequiresData_WhenAuthoredEmptyDomainIdentityUnderWarn_ThenFalse() =>
-        // D-122 §15: an authored [] is a complete fixed empty domain — it requests no calibration.
+        // D-122 §15: an authored [] is a complete fixed empty domain; it requests no calibration.
         Assert.False(CalibratedSpec.RequiresData(With(SpecFixtures.Nominal("g", 0, []))));
 
     [Fact]
@@ -272,7 +272,7 @@ public sealed class CalibratedSpecTests
         var discretizer = Assert.IsType<EqualWidthDiscretizer>(calibrated!.Spec.Attributes[0].Discretizer);
         Assert.Equal([25.0, 50.0, 75.0], discretizer.Cuts);
 
-        // The authored configuration survives the substitution — the fingerprint hashes it (D-094).
+        // The authored configuration survives the substitution: the fingerprint hashes it (D-094).
         Assert.Equal(4, discretizer.Bins);
         Assert.Equal(EqualWidthRange.MinMax, discretizer.Range);
         Assert.Equal(CutPrecision.Exact, discretizer.Precision);
@@ -314,7 +314,7 @@ public sealed class CalibratedSpecTests
     public void Create_WhenCalibratedCutsInvalid_ThenCalibrationCutsInvalidDiagnosticNotException()
     {
         // EP-14: cut invalidity is a DATA-derived expected failure, so it returns through Diagnosed
-        // for the calibrator to aggregate — it is not a calibrator-contract violation. The list is
+        // for the calibrator to aggregate; it is not a calibrator-contract violation. The list is
         // correctly sized for bins = 4; only its ordering is wrong.
         var result = CalibratedSpec.Create(Resolve(PendingEqualWidthSpec(), 1), [new CalibratedCuts("score", [25, 75, 50])]);
 
@@ -336,7 +336,7 @@ public sealed class CalibratedSpecTests
     [Fact]
     public void Create_WhenEqualWidthCalibratedCutsAreEmpty_ThenThrows() =>
         // The zero end of the size guard, at the calibrated-state boundary. `bins >= 2` is
-        // enforced at the pending carrier, so an EMPTY cuts outcome is always the wrong size —
+        // enforced at the pending carrier, so an EMPTY cuts outcome is always the wrong size:
         // an empty cut list is never a legitimate zero-discovery outcome, unlike the empty
         // observed-domain / include-additions / passthrough-bins outcomes retained elsewhere in
         // this file as completeness markers (D-098/D-104).
@@ -373,7 +373,7 @@ public sealed class CalibratedSpecTests
         var discretizer = Assert.IsType<EqualFrequencyDiscretizer>(calibrated!.Spec.Attributes[0].Discretizer);
         Assert.Equal([2.0, 3.0], discretizer.Cuts);
 
-        // The authored configuration survives substitution — the §14 fingerprint encodes it (D-094).
+        // The authored configuration survives substitution: the §14 fingerprint encodes it (D-094).
         Assert.Equal(3, discretizer.Bins);
         Assert.Equal(TiePolicy.Right, discretizer.TiePolicy);
         Assert.Equal(CutPlacement.Midpoint, discretizer.CutPlacement);
@@ -486,7 +486,7 @@ public sealed class CalibratedSpecTests
     [Fact]
     public void Create_WhenPendingEqualWidthOutcomeMissing_ThenThrows() =>
         // A leftover pending carrier is a calibrator-contract violation (programmer error), not a
-        // data error — the calibrator is Create's only production caller (D-093).
+        // data error: the calibrator is Create's only production caller (D-093).
         Assert.Throws<ArgumentException>(() => CalibratedSpec.Create(Resolve(PendingEqualWidthSpec(), 1), []));
 
     [Fact]
@@ -572,7 +572,7 @@ public sealed class CalibratedSpecTests
     [Fact]
     public void Create_WhenPassthroughDiscoveredNothing_ThenTheEmptyOutcomeIsAValidCompletenessMarker()
     {
-        // An empty PassthroughBins is the zero-discovery marker — every value matched a group. It
+        // An empty PassthroughBins is the zero-discovery marker: every value matched a group. It
         // must substitute (not be treated as a missing outcome) and must be RETAINED, since the
         // freeze/manifest layer reads these outcomes and a dropped one would read as a skipped
         // calibration.
@@ -690,7 +690,7 @@ public sealed class CalibratedSpecTests
     [Fact]
     public void Create_WhenGraphInspected_ThenNoReachableListIsACastableMutableArray()
     {
-        // Every reachable IReadOnlyList on the effective graph is immutable-backed — not a T[]
+        // Every reachable IReadOnlyList on the effective graph is immutable-backed, not a T[]
         // or List<T> a caller could downcast and mutate (D-098 recursive immutability).
         var spec = new BedrockSpec(SpecFixtures.WideRowIndex(),
         [
@@ -745,7 +745,7 @@ public sealed class CalibratedSpecTests
     public void RequiresData_WhenOnlyRestrictToIsPresent_ThenFalse()
     {
         // §7/D-065: restrictions never trigger calibration. Calibration and the column vocabulary
-        // are computed over the INPUT UNIVERSE, before restrict_to selects objects — so a
+        // are computed over the INPUT UNIVERSE, before restrict_to selects objects, so a
         // restriction-only spec is still fully determined by its own text and skips Calibrate.
         var gene = SpecFixtures.Excluded("Gene", 0) with { RestrictTo = [new RestrictToValue("Bmp5")] };
         var tissue = SpecFixtures.Nominal("Tissue", 1, ["endoderm"]) with
@@ -778,7 +778,7 @@ public sealed class CalibratedSpecTests
     public void Create_WhenACalibratedAttributeAlsoRestricts_ThenTheEntriesSurviveTheSubstitution()
     {
         // The pending → executable substitution rebuilds the attribute; its restrict_to must ride
-        // through untouched. An included-AND-restricted attribute is the case that proves it — the
+        // through untouched. An included-AND-restricted attribute is the case that proves it: the
         // substitution and the restriction live on the same attribute.
         var domainless = SpecFixtures.Nominal("g", 0, null) with
         {
@@ -835,7 +835,7 @@ public sealed class CalibratedSpecTests
     {
         // The boundary is exhaustive over the three recognized variants, not merely a finiteness
         // test: waving a null through would surface as a NullReferenceException inside the
-        // emitter's matcher or the fingerprint encoder — far from the cause. Reject at the
+        // emitter's matcher or the fingerprint encoder, far from the cause. Reject at the
         // boundary, trust the type inward (EP-10).
         var resolved = Resolve(With(SpecFixtures.Nominal("g", 0, ["b"])), 1);
         var tampered = TamperRestrictions(resolved, [null!]);
@@ -847,7 +847,7 @@ public sealed class CalibratedSpecTests
     public void FromFullyDeclared_WhenARestrictionEntryIsAnUnknownVariant_ThenThrows()
     {
         // RestrictToEntry is deliberately not mechanically closed (the Spec document model reuses
-        // it, D-057), so an unknown variant is representable and must be rejected explicitly —
+        // it, D-057), so an unknown variant is representable and must be rejected explicitly:
         // the matcher and the fingerprint encoder can only answer it with an "unreachable" throw.
         var resolved = Resolve(With(SpecFixtures.Nominal("g", 0, ["b"])), 1);
         var tampered = TamperRestrictions(resolved, [new UnknownRestrictToEntry()]);
@@ -874,7 +874,7 @@ public sealed class CalibratedSpecTests
     private sealed record UnknownRestrictToEntry : RestrictToEntry;
 
     // Builds a token whose first attribute carries `entries`, bypassing the seam AND
-    // ResolvedSpec.Create's own check — the only way to reach the calibrated-state boundary with
+    // ResolvedSpec.Create's own check: the only way to reach the calibrated-state boundary with
     // invalid numeric state, which is the point: it models a caller that hand-built the graph.
     private static ResolvedSpec TamperRestrictions(ResolvedSpec resolved, IReadOnlyList<RestrictToEntry> entries)
     {

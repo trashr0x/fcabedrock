@@ -83,7 +83,7 @@ public sealed class SpecFreezerTests
 
         // The freezer works over the resolver's immutable snapshot (ResolvedDocument.Document),
         // not the caller's original document, so unchanged sections are reference-identical to the
-        // snapshot's — nothing was rebuilt.
+        // snapshot's: nothing was rebuilt.
         var snapshot = resolved.Document;
         Assert.Equal(["first", "second", "third"], frozen.Attributes.Select(a => a.Name));
         for (var i = 0; i < snapshot.Attributes.Count; i++)
@@ -190,8 +190,8 @@ public sealed class SpecFreezerTests
     }
 
     // An omitted domain plus include calibrates to an ObservedDomain outcome (the
-    // omitted-domain branch wins), so the freeze must also fold include → warn — read from the
-    // EFFECTIVE policy, whatever tier supplied it — or the frozen attribute stays data-dependent.
+    // omitted-domain branch wins), so the freeze must also fold include → warn (read from the
+    // EFFECTIVE policy, whatever tier supplied it) or the frozen attribute stays data-dependent.
 
     [Fact]
     public void Freeze_WhenOmittedDomainWithExplicitInclude_ThenObservedDomainAndWarnAndFullyFrozen()
@@ -215,7 +215,7 @@ public sealed class SpecFreezerTests
     [Fact]
     public void Freeze_WhenOmittedDomainWithIncludeFromDefaults_ThenFoldedToWarnAndFullyFrozen()
     {
-        // include arrives from [defaults], so section.UnknownValuePolicy is null — the fold must read
+        // include arrives from [defaults], so section.UnknownValuePolicy is null: the fold must read
         // the effective policy, not the raw section field.
         var document = DocumentFixtures.Document(
             [DocumentFixtures.Attribute("color", DocumentFixtures.Column(0),
@@ -443,8 +443,8 @@ public sealed class SpecFreezerTests
     {
         // A matcher whose only authored field is a passthrough value_groups discretizer. Freezing
         // writes an explicit value_groups(skip) discretizer (tier 5) that overrides the matcher's,
-        // so on re-resolve the matcher is fully shadowed — a permitted warning that changes no
-        // semantics (D-123 point 9) — and the frozen document is fully frozen.
+        // so on re-resolve the matcher is fully shadowed (a permitted warning that changes no
+        // semantics, D-123 point 9), and the frozen document is fully frozen.
         var document = DocumentFixtures.Document(
             [DocumentFixtures.Attribute("cat", DocumentFixtures.Column(0), scale: new NominalScaleSection())],
             templates:
@@ -674,7 +674,7 @@ public sealed class SpecFreezerTests
     {
         // Author intentionally wrong stored fingerprints; Freeze carries [spec] verbatim (stale
         // pins included), and the write flow recomputes and overwrites all three before it
-        // serializes — so the written document verifies clean.
+        // serializes, so the written document verifies clean.
         var document = CutsDocument() with
         {
             Spec = new SpecSection(1, "stale-schema", "stale-cxt", "stale-dat", null, null),

@@ -5,8 +5,8 @@
 
 .DESCRIPTION
     The global tool is framework-dependent: it needs a matching .NET runtime already on the machine.
-    This produces the other distribution - a folder carrying the runtime beside the executable, and a
-    zip of that folder - for a user who has no .NET installed.
+    This produces the other distribution (a folder carrying the runtime beside the executable, and a
+    zip of that folder) for a user who has no .NET installed.
 
     It is deliberately a thin wrapper over `dotnet publish`. Nothing here decides anything the project
     file does not already decide, with one exception: `PackAsTool` is overridden, because a tool
@@ -35,8 +35,8 @@
 .PARAMETER ArchiveOnly
     Archive an existing publish folder without republishing it.
 
-    The same archive code as an ordinary run - it skips the `dotnet publish` in front of it and
-    nothing else - so a test can exercise the writer against a folder it controls in seconds rather
+    The same archive code as an ordinary run (it skips the `dotnet publish` in front of it and
+    nothing else), so a test can exercise the writer against a folder it controls in seconds rather
     than by publishing a whole runtime. It is not a second way to produce a distribution: the folder
     must already be there, and what comes out is the same archive the full command produces.
 
@@ -46,7 +46,7 @@
 
 .EXAMPLE
     ./eng/publish-selfcontained.ps1 -Rid linux-x64
-    Cross-publish for Linux. Preparation only - run the smoke on Linux to have evidence.
+    Cross-publish for Linux. Preparation only; run the smoke on Linux to have evidence.
 #>
 [CmdletBinding()]
 param(
@@ -62,8 +62,8 @@ $ErrorActionPreference = 'Stop'
 # The zip external-attribute values this writer records on a Linux or macOS distribution: a regular
 # file readable by all, and the same plus the execute bits for the apphost. They are `0100644` and
 # `0100755` in the octal form `ls` prints, shifted into the high half of the external-attributes
-# field where the zip format keeps a Unix mode. A Windows distribution records neither - it has no
-# Unix mode to claim - and the writer says so with an explicit zero rather than by assigning nothing.
+# field where the zip format keeps a Unix mode. A Windows distribution records neither (it has no
+# Unix mode to claim), and the writer says so with an explicit zero rather than by assigning nothing.
 $RegularFileAttributes = 0x81A4 -shl 16
 $ExecutableFileAttributes = 0x81ED -shl 16
 
@@ -82,8 +82,8 @@ $ExecutableFileAttributes = 0x81ED -shl 16
     The mode field is written for EVERY entry, and what it says is decided by the TARGET rather than
     by the machine doing the writing. `ZipArchive.CreateEntry` leaves a host-dependent default there:
     zero on a Windows host, and the creating platform's own mode on Linux and macOS. So a `win-*`
-    archive assigned nothing would record `0100644` when it happened to be built on a Unix machine -
-    a Unix claim about a distribution that has none to make - and the same folder would produce two
+    archive assigned nothing would record `0100644` when it happened to be built on a Unix machine
+    (a Unix claim about a distribution that has none to make), and the same folder would produce two
     different archives depending on where the command ran.
 
     Everything else is deliberately ordinary: a flat payload, one entry per published file
@@ -250,8 +250,8 @@ $count = Write-DistributionArchive `
 
 # A Unix mode recorded on a zip written by a Windows host is a mode most extractors will ignore: the
 # format keeps the creating platform beside it, and `unzip` reads the DOS attributes instead when
-# that platform is not Unix. The archive is still produced - cross-publishing is a documented
-# preparation step - but saying so is the difference between preparation and a delivery archive
+# that platform is not Unix. The archive is still produced (cross-publishing is a documented
+# preparation step), but saying so is the difference between preparation and a delivery archive
 # nobody can run.
 if ($unix -and -not ($IsLinux -or $IsMacOS)) {
     Write-Warning (

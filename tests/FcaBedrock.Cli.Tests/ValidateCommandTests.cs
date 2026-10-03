@@ -47,7 +47,7 @@ public sealed class ValidateCommandTests
     public async Task Validate_WhenNoDataIsSupplied_ThenTheExistingNoSchemaResolutionAppliesVerbatim()
     {
         // A name-bound source cannot resolve without a schema. The CLI must report exactly
-        // what SpecResolver.Resolve(document, null) reports — same codes, same order, same
+        // what SpecResolver.Resolve(document, null) reports: same codes, same order, same
         // locations, same messages.
         using var temp = TempDirectory.Create();
         var spec = temp.Write("spec.toml", CliFixtures.NameBoundSpec);
@@ -285,7 +285,7 @@ public sealed class ValidateCommandTests
     public async Task Validate_WhenTheRootSpecIsNotValidUtf8_ThenACodeLessHostErrorAndExitOne(byte[] bytes)
     {
         // §2 makes UTF-8 part of the format boundary, so an invalidly encoded ROOT is an
-        // ordinary unreadable-input failure — code-less, exit 1, never exit 4.
+        // ordinary unreadable-input failure: code-less, exit 1, never exit 4.
         using var temp = TempDirectory.Create();
         var spec = temp.Resolve("spec.toml");
         File.WriteAllBytes(spec, bytes);

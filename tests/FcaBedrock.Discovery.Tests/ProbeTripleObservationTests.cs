@@ -6,11 +6,11 @@ namespace FcaBedrock.Discovery.Tests;
 /// <summary>
 /// D-106's triple observation semantics: predicates discovered in first-appearance order, values
 /// observed set-based and idempotently under ordinal identity, missing values and missing
-/// predicates contributing nothing — all from one pass over the cleaned rows.
+/// predicates contributing nothing, all from one pass over the cleaned rows.
 /// <para>
 /// The asymmetry worth naming: a wide probe's attributes are the schema's columns and are known
 /// before the pass; a triple probe's are the predicates and are only known once it has finished.
-/// Everything else — the ordering rule, the idempotence, the treatment of missing — is
+/// Everything else (the ordering rule, the idempotence, the treatment of missing) is
 /// deliberately identical, because a draft's meaning must not depend on which shape produced it.
 /// </para>
 /// </summary>
@@ -42,7 +42,7 @@ public sealed class ProbeTripleObservationTests
     [Fact]
     public async Task ProbeTriple_WhenTheSameTripleRepeats_ThenObservationIsIdempotent()
     {
-        // Repeated triples change nothing — not the order, not the domain, not the accounting.
+        // Repeated triples change nothing: not the order, not the domain, not the accounting.
         // That is what makes one pass sufficient (D-106).
         var once = await TripleProbeFixtures.ProbeTripleCsvAsync("s1,p,x\ns1,q,y\n");
         var thrice = await TripleProbeFixtures.ProbeTripleCsvAsync(
@@ -103,7 +103,7 @@ public sealed class ProbeTripleObservationTests
     public async Task ProbeTriple_WhenAPredicateIsMissing_ThenTheRowIsIgnored()
     {
         // §7.1: an empty or missing predicate names no attribute and is not an error. The row's
-        // subject is still validated — see the structural suite.
+        // subject is still validated; see the structural suite.
         var result = await TripleProbeFixtures.ProbeTripleCsvAsync(
             "s1,?,cat\ns2,,dog\ns3,species,fish\n");
         var draft = ProbeFixtures.Draft(result);
@@ -128,7 +128,7 @@ public sealed class ProbeTripleObservationTests
     [Fact]
     public async Task ProbeTriple_WhenTheSourceIsEmpty_ThenThePreflightRejectsTheRoleMap()
     {
-        // An empty source has zero columns, so no role map — not even the 0/1/2 default — can
+        // An empty source has zero columns, so no role map (not even the 0/1/2 default) can
         // address it. That is a binding problem, and the preflight owns binding problems, so it
         // is reported as such and the rows are never read. Deliberately NOT
         // ProbeNoAttributesDiscovered: the wide shape reaches that code because a zero-column
@@ -144,7 +144,7 @@ public sealed class ProbeTripleObservationTests
     [Fact]
     public async Task ProbeTriple_WhenRowsAreRagged_ThenAbsentRolesAreMissingNotErrors()
     {
-        // §5.4/D-085: a short row's unreached cells arrive as null — uniformly missing, never a
+        // §5.4/D-085: a short row's unreached cells arrive as null: uniformly missing, never a
         // structural failure. Here the predicate is absent on one row and the value on another.
         var result = await TripleProbeFixtures.ProbeTripleCsvAsync(
             "s1,species,cat\ns2\ns3,colour\ns4,species,dog\n");
@@ -219,7 +219,7 @@ public sealed class ProbeTripleObservationTests
     [Fact]
     public async Task ProbeTriple_WhenSubjectGrouped_ThenStillEnumeratesRowsExactlyOnce()
     {
-        // Contiguity validation is done in the same pass, from a seen-subject set — not by
+        // Contiguity validation is done in the same pass, from a seen-subject set, not by
         // grouping or spooling (D-110's inherited carve-out).
         var session = TripleProbeFixtures.Fake(("s1", "p", "a"), ("s1", "q", "b"), ("s2", "p", "c"));
 

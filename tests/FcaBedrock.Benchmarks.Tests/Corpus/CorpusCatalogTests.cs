@@ -4,7 +4,7 @@ namespace FcaBedrock.Benchmarks.Tests.Corpus;
 
 /// <summary>
 /// The catalog decides whether cached inputs may be believed. Everything it cannot fully read, or
-/// that no longer matches what it recorded, must be refused — a stale corpus quietly compared
+/// that no longer matches what it recorded, must be refused: a stale corpus quietly compared
 /// against a fresh one is the exact failure this exists to prevent.
 /// </summary>
 public sealed class CorpusCatalogTests
@@ -172,7 +172,7 @@ public sealed class CorpusPreparerTests
     public void Prepare_ShouldPrepareEveryFamilyATierDefines()
     {
         // The registry is what the `prepare` verb, the benchmarks, and the report columns all read,
-        // so every case it names has to be preparable - a family added to the registry and forgotten
+        // so every case it names has to be preparable: a family added to the registry and forgotten
         // in the preparer would only surface as a benchmark failing hours later.
         foreach (var corpus in CorpusCases.ForTier(CorpusTier.Small))
         {

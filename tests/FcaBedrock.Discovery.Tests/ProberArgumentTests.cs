@@ -6,7 +6,7 @@ namespace FcaBedrock.Discovery.Tests;
 /// <summary>
 /// The programmer-error half of EP-14: what <see cref="Prober.ProbeAsync"/> throws rather than
 /// diagnoses. The caller selects the shape (D-106), so a shape that does not match the session
-/// it was handed is a bug in the call — not a property of the data — and must not be dressed up
+/// it was handed is a bug in the call (not a property of the data) and must not be dressed up
 /// as a <c>BedrockDiagnostic</c> a caller might try to handle.
 /// </summary>
 public sealed class ProberArgumentTests
@@ -15,7 +15,7 @@ public sealed class ProberArgumentTests
 
     private static readonly SourceReadSettings Triple = SourceReadSettings.CreateTriple();
 
-    // Every case here asserts a SYNCHRONOUS throw — the guards run before the async state
+    // Every case here asserts a SYNCHRONOUS throw: the guards run before the async state
     // machine, so a caller that never awaits a misused call still sees the bug. Handing the
     // pending ValueTask to this sink is what lets the assertion stay synchronous without
     // consuming a task that, by construction, is never created.

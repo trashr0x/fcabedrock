@@ -7,7 +7,7 @@ namespace FcaBedrock.Spec.Tests.Toml;
 /// <summary>
 /// Round-trip tests (D-075): the contract is document-model fidelity, not byte
 /// fidelity of authored files, so the primary oracle is <em>canonical-text
-/// idempotence</em> — after one write canonicalizes the form, read∘write is the
+/// idempotence</em>: after one write canonicalizes the form, read∘write is the
 /// identity on the text (and therefore on the document). Targeted structural
 /// asserts pin the D-049/D-071 presence guarantees through a full cycle.
 /// </summary>
@@ -221,7 +221,7 @@ public sealed class SpecRoundTripTests
     public void RoundTrip_WhenValueLabelsIsOmittedVersusEmpty_ThenThePresenceDistinctionSurvives()
     {
         // The value_labels mirror of the test above (D-049): an omitted map and an authored {}
-        // are different documents, and the canonical writer must not collapse them — even though
+        // are different documents, and the canonical writer must not collapse them, even though
         // the two converge on identical rendered names and identical fingerprints (D-077).
         var omitted = Read(SpecWriter.Write(DocumentFixtures.Document([DocumentFixtures.Attribute("a")])));
         Assert.Null(omitted.Attributes[0].ValueLabels);

@@ -46,7 +46,7 @@ public sealed class ValueGroupsWriterTests
         return plan;
     }
 
-    // Calibrates then plans — the only route a passthrough spec can reach the writers by (D-093).
+    // Calibrates then plans: the only route a passthrough spec can reach the writers by (D-093).
     private static async Task<ConversionPlan> CalibrateAndPlanAsync(BedrockSpec spec, string csv)
     {
         var source = ConversionFixtures.SourceOver(csv, spec.Binding);
@@ -134,7 +134,7 @@ public sealed class ValueGroupsWriterTests
 
         var cxt = await WriteCxtAsync(plan, PassthroughSpec(), Data);
 
-        // "Bachelors" and "PhD" both matched no group, so both became bins — in first-observation
+        // "Bachelors" and "PhD" both matched no group, so both became bins, in first-observation
         // order, after the declared group (§17 rule 3).
         Assert.Equal(
             "B\n\n3\n3\n\n0\n1\n2\nedu-School\nedu-Bachelors\nedu-PhD\nX..\n.X.\n..X\n",
@@ -201,7 +201,7 @@ public sealed class ValueGroupsWriterTests
             WriterOptions.Native,
             stream);
 
-        // §17 rule 4: object order is first appearance of each subject — s0, s2, s1 under the
+        // §17 rule 4: object order is first appearance of each subject: s0, s2, s1 under the
         // interleaved input. Classification is identical either way; only the object order differs.
         var expectedNames = ordering == TripleOrdering.SubjectGrouped ? "s0\ns1\ns2" : "s0\ns2\ns1";
         var expectedRows = ordering == TripleOrdering.SubjectGrouped ? "X..\n.X.\n..X" : "X..\n..X\n.X.";
@@ -238,12 +238,12 @@ public sealed class ValueGroupsWriterTests
     public async Task Cxt_WhenPlannedUnderEitherLabelStyle_ThenValueGroupsNamesAreStyleIndependent()
     {
         // LabelStyle is the bin-label render hook (D-044): a CUT discretizer re-renders its
-        // interior labels for v2-compat, but a group label is not a cut label — value_groups keeps
-        // the base, style-independent rendering — so the two styles must produce identical names
+        // interior labels for v2-compat, but a group label is not a cut label (value_groups keeps
+        // the base, style-independent rendering), so the two styles must produce identical names
         // and therefore identical bytes.
         //
         // (This is about LabelStyle, not WriterOptions.V2Compat, which changes line endings and
-        // trailing spaces for every discretizer alike — writer formatting, not scaling semantics.)
+        // trailing spaces for every discretizer alike: writer formatting, not scaling semantics.)
         var spec = Spec(ValueGroupsUnmatched.Other);
         var source = ConversionFixtures.SourceOver(Data, spec.Binding);
         var schema = await source.GetSchemaAsync();

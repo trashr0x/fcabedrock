@@ -5,7 +5,7 @@ namespace FcaBedrock.Spec.Tests.Toml;
 
 // Presence-tracked document builders for the resolver tests (D-066): null means
 // "not authored", so each helper authors only what its test needs. Documents
-// with a *missing* [spec]/[binding] section are constructed raw in the tests —
+// with a *missing* [spec]/[binding] section are constructed raw in the tests;
 // the builders always supply a valid one.
 internal static class DocumentFixtures
 {
@@ -57,7 +57,7 @@ internal static class DocumentFixtures
         new(name, source ?? Column(0), Description: null, include, template, discretizer, scale,
             declaredDomain, restrictTo, valueLabels, missingPolicy, unknownValuePolicy);
 
-    // An included identity + nominal attribute — the smallest fully-resolvable shape.
+    // An included identity + nominal attribute: the smallest fully-resolvable shape.
     public static AttributeSection Nominal(
         string name,
         int index,
@@ -67,7 +67,7 @@ internal static class DocumentFixtures
             scale: new NominalScaleSection(), declaredDomain: domain, valueLabels: valueLabels);
 
     // A [[template]] authoring only the fields a test cares about (§9.1's closed ten).
-    // Every omitted field stays null — "not authored" — which is exactly what the §9.2
+    // Every omitted field stays null ("not authored"), which is exactly what the §9.2
     // merge reads, so a template built here layers the same way an authored one does.
     public static TemplateSection Template(
         string? id = "t",
@@ -88,7 +88,7 @@ internal static class DocumentFixtures
             FormalAttributeFormat = formalAttributeFormat,
         };
 
-    // A [[matcher]] with exactly one selector (§9.2) — the arity the reader enforces.
+    // A [[matcher]] with exactly one selector (§9.2): the arity the reader enforces.
     public static MatcherSection Matcher(
         string? nameRegex = null,
         IReadOnlyList<long>? sourceIndexRange = null,

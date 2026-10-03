@@ -17,7 +17,7 @@ internal enum CorpusTier
     /// <summary>10,000 input records. The default, hand-checkable, always-prepared tier.</summary>
     Small,
 
-    /// <summary>730,000 input records — the chosen working baseline, not a claim about a typical user.</summary>
+    /// <summary>730,000 input records: the chosen working baseline, not a claim about a typical user.</summary>
     Working,
 
     /// <summary>7,300,000 input records: 10x the motivating EMAGE workload.</summary>
@@ -46,7 +46,7 @@ internal static class CorpusTiers
 
     /// <summary>
     /// The exact number of input records a tier generates. <see cref="CorpusTier.External"/> has
-    /// none — its size is measured, not declared — and asking for it is a programmer error.
+    /// none (its size is measured, not declared), and asking for it is a programmer error.
     /// </summary>
     public static long Records(CorpusTier tier) => tier switch
     {
@@ -77,7 +77,7 @@ internal static class CorpusTiers
     /// <para>
     /// <see cref="CorpusTier.Micro"/> is <c>Small</c>-category work: it is fast, generated from the
     /// same pinned arithmetic as every other synthetic case, and not a target-scale claim.
-    /// <see cref="CorpusTier.External"/> is <b>not</b>, and has its own category — not because it
+    /// <see cref="CorpusTier.External"/> is <b>not</b>, and has its own category, not because it
     /// is large (it is not) but because preparing it depends on a third-party host, so a routine
     /// run must be able to complete without it.
     /// </para>

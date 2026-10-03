@@ -155,7 +155,7 @@ public sealed class SpecWriterTests
     public void Write_WhenRestrictToRepeatsEntriesOutOfCanonicalOrder_ThenTheAuthoredListIsPreserved()
     {
         // The writer never sorts or deduplicates (D-075): order and duplicates are authoring
-        // state. Only the fingerprint projects a canonical view (§14) — and it must not leak back
+        // state. Only the fingerprint projects a canonical view (§14), and it must not leak back
         // into the document.
         var document = DocumentFixtures.Document(
         [
@@ -384,7 +384,7 @@ public sealed class SpecWriterTests
     public void Write_WhenTemplateAuthorsNamingKeys_ThenTheyMirrorTheAttributeOrder()
     {
         // §9.1: a template body mirrors the attribute key order minus the identity fields,
-        // with id leading — so display_name follows id, and the format keeps its place
+        // with id leading, so display_name follows id, and the format keeps its place
         // before value_labels.
         var document = DocumentFixtures.Document(
             templates:

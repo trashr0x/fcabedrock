@@ -194,7 +194,7 @@ public sealed class PlanCommandTests
                 "dat_output_fingerprint = " + EscapingDat),
             harness.StdOut);
 
-        // The whole point: nine records, nine lines — the embedded break did not add one.
+        // The whole point: nine records, nine lines; the embedded break did not add one.
         Assert.Equal(9, harness.StdOut.Split('\n').Length - 1);
     }
 
@@ -372,7 +372,7 @@ public sealed class PlanCommandTests
     [Fact]
     public async Task Plan_ThenTheReportedFingerprintsAreTheLibrarysNativeValues()
     {
-        // The oracle is built here, from the library, over an independently driven pipeline —
+        // The oracle is built here, from the library, over an independently driven pipeline,
         // not from the plan the command produced.
         using var temp = TempDirectory.Create();
         var spec = temp.Write("spec.toml", CliFixtures.IndexBoundSpec);

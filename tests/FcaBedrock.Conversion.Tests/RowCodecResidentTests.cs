@@ -38,7 +38,7 @@ public sealed class RowCodecResidentTests
     public void TripleMeasureResident_WhenAllNull_ThenZero_ExcludingTheSlot()
     {
         // The RankedRow slot (rank/seq/index + inline refs) is accounted by the buffer's backing array,
-        // never by MeasureResident — so an all-null triple row retains no referenced objects.
+        // never by MeasureResident, so an all-null triple row retains no referenced objects.
         Assert.Equal(0, TripleRowCodec.Instance.MeasureResident(new TripleRow(0, null, null, null)));
     }
 
@@ -107,7 +107,7 @@ public sealed class RowCodecResidentTests
         var stride = (long)Unsafe.SizeOf<RankedRow<DedupeRow>>();
 
         // The List<T> object itself (real x64: header 16 + _items ref 8 + _size/_version 8 = 32) is charged
-        // beyond the backing array — proving the buffer object is accounted, not only its backing array (F2).
+        // beyond the backing array, proving the buffer object is accounted, not only its backing array (F2).
         Assert.True(ResidentModel.BufferBytes(0, stride) >= 32, "the List<T> object itself must be charged");
         Assert.True(ResidentModel.BufferBytes(4, stride) > ResidentModel.BackingArrayBytes(4, stride), "List object adds on top of the backing array");
         Assert.True(ResidentModel.BufferBytes(8, stride) > ResidentModel.BufferBytes(4, stride), "grows with capacity");

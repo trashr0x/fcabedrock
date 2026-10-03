@@ -10,7 +10,7 @@ namespace FcaBedrock.Benchmarks.Oracles;
 /// The layout is §18.1's, spelled out here independently of the writer: the <c>B</c> magic, a blank
 /// line, the object and formal-attribute counts, another blank line, every object name, every
 /// formal-attribute name, and then one fixed-width row of <c>X</c> and <c>.</c> per object, with a
-/// trailing newline after the last row. Native settings throughout — LF endings and the trailing
+/// trailing newline after the last row. Native settings throughout: LF endings and the trailing
 /// newline the default preset emits.
 /// </para>
 /// <para>
@@ -90,8 +90,8 @@ internal static class CxtExpectation
             objects, crosses, crossIdSum, length, Convert.ToHexStringLower(hash.GetHashAndReset()));
     }
 
-    // Every character this format emits is ASCII by construction for the families that use it —
-    // digits, 'X', '.', and generated attribute names — but the length is measured in UTF-8 bytes
+    // Every character this format emits is ASCII by construction for the families that use it
+    // (digits, 'X', '.', and generated attribute names), but the length is measured in UTF-8 bytes
     // regardless, so a name that ever carried a non-ASCII character would still be counted right.
     private static int Append(IncrementalHash hash, string text)
     {

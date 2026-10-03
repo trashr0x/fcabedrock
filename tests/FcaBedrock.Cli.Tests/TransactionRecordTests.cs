@@ -4,7 +4,7 @@ using FcaBedrock.Cli.Publication;
 namespace FcaBedrock.Cli.Tests;
 
 /// <summary>
-/// The private transaction record's format and — the part that matters — its validation.
+/// The private transaction record's format and (the part that matters) its validation.
 /// <para>
 /// The record is the only thing that authorizes recovery to delete, move, or replace a file, so
 /// these cases push at exactly that: a record is believed only when re-formatting what was parsed
@@ -104,14 +104,14 @@ public sealed class TransactionRecordTests
     [InlineData("stage:out.dat|stage:out.cxt")]
     [InlineData("stage:out.manifest.toml|stage:out.cxt")]
 
-    // Backups out of canonical order — the marker is always demoted first.
+    // Backups out of canonical order: the marker is always demoted first.
     [InlineData("backup:out.cxt|backup:out.manifest.toml|stage:out.cxt")]
     [InlineData("backup:out.dat|backup:out.cxt|stage:out.cxt|stage:out.dat")]
 
     // A backup after a stage: the record reads in the order the transaction acts.
     [InlineData("stage:out.cxt|backup:out.cxt")]
 
-    // An orphan artifact backup — nothing this run publishes could have needed it.
+    // An orphan artifact backup: nothing this run publishes could have needed it.
     [InlineData("backup:out.dat|stage:out.cxt")]
     public void TryParse_WhenTheEntriesCouldNotHaveBeenWritten_ThenItIsNotARecord(string shape)
     {
@@ -185,7 +185,7 @@ public sealed class TransactionRecordTests
     [InlineData("version = 1\ntoken = \"0123456789abcdef0123456789abcdef\"\nbase = \"out\"\n\n"
         + "[[file]]\nrole = \"commit\"\ntarget = \"out.cxt\"\n")]
 
-    // A target outside the three this base computes — including a traversal attempt.
+    // A target outside the three this base computes, including a traversal attempt.
     [InlineData("version = 1\ntoken = \"0123456789abcdef0123456789abcdef\"\nbase = \"out\"\n\n"
         + "[[file]]\nrole = \"stage\"\ntarget = \"../../elsewhere.txt\"\n")]
     [InlineData("version = 1\ntoken = \"0123456789abcdef0123456789abcdef\"\nbase = \"out\"\n\n"
@@ -320,7 +320,7 @@ public sealed class TransactionRecordTests
     // Nothing selected at all.
     [InlineData(0x00)]
 
-    // The manifest staged alone — a sidecar of a selection, never the selection.
+    // The manifest staged alone: a sidecar of a selection, never the selection.
     [InlineData(0x04)]
 
     // A backup for an artifact this transaction never stages.
@@ -346,7 +346,7 @@ public sealed class TransactionRecordTests
     public void TryParse_WhenASingleFileRecordCouldNotHaveBeenWritten_ThenItIsNotARecord(string shape) =>
         Assert.Null(Parse(shape));
 
-    // One transaction publishes one family, so a mixed record describes no run at all — and
+    // One transaction publishes one family, so a mixed record describes no run at all, and
     // rejecting it is what makes Family total for every record that does parse.
     [Theory]
     [InlineData("stage:out|stage:out.cxt")]
@@ -490,7 +490,7 @@ public sealed class TransactionRecordTests
     [Fact]
     public void EvidenceNames_WhenTheyAreFormed_ThenEachIsReadBackAsItsOwnKind()
     {
-        // Fixed, short, and a function of the base, the role, and the token alone — so every one of
+        // Fixed, short, and a function of the base, the role, and the token alone, so every one of
         // them is resolvable before the transaction begins, and none is confusable with the other.
         Assert.Equal($"out.fcabedrock-e-c-{Token}", PublicationTargets.EvidenceName(Base, PublicationTargetKind.Cxt, Token));
         Assert.Equal($"out.fcabedrock-ep-m-{Token}", PublicationTargets.EvidencePendingName(Base, PublicationTargetKind.Manifest, Token));

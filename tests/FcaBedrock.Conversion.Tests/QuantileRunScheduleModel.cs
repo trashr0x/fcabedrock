@@ -13,7 +13,7 @@ namespace FcaBedrock.Conversion.Tests;
 /// </para>
 /// <para>
 /// It models <b>two</b> schedules: the generation-tiered schedule the product must follow (D-128),
-/// and the whole-catalogue schedule it superseded, kept as a negative control — wherever the two
+/// and the whole-catalogue schedule it superseded, kept as a negative control: wherever the two
 /// differ, an observation must match the first and be rejected by the second.
 /// </para>
 /// </summary>
@@ -52,7 +52,7 @@ internal static class QuantileRunScheduleModel
     public static long Ceiling(int fanIn) => checked((long)(fanIn - 1) * Levels(fanIn));
 
     /// <summary>
-    /// The sum of the base-<paramref name="radix"/> digits of <paramref name="value"/> — the exact
+    /// The sum of the base-<paramref name="radix"/> digits of <paramref name="value"/>: the exact
     /// quiescent catalogue count after that many successful original spills, not merely a bound.
     /// </summary>
     public static long DigitSum(long value, int radix)
@@ -106,8 +106,8 @@ internal static class QuantileRunScheduleModel
 
     /// <summary>
     /// The superseded <b>whole-catalogue</b> schedule, kept as the negative control: before writing
-    /// original <c>j</c>, if the catalogue already holds <c>F</c> runs the whole catalogue — the
-    /// growing consolidated run included — is merged into one; then <c>j</c> is written and
+    /// original <c>j</c>, if the catalogue already holds <c>F</c> runs the whole catalogue (the
+    /// growing consolidated run included) is merged into one; then <c>j</c> is written and
     /// appended. Finalization consolidates whatever remains.
     /// </summary>
     public static QuantileRunSchedule WholeCatalogue(int fanIn, IQuantileSpillLeaves leaves)

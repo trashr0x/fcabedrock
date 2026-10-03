@@ -37,7 +37,7 @@ public sealed class GoldenFixtureTests
     {
         // §7/§16.4/D-105: AttributeHasNoCrosses on a golden is EVIDENCE, not tolerance. v2's own
         // mini-mushroom.cxt carries eight columns and five incidence rows, and the
-        // veil-type-universal column (id 4) is '.' in every one of them — the fixture's mushrooms
+        // veil-type-universal column (id 4) is '.' in every one of them: the fixture's mushrooms
         // all have a partial veil. So the warning states a fact about the compatibility target,
         // and this test derives that fact INDEPENDENTLY from the golden bytes rather than from
         // the emitter, then requires the emitter to agree.

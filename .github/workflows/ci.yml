@@ -1,4 +1,4 @@
-# FcaBedrock vNext — build, test, and packaging checks on every supported native target.
+# FcaBedrock vNext: build, test, and packaging checks on every supported native target.
 #
 # What this workflow is for: proving the product BUILDS, PASSES ITS TESTS, ACCOUNTS FOR ITS MEMORY,
 # and PACKAGES CORRECTLY on each platform it claims to support, and producing the tested artifacts a
@@ -8,7 +8,7 @@
 # of unstated provenance; two runs of the same job can differ by more than any change worth making.
 # Comparative performance belongs to controlled, identified hardware and is recorded in
 # `docs/benchmarks.md`. The only benchmark step here is a BenchmarkDotNet `Dry` job over the
-# Small-category cases, which executes each of them once and measures nothing — it proves the harness
+# Small-category cases, which executes each of them once and measures nothing: it proves the harness
 # runs on this platform, and nothing else.
 #
 # Every data input this workflow needs comes from the repository. The benchmark corpora it prepares are
@@ -150,7 +150,7 @@ jobs:
         run: dotnet run -c Release --no-build --project tests/FcaBedrock.Benchmarks -- prepare micro small
 
       # A Dry job executes each selected case once and measures nothing. It proves the harness runs,
-      # the corpus preparation works, and the Small-category oracles agree on this platform - and it
+      # the corpus preparation works, and the Small-category oracles agree on this platform, and it
       # is never a performance result.
       #
       # The category is named explicitly rather than left to the default, so what this job selects is

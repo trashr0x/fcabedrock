@@ -60,7 +60,7 @@ public sealed class PendingValueGroupsPassthroughTests
     public void Create_WhenCallerMutatesAnInnerValuesListAfterwards_ThenTheCarrierIsUnaffected()
     {
         // The state is recursively immutable because each ValueGroup already snapshots its own
-        // values — so the carrier does not have to (and must not need to) copy them again.
+        // values, so the carrier does not have to (and must not need to) copy them again.
         var values = new List<string> { "11th" };
         var config = new PendingValueGroupsPassthrough([ValueGroup.Create("School", values, null)]);
 
@@ -88,8 +88,8 @@ public sealed class PendingValueGroupsPassthroughTests
     [Fact]
     public void CalibrationPending_WhenDiscretizeIsCalled_ThenThrowsBecauseCalibrationWasSkipped()
     {
-        // No public path makes an uncalibrated passthrough executable — ValueGroupsDiscretizer.Create
-        // rejects the policy outright — so reaching Discretize is a mis-sequenced call (D-093).
+        // No public path makes an uncalibrated passthrough executable (ValueGroupsDiscretizer.Create
+        // rejects the policy outright), so reaching Discretize is a mis-sequenced call (D-093).
         var ex = Assert.Throws<InvalidOperationException>(() => Pending(Group("G", "a")).Discretize("x"));
 
         Assert.Contains("value_groups", ex.Message, StringComparison.Ordinal);

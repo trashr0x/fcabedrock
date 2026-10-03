@@ -10,8 +10,8 @@ namespace FcaBedrock.Benchmarks.Corpus;
 /// The spec is <b>generated</b> rather than typed out, because 1,559 columns is precisely the point:
 /// a hand-written 1,554-attribute spec would be unreviewable, and the generator is the same kind of
 /// definition the corpus itself has. It is still ordinary TOML read through the production
-/// <c>SpecReader</c>, so the width pressure lands on the real authoring surface — the parser, the
-/// resolver, and the planner — rather than on a hand-built Core graph.
+/// <c>SpecReader</c>, so the width pressure lands on the real authoring surface (the parser, the
+/// resolver, and the planner) rather than on a hand-built Core graph.
 /// </para>
 /// <para>
 /// Every attribute is fully declared, so no calibration pass runs and the column set does not depend
@@ -56,7 +56,7 @@ internal static class AdsSpecs
     public const int FormalAttributeCount = ClassId + 1;
 
     /// <summary>
-    /// The formal attributes this spec plans, in plan order — the names a <c>.cxt</c> header
+    /// The formal attributes this spec plans, in plan order: the names a <c>.cxt</c> header
     /// carries. Spelled from the §10.7 defaults rather than borrowed from the planner: a nominal
     /// cut bin renders as <c>{column}-{label}</c>, and a dichotomic column renders as the column
     /// name alone (D-037(a)), with no value suffix.

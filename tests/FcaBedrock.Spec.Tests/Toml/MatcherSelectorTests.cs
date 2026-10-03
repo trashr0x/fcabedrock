@@ -11,8 +11,8 @@ namespace FcaBedrock.Spec.Tests.Toml;
 /// <c>source_index_range</c>. Selection decides which attributes a template
 /// configures, so it is schema-affecting surface, not implementation freedom.
 /// <para>
-/// Selection is asserted through its <b>effect</b> — did the template's field
-/// reach the resolved attribute — because that is the only thing selection is for,
+/// Selection is asserted through its <b>effect</b> (did the template's field
+/// reach the resolved attribute), because that is the only thing selection is for,
 /// and it keeps the tests independent of any internal selection structure.
 /// </para>
 /// </summary>
@@ -61,8 +61,8 @@ public sealed class MatcherSelectorTests
         // §9.2/D-115's headline divergence from value_groups.pattern (§11.6, partial):
         // a selector is an identity test over configuration-bounded names, so an
         // UNANCHORED pattern must not match a substring. Under the partial reading
-        // `feature_\d+` would also configure `xfeature_12x` — silently configuring an
-        // attribute the author never named, the costlier error D-115 rejected.
+        // `feature_\d+` would also configure `xfeature_12x`, silently configuring an
+        // attribute the author never named: the costlier error D-115 rejected.
         var selected = ResolveSelected(WideDocument(
             DocumentFixtures.Matcher(nameRegex: "feature_\\d+"),
             Nominal("feature_12", 0),
@@ -88,7 +88,7 @@ public sealed class MatcherSelectorTests
     public void NameRegex_WhenExplicitAnchorsAreAuthored_ThenTheyAreRedundantButLegal()
     {
         // §9.2: explicit anchors "remain legal but are redundant when they express that
-        // same boundary" — so the wrapped form must not double-anchor into never matching.
+        // same boundary", so the wrapped form must not double-anchor into never matching.
         var selected = ResolveSelected(WideDocument(
             DocumentFixtures.Matcher(nameRegex: "^feature_\\d+$"),
             Nominal("feature_12", 0),
@@ -100,7 +100,7 @@ public sealed class MatcherSelectorTests
     [Fact]
     public void NameRegex_WhenLogicalNameAndPredicateAreCrossed_ThenOnlyTheLogicalNameSelects()
     {
-        // §9.2/D-115: `name_regex` targets the complete logical attribute.name — "never a
+        // §9.2/D-115: `name_regex` targets the complete logical attribute.name: "never a
         // source header, predicate text, display_name, or a rendered formal name".
         //
         // Deliberately CROSSED so the alternatives select DIFFERENT attributes rather than
@@ -108,7 +108,7 @@ public sealed class MatcherSelectorTests
         // second attribute is *named* `physical_age`. Under the correct contract the
         // pattern `^physical_age$` selects the second; an implementation matching
         // predicates would select the first. A fixture where name and predicate agree
-        // cannot tell those two implementations apart — which is exactly the gap this
+        // cannot tell those two implementations apart, which is exactly the gap this
         // closes.
         //
         // The display name and the rendered names are also made non-matching, so the
@@ -137,7 +137,7 @@ public sealed class MatcherSelectorTests
     {
         // The wide analogue, crossed the same way: `alpha` binds by header name `beta`,
         // while a second attribute is *named* `beta` and binds by index. `^beta$` must
-        // select the second — matching the bound header would select the first.
+        // select the second; matching the bound header would select the first.
         var document = DocumentFixtures.Document(
             [
                 DocumentFixtures.Attribute("alpha", DocumentFixtures.NamedColumn("beta"),
@@ -224,7 +224,7 @@ public sealed class MatcherSelectorTests
         //
         // `(?x)a #c` compiles fine on its own: under IgnorePatternWhitespace a `#` starts
         // a comment running to end-of-line, and there is no more line. Wrapped as
-        // `\A(?:(?x)a #c)\z` that same comment swallows the wrapper's own `)` — so the
+        // `\A(?:(?x)a #c)\z` that same comment swallows the wrapper's own `)`, so the
         // group is never closed and compilation fails.
         //
         // Validating the RAW pattern would therefore accept this spec at parse and then
@@ -292,7 +292,7 @@ public sealed class MatcherSelectorTests
     public void SourceIndexRange_WhenSeveralAttributesShareAColumn_ThenAllOfThemMatch()
     {
         // §9.2/D-033: "EVERY declared logical attribute bound to an in-range index
-        // matches", repeated bindings included — one field carrying two scalings.
+        // matches", repeated bindings included: one field carrying two scalings.
         var selected = ResolveSelected(WideDocument(
             DocumentFixtures.Matcher(sourceIndexRange: [1, 1]),
             Nominal("age", 1), Nominal("age_copy", 1), Nominal("other", 0)));
@@ -304,7 +304,7 @@ public sealed class MatcherSelectorTests
     public void SourceIndexRange_WhenTheSourceIsNameBound_ThenItParticipatesViaTheResolvedIndex()
     {
         // §9.2: the range is evaluated AFTER ordinary header/schema binding, so a
-        // name-bound source participates normally — matching on the index the header
+        // name-bound source participates normally, matching on the index the header
         // resolved it to, not on anything authored.
         var document = WideDocument(
             DocumentFixtures.Matcher(sourceIndexRange: [1, 1]),
@@ -321,7 +321,7 @@ public sealed class MatcherSelectorTests
     [Fact]
     public void SourceIndexRange_WhenTheRangeOverCoversTheSource_ThenItIsLegalAndSelectsWhatExists()
     {
-        // §9.2: "an endpoint beyond the source width is legal over-coverage" — the
+        // §9.2: "an endpoint beyond the source width is legal over-coverage": the
         // Internet-Ads idiom of writing a generous range. Neither clamped nor rejected.
         var selected = ResolveSelected(
             WideDocument(DocumentFixtures.Matcher(sourceIndexRange: [0, 1553]), Nominal("a", 0), Nominal("b", 1)),
@@ -336,7 +336,7 @@ public sealed class MatcherSelectorTests
         // D-115/D-121's single-emission rule: a name-bound source with no schema is the
         // ordinary SourceBindingInvalid, and "no matcher-specific duplicate condition is
         // introduced". The addressing pass owns that diagnostic, and selection consuming
-        // the same table is what makes a second one impossible — this is the test that
+        // the same table is what makes a second one impossible; this is the test that
         // fails if selection re-resolves the source.
         var document = WideDocument(
             DocumentFixtures.Matcher(sourceIndexRange: [0, 9]),
@@ -365,7 +365,7 @@ public sealed class MatcherSelectorTests
     public void SourceIndexRange_WhenMalformed_ThenExactlyOneSpecFieldInvalidAtParse(string range)
     {
         // §9.2/D-115: exactly two TOML integers with 0 <= lo <= hi. Wrong arity, a
-        // non-integer, a negative endpoint, and reversed endpoints each fail at parse —
+        // non-integer, a negative endpoint, and reversed endpoints each fail at parse,
         // and each reports ONCE, so a malformed range is one authoring fix, not two
         // diagnostics describing the same array.
         var result = SpecReader.Read(
@@ -384,7 +384,7 @@ public sealed class MatcherSelectorTests
     public void Match_WhenBothOrNeitherSelectorIsAuthored_ThenExactlyOneSpecFieldInvalid(string body)
     {
         // §9.2: exactly one selector. AND/OR semantics for two authored selectors would
-        // be ambiguous, so the arity itself is the condition — reported once, rather than
+        // be ambiguous, so the arity itself is the condition, reported once, rather than
         // cascading into per-selector complaints.
         var result = SpecReader.Read($"[[matcher]]\n{body}\n");
 
@@ -410,7 +410,7 @@ public sealed class MatcherSelectorTests
     public void SourceIndexRange_WhenShapeIsTriple_ThenMatcherSelectorInvalidForShape()
     {
         // §9.2/D-115: a predicate source has no column index, so a range is incompatible
-        // with triple — one Error per incompatible matcher, and resolution fails.
+        // with triple: one Error per incompatible matcher, and resolution fails.
         var document = DocumentFixtures.Document(
             [TriplePredicate("age", "age")],
             binding: DocumentFixtures.TripleBinding(),
@@ -424,7 +424,7 @@ public sealed class MatcherSelectorTests
         Assert.Equal(DiagnosticSeverity.Error, diagnostic.Severity);
 
         // §16.4: a matcher-scoped diagnostic identifies BOTH its declaration ordinal and
-        // its template reference deterministically — an ordinal alone leaves the reader
+        // its template reference deterministically; an ordinal alone leaves the reader
         // counting matchers to find which template was involved.
         Assert.Contains("#1", diagnostic.Message, StringComparison.Ordinal);
         Assert.Contains("\"t\"", diagnostic.Message, StringComparison.Ordinal);
@@ -449,7 +449,7 @@ public sealed class MatcherSelectorTests
         Assert.Equal(["age", "age_ordinal"], spec.Attributes.Select(a => a.Name));
         Assert.Equal(["age", "age_ordinal"], Selected(spec));
 
-        // Both really are bound to the one predicate — the repeated source, not two sources.
+        // Both really are bound to the one predicate: the repeated source, not two sources.
         Assert.All(spec.Attributes, a => Assert.Equal("age", Assert.IsType<PredicateSource>(a.Source).Predicate));
     }
 
@@ -459,8 +459,8 @@ public sealed class MatcherSelectorTests
     public void Evaluate_WhenNoSourceIsOpen_ThenSelectionStillResolvesFromSchemaAlone()
     {
         // §9.2/D-118: matcher evaluation is a one-time configuration- and schema-bounded
-        // step that reads NO data rows. Resolve has no data access at all — it takes a
-        // SpecDocument and an optional SourceSchema — so resolving a range matcher
+        // step that reads NO data rows. Resolve has no data access at all (it takes a
+        // SpecDocument and an optional SourceSchema), so resolving a range matcher
         // against a hand-built schema, with no session, stream, or file anywhere, is the
         // structural proof: there is no row to enumerate.
         var selected = ResolveSelected(

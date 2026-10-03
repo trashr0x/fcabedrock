@@ -75,7 +75,7 @@ public sealed class ConversionRuntimeOptionsTests
     {
         Assert.True(typeof(ConversionRuntimeOptions).IsSealed);
 
-        // Locks the public instance property set to exactly TempDirectory — a future budget/fan-in knob
+        // Locks the public instance property set to exactly TempDirectory: a future budget/fan-in knob
         // added to the public surface would fail here (the record's EqualityContract is protected).
         var publicInstanceProperties = typeof(ConversionRuntimeOptions)
             .GetProperties(BindingFlags.Public | BindingFlags.Instance)
@@ -307,11 +307,11 @@ public sealed class ConversionRuntimeOptionsTests
     private const string DedupeSpillCsv = "k1,x\nk2,y\nk3,x\nk1,y\nk2,x\nk3,y";
 
     // A wide dedupe spec (object key = column 0, dedupe; one nominal attribute over column 1). Built
-    // explicitly with WideWithKey — ConversionFixtures.MushroomSpec() is row-index wide, not dedupe.
+    // explicitly with WideWithKey: ConversionFixtures.MushroomSpec() is row-index wide, not dedupe.
     private static BedrockSpec DedupeSpec() =>
         new(ConversionFixtures.WideWithKey(0, DuplicateObjectPolicy.Dedupe), [ConversionFixtures.Nominal("a", 1, "x", "y")]);
 
-    // The mushroom triple predicates under an unordered binding — the grouping/spool emit path.
+    // The mushroom triple predicates under an unordered binding: the grouping/spool emit path.
     private static BedrockSpec UnorderedTripleSpec() =>
         new(ConversionFixtures.Triple(TripleOrdering.Unordered),
         [
@@ -444,7 +444,7 @@ public sealed class ConversionRuntimeOptionsTests
     }
 
     // Every recorded spool run lives in a fcabedrock-spool-* workspace whose parent is exactly the
-    // supplied root — a proper parent/full-path comparison, never a string-prefix match.
+    // supplied root: a proper parent/full-path comparison, never a string-prefix match.
     private static void AssertWorkspaceUnderRoot(RecordingObserver observer, string root)
     {
         var expectedParent = Path.GetFullPath(root);

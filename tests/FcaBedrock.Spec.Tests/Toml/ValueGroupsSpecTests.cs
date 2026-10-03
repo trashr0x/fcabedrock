@@ -217,7 +217,7 @@ public sealed class ValueGroupsSpecTests
     public void Read_WhenPatternIsNotAValidRegex_ThenSpecFieldInvalidWithNoDedicatedRegexCode()
     {
         // D-090: the compile check happens at parse, and an uncompilable pattern is ONE
-        // SpecFieldInvalid condition — there is deliberately no regex-error code of its own.
+        // SpecFieldInvalid condition: there is deliberately no regex-error code of its own.
         var result = SpecReader.Read(Attribute("{ kind = \"value_groups\", groups = [{ label = \"G\", pattern = \"^I[0-9\" }] }"));
 
         Assert.False(result.IsOk);
@@ -246,7 +246,7 @@ public sealed class ValueGroupsSpecTests
     [Fact]
     public void Read_WhenUnknownKeyInsideTheDiscretizer_ThenSpecKeyUnrecognized()
     {
-        // D-075: unknown keys stay ordinary key errors — value_groups gains no special surface.
+        // D-075: unknown keys stay ordinary key errors; value_groups gains no special surface.
         var result = SpecReader.Read(Attribute("{ kind = \"value_groups\", " + SchoolGroups + ", wibble = 1 }"));
 
         Assert.Equal(DiagnosticCode.SpecKeyUnrecognized, Assert.Single(result.Diagnostics).Code);
@@ -262,7 +262,7 @@ public sealed class ValueGroupsSpecTests
     [Fact]
     public void Read_WhenSeveralIndependentProblems_ThenAllAggregate()
     {
-        // EP-14: independent failures report together rather than stopping at the first — a bad
+        // EP-14: independent failures report together rather than stopping at the first: a bad
         // group AND a bad unmatched must both surface.
         var result = SpecReader.Read(Attribute(
             "{ kind = \"value_groups\", groups = [{ label = \"G\" }], unmatched = \"wibble\" }"));
@@ -451,7 +451,7 @@ public sealed class ValueGroupsSpecTests
     public void Resolve_WhenPassthrough_ThenTheCalibrationPendingCarrier()
     {
         // Passthrough cannot resolve without data (§7/D-093), so it must NOT become executable
-        // here — ValueGroupsDiscretizer.Create would refuse it anyway.
+        // here; ValueGroupsDiscretizer.Create would refuse it anyway.
         var pending = Assert.IsType<CalibrationPending>(
             ResolveDiscretizer(Attribute("{ kind = \"value_groups\", " + SchoolGroups + ", unmatched = \"passthrough\" }")));
 
@@ -467,7 +467,7 @@ public sealed class ValueGroupsSpecTests
         string spelling, ValueGroupsUnmatched expected)
     {
         // D-104 rejected a non-empty-groups requirement: each *group* is the unit of validity, and
-        // an empty group list is coherent — under `skip` nothing is recognized, under `other`
+        // an empty group list is coherent: under `skip` nothing is recognized, under `other`
         // everything falls into the synthetic bin. Neither is an error at the seam.
         var discretizer = Assert.IsType<ValueGroupsDiscretizer>(
             ResolveDiscretizer(Attribute($"{{ kind = \"value_groups\", groups = [], unmatched = \"{spelling}\" }}")));
@@ -555,7 +555,7 @@ public sealed class ValueGroupsSpecTests
     [Fact]
     public void Resolve_WhenDuplicateGroupLabels_ThenValueGroupsLabelDuplicateNotSpecFieldInvalid()
     {
-        // D-090: duplicates own their code and never surface as SpecFieldInvalid — they are a
+        // D-090: duplicates own their code and never surface as SpecFieldInvalid: they are a
         // cross-group rule the reader cannot see, so the seam owns them.
         var result = Resolve(Attribute(
             "{ kind = \"value_groups\", groups = [{ label = \"G\", values = [\"a\"] }, { label = \"G\", values = [\"b\"] }] }"));
@@ -593,7 +593,7 @@ public sealed class ValueGroupsSpecTests
     [Fact]
     public void Resolve_WhenLabelDuplicatedOnAnExcludedAttribute_ThenParkedConfigDoesNotBlock()
     {
-        // D-049: an excluded attribute's config is parked — never validated, never an error.
+        // D-049: an excluded attribute's config is parked: never validated, never an error.
         var toml = "[spec]\nversion = 1\n[binding]\nshape = \"wide\"\n[[attribute]]\nname = \"a\"\ninclude = false\n"
             + "source = { kind = \"column\", index = 0 }\n"
             + "discretizer = { kind = \"value_groups\", groups = [{ label = \"G\", values = [\"a\"] }, { label = \"G\", values = [\"b\"] }] }\n"
@@ -659,7 +659,7 @@ public sealed class ValueGroupsSpecTests
 
     [Fact]
     public void Resolve_WhenOrderAuthoredOverValueGroups_ThenNotOrdinalOrderNotAllowedWithCuts() =>
-        // value_groups bins are VALUE bins, so scale.order is legitimate over them — the
+        // value_groups bins are VALUE bins, so scale.order is legitimate over them: the
         // cut-discretizer prohibition must not extend here (§12.3).
         Assert.DoesNotContain(
             Resolve(Attribute(
@@ -672,7 +672,7 @@ public sealed class ValueGroupsSpecTests
     [Fact]
     public void Resolve_WhenDeclaredDomainAuthoredUnderValueGroups_ThenDormantAndNeverAnError()
     {
-        // D-055: value_groups does not consult declared_domain, so an authored one is inert —
+        // D-055: value_groups does not consult declared_domain, so an authored one is inert:
         // no domain validation is triggered by it.
         var result = Resolve(Attribute(
             "{ kind = \"value_groups\", " + SchoolGroups + " }",

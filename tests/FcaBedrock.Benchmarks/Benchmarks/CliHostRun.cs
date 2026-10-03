@@ -96,7 +96,7 @@ internal sealed class CliHostRun(string label, CorpusCase corpus)
     /// <para>
     /// A convert under a fully declared spec says nothing at all, so the default is an empty list and
     /// any output on the diagnostic sink fails the case. An auto-calibrated one legitimately reports
-    /// that its column set came from the data — a statement about the mode it was asked to run, not
+    /// that its column set came from the data: a statement about the mode it was asked to run, not
     /// a finding about the input, and one it would make on every run over every corpus. Naming the
     /// codes per case keeps that from becoming a general licence to ignore stderr.
     /// </para>
@@ -155,7 +155,7 @@ internal sealed class CliHostRun(string label, CorpusCase corpus)
         _prepared = CorpusPreparer.Require(corpus);
         _outputBase = Path.Combine(BenchmarkPaths.OutputDirectory, $"{corpus.Id}.{Sanitize(label)}");
 
-        // An override spec is written once, in setup, beside the corpus it reads - never inside a
+        // An override spec is written once, in setup, beside the corpus it reads, never inside a
         // measured interval, and never over the committed spec the catalog's digest describes.
         var specPath = _prepared.SpecPath;
         if (SpecOverride is { } specText)
@@ -235,7 +235,7 @@ internal sealed class CliHostRun(string label, CorpusCase corpus)
     /// have one line per expected object, which is a genuine semantic check: it catches a lost,
     /// duplicated, or invented object. Every iteration after the first must reproduce the first
     /// one's bytes, which is a determinism check within the run. And the digest it records is
-    /// <b>regression evidence</b> for a later run — not proof that the semantics are right.
+    /// <b>regression evidence</b> for a later run, not proof that the semantics are right.
     /// </para>
     /// </summary>
     public void ValidateBaseline(long expectedObjects)

@@ -5,8 +5,8 @@ using FcaBedrock.Diagnostics;
 
 namespace FcaBedrock.Export.Tests;
 
-// The `.cxt` size advisory (§8, D-122 part 7 / D-123). The projection is proven EXACT — not merely
-// plausible — by the boundary method: for each case the advisory-free writer gives the real emitted
+// The `.cxt` size advisory (§8, D-122 part 7 / D-123). The projection is proven EXACT (not merely
+// plausible) by the boundary method: for each case the advisory-free writer gives the real emitted
 // byte count `actual`, then threshold `actual` must fire (projected >= actual) and threshold
 // `actual + 1` must be silent (projected < actual + 1 ⇒ projected <= actual). Together those pin
 // projected == actual, so any future drift between the projection and the writer fails a test.
@@ -19,7 +19,7 @@ public sealed class CxtSizeAdvisoryTests
         WriterFixtures.Object("2"),
     ];
 
-    // Multi-byte object names (é = 2 bytes, Ω = 2 bytes) — the projection must count encoded bytes.
+    // Multi-byte object names (é = 2 bytes, Ω = 2 bytes): the projection must count encoded bytes.
     private static readonly EmittedObject[] NonAsciiObjects =
     [
         WriterFixtures.Object("café", 0),
@@ -61,7 +61,7 @@ public sealed class CxtSizeAdvisoryTests
 
     [Fact]
     public Task Projection_WhenNonAsciiRenderedAttributeNames_ThenEqualsEmittedBytes() =>
-        // Columns render as "a-café" / "a-Ω" — multi-byte rendered formal-attribute names.
+        // Columns render as "a-café" / "a-Ω": multi-byte rendered formal-attribute names.
         AssertProjectionIsExactAsync(WriterFixtures.NominalPlan("café", "Ω"), AsciiObjects, WriterOptions.Native);
 
     [Fact]
@@ -248,7 +248,7 @@ public sealed class CxtSizeAdvisoryTests
     }
 
     // A diagnostics sink that snapshots the pass-1 completion flag and the sink byte count at the
-    // exact instant the advisory is appended — a deterministic ordering seam, not a code-order or
+    // exact instant the advisory is appended: a deterministic ordering seam, not a code-order or
     // test-name assumption.
     private sealed class ObservingDiagnostics(RecordingObjectSource source, CountingStream stream)
         : ICollection<BedrockDiagnostic>

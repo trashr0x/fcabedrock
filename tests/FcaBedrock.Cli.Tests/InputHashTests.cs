@@ -6,7 +6,7 @@ namespace FcaBedrock.Cli.Tests;
 /// <summary>
 /// The input-stability policy at its own seam (D-122 part 5). The digest is
 /// always checked against an <b>independent</b> <see cref="SHA256"/> over the exact bytes the
-/// stream handed out — never against another run of the same code.
+/// stream handed out, never against another run of the same code.
 /// </summary>
 public sealed class InputHashTests
 {
@@ -46,7 +46,7 @@ public sealed class InputHashTests
     [InlineData(4096)]
     public void Digest_WhenReadInAwkwardChunks_ThenMatchesAnIndependentHashOfTheRawBytes(int chunk)
     {
-        // A byte-order mark, CRLF endings, a quote, a delimiter, and multi-byte UTF-8 — every
+        // A byte-order mark, CRLF endings, a quote, a delimiter, and multi-byte UTF-8: every
         // one of which a decoder would alter and a raw hash must not.
         var bytes = new byte[] { 0xEF, 0xBB, 0xBF }
             .Concat(Encoding.UTF8.GetBytes("a,\"b\"\r\nré中,\t\r\n"))
@@ -125,7 +125,7 @@ public sealed class InputHashTests
 
             // The array overload is exactly what this test exists to exercise: it is a real
             // Stream API a consumer may pick, so the wrapper must hash through it too.
-#pragma warning disable CA1835 // Prefer the Memory-based overload — deliberately not, here.
+#pragma warning disable CA1835 // Prefer the Memory-based overload: deliberately not, here.
             while (await stream.ReadAsync(buffer, 0, buffer.Length, TestContext.Current.CancellationToken) > 0)
             {
             }

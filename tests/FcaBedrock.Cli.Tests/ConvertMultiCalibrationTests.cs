@@ -9,7 +9,7 @@ namespace FcaBedrock.Cli.Tests;
 /// One calibration owns one spool workspace and every count-sensitive attribute spills into it, so
 /// the D-082 degraded-cleanup allowance has to be read at that workspace's scope. Read at one
 /// attribute's scope instead it shrinks as attributes are added, and a perfectly ordinary spec is
-/// refused with <c>GroupingStorageFailed</c> on healthy storage — a failure with no output, no
+/// refused with <c>GroupingStorageFailed</c> on healthy storage: a failure with no output, no
 /// manifest, and a non-zero exit, which is why it belongs at this seam and not only in
 /// <c>Conversion.Tests</c>.
 /// </para>
@@ -17,8 +17,8 @@ namespace FcaBedrock.Cli.Tests;
 /// The memory budget is internal and stays at its shipped default here, so these commands need not
 /// spill at all: the arithmetic proof of the scope lives in
 /// <c>Conversion.Tests/MultiAttributeCalibrationTests</c>, where a budget can be made small enough
-/// to force one. What this suite pins is the <b>whole command</b> — several count-sensitive
-/// attributes calibrate, publish, and record a manifest, with no storage diagnostic anywhere — and,
+/// to force one. What this suite pins is the <b>whole command</b> (several count-sensitive
+/// attributes calibrate, publish, and record a manifest, with no storage diagnostic anywhere) and,
 /// beside it, that a genuine calibration error still publishes nothing at all.
 /// </para>
 /// </summary>

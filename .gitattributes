@@ -2,7 +2,7 @@
 # ending as a format decision, not a platform one (literal "\r\n" for v2-compat,
 # never Environment.NewLine), and the golden harness compares byte-for-byte. So
 # the expected .cxt/.dat must be CRLF on every OS, including Linux CI. Freeze them
-# — no normalization — but they still render as textual diffs in review (no NUL
+# (no normalization), but they still render as textual diffs in review (no NUL
 # bytes). See docs/engineering-principles.md EP-9 and the determinism contract (D-004).
 fixtures/v2/**/expected/*.cxt -text
 fixtures/v2/**/expected/*.dat -text

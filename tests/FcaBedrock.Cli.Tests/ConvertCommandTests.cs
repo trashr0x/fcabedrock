@@ -9,7 +9,7 @@ namespace FcaBedrock.Cli.Tests;
 /// advisory, and the rule that an invalid run publishes nothing.
 /// <para>
 /// Every expected artifact below is derived by hand from the spec text and the two data rows
-/// beside it — two declared values, two objects, one cross each — so the byte locks are an
+/// beside it (two declared values, two objects, one cross each), so the byte locks are an
 /// independent statement of what the format is, not a recording of what the writer did.
 /// </para>
 /// </summary>
@@ -78,7 +78,7 @@ public sealed class ConvertCommandTests
     public async Task Convert_WhenTheBaseAlreadyCarriesAnExtension_ThenTheRuledOneIsAppendedToItVerbatim()
     {
         // D-122 part 5: the extension is appended to BASE, never inferred from it and never
-        // stripped — so `--out out.cxt` publishes `out.cxt.cxt`.
+        // stripped, so `--out out.cxt` publishes `out.cxt.cxt`.
         using var temp = TempDirectory.Create();
         var harness = new CliTestHarness();
         var spec = temp.Write("spec.toml", CliFixtures.IndexBoundSpec);
@@ -130,7 +130,7 @@ public sealed class ConvertCommandTests
         // The settled parser rejects `-` as a SPEC or DATA operand (there is no stdin source) but
         // does not special-case it as an `--out` VALUE for convert, whose --out is a base rather
         // than a sink. The behaviour that matters is D-122 part 4's: convert publishes no artifact
-        // to stdout. It does not — `-` names an ordinary file, and stdout is still exactly empty.
+        // to stdout. It does not: `-` names an ordinary file, and stdout is still exactly empty.
         using var temp = TempDirectory.Create();
         var harness = new CliTestHarness();
         var spec = temp.Write("spec.toml", CliFixtures.IndexBoundSpec);
@@ -166,7 +166,7 @@ public sealed class ConvertCommandTests
     public async Task Convert_WhenOutputSettingsAreAuthored_ThenTheWritersHonourEveryOne()
     {
         // CRLF on both formats, no trailing newline on either, zero-based .dat ids, and a
-        // trailing space on non-empty .dat lines — the full §8 native surface at once.
+        // trailing space on non-empty .dat lines: the full §8 native surface at once.
         using var run = ConvertRun.Wide(CliFixtures.IndexBoundSpec + """
 
             [output.cxt]
@@ -271,7 +271,7 @@ public sealed class ConvertCommandTests
         // Both attributes render through `{value}` alone. Natively the cut bin is `[30, 40)` and
         // the declared value is the literal `30to<40`, so the two names differ; under v2 labels
         // the cut bin renders `30to<40` too, and the plan collides. The effective plan's own
-        // diagnostics are the run's failure — and they only appear for the run that has them.
+        // diagnostics are the run's failure, and they only appear for the run that has them.
         using var native = ConvertRun.Wide(V2LabelCollisionSpec, V2LabelCollisionData);
         using var compat = ConvertRun.Wide(V2LabelCollisionSpec, V2LabelCollisionData);
 
@@ -339,7 +339,7 @@ public sealed class ConvertCommandTests
     {
         // unknown_value_policy = "fail" turns the out-of-domain value into an Error at emit. The
         // enumeration still completes (the aggregate needs the whole population), so bytes were
-        // staged — and every one of them is discarded rather than committed.
+        // staged, and every one of them is discarded rather than committed.
         using var run = ConvertRun.Wide(FailUnknownSpec, "colour,size\nred,1\nblue,2\n");
 
         var exit = await run.ConvertAsync("--format", "both");
@@ -536,7 +536,7 @@ public sealed class ConvertCommandTests
 
 /// <summary>
 /// One temporary convert run: a spec, a data source, an output base, and the harness that drives
-/// it. The base is absolute so no test depends on — or changes — the process working directory.
+/// it. The base is absolute so no test depends on (or changes) the process working directory.
 /// </summary>
 internal sealed class ConvertRun : IDisposable
 {
@@ -636,7 +636,7 @@ internal sealed class ConvertRun : IDisposable
     }
 
     /// <summary>
-    /// Every <c>out*</c> file's name paired with its exact bytes — the oracle a rollback test
+    /// Every <c>out*</c> file's name paired with its exact bytes: the oracle a rollback test
     /// compares before and after, so "restored byte-identically" means what it says.
     /// </summary>
     public Dictionary<string, byte[]> Snapshot()

@@ -12,7 +12,7 @@ namespace FcaBedrock.Benchmarks;
 /// Exact equal-frequency calibration retains one bounded accumulator per attribute, and the buffer
 /// bound is <c>max(budget, attributeCount x FloorBytes)</c> (D-095/D-103). The floor arm only starts
 /// to matter when there are enough attributes for it to exceed the budget, so a four-attribute spec
-/// never reaches it — which is why this case exists beside the ordinary calibration one. Four bin
+/// never reaches it, which is why this case exists beside the ordinary calibration one. Four bin
 /// counts over each of the four numeric columns give sixteen genuinely independent accumulators over
 /// the same corpus, with no change to the data at all.
 /// </para>

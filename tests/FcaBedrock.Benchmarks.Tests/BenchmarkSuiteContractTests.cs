@@ -97,8 +97,8 @@ public sealed class BenchmarkSuiteContractTests
     [Fact]
     public void EveryExternalCase_ShouldBeExcludedFromEveryImplicitSelectionAndReachableWhenNamed()
     {
-        // The External tier is opt-in for a different reason from Scale - its corpus is acquired
-        // from a third-party host rather than generated here - but the selection guarantee is the
+        // The External tier is opt-in for a different reason from Scale (its corpus is acquired
+        // from a third-party host rather than generated here), but the selection guarantee is the
         // same one: nothing but naming the category reaches it.
         var bare = SelectionPolicy.FromArguments([]);
         var broad = SelectionPolicy.FromArguments(["--filter", "*"]);
@@ -153,7 +153,7 @@ public sealed class BenchmarkSuiteContractTests
     public void TheSelectionFilter_ShouldRefuseADiscoveredWorkingCaseUnderASurfaceOnlySelection()
     {
         // End to end through the real path: BenchmarkDotNet's own converter reads the attributes,
-        // and the suite's real filter — the one the configuration attaches — decides on the
+        // and the suite's real filter (the one the configuration attaches) decides on the
         // descriptor those attributes produced rather than on a category array written here.
         var discovered = BenchmarkConverter.TypeToBenchmarks(typeof(CliHostConvertWideWorking)).BenchmarksCases;
         Assert.NotEmpty(discovered);

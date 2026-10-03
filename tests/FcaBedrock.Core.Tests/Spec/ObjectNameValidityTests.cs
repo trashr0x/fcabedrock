@@ -11,7 +11,7 @@ public sealed class ObjectNameValidityTests
     [InlineData("s1")]
     [InlineData("a")]
     [InlineData("has space")]
-    [InlineData(" leading and trailing ")]      // interior/edge spaces are fine — it is not blank.
+    [InlineData(" leading and trailing ")]      // interior/edge spaces are fine: it is not blank.
     [InlineData("punctuation-,.;:!?")]
     [InlineData("quote\"inside")]               // §10.1 name validity is a DIFFERENT predicate.
     [InlineData("café")]

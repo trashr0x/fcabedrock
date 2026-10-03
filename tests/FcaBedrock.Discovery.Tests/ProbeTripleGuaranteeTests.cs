@@ -15,7 +15,7 @@ namespace FcaBedrock.Discovery.Tests;
 /// (3) resolves against the probed schema with no Error/Fatal, and (4) converts the same source
 /// under the same effective settings with no Error/Fatal.
 /// <para>
-/// Probe runs no conversion itself — D-109 forbids Discovery from referencing it — so leg 4 is
+/// Probe runs no conversion itself (D-109 forbids Discovery from referencing it), so leg 4 is
 /// proven here through a <b>test-only</b> Conversion reference. That is also what makes the
 /// structural subject checks worth having: without them a probe could hand back a draft whose own
 /// convert leg halts.
@@ -36,7 +36,7 @@ public sealed class ProbeTripleGuaranteeTests
         // (1) at least one attribute.
         Assert.NotEmpty(draft.Attributes);
 
-        // (2) strict reread — the reader rejects unknown keys, so a draft carrying a field the
+        // (2) strict reread: the reader rejects unknown keys, so a draft carrying a field the
         // format does not define would fail right here.
         var toml = SpecWriter.Write(draft);
         var reread = SpecReader.Read(toml);
@@ -97,7 +97,7 @@ public sealed class ProbeTripleGuaranteeTests
     [Fact]
     public async Task Draft_WhenProbedUnderSubjectGrouped_ThenSatisfiesTheFourPartGuarantee()
     {
-        // The authored ordering must survive the round trip and still convert — an explicit
+        // The authored ordering must survive the round trip and still convert: an explicit
         // `subject_grouped` draft is read back as `subject_grouped`.
         const string csv = "s1,species,cat\ns1,colour,black\ns2,species,dog\n";
 
@@ -111,7 +111,7 @@ public sealed class ProbeTripleGuaranteeTests
     [Fact]
     public async Task Draft_WhenProbedWithAHeaderAndNameRoles_ThenSatisfiesTheFourPartGuarantee()
     {
-        // The name-addressed map has to resolve on REREAD too, not only during the probe — which
+        // The name-addressed map has to resolve on REREAD too, not only during the probe, which
         // is the whole reason the draft authors the caller's addressing mode rather than indices.
         const string csv = "subj,pred,val\ns1,species,cat\ns2,species,dog\n";
 
@@ -151,7 +151,7 @@ public sealed class ProbeTripleGuaranteeTests
     public async Task Draft_WhenAPredicateHasNoValues_ThenStillSatisfiesTheGuarantee()
     {
         // An all-missing attribute authors no domain, so the Calibrate phase has to discover an
-        // empty one — a structurally valid degenerate context, which D-107 explicitly allows.
+        // empty one: a structurally valid degenerate context, which D-107 explicitly allows.
         const string csv = "s1,species,cat\ns1,colour,?\ns2,colour,?\n";
 
         var draft = ProbeFixtures.Draft(await TripleProbeFixtures.ProbeTripleCsvAsync(csv));
@@ -159,7 +159,7 @@ public sealed class ProbeTripleGuaranteeTests
         Assert.Null(draft.Attributes[1].DeclaredDomain);
         var diagnostics = await AssertGuaranteeAsync(draft, TripleProbeFixtures.Bytes(csv));
 
-        // Degenerate, and reported as such — a warning, never an error.
+        // Degenerate, and reported as such: a warning, never an error.
         Assert.All(diagnostics, d => Assert.NotEqual(DiagnosticSeverity.Error, d.Severity));
     }
 
@@ -176,7 +176,7 @@ public sealed class ProbeTripleGuaranteeTests
         Assert.Empty(result.Diagnostics);
 
         // First-appearance predicate order over the real v2 fixture, whose rows are grouped by
-        // predicate rather than by subject — so this is genuinely discovery order, not row order.
+        // predicate rather than by subject, so this is genuinely discovery order, not row order.
         Assert.Equal(
             ["age", "education", "employment", "sex", "US-citizen", "class"],
             draft.Attributes.Select(a => a.Name));
@@ -210,7 +210,7 @@ public sealed class ProbeTripleGuaranteeTests
     public async Task Draft_WhenTruncated_ThenIncludeRecoversTheCompleteSchema()
     {
         // D-108's recovery claim for triple: a truncated draft converted over the probed source
-        // must plan the SAME columns, in the same order, as an untruncated probe's — the retained
+        // must plan the SAME columns, in the same order, as an untruncated probe's: the retained
         // prefix first, then the dropped tail re-appended by the `include` calibration.
         const string csv = "s1,p,q\ns2,p,r\ns3,p,s\ns4,p,t\n";
 
@@ -235,7 +235,7 @@ public sealed class ProbeTripleGuaranteeTests
     public async Task ProbedDomains_WhenComparedWithCalibrate_ThenTheyAgreeExactly()
     {
         // D-112 category 5 for triple: probe's ordered-distinct observation must equal the domain
-        // Calibrate observes over the same source — same values, same order. Discovery
+        // Calibrate observes over the same source (same values, same order). Discovery
         // re-implements the observer because it may not reference Conversion, so this is what
         // stops the two from drifting.
         const string csv = "s1,p,b\ns2,q,z\ns3,p,a\ns4,p,b\ns5,q,y\ns6,p,c\n";
@@ -299,7 +299,7 @@ public sealed class ProbeTripleGuaranteeTests
         return calibrated.Spec.Attributes.ToDictionary(a => a.Name, a => a.DeclaredDomain, StringComparer.Ordinal);
     }
 
-    // The formal-attribute names a draft plans over a source — the observable form of "the same
+    // The formal-attribute names a draft plans over a source: the observable form of "the same
     // column set, in the same order".
     private static async Task<IReadOnlyList<string>> PlannedColumnsAsync(SpecDocument draft, Func<Stream> open)
     {

@@ -47,7 +47,7 @@ public sealed class SpecReadResolveTests
     public void ReadResolve_WhenTripleToml_ThenResolvesAndPlans()
     {
         // §19.3 uses ordering = "unordered": the triple document resolves fully (predicate
-        // sources + role map + ordering) and plans cleanly — the plan is ordering-independent
+        // sources + role map + ordering) and plans cleanly. The plan is ordering-independent
         // (D-082); ordering is honored at emit. The subject_grouped twin below plans the same way.
         var spec = ResolveOk(TomlFixtures.MiniAdultTriples, schema: null);
 
@@ -78,7 +78,7 @@ public sealed class SpecReadResolveTests
     public void ReadResolve_WhenDeferredScale_ThenResolvesToMarkerAndFailsAtPlan()
     {
         // D-010 end-to-end: parses, resolves to the Core marker, and fails at the
-        // plan phase — never earlier, never silently.
+        // plan phase: never earlier, never silently.
         var toml =
             "[spec]\nversion = 1\n[binding]\nshape = \"wide\"\n" +
             "[[attribute]]\nname = \"g\"\nsource = { kind = \"column\", index = 0 }\n" +
@@ -111,14 +111,14 @@ public sealed class SpecReadResolveTests
 
         var scale = Assert.IsType<OrdinalScale>(spec.Attributes[0].Scale);
         Assert.Equal(OrdinalDirection.Ge, scale.Direction);
-        Assert.Equal(OrdinalBoundary.Strict, scale.Boundary); // filled, but defaulted — inert over cuts
+        Assert.Equal(OrdinalBoundary.Strict, scale.Boundary); // filled, but defaulted: inert over cuts
     }
 
     [Fact]
     public void ReadResolve_WhenBoundaryAuthoredStraddlingOverCuts_ThenFailsAtResolve()
     {
         // D-060(b): the same combination authored per-attribute is rejected at the
-        // seam — spec validate, not plan.
+        // seam (spec validate, not plan).
         var toml =
             "[spec]\nversion = 1\n[binding]\nshape = \"wide\"\n" +
             "[[attribute]]\nname = \"age\"\nsource = { kind = \"column\", index = 0 }\n" +

@@ -46,7 +46,7 @@ public sealed class ToolSmokeTests(ToolPackage package)
         Directory.CreateDirectory(packages);
         Directory.CreateDirectory(Path.GetDirectoryName(target)!);
 
-        // (1) The package the shared fixture produced — this test packs nothing of its own.
+        // (1) The package the shared fixture produced: this test packs nothing of its own.
         Assert.True(File.Exists(package.NupkgPath), $"the fixture packed nothing. {package.Describe()}");
 
         // `<clear />` first, so no machine-wide or default source can be consulted: if the local
@@ -129,7 +129,7 @@ public sealed class ToolSmokeTests(ToolPackage package)
         Assert.Equal(string.Empty, version.StandardError);
 
         // (5) A real conversion, over a fully declared spec whose two values are both inside its
-        // declared domain — so a clean run emits no diagnostic at all.
+        // declared domain, so a clean run emits no diagnostic at all.
         var spec = root.Write(Path.Combine("work", "tiny.toml"), CliFixtures.IndexBoundSpec);
         var data = root.Write(Path.Combine("work", "tiny.csv"), CliFixtures.WideData);
 
@@ -168,8 +168,8 @@ public sealed class ToolSmokeTests(ToolPackage package)
         Assert.Contains($"input_hash = \"{Sha256(data)}\"", lines);
 
         // The manifest is not allowed to choose what gets hashed: it must select exactly the two
-        // outputs above — one entry per format, neither swapped, duplicated nor pointing anywhere
-        // else — and only then are the EXPECTED files hashed and compared to its values.
+        // outputs above (one entry per format, neither swapped, duplicated nor pointing anywhere
+        // else), and only then are the EXPECTED files hashed and compared to its values.
         CheckOutputs(lines, Path.GetDirectoryName(target)!, expected);
 
         // (7) argv[0] survived the shim verbatim: the audit records the real entry
@@ -182,9 +182,9 @@ public sealed class ToolSmokeTests(ToolPackage package)
         Assert.EndsWith("FcaBedrock.Cli.dll", argv0, StringComparison.Ordinal);
 
         // Containment is a question about LOCATIONS, so both sides are resolved before they are
-        // compared. A temporary root is routinely reached through a symlinked ancestor — on macOS
+        // compared. A temporary root is routinely reached through a symlinked ancestor (on macOS
         // `/var` is a link to `/private/var`, so this test is handed `/var/folders/…` while the
-        // process it launched reports its own entry assembly under `/private/var/folders/…` — and
+        // process it launched reports its own entry assembly under `/private/var/folders/…`), and
         // the two spellings name one directory. Comparing them as text fails on the spelling while
         // the property under test holds perfectly. The resolution is the CLI's own, so "the same
         // place" means here exactly what it means everywhere else in this repository.
@@ -224,8 +224,8 @@ public sealed class ToolSmokeTests(ToolPackage package)
 
     /// <summary>
     /// The whole output-binding contract, in one place: the manifest must select exactly the
-    /// artifacts <paramref name="expected"/> names — right format, inside
-    /// <paramref name="outputRoot"/>, one entry each, no duplicate and no third — and only then is
+    /// artifacts <paramref name="expected"/> names (right format, inside
+    /// <paramref name="outputRoot"/>, one entry each, no duplicate and no third), and only then is
     /// each EXPECTED file hashed and compared to the manifest's value for it. A hash is never
     /// allowed to vouch for a file the manifest itself picked.
     /// </summary>

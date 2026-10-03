@@ -19,7 +19,7 @@ internal static class WriterFixtures
 
     // A one-attribute nominal-identity plan whose formal columns render as "a-<value>" for each
     // declared-domain value (NominalPlan("café", "Ω") ⇒ columns "a-café", "a-Ω"). Lets a test author
-    // non-ASCII rendered formal-attribute names through the real pipeline — names are baked by the
+    // non-ASCII rendered formal-attribute names through the real pipeline; names are baked by the
     // planner, never the writer (EP-15).
     public static ConversionPlan NominalPlan(params string[] domain) => BuildPlan(include: true, domain);
 

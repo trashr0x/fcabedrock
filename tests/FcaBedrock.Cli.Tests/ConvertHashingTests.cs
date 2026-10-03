@@ -93,7 +93,7 @@ public sealed class ConvertHashingTests
     public void WriteHashing_WhenTheInnerWriteRaisesAContractDefect_ThenItIsNotTaggedAsAnOutputFailure()
     {
         // At a write call, a plain ArgumentException means the writer passed an
-        // invalid range — a product bug, not a full disk. Tagging it as an output failure would
+        // invalid range: a product bug, not a full disk. Tagging it as an output failure would
         // report "cannot write the output" and send the user to check permissions for a defect in
         // this code; it is tagged as a CONTRACT fault instead, which is what carries it to the
         // sanitized unexpected-fault exit rather than into either environment-failure reading.
@@ -107,9 +107,9 @@ public sealed class ConvertHashingTests
     public void WriteHashing_WhenTheInnerWriteRaisesAnotherContractDefect_ThenItIsNotTagged()
     {
         // Writing to a disposed stream, or calling an unsupported operation, are the same class of
-        // defect: the caller broke the contract, and the run must not report a disk problem — nor,
+        // defect: the caller broke the contract, and the run must not report a disk problem (nor,
         // for the disposed case, a failure of standard output, which is what an untagged
-        // ObjectDisposedException would become at the host boundary.
+        // ObjectDisposedException would become at the host boundary).
         var disposed = Assert.Throws<PublicationFaultException>(
             () => new HashingWriteStream(new FailingStream(static () => new ObjectDisposedException("stage")))
                 .Write(Bytes("hello"), 0, 5));
@@ -244,7 +244,7 @@ public sealed class ConvertHashingTests
     public async Task Convert_WhenTheCxtReplayPassSeesDifferentBytes_ThenTheRunFailsBeforeAnyCommit()
     {
         // Opens: schema, .cxt pass 1, .cxt pass 2. The third one differs, so the replay's
-        // completed digest disagrees and the run stops before the commit — exactly one code-less
+        // completed digest disagrees and the run stops before the commit: exactly one code-less
         // DATA-changed error, and nothing public.
         using var temp = TempDirectory.Create();
         var harness = new CliTestHarness();
@@ -271,7 +271,7 @@ public sealed class ConvertHashingTests
     [Fact]
     public async Task Convert_WhenALaterDatPassSeesDifferentBytes_ThenTheRunFailsBeforeAnyCommit()
     {
-        // `both` runs .cxt twice and then .dat once, so the mismatch lands on the fourth open —
+        // `both` runs .cxt twice and then .dat once, so the mismatch lands on the fourth open:
         // a later pass, after the .cxt replay already agreed.
         using var temp = TempDirectory.Create();
         var harness = new CliTestHarness();
@@ -331,7 +331,7 @@ public sealed class ConvertHashingTests
     }
 
     // Serves the spec from memory and the DATA from a per-open script, so successive passes can
-    // differ deterministically — no file mutation, no timing race.
+    // differ deterministically: no file mutation, no timing race.
     private static Func<string, Stream> PassIndexed(
         string specPath, string specText, params string[] dataPasses)
     {

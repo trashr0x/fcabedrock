@@ -22,7 +22,7 @@ public sealed class CalibrationOracleTests
     {
         // n_seq is the row index, so its order statistics are arithmetic rather than something that
         // has to be sorted to be known. That makes it the one case where an oracle can state the
-        // exact equal-frequency cuts and be believed - and where a disagreement means a real defect
+        // exact equal-frequency cuts and be believed, and where a disagreement means a real defect
         // rather than a re-derivation mistake.
         using var temp = TempDirectory.Create();
         var calibrated = await CalibrateWideAsync(temp, WideRecords);

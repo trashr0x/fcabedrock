@@ -64,7 +64,7 @@ public sealed class DistributionArchiveTests
         DistributionArchive.AssertValid(ArchivePath(root, "win-x64"), "win-x64");
 
         // Both halves of the Windows rule, named rather than implied: the apphost records nothing,
-        // and neither does an ordinary file - the two entries whose Unix counterparts differ. The
+        // and neither does an ordinary file (the two entries whose Unix counterparts differ). The
         // RAW field rather than the shifted mode, because the whole field is the claim: shifting
         // first would accept the writing host's own attribute byte in the low half.
         Assert.Equal(0, ExternalAttributesOf(ArchivePath(root, "win-x64"), "FcaBedrock.Cli.exe"));
@@ -166,7 +166,7 @@ public sealed class DistributionArchiveTests
     private static string ArchivePath(TempDirectory root, string rid) =>
         Path.Combine(root.Path, $"fcabedrock-{rid}.zip");
 
-    /// <summary>The Unix mode one entry records — the high half of the external-attributes field.</summary>
+    /// <summary>The Unix mode one entry records: the high half of the external-attributes field.</summary>
     private static int ModeOf(string archivePath, string entryName) =>
         ExternalAttributesOf(archivePath, entryName) >>> 16;
 

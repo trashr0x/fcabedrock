@@ -14,7 +14,7 @@ namespace FcaBedrock.Discovery.Tests;
 /// <b>Why probe validates at all.</b> Probe authors no object-key configuration, so it would be
 /// easy to argue subjects are none of its business. They are: the draft's fourth guarantee is
 /// that the same source converts cleanly, and conversion halts on exactly these two conditions.
-/// A probe that skipped them would hand back a draft whose own convert leg fails — the failure
+/// A probe that skipped them would hand back a draft whose own convert leg fails: the failure
 /// mode D-107 exists to prevent.
 /// </para>
 /// <para>
@@ -40,7 +40,7 @@ public sealed class ProbeTripleStructureTests
         Assert.Equal(DiagnosticSeverity.Error, diagnostic.Severity);
         Assert.Equal(recordIndex, diagnostic.Location?.RecordIndex);
 
-        // No draft — not even a partial one built from the rows already observed.
+        // No draft, not even a partial one built from the rows already observed.
         Assert.True(result.HasErrors);
         Assert.False(result.TryGetValue(out _));
         Assert.Null(result.Value);
@@ -51,7 +51,7 @@ public sealed class ProbeTripleStructureTests
     public static TheoryData<string, string?> UnusableSubjects() => new()
     {
         // Every shape the shared Core predicate rejects. Missing (null) covers the `?` token, an
-        // empty cell, and a ragged row that never reached the subject column — the source
+        // empty cell, and a ragged row that never reached the subject column; the source
         // normalizes all three to null before probe sees them.
         { "missing", null },
         { "empty", "" },
@@ -179,7 +179,7 @@ public sealed class ProbeTripleStructureTests
     public async Task ProbeTriple_WhenUnordered_ThenTheSameInterleavingIsAccepted()
     {
         // The contrast that gives the check its meaning: interleaved subjects are LEGAL under
-        // `unordered` (§5.3), and probe runs no grouping pass to make them contiguous — one read,
+        // `unordered` (§5.3), and probe runs no grouping pass to make them contiguous: one read,
         // set-based observation, no complaint.
         var session = TripleProbeFixtures.Fake(("s1", "p", "a"), ("s2", "p", "b"), ("s1", "q", "c"));
 

@@ -10,7 +10,7 @@ public sealed class CutPrecisionTests
 
     [Fact]
     public void Exact_WhenComparedToAConstructedInstance_ThenEqual() =>
-        // A record with no state: the singleton is a convenience, not an identity — the reader
+        // A record with no state: the singleton is a convenience, not an identity; the reader
         // and a hand-built spec must produce the same precision value.
         Assert.Equal(CutPrecision.Exact, new ExactPrecision());
 

@@ -79,7 +79,7 @@ public sealed class EqualWidthConversionTests
     public async Task Calibrate_WhenMinMax_ThenNoObservedDomainWarningOrDomainConsumed()
     {
         // §10.3: cut discretizers ignore declared_domain, so the observed-domain machinery must
-        // not fire for equal_width — only the cut outcome is produced.
+        // not fire for equal_width; only the cut outcome is produced.
         var result = await CalibrateAsync(Wide(Pending("score", 0, 4, new NominalScale())), ScoreCsv);
 
         Assert.True(result.TryGetValue(out var calibrated));
@@ -194,7 +194,7 @@ public sealed class EqualWidthConversionTests
     public async Task Calibrate_WhenNonInvariantLocale_ThenThePopulationParsesUnderIt()
     {
         // EP-11/§7: the calibration population is parsed under binding.locale, never the ambient
-        // culture. Under de-DE the comma is the decimal separator, so "0,5" is a half — and the
+        // culture. Under de-DE the comma is the decimal separator, so "0,5" is a half, and the
         // semicolon delimiter keeps those values in one column.
         var binding = new Binding(
             SourceShape.Wide, "utf-8", ';', '"', HasHeader: false, "de-DE", "?", new RowIndexObjectKey());
@@ -214,7 +214,7 @@ public sealed class EqualWidthConversionTests
     public async Task Calibrate_WhenNonInvariantLocale_ThenCutLabelsStayInvariantSchemaStrings()
     {
         // §14: the locale governs PARSING only. The cut labels are invariant schema strings, so a
-        // de-DE spec still renders "25.5", never "25,5" — otherwise the schema would be
+        // de-DE spec still renders "25.5", never "25,5"; otherwise the schema would be
         // locale-dependent.
         var binding = new Binding(
             SourceShape.Wide, "utf-8", ';', '"', HasHeader: false, "de-DE", "?", new RowIndexObjectKey());
@@ -248,7 +248,7 @@ public sealed class EqualWidthConversionTests
     [Fact]
     public async Task Calibrate_WhenAttributeExcluded_ThenParkedAndNotCalibrated()
     {
-        // D-049: an excluded attribute's config is parked — it must not drive a data pass.
+        // D-049: an excluded attribute's config is parked; it must not drive a data pass.
         var excluded = Pending("score", 0, 4, new NominalScale()) with { Include = false };
         var spec = Wide(excluded, ConversionFixtures.Nominal("g", 1, "b", "n"));
 
@@ -356,7 +356,7 @@ public sealed class EqualWidthConversionTests
     public async Task CalibrateTriple_WhenUnordered_ThenExactlyOneRawOrderReadNoGroupingPass()
     {
         // D-095/D-102: because min/max is count-insensitive, the unordered triple path must NOT
-        // fall back to the grouped/spool machinery — no subject-local dedup, no second pass. A
+        // fall back to the grouped/spool machinery: no subject-local dedup, no second pass. A
         // cut-equality assertion alone would still pass if a wasteful grouped replay were added,
         // so this counts the enumerations directly and fails on the second.
         var spec = TripleSpec(TripleOrdering.Unordered);
@@ -449,12 +449,12 @@ public sealed class EqualWidthConversionTests
         var calibration = await CalibrateAsync(spec, csv);
         var (_, objects, emitDiagnostics) = await CalibratePlanEmit(spec, csv);
 
-        // The object is kept with no cross (§11.5/D-050) — never silently dropped.
+        // The object is kept with no cross (§11.5/D-050), never silently dropped.
         Assert.Equal(3, objects.Count);
         Assert.Empty(objects[1].CrossedFormalAttributeIds);
 
         // D-100: calibrate and emit are independent passes, so the same value yields exactly one
-        // aggregate per phase — not one deduplicated across them, and not none at emit.
+        // aggregate per phase: not one deduplicated across them, and not none at emit.
         Assert.Single(calibration.Diagnostics, d => d.Code == DiagnosticCode.SourceValueUnparseable);
         Assert.Single(emitDiagnostics, d => d.Code == DiagnosticCode.SourceValueUnparseable);
     }
@@ -508,7 +508,7 @@ public sealed class EqualWidthConversionTests
     {
         // D-088: converting a min_max spec on the fly and converting its calibrate-frozen form
         // (manual_cuts over the resolved cuts, ends = "open") MUST produce byte-identical .cxt and
-        // .dat on the calibration dataset — freezing changes WHEN the cuts resolve, never WHICH.
+        // .dat on the calibration dataset: freezing changes WHEN the cuts resolve, never WHICH.
         var options = style == LabelStyle.V2Compat ? WriterOptions.V2Compat : WriterOptions.Native;
 
         // 1. Calibrate and capture the effective cuts.
@@ -633,7 +633,7 @@ public sealed class EqualWidthConversionTests
             second.Select(o => o.CrossedFormalAttributeIds.ToArray()));
     }
 
-    // A source that reports its schema but throws if any row is read — proves the no-data fast
+    // A source that reports its schema but throws if any row is read: proves the no-data fast
     // path never enumerates (the D-098 rows-throwing-fake pattern).
     private sealed class ThrowingRecordSource(WideCsvSource inner) : IRecordSource
     {

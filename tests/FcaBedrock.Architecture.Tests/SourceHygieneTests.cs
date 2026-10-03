@@ -14,7 +14,7 @@ namespace FcaBedrock.Architecture.Tests;
 public sealed class SourceHygieneTests
 {
     // Repository-root marker. The walk starts at the test assembly's base directory
-    // (tests/<project>/bin/<config>/net10.0), so it is short and deterministic — and independent of
+    // (tests/<project>/bin/<config>/net10.0), so it is short and deterministic, and independent of
     // git, the process working directory, and any injected absolute path.
     private const string RepositorySentinel = "FcaBedrock.slnx";
 
@@ -75,7 +75,7 @@ public sealed class SourceHygieneTests
                 + Describe(offenders.Select(Format).ToList()));
     }
 
-    // Where an offending character sits, in repository terms only — never an absolute machine path.
+    // Where an offending character sits, in repository terms only, never an absolute machine path.
     private readonly record struct Offender(string Path, int Line, int Column, char Character);
 
     // Upward walk to the sentinel. Failing here is fatal and deliberate: the alternative is a scan
@@ -169,7 +169,7 @@ public sealed class SourceHygieneTests
         }
     }
 
-    // Exactly the C0 controls except TAB, LF and CR, plus DEL — and nothing broader. Deliberately
+    // Exactly the C0 controls except TAB, LF and CR, plus DEL, and nothing broader. Deliberately
     // not a `< 0x09` test, which would miss VT, FF, U+000E-U+001F and DEL while claiming to be a
     // general policy. It claims no freedom from false positives; it is this predicate and no more.
     private static bool IsRejected(char character) =>

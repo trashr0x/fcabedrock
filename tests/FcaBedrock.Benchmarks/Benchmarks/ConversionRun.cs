@@ -28,7 +28,7 @@ internal enum ExportFormat
 /// It exists because that body is <b>identical</b> across families and must stay identical. The
 /// measured interval is a contract (D-124), and a per-family copy of it is a per-family opportunity
 /// for one case to start its clock a little earlier or validate a little less than another. What
-/// varies between families — which corpus, which expectation, which label — is what each case
+/// varies between families (which corpus, which expectation, which label) is what each case
 /// supplies; nothing else.
 /// </para>
 /// <para>
@@ -58,7 +58,7 @@ internal sealed class ConversionRun(string label, CorpusCase corpus, ExportForma
     public IReadOnlyList<BedrockDiagnostic> Diagnostics => _diagnostics;
 
     /// <summary>
-    /// Diagnostic codes that are legitimate for this case beyond the degenerate-shape set — the
+    /// Diagnostic codes that are legitimate for this case beyond the degenerate-shape set: the
     /// aggregated <c>DuplicateObjectKey</c> a deduping conversion reports, for instance, which is an
     /// Info stating exactly what the case exists to do.
     /// </summary>
@@ -154,7 +154,7 @@ internal sealed class ConversionRun(string label, CorpusCase corpus, ExportForma
         (new FileInfo(_outputPath).Length, CorpusCatalog.HashFile(_outputPath));
 
     /// <summary>
-    /// The first completed iteration's observed length and digest — this run's <b>baseline</b>.
+    /// The first completed iteration's observed length and digest: this run's <b>baseline</b>.
     /// </summary>
     public (long Bytes, string Sha256)? Baseline { get; private set; }
 
@@ -164,7 +164,7 @@ internal sealed class ConversionRun(string label, CorpusCase corpus, ExportForma
     /// <para>
     /// It asserts three things and is honest about what each is worth. The diagnostics must be
     /// clean. The object count must equal the count independently measured from the input, which is
-    /// a genuine semantic check — it catches a lost, duplicated, or spuriously invented object. And
+    /// a genuine semantic check: it catches a lost, duplicated, or spuriously invented object. And
     /// every iteration after the first must reproduce the first one's bytes exactly, which is a
     /// determinism check within the run. The recorded baseline digest is <b>regression evidence</b>
     /// for later runs; it is not, and is never presented as, independent proof that the semantics

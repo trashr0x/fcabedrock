@@ -74,8 +74,8 @@ public abstract class InputHashPairBenchmark
 
     /// <summary>
     /// Verifies the digest outside timing, against the byte length and SHA-256 the corpus catalog
-    /// recorded at preparation. A hashed pass that produced the wrong digest — or none, because it
-    /// never reached end of stream — has no cost worth reporting.
+    /// recorded at preparation. A hashed pass that produced the wrong digest (or none, because it
+    /// never reached end of stream) has no cost worth reporting.
     /// </summary>
     [IterationCleanup(Target = nameof(Hashed))]
     public void ValidateHashed()
@@ -100,7 +100,7 @@ public abstract class InputHashPairBenchmark
     /// <para>
     /// A wide session opens its input <b>twice</b>: once to read the schema, which stops after the
     /// first buffer, and once to stream every record. That is the production shape, and it is
-    /// precisely why the tracker only completes a pass on end of stream — a digest over the schema
+    /// precisely why the tracker only completes a pass on end of stream: a digest over the schema
     /// probe would describe a prefix. So the assertion is "one open consumed the file", not "the
     /// iteration read the file's byte count", which a short probe would break for the right reason.
     /// </para>

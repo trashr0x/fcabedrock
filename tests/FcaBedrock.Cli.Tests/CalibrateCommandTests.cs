@@ -13,7 +13,7 @@ namespace FcaBedrock.Cli.Tests;
 /// The <c>calibrate</c> vertical (D-122 part 10; spec §7/§13/§14), end to end through argv.
 /// <para>
 /// The freeze <em>mappings</em> are library semantics and are already locked by
-/// <c>SpecFreezerTests</c>; what is tested here is the command's own orchestration — which
+/// <c>SpecFreezerTests</c>; what is tested here is the command's own orchestration: which
 /// outcome reaches the written file, which stream carries which diagnostic and how often, what
 /// the publication does, and what the filesystem holds afterwards. Where a byte oracle is
 /// needed it is produced by running the <b>library</b> route in the test, never by reading the
@@ -140,7 +140,7 @@ public sealed class CalibrateCommandTests
         switch (kind)
         {
             case "cuts":
-                // A successful min_max calibration is genuinely silent — no Warning, no Info.
+                // A successful min_max calibration is genuinely silent: no Warning, no Info.
                 Assert.Equal(string.Empty, harness.StdErr);
                 Assert.Contains("kind = \"manual_cuts\"", text, StringComparison.Ordinal);
                 Assert.Contains("cuts = [", text, StringComparison.Ordinal);
@@ -191,7 +191,7 @@ public sealed class CalibrateCommandTests
     public async Task Calibrate_WhenTheOutcomeIsEmpty_ThenTheEmptyRepresentationIsAuthored(
         string kind, string specText, string code)
     {
-        // The data-dependence exists regardless of the count, so each mode still warns — and the
+        // The data-dependence exists regardless of the count, so each mode still warns, and the
         // empty result still has to be written as an explicit representation, never re-omitted.
         using var temp = TempDirectory.Create();
         var spec = temp.Write("spec.toml", specText);
@@ -271,7 +271,7 @@ public sealed class CalibrateCommandTests
         }
         else if (string.Equals(missing, "skip", StringComparison.Ordinal))
         {
-            // [] plus skip plans zero columns, so the successful plan warns exactly once — the
+            // [] plus skip plans zero columns, so the successful plan warns exactly once; the
             // replan over the frozen document produces the same warning and is suppressed.
             Assert.Single(Lines(harness.StdErr));
             Assert.Contains("warning NoFormalAttributes", harness.StdErr, StringComparison.Ordinal);
@@ -326,7 +326,7 @@ public sealed class CalibrateCommandTests
     [Fact]
     public async Task Calibrate_WhenTheAuthoredEmptyDomainIsAsAttribute_ThenTheMissingColumnSurvivesTheFreeze()
     {
-        // Matrix row 4 — ("skip", "as_attribute"). skip is the only unknown-value policy that
+        // Matrix row 4: ("skip", "as_attribute"). skip is the only unknown-value policy that
         // isolates the missing cross: under warn the non-missing undeclared value would add a
         // Warning, and under fail it would abort the very conversion this proves.
         using var temp = TempDirectory.Create();
@@ -348,7 +348,7 @@ public sealed class CalibrateCommandTests
         Assert.Equal(0, convertExit);
         Assert.Equal(string.Empty, converted.StdOut);
 
-        // The missing object crosses the sole column and the non-missing one crosses nothing —
+        // The missing object crosses the sole column and the non-missing one crosses nothing:
         // a silent no-cross in the unknown-VALUE sense, but still an empty ROW, which the
         // separate object-level aggregate reports (§16.4, D-058). Exactly one line.
         Assert.Equal(
@@ -399,7 +399,7 @@ public sealed class CalibrateCommandTests
     public async Task Calibrate_WhenTheInputStoresStaleHashes_ThenTheyWarnOnStderrAndAreCorrectedInTheOutput()
     {
         // The fixture calibrates silently and can produce no resolve diagnostic, so preparation
-        // contributes nothing and the three stale warnings are the complete stderr — in the fixed
+        // contributes nothing and the three stale warnings are the complete stderr, in the fixed
         // schema → cxt → dat field order VerifyStored appends them.
         using var temp = TempDirectory.Create();
         var spec = temp.Write("spec.toml", CliFixtures.CalibrateStaleHashesSpec);
@@ -490,7 +490,7 @@ public sealed class CalibrateCommandTests
     [InlineData(true)]
     public async Task Calibrate_WhenTheFrozenSpecIsReconverted_ThenTheBytesMatchTheOnTheFlyRun(bool v2Compat)
     {
-        // Freezing changes WHEN a data-dependent decision is resolved, never WHICH decision — so
+        // Freezing changes WHEN a data-dependent decision is resolved, never WHICH decision, so
         // the on-the-fly and frozen conversions agree byte for byte, in both modes.
         using var temp = TempDirectory.Create();
         var spec = temp.Write("spec.toml", CliFixtures.CalibrateCutsSpec);
@@ -609,7 +609,7 @@ public sealed class CalibrateCommandTests
         Assert.Equal(string.Empty, harness.StdOut);
         Assert.Equal(string.Empty, harness.StdErr);
 
-        // Renamed aside first, then the stage committed into the freed path — never a copy — and
+        // Renamed aside first, then the stage committed into the freed path (never a copy), and
         // the backup does not survive the commit.
         var moves = harness.PublicationFiles.Operations
             .Where(operation => operation.StartsWith("Move:", StringComparison.Ordinal))
@@ -628,7 +628,7 @@ public sealed class CalibrateCommandTests
     public async Task Calibrate_WhenTheOutputIsAnInputFile_ThenItIsRefusedEvenWithForce(string which)
     {
         // The complete input set: DATA, the root SPEC, and every composed chain file. The base row
-        // is the one the chain threading exists for — the seam cannot derive it from the operands.
+        // is the one the chain threading exists for: the seam cannot derive it from the operands.
         using var temp = TempDirectory.Create();
         var basePath = temp.Write("base.toml", CliFixtures.CalibrateChainBaseSpec);
         var root = temp.Write("root.toml", CliFixtures.CalibrateChainRootSpec);
@@ -650,7 +650,7 @@ public sealed class CalibrateCommandTests
         Assert.Equal(string.Empty, harness.StdOut);
 
         // Exactly one code-less host line, after the preparation Warning the chain's
-        // omitted-domain attribute produces — the order HostFailure fixes.
+        // omitted-domain attribute produces: the order HostFailure fixes.
         var errors = Lines(harness.StdErr).Where(line => line.StartsWith("error: ", StringComparison.Ordinal));
         Assert.Equal(
             DiagnosticRenderer.RenderHostError(
@@ -795,7 +795,7 @@ public sealed class CalibrateCommandTests
     {
         // The freeze CREATES this warning: before it the matcher supplied the discretizer and won,
         // after it an explicit manual_cuts shadows the template's only field. Its key is absent
-        // from the preparation baseline, so the composition retains it — exactly once.
+        // from the preparation baseline, so the composition retains it, exactly once.
         using var temp = TempDirectory.Create();
         var spec = temp.Write("spec.toml", CliFixtures.CalibrateShadowedMatcherSpec);
         var data = temp.Write("data.csv", CliFixtures.CalibrateWideData);

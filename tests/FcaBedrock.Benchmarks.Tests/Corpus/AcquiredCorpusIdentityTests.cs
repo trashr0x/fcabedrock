@@ -97,7 +97,7 @@ public sealed class AcquiredCorpusIdentityTests
     public void Require_WhenThePreparationWasInterrupted_ThenTheIncompleteCorpusIsRefused()
     {
         // The catalog is written last, so files with no entry are exactly what an interrupted
-        // acquisition leaves behind - and a pinned case must not accept them either.
+        // acquisition leaves behind, and a pinned case must not accept them either.
         var corpus = Acquired("pinned-interrupted", Published);
         var prepared = CorpusPreparer.Prepare(corpus);
         File.Delete(CorpusCatalog.PathFor(prepared.Entry.Id));
@@ -117,7 +117,7 @@ public sealed class AcquiredCorpusIdentityTests
 
         // Compare the recorded identity rather than the entry object: `RecordsDeclared` is a
         // property of the EXPECTATION, not of the stored entry, and is deliberately not
-        // serialized - a re-read entry always carries a real measured count.
+        // serialized; a re-read entry always carries a real measured count.
         Assert.Equal(CorpusCatalog.Render(first.Entry), CorpusCatalog.Render(reused.Entry));
         Assert.Equal(first.Records, reused.Records);
         Assert.Equal(first.DataPath, reused.DataPath);

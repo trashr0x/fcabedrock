@@ -24,7 +24,7 @@ namespace FcaBedrock.Benchmarks;
 /// <para>
 /// <b>The measured interval</b> is the planner call and the consumption of its result. Reading the
 /// spec, opening a session, acquiring the schema, resolving, and calibrating all happen once in
-/// setup — a plan cannot exist without them, and including them would make this a conversion
+/// setup: a plan cannot exist without them, and including them would make this a conversion
 /// benchmark with an unusual name.
 /// </para>
 /// </summary>

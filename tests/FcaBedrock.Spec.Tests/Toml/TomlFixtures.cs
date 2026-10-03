@@ -7,7 +7,7 @@ namespace FcaBedrock.Spec.Tests.Toml;
 // attributes. KitchenSink covers many modelled carriers in one document.
 internal static class TomlFixtures
 {
-    /// <summary>Spec §19.1 — mini-mushroom (v2 compat).</summary>
+    /// <summary>Spec §19.1: mini-mushroom (v2 compat).</summary>
     public const string MiniMushroom = """
         [spec]
         version = 1
@@ -60,7 +60,7 @@ internal static class TomlFixtures
         value_labels    = { n = "none", o = "one", t = "two" }
         """;
 
-    /// <summary>Spec §19.2 — mini-adult (v2 compat).</summary>
+    /// <summary>Spec §19.2: mini-adult (v2 compat).</summary>
     public const string MiniAdult = """
         [spec]
         version = 1
@@ -112,7 +112,7 @@ internal static class TomlFixtures
         include = false
         """;
 
-    /// <summary>Spec §19.3 — mini-adult triples (named subjects); placeholder attributes completed.</summary>
+    /// <summary>Spec §19.3: mini-adult triples (named subjects); placeholder attributes completed.</summary>
     public const string MiniAdultTriples = """
         [spec]
         version = 1
@@ -145,7 +145,7 @@ internal static class TomlFixtures
         """;
 
     /// <summary>
-    /// Synthetic (not a §19 worked example) — a minimal <c>subject_grouped</c> triple spec so
+    /// Synthetic (not a §19 worked example): a minimal <c>subject_grouped</c> triple spec so
     /// read → resolve → plan coverage exists for the single-pass fast path (§19.3 uses
     /// <c>unordered</c>, which plans identically and converts via first-appearance grouping).
     /// </summary>
@@ -303,7 +303,7 @@ internal static class TomlFixtures
     /// <summary>
     /// §19.1 split in two for the §13 composed≡flat equivalence tests (D-078):
     /// the base carries the binding and the first three attributes. Its [spec]
-    /// description is deliberately different from the flat fixture's — [spec]
+    /// description is deliberately different from the flat fixture's: [spec]
     /// is per-spec and must not leak into the composed document.
     /// </summary>
     public const string MiniMushroomBase = """

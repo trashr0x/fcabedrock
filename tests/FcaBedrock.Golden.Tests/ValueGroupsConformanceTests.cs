@@ -73,7 +73,7 @@ public sealed class ValueGroupsConformanceTests
     [Fact]
     public async Task ValueGroups_WhenTheSpecsNominalExample_ThenOneColumnPerGroupInDeclarationOrder()
     {
-        // §11.6's opening example verbatim (Uni-Degree before School — deliberately NOT
+        // §11.6's opening example verbatim (Uni-Degree before School, deliberately NOT
         // alphabetical), with the default unmatched = "skip".
         var toml = Header
             + "[[attribute]]\nname = \"education\"\nsource = { kind = \"column\", index = 0 }\n"
@@ -86,7 +86,7 @@ public sealed class ValueGroupsConformanceTests
         var cxt = await ConvertAsync(toml, "Bachelors\n11th\nPreschool");
 
         // §17 rule 3: declaration order, so Uni-Degree is column 0. §11.6: "Preschool" matches no
-        // group and unmatched = "skip" gives it no bin — an empty row, not an error.
+        // group and unmatched = "skip" gives it no bin: an empty row, not an error.
         Assert.Equal(
             "B\n\n3\n2\n\n0\n1\n2\neducation-Uni-Degree\neducation-School\nX.\n.X\n..\n",
             cxt);
@@ -95,7 +95,7 @@ public sealed class ValueGroupsConformanceTests
     [Fact]
     public async Task ValueGroups_WhenTheSpecsOrdinalOverGroupsExample_ThenCumulativeThresholdsIncludingOther()
     {
-        // §11.6's "Ordinal over groups with an Other bin" example, verbatim — including its
+        // §11.6's "Ordinal over groups with an Other bin" example, verbatim, including its
         // full-permutation order ["School", "Undergrad", "Postgrad", "Other"].
         var toml = Header
             + "[[attribute]]\nname = \"education\"\nsource = { kind = \"column\", index = 0 }\n"
@@ -122,7 +122,7 @@ public sealed class ValueGroupsConformanceTests
     public async Task ValueGroups_WhenTheSpecsRegexExample_ThenPartialUnanchoredCaseSensitiveMatching()
     {
         // §11.6's regex example verbatim: pattern = "^I[0-9]{2}" for ICD-10 cardiac codes, plus
-        // the section's stated semantics — partial (unanchored) and case-sensitive by default.
+        // the section's stated semantics: partial (unanchored) and case-sensitive by default.
         var toml = Header
             + "[[attribute]]\nname = \"dx\"\nsource = { kind = \"column\", index = 0 }\n"
             + "discretizer = { kind = \"value_groups\", groups = ["
@@ -142,7 +142,7 @@ public sealed class ValueGroupsConformanceTests
     public async Task ValueGroups_WhenPassthrough_ThenTheDataDiscoversOneColumnPerUngroupedValue()
     {
         // §11.6: "values not matching any group keep their raw value as the bin label (mixed
-        // grouped and ungrouped attributes)" — the data-dependent schema, resolved in Calibrate
+        // grouped and ungrouped attributes)": the data-dependent schema, resolved in Calibrate
         // (§7) and warned about. Run through the real calibrate step, not a hand-built plan.
         var toml = Header
             + "[[attribute]]\nname = \"education\"\nsource = { kind = \"column\", index = 0 }\n"
@@ -153,7 +153,7 @@ public sealed class ValueGroupsConformanceTests
         var cxt = await ConvertAsync(toml, "11th\nBachelors\nHS-grad\nPhD");
 
         // §17 rule 3: the declared group first, then the discovered bins in first-observation
-        // order (Bachelors before PhD — their input order, not alphabetical).
+        // order (Bachelors before PhD: their input order, not alphabetical).
         Assert.Equal(
             "B\n\n4\n3\n\n0\n1\n2\n3\neducation-School\neducation-Bachelors\neducation-PhD\n"
                 + "X..\n.X.\nX..\n..X\n",
@@ -164,7 +164,7 @@ public sealed class ValueGroupsConformanceTests
     public async Task ValueGroups_WhenIncludeUnderSkip_ThenItBehavesAsWarnWithNoSchemaExtension()
     {
         // §11.6's closing rule: value_groups does not consult declared_domain (D-055), so
-        // `include` has nothing to extend and behaves as `warn` — no bin, one Warning, and no
+        // `include` has nothing to extend and behaves as `warn`: no bin, one Warning, and no
         // column added for the unmatched value.
         var toml = Header
             + "[[attribute]]\nname = \"education\"\nsource = { kind = \"column\", index = 0 }\n"

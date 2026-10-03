@@ -404,7 +404,7 @@ public sealed class FingerprintWriteTests
     [Fact]
     public async Task FingerprintWrite_WhenPublicationFails_ThenNoReportReachesStdout()
     {
-        // The COMMIT rename fails, after the backup — so this is the restore path, and the
+        // The COMMIT rename fails, after the backup, so this is the restore path, and the
         // report must not appear because the run never reached its commit point.
         using var temp = TempDirectory.Create();
         var spec = temp.Write("spec.toml", CliFixtures.FrozenSpec);

@@ -19,7 +19,7 @@
     <ProjectReference Include="..\..\src\FcaBedrock.Spec\FcaBedrock.Spec.csproj" />
     <ProjectReference Include="..\..\src\FcaBedrock.Discovery\FcaBedrock.Discovery.csproj" />
     <!-- Test-only. No production package may reference Cli, so nothing else
-         would ever place FcaBedrock.Cli.dll in this project's output — and without the
+         would ever place FcaBedrock.Cli.dll in this project's output, and without the
          assembly loaded, Cli_ShouldNotBeReferencedByAnyProductionPackage would pass
          vacuously, which is exactly the failure it exists to catch. -->
     <ProjectReference Include="..\..\src\FcaBedrock.Cli\FcaBedrock.Cli.csproj" />

@@ -12,7 +12,7 @@ namespace FcaBedrock.Core.Tests.Planning;
 /// the total override including the missing column, and the plan-time
 /// rendered-name backstop with its pinned message representation (D-116).
 /// <para>
-/// Rendering lives here and nowhere else — exporters are decision-free
+/// Rendering lives here and nowhere else: exporters are decision-free
 /// serializers (EP-15), so a name that reaches a writer is already final.
 /// </para>
 /// </summary>
@@ -51,7 +51,7 @@ public sealed class RenderNameFormatTests
     public void Plan_WhenLabelledDichotomicWithFormat_ThenValueIsTheLabelledTrueValue()
     {
         // §10.7's worked example verbatim: true_value = "t" labelled "bruised" renders
-        // "bruises?-bruised", NOT the raw "t" — §10.8's whole purpose is that labels are
+        // "bruises?-bruised", NOT the raw "t": §10.8's whole purpose is that labels are
         // how raw values appear in names.
         var plan = Plan(Dichotomic(
             "t", ["t", "f"], format: "{column}-{value}", labels: new Dictionary<string, string> { ["t"] = "bruised" }));
@@ -70,7 +70,7 @@ public sealed class RenderNameFormatTests
     [Fact]
     public void Plan_WhenNonOrdinalWithScaleOp_ThenItRendersEmpty()
     {
-        // §10.7: {scale_op} is "empty for non-ordinal scales" — so it contributes nothing
+        // §10.7: {scale_op} is "empty for non-ordinal scales", so it contributes nothing
         // rather than being an error or a placeholder artifact.
         var plan = Plan(Nominal(["b"], format: "{column}[{scale_op}]{value}"));
 
@@ -107,7 +107,7 @@ public sealed class RenderNameFormatTests
     public void Plan_WhenFormatAndMissingColumn_ThenTheMissingColumnRendersThroughTheFormatToo()
     {
         // §10.7/D-117: an explicit format is a TOTAL override for every formal attribute
-        // the logical attribute emits — the missing column included, with {value} = the
+        // the logical attribute emits: the missing column included, with {value} = the
         // literal "missing" instead of the default "{column}-missing".
         var plan = Plan(Dichotomic(
             "t", ["t", "f"], format: "{column}-{value}", missing: MissingPolicy.AsAttribute));
@@ -128,7 +128,7 @@ public sealed class RenderNameFormatTests
     [Fact]
     public void Plan_WhenFormatAndMissingColumn_ThenItsPositionAndIdentityAreUnchanged()
     {
-        // §10.5/§14: the format changes the missing column's NAME only — it still appends
+        // §10.5/§14: the format changes the missing column's NAME only; it still appends
         // after the scale's columns and keeps its canonical "missing" bin key.
         var plan = Plan(Nominal(["b", "n"], format: "{value}", missing: MissingPolicy.AsAttribute));
 
@@ -165,7 +165,7 @@ public sealed class RenderNameFormatTests
     public void Plan_WhenTwoAttributesDifferOnlyByFormat_ThenOnlyTheFormattedOneMoves()
     {
         // The resolver has already collapsed the [defaults]-vs-explicit precedence into one
-        // effective value per attribute, so Core's axis is simply "which format, if any" —
+        // effective value per attribute, so Core's axis is simply "which format, if any",
         // and a format set on one attribute never leaks to another.
         var spec = new BedrockSpec(SpecFixtures.WideRowIndex(), [
             SpecFixtures.Nominal("a", 0, ["x"]),
@@ -306,7 +306,7 @@ public sealed class RenderNameFormatTests
     [Fact]
     public void Plan_WhenSeveralAttributesOffend_ThenOneDiagnosticEachInPlanOrder()
     {
-        // D-116 granularity: one per affected LOGICAL attribute, in plan order — never one
+        // D-116 granularity: one per affected LOGICAL attribute, in plan order, never one
         // per offending column and never a single spec-wide aggregate.
         var spec = new BedrockSpec(SpecFixtures.WideRowIndex(), [
             SpecFixtures.Nominal("first", 0, ["a\nb"]),
@@ -377,7 +377,7 @@ public sealed class RenderNameFormatTests
     public void Plan_WhenANameIsInvalid_ThenTheWholeSharedPlanFailsAndYieldsNothing()
     {
         // §10.7: the plan is SHARED, so an invalid rendered name blocks .dat emission as
-        // well as .cxt — even though .dat serializes no names. One attribute's bad name
+        // well as .cxt, even though .dat serializes no names. One attribute's bad name
         // therefore stops a plan whose other attributes are perfectly fine.
         var spec = new BedrockSpec(SpecFixtures.WideRowIndex(), [
             SpecFixtures.Nominal("clean", 0, ["ok"]),

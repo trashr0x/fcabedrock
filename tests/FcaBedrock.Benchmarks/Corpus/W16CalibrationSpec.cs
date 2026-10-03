@@ -9,8 +9,8 @@ namespace FcaBedrock.Benchmarks.Corpus;
 /// </para>
 /// <list type="bullet">
 /// <item><c>n_seq</c> is <b>equal-frequency</b> over a strictly increasing column, so its
-/// population is the count-sensitive, maximally high-cardinality case — its distinct count equals
-/// the record count, which is what forces the bounded quantile accumulator to spill at scale — and
+/// population is the count-sensitive, maximally high-cardinality case (its distinct count equals
+/// the record count, which is what forces the bounded quantile accumulator to spill at scale), and
 /// its exact order statistics are known without sorting anything.</item>
 /// <item><c>n_wide</c> is <b>equal-width over the observed range</b>, so it exercises the streaming
 /// min/max pass, which retains two doubles and never sorts.</item>

@@ -10,7 +10,7 @@ namespace FcaBedrock.Benchmarks.Tests.Oracles;
 
 /// <summary>
 /// The <c>.cxt</c> expectation is spelled from §18.1 rather than from the writer, which is what makes
-/// it evidence — and also what makes it capable of being subtly wrong on its own. These tests check
+/// it evidence, and also what makes it capable of being subtly wrong on its own. These tests check
 /// it the only way that settles the question: against the real writer's bytes.
 /// </summary>
 public sealed class CxtExpectationTests

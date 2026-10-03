@@ -42,7 +42,7 @@ internal sealed record SelectionPolicy(
 {
     /// <summary>
     /// True when the selection names a tier whose operations are measured in seconds or minutes
-    /// rather than milliseconds — the working baseline or either target scale.
+    /// rather than milliseconds: the working baseline or either target scale.
     /// <para>
     /// It decides the job shape, and only that. A Throughput job's pilot stage exists to find how
     /// many invocations fit in an interval; for an operation that already takes seconds it has

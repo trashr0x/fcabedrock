@@ -52,8 +52,8 @@ public sealed class EqualFrequencyDiscretizerTests
     {
         var discretizer = Build([2, 3], bins: 3, tie: TiePolicy.Right, placement: CutPlacement.Midpoint);
 
-        // tie_policy and cut_placement are spent by now — they shaped the cuts during calibration
-        // (§11.5: emit does no tie handling) — but they survive as the authored configuration the
+        // tie_policy and cut_placement are spent by now (they shaped the cuts during calibration;
+        // §11.5: emit does no tie handling), but they survive as the authored configuration the
         // §14 fingerprint encodes (D-094).
         Assert.Equal(3, discretizer.Bins);
         Assert.Equal(TiePolicy.Right, discretizer.TiePolicy);
@@ -69,7 +69,7 @@ public sealed class EqualFrequencyDiscretizerTests
         Assert.True(discretizer.Culture.IsReadOnly);
         Assert.Equal("de-DE", discretizer.Culture.Name);
 
-        // The resolved culture parses data (never ambient — EP-11): "2,5" is 2.5 under de-DE.
+        // The resolved culture parses data (never ambient, EP-11): "2,5" is 2.5 under de-DE.
         Assert.Equal(BinResult.Bin("[2, 3)"), discretizer.Discretize("2,5"));
     }
 
@@ -92,7 +92,7 @@ public sealed class EqualFrequencyDiscretizerTests
     public void Create_WhenTheCutCountContradictsBins_ThenThrows()
     {
         // §11.5: `bins` bins come from exactly `bins - 1` cuts. A wrong-sized outcome would build
-        // a discretizer whose Bins disagrees with its own geometry — the fingerprint would encode
+        // a discretizer whose Bins disagrees with its own geometry: the fingerprint would encode
         // "bins":3 beside a schema array of another width. That is a calibrator-contract violation,
         // not a data error, so it throws rather than diagnosing (D-093/EP-10).
         var ex = Assert.Throws<ArgumentException>(() => CreateWith([2, 3, 4], bins: 3));
@@ -106,7 +106,7 @@ public sealed class EqualFrequencyDiscretizerTests
         // The zero end of the same guard, pinned explicitly: `bins >= 2` is enforced at the
         // pending carrier, so an EMPTY calibrated-cuts outcome is always the wrong size and can
         // never yield a usable discretizer. An empty cut list is therefore never a legitimate
-        // zero-discovery outcome — unlike the empty observed-domain / include-additions /
+        // zero-discovery outcome, unlike the empty observed-domain / include-additions /
         // passthrough-bins outcomes, which are retained as completeness markers (D-098/D-104).
         var ex = Assert.Throws<ArgumentException>(() => CreateWith([], bins: 3));
 
@@ -121,7 +121,7 @@ public sealed class EqualFrequencyDiscretizerTests
     public void Create_WhenCorrectlySizedCutsAreInvalid_ThenCalibrationCutsInvalid(double[] cuts)
     {
         // Correctly sized but unusable cuts are a DATA-derived failure, so they come back through
-        // the diagnostic channel (EP-14) rather than throwing — the opposite of the wrong-count case.
+        // the diagnostic channel (EP-14) rather than throwing: the opposite of the wrong-count case.
         var created = CreateWith(cuts);
 
         Assert.False(created.IsOk);
@@ -162,7 +162,7 @@ public sealed class EqualFrequencyDiscretizerTests
     public void Execution_WhenComparedToManualCutsOverTheSameCuts_ThenIdenticalInEveryRespect()
     {
         // The structural basis of the D-088 auto/frozen equivalence (D-093): both compose the one
-        // NumericCutBins engine, so the frozen manual_cuts twin cannot drift from the auto form —
+        // NumericCutBins engine, so the frozen manual_cuts twin cannot drift from the auto form;
         // the equality holds by construction rather than by two code paths agreeing.
         double[] cuts = [2, 3];
         var auto = Build(cuts);
@@ -173,7 +173,7 @@ public sealed class EqualFrequencyDiscretizerTests
             Assert.Equal(frozen.Discretize(raw), auto.Discretize(raw));
         }
 
-        // BinScheme is a record over ImmutableArray, whose equality is by underlying reference —
+        // BinScheme is a record over ImmutableArray, whose equality is by underlying reference,
         // so the components are compared, not the scheme objects.
         var autoScheme = auto.DescribeBins([]);
         var frozenScheme = frozen.DescribeBins([]);
@@ -206,7 +206,7 @@ public sealed class EqualFrequencyDiscretizerTests
     {
         var scheme = Build([2, 3]).DescribeBins([]);
 
-        // Cut geometry — not a value domain — is the ordering authority for an ordinal over these
+        // Cut geometry (not a value domain) is the ordering authority for an ordinal over these
         // bins (§12.3), which is why equal_frequency needs no ordinal implementation of its own.
         Assert.True(scheme.CutBins);
         Assert.True(scheme.OpenLow);

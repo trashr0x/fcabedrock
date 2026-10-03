@@ -29,7 +29,7 @@ public sealed class TripleEmitterTests
     {
         // §10.5 / D-082: an ABSENT predicate is no observation (no cross, never -missing); a
         // PRESENT matching-predicate row with a missing value fires missing_policy. s2 has no "a"
-        // row at all (absent) and an unbound predicate — it stays a legal no-cross object.
+        // row at all (absent) and an unbound predicate; it stays a legal no-cross object.
         var spec = new BedrockSpec(ConversionFixtures.Triple(),
             [ConversionFixtures.PredicateNominal("a", "a", ["x", "y"], missing: MissingPolicy.AsAttribute)]);
 
@@ -59,7 +59,7 @@ public sealed class TripleEmitterTests
     [Fact]
     public async Task EmitTripleAsync_WhenPredicateArrivalOrderVaries_ThenCrossesIdentical()
     {
-        // §17 rules 1–3, 8: predicate arrival order never changes the crosses or their order —
+        // §17 rules 1–3, 8: predicate arrival order never changes the crosses or their order:
         // formal-attribute order is spec-driven and the object's crosses are a union.
         var spec = new BedrockSpec(ConversionFixtures.Triple(),
         [

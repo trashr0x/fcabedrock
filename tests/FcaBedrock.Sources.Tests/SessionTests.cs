@@ -42,7 +42,7 @@ public sealed class SessionTests
         Assert.Equal(["id", "age"], first.Header);
         Assert.Equal(first, second);
         Assert.Equal(1, opens);
-        // The cached header is immutable storage — no castable mutable array survives (D-098).
+        // The cached header is immutable storage: no castable mutable array survives (D-098).
         Assert.False(first.Header is string[]);
         Assert.False(first.Header is List<string>);
         Assert.IsType<ImmutableArray<string>>(first.Header);
@@ -155,7 +155,7 @@ public sealed class SessionTests
     public async Task TripleSession_WhenBoundWithNonDefaultRoleMap_ThenReadsRowThroughIt()
     {
         // A non-default role map (subject=2, predicate=1, value=0) over "v0,p,s0" must extract
-        // subject s0, predicate p, value v0 — proving the bound source reads through the resolved map.
+        // subject s0, predicate p, value v0, proving the bound source reads through the resolved map.
         var settings = SourceReadSettings.Create(SourceShape.Triple, "utf-8", ',', '"', false, "?", TripleOrdering.Unordered);
         var session = new TripleCsvSession(() => new MemoryStream(Encoding.UTF8.GetBytes("v0,p,s0")), settings);
         var schema = await session.GetSchemaAsync();

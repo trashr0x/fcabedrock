@@ -5,7 +5,7 @@ namespace FcaBedrock.Benchmarks.Oracles;
 /// <summary>
 /// The independent oracle for the T10 declared case.
 /// <para>
-/// Derived from the corpus definition plus the documented triple semantics — an object per subject
+/// Derived from the corpus definition plus the documented triple semantics: an object per subject
 /// in first-appearance order, observations unioned onto it, an exact duplicate contributing nothing
 /// new, an absent or unmatched predicate contributing no cross, and open-ended cut geometry for the
 /// numeric predicate. It calls no part of the reader, planner, emitter, or writer.

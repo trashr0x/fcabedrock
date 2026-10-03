@@ -9,13 +9,13 @@ namespace FcaBedrock.Benchmarks.Oracles;
 /// The accounting is logical and deterministic (D-110): distinct cleaned non-missing values retained
 /// per attribute, counted once per <em>retaining attribute</em> with no cross-attribute
 /// deduplication, and text summed as each retained string's UTF-16 code-unit length. Those two
-/// sentences are the whole model, so it can be re-derived from a generator's value definition —
+/// sentences are the whole model, so it can be re-derived from a generator's value definition,
 /// which is what makes a case at <c>limit</c>, <c>limit - 1</c>, and <c>limit + 1</c> a test of the
 /// strictly-greater boundary rather than an approximation of it.
 /// </para>
 /// <para>
 /// Nothing here calls the prober. If a boundary case fails, either this model or the accounting is
-/// wrong — and that disagreement is exactly the finding such a case exists to produce.
+/// wrong, and that disagreement is exactly the finding such a case exists to produce.
 /// </para>
 /// </summary>
 internal static class ProbeAccountingOracle
@@ -71,7 +71,7 @@ internal static class ProbeAccountingOracle
 
     /// <summary>
     /// The largest number of distinct values any single W16 column holds over
-    /// <paramref name="records"/> rows — the per-attribute retention boundary a case must straddle.
+    /// <paramref name="records"/> rows: the per-attribute retention boundary a case must straddle.
     /// </summary>
     public static int W16LargestDomain(long records)
     {

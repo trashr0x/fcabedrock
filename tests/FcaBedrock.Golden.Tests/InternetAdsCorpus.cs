@@ -4,13 +4,13 @@ using FcaBedrock.Spec.Toml;
 namespace FcaBedrock.Golden.Tests;
 
 /// <summary>
-/// The deterministic, synthetic Internet-Advertisements corpus — a wide headerless CSV that
+/// The deterministic, synthetic Internet-Advertisements corpus: a wide headerless CSV that
 /// mirrors the complete raw <c>ad.data</c> layout without copying any UCI data row.
 /// <para>
 /// <b>Determinism is the whole point</b> (EP-7): no clock, random source, machine or culture
 /// state, platform newline, or unordered enumeration enters the generated text. Every value is a
-/// literal string spelling and the newline is a fixed <c>\n</c>. The row set is small — a handful
-/// of rows — but the width is never reduced: 1,559 columns, always.
+/// literal string spelling and the newline is a fixed <c>\n</c>. The row set is small (a handful
+/// of rows), but the width is never reduced: 1,559 columns, always.
 /// </para>
 /// <para>
 /// Layout: indexes 0-2 continuous numeric <c>height</c>/<c>width</c>/<c>aratio</c> (with
@@ -69,7 +69,7 @@ internal static class AdCorpus
 
     /// <summary>
     /// The distinct non-missing values of a physical column in <b>first-observation order</b>
-    /// (§17 rule 3) — computed independently of the probe so it can verify the probe's own
+    /// (§17 rule 3), computed independently of the probe so it can verify the probe's own
     /// declared domain, and reused as the authored domain of the string-nominal forms.
     /// </summary>
     public static IReadOnlyList<string> DomainOf(int column)
@@ -142,8 +142,8 @@ internal static class AdCorpus
 }
 
 /// <summary>
-/// Builds the exit spec forms — declarative, materialized, uncurated-draft-style, and the two
-/// draft-level de-shadow forms — as TOML text over <see cref="AdCorpus"/>, plus the section
+/// Builds the exit spec forms (declarative, materialized, uncurated-draft-style, and the two
+/// draft-level de-shadow forms) as TOML text over <see cref="AdCorpus"/>, plus the section
 /// objects used to curate a real probe document. Each form is assembled independently (its own
 /// builder, from shared primitive emitters), so an equivalence claim can never pass merely
 /// because two sides share the same final text, resolved document, or plan.
@@ -210,7 +210,7 @@ internal static class AdSpecs
         return sb.ToString();
     }
 
-    /// <summary>Form (iii): probe-faithful — every attribute (numeric columns included, as
+    /// <summary>Form (iii): probe-faithful: every attribute (numeric columns included, as
     /// strings) explicitly authors identity + nominal + its complete observed domain, plus the
     /// term template/matcher. With the template present, its three fields are shadowed on every
     /// term.</summary>

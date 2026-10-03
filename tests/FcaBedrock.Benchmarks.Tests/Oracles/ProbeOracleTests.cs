@@ -49,7 +49,7 @@ public sealed class ProbeOracleTests
     public void RequireComplete_WhenAnAttributeIsDeclaredAllMissing_ThenItIsTheOnlyExemptOne()
     {
         // An attribute whose every cell was missing authors no domain at all (§10.3/D-071), so a
-        // case may name it — and naming one does not excuse any other.
+        // case may name it, and naming one does not excuse any other.
         var result = Ok(Draft(Complete("a"), NoDomain("b"), Complete("c")));
 
         ProbeOracle.RequireComplete(result, expectedAttributes: 3, What, allMissing: ["b"]);
@@ -108,7 +108,7 @@ public sealed class ProbeOracleTests
     public void RequireTruncated_WhenOneExpectedMemberCarriesNoRecoveryPolicy_ThenItThrows()
     {
         // The second counterexample: `c` truncated without `include`, so converting this draft over
-        // the same source would lose its tail — but `a` recovered, and a check that asked whether
+        // the same source would lose its tail. But `a` recovered, and a check that asked whether
         // ANY attribute recovered would accept the draft and time it as a usable one.
         var result = Ok(Draft(Truncated("a"), Complete("b"), Unrecovered("c")), Truncation());
 
@@ -174,7 +174,7 @@ public sealed class ProbeOracleTests
     {
         // The third counterexample: the pass ended at a read failure and the guard diagnostic was
         // there too, so the duration is the cost of the failure rather than the cost of reaching
-        // the guard — and "the expected code appears somewhere" cannot tell the two apart.
+        // the guard, and "the expected code appears somewhere" cannot tell the two apart.
         var result = Failed(
             LimitExceeded(),
             new BedrockDiagnostic(
@@ -205,7 +205,7 @@ public sealed class ProbeOracleTests
     public void RequireGuardBreach_WhenTheBreachArrivesAtAnotherSeverity_ThenItThrows(DiagnosticSeverity severity)
     {
         // The right code, alone and with no draft, so only severity separates it from the real
-        // breach — and Fatal is here because "Error or worse" is not the guard's contract: every
+        // breach, and Fatal is here because "Error or worse" is not the guard's contract: every
         // guard constructor reports exactly Error.
         var result = Failed(LimitExceeded(severity));
 
@@ -242,7 +242,7 @@ public sealed class ProbeOracleTests
     [Fact]
     public void RequireGuardBreach_WhenADraftArrivesAlongsideTheBreach_ThenItThrows()
     {
-        // The breach is an Error, and an Error already hides the value from TryGetValue — so a
+        // The breach is an Error, and an Error already hides the value from TryGetValue, so a
         // no-draft rule asked through TryGetValue could never see this document. The guard's real
         // result carries no value at all.
         var failure = Assert.Throws<InvalidOperationException>(
@@ -309,8 +309,8 @@ public sealed class ProbeOracleTests
     public async Task RequireComplete_WhenTheDraftIsTheWidestOne_ThenEveryOneOfItsColumnsAuthorsADomain()
     {
         // The width consumer of the complete outcome: 1,559 columns, each with a tiny domain, is
-        // where "every attribute" stops being a formality. No Ads column can be all-missing — every
-        // term flag is written as `1` or `0` — so the case carries no exception set, and this is the
+        // where "every attribute" stops being a formality. No Ads column can be all-missing (every
+        // term flag is written as `1` or `0`), so the case carries no exception set, and this is the
         // proof of that rather than an assumption about it.
         using var temp = TempDirectory.Create();
         var result = await ProbeWideAsync(
@@ -395,7 +395,7 @@ public sealed class ProbeOracleTests
     /// <summary>A truncated attribute that lost its recovery policy, so its tail is unrecoverable.</summary>
     private static AttributeSection Unrecovered(string name) => Attribute(name, ["one"], policy: null);
 
-    /// <summary>An attribute that authored no <c>declared_domain</c> at all — omitted, not empty.</summary>
+    /// <summary>An attribute that authored no <c>declared_domain</c> at all: omitted, not empty.</summary>
     private static AttributeSection NoDomain(string name) => Attribute(name, domain: null, policy: null);
 
     private static AttributeSection Attribute(

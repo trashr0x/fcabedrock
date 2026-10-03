@@ -72,7 +72,7 @@ public sealed class ValueGroupsConversionTests
     public async Task CalibrateAsync_WhenPassthrough_ThenUngroupedValuesBecomeBinsInFirstObservationOrder()
     {
         // The input is deliberately NOT in alphabetical order and interleaves grouped values, so
-        // only genuine first-observation order reproduces [PhD, Masters] — a sorted or
+        // only genuine first-observation order reproduces [PhD, Masters]; a sorted or
         // last-observation implementation would fail (§17 rule 3).
         var spec = new BedrockSpec(ConversionFixtures.Wide(hasHeader: false), [Passthrough("edu", 0, Group("School", "11th"))]);
 
@@ -136,7 +136,7 @@ public sealed class ValueGroupsConversionTests
     public async Task CalibrateAsync_WhenPassthroughExecutes_ThenWarnsEvenWithZeroDiscoveries()
     {
         // Mode-triggered (D-090): the warning fires whenever passthrough calibrates, zero
-        // discoveries included — the column set depends on this input either way.
+        // discoveries included; the column set depends on this input either way.
         var spec = new BedrockSpec(ConversionFixtures.Wide(hasHeader: false), [Passthrough("edu", 0, Group("School", "11th"))]);
 
         var result = await CalibrateWideAsync(spec, "11th\n11th");
@@ -202,7 +202,7 @@ public sealed class ValueGroupsConversionTests
     {
         // Passthrough is discovery-class, not count-sensitive: it must never reach the quantile
         // accumulator or the spill/merge machinery (D-095). The proof is a filesystem that fails
-        // EVERY operation — if the calibration touched the workspace at all it would surface a
+        // EVERY operation: if the calibration touched the workspace at all it would surface a
         // GroupingStorageFailed, so a clean run is direct evidence it did not. A tiny buffer budget
         // is set too, so a count-sensitive path would certainly have spilled.
         var spec = new BedrockSpec(ConversionFixtures.Wide(hasHeader: false), [Passthrough("edu", 0, Group("School", "11th"))]);
@@ -229,8 +229,8 @@ public sealed class ValueGroupsConversionTests
         // The positive twin of the test above, and the direct D-095/D-104 resource proof: the
         // SAME RecordingCalibrationObserver serves as both the grouping observer and the
         // calibration observer, so it sees the spool signals AND the accumulator's own tier-1
-        // sizing events. Passthrough must produce neither — it retains only its bin set
-        // (schema-scale metadata, EP-16), never a budgeted population — so an unused accumulator
+        // sizing events. Passthrough must produce neither (it retains only its bin set,
+        // schema-scale metadata, EP-16, never a budgeted population), so an unused accumulator
         // allocation or a passthrough contribution to the budget divisor would fail here even
         // though it would touch no filesystem and change no bins.
         var spec = new BedrockSpec(ConversionFixtures.Wide(hasHeader: false), [Passthrough("edu", 0, Group("School", "11th"))]);
@@ -248,7 +248,7 @@ public sealed class ValueGroupsConversionTests
         Assert.Empty(observer.Sized);
         Assert.All(observer.Aggregates, bytes => Assert.Equal(0, bytes));
 
-        // Tier 2: nothing was spooled — a tiny budget would certainly have spilled a real one.
+        // Tier 2: nothing was spooled; a tiny budget would certainly have spilled a real one.
         Assert.Empty(observer.Written);
         Assert.Empty(observer.Deleted);
         Assert.Equal(0, observer.PeakOpenReaders);
@@ -261,7 +261,7 @@ public sealed class ValueGroupsConversionTests
         // The CONTROL for the test above, on the same (wide) entry point and the same observer
         // wiring: an equal_frequency attribute DOES report an AccumulatorSized event. Without this,
         // the passthrough-only Assert.Empty(Sized) would pass just as happily if the observer were
-        // never wired at all — which is exactly the hole this pair closes.
+        // never wired at all, which is exactly the hole this pair closes.
         var spec = new BedrockSpec(ConversionFixtures.Wide(hasHeader: false), [
             new AttributeSpec("score", new ColumnSource(0, SourceValueType.Number), Include: true,
                 new CalibrationPending(new PendingEqualFrequency(2, TiePolicy.Left, CutPlacement.RightValue), CultureInfo.InvariantCulture),
@@ -300,7 +300,7 @@ public sealed class ValueGroupsConversionTests
         "s0,edu,PhD\ns0,edu,11th\ns1,edu,Masters\ns1,edu,PhD\ns2,edu,11th";
 
     // The same observations, subject-interleaved: raw order still yields PhD then Masters, but a
-    // GROUPED reading (s0's rows first) would too — so the interleaved fixture below is the one
+    // GROUPED reading (s0's rows first) would too, so the interleaved fixture below is the one
     // that discriminates.
     private const string TripleInterleaved =
         "s0,edu,PhD\ns1,edu,Masters\ns0,edu,11th\ns1,edu,PhD\ns2,edu,11th";
@@ -421,7 +421,7 @@ public sealed class ValueGroupsConversionTests
     public async Task CalibrateTripleAsync_WhenPassthroughOnlyAndUnordered_ThenExactlyOneRawPass()
     {
         // Passthrough alone never triggers the grouped second pass: it is discovery-class, so the
-        // raw pass covers it. Asserted by ENUMERATION COUNT — equal bins would not prove it.
+        // raw pass covers it. Asserted by ENUMERATION COUNT; equal bins would not prove it.
         var spec = new BedrockSpec(ConversionFixtures.Triple(TripleOrdering.Unordered),
             [PassthroughPredicate("edu", "edu", Group("School", "11th"))]);
 
@@ -457,7 +457,7 @@ public sealed class ValueGroupsConversionTests
 
         // Budget OWNERSHIP, not just pass count: exactly ONE accumulator was sized, and it belongs
         // to the count-sensitive attribute. The passthrough attribute takes no accumulator and no
-        // share of the divisor even while sharing a calibration with one that does — so its
+        // share of the divisor even while sharing a calibration with one that does, so its
         // presence cannot shrink the count-sensitive attribute's budget.
         var sized = Assert.Single(observer.Sized);
         Assert.Equal("score", sized.Attribute);
@@ -730,7 +730,7 @@ public sealed class ValueGroupsConversionTests
     [Fact]
     public async Task EmitTripleAsync_WhenAnObjectHasSeveralValues_ThenTheCrossesAreTheUnionOfTheirGroups()
     {
-        // §5.3.1/§17 rule 8: a multi-valued triple object accumulates crosses by union — and two
+        // §5.3.1/§17 rule 8: a multi-valued triple object accumulates crosses by union, and two
         // values landing in the SAME group cross it once (idempotent at incidence level).
         var spec = new BedrockSpec(ConversionFixtures.Triple(),
             [new AttributeSpec("edu", new PredicateSource("edu", SourceValueType.String), Include: true,

@@ -358,8 +358,8 @@ public sealed class SpecFingerprintsTests
     [Fact]
     public void ComputeNative_WhenRestrictToIsTheUnboundedRangeEntry_ThenOnlyTheOutputFingerprintsMove()
     {
-        // The discriminating contrast: `[{}]` is ONE entry — the full usable-numeric range
-        // (§10.4/D-091) — not an empty list. It populates the container and therefore moves both
+        // The discriminating contrast: `[{}]` is ONE entry (the full usable-numeric range,
+        // §10.4/D-091), not an empty list. It populates the container and therefore moves both
         // output fingerprints, while `[]` above moves none. Columns are unchanged either way, so
         // the schema hash is shared (§14: restrictions select rows, not columns).
         var authoredEmpty = ComputeFor(NumericAttribute("\nrestrict_to = []\n"));
@@ -376,7 +376,7 @@ public sealed class SpecFingerprintsTests
     public void ComputeNative_WhenValueLabelsIsAuthoredEmpty_ThenRenderedNamesAndAllThreeMatchTheOmittedTwin()
     {
         // §10.8/D-077: labels reach identity only through the `rendered_names` array, and an
-        // empty map renders every name from the raw value — so `value_labels = {}` and an omitted
+        // empty map renders every name from the raw value, so `value_labels = {}` and an omitted
         // map converge on the same names and therefore on all three hashes. The names are
         // asserted alongside the hashes so the convergence is shown, not merely hashed.
         var omitted = Pipeline(MinimalSpec(), new SourceSchema(1));
@@ -396,7 +396,7 @@ public sealed class SpecFingerprintsTests
     public void VerifyStored_WhenStoredFieldsAreEmptyStrings_ThenAllThreeReadAsStale()
     {
         // D-077: verification compares the full stored string ordinally. An empty string is
-        // PRESENT — the reader hands back "" as a non-null string — so it is stale, not absent.
+        // PRESENT (the reader hands back "" as a non-null string), so it is stale, not absent.
         // Only an unwritten field is the silent absent state (VerifyStored_WhenNoStoredFingerprints).
         var frozen = TomlFixtures.MiniMushroom.Replace(
             "version = 1",
@@ -423,7 +423,7 @@ public sealed class SpecFingerprintsTests
     [Fact]
     public void VerifyStored_WhenAStoredValueIsMalformed_ThenMerelyStaleAndNeverInvalidatesTheRun()
     {
-        // D-077: there is deliberately NO parse-time format validation — a value that is not even
+        // D-077: there is deliberately NO parse-time format validation: a value that is not even
         // a "sha256:" string simply reads as stale. And stale is Warning-only, so a malformed
         // stored fingerprint never invalidates the run (§16.2/G-12: only Error/Fatal do).
         var frozen = TomlFixtures.MiniMushroom.Replace(
@@ -461,7 +461,7 @@ public sealed class SpecFingerprintsTests
     [Fact]
     public void VerifyStored_WhenManualEqualWidthFingerprintsFrozen_ThenSilent()
     {
-        // §11.4/§14/D-089: a manual range is spec-determined — its cuts come from the spec text
+        // §11.4/§14/D-089: a manual range is spec-determined: its cuts come from the spec text
         // alone, so unlike a data-derived range it IS eligible for stored fingerprints. This is
         // the stored-fingerprint round-trip: compute, freeze into [spec], re-read, verify silent.
         var computed = ComputeFor(EqualWidthManualTemplate);
@@ -495,7 +495,7 @@ public sealed class SpecFingerprintsTests
     public void ComputeNative_WhenEqualWidthPrecisionDiffers_ThenOutputFingerprintsDiffer()
     {
         // precision is authored configuration the discretizer sub-object carries (D-094), so two
-        // otherwise-identical specs that round differently must not hash alike — even when, as
+        // otherwise-identical specs that round differently must not hash alike, even when, as
         // here, the effective cuts happen to coincide.
         var exact = ComputeFor(EqualWidthManualTemplate);
         var rounded = ComputeFor(EqualWidthManualTemplate.Replace(
@@ -510,7 +510,7 @@ public sealed class SpecFingerprintsTests
     public void ComputeNative_WhenComposedEqualsFlat_ThenAllThreeFingerprintsIdentical()
     {
         // §13: fingerprints are computed over the resolved (fully merged) plan,
-        // so a derived spec and its flat equivalent fingerprint identically —
+        // so a derived spec and its flat equivalent fingerprint identically:
         // no encoder change is involved, only composition (D-078).
         var flat = Pipeline(TomlFixtures.MiniMushroom, new SourceSchema(5));
         var composed = ComposedPipeline(TomlFixtures.MiniMushroomDerived, new SourceSchema(5));
@@ -524,7 +524,7 @@ public sealed class SpecFingerprintsTests
     public void VerifyStored_WhenBaseStoresGarbageFingerprints_ThenComposedVerifiesSilently()
     {
         // §13: base-stored fingerprints are ignored when resolving a derived
-        // spec — they never reach the composed [spec], so nothing goes stale.
+        // spec: they never reach the composed [spec], so nothing goes stale.
         var garbageBase = TomlFixtures.MiniMushroomBase.Replace(
             "version = 1",
             """
@@ -588,7 +588,7 @@ public sealed class SpecFingerprintsTests
     [Fact]
     public void ComputeNative_WhenMiniAdult_ThenStabilityBaselineHolds()
     {
-        // As above, over §19.2 — covers manual_cuts, ordered_cuts and ordinal.
+        // As above, over §19.2: covers manual_cuts, ordered_cuts and ordinal.
         var (document, spec, plan) = Pipeline(TomlFixtures.MiniAdult, new SourceSchema(6));
 
         Assert.Equal(
@@ -602,7 +602,7 @@ public sealed class SpecFingerprintsTests
     [Fact]
     public void ComputeNative_WhenPlanIsFromADifferentResolution_ThenThrows()
     {
-        // §14/D-098: ComputeNative accepts only the paired document/plan — a plan produced from a
+        // §14/D-098: ComputeNative accepts only the paired document/plan; a plan produced from a
         // different resolution fails the reference-identity guard.
         var a = Pipeline(TomlFixtures.MiniMushroom, new SourceSchema(5));
         var b = Pipeline(TomlFixtures.MiniMushroom, new SourceSchema(5)); // a distinct resolution/plan
@@ -699,7 +699,7 @@ public sealed class SpecFingerprintsTests
     public void ComputeNative_WhenTheFormatComesFromDefaults_ThenItMatchesTheAttributeAuthoredForm()
     {
         // Tier 2 and tier 5 are different AUTHORING routes to one effective configuration,
-        // and fingerprints hash resolved semantics — so the two must agree on all three.
+        // and fingerprints hash resolved semantics, so the two must agree on all three.
         var viaDefaults = ComputeFor(
             MinimalSpec().Replace("[binding]", "[defaults]\nformal_attribute_format = \"{value}\"\n\n[binding]", StringComparison.Ordinal));
         var viaAttribute = ComputeFor(Naming("formal_attribute_format = \"{value}\""));
@@ -710,7 +710,7 @@ public sealed class SpecFingerprintsTests
     [Fact]
     public void ComputeNative_WhenAnUnusedTemplateAuthorsNaming_ThenAllThreeAreUnchanged()
     {
-        // §9.2: an unused template is semantically dormant — it round-trips and converts
+        // §9.2: an unused template is semantically dormant: it round-trips and converts
         // without touching a single hash, even carrying naming keys.
         var baseline = ComputeFor(MinimalSpec());
         var withTemplate = ComputeFor(
@@ -739,7 +739,7 @@ public sealed class SpecFingerprintsTests
     public void ComputeNative_WhenAMatcherIsFullyShadowed_ThenAllThreeAreUnchanged()
     {
         // The other Warning-only row: the matcher SELECTS the attribute, but every field
-        // its template authors loses to the attribute's explicit ones — so the resolved
+        // its template authors loses to the attribute's explicit ones, so the resolved
         // configuration, and therefore every hash, is exactly the template-free spec's.
         var baseline = ComputeFor(MinimalSpec());
         var shadowed = ComputeFor(MinimalSpec()
@@ -805,7 +805,7 @@ public sealed class SpecFingerprintsTests
         // The CHANGE row, and the proof that the neutrality rows above are a property of
         // resolved semantics rather than of templates being ignored: a template-supplied
         // missing_policy = "as_attribute" plans one extra formal attribute, so it moves
-        // the schema and BOTH output fingerprints — exactly as the flat edit would.
+        // the schema and BOTH output fingerprints, exactly as the flat edit would.
         var baseline = ComputeFor(MinimalSpec());
         var withColumn = ComputeFor(MinimalSpec()
             + "\n[[template]]\nid = \"t\"\nmissing_policy = \"as_attribute\"\n"
@@ -822,7 +822,7 @@ public sealed class SpecFingerprintsTests
     public void ComputeNative_WhenTemplatesAreSplitAcrossExtends_ThenAllThreeMatchTheFlatSpec()
     {
         // §13/§14: fingerprints are computed over the RESOLVED plan, not the source files,
-        // so a derived spec and its equivalent flat spec hash identically — here with the
+        // so a derived spec and its equivalent flat spec hash identically, here with the
         // template and matcher inherited rather than authored locally.
         const string templateAndMatcher =
             "[[template]]\nid = \"t\"\ndiscretizer = { kind = \"identity\" }\nscale = { kind = \"nominal\" }\n"

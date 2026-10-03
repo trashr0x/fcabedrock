@@ -53,7 +53,7 @@ internal static class SpecFixtures
         new(name, new ColumnSource(index, SourceValueType.String), Include: true, new IdentityDiscretizer(), new DichotomicScale(trueValue),
             domain, RestrictTo: [], NoLabels, missing, UnknownValuePolicy.Warn);
 
-    // Numeric cut discretizer (open ends, invariant parse) paired with any scale —
+    // Numeric cut discretizer (open ends, invariant parse) paired with any scale:
     // nominal for discrete output, OrdinalScale for progressive.
     public static AttributeSpec NumericCuts(
         string name, int index, IReadOnlyList<double> cuts, Scale scale,
@@ -93,7 +93,7 @@ internal static class SpecFixtures
 
     // An equal_frequency attribute before calibration: the CalibrationPending carrier the resolve
     // seam produces, which Calibrate replaces with the executable discretizer (D-093/D-103).
-    // equal_frequency has no spec-determined form — every configuration is data-dependent (§7).
+    // equal_frequency has no spec-determined form: every configuration is data-dependent (§7).
     public static AttributeSpec EqualFrequencyPending(
         string name, int index, int bins, Scale scale,
         TiePolicy tiePolicy = TiePolicy.Left, CutPlacement cutPlacement = CutPlacement.RightValue,
@@ -112,7 +112,7 @@ internal static class SpecFixtures
 
     // A value_groups passthrough attribute before calibration: the CalibrationPending carrier the
     // resolve seam produces, which Calibrate replaces with the executable discretizer over the
-    // discovered bins (D-093). Passthrough has no spec-determined form — its bins are data (§7).
+    // discovered bins (D-093). Passthrough has no spec-determined form: its bins are data (§7).
     public static AttributeSpec ValueGroupsPassthrough(
         string name, int index, Scale scale, params ValueGroup[] groups) =>
         new(name, new ColumnSource(index, SourceValueType.String), Include: true,

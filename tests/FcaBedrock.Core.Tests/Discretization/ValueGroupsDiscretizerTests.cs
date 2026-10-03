@@ -28,7 +28,7 @@ public sealed class ValueGroupsDiscretizerTests
     [Fact]
     public void DescribeBins_WhenInspected_ThenOrdinaryValueBinGeometryNotCutGeometry()
     {
-        // §11.6: group labels are VALUE bins — there is no cut geometry, so an ordinal scale
+        // §11.6: group labels are VALUE bins: there is no cut geometry, so an ordinal scale
         // thresholds on scale.order rather than on edges, and there are no open ends.
         var scheme = Education(ValueGroupsUnmatched.Other).DescribeBins([]);
 
@@ -41,7 +41,7 @@ public sealed class ValueGroupsDiscretizerTests
 
     [Fact]
     public void BinLabels_WhenDeclaredDomainAuthored_ThenIgnoredEntirely() =>
-        // D-055: value_groups does not consult declared_domain — the groups plus the unmatched
+        // D-055: value_groups does not consult declared_domain; the groups plus the unmatched
         // policy are the whole bin universe, so a (dormant) domain cannot perturb it.
         Assert.Equal(
             ["School", "Undergrad"],
@@ -72,7 +72,7 @@ public sealed class ValueGroupsDiscretizerTests
     public void Discretize_WhenValueMatchesSeveralGroups_ThenTheFirstDeclaredWins()
     {
         // §11.6: "a value matching multiple groups falls into the first matching group in
-        // declaration order". Both groups claim "Bachelors"; declaration order decides — and
+        // declaration order". Both groups claim "Bachelors"; declaration order decides, and
         // reversing the declaration reverses the outcome, which is what proves order is read
         // rather than, say, label order.
         var firstWins = ValueGroupsDiscretizer.Create(
@@ -101,7 +101,7 @@ public sealed class ValueGroupsDiscretizerTests
     [Fact]
     public void Discretize_WhenSkipAndUnmatched_ThenUnknownCarryingTheRawValue()
     {
-        // §11.6: no bin — unknown_value_policy governs it. Carrying the raw value is what lets the
+        // §11.6: no bin; unknown_value_policy governs it. Carrying the raw value is what lets the
         // emitter's aggregate sample it.
         var result = Education(ValueGroupsUnmatched.Skip).Discretize("PhD");
 
@@ -129,7 +129,7 @@ public sealed class ValueGroupsDiscretizerTests
 
     [Fact]
     public void CreatePassthrough_WhenBinsDiscovered_ThenTheyFollowTheDeclaredGroupsInDiscoveryOrder() =>
-        // §17 rule 3: declared groups first, then discovered bins in first-observation order —
+        // §17 rule 3: declared groups first, then discovered bins in first-observation order,
         // NOT sorted, so an out-of-alphabetical discovery order must survive verbatim.
         Assert.Equal(
             ["School", "zeta", "alpha"],
@@ -151,7 +151,7 @@ public sealed class ValueGroupsDiscretizerTests
     public void CreatePassthrough_WhenADiscoveredBinEqualsAnAuthoredLabel_ThenAcceptedHereForPlanToDiagnose()
     {
         // D-090: that collision is DATA-dependent, so it belongs to plan (FormalAttributeCollision),
-        // not to a construction backstop — construction must not pre-empt it.
+        // not to a construction backstop; construction must not pre-empt it.
         var discretizer = ValueGroupsDiscretizer.CreatePassthrough([Group("School", "11th")], ["School"]);
 
         Assert.Equal(["School", "School"], discretizer.DescribeBins([]).Labels);
@@ -192,7 +192,7 @@ public sealed class ValueGroupsDiscretizerTests
 
     [Fact]
     public void Create_WhenLabelIsOtherButPolicyIsSkip_ThenAllowedBecauseNoSyntheticBinExists() =>
-        // The collision is with the SYNTHETIC bin, which only `other` adds — so "Other" is an
+        // The collision is with the SYNTHETIC bin, which only `other` adds, so "Other" is an
         // ordinary label under skip.
         Assert.Equal(["Other"], ValueGroupsDiscretizer.Create([Group("Other", "11th")], ValueGroupsUnmatched.Skip)
             .DescribeBins([]).Labels);
@@ -212,7 +212,7 @@ public sealed class ValueGroupsDiscretizerTests
     public void Create_WhenNoGroups_ThenAllowedBecauseTheContractConstrainsGroupsNotTheirCount()
     {
         // D-090/G-11 make each authored group and its matcher the unit of validity; there is no
-        // non-empty-groups rule, and an empty group list is a coherent (if degenerate) spec —
+        // non-empty-groups rule, and an empty group list is a coherent (if degenerate) spec:
         // under `other` every value bins to Other.
         var discretizer = ValueGroupsDiscretizer.Create([], ValueGroupsUnmatched.Other);
 

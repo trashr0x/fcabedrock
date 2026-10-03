@@ -190,8 +190,8 @@ public sealed class GoldenArgvFloorTests
         AssertNoFailureReported(convert.StdErr);
     }
 
-    // A Warning is a legitimate property of a v2 fixture — a formal attribute that no object
-    // crosses is one — and never moves the exit off 0 (D-122 part 2). An Error, a Fatal, or a
+    // A Warning is a legitimate property of a v2 fixture (a formal attribute that no object
+    // crosses is one) and never moves the exit off 0 (D-122 part 2). An Error, a Fatal, or a
     // code-less host line is a different thing, and the floor admits none.
     private static void AssertNoFailureReported(string stderr)
     {

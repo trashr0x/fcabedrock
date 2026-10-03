@@ -347,7 +347,7 @@ _Pvt_Extensions
 **/.paket/paket.exe
 paket-files/
 
-# FAKE - F# Make
+# FAKE (F# Make)
 **/.fake/
 
 # CodeRush personal settings
@@ -357,7 +357,7 @@ paket-files/
 **/__pycache__/
 *.pyc
 
-# Cake - Uncomment if you are using it
+# Cake: uncomment if you are using it
 #tools/**
 #!tools/packages.config
 
@@ -407,7 +407,7 @@ MigrationBackup/
 # Ionide (cross platform F# VS Code tools) working folder
 **/.ionide/
 
-# Fody - auto-generated XML schema
+# Fody: auto-generated XML schema
 FodyWeavers.xsd
 
 # VS Code files for those working on multiple tools

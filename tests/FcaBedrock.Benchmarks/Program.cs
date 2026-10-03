@@ -10,7 +10,7 @@ namespace FcaBedrock.Benchmarks;
 /// <para>
 /// It does two things and nothing more: it owns the explicit corpus-preparation verb, and it hands
 /// every other invocation to <see cref="BenchmarkSwitcher"/> verbatim. There is no scenario
-/// language, no run planner, and no argument grammar of our own — the documented BenchmarkDotNet
+/// language, no run planner, and no argument grammar of our own: the documented BenchmarkDotNet
 /// command line <em>is</em> the interface, so anything BenchmarkDotNet supports works here without
 /// this file knowing about it.
 /// </para>
@@ -49,7 +49,7 @@ public static class Program
 
     // Corpus preparation is explicit and separate: no benchmark run may start generating a
     // 73-million-record file as a side effect of a broad filter, and generation must never sit
-    // inside a measured interval. Preparation is idempotent - an already-current corpus is
+    // inside a measured interval. Preparation is idempotent: an already-current corpus is
     // verified and reused rather than rewritten.
     private static int Prepare(ReadOnlySpan<string> tokens)
     {
@@ -69,7 +69,7 @@ public static class Program
 
             // A tier prepares every case of that size; a case id prepares exactly one. The second
             // form is what an externally acquired corpus needs, since its tier names no record
-            // count - and it is also the shortest way to re-prepare a single large case.
+            // count, and it is also the shortest way to re-prepare a single large case.
             if (CorpusTiers.TryParse(token, out var tier))
             {
                 selected.AddRange(CorpusCases.ForTier(tier));

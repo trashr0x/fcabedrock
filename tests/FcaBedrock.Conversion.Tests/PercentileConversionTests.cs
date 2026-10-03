@@ -150,11 +150,11 @@ public sealed class PercentileConversionTests
     [Fact]
     public async Task Calibrate_WhenP99LandsExactlyOnARankBoundary_ThenTheBoundaryGroupIsSelected()
     {
-        // The exact-boundary pair, one observation apart — where an off-by-one-ULP rank target
+        // The exact-boundary pair, one observation apart, where an off-by-one-ULP rank target
         // would pick the wrong order statistic. Both have N = 100 and the same two values.
         //
         // 99 sevens + one 9: C = [99, 100]. p99 needs C_i·100 >= 99·100 = 9900, and C_1·100 is
-        // EXACTLY 9900 — so the >= boundary is met at group 1 and p99 = 7 = p1. No spread.
+        // EXACTLY 9900, so the >= boundary is met at group 1 and p99 = 7 = p1. No spread.
         var atBoundary = await CalibrateAsync(
             Wide(Pending("score", 0, 2, new NominalScale())),
             string.Join('\n', [.. Enumerable.Repeat("7", 99), "9"]));
@@ -177,7 +177,7 @@ public sealed class PercentileConversionTests
     public async Task Calibrate_WhenP1EqualsP99_ThenCalibrationDataInsufficient()
     {
         // A span with no spread cannot bound equal-width bins. Note this is NOT the distinct-value
-        // guard — equal_width has none (D-089); it is the same "no usable spread" condition
+        // guard (equal_width has none, D-089); it is the same "no usable spread" condition
         // min_max reports, reached through the percentile span.
         var result = await CalibrateAsync(Wide(Pending("score", 0, 2, new NominalScale())), "7\n7\n7");
 
@@ -306,7 +306,7 @@ public sealed class PercentileConversionTests
     public async Task CalibrateTriple_WhenCountSensitive_ThenSubjectLocalDedupShapesTheSpan(
         TripleOrdering ordering, string data)
     {
-        // Percentile is count-sensitive, so the §5.3.1 dedup applies on BOTH orderings — the
+        // Percentile is count-sensitive, so the §5.3.1 dedup applies on BOTH orderings, the
         // unordered path reaching it through the grouped second pass.
         var result = await CalibrateTripleAsync(
             Triple(ordering, PendingPredicate("score", "score", 2, new NominalScale())), data);

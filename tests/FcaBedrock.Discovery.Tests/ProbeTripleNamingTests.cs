@@ -10,7 +10,7 @@ namespace FcaBedrock.Discovery.Tests;
 /// receives <c>predicate_&lt;first-appearance-ordinal&gt;</c>.
 /// <para>
 /// <b>The rule under test is really one rule:</b> no source selector is ever silently changed.
-/// For triple that bites hardest, because the selector <em>is</em> the string the data spells —
+/// For triple that bites hardest, because the selector <em>is</em> the string the data spells:
 /// rename it and the attribute points at a predicate the source does not contain, so the draft
 /// would fail its own convert guarantee while looking perfectly reasonable.
 /// </para>
@@ -63,7 +63,7 @@ public sealed class ProbeTripleNamingTests
 
         Assert.Equal(["predicate_0", "colour"], draft.Attributes.Select(a => a.Name));
 
-        // The selector keeps the exact predicate text, quote and all — only the NAME moved.
+        // The selector keeps the exact predicate text, quote and all; only the NAME moved.
         Assert.Equal("say \"hi\"", TripleProbeFixtures.SourceOf(draft, "predicate_0").Name);
         Assert.Equal(["loud"], draft.Attributes[0].DeclaredDomain);
     }
@@ -87,7 +87,7 @@ public sealed class ProbeTripleNamingTests
     public async Task ProbeTriple_WhenAPredicateIsUnusable_ThenTheFallbackUsesItsFirstAppearanceOrdinal()
     {
         // The suffix is the ordinal of first appearance, not of the row or of the unusable
-        // predicates among themselves — so it is stable under repetition and interleaving.
+        // predicates among themselves, so it is stable under repetition and interleaving.
         var draft = ProbeFixtures.Draft(await TripleProbeFixtures.ProbeTripleCsvAsync(
             "s1,alpha,1\ns1,\"q\"\"uote\",2\ns1,beta,3\ns1,\"q\"\"uote\",4\n"));
 
@@ -100,7 +100,7 @@ public sealed class ProbeTripleNamingTests
     {
         // The adversarial case: a genuine, perfectly usable predicate literally spelled
         // `predicate_0`, alongside an unusable predicate whose fallback wants that name. The real
-        // predicate keeps it — its name is its selector's text — and the synthesized one
+        // predicate keeps it (its name is its selector's text) and the synthesized one
         // escalates. Neither attribute is dropped or merged, and neither selector changes.
         const string csv = "s1,\"q\"\"uote\",a\ns1,predicate_0,b\n";
 
@@ -146,7 +146,7 @@ public sealed class ProbeTripleNamingTests
     [Fact]
     public async Task ProbeTriple_WhenNamesAreAdjusted_ThenOneAggregatedWarningCountsThemInOrder()
     {
-        // One warning, not one per attribute — a 10,000-predicate vocabulary must not produce
+        // One warning, not one per attribute: a 10,000-predicate vocabulary must not produce
         // 10,000 warnings (D-111). Count and bounded sample follow first-appearance order.
         const string csv =
             "s1,\"a\"\"1\",v\ns1,\"b\"\"2\",v\ns1,ok,v\ns1,\"c\"\"3\",v\ns1,\"d\"\"4\",v\n";
@@ -158,7 +158,7 @@ public sealed class ProbeTripleNamingTests
         Assert.Equal(DiagnosticSeverity.Warning, diagnostic.Severity);
         Assert.Contains("4 attribute name(s)", diagnostic.Message, StringComparison.Ordinal);
 
-        // The first three adjusted names, in first-appearance order — and not the fourth.
+        // The first three adjusted names, in first-appearance order, and not the fourth.
         Assert.Contains("predicate_0, predicate_1, predicate_3", diagnostic.Message, StringComparison.Ordinal);
         Assert.DoesNotContain("predicate_4", diagnostic.Message, StringComparison.Ordinal);
     }
@@ -167,7 +167,7 @@ public sealed class ProbeTripleNamingTests
     public async Task ProbeTriple_WhenNoNameIsAdjusted_ThenNoWarningIsRaised()
     {
         // The control: the aggregated warning must not fire for an ordinary vocabulary. Note that
-        // an IGNORED empty predicate is not an adjustment either — nothing was named.
+        // an IGNORED empty predicate is not an adjustment either: nothing was named.
         var result = await TripleProbeFixtures.ProbeTripleCsvAsync("s1,a,1\ns2,,2\ns3,b,3\n");
 
         Assert.Empty(result.Diagnostics);
@@ -203,7 +203,7 @@ public sealed class ProbeTripleNamingTests
     public async Task ProbeTriple_WhenAPredicateIsWhitespaceOnly_ThenItIsAnOrdinaryUsableName()
     {
         // A quoted single space survives the §5.1 outer trim, so it is a present, non-empty
-        // predicate — and §10.1 permits it as a name. Contrast with a whitespace-only SUBJECT,
+        // predicate, and §10.1 permits it as a name. Contrast with a whitespace-only SUBJECT,
         // which the object-name predicate rejects: two different rules over two different
         // alphabets, deliberately not merged.
         var result = await TripleProbeFixtures.ProbeTripleCsvAsync("s1,\" \",v\n");
@@ -232,7 +232,7 @@ public sealed class ProbeTripleNamingTests
     [Fact]
     public async Task ProbeTriple_WhenPredicatesArriveFromMemory_ThenNamingIsTheSame()
     {
-        // Naming reads the record sequence, never the bytes — so a hand-built session with the
+        // Naming reads the record sequence, never the bytes, so a hand-built session with the
         // same predicates must produce the same names.
         var fromMemory = await Prober.ProbeTripleAsync(
             TripleProbeFixtures.Fake(("s1", "q\"uote", "a"), ("s1", "predicate_0", "b")), Settings);

@@ -10,8 +10,8 @@ namespace FcaBedrock.Benchmarks;
 /// Emits a fixed plan and consumes the object stream <b>without writing anything</b>.
 /// <para>
 /// Paired with the emit-and-export case over the same corpus and the same plan, and the pair is the
-/// point: the difference between them is the <em>writer</em> — serializing ids, encoding, buffering,
-/// and reaching the filesystem — while everything before it is common. Neither number means much
+/// point: the difference between them is the <em>writer</em> (serializing ids, encoding, buffering,
+/// and reaching the filesystem), while everything before it is common. Neither number means much
 /// alone. A user choosing between formats, and a profiler deciding where to look, both want the
 /// split rather than the total.
 /// </para>
@@ -19,7 +19,7 @@ namespace FcaBedrock.Benchmarks;
 /// It is emphatically <b>not</b> a null-sink throughput claim. Nothing here is reported as export
 /// performance; the export cases write real files precisely because a null sink would report a rate
 /// no user can obtain. This case measures the production emission, and it consumes every object and
-/// every cross into a fixed scalar summary so the work cannot be optimized away — a loop that merely
+/// every cross into a fixed scalar summary so the work cannot be optimized away: a loop that merely
 /// counted objects would let the crosses go unread.
 /// </para>
 /// <para>
@@ -99,7 +99,7 @@ public abstract class EmitDrainBenchmark
 
     /// <summary>
     /// Validates the completed emission against the same expectation the export case validates its
-    /// bytes against — the object count exactly, and the cross <em>identities</em> through their sum.
+    /// bytes against: the object count exactly, and the cross <em>identities</em> through their sum.
     /// </summary>
     [IterationCleanup]
     public void Validate()

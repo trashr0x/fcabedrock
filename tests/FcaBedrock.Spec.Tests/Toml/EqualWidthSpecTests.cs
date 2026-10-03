@@ -312,7 +312,7 @@ public sealed class EqualWidthSpecTests
     [Fact]
     public void Resolve_WhenManualRange_ThenExecutableDiscretizerNoCalibration()
     {
-        // §7/D-089: a manual range is spec-determined — it resolves straight to an executable
+        // §7/D-089: a manual range is spec-determined: it resolves straight to an executable
         // discretizer and skips Calibrate.
         var result = Resolve(Section(4, EqualWidthRange.Manual, 0, 100));
 

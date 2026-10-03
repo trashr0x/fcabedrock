@@ -199,7 +199,7 @@ public sealed class StatsCommandTests
 
         Assert.Equal(0, await harness.RunAsync("stats", spec, data));
 
-        // No calibration pass, and exactly one counting pass — never a replay for a second one.
+        // No calibration pass, and exactly one counting pass, never a replay for a second one.
         Assert.Equal([spec, data, data], harness.Opened);
     }
 
@@ -222,7 +222,7 @@ public sealed class StatsCommandTests
     public async Task Stats_WhenAnEmitDiagnosticIsAnError_ThenNoReportIsWrittenAndExitIsOne()
     {
         // unknown_value_policy = "fail" turns the out-of-domain `green` into an Error at emit,
-        // which invalidates the run — so the counts are never reported (§16.2).
+        // which invalidates the run, so the counts are never reported (§16.2).
         using var temp = TempDirectory.Create();
         var failing = CliFixtures.StatsSparseSpec.Replace(
             "unknown_value_policy = \"skip\"", "unknown_value_policy = \"fail\"", StringComparison.Ordinal);
@@ -332,7 +332,7 @@ public sealed class StatsCommandTests
     public async Task Plan_WhenATempDirectoryIsSuppliedForGroupingCalibration_ThenTheReportIsUnchanged()
     {
         // `equal_frequency` over interleaved triple input is count-sensitive, so the calibrator
-        // takes its grouped second pass — the calibration half of what --temp-dir configures,
+        // takes its grouped second pass: the calibration half of what --temp-dir configures,
         // which no emit-only test would reach. `plan` never emits, so this run exercises the
         // option on the calibration path alone.
         using var temp = TempDirectory.Create();
@@ -359,7 +359,7 @@ public sealed class StatsCommandTests
     [InlineData("   ")]
     public async Task Stats_WhenTheTempDirectoryValueIsUnusable_ThenItIsACodelessHostFailure(string value)
     {
-        // The value reaches ConversionRuntimeOptions verbatim — which is exactly why an empty
+        // The value reaches ConversionRuntimeOptions verbatim, which is exactly why an empty
         // one is rejected there rather than silently becoming "use the default". Its
         // ArgumentException is an ordinary option failure, so it must not become exit 4.
         using var temp = TempDirectory.Create();
@@ -411,7 +411,7 @@ public sealed class StatsCommandTests
     [Fact]
     public void FormatDensity_WhenTheRemainderIsExactlyHalfAndTheDigitIsEven_ThenItStays()
     {
-        // 1 / 2,000,000 is exactly 0.0000005 — a true midpoint, decided without any binary
+        // 1 / 2,000,000 is exactly 0.0000005: a true midpoint, decided without any binary
         // approximation. The sixth digit is 0, which is even, so it stays.
         Assert.Equal("0.000000", StatsCommand.FormatDensity(1, 2_000, 1_000));
     }
@@ -428,7 +428,7 @@ public sealed class StatsCommandTests
     public void FormatDensity_WhenTheCellCountExceedsSixtyFourBits_ThenItIsStillExact()
     {
         // objects × formal_attributes = 10^19, past long.MaxValue, and crosses × 10^6 = 5×10^24
-        // is far past it — the whole point of the Int128 arithmetic.
+        // is far past it: the whole point of the Int128 arithmetic.
         Assert.Equal("0.500000", StatsCommand.FormatDensity(5_000_000_000_000_000_000, 2_500_000_000, 4_000_000_000));
     }
 

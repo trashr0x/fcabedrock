@@ -194,7 +194,7 @@ internal static class PackageOpc
         }
 
         // `Guid.TryParseExact(..., "N", ...)` accepts EITHER case, so the ordinal round-trip
-        // against `ToString("N")` — lowercase by definition — is what pins the canonical spelling.
+        // against `ToString("N")` (lowercase by definition) is what pins the canonical spelling.
         return Guid.TryParseExact(stem, "N", out var identifier)
             && string.Equals(
                 stem, identifier.ToString("N", CultureInfo.InvariantCulture), StringComparison.Ordinal);
@@ -302,7 +302,7 @@ internal static class PackageOpc
     // Both known producers write an absolute part name, so this is exactly what has to be
     // understood: an optional single leading slash, then the already-validated entry name compared
     // ordinally. A traversal, a backslash, or a percent-encoded alias resolves to nothing rather
-    // than being decoded into a match — no general URI resolver is needed for two known producers.
+    // than being decoded into a match; no general URI resolver is needed for two known producers.
     private static bool Resolves(string target, string entryName)
     {
         if (target.Length == 0
@@ -331,7 +331,7 @@ internal static class PackageOpc
         }
 
         // An Override wins over a Default for the same part, so both are read and the EFFECTIVE
-        // type is what is checked — and a conflicting pair is a defect rather than a tie to break.
+        // type is what is checked, and a conflicting pair is a defect rather than a tie to break.
         var extension = metadata[(metadata.LastIndexOf('.') + 1)..];
 
         var defaults = document.Root

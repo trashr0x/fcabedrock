@@ -32,7 +32,7 @@ internal static class ProbeOracle
     /// A probe that discovered every value: a complete draft, with nothing truncated, no attribute
     /// carrying a recovery policy, and every attribute authoring its own non-empty domain.
     /// <para>
-    /// <paramref name="allMissing"/> names the attributes whose every observed cell was missing —
+    /// <paramref name="allMissing"/> names the attributes whose every observed cell was missing;
     /// those legitimately author no <c>declared_domain</c> at all (§10.3/D-071), and the draft omits
     /// the key rather than writing <c>[]</c>. The exemption is for the domain alone: a named attribute
     /// observed nothing to truncate, so it carries no recovery policy either. Every current benchmark
@@ -59,13 +59,13 @@ internal static class ProbeOracle
 
     /// <summary>
     /// A probe that hit the per-attribute retention limit: still a usable draft, and one that says
-    /// so — <b>every</b> attribute in <paramref name="expectedTruncated"/> carries its retained
+    /// so. <b>Every</b> attribute in <paramref name="expectedTruncated"/> carries its retained
     /// prefix plus the <c>include</c> policy that lets a conversion of this draft recover the
     /// complete schema (D-108), <b>and no other attribute does</b>.
     /// <para>
     /// The exact set matters because these cases differ in it. A scale-tier wide probe truncates
     /// several columns while a dozen others stay complete, so "at least one attribute recovered"
-    /// would accept a draft that lost the tail of every column but one — a different result with
+    /// would accept a draft that lost the tail of every column but one: a different result with
     /// the same shape, and the one a benchmark row must not silently stand for.
     /// </para>
     /// </summary>
@@ -134,7 +134,7 @@ internal static class ProbeOracle
     /// A probe that breached an aggregate guard: <b>no draft</b>, the breach reported, and nothing
     /// else reported. A partial draft that read as complete is precisely what the guard exists to
     /// prevent (D-110), and a run that also failed for an unrelated reason measured that failure
-    /// rather than the cost of reaching the guard — so any other diagnostic is rejected.
+    /// rather than the cost of reaching the guard, so any other diagnostic is rejected.
     /// <para>
     /// The result is held to exactly what the guard path produces: the prober returns a breach
     /// through its single-diagnostic failure, which carries no value, and every guard reports one
@@ -161,8 +161,8 @@ internal static class ProbeOracle
                     : $"{what}: no guard breach was reported: {ConversionPipeline.Describe(diagnostics)}");
         }
 
-        // A breach is reported alone — the prober returns the single diagnostic that stopped the
-        // pass — so anything beside it, a second breach included, means this run ended for a second
+        // A breach is reported alone (the prober returns the single diagnostic that stopped the
+        // pass), so anything beside it, a second breach included, means this run ended for a second
         // reason, and an accepted duration would be the cost of that reason rather than of the guard.
         if (diagnostics.Count != 1)
         {
@@ -187,7 +187,7 @@ internal static class ProbeOracle
     /// <paramref name="limit"/>: exactly those whose distinct cleaned non-missing values exceed it,
     /// on D-108's strictly-greater boundary.
     /// <para>
-    /// Derived from the frozen generator and never from the prober — an expectation the code under
+    /// Derived from the frozen generator and never from the prober: an expectation the code under
     /// measurement supplied could not disagree with it. It stays affordable at every tier because a
     /// column that exceeds the limit proves it after <c>limit + 1</c> distinct values, and a column
     /// whose values come from a bounded domain cannot exceed a limit at or above that bound, so no
@@ -215,7 +215,7 @@ internal static class ProbeOracle
     /// <summary>
     /// The same derivation over the T10 triple family, whose attributes are its predicates. A
     /// subject contributes at most two distinct values to each of them, and <c>Stage</c>'s two are
-    /// two <em>raw spellings</em> of one number (§5.3.1) — which is why it is the predicate that can
+    /// two <em>raw spellings</em> of one number (§5.3.1), which is why it is the predicate that can
     /// reach the limit while the categorical ones never can.
     /// </summary>
     public static IReadOnlyList<string> T10Truncating(long records, int limit)
@@ -316,7 +316,7 @@ internal static class ProbeOracle
 
     /// <summary>
     /// Every attribute the draft carries, held to the outcome its name was given: no attribute
-    /// outside the truncated set carries a recovery policy — an all-missing one included — and a
+    /// outside the truncated set carries a recovery policy (an all-missing one included), and a
     /// truncated one authors a non-empty retained prefix, an all-missing one authors no domain at
     /// all, and every other one authors its own complete non-empty domain.
     /// </summary>
@@ -336,7 +336,7 @@ internal static class ProbeOracle
 
             // Recovery is decided before either domain branch, so neither can skip it: the
             // all-missing exemption excuses an absent domain, never the `include` that only
-            // truncation authors (ProbeDraft) — an attribute that observed nothing had nothing to
+            // truncation authors (ProbeDraft); an attribute that observed nothing had nothing to
             // truncate.
             if (!truncated.Contains(name) && attribute.UnknownValuePolicy == UnknownValuePolicy.Include)
             {

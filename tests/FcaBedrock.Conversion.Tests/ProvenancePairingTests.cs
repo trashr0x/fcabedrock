@@ -46,7 +46,7 @@ public sealed class ProvenancePairingTests
     [Fact]
     public async Task Calibrate_WhenDescriptorTripleRolesDiffer_ThenThrows()
     {
-        // Same scalars, different resolved role map — caught by the role-map equality check.
+        // Same scalars, different resolved role map: caught by the role-map equality check.
         var sourceBinding = ConversionFixtures.Triple(TripleOrdering.Unordered); // roles (0,1,2)
         var source = ConversionFixtures.TripleSourceOver("s,p,a", sourceBinding);
         var resolvedBinding = new Binding(SourceShape.Triple, "utf-8", ',', '"', HasHeader: false, "invariant", "?",
@@ -97,7 +97,7 @@ public sealed class ProvenancePairingTests
         await Assert.ThrowsAsync<InvalidOperationException>(() => EmitAll(plan, source));
     }
 
-    // A source whose schema is known but whose rows throw — proves a mismatch is caught before ReadAsync.
+    // A source whose schema is known but whose rows throw: proves a mismatch is caught before ReadAsync.
     private sealed class RowsThrowingSource(SourceSchema schema) : IRecordSource
     {
         public SourceProvenance Provenance => SourceProvenance.Unvalidated;

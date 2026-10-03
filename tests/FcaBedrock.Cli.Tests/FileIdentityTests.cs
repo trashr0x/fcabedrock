@@ -172,7 +172,7 @@ public sealed class FileIdentityTests
     public void KeyFor_WhenTheFileIsReachedThroughALinkedDirectory_ThenTheKeysUnify()
     {
         // The approved fallback is the normalized FINAL-TARGET path, which means links
-        // anywhere in the path — not only a link at the end.
+        // anywhere in the path, not only a link at the end.
         using var temp = TempDirectory.Create();
         var real = Path.Combine(temp.Path, "real");
         Directory.CreateDirectory(real);
@@ -243,7 +243,7 @@ public sealed class FileIdentityTests
             $"symbolic links are unavailable on this host: {reason}");
 
         // The fallback resolves the FINAL link target, so it keeps the symlink alias class
-        // even without OS identity — which is the one alias class path comparison can see.
+        // even without OS identity, which is the one alias class path comparison can see.
         var identity = WithoutOsIdentity();
 
         Assert.False(identity.KeyFor(file).IsOperatingSystemIdentity);

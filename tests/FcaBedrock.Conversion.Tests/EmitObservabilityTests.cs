@@ -27,7 +27,7 @@ public sealed class EmitObservabilityTests
         UnknownValuePolicy policy, DiagnosticSeverity? expected)
     {
         // D-097: a filter-only attribute is discarded before discretization, so the restriction
-        // pass is its ONLY diagnostic owner — without this an unparseable filtered value would
+        // pass is its ONLY diagnostic owner. Without this an unparseable filtered value would
         // report nothing, a silent data-quality hole exactly where a filter must be trustworthy.
         // `include` behaves as warn: an unparseable token cannot join a numeric domain (§10.6).
         var spec = Wide(
@@ -71,17 +71,17 @@ public sealed class EmitObservabilityTests
     public async Task Emit_WhenAFailPolicyObservationIsFollowedByASurvivor_ThenEnumerationDoesNotHaltMidStream()
     {
         // The discriminator for the accepted no-mid-stream-halt contract (D-105): a `fail`-policy
-        // unparseable value is Error/**abort**, but "abort" is the operation-failed sense — the
+        // unparseable value is Error/**abort**, but "abort" is the operation-failed sense: the
         // stream still reads to completion, because the aggregated diagnostic needs the whole
         // population (D-050/D-059).
         //
         // The failing observation (row 1, "abc") sits BETWEEN two survivors. If the emitter
-        // truncated at the abort, the object at input position 2 could never appear — so its
+        // truncated at the abort, the object at input position 2 could never appear, so its
         // presence proves enumeration continued past the failing row. (And the survivors are named
         // "0" and "2", not "0" and "1", re-proving that a filtered row never renumbers row_index
         // under a fail policy.)
         //
-        // "t-y" is an empty column here, so AttributeHasNoCrosses WOULD fire — its absence proves
+        // "t-y" is an empty column here, so AttributeHasNoCrosses WOULD fire; its absence proves
         // the abort suppressed observability even though the stream completed normally.
         var spec = Wide(
             FilterNumeric("age", 0, UnknownValuePolicy.Fail, new RestrictToRange(10, 20)),
@@ -102,13 +102,13 @@ public sealed class EmitObservabilityTests
     {
         // The abort rule is about the RUN's validity, not about which path found the problem: an
         // included attribute's `fail` Error suppresses the aggregates exactly as a filter-only
-        // one's does. Otherwise "restriction fail" and "discretization fail" — two identical
-        // Error/abort outcomes — would report differently.
+        // one's does. Otherwise "restriction fail" and "discretization fail" (two identical
+        // Error/abort outcomes) would report differently.
         var spec = Wide(ConversionFixtures.NumericCuts("age", 0, UnknownValuePolicy.Fail, 30.0));
 
         var (objects, diagnostics) = await EmitAsync(spec, "abc");
 
-        Assert.Single(objects); // the stream still COMPLETES — `fail` aborts the operation, not the read
+        Assert.Single(objects); // the stream still COMPLETES: `fail` aborts the operation, not the read
         Assert.Single(diagnostics, d => d.Code == DiagnosticCode.SourceValueUnparseable
             && d.Severity == DiagnosticSeverity.Error);
         Assert.DoesNotContain(diagnostics, d => d.Code == DiagnosticCode.ObjectHasNoCrosses);
@@ -197,7 +197,7 @@ public sealed class EmitObservabilityTests
         // D-097's at-most-once rule, at its sharpest. The attribute is included AND restricted, so
         // BOTH the classification pass and the restriction pass read the same cell. The
         // classification pass owns the diagnostic (it runs for every formed object, filtered or
-        // not — "restrictions filter objects, not observations"), and the restriction path must
+        // not: "restrictions filter objects, not observations"), and the restriction path must
         // stay silent for it. A naive implementation reports twice.
         var spec = Wide(
             ConversionFixtures.NumericCuts("age", 0, UnknownValuePolicy.Warn, 30.0) with
@@ -217,7 +217,7 @@ public sealed class EmitObservabilityTests
     public async Task Emit_WhenTwoAttributesShareAColumn_ThenEachOwnsItsOwnAggregate()
     {
         // D-033: a source may repeat across attributes. Tallies are ATTRIBUTE-owned, so an
-        // included attribute and a filter-only one reading the same cell each report once — one
+        // included attribute and a filter-only one reading the same cell each report once: one
         // cell, two attributes, two diagnostics. That is not double-counting: D-097's rule is
         // at-most-once per observation PER ATTRIBUTE per pass.
         var spec = Wide(
@@ -234,7 +234,7 @@ public sealed class EmitObservabilityTests
     [Fact]
     public async Task Emit_WhenFilterOnlyStringIsAnyValue_ThenNoUnparseableIsPossible()
     {
-        // A string restriction never parses, so it can never report unparseable — every raw value
+        // A string restriction never parses, so it can never report unparseable: every raw value
         // is a legitimate non-match.
         var spec = Wide(Filter("Gene", 0, new RestrictToValue("Bmp5")), ConversionFixtures.Nominal("t", 1, "x"));
 
@@ -376,7 +376,7 @@ public sealed class EmitObservabilityTests
         Assert.Contains("4 emitted object(s)", diagnostic.Message, StringComparison.Ordinal);
 
         // Emission order, bounded to three: objects 1..4 are empty, so the sample is exactly
-        // "1, 2, 3" — object 4 is counted but not sampled.
+        // "1, 2, 3"; object 4 is counted but not sampled.
         Assert.Contains("(e.g. 1, 2, 3)", diagnostic.Message, StringComparison.Ordinal);
     }
 
@@ -409,7 +409,7 @@ public sealed class EmitObservabilityTests
     [Fact]
     public async Task Emit_WhenSomeRowsAndColumnsAreEmpty_ThenBothAggregatesFireInThePinnedOrder()
     {
-        // The mixed case, and the pinned order: whole context (NoObjectsEmitted — silent here),
+        // The mixed case, and the pinned order: whole context (NoObjectsEmitted, silent here),
         // then rows (ObjectHasNoCrosses), then columns (AttributeHasNoCrosses).
         var spec = Wide(ConversionFixtures.Nominal("t", 0, "a", "b"));
 
@@ -468,7 +468,7 @@ public sealed class EmitObservabilityTests
     [InlineData(DuplicateObjectPolicy.Keep)]
     public async Task Emit_WhenAKeyedPathEmitsNothing_ThenNoObjectsEmittedWarns(DuplicateObjectPolicy policy)
     {
-        // NoObjectsEmitted must fire on EVERY path, not just wide streaming — the dedupe path in
+        // NoObjectsEmitted must fire on EVERY path, not just wide streaming. The dedupe path in
         // particular closes its objects in a different place, so its zero-object case is a
         // distinct code path.
         var spec = new BedrockSpec(
@@ -513,7 +513,7 @@ public sealed class EmitObservabilityTests
     public async Task Emit_WhenAnObjectSurvivesAnAllFilterOnlyZeroColumnPlan_ThenItIsAnEmptyRow()
     {
         // The other zero-column case: a plan with NO columns that DOES emit objects. Every
-        // emitted object trivially crosses nothing, so ObjectHasNoCrosses reports them — while
+        // emitted object trivially crosses nothing, so ObjectHasNoCrosses reports them, while
         // NoObjectsEmitted stays silent (objects exist) and AttributeHasNoCrosses stays silent
         // (there are no columns to be empty). NoFormalAttributes is a PLAN warning, not an emit
         // one, so it is absent from this collector.
@@ -563,7 +563,7 @@ public sealed class EmitObservabilityTests
     {
         // The established emit-aggregate rule (§16.4), applied unchanged: after a halt the stream
         // is truncated, so "no objects" or "this column is empty" would describe the HALT rather
-        // than the data. The halt is forced for real — an invalid object key at record 0.
+        // than the data. The halt is forced for real: an invalid object key at record 0.
         var spec = new BedrockSpec(
             ConversionFixtures.WideWithKey(0, DuplicateObjectPolicy.Fail),
             [ConversionFixtures.Nominal("t", 1, "a", "b")]);
@@ -642,7 +642,7 @@ public sealed class EmitObservabilityTests
     public async Task Emit_WhenReplayedForCxt_ThenEachObservabilityWarningIsReportedExactlyOnce()
     {
         // The .cxt writer enumerates the stream TWICE. The warnings route through the ordinary
-        // data sink, so the session's first-pass claim single-counts them — both passes are
+        // data sink, so the session's first-pass claim single-counts them; both passes are
         // genuinely opened here, so a per-pass implementation would double them.
         var spec = Wide(ConversionFixtures.Nominal("t", 0, "a", "b"));
         var source = ConversionFixtures.SourceOver("a\nz", spec.Binding);
@@ -713,7 +713,7 @@ public sealed class EmitObservabilityTests
         Assert.StartsWith("B\n", text, StringComparison.Ordinal);
         Assert.NotEmpty(text);
 
-        // …and it is INVALID, discoverable only from the diagnostics — inspected after disposal,
+        // …and it is INVALID, discoverable only from the diagnostics, inspected after disposal,
         // which is when the final cross-pass aggregates land.
         Assert.Contains(diagnostics, d => d.Code == DiagnosticCode.TripleSubjectNotContiguous
             && d.Severity == DiagnosticSeverity.Error);
@@ -725,7 +725,7 @@ public sealed class EmitObservabilityTests
     {
         // G-12's .dat half: the stream writes rows immediately, so by the time the filter-only
         // `fail` aggregate reports its Error the bytes are already in the caller's sink. Nothing
-        // can retract them — the caller must discard the artifact.
+        // can retract them: the caller must discard the artifact.
         var spec = Wide(
             FilterNumeric("age", 0, UnknownValuePolicy.Fail, new RestrictToRange(10, 20)),
             ConversionFixtures.Nominal("t", 1, "x"));

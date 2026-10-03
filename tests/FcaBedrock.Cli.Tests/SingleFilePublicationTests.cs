@@ -72,7 +72,7 @@ public sealed class SingleFilePublicationTests
 
         Assert.Null(await run.PublishAsync(New, force: true));
 
-        // Renamed aside first, then the stage committed into the freed path — never a copy.
+        // Renamed aside first, then the stage committed into the freed path, never a copy.
         var moves = run.Folded("Move:");
         Assert.Equal($"Move:{run.Name}->{run.Name}.fcabedrock-backup-T", moves[^2]);
         Assert.Equal($"Move:{run.Name}.fcabedrock-stage-T->{run.Name}", moves[^1]);
@@ -483,7 +483,7 @@ public sealed class SingleFilePublicationTests
         Assert.Equal(target, await File.ReadAllBytesAsync(run.Out));
 
         // 3. The record, the rollback marker, and the exact unidentifiable stage are all still
-        //    there, byte-for-byte — and the stage is the same OBJECT, not merely the same name.
+        //    there, byte-for-byte, and the stage is the same OBJECT, not merely the same name.
         Assert.NotNull(beforeRollback);
         var stage = Directory.GetFiles(run.Directory, $"{run.Name}.fcabedrock-stage-*").Single();
         var identity = FileIdentity.CreateDefault().KeyFor(stage);
@@ -514,7 +514,7 @@ public sealed class SingleFilePublicationTests
 
             // Nothing created or renamed; exactly one removal ATTEMPT, at the same preserved stage.
             // That attempt beside an unchanged byte map and identity key proves the acting-boundary
-            // proof refused it — a stronger statement than never having tried.
+            // proof refused it: a stronger statement than never having tried.
             run.AssertOnlyAttemptedDelete(Path.GetFileName(stage));
             Assert.Equal(map, run.Snapshot());
             Assert.Equal(identity, FileIdentity.CreateDefault().KeyFor(stage));
@@ -525,7 +525,7 @@ public sealed class SingleFilePublicationTests
 /// <summary>
 /// One temporary single-file publication: an input, an output path, and the injected filesystem
 /// and cancellation source the transaction is driven with. <see cref="PublishAsync"/> drives the
-/// same sequence a caller does — preflight, begin, stage, seal, commit, roll back on any failure.
+/// same sequence a caller does: preflight, begin, stage, seal, commit, roll back on any failure.
 /// </summary>
 internal sealed class SingleRun : IDisposable
 {
@@ -548,7 +548,7 @@ internal sealed class SingleRun : IDisposable
     /// <summary>The injected publication filesystem for the current attempt.</summary>
     public RecordingPublicationFileSystem Files { get; private set; } = new();
 
-    /// <summary>The input the run reads — what every identity collision is measured against.</summary>
+    /// <summary>The input the run reads: what every identity collision is measured against.</summary>
     public string Input { get; }
 
     /// <summary>The verbatim <c>--out</c> operand.</summary>
@@ -598,8 +598,8 @@ internal sealed class SingleRun : IDisposable
         }
 
         // Disposed on every exit, exactly as the real command handlers do it. A transaction whose
-        // references outlive it would keep an already-requested Windows deletion pending, and — in
-        // the crash cases — would let a retry prove ownership from the DEAD invocation's own live
+        // references outlive it would keep an already-requested Windows deletion pending, and (in
+        // the crash cases) would let a retry prove ownership from the DEAD invocation's own live
         // handles instead of from the cold state on disk.
         using var transaction = ((PublicationReady)preparation).Transaction;
         try
@@ -667,7 +667,7 @@ internal sealed class SingleRun : IDisposable
     public IReadOnlyList<string> Residue() =>
         [.. Names().Where(name => name.Contains(".fcabedrock-", StringComparison.Ordinal))];
 
-    /// <summary>Every file name paired with its exact bytes — the before/after preservation oracle.</summary>
+    /// <summary>Every file name paired with its exact bytes: the before/after preservation oracle.</summary>
     public Dictionary<string, byte[]> Snapshot() =>
         System.IO.Directory.GetFiles(Directory)
             .ToDictionary(path => Path.GetFileName(path), File.ReadAllBytes, StringComparer.Ordinal);
@@ -694,7 +694,7 @@ internal sealed class SingleRun : IDisposable
     public void AssertOnlyAttemptedDelete(string expected) =>
         Assert.Equal([$"Delete:{expected}"], Attempts());
 
-    // Every operation that could change the location, in order — attempted, not necessarily done.
+    // Every operation that could change the location, in order: attempted, not necessarily done.
     private IReadOnlyList<string> Attempts() =>
         [.. Files.Operations.Where(operation =>
             operation.StartsWith("CreateNew:", StringComparison.Ordinal)

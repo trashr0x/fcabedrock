@@ -11,7 +11,7 @@ namespace FcaBedrock.Benchmarks;
 /// object, interleaved so no key's rows are adjacent.
 /// <para>
 /// Wide <c>dedupe</c> shares the grouping/sort-merge/spool backend with triple <c>unordered</c>
-/// (§6.1), so this measures that backend from the <em>other</em> side — same machinery, wide records
+/// (§6.1), so this measures that backend from the <em>other</em> side: same machinery, wide records
 /// instead of triple rows, and a merge that unions crosses rather than accumulating observations.
 /// The pair is what tells a cost of the backend apart from a cost of the triple path.
 /// </para>
@@ -59,7 +59,7 @@ public abstract class KeyedDedupeBenchmark
     public void Cleanup() => _run.Cleanup();
 }
 
-/// <summary>Keyed dedupe at 10,000 rows — 2,500 objects.</summary>
+/// <summary>Keyed dedupe at 10,000 rows: 2,500 objects.</summary>
 [BenchmarkCategory(BenchmarkCategories.Small)]
 [BenchmarkCorpus(CorpusCases.KeyedFamily, CorpusTier.Small)]
 public class KeyedDedupeSmall : KeyedDedupeBenchmark
@@ -67,7 +67,7 @@ public class KeyedDedupeSmall : KeyedDedupeBenchmark
     private protected override CorpusCase Corpus => CorpusCases.Keyed(CorpusTier.Small);
 }
 
-/// <summary>Keyed dedupe at 730,000 rows — 182,500 objects. Opt-in.</summary>
+/// <summary>Keyed dedupe at 730,000 rows: 182,500 objects. Opt-in.</summary>
 [BenchmarkCategory(BenchmarkCategories.Working)]
 [BenchmarkCorpus(CorpusCases.KeyedFamily, CorpusTier.Working)]
 public class KeyedDedupeWorking : KeyedDedupeBenchmark
@@ -75,7 +75,7 @@ public class KeyedDedupeWorking : KeyedDedupeBenchmark
     private protected override CorpusCase Corpus => CorpusCases.Keyed(CorpusTier.Working);
 }
 
-/// <summary>Keyed dedupe at 7.3M rows — 1,825,000 objects. Opt-in.</summary>
+/// <summary>Keyed dedupe at 7.3M rows: 1,825,000 objects. Opt-in.</summary>
 [BenchmarkCategory(BenchmarkCategories.Scale)]
 [BenchmarkCorpus(CorpusCases.KeyedFamily, CorpusTier.Scale7M)]
 public class KeyedDedupeScale7M : KeyedDedupeBenchmark
@@ -114,7 +114,7 @@ public class LongTextSourceDrainWorking : WideSourceDrainBenchmark
 
 /// <summary>
 /// Emits and exports the long-text case. Two crosses per object over a sixteen-column plan, so the
-/// context is trivial and the reading is not — which is what isolates the cost of long values from
+/// context is trivial and the reading is not, which is what isolates the cost of long values from
 /// the cost of a wide or dense context.
 /// </summary>
 [BenchmarkCategory(BenchmarkCategories.Convert)]

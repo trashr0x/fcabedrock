@@ -20,7 +20,7 @@ public sealed class FreePerValueDiscretizerTests
 
     [Theory]
     [InlineData("broad")]
-    [InlineData("90.0")] // string mode does NOT parse — distinct spellings stay distinct bins
+    [InlineData("90.0")] // string mode does NOT parse: distinct spellings stay distinct bins
     [InlineData("9e1")]
     [InlineData("")]
     public void Discretize_WhenStringMode_ThenValueIsItsOwnBin(string raw) =>
@@ -45,7 +45,7 @@ public sealed class FreePerValueDiscretizerTests
     [InlineData("0e0")]
     [InlineData("-0.0")]
     public void Discretize_WhenNumberModeZeroSpelling_ThenBinIsCanonicalZero(string raw) =>
-        // Every zero spelling — signed zero included — collapses to the identity "0" (D-096).
+        // Every zero spelling (signed zero included) collapses to the identity "0" (D-096).
         Assert.Equal(BinResult.Bin("0"), Number().Discretize(raw));
 
     [Theory]

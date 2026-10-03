@@ -16,7 +16,7 @@ public sealed class DiagnosticRendererTests
     private const long Record = 41;
     private const string Tail = "warning UnknownValueObserved: message\n";
 
-    // Bit values: file 1, line 2, column 4, attribute 8, record 16 — all 32 subsets.
+    // Bit values: file 1, line 2, column 4, attribute 8, record 16; all 32 subsets.
     public static TheoryData<int, string> LocationCombinations() => new()
     {
         { 0, "" },
@@ -94,7 +94,7 @@ public sealed class DiagnosticRendererTests
     public void Render_WhenStringLocationsAreEmpty_ThenTheyStillRenderAsPresentFields()
     {
         // Populated means NON-NULL. An empty file or attribute name is a real, if odd,
-        // value and must not vanish — losing it would silently change the grammar.
+        // value and must not vanish: losing it would silently change the grammar.
         var rendered = DiagnosticRenderer.Render(new BedrockDiagnostic(
             DiagnosticCode.UnknownValueObserved, DiagnosticSeverity.Warning, "m",
             new DiagnosticLocation(File: string.Empty, AttributeName: string.Empty)));

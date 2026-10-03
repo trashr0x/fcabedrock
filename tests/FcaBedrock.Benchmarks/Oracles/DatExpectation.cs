@@ -10,7 +10,7 @@ namespace FcaBedrock.Benchmarks.Oracles;
 /// <see cref="CrossIdSum"/> is the sum of every crossed formal-attribute id. It is here rather than
 /// derived on demand because it costs nothing to accumulate while the expectation is already being
 /// streamed, and re-deriving it would mean a second full traversal of a seventy-three-million-row
-/// corpus. It is what a case with <b>no artifact to compare</b> — an emit drain — validates against:
+/// corpus. It is what a case with <b>no artifact to compare</b> (an emit drain) validates against:
 /// a conversion that crossed the right <em>number</em> of wrong columns matches the cross count and
 /// fails this.
 /// </para>
@@ -21,9 +21,9 @@ internal sealed record ContextExpectation(
 /// <summary>
 /// Streams the expected native <c>.dat</c> for any family and returns its length and digest.
 /// <para>
-/// Every family's oracle differs in exactly one thing — which formal attributes an object crosses —
+/// Every family's oracle differs in exactly one thing (which formal attributes an object crosses),
 /// so that is the only thing each one supplies. The serialization is shared: native writer settings
-/// (one-based ids, ascending, space-separated, LF, a trailing newline, no trailing spaces — §18.2),
+/// (one-based ids, ascending, space-separated, LF, a trailing newline, no trailing spaces; §18.2),
 /// spelled out here once rather than restated per family, where a slip would produce an expectation
 /// that quietly agreed with a bug.
 /// </para>

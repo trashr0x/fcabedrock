@@ -13,7 +13,7 @@ namespace FcaBedrock.Cli.Tests;
 /// <para>
 /// Every case inspects the real directory afterwards. A test that claims a rollback restored the
 /// previous run compares the <em>bytes</em> that are there against the bytes that were there, and
-/// a test that claims residue was left untouched compares those bytes too — a mock callback would
+/// a test that claims residue was left untouched compares those bytes too; a mock callback would
 /// prove neither.
 /// </para>
 /// </summary>
@@ -37,7 +37,7 @@ public sealed class PublicationTests
             run.Harness.StdErr);
 
         // Zero mutation: the existing file is untouched, and no record, stage, or backup was
-        // ever created — preflight finishes before the transaction begins.
+        // ever created; preflight finishes before the transaction begins.
         Assert.Equal("previous", await File.ReadAllTextAsync(run.Target(".cxt")));
         Assert.False(File.Exists(run.Target(".dat")));
         Assert.Empty(run.Residue());
@@ -284,8 +284,8 @@ public sealed class PublicationTests
         Assert.Equal(0, exit);
 
         // The record, then each artifact's evidence as its stage closes, then the demoted marker's
-        // evidence at sealing, then the backups — the old manifest ahead of the artifacts it
-        // certified — then the commits in canonical order with the manifest last. Renames
+        // evidence at sealing, then the backups (the old manifest ahead of the artifacts it
+        // certified), then the commits in canonical order with the manifest last. Renames
         // throughout: no file is ever opened to copy or rehash an old target, and every
         // authoritative control name is published by one rename.
         //
@@ -307,8 +307,8 @@ public sealed class PublicationTests
         // And every REMOVAL names the object it destroys, in the cleanup's own order: the
         // descriptor as the record publishes, then the superseded backups, then the markers
         // most-advanced-first, then each target's evidence and stage claim, and the record last of
-        // all. Each is an identity-bound removal — the proof is taken from the handle the deletion
-        // acts through — so none of them can destroy a file that appeared at the name in between.
+        // all. Each is an identity-bound removal (the proof is taken from the handle the deletion
+        // acts through), so none of them can destroy a file that appeared at the name in between.
         Assert.Equal(
             [
                 "out.fcabedrock-intent-T-3f-T-T",
@@ -376,7 +376,7 @@ public sealed class PublicationTests
     public async Task Publication_WhenForcedNoManifestReplacesAManifestBearingRun_ThenTheStaleMarkerIsGone()
     {
         // The old manifest certifies bytes that no longer exist, so it must not survive the run
-        // that replaced them — even though this run writes no manifest of its own.
+        // that replaced them, even though this run writes no manifest of its own.
         using var run = ConvertRun.Wide();
         Assert.Equal(0, await run.ConvertAsync("--format", "both"));
 
@@ -442,7 +442,7 @@ public sealed class PublicationTests
     public async Task Publication_WhenAPreStageCrashLeftAPreExistingFinal_ThenThatFinalIsNeverTouched()
     {
         // The record lists three stages; none was created. Only `out.cxt` exists, and
-        // it is a file the interrupted run had not yet renamed aside — not something it published.
+        // it is a file the interrupted run had not yet renamed aside, not something it published.
         // Without a durable phase, "no stage, present target" would read as a partial commit and
         // delete it.
         using var run = ConvertRun.Wide();
@@ -514,7 +514,7 @@ public sealed class PublicationTests
         residue.WriteMarker("staged");
 
         // The recovered old target then blocks the new run, exactly as an ordinary existing
-        // target does — recovery restores, it does not authorize a replacement.
+        // target does: recovery restores, it does not authorize a replacement.
         var exit = await run.ConvertAsync("--format", "cxt");
 
         Assert.Equal(1, exit);
@@ -533,7 +533,7 @@ public sealed class PublicationTests
         residue.WritePrivate("stage", "out.dat", "not committed");
 
         // out.cxt exists and its stage is gone: the interrupted run committed it. out.dat never
-        // committed, so the run as a whole did not — the partial commit is undone.
+        // committed, so the run as a whole did not; the partial commit is undone.
         await File.WriteAllTextAsync(run.Target(".cxt"), "the interrupted new cxt");
 
         // The evidence names the objects: the old CXT now held in its backup, and the staged CXT
@@ -617,7 +617,7 @@ public sealed class PublicationTests
     {
         // The interrupted run committed its new CXT, then failed and began rolling
         // back: it restored the old DAT and manifest but could not delete the new CXT. Every
-        // stage is now gone and every final path is populated — the exact shape a completed
+        // stage is now gone and every final path is populated: the exact shape a completed
         // commit leaves. Only the durable rollback marker distinguishes them.
         using var run = ConvertRun.Wide();
         var residue = Residue.Create(run.Directory, "out", "aaaaaaaabbbbbbbbccccccccdddddddd");
@@ -632,7 +632,7 @@ public sealed class PublicationTests
 
         // The evidence is what tells the two apart: the DAT and manifest now at their targets are
         // the objects this transaction renamed aside and has already restored, while the CXT is
-        // the object it staged and published — so only that one may be removed.
+        // the object it staged and published, so only that one may be removed.
         residue.WriteEvidence(
             "m",
             "out.manifest.toml",
@@ -824,7 +824,7 @@ public sealed class PublicationTests
     public async Task Publication_WhenAStageCloseFails_ThenItIsReportedAsAnOutputFailure(string target, string format)
     {
         // A deferred failure surfacing at close means the stage is not trustworthy, so it fails
-        // exactly as an earlier write would have — and before anything is committed.
+        // exactly as an earlier write would have, and before anything is committed.
         using var run = ConvertRun.Wide();
         run.Harness.PublicationFiles.FailStreamClosePrefix = StageOf(target);
 
@@ -965,7 +965,7 @@ public sealed class PublicationTests
                 $"the outputs '{run.Target(".cxt")}' and '{run.Target(".dat")}' are the same file."),
             run.Harness.StdErr);
 
-        // The prior transaction was completed — the old CXT is home — and this run began nothing.
+        // The prior transaction was completed (the old CXT is home), and this run began nothing.
         Assert.Equal("the old cxt", await File.ReadAllTextAsync(run.Target(".cxt")));
         Assert.Empty(run.Residue());
     }
@@ -979,8 +979,8 @@ public sealed class PublicationTests
     {
         // The commit publishes the new CXT and then fails; rollback is entered, but
         // its marker cannot be made durable. Rolling back anyway could restore the old DAT and
-        // manifest while leaving the new CXT — no stages, all finals populated, `staged` the only
-        // durable fact — which the next run would finish FORWARD, discarding the old CXT backup.
+        // manifest while leaving the new CXT (no stages, all finals populated, `staged` the only
+        // durable fact), which the next run would finish FORWARD, discarding the old CXT backup.
         using var run = ConvertRun.Wide();
         Assert.Equal(0, await run.ConvertAsync("--format", "both"));
         var before = run.Snapshot();
@@ -1012,7 +1012,7 @@ public sealed class PublicationTests
         Assert.Equal(3, residue.Count(name => name.Contains(".fcabedrock-backup-", StringComparison.Ordinal)));
 
         // An ordinary unforced retry: recovery must restore the complete previous set and then
-        // refuse to overwrite it — never finish the failed run forward.
+        // refuse to overwrite it, never finish the failed run forward.
         var retry = new CliTestHarness();
         Assert.Equal(
             1, await retry.RunAsync("convert", run.Spec, run.Data, "--out", run.Base, "--format", "both"));
@@ -1028,7 +1028,7 @@ public sealed class PublicationTests
     {
         // Committed means every stage was renamed to its final. A committed marker
         // beside a surviving stage and a missing final is a state no run reaches, so it authorizes
-        // no cleanup at all — otherwise recovery would delete both the stage and the old backup
+        // no cleanup at all; otherwise recovery would delete both the stage and the old backup
         // and leave nothing published.
         using var run = ConvertRun.Wide();
         var residue = Residue.Create(run.Directory, "out", "aaaaaaaabbbbbbbbccccccccdddddddd");
@@ -1158,7 +1158,7 @@ public sealed class PublicationTests
     public async Task Publication_WhenTheDemotedManifestIsTheDataFile_ThenItIsRefusedEvenWithForce()
     {
         // A --no-manifest --force run renames the old manifest aside and deletes it.
-        // That makes it a mutated participant, and --force never authorizes destroying an input —
+        // That makes it a mutated participant, and --force never authorizes destroying an input,
         // so it must be in the collision preflight, not discovered afterwards.
         using var temp = TempDirectory.Create();
         var harness = new CliTestHarness();
@@ -1238,7 +1238,7 @@ public sealed class PublicationTests
     public async Task Publication_WhenPriorResidueUsesAnotherCase_ThenItIsRecoveredBeforeTheNewRun()
     {
         // On a case-insensitive directory `OUT` and `out` name the same physical
-        // files. Residue this run cannot see is residue it can publish beside — and that a later
+        // files. Residue this run cannot see is residue it can publish beside, and that a later
         // run spelled the other way can then delete as its own.
         using var run = ConvertRun.Wide();
         if (!IsCaseInsensitive(run.Directory))
@@ -1255,7 +1255,7 @@ public sealed class PublicationTests
 
         var exit = await run.ConvertAsync("--format", "cxt");
 
-        // The uppercase transaction was found, rolled back, and cleared — and only then did this
+        // The uppercase transaction was found, rolled back, and cleared, and only then did this
         // run publish. Nothing of it survives to act on the new artifact later.
         Assert.Equal(0, exit);
         Assert.Empty(run.Residue());
@@ -1305,8 +1305,8 @@ public sealed class PublicationTests
     public async Task Publication_WhenAStageIsCreated_ThenItIsRequestedThroughTheConfidentialPath()
     {
         // The boundary is a property of the CALL, so it is asserted on the call: every
-        // data-bearing stage asks for a confidential creation, while control files — whose names
-        // are already visible in the directory listing — do not.
+        // data-bearing stage asks for a confidential creation, while control files (whose names
+        // are already visible in the directory listing) do not.
         using var run = ConvertRun.Wide();
 
         Assert.Equal(0, await run.ConvertAsync("--format", "both"));
@@ -1351,7 +1351,7 @@ public sealed class PublicationTests
     public async Task Publication_WhenAStageSurvivesAsResidue_ThenItsWindowsAclIsOwnerOnly()
     {
         // `FileShare.None` guards only a live handle, and crash residue is exactly the
-        // case where no handle is left — so the boundary that matters is the file's own DACL,
+        // case where no handle is left, so the boundary that matters is the file's own DACL,
         // established at creation and protected from inheritance, as the spool workspace does.
         Assert.SkipUnless(OperatingSystem.IsWindows(), "Windows DACL — asserted on Windows.");
         if (OperatingSystem.IsWindows())
@@ -1589,7 +1589,7 @@ public sealed class PublicationTests
     }
 
     // The private-name role a created file carries: `intent`, `pending`, `stage`, `ep`, `staged`,
-    // `rollback`, or `committed`. Everything after it — token, shape, digest, kind code — is
+    // `rollback`, or `committed`. Everything after it (token, shape, digest, kind code) is
     // dropped, so the sequence is assertable without knowing an unpredictable value.
     private static string Kind(string fileName)
     {
@@ -1599,7 +1599,7 @@ public sealed class PublicationTests
         return dash < 0 ? rest : rest[..dash];
     }
 
-    // The transaction record this run published, read off its own operation log — the destination
+    // The transaction record this run published, read off its own operation log: the destination
     // of the rename that made it discoverable.
     private static string RecordCreated(CliTestHarness harness)
     {
@@ -1633,7 +1633,7 @@ public sealed class PublicationTests
         return moves;
     }
 
-    // Every object the run removed, in order — with each token folded to `T`.
+    // Every object the run removed, in order, with each token folded to `T`.
     private static List<string> Removals(CliTestHarness harness) =>
         [.. harness.PublicationFiles.Operations
             .Where(operation => operation.StartsWith("Delete:", StringComparison.Ordinal))
@@ -1682,8 +1682,8 @@ internal sealed class Residue
 
     /// <summary>
     /// Records that the interrupted transaction durably reached <paramref name="phase"/>. The body
-    /// is the canonical control document — the run token, this base, the phase's own role, and the
-    /// digest of the record this residue carries — spelled out here rather than produced by the
+    /// is the canonical control document (the run token, this base, the phase's own role, and the
+    /// digest of the record this residue carries), spelled out here rather than produced by the
     /// writer under test, so a change to it fails these tests instead of silently keeping them
     /// green.
     /// </summary>
@@ -1710,7 +1710,7 @@ internal sealed class Residue
         return new UTF8Encoding(false).GetBytes(text.ToString());
     }
 
-    /// <summary>The digest of the record this residue wrote — what every control of it binds to.</summary>
+    /// <summary>The digest of the record this residue wrote: what every control of it binds to.</summary>
     public string RecordDigest { get; private set; } = string.Empty;
 
     /// <summary>
@@ -1721,8 +1721,8 @@ internal sealed class Residue
         Path.Combine(Directory, $"{BaseName}.fcabedrock-sc-{kind}-{Token}-{digest}");
 
     /// <summary>
-    /// Records that the interrupted transaction created the stage object for <paramref name="target"/>
-    /// — the durable fact that separates its own stage from a file that merely occupies the path.
+    /// Records that the interrupted transaction created the stage object for <paramref name="target"/>:
+    /// the durable fact that separates its own stage from a file that merely occupies the path.
     /// The identity it acknowledges appears in both the name and the body, and the body is spelled
     /// out here rather than produced by the writer under test.
     /// </summary>
@@ -1736,7 +1736,7 @@ internal sealed class Residue
 
     /// <summary>
     /// Writes one target's identity evidence, spelled out here rather than produced by the writer
-    /// under test — so a change to the format fails these tests instead of silently keeping them
+    /// under test, so a change to the format fails these tests instead of silently keeping them
     /// green. The two identity <em>values</em> necessarily come from the real filesystem: they name
     /// objects, and only the host can say what an object is.
     /// </summary>
@@ -1761,7 +1761,7 @@ internal sealed class Residue
     public string Identity(string role, string target) => IdentityOf(PrivatePath(role, target), role, target);
 
     /// <summary>
-    /// The identity digest of an object that <b>no longer exists</b> — what evidence carries for a
+    /// The identity digest of an object that <b>no longer exists</b>: what evidence carries for a
     /// stage a commit rename consumed, or a backup a restore renamed home.
     /// </summary>
     public string ConsumedIdentity(string role, string target)

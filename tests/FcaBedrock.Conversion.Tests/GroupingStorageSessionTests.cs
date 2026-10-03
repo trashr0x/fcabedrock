@@ -6,7 +6,7 @@ using FcaBedrock.Export;
 namespace FcaBedrock.Conversion.Tests;
 
 // The EmitReplaySession's cross-pass storage aggregation (D-082): storage failures are captured on
-// every pass and flushed as one final per identity at disposal — so a pass-2-only failure is never
+// every pass and flushed as one final per identity at disposal, so a pass-2-only failure is never
 // lost, per-pass counts combine, severities promote, and nothing lands before disposal.
 public sealed class GroupingStorageSessionTests
 {
@@ -195,8 +195,8 @@ public sealed class GroupingStorageSessionTests
                 new ThrowOnWriteStream()));
 
             // Scoped to the code under test. Pass 1 completes normally before the writer faults
-            // in pass 2, so its ordinary emit aggregates — here the whole-stream observability
-            // warnings (§16.4/D-105), since this fixture leaves a column empty — have already
+            // in pass 2, so its ordinary emit aggregates (here the whole-stream observability
+            // warnings, §16.4/D-105, since this fixture leaves a column empty) have already
             // legitimately landed in the collector. What this test pins is narrower and
             // unchanged: a STORAGE diagnostic is intercepted on every pass and appended only at
             // disposal.
@@ -218,7 +218,7 @@ public sealed class GroupingStorageSessionTests
     {
         // Each pass: the reader ctor's stream.Length faults (in-path MergeRead) and disposing the opened
         // stream also faults (CleanupClose). The session captures both per pass and, at disposal, flushes
-        // them in first-occurrence order — MergeRead then CleanupClose — preserved across passes (Codex
+        // them in first-occurrence order (MergeRead then CleanupClose), preserved across passes (Codex
         // point 3, assertion 3).
         var fs = new FakeSpoolFileSystem { WrapReadStream = (_, stream) => new ThrowOnLengthStream(stream, throwOnDispose: true) };
         var options = new GroupingOptions(maxBufferedBytes: 1, maxMergeFanIn: 2, fileSystem: fs);

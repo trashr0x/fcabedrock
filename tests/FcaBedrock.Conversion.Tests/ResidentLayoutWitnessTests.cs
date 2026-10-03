@@ -233,8 +233,8 @@ public sealed class ResidentLayoutWitnessTests
     public void FieldLayoutUpperBound_ShouldBeConservativeForATypeWhoseRealSizeIsObservable()
     {
         // The technique used below for the accumulator object, validated first against a type this
-        // file CAN observe directly. A dictionary with no capacity allocates only its own object -
-        // buckets and entries stay null until something is stored - so the observed value is the
+        // file CAN observe directly. A dictionary with no capacity allocates only its own object
+        // (buckets and entries stay null until something is stored), so the observed value is the
         // true object size, and the field walk must not come in under it.
         var observed = Observe(() => new Dictionary<double, long>());
         var bound = FieldLayoutUpperBound(typeof(Dictionary<double, long>));

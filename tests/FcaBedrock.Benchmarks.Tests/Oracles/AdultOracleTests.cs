@@ -14,7 +14,7 @@ namespace FcaBedrock.Benchmarks.Tests.Oracles;
 /// its own.
 /// <para>
 /// The cases below are written against the way that claim can be false while every aggregate still
-/// looks right — one attribute emitting nothing while the others emit a dozen columns each — because
+/// looks right (one attribute emitting nothing while the others emit a dozen columns each), because
 /// an aggregate count is exactly what cannot see it.
 /// </para>
 /// </summary>
@@ -71,7 +71,7 @@ public sealed class AdultOracleTests
     {
         // THE counterexample. `occupation` crosses nothing in any bin and carries no missing
         // column, yet fourteen attributes are planned and the schema still holds far more than
-        // fourteen columns — so an aggregate `FormalAttributes.Count >= 14` test passes on a plan
+        // fourteen columns, so an aggregate `FormalAttributes.Count >= 14` test passes on a plan
         // that emits nothing at all for one of the curated attributes.
         var (attributes, formal) = Shape(columnsEach: 3);
         var index = Array.IndexOf(AdultAttributes, "occupation");
@@ -96,7 +96,7 @@ public sealed class AdultOracleTests
     public void RequirePlanShape_WhenAnAttributeIsCoveredOnlyByAnotherAttributesColumn_ThenItThrows()
     {
         // The weaker repair the aggregate invited: counting crossed ids rather than attributing
-        // them. `race` is not empty here — it points at a column `education` owns — so a check
+        // them. `race` is not empty here (it points at a column `education` owns), so a check
         // that only asked "does every attribute cross something?" would accept it.
         var (attributes, formal) = Shape(columnsEach: 3);
         var race = Array.IndexOf(AdultAttributes, "race");

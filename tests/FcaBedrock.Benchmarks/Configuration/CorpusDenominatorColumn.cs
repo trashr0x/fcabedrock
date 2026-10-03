@@ -13,7 +13,7 @@ namespace FcaBedrock.Benchmarks.Configuration;
 /// <para>
 /// BenchmarkDotNet reports time and allocations; it is not domain-aware, so records/second and
 /// MiB/second are ours to supply. Publishing the <em>denominators</em> rather than a precomputed
-/// rate is deliberate — the raw measurement stays BenchmarkDotNet's, and any derived figure in the
+/// rate is deliberate: the raw measurement stays BenchmarkDotNet's, and any derived figure in the
 /// report can be rechecked against the corpus catalog that produced it.
 /// </para>
 /// </summary>

@@ -10,7 +10,7 @@ namespace FcaBedrock.Benchmarks.Oracles;
 /// reporting: the whole point of the phase is which cuts and which domain it produces, and both are
 /// data-dependent, so both are exactly the kind of result that can drift silently. These
 /// expectations are derived from the corpus definition and the documented calibration semantics,
-/// never from the calibrator — and they are exact, not approximate, because the population is a
+/// never from the calibrator, and they are exact, not approximate, because the population is a
 /// known arithmetic sequence rather than something that has to be sorted to be known.
 /// </para>
 /// </summary>
@@ -56,7 +56,7 @@ internal static class CalibrationOracle
     /// The exact equal-frequency cuts for <c>n_seq</c>.
     /// <para>
     /// <c>n_seq</c> is the row index, so the population is <c>0 .. records-1</c> with every value
-    /// distinct and already ascending — which makes the k-th boundary's order statistic knowable by
+    /// distinct and already ascending, which makes the k-th boundary's order statistic knowable by
     /// arithmetic. Equal-frequency places <c>bins - 1</c> boundaries at ranks <c>N*k/bins</c>; with
     /// all values distinct there are no tied groups to resolve and no feasibility clamp to apply, so
     /// the cut is simply the value at that rank. Ranks are computed in <see cref="System.Int128"/>
@@ -92,7 +92,7 @@ internal static class CalibrationOracle
 
     /// <summary>
     /// Validates a completed W16 calibration against the expectations above, and against the shape
-    /// contract the calibrated state itself must satisfy — one retained outcome per data-dependent
+    /// contract the calibrated state itself must satisfy: one retained outcome per data-dependent
     /// attribute, of the kind that attribute's configuration requires.
     /// </summary>
     public static void RequireW16(CalibratedSpec calibrated, long records, string what)
@@ -136,7 +136,7 @@ internal static class CalibrationOracle
     /// interleaved file reaches every subject's first row before any subject's second, so the
     /// <em>order</em> in which those values are first seen is genuinely different. A declared-domain
     /// conversion is therefore byte-identical across the layouts, while a discovered one need not
-    /// be — and an expectation that assumed otherwise would be wrong about the spec, not about the
+    /// be, and an expectation that assumed otherwise would be wrong about the spec, not about the
     /// code.
     /// </para>
     /// </summary>
@@ -178,7 +178,7 @@ internal static class CalibrationOracle
     /// <para>
     /// The observed domain is checked <b>exactly</b>, including its layout-specific order. The
     /// equal-frequency cuts are checked for shape and bracketing rather than value: this population
-    /// is deliberately tie-heavy — every subject contributes its stage twice, once per raw spelling —
+    /// is deliberately tie-heavy (every subject contributes its stage twice, once per raw spelling),
     /// so an exact expectation would mean re-implementing the boundary-feasibility algorithm D-103
     /// pins, and an oracle that reimplements the thing it checks is not evidence. The exact-value
     /// check lives on the wide case instead, where the population is an arithmetic sequence and the
@@ -235,7 +235,7 @@ internal static class CalibrationOracle
     /// Validates the many-quantile calibration: sixteen exact equal-frequency attributes, four bin
     /// counts over each of the four numeric columns, all resolved in one pass.
     /// <para>
-    /// <c>n_seq</c> is checked <b>exactly</b> at every bin count — its population is the row index,
+    /// <c>n_seq</c> is checked <b>exactly</b> at every bin count: its population is the row index,
     /// so each boundary is an order statistic over a known arithmetic sequence and no sorting is
     /// needed to know it. The other three columns are deliberately tie-heavy or skewed, so an exact
     /// expectation would mean re-implementing the D-103 feasibility algorithm under test; there the

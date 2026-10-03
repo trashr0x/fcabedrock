@@ -71,7 +71,7 @@ public abstract class GroupingBudgetBenchmark
     public Task Convert() => _run.ConvertAsync();
 
     /// <summary>
-    /// Validates against the <b>same</b> expectation every other budget is validated against — the
+    /// Validates against the <b>same</b> expectation every other budget is validated against: the
     /// byte-neutrality proof, taken on every iteration rather than assumed from the contract.
     /// </summary>
     [IterationCleanup]

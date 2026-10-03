@@ -27,7 +27,7 @@ public sealed class EqualWidthDiscretizerTests
     // --- §9.1 numeric vectors -------------------------------------------------
     //
     // Each expected cut list below is an independently-stated concrete result, never a
-    // re-run of the production formula — a test that recomputed the interpolation could
+    // re-run of the production formula: a test that recomputed the interpolation could
     // not catch the formula changing (EP-7/EP-11).
 
     [Fact]
@@ -47,7 +47,7 @@ public sealed class EqualWidthDiscretizerTests
     {
         // G-7: [-1.7e308, 1.7e308] is a FINITE increasing range and must be accepted. A naive
         // vmin + (vmax - vmin) * t would overflow the subtraction to +∞; the sign-aware convex
-        // combination gives the true midpoint, 0 — canonicalized to POSITIVE zero (G-6).
+        // combination gives the true midpoint, 0, canonicalized to POSITIVE zero (G-6).
         var cuts = EqualWidthDiscretizer.DeriveCuts(2, -1.7e308, 1.7e308, CutPrecision.Exact);
 
         var cut = Assert.Single(cuts);
@@ -60,7 +60,7 @@ public sealed class EqualWidthDiscretizerTests
     {
         // The opposite-sign branch again, off-centre. The value is pinned EXACTLY, not to a
         // tolerance: the whole point of the vector is to lock the pinned expression order, and a
-        // reordered or contracted expression lands a few ULPs away — which would silently move cut
+        // reordered or contracted expression lands a few ULPs away, which would silently move cut
         // identities, labels, and fingerprints while a tolerant assert stayed green (EP-7/EP-11).
         // -4.999999999999998e306 is the arithmetic result, not the ideal -5e306.
         var cut = Assert.Single(EqualWidthDiscretizer.DeriveCuts(2, -1.7e308, 1.6e308, CutPrecision.Exact));
@@ -94,7 +94,7 @@ public sealed class EqualWidthDiscretizerTests
     [Fact]
     public void DeriveCuts_WhenRoundToCollapsesNothing_ThenBanksToEven() =>
         // Unrounded 0.5/1/1.5 over [0, 2] with 4 bins; round_to = 1 banks the halves to even,
-        // giving 0/1/2 — still strictly ascending, so still valid.
+        // giving 0/1/2: still strictly ascending, so still valid.
         Assert.Equal([0.0, 1.0, 2.0], EqualWidthDiscretizer.DeriveCuts(4, 0, 2, RoundToPrecision.Create(1)));
 
     [Fact]
@@ -102,7 +102,7 @@ public sealed class EqualWidthDiscretizerTests
     {
         // G-6: the midpoint of [-1, 0.6] is -0.2, which round_to = 1 banks onto NEGATIVE zero.
         // Canonicalization must turn it positive so the sign never reaches a bin identity, label,
-        // or hash — and so the cut labels "0", never "-0".
+        // or hash, and so the cut labels "0", never "-0".
         var cuts = EqualWidthDiscretizer.DeriveCuts(2, -1.0, 0.6, RoundToPrecision.Create(1));
 
         var cut = Assert.Single(cuts);
@@ -198,14 +198,14 @@ public sealed class EqualWidthDiscretizerTests
     [InlineData(new[] { double.NaN, 50.0, 75.0 })]            // non-finite
     [InlineData(new[] { 1.0, 2.0, double.PositiveInfinity })] // non-finite
     public void FromCalibratedCuts_WhenCutsUnusable_ThenCalibrationCutsInvalid(double[] cuts) =>
-        // The calibrate-phase twin of EqualWidthCutsCollapsed — same predicate, different owner.
+        // The calibrate-phase twin of EqualWidthCutsCollapsed: same predicate, different owner.
         Assert.Equal(
             DiagnosticCode.CalibrationCutsInvalid,
             SoleCode(EqualWidthDiscretizer.FromCalibratedCuts(
                 new PendingEqualWidth(4, EqualWidthRange.MinMax, CutPrecision.Exact), cuts, CultureInfo.InvariantCulture)));
 
     [Theory]
-    [InlineData(new double[] { })]                            // none at all — `bins >= 2` makes [] always wrong
+    [InlineData(new double[] { })]                            // none at all: `bins >= 2` makes [] always wrong
     [InlineData(new[] { 25.0 })]                              // too few
     [InlineData(new[] { 25.0, 50.0 })]                        // too few
     [InlineData(new[] { 10.0, 25.0, 50.0, 75.0 })]            // too many
@@ -213,7 +213,7 @@ public sealed class EqualWidthDiscretizerTests
         // §11.4: `bins` bins come from exactly `bins - 1` cuts. A wrong-sized outcome is a
         // calibrator-contract violation, not a data error: it would build a discretizer whose Bins
         // contradicts its own geometry, so the fingerprint would encode "bins":4 beside a schema
-        // array of a different width. Unrepresentable, therefore a throw (EP-10/D-093) — not the
+        // array of a different width. Unrepresentable, therefore a throw (EP-10/D-093), not the
         // CalibrationCutsInvalid channel, which is for correctly-sized but unusable cuts.
         Assert.Throws<ArgumentException>(() => EqualWidthDiscretizer.FromCalibratedCuts(
             new PendingEqualWidth(4, EqualWidthRange.MinMax, CutPrecision.Exact), cuts, CultureInfo.InvariantCulture));
@@ -231,7 +231,7 @@ public sealed class EqualWidthDiscretizerTests
     public void EqualWidthDiscretizer_WhenInspected_ThenNoPublicConstructorOrSetter()
     {
         // EP-10: an executable equal_width with unchecked state is UNREPRESENTABLE, not merely
-        // rejected — every path goes through a validating factory, and the get-only properties
+        // rejected: every path goes through a validating factory, and the get-only properties
         // mean even `with` cannot desync the range mode from its vmin/vmax.
         var type = typeof(EqualWidthDiscretizer);
 
@@ -267,7 +267,7 @@ public sealed class EqualWidthDiscretizerTests
 
     [Fact]
     public void PendingEqualWidth_WhenRangeIsManual_ThenThrows() =>
-        // EP-10: a spec-determined range never pends — that state is unrepresentable, not merely
+        // EP-10: a spec-determined range never pends; that state is unrepresentable, not merely
         // rejected later (§11.4/D-089).
         Assert.Throws<ArgumentOutOfRangeException>(
             () => new PendingEqualWidth(4, EqualWidthRange.Manual, CutPrecision.Exact));
@@ -297,7 +297,7 @@ public sealed class EqualWidthDiscretizerTests
         Assert.Throws<InvalidOperationException>(() => carrier.BinLabels([]));
     }
 
-    // Culture-mutation isolation is the ResolvedSpec trust boundary's job, not this factory's —
+    // Culture-mutation isolation is the ResolvedSpec trust boundary's job, not this factory's:
     // it re-homes every culture-bearing discretizer onto a read-only clone (D-098). See
     // ResolvedSpecTests.Create_WhenEqualWidthParsingCultureMutatedAfterResolution_*.
 
@@ -308,7 +308,7 @@ public sealed class EqualWidthDiscretizerTests
     {
         var discretizer = Manual(4, 0, 100); // cuts 25/50/75
 
-        // Below and above the calibration span still land in the first/last bin — the reason
+        // Below and above the calibration span still land in the first/last bin: the reason
         // §11.4 fixes ends = "open" for the auto discretizer.
         Assert.Equal(BinResult.Bin("<25"), discretizer.Discretize("-1000"));
         Assert.Equal(BinResult.Bin("<25"), discretizer.Discretize("24.999"));
@@ -325,7 +325,7 @@ public sealed class EqualWidthDiscretizerTests
     [InlineData("Infinity")]
     [InlineData("1,5")] // the invariant culture reads no comma separator
     public void Discretize_WhenPresentButNotAFiniteNumber_ThenUnparseable(string raw) =>
-        // §11.5/D-050: kept, no cross, diagnosable — never silently missing.
+        // §11.5/D-050: kept, no cross, diagnosable, never silently missing.
         Assert.Equal(BinResult.Unparseable(raw), Manual(4, 0, 100).Discretize(raw));
 
     [Fact]

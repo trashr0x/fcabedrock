@@ -88,9 +88,9 @@ public class WideCxtExportWorking : CxtExportBenchmark
 
 /// <summary>
 /// The Ads-width <c>.cxt</c> at 10,000 objects: 1,568 formal attributes, so each matrix row is
-/// 1,568 characters and the file is dominated by the '.' of a sparse context. That asymmetry — a
+/// 1,568 characters and the file is dominated by the '.' of a sparse context. That asymmetry (a
 /// <c>.dat</c> of a few hundred kilobytes against a <c>.cxt</c> of fifteen megabytes over the same
-/// data — is exactly what the format choice costs on a wide schema.
+/// data) is exactly what the format choice costs on a wide schema.
 /// </summary>
 [BenchmarkCategory(BenchmarkCategories.Small)]
 [BenchmarkCorpus(CorpusCases.AdsFamily, CorpusTier.Small)]
@@ -115,7 +115,7 @@ public class AdsCxtExportSmall : CxtExportBenchmark
 /// The <c>.cxt</c> counterpart of the mini <c>.dat</c> case, and it carries more of v2's format than
 /// the <c>.dat</c> does: object names, formal-attribute names, CRLF line endings, and v2's trailing
 /// space on non-empty lines. A rendered attribute name is not something a synthetic oracle written
-/// in this repository can independently confirm — these bytes were produced by a different program,
+/// in this repository can independently confirm; these bytes were produced by a different program,
 /// years earlier, and they can.
 /// </para>
 /// </summary>

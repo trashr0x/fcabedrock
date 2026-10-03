@@ -73,7 +73,7 @@ public sealed class SpecResolverTests
 
         Assert.True(result.TryGetValue(out var spec));
         var x = Assert.Single(spec.Attributes);
-        Assert.False(x.Include); // [defaults].include fills the omitted field — and parks it (D-049)
+        Assert.False(x.Include); // [defaults].include fills the omitted field and parks it (D-049)
         Assert.Equal(MissingPolicy.AsAttribute, x.MissingPolicy);
         Assert.Equal(UnknownValuePolicy.Fail, x.UnknownValuePolicy);
     }
@@ -112,7 +112,7 @@ public sealed class SpecResolverTests
     public void Resolve_WhenValueTypeAuthoredOnExcludedAttribute_ThenAuthoredWinsOverParkedDiscretizerDefault()
     {
         // D-049/D-076: the D-061 matrix fires for included attributes only, so the
-        // one legal authored-≠-derived pairing is on a parked attribute — where the
+        // one legal authored-≠-derived pairing is on a parked attribute, where the
         // authored source type still wins over the parked discretizer's default.
         var document = DocumentFixtures.Document(
             [DocumentFixtures.Attribute("a", DocumentFixtures.Column(0, SourceValueType.String),
@@ -204,7 +204,7 @@ public sealed class SpecResolverTests
     [Fact]
     public void Resolve_WhenAttributeExcluded_ThenParkedWithNullsWithoutError()
     {
-        // D-049: dormant scaling sections are parked, not resolved and never an error —
+        // D-049: dormant scaling sections are parked, not resolved and never an error,
         // even ones that would fail resolution if included (dichotomic without true_value).
         var document = DocumentFixtures.Document(
         [
@@ -256,7 +256,7 @@ public sealed class SpecResolverTests
     [Fact]
     public void Resolve_WhenDeclaredDomainOmittedVersusAuthoredEmpty_ThenPresenceSurvives()
     {
-        // D-122 §15 (revising D-071): omission and an authored [] are distinct in Core — an omitted
+        // D-122 §15 (revising D-071): omission and an authored [] are distinct in Core: an omitted
         // domain resolves to null (calibrated where a discretizer consumes it), an authored [] to the
         // empty list (a complete fixed empty domain). The document keeps the authored form for round-trip.
         var document = DocumentFixtures.Document(
@@ -294,7 +294,7 @@ public sealed class SpecResolverTests
     public void Resolve_WhenRestrictToAuthoredEmpty_ThenNoFilterYetTheDocumentKeepsThePresence()
     {
         // §10.4: "empty or absent ⇒ no filter", so an authored [] and an omitted restrict_to
-        // converge on the SAME resolved Core state — while the document snapshot keeps them
+        // converge on the SAME resolved Core state, while the document snapshot keeps them
         // distinguishable, which is what round-trip fidelity (D-049) and §14's
         // present-only-when-non-empty `restrictions` container both rely on.
         var attribute = DocumentFixtures.Attribute("x", DocumentFixtures.Column(0),
@@ -351,7 +351,7 @@ public sealed class SpecResolverTests
     {
         // Call-contract, not a diagnostic: Resolve never throws for valid inputs
         // under its contract, and a document with authored extends is invalid
-        // input to Resolve — compose first (§13, D-078).
+        // input to Resolve: compose first (§13, D-078).
         var document = DocumentFixtures.Document(spec: DocumentFixtures.SpecV1(extends: "base.toml"));
 
         var exception = Assert.Throws<ArgumentException>(() => Resolve(document));
@@ -386,7 +386,7 @@ public sealed class SpecResolverTests
     public void Resolve_WhenTemplateIdsAreMissingOrDuplicated_ThenIdentityErrorsReportInComposedOrder()
     {
         // §9.1: id is required and unique across the COMPOSED document. One Error per
-        // id-less template and one per EXTRA declaration — the first declaration is not
+        // id-less template and one per EXTRA declaration: the first declaration is not
         // itself an error, so three templates sharing an id yield two diagnostics.
         var document = DocumentFixtures.Document(
             [DocumentFixtures.Nominal("g", 0, ["b"])],
@@ -453,7 +453,7 @@ public sealed class SpecResolverTests
         Assert.Equal(3, unknown.Count);
 
         // Matcher site (family 2) precedes both attribute sites (family 3), and carries no
-        // AttributeName — it belongs to a matcher, not an attribute.
+        // AttributeName: it belongs to a matcher, not an attribute.
         Assert.Null(unknown[0].Location?.AttributeName);
         Assert.Contains("#1", unknown[0].Message, StringComparison.Ordinal);
         Assert.Contains("\"absent\"", unknown[0].Message, StringComparison.Ordinal);
@@ -467,7 +467,7 @@ public sealed class SpecResolverTests
     {
         // §9.2: an unused template is inert. Its body here would be a broken ATTRIBUTE
         // (a dichotomic scale with no true_value, and no discretizer), but it applies to
-        // nothing, so it is never validated as a hypothetical attribute — parse-level
+        // nothing, so it is never validated as a hypothetical attribute: parse-level
         // shape checks are the only thing that ever ran on it.
         var document = DocumentFixtures.Document(
             [DocumentFixtures.Nominal("g", 0, ["b"])],
@@ -502,7 +502,7 @@ public sealed class SpecResolverTests
     public void Resolve_WhenEveryFamilyReports_ThenTheyAppearInTheDeterministicFamilyOrder()
     {
         // §16.4's family order, asserted as an exact SEQUENCE because order is the
-        // contract — an unordered membership check would pass on any permutation. One
+        // contract: an unordered membership check would pass on any permutation. One
         // diagnostic per family, so the sequence is unambiguous:
         //
         //   1 template identity → [binding-section, established prefix] → 2 matcher
@@ -539,7 +539,7 @@ public sealed class SpecResolverTests
     {
         // §16.4/D-116: family 5 is ONE traversal in matcher declaration order, so the two
         // warning kinds interleave by matcher rather than grouping by code. Shadowed,
-        // zero-match, shadowed must come out in exactly that order — which is precisely
+        // zero-match, shadowed must come out in exactly that order, which is precisely
         // what a two-pass "all zero-match, then all shadowed" implementation gets wrong.
         var document = DocumentFixtures.Document(
             [DocumentFixtures.Nominal("a", 0, ["x"]) with
@@ -583,7 +583,7 @@ public sealed class SpecResolverTests
     [Fact]
     public void Resolve_WhenAnEarlierMatcherLosesToALaterOne_ThenOnlyTheEarlierIsFullyShadowed()
     {
-        // Shadowing WITHIN tier 3 — the duplicate-matcher case. Both templates author the
+        // Shadowing WITHIN tier 3: the duplicate-matcher case. Both templates author the
         // same single field, so §9.2's field-wise last-author-wins means matcher #2 takes
         // it and matcher #1 contributes nothing at all. That is the definition of fully
         // shadowed, so #1 warns and #2 must stay silent.
@@ -612,7 +612,7 @@ public sealed class SpecResolverTests
         Assert.True(result.TryGetValue(out var spec), string.Join("; ", result.Diagnostics.Select(d => d.Message)));
         Assert.Equal(MissingPolicy.Skip, Assert.Single(spec.Attributes).MissingPolicy);
 
-        // Exactly one warning, for matcher #1 — named by ordinal AND reference (§16.4).
+        // Exactly one warning, for matcher #1, named by ordinal AND reference (§16.4).
         var warning = Assert.Single(result.Diagnostics);
         Assert.Equal(DiagnosticCode.MatcherFullyShadowed, warning.Code);
         Assert.Equal(DiagnosticSeverity.Warning, warning.Severity);
@@ -632,7 +632,7 @@ public sealed class SpecResolverTests
     [Fact]
     public void Resolve_WhenAMatcherLosesToTheNamedTemplate_ThenItIsFullyShadowed()
     {
-        // Shadowing by tier 4 rather than tier 5 — the "higher-precedence source" the
+        // Shadowing by tier 4 rather than tier 5: the "higher-precedence source" the
         // §9.2 definition names includes the attribute's directly named template.
         var document = DocumentFixtures.Document(
             [DocumentFixtures.Attribute("a", DocumentFixtures.Column(0), template: "named",
@@ -655,7 +655,7 @@ public sealed class SpecResolverTests
     {
         // §9.2/D-116: shadowing is a MERGE-level determination, deliberately independent
         // of D-049 dormancy. The template's field wins the merge here, so the matcher is
-        // doing something — even though the winning configuration is dormant while the
+        // doing something, even though the winning configuration is dormant while the
         // attribute is excluded. Warning would be wrong; silence is the contract.
         var document = DocumentFixtures.Document(
             [DocumentFixtures.Attribute("a", DocumentFixtures.Column(0), include: false)],
@@ -1176,7 +1176,7 @@ public sealed class SpecResolverTests
     [Fact]
     public void Resolve_WhenDelimiterEqualsDefaultedQuoteChar_ThenBindingDelimiterQuoteConflict()
     {
-        // §5.1: the conflict is judged on the resolved pair — an authored '"'
+        // §5.1: the conflict is judged on the resolved pair: an authored '"'
         // delimiter collides with the defaulted quote.
         var document = DocumentFixtures.Document([DocumentFixtures.Nominal("a", 0, ["x"])], binding: DocumentFixtures.WideBinding(delimiter: '"'));
 
@@ -1189,8 +1189,8 @@ public sealed class SpecResolverTests
     [Fact]
     public void Resolve_WhenDelimiterAndQuoteCharBothAuthoredSame_ThenBothDiagnosticsFire()
     {
-        // D-076: two distinct §5.1 conditions — the unsupported quote and the
-        // delimiter conflict — report independently.
+        // D-076: two distinct §5.1 conditions (the unsupported quote and the
+        // delimiter conflict) report independently.
         var document = DocumentFixtures.Document(
             [DocumentFixtures.Nominal("a", 0, ["x"])],
             binding: DocumentFixtures.WideBinding(delimiter: '|', quoteChar: '|'));
@@ -1242,7 +1242,7 @@ public sealed class SpecResolverTests
     [Fact]
     public void Resolve_WhenNumberSourceHasStringRestrictTo_ThenRestrictToNumericEntryRequired()
     {
-        // §10.4 (D-063): this code — not SourceValueTypeInvalid — owns the
+        // §10.4 (D-063): this code, not SourceValueTypeInvalid, owns the
         // numeric-source/string-entry mismatch.
         var document = DocumentFixtures.Document(
             [DocumentFixtures.Attribute("age", DocumentFixtures.Column(0),
@@ -1260,7 +1260,7 @@ public sealed class SpecResolverTests
     public void Resolve_WhenNumberSourceHasExactNumericRestrictTo_ThenResolvesCleanly()
     {
         // §10.4/D-091: the exact { value = n } entry is the numeric form the bare-string reject
-        // above points at — so the same attribute resolves cleanly once it is used.
+        // above points at, so the same attribute resolves cleanly once it is used.
         var document = DocumentFixtures.Document(
             [DocumentFixtures.Attribute("age", DocumentFixtures.Column(0),
                 discretizer: Discretizer("manual_cuts"), scale: new NominalScaleSection(),
@@ -1277,7 +1277,7 @@ public sealed class SpecResolverTests
     public void Resolve_WhenStringSourceHasExactNumericRestrictTo_ThenSourceValueTypeInvalid()
     {
         // §10.4/§10.2/D-091: a numeric EXACT entry on a string-typed source is the same
-        // value-type mismatch a range is — the §10.2 code owns both directions of "numeric entry
+        // value-type mismatch a range is: the §10.2 code owns both directions of "numeric entry
         // on a string source".
         var document = DocumentFixtures.Document(
             [DocumentFixtures.Attribute("edu", DocumentFixtures.Column(0),
@@ -1293,7 +1293,7 @@ public sealed class SpecResolverTests
     [Fact]
     public void Resolve_WhenPredicateNumberSourceHasBareString_ThenRestrictToNumericEntryRequired()
     {
-        // The rename applies at predicate sources exactly as at column sources — the check is
+        // The rename applies at predicate sources exactly as at column sources: the check is
         // source-kind agnostic (§10.2).
         var document = DocumentFixtures.Document(
             [DocumentFixtures.Attribute("stage", new PredicateSourceSection("Stage", SourceValueType.Number),
@@ -1315,8 +1315,8 @@ public sealed class SpecResolverTests
     public void Resolve_WhenExactRestrictValueIsNonFinite_ThenRestrictToRangeInvalid(double value)
     {
         // A non-finite exact value can match no usable observation, so it is authored nonsense
-        // rather than a filter that happens to keep nothing. Diagnosed on the USER channel —
-        // never an exception — because the reader can legitimately produce it from `nan`/`inf`.
+        // rather than a filter that happens to keep nothing. Diagnosed on the USER channel
+        // (never an exception), because the reader can legitimately produce it from `nan`/`inf`.
         var document = DocumentFixtures.Document(
             [DocumentFixtures.Attribute("age", DocumentFixtures.Column(0),
                 discretizer: Discretizer("manual_cuts"), scale: new NominalScaleSection(),
@@ -1353,7 +1353,7 @@ public sealed class SpecResolverTests
     [Fact]
     public void Resolve_WhenRangeEndsAreOpen_ThenValidBecauseOpenIsNullNotInfinity()
     {
-        // §10.4: {} means "any usable numeric value" and one-sided ranges are equally valid — an
+        // §10.4: {} means "any usable numeric value" and one-sided ranges are equally valid: an
         // omitted bound is open (null), never ±infinity, so the non-finite rule must not catch it.
         var document = DocumentFixtures.Document(
             [DocumentFixtures.Attribute("age", DocumentFixtures.Column(0),
@@ -1371,7 +1371,7 @@ public sealed class SpecResolverTests
     {
         // EP-14 aggregation, on ONE entry: "numeric entry on a string source" and "that exact
         // value is not finite" are INDEPENDENT conditions, and both hold here. Reporting only the
-        // first would hide the second edit the author still has to make — the same reasoning that
+        // first would hide the second edit the author still has to make: the same reasoning that
         // makes D-076's quote check and delimiter/quote conflict co-fire.
         var document = DocumentFixtures.Document(
             [DocumentFixtures.Attribute("edu", DocumentFixtures.Column(0),
@@ -1442,7 +1442,7 @@ public sealed class SpecResolverTests
     public void Resolve_WhenCallerMutatesTheRestrictListAfterwards_ThenTheDocumentSnapshotIsUnaffected()
     {
         // D-098: ResolvedDocument holds an immutable deep snapshot, so a caller mutating the list
-        // it passed cannot reach the document the fingerprints read. Discriminating on purpose —
+        // it passed cannot reach the document the fingerprints read. Discriminating on purpose:
         // the injected entry is a NUMERIC exact one, so a snapshot that copied only some variants
         // (or aliased the list) would show it.
         var authored = new List<RestrictToEntry> { new RestrictToNumber(30) };
@@ -1483,7 +1483,7 @@ public sealed class SpecResolverTests
     public void Resolve_WhenExactRestrictValueIsNegativeZero_ThenItResolvesAsPositiveZero()
     {
         // G-6, at the site that owns it: the seam canonicalizes what it resolves, so an authored
-        // -0 resolves — and therefore matches, plans, and hashes — identically to 0. This is the
+        // -0 resolves (and therefore matches, plans, and hashes) identically to 0. This is the
         // "already-numeric" arm of the chain (the value arrives as a TOML double; there is no
         // text to parse). CanonicalJson.AppendNumber is untouched and still formats -0.0 as "-0",
         // which is exactly why the canonicalization must happen HERE.
@@ -1519,7 +1519,7 @@ public sealed class SpecResolverTests
     public void Resolve_WhenRestrictEntriesRepeat_ThenAuthoredOrderAndDuplicatesSurviveResolution()
     {
         // Resolved Core state mirrors the document (D-057). Canonical sorting/deduplication is a
-        // FINGERPRINT projection only (§14) and must not rewrite authored state — the plan and
+        // FINGERPRINT projection only (§14) and must not rewrite authored state: the plan and
         // emit see what the author wrote.
         var document = DocumentFixtures.Document(
             [DocumentFixtures.Attribute("age", DocumentFixtures.Column(0),
@@ -1552,7 +1552,7 @@ public sealed class SpecResolverTests
     [Fact]
     public void Resolve_WhenStringSourceHasRangeRestrictTo_ThenSourceValueTypeInvalid()
     {
-        // §10.4 (D-063): the mirror case — a range entry on a string-typed source —
+        // §10.4 (D-063): the mirror case (a range entry on a string-typed source)
         // is owned by the §10.2 code.
         var document = DocumentFixtures.Document(
             [DocumentFixtures.Attribute("edu", DocumentFixtures.Column(0),
@@ -1568,7 +1568,7 @@ public sealed class SpecResolverTests
     public void Resolve_WhenParkedCutDiscretizerTypesLiveRestrictTo_ThenStillRejected()
     {
         // D-076: restrict_to is live on an excluded (filter-only) attribute, and a
-        // parked numeric-cut discretizer legitimately types it (§10.4 — "a numeric
+        // parked numeric-cut discretizer legitimately types it (§10.4: "a numeric
         // source … or a numeric-cut discretizer"); the string entry still rejects.
         var document = DocumentFixtures.Document(
             [DocumentFixtures.Attribute("age", DocumentFixtures.Column(0), include: false,
@@ -1582,7 +1582,7 @@ public sealed class SpecResolverTests
     [Fact]
     public void Resolve_WhenFilterOnlyStringRestrictTo_ThenResolvesClean()
     {
-        // §19.4: the filter-only pattern — string entries over an untyped,
+        // §19.4: the filter-only pattern: string entries over an untyped,
         // discretizer-less source default to string and validate clean.
         var document = DocumentFixtures.Document(
             [DocumentFixtures.Attribute("Gene", DocumentFixtures.Column(0), include: false,
@@ -1667,7 +1667,7 @@ public sealed class SpecResolverTests
     public void Resolve_WhenRestrictToValueNotInParkedDomain_ThenNoWarning()
     {
         // D-049/D-076: declared_domain is emitted-shaping config, parked when the
-        // attribute is excluded — the live restrict_to is not checked against it.
+        // attribute is excluded; the live restrict_to is not checked against it.
         var document = DocumentFixtures.Document(
             [DocumentFixtures.Attribute("edu", DocumentFixtures.Column(0), include: false,
                 discretizer: Discretizer("identity"),
@@ -1700,7 +1700,7 @@ public sealed class SpecResolverTests
     [Fact]
     public void Resolve_WhenOrdinalOrderAuthoredEmptyOverCuts_ThenPresenceStillRejects()
     {
-        // §12.3 "MUST NOT be present" — an authored [] is still an order
+        // §12.3 "MUST NOT be present": an authored [] is still an order
         // declaration over cut bins.
         var document = DocumentFixtures.Document(
             [DocumentFixtures.Attribute("a", DocumentFixtures.Column(0),
@@ -1734,7 +1734,7 @@ public sealed class SpecResolverTests
     public void Resolve_WhenAuthoredBoundaryStraddlesDefaultedDirection_ThenStillRejects()
     {
         // D-060: authoredness is judged on the per-attribute boundary; the
-        // geometry is judged on the resolved direction — here from [defaults].
+        // geometry is judged on the resolved direction, here from [defaults].
         var defaults = new DefaultsSection(
             Include: null, MissingPolicy: null, UnknownValuePolicy: null, DuplicateObjectPolicy: null,
             OrdinalDirection.Le, OrdinalBoundary: null);
@@ -1753,7 +1753,7 @@ public sealed class SpecResolverTests
     public void Resolve_WhenBoundaryDefaultedOverCuts_ThenNeverTrips()
     {
         // D-060(c): a boundary arriving via [defaults].ordinal_boundary is
-        // defaulted, not authored — over cut bins it never selects the operator
+        // defaulted, not authored: over cut bins it never selects the operator
         // and never trips the check, whatever its value.
         var defaults = new DefaultsSection(
             Include: null, MissingPolicy: null, UnknownValuePolicy: null, DuplicateObjectPolicy: null,
@@ -1892,7 +1892,7 @@ public sealed class SpecResolverTests
     public void Resolve_WhenValueLabelsUnderCutDiscretizer_ThenDormantAndNoDiagnostic()
     {
         // §10.8 / D-049: value_labels is dormant under a cut discretizer (its bin
-        // labels are not raw values) — ignored, never ValueLabelKeyNotInDomain.
+        // labels are not raw values): ignored, never ValueLabelKeyNotInDomain.
         var document = DocumentFixtures.Document(
             [DocumentFixtures.Attribute("age", DocumentFixtures.Column(0),
                 discretizer: new ManualCutsDiscretizerSection([30.0], BinEnds.Open),
@@ -1976,7 +1976,7 @@ public sealed class SpecResolverTests
     [Fact]
     public void Resolve_WhenIdentityAuthoredNumber_ThenSourceValueTypeInvalid()
     {
-        // D-061: identity remains string-fixing — number + identity stays invalid; the numeric
+        // D-061: identity remains string-fixing: number + identity stays invalid; the numeric
         // distinct binner is free_per_value.
         var document = DocumentFixtures.Document([DocumentFixtures.Attribute(
             "g", DocumentFixtures.Column(0, SourceValueType.Number),
@@ -2077,7 +2077,7 @@ public sealed class SpecResolverTests
     [Fact]
     public void Resolve_WhenStringFreePerValueValueLabelKeyNotInDomain_ThenValueLabelKeyNotInDomain()
     {
-        // String free_per_value consults value_labels like identity — verbatim membership (§10.8).
+        // String free_per_value consults value_labels like identity: verbatim membership (§10.8).
         var result = Resolve(DocumentFixtures.Document([FreePerValue("g", 0, SourceValueType.String, ["b"],
             new Dictionary<string, string> { ["x"] = "y" })]));
 
@@ -2166,7 +2166,7 @@ public sealed class SpecResolverTests
     public void Resolve_WhenValueBinOrderHasDuplicateEntries_ThenOrderDomainInvalid()
     {
         // §12.3 (D-081): over a non-cut discretizer the authored scale.order must
-        // have distinct, non-empty entries — OrderDomainInvalid, broadened from
+        // have distinct, non-empty entries: OrderDomainInvalid, broadened from
         // ordered_cuts to any authored order.
         var document = DocumentFixtures.Document(
             [DocumentFixtures.Attribute("edu", DocumentFixtures.Column(0),
@@ -2241,7 +2241,7 @@ public sealed class SpecResolverTests
     public void Resolve_WhenMiniMushroomDocument_ThenPlansToTheBedPathSchema()
     {
         // The hand-built document twin must plan to the exact formal-attribute
-        // schema the .bed migration path yields (EP-7 — one schema, two producers).
+        // schema the .bed migration path yields (EP-7: one schema, two producers).
         var viaDocument = Resolve(DocumentFixtures.MiniMushroom());
         Assert.True(BedReader.Read(BedFixtures.MushroomBed).TryGetValue(out var bedDocument));
         var migrated = BedMigrator.Migrate(
@@ -2285,7 +2285,7 @@ public sealed class SpecResolverTests
     {
         // D-082: a role bound by header name resolves to the same index as the
         // equivalent index bind (both need has_header = true), so the resolved
-        // binding — and therefore the output fingerprint — is identical.
+        // binding (and therefore the output fingerprint) is identical.
         var schema = new SourceSchema(3, ["s", "p", "o"]);
         var byName = Resolve(DocumentFixtures.Document([TriplePredicate()],
             binding: DocumentFixtures.TripleBinding(
@@ -2455,7 +2455,7 @@ public sealed class SpecResolverTests
     public void Resolve_WhenAuthoredObjectKeyColumnUnderTriple_ThenObjectKeyModeInvalidForShape()
     {
         // §5.4/D-082: ANY authored [binding.object_key] under triple is rejected,
-        // not just row_index — triple identity is always the subject.
+        // not just row_index: triple identity is always the subject.
         var objectKey = new ObjectKeySection(ObjectKeyMode.Column, new IndexColumnRef(0), Columns: null, Aggregate: null);
         var document = DocumentFixtures.Document([TriplePredicate()], binding: DocumentFixtures.TripleBinding(objectKey: objectKey));
 
@@ -2506,7 +2506,7 @@ public sealed class SpecResolverTests
     [Fact]
     public void Resolve_WhenWideSourceNameMatchesDuplicateHeader_ThenSourceBindingInvalid()
     {
-        // §10.2: a wide source name must resolve to exactly one column — a duplicate
+        // §10.2: a wide source name must resolve to exactly one column: a duplicate
         // matching header is invalid, not a silent first-match bind.
         var document = DocumentFixtures.Document(
             [DocumentFixtures.Attribute("g", DocumentFixtures.NamedColumn("age"),
@@ -2605,7 +2605,7 @@ public sealed class SpecResolverTests
     public void Resolve_WhenAttributeAndDefaultsBothAuthorTheFormat_ThenTheAttributeWins()
     {
         // §9.2: explicit per-attribute fields (tier 5) beat [defaults] (tier 2), and the
-        // whole value is replaced — formats never merge (the D-114 compound rule).
+        // whole value is replaced: formats never merge (the D-114 compound rule).
         var document = DocumentFixtures.Document(
             [
                 DocumentFixtures.Nominal("a", 0, ["x"]) with { FormalAttributeFormat = "{name}!{value}" },
@@ -2643,7 +2643,7 @@ public sealed class SpecResolverTests
     [Fact]
     public void Resolve_WhenExcludedAttributeAuthorsNaming_ThenItStillResolvesOntoTheSpec()
     {
-        // D-049: an excluded attribute plans no column, so its naming is dormant — but the
+        // D-049: an excluded attribute plans no column, so its naming is dormant, but the
         // resolved carrier is populated rather than dropped, exactly as its parked
         // discretizer/scale are.
         var document = DocumentFixtures.Document(
@@ -2658,7 +2658,7 @@ public sealed class SpecResolverTests
     public void Resolve_WhenTheDocumentWasHandBuiltWithAnInvalidFormat_ThenItThrows()
     {
         // The reader validates every authored format, so reaching the resolver with an
-        // invalid one means the document never came through SpecReader — a programmer error
+        // invalid one means the document never came through SpecReader: a programmer error
         // on the exception channel, not authored input (EP-14). There is no resolve-phase
         // condition for it, and giving SpecFieldInvalid a second phase would break D-067's
         // one-code-one-phase rule.

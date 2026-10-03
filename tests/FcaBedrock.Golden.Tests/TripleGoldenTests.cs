@@ -37,7 +37,7 @@ public sealed class TripleGoldenTests
     {
         // Through the production route (raw TripleCsvSource -> planner TripleExecution ->
         // Emitter.EmitTripleAsync via PrepareAsync): object names are the first appearance
-        // of each subject (§17 rule 4 / D-082), never sorted — a sorted order would start
+        // of each subject (§17 rule 4 / D-082), never sorted; a sorted order would start
         // "Alice". Complements the synthetic UnorderedTripleEmitterTests by locking the real
         // fixture bytes' object order.
         var cxt = Encoding.UTF8.GetString(await GoldenConversion.WriteCxtAsync(Case("mini-adult_triples_named"), WriterOptions.Native));
@@ -54,7 +54,7 @@ public sealed class TripleGoldenTests
     public async Task TripleCxt_WhenConvertedTwiceIndependently_ThenByteIdentical(FixtureCase fixture)
     {
         // Two fully independent conversions (fresh source/stream/session each): run 1 must
-        // equal the golden bytes and run 2 must equal run 1 — determinism, nothing compared
+        // equal the golden bytes and run 2 must equal run 1: determinism, nothing compared
         // to itself.
         var golden = await File.ReadAllBytesAsync(fixture.ExpectedCxtPath);
         var run1 = await GoldenConversion.WriteCxtAsync(fixture, WriterOptions.V2Compat);

@@ -280,7 +280,7 @@ public sealed class MigrateCommandTests
     public async Task Migrate_WhenTheWholeDomainIsTheMissingToken_ThenDeclaredDomainIsAuthoredEmptyThroughArgv()
     {
         // The authored [] survives as a FIXED EMPTY domain, and `missing_policy` still adds the
-        // missing column — so a follow-on convert plans exactly one formal attribute.
+        // missing column, so a follow-on convert plans exactly one formal attribute.
         using var temp = TempDirectory.Create();
         var bed = temp.Write("empty.bed", EmptyDomainBed);
         var spec = temp.Resolve("spec.toml");
@@ -518,7 +518,7 @@ public sealed class MigrateCommandTests
 
     private static readonly byte[] Utf8Bom = [0xEF, 0xBB, 0xBF];
 
-    // "é,ü" — U+00E9 encodes as C3 A9 and U+00FC as C3 BC.
+    // "é,ü": U+00E9 encodes as C3 A9 and U+00FC as C3 BC.
     private static readonly byte[] NonAscii = [0xC3, 0xA9, 0x2C, 0xC3, 0xBC];
 
     // The skeleton with `values` standing where authored category values go, so a malformed
@@ -585,7 +585,7 @@ public sealed class MigrateCommandTests
     public async Task Migrate_WhenTheBedCarriesASecondBomSequence_ThenOnlyTheFirstIsRemovedAndTheRestIsContent()
     {
         // Exactly one mark is consumed, so the second becomes the first character of the
-        // authored text — which is then not a section header, so the READER refuses it. That
+        // authored text, which is then not a section header, so the READER refuses it. That
         // is a registry diagnostic, never the decoder's code-less rejection: keeping the two
         // apart is the whole point of this row.
         using var temp = TempDirectory.Create();
@@ -654,7 +654,7 @@ public sealed class MigrateCommandTests
         return path;
     }
 
-    // The non-blank lines of one canonical section, up to the next section header — the
+    // The non-blank lines of one canonical section, up to the next section header: the
     // presence lock's reading of "only these keys are authored".
     private static string[] Section(string document, string header)
     {

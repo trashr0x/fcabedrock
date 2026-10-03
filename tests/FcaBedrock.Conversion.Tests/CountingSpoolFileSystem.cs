@@ -78,8 +78,8 @@ internal sealed class CountingSpoolFileSystem : ISpoolFileSystem
         var ordinal = Ordinal(path);
         var counters = Counters(ordinal);
 
-        // Observe the size the way an independent auditor would — from the file itself, before it
-        // is removed — rather than trusting the handle the product carries.
+        // Observe the size the way an independent auditor would (from the file itself, before it
+        // is removed) rather than trusting the handle the product carries.
         long observed;
         try
         {

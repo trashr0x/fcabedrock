@@ -4,8 +4,8 @@ using System.Text;
 namespace FcaBedrock.Benchmarks.Corpus;
 
 /// <summary>
-/// The <b>W16</b> synthetic wide family: sixteen physical columns — four numeric, eight
-/// categorical, four binary — over the four <see cref="CorpusTier"/> record counts.
+/// The <b>W16</b> synthetic wide family: sixteen physical columns (four numeric, eight
+/// categorical, four binary) over the four <see cref="CorpusTier"/> record counts.
 /// <para>
 /// The geometry is deliberately frozen here, in one place, because a corpus definition is a
 /// measurement boundary: changing a distribution invalidates every comparison stated against it
@@ -15,7 +15,7 @@ namespace FcaBedrock.Benchmarks.Corpus;
 /// </para>
 /// <para>
 /// <b>What each column exercises.</b> <c>n_seq</c> is strictly increasing, so its distinct count
-/// equals the record count — the high-cardinality numeric case. <c>n_ties</c> is a fifty-value
+/// equals the record count: the high-cardinality numeric case. <c>n_ties</c> is a fifty-value
 /// cycle, so every value sits in a large tied group, and it carries the explicit
 /// <c>missing_token</c>. <c>n_skew</c> is 90% one value and 10% a long tail. <c>n_wide</c> spans
 /// roughly ±1,000,000 at two decimal places, including negatives. The eight <c>c*</c> columns each
@@ -112,7 +112,7 @@ internal static class W16Corpus
     public static bool BinaryIsYes(long row, int binary) => (Determinism.Draw(row, 20 + binary) & 1) == 0;
 
     /// <summary>
-    /// The <b>cleaned</b> value of one cell — exactly what a source yields after spec §5.1.1
+    /// The <b>cleaned</b> value of one cell: exactly what a source yields after spec §5.1.1
     /// decoding and missing normalization, so an oracle compares against the same thing the
     /// pipeline sees. <see langword="null"/> is missing (an empty cell or the missing token).
     /// </summary>

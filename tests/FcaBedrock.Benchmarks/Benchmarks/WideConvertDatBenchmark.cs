@@ -32,7 +32,7 @@ public abstract class WideConvertDatBenchmark
 
     /// <summary>
     /// Requires a prepared corpus, drives the real spec-read/resolve/calibrate/plan sequence once,
-    /// and derives the expected output length and digest independently — streaming the expectation
+    /// and derives the expected output length and digest independently, streaming the expectation
     /// rather than retaining it, so the same oracle serves every tier.
     /// </summary>
     [GlobalSetup]

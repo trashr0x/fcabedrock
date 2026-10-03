@@ -89,7 +89,7 @@ public sealed class FingerprintCommandTests
     public async Task Fingerprint_WhenAStoredValueIsMalformed_ThenItIsSimplyStale(string stored)
     {
         // Comparison is ordinal over the complete stored string, so a truncated, differently
-        // cased, or nonsensical value is stale — never a parse failure (D-077).
+        // cased, or nonsensical value is stale, never a parse failure (D-077).
         using var temp = TempDirectory.Create();
         var harness = new CliTestHarness();
 
@@ -144,8 +144,8 @@ public sealed class FingerprintCommandTests
     [Fact]
     public async Task Fingerprint_WhenTheSpecExtendsABase_ThenStoredFieldsComeFromTheRootAndHashesFromTheComposedPlan()
     {
-        // The base holds the only attribute — so a hash can only be computed from the COMPOSED
-        // plan — and a bogus stored fingerprint, which must never merge into the root (§13 rule
+        // The base holds the only attribute (so a hash can only be computed from the COMPOSED
+        // plan) and a bogus stored fingerprint, which must never merge into the root (§13 rule
         // 8 / D-078). The root holds the stored fields that are reported.
         using var temp = TempDirectory.Create();
         temp.Write("base.toml", BaseWithBogusStoredFingerprint);
@@ -217,7 +217,7 @@ public sealed class FingerprintCommandTests
     public async Task Fingerprint_WhenV2CompatIsSupplied_ThenItIsAUsageError()
     {
         // D-011 keeps v2 byte compatibility convert-only, so the flag does not exist here and
-        // the parser — not this handler — refuses it.
+        // the parser (not this handler) refuses it.
         using var temp = TempDirectory.Create();
         var harness = new CliTestHarness();
 

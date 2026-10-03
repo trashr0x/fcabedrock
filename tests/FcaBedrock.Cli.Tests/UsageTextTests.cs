@@ -139,7 +139,7 @@ public sealed class UsageTextTests
 
     // ---- supplemental structural coverage (deliberately table-derived) ------------------
     //
-    // These do NOT lock bytes — the literals above do. They prove the generated document
+    // These do NOT lock bytes; the literals above do. They prove the generated document
     // stays structurally complete as the table changes, which a literal alone cannot say.
 
     [Fact]

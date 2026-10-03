@@ -10,7 +10,7 @@ internal enum CorpusOrigin
 
     /// <summary>
     /// Acquired from outside the repository. Its record count and byte length are <b>measured</b>
-    /// at preparation rather than declared, and acquisition may touch the network — which is why it
+    /// at preparation rather than declared, and acquisition may touch the network, which is why it
     /// happens only under the explicit <c>prepare</c> verb.
     /// </summary>
     External,
@@ -19,7 +19,7 @@ internal enum CorpusOrigin
 /// <summary>
 /// A pinned input identity: the exact bytes a case's data file must have.
 /// <para>
-/// A generated case needs none — its bytes are a function of the committed generator and its
+/// A generated case needs none: its bytes are a function of the committed generator and its
 /// revision, so the identity is <em>derived</em> rather than asserted. An acquired one does: the
 /// bytes come from somewhere this repository does not control, and the catalog's own recorded
 /// digest cannot decide whether a fresh download is the file the evidence was stated against,
@@ -33,7 +33,7 @@ internal sealed record CorpusIdentity(long ByteLength, string Sha256);
 /// and which spec it is converted under.
 /// <para>
 /// A single description type for every family is what keeps preparation, cataloguing, staleness
-/// checking, and the report's denominators from drifting apart per family — each of those reads the
+/// checking, and the report's denominators from drifting apart per family: each of those reads the
 /// same record, so a new family gains all of them by being described rather than by being
 /// special-cased.
 /// </para>
@@ -90,8 +90,8 @@ internal sealed record CorpusCase(
 
     /// <summary>
     /// The number of input records this case's data file carries, or <c>0</c> for an external case
-    /// whose count is not known until it has been prepared — read the prepared catalog entry for
-    /// the measured value.
+    /// whose count is not known until it has been prepared (read the prepared catalog entry for
+    /// the measured value).
     /// </summary>
     public long Records => RecordsDeclared ? RecordCount ?? CorpusTiers.Records(Tier) : 0L;
 

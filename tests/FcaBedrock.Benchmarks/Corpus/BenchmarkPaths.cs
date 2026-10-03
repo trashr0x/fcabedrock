@@ -7,7 +7,7 @@ namespace FcaBedrock.Benchmarks.Corpus;
 /// enter Git</b>; only generator definitions, specs, attribution, metadata contracts, and tiny
 /// expectations are committed. The default root therefore sits under the repository's already
 /// ignored <c>artifacts/</c> directory, and an operator can redirect it wholesale with
-/// <see cref="RootVariable"/> — for a scratch volume with room for a 73M-record tier, say.
+/// <see cref="RootVariable"/> (for a scratch volume with room for a 73M-record tier, say).
 /// </para>
 /// <para>
 /// <b>Safety.</b> The suite only ever creates, reads, and deletes files beneath the resolved root,
@@ -26,7 +26,7 @@ internal static class BenchmarkPaths
 
     private static readonly Lazy<string> LazyRoot = new(ResolveRoot);
 
-    /// <summary>The repository root — the directory holding <c>FcaBedrock.slnx</c>.</summary>
+    /// <summary>The repository root: the directory holding <c>FcaBedrock.slnx</c>.</summary>
     public static string RepositoryRoot => LazyRepositoryRoot.Value;
 
     /// <summary>The immutable v2 fixture root. Read-only: nothing here is ever written (EP-9).</summary>
@@ -48,7 +48,7 @@ internal static class BenchmarkPaths
     /// Where the grouping/calibration backend spills its sort-merge runs.
     /// <para>
     /// Production defaults this to the OS temporary directory, which on a developer machine is on
-    /// the system volume — a different device from the corpora and outputs, quite possibly with far
+    /// the system volume: a different device from the corpora and outputs, quite possibly with far
     /// less room, and on Windows one that a security scanner watches closely. A scale run would then
     /// be measuring two volumes at once, and a spill of several gigabytes could fill the drive the
     /// operating system is running from.
@@ -56,7 +56,7 @@ internal static class BenchmarkPaths
     /// <para>
     /// So the suite points the backend at its own root through the existing production seam
     /// (<c>GroupingOptions.TempDirectory</c>, the same one the CLI's <c>--temp-dir</c> uses). Every
-    /// large byte a measured run touches — input, spool, output, and result — then lives on one
+    /// large byte a measured run touches (input, spool, output, and result) then lives on one
     /// identified volume, which is what makes the storage a stated condition of the measurement
     /// rather than an accident of where a temp directory happened to be.
     /// </para>

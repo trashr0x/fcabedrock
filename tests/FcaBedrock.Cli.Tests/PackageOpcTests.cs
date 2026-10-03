@@ -7,9 +7,9 @@ namespace FcaBedrock.Cli.Tests;
 /// The OPC rules the tool package's core-properties part must satisfy, driven through the very
 /// validator <see cref="ToolPackTests"/> runs the real <c>.nupkg</c> through.
 /// <para>
-/// <b>Why a synthetic package.</b> Each negative here has to break exactly one rule — a
+/// <b>Why a synthetic package.</b> Each negative here has to break exactly one rule (a
 /// relationship that points elsewhere, a content type that says something else, metadata that
-/// disagrees with the nuspec — and a real pack cannot be asked to produce those. Building the
+/// disagrees with the nuspec), and a real pack cannot be asked to produce those. Building the
 /// package part by part keeps every case about one rule while still exercising the production
 /// validator; the positives cover <b>both</b> legitimate producers' leaves.
 /// </para>
@@ -33,7 +33,7 @@ public sealed class PackageOpcTests
 
     // The leaf NuGet emitted through SDK 10.0.302, and the hard-coded one it emits from SDK
     // 10.0.400 onwards (NuGet.Client change 5834c6b9, which fixed a deterministic-pack handle
-    // leak). Both are legitimate, so both must validate — and nothing else may.
+    // leak). Both are legitimate, so both must validate, and nothing else may.
     [InlineData(GuidStem)]
     [InlineData(PackageOpc.DeterministicStem)]
     public void Validate_WhenEitherProducerNamedTheMetadata_ThenNothingIsWrong(string stem) =>

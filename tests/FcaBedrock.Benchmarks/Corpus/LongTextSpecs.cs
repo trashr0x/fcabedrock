@@ -7,8 +7,8 @@ namespace FcaBedrock.Benchmarks.Corpus;
 /// its oracle indexes into.
 /// <para>
 /// Only <c>tag</c> and <c>blob</c> are analyzed. <c>note</c> is deliberately left unbound: it is
-/// there to be <em>read</em> — every one of its rows still costs a cleaned string of hundreds of
-/// characters — but binding a near-unique column as a nominal attribute would produce one formal
+/// there to be <em>read</em> (every one of its rows still costs a cleaned string of hundreds of
+/// characters), but binding a near-unique column as a nominal attribute would produce one formal
 /// attribute per row, which is a different (and already covered) pathology. Leaving it unanalyzed is
 /// what isolates text volume from attribute explosion.
 /// </para>

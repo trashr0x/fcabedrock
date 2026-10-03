@@ -41,7 +41,7 @@ public sealed class ProbeDraftGuaranteeTests
         Assert.True(reread.TryGetValue(out var rereadDocument), ProbeFixtures.Describe(reread.Diagnostics));
         Assert.DoesNotContain(reread.Diagnostics, IsErrorOrWorse);
 
-        // The reread document must also be the SAME document — canonical text that round-trips
+        // The reread document must also be the SAME document: canonical text that round-trips
         // to something else would satisfy legs 2-4 while quietly meaning something different.
         Assert.Equal(toml, SpecWriter.Write(rereadDocument));
 
@@ -152,7 +152,7 @@ public sealed class ProbeDraftGuaranteeTests
     public async Task Draft_WhenProbedFromAHeaderlessSource_ThenSatisfiesTheFourPartGuarantee()
     {
         // Index-bound attributes and `has_header = false` must resolve and convert exactly as
-        // name-bound ones do — the fallback path is not a second-class draft.
+        // name-bound ones do: the fallback path is not a second-class draft.
         const string csv = "red,big\nblue,small\n";
         var settings = ProbeFixtures.WideSettings(hasHeader: false);
 
@@ -180,7 +180,7 @@ public sealed class ProbeDraftGuaranteeTests
     public async Task Draft_WhenTruncated_ThenIncludeRecoversTheCompleteSchema()
     {
         // D-108's recovery claim, made concrete: a truncated draft converted over the probed
-        // source must produce the SAME columns, in the same order, as an untruncated probe's —
+        // source must produce the SAME columns, in the same order, as an untruncated probe's:
         // the retained prefix first, then the dropped tail re-appended in first-observation
         // order by the `include` calibration (§10.6 / §17 rule 3).
         const string csv = "col\nq\nr\ns\nt\n";
@@ -205,7 +205,7 @@ public sealed class ProbeDraftGuaranteeTests
     {
         // The cross-check that keeps probe and Calibrate structurally aligned (D-106): probe's
         // ordered-distinct observation must equal the domain Calibrate observes for the same
-        // input — same values, same order. Discovery re-implements the observer because it may
+        // input (same values, same order). Discovery re-implements the observer because it may
         // not reference Conversion, so this is what stops the two from drifting.
         const string csv = "col\nb\na\nb\nc\na\nd\n";
 

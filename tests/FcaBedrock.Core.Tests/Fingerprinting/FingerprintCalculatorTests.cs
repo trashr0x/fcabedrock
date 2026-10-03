@@ -167,7 +167,7 @@ public sealed class FingerprintCalculatorTests
     public void ComputeSchemaFingerprint_WhenMissingPolicyFlips_ThenFingerprintChanges()
     {
         // The {column}-missing column is a planned column (D-068), so it is in
-        // the hashed identity list — the D-035 "policies enter only through the
+        // the hashed identity list: the D-035 "policies enter only through the
         // list" rule, exercised.
         var withMissing = FingerprintCalculator.ComputeSchemaFingerprint(Plan(GoldenSpec()));
         var without = FingerprintCalculator.ComputeSchemaFingerprint(Plan(GoldenSpec(sexMissing: MissingPolicy.Skip)));
@@ -271,7 +271,7 @@ public sealed class FingerprintCalculatorTests
     public void Compute_WhenMatchedStylePairsDiffer_ThenOnlyCxtFingerprintChanges()
     {
         // Review amendment 2: the calculator's precondition is that inputs pair
-        // the style the plan was produced with — Native/Native vs
+        // the style the plan was produced with: Native/Native vs
         // V2Compat/V2Compat. Style is a cxt-only input (D-011/D-044).
         var spec = GoldenSpec();
         var native = Plan(spec, LabelStyle.Native);
@@ -432,7 +432,7 @@ public sealed class FingerprintCalculatorTests
     public void ComputeOutputFingerprint_WhenWideKeyPolicyOrIndexVaries_ThenBothFormatsMove()
     {
         // The object key rides in the SHARED binding payload, so both .cxt and .dat fingerprints move
-        // when the key column index or policy changes (keep #N names are byte-affecting) — asserted per
+        // when the key column index or policy changes (keep #N names are byte-affecting), asserted per
         // format, since a tuple NotEqual would pass on either alone.
         var keep0 = WideKeyOutputFingerprints(0, DuplicateObjectPolicy.Keep);
         var fail0 = WideKeyOutputFingerprints(0, DuplicateObjectPolicy.Fail);
@@ -499,7 +499,7 @@ public sealed class FingerprintCalculatorTests
     public void ComputeSchemaFingerprint_WhenOrderPermuted_ThenSchemaFingerprintChanges()
     {
         // Two permutations of the same domain change the column identities/sequence,
-        // so the schema fingerprint moves — the order is not inert (D-081).
+        // so the schema fingerprint moves: the order is not inert (D-081).
         Assert.True(Diag(ValueBinOrdinalSpec(["a", "b", "c"]), new SourceSchema(1)).TryGetValue(out var abc));
         Assert.True(Diag(ValueBinOrdinalSpec(["a", "c", "b"]), new SourceSchema(1)).TryGetValue(out var acb));
 
@@ -570,7 +570,7 @@ public sealed class FingerprintCalculatorTests
     public void BuildDatOutputJson_WhenNumericFreePerValue_ThenPinnedCanonicalBytesContainDiscretizerObject() =>
         // The {"kind":"free_per_value"} discretizer object rides in `shared`, so it feeds BOTH output
         // fingerprints (not schema_fingerprint). The complete dat output canonical bytes are pinned
-        // here — the exact-byte lock the schema fingerprint cannot provide (§14/D-094).
+        // here: the exact-byte lock the schema fingerprint cannot provide (§14/D-094).
         Assert.Equal(
             "{\"dat\":{\"base_index\":1,\"empty_line_trailing_space\":false,\"line_endings\":\"lf\","
                 + "\"nonempty_line_trailing_space\":false},\"fp_format\":1,\"kind\":\"dat_output\",\"schema\":"
@@ -583,7 +583,7 @@ public sealed class FingerprintCalculatorTests
 
     [Fact]
     public void ComputeDatOutputFingerprint_WhenNumericFreePerValue_ThenMatchesHardcodedVector() =>
-        // SHA-256 computed independently over the pinned dat bytes above — a change to the
+        // SHA-256 computed independently over the pinned dat bytes above: a change to the
         // free_per_value discretizer encoding moves this hash (D-094/D-101 output-encoding lock).
         Assert.Equal(
             "sha256:247648dc27afaf287d116650c01d71cf8d31860ea485069ef1d530f2d21bde88",
@@ -614,7 +614,7 @@ public sealed class FingerprintCalculatorTests
         ]);
 
     // range = "min_max", precision = "exact": the calibrator's derived cuts, substituted into the
-    // executable discretizer by CalibratedSpec.Create — the only way a data-range equal_width
+    // executable discretizer by CalibratedSpec.Create, the only way a data-range equal_width
     // becomes plannable (D-093).
     private static ConversionPlan EqualWidthMinMaxPlan()
     {
@@ -667,7 +667,7 @@ public sealed class FingerprintCalculatorTests
 
     [Fact]
     public void BuildSchemaJson_WhenValueGroups_ThenValueBinsInGroupDeclarationOrder() =>
-        // §17 rule 3: group declaration order — "ICD-Cardiac" follows "School" because it is
+        // §17 rule 3: group declaration order: "ICD-Cardiac" follows "School" because it is
         // declared second, not because of any sort.
         Assert.Equal(
             "{\"attributes\":" + ValueGroupsSchemaArray + ",\"fp_format\":1,\"kind\":\"schema\"}",
@@ -681,7 +681,7 @@ public sealed class FingerprintCalculatorTests
 
     [Fact]
     public void BuildDatOutputJson_WhenValueGroups_ThenCompletePinnedCanonicalBytes() =>
-        // The COMPLETE dat output bytes containing the value-groups object — the exact-byte lock
+        // The COMPLETE dat output bytes containing the value-groups object: the exact-byte lock
         // the schema fingerprint cannot give (the discretizer object rides in `shared`, so it feeds
         // the output fingerprints, not schema_fingerprint).
         Assert.Equal(
@@ -716,7 +716,7 @@ public sealed class FingerprintCalculatorTests
     {
         // The `groups` array is planned-order, never sorted (§14/D-094): reversing the declaration
         // reverses the bytes. A sorted encoder would produce identical bytes for both and this
-        // would fail — which is the point.
+        // would fail, which is the point.
         var reversed = new BedrockSpec(SpecFixtures.WideRowIndex(), [
             SpecFixtures.ValueGroups("edu", 0, ValueGroupsUnmatched.Skip, new NominalScale(),
                 ValueGroup.Create("ICD-Cardiac", null, "^I[0-9]{2}"),
@@ -752,7 +752,7 @@ public sealed class FingerprintCalculatorTests
     public void BuildCxtOutputJson_WhenUnmatchedResolved_ThenSpelledEvenWhenItWasTheDefault(
         ValueGroupsUnmatched unmatched, string spelling)
     {
-        // §14/D-094: the RESOLVED policy is always spelled — the fingerprint encodes effective
+        // §14/D-094: the RESOLVED policy is always spelled: the fingerprint encodes effective
         // configuration, unlike the writer, which preserves the authored/omitted distinction.
         var spec = new BedrockSpec(SpecFixtures.WideRowIndex(), [
             SpecFixtures.ValueGroups("edu", 0, unmatched, new NominalScale(), SpecFixtures.Group("G", "a")),
@@ -782,7 +782,7 @@ public sealed class FingerprintCalculatorTests
     public void BuildCxtOutputJson_WhenValuesOmittedVersusAuthoredEmpty_ThenTheBytesDiffer()
     {
         // The G-11 lock, with two VALID groups (both carry the same pattern, so both are usable
-        // matchers): authored presence is encoded, so `values` appears only when authored — and an
+        // matchers): authored presence is encoded, so `values` appears only when authored, and an
         // authored empty list appears as [].
         var patternOnly = FingerprintCalculator.BuildCxtOutputJson(Plan(PatternOnlySpec()), PatternOnlySpec(), NativeCxt());
         var authoredEmpty = FingerprintCalculator.BuildCxtOutputJson(Plan(AuthoredEmptyValuesSpec()), AuthoredEmptyValuesSpec(), NativeCxt());
@@ -796,7 +796,7 @@ public sealed class FingerprintCalculatorTests
     public void Fingerprints_WhenValuesOmittedVersusAuthoredEmpty_ThenSameSchemaButDifferentOutputHashes()
     {
         // The D-094 asymmetry made concrete: the two specs have IDENTICAL effective schemas (one
-        // "P" bin each — an empty values list matches nothing, so it changes no bin), hence one
+        // "P" bin each; an empty values list matches nothing, so it changes no bin), hence one
         // schema_fingerprint; but their authored config differs, and that rides in `shared`, so the
         // OUTPUT fingerprints differ. Same output fingerprint ⇒ same bytes; not the converse (§14).
         Assert.Equal(
@@ -825,7 +825,7 @@ public sealed class FingerprintCalculatorTests
     [Fact]
     public void BuildCxtOutputJson_WhenPassthrough_ThenAuthoredConfigIsPinnedAndDiscoveredBinsAreNot()
     {
-        // §14/D-094: "unmatched":"passthrough" IS authored config and is encoded — it is what made
+        // §14/D-094: "unmatched":"passthrough" IS authored config and is encoded: it is what made
         // the schema data-dependent. The DISCOVERED bins are not: they already ride as schema bins,
         // so re-encoding them inside the discretizer would be the second source of truth the rule
         // forbids.
@@ -896,7 +896,7 @@ public sealed class FingerprintCalculatorTests
     {
         // D-094: the resolved cuts appear ONLY as schema bins. A "cuts" key inside the
         // equal_width sub-object would be the redundant second source of truth the rule forbids
-        // (manual_cuts legitimately has one — hence the scoped assertion).
+        // (manual_cuts legitimately has one, hence the scoped assertion).
         var plan = EqualWidthMinMaxPlan();
         var json = FingerprintCalculator.BuildCxtOutputJson(plan, plan.Calibrated.Spec, NativeCxt());
         var discretizer = json[json.IndexOf("\"discretizer\":", StringComparison.Ordinal)..];
@@ -914,7 +914,7 @@ public sealed class FingerprintCalculatorTests
     [Fact]
     public void ComputeSchemaFingerprint_WhenEqualWidthManual_ThenMatchesHardcodedVector() =>
         // Hash literal computed independently (an external SHA-256 of the hand-authored bytes
-        // above), never copied from this encoder's output — that is what makes it a lock (D-094).
+        // above), never copied from this encoder's output: that is what makes it a lock (D-094).
         Assert.Equal(
             "sha256:cd6f9e39b9c79d7a785870401624573c9debf76b95ee6980dd5cda73fc631459",
             FingerprintCalculator.ComputeSchemaFingerprint(Plan(EqualWidthManualSpec())));
@@ -945,7 +945,7 @@ public sealed class FingerprintCalculatorTests
     public void BuildDatOutputJson_WhenEqualWidthMinMax_ThenCompletePinnedCanonicalBytes()
     {
         // The data-derived form's complete bytes, hand-authored: identical to the manual pin
-        // above except for the authored discretizer sub-object — the one documented difference.
+        // above except for the authored discretizer sub-object, the one documented difference.
         var plan = EqualWidthMinMaxPlan();
 
         Assert.Equal(
@@ -972,8 +972,8 @@ public sealed class FingerprintCalculatorTests
     public void ComputeFingerprints_WhenEqualWidthAutoVsFrozenManualCuts_ThenSchemaEqualAndOutputDiffersOnlyInTheDiscretizer()
     {
         // The D-094 one-directional guarantee, isolated: the frozen form (manual_cuts over the
-        // calibrated cuts, open ends) and the auto form share every effective bin — so the schema
-        // fingerprints match — while the output fingerprints differ, and differ ONLY through the
+        // calibrated cuts, open ends) and the auto form share every effective bin, so the schema
+        // fingerprints match, while the output fingerprints differ, and differ ONLY through the
         // authored discretizer sub-object.
         var frozen = new BedrockSpec(SpecFixtures.WideRowIndex(), [
             SpecFixtures.NumericCuts("score", 0, [25, 50, 75], new NominalScale()),
@@ -1068,7 +1068,7 @@ public sealed class FingerprintCalculatorTests
     [Fact]
     public void BuildCxtOutputJson_WhenEqualFrequency_ThenCalibratedCutsAreNotInsideTheDiscretizerObject()
     {
-        // D-094: the calibrated cuts appear ONLY as schema bins — re-encoding them in the authored
+        // D-094: the calibrated cuts appear ONLY as schema bins; re-encoding them in the authored
         // sub-object would be the second source of truth the rule forbids.
         var plan = EqualFrequencyPlan();
         var json = FingerprintCalculator.BuildCxtOutputJson(plan, plan.Calibrated.Spec, NativeCxt());
@@ -1087,7 +1087,7 @@ public sealed class FingerprintCalculatorTests
     [Fact]
     public void ComputeSchemaFingerprint_WhenEqualFrequency_ThenMatchesHardcodedVector() =>
         // Hash literal computed independently (an external SHA-256 over the hand-authored bytes
-        // above), never copied from this encoder's output — that is what makes it a lock (D-094).
+        // above), never copied from this encoder's output: that is what makes it a lock (D-094).
         Assert.Equal(
             "sha256:bc7ef3c1e66cb4ca40eb9317de43fd7858c230fcc87da6d802638ba992efb2b0",
             FingerprintCalculator.ComputeSchemaFingerprint(EqualFrequencyPlan()));
@@ -1169,7 +1169,7 @@ public sealed class FingerprintCalculatorTests
     public void ComputeFingerprints_WhenPercentileVsMinMaxOverTheSameCuts_ThenSchemaEqualAndOutputDiffers()
     {
         // The range mode is authored configuration, so two data-derived specs that happen to
-        // calibrate to the same cuts share a schema fingerprint but not an output one — the same
+        // calibrate to the same cuts share a schema fingerprint but not an output one: the same
         // D-094 asymmetry as auto-vs-frozen, within the auto family.
         var percentile = PercentilePlan();
         var minMax = EqualWidthMinMaxPlan();
@@ -1186,7 +1186,7 @@ public sealed class FingerprintCalculatorTests
     public void ComputeFingerprints_WhenEqualFrequencyAutoVsFrozenManualCuts_ThenSchemaEqualAndOutputDiffersOnlyInTheDiscretizer()
     {
         // The D-088/D-094 pair for equal_frequency: the frozen manual_cuts twin over the same
-        // calibrated cuts shares every effective bin — hence the schema fingerprint — while the
+        // calibrated cuts shares every effective bin (hence the schema fingerprint), while the
         // output fingerprints differ ONLY through the authored discretizer sub-object.
         var frozen = new BedrockSpec(SpecFixtures.WideRowIndex(), [
             SpecFixtures.NumericCuts("score", 0, [2, 3], new NominalScale()),

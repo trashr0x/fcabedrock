@@ -12,7 +12,7 @@ internal readonly record struct ObservedQuantileRunWrite(QuantileRunWriteKind Ki
 /// <summary>
 /// Everything one observed calibration transition sequence yields: the ordered writes with their
 /// phase, the catalogue count after every transition, and the tier-2 peaks. Nothing here is derived
-/// from the production schedule policy — the phase labels come from the driver, which knows when it
+/// from the production schedule policy: the phase labels come from the driver, which knows when it
 /// called <c>EndIntake</c> and <c>PrepareReplay</c>.
 /// </summary>
 internal sealed record QuantileRunObservation(
@@ -261,7 +261,7 @@ internal static class QuantileRunScheduleOracle
     }
 
     /// <summary>
-    /// Classifies an observation against both models. Exactly one must accept — unless the two
+    /// Classifies an observation against both models. Exactly one must accept, unless the two
     /// models predict the <b>same</b> checked schedule for this population
     /// (<see cref="SameSchedule"/>), which is a real and expected case: below the fan-in neither
     /// schedule merges during intake, and from <c>F+1</c> through <c>2F-1</c> leaves both have
@@ -308,7 +308,7 @@ internal static class QuantileRunScheduleOracle
 /// <summary>Which modelled schedule an observation was found to follow.</summary>
 internal enum QuantileRunScheduleKind
 {
-    /// <summary>The superseded whole-catalogue schedule — the negative control.</summary>
+    /// <summary>The superseded whole-catalogue schedule: the negative control.</summary>
     WholeCatalogue,
 
     /// <summary>The generation-tiered schedule the product must follow.</summary>

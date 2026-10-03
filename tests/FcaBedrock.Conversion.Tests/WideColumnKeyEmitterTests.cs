@@ -88,7 +88,7 @@ public sealed class WideColumnKeyEmitterTests
     {
         // [P001, P001, P001#1]: the third row is a DISTINCT first-occurrence key that happens to equal
         // a generated name (P001#1 from the second row), so it is disambiguated (→ P001#1#1) but is NOT
-        // a duplicate cleaned key — one DuplicateObjectKey, one ObjectKeyNameDisambiguated.
+        // a duplicate cleaned key: one DuplicateObjectKey, one ObjectKeyNameDisambiguated.
         var spec = KeyedSpec(DuplicateObjectPolicy.Keep);
 
         var (objects, diagnostics) = await RunAsync(spec, "P001,x\nP001,y\nP001#1,x", ConversionFixtures.WideWithKey(0, DuplicateObjectPolicy.Keep));
@@ -135,7 +135,7 @@ public sealed class WideColumnKeyEmitterTests
     public async Task EmitAsync_WhenKeyCellAbsentFromRaggedRow_ThenObjectKeyValueInvalid()
     {
         // The key column (index 1) is in range for the schema (first row is 2-wide) but absent from a
-        // later short row — an absent mapped cell is ObjectKeyValueInvalid at emit, not a plan error.
+        // later short row: an absent mapped cell is ObjectKeyValueInvalid at emit, not a plan error.
         var spec = new BedrockSpec(ConversionFixtures.WideWithKey(1, DuplicateObjectPolicy.Fail),
             [ConversionFixtures.Nominal("a", 0, "x", "y")]);
 
@@ -169,7 +169,7 @@ public sealed class WideColumnKeyEmitterTests
     [Fact]
     public async Task EmitAsync_WhenKeyColumnAlsoBoundAsAttribute_ThenBothNamesAndCrosses()
     {
-        // D-033: the key column may also be an [[attribute]] source — the same field names the object
+        // D-033: the key column may also be an [[attribute]] source: the same field names the object
         // and is analysed as an attribute.
         var spec = new BedrockSpec(ConversionFixtures.WideWithKey(0, DuplicateObjectPolicy.Fail),
             [ConversionFixtures.Nominal("a", 0, "x", "y")]);

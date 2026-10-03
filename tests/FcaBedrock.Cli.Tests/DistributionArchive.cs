@@ -15,7 +15,7 @@ namespace FcaBedrock.Cli.Tests;
 /// </summary>
 internal static class DistributionArchive
 {
-    /// <summary>A regular file, readable by all — <c>0100644</c> as the mode field holds it.</summary>
+    /// <summary>A regular file, readable by all: <c>0100644</c> as the mode field holds it.</summary>
     internal const int RegularFileMode = 0x81A4;
 
     /// <summary>The same, plus the execute bits: <c>0100755</c>. The apphost, and only the apphost.</summary>
@@ -26,7 +26,7 @@ internal static class DistributionArchive
 
     private const int SymbolicLinkType = 0xA000;
 
-    /// <summary>The packaging script every archive — CI's and a developer's — is produced by.</summary>
+    /// <summary>The packaging script every archive (CI's and a developer's) is produced by.</summary>
     internal static string Script(string repositoryRoot) =>
         Path.Combine(repositoryRoot, "eng", "publish-selfcontained.ps1");
 
@@ -52,7 +52,7 @@ internal static class DistributionArchive
     /// </para>
     /// <para>
     /// <b>Then the mode.</b> On a Linux or macOS distribution the apphost must be recorded
-    /// <c>0100755</c> and every other entry left <c>0100644</c> — the second half matters as much as
+    /// <c>0100755</c> and every other entry left <c>0100644</c>; the second half matters as much as
     /// the first, because "make everything executable" would be a different and worse archive. On a
     /// Windows distribution every entry's external-attributes field must be <b>exactly zero</b>:
     /// what a zip claims about permissions belongs to the target it was built for, never to the
@@ -90,7 +90,7 @@ internal static class DistributionArchive
             if (!IsUnix(rid))
             {
                 // The RAW field, before any shift, because a Windows distribution records nothing
-                // at all here — which is a stronger claim than "no Unix mode". The mode lives in
+                // at all here, which is a stronger claim than "no Unix mode". The mode lives in
                 // the high half; the low half is where a host's own attribute byte lands, so
                 // `0x00000001` shifts to zero and reads as mode-less while being different bytes,
                 // written by a different host, than the contract asks for. The packaging script
@@ -123,7 +123,7 @@ internal static class DistributionArchive
     }
 
     /// <summary>
-    /// Extracts <paramref name="archivePath"/> into a fresh directory and returns it — the same
+    /// Extracts <paramref name="archivePath"/> into a fresh directory and returns it: the same
     /// <c>unzip</c> step the README documents, done by the framework extractor that refuses a
     /// traversing entry and, on Unix, restores each entry's recorded mode.
     /// </summary>

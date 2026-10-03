@@ -4,7 +4,7 @@ namespace FcaBedrock.Core.Tests.Scaling;
 
 public sealed class OrdinalScaleTests
 {
-    // age cuts 30/40/50, open both ends — the v2 progressive shape.
+    // age cuts 30/40/50, open both ends: the v2 progressive shape.
     private static BinScheme AgeScheme() =>
         new(
             ["<30", "[30, 40)", "[40, 50)", ">=50"],
@@ -106,7 +106,7 @@ public sealed class OrdinalScaleTests
     [Fact]
     public void BuildShapes_WhenDefaultBoundaryOverCutBins_ThenOperatorIsGeometryAligned()
     {
-        // §12.3 (D-047): over half-open cut bins the cut geometry decides the operator — le
+        // §12.3 (D-047): over half-open cut bins the cut geometry decides the operator: le
         // pairs with the strict "<", ge with the inclusive ">=". This is the default-boundary
         // behavior the spec says is "simply honored". An explicit *straddling* boundary
         // (le+inclusive / ge+strict) over cut bins is rejected at the resolve seam with
@@ -228,7 +228,7 @@ public sealed class OrdinalScaleTests
     [Fact]
     public void BuildShapes_WhenOrderPermutesSchemeLabelOrder_ThenThresholdsFollowOrderNotLabels()
     {
-        // Order — not the scheme's Labels order — drives enumeration and crossings.
+        // Order (not the scheme's Labels order) drives enumeration and crossings.
         var scale = new OrdinalScale(OrdinalDirection.Ge, DropTop: false, OrdinalBoundary.Inclusive, ["high", "low", "mid"]);
         var shapes = scale.BuildShapes(ValueScheme("low", "mid", "high"));
 

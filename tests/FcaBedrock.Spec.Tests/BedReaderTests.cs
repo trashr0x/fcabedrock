@@ -56,7 +56,7 @@ public sealed class BedReaderTests
         Assert.Equal(fromLf.Categories, fromCrlf.Categories);
         Assert.Equal(fromLf.Values, fromCrlf.Values);
         Assert.Equal(fromLf.RestrictTo, fromCrlf.RestrictTo);
-        Assert.Equal("ring-number", fromCrlf.Names[^1]); // a token ending its line — no trailing '\r'
+        Assert.Equal("ring-number", fromCrlf.Names[^1]); // a token ending its line: no trailing '\r'
     }
 
     [Fact]

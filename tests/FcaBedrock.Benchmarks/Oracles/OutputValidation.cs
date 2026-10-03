@@ -31,7 +31,7 @@ internal static class OutputValidation
     /// <summary>
     /// The three warnings a data-dependent calibration <b>always</b> emits when its mode runs.
     /// <para>
-    /// Each says the same thing about a different mode — this attribute's column set came from the
+    /// Each says the same thing about a different mode: this attribute's column set came from the
     /// data, so <c>schema_fingerprint</c> depends on this input. They are statements that the mode
     /// executed, not findings about the data, and a case selecting one of these modes would emit its
     /// warning on every run over every corpus. Nothing else is filtered: an unparseable value or an
@@ -163,9 +163,9 @@ internal static class OutputValidation
     {
         ArgumentNullException.ThrowIfNull(diagnostics);
 
-        // A case may name codes that are outcomes rather than faults FOR IT - the aggregated
+        // A case may name codes that are outcomes rather than faults FOR IT (the aggregated
         // DuplicateObjectKey a deduping conversion reports, say, which states exactly what that
-        // case exists to do. The list is per-case and explicit, never a global relaxation: a code
+        // case exists to do). The list is per-case and explicit, never a global relaxation: a code
         // one case expects is still a failure everywhere else.
         var unexpected = diagnostics
             .Where(diagnostic => !ShapeWarnings.Contains(diagnostic.Code))

@@ -24,7 +24,7 @@ public sealed class EmitReplayTests
         }
 
         // Scoped to the code under test: the whole-stream observability warnings (§16.4/D-105)
-        // land in the same collector — this tiny fixture leaves a column empty — and are
+        // land in the same collector (this tiny fixture leaves a column empty) and are
         // single-counted by the same first-pass claim, proven directly in EmitObservabilityTests.
         // "Exactly one of THIS code" is what keeps the not-one-per-pass teeth.
         var diagnostic = Assert.Single(diagnostics, d => d.Code == DiagnosticCode.UnknownValueObserved);
@@ -121,7 +121,7 @@ public sealed class EmitReplayTests
 
         session.Dispose();
         var afterFirst = diagnostics.Count;
-        session.Dispose(); // idempotent no-op — no duplicate diagnostics, no exception
+        session.Dispose(); // idempotent no-op: no duplicate diagnostics, no exception
 
         Assert.Equal(afterFirst, diagnostics.Count);
         Assert.Throws<ObjectDisposedException>(session.Open);

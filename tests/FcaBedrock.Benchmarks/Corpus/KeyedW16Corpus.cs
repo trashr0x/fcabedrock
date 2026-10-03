@@ -21,7 +21,7 @@ namespace FcaBedrock.Benchmarks.Corpus;
 /// </para>
 /// <para>
 /// Object names are the cleaned key values, and their first occurrences run in ascending row order,
-/// so the emitted object order is simply <c>k0000000000</c>, <c>k0000000001</c>, … — hand-checkable
+/// so the emitted object order is simply <c>k0000000000</c>, <c>k0000000001</c>, …: hand-checkable
 /// despite the interleaving.
 /// </para>
 /// </summary>
@@ -35,7 +35,7 @@ internal static class KeyedW16Corpus
     /// <summary>Rows per object: every key appears exactly this many times.</summary>
     public const int RowsPerObject = 4;
 
-    /// <summary>The physical column count — the object key plus the sixteen W16 columns.</summary>
+    /// <summary>The physical column count: the object key plus the sixteen W16 columns.</summary>
     public const int ColumnCount = 1 + W16Corpus.ColumnCount;
 
     /// <summary>Physical index of the object-key column.</summary>
@@ -63,7 +63,7 @@ internal static class KeyedW16Corpus
 
     /// <summary>
     /// The <b>cleaned</b> value of one cell: the key column, then the sixteen W16 columns shifted
-    /// one place right. Reusing <see cref="W16Corpus.CleanedValue"/> is deliberate — the two
+    /// one place right. Reusing <see cref="W16Corpus.CleanedValue"/> is deliberate: the two
     /// families then share one value definition, so a dedupe expectation and a plain W16
     /// expectation cannot drift apart over the same row.
     /// </summary>

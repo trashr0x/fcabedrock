@@ -6,8 +6,8 @@ namespace FcaBedrock.Discovery.Tests;
 
 /// <summary>
 /// The <see cref="ProbeOptions"/> contract: the pinned defaults (D-108/D-110), the exact
-/// exception taxonomy of its validating factory (EP-10), and — the one that would
-/// otherwise rot silently — that its locale predicate agrees with the resolve seam's.
+/// exception taxonomy of its validating factory (EP-10), and (the one that would
+/// otherwise rot silently) that its locale predicate agrees with the resolve seam's.
 /// </summary>
 public sealed class ProbeOptionsTests
 {
@@ -81,7 +81,7 @@ public sealed class ProbeOptionsTests
     [Fact]
     public void Create_WhenLimitsAreMutuallyAbsurd_ThenStillSucceeds() =>
         // No cross-limit validation: a per-attribute limit far above the aggregate
-        // guards is legal — the guards simply bite first. Rejecting it would invent a rule the
+        // guards is legal; the guards simply bite first. Rejecting it would invent a rule the
         // decisions do not have.
         Assert.Equal(
             1_000_000,
@@ -109,7 +109,7 @@ public sealed class ProbeOptionsTests
 
     // The locales this suite pins agreement over: the invariant spellings, real predefined
     // cultures, and shapes that must be rejected (a well-formed but unknown tag is the case
-    // predefinedOnly exists for — under ICU, GetCultureInfo would otherwise synthesize it).
+    // predefinedOnly exists for: under ICU, GetCultureInfo would otherwise synthesize it).
     public static TheoryData<string> LocaleCases() =>
     [
         "invariant", "INVARIANT", "Invariant", "", "en-US", "fr-FR", "de-DE", "ja-JP", "en",
@@ -123,7 +123,7 @@ public sealed class ProbeOptionsTests
         // The reason this test exists: ProbeOptions duplicates SpecResolver's locale predicate
         // rather than sharing a public helper, so nothing structural stops the two
         // from drifting. If they drifted, probe could return a draft whose own `binding.locale`
-        // fails to resolve — breaking the D-107 guarantee on a field the caller chose. This
+        // fails to resolve, breaking the D-107 guarantee on a field the caller chose. This
         // makes that drift a test failure instead of a runtime surprise.
         var probeAccepts = true;
         try

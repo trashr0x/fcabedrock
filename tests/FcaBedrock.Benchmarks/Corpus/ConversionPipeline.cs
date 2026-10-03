@@ -12,7 +12,7 @@ using FcaBedrock.Spec.Toml;
 namespace FcaBedrock.Benchmarks.Corpus;
 
 /// <summary>
-/// One conversion prepared up to — and stopping at — the measured boundary: the plan is resolved,
+/// One conversion prepared up to (and stopping at) the measured boundary: the plan is resolved,
 /// calibrated, and fixed, and <see cref="Emit"/> is a closure that opens a <b>fresh</b> source
 /// enumeration each time it is invoked. Nothing here is open when a benchmark's timer starts.
 /// </summary>
@@ -21,8 +21,8 @@ internal sealed record PreparedConversion(
     Func<ICollection<BedrockDiagnostic>, IAsyncEnumerable<EmittedObject>> Emit);
 
 /// <summary>
-/// Builds a conversion through the real production sequence — read spec, resolve read settings,
-/// open a session, read the schema, resolve against it, bind the source, calibrate, plan — so a
+/// Builds a conversion through the real production sequence (read spec, resolve read settings,
+/// open a session, read the schema, resolve against it, bind the source, calibrate, plan), so a
 /// benchmark measures the shipped pipeline rather than a hand-assembled approximation of it.
 /// <para>
 /// Every stage runs in benchmark <em>setup</em>, outside any measured interval. A diagnostic of
@@ -59,7 +59,7 @@ internal static class ConversionPipeline
 
     /// <summary>
     /// Prepares a conversion from a v2 <c>.bed</c> through the sanctioned migrate-then-resolve
-    /// route — the same path the golden harness drives, so the immutable v2 outputs remain a valid
+    /// route: the same path the golden harness drives, so the immutable v2 outputs remain a valid
     /// byte oracle for what this produces.
     /// </summary>
     public static async Task<PreparedConversion> FromBedFileAsync(
@@ -167,7 +167,7 @@ internal static class ConversionPipeline
     /// Creates the shape-matched session over an arbitrary stream opener.
     /// <para>
     /// A session opens lazily, per read, so the opener is the seam a hashing or counting wrapper
-    /// belongs in — which is exactly how the CLI supplies its input-stability tracker. The
+    /// belongs in, which is exactly how the CLI supplies its input-stability tracker. The
     /// hash-pair benchmarks use it for the same reason: the wrapper has to sit where production puts
     /// it, or the measured chunking is not the production chunking.
     /// </para>

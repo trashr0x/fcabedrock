@@ -9,7 +9,7 @@ namespace FcaBedrock.Benchmarks.Corpus;
 /// <para>
 /// The fixtures are <b>read-only evidence</b> of what v2 produced (EP-9): nothing here writes,
 /// copies, or normalizes them, and their expected outputs are used as byte oracles exactly as
-/// checked in. The binding table is deliberately small and local — it names only the cases these
+/// checked in. The binding table is deliberately small and local: it names only the cases these
 /// benchmarks use, rather than reaching into a test project.
 /// </para>
 /// </summary>
@@ -47,7 +47,7 @@ internal static class MiniCorpus
     public static MiniCase Mushroom { get; } =
         new("mini-mushroom", "mini-mushroom", Wide(',', hasHeader: true));
 
-    /// <summary>mini-adult: comma-delimited, header, wide — the numeric/cut-bearing mini.</summary>
+    /// <summary>mini-adult: comma-delimited, header, wide; the numeric/cut-bearing mini.</summary>
     public static MiniCase Adult { get; } =
         new("mini-adult", "mini-adult", Wide(',', hasHeader: true));
 

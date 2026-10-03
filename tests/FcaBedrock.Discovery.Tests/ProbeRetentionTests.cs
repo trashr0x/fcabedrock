@@ -11,8 +11,8 @@ namespace FcaBedrock.Discovery.Tests;
 /// The boundary is the point of the suite. Truncation is <b>strictly greater-than</b>: an
 /// attribute whose distinct values fit the limit exactly is complete and must not be marked, and
 /// only a further distinct value beyond it truncates. That asymmetry is what lets a truncated
-/// draft still recover the whole schema — retained prefix plus <c>include</c> re-appends the
-/// tail in first-observation order — rather than merely reporting that something was lost.
+/// draft still recover the whole schema (retained prefix plus <c>include</c> re-appends the
+/// tail in first-observation order) rather than merely reporting that something was lost.
 /// </para>
 /// </summary>
 public sealed class ProbeRetentionTests
@@ -55,7 +55,7 @@ public sealed class ProbeRetentionTests
         var result = await ProbeFixtures.ProbeCsvAsync("a\nx\ny\nz\nw\n", options: Limit(3));
         var attribute = Only(result);
 
-        // The retained PREFIX in first-observation order — never a sample, never a sorted set.
+        // The retained PREFIX in first-observation order: never a sample, never a sorted set.
         Assert.Equal(["x", "y", "z"], attribute.DeclaredDomain);
         Assert.Equal(ProbeDraftExpectations.MarkerFor(3), attribute.Description);
         Assert.Equal(UnknownValuePolicy.Include, attribute.UnknownValuePolicy);
@@ -106,7 +106,7 @@ public sealed class ProbeRetentionTests
     public async Task Probe_WhenAColumnIsEntirelyMissing_ThenTheDomainIsOmittedNotEmpty()
     {
         // Omitted, not `[]`. Both resolve as "absent" (§10.3), but an authored empty list claims
-        // the user declared a zero-value domain — a different statement from "not yet known".
+        // the user declared a zero-value domain: a different statement from "not yet known".
         var result = await ProbeFixtures.ProbeCsvAsync("a,b\nx,?\ny,\n");
         var draft = ProbeFixtures.Draft(result);
 
@@ -142,7 +142,7 @@ public sealed class ProbeRetentionTests
     public async Task Probe_WhenAValueRepeatsAfterTruncation_ThenItIsStillNotRetained()
     {
         // Past the limit the distinct set is frozen, so a repeat of a dropped value must not
-        // sneak back in — which is also what keeps retention bounded rather than merely capped
+        // sneak back in, which is also what keeps retention bounded rather than merely capped
         // at first sight.
         var result = await ProbeFixtures.ProbeCsvAsync("a\nx\ny\nz\nz\nx\n", hasHeader: false, options: Limit(2));
 
@@ -199,7 +199,7 @@ public sealed class ProbeRetentionTests
     public async Task Probe_WhenValuesDifferOnlyByCase_ThenTheyAreDistinctOrdinally()
     {
         // EP-12: ordinal identity, never culture-aware. A culture-aware comparison could fold or
-        // reorder these differently on another machine — a determinism bug on a path that
+        // reorder these differently on another machine: a determinism bug on a path that
         // decides output columns.
         var result = await ProbeFixtures.ProbeCsvAsync("a\nStraße\nSTRASSE\nstrasse\n");
 

@@ -38,7 +38,7 @@ internal static class TripleProbeFixtures
     public static TripleColumnsSection Indexes(int subject, int predicate, int value) =>
         new(new IndexColumnRef(subject), new IndexColumnRef(predicate), new IndexColumnRef(value));
 
-    /// <summary>The complete name-addressed role map (§5.3 — requires <c>has_header = true</c>).</summary>
+    /// <summary>The complete name-addressed role map (§5.3; requires <c>has_header = true</c>).</summary>
     public static TripleColumnsSection Names(string subject, string predicate, string value) =>
         new(new NameColumnRef(subject), new NameColumnRef(predicate), new NameColumnRef(value));
 

@@ -47,7 +47,7 @@ public sealed class ConvertNativeEffectiveTests
     public async Task Convert_WhenTheRootStoresCorrectNativeFields_ThenAV2RunIsStillCurrent()
     {
         // The stored fields are native and correct. A v2-compatible conversion emits different
-        // bytes and records different output fingerprints — and must NOT report the spec as stale,
+        // bytes and records different output fingerprints, and must NOT report the spec as stale,
         // because nothing about the spec changed.
         using var run = ConvertRun.Wide(Stored(
             $"schema_fingerprint = \"{SchemaFingerprint}\"",
@@ -94,7 +94,7 @@ public sealed class ConvertNativeEffectiveTests
     {
         // Storing the v2-effective value where the native one belongs is exactly the mistake the
         // separation exists to catch: the stored field is compared against the computed NATIVE
-        // value, so it is stale — and stays stale under --v2-compat, where that same effective
+        // value, so it is stale, and stays stale under --v2-compat, where that same effective
         // value is the one being written.
         using var run = ConvertRun.Wide(Stored(
             $"cxt_output_fingerprint = \"{EffectiveCxtFingerprint}\"",

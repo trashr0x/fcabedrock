@@ -15,7 +15,7 @@ namespace FcaBedrock.Benchmarks;
 /// expectation in this suite is authored, so it can only prove that the pipeline agrees with a
 /// model written in the same repository; the v2 goldens are external evidence produced by a
 /// different program years earlier. A harness that quietly stopped converting correctly would still
-/// satisfy its own oracle — but not these bytes.
+/// satisfy its own oracle, but not these bytes.
 /// </para>
 /// <para>
 /// The fixtures are read-only (EP-9). They are never copied, normalized, or written; the timed

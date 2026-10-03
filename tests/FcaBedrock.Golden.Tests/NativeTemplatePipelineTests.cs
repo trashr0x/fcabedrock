@@ -147,7 +147,7 @@ public sealed class NativeTemplatePipelineTests
         AssertIdentical(await ConvertAsync(Materialized()), composed);
         AssertPlanCovers(composed, "feature_1", "feature_2");
 
-        // The base template's own body never reached the effective attributes — proof the
+        // The base template's own body never reached the effective attributes: proof the
         // inherited matcher retargeted, rather than the base simply being dropped.
         Assert.All(composed.ResolvedAttributes, line =>
         {
@@ -161,7 +161,7 @@ public sealed class NativeTemplatePipelineTests
     [Fact]
     public async Task Convert_WhenAnUnusedTemplateIsAdded_ThenEveryByteAndHashIsUnchanged()
     {
-        // §9.2: an unused template is semantically dormant — it converts without error and
+        // §9.2: an unused template is semantically dormant: it converts without error and
         // without touching a byte, even carrying config that WOULD change the output.
         var baseline = await ConvertAsync(Materialized());
         var withTemplate = await ConvertAsync(
@@ -173,7 +173,7 @@ public sealed class NativeTemplatePipelineTests
     [Fact]
     public async Task Convert_WhenAMatcherMatchesNothing_ThenOnlyAWarningIsAdded()
     {
-        // D-119's neutrality row: a matcher that selects nothing adds ONLY its Warning —
+        // D-119's neutrality row: a matcher that selects nothing adds ONLY its Warning,
         // asserted alongside the successful conversion, so a warning-only result is
         // proven to still produce complete, byte-identical artifacts.
         var baseline = await ConvertAsync(Materialized());
@@ -192,7 +192,7 @@ public sealed class NativeTemplatePipelineTests
         // D-119's uncurated-draft row in miniature: the matcher SELECTS both attributes,
         // but every field its template authors loses to their explicit ones, so the output
         // is byte-identical to the template-free spec and the Warning is the only signal
-        // the author gets — which is exactly why the condition exists.
+        // the author gets, which is exactly why the condition exists.
         var baseline = await ConvertAsync(Materialized());
         var shadowed = await ConvertAsync(
             Materialized()
@@ -212,12 +212,12 @@ public sealed class NativeTemplatePipelineTests
         // The change row, and the proof that the neutrality rows above are a property of
         // resolved semantics rather than of templates being ignored: adding
         // missing_policy = "as_attribute" to the TEMPLATE plans a new column, so all three
-        // fingerprints and BOTH outputs move — and land exactly where the equivalent flat
+        // fingerprints and BOTH outputs move, and land exactly where the equivalent flat
         // edit lands.
         var before = await ConvertAsync(Declarative());
         var after = await ConvertAsync(Declarative("missing_policy = \"as_attribute\"\n"));
 
-        // Every axis moves — including the two structural snapshots. Asserting those
+        // Every axis moves, including the two structural snapshots. Asserting those
         // differ is also what proves the equivalence rows above are not passing on an
         // insensitive projection: the same comparison that reports "equal" for equivalent
         // specs reports "different" for a genuine plan change.
@@ -253,7 +253,7 @@ public sealed class NativeTemplatePipelineTests
         Assert.Contains("feature_1::1", named.Cxt, StringComparison.Ordinal);
 
         // The plan snapshot DOES move (rendered names live in it) even though the schema
-        // fingerprint does not — canonical identity is naming-independent (§14). That
+        // fingerprint does not: canonical identity is naming-independent (§14). That
         // asymmetry is the concrete reason the equivalence rows compare the plan as well
         // as the hashes: the snapshot sees changes the schema hash is designed not to.
         Assert.NotEqual(baseline.Plan, named.Plan);
@@ -283,7 +283,7 @@ public sealed class NativeTemplatePipelineTests
     /// The complete equivalence assertion: **structures first, then hashes, then bytes**.
     /// <para>
     /// §9.2's claim is that equivalent specs resolve to "the same effective attributes,
-    /// the same plan, the same three fingerprints, and byte-identical output" — four
+    /// the same plan, the same three fingerprints, and byte-identical output": four
     /// claims, so all four are asserted. Comparing only hashes and bytes would leave the
     /// first two inferred rather than shown: a fingerprint is a lossy projection of the
     /// plan (it deliberately omits, for instance, row-shaping state), so plan or
@@ -361,7 +361,7 @@ public sealed class NativeTemplatePipelineTests
     /// <para>
     /// Unordered members (<c>KnownBins</c>, <c>CrossesByBin</c>) are ordinally sorted so
     /// the projection is stable without discarding their content (EP-12). This is
-    /// deliberately wider than the fingerprint inputs — the point is to catch divergence
+    /// deliberately wider than the fingerprint inputs: the point is to catch divergence
     /// the hashes are not designed to expose.
     /// </para>
     /// </summary>

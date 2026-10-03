@@ -28,7 +28,7 @@ internal readonly record struct DrainSummary(long Records, long PresentFields, l
 /// conversion, or export code under test.
 /// <para>
 /// One traversal serves every family, because a family differs only in how many columns it has and
-/// what each cell cleans to — so that is all each one supplies. A family-specific copy of the loop
+/// what each cell cleans to, so that is all each one supplies. A family-specific copy of the loop
 /// would be a second place for the summary's definition to drift.
 /// </para>
 /// </summary>
@@ -80,7 +80,7 @@ internal static class DrainOracle
 /// A triple row is three role fields rather than a positional record, so it needs its own traversal:
 /// the rows come out in the layout's physical order, and each contributes its subject, predicate,
 /// and value. None of the three is ever missing in this family, which is a fact worth having in the
-/// expectation rather than in a comment — a reader that dropped a role would change the field count.
+/// expectation rather than in a comment: a reader that dropped a role would change the field count.
 /// </para>
 /// </summary>
 internal static class TripleDrainOracle

@@ -198,7 +198,7 @@ public sealed class ConversionPlannerTests
     [Fact]
     public void Plan_WhenEqualWidthOrdinalDefaultedBoundary_ThenGeometryPicksTheOperator()
     {
-        // §12.3/D-060(c): over cut bins a defaulted boundary never selects the operator — the
+        // §12.3/D-060(c): over cut bins a defaulted boundary never selects the operator; the
         // geometry does. A `ge` + inclusive default renders '>=', and would be identical even if
         // [defaults].ordinal_boundary said "strict" (which the seam owns, not the planner).
         Assert.True(Plan(EqualWidth(new OrdinalScale(OrdinalDirection.Ge, DropTop: false, OrdinalBoundary.Inclusive)), new SourceSchema(1))
@@ -211,7 +211,7 @@ public sealed class ConversionPlannerTests
     public void Plan_WhenEqualWidthCalibrated_ThenPlansIdenticallyToTheFrozenManualCutsForm()
     {
         // D-088/D-093 at plan level: the calibrated auto form and its frozen manual_cuts twin
-        // produce the same columns, identities, and crosses — structurally, via one cut engine.
+        // produce the same columns, identities, and crosses, structurally, via one cut engine.
         var pending = new BedrockSpec(SpecFixtures.WideRowIndex(),
             [SpecFixtures.EqualWidthPending("score", 0, 4, new OrdinalScale(OrdinalDirection.Le))]);
         var calibrated = CalibratedSpec.Create(Resolve(pending, new SourceSchema(1)), [new CalibratedCuts("score", [25, 50, 75])]);
@@ -243,7 +243,7 @@ public sealed class ConversionPlannerTests
     [Fact]
     public void Plan_WhenEveryAttributeExcluded_ThenWarnsNoFormalAttributes()
     {
-        // §16.4 (D-098): a plan with zero columns is degenerate but structurally valid — a Warning,
+        // §16.4 (D-098): a plan with zero columns is degenerate but structurally valid: a Warning,
         // not an Error, so the plan still succeeds. Already reachable via an all-excluded spec.
         var spec = new BedrockSpec(SpecFixtures.WideRowIndex(), [SpecFixtures.Excluded("x", 0)]);
 
@@ -290,7 +290,7 @@ public sealed class ConversionPlannerTests
     [Fact]
     public void Plan_WhenCutBasedAttributeHasValueLabelsMatchingBinLabel_ThenLabelsAreIgnoredInNames()
     {
-        // §10.8 / D-049: value_labels is dormant under a cut discretizer — it must not
+        // §10.8 / D-049: value_labels is dormant under a cut discretizer: it must not
         // change rendered names, even when a key happens to match a cut-bin label.
         var age = new AttributeSpec("age", new ColumnSource(0, SourceValueType.Number), Include: true,
             ManualCutsDiscretizer.Create([30.0], BinEnds.Open, CultureInfo.InvariantCulture).Value!,
@@ -373,7 +373,7 @@ public sealed class ConversionPlannerTests
     [Fact]
     public void Plan_WhenOrdinalAsAttribute_ThenMissingAttributeAppendedAfterThresholds()
     {
-        // D-074: the position rule is uniform across scale kinds — the missing
+        // D-074: the position rule is uniform across scale kinds: the missing
         // column follows the ordinal threshold columns.
         var spec = new BedrockSpec(SpecFixtures.WideRowIndex(),
             [SpecFixtures.NumericCuts("age", 0, [30, 40, 50], new OrdinalScale(OrdinalDirection.Le),
@@ -390,7 +390,7 @@ public sealed class ConversionPlannerTests
     [Fact]
     public void Plan_WhenAsAttributeOnEarlierAttribute_ThenLaterAttributeIdsFollowMissingColumn()
     {
-        // §14: the missing column occupies a real slot in the planned list — the
+        // §14: the missing column occupies a real slot in the planned list: the
         // next attribute's formal ids start after it (fingerprint-input ordering).
         var spec = new BedrockSpec(SpecFixtures.WideRowIndex(),
         [
@@ -449,7 +449,7 @@ public sealed class ConversionPlannerTests
     [Fact]
     public void Plan_WhenTripleUnordered_ThenPlansIdenticallyToSubjectGrouped()
     {
-        // §5.3 / §17 rule 4 / D-082: the formal-attribute schema is ordering-independent — unordered
+        // §5.3 / §17 rule 4 / D-082: the formal-attribute schema is ordering-independent: unordered
         // plans the same schema as subject_grouped (no plan-phase reject). The resolved ordering rides
         // on the plan's SourceExecution; EmitTripleAsync honors it at emit, not here.
         AttributeSpec[] attributes = [SpecFixtures.PredicateNominal("color", "hasColor", ["red", "green"])];
@@ -511,7 +511,7 @@ public sealed class ConversionPlannerTests
     public void Plan_WhenScaleIsDeferred_ThenReportsScaleNotImplementedV1(string kind)
     {
         // §12.4 / D-010: deferred scales are parsable carriers the v1 planner
-        // refuses — parse-but-fail-to-plan, at the plan phase (§16.4).
+        // refuses: parse-but-fail-to-plan, at the plan phase (§16.4).
         var attr = new AttributeSpec("a", new ColumnSource(0, SourceValueType.String), Include: true,
             new IdentityDiscretizer(), new UnimplementedScale(kind),
             ["x"], RestrictTo: [], SpecFixtures.NoLabels, MissingPolicy.Skip, UnknownValuePolicy.Warn);
@@ -528,7 +528,7 @@ public sealed class ConversionPlannerTests
     [Fact]
     public void Plan_WhenDeferredScaleOnExcludedAttribute_ThenParkedAndNeverAnError()
     {
-        // §10.9 / D-049: parked config never blocks — the deferred-scale guard
+        // §10.9 / D-049: parked config never blocks; the deferred-scale guard
         // applies to included attributes only.
         var parked = new AttributeSpec("x", new ColumnSource(0, SourceValueType.String), Include: false,
             new IdentityDiscretizer(), new UnimplementedScale("biordinal"),
@@ -628,7 +628,7 @@ public sealed class ConversionPlannerTests
     public void Plan_WhenFilterOnlyAttribute_ThenPlansARestrictionButNoColumn()
     {
         // §10.4/D-049/D-076/D-105: a filter-only attribute (include = false + restrict_to)
-        // contributes ONLY a restriction — no PlannedAttribute, no formal column — which is
+        // contributes ONLY a restriction (no PlannedAttribute, no formal column), which is
         // exactly why PlannedRestriction carries its own value type and policy.
         var attr = SpecFixtures.Excluded("Gene", 0) with { RestrictTo = [new RestrictToValue("Bmp5")] };
         var spec = new BedrockSpec(SpecFixtures.WideRowIndex(), [attr, SpecFixtures.Nominal("g", 1, ["b"])]);
@@ -681,7 +681,7 @@ public sealed class ConversionPlannerTests
     [Fact]
     public void Plan_WhenEveryAttributeIsFilterOnly_ThenNoFormalAttributesWarnsAndRestrictionsSurvive()
     {
-        // §16.4/D-105: an all-filter-only plan is degenerate but valid — it still filters
+        // §16.4/D-105: an all-filter-only plan is degenerate but valid: it still filters
         // objects, it just emits no columns. A Warning, never a failure.
         var gene = SpecFixtures.Excluded("Gene", 0) with { RestrictTo = [new RestrictToValue("Bmp5")] };
         var spec = new BedrockSpec(SpecFixtures.WideRowIndex(), [gene]);
@@ -700,7 +700,7 @@ public sealed class ConversionPlannerTests
     [Fact]
     public void Plan_WhenTripleAttributeRestricts_ThenRestrictionCarriesThePredicateSelector()
     {
-        // §10.2/D-082: a triple restriction binds its predicate selector verbatim — matched
+        // §10.2/D-082: a triple restriction binds its predicate selector verbatim, matched
         // against data at emit, never range-checked as a column.
         var gene = SpecFixtures.PredicateNominal("Gene", "Gene", ["Bmp5"]) with
         {
@@ -721,7 +721,7 @@ public sealed class ConversionPlannerTests
     public void Plan_WhenRestrictionEntriesMutatedAfterPlanning_ThenThePlanIsUnaffected()
     {
         // D-098 recursive immutability: the planner snapshots entries into immutable storage, so
-        // a caller-held list cannot reach a plan — and no public IReadOnlyList on the plan is
+        // a caller-held list cannot reach a plan, and no public IReadOnlyList on the plan is
         // castable back to a mutable one.
         var authored = new List<RestrictToEntry> { new RestrictToValue("Bmp5") };
         var attr = SpecFixtures.Excluded("Gene", 0) with { RestrictTo = authored };
@@ -745,7 +745,7 @@ public sealed class ConversionPlannerTests
     [Fact]
     public void Plan_WhenExcludedIdentityHasNoDomain_ThenNoCalibrationDiagnostic()
     {
-        // D-049: parked config never blocks — the guard applies to included
+        // D-049: parked config never blocks; the guard applies to included
         // attributes only.
         var parked = new AttributeSpec("x", new ColumnSource(0, SourceValueType.String), Include: false,
             new IdentityDiscretizer(), new NominalScale(), DeclaredDomain: [], RestrictTo: [],
@@ -761,7 +761,7 @@ public sealed class ConversionPlannerTests
     [Fact]
     public void Plan_WhenCutDiscretizerHasNoDomain_ThenNoCalibrationDiagnostic()
     {
-        // §10.3: cut discretizers ignore declared_domain — the D-071 guard is
+        // §10.3: cut discretizers ignore declared_domain; the D-071 guard is
         // value-bin only.
         var spec = new BedrockSpec(SpecFixtures.WideRowIndex(),
             [SpecFixtures.NumericCuts("age", 0, [30.0], new NominalScale())]);
@@ -814,7 +814,7 @@ public sealed class ConversionPlannerTests
     [Fact]
     public void Plan_WhenOrderOmitsADomainValue_ThenReportsOrdinalOrderMissing()
     {
-        // A full permutation is required — a domain value with no order entry has no
+        // A full permutation is required: a domain value with no order entry has no
         // threshold (§12.3). Same code, message variant naming the missing value.
         var scale = new OrdinalScale(OrdinalDirection.Ge, DropTop: false, OrdinalBoundary.Inclusive, ["a", "b"]);
         var spec = new BedrockSpec(SpecFixtures.WideRowIndex(),
@@ -903,7 +903,7 @@ public sealed class ConversionPlannerTests
     [Fact]
     public void Plan_WhenStringFreePerValueOrdinalOverEmptyUniverseOmitsOrder_ThenOrdinalOrderMissing()
     {
-        // String free_per_value has no natural order to derive, so — like identity — the empty
+        // String free_per_value has no natural order to derive, so, like identity, the empty
         // universe still requires an explicit order = [] (§12.3/D-061).
         var scale = new OrdinalScale(OrdinalDirection.Ge, DropTop: false, OrdinalBoundary.Inclusive, Order: null);
         var spec = new BedrockSpec(SpecFixtures.WideRowIndex(),
@@ -931,7 +931,7 @@ public sealed class ConversionPlannerTests
     public void Plan_WhenNumericFreePerValueOrdinalOverEmptyDomainOmitsOrder_ThenNaturalOrderEmptyNoDiagnostic()
     {
         // The numeric natural-order derivation still applies over an empty authored domain: it yields
-        // the empty order and stays valid (no OrdinalOrderMissing) — the authored-empty rule does not disturb it.
+        // the empty order and stays valid (no OrdinalOrderMissing); the authored-empty rule does not disturb it.
         var scale = new OrdinalScale(OrdinalDirection.Ge, DropTop: false, OrdinalBoundary.Inclusive, Order: null);
         var spec = new BedrockSpec(SpecFixtures.WideRowIndex(),
             [SpecFixtures.FreePerValue("v", 0, SourceValueType.Number, [], scale)]);
@@ -949,7 +949,7 @@ public sealed class ConversionPlannerTests
     public void Plan_WhenIdentityNominalOverAuthoredEmptyDomain_ThenZeroColumnsAndNoFormalAttributes()
     {
         // An authored [] is a complete fixed empty domain: zero value bins, hence zero columns and
-        // the degenerate NoFormalAttributes warning (§16.4) — not calibrated, not an error.
+        // the degenerate NoFormalAttributes warning (§16.4), not calibrated, not an error.
         var spec = new BedrockSpec(SpecFixtures.WideRowIndex(),
             [SpecFixtures.Nominal("g", 0, [])]);
 
@@ -964,7 +964,7 @@ public sealed class ConversionPlannerTests
     public void Plan_WhenIdentityNominalOverAuthoredEmptyDomainWithAsAttribute_ThenOnlyMissingColumn()
     {
         // [] adds no value columns, but missing_policy = "as_attribute" still appends the missing
-        // column — so [] does not by itself guarantee zero formal attributes (D-122 §15).
+        // column, so [] does not by itself guarantee zero formal attributes (D-122 §15).
         var spec = new BedrockSpec(SpecFixtures.WideRowIndex(),
             [SpecFixtures.Nominal("g", 0, [], missing: MissingPolicy.AsAttribute)]);
 
@@ -1007,7 +1007,7 @@ public sealed class ConversionPlannerTests
     public void Plan_WhenNumericFreePerValueOrdinalOmitsOrder_ThenNaturalAscendingOrderNoDiagnostic()
     {
         // §12.3/D-096: numeric free_per_value with no scale.order is EXEMPT from OrdinalOrderMissing;
-        // the bin order is the natural numeric ascending order of the (canonical) domain — regardless
+        // the bin order is the natural numeric ascending order of the (canonical) domain, regardless
         // of declaration order.
         var scale = new OrdinalScale(OrdinalDirection.Ge, DropTop: false, OrdinalBoundary.Inclusive, Order: null);
         var spec = new BedrockSpec(SpecFixtures.WideRowIndex(),
@@ -1015,7 +1015,7 @@ public sealed class ConversionPlannerTests
 
         Assert.True(Plan(spec, new SourceSchema(1)).TryGetValue(out var plan));
 
-        // Natural ascending order 0, 5, 90 — not the declaration order 90, 0, 5.
+        // Natural ascending order 0, 5, 90, not the declaration order 90, 0, 5.
         Assert.Equal(["v->=0", "v->=5", "v->=90"], plan.FormalAttributes.Select(f => f.RenderedName));
         Assert.Equal(["0", "5", "90"], plan.FormalAttributes.Select(f => f.Identity.BinKey));
     }
@@ -1041,7 +1041,7 @@ public sealed class ConversionPlannerTests
     [Fact]
     public void Plan_WhenNumericFreePerValueOrdinalCombos_ThenCrossesByBinMatchGeometry()
     {
-        // Names alone can't catch a direction/boundary regression in incidence — assert CrossesByBin
+        // Names alone can't catch a direction/boundary regression in incidence: assert CrossesByBin
         // (raw bin → crossed formal-attribute ids) for every combination over natural order 0,5,90.
         var domain = new[] { "90", "0", "5" }; // natural ascending → ids 0(>=/<0), 1(5), 2(90)
         AssertCrosses(OrdinalDirection.Ge, OrdinalBoundary.Inclusive, domain, zero: [0], five: [0, 1], ninety: [0, 1, 2]);
@@ -1098,7 +1098,7 @@ public sealed class ConversionPlannerTests
     [Fact]
     public void Plan_WhenStringFreePerValueOrdinalOmitsOrder_ThenReportsOrdinalOrderMissing()
     {
-        // §12.3: string free_per_value still REQUIRES an explicit order — the natural-order exemption
+        // §12.3: string free_per_value still REQUIRES an explicit order; the natural-order exemption
         // is numeric-only (D-096). The value-bin ordinal path applies exactly as for identity.
         var scale = new OrdinalScale(OrdinalDirection.Ge, DropTop: false, OrdinalBoundary.Inclusive, Order: null);
         var spec = new BedrockSpec(SpecFixtures.WideRowIndex(),

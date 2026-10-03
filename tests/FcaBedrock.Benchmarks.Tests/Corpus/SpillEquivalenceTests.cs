@@ -78,7 +78,7 @@ public sealed class SpillEquivalenceTests
     [Fact]
     public async Task Spilling_ShouldActuallyHaveHappened()
     {
-        // Without this, the two tests above could pass by never spilling at all - which would make
+        // Without this, the two tests above could pass by never spilling at all, which would make
         // them agreements between two identical runs rather than evidence about the spill path.
         using var temp = TempDirectory.Create();
         var dataPath = temp.File("w16.csv");
@@ -131,8 +131,8 @@ public sealed class SpillEquivalenceTests
         // ten thousand rows therefore pays the same accumulator cost as one of seventy-three million,
         // and raising the default raises that floor for every conversion at every size.
         //
-        // The assertion is deliberately weak — the peak is at least a quarter of the budget, and
-        // within the documented bound — because the exact fraction is the accumulator's business. It
+        // The assertion is deliberately weak (the peak is at least a quarter of the budget, and
+        // within the documented bound) because the exact fraction is the accumulator's business. It
         // is the SHAPE that a tuning decision needs: this number tracks the knob, not the data.
         using var temp = TempDirectory.Create();
         var dataPath = temp.File("w16.csv");
