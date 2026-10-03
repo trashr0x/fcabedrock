@@ -15,10 +15,10 @@ using FcaBedrock.Spec.Toml;
 namespace FcaBedrock.Golden.Tests;
 
 /// <summary>
-/// The M6 exit: the one-file Internet-Ads workflow end-to-end (D-119). A single
-/// self-contained spec over the complete Internet-Advertisements column layout —
-/// 1,559 declared attributes, one <c>term_flag</c> template, one
-/// <c>source_index_range = [4, 1557]</c> matcher — resolves, calibrates, plans,
+/// The one-file Internet-Ads workflow end-to-end (D-119). A single
+/// self-contained spec over the complete Internet-Advertisements column layout
+/// (1,559 declared attributes, one <c>term_flag</c> template, one
+/// <c>source_index_range = [4, 1557]</c> matcher) resolves, calibrates, plans,
 /// converts, and emits byte-identical <c>.cxt</c>/<c>.dat</c> with the correct
 /// incidences; and it equals its materialized twin on effective attributes, plan,
 /// all three fingerprints, and bytes. The uncurated probe-style draft proves the
@@ -30,8 +30,8 @@ namespace FcaBedrock.Golden.Tests;
 /// constants</b> (the oracle must be independent of the artifact it grades): every
 /// cardinality/boundary assertion uses the frozen literals 1,559 / 4 / 1,557 /
 /// 1,554 / 1,558, the generator's public constants are checked <em>against</em>
-/// those literals, and reduction-sensitivity guards prove the checks are real
-/// gates. Structural projections enumerate every semantic field explicitly with
+/// those literals, and reduction-sensitivity guards prove the checks are
+/// real. Structural projections enumerate every semantic field explicitly with
 /// invariant formatting (record <c>ToString()</c> hides collection contents such
 /// as a discretizer's cut vector). Emitted incidences, not just planned column
 /// names, are asserted in both output formats.
@@ -39,7 +39,7 @@ namespace FcaBedrock.Golden.Tests;
 /// <para>
 /// Deliberately separate from the v2 golden comparisons (EP-9): templates, matchers,
 /// and the ad.data layout are native surface no v2 fixture uses. The corpus is
-/// deterministic and synthetic — it mirrors the layout of Nicholas Kushmerick
+/// deterministic and synthetic: it mirrors the layout of Nicholas Kushmerick
 /// (1999), Internet Advertisements (UCI), without copying any UCI data row.
 /// </para>
 /// </summary>

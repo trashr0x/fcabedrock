@@ -7,15 +7,14 @@ using Assembly = System.Reflection.Assembly;
 
 namespace FcaBedrock.Architecture.Tests;
 
-// Executable encoding of the CLAUDE.md dependency rule, via ArchUnitNET:
+// Executable encoding of the AGENTS.md dependency rule, via ArchUnitNET:
 // Diagnostics is a leaf, Core depends only on Diagnostics, and the packages form
 // no cycles. Rules are expressed against the loaded production assemblies (exact,
 // and correct-by-construction as packages are added). ArchUnitNET reads compiled
-// type-level metadata, so these become load-bearing the moment M1 gives the
-// (currently empty) assemblies real types and references; until then the
-// dependency/cycle rules are vacuously satisfied, and
-// Architecture_ShouldIncludeProductionAssemblies is the non-vacuous M0 check that
-// the suite really inspected the production assemblies rather than nothing.
+// type-level metadata, so a rule over an assembly with no types would pass
+// vacuously; Architecture_ShouldIncludeExactlyTheEightProductionAssemblies and the
+// non-vacuity assertions below are what show the suite really inspected the
+// production assemblies rather than nothing.
 public sealed class DependencyRulesTests
 {
     private static readonly Assembly[] Production = LoadProductionAssemblies();
@@ -95,14 +94,14 @@ public sealed class DependencyRulesTests
     [Fact]
     public void Packages_ShouldBeFreeOfCycles()
     {
-        // The documented invariant (CLAUDE.md, D-039) is that the PACKAGES — the production
-        // assemblies — form no cycles; Core's sub-namespaces (Core.Spec, Core.Discretization,
+        // The documented invariant (AGENTS.md, D-039) is that the PACKAGES (the production
+        // assemblies) form no cycles; Core's sub-namespaces (Core.Spec, Core.Discretization,
         // Core.Fingerprinting, …) are organizational, not independent packages, so intra-Core
         // edges (e.g. FreePerValueDiscretizer → CanonicalNumber / SourceValueType, both inside
-        // FcaBedrock.Core) are not package cycles. Slices().Matching("FcaBedrock.(*)") sliced by
-        // full namespace, accidentally treating those sub-namespaces as separate packages — a
-        // latent semantic bug corrected here (M4 Slice B / D-101): assign every type to its
-        // production assembly, so each production assembly is exactly one slice.
+        // FcaBedrock.Core) are not package cycles. Slices().Matching("FcaBedrock.(*)") slices by
+        // full namespace and would treat those sub-namespaces as separate packages, so every
+        // type is assigned to its production assembly instead and each production assembly is
+        // exactly one slice (D-101).
         var packages = ProductionPackageSlices();
 
         // Non-vacuity: prove the slicing produced exactly one slice per loaded production package.

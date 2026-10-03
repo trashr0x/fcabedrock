@@ -7,9 +7,9 @@ namespace FcaBedrock.Golden.Tests;
 // One activated golden fixture: its .bed, .data, expected outputs, and the binding
 // the v2 .bed never recorded (delimiter/header/shape are supplied here, per the
 // fixtures README's sanction for a typed fixture-case list). The binding is the
-// authored document form (D-066) — the .bed migrates onto it and the resolve seam
-// applies the §5.1 defaults. The active set grows per milestone — triples at M3,
-// dates stay parked.
+// authored document form (D-066): the .bed migrates onto it and the resolve seam
+// applies the §5.1 defaults. The active set is the wide and triple fixtures below;
+// the mini-dates fixtures are not active.
 public sealed record FixtureCase(string Family, string Variant, BindingSection Binding)
 {
     private string Dir => Path.Combine(FixturePaths.V2Root, Family);

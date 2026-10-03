@@ -3,11 +3,10 @@ using FcaBedrock.Core.Spec;
 
 namespace FcaBedrock.Sources.Tests;
 
-// Header tolerance for BOTH shapes. Sep's own header mode throws ArgumentException
-// on a duplicate or multiply-blank header name, which made §5.3/§10.2 — where such a header is
-// legal and binds by index — unreachable. The header is now consumed as the first non-blank
-// record (spec §5.1.1), realizing that already-normative behavior. Unique-header and headerless behavior is unchanged;
-// these tests pin both the expansion and the neutrality.
+// Header tolerance for BOTH shapes. §5.3/§10.2 make a duplicate or multiply-blank header legal
+// and bind it by index, so the header is read as the first non-blank record (spec §5.1.1)
+// rather than through a provider's header mode. These tests pin duplicate and blank headers as
+// well as unique-header and headerless sources.
 public sealed class HeaderToleranceTests
 {
     private static Func<Stream> Opener(string text) => () => new MemoryStream(Encoding.UTF8.GetBytes(text));

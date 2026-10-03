@@ -7,8 +7,8 @@ namespace FcaBedrock.Benchmarks.Oracles;
 /// What can honestly be asserted about a conversion of real UCI Adult data.
 /// <para>
 /// Every other family in this suite has a generator, so its expected output is derivable. Adult does
-/// not, and six of its curated attributes discover their domains from the data, so deriving the
-/// expected bytes would mean re-implementing calibration — an oracle that cannot disagree with the
+/// not, and seven of its curated attributes discover their domains from the data, so deriving the
+/// expected bytes would mean re-implementing calibration: an oracle that cannot disagree with the
 /// code proves nothing. What this file supplies instead is the set of checks that <em>are</em>
 /// independent: a second reader for the drain summary, the plan's shape, and the object count.
 /// </para>

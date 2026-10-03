@@ -10,16 +10,17 @@ namespace FcaBedrock.Cli.Tests;
 /// feed, runs as an installed command, converts real files, records a truthful manifest, and
 /// uninstalls cleanly.
 /// <para>
-/// It is <b>gated</b> because it is the only test that installs anything: every other suite runs
-/// in process. The gate is the in-repo idiom — the fact is always discovered and reports as
-/// skipped, so its absence is visible rather than silent.
+/// It is <b>gated</b> by an environment variable because it is the only test that installs the
+/// tool. That opt-in is the in-repo idiom: the fact is always discovered and reports as skipped, so
+/// its absence is visible rather than silent.
 /// </para>
 /// <para>
-/// Nothing here touches the machine. The feed is the fixture's own directory behind a
+/// Nothing is installed globally. The feed is the fixture's own directory behind a
 /// <c>&lt;clear /&gt;</c> configuration, the package cache and the tool path are inside one
 /// disposable root, the noise variables go on the child alone, and the install is never
-/// <c>--global</c>. Step 8 uninstalls because uninstalling is part of the contract; the
-/// <c>using</c> root is what actually guarantees cleanup on every path.
+/// <c>--global</c>. Step 8 uninstalls because uninstalling is part of the contract. Disposing the
+/// <c>using</c> root then attempts to delete it on every path; a root it cannot delete is left
+/// behind rather than failing the test.
 /// </para>
 /// </summary>
 [Collection(ToolPackageCollection.Name)]

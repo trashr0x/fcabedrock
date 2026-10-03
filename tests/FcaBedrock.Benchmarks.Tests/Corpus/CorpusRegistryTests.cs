@@ -123,8 +123,8 @@ public sealed class CorpusRegistryTests
     public void TheAcquiredCase_ShouldPinTheExactEntryItConsumes()
     {
         // The wiring assertion. The mechanism is tested offline in AcquiredCorpusIdentityTests;
-        // this is what says the real case actually uses it, and with which bytes: the length and
-        // digest of the `adult.data` entry every M8 measurement was stated against.
+        // this is what says the real case uses it, and with which bytes: the length and
+        // digest of the `adult.data` entry the suite consumes.
         var identity = CorpusCases.Adult.DataIdentity;
 
         Assert.NotNull(identity);

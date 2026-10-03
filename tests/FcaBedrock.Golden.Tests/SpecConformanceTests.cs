@@ -97,7 +97,7 @@ public sealed class SpecConformanceTests
     [Fact]
     public async Task NativeCxt_WhenOrderedCutsDiscrete_ThenBelowAndAtOrAboveColumns()
     {
-        // §11.x / §12.1: a cut at Managerial over the ordered domain yields two
+        // §11.8 / §12.1: a cut at Managerial over the ordered domain yields two
         // mutually-exclusive bins.
         var lines = (await NativeCxtAsync(AdultOrdinalDiscrete)).Split('\n');
 

@@ -3,15 +3,14 @@ using System.IO.Compression;
 namespace FcaBedrock.Cli.Tests;
 
 /// <summary>
-/// What makes a zip a valid <b>standalone distribution archive</b> — stated once, so the gated
+/// What makes a zip a valid <b>standalone distribution archive</b>, stated once, so the opt-in
 /// smoke and the archive-writer test cannot drift into two different answers.
 /// <para>
-/// The property that forced this to be written down is the Unix <b>mode</b>. A zip carries a file's
-/// permissions in its external-attributes field, and an archive that records none — or records
-/// <c>0100644</c> — unzips to a <c>FcaBedrock.Cli</c> nobody can run, whatever the published file's
-/// own mode was. Every archive this project shipped before had exactly that defect, and every
-/// structural check it had passed anyway: the entry was present, correctly named, the right size,
-/// and completely unusable.
+/// The property that most needs stating is the Unix <b>mode</b>. A zip carries a file's
+/// permissions in its external-attributes field, and an archive that records none (or records
+/// <c>0100644</c>) unzips to a <c>FcaBedrock.Cli</c> nobody can run, whatever the published file's
+/// own mode was. Such an archive passes every structural check: the entry is present, correctly
+/// named, the right size, and completely unusable.
 /// </para>
 /// </summary>
 internal static class DistributionArchive

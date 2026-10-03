@@ -157,10 +157,10 @@ jobs:
       # is never a performance result.
       #
       # The category is named explicitly rather than left to the default, so what this job selects is
-      # visible in the log rather than implied. The two opt-in tiers stay out either way: `Scale`
-      # costs hours, `External` needs the acquired corpus, and neither is reachable by a name filter.
-      # A benchmark never generates its own input, so a SELECTED case whose corpus is missing is an
-      # execution failure, never a skip.
+      # visible in the log rather than implied. The three opt-in tiers stay out either way: `Working`
+      # and `Scale` cost minutes to hours, `External` needs the acquired corpus, and none is reachable
+      # by a name filter. A benchmark never generates its own input, so a SELECTED case whose corpus
+      # is missing is an execution failure, never a skip.
       - name: Benchmark harness smoke (Small, Dry, measures nothing)
         run: >
           dotnet run -c Release --no-build --project tests/FcaBedrock.Benchmarks --

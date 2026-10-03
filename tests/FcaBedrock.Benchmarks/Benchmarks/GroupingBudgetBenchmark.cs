@@ -7,13 +7,13 @@ namespace FcaBedrock.Benchmarks;
 
 /// <summary>
 /// The grouping backend's two internal knobs, varied <b>one axis at a time</b> over the case that
-/// actually exercises them: interleaved triple input, which cannot stream and must group.
+/// exercises them: interleaved triple input, which cannot stream and must group.
 /// <para>
-/// These are the only defaults M8 is allowed to move, and only after evidence (D-082/D-095: the
+/// These are the only tunable defaults, and they move only after evidence (D-124; D-082/D-095: the
 /// budget and fan-in are byte-neutral by construction, never a spec or fingerprint input; the
 /// layout safety constants beside them are correctness constants and are not touched here). The
-/// experiment therefore has two jobs at once. It measures the tradeoff — a smaller budget spills
-/// sooner and merges more, a larger one holds more rows resident — and it <b>proves the
+/// experiment therefore has two jobs at once. It measures the tradeoff (a smaller budget spills
+/// sooner and merges more, a larger one holds more rows resident) and it <b>proves the
 /// byte-neutrality that makes tuning legitimate at all</b>: every budget and every fan-in is
 /// validated against the same expected output digest, so a knob that changed a single byte would
 /// fail rather than quietly produce a faster wrong answer.

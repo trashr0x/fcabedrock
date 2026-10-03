@@ -461,17 +461,18 @@ public sealed class ResolvedSpecTests
         Assert.Equal(new PendingEqualWidth(4, EqualWidthRange.MinMax, CutPrecision.Exact), carrier.Config);
     }
 
-    // The trust boundary also re-checks equal_width's range/precision/bounds coherence, and — at
-    // Slice D — equal_frequency's tie_policy/cut_placement and the pending union's variants (see
-    // ResolvedSpec.ValidateDiscretizerEnums). Those arms are deliberately unreachable from outside
-    // Core and have no negative test, because the states they reject are UNREPRESENTABLE rather
-    // than merely rejected (EP-10, asserted directly by
+    // The trust boundary also re-checks equal_width's range/precision/bounds coherence,
+    // equal_frequency's tie_policy/cut_placement and the pending union's variants (see
+    // ResolvedSpec.ValidateDiscretizerEnums). The enum and coherence arms have no negative test
+    // because the states they reject are UNREPRESENTABLE rather than merely rejected (EP-10,
+    // asserted directly by
     // EqualWidthDiscretizerTests.EqualWidthDiscretizer_WhenInspected_ThenNoPublicConstructorOrSetter,
     // PendingEqualWidth's guards, and PendingEqualFrequencyTests' undefined-enum rejections): every
-    // property is get-only so `with` cannot desync them, the only constructors are the validating
-    // factories, and CutPrecision / PendingCalibration are private-protected-closed unions no
-    // out-of-assembly type can extend. They stay as the EP-10 backstop for a future in-assembly
-    // caller, matching this file's existing defensive arms.
+    // property is get-only so `with` cannot desync them, and the only constructors are the
+    // validating factories. The variant arms are different: the private protected base
+    // constructors of CutPrecision and PendingCalibration block ordinary derivation outside Core,
+    // but a record's protected copy constructor does not (CS8878), so those arms are what reject
+    // any other variant.
 
     // --- equal_frequency (M4 Slice D, D-103) ----------------------------------
 

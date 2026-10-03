@@ -12,9 +12,9 @@ namespace FcaBedrock.Benchmarks.Configuration;
 /// The suite's BenchmarkDotNet configuration.
 /// <para>
 /// BenchmarkDotNet owns discovery, jobs, warmup, measurement, worker lifecycle, statistics,
-/// allocation reporting, logs, and exporters, so this adds only the four things it cannot know:
-/// where the evidence goes, the selection policy, the domain denominators, and one job shape the
-/// method boundary requires.
+/// allocation reporting, logs, and exporters, so this adds only the suite's own choices: where the
+/// evidence goes, the selection policy, the domain denominators, the two job shapes the method
+/// boundary and the opt-in tiers require, and the diagnoser, exporter and validator explained below.
 /// </para>
 /// </summary>
 internal static class BedrockBenchmarkConfig
@@ -46,9 +46,11 @@ internal static class BedrockBenchmarkConfig
     /// right shape for work measured in seconds and minutes.
     /// </para>
     /// <para>
-    /// Two warmups and five measured iterations: enough to see the spread and to let the filesystem
-    /// cache reach a steady state, without turning one case into an afternoon. Three samples alone
-    /// would not support a tuning decision, and the tuning gate says so.
+    /// Two warmups and five measured iterations: enough to see the spread without turning one case
+    /// into an afternoon. The warmups do not show that the filesystem cache or the runtime reached a
+    /// steady state. One run does not support a tuning decision either: D-124's tuning rule asks for
+    /// an improvement reproduced in two independent comparison sessions and confirmed at both target
+    /// sizes.
     /// </para>
     /// <para>
     /// The 73M tier runs the same job with fewer repetitions, supplied on the command line as

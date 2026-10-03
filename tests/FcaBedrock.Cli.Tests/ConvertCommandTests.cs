@@ -601,8 +601,10 @@ internal sealed class ConvertRun : IDisposable
     public string Text(string extension) => new UTF8Encoding(false).GetString(Bytes(extension));
 
     /// <summary>
-    /// Every file in the directory that claims the private transaction namespace: a record, a
-    /// stage, or a backup. A finished run — committed or rolled back — leaves none.
+    /// Every file in the run's directory whose name carries the private transaction marker
+    /// <c>.fcabedrock-</c> (a record, a stage, a backup or another control file), in ordinal order.
+    /// Tests assert it is empty where they expect the run's cleanup to have completed, and inspect
+    /// what it holds where they expect files to remain.
     /// </summary>
     public IReadOnlyList<string> Residue()
     {

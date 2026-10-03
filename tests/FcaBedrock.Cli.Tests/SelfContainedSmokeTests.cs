@@ -8,24 +8,25 @@ namespace FcaBedrock.Cli.Tests;
 /// archives into something a user can download and unzip.
 /// <para>
 /// It is the packaged counterpart of <see cref="ToolSmokeTests"/>. The global tool is
-/// framework-dependent — it needs a matching runtime on the machine — and the M8 release gate adds a
-/// distribution that does not. What that costs is a copy of the runtime beside the executable, and
-/// what it buys is a program that runs where <c>dotnet</c> is absent; both are checked here rather
-/// than assumed from the publish command's exit code.
+/// framework-dependent (it needs a matching runtime on the machine), and D-122 part 13 requires
+/// the later public release to add a distribution that does not. What that costs is a copy of the
+/// runtime beside the executable, and what it buys is a program that runs where <c>dotnet</c> is
+/// absent; both are checked here rather than assumed from the publish command's exit code.
 /// </para>
 /// <para>
 /// <b>It runs the archive, not the publish folder.</b> The distribution a user receives is the zip,
-/// and a zip loses what its writer does not record — a file's Unix mode above all. So this publishes
+/// and a zip loses what its writer does not record: a file's Unix mode above all. So this publishes
 /// through the real packaging script, inspects the archive it produced, extracts <em>that exact
-/// archive</em>, and makes every behavioural check against the extracted apphost. Running the
-/// publish folder instead is what let three releases ship an archive whose <c>./FcaBedrock.Cli</c>
-/// could not be executed at all while every check here passed.
+/// archive</em>, and makes every behavioural check against the extracted apphost. Checking the
+/// publish folder instead would let an archive whose <c>./FcaBedrock.Cli</c> cannot be executed
+/// pass every check here.
 /// </para>
 /// <para>
-/// <b>Gated</b>, like the tool smoke, because it is slow and writes a few hundred megabytes: it
-/// always reports as skipped rather than silently not existing. It publishes only for the
-/// <b>running</b> RID — a cross-published folder proves the SDK can emit files for another platform
-/// and nothing whatsoever about running there, and this suite does not make claims it cannot test.
+/// <b>Gated</b> by an environment variable, like the tool smoke, because it is slow and writes a
+/// few hundred megabytes: it always reports as skipped rather than silently not existing. It
+/// publishes only for the <b>running</b> RID: a cross-published folder proves the SDK can emit
+/// files for another platform and nothing whatsoever about running there, and this suite does not
+/// make claims it cannot test.
 /// </para>
 /// </summary>
 public sealed class SelfContainedSmokeTests
@@ -148,10 +149,10 @@ public sealed class SelfContainedSmokeTests
             StringComparison.Ordinal);
 
         // (5a) THE ARCHIVE, before anything is run from it. Safe flat names, no links, no case
-        // collisions, and — on Linux and macOS — the apphost recorded 0100755 with every ordinary
+        // collisions, and (on Linux and macOS) the apphost recorded 0100755 with every ordinary
         // file left 0100644. A zip carries the mode; a published file's own permissions do not
-        // survive one that records none, which is exactly how three green runs shipped an archive
-        // whose documented `./FcaBedrock.Cli` could not be executed.
+        // survive one that records none, so a run that checked only the publish folder could
+        // deliver an archive whose documented `./FcaBedrock.Cli` cannot be executed.
         DistributionArchive.AssertValid(archive, rid);
         Assert.True(
             new FileInfo(archive).Length > 10L * 1024 * 1024, "the archive is too small to carry a runtime.");

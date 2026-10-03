@@ -8,10 +8,10 @@ namespace FcaBedrock.Benchmarks.Tests.Corpus;
 /// The property that makes tuning the memory budget legitimate at all: <b>a budget changes where the
 /// work happens, never what it produces</b>.
 /// <para>
-/// D-082 and D-095 say so, and M8 is allowed to move the budget and the merge fan-in precisely
+/// D-082 and D-095 say so, and the budget and the merge fan-in may be tuned (D-124) precisely
 /// because they are byte-neutral by construction. "By construction" is a claim, and a claim about
 /// exact count-sensitive calibration under spilling is exactly the kind that should be measured
-/// rather than trusted — a quantile accumulator that lost or double-counted a value while spilling
+/// rather than trusted: a quantile accumulator that lost or double-counted a value while spilling
 /// would produce plausible cuts, not obviously wrong ones.
 /// </para>
 /// <para>

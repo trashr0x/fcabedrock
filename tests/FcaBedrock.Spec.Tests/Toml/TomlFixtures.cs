@@ -369,8 +369,8 @@ internal static class TomlFixtures
         """;
 
     /// <summary>
-    /// §19.4 EMAGE trimmed to one attribute: exercises the D-070 recognized-deferred
-    /// discretizer reject (value_groups carries no parameters into the document).
+    /// §19.4 EMAGE trimmed to one attribute: a value_groups attribute that reads and
+    /// resolves to an executable discretizer (D-104).
     /// </summary>
     public const string EmageValueGroups = """
         [spec]

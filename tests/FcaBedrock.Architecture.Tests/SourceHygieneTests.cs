@@ -3,13 +3,12 @@ using System.Text;
 namespace FcaBedrock.Architecture.Tests;
 
 // Source hygiene: authored C# must not carry raw C0 control characters (or DEL) in its bytes.
-// Two had crept in — a raw NUL inside a CLI cache-key literal and a raw SOH inside a Discovery
-// theory datum — where the C# escape spelling was meant. Such bytes are invisible in editors and
-// review tools, so the line reads as something it is not, and ripgrep classifies the whole file as
-// binary, silently degrading ordinary content search over it.
+// Such a byte (a raw NUL in a string literal, say, where the C# escape spelling was meant) is
+// invisible in editors and review tools, so the line reads as something it is not, and ripgrep
+// classifies the whole file as binary, silently degrading ordinary content search over it.
 //
 // This is a SPELLING rule, not a semantic one: "\0" and the raw byte compile to the same string,
-// so nothing here constrains behaviour. It is deliberately narrow (EP-1) — only .cs under src/ and
+// so nothing here constrains behaviour. It is deliberately narrow (EP-1): only .cs under src/ and
 // tests/, and only the character predicate below. It is not a Roslyn analyzer, not a universal
 // file-type or asset policy, and not a line-length, file-size, or complexity rule.
 public sealed class SourceHygieneTests

@@ -14,8 +14,8 @@ namespace FcaBedrock.Golden.Tests;
 // Drives the full pipeline for one fixture: read .bed -> migrate to a spec document
 // -> resolve (Spec) -> shape-matched source (Sources) -> plan (Core) -> emit
 // (Conversion) -> write (Export). The single orchestrator the golden harness
-// exercises (later, M7's CLI plays this role); byte-equality here is also the gate on
-// the migrate->resolve route reproducing v2 (D-079). Wide and triple share the front
+// exercises; byte-equality here also checks that
+// the migrate->resolve route reproduces v2 (D-079). Wide and triple share the front
 // half; the resolved shape picks the source and the emit entrypoint (D-082/D-086).
 internal static class GoldenConversion
 {

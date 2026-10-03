@@ -5,20 +5,20 @@ namespace FcaBedrock.Benchmarks.Corpus;
 
 /// <summary>
 /// The <b>Ads-width</b> synthetic family: 1,559 physical columns, matching the geometry of the
-/// internet-advertisements workload the v2 lineage used as its wide extreme — three numeric
+/// internet-advertisements workload the v2 lineage used as its wide extreme: three numeric
 /// columns, one local flag, 1,554 sparse term flags, and a class column.
 /// <para>
 /// It exists to pressure <em>width</em> rather than length. A schema of 1,559 columns is where
 /// per-column costs stop being rounding error: the planner's formal-attribute list, the probe's
 /// per-attribute retention accounting, and the wide reader's per-record field array all scale with
-/// it, and none of those is visible in a sixteen-column corpus however many rows it has. The plan
-/// therefore fixes this family at 1,000 and 10,000 rows and deliberately keeps it out of the
-/// target-scale matrix.
+/// it, and none of those is visible in a sixteen-column corpus however many rows it has. This
+/// family is therefore fixed at 1,000 and 10,000 rows (the Micro and Small tiers) and deliberately
+/// kept out of the target-scale matrix.
 /// </para>
 /// <para>
 /// <b>The content is synthetic.</b> Nothing here is derived from the original advertisements data;
 /// only the shape is. The term flags are sparse (about 1.2% set), which is what makes a wide row's
-/// incidence small even though its schema is enormous — the property that makes the geometry
+/// incidence small even though its schema is enormous: the property that makes the geometry
 /// interesting in the first place.
 /// </para>
 /// </summary>

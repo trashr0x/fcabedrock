@@ -5,16 +5,16 @@ namespace FcaBedrock.Cli.Tests;
 /// <summary>
 /// The packaging script's <b>archive writer</b>, exercised against a folder this test controls.
 /// <para>
-/// The gated self-contained smoke proves the whole distribution, but it costs a full publish and
+/// The opt-in self-contained smoke proves the whole distribution, but it costs a full publish and
 /// runs only for the platform it is on. This runs on every target in the ordinary suite, in
-/// seconds, and asks the one question that was answered wrongly for every archive this project has
-/// shipped: does the zip record the apphost as executable? A Windows machine can answer it for a
+/// seconds, and asks the question an unusable archive gets wrong: does the zip record the
+/// apphost as executable? A Windows machine can answer it for a
 /// Linux distribution, because the answer is in the archive's own metadata rather than in the
-/// filesystem it came from — and the reverse holds too, so a Linux machine answers it for a
+/// filesystem it came from, and the reverse holds too, so a Linux machine answers it for a
 /// Windows distribution and must get the same answer a Windows machine would.
 /// </para>
 /// <para>
-/// It runs the real script through <c>-ArchiveOnly</c> rather than reimplementing its rules — the
+/// It runs the real script through <c>-ArchiveOnly</c> rather than reimplementing its rules: the
 /// point of a packaging test is that the packaging command is what was tested.
 /// </para>
 /// </summary>

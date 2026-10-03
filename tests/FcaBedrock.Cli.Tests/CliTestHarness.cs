@@ -258,12 +258,10 @@ internal sealed class RecordingPublicationFileSystem : IPublicationFileSystem
     public Action? Mutate { get; set; }
 
     /// <summary>
-    /// How many times a deterministic substitution actually fired.
+    /// How many times a deterministic substitution fired.
     /// <para>
     /// A substitution test that silently never raced proves nothing, and an <em>outcome</em> cannot
-    /// tell the two apart — before the lifetime correction, whether a given variant failed depended
-    /// on the allocator's history rather than on whether the hook ran. So the tests that place a
-    /// race assert that it happened.
+    /// tell the two apart. So the tests that place a race assert that it happened.
     /// </para>
     /// </summary>
     public int MutationsFired { get; private set; }

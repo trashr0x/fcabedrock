@@ -259,9 +259,9 @@ public sealed class QuantileAccumulatorTests
     public void Sizing_WhenAccumulatorIsAllocated_ThenTheRealHeapCostStaysUnderTheModeledBytes()
     {
         // The GC-delta sanity check the layout arithmetic cannot give: measure the actual managed
-        // bytes an accumulator's retained state costs and confirm the model covers it. x64-gated
+        // bytes an accumulator's retained state costs and confirm the model covers it. x64-only
         // like SpoolConfidentialityTests, because the layout constants are validated for .NET 10
-        // CoreCLR x64 only (the roadmap's M8 cross-platform item owns the other targets).
+        // CoreCLR x64 only (each release candidate validates the other targets; see the roadmap).
         Assert.SkipUnless(
             RuntimeInformation.ProcessArchitecture == Architecture.X64,
             "x64 retained-layout constants (D-082/D-103); other targets are the roadmap's M8 item.");

@@ -1,9 +1,9 @@
 namespace FcaBedrock.Benchmarks.Corpus;
 
 /// <summary>
-/// The input-record tiers the approved M8 corpus definition fixes for the synthetic families. A
-/// tier names a <b>row count</b>, never a byte size or a duration: the plan's target is input
-/// records (D-007 — roughly 7.3M and 73M against the ~732k EMAGE workload), and every derived
+/// The input-record tiers the corpus definition (D-124) fixes for the synthetic families. A
+/// tier names a <b>row count</b>, never a byte size or a duration: the scale target is input
+/// records (D-007: roughly 7.3M and 73M against the ~732k EMAGE workload), and every derived
 /// denominator in a report is computed from the prepared catalog rather than assumed.
 /// </summary>
 internal enum CorpusTier

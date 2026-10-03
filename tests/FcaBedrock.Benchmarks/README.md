@@ -21,12 +21,13 @@ dotnet run -c Release --project tests/FcaBedrock.Benchmarks -- prepare adult
 dotnet run -c Release --project tests/FcaBedrock.Benchmarks -- prepare all
 ```
 
-`prepare adult` is the **only** command in this repository that touches the network: it downloads the
-UCI Adult training split and writes its bytes verbatim, having first checked them against the exact
-length and SHA-256 pinned in `Corpus/AdultCorpus.cs`. A changed upstream file is **refused**, not
-adopted — the pin is what makes "the Adult measurement" name one specific set of bytes. Every other
-corpus is generated from pinned integer arithmetic. No ordinary test and no benchmark measurement
-performs any network access. Attribution and licence are in `Corpus/Adult.attribution.md`.
+`prepare adult` (and `prepare all`, which includes it) is the only benchmark command that downloads
+data: it downloads the UCI Adult training split and writes its bytes verbatim, having first checked
+them against the exact length and SHA-256 pinned in `Corpus/AdultCorpus.cs`. A changed upstream file
+is **refused**, not adopted: the pin is what makes "the Adult measurement" name one specific set of
+bytes. Every other corpus is generated from pinned integer arithmetic. No ordinary test and no
+benchmark measurement performs any network access. Attribution and licence are in
+`Corpus/Adult.attribution.md`.
 
 Because it is acquired rather than generated, Adult is **not** in the default selection and not in
 routine CI; see [Selection](#selection).

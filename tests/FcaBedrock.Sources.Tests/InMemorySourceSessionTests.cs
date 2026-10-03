@@ -5,9 +5,9 @@ namespace FcaBedrock.Sources.Tests;
 
 // The seam's source-neutrality, proven structurally: these sessions are implemented over
 // in-memory record lists with no stream, file, delimiter, encoding, or Sep anywhere. If the
-// seam ever grew a delimited-source concept, this file would stop compiling — which is the
+// seam ever grew a delimited-source concept, this file would stop compiling, which is the
 // point (D-109). It is also the shape a future SQL/SPARQL adapter would take, and
-// the shape Slice 3's probe tests will drive the engine with.
+// the shape the Discovery probe tests' in-memory sessions take.
 public sealed class InMemorySourceSessionTests
 {
     private sealed class InMemoryWideSession(SourceSchema schema, IReadOnlyList<ObjectRecord> records)
@@ -110,7 +110,7 @@ public sealed class InMemorySourceSessionTests
     public async Task InMemoryWideSession_IsReplayableAndCountsRecordEnumerations()
     {
         // Probe's "one data-record pass" (D-106) is a claim about record ENUMERATIONS, which a
-        // session can count. Slice 3 asserts the probe engine makes exactly one.
+        // session can count. ProbeDeterminismTests asserts the probe engine makes exactly one.
         var session = new InMemoryWideSession(new SourceSchema(1), [new ObjectRecord("0", ["x"])]);
 
         await foreach (var _ in session.ReadAsync())

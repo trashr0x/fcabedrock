@@ -30,12 +30,13 @@ Notes:
   suffixed name (e.g. `mini-adult_noheader`, `mini-mushroom_triples`,
   `mini-dates_triples_restricted`).
 * All variants of a family share one folder and one `expected/` folder.
-* A variant may reuse another variant's `.data` — e.g.
+* A variant may reuse another variant's `.data`; for example,
   `mini-dates_triples_restricted` has only a `.bed`, reusing
   `mini-dates_triples.data`.
-* The `.data` extension is the UCI-style fixture input extension; the delimiter
-  (CSV/TSV) and whether a header row is present are declared in the `.bed` spec,
-  not implied by the extension. Treat `.data` files as text fixture inputs.
+* The `.data` extension is the UCI-style fixture input extension. The v2 `.bed`
+  does not record the delimiter (CSV/TSV) or whether a header row is present;
+  the golden harness's typed fixture-case list supplies both, and the extension
+  implies neither. Treat `.data` files as text fixture inputs.
 
 ## Variant matrix
 

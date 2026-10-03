@@ -34,13 +34,13 @@ internal sealed class QuietSignalSource : ISignalSource
 /// resolution, calibration, planning, emission, export, inline input and output hashing, the real
 /// staged publication transaction against the real filesystem, and the manifest sidecar. Only the
 /// clock, the signal source, and the two text sinks are injected; the input opener and the
-/// publication filesystem are the production ones, so the publication really does create, rename,
-/// commit, and fsync on disk.
+/// publication filesystem are the production ones, so the publication really does create, flush to
+/// disk, rename, and commit.
 /// </para>
 /// <para>
 /// <b>What is not, and why the label matters.</b> Process start, host resolution, the tool shim,
 /// runtime startup, JIT warmup of a cold process, console attachment, and terminal rendering are all
-/// outside — they belong to the operating system and the .NET host, not to FcaBedrock. So this is
+/// outside: they belong to the operating system and the .NET host, not to FcaBedrock. So this is
 /// <b>CLI-host throughput</b> and is never to be quoted as installed-command latency. The packaging
 /// smokes cover the real executable boundary; this covers what the tool does once it is running.
 /// </para>
@@ -107,11 +107,10 @@ internal sealed class CliHostRun(string label, CorpusCase corpus)
     /// An alternative spec for the same corpus, written beside it at setup. Null uses the corpus's
     /// own committed spec.
     /// <para>
-    /// It exists for one case the corpus spec cannot express: an <b>auto-calibrated</b> convert. The
-    /// declared spec resolves its whole column set up front, so the command makes a single input
-    /// pass; a spec whose cuts come from the data makes <em>two</em> — one to calibrate, one to
-    /// emit — and each is hashed inline. That difference is the M7 input-stability cost at its real
-    /// worst case, and it is only reachable by converting the same data under a different spec.
+    /// It exists for one case the corpus spec cannot express: an <b>auto-calibrated</b> convert. Under
+    /// the declared spec a <c>.dat</c> convert makes a single input pass; a spec whose cuts come from
+    /// the data makes <em>two</em> (one to calibrate, one to emit), and each is hashed inline. That
+    /// shape is only reachable by converting the same data under a different spec.
     /// </para>
     /// </summary>
     public string? SpecOverride { get; init; }

@@ -6,14 +6,14 @@ namespace FcaBedrock.Benchmarks.Corpus;
 /// It is authored FcaBedrock material, not part of the dataset: the choice of cuts, of which columns
 /// become attributes, and of how missing cells are handled is an analyst's, and it is committed here
 /// so that a measurement over real data is reproducible rather than improvised. The geometry is the
-/// published one — fifteen headerless columns, comma-delimited, with <c>?</c> marking missing values
+/// published one: fifteen headerless columns, comma-delimited, with <c>?</c> marking missing values
 /// in <c>workclass</c>, <c>occupation</c>, and <c>native-country</c>.
 /// </para>
 /// <para>
-/// Six of its attributes omit <c>declared_domain</c>, so a conversion runs a real calibration pass
-/// and discovers those domains in first-observation order. That is deliberate: the Adult case exists
-/// to exercise the pipeline on data nobody designed for it, and pre-declaring every domain would
-/// remove the phase most sensitive to that.
+/// Seven of its identity attributes omit <c>declared_domain</c>, so a conversion runs a real
+/// calibration pass and discovers those domains in first-observation order. That is deliberate: the
+/// Adult case exists to exercise the pipeline on data nobody designed for it, and pre-declaring
+/// every domain would remove the phase most sensitive to that.
 /// </para>
 /// </summary>
 internal static class AdultSpecs

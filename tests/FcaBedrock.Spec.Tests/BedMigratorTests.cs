@@ -336,8 +336,8 @@ public sealed class BedMigratorTests
         var dichotomic = Assert.IsType<DichotomicScale>(bruises.Scale);
         Assert.Equal("t", dichotomic.TrueValue);
         Assert.Equal(["t", "f"], bruises.DeclaredDomain);
-        // The M1 migrator dropped dichotomic display labels silently; the reworked
-        // one carries them as dormant config (D-079 behavior change #5).
+        // The migrator carries dichotomic display labels as dormant config instead of
+        // dropping them silently (D-079).
         Assert.Equal("bruises", bruises.ValueLabels["t"]);
 
         // Parked-with-nulls (D-049 at the seam): the excluded attribute's config

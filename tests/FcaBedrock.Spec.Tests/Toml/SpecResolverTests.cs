@@ -228,8 +228,8 @@ public sealed class SpecResolverTests
     [Fact]
     public void Resolve_WhenTripleShape_ThenPredicateSourceRoleMapAndOrderingResolve()
     {
-        // D-082: triple resolves fully now — the predicate source, role→index map,
-        // and ordering become Core; the planner still guards triple *conversion*.
+        // D-082: triple resolves fully: the predicate source, role→index map,
+        // and ordering become Core.
         var document = DocumentFixtures.Document(
             [DocumentFixtures.Attribute("p", new PredicateSourceSection("pred", ValueType: null),
                 discretizer: new IdentityDiscretizerSection(), scale: new NominalScaleSection())],
@@ -1648,8 +1648,8 @@ public sealed class SpecResolverTests
     [Fact]
     public void Resolve_WhenDomainAbsent_ThenNoDomainTypoWarning()
     {
-        // D-071: omitted and authored-[] both resolve absent — no explicit domain,
-        // no typo-catcher; the plan-phase calibration reject owns the absence.
+        // The typo-catcher needs a non-empty declared domain to check against, so neither an
+        // omitted domain nor an authored [] produces RestrictToValueNotInDomain (D-063).
         foreach (var domain in new IReadOnlyList<string>?[] { null, [] })
         {
             var document = DocumentFixtures.Document(
@@ -2622,9 +2622,9 @@ public sealed class SpecResolverTests
     [Fact]
     public void Resolve_WhenAnUnusedTemplateAuthorsNaming_ThenItIsInertUntilApplicationLands()
     {
-        // The Slice A boundary: template naming is CARRIED and parse-validated, but a
-        // template contributes nothing to a resolved attribute yet. The absence of leakage
-        // is the point — an unreferenced template must not silently name anything.
+        // Template naming is CARRIED and parse-validated, but an unused template contributes
+        // nothing to a resolved attribute. The absence of leakage
+        // is the point: an unreferenced template must not silently name anything.
         var document = DocumentFixtures.Document(
             [DocumentFixtures.Nominal("a", 0, ["x"])],
             templates:

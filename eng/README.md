@@ -53,8 +53,10 @@ ordinal name order.
 ## The smokes
 
 Both are ordinary tests, gated by an environment variable so they always report as *skipped* rather
-than silently not existing. Neither touches the machine: each works inside one disposable directory,
-installs nothing globally, and consults no network feed.
+than silently not existing. Each writes its distribution into a disposable directory (unless
+`FCABEDROCK_SELFCONTAINED_OUTPUT`, below, names another) and installs nothing globally. The tool
+smoke installs only from its own local feed; the self-contained smoke publishes through the script
+above, whose restore uses the machine's configured NuGet sources.
 
 ```pwsh
 # The packed global tool: pack, install to a private tool path from a local feed, run a real
@@ -140,9 +142,10 @@ dotnet run -c Release --project tests/FcaBedrock.Benchmarks -- --anyCategories S
 ```
 
 This is the smoke CI runs on every native target, and what it proves is exactly what it selects: the
-Small-category cases and their oracles on that platform. The two opt-in tiers are outside it —
-`Scale` because it costs hours, `External` because its corpus is acquired from a third-party host —
-and neither is reachable by a name filter, so the same command is safe to type anywhere.
+Small-category cases and their oracles on that platform. The three opt-in tiers are outside it
+(`Working` and `Scale` because they cost minutes to hours, `External` because its corpus is
+acquired from a third-party host), and none is reachable by a name filter, so the same command is
+safe to type anywhere.
 
 The real-data (`External`) cases are run explicitly instead, on the final Windows x64 candidate:
 

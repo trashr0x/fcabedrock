@@ -38,9 +38,9 @@ public class AdultSourceDrain : WideSourceDrainBenchmark
 /// <summary>
 /// Converts UCI Adult to a real <c>.dat</c> under the curated spec.
 /// <para>
-/// <b>How it is validated, and what that is worth.</b> Six of the spec's attributes omit their
-/// domain, so the column set is discovered from the data and the expected bytes are not derivable
-/// without re-implementing calibration — which would be an oracle that could not disagree with the
+/// <b>How it is validated, and what that is worth.</b> Seven of the spec's identity attributes omit
+/// their domain, so the column set is discovered from the data and the expected bytes are not derivable
+/// without re-implementing calibration, which would be an oracle that could not disagree with the
 /// code. So this case asserts what can honestly be asserted: clean diagnostics, an object count
 /// equal to the record count independently measured from the file, and byte-identical output across
 /// every iteration of the run. The digest it records is <b>regression evidence</b> for a later run,

@@ -6,12 +6,9 @@ using FcaBedrock.Spec.Toml;
 
 namespace FcaBedrock.Spec.Tests.Toml;
 
-// §10.2's duplicate-header rule, finally exercised over a REAL read. Until the
-// header-tolerant open landed, a duplicate or multiply-blank header threw inside the tokenizer
-// at reader construction, so the spec-specified outcomes below were unreachable: index binding
-// could not succeed, and the name-ambiguity SourceBindingInvalid could not be reached from
-// actual bytes. Existing resolver tests fabricate a SourceSchema directly and never touched
-// this path. No new diagnostic code — the outcomes are the ones §10.2/D-067 already specify.
+// §10.2's duplicate-header rule, exercised over a REAL read: index binding succeeds and the
+// name-ambiguity SourceBindingInvalid is reached from actual bytes, not from a fabricated
+// SourceSchema. The outcomes use the codes §10.2/D-067 already specify.
 public sealed class HeaderBindingTests
 {
     private static async Task<SourceSchema> ReadSchemaAsync(string text)

@@ -1,7 +1,7 @@
-# UCI Adult — attribution and provenance
+# UCI Adult attribution
 
-The M8 benchmark suite measures one **externally acquired** corpus. This file records where it
-comes from, what licence it carries, and which part of the case is ours rather than theirs.
+The benchmark suite's `External` cases read the UCI Adult dataset. This file records its source,
+its licence, and how the suite uses it.
 
 ## Dataset
 
@@ -14,75 +14,28 @@ comes from, what licence it carries, and which part of the case is ours rather t
 | DOI | <https://doi.org/10.24432/C5XW20> |
 | Licence | Creative Commons Attribution 4.0 International (CC BY 4.0) |
 | Archive | <https://archive.ics.uci.edu/static/public/2/adult.zip> |
-| Entry used | `adult.data` — the training split, headerless, 15 comma-delimited columns |
+| Entry used | `adult.data`: the training split, headerless, 15 comma-delimited columns |
 | Entry bytes | 3,974,305 |
 | Entry SHA-256 | `5b00264637dbfec36bdeaab5676b0b309ff9eb788d63554ca0a249491c86603d` |
 
 **Citation.** Becker, B. and Kohavi, R. (1996). *Adult*. UCI Machine Learning Repository.
 <https://doi.org/10.24432/C5XW20>.
 
-## What is acquired, and what is committed
+## How the suite uses it
 
-The data is **not** in this repository and never will be. `fcabedrock` benchmarks acquire it under
-the explicit `prepare adult` verb, write the archive entry's bytes verbatim, and record the exact
-byte length and SHA-256 in the corpus catalog. Preparation is outside every measured interval, and
-no ordinary test or benchmark measurement performs any network access.
+The data is not stored in this repository. Only `prepare adult`, and `prepare all`, which includes
+it, download the archive; they write the `adult.data` entry verbatim. No test, benchmark run or CI
+job downloads it, and only a run that names the `External` category selects its cases.
 
-## The pinned identity, and what it is worth
+The length and SHA-256 above are pinned in `AdultCorpus.cs` and checked on download and on every
+later use. A file that does not match is refused. The pin shows that the bytes are the expected
+ones, not who published them.
 
-The length and digest above are pinned in `AdultCorpus.cs` and enforced twice: on a fresh
-acquisition, before any catalog entry is written, and on every reuse — the second **independently of
-the catalog's own recorded digest**. That second check is the point. The catalog records whatever
-arrived, so a changed upstream file and a catalog rewritten beside it agree with each other
-perfectly, and every figure recorded against "the Adult corpus" would then describe different bytes
-without anything saying so. A download that does not match is refused and removed, never adopted.
+The published file ends with an empty line. The reader skips blank records, so the 32,561 census
+rows convert to 32,561 objects.
 
-It establishes **byte identity with the file M8 measured** — the one in `docs/benchmarks.md` — and
-nothing more. It is not a signature and says nothing about publisher authenticity; no attestation
-for this dataset exists to check against. Changing the accepted identity is a deliberate act that
-bumps the acquisition revision alongside it, so previously prepared corpora are refused rather than
-silently reinterpreted, and the evidence that depended on the old bytes is re-established.
+## What is ours
 
-## Where it runs, and where it does not
-
-The Adult cases carry the opt-in `External` benchmark category. A bare run, a broad `--filter '*'`,
-an `*Adult*` filter, and every routine native CI job **exclude** them, so no ordinary run and no CI
-job depends on `archive.ics.uci.edu` being reachable; an outage there cannot fail a build that has
-nothing to do with it.
-
-That is a narrowing of where the evidence comes from, not a waiver of it. A successful
-`--anyCategories External` run of all three cases on the final Windows x64 candidate is a
-**blocking** acceptance obligation for M8 and for each release candidate (D-124, `docs/roadmap.md`).
-Three failure modes are kept apart: an unreachable host leaves the obligation outstanding; a
-length or digest mismatch is an input-identity failure to investigate; and a failure with verified
-bytes is a correctness finding. None of the three can become a pass.
-
-What *is* committed is the curated Bedrock spec in `AdultSpecs.cs`: the choice of cuts, of which
-columns become attributes, and of how the `?` cells in `workclass`, `occupation`, and
-`native-country` are handled. That is authored FcaBedrock material — an analyst's decisions about
-someone else's data — and it is not part of the dataset or covered by its licence.
-
-## One property of the published file, recorded rather than smoothed away
-
-`adult.data` ends with a **doubled newline**, so after the 32,561 census rows everyone cites it
-holds *one empty final line*. That line is a blank record, which the reader skips (spec §5.1.1),
-so converting the file as published produces 32,561 objects. Before acquisition revision 3 the
-suite counted the empty line as a 32,562nd record, and the conversion produced a 32,562nd object
-with no crosses and an `ObjectHasNoCrosses` warning.
-
-The suite records the count the pipeline actually reads, by the reader's own blank rule. Trimming
-the trailing line at preparation was rejected: the recorded digest would no longer describe the
-published bytes. A benchmark over real data is worth having precisely because real data has corners
-like this one.
-
-## Why a real corpus is in the matrix at all
-
-Every other family here is synthetic, designed by the same person who wrote its expectations. Adult
-was not: its distributions, missing cells, and domain sizes were fixed by a census long before this
-tool existed, and the original FcaBedrock used it. A measurement over it is therefore evidence that
-the synthetic families cannot supply on their own.
-
-Because its output is data-dependent rather than derivable, the Adult case is validated against a
-**stable reviewed baseline** plus semantic assertions — object count, attribute count, expected
-diagnostics — rather than against an independent oracle. The baseline hash is regression evidence;
-it is not proof of semantic correctness, and this suite does not present it as such.
+The Bedrock spec in `AdultSpecs.cs` (the cuts, the columns that become attributes, and the
+handling of `?` cells in `workclass`, `occupation` and `native-country`) is FcaBedrock material.
+It is not part of the dataset and is not covered by its licence.

@@ -450,8 +450,8 @@ internal sealed class ToolProcessCleanupException : Exception
 }
 
 /// <summary>
-/// The tool package, produced once per test run: one offline <c>dotnet pack</c> of the CLI project
-/// into a temporary directory, followed by the checkout's actual HEAD commit.
+/// The tool package, produced once per test run: one <c>dotnet pack --no-restore</c> of the CLI
+/// project into a temporary directory, followed by the checkout's actual HEAD commit.
 /// <para>
 /// It is a COLLECTION fixture (see <see cref="ToolPackageCollection"/>) precisely because both
 /// consumers must share it: two independent class fixtures would pack twice, concurrently, into the
@@ -492,9 +492,10 @@ public sealed class ToolPackage : IAsyncLifetime
         SourceReadmePath = Path.Combine(root, "src", "FcaBedrock.Cli", "README.md");
         _output = TempDirectory.Create();
 
-        // `--no-restore` makes the pack provably offline: whatever ran this test restored the graph
-        // already (this project references the CLI, and restore is not per-configuration). Missing
-        // assets fail NETSDK1004 verbatim — loud, never a silent fetch.
+        // `--no-restore` keeps the pack from restoring packages: whatever ran this test restored the
+        // graph already (this project references the CLI, and restore is not per-configuration).
+        // Missing assets fail NETSDK1004 verbatim, never a silent package fetch. It is not a
+        // no-network guarantee: the SDK can still contact a feed for other reasons.
         await ToolProcess.RequireSuccessAsync(
             ToolProcess.DotnetHost(),
             [

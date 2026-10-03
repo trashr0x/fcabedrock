@@ -11,9 +11,8 @@ namespace FcaBedrock.Benchmarks;
 /// transaction, and write the run manifest.
 /// <para>
 /// The library benchmarks measure phases; this measures the <b>product</b>. It is the only case in
-/// the suite where the publication transaction and the manifest are inside the clock, and the
-/// difference between it and the corresponding emit-and-export case is what M7's input-stability and
-/// publication guarantees actually cost a user.
+/// the suite where the publication transaction and the manifest are inside the clock. Its
+/// difference from an emit-and-export case is not a publication or sidecar overhead figure (D-126).
 /// </para>
 /// <para>
 /// Labelled <b>CLI-host throughput</b>, never installed-command latency: process start, host
@@ -161,11 +160,13 @@ public class CliHostConvertTripleScale73M : CliHostConvertBenchmark
 /// <summary>
 /// The same command with the manifest sidecar suppressed.
 /// <para>
-/// Paired with the manifest-bearing case above, and the pair is what makes the number mean anything.
-/// <c>--no-manifest</c> suppresses <b>only</b> the sidecar: the complete input pass is still hashed
-/// inline, the staged output is still hashed, and the publication transaction still runs. So the
-/// difference between the two cases is the sidecar's own cost — composing it, hashing it, and
-/// committing it last — and it is emphatically <em>not</em> "the cost of hashing".
+/// It runs the declared W16 conversion of the manifest-bearing case at the same tier, with
+/// <c>--no-manifest</c> added. The flag suppresses <b>only</b> the sidecar: the complete input pass
+/// is still hashed inline, the staged output is still hashed, and the publication transaction still
+/// runs. The manifest-bearing command also composes the manifest, stages and hashes it, and commits
+/// it last. The elapsed difference between the two cases is not a measured sidecar or publication
+/// overhead (D-126), and because both cases hash the input and the staged output, it is not the
+/// cost of that hashing either.
 /// </para>
 /// </summary>
 [BenchmarkCategory(BenchmarkCategories.Working)]
@@ -268,16 +269,16 @@ public class CliHostConvertBothWorking
 /// An <b>auto-calibrated</b> convert of interleaved triple input: the command that makes
 /// <b>two</b> complete input passes.
 /// <para>
-/// Every other CLI case here converts under a fully declared spec, so the command opens the data
-/// once. This one's cuts come from the population, so it calibrates and then emits — two complete
+/// This one's cuts come from the population, so it calibrates and then emits: two complete
 /// passes over the same file, each hashed inline and each required to agree with the first (D-122
-/// part 5 / §17). That replay is the input-stability guarantee at its real cost, and it is the only
-/// shape in the suite that exercises it.
+/// part 5 / §17). The other CLI cases convert under a fully declared spec, so no calibration pass
+/// precedes emission; the <c>.cxt</c> and both-format cases still replay the emission, so they
+/// also read the data more than once.
 /// </para>
 /// <para>
 /// Its output is <b>not derivable</b> ahead of the run: equal-frequency cuts over a deliberately
 /// tie-heavy population are the D-103 feasibility algorithm's business, and an oracle that
-/// re-implemented it would be the code under test. So this case asserts what it honestly can — a
+/// re-implemented it would be the code under test. So this case asserts what it honestly can: a
 /// successful exit, no diagnostics, an object count equal to the corpus's subject count, the
 /// manifest present, and byte-identical output across every iteration of the run.
 /// </para>

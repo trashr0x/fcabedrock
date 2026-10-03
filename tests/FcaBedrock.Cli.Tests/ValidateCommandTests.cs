@@ -585,9 +585,11 @@ public sealed class ValidateCommandTests
     [Fact]
     public async Task Validate_WhenTheSourceIsLarge_ThenOnlyAPrefixOfItIsEverRead()
     {
-        // Direct evidence that enumeration never begins: the reader stops after the first
-        // record, so most of the file is never delivered. Reading the whole source — which
-        // any row pass would do — is exactly what this rules out.
+        // Validate opens the data once, for the schema read, which here needs only the header
+        // record. On this 200,000-row fixture the assertions check that a non-empty strict prefix
+        // of the file was delivered: a pass that read the whole file would fail them. The
+        // provider may read a buffer past the header, so they set no tighter bound on how much
+        // is delivered.
         using var temp = TempDirectory.Create();
         var spec = temp.Write("spec.toml", CliFixtures.NameBoundSpec);
 

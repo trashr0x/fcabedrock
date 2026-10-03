@@ -73,12 +73,9 @@ public sealed class TomlSpellingsTests
     [Fact]
     public void ValueGroupsUnmatchedKinds_WhenSliceELanded_ThenTheTableEqualsTheCoreEnum() =>
         // The accepted TOML surface and the Core enum must not drift: value_groups accepts exactly
-        // skip/other/passthrough (§11.6), all three executable as of Slice E (D-104) — unlike
-        // equal_width's range, no spelling is modelled-but-unreachable here. The deferred-KIND set
-        // this file used to pin retired with the same slice (D-070 complete, D-104): every v1
-        // discretizer kind now has a carrier, so an unknown spelling is an ordinary
-        // SpecFieldInvalid (tier 3) and there is no tier-2 set left to lock. IsIn's exact-ordinal
-        // contract keeps its live owner in DeferredScaleKinds below.
+        // skip/other/passthrough (§11.6), all three executable (D-104). Every v1 discretizer kind
+        // has a carrier, so an unknown spelling is an ordinary SpecFieldInvalid (tier 3).
+        // IsIn's exact-ordinal contract keeps its live owner in DeferredScaleKinds below.
         Assert.Equal(
             Enum.GetValues<ValueGroupsUnmatched>().Order(),
             TomlSpellings.ValueGroupsUnmatchedKinds.Select(u => u.Value).Order());

@@ -157,7 +157,7 @@ public class CalibrateWideScale7M : CalibrateBenchmark
         CalibrationOracle.RequireW16(calibrated, records, "calibrate (w16-scale7m)");
 }
 
-/// <summary>Wide calibration at 73M records: the case that forces the accumulator to spill. Opt-in.</summary>
+/// <summary>Wide calibration at 73M records, the largest tier. Opt-in.</summary>
 [BenchmarkCategory(BenchmarkCategories.Scale)]
 [BenchmarkCorpus(CorpusCases.W16Family, CorpusTier.Scale73M)]
 public class CalibrateWideScale73M : CalibrateBenchmark

@@ -1,7 +1,7 @@
 namespace FcaBedrock.Golden.Tests;
 
-// M0's real evidence that the byte-compare mechanism works: these run regardless
-// of whether the v2 fixtures have been added. They prove the comparator reports
+// Evidence that the byte-compare mechanism itself works: these tests use no fixture
+// files. They prove the comparator reports
 // equality on identical bytes and pinpoints the first difference otherwise.
 public sealed class ByteComparerTests
 {

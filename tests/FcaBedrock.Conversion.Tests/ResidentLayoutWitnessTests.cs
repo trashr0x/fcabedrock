@@ -11,12 +11,12 @@ namespace FcaBedrock.Conversion.Tests;
 /// <para>
 /// <see cref="RowCodecResidentTests"/> and <see cref="QuantileAccumulatorTests"/> already prove the
 /// same bound against hand-stated .NET 10 CoreCLR <b>x64</b> layout numbers, and are correctly
-/// gated to that architecture. That is exactly why they cannot extend D-082's numerical guarantee
-/// to another target: re-running an x64 literal on ARM64 asserts nothing about ARM64, and skipping
-/// the test asserts even less. These witnesses close that gap. Every input — the object header, the
-/// reference size, array headers, string heap size, real accepted collection capacities, struct
-/// strides, and the composition of each retained graph — is measured here on whatever runtime is
-/// executing, so the witness is meaningful wherever it runs and <b>fails</b> rather than passes
+/// restricted to that architecture. That is exactly why they cannot extend D-082's numerical
+/// guarantee to another target: re-running an x64 literal on ARM64 asserts nothing about ARM64, and
+/// skipping the test asserts even less. These witnesses close that gap. Every input (the object
+/// header, the reference size, array headers, string heap size, real accepted collection capacities,
+/// struct strides, and the composition of each retained graph) is measured here on whatever runtime
+/// is executing, so the witness is meaningful wherever it runs and <b>fails</b> rather than passes
 /// vacuously if a layout differs from what the model charges.
 /// </para>
 /// <para>
@@ -24,15 +24,16 @@ namespace FcaBedrock.Conversion.Tests;
 /// <see cref="GC.GetAllocatedBytesForCurrentThread"/>, which is precise, synchronous, and
 /// thread-local. The measured object is kept alive across the measurement, so what is observed is
 /// the cost of state that is genuinely retained rather than a transient. Where a component cannot
-/// be isolated by allocation — an object whose constructor necessarily allocates its own
-/// collaborators — a focused field-layout inspection supplies a conservative upper bound instead of
+/// be isolated by allocation (an object whose constructor necessarily allocates its own
+/// collaborators), a focused field-layout inspection supplies a conservative upper bound instead of
 /// a guessed number, and that technique is itself validated below against a type whose true size
 /// this file can observe directly.
 /// </para>
 /// <para>
-/// These are <b>not</b> architecture-gated. A model that under-charges on the executing runtime is
-/// a correctness failure there (D-082's layout constants are correctness constants, never
-/// performance knobs), which is precisely what a release gate needs to hear.
+/// These are <b>not</b> restricted by architecture. A model that under-charges on the executing
+/// runtime is a correctness failure there (D-082's layout constants are correctness constants, never
+/// performance knobs), which is precisely what each release candidate's resident-accounting
+/// validation on its targets needs to see.
 /// </para>
 /// </summary>
 public sealed class ResidentLayoutWitnessTests

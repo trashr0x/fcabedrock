@@ -7,11 +7,9 @@ using FcaBedrock.Spec.Toml;
 namespace FcaBedrock.Spec.Tests.Toml;
 
 /// <summary>
-/// The <c>equal_width</c> TOML surface (§11.4, M4 Slice C / D-102): the document carrier,
-/// the reader's parse-phase field gates, canonical writing, and round-trip idempotence.
-/// Slice C recognizes <c>range = "min_max"</c> and <c>"manual"</c> only —
-/// <c>"percentile_p1_p99"</c> is modelled in Core but is an unrecognized <em>spelling</em>
-/// here until its calibration lands at Slice D.
+/// The <c>equal_width</c> TOML surface (§11.4, D-102/D-103): the document carrier,
+/// the reader's parse-phase field checks, canonical writing, and round-trip idempotence
+/// for the <c>range = "min_max"</c>, <c>"manual"</c>, and <c>"percentile_p1_p99"</c> spellings.
 /// </summary>
 public sealed class EqualWidthSpecTests
 {

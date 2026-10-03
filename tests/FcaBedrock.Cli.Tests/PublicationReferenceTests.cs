@@ -8,10 +8,10 @@ namespace FcaBedrock.Cli.Tests;
 /// true after a rename, released around a handle-bound removal so the name becomes reusable.
 /// <para>
 /// <b>The hazard these prove is not hypothetical.</b> On ext4 the inode of a just-deleted file is
-/// immediately free, so a replacement can be handed the very identifier the transaction recorded —
-/// which is exactly how a substituted stage came to be published, and a foreign file came to be
-/// deleted, on every Linux job of the first native run. The reference removes that by keeping the
-/// original allocated; the cases below hold it to that on the platform they run on.
+/// immediately free, so a replacement can be handed the very identifier the transaction recorded,
+/// and an identity check alone would then publish a substituted stage or delete a foreign file
+/// (D-125). The reference removes that by keeping the original allocated; the cases below hold it
+/// to that on the platform they run on.
 /// </para>
 /// </summary>
 public sealed class PublicationReferenceTests
