@@ -4,9 +4,9 @@ using FcaBedrock.Spec.Manifest;
 
 namespace FcaBedrock.Spec.Tests.Manifest;
 
-// RunManifest + RunManifestWriter (M7 Slice E / S5; §15, D-122 part 6, D-123 point 8).
-// The expected documents are literal text oracles written out by hand — never produced by a
-// test-side serializer — so a writer change cannot move the expectation with it. Boundary
+// RunManifest + RunManifestWriter (S5; §15, D-122 part 6, D-123 point 8).
+// The expected documents are literal text oracles written out by hand, never produced by a
+// test-side serializer, so a writer change cannot move the expectation with it. Boundary
 // cases build their expected line in test code and assert its length independently, the
 // DeclaredDomainWrappingTests convention, so an off-by-one in the shared D-113 helper cannot
 // hide behind a fixture the writer itself produced.
@@ -228,7 +228,7 @@ public sealed class RunManifestWriterTests
     {
         // Deliberately not alphabetical: alphabetical order would be age, education,
         // empty_*, industry, workclass. The retained CalibratedSpec.Calibrations order is
-        // reproduced exactly — no sorting, grouping, or deduplication.
+        // reproduced exactly, with no sorting, grouping, or deduplication.
         var manifest = Manifest(calibrations:
         [
             new RunCalibration(new IncludeAdditions("workclass", ["Assoc"]), null),
@@ -454,7 +454,7 @@ public sealed class RunManifestWriterTests
     {
         string[] argv =
         [
-            @"C:\tools\fcabedrock.exe", // argv[0] is not "fcabedrock" — preserved as element zero
+            @"C:\tools\fcabedrock.exe", // argv[0] is not "fcabedrock", and it is preserved as element zero
             "convert",
             "",                          // an empty argument stays a distinct element
             "tab\there",

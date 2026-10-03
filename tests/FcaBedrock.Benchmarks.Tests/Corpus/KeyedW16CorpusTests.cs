@@ -126,11 +126,11 @@ public sealed class KeyedW16CorpusTests
 
         var conversion = await ConversionPipeline.FromSpecFileAsync(specPath, dataPath);
 
-        // The load-bearing identity: the keyed spec differs from the plain one only in its column
-        // offsets, its object key, and its duplicate policy, so it must plan the SAME formal
-        // attributes in the same order. If that ever drifted, the keyed oracle - which is built out
-        // of plain W16 crosses - would silently index into the wrong columns and still produce a
-        // plausible-looking file.
+        // The identity the keyed oracle depends on: the keyed spec differs from the plain one only
+        // in its column offsets, its object key, and its duplicate policy, so it must plan the SAME
+        // formal attributes in the same order. If that ever drifted, the keyed oracle (which is
+        // built out of plain W16 crosses) would silently index into the wrong columns and still
+        // produce a plausible-looking file.
         Assert.Equal(
             W16Specs.DeclaredFormalAttributeNames,
             conversion.Plan.FormalAttributes.Select(attribute => attribute.RenderedName).ToList());

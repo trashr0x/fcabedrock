@@ -289,8 +289,8 @@ public sealed class PublicationOwnershipTests
     public async Task Publication_WhenAnAcknowledgedClaimIsReplacedByAnEmptyObject_ThenNeitherItNorItsStageGoes(
         bool alsoEmptyStage)
     {
-        // The accepted counterexample. A valid Preparing record, its surviving stage, and its
-        // acknowledged claim — and then the claim OBJECT is replaced by an unrelated empty file at
+        // The counterexample. A valid Preparing record, its surviving stage, and its
+        // acknowledged claim; and then the claim OBJECT is replaced by an unrelated empty file at
         // the same path, before discovery ever runs.
         //
         // The digest in that name is the only thing that would authorize deleting the stage beside
@@ -505,9 +505,9 @@ public sealed class PublicationOwnershipTests
     public async Task Publication_WhenAnEmptyOccupantRefusesAStageClaim_ThenNoRunEverRemovesIt()
     {
         // A stage claim's name states the identity of the stage it acknowledges, so a resumed run
-        // can ask whether that object is actually there. A claim raced in as an empty file names an
-        // object no longer present — its own create-new having been refused, the stage was taken
-        // back out — so nothing proves it and no run removes it.
+        // can ask whether that object is there. A claim raced in as an empty file names an
+        // object no longer present (its own create-new having been refused, the stage was taken
+        // back out), so nothing proves it and no run removes it.
         using var run = ConvertRun.Wide();
         run.Harness.PublicationFiles.MutateBefore = "CreateNew:out.fcabedrock-sc-c-T-T";
         run.Harness.PublicationFiles.MutateWith = operation =>
@@ -543,9 +543,9 @@ public sealed class PublicationOwnershipTests
         // so nothing successful and nothing durable names the occupant.
         //
         // A zero-byte control could not answer this: an empty file at the name is exactly what the
-        // control this run would have made there looks like. So these controls now carry a
+        // control this run would have made there looks like. So these controls carry a
         // canonical body binding the run token, this base, the control's own role, and the digest
-        // of the authoritative record — and removal requires those exact bytes. The occupant is
+        // of the authoritative record, and removal requires those exact bytes. The occupant is
         // empty, so it is not this transaction's control, and no run removes it.
         using var run = ConvertRun.Wide();
         if (rollback)

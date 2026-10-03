@@ -91,7 +91,7 @@ public sealed class RestrictToNumberTests
     [Fact]
     public void RestrictToEntry_WhenInspected_ThenHasExactlyTheThreeRecognizedVariants()
     {
-        // §10.4/D-105: the M4 execution union is exactly {value-string, exact-number, range}.
+        // §10.4/D-105: the execution union is exactly {value-string, exact-number, range}.
         // Anything else is rejected at Core's trust boundary rather than silently ignored.
         var variants = typeof(RestrictToEntry).Assembly
             .GetExportedTypes()

@@ -8,7 +8,7 @@ namespace FcaBedrock.Cli.Tests;
 /// <summary>
 /// A package's entry names plus a <b>bounded</b> reader for the three small OPC parts, so the
 /// validator below can be run against the real <c>.nupkg</c> and against a synthetic one built
-/// entry by entry — the same code deciding both.
+/// entry by entry, with the same code deciding both.
 /// <para>
 /// The bound is the point: an OPC part is discovered by <em>name</em>, and a validator that read
 /// whatever was there would let a package dictate an unbounded allocation before a single rule had
@@ -111,11 +111,11 @@ internal sealed class OpcArchive
 /// map really declares it as core properties.
 /// <para>
 /// <b>Why a shape and not a value.</b> The core-properties part's leaf is producer-chosen, and the
-/// two producers this repository actually packs with choose differently: NuGet through SDK 10.0.302
+/// two producers this repository packs with choose differently: NuGet through SDK 10.0.302
 /// emits a random GUID in its "N" form, and NuGet through SDK 10.0.400 hard-codes
 /// <c>nuget.psmdcp</c> (upstream NuGet.Client change 5834c6b9, which fixed a deterministic-pack
 /// file-handle leak). Both are legitimate; neither value may be pinned. So the rule is a
-/// <b>closed two-producer set</b>, not <c>*.psmdcp</c> — accepting any leaf would admit an
+/// <b>closed two-producer set</b>, not <c>*.psmdcp</c>: accepting any leaf would admit an
 /// arbitrary metadata part, <c>CON.psmdcp</c> among them, which Windows resolves to a console
 /// device rather than a file when the package is extracted.
 /// </para>

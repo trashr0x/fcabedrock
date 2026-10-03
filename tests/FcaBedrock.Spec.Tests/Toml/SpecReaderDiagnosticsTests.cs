@@ -6,8 +6,8 @@ namespace FcaBedrock.Spec.Tests.Toml;
 
 /// <summary>
 /// Reader diagnostics tests (D-075): every parse-phase code with positions,
-/// the D-070 three-tier discretizer dispatch, the retired deferred-surface set
-/// (a clean read per naming key per owning table, plus the near-miss negatives
+/// the D-070 discretizer dispatch, clean reads of the naming keys (one per key per
+/// owning table, plus the near-miss negatives
 /// that must stay <c>SpecKeyUnrecognized</c>), and whole-read aggregation.
 /// </summary>
 public sealed class SpecReaderDiagnosticsTests
@@ -147,10 +147,9 @@ public sealed class SpecReaderDiagnosticsTests
     [InlineData("value_groups", ", groups = [{ label = \"g\", values = [\"a\"] }]")]
     public void Read_WhenAnyV1DiscretizerKindIsWellFormed_ThenItReadsCleanToItsCarrier(string kind, string parameters)
     {
-        // D-070's tier-2 deferred-kind reject retired entirely at M4 Slice E (D-104): EVERY v1
-        // discretizer kind now has a carrier, so a well-formed one of each must read clean.
-        // Asserting a clean read of each kind — rather than the absence of a code that no longer
-        // exists — is what keeps this test able to fail: re-deferring any kind would break it.
+        // EVERY v1 discretizer kind has a carrier (D-104), so a well-formed one of each must read
+        // clean. Asserting a clean read of each kind, rather than the absence of some code, is
+        // what keeps this test able to fail: re-deferring any kind would break it.
         var result = SpecReader.Read(Attribute($"discretizer = {{ kind = \"{kind}\"{parameters} }}"));
 
         Assert.True(result.IsOk, string.Join("; ", result.Diagnostics.Select(d => $"{d.Code}: {d.Message}")));
@@ -161,7 +160,7 @@ public sealed class SpecReaderDiagnosticsTests
     [Fact]
     public void Read_WhenDiscretizerKindUnknown_ThenGenericFieldInvalid()
     {
-        // D-070 tier 3: a typo gets the generic code, not the transitional one.
+        // D-070 tier 3: a typo gets the generic code.
         AssertFailsWith(
             SpecReader.Read(Attribute("discretizer = { kind = \"identty\" }")),
             DiagnosticCode.SpecFieldInvalid);
@@ -178,10 +177,8 @@ public sealed class SpecReaderDiagnosticsTests
     [Fact]
     public void Read_WhenDefaultsAuthorsNameFormat_ThenItIsCarriedNotRejected()
     {
-        // D-120: the [defaults] half of the retired deferred set. Asserting a clean read
-        // AND the carried value — rather than the absence of a code that no longer has
-        // this owner — is what keeps the retirement lock able to fail (the substitution
-        // Slice E made when the deferred-discretizer set retired, D-104).
+        // D-120: the [defaults] naming key reads clean. Asserting a clean read AND the carried
+        // value, rather than the absence of some code, is what keeps this lock able to fail.
         var result = SpecReader.Read("[defaults]\nformal_attribute_format = \"{value}\"\n");
 
         Assert.True(result.IsOk, string.Join("; ", result.Diagnostics.Select(d => $"{d.Code}: {d.Message}")));
@@ -275,7 +272,7 @@ public sealed class SpecReaderDiagnosticsTests
         // §9.1: unlike an attribute `name` (free text, §10.1), a template `id` is
         // referenced BY NAME from matchers and attributes, so it takes the stricter
         // [A-Za-z_][A-Za-z0-9_-]* form. A malformed id is static authored shape and so is
-        // parse-owned under the ordinary SpecFieldInvalid — no id-specific parse code.
+        // parse-owned under the ordinary SpecFieldInvalid, with no id-specific parse code.
         var result = SpecReader.Read($"[[template]]\nid = {id}\n");
 
         Assert.False(result.TryGetValue(out _));
@@ -316,8 +313,8 @@ public sealed class SpecReaderDiagnosticsTests
     [InlineData("description = \"per-attribute only\"")]
     public void Read_WhenTemplateDeclaresPerAttributeField_ThenSpecKeyUnrecognized(string line)
     {
-        // §9.1 forbids name/source/description in a template — the D-075
-        // listed-name-in-the-wrong-table stance, not the transitional code.
+        // §9.1 forbids name/source/description in a template: the D-075
+        // listed-name-in-the-wrong-table stance.
         var result = SpecReader.Read($"[[template]]\nid = \"t\"\n{line}\n");
 
         var diagnostic = Assert.Single(result.Diagnostics);
@@ -327,10 +324,9 @@ public sealed class SpecReaderDiagnosticsTests
     [Fact]
     public void Read_WhenTemplateDeclaresValueGroups_ThenItCarriesLikeAnyAttributeDiscretizer()
     {
-        // A template body is the attribute config surface (§9.1/D-078), so value_groups gains its
-        // carrier there too at Slice E (D-104) — it is no longer rejected for its kind. An unknown
-        // key inside it still gets the ordinary SpecKeyUnrecognized, which is exactly the noise the
-        // old deferred-kind reject suppressed by not walking the parameters at all.
+        // A template body is the attribute config surface (§9.1/D-078), so value_groups
+        // carries there too (D-104). An unknown key inside it gets the ordinary
+        // SpecKeyUnrecognized.
         var result = SpecReader.Read(
             "[[template]]\nid = \"t\"\ndiscretizer = { kind = \"value_groups\", " +
             "groups = [{ label = \"g\", values = [\"a\"] }], n = 4 }\n");
@@ -343,9 +339,9 @@ public sealed class SpecReaderDiagnosticsTests
     [Fact]
     public void Read_WhenMatcherHasUnknownKey_ThenSpecKeyUnrecognized()
     {
-        // The unknown key is still its own condition — asserted here alongside the two
+        // The unknown key is still its own condition, asserted here alongside the two
         // shape failures this matcher genuinely also has, since `pattern` is not a
-        // selector: it authors no `match` table and no `template` (§9.2, M6 Slice B).
+        // selector: it authors no `match` table and no `template` (§9.2).
         // Distinct conditions aggregate rather than masking one another (EP-14).
         var result = SpecReader.Read("[[matcher]]\npattern = \"x\"\n");
 

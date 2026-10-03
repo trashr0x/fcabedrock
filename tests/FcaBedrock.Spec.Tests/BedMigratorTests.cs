@@ -46,7 +46,7 @@ public sealed class BedMigratorTests
         return doc.Resolved.Spec;
     }
 
-    // Plans a fully-declared resolved spec + schema the M4 way (D-098).
+    // Plans a fully-declared resolved spec + schema through the fully-declared calibrated state (D-098).
     private static Diagnosed<ConversionPlan> Plan(BedrockSpec spec, SourceSchema schema) =>
         ConversionPlanner.Plan(CalibratedSpec.FromFullyDeclared(
             ResolvedSpec.Create(
@@ -229,8 +229,8 @@ public sealed class BedMigratorTests
         Assert.IsType<IdentityDiscretizerSection>(bruises.Discretizer);
         Assert.Equal(["t", "f"], bruises.DeclaredDomain);
         // Dichotomic labels are dormant (the single column renders the attribute
-        // name alone), but v2 authored them — they round-trip as parked config
-        // rather than being silently dropped (D-049/D-079; new vs the M1 migrator).
+        // name alone), but v2 authored them, so they round-trip as parked config
+        // rather than being silently dropped (D-049/D-079).
         Assert.NotNull(bruises.ValueLabels);
         Assert.Equal("bruises", bruises.ValueLabels["t"]);
         Assert.Equal("no", bruises.ValueLabels["f"]);
@@ -252,7 +252,7 @@ public sealed class BedMigratorTests
     public void Migrate_WhenCutSpecHasNoSentinels_ThenEndsAuthoredClosed()
     {
         // ends is always authored: the resolver defaults an absent ends to open,
-        // but a sentinel-less v2 cut spec means closed — omission would flip it.
+        // but a sentinel-less v2 cut spec means closed, so omission would flip it.
         var document = MigrateOk(Bed(new BedAttr("age", "o", "30,40,50")));
 
         var cuts = Assert.IsType<ManualCutsDiscretizerSection>(document.Attributes[0].Discretizer);
@@ -432,9 +432,8 @@ public sealed class BedMigratorTests
     public void Migrate_WhenRestrictOnNumericAttribute_ThenExactNumericEntriesAndResolveSucceeds()
     {
         // §10.4/D-091: v2 restricted numeric columns by raw-value equality, and the exact
-        // { value = n } entry now expresses that faithfully — so a parseable finite token on the
-        // numeric type `o` migrates to a NUMBER, and the spec resolves. (D-079 kept these as
-        // strings only because no exact numeric form existed; D-091 supersedes that.)
+        // { value = n } entry expresses that faithfully, so a parseable finite token on the
+        // numeric type `o` migrates to a NUMBER, and the spec resolves.
         var migrated = BedMigrator.Migrate(
             ReadBed(Bed(new BedAttr("age", "o", "<,30,50,>", Restrict: "30,40"))), WideBinding());
 
@@ -476,7 +475,7 @@ public sealed class BedMigratorTests
     [Fact]
     public void Migrate_WhenNumericTokenUnderDiscriminatingLocale_ThenParsedUnderThatLocaleNotInvariant()
     {
-        // §5.1/D-091: the token parses under binding.locale — not ambient culture, and not
+        // §5.1/D-091: the token parses under binding.locale, not ambient culture, and not
         // always invariant. A discriminating vector, so an invariant-hardcoded implementation
         // fails here: "1.5" is 1.5 under invariant, but under de-DE '.' is not the decimal
         // separator and NumberStyles.Float allows no group separators, so it does not parse and
@@ -484,8 +483,8 @@ public sealed class BedMigratorTests
         // token on type `o` does).
         //
         // The v2 restrict line is comma-separated, so a de-DE decimal comma cannot be expressed
-        // in one at all — the separator side of the locale is unreachable by construction, and
-        // the decimal-point side is what actually discriminates.
+        // in one at all: the separator side of the locale is unreachable by construction, and
+        // the decimal-point side is what discriminates.
         const string bed = "<,30,50,>";
         var invariant = MigrateOk(Bed(new BedAttr("age", "o", bed, Restrict: "1.5"))).Attributes[0];
         Assert.Equal([new RestrictToNumber(1.5)], invariant.RestrictTo);
@@ -571,8 +570,8 @@ public sealed class BedMigratorTests
             [new RestrictToValue("30"), new RestrictToValue("40")],
             document.Attributes[0].RestrictTo);
 
-        // The seam owns the locale error, and the now-string entries independently attract the
-        // numeric-source mismatch — one condition, one owner, both reported (EP-14).
+        // The seam owns the locale error, and the string entries independently attract the
+        // numeric-source mismatch: one condition, one owner, both reported (EP-14).
         var resolved = SpecResolver.Resolve(document);
         Assert.False(resolved.TryGetValue(out _));
         Assert.Contains(resolved.Diagnostics, d => d.Code == DiagnosticCode.BindingLocaleInvalid);
@@ -674,8 +673,8 @@ public sealed class BedMigratorTests
     {
         // Degenerate but representable: the [Category Values] hold only the effective missing token,
         // so the migrated spec authors declared_domain = [] with missing_policy = "as_attribute"
-        // (D-068). Under D-122 §15 that [] is a complete fixed empty domain — the more faithful
-        // migration (v2 emitted only the missing column) — so it requests NO observed-domain
+        // (D-068). Under D-122 §15 that [] is a complete fixed empty domain (the more faithful
+        // migration, since v2 emitted only the missing column), so it requests NO observed-domain
         // calibration and plans the missing column alone. Migration is never changed to omission.
         var document = MigrateOk(Bed(new BedAttr("strength", "c", "?")));
         Assert.Equal([], document.Attributes[0].DeclaredDomain); // migration bytes preserved
@@ -707,8 +706,7 @@ public sealed class BedMigratorTests
     [Fact]
     public void Migrate_WhenRealMiniDatesFixture_ThenErrorBedDateTypeNotSupported()
     {
-        // The real on-disk fixtures/v2/mini-dates .bed (not a synthetic one, closing
-        // the M2-exit review's fixture-coverage caveat): its included `dob` attribute
+        // The real on-disk fixtures/v2/mini-dates .bed (not a synthetic one): its included `dob` attribute
         // is v2 type `d`, deferred from v1 (D-038/D-079), so migration fails honestly
         // rather than silently dropping an included attribute (the D-068 hazard). The
         // c-typed `name`/`gender` attributes migrate cleanly, so this is the sole error.
@@ -748,9 +746,8 @@ public sealed class BedMigratorTests
     [Fact]
     public void Migrate_WhenIncludedNonAscendingCuts_ThenMigratesAndResolveRejectsWithCutDiagnostic()
     {
-        // Behavior change vs the M1 migrator (which failed at migrate time): the
-        // config is representable, so it carries and the D-056 factory validation
-        // fires at its owned phase — the resolve seam (D-067).
+        // The config is representable, so migration carries it and the D-056 factory
+        // validation fires at its owned phase: the resolve seam (D-067).
         var migrated = BedMigrator.Migrate(ReadBed(Bed(new BedAttr("age", "o", "<,50,30,>"))), WideBinding());
 
         Assert.True(migrated.TryGetValue(out var document));
@@ -801,10 +798,9 @@ public sealed class BedMigratorTests
     [Fact]
     public void Migrate_WhenExcludedNonAscendingCuts_ThenConfigParkedAndResolvesClean()
     {
-        // Better than the M1 migrator, which degraded this to a bare excluded
-        // attribute: the config is representable, so it parks verbatim, and the seam
-        // skips discretizer resolution while parked — flipping include = true is
-        // what surfaces the D-056 validation.
+        // The config is representable, so it parks verbatim rather than degrading to a bare
+        // excluded attribute, and the seam skips discretizer resolution while parked; flipping
+        // include = true is what surfaces the D-056 validation.
         var migrated = BedMigrator.Migrate(
             ReadBed(Bed(new BedAttr("age", "o", "<,50,30,>", Convert: false))), WideBinding());
 
@@ -850,17 +846,17 @@ public sealed class BedMigratorTests
         Assert.Equal([new RestrictToValue("keep"), new RestrictToValue("these")], attribute.RestrictTo);
     }
 
-    // --- fingerprint equivalence (Slice E baselines, D-077) ---------------------
+    // --- fingerprint equivalence (D-077) ----------------------------------------
 
     [Fact]
     public void Migrate_WhenMiniMushroomBed_ThenFingerprintsMatchSection19Baseline()
     {
         // The migrated .bed and the §19.1 authored TOML must be the same spec: all
-        // three fingerprints equal the baseline pinned at Slice E
-        // (SpecFingerprintsTests). Authored-vs-defaulted binding fields, parked
+        // three fingerprints equal the baseline pinned in SpecFingerprintsTests.
+        // Authored-vs-defaulted binding fields, parked
         // config, and value_labels are all fingerprint-inert, so the two producers
         // collapse to one hash. A diff here means migration changed the resolved
-        // plan — not a baseline to edit.
+        // plan, not a baseline to edit.
         var (resolvedDoc, plan) = Prepare(MigrateOk(BedFixtures.MushroomBed), new SourceSchema(5));
 
         Assert.Equal(

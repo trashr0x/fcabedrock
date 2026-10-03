@@ -380,7 +380,7 @@ public sealed class ConvertManifestTests
         scale = { kind = "nominal" }
         """;
 
-    // Recomputed here from the bytes on disk — never the CLI's own helper.
+    // Recomputed here from the bytes on disk, never by the CLI's own helper.
     private static string Hash(string path) =>
         "sha256:" + Convert.ToHexStringLower(SHA256.HashData(File.ReadAllBytes(path)));
 

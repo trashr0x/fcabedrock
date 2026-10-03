@@ -42,7 +42,7 @@ public sealed class MatcherSelectorTests
     private static AttributeSection Nominal(string name, int index) =>
         DocumentFixtures.Nominal(name, index, ["x"]);
 
-    // Which of the resolved attributes the matcher actually configured.
+    // Which of the resolved attributes the matcher configured.
     private static IEnumerable<string> Selected(BedrockSpec spec) =>
         spec.Attributes.Where(a => a.MissingPolicy == Marker).Select(a => a.Name);
 
@@ -74,8 +74,8 @@ public sealed class MatcherSelectorTests
     [Fact]
     public void NameRegex_WhenAlternationIsUnanchored_ThenBothBranchesAreWholeNameBound()
     {
-        // The wrapping group is load-bearing, not cosmetic: bare anchors would bind as
-        // `\Aa|b\z` — "starts with a, OR ends with b" — so `ab` and `ba` would match.
+        // The wrapping group is required, not cosmetic: bare anchors would bind as
+        // `\Aa|b\z` ("starts with a, OR ends with b"), so `ab` and `ba` would match.
         // Wrapped as `\A(?:a|b)\z` neither does.
         var selected = ResolveSelected(WideDocument(
             DocumentFixtures.Matcher(nameRegex: "a|b"),

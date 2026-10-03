@@ -16,9 +16,9 @@ internal sealed record ResourceTrace(
 /// <para>
 /// The observers are deliberately never installed in a timing configuration: an observer that
 /// recorded every spill and catalog change while the clock ran would be measuring itself as much as
-/// the calibration. So the same corpus is calibrated twice for two different purposes — once
+/// the calibration. So the same corpus is calibrated twice for two different purposes (once
 /// unobserved, to be timed, and once observed, to check that the bounds the timed run relies on
-/// actually held.
+/// held).
 /// </para>
 /// <para>
 /// It lives in the benchmark assembly rather than the benchmark test assembly because that is where

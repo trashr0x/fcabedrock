@@ -84,7 +84,7 @@ public sealed class ProbeTripleRoleMapTests
     public async Task ProbeTriple_WhenGivenANameMapOverRealCsv_ThenReadsTheRightColumns()
     {
         // End-to-end through the production adapter, not a fake: a header row plus a name map
-        // must actually select the right physical columns.
+        // must select the right physical columns.
         const string csv = "value,predicate,subject\ncat,species,s1\nblack,colour,s1\n";
 
         var result = await TripleProbeFixtures.ProbeTripleCsvAsync(

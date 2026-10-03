@@ -77,7 +77,7 @@ internal sealed class ConversionRun(string label, CorpusCase corpus, ExportForma
     /// </param>
     /// <param name="expectedFormalAttributes">
     /// The formal-attribute count the expectation's frozen layout assumes, checked against the plan
-    /// that was actually produced. A planner change that moved a column would otherwise invalidate
+    /// that was produced. A planner change that moved a column would otherwise invalidate
     /// every expectation silently; here it stops the case before it measures anything.
     /// </param>
     public async Task SetupAsync(

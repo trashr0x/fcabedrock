@@ -97,13 +97,10 @@ public sealed class TomlSpellingsTests
     public void IsIn_WhenProbingDeferredScaleKinds_ThenExactOrdinalMatchOnly(string kind, bool expected) =>
         Assert.Equal(expected, TomlSpellings.IsIn(TomlSpellings.DeferredScaleKinds, kind));
 
-    // The D-075 deferred-surface sets are gone as of M6 Slice A (D-120): display_name and
-    // formal_attribute_format have real carriers on all three owning tables, so there is
-    // no set left to assert here. Their retirement is locked BEHAVIOURALLY instead — a
-    // clean read of each naming key on each owner, in SpecReaderDiagnosticsTests — which
-    // is the same substitution Slice E made when the deferred-discretizer set retired:
-    // asserting a clean read, rather than the absence of a set that no longer exists, is
-    // what keeps the lock able to fail.
+    // display_name and formal_attribute_format have real carriers on all three owning tables
+    // (D-120), so there is no deferred-surface set to assert here. A clean read of each naming
+    // key on each owner, in SpecReaderDiagnosticsTests, locks that behaviourally: asserting a
+    // clean read keeps the lock able to fail.
 
     private static void AssertBothWays<T>((string Text, T Value)[] table)
         where T : struct

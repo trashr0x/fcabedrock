@@ -10,8 +10,8 @@ namespace FcaBedrock.Cli.Tests;
 /// <summary>
 /// The probe vertical (D-122 part 10; spec §7.1), end to end through argv.
 /// <para>
-/// M7 adds no discovery semantics, so every draft-content case compares the command's bytes
-/// against an <b>independently executed</b> library route — the same source, the same settings,
+/// The CLI adds no discovery semantics, so every draft-content case compares the command's bytes
+/// against an <b>independently executed</b> library route: the same source, the same settings,
 /// the same options, run through <see cref="Prober"/> and <see cref="SpecWriter"/> by the test
 /// itself. What is tested here is the argv mapping and the CLI's own consequences: exit codes,
 /// which stream carries what, when a diagnostic becomes visible, and what the filesystem holds

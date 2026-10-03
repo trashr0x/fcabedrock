@@ -16,7 +16,7 @@
     What it does NOT do, on purpose: no trimming, no single-file bundle, no ahead-of-time
     compilation, and no invariant globalization. Each of those changes what the program does, and
     this is meant to be the same program in a different wrapper. Trimming in particular would need
-    its own correctness evidence, which M8 does not have.
+    its own correctness evidence, which this project does not have.
 
 .PARAMETER Rid
     The runtime identifier to publish for. Defaults to the running one.
@@ -74,9 +74,9 @@ $ExecutableFileAttributes = 0x81ED -shl 16
 .DESCRIPTION
     Entry by entry rather than through `Compress-Archive`, for one reason: on Linux and macOS the
     apphost has to be recorded as EXECUTABLE. `Compress-Archive` gives every entry the default Unix
-    mode `0100644`, so unzipping a Linux distribution produced `-rw-r--r-- FcaBedrock.Cli` and the
-    documented `./FcaBedrock.Cli` could not be run at all. The mode lives in the ARCHIVE - the zip's
-    external-attributes field - so recording it is the archive writer's job; the published file's own
+    mode `0100644`, so unzipping such a Linux distribution would produce `-rw-r--r-- FcaBedrock.Cli`
+    and the documented `./FcaBedrock.Cli` could not be run at all. The mode lives in the ARCHIVE (the
+    zip's external-attributes field), so recording it is the archive writer's job; the published file's own
     mode does not survive a zip that carries none.
 
     The mode field is written for EVERY entry, and what it says is decided by the TARGET rather than
@@ -86,8 +86,8 @@ $ExecutableFileAttributes = 0x81ED -shl 16
     a Unix claim about a distribution that has none to make - and the same folder would produce two
     different archives depending on where the command ran.
 
-    Everything else is deliberately what it already was: a flat payload, one entry per published file
-    under its relative name with forward slashes, ordinary files still non-executable, and each
+    Everything else is deliberately ordinary: a flat payload, one entry per published file
+    under its relative name with forward slashes, ordinary files non-executable, and each
     entry's last-write time taken from the file so the payload's build-time provenance survives the
     round trip. Entries are written in ordinal name order, so one folder always produces one
     sequence.
@@ -178,7 +178,7 @@ function Write-DistributionArchive {
     return $ordered.Count
 }
 
-# The repository root is wherever the solution file is, found by walking up - never a fixed number
+# The repository root is wherever the solution file is, found by walking up, never by a fixed number
 # of `..` hops, so the script works from any working directory.
 $repository = $PSScriptRoot
 while ($repository -and -not (Test-Path (Join-Path $repository 'FcaBedrock.slnx'))) {

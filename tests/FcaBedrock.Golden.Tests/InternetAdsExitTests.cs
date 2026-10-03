@@ -55,7 +55,7 @@ public sealed class InternetAdsExitTests
     private const int RowCount = 6;
 
     // ---------------------------------------------------------------------
-    // Corpus: layout, determinism, and the reduction-sensitivity gate
+    // Corpus: layout, determinism, and the reduction-sensitivity check
     // ---------------------------------------------------------------------
 
     [Fact]
@@ -70,7 +70,7 @@ public sealed class InternetAdsExitTests
         Assert.Equal(ClassCol, AdCorpus.ClassIndex);
         Assert.Equal(RowCount, AdCorpus.RowCount);
 
-        // The layout gate (literal width + partition), applied to the generated content.
+        // The layout check (literal width + partition), applied to the generated content.
         var coverage = AssertAdDataLayout(AdCorpus.Csv);
         Assert.True(coverage.SawTermOne && coverage.SawTermZero, "terms exercise both dichotomic outcomes");
         Assert.True(coverage.SawTermMissing, "terms include a missing cell");
@@ -81,8 +81,8 @@ public sealed class InternetAdsExitTests
     [Fact]
     public void Corpus_WhenTheWidthIsReduced_ThenTheLiteralLayoutGateRejectsIt()
     {
-        // A "coordinated reduced helper" proxy: drop the last field from every row. A gate that
-        // echoed the generator's own width would accept 1,558; the literal gate must reject it.
+        // A "coordinated reduced helper" proxy: drop the last field from every row. A check that
+        // echoed the generator's own width would accept 1,558; the literal check must reject it.
         var reduced = string.Join(
             '\n',
             AdCorpus.Csv.Split('\n', StringSplitOptions.RemoveEmptyEntries)
@@ -143,17 +143,17 @@ public sealed class InternetAdsExitTests
         Assert.IsType<DichotomicScale>(declarative.Spec.Attributes[3].Scale);               // local (its own explicit config)
         Assert.IsType<NominalScale>(declarative.Spec.Attributes[ClassCol].Scale);           // class
 
-        // Representative EMITTED incidences (not just planned names): the six objects actually
+        // Representative EMITTED incidences (not just planned names): the six objects
         // cross the correct numeric/local/term/class/missing columns, in both output formats.
         AssertDeclarativeIncidences(declarative);
 
-        // Sensitivity #1 (matcher load-bearing): removing the matcher leaves the bare terms with
-        // no scale, so resolution fails — AttributeScalingMissing on the terms, nowhere else.
+        // Sensitivity #1 (matcher dependence): removing the matcher leaves the bare terms with
+        // no scale, so resolution fails: AttributeScalingMissing on the terms, nowhere else.
         var withoutMatcher = await ResolveOnlyAsync(AdSpecs.Declarative(includeMatcher: false));
         Assert.False(withoutMatcher.IsOk);
         Assert.Contains(withoutMatcher.Diagnostics, d => d.Code == DiagnosticCode.AttributeScalingMissing);
 
-        // Sensitivity #2 (inventory gate is real): a coordinated reduction is rejected.
+        // Sensitivity #2 (inventory check is real): a coordinated reduction is rejected.
         Assert.ThrowsAny<Exception>(() => AssertAuthoredInventory(declarative.Spec.Attributes.Take(Columns - 1).ToList()));
 
         AssertProvenance(AdSpecs.Declarative());
@@ -210,7 +210,7 @@ public sealed class InternetAdsExitTests
         Assert.True(cutsFr.TryGetValue(out var dFr));
 
         // Nested-field sensitivity: a single perturbed cut moves the projection, and the value is
-        // actually present (proving the vector is enumerated, not the collection type).
+        // present in it (proving the vector is enumerated, not the collection type).
         Assert.NotEqual(DescribeDiscretizer(d1), DescribeDiscretizer(d2));
         Assert.Contains("80.5", DescribeDiscretizer(d1), StringComparison.Ordinal);
         Assert.Contains("40", DescribeDiscretizer(d1), StringComparison.Ordinal);
@@ -395,7 +395,7 @@ public sealed class InternetAdsExitTests
         AssertIdentical(first, second);
         AssertSameDiagnosticStream(first, second);
 
-        // A form that actually PRODUCES a diagnostic (the fully-shadowed matcher), so the ordered
+        // A form that PRODUCES a diagnostic (the fully-shadowed matcher), so the ordered
         // stage-labelled tuple comparison is non-vacuous.
         var shadowA = await ConvertAsync(AdSpecs.Uncurated(withTemplateMatcher: true));
         var shadowB = await ConvertAsync(AdSpecs.Uncurated(withTemplateMatcher: true));
@@ -587,13 +587,13 @@ public sealed class InternetAdsExitTests
         }
     }
 
-    // ---- The layout gate (literal width + partition) ----
+    // ---- The layout check (literal width + partition) ----
 
     private sealed record LayoutCoverage(
         bool SawTermOne, bool SawTermZero, bool SawTermMissing, bool SawNumericMissing, IReadOnlySet<string> Classes);
 
     /// <summary>Validates a CSV against the literal ad.data layout, re-splitting the text. Throws
-    /// on any deviation, so it doubles as the reduction-sensitivity gate.</summary>
+    /// on any deviation, so it doubles as the reduction-sensitivity check.</summary>
     private static LayoutCoverage AssertAdDataLayout(string csv)
     {
         var lines = csv.Split('\n', StringSplitOptions.RemoveEmptyEntries);

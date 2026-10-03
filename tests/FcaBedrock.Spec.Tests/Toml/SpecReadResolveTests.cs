@@ -62,8 +62,7 @@ public sealed class SpecReadResolveTests
     [Fact]
     public void ReadResolve_WhenSubjectGroupedTripleToml_ThenResolvesAndPlans()
     {
-        // D-082: a subject_grouped triple spec resolves and plans — the blanket transitional
-        // triple-conversion refusal retired at Slice C; the unordered gate retired at Slice D.
+        // D-082: a subject_grouped triple spec resolves and plans.
         var spec = ResolveOk(TomlFixtures.TripleSubjectGrouped, schema: null);
 
         Assert.Equal(SourceShape.Triple, spec.Binding.Shape);
@@ -100,7 +99,7 @@ public sealed class SpecReadResolveTests
     {
         // D-060(c) end-to-end: the reader's presence tracking (Boundary stays null
         // on the scale section) is what lets the seam treat a [defaults]-inherited
-        // straddling boundary as defaulted — it never trips the cut-bin check.
+        // straddling boundary as defaulted, so it never trips the cut-bin check.
         var toml =
             "[spec]\nversion = 1\n[binding]\nshape = \"wide\"\n" +
             "[defaults]\nordinal_boundary = \"strict\"\n" +
@@ -138,9 +137,8 @@ public sealed class SpecReadResolveTests
     [Fact]
     public void ReadResolve_WhenValueGroups_ThenReadsAndResolvesToAnExecutableDiscretizer()
     {
-        // The mirror of the old deferred-kind test: D-070's last read-reject retired at Slice E
-        // (D-104), so this same EMAGE-style spec now flows read → resolve and lands an executable
-        // discretizer instead of stopping at read with no document.
+        // This EMAGE-style spec flows read → resolve and lands an executable
+        // discretizer (D-104).
         var spec = ResolveOk(TomlFixtures.EmageValueGroups, new SourceSchema(1));
 
         var attribute = Assert.Single(spec.Attributes);
@@ -161,7 +159,7 @@ public sealed class SpecReadResolveTests
         return doc.Resolved.Spec;
     }
 
-    // Plans a fully-declared resolved spec + schema the M4 way (D-098).
+    // Plans a fully-declared resolved spec + schema through the fully-declared calibrated state (D-098).
     private static Diagnosed<ConversionPlan> Plan(BedrockSpec spec, SourceSchema schema) =>
         ConversionPlanner.Plan(CalibratedSpec.FromFullyDeclared(
             ResolvedSpec.Create(

@@ -125,7 +125,7 @@ public sealed class OrdinalScaleTests
     [Fact]
     public void BuildShapes_WhenBoundarySetOverCutBins_ThenStillGeometryAlignedNotStraddling()
     {
-        // Regression (D-081): over cut bins the CutBins path ignores Boundary — even an
+        // Regression (D-081): over cut bins the CutBins path ignores Boundary, so even an
         // (invalid, seam-rejected) straddling boundary cannot leak a wrong operator.
         var geStrict = new OrdinalScale(OrdinalDirection.Ge, DropTop: false, OrdinalBoundary.Strict).BuildShapes(AgeScheme());
         var leInclusive = new OrdinalScale(OrdinalDirection.Le, DropTop: false, OrdinalBoundary.Inclusive).BuildShapes(AgeScheme());
@@ -189,7 +189,7 @@ public sealed class OrdinalScaleTests
     [Fact]
     public void BuildShapes_WhenValueBins_ThenBinKeyEqualsValueLabelAndBinIsValueBin()
     {
-        // The roadmap gate: BinKey == ValueLabel (style-independent identity); the
+        // The identity rule: BinKey == ValueLabel (style-independent identity); the
         // structural twin is a plain ValueBin of the same raw value.
         var shapes = ValueOrdinal(OrdinalDirection.Ge, OrdinalBoundary.Inclusive).BuildShapes(ValueScheme("low", "mid", "high"));
 

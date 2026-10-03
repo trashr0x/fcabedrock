@@ -28,7 +28,7 @@ namespace FcaBedrock.Benchmarks;
 [BenchmarkCategory(BenchmarkCategories.Convert, BenchmarkCategories.Triple, BenchmarkCategories.Grouping)]
 public abstract class GroupingBudgetBenchmark
 {
-    /// <summary>The default budget and fan-in the production backend ships with today.</summary>
+    /// <summary>The default budget and fan-in the production backend ships with.</summary>
     public const long DefaultBudgetBytes = 64L * 1024 * 1024;
 
     /// <summary>The default merge fan-in.</summary>
@@ -38,7 +38,7 @@ public abstract class GroupingBudgetBenchmark
 
     /// <summary>
     /// The in-memory budget before an intake spill, in MiB. <c>8</c> forces heavy spilling at every
-    /// tier, <c>64</c> is today's default, and <c>256</c> asks whether holding more resident pays —
+    /// tier, <c>64</c> is the shipped default, and <c>256</c> asks whether holding more resident pays:
     /// an experiment, not a promised default.
     /// </summary>
     [Params(8, 64, 256)]
@@ -91,7 +91,7 @@ public class GroupingBudgetSmall : GroupingBudgetBenchmark
 }
 
 /// <summary>
-/// The budget sweep at 730,000 input rows: the working tier the tuning gate takes its one-axis
+/// The budget sweep at 730,000 input rows: the working tier the tuning rule (D-124) takes its one-axis
 /// sweep on, before any candidate is confirmed at target scale. Opt-in.
 /// </summary>
 [BenchmarkCategory(BenchmarkCategories.Working)]
@@ -122,7 +122,7 @@ public class GroupingBudgetScale73M : GroupingBudgetBenchmark
 
 /// <summary>
 /// The merge fan-in sweep, at the budget that forces spilling: with a large budget nothing spills
-/// and the fan-in is inert, so the axis is only measurable where merging actually happens.
+/// and the fan-in is inert, so the axis is only measurable where merging happens.
 /// </summary>
 [BenchmarkCategory(
     BenchmarkCategories.Convert,

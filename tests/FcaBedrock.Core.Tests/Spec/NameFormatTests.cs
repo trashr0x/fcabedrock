@@ -114,7 +114,7 @@ public sealed class NameFormatTests
     [Fact]
     public void TryCreate_WhenFormatIsNull_ThenThrows() =>
         // A null format is a programmer error, not authored input (EP-14): the reader only
-        // calls this with a string it actually read.
+        // calls this with a string it read.
         Assert.Throws<ArgumentNullException>(() => NameFormat.TryCreate(null!, out _, out _));
 
     private static string Render(string format) => Parse(format).Render("age", "Age", "30", ">=");

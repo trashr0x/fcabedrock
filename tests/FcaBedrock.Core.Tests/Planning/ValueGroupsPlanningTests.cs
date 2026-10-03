@@ -9,11 +9,11 @@ namespace FcaBedrock.Core.Tests.Planning;
 
 /// <summary>
 /// Planning <c>value_groups</c> (§11.6/§12.3/§17, D-090/D-104): ordinary <b>value-bin</b>
-/// planning over group labels — not cut geometry and not the declared domain — under each scale.
+/// planning over group labels (not cut geometry and not the declared domain) under each scale.
 /// <para>
 /// Assertions are on canonical <b>identities and crossing incidence</b>, not rendered names
 /// alone: a name is a display concern (EP-15), whereas the identity and the crosses are what the
-/// output actually means. Expectations are hand-derived from §12.3, never produced by calling
+/// output means. Expectations are hand-derived from §12.3, never produced by calling
 /// the scale under test.
 /// </para>
 /// </summary>

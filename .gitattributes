@@ -7,9 +7,10 @@
 fixtures/v2/**/expected/*.cxt -text
 fixtures/v2/**/expected/*.dat -text
 
-# Fixture INPUTS carry no byte contract — the readers are EOL-agnostic (BedReader
-# normalizes CRLF->LF before parsing; the Sep CSV reader tokenizes either) — so
-# treat them as ordinary text: LF in the repo, native on checkout. This is where
-# "the EOL shouldn't matter as long as the code handles both" actually applies.
+# Fixture INPUTS carry no byte contract: the readers are EOL-agnostic (BedReader
+# normalizes CRLF->LF before parsing; the delimited reader accepts CRLF, LF and lone
+# CR record terminators, spec §5.1.1), so treat them as ordinary text: LF in the
+# repo, native on checkout. This is where "the EOL shouldn't matter as long as the
+# code handles both" applies.
 fixtures/v2/**/*.bed  text
 fixtures/v2/**/*.data text

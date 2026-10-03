@@ -15,16 +15,16 @@ namespace FcaBedrock.Benchmarks;
 /// with no planning, emission, or export after it.
 /// <para>
 /// <b>The measured interval</b> starts with a validated spec, an opened-but-unread schema, and a
-/// bound source that has read no rows. It covers every data pass calibration requires — for a
+/// bound source that has read no rows. It covers every data pass calibration requires (for a
 /// count-sensitive attribute over interleaved triple input that is a grouped second pass as well as
-/// the raw one — through to the retained, immutable calibrated outcome. Reading and resolving the
+/// the raw one) through to the retained, immutable calibrated outcome. Reading and resolving the
 /// spec, deriving expectations, and checking the resolved cuts are outside it.
 /// </para>
 /// <para>
 /// Calibration is measured separately from emission because it is the phase whose cost scales with
 /// something different: emission is per-observation work, while count-sensitive calibration is
 /// bounded-memory accumulation that spills and merges once its budget is exceeded. A single
-/// end-to-end number would hide which of the two a scale result was actually about.
+/// end-to-end number would hide which of the two a scale result was about.
 /// </para>
 /// </summary>
 [BenchmarkCategory(BenchmarkCategories.Calibrate)]

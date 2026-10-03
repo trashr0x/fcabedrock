@@ -155,7 +155,7 @@ internal static class W16Specs
             names.Add("c0-" + value);
         }
 
-        // Dichotomic renders the column name alone — no value suffix (§10.7 / D-037(a)).
+        // Dichotomic renders the column name alone, with no value suffix (§10.7 / D-037(a)).
         names.Add("b0");
 
         foreach (var value in W16Corpus.StandardDomain)

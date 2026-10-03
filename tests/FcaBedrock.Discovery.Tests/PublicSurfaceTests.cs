@@ -7,9 +7,8 @@ using FcaBedrock.Spec.Toml;
 namespace FcaBedrock.Discovery.Tests;
 
 /// <summary>
-/// The EP-4 lock on Discovery's public surface. M5 is now complete — both shapes probe — and the
-/// inventory is still exactly two types and two methods: the triple vertical added an entry
-/// point, not an engine type, a result type, a role resolver, or an observer hook.
+/// The EP-4 lock on Discovery's public surface: exactly two types and two methods, one entry
+/// point per record shape, and no engine type, result type, role resolver, or observer hook.
 /// <para>
 /// Asserted as an exact inventory rather than "contains": a spot check would let an
 /// accidentally-public engine, observer, tally, or draft type slip out, and a public type is far

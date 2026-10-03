@@ -112,8 +112,8 @@ public sealed class ConvertCommandTests
     public async Task Convert_WhenTheSpecIsFullyDeclared_ThenOnlyTheWriterRequiredPassesReadTheData(
         string format, int expectedOpens)
     {
-        // No calibration pass at all — the spec declares its domain — so the data is opened once
-        // for the schema and then once per pass the selected writers actually need: two for the
+        // No calibration pass at all (the spec declares its domain), so the data is opened once
+        // for the schema and then once per pass the selected writers need: two for the
         // .cxt replay, one for .dat.
         using var run = ConvertRun.Wide();
 
@@ -442,8 +442,8 @@ public sealed class ConvertCommandTests
     [Fact]
     public async Task Convert_WhenBaseIndexIsNeitherZeroNorOne_ThenTheRunIsRefusedBeforeAnythingIsCreated()
     {
-        // §8 allows base_index 1 or 0. Any other value used to write .dat ids from that base; the
-        // spec reader now refuses it (D-135), so the run publishes nothing.
+        // §8 allows base_index 1 or 0. The spec reader refuses any other value (D-135), so the
+        // run publishes nothing.
         using var run = ConvertRun.Wide(CliFixtures.IndexBoundSpec + "\n[output.dat]\nbase_index = 5\n");
 
         var exit = await run.ConvertAsync("--format", "dat");

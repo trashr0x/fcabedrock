@@ -55,8 +55,8 @@ public sealed class SourceExecutionTests
             new TripleExecution(TripleOrdering.Unordered));
     }
 
-    // ConversionPlan is now a sealed reference-identity class (planner-owned internal
-    // constructor, D-098) rather than a positional record, so the former
-    // ConversionPlan_Equality_* record-equality tests no longer apply; SourceExecution's own
+    // ConversionPlan is a sealed reference-identity class (planner-owned internal
+    // constructor, D-098), not a positional record, so it has no record equality to
+    // test; SourceExecution's own
     // value equality is covered by the tests above.
 }

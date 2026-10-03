@@ -170,7 +170,7 @@ public sealed class ResolvedSpecTests
     public void Create_WhenNameBindingSiteIndexMismatchesAttribute_ThenThrows()
     {
         // The header has "age" at index 1 and the binding says index 1, but the attribute's
-        // resolved source is actually column 0 — the site check catches the divergence.
+        // resolved source is column 0: the site check catches the divergence.
         var spec = new BedrockSpec(SpecFixtures.WideRowIndex(), [SpecFixtures.Nominal("age", 0, ["b"])]);
 
         Assert.Throws<ArgumentException>(() =>
@@ -261,7 +261,7 @@ public sealed class ResolvedSpecTests
     [Fact]
     public void Create_WhenAllThreeRecognizedVariantsPresent_ThenSucceeds()
     {
-        // The complete M4 union resolves: a string entry on a string source, and exact + range
+        // The complete union resolves: a string entry on a string source, and exact + range
         // entries on a number source. (Entry-vs-value_type consistency is the seam's job; this
         // boundary checks representability.)
         var gene = SpecFixtures.Nominal("Gene", 0, ["Bmp5"]) with { RestrictTo = [new RestrictToValue("Bmp5")] };
@@ -283,7 +283,7 @@ public sealed class ResolvedSpecTests
     {
         // D-091/round-6 High-2: the seam diagnoses an authored non-finite value
         // (RestrictToRangeInvalid) and returns Diagnosed.Failed BEFORE any strict factory runs,
-        // so reaching this boundary with one means a hand-built graph — genuine programmer error.
+        // so reaching this boundary with one means a hand-built graph, which is genuine programmer error.
         // Downstream then trusts finiteness (the fingerprint's formatter rejects non-finite
         // outright, and the matcher compares without re-checking).
         var attr = SpecFixtures.NumericCuts("age", 0, [30.0], new NominalScale()) with
@@ -406,7 +406,7 @@ public sealed class ResolvedSpecTests
         Assert.Equal(BinResult.Bin("40.5"), resolvedDisc.Discretize("40.5")); // still the "." decimal
     }
 
-    // --- equal_width / pending calibration (M4 Slice C, D-102) ----------------
+    // --- equal_width / pending calibration (D-102) ----------------------------
 
     private static BedrockSpec EqualWidthSpec(Discretizer discretizer) =>
         new(SpecFixtures.WideRowIndex(),
@@ -474,7 +474,7 @@ public sealed class ResolvedSpecTests
     // but a record's protected copy constructor does not (CS8878), so those arms are what reject
     // any other variant.
 
-    // --- equal_frequency (M4 Slice D, D-103) ----------------------------------
+    // --- equal_frequency (D-103) ----------------------------------------------
 
     [Fact]
     public void Create_WhenPendingEqualFrequencyResolved_ThenCarrierSurvivesOnAReadOnlyCulture()
@@ -614,7 +614,7 @@ public sealed class ResolvedSpecTests
         Assert.Equal(["b", "90.0", "n"], resolved.Spec.Attributes[0].DeclaredDomain);
     }
 
-    // --- value_groups (M4 Slice E, D-104) -------------------------------------
+    // --- value_groups (D-104) -------------------------------------------------
 
     private static BedrockSpec ValueGroupsSpec(Discretizer discretizer) =>
         new(SpecFixtures.WideRowIndex(),
@@ -661,7 +661,7 @@ public sealed class ResolvedSpecTests
     public void Create_WhenPassthroughPendingCarrier_ThenRecognizedAndRebuiltWithAReadOnlyCulture()
     {
         // Without this arm every passthrough spec would throw at the trust boundary as an unknown
-        // pending variant — the deliberate recognition Slice E adds.
+        // pending variant.
         var resolved = Create(ValueGroupsSpec(PassthroughPending(SpecFixtures.Group("School", "11th"))), new SourceSchema(1));
 
         var pending = Assert.IsType<CalibrationPending>(resolved.Spec.Attributes[0].Discretizer);

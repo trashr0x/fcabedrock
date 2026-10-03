@@ -8,7 +8,7 @@ namespace FcaBedrock.Benchmarks.Configuration;
 /// It exists so the denominator is a <em>fact about the case</em> rather than something a reader
 /// infers from a class name: the report's columns read it to state input records and input bytes
 /// beside every timing, and a conformance test reads it to prove each case's tier category matches
-/// the corpus it actually reads. A number without its denominator is not evidence, so the
+/// the corpus it reads. A number without its denominator is not evidence, so the
 /// denominator travels with the case.
 /// </para>
 /// </summary>

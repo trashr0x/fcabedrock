@@ -4,8 +4,8 @@ using FcaBedrock.Spec.Toml;
 
 namespace FcaBedrock.Spec.Tests.Toml;
 
-// The two-stage bootstrap resolver surface (D-098/G-1): ResolveReadSettings prefix gates and the
-// full-resolve success gate (strict factories run only behind a clean pass, so aggregation never
+// The two-stage bootstrap resolver surface (D-098/G-1): ResolveReadSettings prefix checks and the
+// full-resolve success check (strict factories run only behind a clean pass, so aggregation never
 // throws).
 public sealed class SpecBootstrapTests
 {
@@ -21,7 +21,7 @@ public sealed class SpecBootstrapTests
         "[[attribute]]\nname = \"g\"\nsource = { kind = \"column\", index = 0 }\n" +
         "discretizer = { kind = \"identity\" }\nscale = { kind = \"nominal\" }\ndeclared_domain = [\"x\"]\n";
 
-    // --- ResolveReadSettings prefix gates ---
+    // --- ResolveReadSettings prefix checks ---
 
     [Fact]
     public void ResolveReadSettings_WhenValidWide_ThenReturnsSettings()
@@ -37,7 +37,7 @@ public sealed class SpecBootstrapTests
     public void ResolveReadSettings_WhenExtendsAuthored_ThenThrows()
     {
         // The document must be composed before resolving (D-078); the bootstrap enforces the same
-        // prefix gate as full resolve.
+        // prefix check as full resolve.
         var toml = "[spec]\nversion = 1\nextends = \"base.toml\"\n[binding]\nshape = \"wide\"\n";
         var document = Doc(toml);
 
@@ -76,13 +76,13 @@ public sealed class SpecBootstrapTests
         Assert.Equal(TripleOrdering.Unordered, settings.Ordering);
     }
 
-    // --- full-resolve success gate: aggregation without throwing ---
+    // --- full-resolve success check: aggregation without throwing ---
 
     [Fact]
     public void Resolve_WhenQuoteUnsupportedAndDelimiterConflict_ThenFailsWithBothAndNoThrow()
     {
         // Two independent binding errors aggregate on the diagnostic channel; the strict factories
-        // never run behind the failing gate, so no exception escapes (round-7 High-1).
+        // never run after the failing check, so no exception escapes (round-7 High-1).
         var toml = "[spec]\nversion = 1\n[binding]\nshape = \"wide\"\ndelimiter = \"|\"\nquote_char = \"|\"\n";
         var document = Doc(toml);
 

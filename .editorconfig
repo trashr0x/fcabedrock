@@ -1,16 +1,11 @@
-; EditorConfig to support per-solution formatting.
-; Use the EditorConfig VS add-in to make this work.
-; http://editorconfig.org/
-;
-; Here are some resources for what's supported for .NET/C#
-; https://kent-boogaart.com/blog/editorconfig-reference-for-c-developers
+; EditorConfig settings for this repository: formatting, code style and analyzer severities.
+; https://editorconfig.org/
 ; https://learn.microsoft.com/visualstudio/ide/editorconfig-code-style-settings-reference
 ;
 ; Be **careful** editing this because some of the rules don't support adding a severity level
 ; For instance if you change to `dotnet_sort_system_directives_first = true:warning` (adding `:warning`)
 ; then the rule will be silently ignored.
 
-; This is the default for the codeline.
 root = true
 
 [*]
@@ -130,7 +125,7 @@ dotnet_diagnostic.CA1802.severity = warning
 # CA1805: Do not initialize unnecessarily
 dotnet_diagnostic.CA1805.severity = warning
 
-# CA1810: Do not initialize unnecessarily
+# CA1810: Initialize reference type static fields inline
 dotnet_diagnostic.CA1810.severity = warning
 
 # CA1821: Remove empty Finalizers
@@ -355,11 +350,11 @@ dotnet_diagnostic.CA1513.severity = suggestion
 dotnet_diagnostic.CA1802.severity = suggestion
 # CA1805: Do not initialize unnecessarily
 dotnet_diagnostic.CA1805.severity = suggestion
-# CA1810: Do not initialize unnecessarily
+# CA1810: Initialize reference type static fields inline
 dotnet_diagnostic.CA1810.severity = suggestion
 # CA1822: Make member static
 dotnet_diagnostic.CA1822.severity = suggestion
-# CA1823: Avoid zero-length array allocations
+# CA1825: Avoid zero-length array allocations
 dotnet_diagnostic.CA1825.severity = suggestion
 # CA1826: Do not use Enumerable methods on indexable collections. Instead use the collection directly
 dotnet_diagnostic.CA1826.severity = suggestion
@@ -477,7 +472,7 @@ trim_trailing_whitespace = false
 # FcaBedrock test projects. The ASP.NET-derived test glob above keys on a 'test'
 # directory; this repo's layout is 'tests', so these relaxations target it. They
 # disable analyzer rules that either fight the xUnit analyzers or add no value in
-# fast unit tests — the same spirit as the test relaxations above.
+# fast unit tests, in the same spirit as the test relaxations above.
 [tests/**.cs]
 # CA2007 (ConfigureAwait) conflicts with xUnit1030; xUnit owns the test sync context.
 dotnet_diagnostic.CA2007.severity = none

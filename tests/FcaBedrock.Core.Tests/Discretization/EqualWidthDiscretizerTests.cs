@@ -37,7 +37,7 @@ public sealed class EqualWidthDiscretizerTests
     [Fact]
     public void DeriveCuts_WhenUnitSpanInThirds_ThenBinary64Thirds() =>
         // The exact binary64 results: 1/3 and 2/3 are not representable, so these literals pin
-        // what the pinned expression order actually produces.
+        // what the pinned expression order produces.
         Assert.Equal(
             [0.3333333333333333, 0.6666666666666666],
             EqualWidthDiscretizer.DeriveCuts(3, 0, 1, CutPrecision.Exact));
@@ -74,7 +74,7 @@ public sealed class EqualWidthDiscretizerTests
     [Fact]
     public void CreateManual_WhenAsymmetricExtremeSpan_ThenTheSameExactCutReachesTheLabel() =>
         // The same vector through the approved public boundary, so the pinned value is locked on
-        // the path that actually produces bin identities.
+        // the path that produces bin identities.
         Assert.Equal(
             ["<-4.999999999999998E+306", ">=-4.999999999999998E+306"],
             Manual(2, -1.7e308, 1.6e308).BinLabels([]));
@@ -138,7 +138,7 @@ public sealed class EqualWidthDiscretizerTests
     [Fact]
     public void CreateManual_WhenExtremeRange_ThenAcceptedRatherThanRejected() =>
         // G-7 restated as behaviour: a finite increasing range is never rejected merely for being
-        // wide. The derived-cut check is a backstop on the result, not a second range gate.
+        // wide. The derived-cut check is a backstop on the result, not a second range check.
         Assert.True(
             EqualWidthDiscretizer.CreateManual(2, -1.7e308, 1.7e308, CutPrecision.Exact, CultureInfo.InvariantCulture).IsOk);
 
@@ -148,7 +148,7 @@ public sealed class EqualWidthDiscretizerTests
         // The other half of the §11.4 derived-cut rule, and the reason its wording says "at this
         // precision" rather than blaming rounding: a span of a few ULPs cannot hold bins-1
         // DISTINCT representable cuts, so "exact" collapses too. The range itself is finite and
-        // increasing — it is the result that fails, exactly as the spec now states.
+        // increasing; it is the result that fails, exactly as the spec states.
         var vmin = 1e308;
         var vmax = Math.BitIncrement(Math.BitIncrement(vmin)); // two ULPs wide
 

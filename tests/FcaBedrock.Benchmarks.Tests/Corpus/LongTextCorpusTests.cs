@@ -10,7 +10,7 @@ namespace FcaBedrock.Benchmarks.Tests.Corpus;
 /// <summary>
 /// The long-text family exists so the probe's <em>text</em> guard can be reached before its value
 /// guard, and so string allocation stops hiding behind per-record overhead. Both depend on the
-/// values actually being long, which is what these tests hold.
+/// values being long, which is what these tests hold.
 /// </summary>
 public sealed class LongTextCorpusTests
 {

@@ -288,8 +288,8 @@ public sealed class StatsCommandTests
     [Fact]
     public async Task Stats_WhenATempDirectoryIsSuppliedForSpillCapableWork_ThenTheReportIsUnchangedAndNoResidueRemains()
     {
-        // `dedupe` runs on the shared grouping backend — the machinery --temp-dir configures —
-        // and the Info diagnostic proves the merge actually happened. The supplied root is
+        // `dedupe` runs on the shared grouping backend (the machinery --temp-dir configures),
+        // and the Info diagnostic proves the merge happened. The supplied root is
         // byte-neutral by construction (D-082); this run stays inside the production memory
         // budget, so it does not itself spill, and the forced-spill placement proof lives in
         // the Conversion suite over the same public mapping.

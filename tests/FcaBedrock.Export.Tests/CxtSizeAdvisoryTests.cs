@@ -216,7 +216,7 @@ public sealed class CxtSizeAdvisoryTests
         }
     }
 
-    // Counts bytes actually written to the sink, across every Stream write entry point StreamWriter
+    // Counts bytes written to the sink, across every Stream write entry point StreamWriter
     // might use, so the timing test can observe "zero output bytes" at the advisory instant.
     private sealed class CountingStream : MemoryStream
     {

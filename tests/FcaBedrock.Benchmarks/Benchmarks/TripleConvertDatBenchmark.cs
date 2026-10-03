@@ -13,8 +13,7 @@ namespace FcaBedrock.Benchmarks;
 /// subject's rows are contiguous; <c>unordered</c> accepts interleaved subjects and must group them
 /// through the spool backend. They are the same observations in the same first-appearance order
 /// under a data-independent spec, so a correct conversion produces <b>byte-identical</b> output from
-/// both — and the difference in cost between them is the price of accepting unordered input, which
-/// is a number the milestone actually needs.
+/// both, and the difference in cost between them is the price of accepting unordered input.
 /// </para>
 /// <para>
 /// The measured interval is the same as every other conversion case: prepared but unopened input and

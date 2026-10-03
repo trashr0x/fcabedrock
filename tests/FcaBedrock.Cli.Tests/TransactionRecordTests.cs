@@ -17,10 +17,9 @@ public sealed class TransactionRecordTests
     private const string Token = "0123456789abcdef0123456789abcdef";
     private const string Base = "out";
 
-    // The legacy artifacts record for one staged `.cxt`, recorded from the protected baseline
-    // before the single-file family existed: the text is authored here rather than produced by
-    // Format(), and the digest was computed independently over these exact bytes — SHA-256, first
-    // 16 bytes, lowercase hex — rather than read back from Digest.
+    // The artifacts-family record for one staged `.cxt`: the text is authored here rather than
+    // produced by Format(), and the digest was computed independently over these exact bytes
+    // (SHA-256, first 16 bytes, lowercase hex) rather than read back from Digest.
     private const string LegacyStageRecordText =
         "version = 1\ntoken = \"0123456789abcdef0123456789abcdef\"\nbase = \"out\"\n\n"
         + "[[file]]\nrole = \"stage\"\ntarget = \"out.cxt\"\n";
@@ -302,9 +301,9 @@ public sealed class TransactionRecordTests
         + "stage:out.cxt|stage:out.dat|stage:out.manifest.toml")]
     public void FromShape_WhenAShapeIsReachable_ThenItReproducesTheRecordItDescribes(string shape)
     {
-        // These rows are the legacy artifacts family, whose shapes are the six low bits of the
+        // These rows are the artifacts family, whose shapes are the six low bits of the
         // intent descriptor (the single-file 0x41/0x43 shapes have their own methods below), and
-        // this is why six bits are enough: the entry ORDER is not a degree of freedom — a
+        // this is why six bits are enough: the entry ORDER is not a degree of freedom. A
         // transaction writes backups in canonical order, then stages in canonical order, and
         // nothing else.
         var record = TransactionRecord.Create(Token, Base, Entries(shape));
@@ -465,7 +464,7 @@ public sealed class TransactionRecordTests
     {
         // The descriptor names four things, and the fourth is what makes it an acknowledgement
         // rather than a prediction: the identity of the object the pending record's create-new
-        // actually produced.
+        // produced.
         const string Identity = "aaaaaaaabbbbbbbbccccccccdddddddd";
         var record = TransactionRecord.Create(Token, Base, [new TransactionFileEntry("stage", "out.cxt")]);
         var name = PublicationTargets.IntentName(Base, Token, record.ShapeCode, record.Digest, Identity);

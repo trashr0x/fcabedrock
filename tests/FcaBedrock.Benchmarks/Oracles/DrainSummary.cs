@@ -5,7 +5,7 @@ namespace FcaBedrock.Benchmarks.Oracles;
 /// <summary>
 /// The fixed scalar summary a source-drain benchmark accumulates while consuming records.
 /// <para>
-/// It exists for two reasons at once. It forces the drain to actually <em>read</em> every cleaned
+/// It exists for two reasons at once. It forces the drain to <em>read</em> every cleaned
 /// field, so the measured work is the real one and cannot be optimized away; and it is small enough
 /// to be re-derived independently from the corpus definition, so a completed iteration can be
 /// checked for having read the right thing rather than merely for having finished.

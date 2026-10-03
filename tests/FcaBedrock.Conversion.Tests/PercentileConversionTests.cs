@@ -10,12 +10,11 @@ using FcaBedrock.Export;
 namespace FcaBedrock.Conversion.Tests;
 
 /// <summary>
-/// End-to-end <c>equal_width</c> <c>range = "percentile_p1_p99"</c> conversion (§11.4, M4 Slice
-/// D / D-103). Slice C modelled the range in the Core enum but left it unreachable; Slice D
-/// lands its exact bounded-memory calibration, so it becomes executable.
+/// End-to-end <c>equal_width</c> <c>range = "percentile_p1_p99"</c> conversion (§11.4, D-103), with
+/// its exact bounded-memory calibration.
 /// <para>
 /// It is the count-sensitive twin of <c>min_max</c>: same equal-width derivation, same
-/// authored-config fingerprint rule — only the span differs, being drawn from exact order
+/// authored-config fingerprint rule; only the span differs, being drawn from exact order
 /// statistics rather than the extremes. Clipping the tails is the whole point: a single outlier
 /// cannot stretch the bins.
 /// </para>
@@ -247,8 +246,8 @@ public sealed class PercentileConversionTests
     [Fact]
     public async Task Calibrate_WhenPrecisionRoundsTo_ThenAppliedToTheSelectedSpansCuts()
     {
-        // The span [1, 99] is selected first, then the SAME Slice C equal-width derivation
-        // interpolates and rounds it — there is no second copy of that formula (D-102).
+        // The span [1, 99] is selected first, then the SAME equal-width derivation
+        // interpolates and rounds it; there is no second copy of that formula (D-102).
         var calibrated = await CalibrateOkAsync(
             Wide(Pending("score", 0, 4, new NominalScale(), precision: RoundToPrecision.Create(10))), UniformCsv);
 

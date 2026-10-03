@@ -63,10 +63,8 @@ public sealed class EmitterSliceATests
         // (ObservedDomainUsed) while a sibling's deferred scale rejects at plan
         // (ScaleNotImplementedV1); appended in phase order, both survive.
         //
-        // The plan-side code was RestrictToNotImplementedV1 until Slice F retired it (D-105);
-        // restrict_to now executes, so it is no longer a plan diagnostic at all. The deferred
-        // scale is a permanent v1 reservation (D-010) and carries the same shape of proof: a
-        // plan-phase diagnostic co-firing with a calibrate-phase one.
+        // The deferred scale is a permanent v1 reservation (D-010), so it stays a plan-phase
+        // diagnostic that can co-fire with a calibrate-phase one.
         var spec = new BedrockSpec(ConversionFixtures.Wide(hasHeader: false),
             [
                 Identity("g", 0, null),

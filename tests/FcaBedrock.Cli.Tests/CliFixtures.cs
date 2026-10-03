@@ -319,8 +319,8 @@ internal static class CliFixtures
     public const string HeaderOnlyWideData = "colour,size\n";
 
     /// <summary>
-    /// A wide <c>dedupe</c> object key — the spill-capable grouping backend triple
-    /// <c>unordered</c> also runs on, so a run over it actually engages the machinery
+    /// A wide <c>dedupe</c> object key: the spill-capable grouping backend triple
+    /// <c>unordered</c> also runs on, so a run over it engages the machinery
     /// <c>--temp-dir</c> configures.
     /// </summary>
     public const string DedupeSpec = """
@@ -346,7 +346,7 @@ internal static class CliFixtures
         declared_domain = ["red", "green"]
         """;
 
-    /// <summary>Two rows sharing an object key, so <see cref="DedupeSpec"/> actually merges.</summary>
+    /// <summary>Two rows sharing an object key, so <see cref="DedupeSpec"/> merges.</summary>
     public const string DedupeData = "id,colour\no1,red\no1,green\no2,red\n";
 
     /// <summary>
@@ -688,9 +688,9 @@ internal static class CliFixtures
         """;
 
     /// <summary>
-    /// One spec per fully-frozen-gate reason (§14), each with exactly <b>one</b> included
+    /// One spec per fully-frozen check reason (§14), each with exactly <b>one</b> included
     /// attribute so each row's stderr is a single independent literal. The set mirrors the
-    /// library gate matrix; every row must <em>calibrate successfully</em> to reach the gate at
+    /// library's check matrix; every row must <em>calibrate successfully</em> to reach the check at
     /// all, which is what <see cref="GateData"/> is sized for.
     /// </summary>
     public static string NotFullyFrozenSpec(string reason) => $$"""
@@ -769,9 +769,9 @@ internal static class CliFixtures
 
     /// <summary>
     /// Five rows: three distinct strings for the discovery rows, and five distinct finite
-    /// numerics with non-zero spread and distinct 1st/99th percentiles — so the min/max,
+    /// numerics with non-zero spread and distinct 1st/99th percentiles, so the min/max,
     /// distinct-count, and percentile-span guards are all cleared and every cut row reaches the
-    /// gate instead of failing calibration first.
+    /// fully-frozen check instead of failing calibration first.
     /// </summary>
     public const string GateData = "colour,age\nred,10\ngreen,20\nblue,30\nred,40\ngreen,50\n";
 

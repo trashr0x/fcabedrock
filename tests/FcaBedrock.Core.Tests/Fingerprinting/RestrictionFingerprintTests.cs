@@ -10,9 +10,9 @@ namespace FcaBedrock.Core.Tests.Fingerprinting;
 /// <summary>
 /// The §14 <c>restrictions</c> container (D-091/D-094/D-105, governance items G-9/G-10).
 /// <para>
-/// The literals below <b>are</b> the pinned encoding, hand-authored — a diff here is an encoding
-/// change requiring an <c>fp_format</c> bump, not a test edit (the D-069 → Slice-E precedent).
-/// The container is golden-locked here <em>before</em> any stored restriction hash can ship.
+/// The literals below <b>are</b> the pinned encoding, hand-authored: a diff here is an encoding
+/// change requiring an <c>fp_format</c> bump, not a test edit (D-069).
+/// The container is golden-locked here, so a stored restriction hash cannot drift silently.
 /// </para>
 /// </summary>
 public sealed class RestrictionFingerprintTests
@@ -140,8 +140,8 @@ public sealed class RestrictionFingerprintTests
     [Fact]
     public void BuildCxtOutputJson_WhenNoAttributeRestricts_ThenTheContainerIsAbsentEntirely()
     {
-        // The omission rule is what keeps every restriction-free spec's pre-Slice-F bytes and
-        // hashes byte-identical: absent, not an empty array (which would be new bytes).
+        // The omission rule is what keeps every restriction-free spec's bytes and hashes
+        // free of the restriction surface: absent, not an empty array (which would add bytes).
         var json = Cxt(new BedrockSpec(SpecFixtures.WideRowIndex(), [SpecFixtures.Nominal("a", 0, ["x"])]));
 
         Assert.DoesNotContain("restrictions", json, StringComparison.Ordinal);

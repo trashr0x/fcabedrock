@@ -4,13 +4,13 @@ using FcaBedrock.Cli.Publication;
 namespace FcaBedrock.Cli.Tests;
 
 /// <summary>
-/// The publication rename itself (D-125): the exclusive primitive first, an <b>exact</b> gate on
+/// The publication rename itself (D-125): the exclusive primitive first, an <b>exact</b> rule for
 /// which native result may fall back to a checked classic rename, and the guarded protocol that
 /// fallback runs.
 /// <para>
 /// The capability table is exercised as the pure rule it is, so both platforms' rows are provable
-/// from either host. The protocol around it runs the <em>real</em> primitives — the classic rename
-/// a fallback ends in is the production one, injected only in which capability result reaches it —
+/// from either host. The protocol around it runs the <em>real</em> primitives (the classic rename
+/// a fallback ends in is the production one, injected only in which capability result reaches it),
 /// because a fallback proved against a fake primitive proves nothing about a filesystem.
 /// </para>
 /// </summary>
@@ -206,7 +206,7 @@ public sealed class PublicationRenameTests
         SkipWithoutUnixPrimitives();
 
         // Compensation moves an object BACK to the name it came from, and that name is a
-        // destination like any other: the same gate, the same absence check, the same refusal.
+        // destination like any other: the same rule, the same absence check, the same refusal.
         using var temp = TempDirectory.Create();
         var staged = temp.Write("staged", "payload");
         var published = temp.Resolve("published");
@@ -342,7 +342,7 @@ public sealed class PublicationRenameTests
     [Fact]
     public void Move_OnThisVolume_ThenTheExclusivePrimitiveIsWhatRan()
     {
-        // The witness the platform evidence rests on: it records the volume actually under test and
+        // The witness the platform evidence rests on: it records the volume under test and
         // shows the exclusive primitive succeeded there, with no fallback. "The move succeeded"
         // alone cannot say which primitive ran.
         using var temp = TempDirectory.Create();

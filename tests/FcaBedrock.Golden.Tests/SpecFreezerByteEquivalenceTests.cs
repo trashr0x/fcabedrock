@@ -10,15 +10,15 @@ using FcaBedrock.Spec.Toml;
 
 namespace FcaBedrock.Golden.Tests;
 
-// SpecFreezer cross-package output equivalence (M7 Slice D / S4, D-122 part 10). For each retained
-// outcome kind — and a combined spec exercising all four at once — the calibrated automatic form
+// SpecFreezer cross-package output equivalence (S4, D-122 part 10). For each retained
+// outcome kind (and a combined spec exercising all four at once), the calibrated automatic form
 // and its frozen re-resolved form must emit byte-identical .cxt and .dat in BOTH native and
 // --v2-compat modes over the calibration data (D-088 generalized to every calibration outcome).
 // This is the property only a package that can both calibrate (Conversion) and write (Export) can
 // prove; the fingerprint self-consistency and idempotence of the frozen document are proven in
 // FcaBedrock.Spec.Tests. Auto and frozen output FINGERPRINTS may legitimately differ (their
 // authored discretizer configuration differs, D-094), so this suite deliberately does not compare
-// them — only the emitted bytes.
+// them, only the emitted bytes.
 public sealed class SpecFreezerByteEquivalenceTests
 {
     private const string CutsSpec = """

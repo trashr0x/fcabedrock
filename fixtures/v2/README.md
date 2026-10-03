@@ -3,7 +3,7 @@
 These fixtures preserve FcaBedrock v2 compatibility behaviour. The expected
 `.cxt` and `.dat` files are golden outputs produced by the original FcaBedrock
 v2 tool and must not be edited to make tests pass; if vNext intentionally
-diverges from v2, record the decision and gate the behaviour behind the
+diverges from v2, record the decision and put the behaviour behind the
 appropriate compatibility mode (EP-9).
 
 Dataset provenance and attribution for adapted fixtures are documented in
@@ -42,28 +42,25 @@ Notes:
 
 | Fixture variant                             | Source family    | Input shape / behaviour exercised                                                     | Activation                              |
 | ------------------------------------------- | ---------------- | ------------------------------------------------------------------------------------- | --------------------------------------- |
-| `mini-mushroom`                             | Mushroom-derived | Wide delimited input with header; dichotomic + nominal scaling                        | M1                                      |
-| `mini-mushroom_tabbed_noheader`             | Mushroom-derived | TSV input; `has_header=false` / positional columns                                    | M1                                      |
-| `mini-mushroom_triples`                     | Mushroom-derived | Subject-predicate-value triple input                                                  | M3                                      |
-| `mini-adult`                                | Adult-derived    | Wide delimited input with header; manual numeric cuts on age                          | M1                                      |
-| `mini-adult_noheader`                       | Adult-derived    | Wide delimited input; `has_header=false` / positional columns                         | M1                                      |
-| `mini-adult_employment_ordinal_discrete`    | Adult-derived    | Type `n` (`ordered_cuts`) on employment, discrete → nominal; reuses `mini-adult.data` | M1                                      |
-| `mini-adult_employment_ordinal_progressive` | Adult-derived    | Same `.bed` bytes, progressive → ordinal (le); cumulative `<…`/`all` thresholds       | M1                                      |
-| `mini-adult_triples`                        | Adult-derived    | Subject-predicate-value triple input with numeric subjects                            | M3                                      |
-| `mini-adult_triples_named`                  | Adult-derived    | Subject-predicate-value triple input with named subjects (spec §19.3)                 | M3                                      |
-| `mini-dates_triples`                        | Handcrafted      | Triple input with date values                                                         | Parked — date support deferred by D-038 |
-| `mini-dates_triples_restricted`             | Handcrafted      | Triple input with date values plus `restrict_to`; shares the dates data shape         | Parked — date support deferred by D-038 |
+| `mini-mushroom`                             | Mushroom-derived | Wide delimited input with header; dichotomic + nominal scaling                        | Active                                  |
+| `mini-mushroom_tabbed_noheader`             | Mushroom-derived | TSV input; `has_header=false` / positional columns                                    | Active                                  |
+| `mini-mushroom_triples`                     | Mushroom-derived | Subject-predicate-value triple input                                                  | Active                                  |
+| `mini-adult`                                | Adult-derived    | Wide delimited input with header; manual numeric cuts on age                          | Active                                  |
+| `mini-adult_noheader`                       | Adult-derived    | Wide delimited input; `has_header=false` / positional columns                         | Active                                  |
+| `mini-adult_employment_ordinal_discrete`    | Adult-derived    | Type `n` (`ordered_cuts`) on employment, discrete → nominal; reuses `mini-adult.data` | Active                                  |
+| `mini-adult_employment_ordinal_progressive` | Adult-derived    | Same `.bed` bytes, progressive → ordinal (le); cumulative `<…`/`all` thresholds       | Active                                  |
+| `mini-adult_triples`                        | Adult-derived    | Subject-predicate-value triple input with numeric subjects                            | Active                                  |
+| `mini-adult_triples_named`                  | Adult-derived    | Subject-predicate-value triple input with named subjects (spec §19.3)                 | Active                                  |
+| `mini-dates_triples`                        | Handcrafted      | Triple input with date values                                                         | Parked: date support deferred (D-038)   |
+| `mini-dates_triples_restricted`             | Handcrafted      | Triple input with date values plus `restrict_to`; shares the dates data shape         | Parked: date support deferred (D-038)   |
 
 ## Activation policy
 
-* M1 activates the wide delimited fixtures needed for v2 byte-compatibility
-  coverage.
-* M3 activates the triple-input fixtures once the triple source adapter exists.
+* The wide delimited fixtures are active for v2 byte-compatibility coverage.
+* The triple-input fixtures are active through the triple source adapter.
 * `mini-dates*` fixtures are parked until date value handling is implemented.
-  They should remain checked in, but should not be part of the active M1 golden
-  test set.
+  They stay checked in, but are not part of the active golden test set.
 
 The variant matrix above is documentation of test intent. The test harness does
-**not** parse this Markdown as a source of truth. If the harness later needs
-machine-readable fixture metadata, add a separate manifest or a typed
-fixture-case list in tests.
+**not** parse this Markdown as a source of truth; its typed fixture-case list
+(`FixtureCase.Active` in `tests/FcaBedrock.Golden.Tests/FixtureCase.cs`) is.

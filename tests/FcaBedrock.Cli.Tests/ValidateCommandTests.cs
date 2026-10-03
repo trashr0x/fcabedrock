@@ -776,7 +776,7 @@ public sealed class ValidateCommandTests
             .Order(StringComparer.Ordinal)];
 }
 
-/// <summary>Counts the bytes a consumer actually pulls out of an underlying stream.</summary>
+/// <summary>Counts the bytes a consumer pulls out of an underlying stream.</summary>
 internal sealed class CountingStream(Stream inner, Action<int> onRead) : Stream
 {
     public override bool CanRead => inner.CanRead;

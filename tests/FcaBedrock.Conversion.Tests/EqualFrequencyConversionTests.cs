@@ -13,7 +13,7 @@ namespace FcaBedrock.Conversion.Tests;
 
 /// <summary>
 /// End-to-end <c>equal_frequency</c> conversion (calibrate → plan → emit) over wide and both
-/// triple orderings (§11.5, M4 Slice D / D-103), the D-088 auto/frozen byte-equivalence, and
+/// triple orderings (§11.5, D-103), the D-088 auto/frozen byte-equivalence, and
 /// the D-095 spill/non-spill byte-equivalence.
 /// </summary>
 public sealed class EqualFrequencyConversionTests
@@ -959,7 +959,7 @@ public sealed class EqualFrequencyConversionTests
     {
         // G-13's public contract, not just the internal exception: code, Error severity, the
         // owning attribute, no calibrated result, and no GroupingStorageException leaking across
-        // the seam. A long.MaxValue-sized fixture is not constructible (the plan forbids trying),
+        // the seam. A long.MaxValue-sized fixture is not constructible,
         // so the counts are injected through the SAME failure-injection seam the storage tests use:
         // every run read back is replaced by a forged one-row run carrying long.MaxValue. Merging
         // two such runs is exactly the checked sum G-13 owns.

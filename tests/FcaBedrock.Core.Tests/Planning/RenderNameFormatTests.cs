@@ -41,7 +41,7 @@ public sealed class RenderNameFormatTests
     public void Plan_WhenDichotomicWithFormat_ThenValueIsTheTrueValue()
     {
         // §10.7: the dichotomic default omits {value}; opting into it resolves {value} to
-        // the scale's true_value — the single formal attribute keeps its identity.
+        // the scale's true_value, and the single formal attribute keeps its identity.
         var plan = Plan(Dichotomic("t", ["t", "f"], format: "{column}-{value}"));
 
         Assert.Equal(["bruises?-t"], Names(plan));
@@ -140,7 +140,7 @@ public sealed class RenderNameFormatTests
     [Fact]
     public void Plan_WhenNoFormat_ThenTheDefaultMissingColumnNameIsUnchanged()
     {
-        // The pre-M6 default path, byte-for-byte: no format ⇒ "{column}-missing" (D-074).
+        // The default path, byte-for-byte: no format ⇒ "{column}-missing" (D-074).
         var plan = Plan(Nominal(["b"], format: null, missing: MissingPolicy.AsAttribute));
 
         Assert.Equal(["gill-size-b", "gill-size-missing"], Names(plan));
@@ -151,7 +151,7 @@ public sealed class RenderNameFormatTests
     [Fact]
     public void Plan_WhenFormatIsNull_ThenTheScaleSpecificDefaultsApply()
     {
-        // The null case is the normal one and must stay byte-identical to pre-M6: the
+        // The null case is the normal one: the
         // dichotomic default is the column alone, the nominal default is {column}-{value}.
         var spec = new BedrockSpec(SpecFixtures.WideRowIndex(), [
             SpecFixtures.Dichotomic("bruises?", 0, "t", ["t", "f"]),
@@ -214,8 +214,8 @@ public sealed class RenderNameFormatTests
     [Fact]
     public void Plan_WhenFormatCollapsesTwoColumnsToOneName_ThenFormalAttributeNameCollision()
     {
-        // §10.7's own warning: a format that discards the distinguishing part collides —
-        // the plan-phase collision check still owns that condition, not the new one.
+        // §10.7's own warning: a format that discards the distinguishing part collides, and
+        // the plan-phase collision check owns that condition, not the rendered-name check.
         var result = PlanResult(Nominal(["b", "n"], format: "{column}"));
 
         Assert.False(result.IsOk);
@@ -241,7 +241,7 @@ public sealed class RenderNameFormatTests
     {
         // The EMPTY half is format-reachable only: "{value}" with a live empty label makes
         // every token render empty. (The default path always prefixes the column, so it
-        // cannot produce an empty name — asserted below.)
+        // cannot produce an empty name, as asserted below.)
         var result = PlanResult(Nominal(
             ["ok"], format: "{value}", labels: new Dictionary<string, string> { ["ok"] = "" }));
 
@@ -272,8 +272,8 @@ public sealed class RenderNameFormatTests
     [InlineData("a\rb")]
     public void Plan_WhenADomainValueInjectsCrLf_ThenTheDefaultPathAlsoFails(string value)
     {
-        // The backstop is load-bearing beyond the M6 surface (D-117): CR/LF arriving
-        // through a raw value reaches a rendered name on the DEFAULT path too — a route
+        // The backstop is needed beyond the naming surface (D-117): CR/LF arriving
+        // through a raw value reaches a rendered name on the DEFAULT path too: a route
         // that exists independently of formal_attribute_format, and one an RFC 4180
         // quoted field can legally produce.
         var result = PlanResult(Nominal([value], format: null));

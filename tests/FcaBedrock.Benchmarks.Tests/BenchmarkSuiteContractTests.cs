@@ -62,7 +62,7 @@ public sealed class BenchmarkSuiteContractTests
     public void EveryDeclaredCorpus_ShouldAgreeWithItsTierCategoryAndExistInTheRegistry()
     {
         // A false denominator is worse than an absent one, so the declared corpus and the category
-        // that selects it must be the same claim - and the corpus it names must actually exist,
+        // that selects it must be the same claim, and the corpus it names must exist,
         // or the report would print "n/a" for a case that does read data.
         foreach (var type in BenchmarkTypes)
         {
@@ -124,8 +124,8 @@ public sealed class BenchmarkSuiteContractTests
     [Fact]
     public void EveryWorkingCase_ShouldBeExcludedFromEveryImplicitSelectionAndReachableWhenNamed()
     {
-        // The Working tier's own sweep, over the categories BenchmarkDotNet will actually read.
-        // The reason it is opt-in is cost — 730,000 records per case — and the surface-category
+        // The Working tier's own sweep, over the categories BenchmarkDotNet will read.
+        // The reason it is opt-in is cost (730,000 records per case), and the surface-category
         // shape is the one that matters here: `--anyCategories Source` is an ordinary way to ask
         // "every source-drain case", and it must mean the Small ones.
         var bare = SelectionPolicy.FromArguments([]);
@@ -175,7 +175,7 @@ public sealed class BenchmarkSuiteContractTests
     [Fact]
     public void TheAcquiredCorpusCases_ShouldBeExactlyTheExternalOnes()
     {
-        // Read off the attributes BenchmarkDotNet will actually see, not off a category array
+        // Read off the attributes BenchmarkDotNet will see, not off a category array
         // written here: a case whose corpus is acquired but whose category still said Small would
         // put a third-party download back into the default selection, and this is the check that
         // notices.

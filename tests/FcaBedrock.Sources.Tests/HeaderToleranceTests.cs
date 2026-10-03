@@ -116,7 +116,7 @@ public sealed class HeaderToleranceTests
     }
 
     // The neutrality half, stated literally rather than computed: with has_header = false the very
-    // same bytes yield that first row as record 0 — and, being DATA now, it IS missing-normalized,
+    // same bytes yield that first row as record 0, and, as DATA, it IS missing-normalized,
     // which is exactly the asymmetry a header must not be subject to.
     [Theory]
     [InlineData("colour,size,weight", "0:[colour|size|weight]")]
@@ -187,7 +187,7 @@ public sealed class HeaderToleranceTests
         Assert.Equal(["0:[<null>|big]"], records);
     }
 
-    // --- Unchanged: unique headers and headerless sources ---
+    // --- Unique headers and headerless sources ---
 
     [Fact]
     public async Task WideSchema_WhenHeaderUnique_ThenUnchanged()
@@ -240,7 +240,7 @@ public sealed class HeaderToleranceTests
     public async Task Schema_WhenHeaderedButSourceEmpty_ThenNoHeaderAndZeroColumns()
     {
         // An empty source has no record to take a header from, so the schema stays header-LESS
-        // rather than gaining an empty header — matching what Sep itself reported before.
+        // rather than gaining an empty header.
         var schema = await WideSession("").GetSchemaAsync();
 
         Assert.Equal(0, schema.ColumnCount);

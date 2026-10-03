@@ -161,9 +161,9 @@ public sealed class ConvertMultiCalibrationTests
 
         Assert.Equal(0, exit);
 
-        // The spurious failure this fix removes is exactly a GroupingStorageFailed Error on healthy
-        // storage, so its absence is asserted by name rather than by "stderr is empty" — an
-        // unrelated warning must not be able to hide it, and it must not be able to hide behind one.
+        // The spurious failure this suite guards against is exactly a GroupingStorageFailed Error
+        // on healthy storage, so its absence is asserted by name rather than by "stderr is empty":
+        // an unrelated warning must not be able to hide it, and it must not be able to hide behind one.
         Assert.DoesNotContain("GroupingStorageFailed", run.Harness.StdErr, StringComparison.Ordinal);
 
         // Published, complete, and provable: both artifacts exist, the manifest records both of
@@ -177,7 +177,7 @@ public sealed class ConvertMultiCalibrationTests
         Assert.Contains($"input_hash = \"{Hash(run.Data)}\"", manifest, StringComparison.Ordinal);
         Assert.Empty(run.Residue());
 
-        // And the calibration actually happened: five attributes' worth of scaled columns, so the
+        // And the calibration happened: five attributes' worth of scaled columns, so the
         // command is not passing by having skipped the count-sensitive work.
         Assert.Contains("seq", run.Text(".cxt"), StringComparison.Ordinal);
         Assert.Contains("skew", run.Text(".cxt"), StringComparison.Ordinal);

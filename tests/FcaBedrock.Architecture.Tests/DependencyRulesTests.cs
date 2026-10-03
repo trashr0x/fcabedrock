@@ -22,9 +22,9 @@ public sealed class DependencyRulesTests
     private static readonly ArchModel Architecture =
         new ArchLoader().LoadAssemblies(Production).Build();
 
-    // The complete production set as of M7. Every rule below is expressed over Production,
-    // so an assembly missing from the test's output directory would silently narrow — or
-    // vacuously satisfy — the rules rather than fail. Asserting the EXACT set is what makes
+    // The complete production set. Every rule below is expressed over Production,
+    // so an assembly missing from the test's output directory would silently narrow (or
+    // vacuously satisfy) the rules rather than fail. Asserting the EXACT set is what makes
     // that impossible.
     private static readonly string[] ExpectedProduction =
     [
@@ -50,7 +50,7 @@ public sealed class DependencyRulesTests
     public void Cli_ShouldNotBeReferencedByAnyProductionPackage()
     {
         // D-122 part 9 / D-123 part 1: the CLI depends on every library and no library
-        // depends on the CLI. The run/publication coordinator stays CLI-internal until a
+        // depends on the CLI. The run/publication coordinator stays CLI-internal until an
         // EP-4 extraction review says otherwise.
         var others = ProductionExcept("FcaBedrock.Cli");
 
@@ -72,7 +72,7 @@ public sealed class DependencyRulesTests
 
         Types().That().ResideInAssembly(Asm("FcaBedrock.Diagnostics"))
             .Should().NotDependOnAny(Types().That().ResideInAssembly(others[0], others[1..]))
-            .WithoutRequiringPositiveResults() // tolerate empty subject on M0's typeless assemblies
+            .WithoutRequiringPositiveResults() // an empty subject passes rather than fails
             .Check(Architecture);
     }
 
@@ -82,12 +82,12 @@ public sealed class DependencyRulesTests
         var forbidden = ProductionExcept("FcaBedrock.Core", "FcaBedrock.Diagnostics");
         if (forbidden.Length == 0)
         {
-            return; // M0: no other packages exist yet; this rule gains teeth at M1
+            return; // no production package other than Core and Diagnostics exists to forbid
         }
 
         Types().That().ResideInAssembly(Asm("FcaBedrock.Core"))
             .Should().NotDependOnAny(Types().That().ResideInAssembly(forbidden[0], forbidden[1..]))
-            .WithoutRequiringPositiveResults() // tolerate empty subject on M0's typeless assemblies
+            .WithoutRequiringPositiveResults() // an empty subject passes rather than fails
             .Check(Architecture);
     }
 
@@ -118,7 +118,7 @@ public sealed class DependencyRulesTests
     }
 
     // One ArchUnitNET slice per production assembly (keyed by assembly name), so BeFreeOfCycles
-    // enforces the package-level acyclicity CLAUDE.md/D-039 document; non-production types (BCL,
+    // enforces the package-level acyclicity AGENTS.md/D-039 document; non-production types (BCL,
     // dependencies) are ignored.
     private static ArchUnitNET.Fluent.Slices.GivenSlices ProductionPackageSlices()
     {
@@ -139,10 +139,10 @@ public sealed class DependencyRulesTests
     [Fact]
     public void Core_ShouldNotDependOnSystemIo()
     {
-        // EP-13: Core is pure — no file/stream I/O. ArchUnitNET sees type-level
+        // EP-13: Core is pure, with no file/stream I/O. ArchUnitNET sees type-level
         // dependencies (incl. BCL targets by namespace) that the package-reference
-        // rules cannot; this is the purity guard D-039 anticipated for M1. Core now
-        // has real types, so this is non-vacuous (no WithoutRequiringPositiveResults).
+        // rules cannot; this is the purity guard D-039 calls for. Core has real
+        // types, so this is non-vacuous (no WithoutRequiringPositiveResults).
         Types().That().ResideInAssembly(Asm("FcaBedrock.Core"))
             .Should().NotDependOnAnyTypesThat().ResideInNamespace("System.IO")
             .Check(Architecture);
@@ -173,21 +173,21 @@ public sealed class DependencyRulesTests
     [Fact]
     public void Discovery_ShouldNotDependOnSystemIoBeyondTheTwoClassificationExceptions()
     {
-        // Discovery performs no I/O - it classifies failures crossing the source-session seam;
+        // Discovery performs no I/O: it classifies failures crossing the source-session seam;
         // D-109's ban on opening paths/streams/files remains absolute.
         //
         // So the allowlist is exactly two EXCEPTION TYPES, named in catch clauses. Everything
-        // else in System.IO — Stream, File, Path, Directory, readers/writers, pipelines,
-        // compression — stays forbidden, because the caller and the session own I/O. Core's
+        // else in System.IO (Stream, File, Path, Directory, readers/writers, pipelines,
+        // compression) stays forbidden, because the caller and the session own I/O. Core's
         // blanket System.IO ban above is unchanged and stricter.
         //
         // ArchUnitNET does not reliably surface catch-handler metadata, so a green result here
         // is necessary but not sufficient: ProbeReadFailureTests drives every admitted family
-        // AND counterexamples that must NOT be absorbed, which is what actually proves the
+        // AND counterexamples that must NOT be absorbed, which is what proves the
         // filter is narrow.
         Assert.NotEmpty(Discovery());
 
-        // NotDependOnAnyTypesThat (not NotDependOnAny) is load-bearing here: the latter
+        // NotDependOnAnyTypesThat (not NotDependOnAny) is required here: the latter
         // intersects with types MODELLED in the architecture, and the BCL is not loaded, so it
         // would pass vacuously against any System.IO use whatsoever. This form filters the
         // subject's actual dependency targets, which is what Core's rule above does. The

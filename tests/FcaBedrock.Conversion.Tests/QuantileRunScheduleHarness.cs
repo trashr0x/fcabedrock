@@ -30,7 +30,7 @@ internal sealed record QuantileRunObservation(
 
 /// <summary>
 /// Drives the <b>real</b> <see cref="QuantileAccumulator"/> and <see cref="SpoolWorkspace{TRow}"/>
-/// over the counting filesystem with literal leaf populations, and reports what actually happened.
+/// over the counting filesystem with literal leaf populations, and reports what happened.
 /// It is deliberately not a handle simulator: the transitions it records are the product's own.
 /// </summary>
 internal sealed class QuantileRunScheduleDriver : IDisposable

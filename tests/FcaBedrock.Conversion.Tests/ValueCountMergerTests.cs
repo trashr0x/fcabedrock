@@ -154,7 +154,7 @@ public sealed class ValueCountMergerTests
     [Fact]
     public void Consolidate_WhenOnlyTheFinalOutputWouldPassThreeT_ThenTheFinalWriteIsGatedToo()
     {
-        // The gate that is easiest to forget: merge output coexists with its inputs until they
+        // The check that is easiest to forget: merge output coexists with its inputs until they
         // delete, so the FINAL consolidated write is no safer than an intermediate one. Deletions
         // fail here, so live bytes never fall and only the last batch crosses the bound.
         var fileSystem = new FakeSpoolFileSystem();

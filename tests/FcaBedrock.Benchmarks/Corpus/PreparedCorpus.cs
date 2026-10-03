@@ -20,18 +20,18 @@ internal sealed record PreparedCorpus(CorpusEntry Entry, string DataPath, string
 /// </para>
 /// <para>
 /// <b>Cached inputs are verified, never assumed.</b> A case is reused only when its catalog entry
-/// parses, its generator revision and geometry match today's definition, its spec is byte-identical
-/// to the committed one, and both files still have exactly the recorded length and digest. Anything
-/// else is refused — a stale corpus silently compared against a fresh one is the failure mode this
-/// exists to prevent.
+/// parses, its generator revision and geometry match the current definition, its spec is
+/// byte-identical to the committed one, and both files still have exactly the recorded length and
+/// digest. Anything else is refused: a stale corpus silently compared against a fresh one is the
+/// failure mode this exists to prevent.
 /// </para>
 /// <para>
-/// <b>An acquired corpus is additionally pinned.</b> For a generated case the catalog's recorded
+/// <b>An acquired corpus is also pinned.</b> For a generated case the catalog's recorded
 /// digest is a complete check, because the bytes are a function of a committed generator at a
 /// recorded revision. For an <see cref="CorpusCase.DataIdentity">acquired</see> one it is not: the
 /// catalog records whatever arrived, so a changed upstream file and a catalog rewritten beside it
 /// agree with each other perfectly. Such a case therefore carries the identity in its own source,
-/// and it is checked <em>independently of the catalog</em> — on a fresh acquisition, before an
+/// and it is checked <em>independently of the catalog</em>: on a fresh acquisition, before an
 /// entry is written at all, and again on every reuse.
 /// </para>
 /// </summary>

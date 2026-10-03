@@ -148,7 +148,7 @@ public sealed class ConversionRuntimeOptionsTests
     public async Task EmitAsync_Wide_WhenPlanVariantMismatch_ThenShapeGuardIsEager()
     {
         // The wide overload delegates to the non-iterator internal method, so the plan-variant guard
-        // throws synchronously — exactly as today for the wide path.
+        // throws synchronously, exactly as it does through the wide path without runtime options.
         var triplePlan = await PlanTripleAsync(UnorderedTripleSpec(), ConversionFixtures.MushroomTripleDataInterleaved);
         Assert.Throws<InvalidOperationException>(
             () => { _ = Emitter.EmitAsync(triplePlan, SourceWide(DedupeSpec(), DedupeCsv), new List<BedrockDiagnostic>(), new ConversionRuntimeOptions()); });
@@ -158,8 +158,8 @@ public sealed class ConversionRuntimeOptionsTests
     public async Task EmitTripleAsync_WhenPlanVariantMismatch_ThenShapeGuardIsDeferredUntilEnumeration()
     {
         // The triple overload delegates to the async-iterator internal method, so the plan-variant guard
-        // does NOT run at call time; it surfaces only when enumeration advances — the existing triple
-        // behaviour, which the new overload must not change.
+        // does NOT run at call time; it surfaces only when enumeration advances: the triple path's
+        // behaviour without runtime options, which the overload must not change.
         var widePlan = await PlanWideAsync(DedupeSpec(), DedupeCsv);
         var enumerable = Emitter.EmitTripleAsync(
             widePlan, TripleSource(UnorderedTripleSpec(), ConversionFixtures.MushroomTripleData), new List<BedrockDiagnostic>(), new ConversionRuntimeOptions());
@@ -260,7 +260,7 @@ public sealed class ConversionRuntimeOptionsTests
         var customRoot = await CaptureAsync(plan, sink =>
             Emitter.EmitAsync(plan, SourceWide(spec, DedupeSpillCsv), sink, new GroupingOptions(maxBufferedBytes: 1, maxMergeFanIn: 2, tempDirectory: root.Root, observer: observer)));
 
-        Assert.NotEmpty(observer.Written);                                        // a spill actually happened
+        Assert.NotEmpty(observer.Written);                                        // a spill happened
         AssertWorkspaceUnderRoot(observer, root.Root);                            // placed under the supplied root
         Assert.Empty(Directory.GetDirectories(root.Root, "fcabedrock-spool-*"));  // cleaned up on success
         AssertSameEmission(defaultRoot, customRoot);                              // byte-/object-neutral under spill

@@ -158,7 +158,7 @@ public sealed class SpecRoundTripTests
     public void RoundTrip_WhenExactEntrySpelledVariously_ThenAllCanonicalizeToTheWritersForm(string spelling)
     {
         // §10.4/D-091 (round-6 High-1): 30 / 30.0 / 3e1 are equivalent inputs that all
-        // canonicalize to the writer's `{ value = 30 }` — and, crucially, the canonical text is
+        // canonicalize to the writer's `{ value = 30 }`, and the canonical text is
         // re-readable, so parse → write → parse is stable. This is the one layer where spelling
         // exists; after parsing they are the same double.
         var parsed = Read(Attribute($"restrict_to = [{{ value = {spelling} }}]"));
@@ -176,8 +176,8 @@ public sealed class SpecRoundTripTests
     public void RoundTrip_WhenATemplateCarriesEveryRestrictForm_ThenAllSurviveInOrder()
     {
         // §9/D-057: templates reuse the SAME Core restriction union as attributes, so the exact
-        // numeric entry must transport through the template carrier too — templates are merged by
-        // `extends` today and resolved at M6, so a form that cannot round-trip here would be lost
+        // numeric entry must transport through the template carrier too: templates are merged by
+        // `extends` and applied at resolve, so a form that cannot round-trip here would be lost
         // before it could ever be applied.
         var document = DocumentFixtures.Document(
             [DocumentFixtures.Attribute("a")],
@@ -323,7 +323,7 @@ public sealed class SpecRoundTripTests
     [Fact]
     public void RoundTrip_WhenTripleColumnsByName_ThenNameRefsSurvive()
     {
-        // Slice B: triple columns may bind roles by header name; the ColumnRef form
+        // Triple columns may bind roles by header name; the ColumnRef form
         // round-trips through read∘write (D-082).
         var columns = new TripleColumnsSection(new NameColumnRef("subj"), new NameColumnRef("pred"), new NameColumnRef("obj"));
         var document = DocumentFixtures.Document(
@@ -389,9 +389,9 @@ public sealed class SpecRoundTripTests
     [Fact]
     public void RoundTrip_WhenNamingKeysAuthoredOnAllThreeOwners_ThenEachSurvivesVerbatim()
     {
-        // D-119 floor item 7 over the new carriers: [defaults], [[template]], and
+        // D-119 floor item 7 over the naming carriers: [defaults], [[template]], and
         // [[attribute]] each keep their authored naming values through a full cycle,
-        // including the {{…}} escape and the {column} alias — the authored SPELLING
+        // including the {{…}} escape and the {column} alias: the authored SPELLING
         // round-trips, never a normalized equivalent (D-075).
         var toml =
             "[spec]\nversion = 1\n\n[binding]\nshape = \"wide\"\n\n"

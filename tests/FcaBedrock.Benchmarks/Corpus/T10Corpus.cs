@@ -21,21 +21,21 @@ internal enum TripleLayout
 }
 
 /// <summary>
-/// The <b>T10</b> synthetic triple family: ten subject–predicate–value rows per subject, in two
+/// The <b>T10</b> synthetic triple family: ten subject-predicate-value rows per subject, in two
 /// physical layouts of the same observations.
 /// <para>
-/// It is shaped by what the triple path actually has to get right. Each subject carries a
+/// It is shaped by what the triple path has to get right. Each subject carries a
 /// <b>multi-valued</b> predicate whose values union onto one object; an <b>exact duplicate</b> of an
 /// earlier row, which must be idempotent; a numeric predicate observed in two <b>equivalent raw
 /// spellings</b> (<c>30</c> and <c>30.0</c>), which are one numeric value but two distinct raw
-/// observations — the distinction §5.3.1's count-sensitive rule turns on; and an <b>unmatched</b>
+/// observations (the distinction §5.3.1's count-sensitive rule turns on); and an <b>unmatched</b>
 /// predicate no attribute binds, which must keep its subject without contributing a cross. The
 /// numeric predicate varies by subject over a wide range, so count-sensitive calibration meets a
 /// high-cardinality population rather than a handful of repeated values.
 /// </para>
 /// <para>
 /// Objects are subjects, so a tier's <em>input record</em> count is ten times its object count. That
-/// is deliberate: the plan's tiers are input records on every family, so a triple tier and a wide
+/// is deliberate: every family's tiers are input-record counts, so a triple tier and a wide
 /// tier read the same number of rows and their throughput figures are comparable.
 /// </para>
 /// </summary>

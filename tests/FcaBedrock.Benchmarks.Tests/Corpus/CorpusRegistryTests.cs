@@ -70,7 +70,7 @@ public sealed class CorpusRegistryTests
         var adult = CorpusCases.Adult;
 
         // Its size is a fact about the download, not a choice, so the id carries no tier and the
-        // declared count is absent until the corpus has actually been acquired.
+        // declared count is absent until the corpus has been acquired.
         Assert.Equal(CorpusOrigin.External, adult.Origin);
         Assert.False(adult.RecordsDeclared);
         Assert.Equal(0, adult.Records);

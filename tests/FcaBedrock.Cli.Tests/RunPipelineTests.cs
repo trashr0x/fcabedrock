@@ -7,7 +7,7 @@ namespace FcaBedrock.Cli.Tests;
 /// <summary>
 /// The shared preparation path behind <c>plan</c>, <c>stats</c>, and <c>fingerprint</c>
 /// (D-122 part 10), driven at the argv boundary: phase order, failure ownership, cancellation,
-/// input stability, and the boundaries this slice must <b>not</b> move.
+/// input stability, and the boundaries it must <b>not</b> move.
 /// </summary>
 public sealed class RunPipelineTests
 {
@@ -667,13 +667,13 @@ public sealed class RunPipelineTests
         Assert.Equal(DiagnosticRenderer.RenderHostError(CliHost.OutputFailureMessage), harness.StdErr);
     }
 
-    // ---- boundaries this slice must not move ------------------------------------------------------
+    // ---- boundaries the shared path must not move -------------------------------------------------
 
     [Fact]
     public async Task Validate_WhenTheSpecWouldNeedCalibration_ThenItStillReadsNoRows()
     {
         // validate is schema validation, not a dry run: it must not acquire the pipeline's
-        // calibration pass merely because one now exists next door.
+        // calibration pass merely because one exists next door.
         using var temp = TempDirectory.Create();
         var spec = temp.Write("spec.toml", ObservedDomainSpec);
         var data = temp.Write("data.csv", CliFixtures.WideDataWithHostileRows);
@@ -690,7 +690,7 @@ public sealed class RunPipelineTests
     [Fact]
     public void CommandTable_ThenExactlyTheImplementedCommandsHaveAHandler()
     {
-        // Every settled command now executes, so the set is the complete eight; the property is
+        // Every settled command executes, so the set is the complete eight; the property is
         // non-nullable, which is what makes a future handler-less row a compile error.
         var handled = CommandTable.Commands
             .Where(command => command.Handler is not null)

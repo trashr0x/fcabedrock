@@ -7,7 +7,7 @@ namespace FcaBedrock.Benchmarks.Tests.Corpus;
 /// The pin on an <b>acquired</b> corpus: the exact bytes the suite accepts, checked independently
 /// of what the catalog recorded for itself.
 /// <para>
-/// A generated corpus needs no such thing — its bytes are a function of a committed generator at a
+/// A generated corpus needs no such thing: its bytes are a function of a committed generator at a
 /// recorded revision, so the catalog's digest is a complete check. An acquired one is different in
 /// a way that matters: the catalog records <em>whatever arrived</em>, so a changed upstream file
 /// and a catalog rewritten beside it agree with each other perfectly, and every measurement stated
@@ -16,7 +16,7 @@ namespace FcaBedrock.Benchmarks.Tests.Corpus;
 /// <para>
 /// These tests use a local pinned case rather than the real one. The mechanism is what is under
 /// test, and it must be testable without a network: no test in this repository downloads anything.
-/// That the real Adult case is actually wired to it is asserted in <c>CorpusRegistryTests</c>.
+/// That the real Adult case is wired to it is asserted in <c>CorpusRegistryTests</c>.
 /// </para>
 /// </summary>
 public sealed class AcquiredCorpusIdentityTests

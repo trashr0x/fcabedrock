@@ -157,7 +157,7 @@ public sealed class QuantileRunScheduleTests
     {
         // A reachable negative control: run at fan-in 4 and hold the observation to a fan-in-3
         // reader bound. It must fail, which is what proves the reader assertion in the passing
-        // cases is load-bearing rather than vacuous.
+        // cases can fail rather than being vacuous.
         const int spills = 40;
         var leaves = QuantileRunScheduleModel.DisjointLiteralLeaves(spills, 3);
         using var driver = QuantileRunScheduleDriver.Create(budget: QuantileAccumulator.Modeled(3), fanIn: 4);

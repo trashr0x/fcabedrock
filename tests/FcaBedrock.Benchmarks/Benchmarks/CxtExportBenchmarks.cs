@@ -9,20 +9,20 @@ using FcaBedrock.Export;
 namespace FcaBedrock.Benchmarks;
 
 /// <summary>
-/// Exports to Burmeister <c>.cxt</c> — the format that costs <b>two</b> complete passes.
+/// Exports to Burmeister <c>.cxt</c>: the format that costs <b>two</b> complete passes.
 /// <para>
 /// A <c>.cxt</c> header carries the object and attribute counts before any row, and its object names
 /// come before the matrix, so a conforming writer takes a bounded object-name pass and then replays
 /// the emission for the rows (§18.1). It must never materialize the matrix. That makes it the
-/// opposite shape to <c>.dat</c>, which streams once and needs no header count — and the difference
+/// opposite shape to <c>.dat</c>, which streams once and needs no header count, and the difference
 /// between the two on the same corpus is the price of the format, which is a number a user choosing
-/// an output format actually wants.
+/// an output format wants.
 /// </para>
 /// <para>
 /// The measured interval is the same contract as every other conversion case, so the <em>whole</em>
 /// two-pass write is inside it. Bounded coverage on purpose: the matrix asks for the minis, real
 /// Adult, the working W16 tier, and the small Ads-width geometry. A dense 73M-record <c>.cxt</c> is
-/// explicitly not an M8 product.
+/// deliberately out of scope.
 /// </para>
 /// </summary>
 [BenchmarkCategory(BenchmarkCategories.Convert)]

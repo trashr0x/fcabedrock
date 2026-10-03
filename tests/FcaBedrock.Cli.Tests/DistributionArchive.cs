@@ -135,8 +135,8 @@ internal static class DistributionArchive
     }
 
     /// <summary>
-    /// Asserts the extracted apphost is one a user can actually run: present, and — on Unix, where
-    /// the question means anything — carrying the owner's execute bit.
+    /// Asserts the extracted apphost is one a user can run: present, and (on Unix, where
+    /// the question means anything) carrying the owner's execute bit.
     /// </summary>
     internal static string AssertExtractedApphost(string extracted, string rid)
     {
@@ -158,7 +158,7 @@ internal static class DistributionArchive
 /// <summary>The repository root, found rather than counted to.</summary>
 internal static class RepositoryRoot
 {
-    /// <summary>Wherever the solution file actually is above the test binary — never a fixed hop count.</summary>
+    /// <summary>Wherever the solution file is above the test binary, never a fixed hop count.</summary>
     internal static string Find()
     {
         for (var directory = new DirectoryInfo(AppContext.BaseDirectory); directory is not null; directory = directory.Parent)

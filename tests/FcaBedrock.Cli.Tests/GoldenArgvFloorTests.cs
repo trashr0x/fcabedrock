@@ -3,14 +3,14 @@ using System.Text;
 namespace FcaBedrock.Cli.Tests;
 
 /// <summary>
-/// The M7 argv floor (D-122 part 14): every active v2 golden reproduced through the <b>real
-/// CLI path</b> — <c>migrate</c> to a spec file, then <c>convert --v2-compat</c> to both
-/// artifacts — and byte-compared against the checked-in expected outputs, then repeated.
+/// The argv floor (D-122 part 14): every active v2 golden reproduced through the <b>real
+/// CLI path</b> (<c>migrate</c> to a spec file, then <c>convert --v2-compat</c> to both
+/// artifacts) and byte-compared against the checked-in expected outputs, then repeated.
 /// <para>
 /// Nothing of the library golden harness is reused: the CLI <em>is</em> the orchestrator here,
 /// so this suite carries its own nine-row table and its own independent literal inventory of
 /// the active variants. The active set is never derived from a directory listing, a filename
-/// prefix or grammar, or parsed prose — there are <b>eleven</b> <c>.bed</c> files under the
+/// prefix or grammar, or parsed prose: there are <b>eleven</b> <c>.bed</c> files under the
 /// copied fixture tree and only nine are active, so a listing would be wrong in a way that
 /// silently widens the floor.
 /// </para>
@@ -88,7 +88,7 @@ public sealed class GoldenArgvFloorTests
     [Fact]
     public void Floor_WhenTheParkedDateInputsAreConsidered_ThenTheyAppearNowhereInTheFloor()
     {
-        // They exist on disk and in the copied tree, and they are still not part of the M7
+        // They exist on disk and in the copied tree, and they are still not part of the
         // floor: `dates stay parked` is an inventory decision, not a filename property.
         foreach (var parked in ParkedVariants)
         {

@@ -96,7 +96,7 @@ public sealed class PublicationTests
     public async Task Publication_WhenAnOutputWouldBeAReferencedBaseSpec_ThenItIsRefusedEvenWithForce()
     {
         // The chain's base is an input just as much as the root is, and identity is checked
-        // against every file the run actually loaded.
+        // against every file the run loaded.
         using var temp = TempDirectory.Create();
         var harness = new CliTestHarness();
         var basePath = temp.Write("out.cxt", CliFixtures.IndexBoundSpec);
@@ -188,7 +188,7 @@ public sealed class PublicationTests
             .ToList();
 
         // Each stage's CLAIM follows its own acquisition and precedes the writer, and each stage's
-        // evidence is published as that stage closes. The order is load-bearing: a claim written
+        // evidence is published as that stage closes. The order matters: a claim written
         // before the create-new would survive a refusal and go on to authorize deleting the very
         // occupant that refused it.
         Assert.Equal(
@@ -232,7 +232,7 @@ public sealed class PublicationTests
     [Fact]
     public async Task Publication_WhenTwoRunsPublishTheSameBase_ThenTheirTokensDiffer()
     {
-        // A successful run removes its record, so the names are read from what each run actually
+        // A successful run removes its record, so the names are read from what each run
         // created. Fresh and unpredictable per attempt: no two runs can own the same private file.
         using var run = ConvertRun.Wide();
         Assert.Equal(0, await run.ConvertAsync("--format", "cxt"));
@@ -899,8 +899,8 @@ public sealed class PublicationTests
     public async Task Publication_WhenRecoveryWouldRestoreAnAliasOfTheData_ThenItIsRefusedBeforeAnyMutation()
     {
         // Recovery is about to rename a backup that is a hard link to the DATA file.
-        // The fresh collision check after recovery would catch the result — but only after the
-        // input had already been moved, which is exactly what the gate before recovery prevents.
+        // The fresh collision check after recovery would catch the result, but only after the
+        // input had already been moved, which is exactly what the check before recovery prevents.
         using var run = ConvertRun.Wide();
         var residue = Residue.Create(run.Directory, "out", "aaaaaaaabbbbbbbbccccccccdddddddd");
         residue.WriteRecord([("backup", "out.cxt"), ("stage", "out.cxt")]);
@@ -970,7 +970,7 @@ public sealed class PublicationTests
         Assert.Empty(run.Residue());
     }
 
-    // ---- the durable rollback gate ------------------------------------------------------------------
+    // ---- the durable rollback precondition ----------------------------------------------------------
 
     [Theory]
     [InlineData("CreateNew")]
@@ -1111,8 +1111,8 @@ public sealed class PublicationTests
     {
         // A pending name carries 128 bits of this code's own randomness, but the
         // grammar is public: a file wearing that name proves nothing about who wrote it. Only the
-        // intent descriptor authorizes removing one — including when the bytes look exactly like
-        // an interrupted record, which is precisely the case name-and-token reasoning got wrong.
+        // intent descriptor authorizes removing one, including when the bytes look exactly like
+        // an interrupted record, which is precisely the case name-and-token reasoning would get wrong.
         using var run = ConvertRun.Wide();
         var pending = Path.Combine(run.Directory, "out.fcabedrock-pending-aaaaaaaabbbbbbbbccccccccdddddddd");
         await File.WriteAllTextAsync(pending, content);

@@ -9,8 +9,8 @@ using FcaBedrock.Spec.Toml;
 namespace FcaBedrock.Benchmarks.Tests.Oracles;
 
 /// <summary>
-/// The probe outcome gate. Each case below is a draft that is the <em>wrong</em> result while still
-/// having the right shape — which is the only way a probe benchmark can publish a duration for work
+/// The probe outcome check. Each case below is a draft that is the <em>wrong</em> result while still
+/// having the right shape, which is the only way a probe benchmark can publish a duration for work
 /// it did not do.
 /// <para>
 /// The three outcomes differ per attribute, so the checks are exercised per attribute: a draft in

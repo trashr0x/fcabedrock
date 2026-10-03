@@ -102,7 +102,7 @@ public sealed class AdsCorpusTests
     public void NumericColumns_ShouldSpanTheirDeclaredCutsInBothDirections()
     {
         // A cut bin nothing lands in is a column of zeros, which is a plausible-looking but useless
-        // measurement; this asserts the numeric columns actually straddle their cuts.
+        // measurement; this asserts the numeric columns straddle their cuts.
         var heights = Enumerable.Range(0, 500).Select(row => AdsCorpus.Height(row)).ToList();
         var aspects = Enumerable.Range(0, 500)
             .Select(row => Determinism.HundredthsValue(AdsCorpus.AspectHundredths(row))).ToList();

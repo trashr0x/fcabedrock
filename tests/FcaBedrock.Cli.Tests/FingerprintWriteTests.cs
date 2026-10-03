@@ -8,7 +8,7 @@ namespace FcaBedrock.Cli.Tests;
 /// The <c>fingerprint --write</c> vertical (D-122 part 10; D-123 point 14; spec §3/§13/§14).
 /// <para>
 /// Report mode's byte grammar is locked next door in <see cref="FingerprintCommandTests"/> and is
-/// untouched here; what is tested is write mode's own contract — the fully-frozen gate, which
+/// untouched here; what is tested is write mode's own contract: the fully-frozen check, which
 /// document is rewritten and what survives, and the D-123 point 14 rule that a <b>file</b> target
 /// keeps report-on-stdout plus spec-in-file while <c>--out -</c> emits only the spec.
 /// </para>
@@ -153,7 +153,7 @@ public sealed class FingerprintWriteTests
         });
     }
 
-    // ---- the fully-frozen gate (§14) --------------------------------------------------------------
+    // ---- the fully-frozen check (§14) -------------------------------------------------------------
 
     public static TheoryData<string, string?> GateReasons() => new()
     {
@@ -171,10 +171,10 @@ public sealed class FingerprintWriteTests
     public async Task FingerprintWrite_WhenTheSpecIsNotFullyFrozen_ThenItIsRefusedAndAnyPreparationWarningStillRenders(
         string reason, string? warning)
     {
-        // Every row calibrates SUCCESSFULLY and is refused by the gate, not by a failed
-        // calibration. HostFailure renders preparation diagnostics first and the code-less line
-        // second, so the four discovery rows carry their Warning then the error, and the three
-        // cut rows — whose successful calibration is silent — carry the error alone.
+        // Every row calibrates SUCCESSFULLY and is refused by the fully-frozen check, not by a
+        // failed calibration. HostFailure renders preparation diagnostics first and the code-less
+        // line second, so the four discovery rows carry their Warning then the error, and the three
+        // cut rows (whose successful calibration is silent) carry the error alone.
         using var temp = TempDirectory.Create();
         var spec = temp.Write("spec.toml", CliFixtures.NotFullyFrozenSpec(reason));
         var data = temp.Write("data.csv", CliFixtures.GateData);
@@ -450,10 +450,10 @@ public sealed class FingerprintWriteTests
     public async Task FingerprintWrite_WhenStageCreationFails_ThenTheOldTargetSurvivesAndNoReportIsPrinted()
     {
         // A different seam from the commit-rename case above: the failure lands inside the
-        // confidential stage creation, BEFORE any backup rename and before any commit — so the
+        // confidential stage creation, BEFORE any backup rename and before any commit, so the
         // old target was never moved and needs no restore, and the message is StageFailed rather
         // than CommitFailed. --force is what makes the seam reachable at all: without it the
-        // existing-target gate refuses before a stage is ever created.
+        // existing-target check refuses before a stage is ever created.
         using var temp = TempDirectory.Create();
         var spec = temp.Write("spec.toml", CliFixtures.FrozenSpec);
         var data = temp.Write("data.csv", CliFixtures.FrozenData);

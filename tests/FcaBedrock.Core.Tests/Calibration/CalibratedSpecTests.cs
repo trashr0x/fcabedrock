@@ -227,7 +227,7 @@ public sealed class CalibratedSpecTests
         Assert.Throws<ArgumentException>(() => CalibratedSpec.Create(resolved, [new ObservedDomain("g", ["b"])]));
     }
 
-    // --- Pending equal_width → executable substitution (M4 Slice C, D-102) ---
+    // --- Pending equal_width → executable substitution (D-102) ---------------
 
     private static BedrockSpec PendingEqualWidthSpec(
         int bins = 4, CutPrecision? precision = null, EqualWidthRange range = EqualWidthRange.MinMax) =>
@@ -343,7 +343,7 @@ public sealed class CalibratedSpecTests
         Assert.Throws<ArgumentException>(() =>
             CalibratedSpec.Create(Resolve(PendingEqualWidthSpec(), 1), [new CalibratedCuts("score", [])]));
 
-    // --- equal_frequency substitution (M4 Slice D / D-103) --------------------
+    // --- equal_frequency substitution (D-103) ---------------------------------
 
     private static BedrockSpec PendingEqualFrequencySpec(
         int bins = 3, TiePolicy tie = TiePolicy.Left, CutPlacement placement = CutPlacement.RightValue) =>
@@ -455,10 +455,10 @@ public sealed class CalibratedSpecTests
     [Fact]
     public void Create_WhenPendingPercentileRange_ThenExecutableDiscretizerSubstituted()
     {
-        // D-103 narrows the D-102/G-8 guard DELIBERATELY: percentile_p1_p99 was rejected here
-        // while it had no calibration, and now that Slice D lands one it substitutes exactly like
-        // min_max. The narrowing is to the two data-derived ranges by name, not to "any non-manual
-        // range" — so a future range mode cannot become executable by merely existing in the enum.
+        // D-103 narrows the D-102/G-8 guard DELIBERATELY: percentile_p1_p99 has a calibration, so it
+        // substitutes exactly like min_max. The narrowing is to the two data-derived ranges by name,
+        // not to "any non-manual range", so a future range mode cannot become executable by merely
+        // existing in the enum.
         var spec = PendingEqualWidthSpec(range: EqualWidthRange.PercentileP1P99);
 
         var created = CalibratedSpec.Create(Resolve(spec, 1), [new CalibratedCuts("score", [25, 50, 75])]);
@@ -517,7 +517,7 @@ public sealed class CalibratedSpecTests
         AssertImmutableList(Assert.IsType<CalibratedCuts>(calibrated.Calibrations[0]).Cuts);
     }
 
-    // --- value_groups passthrough substitution (M4 Slice E / D-090/D-104) -----
+    // --- value_groups passthrough substitution (D-090/D-104) ------------------
 
     private static BedrockSpec PassthroughSpec(params ValueGroup[] groups) =>
         With(SpecFixtures.ValueGroupsPassthrough(
@@ -810,9 +810,9 @@ public sealed class CalibratedSpecTests
     [InlineData(double.PositiveInfinity)]
     public void FromFullyDeclared_WhenANonFiniteExactValueSurvivedPastTheSeam_ThenThrows(double value)
     {
-        // The calibrated-state contract's own numeric boundary (D-105): the last gate before
-        // Plan/Emit/fingerprints. Unreachable through an honest chain — ResolvedSpec.Create is
-        // the primary boundary and the only way to mint a token — so this is asserted through a
+        // The calibrated-state contract's own numeric boundary (D-105): the last check before
+        // Plan/Emit/fingerprints. Unreachable through an honest chain (ResolvedSpec.Create is
+        // the primary boundary and the only way to mint a token), so this is asserted through a
         // token whose entries were swapped afterwards, i.e. exactly the hand-built graph the
         // contract calls programmer error.
         var resolved = Resolve(With(SpecFixtures.NumericCuts("age", 0, [30.0], new NominalScale())), 1);

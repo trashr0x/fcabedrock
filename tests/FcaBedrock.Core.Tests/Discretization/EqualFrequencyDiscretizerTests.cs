@@ -7,9 +7,9 @@ using FcaBedrock.Diagnostics;
 namespace FcaBedrock.Core.Tests.Discretization;
 
 /// <summary>
-/// The executable <c>equal_frequency</c> discretizer (§11.5, M4 Slice D / D-103): its state,
+/// The executable <c>equal_frequency</c> discretizer (§11.5, D-103): its state,
 /// its construction contract, and its delegation to the shared <see cref="NumericCutBins"/>
-/// engine — which is what makes it structurally identical to an open-ended
+/// engine, which is what makes it structurally identical to an open-ended
 /// <c>manual_cuts</c> over the same cuts (the D-088 auto/frozen equivalence).
 /// <para>
 /// It is reachable only through <c>CalibratedSpec.Create</c> (an internal factory over a

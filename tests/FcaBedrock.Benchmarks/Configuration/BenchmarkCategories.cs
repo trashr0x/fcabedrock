@@ -26,17 +26,17 @@ internal static class BenchmarkCategories
     public const string Scale = "Scale";
 
     /// <summary>
-    /// Cases over an <b>externally acquired</b> corpus — today, the UCI Adult training split.
+    /// Cases over an <b>externally acquired</b> corpus: the UCI Adult training split.
     /// <para>
     /// Opt-in for a different reason from <see cref="Scale"/>. These cases are small and quick;
     /// what they need is data this repository does not hold and cannot generate, so preparing them
     /// depends on a third-party host being reachable. Keeping them out of the default selection is
-    /// what lets a routine run — a developer's, or a CI job's — depend on nothing but the
+    /// what lets a routine run (a developer's, or a CI job's) depend on nothing but the
     /// repository, while the real-data evidence stays a deliberate, explicitly named run.
     /// </para>
     /// <para>
     /// Opt-in means <em>by category and by nothing else</em>: neither a broad name filter nor the
-    /// case's own name reaches it. Selected but unprepared remains a hard failure, never a skip —
+    /// case's own name reaches it. Selected but unprepared remains a hard failure, never a skip:
     /// an External case that quietly did not run would be the one outcome this category must not
     /// produce.
     /// </para>
@@ -66,7 +66,7 @@ internal static class BenchmarkCategories
     /// <summary>Discovery: one set-based observation pass producing a draft spec.</summary>
     public const string Probe = "Probe";
 
-    /// <summary>The shared grouping/spool backend, and the two internal knobs M8 may tune.</summary>
+    /// <summary>The shared grouping/spool backend, and its two internal knobs that may be tuned (D-124).</summary>
     public const string Grouping = "Grouping";
 
     /// <summary>

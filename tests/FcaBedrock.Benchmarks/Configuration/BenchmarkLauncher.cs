@@ -55,7 +55,7 @@ internal readonly record struct SummaryOutcome(
 /// <para>
 /// A benchmark run that could not build, could not execute, or failed validation must not exit 0
 /// with a table that looks like a result. BenchmarkDotNet already records all three on its own
-/// reports, so this reads that contract rather than inventing a parallel one — and it additionally
+/// reports, so this reads that contract rather than inventing a parallel one, and it also
 /// refuses to call a run successful when it measured <em>nothing</em>, because an over-narrow
 /// filter that silently selects zero cases is the one failure a report cannot show.
 /// </para>

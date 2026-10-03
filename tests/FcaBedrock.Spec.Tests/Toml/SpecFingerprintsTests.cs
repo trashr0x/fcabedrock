@@ -10,7 +10,7 @@ using FcaBedrock.Spec.Toml;
 namespace FcaBedrock.Spec.Tests.Toml;
 
 /// <summary>
-/// The Slice E spec-load face (D-051/D-069/D-077): native-settings resolution
+/// The spec-load face of fingerprinting (D-051/D-069/D-077): native-settings resolution
 /// feeding <c>FingerprintCalculator</c>, stored-fingerprint verification, the
 /// roadmap 30/30.0/3e1 numeric-spelling golden, and end-to-end stability
 /// baselines over the §19 worked examples.
@@ -108,7 +108,7 @@ public sealed class SpecFingerprintsTests
     [Fact]
     public void ComputeNative_WhenOnlySizeAdvisoryDiffers_ThenFingerprintsAreIdentical()
     {
-        // size_advisory_bytes changes a warning, never bytes — not a fingerprint
+        // size_advisory_bytes changes a warning, never bytes, so it is not a fingerprint
         // input (D-077; §3's byte-affecting definition).
         var quiet = MinimalSpec() + "\n[output.cxt]\nsize_advisory_bytes = 1\n";
         var loud = MinimalSpec() + "\n[output.cxt]\nsize_advisory_bytes = 999999999\n";
@@ -125,7 +125,7 @@ public sealed class SpecFingerprintsTests
     {
         // §6.1/D-077: duplicate_object_policy does not apply to triple (the subject is never a
         // duplicate-object condition) and triple emit ignores it. It rides in the SHARED binding
-        // payload, so it must perturb neither output fingerprint (.cxt and .dat) — else two specs
+        // payload, so it must perturb neither output fingerprint (.cxt and .dat); otherwise two specs
         // with identical output bytes would hash differently.
         var none = TripleOutputFingerprints(null);
 
@@ -345,8 +345,8 @@ public sealed class SpecFingerprintsTests
     [Fact]
     public void ComputeNative_WhenRestrictToIsAuthoredEmpty_ThenAllThreeMatchTheOmittedTwin()
     {
-        // §14/D-105: the `restrictions` container is present only when some attribute actually
-        // restricts, so an authored `restrict_to = []` — which restricts nothing — must leave
+        // §14/D-105: the `restrictions` container is present only when some attribute
+        // restricts, so an authored `restrict_to = []` (which restricts nothing) must leave
         // every hash exactly where the omitted form leaves it. The Spec-seam proof that the two
         // presence states converge on one resolved identity.
         var omitted = ComputeFor(NumericAttribute());
@@ -571,9 +571,9 @@ public sealed class SpecFingerprintsTests
     [Fact]
     public void ComputeNative_WhenMiniMushroom_ThenStabilityBaselineHolds()
     {
-        // End-to-end stability baseline over the §19.1 worked example, pinned at
-        // Slice E: a diff means the canonical encoding or the resolved plan
-        // changed, and either needs an fp_format bump or a decision entry — not
+        // End-to-end stability baseline over the §19.1 worked example:
+        // a diff means the canonical encoding or the resolved plan
+        // changed, and either needs an fp_format bump or a decision entry, not
         // a baseline edit.
         var (document, spec, plan) = Pipeline(TomlFixtures.MiniMushroom, new SourceSchema(5));
 
@@ -653,8 +653,7 @@ public sealed class SpecFingerprintsTests
     {
         // D-117's fingerprint reach, at the fingerprint API: naming reaches identity ONLY
         // through the existing rendered_names array in the cxt block. Canonical schema
-        // identity and .dat (which serializes no names) must not move — which is also why
-        // no encoder change and no fp_format bump were needed.
+        // identity and .dat (which serializes no names) must not move.
         var baseline = ComputeFor(MinimalSpec());
         var formatted = ComputeFor(Naming("formal_attribute_format = \"{value}\""));
 
@@ -720,7 +719,7 @@ public sealed class SpecFingerprintsTests
         AssertSameFingerprints(baseline, withTemplate);
     }
 
-    // --- The template/matcher identity axes (§9.2/D-119, M6 Slice B) ---
+    // --- The template/matcher identity axes (§9.2/D-119) ---
 
     [Fact]
     public void ComputeNative_WhenAMatcherMatchesNothing_ThenAllThreeAreUnchanged()
@@ -858,9 +857,10 @@ public sealed class SpecFingerprintsTests
         return ComputeNative(document, spec, plan);
     }
 
-    // ComputeNative now takes the paired ResolvedDocument (D-098); the plan carries the
+    // ComputeNative takes the paired ResolvedDocument (D-098); the plan carries the
     // CalibratedSpec whose Resolution IS resolvedDoc.Resolved, so the identity guard holds. The
-    // tuple's Document field is the ResolvedDocument; these thin shims keep the prior call shapes.
+    // tuple's Document field is the ResolvedDocument; these thin shims take and discard the spec
+    // so every call site shares one argument shape.
     private static ComputedFingerprints ComputeNative(ResolvedDocument document, BedrockSpec spec, ConversionPlan plan)
     {
         _ = spec;
@@ -913,7 +913,7 @@ public sealed class SpecFingerprintsTests
         return Prepare(document, schema);
     }
 
-    // Resolve → fully-declared calibrated state → plan (the M4 pipeline, D-098). The plan's
+    // Resolve → fully-declared calibrated state → plan (D-098). The plan's
     // Calibrated.Resolution is resolvedDoc.Resolved, so ComputeNative's reference-identity guard holds.
     private static (ResolvedDocument Document, BedrockSpec Spec, ConversionPlan Plan) Prepare(
         SpecDocument document, SourceSchema schema)

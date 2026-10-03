@@ -167,8 +167,8 @@ public sealed class WideCsvSourceTests
     [Fact]
     public async Task ReadAsync_WhenInputUsesCrlf_ThenRecordsMatchLfParse()
     {
-        // Sep treats \r\n and \n alike as row terminators, so wide-CSV parsing is
-        // EOL-agnostic: a Windows (CRLF) file yields the same records as a Unix (LF) one.
+        // Rows end at CRLF, LF or a lone CR (spec §5.1.1), so wide-CSV parsing is EOL-agnostic:
+        // a Windows (CRLF) file yields the same records as a Unix (LF) one.
         const string lf = "a,b,c\nx,y,z\np,q,r";
 
         var fromLf = await ReadAllAsync(Source(lf, Wide()));

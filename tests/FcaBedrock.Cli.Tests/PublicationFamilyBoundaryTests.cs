@@ -86,7 +86,7 @@ public sealed class PublicationFamilyBoundaryTests
         run.AssertNoMutation();
         Assert.Equal(before, run.Snapshot());
 
-        // The committed rows additionally keep the foreign run's published final.
+        // The committed rows also keep the foreign run's published final.
         if (string.Equals(state, "committed", StringComparison.Ordinal))
         {
             Assert.Equal(NewBytes, File.ReadAllText(run.Resolve(Final(family))));

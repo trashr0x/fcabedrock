@@ -108,7 +108,7 @@ internal static class CalibrationOracle
         }
 
         // The min/max and percentile attributes resolve to `bins - 1` finite, strictly ascending
-        // cuts inside the range the data actually spans. The exact interpolated values are the
+        // cuts inside the range the data spans. The exact interpolated values are the
         // production formula's business (D-102 pins it); what an independent oracle can and should
         // assert is that they are well formed and bracketed by the real extremes.
         var wide = Require<CalibratedCuts>(calibrated, "n_wide", what);

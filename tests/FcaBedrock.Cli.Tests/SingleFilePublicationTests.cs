@@ -6,10 +6,11 @@ namespace FcaBedrock.Cli.Tests;
 /// <summary>
 /// The single-file publication family (D-122 part 4, D-123 point 7), driven directly through
 /// <see cref="PublicationTransaction.PreflightSingle"/> with the injected publication filesystem
-/// and identity service. This checkpoint has no command and no host, so <b>no case here asserts a
-/// CLI exit code</b>: a cancellation is proved by the exact token the transaction throws and by
-/// the state it leaves. Every case inspects the real directory afterwards — one that claims the
-/// old target survived compares the <em>bytes</em> there against the bytes that were there.
+/// and identity service. These tests drive the transaction with no command and no host, so <b>no
+/// case here asserts a CLI exit code</b>: a cancellation is proved by the exact token the
+/// transaction throws and by the state it leaves. Every case inspects the real directory
+/// afterwards; one that claims the old target survived compares the <em>bytes</em> there against
+/// the bytes that were there.
 /// </summary>
 public sealed class SingleFilePublicationTests
 {
@@ -444,9 +445,9 @@ public sealed class SingleFilePublicationTests
     [Fact]
     public async Task Publish_WhenTheHostCannotIdentifyTheStage_ThenTheRunFailsClosedAndTheRecordAndStageArePreserved()
     {
-        // The settled unusable-identity limitation applies here unchanged: PreflightSingle
-        // publishes through the untouched Begin and StageAsync. This is a fail-closed PRESERVATION
-        // contract — not a cleanup, not a downgrade route, and not a removal predicate.
+        // The unusable-identity limitation applies here too: PreflightSingle publishes through
+        // the same Begin and StageAsync. This is a fail-closed PRESERVATION contract, not a
+        // cleanup, not a downgrade route, and not a removal predicate.
         using var run = SingleRun.Create();
         Assert.Null(await run.PublishAsync(Old));
         var target = await File.ReadAllBytesAsync(run.Out);
@@ -499,7 +500,7 @@ public sealed class SingleFilePublicationTests
         // 4/5. Two compatible retries on fresh harnesses without identity suppression. Each
         //      classifies the valid same-family record, enters recovery, and reaches the removal
         //      boundary for the unprovable stage, where the proof refuses. The literal message is
-        //      ruled text, never captured: UnknownResidue would mean classification had regressed.
+        //      fixed text, never captured: UnknownResidue would mean classification failed.
         var map = run.Snapshot();
         for (var attempt = 1; attempt <= 2; attempt++)
         {

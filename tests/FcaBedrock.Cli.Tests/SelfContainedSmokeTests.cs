@@ -133,11 +133,11 @@ public sealed class SelfContainedSmokeTests
 
         // (4) ICU is deliberately NOT asserted as a bundled file, and that is a fact about the
         // distribution worth stating rather than a gap. "Self-contained" bundles the .NET runtime,
-        // not the operating system's globalization data: .NET takes ICU from the host - Windows 10+
-        // ships it, and a Linux host needs its libicu packages - so a correct publish carries no
+        // not the operating system's globalization data: .NET takes ICU from the host (Windows 10+
+        // ships it, and a Linux host needs its libicu packages), so a correct publish carries no
         // icu* file of its own on any of the three required targets. The culture guarantee is
-        // therefore checked where it can actually be checked: behaviourally, at step (9), by
-        // resolving a real BCP-47 tag. That also records the real deployment caveat - a
+        // therefore checked where it can be checked: behaviourally, at step (9), by
+        // resolving a real BCP-47 tag. That also records the real deployment caveat: a
         // self-contained archive still has OS-native prerequisites.
         //
         // (5) The published runtime configuration must not have acquired the invariant switch.

@@ -127,7 +127,7 @@ internal sealed class SpoolRunCounters(string ordinal)
     /// <summary>Managed bytes requested to be written.</summary>
     public long WriteBytesRequested { get; set; }
 
-    /// <summary>Managed bytes actually returned by reads.</summary>
+    /// <summary>Managed bytes returned by reads.</summary>
     public long ReadBytesReturned { get; set; }
 
     /// <summary>Reader opens that returned exactly the run's length before closing.</summary>

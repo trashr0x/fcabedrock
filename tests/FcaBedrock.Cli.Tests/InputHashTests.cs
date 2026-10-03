@@ -295,7 +295,7 @@ public sealed class InputHashTests
     public void HashingStream_ShouldRefuseToSeek()
     {
         // Repositioning would skip or repeat bytes, so the digest would stop describing what
-        // the pass actually consumed. Reporting CanSeek = false is what stops a consumer trying.
+        // the pass consumed. Reporting CanSeek = false is what stops a consumer trying.
         var tracker = TrackerOver(Encoding.UTF8.GetBytes("abc"));
 
         using var stream = tracker.OpenHashed();

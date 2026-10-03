@@ -38,8 +38,8 @@ internal static class PlatformLinks
 
     /// <summary>
     /// Creates a directory link at <paramref name="link"/> pointing at <paramref name="target"/>.
-    /// On Windows this is a junction, which — unlike a symbolic link — needs no special
-    /// privilege, so the linked-directory cases are actually exercised on an ordinary host.
+    /// On Windows this is a junction, which (unlike a symbolic link) needs no special
+    /// privilege, so the linked-directory cases are exercised on an ordinary host.
     /// </summary>
     public static bool TryCreateDirectoryLink(string link, string target, out string reason)
     {

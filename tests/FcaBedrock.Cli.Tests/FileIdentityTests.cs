@@ -2,7 +2,7 @@ namespace FcaBedrock.Cli.Tests;
 
 /// <summary>
 /// The shared filesystem-identity service (D-123 part 6). Capability-bearing
-/// cases assert what the host actually supports rather than what a platform is assumed to
+/// cases assert what the host supports rather than what a platform is assumed to
 /// do, and each skip names its reason.
 /// </summary>
 public sealed class FileIdentityTests

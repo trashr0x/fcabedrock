@@ -349,16 +349,16 @@ public sealed class MultiAttributeCalibrationTests
     // --- Triple: both orderings, several count-sensitive predicates ------------
 
     // Twelve subjects, four count-sensitive predicates. `s{i}` carries:
-    //   p_seq   i               (12 distinct — the large payload)
-    //   p_few   200 + i % 3     (3 distinct — the small one)
+    //   p_seq   i               (12 distinct: the large payload)
+    //   p_few   200 + i % 3     (3 distinct: the small one)
     //   p_rev   100 - i         (12 distinct, descending)
     //   p_tied  300 + i % 4     (4 distinct)
     //
-    // Subject s0 additionally carries the two halves of the §5.3.1 rule, each switchable so a test
+    // Subject s0 also carries the two halves of the §5.3.1 rule, each switchable so a test
     // can observe what removing it does:
-    //   `duplicateRow`    an exact repeat of `s0,p_seq,0` — the same cleaned (subject, predicate,
-    //                     value), which must contribute exactly once however often it appears;
-    //   `extraSpellings`  four further spellings of the same number — DISTINCT raw observations
+    //   `duplicateRow`    an exact repeat of `s0,p_seq,0` (the same cleaned (subject, predicate,
+    //                     value)), which must contribute exactly once however often it appears;
+    //   `extraSpellings`  four further spellings of the same number: DISTINCT raw observations
     //                     under §5.3.1, which each contribute, and which then all fold into the one
     //                     canonical numeric value 0, giving it a count of five.
     private static string TripleData(bool interleaved, bool duplicateRow = true, bool extraSpellings = true)

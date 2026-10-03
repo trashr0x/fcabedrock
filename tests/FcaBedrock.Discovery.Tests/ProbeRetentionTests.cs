@@ -209,8 +209,8 @@ public sealed class ProbeRetentionTests
     // A compact deterministic generator for the ordered-distinct/truncation property: for any
     // value sequence and any limit, the retained domain is the first `limit` distinct values in
     // first-observation order, and truncation is exactly "more distinct values existed". Rolled
-    // by hand rather than pulled from a property-testing package — the repo has none, and M5
-    // does not introduce one (EP-5).
+    // by hand rather than pulled from a property-testing package: the repo has none, and these
+    // tests do not introduce one (EP-5).
     public static TheoryData<string, int> RetentionCases()
     {
         var data = new TheoryData<string, int>();

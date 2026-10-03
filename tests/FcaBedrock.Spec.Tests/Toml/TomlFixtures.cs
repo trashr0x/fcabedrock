@@ -2,9 +2,9 @@ namespace FcaBedrock.Spec.Tests.Toml;
 
 // Authored TOML fixture strings (inline, per the BedFixtures convention).
 // MiniMushroom/MiniAdult/MiniAdultTriples transcribe the spec's §19.1–§19.3
-// worked examples (comments included — they exercise trivia handling);
+// worked examples (comments included; they exercise trivia handling);
 // §19.3's "other attributes analogous" placeholder is completed with real
-// attributes. KitchenSink covers the full M2-modelled surface in one document.
+// attributes. KitchenSink covers many modelled carriers in one document.
 internal static class TomlFixtures
 {
     /// <summary>Spec §19.1 — mini-mushroom (v2 compat).</summary>
@@ -165,17 +165,17 @@ internal static class TomlFixtures
         """;
 
     /// <summary>
-    /// One document exercising every M2-modelled field: full [spec]/[provenance]/
-    /// [binding]/[defaults]/[output] surface (incl. extends, D-078), a composite
+    /// One document exercising the [spec]/[provenance]/
+    /// [binding]/[defaults]/[output] tables (incl. extends, D-078), a composite
     /// object key carrier, a non-standard quote_char (a carrier, D-054), mixed
     /// restrict_to (D-057), an authored-empty declared_domain (D-071),
     /// as_attribute (D-068), an authored-equals-default value, a value-bin
     /// ordinal with order, deferred scale carriers (D-010) on an attribute and a
     /// template, [[template]]/[[matcher]] carriers with an attribute template
     /// reference (D-078), and a parked attribute (D-049). A read/round-trip
-    /// exhibit only: several of these carriers deliberately fail the Slice D
-    /// seam/plan validation (D-076) — and the uncomposed extends now throws at
-    /// resolve (D-078) — so never assert a clean resolve over it.
+    /// exhibit only: several of these carriers deliberately fail
+    /// seam/plan validation (D-076), and the uncomposed extends throws at
+    /// resolve (D-078), so never assert a clean resolve over it.
     /// </summary>
     public const string KitchenSink = """
         [spec]

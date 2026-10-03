@@ -9,14 +9,14 @@ namespace FcaBedrock.Discovery.Tests;
 /// <para>
 /// The matrix exists to serve one invariant: <b>no source selector is ever silently changed</b>.
 /// A name may be synthesized or disambiguated; the column it reads may not. Every case below is
-/// really asking the same question twice — "is the logical name §10.1-valid and unique?" and
+/// really asking the same question twice: "is the logical name §10.1-valid and unique?" and
 /// "does the source still select the physical column it was discovered from?"
 /// </para>
 /// <para>
 /// Driven through the <b>real</b> header-tolerant CSV path wherever the case is expressible as
-/// bytes, not only through fabricated schemas: duplicate and blank headers were unreachable
-/// before Slice B made the wide read header-tolerant, so a fabricated-schema-only suite would
-/// pass while the very inputs it describes still threw at the adapter.
+/// bytes, not only through fabricated schemas: duplicate and blank headers must survive the real
+/// read, and a fabricated-schema-only suite would pass even if those very inputs threw at the
+/// adapter.
 /// </para>
 /// </summary>
 public sealed class ProbeNamingTests

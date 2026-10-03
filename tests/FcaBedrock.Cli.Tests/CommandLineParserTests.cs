@@ -796,7 +796,7 @@ public sealed class CommandLineParserTests
     public void Parse_WhenAnExcludedFlagIsSupplied_ThenUsageFailure(string flag)
     {
         // D-122 part 12: sampling, compression, colour, progress and machine-readable
-        // modes do not exist in M7, and unknown flags are usage errors.
+        // modes do not exist in the CLI, and unknown flags are usage errors.
         var failure = Reject("convert", "s.toml", "d.csv", "--out", "b", "--format", "cxt", flag);
 
         Assert.Contains("unknown option", failure.Message, StringComparison.Ordinal);

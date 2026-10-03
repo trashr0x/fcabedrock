@@ -8,14 +8,14 @@ using FcaBedrock.Spec.Toml;
 namespace FcaBedrock.Discovery.Tests;
 
 /// <summary>
-/// The read-failure boundary: which exceptions become <c>ProbeSourceReadFailed</c>, and —
-/// just as load-bearing — which do not.
+/// The read-failure boundary: which exceptions become <c>ProbeSourceReadFailed</c>, and,
+/// just as important, which do not.
 /// <para>
 /// A catch-all would be the easy implementation and the wrong one: it converts genuine bugs
 /// (a null dereference, a misused API, a violated invariant) into polite diagnostics a caller
 /// would try to handle, hiding the defect (EP-14). So the engine catches a closed, explicit set
 /// of expected provider/read failures, and the counterexamples below are what prove the filter
-/// is actually narrow rather than merely described as narrow. They also cover what an
+/// is narrow rather than merely described as narrow. They also cover what an
 /// architecture rule cannot see: ArchUnitNET does not reliably surface catch-handler metadata,
 /// so behaviour is the enforcement.
 /// </para>
@@ -324,7 +324,7 @@ public sealed class ProbeReadFailureTests
             throw failure();
     }
 
-    // A session that returns an enumerable fine but fails when enumeration is actually opened —
+    // A session that returns an enumerable fine but fails when enumeration is opened:
     // the shape of an adapter that acquires its underlying reader in GetAsyncEnumerator.
     private sealed class ThrowingEnumeratorSession(SourceSchema schema, Func<Exception> failure) : IWideSourceSession
     {

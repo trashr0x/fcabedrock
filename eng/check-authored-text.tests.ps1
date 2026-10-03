@@ -1448,8 +1448,8 @@ Add-Case @{
     )
 }
 
-# Retired behaviour: no Markdown, link, anchor, style or suppression rule exists, and no syntax can
-# hide a spelling finding.
+# What the command does not check: it has no Markdown, link, anchor, style or suppression rule,
+# and no syntax can hide a spelling finding.
 
 $Dash = [string][char]0x2014
 Add-Case @{

@@ -6,8 +6,8 @@ using FcaBedrock.Spec.Toml;
 namespace FcaBedrock.Spec.Tests.Toml;
 
 /// <summary>
-/// The <c>equal_frequency</c> TOML surface (§11.5, M4 Slice D / D-103): the document carrier,
-/// the reader's parse-phase field gates, canonical writing, round-trip idempotence, and the
+/// The <c>equal_frequency</c> TOML surface (§11.5, D-103): the document carrier,
+/// the reader's parse-phase field checks, canonical writing, round-trip idempotence, and the
 /// resolve seam.
 /// <para>
 /// Unlike <c>equal_width</c> there is no range/span surface and no spec-determined mode: every
@@ -41,10 +41,8 @@ public sealed class EqualFrequencySpecTests
     [Fact]
     public void Read_WhenKindIsEqualFrequency_ThenReadsCleanToItsCarrier()
     {
-        // D-103 reversed the D-070 tier-2 reject: equal_frequency has a real carrier, so its kind
-        // alone must not fail the read. The code it once produced retired entirely at Slice E
-        // (D-104) once value_groups — its last owner — landed, so the reject is now unnameable
-        // rather than merely unused; the surviving assertion is that this reads clean.
+        // equal_frequency has a real carrier (D-103), so its kind alone must not fail the
+        // read: this reads clean.
         var result = SpecReader.Read(Attribute("{ kind = \"equal_frequency\", bins = 4 }"));
 
         Assert.True(result.IsOk);
@@ -110,7 +108,7 @@ public sealed class EqualFrequencySpecTests
     [InlineData("1")]
     [InlineData("0")]
     [InlineData("-3")]
-    [InlineData("2147483648")]  // above int.MaxValue: the carrier is long?, so parse gates the range
+    [InlineData("2147483648")]  // above int.MaxValue: the carrier is long?, so parse checks the range
     public void Read_WhenBinsOutOfRange_ThenSpecFieldInvalid(string bins) =>
         AssertFieldInvalid($"{{ kind = \"equal_frequency\", bins = {bins} }}");
 
@@ -149,8 +147,8 @@ public sealed class EqualFrequencySpecTests
     [Fact]
     public void Read_WhenAnUnknownKeyIsPresent_ThenSpecKeyUnrecognized()
     {
-        // equal_frequency has a real carrier now, so its table is walked — an unknown key inside
-        // it is ordinary unknown-key handling, not the deferred-kind silence (D-075).
+        // equal_frequency has a real carrier, so its table is walked: an unknown key inside
+        // it is ordinary unknown-key handling (D-075).
         var result = SpecReader.Read(Attribute("{ kind = \"equal_frequency\", bins = 4, wibble = 1 }"));
 
         Assert.False(result.IsOk);
@@ -169,8 +167,8 @@ public sealed class EqualFrequencySpecTests
     [Fact]
     public void Read_WhenSeveralFieldsAreInvalid_ThenAllAggregateWithoutAFactoryException()
     {
-        // EP-14: every field is read before the gates run, so independent problems report together
-        // rather than the first one stopping the pass — and the strict carrier constructor never
+        // EP-14: every field is read before the checks run, so independent problems report together
+        // rather than the first one stopping the pass, and the strict carrier constructor never
         // sees them.
         var result = SpecReader.Read(Attribute("{ kind = \"equal_frequency\", bins = 1, tie_policy = \"middle\", cut_placement = \"nope\" }"));
 
@@ -203,7 +201,7 @@ public sealed class EqualFrequencySpecTests
     [Fact]
     public void Write_WhenDefaultsOmitted_ThenTheyStayOmitted() =>
         // D-049: the writer records what the author wrote. The resolved defaults are spelled where
-        // they are semantically load-bearing — the §14 fingerprint — not injected into the text,
+        // they carry meaning (the §14 fingerprint), not injected into the text,
         // which would silently change an author's spec on a round-trip.
         Assert.Equal(
             "{ kind = \"equal_frequency\", bins = 4 }",
@@ -347,9 +345,9 @@ public sealed class EqualFrequencySpecTests
     [Fact]
     public void Resolve_WhenOrdinalWithAuthoredOrder_ThenOrdinalOrderNotAllowedWithCuts()
     {
-        // equal_frequency's bins are cut intervals, so the cut geometry is the ordering authority
-        // — an authored scale.order would be a second, conflicting one (§12.3). It needs no
-        // equal_frequency-specific ordinal path: the existing cut-kind gate covers it.
+        // equal_frequency's bins are cut intervals, so the cut geometry is the ordering authority;
+        // an authored scale.order would be a second, conflicting one (§12.3). It needs no
+        // equal_frequency-specific ordinal path: the existing cut-kind check covers it.
         var result = Resolve(Section(), new OrdinalScaleSection(null, null, ["a", "b"], null));
 
         Assert.False(result.IsOk);

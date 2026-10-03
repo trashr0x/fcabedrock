@@ -4,13 +4,13 @@ namespace FcaBedrock.Cli.Tests;
 
 /// <summary>
 /// Byte locks on the generated usage and help text, and on the version string. These are
-/// the CLI's own bytes — the reason a library-owned parser was rejected (D-123 part 2).
+/// the CLI's own bytes: the reason a library-owned parser was rejected (D-123 part 2).
 /// <para>
 /// <b>The expectations are authored, not derived.</b> Nothing here calls
 /// <see cref="UsageText.Signature"/>, enumerates <see cref="CommandTable"/>, or reuses a
 /// summary, note, or allowed-value collection: an expectation built from the production
 /// table would only prove that the renderer copied its input, and would move in lockstep
-/// with any wording or grammar edit. The line array below is the reviewed help document,
+/// with any wording or grammar edit. The line array below is the expected help document,
 /// written out; it is joined with explicit LF so the lock is independent of how this source
 /// file happens to be checked out.
 /// </para>

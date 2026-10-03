@@ -43,7 +43,7 @@ public sealed class CutValidationTests
 
     [Fact]
     public void CreateManual_WhenNonFiniteCutInAscendingPosition_ThenCutsNotAscending() =>
-        // [1, +∞] is numerically "ascending" yet not finite — still rejected.
+        // [1, +∞] is numerically "ascending" yet not finite, so it is still rejected.
         Assert.Contains(
             DiagnosticCode.DiscretizerCutsNotAscending,
             ManualCodes([1.0, double.PositiveInfinity], BinEnds.Open));

@@ -108,7 +108,7 @@ public sealed class ConversionPlannerTests
         Assert.Equal([3], age.CrossesByBin[">=50"]);               // crossed by all only
     }
 
-    // --- equal_width plans as open-ended cut bins (M4 Slice C, D-102) ---------
+    // --- equal_width plans as open-ended cut bins (D-102) ---------------------
     //
     // equal_width behaves structurally like manual_cuts over the same effective cuts (D-093), so
     // these assert the geometry directly rather than re-testing the shared engine: over [0, 100]
@@ -429,9 +429,9 @@ public sealed class ConversionPlannerTests
     [Fact]
     public void Plan_WhenTripleSubjectGrouped_ThenBuildsFormalAttributesFromPredicates()
     {
-        // D-082: a triple subject_grouped spec now plans (the transitional refusal retired at
-        // Slice C). Formal attributes come from the predicate sources; each planned attribute
-        // reads by predicate, not column; the subject-derived ColumnObjectKey is accepted.
+        // D-082: a triple subject_grouped spec plans. Formal attributes come from the predicate
+        // sources; each planned attribute reads by predicate, not column; the subject-derived
+        // ColumnObjectKey is accepted.
         var spec = new BedrockSpec(SpecFixtures.TripleSubjectGrouped(), [
             SpecFixtures.PredicateNominal("color", "hasColor", ["red", "green"]),
             SpecFixtures.PredicateNominal("size", "hasSize", ["big", "small"]),
@@ -494,8 +494,8 @@ public sealed class ConversionPlannerTests
     {
         // D-082/D-098: triple ordering is required; a null ordering on a triple binding is a corrupt
         // Core state. Under the schema-aware pipeline the ResolvedSpec trust boundary rejects it
-        // (ArgumentException) before Plan is reachable — the planner's residual invariant is now
-        // unreachable-by-construction (never a silent SubjectGrouped default that would mask the
+        // (ArgumentException) before Plan is reachable, so the planner's residual invariant is
+        // unreachable by construction (never a silent SubjectGrouped default that would mask the
         // invalid binding and could wrongly reject interleaved data).
         var binding = new Binding(SourceShape.Triple, "utf-8", ',', '"', HasHeader: false, "invariant", "?",
             new ColumnObjectKey(0, DuplicateObjectPolicy.Fail), new TripleColumns(0, 1, 2), Ordering: null);
@@ -539,7 +539,7 @@ public sealed class ConversionPlannerTests
         Assert.Equal(["g-b"], plan.FormalAttributes.Select(f => f.RenderedName));
     }
 
-    // --- Slice D plan guards (D-057/D-063/D-064/D-071/D-076) ---
+    // --- Plan guards (D-057/D-063/D-064/D-071/D-076) ---
 
     [Fact]
     public void Plan_WhenObjectKeyComposite_ThenReportsObjectKeyCompositeNotImplementedV1Fatal()
@@ -560,8 +560,8 @@ public sealed class ConversionPlannerTests
     [InlineData(DuplicateObjectPolicy.Dedupe)]
     public void Plan_WhenObjectKeyColumnUnderWide_ThenAccepted(DuplicateObjectPolicy policy)
     {
-        // §5.4/§6.1 (D-083): wide column keys execute at M3 for every duplicate_object_policy —
-        // fail/keep single-pass, dedupe on the shared spool backend — with no transitional reject and no
+        // §5.4/§6.1 (D-083): wide column keys execute for every duplicate_object_policy
+        // (fail/keep single-pass, dedupe on the shared spool backend), with no
         // silent row_index fallback. The key column may sit anywhere in range.
         var spec = new BedrockSpec(
             WideWithKey(new ColumnObjectKey(0, policy)), [SpecFixtures.Nominal("g", 1, ["b"])]);
@@ -575,8 +575,8 @@ public sealed class ConversionPlannerTests
     [Fact]
     public void Resolve_WhenObjectKeyColumnIndexOutOfRange_ThenThrowsAtTrustBoundary()
     {
-        // D-085/D-098: an out-of-range key INDEX is a binding error. The conversion pipeline now
-        // resolves schema-aware (G-1), so the range check is seam-owned — the resolver emits
+        // D-085/D-098: an out-of-range key INDEX is a binding error. The conversion pipeline
+        // resolves schema-aware (G-1), so the range check is seam-owned: the resolver emits
         // ObjectKeyBindingInvalid over the document, and the ResolvedSpec trust boundary rejects a
         // hand-built spec with ArgumentException before Plan (the planner's residual is unreachable).
         var spec = new BedrockSpec(
@@ -589,10 +589,9 @@ public sealed class ConversionPlannerTests
     public void Plan_WhenObjectKeyCompositeAndDeferredScale_ThenBothDiagnosticsReport()
     {
         // EP-14: the object-key guard aggregates with the attribute checks rather than
-        // short-circuiting the static pass. Duplicate names moved to the resolve seam (D-080)
-        // and restrict_to now EXECUTES (D-105, so it is no longer a plan diagnostic at all),
-        // leaving the deferred-scale reject as the attribute-side plan code that pairs with the
-        // object-key one here.
+        // short-circuiting the static pass. Duplicate names belong to the resolve seam (D-080)
+        // and restrict_to executes (D-105), so the deferred-scale reject is the attribute-side
+        // plan code that pairs with the object-key one here.
         var attr = SpecFixtures.Nominal("g", 0, ["b"]) with { Scale = new UnimplementedScale("interordinal") };
         var spec = new BedrockSpec(WideWithKey(new CompositeObjectKey()), [attr]);
 
@@ -605,9 +604,8 @@ public sealed class ConversionPlannerTests
     [Fact]
     public void Plan_WhenIncludedAttributeRestricts_ThenPlansBothAColumnAndARestriction()
     {
-        // §10.4/D-091/D-105: an included-and-restricted attribute is NOT filter-only — it
-        // contributes its ordinary formal column AND one restriction. The transitional
-        // RestrictToNotImplementedV1 reject retired with this slice.
+        // §10.4/D-091/D-105: an included-and-restricted attribute is NOT filter-only: it
+        // contributes its ordinary formal column AND one restriction.
         var attr = SpecFixtures.Nominal("g", 0, ["b"]) with { RestrictTo = [new RestrictToValue("b")] };
         var spec = new BedrockSpec(SpecFixtures.WideRowIndex(), [attr]);
 
@@ -740,9 +738,8 @@ public sealed class ConversionPlannerTests
         Assert.IsNotType<List<PlannedRestriction>>(plan.Restrictions);
     }
 
-    // Observed-domain calibration of an absent-domain identity attribute (formerly the
-    // transitional ObservedDomainCalibrationNotImplementedV1 plan reject, D-071) now happens in
-    // the Calibrate phase — its coverage lives in CalibratorTests (D-036/D-098). A
+    // Observed-domain calibration of an absent-domain identity attribute happens in the
+    // Calibrate phase (D-071); its coverage lives in CalibratorTests (D-036/D-098). A
     // FromFullyDeclared plan of such a spec throws (it requires data), so it is not tested here.
 
     [Fact]
@@ -862,8 +859,8 @@ public sealed class ConversionPlannerTests
     // --- empty-universe value-bin ordinal (D-122 §15) ---
     // An authored declared_domain = [] is a complete empty universe. It is NOT exempt from the
     // permutation rule: an omitted order is OrdinalOrderMissing and order = [] is the valid empty
-    // permutation. Removing the former non-empty-domain shortcut brings identity to the parity the
-    // free_per_value/value_groups blocks already had. The numeric natural-order exemption is undisturbed.
+    // permutation. Identity follows the same rule as the free_per_value/value_groups blocks. The
+    // numeric natural-order exemption still applies.
 
     [Fact]
     public void Plan_WhenIdentityOrdinalOverEmptyUniverseOmitsOrder_ThenOrdinalOrderMissing()
@@ -976,7 +973,7 @@ public sealed class ConversionPlannerTests
         Assert.Equal(["g-missing"], plan.FormalAttributes.Select(f => f.RenderedName));
     }
 
-    // --- free_per_value value-bin planning (§11.3 / §12.3 / D-096, M4 Slice B) ---
+    // --- free_per_value value-bin planning (§11.3 / §12.3 / D-096) ---
 
     [Fact]
     public void Plan_WhenNumericFreePerValueNominal_ThenOneColumnPerCanonicalDomainKeyInDeclarationOrder()

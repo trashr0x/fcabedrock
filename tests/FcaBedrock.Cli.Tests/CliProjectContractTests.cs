@@ -17,7 +17,7 @@ public sealed class CliProjectContractTests
         File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "project", "FcaBedrock.Cli.csproj.txt"));
 
     /// <summary>
-    /// The complete friend set (D-124): the CLI's own argv-boundary tests, and the M8 benchmark
+    /// The complete friend set (D-124): the CLI's own argv-boundary tests, and the benchmark
     /// host that measures <c>CliHost</c>, <c>InputHashTracker</c>, and <c>HashingWriteStream</c>
     /// directly. Both are non-product assemblies, and no production package references either.
     /// </summary>
@@ -77,7 +77,7 @@ public sealed class CliProjectContractTests
     [Fact]
     public void Cli_ShouldShipARuntimeConfigThatDoesNotSwitchOnInvariantGlobalization()
     {
-        // The generated runtime configuration is where the switch would actually land, so
+        // The generated runtime configuration is where the switch would land, so
         // this asserts the built artifact rather than only the project text.
         var config = Path.Combine(AppContext.BaseDirectory, "FcaBedrock.Cli.runtimeconfig.json");
 
@@ -150,7 +150,8 @@ public sealed class CliProjectContractTests
     [Fact]
     public void Assembly_ShouldExposeNoPublicType()
     {
-        // Every CLI component is internal; a EP-4 extraction review gates any M9 reuse.
+        // Every CLI component is internal; an EP-4 public-surface extraction review is required
+        // before any M9 reuse (D-122 part 9).
         Assert.Empty(Cli.GetExportedTypes());
     }
 

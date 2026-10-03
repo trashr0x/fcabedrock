@@ -4,14 +4,14 @@ namespace FcaBedrock.Cli.Tests;
 /// Native stored verification versus effective emission, locked causally.
 /// <para>
 /// The two are deliberately separate authorities: the <b>stored</b> <c>[spec]</c> fields are
-/// always verified against the <b>native</b> fingerprints — a CLI byte override is not a property
-/// of the spec — while <c>[[run.outputs]]</c>'s per-format fingerprints are the <b>effective</b>
-/// values the override actually produced (§14/§15, D-077/D-011).
+/// always verified against the <b>native</b> fingerprints (a CLI byte override is not a property
+/// of the spec), while <c>[[run.outputs]]</c>'s per-format fingerprints are the <b>effective</b>
+/// values the override produced (§14/§15, D-077/D-011).
 /// </para>
 /// <para>
 /// <b>Why pinned literals rather than "they differ".</b> Asserting only that the v2 values are
 /// unequal to the native ones is satisfied by any wrong value. Pinning both sets makes a run that
-/// verified against the effective plan, or manifested the native one, fail here — which is the
+/// verified against the effective plan, or manifested the native one, fail here, which is the
 /// whole point of keeping the two authorities apart.
 /// </para>
 /// </summary>

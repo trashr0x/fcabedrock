@@ -110,8 +110,8 @@ public sealed class PublicationCrashMatrixTests
     [Fact]
     public async Task Publication_WhenRollbackCannotRestoreABackup_ThenARetryRestoresItAndKeepsTheOldBytes()
     {
-        // The register's own example: the commit publishes the new CXT, the DAT rename fails,
-        // rollback deletes the new CXT — and then cannot rename the old CXT backup home. Failing
+        // A rollback that cannot finish: the commit publishes the new CXT, the DAT rename fails,
+        // rollback deletes the new CXT, and then it cannot rename the old CXT backup home. Failing
         // EVERY matching move is what reaches it; failing only the first exercises the commit
         // alone and lets the restore succeed.
         using var scenario = Scenario.Create(preexisting: true, only: null);

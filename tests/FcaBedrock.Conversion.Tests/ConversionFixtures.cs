@@ -14,8 +14,8 @@ namespace FcaBedrock.Conversion.Tests;
 // the test is self-contained (the byte-equal golden fixtures live in Golden.Tests).
 internal static class ConversionFixtures
 {
-    // Builds a plan through the M4 pipeline (resolve token → fully-declared calibrated
-    // state → plan) the way production does, so the emit-time provenance guard (D-098)
+    // Builds a plan the way production does (resolve token → fully-declared calibrated
+    // state → plan), so the emit-time provenance guard (D-098)
     // pairs the plan and a source built over the same binding + schema.
     public static Diagnosed<ConversionPlan> PlanFor(BedrockSpec spec, SourceSchema schema, LabelStyle style = LabelStyle.Native) =>
         ConversionPlanner.Plan(CalibratedSpec.FromFullyDeclared(ResolveFor(spec, schema)), style);
@@ -58,9 +58,9 @@ internal static class ConversionFixtures
     /// <summary>
     /// The emit diagnostics <em>excluding</em> the whole-stream observability warnings, so the
     /// suites keep asserting exact sets (<c>Assert.Empty</c> / <c>Assert.Single</c>) on the
-    /// condition each one is actually about, rather than being weakened to
-    /// "contains at least X". The observability warnings' own behaviour — counts, bounded
-    /// samples, ordering, halt suppression, and replay single-counting — is proven directly in
+    /// condition each one is about, rather than being weakened to
+    /// "contains at least X". The observability warnings' own behaviour (counts, bounded
+    /// samples, ordering, halt suppression, and replay single-counting) is proven directly in
     /// <c>EmitObservabilityTests</c>, which is the only suite that should assert on them.
     /// </summary>
     public static List<BedrockDiagnostic> DataDiagnostics(IEnumerable<BedrockDiagnostic> diagnostics) =>
@@ -88,7 +88,7 @@ internal static class ConversionFixtures
             new AttributeSpec("ring-number", new ColumnSource(4, SourceValueType.String), Include: true, new IdentityDiscretizer(), new NominalScale(), ["n", "o", "t"], RestrictTo: [], Labels(("n", "none"), ("o", "one"), ("t", "two")), MissingPolicy.Skip, UnknownValuePolicy.Warn),
         ]);
 
-    // --- Triple builders (M3 Slice C) -----------------------------------------
+    // --- Triple builders ------------------------------------------------------
 
     // The same five-attribute mushroom spec as MushroomSpec, but triple: each attribute binds a
     // predicate (its own name) instead of a column. Emitting it over MushroomTripleData must

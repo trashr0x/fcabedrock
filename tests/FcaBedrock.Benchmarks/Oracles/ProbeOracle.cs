@@ -6,7 +6,7 @@ using FcaBedrock.Spec.Toml;
 namespace FcaBedrock.Benchmarks.Oracles;
 
 /// <summary>
-/// What each probe outcome must actually be.
+/// What each probe outcome must be.
 /// <para>
 /// The three outcomes are checked by their <em>distinguishing</em> facts rather than by "it did not
 /// throw", because the difference between them is the whole point: a complete draft, a truncated
@@ -17,8 +17,8 @@ namespace FcaBedrock.Benchmarks.Oracles;
 /// <para>
 /// <b>And the facts are per attribute, because D-108 is.</b> Each untruncated non-all-missing
 /// attribute authors its complete non-empty domain, and each truncated attribute authors its
-/// retained prefix plus <c>unknown_value_policy = "include"</c>. An existential check — <em>some</em>
-/// attribute has a domain, <em>some</em> attribute recovers — is satisfied by a draft in which
+/// retained prefix plus <c>unknown_value_policy = "include"</c>. An existential check (<em>some</em>
+/// attribute has a domain, <em>some</em> attribute recovers) is satisfied by a draft in which
 /// fifteen of sixteen columns discovered nothing, which is exactly the outcome these cases exist to
 /// tell apart. So a caller states the exact set it expects, and every attribute of the draft is held
 /// to it.

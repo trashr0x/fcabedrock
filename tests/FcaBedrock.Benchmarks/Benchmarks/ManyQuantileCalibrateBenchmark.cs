@@ -49,7 +49,7 @@ public class ManyQuantileCalibrateWorking : ManyQuantileCalibrateBenchmark
 
 /// <summary>
 /// Sixteen count-sensitive attributes at 7.3M records: the case where sixteen simultaneous
-/// accumulators over a high-cardinality population actually meet the memory budget. Opt-in.
+/// accumulators over a high-cardinality population meet the memory budget. Opt-in.
 /// </summary>
 [BenchmarkCategory(BenchmarkCategories.Scale)]
 [BenchmarkCorpus(CorpusCases.W16Family, CorpusTier.Scale7M)]

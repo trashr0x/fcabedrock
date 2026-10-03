@@ -63,7 +63,7 @@ public sealed class HeaderBindingTests
     [Fact]
     public async Task Resolve_WhenBlankHeaderCellsBoundByIndex_ThenResolves()
     {
-        // Multiply-blank headers were the other tokenizer-construction throw.
+        // Multiply-blank header cells must bind by index too.
         var schema = await ReadSchemaAsync("a,,\nx,y,z\n");
         var document = DocumentFixtures.Document([DocumentFixtures.Nominal("third", 2, ["z"])]);
 

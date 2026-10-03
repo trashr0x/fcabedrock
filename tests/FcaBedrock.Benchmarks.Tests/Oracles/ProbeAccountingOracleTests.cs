@@ -8,8 +8,8 @@ namespace FcaBedrock.Benchmarks.Tests.Oracles;
 
 /// <summary>
 /// The probe-boundary benchmarks are only a test of the <b>strictly greater</b> rule if the number
-/// they sit on is the number the guards actually count. That number comes from a model written here
-/// rather than from the prober, so the model itself has to be checked — against a real probe, at the
+/// they sit on is the number the guards count. That number comes from a model written here
+/// rather than from the prober, so the model itself has to be checked: against a real probe, at the
 /// exact threshold, from both sides.
 /// <para>
 /// This is the test that would catch a disagreement between the accounting D-110 specifies and the

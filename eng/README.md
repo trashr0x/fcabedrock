@@ -2,7 +2,7 @@
 
 Two distributions of one program, and the commands that produce and check them. Nothing here is a
 build system: every distribution command is a thin wrapper over `dotnet`, or a documented `dotnet`
-invocation with a gate set, and the authored-text integrity check below is a standalone PowerShell 7
+invocation with an environment variable set, and the authored-text integrity check below is a standalone PowerShell 7
 script that needs no build. If a step could be a plain command, it is one.
 
 ## The two distributions
@@ -36,8 +36,8 @@ The required release archives are `win-x64`, `linux-x64`, and `osx-arm64`.
 The zip is written entry by entry rather than with `Compress-Archive`, for one reason: a zip carries
 a file's Unix mode in its own metadata, and `Compress-Archive` records `0100644` for every entry. On
 Linux and macOS the apphost is therefore recorded **`0100755`** and every other entry left
-`0100644`, so `unzip` produces a `FcaBedrock.Cli` that can actually be run. Nothing else about the
-archive changed: a flat payload, relative names, the published files' own timestamps, and entries in
+`0100644`, so `unzip` produces a `FcaBedrock.Cli` that can be run. Everything else about the
+archive is ordinary: a flat payload, relative names, the published files' own timestamps, and entries in
 ordinal name order.
 
 > **Cross-publishing is not evidence.** A folder produced for another platform shows that the SDK can
@@ -134,7 +134,7 @@ cannot set up is reported as skipped with its reason.
 ## The benchmark smoke
 
 ```pwsh
-# Prepare what the smoke selects: both corpora are generated here, so this needs no network.
+# Prepare what the smoke selects: both corpora are generated here, so preparing them downloads nothing.
 dotnet run -c Release --project tests/FcaBedrock.Benchmarks -- prepare micro small
 
 # Proves the harness runs. A Dry job measures nothing and is never a performance result.
@@ -154,9 +154,12 @@ dotnet run -c Release --project tests/FcaBedrock.Benchmarks -- prepare adult    
 dotnet run -c Release --project tests/FcaBedrock.Benchmarks -- --anyCategories External --filter '*' --job dry
 ```
 
-That run is a **blocking** acceptance obligation for M8 and for each release candidate, not an
-optional extra: routine CI can be green while it is still outstanding. It is enforced by review and
-by the closure checklist rather than by a status check — see D-124 and `docs/roadmap.md`.
+That run covers all three UCI Adult cases: the source drain, the `.dat` conversion and the `.cxt`
+conversion. With the current delimited reader and the pinned corpus at acquisition revision 3
+(32,561 records), it is a **blocking** acceptance obligation before M8 as a whole is accepted and
+for each release candidate, not an optional extra: routine CI can be green while it is still
+outstanding, and a result from an earlier acquisition revision does not count. It is enforced by
+review rather than by a status check (D-124, `docs/roadmap.md`).
 
 Real runs, corpus preparation, and the target-scale tiers are documented in
 `tests/FcaBedrock.Benchmarks/README.md`; the evidence they produce is `docs/benchmarks.md`.

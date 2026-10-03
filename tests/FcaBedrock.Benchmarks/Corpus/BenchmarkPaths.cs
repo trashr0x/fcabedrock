@@ -90,7 +90,7 @@ internal static class BenchmarkPaths
         return Path.GetFullPath(trimmed);
     }
 
-    // Never a fixed `..` hop count: the answer is wherever the solution file actually is, and a
+    // Never a fixed `..` hop count: the answer is wherever the solution file is, and a
     // failure names every directory that was probed. (The same rule the CLI test suite uses.)
     private static string FindRepositoryRoot()
     {

@@ -6,7 +6,7 @@ using FcaBedrock.Diagnostics;
 namespace FcaBedrock.Benchmarks.Tests.Oracles;
 
 /// <summary>
-/// The post-iteration gate. Each of these is a way a benchmark could otherwise publish a throughput
+/// The post-iteration check. Each of these is a way a benchmark could otherwise publish a throughput
 /// figure for work it did not correctly do.
 /// </summary>
 public sealed class OutputValidationTests
@@ -94,7 +94,7 @@ public sealed class OutputValidationTests
     public void RequireCleanEmit_ShouldPermitTheDegenerateShapeWarningsAndNothingElse()
     {
         // An empty column, an empty row, and an empty context are outcomes the spec blesses; they
-        // cannot hide a wrong result, because byte equality is the real gate.
+        // cannot hide a wrong result, because byte equality is the real check.
         OutputValidation.RequireCleanEmit(
             [
                 Warning(DiagnosticCode.AttributeHasNoCrosses),

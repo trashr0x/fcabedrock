@@ -56,7 +56,7 @@ public sealed class QuantileSelectionTests
     [Fact]
     public void TargetReached_WhenTotalExceedsTwoToThe53_ThenDoesNotAgreeWithTheDoubleRankPath()
     {
-        // Why the UInt128 cross-multiplication is load-bearing rather than pedantry. The naive
+        // Why the UInt128 cross-multiplication is necessary rather than pedantry. The naive
         // implementation forms the rank target as a double and compares the cumulative to it:
         const long total = 9_007_199_254_740_989;
         const long cumulative = 6_004_799_503_160_659;
@@ -252,7 +252,7 @@ public sealed class QuantileSelectionTests
     public void PlaceCut_WhenRightValueLandsOnNegativeZero_ThenCanonicalizedToPositiveZero()
     {
         // G-6: a computed -0 must never reach a bin identity, label, or hash. -0.0 == 0.0 under
-        // ==, so only the bit pattern can prove the canonicalization actually happened.
+        // ==, so only the bit pattern can prove the canonicalization happened.
         var cut = QuantileSelection.PlaceCut(-1.0, -0.0, CutPlacement.RightValue);
 
         Assert.Equal(BitConverter.DoubleToInt64Bits(0.0), BitConverter.DoubleToInt64Bits(cut));

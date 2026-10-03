@@ -48,7 +48,7 @@ public sealed class EmitObservabilityTests
         Assert.Equal("age", diagnostic.Location?.AttributeName);
         Assert.Contains("abc", diagnostic.Message, StringComparison.Ordinal);
 
-        // §10.4/§10.6/G-12: `fail` is Error/**abort** — the run is invalid, so the
+        // §10.4/§10.6/G-12: `fail` is Error/**abort**, so the run is invalid and the
         // normal-completion observability aggregates are suppressed. Under every non-aborting
         // policy they still fire (this fixture filters its only row, so NoObjectsEmitted would
         // otherwise be present). Asserted in BOTH directions: severity alone would not catch an
@@ -690,10 +690,10 @@ public sealed class EmitObservabilityTests
     {
         // G-12, the case the object-name-sequence invariant CANNOT catch: a DETERMINISTIC halt
         // truncates both passes IDENTICALLY, so the names still align, the writer returns
-        // successfully, and a structurally well-formed but TRUNCATED artifact exists on disk —
+        // successfully, and a structurally well-formed but TRUNCATED artifact exists on disk,
         // alongside an Error. Bytes already written to a caller-owned sink cannot be retracted,
         // so artifact validity is a diagnostic question: any Error/Fatal after disposal ⇒ the
-        // caller must discard the output. Transactional publication is M7's, not the writer's.
+        // caller must discard the output. Transactional publication is the CLI's, not the writer's.
         var spec = new BedrockSpec(
             ConversionFixtures.Triple(),
             [ConversionFixtures.PredicateNominal("t", "t", ["a", "b"])]);

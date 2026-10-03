@@ -11,17 +11,17 @@
 # Small-category cases, which executes each of them once and measures nothing — it proves the harness
 # runs on this platform, and nothing else.
 #
-# Every input this workflow needs comes from the repository. The benchmark corpora it prepares are
+# Every data input this workflow needs comes from the repository. The benchmark corpora it prepares are
 # generated here from pinned integer arithmetic; the acquired UCI Adult corpus is NOT prepared or
 # selected, so no job depends on a third-party data host being reachable. Adult carries the opt-in
 # `External` category, and a successful `--anyCategories External` run on the final Windows x64
-# candidate is a blocking acceptance obligation recorded in D-124 and the roadmap — required of the
+# candidate is a blocking acceptance obligation recorded in D-124 and the roadmap, required of the
 # candidate, not of every job. A green run here therefore proves the SELECTED synthetic and fixture
 # contracts on this platform; it does not claim Adult ran on it.
 #
-# Required native targets are Windows x64, Linux x64, and macOS ARM64: those three carry the release
-# gate and the distribution archives. Linux ARM64 and Windows ARM64 run where the account has them
-# and are explicitly informational — an unavailable optional target stays unvalidated and makes no
+# Required native targets are Windows x64, Linux x64, and macOS ARM64: those three must pass and
+# carry the distribution archives. Linux ARM64 and Windows ARM64 run where the account has them
+# and are explicitly informational: an unavailable optional target stays unvalidated and makes no
 # support claim.
 
 name: ci
@@ -32,9 +32,6 @@ on:
   push:
     branches:
       - main
-      # The M8 branch, so the workflow can be exercised on its own commits before `main` contains
-      # them. A push-triggered run executes the workflow file from the pushed branch.
-      - agent/m8-scaling-reset
   workflow_dispatch:
 
 # Read-only, and no custom secrets anywhere in this file. Nothing here publishes, signs, uploads to a
@@ -99,7 +96,7 @@ jobs:
 
       # The environment every result on this run has to be read against. A platform claim that does
       # not name the OS image, the process architecture, and the runtime is not a platform claim, and
-      # a matrix label is not evidence of what actually executed.
+      # a matrix label is not evidence of what executed.
       - name: Record environment
         shell: pwsh
         run: |
@@ -130,7 +127,7 @@ jobs:
         run: dotnet build FcaBedrock.slnx -c Release --no-restore
 
       # Run FIRST and named, so the native resident-accounting evidence is a discrete result rather
-      # than a line inside a four-thousand-test summary. D-082's numerical guarantee extends only to
+      # than a line inside the full test summary. D-082's numerical guarantee extends only to
       # layouts that have been validated, and this is where a target earns that.
       - name: Resident-layout witnesses (native accounting)
         run: >
@@ -141,13 +138,13 @@ jobs:
         run: dotnet test --solution FcaBedrock.slnx -c Release --no-build
 
       # Both tokens are required, and the set is not arbitrary: the Dry step selects the Small
-      # *category*, which is broader than the Small *tier* - `micro` carries the 1,000-row Ads-width
+      # *category*, which is broader than the Small *tier*: `micro` carries the 1,000-row Ads-width
       # case, which `prepare small` alone does not produce. Both are generated here from pinned
       # integer arithmetic, so this step needs nothing but the repository.
       #
       # `adult` is deliberately absent. It is the one corpus this repository cannot generate, and
-      # preparing it would make every required job depend on a third-party host being reachable -
-      # an unrelated outage would then block the package delivery below. Its cases are opt-in
+      # preparing it would make every required job depend on a third-party host being reachable,
+      # so an unrelated outage would then block the package delivery below. Its cases are opt-in
       # instead, and are run explicitly on the final Windows x64 candidate.
       - name: Prepare the Small benchmark corpora
         run: dotnet run -c Release --no-build --project tests/FcaBedrock.Benchmarks -- prepare micro small
@@ -173,18 +170,17 @@ jobs:
           dotnet test tests/FcaBedrock.Cli.Tests -c Release --no-build
           --filter-class '*ToolSmokeTests*'
 
-      # Publish, archive, EXTRACT, and run the extracted apphost — one step, because they are one
+      # Publish, archive, EXTRACT, and run the extracted apphost in one step, because they are one
       # claim. The smoke drives `eng/publish-selfcontained.ps1`, the same script a developer runs, so
       # what it verifies is the archive that command produces rather than a second zip written for
-      # the occasion. That distinction is not academic: the previous arrangement ran the publish
-      # FOLDER and then zipped a separate test archive, so green runs uploaded Linux and macOS
-      # distributions whose `FcaBedrock.Cli` was recorded non-executable and could not be launched
-      # the way the README documents.
+      # the occasion. Running the publish FOLDER and zipping a separate test archive instead could
+      # upload Linux and macOS distributions whose `FcaBedrock.Cli` is recorded non-executable and
+      # cannot be launched the way the README documents.
       #
       # On the three required targets it writes into `artifacts/publish`, and the upload below takes
       # that exact file: the bytes a user downloads are the bytes this step extracted and ran. The
-      # optional targets run the identical smoke in the test's own temporary directory — proving the
-      # same thing about their platform, and producing no delivery archive, which is nobody's to
+      # optional targets run the identical smoke in the test's own temporary directory, proving the
+      # same thing about their platform and producing no delivery archive, which is nobody's to
       # support.
       - name: Self-contained smoke (publish, archive, extract, run without an installed runtime)
         env:
@@ -203,6 +199,6 @@ jobs:
           path: artifacts/publish/fcabedrock-${{ matrix.rid }}.zip
           if-no-files-found: error
           # Seven days: long enough to download and inspect a run's output, short enough that CI
-          # storage is not a filing cabinet. Milestone evidence is retained separately and durably;
-          # an expiring CI artifact is not a record.
+          # storage is not a filing cabinet. Durable evidence is retained separately; an expiring
+          # CI artifact is not a record.
           retention-days: 7

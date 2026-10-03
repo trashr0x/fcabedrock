@@ -10,7 +10,7 @@ namespace FcaBedrock.Benchmarks.Corpus;
 /// same person who wrote the expectations. Real data is the check on that: its value distributions,
 /// its missing cells, and its domain sizes were not chosen to make anything convenient, and the v2
 /// lineage used exactly this dataset, so a measurement over it is comparable with what the tool was
-/// actually built for.
+/// built for.
 /// </para>
 /// <para>
 /// <b>Acquisition is explicit, separate, and outside every measured interval.</b> It happens only
@@ -79,9 +79,9 @@ internal static class AdultCorpus
     /// on the consumed entry.
     /// </para>
     /// <para>
-    /// <b>What it does and does not establish.</b> It fixes the bytes as <em>the same bytes M8
-    /// measured</em> — the ones recorded in <c>docs/benchmarks.md</c> — so a changed upstream file
-    /// is refused rather than silently adopted and quietly re-based on. It is not a signature and
+    /// <b>What it does and does not establish.</b> It fixes the bytes as <em>the bytes the recorded
+    /// measurements used</em> (the ones recorded in <c>docs/benchmarks.md</c>), so a changed upstream
+    /// file is refused rather than silently adopted and quietly re-based on. It is not a signature and
     /// establishes nothing about publisher authenticity: no attestation for this dataset exists to
     /// check against.
     /// </para>
@@ -159,7 +159,7 @@ internal static class AdultCorpus
     /// </para>
     /// <para>
     /// The record count is the denominator every Adult rate is divided by, so it has to be the
-    /// number of records the pipeline actually reads, by the reader's own blank rule. The file's
+    /// number of records the pipeline reads, by the reader's own blank rule. The file's
     /// property is documented in <c>Adult.attribution.md</c> rather than smoothed away by altering
     /// the bytes.
     /// </para>

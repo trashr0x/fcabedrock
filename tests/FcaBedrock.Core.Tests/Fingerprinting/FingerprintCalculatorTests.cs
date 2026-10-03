@@ -45,8 +45,8 @@ public sealed class FingerprintCalculatorTests
             SpecFixtures.Dichotomic("employed", 3, "t", ["t", "f"]),
         ]);
 
-    // Plans a hand-built spec + schema through the M4 pipeline (resolve token → fully-declared
-    // calibrated state → plan), the way production does (D-098). The fixtures are fully-declared.
+    // Plans a hand-built spec + schema the way production does (resolve token → fully-declared
+    // calibrated state → plan, D-098). The fixtures are fully-declared.
     private static ResolvedSpec Resolve(BedrockSpec spec, SourceSchema schema) =>
         ResolvedSpec.Create(
             spec, schema,
@@ -64,8 +64,8 @@ public sealed class FingerprintCalculatorTests
         return plan!;
     }
 
-    // The public output-fingerprint API drops the spec arg (it now reads plan.Calibrated.Spec,
-    // D-098); these thin shims keep the existing (plan, spec, inputs) call shape in the tests, so
+    // The public output-fingerprint API takes no spec argument (it reads plan.Calibrated.Spec,
+    // D-098); these thin shims give the tests a (plan, spec, inputs) call shape, and
     // the pinned bytes/hashes are hashed identically (plan.Calibrated.Spec is the spec's snapshot).
     private static string ComputeCxt(ConversionPlan plan, BedrockSpec spec, CxtFingerprintInputs inputs)
     {
@@ -362,8 +362,8 @@ public sealed class FingerprintCalculatorTests
     [Fact]
     public void BuildCxtOutputJson_WhenAttributeExcludedAndDomainOnCuts_ThenSharedOmitsInertConfig()
     {
-        // Excluded attributes contribute nothing to shared (they shape no output
-        // in M2); a declared_domain on a cut discretizer is inert (§10.3) and
+        // An excluded attribute without restrict_to contributes nothing to shared (it shapes no
+        // output); a declared_domain on a cut discretizer is inert (§10.3) and
         // hashes as [] (D-077).
         var attribute = new AttributeSpec(
             "v", new ColumnSource(0, SourceValueType.Number), Include: true,
@@ -383,9 +383,9 @@ public sealed class FingerprintCalculatorTests
     public void BuildCxtOutputJson_WhenReachableEnumsVary_ThenJsonUsesTheTomlVocabulary()
     {
         // The golden literals pin the default spellings; this pins the rest of
-        // the M2-reachable vocabulary (D-077): ge/strict/closed/fail/include,
-        // v2-compat, crlf. Triple and wide column keys — fail/keep and now dedupe —
-        // are all plan-reachable at M3 (Slice F landed dedupe).
+        // the vocabulary they leave out (D-077): ge/strict/closed/fail/include,
+        // v2-compat, crlf. Triple and wide column keys (fail/keep and dedupe)
+        // are all plan-reachable.
         var cuts = new AttributeSpec(
             "v", new ColumnSource(0, SourceValueType.Number), Include: true,
             ManualCutsDiscretizer.Create([10, 20], BinEnds.Closed, CultureInfo.InvariantCulture).Value!,
@@ -413,7 +413,7 @@ public sealed class FingerprintCalculatorTests
         Assert.Contains("\"unknown_value_policy\":\"include\"", json, StringComparison.Ordinal);
     }
 
-    // --- Wide column object key (D-083): plan-reachable at Slice E; index + policy are byte-affecting ---
+    // --- Wide column object key (D-083): index + policy are byte-affecting ---
 
     [Fact]
     public void BuildCxtOutputJson_WhenWideColumnKeepKey_ThenEncodesColumnIndexAndPolicy()
@@ -468,7 +468,7 @@ public sealed class FingerprintCalculatorTests
     public void BuildSchemaJson_WhenValueBinOrdinal_ThenColumnsCarryOpAndRawValueBinInPlanOrder()
     {
         // The schema identity of a value-bin ordinal column is {raw value, op}, in
-        // plan (order) sequence — no encoder change was needed (D-081).
+        // plan (order) sequence; the encoder needs no special case for it (D-081).
         Assert.True(Diag(ValueBinOrdinalSpec(["a", "b", "c"]), new SourceSchema(1)).TryGetValue(out var plan));
 
         Assert.Equal(
@@ -508,10 +508,10 @@ public sealed class FingerprintCalculatorTests
             FingerprintCalculator.ComputeSchemaFingerprint(acb!));
     }
 
-    // --- free_per_value discretizer encoding (D-094 golden-lock, M4 Slice B) --
+    // --- free_per_value discretizer encoding (D-094 golden-lock) --------------
     //
-    // The M4 per-kind canonical bytes and their SHA-256 vectors are golden-locked
-    // BEFORE the first M4 fingerprint is produced (§14/D-094). free_per_value adds
+    // The per-kind canonical bytes and their SHA-256 vectors are golden-locked (§14/D-094): a
+    // change to them moves every stored fingerprint of that kind. free_per_value adds
     // no config beyond the kind; its numeric identity rides on source.value_type and
     // its bins are the effective (canonical numeric) domain.
 
@@ -589,16 +589,16 @@ public sealed class FingerprintCalculatorTests
             "sha256:247648dc27afaf287d116650c01d71cf8d31860ea485069ef1d530f2d21bde88",
             ComputeDat(Plan(NumericFreePerValueSpec()), NumericFreePerValueSpec(), NativeDat()));
 
-    // --- equal_width discretizer encoding (D-094 golden-lock, M4 Slice C) -----
+    // --- equal_width discretizer encoding (D-094 golden-lock) -----------------
     //
-    // The M4 per-kind canonical bytes and their SHA-256 vectors are golden-locked BEFORE the
-    // first M4 fingerprint is produced (§14/D-094). equal_width encodes its AUTHORED config —
-    // bins/range/precision, plus vmin/vmax only under range = "manual". Its RESOLVED cuts are
-    // deliberately absent from the sub-object: they already ride as `bin` objects in the schema
-    // array (asserted below), so re-encoding them would be a second source of truth.
+    // The per-kind canonical bytes and their SHA-256 vectors are golden-locked (§14/D-094): a
+    // change to them moves every stored fingerprint of that kind. equal_width encodes its
+    // AUTHORED config: bins/range/precision, plus vmin/vmax only under range = "manual". Its
+    // RESOLVED cuts are deliberately absent from the sub-object: they already ride as `bin` objects
+    // in the schema array (asserted below), so re-encoding them would be a second source of truth.
     //
     // The two specs below are the D-094 auto-vs-frozen pair in miniature: identical effective
-    // cuts [25, 50, 75], hence an identical schema array — but different authored discretizer
+    // cuts [25, 50, 75], hence an identical schema array, but different authored discretizer
     // objects, hence different output fingerprints. That asymmetry is the contract, not a bug.
 
     private const string EqualWidthSchemaArray =
@@ -628,15 +628,15 @@ public sealed class FingerprintCalculatorTests
         return plan!;
     }
 
-    // --- value_groups discretizer encoding (D-094 golden-lock, M4 Slice E) -----
+    // --- value_groups discretizer encoding (D-094 golden-lock) -----------------
     //
-    // The M4 per-kind canonical bytes and their SHA-256 vectors are golden-locked BEFORE the first
-    // M4 fingerprint is produced (§14/D-094). value_groups encodes its AUTHORED config: `groups` in
-    // DECLARATION order (never sorted — first-match order is semantic, §11.6), each group's keys
-    // sorted label < pattern < values, `pattern`/`values` present only when authored, and inner
-    // values in authored order with duplicates retained. Discovered passthrough bins are
-    // deliberately absent — they are effective, not authored, and ride as `bin` objects in the
-    // schema array.
+    // The per-kind canonical bytes and their SHA-256 vectors are golden-locked (§14/D-094): a
+    // change to them moves every stored fingerprint of that kind. value_groups encodes its
+    // AUTHORED config: `groups` in DECLARATION order (never sorted; first-match order is semantic,
+    // §11.6), each group's keys sorted label < pattern < values, `pattern`/`values` present only
+    // when authored, and inner values in authored order with duplicates retained. Discovered
+    // passthrough bins are deliberately absent: they are effective, not authored, and ride as
+    // `bin` objects in the schema array.
     //
     // Every hash literal below was computed with an EXTERNAL SHA-256 over the hand-authored bytes,
     // never copied from this encoder's output; the same external method was first checked against
@@ -704,8 +704,8 @@ public sealed class FingerprintCalculatorTests
 
     [Fact]
     public void BuildCxtOutputJson_WhenValueGroups_ThenDeclaredDomainStaysEmptyBecauseItIsDormant() =>
-        // D-055: value_groups does not consume declared_domain, so the effective-domain gate emits
-        // [] — an inert authored domain must not perturb the output fingerprint (D-077).
+        // D-055: value_groups does not consume declared_domain, so the effective-domain step emits
+        // []: an inert authored domain must not perturb the output fingerprint (D-077).
         Assert.Contains(
             "\"declared_domain\":[],\"discretizer\":{\"groups\":",
             FingerprintCalculator.BuildCxtOutputJson(Plan(ValueGroupsSpec()), ValueGroupsSpec(), NativeCxt()),
@@ -862,7 +862,7 @@ public sealed class FingerprintCalculatorTests
 
     [Fact]
     public void ComputeSchemaFingerprint_WhenPassthroughDiscoveryOrderDiffers_ThenTheSchemaFingerprintMoves() =>
-        // First-observation order is column order (§17 rule 3), so it is load-bearing for identity.
+        // First-observation order is column order (§17 rule 3), so it is part of identity.
         Assert.NotEqual(
             FingerprintCalculator.ComputeSchemaFingerprint(PassthroughPlan("PhD", "Masters")),
             FingerprintCalculator.ComputeSchemaFingerprint(PassthroughPlan("Masters", "PhD")));
@@ -1000,12 +1000,12 @@ public sealed class FingerprintCalculatorTests
             autoJson);
     }
 
-    // --- equal_frequency + percentile encodings (D-094 golden-lock, M4 Slice D) --
+    // --- equal_frequency + percentile encodings (D-094 golden-lock) --------------
     //
-    // The same D-094 gate as Slice C: these bytes and their SHA-256 vectors land BEFORE the first
-    // stored equal_frequency / percentile hash, because that first hash fossilizes them.
+    // The same D-094 lock as equal_width: these bytes and their SHA-256 vectors are pinned because
+    // the first stored equal_frequency / percentile hash fossilizes them.
     // equal_frequency encodes its authored bins/tie_policy/cut_placement with the §11.5 defaults
-    // SPELLED (resolution happens at the seam, so the fingerprint never sees "omitted") — and, as
+    // SPELLED (resolution happens at the seam, so the fingerprint never sees "omitted"), and, as
     // with equal_width, its calibrated cuts ride only as schema bins.
 
     private const string EqualFrequencySchemaArray =
@@ -1120,7 +1120,7 @@ public sealed class FingerprintCalculatorTests
 
     [Fact]
     public void ComputeDatOutputFingerprint_WhenEqualFrequencyConfigVaries_ThenTheHashMoves() =>
-        // Proves the pinned vector above actually covers the discretizer object rather than
+        // Proves the pinned vector above covers the discretizer object rather than
         // hashing around it: the ONLY difference here is the authored tie_policy/cut_placement.
         Assert.NotEqual(
             FingerprintCalculator.ComputeDatOutputFingerprint(EqualFrequencyPlan(), NativeDat()),
@@ -1133,8 +1133,8 @@ public sealed class FingerprintCalculatorTests
         var plan = PercentilePlan();
         var json = FingerprintCalculator.BuildCxtOutputJson(plan, plan.Calibrated.Spec, NativeCxt());
 
-        // Slice C modelled this spelling but kept it unreachable; Slice D activates it, so its
-        // bytes are pinned here before the first stored percentile hash (D-094).
+        // The percentile spelling's bytes are pinned here because a stored percentile hash
+        // fossilizes them (D-094).
         Assert.Contains(
             "\"discretizer\":{\"bins\":4,\"kind\":\"equal_width\",\"precision\":\"exact\",\"range\":\"percentile_p1_p99\"},",
             json, StringComparison.Ordinal);
@@ -1279,10 +1279,10 @@ public sealed class FingerprintCalculatorTests
         Assert.Throws<ArgumentOutOfRangeException>(() => CanonicalJson.AppendNumber(builder, double.PositiveInfinity));
     }
 
-    // --- Triple binding: role map + predicate source (Slice B, D-082) -------
+    // --- Triple binding: role map + predicate source (D-082) ----------------
     //
     // These exercise the shared/binding encoding below the planner: a hand-built triple
-    // Core spec paired with any valid (wide) plan — AppendShared/AppendBinding read only
+    // Core spec paired with any valid (wide) plan; AppendShared/AppendBinding read only
     // the spec, so the borrowed plan supplies just the unread schema array. The spec uses
     // ordering = "unordered" (not a fingerprint input; both orderings hash identically),
     // keeping the fingerprint focus on the role map / binding rather than a full conversion.
@@ -1314,7 +1314,7 @@ public sealed class FingerprintCalculatorTests
     [Fact]
     public void ComputeOutputFingerprints_WhenTripleColumnsDiffer_ThenBothMoveButSameMapMatches()
     {
-        // The output fingerprints now read the plan's own calibrated spec (D-098/D-094), so each
+        // The output fingerprints read the plan's own calibrated spec (D-098/D-094), so each
         // triple map is exercised through its own plan rather than one plan + varied spec args.
         var a = TripleSpec(new TripleColumns(0, 1, 2));
         var b = TripleSpec(new TripleColumns(2, 1, 0));

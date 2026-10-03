@@ -80,7 +80,7 @@ public sealed class EqualWidthSpecTests
     public void Read_WhenBinsAtIntMaxValue_ThenAccepted() =>
         Assert.Equal(int.MaxValue, ReadDiscretizer($"{{ kind = \"equal_width\", bins = {int.MaxValue} }}").Bins);
 
-    // --- Parse-phase field gates (§11.4) -------------------------------------
+    // --- Parse-phase field checks (§11.4) ------------------------------------
 
     [Fact]
     public void Read_WhenBinsMissing_ThenSpecFieldInvalid() =>
@@ -125,7 +125,7 @@ public sealed class EqualWidthSpecTests
     public void Read_WhenPercentileRangeAuthorsBounds_ThenSpecFieldInvalid() =>
         // §11.4: vmin/vmax apply only to range = "manual". A percentile span comes from the data,
         // so authoring bounds alongside it is the same contradiction as authoring them with
-        // min_max — the existing data-derived rule covers the new spelling with no new condition.
+        // min_max: the same data-derived rule covers the percentile spelling with no extra condition.
         AssertFieldInvalid("{ kind = \"equal_width\", bins = 4, range = \"percentile_p1_p99\", vmin = 0.0, vmax = 100.0 }");
 
     [Fact]
@@ -182,9 +182,7 @@ public sealed class EqualWidthSpecTests
     public void Read_WhenDiscretizerHasUnknownKey_ThenSpecKeyUnrecognized()
     {
         // equal_width has a real carrier, so its table is walked strictly and an unknown key inside
-        // it gets the ordinary SpecKeyUnrecognized. (This once contrasted with the deferred kinds,
-        // whose parameter keys were deliberately not walked — that tier emptied at M4 Slice E,
-        // D-104, so strict walking is now simply what every §11 kind does.)
+        // it gets the ordinary SpecKeyUnrecognized, as for every §11 kind.
         var result = SpecReader.Read(Attribute("{ kind = \"equal_width\", bins = 4, wibble = 1 }"));
 
         Assert.False(result.IsOk);
@@ -202,7 +200,7 @@ public sealed class EqualWidthSpecTests
     }
 
     // One authored mistake gets ONE diagnostic (D-067): a malformed field reports its own type
-    // error and must NOT also be reported as missing/absent by the semantic gate — the gates read
+    // error and must NOT also be reported as missing/absent by the semantic check: the checks read
     // authored-vs-absent, not valid-vs-null. Asserted on the exact count, since a Contains-style
     // check cannot see the spurious second report.
 
@@ -231,7 +229,7 @@ public sealed class EqualWidthSpecTests
     public void Read_WhenBoundMalformedUnderDataRange_ThenStillReportedAsAuthored()
     {
         // The corollary: a malformed vmin is still AUTHORED, so the "vmin/vmax apply only to
-        // manual" gate must still fire — a mistyped bound must not smuggle itself past the rule.
+        // manual" check must still fire: a mistyped bound must not smuggle itself past the rule.
         var result = SpecReader.Read(Attribute("{ kind = \"equal_width\", bins = 4, range = \"min_max\", vmin = \"x\" }"));
 
         Assert.False(result.IsOk);
@@ -285,7 +283,7 @@ public sealed class EqualWidthSpecTests
     public void WriteReadWrite_WhenEqualWidthForm_ThenCanonicalTextIsIdempotent(string discretizer)
     {
         // The canonical form must be re-readable: parse → write → parse → write is a fixed point
-        // for every Slice C-supported form (D-075).
+        // for each form below (D-075).
         var first = WriteDiscretizer(discretizer);
         var second = WriteDiscretizer(first);
 

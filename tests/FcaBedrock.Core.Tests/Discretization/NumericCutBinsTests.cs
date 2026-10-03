@@ -7,12 +7,11 @@ namespace FcaBedrock.Core.Tests.Discretization;
 /// The shared numeric-cut engine (D-093): <c>manual_cuts</c> and <c>equal_width</c>
 /// execute through one <see cref="NumericCutBins"/>, so identical effective cuts give
 /// identical classification, structure, labels, and rendering. These tests assert that
-/// equivalence <b>directly</b> — it is what makes the D-088 auto/frozen byte-equivalence
+/// equivalence <b>directly</b>: it is what makes the D-088 auto/frozen byte-equivalence
 /// structural rather than a property two code paths must independently maintain.
 /// <para>
-/// The manual-cut side's own unchanged behaviour is covered by
-/// <see cref="ManualCutsDiscretizerTests"/> and the nine golden fixtures, which the
-/// extraction left byte-identical.
+/// The manual-cut side's own behaviour is covered by
+/// <see cref="ManualCutsDiscretizerTests"/> and the nine golden fixtures.
 /// </para>
 /// </summary>
 public sealed class NumericCutBinsTests
@@ -103,6 +102,6 @@ public sealed class NumericCutBinsTests
     [Fact]
     public void CutLabels_WhenIntegralCuts_ThenCanonicalNumbersWithoutDecimalPoint() =>
         // §14 canonical numbers: the labels are invariant schema strings, so a cut authored 30.0
-        // labels "30" — the byte-level behaviour the extraction had to preserve exactly.
+        // labels "30": the byte-level behaviour the shared engine must preserve.
         Assert.Equal(["30", "40"], new NumericCutBins([30.0, 40.0], BinEnds.Open, CultureInfo.InvariantCulture).CutLabels);
 }

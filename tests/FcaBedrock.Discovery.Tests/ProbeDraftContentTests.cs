@@ -5,12 +5,12 @@ namespace FcaBedrock.Discovery.Tests;
 
 /// <summary>
 /// The D-107 content inventory, asserted twice over: once as exact canonical TOML bytes (what a
-/// user actually opens), and once as a <b>negative</b> inventory naming every section and field
+/// user opens), and once as a <b>negative</b> inventory naming every section and field
 /// a draft must not contain.
 /// <para>
 /// Both directions are needed. Byte equality alone would quietly accept a new field the day
-/// someone updated the expected string; the negative inventory states the rule — a probe draft
-/// is a starting point, never a frozen artifact — so an added fingerprint, timestamp, or
+/// someone updated the expected string; the negative inventory states the rule (a probe draft
+/// is a starting point, never a frozen artifact), so an added fingerprint, timestamp, or
 /// <c>[defaults]</c> block fails for the reason it is wrong rather than because a literal moved.
 /// </para>
 /// </summary>
@@ -154,7 +154,7 @@ public sealed class ProbeDraftContentTests
             Assert.IsType<NominalScaleSection>(attribute.Scale);
 
             // Absent by contract. `include` and `missing_policy` are omitted rather than written
-            // at their defaults: M5 authors no policy it did not decide (EP-6/D-049).
+            // at their defaults: probe authors no policy it did not decide (EP-6/D-049).
             Assert.Null(attribute.Include);
             Assert.Null(attribute.Template);
             Assert.Null(attribute.RestrictTo);

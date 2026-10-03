@@ -87,7 +87,7 @@ internal static class BedrockBenchmarkConfig
             // the one machine-readable form it omits, and it is the form a later comparison reads.
             .AddExporter(JsonExporter.Full)
             // A Debug build measures nothing. The default configuration only warns; here it fails,
-            // because a suite whose numbers are quoted in a milestone report must not be able to
+            // because a suite whose numbers are quoted in the benchmarks guide must not be able to
             // produce them from an unoptimized assembly.
             .AddValidator(JitOptimizationsValidator.FailOnError)
             .AddColumn(CorpusDenominatorColumn.Records)

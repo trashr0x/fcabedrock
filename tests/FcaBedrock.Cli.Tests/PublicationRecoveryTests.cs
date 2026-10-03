@@ -1256,9 +1256,8 @@ public sealed class PublicationRecoveryTests
 
         Assert.Equal(1, exit);
 
-        // The race really happened. Before the lifetime correction this case could pass or fail on
-        // identical code depending on which inode the allocator handed the impostor, so what is
-        // asserted is that the substitution fired — not merely that the outcome looks right.
+        // The race really happened: what is asserted is that the substitution fired, not merely
+        // that the outcome looks right.
         Assert.Equal(1, run.Harness.PublicationFiles.MutationsFired);
         Assert.Equal(
             DiagnosticRenderer.RenderHostError($"cannot publish the output '{run.Target(".cxt")}'."),

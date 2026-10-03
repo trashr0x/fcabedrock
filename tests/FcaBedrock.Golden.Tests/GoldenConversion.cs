@@ -143,9 +143,9 @@ internal static class GoldenConversion
         return plan;
     }
 
-    // D-087: v2's .dat final newline is shape-dependent — wide -> present, triple ->
-    // absent (v2's triple converter wrote no final .dat line terminator; the three triple
-    // goldens end without CRLF). Native output instead honors the authored/default
+    // D-087: v2's .dat final newline is shape-dependent (wide -> present, triple ->
+    // absent): v2's triple converter wrote no final .dat line terminator, and the three triple
+    // goldens end without CRLF. Native output instead honors the authored/default
     // [output.dat].trailing_newline. The override is applied here, not baked into the
     // V2Compat preset (the common baseline), so wide v2-compat .dat keeps its trailing CRLF.
     private static WriterOptions DatOptionsFor(FixtureCase fixture, WriterOptions options) =>
@@ -171,8 +171,8 @@ internal static class GoldenConversion
     // regression. The fixtures record what v2 produced and are never edited to silence a
     // diagnostic (EP-9).
     //
-    // Permitting exactly these three codes — and nothing else — costs no coverage, because
-    // byte-equality is the real gate here and they cannot mask a byte change: a wrongly dropped
+    // Permitting exactly these three codes (and nothing else) costs no coverage, because
+    // byte-equality is the real check here and they cannot mask a byte change: a wrongly dropped
     // cross, a filtered object, or a lost row all move the bytes and fail the comparison
     // regardless of what was warned. Everything else at emit (unknown/unparseable values,
     // duplicate keys, storage failures) still fails the run.

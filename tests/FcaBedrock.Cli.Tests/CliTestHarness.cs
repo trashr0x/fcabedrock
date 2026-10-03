@@ -267,12 +267,12 @@ internal sealed class RecordingPublicationFileSystem : IPublicationFileSystem
     public int MutationsFired { get; private set; }
 
     /// <summary>
-    /// As <see cref="Mutate"/>, but handed the <b>unfolded</b> operation — so a test can place a
+    /// As <see cref="Mutate"/>, but handed the <b>unfolded</b> operation, so a test can place a
     /// race at a path whose token this run generated and has not written anywhere yet.
     /// <para>
     /// That is a deliberately stronger adversary than the filesystem affords: it learns the name at
     /// the instant of the call rather than by reading the directory. It is what keeps a refused
-    /// acquisition testable now that nothing durable precedes it.
+    /// acquisition testable, since nothing durable precedes it.
     /// </para>
     /// </summary>
     public Action<string>? MutateWith { get; set; }
@@ -325,10 +325,10 @@ internal sealed class RecordingPublicationFileSystem : IPublicationFileSystem
 
     /// <summary>
     /// How many acquisitions <see cref="SuppressReferences"/> or
-    /// <see cref="SuppressReferenceNamePrefix"/> actually refused.
+    /// <see cref="SuppressReferenceNamePrefix"/> refused.
     /// <para>
     /// A test that suppresses a reference and then observes an unchanged location proves nothing
-    /// unless the suppression fired, and an outcome cannot tell the two apart — the same reason
+    /// unless the suppression fired, and an outcome cannot tell the two apart: the same reason
     /// <see cref="MutationsFired"/> exists.
     /// </para>
     /// </summary>

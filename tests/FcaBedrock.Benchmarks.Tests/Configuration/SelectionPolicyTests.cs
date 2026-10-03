@@ -28,7 +28,7 @@ public sealed class SelectionPolicyTests
     [Fact]
     public void Policy_WhenABroadNameFilterIsGiven_ThenScaleIsStillExcluded()
     {
-        // The load-bearing case: `--filter *` must not be able to start a 73M-record run.
+        // The cost case: `--filter *` must not be able to start a 73M-record run.
         var policy = SelectionPolicy.FromArguments(["--filter", "*"]);
 
         Assert.True(policy.Includes(SmallCase));
@@ -254,10 +254,10 @@ public sealed class SelectionPolicyTests
     [Fact]
     public void Config_WhenOnlyASurfaceCategoryIsNamed_ThenNoWorkingCaseRunsUnderTheThroughputJob()
     {
-        // Through the real configuration, not the predicate alone. Before the Working gate existed
-        // this shape was doubly wrong: `--anyCategories Source` admitted every Working source case,
-        // and — because the command line never named Working — the config attached the
-        // fresh-iteration job, so BenchmarkDotNet's pilot stage would have multiplied
+        // Through the real configuration, not the predicate alone. Without the Working tier's
+        // opt-in this shape would be doubly wrong: `--anyCategories Source` would admit every
+        // Working source case, and, because the command line never named Working, the config
+        // would attach the fresh-iteration job, so BenchmarkDotNet's pilot stage would multiply
         // minutes-scale operations.
         var surfaceOnly = SelectionPolicy.FromArguments(["--anyCategories", BenchmarkCategories.Source]);
 
@@ -278,7 +278,7 @@ public sealed class SelectionPolicyTests
     [Fact]
     public void Config_WhenAJobIsNamedExplicitly_ThenTheSuiteAddsNoneOfItsOwn()
     {
-        // The existing explicit-job contract is unchanged by the Working gate: `--anyCategories
+        // The explicit-job contract holds under the Working opt-in: `--anyCategories
         // Working --job dry` is exactly BenchmarkDotNet's dry run over the Working cases.
         var policy = SelectionPolicy.FromArguments(["--anyCategories", BenchmarkCategories.Working, "--job", "dry"]);
 

@@ -4,7 +4,7 @@ using FcaBedrock.Diagnostics;
 namespace FcaBedrock.Benchmarks.Oracles;
 
 /// <summary>
-/// The post-iteration correctness gate.
+/// The post-iteration correctness check.
 /// <para>
 /// Every completed measured iteration is validated <b>after</b> its producer sessions have been
 /// disposed and its final diagnostics are available, and <b>outside</b> the measured interval. A
@@ -18,8 +18,8 @@ internal static class OutputValidation
 {
     /// <summary>
     /// The emit-phase diagnostics that describe a legitimately degenerate context rather than a
-    /// fault — an empty column, an empty row, an empty context. They are outcomes the spec blesses
-    /// (§10.1/§16.4), and they cannot mask a wrong result here, because byte equality is the gate.
+    /// fault: an empty column, an empty row, an empty context. They are outcomes the spec blesses
+    /// (§10.1/§16.4), and they cannot mask a wrong result here, because byte equality is the check.
     /// </summary>
     private static readonly DiagnosticCode[] ShapeWarnings =
     [

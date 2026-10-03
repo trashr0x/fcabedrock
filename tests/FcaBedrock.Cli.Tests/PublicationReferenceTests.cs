@@ -79,7 +79,7 @@ public sealed class PublicationReferenceTests
     {
         // Create → acquire while the creation handle is still open → flush and close the writer →
         // re-observe by path → rename → prove at the new name → remove through a proof-bound
-        // handle → reuse the removed name. Every step of the sequence a publication actually
+        // handle → reuse the removed name. Every step of the sequence a publication
         // performs, in order, with the reference held across all of it.
         using var temp = TempDirectory.Create();
         var files = PublicationFileSystem.Instance;

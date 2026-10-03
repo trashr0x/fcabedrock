@@ -2,7 +2,7 @@ namespace FcaBedrock.Cli.Tests;
 
 /// <summary>
 /// The <c>fingerprint</c> report vertical (D-122 part 10). The expected documents are authored
-/// here and joined with explicit LF; the <c>sha256:</c> values are this slice's pins, fixed by
+/// here and joined with explicit LF; the <c>sha256:</c> values are pins fixed by
 /// the fixture's spec text and cross-checked against the library in
 /// <see cref="PlanCommandTests"/>.
 /// </summary>

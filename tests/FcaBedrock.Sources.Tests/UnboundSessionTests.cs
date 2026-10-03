@@ -361,7 +361,7 @@ public sealed class UnboundSessionTests
     public async Task WideUnbound_WhenCancelledAndFirstRowUnreadable_ThenCancellationWins()
     {
         // Precedence: cancellation is checked before the advance that would fail, so an abandoned
-        // read reports cancellation rather than a source problem it never actually hit.
+        // read reports cancellation rather than a source problem it never hit.
         var session = WideSession(new string('x', 20 * 1024 * 1024) + "\n");
         using var cts = new CancellationTokenSource();
         cts.Cancel();
@@ -401,9 +401,8 @@ public sealed class UnboundSessionTests
     [Fact]
     public async Task WideUnbound_WhenRowExceedsSepsLimit_ThenSourceReadExceptionWithInnerCause()
     {
-        // Sep 0.15.0 signals its row/buffer ceiling as NotSupportedException ("Buffer or row has
-        // reached maximum supported length of 16777216"). The adapter normalizes it, with its own
-        // limit message, so no consumer needs to know Sep exists.
+        // Sep 0.15.0 signals its row/buffer ceiling as NotSupportedException. The adapter normalizes
+        // it, with its own limit message, so no consumer needs to know Sep exists.
         var session = WideSession(new string('x', 20 * 1024 * 1024) + "\n");
 
         var thrown = await Assert.ThrowsAsync<SourceReadException>(() => DrainAsync(session.ReadAsync()));
@@ -481,7 +480,7 @@ public sealed class UnboundSessionTests
     public async Task Unbound_WhenStreamThrowsNotSupported_ThenItIsNotAbsorbedAsAReadFailure()
     {
         // The counterexample that keeps the normalization honest: only Sep's OWN failure becomes
-        // SourceReadException. A misbehaving stream surfaces as itself, so Slice 3 cannot
+        // SourceReadException. A misbehaving stream surfaces as itself, so probe cannot
         // mistranslate a contract violation into ProbeSourceReadFailed.
         var session = new WideCsvSession(() => new UnreadableStream(), SourceReadSettings.CreateWide());
 

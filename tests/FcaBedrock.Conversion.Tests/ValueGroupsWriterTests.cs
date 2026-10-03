@@ -11,10 +11,10 @@ using FcaBedrock.Export;
 namespace FcaBedrock.Conversion.Tests;
 
 /// <summary>
-/// <c>value_groups</c> through the writers (§11.6, M4 Slice E / D-104): the <b>actual output
+/// <c>value_groups</c> through the writers (§11.6, D-104): the <b>actual output
 /// bytes</b> for each unmatched policy, on the wide and both triple paths, plus repeat
 /// determinism (EP-7). Byte-level rather than plan-level, because that is where a claim about
-/// output behaviour is genuinely settled — the exporters themselves are unchanged and dumb (EP-15).
+/// output behaviour is genuinely settled: the exporters themselves are unchanged and dumb (EP-15).
 /// </summary>
 public sealed class ValueGroupsWriterTests
 {

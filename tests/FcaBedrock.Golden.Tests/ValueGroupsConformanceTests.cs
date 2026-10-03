@@ -11,9 +11,9 @@ using FcaBedrock.Spec.Toml;
 namespace FcaBedrock.Golden.Tests;
 
 /// <summary>
-/// Spec conformance for <c>value_groups</c> (§11.6/§12.3/§17, M4 Slice E / D-090/D-104).
+/// Spec conformance for <c>value_groups</c> (§11.6/§12.3/§17, D-090/D-104).
 /// <para>
-/// Unlike the rest of this suite these are not driven off a v2 golden — no v2 fixture uses
+/// Unlike the rest of this suite these are not driven off a v2 golden: no v2 fixture uses
 /// <c>value_groups</c>, and the discretizer has no v2 counterpart to be byte-compared against
 /// (§11.6 is native surface). Instead each test runs the spec's <b>own normative example</b>
 /// verbatim, through the complete authored-TOML → read → resolve → calibrate → plan → emit →

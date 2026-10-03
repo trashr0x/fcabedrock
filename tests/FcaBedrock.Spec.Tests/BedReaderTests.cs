@@ -106,8 +106,8 @@ public sealed class BedReaderTests
     public void Read_WhenSectionHasFewerEntriesThanCount_ThenFatalBedStructureInvalid()
     {
         // Declare six attributes over the five-attribute body. Sections followed by a
-        // blank separator line absorb one extra entry (the v2 layout is that brittle —
-        // the point of D-009); the shortfall lands on [Restrict To Values] (five lines)
+        // blank separator line absorb one extra entry (the v2 layout is that brittle,
+        // which is the point of D-009); the shortfall lands on [Restrict To Values] (five lines)
         // and the blank sixth convert flag fails to parse. Both report (aggregated).
         var overdeclared = BedFixtures.MushroomBed.Replace("[Number of Attributes]\n5\n", "[Number of Attributes]\n6\n");
 

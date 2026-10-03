@@ -90,7 +90,7 @@ public sealed class FreePerValueDiscretizerTests
     [Fact]
     public void Discretize_WhenValueOutsideAnyDomain_ThenStillABin()
     {
-        // The discretizer never gates on the domain — the emitter's KnownBins gate turns an
+        // The discretizer never checks the domain: the emitter's KnownBins check turns an
         // out-of-domain (but parseable) bin into an unknown value (§10.6), covered at the emit level.
         Assert.True(Number().Discretize("999").TryGetLabel(out var numericLabel));
         Assert.Equal("999", numericLabel);

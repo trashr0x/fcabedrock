@@ -136,11 +136,11 @@ public sealed class ProbeDraftGuaranteeTests
             draft.Attributes.Select(a => a.Name));
 
         // mini-adult carries a real `?` in the education column: it is missing, so it never
-        // enters the domain — the observed values are the four real ones, in first-observation
+        // enters the domain, and the observed values are the four real ones, in first-observation
         // order (not sorted, and not including the token).
         Assert.Equal(["Bachelors", "HS-grad", "11th", "Masters"], draft.Attributes[1].DeclaredDomain);
 
-        // Ages are authored as STRINGS: M5 does no type inference, so a numeric-looking column
+        // Ages are authored as STRINGS: probe does no type inference, so a numeric-looking column
         // is still string-valued identity + nominal (D-106).
         Assert.Equal(SourceValueType.String, ((ColumnSourceSection)draft.Attributes[0].Source!).ValueType);
         Assert.Equal(["39", "50", "38", "53", "28", "37", "49", "52"], draft.Attributes[0].DeclaredDomain);
@@ -165,9 +165,8 @@ public sealed class ProbeDraftGuaranteeTests
     [Fact]
     public async Task Draft_WhenProbedFromDuplicateAndBlankHeaders_ThenStillSatisfiesTheGuarantee()
     {
-        // The case the whole naming matrix exists for. Before the read became header-tolerant
-        // this input could not even be probed; now it must not merely probe but also CONVERT —
-        // which is why duplicates bind by index rather than by an ambiguous name.
+        // The case the whole naming matrix exists for: this input must not merely probe but
+        // also CONVERT, which is why duplicates bind by index rather than by an ambiguous name.
         const string csv = "a,a,,b\n1,2,3,4\n5,6,7,8\n";
 
         var result = await ProbeFixtures.ProbeCsvAsync(csv);

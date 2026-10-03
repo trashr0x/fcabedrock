@@ -173,8 +173,8 @@ public sealed class DeclaredDomainWrappingTests
     public void WriteReadWrite_WhenDomainWraps_ThenCanonicalTextIsIdempotent()
     {
         // The wrapped form must re-read (Tomlyn parses multiline arrays and the
-        // trailing comma) and re-write to the identical bytes — the D-075
-        // idempotence oracle, now over wrapped output.
+        // trailing comma) and re-write to the identical bytes: the D-075
+        // idempotence oracle, applied to wrapped output.
         var first = WriteAttributeWithDomain(Enumerable.Range(0, 40).Select(i => $"value-{i:D2}").ToArray());
 
         Assert.True(SpecReader.Read(first).TryGetValue(out var reread));

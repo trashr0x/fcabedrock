@@ -8,11 +8,11 @@ using FcaBedrock.Spec.Toml;
 
 namespace FcaBedrock.Spec.Tests.Toml;
 
-// SpecFreezer (M7 Slice D / S4, D-122 part 10, D-123 point 9). The focused suite drives the
+// SpecFreezer (S4, D-122 part 10, D-123 point 9). The focused suite drives the
 // library face Core-only: it builds the paired ResolvedDocument + CalibratedSpec through
 // SpecResolver.Resolve + CalibratedSpec.Create over hand-built retained outcomes (no data pass),
 // freezes, and asserts the four mappings, effective template/matcher preservation, the
-// fully-frozen gate, canonical/idempotent output, and the three-fingerprint write flow. The
+// fully-frozen check, canonical/idempotent output, and the three-fingerprint write flow. The
 // cross-package .cxt/.dat byte equivalence lives in FcaBedrock.Golden.Tests (this project cannot
 // emit output bytes).
 public sealed class SpecFreezerTests
@@ -378,8 +378,8 @@ public sealed class SpecFreezerTests
     [Fact]
     public void Freeze_WhenIncludeDomainFromTemplate_ThenRedBlueOnce()
     {
-        // The consensus case: a template supplies declared_domain = ["red"], the attribute uses
-        // unknown = "include", calibration observes "blue" — the frozen explicit domain is
+        // A template supplies declared_domain = ["red"], the attribute uses
+        // unknown = "include", and calibration observes "blue": the frozen explicit domain is
         // ["red", "blue"] exactly once (D-123 point 9). The base prefix comes from the template.
         var document = DocumentFixtures.Document(
             [DocumentFixtures.Attribute("color", DocumentFixtures.Column(0), template: "t", scale: new NominalScaleSection())],
@@ -506,7 +506,7 @@ public sealed class SpecFreezerTests
         AssertFullyFrozen(frozen, new SourceSchema(1));
     }
 
-    // ---- Gate, flattening, canonical output ------------------------------------------------
+    // ---- Fully-frozen check, flattening, canonical output ----------------------------------
 
     [Theory]
     [InlineData("omitted-domain")]

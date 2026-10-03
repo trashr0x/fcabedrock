@@ -12,19 +12,19 @@ using FcaBedrock.Sources;
 namespace FcaBedrock.Benchmarks;
 
 /// <summary>
-/// What the M7 input-stability guarantee costs: one complete source pass through the real
+/// What the input-stability guarantee costs: one complete source pass through the real
 /// <see cref="InputHashTracker"/> against the identical pass without it.
 /// <para>
 /// <b>A pair, not a switch.</b> Inline raw-byte hashing of every complete input pass is a correctness
 /// guarantee (D-122 part 5 / §17) and cannot be turned off; there is no product option here to
-/// measure. So the unwrapped arm is a <em>component experiment</em> — the same reader over the same
-/// bytes with the wrapper absent — and the difference between the two arms is the wrapper's cost.
+/// measure. So the unwrapped arm is a <em>component experiment</em> (the same reader over the same
+/// bytes with the wrapper absent), and the difference between the two arms is the wrapper's cost.
 /// It is not a configuration a user can select, and the report says so.
 /// </para>
 /// <para>
 /// The wrapper's construction and finalization are inside the measured interval, because a per-pass
 /// cost that excluded them would understate a real one. The digest is verified <b>outside</b> timing,
-/// against the corpus catalog's recorded SHA-256 — which is a genuinely independent expectation,
+/// against the corpus catalog's recorded SHA-256, which is a genuinely independent expectation,
 /// since the catalog's digest was computed by the preparer over the same file long before this run.
 /// </para>
 /// </summary>
@@ -135,7 +135,7 @@ public abstract class InputHashPairBenchmark
         return fields;
     }
 
-    // Counts what the reader actually consumed, PER OPEN, so "one pass reached end of stream over
+    // Counts what the reader consumed, PER OPEN, so "one pass reached end of stream over
     // the whole file" is asserted rather than assumed. It wraps the stream in BOTH arms, so its own
     // cost is common to the pair and cancels out of the difference.
     private sealed class CountingOpen(Func<Stream> open)
@@ -301,7 +301,7 @@ public abstract class OutputHashPairBenchmark
         OutputValidation.RequireFileMatches(_outputPath, _expected.ByteLength, _expected.Sha256, what);
 
         // The wrapper prefixes its digest, so the comparison is against the prefixed form the
-        // publication actually records rather than against a bare hex string.
+        // publication records rather than against a bare hex string.
         if (!string.Equals(_digest, ContentHash.Format(_expected.Sha256), StringComparison.Ordinal))
         {
             throw new InvalidOperationException(

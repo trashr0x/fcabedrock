@@ -96,7 +96,7 @@ public sealed class T10CorpusTests
             }
         }
 
-        // Both shapes must actually occur, or the multi-valued union is never exercised - and the
+        // Both shapes must occur, or the multi-valued union is never exercised, and the
         // idempotent-duplicate case never is either.
         Assert.True(multiValued > 0, "no subject carried two distinct Tissue values.");
         Assert.True(equalPair > 0, "no subject repeated one Tissue value.");
@@ -115,9 +115,9 @@ public sealed class T10CorpusTests
     [Fact]
     public async Task DeclaredConversion_ShouldProduceIdenticalBytesFromBothLayouts()
     {
-        // The load-bearing equivalence: the same observations under a data-independent spec must
-        // convert to the same context whether they arrived contiguously or interleaved - one
-        // streaming single-pass, the other through the grouping backend.
+        // The equivalence this family exists for: the same observations under a data-independent
+        // spec must convert to the same context whether they arrived contiguously or interleaved:
+        // one streaming single-pass, the other through the grouping backend.
         using var temp = TempDirectory.Create();
 
         var grouped = await ConvertAsync(temp, TripleLayout.Grouped);

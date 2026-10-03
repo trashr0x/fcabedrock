@@ -3,15 +3,15 @@ using System.Xml.Linq;
 namespace FcaBedrock.Cli.Tests;
 
 /// <summary>
-/// What the tool package actually contains (D-122 part 13 / D-123 part 1). These run on every
+/// What the tool package contains (D-122 part 13 / D-123 part 1). These run on every
 /// build: the installed-tool smoke proves the package works, and these prove it is the package
-/// the smoke would install — the exact assembly set, the tool settings the host reads, the
+/// the smoke would install: the exact assembly set, the tool settings the host reads, the
 /// identity the feed publishes, the readme the package page renders, and one version.
 /// <para>
 /// Nothing here pins whole-package bytes, the leaf NuGet gives the core-properties part, the
 /// relationship part, or entry order: those differ between two packs of identical sources, so
 /// pinning them would assert build noise rather than package content. That part's canonical name
-/// SHAPE is still required, because a name is not noise — it is what an extractor acts on, and the
+/// SHAPE is still required, because a name is not noise: it is what an extractor acts on, and the
 /// shape is a <b>closed two-producer set</b> rather than a wildcard (<see cref="PackageOpc"/>).
 /// </para>
 /// <para>

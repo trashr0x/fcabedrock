@@ -341,8 +341,8 @@ public sealed class SpecWriterTests
         // §10.1/§10.7 presentation order (D-075/D-120): display_name takes the §10.1
         // example position between source and description; formal_attribute_format sits
         // in §-order between unknown_value_policy (§10.6) and value_labels (§10.8). The
-        // canonical key order is the writer's, never the record's field order — which is
-        // exactly why the new carriers could be added non-positionally.
+        // canonical key order is the writer's, never the record's field order, which is
+        // exactly why carriers can be added non-positionally.
         var document = DocumentFixtures.Document(
         [
             DocumentFixtures.Nominal("odor", 0, domain: ["a"], valueLabels: new Dictionary<string, string> { ["a"] = "almond" }) with
@@ -441,9 +441,9 @@ public sealed class SpecWriterTests
     [Fact]
     public void Write_WhenNamingKeysOmitted_ThenNeitherEmits()
     {
-        // Presence tracking (D-049): omitted stays omitted, so no existing spec gains a
-        // key it never authored — which is why every golden and pinned vector is
-        // byte-unchanged across this slice.
+        // Presence tracking (D-049): omitted stays omitted, so no spec gains a
+        // key it never authored, and every golden and pinned vector stays
+        // byte-identical.
         var text = SpecWriter.Write(DocumentFixtures.Document([DocumentFixtures.Nominal("odor", 0)]));
 
         Assert.DoesNotContain("display_name", text, StringComparison.Ordinal);

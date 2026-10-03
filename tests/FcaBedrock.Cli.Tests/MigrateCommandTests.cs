@@ -512,7 +512,7 @@ public sealed class MigrateCommandTests
     // ---- the ruled BED decoding contract (strict UTF-8, one optional UTF-8 BOM) ---------------
     //
     // Every vector is assembled from byte literals, so no source-file or editor encoding can
-    // alter what the decoder is actually handed.
+    // alter what the decoder is handed.
 
     private const string Replacement = "�";
 

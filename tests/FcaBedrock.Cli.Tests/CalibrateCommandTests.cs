@@ -773,7 +773,7 @@ public sealed class CalibrateCommandTests
     {
         // Compared against the merged `plan` command over the same two files: freezing,
         // re-resolving, replanning, and fingerprinting are pure over retained state, so calibrate
-        // must open exactly what a terminally reviewed report command opens and nothing more.
+        // must open exactly what the `plan` command opens and nothing more.
         using var temp = TempDirectory.Create();
         var spec = temp.Write("spec.toml", CliFixtures.CalibrateCutsSpec);
         var data = temp.Write("data.csv", CliFixtures.CalibrateWideData);

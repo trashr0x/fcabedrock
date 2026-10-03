@@ -5,9 +5,9 @@ using FcaBedrock.Core.Discretization;
 namespace FcaBedrock.Core.Tests.Calibration;
 
 /// <summary>
-/// The <c>equal_frequency</c> pending carrier (§11.5, M4 Slice D / D-103): the resolved
+/// The <c>equal_frequency</c> pending carrier (§11.5, D-103): the resolved
 /// configuration calibration must fill in, and the one state that can represent an
-/// uncalibrated <c>equal_frequency</c> attribute — a state that can never plan or emit.
+/// uncalibrated <c>equal_frequency</c> attribute: a state that can never plan or emit.
 /// </summary>
 public sealed class PendingEqualFrequencyTests
 {

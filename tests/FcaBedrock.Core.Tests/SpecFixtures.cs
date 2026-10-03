@@ -7,7 +7,7 @@ using FcaBedrock.Core.Spec;
 namespace FcaBedrock.Core.Tests;
 
 // Builders for spec models used across the Core tests. A test-only helper at the
-// project root; it does not mirror a production type (per CLAUDE.md conventions).
+// project root; it does not mirror a production type (per the AGENTS.md test conventions).
 internal static class SpecFixtures
 {
     public static readonly IReadOnlyDictionary<string, string> NoLabels = new Dictionary<string, string>();
@@ -27,7 +27,7 @@ internal static class SpecFixtures
         new(SourceShape.Wide, "utf-8", delimiter, '"', hasHeader, "invariant", "?", new RowIndexObjectKey());
 
     // A triple binding with the default (0,1,2) role map; the object key is always the subject
-    // column (§5.4). ordering selects the streaming path (SubjectGrouped converts at Slice C).
+    // column (§5.4). ordering selects the execution path (SubjectGrouped streams single-pass).
     public static Binding TripleSubjectGrouped(TripleOrdering ordering = TripleOrdering.SubjectGrouped) =>
         new(SourceShape.Triple, "utf-8", ',', '"', HasHeader: false, "invariant", "?",
             new ColumnObjectKey(0, DuplicateObjectPolicy.Fail), new TripleColumns(0, 1, 2), ordering);
@@ -103,7 +103,7 @@ internal static class SpecFixtures
             scale, DeclaredDomain: [], RestrictTo: [], NoLabels, MissingPolicy.Skip, policy);
 
     // A spec-determined value_groups attribute (§11.6, D-090): skip/other resolve straight to the
-    // executable discretizer — no calibration, because the groups fix the bins.
+    // executable discretizer, with no calibration, because the groups fix the bins.
     public static AttributeSpec ValueGroups(
         string name, int index, ValueGroupsUnmatched unmatched, Scale scale, params ValueGroup[] groups) =>
         new(name, new ColumnSource(index, SourceValueType.String), Include: true,

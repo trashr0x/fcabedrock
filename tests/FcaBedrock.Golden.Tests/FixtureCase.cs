@@ -55,7 +55,7 @@ public sealed record FixtureCase(string Family, string Variant, BindingSection B
             ScalingMode = ScalingMode.Progressive,
         },
 
-        // Triple inputs (M3 Slice G): headerless, comma-delimited, roles at 0/1/2,
+        // Triple inputs: headerless, comma-delimited, roles at 0/1/2,
         // unordered. Byte-identical .bed to their wide twins; the outputs differ only
         // in object names (and the named fixture's subjects). Wide positions above are
         // preserved so SpecConformanceTests' Active[0]/Single(...) pins still hold.

@@ -641,7 +641,7 @@ public sealed class ToolPackage : IAsyncLifetime
         return fileName[prefix.Length..^suffix.Length];
     }
 
-    // Never a fixed `..` hop count: the answer is wherever the solution file actually is, and a
+    // Never a fixed `..` hop count: the answer is wherever the solution file is, and a
     // failure names every directory that was probed.
     private static string RepositoryRoot()
     {

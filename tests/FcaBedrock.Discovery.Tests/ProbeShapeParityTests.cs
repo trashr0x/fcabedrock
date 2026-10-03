@@ -14,12 +14,11 @@ namespace FcaBedrock.Discovery.Tests;
 /// recovery, provenance notes, and diagnostic ordering. <b>What must differ, and must keep
 /// differing:</b> the <c>[binding]</c> (only triple has an ordering and a role map) and the
 /// source carrier (a column selector vs a predicate selector). Collapsing that second list would
-/// be as wrong as failing the first — the shapes address their sources differently on purpose.
+/// be as wrong as failing the first: the shapes address their sources differently on purpose.
 /// </para>
 /// <para>
-/// Also here: the diagnostic inventory. Slice D added no enum member; it gave two <em>existing</em>
-/// structural codes their probe-phase sites (D-111), and everything else probe can say was
-/// already live.
+/// Also here: the diagnostic inventory. Probe has no structural code of its own: two
+/// <em>existing</em> structural codes have probe-phase sites (D-111).
 /// </para>
 /// </summary>
 public sealed class ProbeShapeParityTests
@@ -187,10 +186,10 @@ public sealed class ProbeShapeParityTests
     [Fact]
     public void DiagnosticCode_WhenSliceDLanded_ThenNoSixthProbeCodeExists()
     {
-        // Slice D added no enum member. The two structural conditions it reports reuse
-        // `ObjectKeyValueInvalid` and `TripleSubjectNotContiguous` — one condition, one code,
-        // three phases (D-067/D-111) — rather than minting probe-specific twins, and the triple
-        // "nothing to author" case reuses `ProbeNoAttributesDiscovered`.
+        // Probe reports its two structural conditions through `ObjectKeyValueInvalid` and
+        // `TripleSubjectNotContiguous` (one condition, one code, three phases, D-067/D-111)
+        // rather than minting probe-specific twins, and the triple "nothing to author" case
+        // reuses `ProbeNoAttributesDiscovered`.
         var probeCodes = Enum.GetNames<DiagnosticCode>()
             .Where(name => name.StartsWith("Probe", StringComparison.Ordinal))
             .Order(StringComparer.Ordinal);

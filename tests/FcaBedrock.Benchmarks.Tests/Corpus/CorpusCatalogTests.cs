@@ -160,7 +160,7 @@ public sealed class CorpusPreparerTests
     public void Describe_ShouldRecordTheSpecDigestBeforeAnythingIsGenerated()
     {
         // The spec is committed source, so its digest is known up front; the data's is not, and is
-        // deliberately left unset until the bytes actually exist.
+        // deliberately left unset until the bytes exist.
         var corpus = CorpusCases.W16(CorpusTier.Small);
         var expected = CorpusPreparer.Describe(corpus);
 

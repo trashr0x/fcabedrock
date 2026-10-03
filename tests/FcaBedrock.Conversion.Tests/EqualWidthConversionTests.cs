@@ -12,7 +12,7 @@ namespace FcaBedrock.Conversion.Tests;
 
 /// <summary>
 /// End-to-end <c>equal_width</c> conversion (calibrate → plan → emit) for both range modes
-/// (§11.4, M4 Slice C / D-102), and the D-088 auto/frozen byte-equivalence: converting a
+/// (§11.4, D-102), and the D-088 auto/frozen byte-equivalence: converting a
 /// data-derived range on the fly and converting its <c>calibrate</c>-frozen <c>manual_cuts</c>
 /// form produce byte-identical <c>.cxt</c> and <c>.dat</c> on the calibration dataset.
 /// </summary>
@@ -206,7 +206,7 @@ public sealed class EqualWidthConversionTests
         var calibrated = await CalibrateOkAsync(spec, "0,5;x\n100,5;y");
 
         // Span [0.5, 100.5] over 4 bins → 25.5/50.5/75.5. Read as invariant, "0,5" would be
-        // unparseable (or 5), so these cuts prove the locale actually drove the parse.
+        // unparseable (or 5), so these cuts prove the locale drove the parse.
         Assert.Equal([25.5, 50.5, 75.5], CalibratedCutsOf(calibrated, "score"));
     }
 

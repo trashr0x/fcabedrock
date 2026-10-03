@@ -10,7 +10,7 @@ namespace FcaBedrock.Spec.Tests.Toml;
 
 public sealed class SpecResolverTests
 {
-    // Resolve now returns Diagnosed<ResolvedDocument> (D-098); these tests assert over the
+    // Resolve returns Diagnosed<ResolvedDocument> (D-098); these tests assert over the
     // resolved BedrockSpec and diagnostics, so this helper unwraps the token's spec. A schema-less
     // resolve produces a schema-less token (legal for spec tooling); an authored extends still throws.
     private static Diagnosed<BedrockSpec> Resolve(SpecDocument document, SourceSchema? schema = null)
@@ -21,7 +21,7 @@ public sealed class SpecResolverTests
             : Diagnosed<BedrockSpec>.Failed(resolved.Diagnostics);
     }
 
-    // Plans a resolved spec + schema the M4 way (fully-declared calibrated state, D-098) for the
+    // Plans a resolved spec + schema through the fully-declared calibrated state (D-098) for the
     // determinism-bridge tests; these fixtures are fully-declared.
     private static Diagnosed<ConversionPlan> Plan(BedrockSpec spec, SourceSchema schema) =>
         ConversionPlanner.Plan(CalibratedSpec.FromFullyDeclared(
@@ -344,7 +344,7 @@ public sealed class SpecResolverTests
         Assert.Equal("age", diagnostic.Location?.AttributeName);
     }
 
-    // --- Extends / templates / matchers (Slice F, D-078) ---
+    // --- Extends / templates / matchers (D-078) ---
 
     [Fact]
     public void Resolve_WhenDocumentStillCarriesExtends_ThenThrowsArgumentException()
@@ -358,12 +358,12 @@ public sealed class SpecResolverTests
         Assert.Contains("SpecComposer.Compose", exception.Message, StringComparison.Ordinal);
     }
 
-    // --- M6 Slice B: template identity, references, and the family ordering (D-121) ---
+    // --- Template identity, references, and the family ordering (D-121) ---
 
     [Fact]
     public void Resolve_WhenMatchersApplyTemplates_ThenTheyResolveCleanly()
     {
-        // The headline Slice B change: a matcher no longer rejects — it applies. The
+        // A matcher applies its template: the
         // attribute below authors name + source only; every scaling field arrives
         // through the template the matcher selects onto it.
         var document = DocumentFixtures.Document(
@@ -483,9 +483,8 @@ public sealed class SpecResolverTests
     [Fact]
     public void Resolve_WhenTemplateIdentityFailsAndBindingShapeMissing_ThenBothReport()
     {
-        // §16.4: family 1 is emitted BEFORE the shape gate, so a shape-less document still
-        // reports its template-identity errors — the aggregation the retired transitional
-        // reject used to provide (EP-14). Families 2–5 do not run: matcher shape
+        // §16.4: family 1 is emitted BEFORE the shape check, so a shape-less document still
+        // reports its template-identity errors (EP-14). Families 2–5 do not run: matcher shape
         // compatibility has no shape to judge against.
         var document = new SpecDocument(
             DocumentFixtures.SpecV1(), null, null, null, null,
@@ -672,7 +671,7 @@ public sealed class SpecResolverTests
     [Fact]
     public void Resolve_WhenAMatcherWinsOnOneOfSeveralSelectedAttributes_ThenItIsNotShadowed()
     {
-        // "Fully" is load-bearing: shadowing requires EVERY authored field to lose on
+        // "Fully" matters: shadowing requires EVERY authored field to lose on
         // EVERY selected attribute. Winning on one attribute out of two is enough to
         // stay silent.
         var document = DocumentFixtures.Document(
@@ -716,9 +715,9 @@ public sealed class SpecResolverTests
     [Fact]
     public void Resolve_WhenTheSameDocumentIsResolvedTwice_ThenTheOrderedDiagnosticsAreIdentical()
     {
-        // EP-7 over the whole M6 diagnostic surface: identity, references, effective
-        // validation, and both warning kinds, compared on the full structured tuple —
-        // code, severity, location, and message — not merely on codes.
+        // EP-7 over the whole template/matcher diagnostic surface: identity, references, effective
+        // validation, and both warning kinds, compared on the full structured tuple
+        // (code, severity, location, and message), not merely on codes.
         var document = DocumentFixtures.Document(
             [
                 DocumentFixtures.Attribute("a", DocumentFixtures.Column(0), template: "nope",
@@ -742,7 +741,7 @@ public sealed class SpecResolverTests
 
         Assert.Equal(Signature(document), Signature(document));
 
-        // Non-vacuity: the signature must actually cover the M6 families, or "identical"
+        // Non-vacuity: the signature must cover these diagnostic families, or "identical"
         // would be a claim about an empty list.
         var codes = Signature(document).Select(s => s.Item1).ToList();
         Assert.Contains(DiagnosticCode.TemplateIdMissing, codes);
@@ -1148,7 +1147,7 @@ public sealed class SpecResolverTests
         Assert.NotEmpty(SpecResolver.Resolve(document).Diagnostics);
     }
 
-    // --- Slice D seam validation (D-054/D-060/D-061/D-063/D-064/D-076) ---
+    // --- Seam validation (D-054/D-060/D-061/D-063/D-064/D-076) ---
 
     [Fact]
     public void Resolve_WhenQuoteCharAuthoredNonStandard_ThenQuoteCharNotSupportedV1()
@@ -1418,8 +1417,8 @@ public sealed class SpecResolverTests
     [Fact]
     public void Resolve_WhenSeveralRestrictEntriesAreInvalid_ThenAllAggregateWithoutThrowing()
     {
-        // EP-14 + the round-7 success gate: independent conditions aggregate, the result fails,
-        // and NO strict factory runs — so an authored error never escapes as an exception.
+        // EP-14 + the round-7 success check: independent conditions aggregate, the result fails,
+        // and NO strict factory runs, so an authored error never escapes as an exception.
         var document = DocumentFixtures.Document(
             [DocumentFixtures.Attribute("age", DocumentFixtures.Column(0),
                 discretizer: Discretizer("manual_cuts"), scale: new NominalScaleSection(),
@@ -1829,7 +1828,7 @@ public sealed class SpecResolverTests
     [Fact]
     public void Resolve_WhenDuplicateAttributeName_ThenAttributeNameDuplicate()
     {
-        // §10.2 (D-080): the dup-name reject now fires at the seam, not the planner.
+        // §10.2 (D-080): the dup-name reject fires at the seam, not the planner.
         var document = DocumentFixtures.Document(
             [DocumentFixtures.Nominal("dup", 0, ["a"]), DocumentFixtures.Nominal("dup", 1, ["b"])]);
 
@@ -1860,8 +1859,8 @@ public sealed class SpecResolverTests
     {
         // The D-080 payoff: the dup check reads the document sections, so a
         // duplicate whose sibling field fails to resolve (ResolveAttribute drops
-        // it) still surfaces — alongside that sibling's own diagnostic (EP-14). The
-        // former Core-model check over resolved attributes would have lost it.
+        // it) still surfaces, alongside that sibling's own diagnostic (EP-14). A
+        // check over resolved attributes would lose it.
         var document = DocumentFixtures.Document(
         [
             DocumentFixtures.Nominal("dup", 0, ["a"]),
@@ -1909,8 +1908,8 @@ public sealed class SpecResolverTests
     [Fact]
     public void Resolve_WhenExcludedIdentityHasStaleValueLabels_ThenParkedAndNoDiagnostic()
     {
-        // D-049: value_labels on an excluded attribute is parked config — the seam
-        // check is include-gated, so a stale key never blocks a toggled-off attribute.
+        // D-049: value_labels on an excluded attribute is parked config: the seam
+        // check runs only for included attributes, so a stale key never blocks a toggled-off attribute.
         var document = DocumentFixtures.Document(
             [DocumentFixtures.Attribute("g", DocumentFixtures.Column(0), include: false,
                 discretizer: new IdentityDiscretizerSection(), scale: new NominalScaleSection(),
@@ -1939,7 +1938,7 @@ public sealed class SpecResolverTests
         Assert.Contains(result.Diagnostics, d => d.Code == DiagnosticCode.ValueLabelKeyNotInDomain);
     }
 
-    // --- free_per_value + numeric identity (§11.3 / §10.3 / §10.8 / §12.3, D-061/D-096, Slice B) ---
+    // --- free_per_value + numeric identity (§11.3 / §10.3 / §10.8 / §12.3, D-061/D-096) ---
 
     private static AttributeSection FreePerValue(
         string name, int index, SourceValueType? valueType = null,
@@ -2194,8 +2193,8 @@ public sealed class SpecResolverTests
     [Fact]
     public void Resolve_WhenValueBinOrderMalformedButExcluded_ThenParkedAndNoDiagnostic()
     {
-        // D-049: the order-shape check is include-gated, like the ordinal-over-cuts
-        // checks — a parked order never blocks a toggled-off attribute.
+        // D-049: the order-shape check runs only for included attributes, like the ordinal-over-cuts
+        // checks, so a parked order never blocks a toggled-off attribute.
         var document = DocumentFixtures.Document(
             [DocumentFixtures.Attribute("edu", DocumentFixtures.Column(0), include: false,
                 discretizer: new IdentityDiscretizerSection(), scale: OrdinalOrder(["a", "a"]), declaredDomain: ["a"])]);
@@ -2572,7 +2571,7 @@ public sealed class SpecResolverTests
     [Fact]
     public void Resolve_WhenNoNamingAuthored_ThenDisplayNameIsTheNameAndFormatIsAbsent()
     {
-        // The state every pre-M6 spec resolves to: no format means the scale-specific
+        // The state every spec without naming keys resolves to: no format means the scale-specific
         // defaults stay in charge, and display_name defaults to name.
         Assert.True(Resolve(DocumentFixtures.Document([DocumentFixtures.Nominal("g", 0, ["b"])])).TryGetValue(out var spec));
 

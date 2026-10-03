@@ -166,7 +166,7 @@ public sealed class ResidentLayoutWitnessTests
     public void BufferBytes_ShouldCoverTheObservedListObjectPlusItsRealAcceptedBackingArray(int requested)
     {
         // The list's REAL accepted capacity is asked for, not assumed: a List<T> built with a
-        // requested capacity may hold a larger array, and the model must cover what it actually
+        // requested capacity may hold a larger array, and the model must cover what it
         // holds rather than what was asked for.
         var stride = (long)Unsafe.SizeOf<RankedRow<DedupeRow>>();
         var list = new List<RankedRow<DedupeRow>>(requested);

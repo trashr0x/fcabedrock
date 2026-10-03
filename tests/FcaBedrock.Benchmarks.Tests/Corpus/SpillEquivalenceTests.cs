@@ -149,7 +149,7 @@ public sealed class SpillEquivalenceTests
         Assert.InRange(peak, budget / 4, Math.Max(budget, 2 * ResourceProbe.AccumulatorFloorBytes));
     }
 
-    // --- The controlled attribute-count matrix (gated; not an ordinary test) --------------------
+    // --- The controlled attribute-count matrix (opt-in; not an ordinary test) -------------------
 
     /// <summary>
     /// Set to any value to run <see cref="ManyQuantiles_ShouldCalibrateAtEveryAttributeCountAndBudget"/>.
@@ -169,7 +169,7 @@ public sealed class SpillEquivalenceTests
     [InlineData(16)]
     public async Task ManyQuantiles_ShouldCalibrateAtEveryAttributeCountAndBudget(int attributes)
     {
-        // Gated because it writes and calibrates 730,000 records ten times over: this is the
+        // Opt-in because it writes and calibrates 730,000 records ten times over: this is the
         // controlled measurement behind a recorded table, run deliberately, not part of the ordinary
         // suite. The same property at hand-checkable size is an ordinary test in
         // Conversion.Tests/MultiAttributeCalibrationTests.
@@ -203,9 +203,9 @@ public sealed class SpillEquivalenceTests
     }
 
     // Rendered rather than compared as records. A calibration outcome holds an ImmutableArray, and
-    // ImmutableArray's equality is REFERENCE equality of its backing array - so two runs that
+    // ImmutableArray's equality is REFERENCE equality of its backing array, so two runs that
     // produced byte-identical cuts would never be `Equal` and the test would pass for no reason,
-    // then fail for no reason. Rendering the contents compares what the outcome actually says, and
+    // then fail for no reason. Rendering the contents compares what the outcome says, and
     // a mismatch reports the two value lists rather than two type names.
     private static string Describe(AttributeCalibration outcome) => outcome switch
     {

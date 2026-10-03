@@ -11,16 +11,16 @@ using FcaBedrock.Spec.Toml;
 namespace FcaBedrock.Golden.Tests;
 
 /// <summary>
-/// The naming surface end-to-end on the <b>native</b> path (M6 Slice A, D-120):
-/// small in-memory specs and data through the complete production chain — read →
-/// resolve → calibrate → plan → emit → write — asserting all three fingerprints
+/// The naming surface end-to-end on the <b>native</b> path (D-120):
+/// small in-memory specs and data through the complete production chain (read →
+/// resolve → calibrate → plan → emit → write), asserting all three fingerprints
 /// <b>and</b> both <c>.cxt</c>/<c>.dat</c> byte outputs for the D-119
 /// neutrality-and-change matrix rows that naming owns.
 /// <para>
 /// Deliberately separate from the v2 golden comparisons: those are immutable
 /// evidence of what v2 produced (EP-9), while <c>formal_attribute_format</c> is
 /// native surface no v2 fixture uses. Asserting through the real pipeline rather
-/// than the Spec-side fingerprint API is what proves the claim that matters — a
+/// than the Spec-side fingerprint API is what proves the claim that matters: a
 /// naming edit moves <c>.cxt</c> bytes and the cxt fingerprint <em>together</em>,
 /// and leaves <c>.dat</c> alone.
 /// </para>
@@ -129,8 +129,8 @@ public sealed class NativeNamingPipelineTests
     [Fact]
     public async Task Convert_WhenAnUnusedTemplateAuthorsNaming_ThenEveryByteAndHashIsUnchanged()
     {
-        // §9.2: an unused template is dormant — it converts without touching a byte, even
-        // while carrying naming keys that Slice B will make live.
+        // §9.2: an unused template is dormant: it converts without touching a byte, even
+        // while carrying naming keys that would apply to any attribute it configured.
         var baseline = await ConvertAsync(Spec());
         var withTemplate = await ConvertAsync(
             Spec() + "\n[[template]]\nid = \"t\"\ndisplay_name = \"T\"\nformal_attribute_format = \"{value}\"\n");

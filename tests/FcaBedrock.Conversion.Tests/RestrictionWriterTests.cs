@@ -77,12 +77,11 @@ public sealed class RestrictionWriterTests
     [Fact]
     public async Task Cxt_WhenNoAttributeRestricts_ThenTheBytesAreIdenticalToAnUnrestrictedRun()
     {
-        // The restriction-free path must be untouched: a spec with no restrict_to emits exactly
-        // what it did before restrictions could execute.
+        // The baseline: a spec with no restrict_to, converted as an ordinary unrestricted run.
         var plain = new BedrockSpec(ConversionFixtures.Wide(hasHeader: false),
             [ConversionFixtures.Nominal("tissue", 0, "endoderm", "mesoderm")]);
 
-        // …and a restriction that matches everything must not change the bytes either.
+        // A restriction that matches everything must produce exactly the baseline's bytes.
         var restrictedButTotal = new BedrockSpec(ConversionFixtures.Wide(hasHeader: false),
         [
             ConversionFixtures.Nominal("tissue", 0, "endoderm", "mesoderm") with

@@ -97,9 +97,9 @@ public sealed class SourceHygieneTests
                 + "the repository root is unknown and no source could be scanned.");
     }
 
-    // A filesystem enumeration, not a git one, so it sees untracked files too — including this
-    // guard before the operator curates it. Sorted by normalized relative path so the diagnostics
-    // are identical on every run and every machine (EP-7).
+    // A filesystem enumeration, not a git one, so it sees untracked files too. Sorted by
+    // normalized relative path so the diagnostics are identical on every run and every machine
+    // (EP-7).
     private static List<(string Relative, string FullPath)> AuthoredCsFiles(string root)
     {
         var authored = new List<(string Relative, string FullPath)>();

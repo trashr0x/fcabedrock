@@ -89,7 +89,7 @@ public sealed class ProbeTripleDraftTests
     [Fact]
     public async Task ProbeTriple_WhenTheLocaleIsOverridden_ThenTheDraftAuthorsIt()
     {
-        // Locale is a probe OPTION, not a read setting (it is inert at M5 — probe parses no
+        // Locale is a probe OPTION, not a read setting (it is inert in probe, which parses no
         // numbers) but it is authored, because the draft must state every effective binding field.
         var draft = ProbeFixtures.Draft(await TripleProbeFixtures.ProbeTripleCsvAsync(
             Csv, options: ProbeOptions.Create(locale: "en-GB")));

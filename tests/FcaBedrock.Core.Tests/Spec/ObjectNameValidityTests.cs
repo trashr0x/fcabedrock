@@ -2,7 +2,7 @@ using FcaBedrock.Core.Spec;
 
 namespace FcaBedrock.Core.Tests.Spec;
 
-// The D-085 data-derived object-name predicate, hoisted to Core so probe and calibrate/emit
+// The D-085 data-derived object-name predicate, held in Core so probe and calibrate/emit
 // share one authority. Usable = non-null, not empty/whitespace-only, no control
 // characters.
 public sealed class ObjectNameValidityTests
@@ -34,8 +34,8 @@ public sealed class ObjectNameValidityTests
         Assert.False(ObjectNameValidity.IsUsable(name));
 
     // Control characters are given as code points rather than literals, so no raw control byte
-    // is embedded in this source file. A newline is the load-bearing case — it would corrupt the
-    // line-structured .cxt (§18.1) — but the predicate rejects the whole class.
+    // is embedded in this source file. A newline is the most damaging case (it would corrupt the
+    // line-structured .cxt, §18.1), but the predicate rejects the whole class.
     [Theory]
     [InlineData(0)]         // NUL
     [InlineData(7)]         // bell

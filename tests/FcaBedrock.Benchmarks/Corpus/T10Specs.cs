@@ -8,9 +8,9 @@ namespace FcaBedrock.Benchmarks.Corpus;
 /// triple oracle indexes into.
 /// <para>
 /// Two specs, because they answer different questions. The <b>declared</b> one is fully
-/// spec-determined, so it runs no calibration pass and its emit measurement is emission alone — and
+/// spec-determined, so it runs no calibration pass and its emit measurement is emission alone; and
 /// because its column set does not depend on the data, the two physical layouts of the same
-/// observations must produce <b>byte-identical</b> output, which is the load-bearing equivalence
+/// observations must produce <b>byte-identical</b> output, which is the equivalence
 /// this family exists to check. The <b>auto</b> one is count-sensitive: it draws its cuts from the
 /// population, so under <c>unordered</c> it forces the calibrator's grouped second pass and the
 /// subject-local deduplication rule that goes with it.

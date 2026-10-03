@@ -47,8 +47,8 @@ internal static class AdCorpus
     public static readonly string Csv = BuildCsvFrom(Rows);
 
     /// <summary>
-    /// A freshly generated, independent copy of the corpus CSV — built from a brand-new row
-    /// matrix each call, never the cached <see cref="Rows"/> — so callers that need
+    /// A freshly generated, independent copy of the corpus CSV, built from a brand-new row
+    /// matrix each call and never the cached <see cref="Rows"/>, so callers that need
     /// independently generated input bytes (repeatability) get a value no earlier call can have
     /// perturbed. Determinism guarantees two calls are byte-identical to each other and to
     /// <see cref="Csv"/>.
@@ -168,7 +168,7 @@ internal static class AdSpecs
     /// <summary>Form (i): numeric manual-cut columns, an explicit binary <c>local</c>, the 1,554
     /// bare term declarations configured by one template + matcher, and an explicit
     /// <c>class</c>. <paramref name="includeMatcher"/> false drops the template/matcher so the
-    /// bare terms are left unscaled (the matcher-is-load-bearing sensitivity check).</summary>
+    /// bare terms are left unscaled (the matcher-dependence sensitivity check).</summary>
     public static string Declarative(bool includeMatcher = true)
     {
         var sb = new StringBuilder(Header());

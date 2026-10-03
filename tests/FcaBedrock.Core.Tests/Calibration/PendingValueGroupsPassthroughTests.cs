@@ -8,9 +8,9 @@ using FcaBedrock.Core.Spec;
 namespace FcaBedrock.Core.Tests.Calibration;
 
 /// <summary>
-/// The <c>value_groups</c> <c>unmatched = "passthrough"</c> pending carrier (§11.6, M4 Slice E /
+/// The <c>value_groups</c> <c>unmatched = "passthrough"</c> pending carrier (§11.6,
 /// D-090/D-104): the authored groups calibration carries, and the one state that can represent an
-/// uncalibrated passthrough attribute — a state that can never plan or emit.
+/// uncalibrated passthrough attribute: a state that can never plan or emit.
 /// </summary>
 public sealed class PendingValueGroupsPassthroughTests
 {

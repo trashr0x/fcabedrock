@@ -7,7 +7,7 @@ using FcaBedrock.Sources;
 
 namespace FcaBedrock.Conversion.Tests;
 
-// Slice D/F: triple ordering = "unordered". Interleaved (predicate-major) input is regrouped into
+// Triple ordering = "unordered". Interleaved (predicate-major) input is regrouped into
 // subject-contiguous, first-appearance order and emitted through the same Emitter.EmitTripleAsync as
 // subject_grouped. EmitTripleAsync owns ordering selection from plan.Execution (D-082), so tests pass
 // the raw source; the emitter builds the unordered wrapper with emitter-owned per-enumeration reports.
@@ -16,9 +16,9 @@ public sealed class UnorderedTripleEmitterTests
     [Fact]
     public async Task Unordered_WhenInterleavedNamedSubjects_ThenFirstAppearanceObjectOrder()
     {
-        // The load-bearing Slice D property: interleaved input emits objects in first-appearance
-        // order of the cleaned subject — NOT sorted (a sort would begin "Alice..."). Mirrors the
-        // mini-adult_triples_named arrival order (Slice G locks the bytes).
+        // The defining property: interleaved input emits objects in first-appearance order of the
+        // cleaned subject, NOT sorted (a sort would begin "Alice..."). Mirrors the
+        // mini-adult_triples_named arrival order (the golden harness locks the bytes).
         var spec = new BedrockSpec(ConversionFixtures.Triple(TripleOrdering.Unordered),
         [
             ConversionFixtures.PredicateNominal("role", "role", ["dev", "ops"]),

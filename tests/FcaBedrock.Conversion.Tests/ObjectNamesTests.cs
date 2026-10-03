@@ -3,8 +3,8 @@ using FcaBedrock.Core.Spec;
 namespace FcaBedrock.Conversion.Tests;
 
 // Conversion's object-name usability must be the SAME authority probe will apply, or a draft
-// could accept a subject the conversion it promises then rejects. The predicate now
-// lives in Core; this pins that Conversion forwards to it and that its behavior is unchanged.
+// could accept a subject the conversion it promises then rejects. The predicate
+// lives in Core; this pins that Conversion forwards to it with the same behavior.
 public sealed class ObjectNamesTests
 {
     [Theory]

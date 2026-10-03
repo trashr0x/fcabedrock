@@ -92,7 +92,7 @@ public sealed class EmitterTests
     [Fact]
     public async Task EmitAsync_WhenUnknownValueUnderAsAttribute_ThenNoMissingCross()
     {
-        // An out-of-domain value is present, not missing (§10.6) — no missing cross.
+        // An out-of-domain value is present, not missing (§10.6), so no missing cross.
         var spec = new BedrockSpec(ConversionFixtures.Wide(hasHeader: false),
             [ConversionFixtures.Nominal("a", 0, UnknownValuePolicy.Warn, MissingPolicy.AsAttribute, "x", "y")]);
 
@@ -130,7 +130,7 @@ public sealed class EmitterTests
             d.Code == DiagnosticCode.UnknownValueObserved && d.Severity == DiagnosticSeverity.Warning);
     }
 
-    // --- numeric free_per_value emit (canonicalization + KnownBins gate, §11.3/D-096) ---
+    // --- numeric free_per_value emit (canonicalization + KnownBins check, §11.3/D-096) ---
 
     private static AttributeSpec NumericFreePerValue(string name, int index, IReadOnlyList<string> domain) =>
         new(name, new ColumnSource(index, SourceValueType.Number), Include: true,
@@ -268,7 +268,7 @@ public sealed class EmitterTests
     public async Task EmitAsync_WhenMultipleUnknownValues_ThenOneAggregatedDiagnosticWithCount()
     {
         // Identity domain mismatch: many unknowns aggregate to ONE diagnostic (§16.4), not one
-        // per row — covering the KnownBins-mismatch path distinct from the ordered_cuts one.
+        // per row; this covers the KnownBins-mismatch path distinct from the ordered_cuts one.
         var spec = new BedrockSpec(ConversionFixtures.Wide(hasHeader: false),
             [ConversionFixtures.Nominal("a", 0, "x", "y")]);
 

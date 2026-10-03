@@ -77,12 +77,12 @@ public sealed class DistributionArchiveTests
         // The counterexample a shifted check cannot see, and the reason the assertion is on the raw
         // field: 0x00000001 is the DOS read-only bit, exactly the kind of value a writer that
         // assigned nothing would leave behind. It shifts to a Unix mode of zero, so an archive
-        // carrying it satisfied every metadata check while being different bytes than the contract
-        // asks for.
+        // carrying it would satisfy every metadata check while being different bytes than the
+        // contract asks for.
         //
         // It is put in front of DistributionArchive.AssertValid rather than a local assertion,
-        // because that helper is the one the gated self-contained smoke calls: a duplicate check
-        // here would prove nothing about the validator the delivery archive is actually held to.
+        // because that helper is the one the opt-in self-contained smoke calls: a duplicate check
+        // here would prove nothing about the validator the delivery archive is held to.
         using var root = TempDirectory.Create();
         var archive = Path.Combine(root.Path, "fcabedrock-win-x64.zip");
         WriteArchive(archive, externalAttributes: 0x00000001);

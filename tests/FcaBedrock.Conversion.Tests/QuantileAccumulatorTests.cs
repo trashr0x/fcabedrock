@@ -93,7 +93,7 @@ public sealed class QuantileAccumulatorTests
 
         // The whole point of asking EnsureCapacity: the accepted capacity is a fixed point of the
         // runtime's own prime rounding, which the naive request is not. Charging the request would
-        // under-count the arrays the runtime actually allocated.
+        // under-count the arrays the runtime allocated.
         var naiveRequest = (int)((100_000 - TestFixedBytes) / TestSlotBytes);
         Assert.Equal(capacity, new Dictionary<double, long>(capacity).EnsureCapacity(capacity));
         Assert.NotEqual(naiveRequest, capacity);
@@ -238,7 +238,7 @@ public sealed class QuantileAccumulatorTests
         Assert.True(modeledFixed >= realFixed, $"FixedBytes {modeledFixed} under-charges the real fixed {realFixed}");
 
         // And the test-side copy of the model tracks production, so the bound assertions elsewhere
-        // in this file are computing what production actually charges.
+        // in this file are computing what production charges.
         Assert.Equal(TestSlotBytes, modeledSlot);
         Assert.Equal(TestFixedBytes, modeledFixed);
     }

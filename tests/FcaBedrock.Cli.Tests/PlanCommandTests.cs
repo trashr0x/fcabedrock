@@ -13,10 +13,10 @@ namespace FcaBedrock.Cli.Tests;
 /// <para>
 /// <b>The expectations are authored, not derived.</b> Every expected report below is written
 /// out line by line and joined with explicit LF, so the lock is independent of how this source
-/// file is checked out and — more importantly — independent of the production renderer. Nothing
+/// file is checked out and, more importantly, independent of the production renderer. Nothing
 /// here calls <see cref="PlanReport"/>, walks a <see cref="ConversionPlan"/>, or reuses a
 /// formatting helper: an expectation built from the code under test would only prove the
-/// renderer copied its own output. The <c>sha256:</c> values are pins introduced by this slice;
+/// renderer copied its own output. The <c>sha256:</c> values are pins;
 /// they are fixed by each fixture's spec text, and a separate test proves they are the library's
 /// native values rather than something this command invented.
 /// </para>
@@ -407,8 +407,8 @@ public sealed class PlanCommandTests
             """,
             StringComparison.Ordinal);
 
-    // The library's own stale-warning diagnostics for the same document, rendered through the
-    // Slice F renderer — the established validate-test oracle shape.
+    // The library's own stale-warning diagnostics for the same document, rendered through
+    // DiagnosticRenderer: the established validate-test oracle shape.
     private static string StaleWarnings(string toml, string specPath)
     {
         var read = SpecReader.Read(toml, Path.GetFullPath(specPath));

@@ -12,8 +12,8 @@
        inherits all of this and carries only its own references/items. -->
   <PropertyGroup>
     <!-- xUnit v3 test projects are self-hosting Microsoft.Testing.Platform apps,
-         so they must build as executables. (Microsoft.NET.Test.Sdk used to set
-         this implicitly; it is no longer referenced — see the ItemGroup note.) -->
+         so they must build as executables. (Microsoft.NET.Test.Sdk, which would set
+         this implicitly, is not referenced; see the ItemGroup note.) -->
     <OutputType>Exe</OutputType>
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>

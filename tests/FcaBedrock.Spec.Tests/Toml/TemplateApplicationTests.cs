@@ -8,9 +8,9 @@ namespace FcaBedrock.Spec.Tests.Toml;
 
 /// <summary>
 /// §9.2's five-tier, field-wise, presence-based merge (D-114/D-121), asserted on
-/// the <b>resolved</b> attribute rather than on any intermediate structure — the
+/// the <b>resolved</b> attribute rather than on any intermediate structure: the
 /// contract is "a template behaves exactly as though its fields had been written
-/// on the attribute", so what must be pinned is what resolution actually produces.
+/// on the attribute", so what must be pinned is what resolution produces.
 /// <para>
 /// The tiers, lowest to highest: built-in defaults &lt; <c>[defaults]</c> &lt;
 /// matching matcher templates in declaration order &lt; the directly named
@@ -59,7 +59,7 @@ public sealed class TemplateApplicationTests
     [Fact]
     public void Apply_WhenDefaultsAuthorsAField_ThenItBeatsTheBuiltInDefault()
     {
-        // Tier 1 vs 2, the pre-M6 behaviour, asserted here as the merge's floor.
+        // Tier 1 vs 2, asserted here as the merge's floor.
         var attribute = ResolveSingle(DocumentFixtures.Document(
             [DocumentFixtures.Nominal("a", 0, ["x"])],
             defaults: new DefaultsSection(null, MissingPolicy.AsAttribute, null, null, null, null)));
@@ -102,8 +102,8 @@ public sealed class TemplateApplicationTests
     [Fact]
     public void Apply_WhenTheNamedTemplateAuthorsAField_ThenItBeatsEveryMatcher()
     {
-        // Tier 3 vs 4 — §9.2's correction of the old four-term shorthand: a DIRECT
-        // reference is more specific than a pattern, so it wins.
+        // Tier 3 vs 4: a DIRECT reference is more specific than a pattern, so it
+        // wins (§9.2).
         var attribute = ResolveSingle(With(
             DocumentFixtures.Attribute("a", DocumentFixtures.Column(0), template: "named",
                 discretizer: new IdentityDiscretizerSection(), scale: new NominalScaleSection(), declaredDomain: ["x"]),
@@ -524,8 +524,8 @@ public sealed class TemplateApplicationTests
     [Fact]
     public void Apply_WhenOnlyATemplateAuthorsNaming_ThenTheAttributeInheritsIt()
     {
-        // Template naming was carried-but-inert at Slice A; application is what makes it
-        // live (D-120/D-121).
+        // Template naming reaches the attribute through application
+        // (D-120/D-121).
         var attribute = ResolveSingle(With(
             DocumentFixtures.Nominal("a", 0, ["x"]),
             [DocumentFixtures.Template("t", displayName: "Alpha", formalAttributeFormat: "{display_name}-{value}")],

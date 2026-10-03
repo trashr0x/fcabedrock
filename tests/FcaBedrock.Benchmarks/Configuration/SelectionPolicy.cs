@@ -13,12 +13,12 @@ namespace FcaBedrock.Benchmarks.Configuration;
 /// The <see cref="BenchmarkCategories.External"/> cases are quick, but their corpus is acquired
 /// from a third-party host, so requiring them turns an unrelated outage into a failure of whatever
 /// run happened to select them. All three are therefore <b>opt-in by their own tier category and
-/// by nothing else</b> — a broad name filter such as <c>--filter *</c>, the case's own name, and a
-/// surface category such as <c>Source</c> all fail to reach them — and, when no category is named
+/// by nothing else</b> (a broad name filter such as <c>--filter *</c>, the case's own name, and a
+/// surface category such as <c>Source</c> all fail to reach them), and, when no category is named
 /// at all, the default selection is <see cref="BenchmarkCategories.Small"/>.
 /// </para>
 /// <para>
-/// The gate is per tier, not per opt-in: naming one tier reaches that tier and no other. Reaching
+/// The rule is per tier, not per opt-in: naming one tier reaches that tier and no other. Reaching
 /// <see cref="BenchmarkCategories.Working"/> through anything else would also be silently wrong in
 /// a second way, because <see cref="LongRunRequested"/> would stay false and minutes-scale cases
 /// would run under the throughput job's pilot stage (D-124).

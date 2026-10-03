@@ -13,7 +13,7 @@ namespace FcaBedrock.Benchmarks;
 /// <para>
 /// Every one of these guards is specified as a <b>strictly greater</b> comparison: reaching a limit
 /// exactly is not a breach, and one more is. A case set comfortably inside or comfortably outside a
-/// limit proves nothing about that rule — it would pass equally against a limit implemented as
+/// limit proves nothing about that rule, since it would pass equally against a limit implemented as
 /// <c>&gt;=</c>. So each boundary below is derived from the corpus by an independent oracle and then
 /// straddled: at the limit, one below it, and one above.
 /// </para>

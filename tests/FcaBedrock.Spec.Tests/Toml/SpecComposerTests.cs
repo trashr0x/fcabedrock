@@ -8,7 +8,7 @@ namespace FcaBedrock.Spec.Tests.Toml;
 
 /// <summary>
 /// §13 composition (D-027/D-052/D-078): the chain walk (root/base version
-/// gates, missing-base, cycles, base parse aggregation) and the merge fold —
+/// checks, missing-base, cycles, base parse aggregation) and the merge fold:
 /// per-field binding/defaults with presence semantics, whole-value nested
 /// binding tables, per-leaf output, position-preserving whole-attribute
 /// override, template/matcher carrier composition, per-spec [spec]/provenance,
@@ -16,8 +16,8 @@ namespace FcaBedrock.Spec.Tests.Toml;
 /// </summary>
 public sealed class SpecComposerTests
 {
-    // Resolve now returns Diagnosed<ResolvedDocument> (D-098); unwrap to the BedrockSpec for
-    // the composition assertions, and plan the M4 way (fully-declared calibrated state).
+    // Resolve returns Diagnosed<ResolvedDocument> (D-098); unwrap to the BedrockSpec for
+    // the composition assertions, and plan through the fully-declared calibrated state.
     private static Diagnosed<BedrockSpec> Resolve(SpecDocument document, SourceSchema? schema = null)
     {
         var resolved = SpecResolver.Resolve(document, schema);
@@ -56,7 +56,7 @@ public sealed class SpecComposerTests
     [InlineData("[spec]\nversion = 2\nextends = \"base.toml\"\n")]
     public void Compose_WhenRootVersionMissingOrNotOne_ThenFatalBeforeAnyLoad(string rootToml)
     {
-        // D-078: the root gate precedes any source consultation, so an
+        // D-078: the root version check precedes any source consultation, so an
         // unversioned root can never drive extends semantics or surface a
         // missing-base diagnostic first.
         var source = new InMemorySpecTextSource();
@@ -271,7 +271,7 @@ public sealed class SpecComposerTests
     public void Compose_WhenTripleColumnsAuthoredInBoth_ThenDerivedTableReplacesWhole()
     {
         // Same D-078 rule for the triple role map: a partial remap must not
-        // inherit the other roles (silent duplicate indices, unvalidated to M3).
+        // inherit the other roles (silent duplicate indices).
         var source = new InMemorySpecTextSource().Add("base.toml",
             "[spec]\nversion = 1\n[binding]\nshape = \"triple\"\nordering = \"subject_grouped\"\n" +
             "columns = { subject = 0, predicate = 1, value = 2 }\n");
@@ -681,10 +681,9 @@ public sealed class SpecComposerTests
     [Fact]
     public void Compose_WhenDerivedAttributeOverridesABaseOne_ThenTheNamingKeysTravelWithTheSection()
     {
-        // §13 rule 5 is a WHOLE-SECTION replacement, so the new init properties ride along
-        // automatically — and, symmetrically, the base's naming keys are dropped rather than
-        // inherited field-wise. Both halves are the contract, which is why no composer change
-        // was needed for attributes and templates.
+        // §13 rule 5 is a WHOLE-SECTION replacement, so the naming init properties ride along
+        // automatically, and, symmetrically, the base's naming keys are dropped rather than
+        // inherited field-wise. Both halves are the contract.
         var source = new InMemorySpecTextSource().Add("base.toml",
             "[spec]\nversion = 1\n\n[binding]\nshape = \"wide\"\n\n"
             + "[[attribute]]\nname = \"a\"\nsource = { kind = \"column\", index = 0 }\n"
@@ -718,7 +717,7 @@ public sealed class SpecComposerTests
         Assert.Null(template.DisplayName);
     }
 
-    // --- Composed template/matcher application, resolver-visible (M6 Slice B, D-121) ---
+    // --- Composed template/matcher application, resolver-visible (D-121) ---
 
     [Fact]
     public void Compose_WhenTemplatesAndMatchersAreInherited_ThenResolvedAttributesEqualTheFlatSpec()
@@ -796,14 +795,14 @@ public sealed class SpecComposerTests
     }
 
     /// <summary>
-    /// A deterministic structural description of the resolved attributes — the
+    /// A deterministic structural description of the resolved attributes: the
     /// resolver-visible half of §9.2's equivalence claim.
     /// <para>
     /// Spelled out rather than comparing <see cref="AttributeSpec"/> records directly:
     /// record equality compares each member with <c>EqualityComparer&lt;T&gt;.Default</c>,
     /// and the collection members are typed as interfaces, so two structurally identical
     /// domains held in different arrays compare UNEQUAL. Expanding them here compares
-    /// what the contract is actually about, and prints a readable diff when it fails.
+    /// what the contract is about, and prints a readable diff when it fails.
     /// </para>
     /// <para>
     /// Plan, fingerprint, and output-byte equivalence belong to the native pipeline suite
@@ -876,7 +875,7 @@ public sealed class SpecComposerTests
 
     /// <summary>
     /// Dictionary-backed source: canonical key = the reference verbatim. Counts
-    /// loads so tests can assert the root gate precedes any consultation.
+    /// loads so tests can assert the root version check precedes any consultation.
     /// </summary>
     private sealed class InMemorySpecTextSource : ISpecTextSource
     {

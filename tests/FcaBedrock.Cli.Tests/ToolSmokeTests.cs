@@ -311,7 +311,7 @@ public sealed class ToolSmokeTests(ToolPackage package)
     }
 
     // The first TOML basic string on the line, unescaped. Enough for the three fields this test
-    // reads — and honest about the escaping the writer actually applies to a Windows path.
+    // reads, and honest about the escaping the writer applies to a Windows path.
     private static string TomlString(string line)
     {
         var start = line.IndexOf('"', StringComparison.Ordinal);

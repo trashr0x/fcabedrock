@@ -1,6 +1,6 @@
 # FcaBedrock.Benchmarks
 
-The internal M8 benchmark suite: one BenchmarkDotNet host over the real production paths, plus the
+The internal benchmark suite: one BenchmarkDotNet host over the real production paths, plus the
 corpus, oracle, and evidence layer those measurements need to mean something. It is **not** a test
 project and is never reachable from `dotnet test` (principle EP-20); it is not packed, and no
 production package references it.
@@ -94,16 +94,19 @@ failure with the exact `prepare` command in the message; it is never quietly pas
 
 | | Bare run and routine CI | Explicit |
 | --- | --- | --- |
-| Small (incl. Micro) | yes | — |
+| Small (incl. Micro) | yes | not needed |
 | Working, Scale | no | `--anyCategories Working` / `Scale` |
 | External (UCI Adult) | no | `--anyCategories External` |
 
 Routine CI prepares `micro small` and runs `--anyCategories Small --filter '*' --job dry` on each
 native target, so a green CI run proves the Small-category cases and their oracles on that platform
-and makes **no claim** about Adult. The real-data evidence is required of the *candidate* instead: a
-successful `External` run on the final Windows x64 build is a blocking acceptance obligation for M8
-and for each release candidate (D-124, `docs/roadmap.md`). Routine CI can be green while it is
-outstanding — an unreachable UCI is then an evidence-availability failure, not a defect in the build.
+and makes **no claim** about Adult. The real-data evidence is required of the *candidate* instead:
+all three `External` cases (the source drain, `.dat` and `.cxt`) must pass on the final Windows x64
+build with the current delimited reader and the pinned corpus at acquisition revision 3 (32,561
+records). That is a blocking acceptance obligation before M8 as a whole is accepted and for each
+release candidate (D-124, `docs/roadmap.md`); a result from an earlier acquisition revision does
+not count. Routine CI can be green while it is outstanding; an unreachable UCI host is then an
+evidence-availability failure, not a defect in the build.
 
 ## Exit codes
 
@@ -138,7 +141,7 @@ the measured interval. The packaging smokes cover the real executable boundary.
 
 Generated corpora, produced artifacts, and BenchmarkDotNet's results are bulk evidence and stay out
 of Git. They live under `artifacts/bench/` by default; set `FCABEDROCK_BENCH_ROOT` to an absolute
-path to put them on another volume — the 73M tier is large.
+path to put them on another volume, because the 73M tier is large.
 
 ```
 <root>/corpus     prepared inputs and their specs

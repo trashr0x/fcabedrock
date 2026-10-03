@@ -206,7 +206,7 @@ internal sealed class CliHostRun(string label, CorpusCase corpus)
                 ToolVersion = "fcabedrock-vnext benchmark",
 
                 // Explicitly synthetic, and recorded as such: `command_line` is an audit record of
-                // what a process actually received, and a benchmark has none to report.
+                // what a process received, and a benchmark has none to report.
                 AuditArgv = [SyntheticArgv0, .. _argv],
                 OpenInput = CliEnvironment.OpenFile,
             }).ConfigureAwait(false);

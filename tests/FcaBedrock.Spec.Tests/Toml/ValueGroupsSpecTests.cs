@@ -8,8 +8,8 @@ using FcaBedrock.Spec.Toml;
 namespace FcaBedrock.Spec.Tests.Toml;
 
 /// <summary>
-/// The <c>value_groups</c> TOML surface (§11.6, M4 Slice E / D-090/D-104): the document carriers,
-/// the reader's parse-phase field gates (including the regex compile check and the G-11 matcher
+/// The <c>value_groups</c> TOML surface (§11.6, D-090/D-104): the document carriers,
+/// the reader's parse-phase field checks (including the regex compile check and the G-11 matcher
 /// predicate), canonical writing, authored-presence round-trip, the deep document snapshot, and
 /// the resolve seam with its two spec-validate diagnostics.
 /// <para>
@@ -138,10 +138,10 @@ public sealed class ValueGroupsSpecTests
     [Fact]
     public void Read_WhenGroupsAuthoredEmpty_ThenItCarriesANonNullEmptyList()
     {
-        // §11.6/D-104: `groups` is required but MAY be an empty array — it declares no explicit
+        // §11.6/D-104: `groups` is required but MAY be an empty array: it declares no explicit
         // groups, so every usable value is unmatched and follows the `unmatched` policy. The
         // carrier must therefore be an EMPTY list, never null: null is the omitted-key state the
-        // parse gate rejects (Read_WhenGroupsOmitted_ThenSpecFieldInvalid), and collapsing the two
+        // parse check rejects (Read_WhenGroupsOmitted_ThenSpecFieldInvalid), and collapsing the two
         // would turn a coherent spec into a parse error.
         var section = ReadDiscretizer("{ kind = \"value_groups\", groups = [] }");
 
@@ -157,7 +157,7 @@ public sealed class ValueGroupsSpecTests
             ReadDiscretizer("{ kind = \"value_groups\", groups = [{ label = \"G\", values = [\"b\", \"a\", \"b\"] }] }")
                 .Groups![0].Values);
 
-    // --- Reading: the parse-phase gates (§11.6 → SpecFieldInvalid) -------------
+    // --- Reading: the parse-phase checks (§11.6 → SpecFieldInvalid) ------------
 
     [Fact]
     public void Read_WhenGroupsOmitted_ThenSpecFieldInvalid() =>
@@ -183,7 +183,7 @@ public sealed class ValueGroupsSpecTests
     public void Read_WhenGroupLabelIsNotAString_ThenExactlyOneFieldErrorNotAlsoMissing()
     {
         // D-067, one condition → one code: a malformed field reports its own type error once and
-        // is NOT additionally reported as missing or matcher-less.
+        // is NOT also reported as missing or matcher-less.
         var result = SpecReader.Read(Attribute("{ kind = \"value_groups\", groups = [{ label = 4, values = [\"a\"] }] }"));
 
         var diagnostic = Assert.Single(result.Diagnostics);
@@ -274,7 +274,7 @@ public sealed class ValueGroupsSpecTests
     [Fact]
     public void Read_WhenMalformed_ThenNothingEscapesAsAnException()
     {
-        // The strict Core factories must never see malformed input: the reader gates first, so
+        // The strict Core factories must never see malformed input: the reader checks first, so
         // every authored error leaves on the diagnostic channel (EP-14).
         foreach (var discretizer in new[]
         {

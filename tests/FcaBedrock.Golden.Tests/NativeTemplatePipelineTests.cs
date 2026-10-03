@@ -12,16 +12,16 @@ using FcaBedrock.Spec.Toml;
 namespace FcaBedrock.Golden.Tests;
 
 /// <summary>
-/// Template/matcher application end-to-end on the <b>native</b> path (M6 Slice B,
-/// D-121): small in-memory specs and data through the complete production chain —
-/// read → compose → resolve → calibrate → plan → emit → write — asserting all
+/// Template/matcher application end-to-end on the <b>native</b> path (D-121):
+/// small in-memory specs and data through the complete production chain (read →
+/// compose → resolve → calibrate → plan → emit → write), asserting all
 /// three fingerprints <b>and</b> both <c>.cxt</c>/<c>.dat</c> byte outputs for
 /// every row of the §9/D-119 neutrality-and-change matrix that templates own.
 /// <para>
 /// Deliberately separate from the v2 golden comparisons: those are immutable
 /// evidence of what v2 produced (EP-9), while templates and matchers are native
 /// surface no v2 fixture uses. Asserting through the real pipeline rather than the
-/// Spec-side fingerprint API is what proves the claim that actually matters —
+/// Spec-side fingerprint API is what proves the claim that matters:
 /// §9.2's "semantically equivalent flat, materialized, template/matcher-authored,
 /// and extends-composed specs resolve to … byte-identical output". A fingerprint
 /// match alone would leave the writers unproven.
@@ -239,8 +239,7 @@ public sealed class NativeTemplatePipelineTests
     public async Task Convert_WhenATemplateSuppliesNaming_ThenOnlyCxtMoves()
     {
         // §10.7/D-117 reached through a TEMPLATE rather than the attribute: naming changes
-        // rendered .cxt names and the cxt fingerprint only. Template naming was carried
-        // but inert at Slice A; application is what makes it live.
+        // rendered .cxt names and the cxt fingerprint only.
         var baseline = await ConvertAsync(Declarative());
         var named = await ConvertAsync(Declarative("formal_attribute_format = \"{column}::{value}\"\n"));
 
@@ -308,7 +307,7 @@ public sealed class NativeTemplatePipelineTests
 
     /// <summary>
     /// Non-vacuity for the structural halves of <see cref="AssertIdentical"/>: the
-    /// snapshots must actually describe the expected formal attributes, so "the plans are
+    /// snapshots must describe the expected formal attributes, so "the plans are
     /// equal" is never a statement about two empty projections.
     /// </summary>
     private static void AssertPlanCovers(Converted converted, params string[] renderedNames)
@@ -331,7 +330,7 @@ public sealed class NativeTemplatePipelineTests
 
     /// <summary>
     /// A deterministic, exhaustive description of the <b>effective</b> resolved
-    /// attributes — what template application actually produced, before any planning.
+    /// attributes: what template application produced, before any planning.
     /// <para>
     /// Spelled out rather than comparing <c>AttributeSpec</c> records: record equality
     /// compares each member with <c>EqualityComparer&lt;T&gt;.Default</c>, and the

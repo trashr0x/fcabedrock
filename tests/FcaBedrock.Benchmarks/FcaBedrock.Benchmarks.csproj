@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <!-- The internal M8 benchmark host (D-124). An ordinary console executable that
+  <!-- The internal benchmark host (D-124). An ordinary console executable that
        BenchmarkDotNet drives; NOT a test project (see the local Directory.Build.props) and
        never packed, referenced by a production package, or shipped in a product artifact. -->
   <PropertyGroup>
@@ -11,7 +11,7 @@
     <AssemblyName>FcaBedrock.Benchmarks</AssemblyName>
     <RootNamespace>FcaBedrock.Benchmarks</RootNamespace>
     <!-- The GC and tiering settings are deliberately the product's defaults: a benchmark that
-         silently forces server GC would not be measuring what `fcabedrock` actually does. -->
+         silently forces server GC would not be measuring what `fcabedrock` does. -->
   </PropertyGroup>
 
   <ItemGroup>

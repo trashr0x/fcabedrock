@@ -19,9 +19,9 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <NoWarn>$(NoWarn);CS1591</NoWarn>
 
-    <!-- Warnings are errors everywhere, locally and in CI alike. The rule predates
-         `.github/workflows/ci.yml` and does not depend on it: a warning should stop
-         the build on the machine that produced it, not survive until a gate later.
+    <!-- Warnings are errors everywhere, locally and in CI alike. The rule does not depend on
+         `.github/workflows/ci.yml`: a warning should stop the build on the machine that
+         produced it, not survive until a later check.
          Use -p:TreatWarningsAsErrors=false for ad-hoc local debugging. -->
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>

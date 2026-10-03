@@ -11,7 +11,7 @@ using FcaBedrock.Sources;
 namespace FcaBedrock.Conversion.Tests;
 
 /// <summary>
-/// <c>value_groups</c> through Calibrate and Emit (§11.6, M4 Slice E / D-090/D-095/D-104):
+/// <c>value_groups</c> through Calibrate and Emit (§11.6, D-090/D-095/D-104):
 /// pass-through discovery on the raw stream for wide and both triple orderings, the pass-ownership
 /// contract when a count-sensitive attribute coexists, and classification/emission under all three
 /// unmatched policies.
@@ -359,7 +359,7 @@ public sealed class ValueGroupsConversionTests
     [Fact]
     public async Task CalibrateTripleAsync_WhenSubjectNotContiguousUnderSubjectGrouped_ThenTripleSubjectNotContiguous()
     {
-        // The G-3/D-099 structural checks are unchanged by Slice E.
+        // The G-3/D-099 structural checks still apply.
         var spec = new BedrockSpec(ConversionFixtures.Triple(TripleOrdering.SubjectGrouped),
             [PassthroughPredicate("edu", "edu", Group("School", "11th"))]);
 
@@ -434,9 +434,9 @@ public sealed class ValueGroupsConversionTests
     [Fact]
     public async Task CalibrateTripleAsync_WhenPassthroughCoexistsWithACountSensitiveTarget_ThenTwoPassesAndPassthroughIsFedOnlyFromTheRawOne()
     {
-        // The D-103 one-pass-per-observer rule with a Slice E observer in the mix: the
+        // The D-103 one-pass-per-observer rule with a pass-through observer in the mix: the
         // equal_frequency attribute forces the grouped second pass, but the passthrough observer
-        // must be fed ONLY from the raw pass — never both, or its bins would be discovered in
+        // must be fed ONLY from the raw pass, never both, or its bins would be discovered in
         // grouped order (and any diagnostic double-reported). Two passes exactly; never a third.
         var spec = new BedrockSpec(ConversionFixtures.Triple(TripleOrdering.Unordered), [
             PassthroughPredicate("edu", "edu", Group("School", "11th")),
@@ -537,8 +537,8 @@ public sealed class ValueGroupsConversionTests
     public async Task EmitAsync_WhenSkipAndIncludePolicy_ThenBehavesAsWarnWithNoIncludeCalibrationMarker()
     {
         // §11.6/D-090: an unmatched value is not a domain gap (value_groups ignores
-        // declared_domain, D-055), so `include` has nothing to extend — one Warning, no bin, and
-        // crucially NO UnknownValuePolicyInclude and no domain extension. The spec must also stay
+        // declared_domain, D-055), so `include` has nothing to extend: one Warning, no bin, and
+        // NO UnknownValuePolicyInclude and no domain extension. The spec must also stay
         // fully-declared: `include` must not drag it into a calibration pass.
         var spec = new BedrockSpec(ConversionFixtures.Wide(hasHeader: false),
             [Groups("edu", 0, ValueGroupsUnmatched.Skip, new NominalScale(), UnknownValuePolicy.Include, MissingPolicy.Skip,
@@ -698,7 +698,7 @@ public sealed class ValueGroupsConversionTests
     public async Task Emit_WhenAValueAppearsOnlyAfterCalibration_ThenTheKnownBinsGateMakesItUnknown()
     {
         // The between-pass data-change guard: a passthrough value the calibration never saw has no
-        // planned column, so the planned KnownBins gate turns it into an unknown rather than
+        // planned column, so the planned KnownBins check turns it into an unknown rather than
         // silently dropping it or inventing a column at emit.
         var spec = new BedrockSpec(ConversionFixtures.Wide(hasHeader: false), [Passthrough("edu", 0, Group("School", "11th"))]);
 

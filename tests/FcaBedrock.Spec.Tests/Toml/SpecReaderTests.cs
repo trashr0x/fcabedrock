@@ -223,7 +223,7 @@ public sealed class SpecReaderTests
     [Fact]
     public void Read_WhenFreePerValueDiscretizer_ThenFreePerValueDiscretizerSection()
     {
-        // §11.3/D-101: free_per_value is now an executable kind with a carrier (no parameters).
+        // §11.3/D-101: free_per_value is an executable kind with a carrier (no parameters).
         var document = ReadOk(Attribute("discretizer = { kind = \"free_per_value\" }"));
 
         Assert.IsType<FreePerValueDiscretizerSection>(document.Attributes[0].Discretizer);
@@ -315,7 +315,7 @@ public sealed class SpecReaderTests
     [Fact]
     public void Read_WhenNonStandardQuoteChar_ThenCarriedWithoutDiagnostics()
     {
-        // D-054: quote_char is a carrier here; standardness is the validation slice.
+        // D-054: quote_char is a carrier here; standardness is checked at the resolve seam.
         var result = SpecReader.Read("[binding]\nshape = \"wide\"\nquote_char = \"'\"\n");
 
         Assert.True(result.TryGetValue(out var document));
@@ -326,8 +326,8 @@ public sealed class SpecReaderTests
     [Fact]
     public void Read_WhenOrdinalOrderAuthoredWithCuts_ThenParsesClean()
     {
-        // D-060 boundary: ordinal-over-cuts checks are the validation slice, not
-        // the reader — the document admits the possibly-invalid state (D-066).
+        // D-060 boundary: ordinal-over-cuts checks belong to validation at the resolve seam,
+        // not to the reader; the document admits the possibly-invalid state (D-066).
         var result = SpecReader.Read(Attribute(
             "discretizer = { kind = \"manual_cuts\", cuts = [30] }\n" +
             "scale = { kind = \"ordinal\", order = [\"a\"] }"));

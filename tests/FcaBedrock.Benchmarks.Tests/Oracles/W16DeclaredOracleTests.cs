@@ -7,8 +7,8 @@ namespace FcaBedrock.Benchmarks.Tests.Oracles;
 
 /// <summary>
 /// The oracle is what turns a timing into evidence, so it is held to two things at once: it must
-/// agree with hand-derived facts, and it must agree with what the production pipeline actually
-/// produces — while being derived from the corpus definition and the spec's documented semantics
+/// agree with hand-derived facts, and it must agree with what the production pipeline
+/// produces, while being derived from the corpus definition and the spec's documented semantics
 /// rather than from the conversion code.
 /// </summary>
 public sealed class W16DeclaredOracleTests
@@ -94,9 +94,9 @@ public sealed class W16DeclaredOracleTests
     [Fact]
     public async Task Expect_ShouldMatchWhatTheProductionPipelineActuallyWrites()
     {
-        // The load-bearing test. Two independent derivations of the same artifact - one from the
-        // corpus definition plus the documented spec semantics, one from the shipped
-        // reader/planner/emitter/writer - must agree byte for byte. If they ever disagree, either
+        // The test the oracle stands on. Two independent derivations of the same artifact (one from
+        // the corpus definition plus the documented spec semantics, one from the shipped
+        // reader/planner/emitter/writer) must agree byte for byte. If they ever disagree, either
         // the pipeline changed behaviour or the oracle is wrong, and both are worth stopping for.
         using var temp = TempDirectory.Create();
         var (dataPath, specPath) = await WriteCorpusAsync(temp, records: 400);
