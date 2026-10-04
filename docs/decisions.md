@@ -171,7 +171,7 @@ changes an earlier one. A new entry MUST add its line here.
 
 ### M4 Slice A (calibration preparation)
 
-- D-098: M4 preparation contract: two-stage source bootstrap, token-paired provenance, calibrated state *(realizes D-093; makes the schema-aware-resolve move D-083 reserved; delimiter-alphabet refusal added in place on 2026-10-01)*
+- D-098: M4 preparation contract: two-stage source bootstrap, token-paired provenance, calibrated state *(realizes D-093; makes the schema-aware-resolve move D-083 reserved; delimiter-alphabet refusal added in place on 2026-10-01; closed-union claim corrected in place on 2026-10-04)*
 - D-099: Triple structural validity widens to calibrate/emit *(refines D-082/D-085/D-095; probe phase added by D-111)*
 - D-100: Per-phase `SourceValueUnparseable` aggregation across calibrate and emit *(refines D-097)*
 
@@ -570,7 +570,7 @@ of this file).
   **`BASE.manifest.toml`** sidecar *(refined by D-122: ordered `[[run.outputs]]`
   entries for every committed artifact)*; **`--no-manifest` suppresses it**. It
   carries tool version, spec/input hashes, per-artifact hashes, command line, and
-  the **complete retained calibration** *(refined by D-122/§15: ordered
+  the **complete retained calibration** *(refined by D-122 part 6 and spec §15: ordered
   `[[run.calibrations]]` covering all four outcome kinds; originally recorded
   auto-calibrated cuts only)*.
 - **Why:** the thesis frames Bedrock files as a reproducible record of how data
@@ -2613,7 +2613,8 @@ built; they refine, not reverse, D-009 / D-049 / D-050…D-065.
 ### D-081: Value-bin ordinal path (Slice H): identity + explicit order
 
 - **Status:** accepted (M2 Slice H; realizes the D-047-deferred value-bin path
-  and closes the F1 silent-output hole; refines D-060)
+  and closes the silent-output hole in which an `identity` + `ordinal` spec ignored its
+  authored `order` and `boundary`; refines D-060)
 - **Date:** 2026-07-05
 - **Decision:** the value-bin ordinal path (§12.3) is implemented, so an
   `ordinal` scale over a **value-bin** discretizer thresholds on the explicit
@@ -3228,8 +3229,8 @@ implementation added.
 - **Status:** accepted (pre-M4 Tier 1 audit; refines D-063/D-076/D-079).
   Merged-`dedupe` restriction and type-directed migration **clarified in place** by
   the pre-M4 Tier 2 audit (2026-07-13). The restriction-object encoding gained its
-  **`unknown_value_policy` key** in place at M4 Slice F (2026-07-17, the G-9
-  governance item; see D-105). Both amendments were made in place because the D-091
+  **`unknown_value_policy` key** in place at M4 Slice F (2026-07-17;
+  see D-105). Both amendments were made in place because the D-091
   contract was still unimplemented. **Realized by D-105.**
 - **Date:** 2026-07-12
 - **Decision:** the M4 execution semantics, numeric surface, migration mapping, and
@@ -3277,7 +3278,7 @@ implementation added.
     overlapping-but-non-identical ranges **not** merged; restriction objects (AND)
     sort likewise with exact duplicates removed; filter-only attributes contribute
     their object here, not through the included-attribute column encoding.
-    - *In-place amendment (M4 Slice F, G-9).* The `unknown_value_policy` key was
+    - *In-place amendment (M4 Slice F, D-105).* The `unknown_value_policy` key was
       **added** to the restriction object after this entry first landed. Reason: D-097
       makes the policy **live, byte/abort-affecting** configuration on a filter-only
       attribute (a `fail` spec aborts a run its otherwise-identical `warn` twin
@@ -3604,14 +3605,13 @@ diagnostics.
 ## M4 Slice A (calibration preparation)
 
 M4 Slices A to F (D-098 to D-105) implement the contracts of the two pre-M4 audits
-(D-088 to D-097). The labels G-1 to G-13 (with G-8b) number the governance items of the M4
-implementation plan; each slice entry's Status names the items it settles, and source comments
-cite them.
+(D-088 to D-097).
 
 ### D-098: M4 preparation contract: two-stage source bootstrap, token-paired provenance, calibrated state
 
-- **Status:** accepted (M4 Slice A; realizes D-093; the D-083-reserved schema-aware-resolve move;
-  the G-1 governance item); amended in place on 2026-10-01 for the delimiter-alphabet refusal
+- **Status:** accepted (M4 Slice A; realizes D-093; the D-083-reserved schema-aware-resolve move);
+  amended in place on 2026-10-01 for the delimiter-alphabet refusal, and on 2026-10-04 to
+  correct item 4's closed-union claim
 - **Date:** 2026-07-15
 - **Decision:** M4's Calibrate phase needs one preparation identity threaded from resolve
   through emit, and a source cannot exist before resolution (a source constructor needs the
@@ -3655,7 +3655,11 @@ cite them.
      (`SourceProvenance Provenance { get; }`): `TokenProvenance` for bound sources;
      `DescriptorProvenance(settings, roles)` for direct-constructed production sources (derived
      from the `Binding` they hold); and the explicit `SourceProvenance.Unvalidated` opt-out.
-     Weaker validation is *named*, never silent.
+     Weaker validation is *named*, never silent. Corrected in place on 2026-10-04: the union is
+     not mechanically closed. Its `private protected` base constructor blocks ordinary derivation
+     outside Core, but a record's protected copy constructor does not, so another assembly can
+     still define a variant. The step-5 pairing guards reject an unknown variant rather than
+     treating it as unvalidated.
   5. **Calibrate/Emit pair by provenance before reading any row**: token → `ReferenceEquals` with
      the resolution (full pairing); descriptor → settings value-equality + role-map equality +
      ordinal schema-value equality; unvalidated → schema-value only. Mismatch (or an unknown
@@ -3694,7 +3698,7 @@ cite them.
 
 ### D-099: Triple structural validity widens to calibrate/emit
 
-- **Status:** accepted (M4 Slice A; refines D-082/D-085/D-095; the G-3 governance item); the
+- **Status:** accepted (M4 Slice A; refines D-082/D-085/D-095); the
   probe phase added to both codes by D-111
 - **Date:** 2026-07-15
 - **Decision:** a triple **calibration** read enforces the same structural validity as emit: a
@@ -3719,7 +3723,7 @@ cite them.
 
 ### D-100: Per-phase `SourceValueUnparseable` aggregation across calibrate and emit
 
-- **Status:** accepted (M4 Slice A; refines D-097; the G-4 governance item)
+- **Status:** accepted (M4 Slice A; refines D-097)
 - **Date:** 2026-07-15
 - **Decision:** Calibrate and Emit are independent data-reading passes; each reports its **own**
   aggregated `SourceValueUnparseable` per attribute (calibrate reports only for the attributes it
@@ -3742,10 +3746,10 @@ cite them.
 
 ### D-101: `free_per_value` executable: string + numeric identity, `CanonicalNumber`, scoped zero canonicalization, seam-normalized numeric keys, natural-order default
 
-- **Status:** accepted (M4 Slice B; realizes D-061/D-092/D-096; the G-6/G-8 governance items); amended in place on 2026-10-01 for whitespace-tolerant `TryParse`
+- **Status:** accepted (M4 Slice B; realizes D-061/D-092/D-096); amended in place on 2026-10-01 for whitespace-tolerant `TryParse`
 - **Date:** 2026-07-16
 - **Decision:** the `free_per_value` discretizer (§11.3) becomes executable and leaves the
-  transitional read-reject set (G-8). It is **type-flexible** (D-061): with
+  transitional read-reject set (D-070). It is **type-flexible** (D-061): with
   `value_type = "string"` (the default) each raw spelling is its own bin, verbatim; with
   `value_type = "number"` the bin identity is the **parsed numeric value**, parsed with
   `binding.locale` (never ambient; EP-11), **finite-only**, and rendered by the one canonical §14
@@ -3753,7 +3757,7 @@ cite them.
   (`-0` included) collapses to `0` (D-092/D-096). A present-but-unparseable/non-finite numeric value
   is `BinResult.Unparseable` (§11.5). `identity` + `value_type = "number"` stays invalid: the numeric
   distinct binner is `free_per_value` (D-061); there is no second numeric distinct-value spelling.
-  - **`CanonicalNumber` (public, `Core.Fingerprinting`) + scoped zero canonicalization (G-6).** The
+  - **`CanonicalNumber` (public, `Core.Fingerprinting`) + scoped zero canonicalization.** The
     one §14 number-identity rule is made public: `Format(double)` reproduces the existing invariant
     shortest encoder **byte-for-byte** (`-0.0` still formats `"-0"`, so the `fp_format = 1` encoder
     and every stored hash are untouched), `CanonicalizeZero(double)` maps both signed zeros to positive
@@ -3782,7 +3786,7 @@ cite them.
     identities (`UnknownValuePolicyInclude`); the mode-triggered warnings fire at zero discoveries. A
     present-but-unparseable numeric value read during calibration is excluded from the population and
     reported as this phase's own aggregated `SourceValueUnparseable` at the severity
-    `unknown_value_policy` selects (D-100/G-4); under `fail` the calibrate Error aborts with no result.
+    `unknown_value_policy` selects (D-100); under `fail` the calibrate Error aborts with no result.
   - **Numeric value-bin ordinal natural-order default (§12.3/D-096).** A numeric `free_per_value`
     ordinal with **no authored `scale.order`** derives natural numeric **ascending** order from its
     (canonical) domain at plan, the one value-bin case exempt from `OrdinalOrderMissing`; every other
@@ -3796,10 +3800,10 @@ cite them.
 - **Why:** M4's first executable discretizer beyond manual cuts needs its numeric identity, seam
   normalization, calibration, ordinal, and fingerprint contracts pinned so `90`/`90.0` are one bin on
   every path (determinism, EP-7) and a signed zero never leaks into a key, label, or hash, without
-  moving the `fp_format = 1` bytes (G-6).
+  moving the `fp_format = 1` bytes.
 - **Rejected:** making `identity` also numeric-flexible (a second numeric distinct-value spelling,
   EP-5/D-061); canonicalizing zero inside `Format` or changing `CanonicalJson.AppendNumber` (would move
-  the standing `-0` bytes, G-6); normalizing the document model's authored spellings (breaks round-trip
+  the standing `-0` bytes); normalizing the document model's authored spellings (breaks round-trip
   fidelity, D-081); requiring an explicit order for numeric value bins (natural numeric order is
   unambiguous, D-096).
 - **Architecture-test correction.** Adding `free_per_value` made
@@ -3823,10 +3827,10 @@ cite them.
 
 ### D-102: `equal_width` executable: shared `NumericCutBins` engine, sign-aware cut formula, `CutPrecision`, pending→executable substitution, streaming min/max calibration
 
-- **Status:** accepted (M4 Slice C; realizes D-088/D-089/D-093/D-094; the G-5/G-7/G-8 governance items)
+- **Status:** accepted (M4 Slice C; realizes D-088/D-089/D-093/D-094)
 - **Date:** 2026-07-16
 - **Decision:** the `equal_width` discretizer (§11.4) becomes executable in both Slice C range
-  modes and leaves the transitional read-reject set (G-8). It is **number-fixing** (D-061):
+  modes and leaves the transitional read-reject set (D-070). It is **number-fixing** (D-061):
   an absent `value_type` resolves to `number` and an authored `value_type = "string"` is
   `SourceValueTypeInvalid`. Its bins are always **open-ended** (§11.4), so data outside the
   calibration span still falls in the first/last bin.
@@ -3846,15 +3850,15 @@ cite them.
     `CalibrationPending` carrier (D-093) that Calibrate replaces; there is no parallel
     unresolved-carrier shape. `range = "percentile_p1_p99"` is modelled in the Core enum; it
     stayed an unrecognized range (`SpecFieldInvalid`, the D-070 tier-3 posture) until its
-    calibration landed (D-103, G-8b), and it was never silently mapped to `min_max`.
-  - **The cut formula, pinned (G-5/G-7).** For `i = 1 .. bins-1` with `t = (double)i / bins`, the
+    calibration landed (D-103), and it was never silently mapped to `min_max`.
+  - **The cut formula, pinned.** For `i = 1 .. bins-1` with `t = (double)i / bins`, the
     interpolation is **sign-aware**: a same-sign span (or one with a zero bound) uses
     `vmin + (vmax - vmin) * t`; a span crossing zero uses the convex combination
     `vmin * (1 - t) + vmax * t`, whose terms are each bounded by their own operand. So **every
     finite increasing range derives finite cuts** (`[-1.7e308, 1.7e308]` included) where the
     naive always-`vmax - vmin` form would overflow it, and no range is rejected merely for being
-    wide (G-7). `precision` then rounds (`MidpointRounding.ToEven`, pinned), and every computed cut
-    is **positive-zero canonicalized** (G-6) so a computed `-0` never reaches a bin identity,
+    wide. `precision` then rounds (`MidpointRounding.ToEven`, pinned), and every computed cut
+    is **positive-zero canonicalized** so a computed `-0` never reaches a bin identity,
     label, or hash. Derived-cut validity is the backstop on the *result* (a `round_to` collapsing
     two cuts or, at the extreme margin of the double range, a span too narrow to hold `bins - 1`
     distinct representable cuts), never a second range gate, so its message names the outcome
@@ -3881,7 +3885,7 @@ cite them.
     `equal_width` whose range is not `min_max`. The second held the transitional line: until
     percentile had its calibration, hand-supplied cuts must not make it plannable, emittable, or
     fingerprintable ahead of its slice (the reader rejected the spelling, and this closed the
-    programmatic route, G-8). D-103 narrowed it to ranges other than `min_max` and
+    programmatic route). D-103 narrowed it to ranges other than `min_max` and
     `percentile_p1_p99`. `CalibrationCutsInvalid` stays for correctly-sized cuts the *data* could
     not make ascending.
   - **Calibration (extends the existing `Calibrator`; no second engine).** `min_max` reads the
@@ -3917,12 +3921,12 @@ cite them.
   have made a Slice D mode executable through the public calibrated-state API while the reader
   still rejected its spelling; one seam disagreeing with another is how transitional lines rot);
   the naive `vmin + (vmax - vmin) * t` for every span (overflows a wide
-  opposite-sign range that is perfectly valid; G-7); rejecting extreme ranges instead
+  opposite-sign range that is perfectly valid); rejecting extreme ranges instead
   (a finite increasing range is usable by construction); a distinct-value guard for equal_width
   (span-based binning tolerates sparse data, D-089); re-encoding resolved cuts in the discretizer
   sub-object (redundant with the schema bins, D-094); subject-local dedup or a grouped second pass
   for the triple min/max read (count-insensitive: it would buy nothing and cost a pass);
-  canonicalizing zero inside `Format` (would move the standing authored `-0` bytes, G-6);
+  canonicalizing zero inside `Format` (would move the standing authored `-0` bytes);
   accepting `percentile_p1_p99` before its calibration existed (a silent map to `min_max` would
   convert a spelling error into wrong output).
 - **Affects:** Core (`NumericCutBins`, `EqualWidthDiscretizer`, `EqualWidthRange`,
@@ -3938,20 +3942,20 @@ cite them.
 
 ### D-103: `equal_frequency` + percentile executable: exact-rational ranks, feasibility precedence, sign-aware midpoints, the bounded quantile accumulator, subject-local triple dedup
 
-- **Status:** accepted (M4 Slice D; realizes D-088/D-089/D-093/D-094/D-095; the G-5/G-6/G-8/G-13
-  governance items); its per-accumulator catalogue-at-most-fan-in and merge-all scheduling clauses
+- **Status:** accepted (M4 Slice D; realizes D-088/D-089/D-093/D-094/D-095);
+  its per-accumulator catalogue-at-most-fan-in and merge-all scheduling clauses
   superseded by D-128 (2026-09-21)
 - **Date:** 2026-07-17
 - **Decision:** the `equal_frequency` discretizer (§11.5) and `equal_width`
   `range = "percentile_p1_p99"` (§11.4) become executable: M4's **count-sensitive** calibration.
-  `equal_frequency` leaves the transitional read-reject set (G-8), and percentile becomes an
-  accepted spelling now that its calibration exists (D-102/G-8b). `equal_frequency` is
+  `equal_frequency` leaves the transitional read-reject set (D-070), and percentile becomes an
+  accepted spelling now that its calibration exists (D-102). `equal_frequency` is
   **number-fixing** (D-061) and, unlike `equal_width`, has **no spec-determined mode**: every
   configuration draws its cuts from the population, so it always resolves to the
   `CalibrationPending` carrier (D-093). Its bins are always **open-ended**, and it composes the
   shared `NumericCutBins` engine, so it needs no ordinal path of its own (cut geometry is the
   ordering authority, §12.3) and no second cut/render implementation (D-102).
-  - **Exact rank selection, separate from binary64 placement (G-5).** The rank target `N·k/bins` is
+  - **Exact rank selection, separate from binary64 placement.** The rank target `N·k/bins` is
     **never materialized** in floating point: both sides are cross-multiplied into `UInt128`
     (`C_i·bins` vs `N·k`, each below 2^94, so exact by construction). This is not pedantry: above
     2^53 a `double` rank target rounds onto a cumulative count and selects the group one too early,
@@ -3959,7 +3963,7 @@ cite them.
     case. Cut *placement* stays binary64, because a cut is a data value. An exact **group edge**
     (`N·k = C_i·bins`) separates whole groups, so `tie_policy` does not apply there; only a
     boundary landing strictly inside a run of equal values has a tie to resolve.
-  - **Feasibility prevails over tie-side preference, a normative §11.5 amendment (G-5).** Honoring
+  - **Feasibility prevails over tie-side preference, a normative §11.5 amendment.** Honoring
     `tie_policy` and producing `bins - 1` distinct ascending gaps can be mutually unsatisfiable,
     not only on collision/saturation but at **both domain edges** (`"right"` on the first group
     prefers a gap below the domain; `"left"` on the last prefers one above it). §11.5 now pins the
@@ -3970,14 +3974,14 @@ cite them.
     boundary, the §11.5 distinct-gap obligation becomes **total** and cuts are strictly ascending
     **by construction**; the post-hoc validity check is defense in depth, not the guarantee. Three
     normative examples land with the amendment (collision; last-group edge; first-group edge).
-  - **Sign-aware midpoint placement (G-5/G-6).** `cut_placement = "midpoint"` uses the same
+  - **Sign-aware midpoint placement.** `cut_placement = "midpoint"` uses the same
     sign-aware split as §11.4's interpolation (`a + (b-a)/2` for a same-sign gap, `(a+b)/2` for one
     crossing zero) because **neither form alone is safe**: the subtraction overflows an
     opposite-sign extreme gap and the sum overflows a same-sign one. The two branches must not be
     folded or reordered. A midpoint that cannot land strictly above `v_g` (adjacent representable
     doubles) falls back to `v_{g+1}`: membership-identical under half-open geometry, and it keeps
     the cut inside its own gap so the list's strict ascent survives. Every computed cut is
-    positive-zero canonicalized (G-6); authored existing-kind bytes and `fp_format = 1` are
+    positive-zero canonicalized; authored existing-kind bytes and `fp_format = 1` are
     untouched.
   - **Percentile is exact order statistics (D-089).** `p1`/`p99` are selected by the same `UInt128`
     comparisons over the same aggregated population, never interpolated between neighbours, never
@@ -4001,7 +4005,7 @@ cite them.
     distinct count is right either way, but *which* spelling survives into the key, the spilled
     run, and the merged row would otherwise depend on arrival order. Canonicalizing at intake pins
     the value a cut, label, or hash is derived from. All count arithmetic is `checked`; overflow is
-    the new `CalibrationPopulationTooLarge` (G-13).
+    the new `CalibrationPopulationTooLarge`.
   - **The honest two-tier resource contract.** **Tier 1** (byte-exact): the retained accumulator
     graph obeys `Σ Modeled(capacity_i) ≤ max(budget, A·FloorBytes)`; the floor arm is stated, not
     hidden, because a share below one entry cannot be honored. Sizing-probe transients are excluded
@@ -4107,13 +4111,13 @@ cite them.
 
 ### D-104: `value_groups` executable: first-match grouping, authored-presence matchers, raw-order pass-through discovery, ordinal over group labels, and the final deferred-kind retirement
 
-- **Status:** accepted (M4 Slice E; realizes D-022/D-055/D-090/D-093/D-094/D-095; the G-8/G-11
-  governance items; completes D-070's retirement)
+- **Status:** accepted (M4 Slice E; realizes D-022/D-055/D-090/D-093/D-094/D-095;
+  completes D-070's retirement)
 - **Date:** 2026-07-17
 - **Decision:** the `value_groups` discretizer (§11.6) becomes executable under **all three**
   `unmatched` policies, and with it **every v1 discretizer kind is executable**, so D-070's
   transitional read-reject set empties and `DiscretizerKindNotYetSupported` retires with its last
-  owner (G-8).
+  owner (D-070).
   - **Discretization, not domain membership.** `value_groups` is a **value-bin** discretizer whose
     bin universe is its *groups*, not a `declared_domain` (D-055), so `declared_domain` and
     `value_labels` are both **dormant** under it (§10.3/§10.8/D-049): authored, round-tripped,
@@ -4133,7 +4137,7 @@ cite them.
     inherit. Matching is **partial** (unanchored `IsMatch`) and **case-sensitive** unless the author
     writes an inline option such as `(?i)`. Nothing is trimmed, case-folded, anchored, or
     culture-normalized.
-  - **Authored presence survives into Core (G-11).** `ValueGroup.Values` is `null` when `values`
+  - **Authored presence survives into Core.** `ValueGroup.Values` is `null` when `values`
     was omitted and a list (**possibly empty**) when it was authored, because §14 encodes
     `values` only when authored and the two must be byte-distinct. Authored order and duplicates
     are retained: this is authored configuration, not a canonicalized set. The matcher-validity
@@ -4215,10 +4219,11 @@ cite them.
   fields; D-090/EP-14); a public `ValueGroup.Matches` or a production `InternalsVisibleTo` so the
   calibrator could match directly (the approved public surface is the pinned one, and the
   discretizer already answers the question through supported API); normalizing an authored
-  `values = []` to null (it is authored state the §14 bytes distinguish; G-11); sorting the
+  `values = []` to null (it is authored state the §14 bytes distinguish); sorting the
   `groups` array or the inner `values` (both are semantically ordered authored config); a
-  non-empty-groups requirement (D-090/G-11 make each *group* the unit of validity, and an empty
-  group list is coherent under `other`); rejecting a discovered bin that equals an authored label
+  non-empty-groups requirement (D-090 and the matcher-validity predicate above make each
+  *group* the unit of validity, and an empty group list is coherent under `other`); rejecting
+  a discovered bin that equals an authored label
   at construction (it is data-dependent: plan owns it as `FormalAttributeCollision`); routing
   pass-through through the count-sensitive machinery (its bound is the vocabulary, not the
   population; D-095); a natural order for ordinal group labels (they are strings; only numeric
@@ -4239,8 +4244,8 @@ cite them.
 
 ### D-105: `restrict_to` executable: exact numeric entries, existential object filtering, sequencing, filter-only diagnostics, emit observability, the policy-bearing `restrictions` container, and caller-discard output
 
-- **Status:** accepted (M4 Slice F; realizes D-091/D-097; the G-2/G-6/G-9/G-10/G-12
-  governance items; **completes M4**); amended in place on 2026-10-01 for data record indices
+- **Status:** accepted (M4 Slice F; realizes D-091/D-097;
+  **completes M4**); amended in place on 2026-10-01 for data record indices
 - **Date:** 2026-07-17
 - **Decision:** `restrict_to` executes.
   - **Exact numeric entries.** The public Core carrier is
@@ -4256,7 +4261,7 @@ cite them.
     non-finite that survives past it, which only a hand-built graph can produce. The
     union now has exactly three recognized variants; an unknown one is rejected at the
     trust boundary rather than silently ignored.
-  - **Zero canonicalization is scoped (G-6).** Restriction exact values and provided
+  - **Zero canonicalization is scoped.** Restriction exact values and provided
     range bounds are zero-canonicalized **at the seam** (the already-numeric arm of the
     D-096 chain) and migrated tokens at the migrator (the text-sourced arm), so an
     authored `-0` resolves, matches, plans, and hashes identically to `0`.
@@ -4277,7 +4282,7 @@ cite them.
   - **Restrictions filter objects, not observations.** A surviving object keeps **all**
     its crosses, not only the matching ones, so classification runs for every formed
     object, filtered or not.
-  - **Sequencing vs the object-key policies (G-2).** Restriction is evaluated on each
+  - **Sequencing vs the object-key policies.** Restriction is evaluated on each
     formed object's **complete** observation set; object formation order is unchanged.
     Wide single-pass: classify → filter → (survivors only) key validity, duplicate
     policy, name assignment. A non-surviving row **is not an object**, so it trips no
@@ -4310,16 +4315,16 @@ cite them.
     (count + ≤3 samples, in emission and plan order respectively), tracked over a bounded
     `bool[]` and a tally, never the matrix (EP-16). Only **emitted** objects count. They
     flush in the pinned order whole-context → rows → columns, and are suppressed on **any
-    invalid run**, the same predicate G-12 uses for the artifact itself: any Error/Fatal
-    among the emit diagnostics. That covers two cases, which differ in whether the stream
-    stops:
+    invalid run**, the same predicate the caller-discard contract below applies to the artifact
+    itself: any Error/Fatal among the emit diagnostics. That covers two cases, which differ in
+    whether the stream stops:
     - a **structural halt or storage failure** stops the object stream, so the aggregates
       would describe a truncated read (the established §16.4 rule, unchanged);
     - an **`unknown_value_policy = "fail"` abort** (a filter-only restriction's or an
       included attribute's) does **not** stop the stream (the aggregated per-attribute
       diagnostic requires reading the whole population, D-050/D-059, so enumeration
       completes and the Error flushes at the end), but the run is invalid, so describing
-      the shape of a context the caller must discard (G-12) is noise. Literal truncation
+      the shape of a context the caller must discard is noise. Literal truncation
       would contradict the aggregation contract and change the pre-Slice-F
       included-attribute `fail` behaviour, so "abort" here means §16.2's
       Error/operation-failed semantics, not "stop reading rows". The §18.1 and §16.2
@@ -4328,13 +4333,13 @@ cite them.
     first-pass claim single-counts them. Empty columns are **expected** after filtering,
     not a fault: §7 fixes the vocabulary over the input universe before objects are
     selected.
-  - **The `restrictions` fingerprint container (G-9/G-10).** Present in `shared` only when
+  - **The `restrictions` fingerprint container.** Present in `shared` only when
     some attribute restricts (so every restriction-free spec keeps its exact prior bytes
     and hashes), after `attributes` and `binding`. Each object carries `entries`, the
-    D-077 `source` encoding verbatim, and the resolved `unknown_value_policy` (G-9; see
+    D-077 `source` encoding verbatim, and the resolved `unknown_value_policy` (see
     the D-091 in-place amendment for why). Entries and objects are sorted by their
     complete canonical JSON with **`StringComparer.Ordinal`** (a **UTF-16 code-unit**
-    compare over the JSON strings, applied **before** UTF-8 encoding, G-10), and exact
+    compare over the JSON strings, applied **before** UTF-8 encoding), and exact
     canonical duplicates removed; overlapping-but-distinct ranges are never merged. This
     sorting/deduplication is a **fingerprint projection only**: the document, the resolved
     authored list, the plan, and emit all keep authored order and duplicates.
@@ -4346,7 +4351,7 @@ cite them.
     **invalid locale** reinterprets nothing, does not fall back to invariant, does not
     throw, and mints no migrate-phase diagnostic: full resolution owns
     `BindingLocaleInvalid` (D-067: one condition, one owner).
-  - **Caller-discard output contract (G-12), normative.** Writers serialize their inputs
+  - **Caller-discard output contract, normative.** Writers serialize their inputs
     to **caller-owned sinks** and remain semantically dumb (EP-15); they cannot retract
     bytes. A run's artifact is valid **only if** the run's collected diagnostics (for
     `.cxt`, inspected **after `EmitReplaySession` disposal**, which is when the final
@@ -4372,12 +4377,12 @@ cite them.
   D-057/D-063/D-076/D-079/D-091/D-097, but never executed: a spec could express a filter
   the converter rejected. Executing it closes v1's last silent-output gap in the M4 scope
   and is what makes the filter-only pattern (§10.4's "keep only objects whose Gene is
-  Bmp5" without a Gene column) real. The sequencing rule (G-2) had to be pinned because
+  Bmp5" without a Gene column) real. The sequencing rule had to be pinned because
   §6.1/§10.4 were silent on it and the two orders are observably different (a filtered
   row tripping `fail`, or consuming a `keep` name, changes the output). The policy key
-  (G-9) had to be added because D-097 turned `unknown_value_policy` into live
+  had to be added because D-097 turned `unknown_value_policy` into live
   configuration on attributes that have no other fingerprint carrier. The caller-discard
-  rule (G-12) had to become normative because §18.1's "the partial output is discarded"
+  rule had to become normative because §18.1's "the partial output is discarded"
   described something no writer can do.
 - **Rejected:** filtering rows before grouping under `dedupe` (contradicts D-091's
   group-first clause and would drop an object whose match arrives on a later row);
@@ -4404,7 +4409,8 @@ cite them.
   (`RestrictionFilter`, `EmitObservability`, `Emitter`), Spec (reader/writer/resolver
   exact-entry surface, `BedMigrator`), Diagnostics (+4, −1, 1 rename → **70**); spec §6.1 / §7 /
   §10.4 / §14 / §16.2 / §16.4 / §18.1 / §19.4; roadmap M4 exit. Realizes
-  D-021/D-057/D-063/D-076/D-079/D-091/D-097; amends D-091 in place (G-9). **Completes M4.**
+  D-021/D-057/D-063/D-076/D-079/D-091/D-097; amends D-091 in place (its
+  `unknown_value_policy` key). **Completes M4.**
 
 ---
 
@@ -5797,7 +5803,7 @@ and §16.4; D-120 and D-121 record the implemented naming, template and matcher 
   `calibrate` freezes an empty observed outcome **as `[]`**. The fully-frozen gate
   (§3/§14) therefore reads "**omitted** `declared_domain` under a consuming
   discretizer", so an authored `[]` no longer disqualifies. The code gap this
-  opened, an authored `[]` read as absent (D-098), was closed at M7 S1 (D-123
+  opened, an authored `[]` read as absent (D-098), was closed in M7's implementation (D-123
   point 10).
 - **Why:** this is the pre-implementation contract for M7, settled with explicit
   rulings by Constantinos Orphanides on 2026-07-22, including authored-empty domains,
@@ -5840,14 +5846,14 @@ and §16.4; D-120 and D-121 record the implemented naming, template and matcher 
 ### D-123: M7 implementation architecture and public surfaces: CLI boundary, parser, presentation, audit argv, filesystem identity, publication transaction, run manifest, freeze pairing, runtime options, and the CXT size advisory (registry 81 → 82)
 
 - **Status:** accepted (M7 implementation; realizes D-122's implementation architecture;
-  refines D-085's registry-timing rule). Slices S1 to S11 all landed by M7 Slice K, merged
-  2026-08-08; the roadmap's M7 exit block is the landed record. The reach of point 7
-  qualified by D-125 (2026-09-09).
+  refines D-085's registry-timing rule). All eleven implementation steps landed by M7
+  Slice K, merged 2026-08-08; the roadmap's M7 exit block is the landed record. The reach of
+  point 7 qualified by D-125 (2026-09-09).
 - **Date:** 2026-07-24
 - **Decision:** M7's implementation architecture and every new public surface are
   settled here. It records the concrete parser, serializer and transaction-mechanism
-  ownership D-122 left to the implementation plan; every point landed across slices
-  S1 to S11 (see Status).
+  ownership D-122 left to the implementation plan; every point landed across those
+  eleven steps (see Status).
 
   **1. Package boundary and dependency direction.** M7 ships one new package,
   `FcaBedrock.Cli`, a .NET global tool (`PackAsTool`, `ToolCommandName = fcabedrock`,
@@ -5984,7 +5990,7 @@ and §16.4; D-120 and D-121 record the implemented naming, template and matcher 
 
 ### D-124: M8 benchmark architecture: one internal BenchmarkDotNet host, an explicit corpus/oracle layer, tier-gated selection with a pinned opt-in external corpus, two benchmark-only friend grants, and the conforming calibration fix the suite found
 
-- **Status:** accepted, with M8 Slices S1 to S5 landed: both friend grants and the conforming
+- **Status:** accepted, with M8's first five steps landed: both friend grants and the conforming
   multi-attribute calibration correction with its replacement evidence. *Corrected 2026-09-09 by
   D-126:* the remaining-work status first recorded here was stale, and this entry's
   invalidation/recheck rule is amended for D-125's correction only. *Superseded 2026-09-21 by D-128*
@@ -6794,7 +6800,7 @@ and §16.4; D-120 and D-121 record the implemented naming, template and matcher 
   **1. Why the roadmap permits this.** M8's exit is "documented throughput/memory at
   target scale; no full-matrix materialization", and its M7-cost clause says M8
   **measures** inline input-stability and manifest hashing. Neither names a latency
-  threshold. The 5% figure enters only through the base plan's **optimization-adoption**
+  threshold. The 5% figure enters only through the M8 plan's **optimization-adoption**
   rule (a decision aid for whether to *change* a default, which M8 ran and did not meet;
   D-124) and through the later comparison's own pre-registered bound, which existed to
   earn a performance-continuity claim rather than to satisfy the roadmap. **EP-19** governs

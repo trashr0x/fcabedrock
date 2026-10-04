@@ -180,7 +180,7 @@ public sealed class CalibratedSpec
     /// any included attribute with a <see cref="CalibrationPending"/> discretizer, a
     /// consuming discretizer with an omitted (null) domain, or a consuming discretizer under
     /// <c>unknown_value_policy = "include"</c>. An authored <c>[]</c> is complete and never
-    /// counts on its own (D-122 §15). Excluded attributes and
+    /// counts on its own (D-122 part 15). Excluded attributes and
     /// <c>restrict_to</c> never count.
     /// </summary>
     public static bool RequiresData(BedrockSpec spec)
@@ -231,7 +231,7 @@ public sealed class CalibratedSpec
         var consumes = attribute.Discretizer is { } discretizer && ConsumesDomain(discretizer);
 
         // Omitted (null) consumed domain → filled from the observed domain (complete population).
-        // An authored [] is NOT omitted: it is a complete fixed empty domain (D-122 §15) and
+        // An authored [] is NOT omitted: it is a complete fixed empty domain (D-122 part 15) and
         // falls through to the include check / no-calibration path below.
         if (consumes && attribute.DeclaredDomain is null)
         {
@@ -247,7 +247,7 @@ public sealed class CalibratedSpec
         // Authored consumed domain (incl. []) under include → the domain plus the observed
         // additions. The omitted-domain branch above already returned on null and this branch
         // requires `consumes`, so the domain is non-null here; an authored [] contributes no
-        // declared values, so the effective domain is exactly the additions (D-122 §15).
+        // declared values, so the effective domain is exactly the additions (D-122 part 15).
         if (consumes && attribute.UnknownValuePolicy == UnknownValuePolicy.Include)
         {
             if (outcome is not IncludeAdditions additions)
@@ -281,7 +281,7 @@ public sealed class CalibratedSpec
     {
         switch (pending.Config)
         {
-            // §11.4/G-8/D-102/D-103: min_max and percentile_p1_p99 are the equal_width ranges
+            // §11.4/D-102/D-103: min_max and percentile_p1_p99 are the equal_width ranges
             // the calibrator resolves. The guard names both rather than accepting "any non-manual
             // range", so a range with no calibration cannot reach substitution. `manual` is
             // spec-determined and never pends (its own carrier constructor rejects it), so it can

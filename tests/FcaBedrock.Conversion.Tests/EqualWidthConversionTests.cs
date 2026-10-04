@@ -375,7 +375,7 @@ public sealed class EqualWidthConversionTests
     [Fact]
     public async Task CalibrateTriple_WhenSubjectUnusable_ThenObjectKeyValueInvalidHalts()
     {
-        // G-3/D-099: the triple structural checks stay intact for the cut-calibration pass.
+        // D-099: the triple structural checks stay intact for the cut-calibration pass.
         var result = await CalibrateTripleAsync(TripleSpec(TripleOrdering.SubjectGrouped), "s0,score,0\n ,score,100");
 
         Assert.False(result.IsOk);

@@ -23,7 +23,7 @@ namespace FcaBedrock.Conversion;
 /// some columns may legitimately end up empty (<c>AttributeHasNoCrosses</c>).
 /// </para>
 /// <para>
-/// <b>Artifact validity (§16.2/§18.1, G-12).</b> This emitter reports failures as diagnostics; it
+/// <b>Artifact validity (§16.2/§18.1, D-105).</b> This emitter reports failures as diagnostics; it
 /// does not, and cannot, retract bytes a writer has already put into a caller-owned sink. A
 /// run's output is valid <b>only if</b> its collected diagnostics contain no Error or Fatal once
 /// the run is complete (for the <c>.cxt</c> two-pass, only after
@@ -155,7 +155,7 @@ public static class Emitter
             {
                 var record = records.Current;
 
-                // §10.4/G-2 sequencing. The row IS the formed object here, so: classify, then filter,
+                // §10.4/D-105 sequencing. The row IS the formed object here, so: classify, then filter,
                 // then (only for a survivor) name.
                 //
                 // 1. Classify every included attribute. This runs for EVERY row, filtered or not:
@@ -186,7 +186,7 @@ public static class Emitter
                 if (columnKey is null)
                 {
                     // row_index: the source-assigned input position, verbatim. Filtering NEVER
-                    // renumbers it (§5.4/G-2): if row 0 is filtered and row 1 survives, the survivor
+                    // renumbers it (§5.4/D-105): if row 0 is filtered and row 1 survives, the survivor
                     // is still named "1".
                     name = record.Name;
                 }
@@ -212,7 +212,7 @@ public static class Emitter
                             {
                                 // §6.1: a duplicate key means the key does not identify objects; stop.
                                 // Only survivors are recorded, so a filtered row's key never trips this
-                                // (G-2): it is not an object, so it cannot duplicate one.
+                                // (D-105): it is not an object, so it cannot duplicate one.
                                 diagnostics.Add(new BedrockDiagnostic(
                                     DiagnosticCode.DuplicateObjectKey, DiagnosticSeverity.Error,
                                     $"The wide object key '{key}' at record {recordIndex} duplicates an earlier record; duplicate_object_policy = \"fail\" (§6.1).",
@@ -226,7 +226,7 @@ public static class Emitter
 
                         case DuplicateObjectPolicy.Keep:
                             // §6.1: keep names are assigned in EMISSION order, so a filtered row
-                            // consumes no assigned name and produces no suffix or diagnostic (G-2).
+                            // consumes no assigned name and produces no suffix or diagnostic (D-105).
                             name = keepNamer!.Assign(key!, recordIndex, out var duplicate, out var disambiguated);
                             if (duplicate)
                             {
@@ -374,7 +374,7 @@ public static class Emitter
                     }
                     else if (!string.Equals(key, currentKey, StringComparison.Ordinal))
                     {
-                        // §6.1/§10.4/G-2: the key change closes the merged group; grouping strictly
+                        // §6.1/§10.4/D-105: the key change closes the merged group; grouping strictly
                         // precedes filtering, so the restriction is evaluated existentially over ALL
                         // the merged observations. One match preserves the WHOLE object with all its
                         // crosses; otherwise the complete group is dropped, after grouping and
@@ -413,7 +413,7 @@ public static class Emitter
 
                 // §6.1 dedupe: repeated cleaned keys aggregate to one DuplicateObjectKey (Info) with a
                 // bounded source-order sample; silent when every key is unique. Flushed on normal
-                // completion. The count is PRE-FILTER by construction (G-2): the intake hook observes
+                // completion. The count is PRE-FILTER by construction (D-105): the intake hook observes
                 // the raw stream as it is grouped, so a merged object that restriction later drops has
                 // still already been counted here; the tally reports what the INPUT contained, which
                 // is what a duplicate-key report is for.
@@ -621,7 +621,7 @@ public static class Emitter
                     else if (!string.Equals(subject, currentSubject, StringComparison.Ordinal))
                     {
                         // Close the finished object in first-appearance order, then enforce contiguity.
-                        // §10.4/G-2: the subject's COMPLETE group is the formed object, so the
+                        // §10.4/D-105: the subject's COMPLETE group is the formed object, so the
                         // restriction decides emission only now, with every predicate/value
                         // observation for the subject seen. An absent restricted predicate therefore
                         // never matched, and the object fails. `completed` still records the subject
@@ -818,7 +818,7 @@ public static class Emitter
     //
     // Returns TRUE when any aggregate flushed at Error/Fatal, i.e. an `unknown_value_policy =
     // "fail"` abort (§10.6/§10.4/D-097). The caller uses it to suppress the whole-stream
-    // observability aggregates: that is the same rule G-12 states for the artifact itself (any
+    // observability aggregates: that is the same rule D-105 states for the artifact itself (any
     // Error/Fatal invalidates the run), so once the run is invalid, "your context has empty
     // columns" describes an artifact the caller must discard anyway.
     //
@@ -898,9 +898,9 @@ public static class Emitter
         }
     }
 
-    // Unknown categorical value severity (§10.6). "include" resolves at calibrate; a
-    // between-pass unknown reaching emit under it degrades to Warning (D-088 include-crash
-    // closure), the explicit Include → Warning fallback.
+    // Unknown categorical value severity (§10.6). "include" resolves at calibrate (D-098); an
+    // unknown value that reaches emit under it (one the calibration pass never saw) is reported
+    // as an aggregated Warning by the explicit Include → Warning arm, never thrown.
     private static DiagnosticSeverity? UnknownSeverity(UnknownValuePolicy policy) => policy switch
     {
         UnknownValuePolicy.Skip => null,

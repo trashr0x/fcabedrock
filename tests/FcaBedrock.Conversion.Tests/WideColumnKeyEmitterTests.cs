@@ -150,9 +150,10 @@ public sealed class WideColumnKeyEmitterTests
     [Fact]
     public async Task EmitAsync_WhenAttributeCellAbsentFromRaggedRow_ThenTreatedAsMissing()
     {
-        // An absent ORDINARY attribute cell behaves as missing (Q1): under as_attribute it crosses
-        // -missing, and the key is still valid so no ObjectKeyValueInvalid. The first (full) row sets
-        // the schema width so the attribute index is in range at plan; the second row is short.
+        // An absent ORDINARY attribute cell behaves as missing (§5.1.1, D-083): under as_attribute
+        // it crosses -missing, and the key is still valid so no ObjectKeyValueInvalid. The first
+        // (full) row sets the schema width so the attribute index is in range at plan; the second
+        // row is short.
         var spec = new BedrockSpec(ConversionFixtures.WideWithKey(0, DuplicateObjectPolicy.Fail),
             [ConversionFixtures.Nominal("a", 1, UnknownValuePolicy.Warn, MissingPolicy.AsAttribute, "x", "y")]);
 

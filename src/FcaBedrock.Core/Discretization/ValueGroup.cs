@@ -10,7 +10,7 @@ namespace FcaBedrock.Core.Discretization;
 /// <b>or</b> the pattern matches it (OR within a group); the discretizer walks groups
 /// in declaration order and the first match wins.
 /// <para>
-/// <b>Authored presence survives</b> (D-094/G-11): <see cref="Values"/> is
+/// <b>Authored presence survives</b> (D-094/D-104): <see cref="Values"/> is
 /// <see langword="null"/> when <c>values</c> was omitted and a list (possibly
 /// <b>empty</b>) when it was authored, because the §14 encoding writes <c>values</c>
 /// only when authored and an authored <c>values = []</c> must be byte-distinct from an
@@ -59,7 +59,7 @@ public sealed record ValueGroup
     /// <summary>
     /// The authored explicit values in authored order with duplicates retained, or
     /// <see langword="null"/> when <c>values</c> was not authored. An authored empty list is
-    /// preserved as empty (G-11): it is a valid matcher-free half of a group whose
+    /// preserved as empty (D-104): it is a valid matcher-free half of a group whose
     /// <see cref="Pattern"/> carries the matching.
     /// </summary>
     public IReadOnlyList<string>? Values { get; }
@@ -79,7 +79,7 @@ public sealed record ValueGroup
     /// <c>(values is { Count: &gt; 0 }) || pattern is not null</c>, applied after the
     /// individual empty-value/empty-pattern checks, so an authored <c>values = []</c>
     /// alone is invalid while <c>values = []</c> alongside a valid pattern is valid
-    /// (G-11). An authored empty list is never normalized to null.
+    /// (D-104). An authored empty list is never normalized to null.
     /// </exception>
     public static ValueGroup Create(string label, IReadOnlyList<string>? values, string? pattern)
     {
@@ -135,7 +135,7 @@ public sealed record ValueGroup
             }
         }
 
-        // G-11: at least one NON-EMPTY explicit value or a non-empty pattern. The empty checks
+        // D-104: at least one NON-EMPTY explicit value or a non-empty pattern. The empty checks
         // above already rejected empty entries, so a surviving non-empty list qualifies.
         if (snapshot is not { Count: > 0 } && pattern is null)
         {

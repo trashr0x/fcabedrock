@@ -3,7 +3,7 @@ using FcaBedrock.Core.Spec;
 namespace FcaBedrock.Spec.Toml;
 
 /// <summary>
-/// The Spec-layer pairing wrapper (D-098/G-1): a resolved <see cref="ResolvedSpec"/>
+/// The Spec-layer pairing wrapper (D-098): a resolved <see cref="ResolvedSpec"/>
 /// token paired with an immutable deep snapshot of the document it was resolved
 /// from. Sealed with an <b>internal</b> constructor: only <see cref="SpecResolver"/>
 /// (and Spec.Tests via the existing IVT) can mint one, so an unrelated document can

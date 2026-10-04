@@ -273,7 +273,7 @@ public static class FingerprintCalculator
         builder.Append('}');
     }
 
-    // §14/D-091/G-9/G-10: the `restrictions` container, the one §14 array that is canonically
+    // §14/D-091/D-105: the `restrictions` container, the one §14 array that is canonically
     // SORTED rather than left in planned order, because restriction order is semantically
     // immaterial (they AND together). Present ONLY when some attribute restricts, so
     // restriction-free specs keep their pinned bytes and stored hashes (D-077).
@@ -307,7 +307,7 @@ public static class FingerprintCalculator
     // One restriction object: {"entries":[…],"source":{…},"unknown_value_policy":"…"}; keys
     // sorted ordinal (entries < source < unknown_value_policy).
     //
-    // The policy key is G-9. D-097 makes unknown_value_policy LIVE, abort-vs-complete-affecting
+    // The policy key (D-105): D-097 makes unknown_value_policy LIVE, abort-vs-complete-affecting
     // configuration on a filter-only attribute (an unparseable filtered value is an Error under
     // `fail` and a Warning under `warn`), and a filter-only attribute never enters
     // `shared.attributes`, so without this key two specs that behave differently would hash
@@ -389,7 +389,7 @@ public static class FingerprintCalculator
         }
     }
 
-    // §14/G-10: sorts complete canonical-JSON strings with StringComparer.Ordinal, a UTF-16
+    // §14/D-105: sorts complete canonical-JSON strings with StringComparer.Ordinal, a UTF-16
     // code-unit compare over the JSON text, applied BEFORE the whole structure is UTF-8 encoded
     // (EP-12's definition of "ordinal"). This is not the same order as comparing UTF-8 bytes:
     // the two diverge between a BMP character at or above U+E000 and a supplementary character
@@ -436,7 +436,7 @@ public static class FingerprintCalculator
         // Effective domain only: cut discretizers ignore declared_domain (§10.3),
         // so an inert authored domain must not perturb the hash (D-077). A consuming
         // discretizer's effective domain is non-null here: calibration filled an omitted
-        // one, and an authored [] hashes as the empty array it is (D-122 §15).
+        // one, and an authored [] hashes as the empty array it is (D-122 part 15).
         builder.Append("{\"declared_domain\":");
         AppendStringArray(builder, discretizer.ConsumesDeclaredDomain ? attribute.DeclaredDomain ?? [] : []);
         builder.Append(",\"discretizer\":");
@@ -545,7 +545,7 @@ public static class FingerprintCalculator
                 // makes it the §14 arrays-in-planned-order default rather than an exception.
                 // Each group object sorts its keys label < pattern < values, and `pattern` /
                 // `values` appear ONLY when authored, so an omitted `values` and an authored
-                // `values = []` are byte-distinct (G-11). Inner values keep authored order with
+                // `values = []` are byte-distinct (D-104). Inner values keep authored order with
                 // duplicates retained: authored config, not a canonicalized set.
                 //
                 // Discovered passthrough bins are deliberately absent: they are effective, not
@@ -831,7 +831,7 @@ public static class FingerprintCalculator
 
     // §14/D-094: one group object, keys sorted label < pattern < values. Presence, not
     // emptiness, decides whether `pattern`/`values` appear, so an omitted `values` and an
-    // authored `values = []` encode differently (G-11).
+    // authored `values = []` encode differently (D-104).
     private static void AppendValueGroup(StringBuilder builder, ValueGroup group)
     {
         builder.Append("{\"label\":");

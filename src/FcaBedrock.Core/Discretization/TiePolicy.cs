@@ -10,7 +10,7 @@ namespace FcaBedrock.Core.Discretization;
 /// The policy is a <i>preference</i>, not a guarantee: producing <c>bins - 1</c>
 /// distinct ascending gaps can be mutually unsatisfiable with it, and §11.5 pins
 /// <b>feasibility over tie-side preference</b> whenever the preferred gap is
-/// unavailable, collisions and both domain edges included (D-103/G-5).
+/// unavailable, collisions and both domain edges included (D-103).
 /// </para>
 /// </summary>
 public enum TiePolicy

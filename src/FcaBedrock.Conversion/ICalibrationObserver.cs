@@ -47,7 +47,7 @@ internal interface ICalibrationObserver : IGroupingObserver
 
 /// <summary>
 /// The calibration population exceeded exact <see cref="long"/> counting (§16.4
-/// <c>CalibrationPopulationTooLarge</c>, D-103/G-13). Internal and thrown only from the
+/// <c>CalibrationPopulationTooLarge</c>, D-103). Internal and thrown only from the
 /// checked count sites: a per-value increment, the running total, the replay's
 /// cumulative, or a merge sum.
 /// <para>

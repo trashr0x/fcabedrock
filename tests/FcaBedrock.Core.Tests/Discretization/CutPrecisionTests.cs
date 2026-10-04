@@ -47,7 +47,7 @@ public sealed class CutPrecisionTests
     [InlineData(1.4, 1.0)]
     [InlineData(1.6, 2.0)]
     public void RoundTo_WhenMidpoint_ThenBanksToEven(double value, double expected) =>
-        // §11.4/G-5 pins MidpointRounding.ToEven. This asserts the mode the derivation applies
+        // §11.4/D-102 pins MidpointRounding.ToEven. This asserts the mode the derivation applies
         // (concretely, not by re-deriving it): away-from-zero would make 0.5 → 1 and move cuts.
         Assert.Equal(expected, Math.Round(value / 1.0, MidpointRounding.ToEven) * 1.0);
 

@@ -195,7 +195,7 @@ public static class SpecFreezer
 
     // §11.6/D-122 part 10: the frozen passthrough discretizer preserves the effective pre-existing
     // groups in order (each read verbatim from the effective ValueGroup, so an omitted values list and
-    // an authored values = [] stay byte-distinct, G-11), appends one singleton group { label = value,
+    // an authored values = [] stay byte-distinct, D-104), appends one singleton group { label = value,
     // values = [value] } per retained passthrough bin in first-observation order, and sets unmatched =
     // skip. The effective groups come from the calibrated spec because a template/matcher may have
     // supplied them (D-123 point 9); the bins come from the retained outcome.

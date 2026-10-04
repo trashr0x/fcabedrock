@@ -165,7 +165,7 @@ public sealed record EqualWidthDiscretizer : Discretizer
     }
 
     /// <summary>
-    /// The one <c>equal_width</c> cut formula (spec §11.4; the G-5 pinned expression
+    /// The one <c>equal_width</c> cut formula (spec §11.4; D-102's pinned expression
     /// order). Internal: <see cref="CreateManual"/> is the single boundary through
     /// which cuts are derived; the Conversion calibrator invokes that factory over
     /// the <b>calibrated</b> span rather than re-deriving, so auto and frozen cuts are
@@ -179,11 +179,11 @@ public sealed record EqualWidthDiscretizer : Discretizer
     /// convex combination <c>vmin * (1 - t) + vmax * t</c>, whose terms are each
     /// bounded by their own operand, so a range like
     /// <c>[-1.7e308, 1.7e308]</c> derives finite cuts rather than an overflow
-    /// (G-7: every finite increasing range is accepted; the derived-cut check is
+    /// (D-102: every finite increasing range is accepted; the derived-cut check is
     /// defense in depth). <paramref name="precision"/> then rounds
     /// (<see cref="MidpointRounding.ToEven"/>, pinned), and every cut is
     /// positive-zero canonicalized so a computed <c>-0</c> never reaches a bin
-    /// identity, label, or hash (G-6/D-096).
+    /// identity, label, or hash (D-096/D-102).
     /// </para>
     /// <para>
     /// Callers check the range first: the manual factory with
@@ -211,7 +211,7 @@ public sealed record EqualWidthDiscretizer : Discretizer
         {
             var t = (double)i / bins;
 
-            // The two branches are the pinned expression order (G-5); do not reorder or
+            // The two branches are the pinned expression order (D-102); do not reorder or
             // fold them into a single "always vmax - vmin" form, which overflows on a
             // wide opposite-sign span.
             var cut = crossesZero

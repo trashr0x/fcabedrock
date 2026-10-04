@@ -11,13 +11,13 @@ using FcaBedrock.Sources;
 
 namespace FcaBedrock.Conversion.Tests;
 
-// S3 (D-122 part 8 / D-123 point 11): the public byte- and fingerprint-neutral --temp-dir capability.
+// D-122 part 8 / D-123 point 11: the public byte- and fingerprint-neutral --temp-dir capability.
 // ConversionRuntimeOptions carries one runtime setting (TempDirectory) and maps it unchanged to the
 // internal GroupingOptions(tempDirectory:); the four additive Calibrator/Emitter overloads change only
-// where a spool workspace is created — never calibrated state, emitted objects, diagnostics, ordering,
-// output bytes, or fingerprints. The spill proof is composite (consensus S3 ruling): a direct
-// public->internal mapping assertion plus low-budget internal forced-spill placement/cleanup and
-// byte-equality, so no test allocates past the 64 MiB public default to force a spill.
+// where a spool workspace is created, never calibrated state, emitted objects, diagnostics, ordering,
+// output bytes, or fingerprints. The spill proof is composite: a direct public->internal mapping
+// assertion plus low-budget internal forced-spill placement/cleanup and byte-equality, so no test
+// allocates past the 64 MiB public default to force a spill.
 public sealed class ConversionRuntimeOptionsTests
 {
     // ---- options shape and validation -------------------------------------------------------------

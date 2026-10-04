@@ -22,7 +22,7 @@ public sealed class RestrictionWriterTests
     [Fact]
     public async Task Cxt_WhenRowIndexObjectsAreFiltered_ThenSurvivorNamesAreInputPositionsInTheBytes()
     {
-        // §5.4/G-2, the round-5 Medium-4 vector, asserted in the ACTUAL .cxt bytes: row_index
+        // §5.4/D-105, asserted in the ACTUAL .cxt bytes: row_index
         // names are source positions and filtering never renumbers them.
         //
         // The fixture is chosen so survivor rank and input position DISAGREE for every survivor:

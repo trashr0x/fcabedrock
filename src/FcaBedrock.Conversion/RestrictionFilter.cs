@@ -185,7 +185,7 @@ internal sealed class RestrictionFilter
     /// <para>
     /// Returns <see langword="true"/> when any aggregate flushed at Error: the <c>fail</c>-policy
     /// abort (§10.4/§10.6). The caller suppresses the whole-stream observability aggregates on it:
-    /// the run is invalid, so describing its shape is noise the caller must discard anyway (G-12).
+    /// the run is invalid, so describing its shape is noise the caller must discard anyway (D-105).
     /// </para>
     /// </summary>
     public bool Flush(ICollection<BedrockDiagnostic> diagnostics)
@@ -255,7 +255,7 @@ internal sealed class RestrictionFilter
             return false;
         }
 
-        // §10.4/§11.5/G-6: the numeric observation is parsed under the binding locale and
+        // §10.4/§11.5/D-105: the numeric observation is parsed under the binding locale and
         // zero-canonicalized, the text-sourced arm of the pinned chain. An unparseable or
         // non-finite input can match no numeric entry (not even {}), so it is a non-match; the
         // caller decides whether this path owns its diagnostic.

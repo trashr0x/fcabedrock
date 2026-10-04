@@ -7,7 +7,7 @@ using FcaBedrock.Core.Discretization;
 namespace FcaBedrock.Core.Tests.Discretization;
 
 /// <summary>
-/// The <c>value_groups</c> group contract (§11.6, D-090/G-11): authored presence, the matcher
+/// The <c>value_groups</c> group contract (§11.6, D-090/D-104): authored presence, the matcher
 /// predicate, and the exact regex semantics.
 /// <para>
 /// Matching is asserted through <see cref="ValueGroupsDiscretizer"/>'s public
@@ -28,18 +28,18 @@ public sealed class ValueGroupTests
         return discretizer.Discretize(value).Outcome == BinOutcome.Bin;
     }
 
-    // --- Authored presence (G-11) --------------------------------------------
+    // --- Authored presence (D-104) -------------------------------------------
 
     [Fact]
     public void Create_WhenValuesOmitted_ThenValuesIsNull() =>
         // null means "values was not authored": the distinction the §14 encoding and the
-        // round-trip both depend on (D-094/G-11).
+        // round-trip both depend on (D-094/D-104).
         Assert.Null(ValueGroup.Create("G", values: null, pattern: "^x").Values);
 
     [Fact]
     public void Create_WhenValuesAuthoredEmptyAlongsideAPattern_ThenEmptyListIsRetainedNotNormalizedToNull()
     {
-        // The G-11 rule that makes authored-[] and omitted byte-distinct: an authored empty list
+        // The D-104 rule that makes authored-[] and omitted byte-distinct: an authored empty list
         // survives as an EMPTY LIST, never collapsed to null.
         var group = ValueGroup.Create("G", values: [], pattern: "^x");
 
@@ -65,11 +65,11 @@ public sealed class ValueGroupTests
         // No normalization the contract does not ask for (D-090).
         Assert.Equal(" Mixed Case ", ValueGroup.Create(" Mixed Case ", ["a"], null).Label);
 
-    // --- The matcher-validity predicate (G-11) -------------------------------
+    // --- The matcher-validity predicate (D-104) ------------------------------
 
     [Fact]
     public void Create_WhenValuesAuthoredEmptyAndNoPattern_ThenThrows() =>
-        // `values = []` alone is authored-but-matches-nothing: the exact G-11 predicate is
+        // `values = []` alone is authored-but-matches-nothing: the exact D-104 predicate is
         // (values is { Count: > 0 }) || pattern is not null, so an empty list does not qualify.
         Assert.Throws<ArgumentException>(() => ValueGroup.Create("G", values: [], pattern: null));
 

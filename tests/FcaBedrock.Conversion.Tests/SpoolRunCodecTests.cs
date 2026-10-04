@@ -78,7 +78,7 @@ public sealed class SpoolRunCodecTests
     public void TryRead_WhenStreamThrowsIOException_ThenGroupingStorageMergeRead()
     {
         // A device/read fault after the run opened is an owned storage failure (MergeRead), never a raw
-        // exception escaping the seam (F1).
+        // exception escaping the seam (D-082).
         using var reader = new SpoolRunReader<TripleRow>(
             new ThrowOnReadStream(), TripleRowCodec.Instance, "run", GroupingOperation.MergeRead);
 

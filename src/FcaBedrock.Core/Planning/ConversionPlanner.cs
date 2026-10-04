@@ -429,7 +429,7 @@ public static class ConversionPlanner
                     new DiagnosticLocation(AttributeName: attribute.Name)));
             }
 
-            // §10.3 / D-036 / D-122 §15: an OMITTED domain on a consuming discretizer is
+            // §10.3 / D-036 / D-122 part 15: an OMITTED domain on a consuming discretizer is
             // filled by the Calibrate phase (ObservedDomainUsed), so the effective spec Plan
             // receives already carries a resolved domain. An authored [] is a complete fixed
             // empty domain: observed-domain calibration leaves it untouched, although
@@ -439,11 +439,11 @@ public static class ConversionPlanner
             // The effective bin universe. A consuming discretizer's domain is non-null here
             // (calibration filled an omitted one before plan); a cut discretizer's is ignored.
             // An authored [] is a genuine empty universe, not coalesced away, so the ordinal
-            // checks below still apply to it (D-122 §15).
+            // checks below still apply to it (D-122 part 15).
             var declaredDomain = attribute.DeclaredDomain ?? [];
 
-            // §12.3 / D-081 / D-122 §15: identity value bins need an explicit scale.order that is
-            // a full permutation of the declared_domain, or they would silently ignore the
+            // §12.3 / D-081 / D-122 part 15: identity value bins need an explicit scale.order that
+            // is a full permutation of the declared_domain, or they would silently ignore the
             // authored order/boundary. A complete empty universe (an authored []) is NOT exempt:
             // an omitted order there is OrdinalOrderMissing and order = [] is the valid empty
             // permutation. Cut discretizers ignore the domain and never take this path; their
@@ -594,7 +594,7 @@ public static class ConversionPlanner
 
             case ColumnObjectKey column when shape == SourceShape.Wide:
                 // The wide column-key index range check runs at spec-validate against
-                // the schema the two-stage bootstrap resolves against (G-1/D-098), and the
+                // the schema the two-stage bootstrap resolves against (D-098), and the
                 // ResolvedSpec trust boundary re-checks it, so an out-of-range index cannot
                 // reach here from the conversion path. A residual violation is a corrupt
                 // Core state (an unvalidated hand-built spec), not user input: throw.

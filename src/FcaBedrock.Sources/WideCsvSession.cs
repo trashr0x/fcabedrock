@@ -3,7 +3,7 @@ using FcaBedrock.Core.Spec;
 namespace FcaBedrock.Sources;
 
 /// <summary>
-/// The stage-2 wide source session (D-098/G-1): constructible from
+/// The stage-2 wide source session (D-098): constructible from
 /// <see cref="SourceReadSettings"/> alone (no resolved binding, no attribute
 /// indexes) and able to read the schema so the resolver can bind by header name.
 /// <para>

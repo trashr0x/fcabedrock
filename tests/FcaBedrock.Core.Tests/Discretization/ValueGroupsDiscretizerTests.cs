@@ -211,7 +211,7 @@ public sealed class ValueGroupsDiscretizerTests
     [Fact]
     public void Create_WhenNoGroups_ThenAllowedBecauseTheContractConstrainsGroupsNotTheirCount()
     {
-        // D-090/G-11 make each authored group and its matcher the unit of validity; there is no
+        // D-090/D-104 make each authored group and its matcher the unit of validity; there is no
         // non-empty-groups rule, and an empty group list is a coherent (if degenerate) spec:
         // under `other` every value bins to Other.
         var discretizer = ValueGroupsDiscretizer.Create([], ValueGroupsUnmatched.Other);

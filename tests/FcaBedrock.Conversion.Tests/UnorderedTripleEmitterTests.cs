@@ -108,7 +108,7 @@ public sealed class UnorderedTripleEmitterTests
     [Fact]
     public async Task Unordered_WhenLaterRowFollowsInvalidSubject_ThenHaltsAtErrorAndDropsLaterRows()
     {
-        // Codex halt-ordering: a structural subject error halts at that source record; a later row
+        // D-085: a structural subject error halts at that source record; a later row
         // must not be reordered ahead of it and must not influence output. Record 2 (Sam,job) must
         // not reach Sam before the invalid subject at record 1 halts the stream.
         var spec = new BedrockSpec(ConversionFixtures.Triple(TripleOrdering.Unordered),

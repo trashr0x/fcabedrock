@@ -107,7 +107,8 @@ internal sealed partial class PublicationTransaction
         // The DURABLE PHASE decides the direction, never the file layout. Committed
         // always finishes forward and RollingBack always finishes backward: a durable rollback
         // intent is the whole point of the marker, and letting an ownership inference override it
-        // would restore the hazard the phase-body rule closed. Only the ambiguous Staged phase, where
+        // would restore the hazard the durable phase markers close: a failed run whose files look
+        // like a completed commit would be finished forward. Only the ambiguous Staged phase, where
         // the run may have stopped on either side of its commit point, asks what the files prove.
         var forward = prior.Phase switch
         {

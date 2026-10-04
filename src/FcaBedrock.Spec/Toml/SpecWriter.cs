@@ -670,7 +670,7 @@ public static class SpecWriter
     // §11.6: one group: kind-free inline table in presentation order label, values, pattern.
     // Presence, not emptiness, decides whether values/pattern are written: an omitted `values`
     // stays omitted and an authored `values = []` writes `values = []`, which is what keeps
-    // parse→write→parse idempotent and the two states byte-distinct downstream (G-11/D-094).
+    // parse→write→parse idempotent and the two states byte-distinct downstream (D-094/D-104).
     private static string FormatValueGroup(ValueGroupSection group)
     {
         var items = new List<string>(3);
@@ -772,7 +772,7 @@ public static class SpecWriter
                     // The canonical invariant shortest form, via the same TomlLiteral encoder the
                     // range bounds and cut lists use, so 30, 30.0, and 3e1 all round-trip to
                     // { value = 30 }. Any -0 writes as 0, because FormatDouble renders an integral
-                    // value through long (G-6; the seam also canonicalizes resolved entries). The
+                    // value through long (D-105: the seam also canonicalizes resolved entries). The
                     // canonical text must be re-readable: the reader's exact-entry shape accepts
                     // exactly this.
                     items.Add(InlineTable([Item("value", TomlLiteral.FormatDouble(number.Value))]));

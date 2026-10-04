@@ -1,10 +1,10 @@
 namespace FcaBedrock.Cli.Tests;
 
 /// <summary>
-/// The injected environment facts themselves. The audit argv has no consumer until the run
-/// manifest lands (S5's writer is already byte-locked against it), so its carrier is pinned
-/// here: the value must survive the boundary verbatim, including an argv[0] that is not
-/// simply <c>fcabedrock</c>.
+/// The injected environment facts themselves. The audit argv is recorded verbatim as the run
+/// manifest's <c>command_line</c> (D-123 point 4), which <c>ConvertManifestTests</c> pins end
+/// to end through argv; its carrier is pinned here on its own: the value must survive the
+/// boundary verbatim, including an argv[0] that is not simply <c>fcabedrock</c>.
 /// </summary>
 public sealed class CliEnvironmentTests
 {

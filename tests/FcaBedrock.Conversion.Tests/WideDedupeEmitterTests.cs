@@ -181,7 +181,7 @@ public sealed class WideDedupeEmitterTests
         // per-field references). budget = 1 measures the max record size and the max resident row; under
         // budget = B every initial run stays within B + maxRecord (independent: from the actual files)
         // and the resident peak stays within 2·B + one max-resident row: at a spill the buffer is at most
-        // one List backing-array doubling (≤ B) past budget, plus one more row's retained bytes (F2).
+        // one List backing-array doubling (≤ B) past budget, plus one more row's retained bytes (D-082).
         var spec = new BedrockSpec(ConversionFixtures.WideWithKey(0, DuplicateObjectPolicy.Dedupe),
         [
             ConversionFixtures.Nominal("a", 1, "x", "y"),

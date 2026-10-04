@@ -4,7 +4,7 @@ using FcaBedrock.Sources;
 namespace FcaBedrock.Conversion;
 
 /// <summary>
-/// The preparation ↔ source pairing guard (D-098/G-1): before reading any row, a
+/// The preparation ↔ source pairing guard (D-098): before reading any row, a
 /// calibrate/emit pass validates that the source was prepared against the same
 /// resolution. Three states (<see cref="SourceProvenance"/>):
 /// <list type="bullet">

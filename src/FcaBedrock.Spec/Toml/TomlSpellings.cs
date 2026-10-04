@@ -65,7 +65,7 @@ internal static class TomlSpellings
 
     /// <summary>
     /// <c>equal_width.range</c> (§11.4). The table is the accepted TOML surface and
-    /// equals the Core enum, <c>"percentile_p1_p99"</c> included (D-102/D-103/G-8).
+    /// equals the Core enum, <c>"percentile_p1_p99"</c> included (D-102/D-103).
     /// </summary>
     internal static readonly (string Text, EqualWidthRange Value)[] EqualWidthRanges =
     [

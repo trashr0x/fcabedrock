@@ -92,7 +92,7 @@ public sealed class TripleEmitterTests
     [Fact]
     public async Task EmitTripleAsync_WhenPresentAndMissingSameAttribute_ThenCrossesValueAndMissing()
     {
-        // Operator/Codex point 3: a concrete value row and a present-missing row for the same
+        // §5.3.1/D-030: a concrete value row and a present-missing row for the same
         // subject+predicate (under as_attribute) union to both the value attribute and -missing.
         var spec = new BedrockSpec(ConversionFixtures.Triple(),
             [ConversionFixtures.PredicateNominal("skill", "skill", ["SQL", "Python"], missing: MissingPolicy.AsAttribute)]);

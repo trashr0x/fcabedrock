@@ -213,7 +213,7 @@ public enum DiagnosticCode
     /// <summary>
     /// An <c>equal_width</c> <c>range = "manual"</c> span is unusable: a non-finite
     /// <c>vmin</c>/<c>vmax</c>, or <c>vmin >= vmax</c>. Every finite increasing range is
-    /// accepted: the sign-aware interpolation cannot overflow one (G-7), so this owns
+    /// accepted: the sign-aware interpolation cannot overflow one (D-102), so this owns
     /// only genuinely unusable authored spans. Spec §11.4 / §16.4 (D-089).
     /// </summary>
     EqualWidthRangeInvalid,
@@ -414,7 +414,7 @@ public enum DiagnosticCode
     /// </summary>
     NoFormalAttributes,
 
-    // --- Calibrate (data-dependent schema resolution, D-098/G-1) ---
+    // --- Calibrate (data-dependent schema resolution, D-098) ---
 
     /// <summary>
     /// A consuming discretizer (<c>identity</c> / <c>free_per_value</c>) with an
@@ -466,7 +466,7 @@ public enum DiagnosticCode
     /// <summary>
     /// The calibration population is too large to count exactly: a per-value count, the
     /// running total, or a merge sum would overflow <see cref="long"/> (spec §16.4,
-    /// D-103/G-13). Error, calibrate, in-path (no calibrated result). A distinct
+    /// D-103). Error, calibrate, in-path (no calibrated result). A distinct
     /// condition from <see cref="CalibrationDataInsufficient"/> (too little data) and
     /// from a storage failure, so it must not masquerade as either (EP-14). A
     /// contract-totality row: unreachable below ~9.2e18 observations.

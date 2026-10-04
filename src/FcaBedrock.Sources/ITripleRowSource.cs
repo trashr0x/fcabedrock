@@ -13,7 +13,7 @@ namespace FcaBedrock.Sources;
 public interface ITripleRowSource
 {
     /// <summary>
-    /// What this source can prove about its preparation (D-098/G-1). See
+    /// What this source can prove about its preparation (D-098). See
     /// <see cref="IRecordSource.Provenance"/>: every implementor states it explicitly.
     /// </summary>
     SourceProvenance Provenance { get; }

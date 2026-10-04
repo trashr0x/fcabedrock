@@ -957,12 +957,12 @@ public sealed class EqualFrequencyConversionTests
     [Fact]
     public async Task Calibrate_WhenAMergeSumOverflows_ThenCalibrationPopulationTooLargeAtTheSeam()
     {
-        // G-13's public contract, not just the internal exception: code, Error severity, the
+        // D-103's overflow contract, not just the internal exception: code, Error severity, the
         // owning attribute, no calibrated result, and no GroupingStorageException leaking across
         // the seam. A long.MaxValue-sized fixture is not constructible,
         // so the counts are injected through the SAME failure-injection seam the storage tests use:
         // every run read back is replaced by a forged one-row run carrying long.MaxValue. Merging
-        // two such runs is exactly the checked sum G-13 owns.
+        // two such runs is exactly the checked sum D-103 requires.
         var forged = ForgedRun(value: 1.0, count: long.MaxValue);
         var fileSystem = new FakeSpoolFileSystem
         {

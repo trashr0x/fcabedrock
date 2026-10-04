@@ -7,7 +7,7 @@ namespace FcaBedrock.Conversion.Tests;
 
 /// <summary>
 /// The D-097 filter-only diagnostic ownership and the three whole-stream emit-observability
-/// aggregates (§16.4/D-058/D-105), plus the G-12 caller-discard contract.
+/// aggregates (§16.4/D-058/D-105), plus the D-105 caller-discard contract.
 /// <para>
 /// This is the <b>only</b> suite that asserts on the observability warnings; every other emit
 /// suite partitions them out (<see cref="ConversionFixtures.DataDiagnostics"/>) because they are
@@ -48,7 +48,7 @@ public sealed class EmitObservabilityTests
         Assert.Equal("age", diagnostic.Location?.AttributeName);
         Assert.Contains("abc", diagnostic.Message, StringComparison.Ordinal);
 
-        // §10.4/§10.6/G-12: `fail` is Error/**abort**, so the run is invalid and the
+        // §10.4/§10.6/D-105: `fail` is Error/**abort**, so the run is invalid and the
         // normal-completion observability aggregates are suppressed. Under every non-aborting
         // policy they still fire (this fixture filters its only row, so NoObjectsEmitted would
         // otherwise be present). Asserted in BOTH directions: severity alone would not catch an
@@ -683,12 +683,12 @@ public sealed class EmitObservabilityTests
         Assert.Contains("X.\n..\n", text, StringComparison.Ordinal); // row 0 crosses t-a; row 1 empty
     }
 
-    // --- G-12: the caller-discard contract ------------------------------------
+    // --- D-105: the caller-discard contract -----------------------------------
 
     [Fact]
     public async Task Cxt_WhenAStructuralHaltTruncatesBothPasses_ThenTheWriteSucceedsButAnErrorIsPresent()
     {
-        // G-12, the case the object-name-sequence invariant CANNOT catch: a DETERMINISTIC halt
+        // D-105, the case the object-name-sequence invariant CANNOT catch: a DETERMINISTIC halt
         // truncates both passes IDENTICALLY, so the names still align, the writer returns
         // successfully, and a structurally well-formed but TRUNCATED artifact exists on disk,
         // alongside an Error. Bytes already written to a caller-owned sink cannot be retracted,
@@ -723,7 +723,7 @@ public sealed class EmitObservabilityTests
     [Fact]
     public async Task Dat_WhenARestrictionFailPolicyErrors_ThenRowsWereAlreadyWrittenAndAnErrorIsPresent()
     {
-        // G-12's .dat half: the stream writes rows immediately, so by the time the filter-only
+        // D-105's .dat half: the stream writes rows immediately, so by the time the filter-only
         // `fail` aggregate reports its Error the bytes are already in the caller's sink. Nothing
         // can retract them: the caller must discard the artifact.
         var spec = Wide(
@@ -755,7 +755,7 @@ public sealed class EmitObservabilityTests
     [Fact]
     public async Task Emit_WhenTheRunIsClean_ThenNoErrorOrFatalIsPresent()
     {
-        // The positive half of the G-12 rule: a clean run carries no Error/Fatal, so the artifact
+        // The positive half of the D-105 rule: a clean run carries no Error/Fatal, so the artifact
         // is valid. Without this the contract would be untestable in the direction that matters.
         var spec = Wide(
             Filter("Gene", 0, new RestrictToValue("Bmp5")),

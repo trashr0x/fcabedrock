@@ -5,7 +5,7 @@ namespace FcaBedrock.Spec.Toml;
 
 /// <summary>
 /// Produces an immutable deep snapshot of a <see cref="SpecDocument"/> for
-/// <see cref="ResolvedDocument"/> (D-098/G-1): every section list/dictionary is
+/// <see cref="ResolvedDocument"/> (D-098): every section list/dictionary is
 /// rebuilt over <see cref="ImmutableArray{T}"/> / frozen maps, so post-resolve
 /// mutation of a caller-owned document cannot leak into fingerprinting. The
 /// scalar-only sections (<c>[spec]</c>, <c>[provenance]</c>, <c>[output]</c>,
@@ -64,7 +64,7 @@ internal static class DocumentSnapshot
         // §11.6: value_groups nests one list inside another, so the snapshot must be deep: the
         // outer groups list AND each group's authored values. Copying only the outer list would
         // leave every inner list caller-owned and mutable. `?.ToImmutableArray()` preserves the
-        // authored-null vs authored-empty distinction the §14 encoding depends on (G-11): null
+        // authored-null vs authored-empty distinction the §14 encoding depends on (D-104): null
         // stays null, and an authored empty list stays an (immutable) empty list.
         ValueGroupsDiscretizerSection { Groups: { } groups } valueGroups => valueGroups with
         {

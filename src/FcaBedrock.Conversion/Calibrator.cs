@@ -28,7 +28,7 @@ namespace FcaBedrock.Conversion;
 /// <para>
 /// A fully-declared spec skips the data pass: after the pairing guard the fast path returns
 /// <see cref="CalibratedSpec.FromFullyDeclared"/> without enumerating rows. All binding
-/// range checks are seam-owned (G-1); the calibrator emits no binding diagnostics.
+/// range checks are seam-owned (D-098); the calibrator emits no binding diagnostics.
 /// </para>
 /// <para>
 /// <b>Source passes.</b> Wide always reads once. Triple reads once for
@@ -55,7 +55,7 @@ public static class Calibrator
         CalibrateAsync(resolved, source, GroupingOptions.Default, observer: null, cancellationToken);
 
     /// <summary>
-    /// Calibrates a triple resolved spec over its source. Enforces the G-3 triple structural
+    /// Calibrates a triple resolved spec over its source. Enforces the D-099 triple structural
     /// checks with the same codes/severities as emit: a structurally unusable subject
     /// (<c>ObjectKeyValueInvalid</c>) halts any read, and non-contiguity
     /// (<c>TripleSubjectNotContiguous</c>) halts a <c>subject_grouped</c> read. A structural Error
@@ -96,7 +96,7 @@ public static class Calibrator
     /// <see cref="CalibrateTripleAsync(ResolvedSpec, ITripleRowSource, CancellationToken)"/>, with the
     /// temp-directory capability applied to spool storage placement only: byte- and
     /// fingerprint-neutral (D-082, D-123 point 11). Rejects a null <paramref name="runtimeOptions"/>
-    /// eagerly; the G-3 structural checks, pass counts, cancellation, cleanup, and diagnostic order
+    /// eagerly; the D-099 structural checks, pass counts, cancellation, cleanup, and diagnostic order
     /// are those of the three-argument overload, through the same implementation.
     /// </summary>
     public static ValueTask<Diagnosed<CalibratedSpec>> CalibrateTripleAsync(
@@ -224,7 +224,7 @@ public static class Calibrator
 
             // Pass 1 (always): the raw-order stream. Discovery-class observation happens here
             // (§17 rule 3 fixes first-observation order as RAW input order, which grouping would
-            // reorder), together with the G-3 structural checks. Under subject_grouped the
+            // reorder), together with the D-099 structural checks. Under subject_grouped the
             // subject runs are already contiguous, so this same pass also does the §5.3.1
             // subject-local deduplication for count-sensitive needs; under unordered it does NOT
             // touch them at all (the grouped pass below owns them exclusively).
@@ -266,7 +266,7 @@ public static class Calibrator
         return run.Complete(calibrated);
     }
 
-    // The raw-order triple pass: discovery-class observation, the G-3 structural checks, and,
+    // The raw-order triple pass: discovery-class observation, the D-099 structural checks, and,
     // under subject_grouped ONLY, inline subject-local dedup for count-sensitive needs. Returns
     // the structural diagnostic that halted it, or null.
     //
@@ -331,7 +331,7 @@ public static class Calibrator
         {
             var row = rows.Current;
 
-            // G-3/D-099: an unusable triple subject halts any calibration read (§5.4/§16.4).
+            // D-099: an unusable triple subject halts any calibration read (§5.4/§16.4).
             if (!ObjectNames.IsUsable(row.Subject))
             {
                 return new BedrockDiagnostic(
@@ -353,7 +353,7 @@ public static class Calibrator
                     completed.Add(currentSubject!);
                     if (completed.Contains(subject))
                     {
-                        // G-3: a subject recurring after its group closed halts a subject_grouped read (§5.3).
+                        // D-099: a subject recurring after its group closed halts a subject_grouped read (§5.3).
                         return new BedrockDiagnostic(
                             DiagnosticCode.TripleSubjectNotContiguous, DiagnosticSeverity.Error,
                             $"Triple subject '{subject}' recurs at record {row.RecordIndex} after an intervening subject; ordering = \"subject_grouped\" requires contiguous subjects (§5.3).",
@@ -619,7 +619,7 @@ public static class Calibrator
                         break;
                 }
 
-                // §11.5/D-100/G-4: numeric values excluded from the population because they are
+                // §11.5/D-100: numeric values excluded from the population because they are
                 // present-but-unparseable are reported here as this phase's own aggregated
                 // SourceValueUnparseable, at the severity unknown_value_policy selects (skip silent).
                 var unparseable = target.Observer.Unparseable;
@@ -689,7 +689,7 @@ public static class Calibrator
                 {
                     // Omitted (null) domain requests observed-domain calibration; an authored
                     // domain (including []) is complete and only reads data under include
-                    // (D-122 §15). So an authored [] under warn builds no observer.
+                    // (D-122 part 15). So an authored [] under warn builds no observer.
                     var absentDomain = attribute.DeclaredDomain is null;
                     var include = attribute.UnknownValuePolicy == UnknownValuePolicy.Include;
                     if (!absentDomain && !include)
@@ -709,7 +709,7 @@ public static class Calibrator
                         // possibly []). The explicit domain is already canonical for a numeric
                         // free_per_value (D-096), so seeding it verbatim matches the canonical keys
                         // observed values normalize to; an authored [] seeds nothing, so every
-                        // observed value becomes an addition (D-122 §15).
+                        // observed value becomes an addition (D-122 part 15).
                         observer.Seed(attribute.DeclaredDomain ?? []);
                     }
 

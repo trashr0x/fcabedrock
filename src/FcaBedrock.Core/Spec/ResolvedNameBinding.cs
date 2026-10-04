@@ -2,7 +2,7 @@ namespace FcaBedrock.Core.Spec;
 
 /// <summary>
 /// One name-bound reference and the resolved 0-based column index it produced,
-/// together with the binding <em>site</em> it proves (D-098/G-1). A bare
+/// together with the binding <em>site</em> it proves (D-098). A bare
 /// <c>(name, index)</c> pair would verify the header but not the member that uses
 /// it, so <see cref="ResolvedSpec.Create"/> re-checks both: the header carries
 /// exactly one ordinal occurrence of <see cref="Name"/> at <see cref="Index"/>,

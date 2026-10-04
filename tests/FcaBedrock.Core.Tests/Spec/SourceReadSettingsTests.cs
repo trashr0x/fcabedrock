@@ -3,7 +3,7 @@ using FcaBedrock.Core.Spec;
 namespace FcaBedrock.Core.Tests.Spec;
 
 // SourceReadSettings.Create is the EP-10 programmer-error backstop (the seam diagnoses authored
-// errors first); its exact exception contract is pinned here (D-098/G-1).
+// errors first); its exact exception contract is pinned here (D-098).
 public sealed class SourceReadSettingsTests
 {
     private static SourceReadSettings Wide(

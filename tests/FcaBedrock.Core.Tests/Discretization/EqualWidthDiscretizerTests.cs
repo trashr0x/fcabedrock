@@ -45,9 +45,9 @@ public sealed class EqualWidthDiscretizerTests
     [Fact]
     public void DeriveCuts_WhenSymmetricExtremeSpan_ThenPositiveZeroNotOverflow()
     {
-        // G-7: [-1.7e308, 1.7e308] is a FINITE increasing range and must be accepted. A naive
+        // D-102: [-1.7e308, 1.7e308] is a FINITE increasing range and must be accepted. A naive
         // vmin + (vmax - vmin) * t would overflow the subtraction to +∞; the sign-aware convex
-        // combination gives the true midpoint, 0, canonicalized to POSITIVE zero (G-6).
+        // combination gives the true midpoint, 0, canonicalized to POSITIVE zero.
         var cuts = EqualWidthDiscretizer.DeriveCuts(2, -1.7e308, 1.7e308, CutPrecision.Exact);
 
         var cut = Assert.Single(cuts);
@@ -100,14 +100,14 @@ public sealed class EqualWidthDiscretizerTests
     [Fact]
     public void DeriveCuts_WhenComputedCutWouldBeNegativeZero_ThenCanonicalizedToPositiveZero()
     {
-        // G-6: the midpoint of [-1, 0.6] is -0.2, which round_to = 1 banks onto NEGATIVE zero.
+        // D-102: the midpoint of [-1, 0.6] is -0.2, which round_to = 1 banks onto NEGATIVE zero.
         // Canonicalization must turn it positive so the sign never reaches a bin identity, label,
         // or hash, and so the cut labels "0", never "-0".
         var cuts = EqualWidthDiscretizer.DeriveCuts(2, -1.0, 0.6, RoundToPrecision.Create(1));
 
         var cut = Assert.Single(cuts);
         Assert.Equal(0.0, cut);
-        Assert.False(double.IsNegative(cut), "a computed -0 must be canonicalized to +0 (G-6)");
+        Assert.False(double.IsNegative(cut), "a computed -0 must be canonicalized to +0");
     }
 
     [Fact]
@@ -137,7 +137,7 @@ public sealed class EqualWidthDiscretizerTests
 
     [Fact]
     public void CreateManual_WhenExtremeRange_ThenAcceptedRatherThanRejected() =>
-        // G-7 restated as behaviour: a finite increasing range is never rejected merely for being
+        // D-102 restated as behaviour: a finite increasing range is never rejected merely for being
         // wide. The derived-cut check is a backstop on the result, not a second range check.
         Assert.True(
             EqualWidthDiscretizer.CreateManual(2, -1.7e308, 1.7e308, CutPrecision.Exact, CultureInfo.InvariantCulture).IsOk);
@@ -220,9 +220,9 @@ public sealed class EqualWidthDiscretizerTests
 
     [Fact]
     public void FromCalibratedCuts_WhenPercentileRange_ThenUnreachableBecauseThePendingCarrierIsMinMaxOnlyThisSlice() =>
-        // The Slice C transitional boundary is enforced by CalibratedSpec.Create before this
-        // factory is reached (see CalibratedSpecTests) — percentile has no calibration until
-        // Slice D, so it must not become executable by any route (G-8/D-102).
+        // A pending percentile_p1_p99 range is a legitimate carrier: percentile has its calibration
+        // (D-103), and CalibratedSpec.Create substitutes it exactly like min_max (see
+        // CalibratedSpecTests). This test pins only that the carrier keeps the range.
         Assert.Equal(
             EqualWidthRange.PercentileP1P99,
             new PendingEqualWidth(4, EqualWidthRange.PercentileP1P99, CutPrecision.Exact).Range);

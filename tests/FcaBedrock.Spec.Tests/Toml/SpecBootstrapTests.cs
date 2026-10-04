@@ -4,7 +4,7 @@ using FcaBedrock.Spec.Toml;
 
 namespace FcaBedrock.Spec.Tests.Toml;
 
-// The two-stage bootstrap resolver surface (D-098/G-1): ResolveReadSettings prefix checks and the
+// The two-stage bootstrap resolver surface (D-098): ResolveReadSettings prefix checks and the
 // full-resolve success check (strict factories run only behind a clean pass, so aggregation never
 // throws).
 public sealed class SpecBootstrapTests
@@ -82,7 +82,7 @@ public sealed class SpecBootstrapTests
     public void Resolve_WhenQuoteUnsupportedAndDelimiterConflict_ThenFailsWithBothAndNoThrow()
     {
         // Two independent binding errors aggregate on the diagnostic channel; the strict factories
-        // never run after the failing check, so no exception escapes (round-7 High-1).
+        // never run after the failing check, so no exception escapes (D-098 step 3).
         var toml = "[spec]\nversion = 1\n[binding]\nshape = \"wide\"\ndelimiter = \"|\"\nquote_char = \"|\"\n";
         var document = Doc(toml);
 

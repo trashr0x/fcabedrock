@@ -15,7 +15,7 @@ namespace FcaBedrock.Conversion;
 /// them as one value, so the distinct count is right either way), but <i>which</i> spelling
 /// survives into a run, and therefore into the merged row, would otherwise depend on
 /// insertion and heap order. Canonicalizing at intake removes that freedom, so the value a
-/// cut, label, or hash is derived from is pinned rather than incidental (G-6/D-096).
+/// cut, label, or hash is derived from is pinned rather than incidental (D-096/D-103).
 /// </para>
 /// </summary>
 internal readonly record struct ValueCount(double Value, long Count);

@@ -272,8 +272,8 @@ public sealed class PercentileConversionTests
     [Fact]
     public async Task Calibrate_WhenZeroIsTheSpanBound_ThenComputedCutsCarryPositiveZero()
     {
-        // G-6: a computed -0 must never reach a bin identity, label, or hash. Only the bit pattern
-        // can prove it, since -0.0 == 0.0.
+        // D-102: a computed -0 must never reach a bin identity, label, or hash. Only the bit
+        // pattern can prove it, since -0.0 == 0.0.
         var calibrated = await CalibrateOkAsync(Wide(Pending("score", 0, 2, new NominalScale())), "-4\n4");
 
         var cut = CutsOf(calibrated, "score")[0];

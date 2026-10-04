@@ -6,7 +6,7 @@ namespace FcaBedrock.Conversion.Tests;
 
 /// <summary>
 /// <c>restrict_to</c> execution at emit (§10.4/D-091/D-097/D-105): existential matching over
-/// formed objects, the G-2 sequencing against the object-key policies, and the D-097 diagnostic
+/// formed objects, the D-105 sequencing against the object-key policies, and the D-097 diagnostic
 /// ownership split.
 /// <para>
 /// Expected survivors are worked out <b>by hand</b> from the spec's rules in each test, never by
@@ -87,7 +87,7 @@ public sealed class RestrictionEmitterTests
         Assert.Equal(["0"], objects.Select(o => o.Name));
     }
 
-    // --- numeric matching (§10.4/D-091/G-6) ---------------------------------
+    // --- numeric matching (§10.4/D-091/D-105) -------------------------------
 
     [Theory]
     [InlineData("30", true)]      // exact
@@ -117,7 +117,7 @@ public sealed class RestrictionEmitterTests
     [InlineData("0.0", true)]
     public async Task Emit_WhenExactZeroRestriction_ThenEveryZeroSpellingMatches(string raw, bool survives)
     {
-        // G-6: the observation is zero-canonicalized after parsing, and the entry was
+        // D-105: the observation is zero-canonicalized after parsing, and the entry was
         // zero-canonicalized at the seam, so both signed zeros are one identity.
         var spec = Wide(FilterNumeric("age", 0, new RestrictToNumber(0)), ConversionFixtures.Nominal("t", 1, "x"));
 
@@ -272,12 +272,12 @@ public sealed class RestrictionEmitterTests
         Assert.Equal([0], survivor.CrossedFormalAttributeIds); // still crosses its own column
     }
 
-    // --- G-2: sequencing vs the object-key policies --------------------------
+    // --- D-105: sequencing vs the object-key policies ------------------------
 
     [Fact]
     public async Task Emit_WhenRowIndexKeyAndRowsAreFiltered_ThenSurvivorsKeepTheirInputPositions()
     {
-        // §5.4/G-2 (round-5 Medium-4): row_index names are SOURCE positions and filtering never
+        // §5.4/D-105: row_index names are SOURCE positions and filtering never
         // renumbers them. Row 0 is filtered and row 1 survives → the survivor is still "1", not
         // "0". A survivor-rank implementation would name it "0" and pass a weaker test.
         var spec = Wide(Filter("Gene", 0, new RestrictToValue("Bmp5")), ConversionFixtures.Nominal("t", 1, "x"));
@@ -291,7 +291,7 @@ public sealed class RestrictionEmitterTests
     [Fact]
     public async Task Emit_WhenFilteredRowDuplicatesAKeyUnderFail_ThenItDoesNotTripTheDuplicateCheck()
     {
-        // G-2: a non-surviving row is not an object, so it cannot duplicate one. The filtered row
+        // D-105: a non-surviving row is not an object, so it cannot duplicate one. The filtered row
         // repeats key "p1"; under `fail` that would halt if the check ran before the filter.
         var spec = WideKeyed(
             DuplicateObjectPolicy.Fail,
@@ -307,7 +307,7 @@ public sealed class RestrictionEmitterTests
     [Fact]
     public async Task Emit_WhenFilteredRowSharesAKeyUnderKeep_ThenItConsumesNoAssignedName()
     {
-        // §6.1/G-2: keep names are assigned in EMISSION order, so a filtered row consumes no
+        // §6.1/D-105: keep names are assigned in EMISSION order, so a filtered row consumes no
         // assigned name and produces no suffix and no diagnostic. Here the FILTERED row is the
         // first occurrence of "p1"; if it had consumed the name, the survivor would be renamed
         // "p1#2" instead of taking the bare key.
@@ -339,12 +339,12 @@ public sealed class RestrictionEmitterTests
         Assert.Single(diagnostics, d => d.Code == DiagnosticCode.DuplicateObjectKey && d.Severity == DiagnosticSeverity.Warning);
     }
 
-    // --- G-2: wide dedupe ----------------------------------------------------
+    // --- D-105: wide dedupe --------------------------------------------------
 
     [Fact]
     public async Task EmitDedupe_WhenALaterMergedRowSuppliesTheMatch_ThenTheWholeObjectSurvives()
     {
-        // §6.1/§10.4/G-2: grouping strictly PRECEDES filtering, and the restriction is evaluated
+        // §6.1/§10.4/D-105: grouping strictly PRECEDES filtering, and the restriction is evaluated
         // existentially over the MERGED observations. The match arrives on the group's SECOND row:
         // an implementation that filtered rows before grouping would drop the first row, and one
         // that only checked the first row would drop the group entirely.
@@ -365,7 +365,7 @@ public sealed class RestrictionEmitterTests
     [Fact]
     public async Task EmitDedupe_WhenAMergedObjectIsFiltered_ThenItsDuplicateInfoIsStillCountedPreFilter()
     {
-        // G-2: the intake hook observes the RAW stream as it is grouped, so the aggregated
+        // D-105: the intake hook observes the RAW stream as it is grouped, so the aggregated
         // DuplicateObjectKey (Info) count is pre-filter: it reports what the INPUT contained,
         // which is what a duplicate-key report is for. p2's two rows merge and are then dropped
         // by the filter, and the merge is still counted.
@@ -383,14 +383,14 @@ public sealed class RestrictionEmitterTests
         Assert.Contains("1 record(s)", info.Message, StringComparison.Ordinal); // p2's second row
     }
 
-    // --- G-2: triple, both orderings ----------------------------------------
+    // --- D-105: triple, both orderings --------------------------------------
 
     [Theory]
     [InlineData(TripleOrdering.SubjectGrouped)]
     [InlineData(TripleOrdering.Unordered)]
     public async Task EmitTriple_WhenSubjectGroupCloses_ThenTheRestrictionDecidesEmission(TripleOrdering ordering)
     {
-        // §10.4/G-2: the subject's COMPLETE group is the formed object, so emission is decided at
+        // §10.4/D-105: the subject's COMPLETE group is the formed object, so emission is decided at
         // group close, with every observation seen. Both orderings behave identically.
         var spec = Triple(ordering,
             TripleFilter("Gene", "Gene", new RestrictToValue("Bmp5")),

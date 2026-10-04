@@ -60,7 +60,7 @@ public sealed class RestrictToNumberTests
     [Fact]
     public void RestrictToNumber_WhenConstructedWithNonFinite_ThenItDoesNotThrow()
     {
-        // Deliberate (D-091, round-6 High-2): the Spec document model reuses this union (D-057),
+        // Deliberate (D-091, D-105): the Spec document model reuses this union (D-057),
         // so the carrier MUST be able to hold an authored `{ value = nan }` long enough for the
         // resolve seam to report RestrictToRangeInvalid on the diagnostic channel. A throwing
         // factory would turn an authoring error into a parse-time exception: the wrong channel

@@ -9,7 +9,7 @@ using FcaBedrock.Core.Scaling;
 namespace FcaBedrock.Core.Spec;
 
 /// <summary>
-/// The opaque resolution token (D-098/G-1): a sealed, non-positional class
+/// The opaque resolution token (D-098): a sealed, non-positional class
 /// produced only by the validating factory <see cref="Create"/>. It is the single
 /// preparation identity for one conversion: pairing downstream (the calibrator,
 /// the emitter, the fingerprint calculator) is by <b>reference identity</b> of
@@ -619,7 +619,7 @@ public sealed class ResolvedSpec
         {
             Discretizer = SnapshotDiscretizer(attribute.Discretizer),
             Scale = SnapshotScale(attribute.Scale),
-            // Presence is preserved (D-122 §15): an omitted (null) domain stays null so the
+            // Presence is preserved (D-122 part 15): an omitted (null) domain stays null so the
             // Calibrate phase still fills it; an authored [] stays a fixed empty domain.
             DeclaredDomain = attribute.DeclaredDomain is { } declaredDomain ? declaredDomain.ToImmutableArray() : null,
             RestrictTo = SnapshotRestrictTo(attribute.RestrictTo),
@@ -628,7 +628,7 @@ public sealed class ResolvedSpec
                 : attribute.ValueLabels.ToFrozenDictionary(StringComparer.Ordinal),
         };
 
-    // §10.4/G-6/D-096: the rebuild canonicalizes signed zero on exact values and provided range
+    // §10.4/D-096/D-105: the rebuild canonicalizes signed zero on exact values and provided range
     // bounds, so a resolved spec carries CANONICAL numeric restriction identities by construction,
     // the same guarantee the boundary already enforces for numeric free_per_value keys
     // (ValidateNumericFreePerValueKeys), reached by normalizing rather than throwing because
@@ -636,7 +636,7 @@ public sealed class ResolvedSpec
     //
     // The seam canonicalizes what it resolves, so through the ordinary pipeline this is a no-op.
     // It matters for a PROGRAMMATIC caller: -0.0 would otherwise survive and, because
-    // CanonicalJson.AppendNumber faithfully formats it "-0" (untouched, G-6; that is what keeps
+    // CanonicalJson.AppendNumber faithfully formats it "-0" (untouched, D-101; that is what keeps
     // authored manual-cut bytes and fp_format = 1 stable), two specs that MATCH identically
     // (IEEE: 0.0 == -0.0) would produce different canonical bytes and hashes, and would fail to
     // deduplicate. Same behaviour ⇒ same fingerprint is exactly EP-7, so the boundary makes it

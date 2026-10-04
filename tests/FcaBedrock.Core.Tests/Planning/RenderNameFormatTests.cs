@@ -323,8 +323,8 @@ public sealed class RenderNameFormatTests
     [Fact]
     public void Plan_WhenMoreThanThreeOffend_ThenThreeSamplesInRenderOrderThenTheTruncationTail()
     {
-        // The pinned §3.5b representation: at most three samples, in RENDER order (the order
-        // the planner emits that attribute's formal attributes — deliberately not sorted),
+        // The pinned representation (D-120, §16.4): at most three samples, in RENDER order (the
+        // order the planner emits that attribute's formal attributes, deliberately not sorted),
         // each quoted and escaped, with "(+N more)" only when truncated.
         var result = PlanResult(Nominal(
             ["a\nb", "ok", "c\rd", "e\nf", "g\rh"],

@@ -8,7 +8,7 @@ using FcaBedrock.Core.Spec;
 namespace FcaBedrock.Core.Tests.Fingerprinting;
 
 /// <summary>
-/// The §14 <c>restrictions</c> container (D-091/D-094/D-105, governance items G-9/G-10).
+/// The §14 <c>restrictions</c> container (D-091/D-094/D-105).
 /// <para>
 /// The literals below <b>are</b> the pinned encoding, hand-authored: a diff here is an encoding
 /// change requiring an <c>fp_format</c> bump, not a test edit (D-069).
@@ -108,7 +108,7 @@ public sealed class RestrictionFingerprintTests
 
     [Fact]
     public void BuildDatOutputJson_WhenFilterOnlyPolicyIsFail_ThenTheCompleteBytesCarryTheFailPolicy() =>
-        // The G-9 policy key on the .dat side too, as complete pinned bytes rather than a
+        // The D-105 policy key on the .dat side too, as complete pinned bytes rather than a
         // substring: the container must be byte-identical across both output fingerprints, and
         // only `Gene`'s restriction policy differs from the warn golden above.
         Assert.Equal(
@@ -252,7 +252,7 @@ public sealed class RestrictionFingerprintTests
     [Fact]
     public void BuildCxtOutputJson_WhenExactNegativeZeroReachesCoreDirectly_ThenItEncodesAsPositiveZero()
     {
-        // G-6/D-105 through the PUBLIC Core path, not the seam: ResolvedSpec.Create is the
+        // D-105 through the PUBLIC Core path, not the seam: ResolvedSpec.Create is the
         // rebuild boundary, so it canonicalizes signed zero and a resolved spec carries canonical
         // numeric restriction identities BY CONSTRUCTION.
         //
@@ -298,7 +298,7 @@ public sealed class RestrictionFingerprintTests
         Assert.DoesNotContain("-0", json, StringComparison.Ordinal);
     }
 
-    // --- sorting and deduplication (G-10) -----------------------------------
+    // --- sorting and deduplication (D-105) ----------------------------------
 
     [Fact]
     public void BuildCxtOutputJson_WhenEntriesAuthoredInAnyOrder_ThenTheEncodingIsTheSame()
@@ -357,7 +357,7 @@ public sealed class RestrictionFingerprintTests
     [Fact]
     public void BuildCxtOutputJson_WhenEntriesAreNonAscii_ThenTheySortByUtf16CodeUnitsNotUtf8Bytes()
     {
-        // G-10, the discriminating vector. "" (a BMP private-use char, ONE UTF-16 code unit
+        // D-105, the discriminating vector. "" (a BMP private-use char, ONE UTF-16 code unit
         // 0xE000) versus "\U0001F600" (supplementary, encoded as the surrogate pair 0xD83D
         // 0xDE00). Under UTF-16 ordinal (what StringComparer.Ordinal compares, and what EP-12
         // means by "ordinal"), 0xD83D < 0xE000, so the emoji sorts FIRST.
@@ -377,12 +377,12 @@ public sealed class RestrictionFingerprintTests
         Assert.True(emoji < privateUse, "UTF-16 ordinal: the supplementary char's lead surrogate 0xD83D sorts before 0xE000");
     }
 
-    // --- G-9: the policy key ------------------------------------------------
+    // --- D-105: the policy key ----------------------------------------------
 
     [Fact]
     public void ComputeOutputFingerprints_WhenFilterOnlyPolicyDiffers_ThenBothFingerprintsDiffer()
     {
-        // G-9, the reason the policy key exists. On a filter-only attribute unknown_value_policy
+        // D-105, the reason the policy key exists. On a filter-only attribute unknown_value_policy
         // is LIVE, abort-vs-complete-affecting configuration (D-097: an unparseable filtered value
         // is an Error under `fail` and a Warning under `warn`), and a filter-only attribute never
         // enters `shared.attributes`, so without this key these two specs, which behave
@@ -413,7 +413,7 @@ public sealed class RestrictionFingerprintTests
     [Fact]
     public void BuildCxtOutputJson_WhenIncludedAndRestricted_ThenThePolicyAppearsInBothPlaces()
     {
-        // Deliberate uniform-shape redundancy (G-9), not D-035 double-counting: every restriction
+        // Deliberate uniform-shape redundancy (D-105), not D-035 double-counting: every restriction
         // object carries the key, so an included-and-restricted attribute's policy also appears in
         // shared.attributes. A value repeated, not a quantity summed.
         var json = Cxt(WideRestrictedSpec());

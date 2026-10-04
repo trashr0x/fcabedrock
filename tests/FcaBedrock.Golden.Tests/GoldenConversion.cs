@@ -87,7 +87,7 @@ internal static class GoldenConversion
         AssertClean("migrate", migrated.Diagnostics);
         Assert.True(migrated.TryGetValue(out var specDocument), Describe(migrated.Diagnostics));
 
-        // Two-stage source bootstrap (G-1): resolve the schema-independent read settings,
+        // Two-stage source bootstrap: resolve the schema-independent read settings,
         // open a session, read the schema, resolve schema-aware, then bind the source to the
         // resolution so calibrate/emit pair by token identity (D-098).
         var settingsResult = SpecResolver.ResolveReadSettings(specDocument);
@@ -98,9 +98,9 @@ internal static class GoldenConversion
         var labelStyle = LabelStyleFor(options);
         Func<Stream> openStream = () => File.OpenRead(dataPath);
 
-        // The resolved shape decides the session/source and the emit entrypoint (D-082/D-086/G-1).
-        // The triple emitter owns the unordered wrapper (§5.3 / D-082), so it takes the bound
-        // TripleCsvSource; the delegate matches EmitReplay.Begin exactly.
+        // The resolved shape decides the session/source and the emit entrypoint
+        // (D-082/D-086/D-098). The triple emitter owns the unordered wrapper (§5.3 / D-082), so it
+        // takes the bound TripleCsvSource; the delegate matches EmitReplay.Begin exactly.
         if (settings.Shape == SourceShape.Triple)
         {
             var session = new TripleCsvSession(openStream, settings);

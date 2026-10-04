@@ -256,7 +256,7 @@ public sealed class SpecResolverTests
     [Fact]
     public void Resolve_WhenDeclaredDomainOmittedVersusAuthoredEmpty_ThenPresenceSurvives()
     {
-        // D-122 §15 (revising D-071): omission and an authored [] are distinct in Core: an omitted
+        // D-122 part 15 (revising D-071): omission and an authored [] are distinct in Core: an omitted
         // domain resolves to null (calibrated where a discretizer consumes it), an authored [] to the
         // empty list (a complete fixed empty domain). The document keeps the authored form for round-trip.
         var document = DocumentFixtures.Document(
@@ -1417,7 +1417,7 @@ public sealed class SpecResolverTests
     [Fact]
     public void Resolve_WhenSeveralRestrictEntriesAreInvalid_ThenAllAggregateWithoutThrowing()
     {
-        // EP-14 + the round-7 success check: independent conditions aggregate, the result fails,
+        // EP-14 + the D-098 success check: independent conditions aggregate, the result fails,
         // and NO strict factory runs, so an authored error never escapes as an exception.
         var document = DocumentFixtures.Document(
             [DocumentFixtures.Attribute("age", DocumentFixtures.Column(0),
@@ -1477,12 +1477,12 @@ public sealed class SpecResolverTests
         Assert.IsNotType<List<RestrictToEntry>>(entries);
     }
 
-    // --- G-6 zero canonicalization at the seam -------------------------------
+    // --- D-105 zero canonicalization at the seam ------------------------------
 
     [Fact]
     public void Resolve_WhenExactRestrictValueIsNegativeZero_ThenItResolvesAsPositiveZero()
     {
-        // G-6, at the site that owns it: the seam canonicalizes what it resolves, so an authored
+        // D-105, at the site that owns it: the seam canonicalizes what it resolves, so an authored
         // -0 resolves (and therefore matches, plans, and hashes) identically to 0. This is the
         // "already-numeric" arm of the chain (the value arrives as a TOML double; there is no
         // text to parse). CanonicalJson.AppendNumber is untouched and still formats -0.0 as "-0",
@@ -2002,7 +2002,7 @@ public sealed class SpecResolverTests
     [Fact]
     public void Resolve_WhenNumericFreePerValueDomainOmittedVersusAuthoredEmpty_ThenPresenceSurvivesNormalization()
     {
-        // D-122 §15 through the numeric-normalization branch (NormalizeNumericDomain): omission and an
+        // D-122 part 15 through the numeric-normalization branch (NormalizeNumericDomain): omission and an
         // authored [] stay distinct in Core even where the numeric seam runs. An omitted numeric domain
         // resolves to null and still requests calibration; an authored [] resolves to a non-null empty
         // list (a complete fixed empty domain), mints no DeclaredDomainInvalid, and requests none.

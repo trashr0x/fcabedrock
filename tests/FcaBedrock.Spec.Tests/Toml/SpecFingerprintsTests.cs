@@ -425,7 +425,7 @@ public sealed class SpecFingerprintsTests
     {
         // D-077: there is deliberately NO parse-time format validation: a value that is not even
         // a "sha256:" string simply reads as stale. And stale is Warning-only, so a malformed
-        // stored fingerprint never invalidates the run (§16.2/G-12: only Error/Fatal do).
+        // stored fingerprint never invalidates the run (§16.2/D-105: only Error/Fatal do).
         var frozen = TomlFixtures.MiniMushroom.Replace(
             "version = 1",
             """

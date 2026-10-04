@@ -163,7 +163,7 @@ internal sealed class QuantileAccumulator
         // but WHICH spelling survives into the dictionary key, and from there into a spilled run
         // and the merged row, would depend on which arrived first. Canonicalizing at intake means
         // only +0 can ever exist downstream, so the value a cut or label is derived from is pinned
-        // rather than incidental (G-6/D-096).
+        // rather than incidental (D-096/D-103).
         Add(CanonicalNumber.CanonicalizeZero(value));
     }
 
@@ -555,7 +555,7 @@ internal sealed class QuantileAccumulator
         }
     }
 
-    // Every count total is checked (G-13): a per-value increment, the running N, and the replay's
+    // Every count total is checked (D-103): a per-value increment, the running N, and the replay's
     // cumulative. Overflow is a distinct condition (too much data to count exactly) and must
     // reach the caller as CalibrationPopulationTooLarge, never as CalibrationDataInsufficient (its
     // opposite), a storage failure, or a bare OverflowException.

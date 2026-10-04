@@ -4,7 +4,7 @@ using FcaBedrock.Spec.Manifest;
 
 namespace FcaBedrock.Spec.Tests.Manifest;
 
-// RunManifest + RunManifestWriter (S5; §15, D-122 part 6, D-123 point 8).
+// RunManifest + RunManifestWriter (§15, D-122 part 6, D-123 point 8).
 // The expected documents are literal text oracles written out by hand, never produced by a
 // test-side serializer, so a writer change cannot move the expectation with it. Boundary
 // cases build their expected line in test code and assert its length independently, the

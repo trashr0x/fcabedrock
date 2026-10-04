@@ -9,7 +9,7 @@ namespace FcaBedrock.Spec.Tests.Toml;
 
 /// <summary>
 /// The <c>value_groups</c> TOML surface (§11.6, D-090/D-104): the document carriers,
-/// the reader's parse-phase field checks (including the regex compile check and the G-11 matcher
+/// the reader's parse-phase field checks (including the regex compile check and the D-104 matcher
 /// predicate), canonical writing, authored-presence round-trip, the deep document snapshot, and
 /// the resolve seam with its two spec-validate diagnostics.
 /// <para>
@@ -116,7 +116,7 @@ public sealed class ValueGroupsSpecTests
     [Fact]
     public void Read_WhenValuesAuthoredEmptyWithAPattern_ThenTheEmptyListIsRetainedNotNull()
     {
-        // The G-11 presence distinction, at the document boundary: authored [] must be
+        // The D-104 presence distinction, at the document boundary: authored [] must be
         // distinguishable from omitted, because the §14 encoding writes `values` only when
         // authored (D-094).
         var group = ReadDiscretizer("{ kind = \"value_groups\", groups = [{ label = \"C\", values = [], pattern = \"^I\" }] }").Groups![0];
@@ -228,7 +228,7 @@ public sealed class ValueGroupsSpecTests
 
     [Fact]
     public void Read_WhenValuesAuthoredEmptyAndNoPattern_ThenSpecFieldInvalid() =>
-        // The G-11 predicate at the reader: `values = []` alone is authored-but-matches-nothing.
+        // The D-104 predicate at the reader: `values = []` alone is authored-but-matches-nothing.
         AssertFieldInvalid("{ kind = \"value_groups\", groups = [{ label = \"G\", values = [] }] }");
 
     [Fact]
@@ -322,7 +322,7 @@ public sealed class ValueGroupsSpecTests
 
     [Fact]
     public void Write_WhenValuesAuthoredEmpty_ThenWritesTheEmptyArray() =>
-        // The other half of the G-11 presence rule: authored [] must be written back as [].
+        // The other half of the D-104 presence rule: authored [] must be written back as [].
         Assert.Equal(
             "discretizer = { kind = \"value_groups\", groups = [{ label = \"C\", values = [], pattern = \"^I\" }] }",
             WriteDiscretizerLine(Attribute("{ kind = \"value_groups\", groups = [{ label = \"C\", values = [], pattern = \"^I\" }] }")));
@@ -363,7 +363,7 @@ public sealed class ValueGroupsSpecTests
     [Fact]
     public void RoundTrip_WhenValuesOmittedVersusAuthoredEmpty_ThenTheTwoStayDistinct()
     {
-        // The end-to-end G-11 lock at the document layer: the two authored forms must never
+        // The end-to-end D-104 lock at the document layer: the two authored forms must never
         // converge on one text, because their §14 bytes differ.
         var omitted = SpecWriter.Write(ReadOk(Attribute("{ kind = \"value_groups\", groups = [{ label = \"C\", pattern = \"^I\" }] }")));
         var authoredEmpty = SpecWriter.Write(ReadOk(Attribute("{ kind = \"value_groups\", groups = [{ label = \"C\", values = [], pattern = \"^I\" }] }")));

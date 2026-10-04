@@ -120,7 +120,7 @@ internal static class SourceAddressing
                 return Invalid(label, $"declares negative source index {index}");
             }
 
-            // The conversion pipeline resolves schema-aware (G-1/D-098), so this seam
+            // The conversion pipeline resolves schema-aware (D-098), so this seam
             // owns the source-index range check. A schema-less resolve (spec tooling)
             // leaves the width unknown; ResolvedSpec.Create is the trust-boundary backstop.
             if (schema is not null && index >= schema.ColumnCount)

@@ -188,7 +188,7 @@ public sealed class SpecReaderTests
     [Fact]
     public void Read_WhenExactEntryIsNegativeZero_ThenTheCarrierKeepsItForTheSeamToCanonicalize()
     {
-        // The reader transcribes; the SEAM canonicalizes (G-6). Pinned so the layering stays
+        // The reader transcribes; the SEAM canonicalizes (D-105). Pinned so the layering stays
         // visible: a reader that silently canonicalized would hide an authored -0 from any
         // diagnostic that might one day want it.
         var document = ReadOk(Attribute("restrict_to = [{ value = -0.0 }]"));

@@ -3,7 +3,7 @@ using FcaBedrock.Sources;
 
 namespace FcaBedrock.Conversion.Tests;
 
-// Independent validation of the conservative resident accounting (D-082 / F2). Each test asserts the
+// Independent validation of the conservative resident accounting (D-082). Each test asserts the
 // modeled bytes are ≥ an actual heap size derived from raw .NET-10-CoreCLR-x64 layout literals here (NOT
 // from ResidentModel's padded constants), so the bound is proved against reality, not recomputed from the
 // same formula. Overflow-safety is exercised directly on the saturating helpers, not via unallocatable
@@ -107,7 +107,8 @@ public sealed class RowCodecResidentTests
         var stride = (long)Unsafe.SizeOf<RankedRow<DedupeRow>>();
 
         // The List<T> object itself (real x64: header 16 + _items ref 8 + _size/_version 8 = 32) is charged
-        // beyond the backing array, proving the buffer object is accounted, not only its backing array (F2).
+        // beyond the backing array, proving the buffer object is accounted, not only its backing
+        // array (D-082).
         Assert.True(ResidentModel.BufferBytes(0, stride) >= 32, "the List<T> object itself must be charged");
         Assert.True(ResidentModel.BufferBytes(4, stride) > ResidentModel.BackingArrayBytes(4, stride), "List object adds on top of the backing array");
         Assert.True(ResidentModel.BufferBytes(8, stride) > ResidentModel.BufferBytes(4, stride), "grows with capacity");

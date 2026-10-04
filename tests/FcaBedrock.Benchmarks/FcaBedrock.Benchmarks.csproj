@@ -26,7 +26,7 @@
     <ProjectReference Include="..\..\src\FcaBedrock.Conversion\FcaBedrock.Conversion.csproj" />
     <ProjectReference Include="..\..\src\FcaBedrock.Export\FcaBedrock.Export.csproj" />
     <ProjectReference Include="..\..\src\FcaBedrock.Discovery\FcaBedrock.Discovery.csproj" />
-    <!-- The CLI, for the S3 host and hashing benchmarks (D-124). It is referenced the same way a
+    <!-- The CLI, for the host and hashing benchmarks (D-124). It is referenced the same way a
          test project references it: the benchmark assembly is not a product artifact, and no
          production package references the benchmark assembly in return. -->
     <ProjectReference Include="..\..\src\FcaBedrock.Cli\FcaBedrock.Cli.csproj" />

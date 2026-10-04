@@ -16,7 +16,7 @@ internal enum ExclusiveRename
 
     /// <summary>
     /// This filesystem cannot perform the flagged, atomically non-replacing operation: the one
-    /// result that permits the guarded classic fallback (D-125, approved choice B).
+    /// result that permits the guarded classic fallback (D-125 part 4).
     /// </summary>
     CapabilityAbsent,
 
@@ -76,7 +76,7 @@ internal interface IPublicationRenamePrimitives
 }
 
 /// <summary>
-/// The exclusive-first native rename and its narrowly guarded fallback (D-125, approved choice B).
+/// The exclusive-first native rename and its narrowly guarded fallback (D-125 part 4).
 /// <para>
 /// <b>Every publication rename is a same-directory, same-filesystem metadata rename.</b> It is
 /// never a content copy, a clone, a link/unlink pair, a copy/delete pair, a destination pre-delete,

@@ -3,7 +3,7 @@ using FcaBedrock.Core.Discretization;
 namespace FcaBedrock.Conversion.Tests;
 
 /// <summary>
-/// The pinned §11.5 numeric rules (D-088/D-103, the G-5 formulas): exact-rational rank
+/// The pinned §11.5 numeric rules (D-088/D-103): exact-rational rank
 /// selection, the feasibility window, and sign-aware cut placement.
 /// <para>
 /// Every expected value here is <b>derived by hand in the test</b> (from the literal
@@ -251,7 +251,7 @@ public sealed class QuantileSelectionTests
     [Fact]
     public void PlaceCut_WhenRightValueLandsOnNegativeZero_ThenCanonicalizedToPositiveZero()
     {
-        // G-6: a computed -0 must never reach a bin identity, label, or hash. -0.0 == 0.0 under
+        // D-103: a computed -0 must never reach a bin identity, label, or hash. -0.0 == 0.0 under
         // ==, so only the bit pattern can prove the canonicalization happened.
         var cut = QuantileSelection.PlaceCut(-1.0, -0.0, CutPlacement.RightValue);
 

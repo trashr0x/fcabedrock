@@ -131,7 +131,7 @@ public sealed class EmitReplayTests
     public async Task Session_WhenDisposedBeforePreOpenedStreamStarts_ThenStartThrowsObjectDisposed()
     {
         // The start-vs-dispose race: a stream opened while idle, the session disposed (Idle → Disposed),
-        // then the pre-opened stream starts → its atomic claim sees Disposed and throws (F5).
+        // then the pre-opened stream starts → its atomic claim sees Disposed and throws.
         var (plan, source) = await WidePrepAsync(UnknownValueWideSpec(), "z", ConversionFixtures.Wide(hasHeader: false));
         var session = EmitReplay.Begin(sink => Emitter.EmitAsync(plan, source, sink), new List<BedrockDiagnostic>());
 
@@ -146,7 +146,7 @@ public sealed class EmitReplayTests
     public async Task Session_WhenTwoStreamsStartConcurrently_ThenSecondThrowsInvalidOperation()
     {
         // Two streams opened before either advances: the first to start claims Active atomically; the
-        // second's start loses the race and throws, so the ledger is never touched by two passes (F5).
+        // second's start loses the race and throws, so the ledger is never touched by two passes.
         var (plan, source) = await WidePrepAsync(UnknownValueWideSpec(), "z", ConversionFixtures.Wide(hasHeader: false));
         using var session = EmitReplay.Begin(sink => Emitter.EmitAsync(plan, source, sink), new List<BedrockDiagnostic>());
 

@@ -4,7 +4,7 @@ namespace FcaBedrock.Core.Spec;
 
 /// <summary>
 /// The §5.1 schema-independent read settings (the stage-1 half of the two-stage
-/// source bootstrap, D-098/G-1): everything a source session needs to open and
+/// source bootstrap, D-098): everything a source session needs to open and
 /// tokenize a stream before any attribute index is resolved. Sealed and
 /// non-positional so it cannot be subclassed or copy-constructed with a mutated
 /// field; value equality over the settings drives session binding and descriptor

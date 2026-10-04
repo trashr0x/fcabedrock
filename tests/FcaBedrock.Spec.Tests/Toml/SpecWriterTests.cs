@@ -141,7 +141,7 @@ public sealed class SpecWriterTests
     [Theory]
     [InlineData(30.0, "{ value = 30 }")]     // integral → bare, matching the spec's own cuts = [30] style
     [InlineData(30.5, "{ value = 30.5 }")]
-    [InlineData(-0.0, "{ value = 0 }")]      // a resolved -0 writes as 0 (G-6)
+    [InlineData(-0.0, "{ value = 0 }")]      // a resolved -0 writes as 0 (D-105)
     [InlineData(-12.25, "{ value = -12.25 }")]
     public void Write_WhenExactRestrictEntry_ThenRendersTheCanonicalInvariantShortestNumber(double value, string expected)
     {

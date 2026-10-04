@@ -135,7 +135,7 @@ public sealed class TemplateApplicationTests
     [Fact]
     public void Apply_WhenTwoMatchingTemplatesAuthorDifferentFields_ThenBothContribute()
     {
-        // §9.2 example 1 and the reason layering (not whole-template selection) is the
+        // §9.2's tier-3 layering, and the reason layering (not whole-template selection) is the
         // contract: a scaling template and a policy template COMPOSE into a valid
         // two-column context. Under whole-template selection this would instead fail
         // AttributeScalingMissing, which is exactly the divergence D-114 settled.
@@ -194,8 +194,8 @@ public sealed class TemplateApplicationTests
     public void Apply_WhenAHigherTierAuthorsAnEmptyDomain_ThenItOverridesToAnAuthoredCompleteEmpty()
     {
         // §10.3's authored `[]` is a presence state distinct from omission (D-114 whole-value
-        // layering): the higher-tier template's [] overrides the earlier ["x"], and, under
-        // D-122 §15, resolves as authored-complete (a fixed empty domain, NOT omitted/calibrated),
+        // layering): the higher-tier template's [] overrides the earlier ["x"], and, under D-122
+        // part 15, resolves as authored-complete (a fixed empty domain, NOT omitted/calibrated),
         // so the resolved domain is a non-null empty list rather than ["x"] or null.
         var attribute = ResolveSingle(With(
             Bare(),
@@ -304,7 +304,7 @@ public sealed class TemplateApplicationTests
     [Fact]
     public void Apply_WhenAnExplicitScaleWinsOverATemplateScale_ThenNoHybridIsComposed()
     {
-        // §9.2 example 3: `scale` is replaced ENTIRE, never deep-merged. The explicit
+        // §9.2's whole-value rule: `scale` is replaced ENTIRE, never deep-merged. The explicit
         // scale authors direction only, so the template's `order` must NOT survive into
         // it, and the resulting orderless value-bin ordinal is then a legitimate
         // OrdinalOrderMissing at plan, not a silently-repaired hybrid.

@@ -16,7 +16,7 @@ public enum CutPlacement
     /// sign-aware so an opposite-sign extreme gap cannot overflow, and a midpoint that
     /// cannot land strictly above the lower value (adjacent representable doubles) falls
     /// back to the upper value, membership-identical to
-    /// <see cref="RightValue"/> under half-open geometry (D-103/G-5).
+    /// <see cref="RightValue"/> under half-open geometry (D-103).
     /// </summary>
     Midpoint,
 }

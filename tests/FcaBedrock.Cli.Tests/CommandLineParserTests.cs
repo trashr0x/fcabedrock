@@ -465,7 +465,7 @@ public sealed class CommandLineParserTests
     public void Parse_WhenALocaleIsJudged_ThenItAgreesWithTheDiscoveryBoundary(string locale)
     {
         // Cross-check: the CLI's acceptance set must be the one ProbeOptions.Create enforces,
-        // so drift fails here rather than at the S9 mapping.
+        // so drift fails here rather than in the probe command's ProbeOptions mapping.
         var parserAccepts = CommandLineParser.Parse(
             ["probe", "d.csv", "--shape", "wide", "--out", "o", "--locale", locale]) is CommandInvocation;
 

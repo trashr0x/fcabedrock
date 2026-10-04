@@ -309,10 +309,10 @@ public sealed class BedMigratorTests
     [Fact]
     public void Migrate_WhenMushroomResolved_ThenCoreShapeMatchesTheM1Migration()
     {
-        // The resolved Core spec the M1 Core-targeting migrator used to build,
-        // asserted explicitly (the resolver's defaults must keep reproducing it —
-        // trap T7 in the Slice G plan). Excluded attributes deliberately resolve
-        // parked-with-nulls now (D-079); their fidelity is document-level.
+        // The resolved Core shape of the migrated mini-mushroom, asserted explicitly: the migrator
+        // targets the document model (D-079), so the resolver's defaults must reproduce the Core spec
+        // it built when it targeted Core directly. Excluded attributes deliberately resolve
+        // parked-with-nulls (D-079); their fidelity is document-level.
         var resolved = ResolveOk(MigrateOk(BedFixtures.MushroomBed));
 
         Assert.Equal(
@@ -454,11 +454,11 @@ public sealed class BedMigratorTests
     [InlineData("30", 30.0)]         // integer
     [InlineData("30.5", 30.5)]       // decimal
     [InlineData("3e1", 30.0)]        // exponent
-    [InlineData("-0", 0.0)]          // negative zero → positive zero (G-6)
+    [InlineData("-0", 0.0)]          // negative zero → positive zero (D-105)
     [InlineData("-12.25", -12.25)]   // negative
     public void Migrate_WhenNumericTokenSpelledVariously_ThenParsedAndZeroCanonicalized(string token, double expected)
     {
-        // §10.4/D-091/G-6: the token is parsed under the effective locale and zero-canonicalized,
+        // §10.4/D-091/D-105: the token is parsed under the effective locale and zero-canonicalized,
         // so every spelling of a value migrates to one identity. -0 is pinned explicitly: it must
         // never reach a key, a match, or a hash.
         var attribute = MigrateOk(Bed(new BedAttr("age", "o", "<,30,50,>", Restrict: token))).Attributes[0];
@@ -556,7 +556,7 @@ public sealed class BedMigratorTests
     [Fact]
     public void Migrate_WhenLocaleIsInvalid_ThenNoTokenIsReinterpretedAndMigrationStillCompletes()
     {
-        // §5.1/D-091 (round-6 Medium-3): an unresolvable locale must NOT fall back to invariant
+        // §5.1/D-091/D-105: an unresolvable locale must NOT fall back to invariant
         // (that would parse tokens under a locale the author never asked for), must not throw
         // (migration is transcription and must complete), and must mint no migrate-phase
         // diagnostic: full resolution owns BindingLocaleInvalid. Every token stays a string.
@@ -673,7 +673,7 @@ public sealed class BedMigratorTests
     {
         // Degenerate but representable: the [Category Values] hold only the effective missing token,
         // so the migrated spec authors declared_domain = [] with missing_policy = "as_attribute"
-        // (D-068). Under D-122 §15 that [] is a complete fixed empty domain (the more faithful
+        // (D-068). Under D-122 part 15 that [] is a complete fixed empty domain (the more faithful
         // migration, since v2 emitted only the missing column), so it requests NO observed-domain
         // calibration and plans the missing column alone. Migration is never changed to omission.
         var document = MigrateOk(Bed(new BedAttr("strength", "c", "?")));

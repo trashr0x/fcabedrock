@@ -59,7 +59,7 @@ internal sealed class EmitObservability
     /// "no objects" would describe the halt rather than the data (D-105);</item>
     /// <item>a <b>policy abort</b>: <paramref name="aborted"/>, set when a data aggregate flushed
     /// at Error under <c>unknown_value_policy = "fail"</c>, including a filter-only restriction's
-    /// (§10.4/§10.6/D-097). The stream did complete, but the run is <b>invalid</b>: G-12's rule is
+    /// (§10.4/§10.6/D-097). The stream did complete, but the run is <b>invalid</b>: D-105's rule is
     /// that any Error/Fatal means the caller must discard the artifact, so describing the shape of
     /// a context that is about to be thrown away is noise.</item>
     /// </list>

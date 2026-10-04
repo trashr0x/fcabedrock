@@ -6,7 +6,7 @@ using FcaBedrock.Core.Spec;
 
 namespace FcaBedrock.Core.Tests.Spec;
 
-// The ResolvedSpec.Create trust boundary (D-098/G-1): it exhaustively validates the structural
+// The ResolvedSpec.Create trust boundary (D-098): it exhaustively validates the structural
 // invariants downstream phases trust, throwing ArgumentException for a hand-built graph that
 // violates any of them, so the planner's residual invariants become unreachable-by-construction.
 public sealed class ResolvedSpecTests
@@ -281,7 +281,7 @@ public sealed class ResolvedSpecTests
     [InlineData(double.NegativeInfinity)]
     public void Create_WhenExactRestrictValueIsNonFinite_ThenThrows(double value)
     {
-        // D-091/round-6 High-2: the seam diagnoses an authored non-finite value
+        // D-091/D-105: the seam diagnoses an authored non-finite value
         // (RestrictToRangeInvalid) and returns Diagnosed.Failed BEFORE any strict factory runs,
         // so reaching this boundary with one means a hand-built graph, which is genuine programmer error.
         // Downstream then trusts finiteness (the fingerprint's formatter rejects non-finite
@@ -342,7 +342,7 @@ public sealed class ResolvedSpecTests
     public void Create_WhenInspected_ThenRestrictEntriesAreNotCastableToAMutableCollection()
     {
         // The snapshot must be recursively immutable, not merely copied: an IReadOnlyList backed
-        // by a plain array is castable back to T[] and mutable through it (D-098 Critical-2).
+        // by a plain array is castable back to T[] and mutable through it (D-098).
         var attr = SpecFixtures.Nominal("Gene", 0, ["Bmp5"]) with { RestrictTo = [new RestrictToValue("Bmp5")] };
 
         var resolved = Create(new BedrockSpec(SpecFixtures.WideRowIndex(), [attr]), new SourceSchema(1));
@@ -713,7 +713,7 @@ public sealed class ResolvedSpecTests
     public void Create_WhenValueGroupsResolved_ThenAuthoredNullAndAuthoredEmptyValuesBothSurvive()
     {
         // The presence distinction must survive the trust boundary intact: the §14 encoding reads
-        // it directly, so collapsing [] to null here would silently change fingerprint bytes (G-11).
+        // it directly, so collapsing [] to null here would silently change fingerprint bytes (D-104).
         var omitted = ValueGroup.Create("Pattern", null, "^I[0-9]{2}");
         var authoredEmpty = ValueGroup.Create("Empty", [], "^J[0-9]{2}");
         var resolved = Create(

@@ -27,8 +27,8 @@ public sealed class EmitterSliceATests
     [Fact]
     public async Task EmitAsync_WhenUnknownValueUnderInclude_ThenWarnsInsteadOfCrashing()
     {
-        // EP-22 regression (D-088 include-crash closure): a between-pass unknown reaching emit under
-        // unknown_value_policy = "include" used to throw; it now degrades to an aggregated Warning.
+        // EP-22 regression (D-098): a between-pass unknown reaching emit under
+        // unknown_value_policy = "include" is reported as an aggregated Warning, never thrown.
         var spec = new BedrockSpec(ConversionFixtures.Wide(hasHeader: false),
             [Identity("g", 0, ["a"], UnknownValuePolicy.Include)]);
         var source = ConversionFixtures.SourceOver("a\nb", spec.Binding);

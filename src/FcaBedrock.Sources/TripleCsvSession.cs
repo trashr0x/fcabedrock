@@ -3,7 +3,7 @@ using FcaBedrock.Core.Spec;
 namespace FcaBedrock.Sources;
 
 /// <summary>
-/// The stage-2 triple source session (D-098/G-1): the triple twin of
+/// The stage-2 triple source session (D-098): the triple twin of
 /// <see cref="WideCsvSession"/>. Constructible from triple
 /// <see cref="SourceReadSettings"/> alone, reads the schema so the resolver can
 /// bind roles by header name, and binds to a resolution carrying the token. The

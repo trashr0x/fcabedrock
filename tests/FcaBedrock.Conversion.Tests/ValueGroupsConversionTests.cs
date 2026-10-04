@@ -359,7 +359,7 @@ public sealed class ValueGroupsConversionTests
     [Fact]
     public async Task CalibrateTripleAsync_WhenSubjectNotContiguousUnderSubjectGrouped_ThenTripleSubjectNotContiguous()
     {
-        // The G-3/D-099 structural checks still apply.
+        // The D-099 structural checks still apply.
         var spec = new BedrockSpec(ConversionFixtures.Triple(TripleOrdering.SubjectGrouped),
             [PassthroughPredicate("edu", "edu", Group("School", "11th"))]);
 

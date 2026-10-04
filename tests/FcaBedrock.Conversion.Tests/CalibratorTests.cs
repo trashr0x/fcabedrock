@@ -63,7 +63,7 @@ public sealed class CalibratorTests
         Assert.Contains(result.Diagnostics, d => d.Code == DiagnosticCode.ObservedDomainUsed);
     }
 
-    // --- authored empty domain (D-122 §15): [] is complete, distinct from omission ---
+    // --- authored empty domain (D-122 part 15): [] is complete, distinct from omission ---
 
     [Fact]
     public async Task CalibrateAsync_WhenAuthoredEmptyDomainUnderWarn_ThenNoObservedCalibration()
@@ -87,7 +87,7 @@ public sealed class CalibratorTests
     public async Task CalibrateAsync_WhenAuthoredEmptyDomainUnderInclude_ThenAdditionsOnly()
     {
         // Authored [] under include: the empty domain seeds nothing, so every observed value is an
-        // addition: an IncludeAdditions outcome, never ObservedDomain (D-122 §15).
+        // addition: an IncludeAdditions outcome, never ObservedDomain (D-122 part 15).
         var spec = new BedrockSpec(ConversionFixtures.Wide(hasHeader: false),
             [Identity("g", 0, [], UnknownValuePolicy.Include)]);
         var (resolved, source) = await WidePrep(spec, "a\nb\na\nc");
@@ -402,7 +402,7 @@ public sealed class CalibratorTests
         Assert.Equal(["a", "b"], calibrated.Spec.Attributes[0].DeclaredDomain);
     }
 
-    // --- triple calibration (G-3 structural checks) ---
+    // --- triple calibration (D-099 structural checks) ---
 
     [Fact]
     public async Task CalibrateTripleAsync_WhenAbsentDomain_ThenObservesRawOrderForBothOrderings()

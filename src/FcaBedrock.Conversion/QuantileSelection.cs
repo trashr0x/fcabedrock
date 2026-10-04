@@ -5,7 +5,7 @@ namespace FcaBedrock.Conversion;
 
 /// <summary>
 /// The pinned <c>equal_frequency</c> / <c>percentile_p1_p99</c> numeric rules (spec §11.5,
-/// D-088/D-103, the G-5 formulas). One place each, so no production path carries a second
+/// D-088/D-103). One place each, so no production path carries a second
 /// copy: rank selection, gap allocation, and cut placement.
 /// <para>
 /// The split is deliberate (EP-11): <b>rank selection is exact integer
@@ -62,7 +62,7 @@ internal static class QuantileSelection
     /// (<c>d = i - 1</c>).</item>
     /// </list>
     /// The result is a <i>preference</i>: it may be <c>0</c> or <c>m</c> (not a gap at all),
-    /// which <see cref="AllocateGap"/> resolves. That is normal, not an error (G-5).
+    /// which <see cref="AllocateGap"/> resolves. That is normal, not an error (D-103).
     /// </summary>
     public static int DesiredGap(int groupIndex, bool isEdge, TiePolicy tiePolicy) =>
         isEdge || tiePolicy == TiePolicy.Left ? groupIndex : groupIndex - 1;
@@ -74,8 +74,8 @@ internal static class QuantileSelection
     /// <c>hi = m - 1 - (bins - 1 - k)</c>.
     /// <para>
     /// The window is what makes the §11.5 distinct-gap obligation <b>total</b> rather than
-    /// best-effort, and it is authoritative over tie-side preference (the G-5 §11.5
-    /// precedence amendment): <c>lo</c> forces gaps to strictly ascend, and <c>hi</c>
+    /// best-effort, and it is authoritative over tie-side preference (the §11.5
+    /// precedence amendment, D-103): <c>lo</c> forces gaps to strictly ascend, and <c>hi</c>
     /// reserves one free gap for every later boundary, so <c>bins - 1</c> distinct ascending
     /// gaps always exist once <c>m ≥ bins</c>. Cuts are therefore strictly ascending
     /// <b>by construction</b>: a descending allocation is unrepresentable, and the
@@ -103,7 +103,7 @@ internal static class QuantileSelection
     /// <list type="bullet">
     /// <item><see cref="CutPlacement.RightValue"/> → the gap's upper value (§11.5).</item>
     /// <item><see cref="CutPlacement.Midpoint"/> → the midpoint, by the pinned sign-aware
-    /// expression order (G-5): a same-sign gap (or one with a zero bound) uses
+    /// expression order (D-103): a same-sign gap (or one with a zero bound) uses
     /// <c>a + (b - a) / 2</c>; a gap crossing zero uses <c>(a + b) / 2</c>. Each form is
     /// overflow-safe for its own case (the subtraction would overflow an opposite-sign
     /// extreme gap, and the sum would overflow a same-sign extreme one), so neither form
@@ -118,7 +118,7 @@ internal static class QuantileSelection
     /// <paramref name="upper"/> is already membership-correct and is left alone.
     /// </para>
     /// <para>
-    /// The result is positive-zero canonicalized (G-6): a computed <c>-0</c> must never reach
+    /// The result is positive-zero canonicalized (D-103): a computed <c>-0</c> must never reach
     /// a bin identity, label, or hash.
     /// </para>
     /// </summary>
@@ -129,7 +129,7 @@ internal static class QuantileSelection
             return CanonicalNumber.CanonicalizeZero(upper);
         }
 
-        // The pinned expression order (G-5); do not reorder, fold, or route through decimal.
+        // The pinned expression order (D-103); do not reorder, fold, or route through decimal.
         var midpoint = lower >= 0.0 || upper <= 0.0
             ? lower + ((upper - lower) / 2.0)
             : (lower + upper) / 2.0;

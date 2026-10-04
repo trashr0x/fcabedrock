@@ -109,10 +109,9 @@ public sealed class EqualWidthSpecTests
     [Fact]
     public void Read_WhenRangeIsPercentile_ThenAcceptedAsADataDerivedRange()
     {
-        // D-103 reverses the D-102/G-8b transitional reject: percentile_p1_p99 was modelled in the
-        // Core enum but kept out of the accepted TOML surface until its calibration existed. Slice
-        // D lands that calibration, so the spelling is now a recognized data-derived range —
-        // carried like min_max, with no vmin/vmax.
+        // percentile_p1_p99 is a recognized data-derived range, carried like min_max with no
+        // vmin/vmax (§11.4). D-102 kept it out of the accepted TOML surface until its calibration
+        // existed; D-103 added that calibration and accepted the spelling.
         var section = ReadDiscretizer("{ kind = \"equal_width\", bins = 4, range = \"percentile_p1_p99\" }");
 
         Assert.Equal(EqualWidthRange.PercentileP1P99, section.Range);

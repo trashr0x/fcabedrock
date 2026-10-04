@@ -185,7 +185,7 @@ internal sealed class ValueCountMerger
         }
     }
 
-    // Merged counts are checked (G-13): summing two runs' counts for one value is exactly where
+    // Merged counts are checked (D-103): summing two runs' counts for one value is exactly where
     // a population beyond long can first appear, and it must surface as
     // CalibrationPopulationTooLarge, never as a storage failure, and never as an
     // OverflowException escaping the seam.

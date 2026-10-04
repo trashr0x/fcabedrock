@@ -48,12 +48,12 @@ public sealed class CalibratedSpecTests
 
     [Fact]
     public void RequiresData_WhenAuthoredEmptyDomainIdentityUnderWarn_ThenFalse() =>
-        // D-122 §15: an authored [] is a complete fixed empty domain; it requests no calibration.
+        // D-122 part 15: an authored [] is a complete fixed empty domain; it requests no calibration.
         Assert.False(CalibratedSpec.RequiresData(With(SpecFixtures.Nominal("g", 0, []))));
 
     [Fact]
     public void RequiresData_WhenAuthoredEmptyDomainIdentityUnderInclude_ThenTrue() =>
-        // include still reads data to discover additions, even over an authored [] (D-122 §15).
+        // include still reads data to discover additions, even over an authored [] (D-122 part 15).
         Assert.True(CalibratedSpec.RequiresData(
             With(SpecFixtures.Nominal("g", 0, []) with { UnknownValuePolicy = UnknownValuePolicy.Include })));
 
@@ -75,7 +75,7 @@ public sealed class CalibratedSpecTests
 
     [Fact]
     public void RequiresData_WhenOnlyRestrictTo_ThenFalse() =>
-        // §6.1/§15-A: restrict_to never triggers a calibration pass (D-065) — a fully-declared
+        // §7/§10.4 (D-065): restrict_to never triggers a calibration pass; a fully-declared
         // attribute whose only extra config is a filter stays fully-declared.
         Assert.False(CalibratedSpec.RequiresData(
             With(SpecFixtures.Nominal("g", 0, ["b"]) with { RestrictTo = [new RestrictToValue("b")] })));
@@ -126,7 +126,7 @@ public sealed class CalibratedSpecTests
         Assert.Throws<ArgumentException>(() => CalibratedSpec.Create(resolved, [new IncludeAdditions("g", ["b"])]));
     }
 
-    // --- Create: authored empty domain (D-122 §15) ---
+    // --- Create: authored empty domain (D-122 part 15) ---
 
     [Fact]
     public void Create_WhenAuthoredEmptyDomainUnderWarn_ThenNoOutcomeNeededAndDomainStaysEmpty()
@@ -148,7 +148,7 @@ public sealed class CalibratedSpecTests
     public void Create_WhenAuthoredEmptyDomainUnderInclude_ThenRequiresIncludeAdditionsNeverObserved()
     {
         // Authored [] under include takes the IncludeAdditions path, never ObservedDomain: the empty
-        // domain contributes nothing, so the effective domain is exactly the additions (D-122 §15).
+        // domain contributes nothing, so the effective domain is exactly the additions (D-122 part 15).
         var resolved = Resolve(
             With(SpecFixtures.Nominal("g", 0, []) with { UnknownValuePolicy = UnknownValuePolicy.Include }), 1);
 
@@ -455,7 +455,7 @@ public sealed class CalibratedSpecTests
     [Fact]
     public void Create_WhenPendingPercentileRange_ThenExecutableDiscretizerSubstituted()
     {
-        // D-103 narrows the D-102/G-8 guard DELIBERATELY: percentile_p1_p99 has a calibration, so it
+        // D-103 narrows the D-102 guard DELIBERATELY: percentile_p1_p99 has a calibration, so it
         // substitutes exactly like min_max. The narrowing is to the two data-derived ranges by name,
         // not to "any non-manual range", so a future range mode cannot become executable by merely
         // existing in the enum.

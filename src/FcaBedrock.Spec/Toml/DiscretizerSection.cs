@@ -81,7 +81,7 @@ public sealed record ValueGroupsDiscretizerSection(
 /// One authored <c>value_groups</c> group (§11.6). Every field is an authored-presence
 /// carrier and is <b>not</b> normalized in the document model: <see cref="Values"/> is null
 /// when <c>values</c> was omitted and a list (possibly empty) when authored, which the §14
-/// encoding and the round-trip both depend on (G-11/D-094). Authored value order and
+/// encoding and the round-trip both depend on (D-094/D-104). Authored value order and
 /// duplicates are preserved verbatim.
 /// </summary>
 /// <param name="Label">The authored group label; null when not authored (diagnosed at parse).</param>

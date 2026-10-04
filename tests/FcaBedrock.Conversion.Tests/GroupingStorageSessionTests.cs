@@ -132,7 +132,7 @@ public sealed class GroupingStorageSessionTests
     public async Task Session_WhenPassDisposedEarly_ThenCleanupWarningStillFlushesAtDisposal()
     {
         // The emit is suspended at a yield and disposed early (the consumer throws mid-stream); the
-        // grouping's disposal-time cleanup fails, and FlushStorage, in a finally, records it (F3).
+        // grouping's disposal-time cleanup fails, and FlushStorage, in a finally, records it.
         var fs = new FakeSpoolFileSystem { OnDeleteRun = _ => StorageFaults.AccessDenied() };
         var options = new GroupingOptions(maxBufferedBytes: 1, fileSystem: fs);
         var (plan, source) = await PrepAsync("s0,a,x\ns1,a,y\ns2,a,x\ns0,a,y");
@@ -218,8 +218,7 @@ public sealed class GroupingStorageSessionTests
     {
         // Each pass: the reader ctor's stream.Length faults (in-path MergeRead) and disposing the opened
         // stream also faults (CleanupClose). The session captures both per pass and, at disposal, flushes
-        // them in first-occurrence order (MergeRead then CleanupClose), preserved across passes (Codex
-        // point 3, assertion 3).
+        // them in first-occurrence order (MergeRead then CleanupClose), preserved across passes.
         var fs = new FakeSpoolFileSystem { WrapReadStream = (_, stream) => new ThrowOnLengthStream(stream, throwOnDispose: true) };
         var options = new GroupingOptions(maxBufferedBytes: 1, maxMergeFanIn: 2, fileSystem: fs);
         var (plan, source) = await PrepAsync("s0,a,x\ns1,a,y\ns2,a,x\ns0,a,y");

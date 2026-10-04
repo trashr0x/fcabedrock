@@ -82,9 +82,9 @@ public sealed class TomlSpellingsTests
 
     [Fact]
     public void EqualWidthRanges_WhenSliceDLanded_ThenPercentileJoinedTheAcceptedSurface() =>
-        // Slice C modelled percentile_p1_p99 in the Core enum but kept it out of the accepted TOML
-        // surface until its calibration existed (D-102/G-8b). Slice D closes that gap, so the
-        // spelling table now equals the enum — pinned here so neither can drift from the other.
+        // The accepted range spellings equal the Core enum, percentile_p1_p99 included (D-103;
+        // D-102 kept it out of the TOML surface until its calibration existed). Pinned here so
+        // neither can drift from the other.
         Assert.Equal(
             Enum.GetValues<EqualWidthRange>().Order(),
             TomlSpellings.EqualWidthRanges.Select(r => r.Value).Order());

@@ -4,7 +4,7 @@ namespace FcaBedrock.Core.Fingerprinting;
 
 /// <summary>
 /// The one §14 number-identity rule, public for the numeric identity sites
-/// (D-096/G-6). <see cref="Format"/> reproduces the existing canonical encoder
+/// (D-096/D-101). <see cref="Format"/> reproduces the existing canonical encoder
 /// (<see cref="CanonicalJson.AppendNumber(System.Text.StringBuilder,double)"/>)
 /// byte-for-byte (invariant, shortest round-trippable, so <c>90</c>, <c>90.0</c>,
 /// and <c>9e1</c> all render <c>90</c>) and, like that encoder, formats
@@ -14,7 +14,7 @@ namespace FcaBedrock.Core.Fingerprinting;
 /// computed cuts), so a signed zero never leaks into their bin identities, labels, or
 /// hashes. Authored <c>manual_cuts</c> are not canonicalized: an authored <c>-0</c> cut
 /// keeps its <c>"-0"</c> canonical-JSON bytes. The two type-correct chains
-/// (D-096/G-6):
+/// (D-096/D-101):
 /// <list type="bullet">
 /// <item><b>text-sourced:</b> <c>TryParse(text, culture)</c> →
 /// <c>CanonicalizeZero(value)</c> → <c>Format(value)</c>;</item>
@@ -46,7 +46,7 @@ public static class CanonicalNumber
     /// unchanged (D-096): <c>-0</c> and <c>+0</c> collapse to one identity so a
     /// signed zero never reaches a key, label, or hash. Applied at the numeric identity
     /// sites the type summary lists; <see cref="Format"/> itself never canonicalizes (it must
-    /// reproduce the existing encoder, G-6).
+    /// reproduce the existing encoder, D-101).
     /// </summary>
     public static double CanonicalizeZero(double value) => value == 0.0 ? 0.0 : value;
 
@@ -58,7 +58,7 @@ public static class CanonicalNumber
     /// <see langword="false"/> (with <paramref name="value"/> set to <c>0</c>) on a parse
     /// failure, a non-finite result, or text that is empty or all whitespace. Does <b>not</b>
     /// canonicalize zero itself; the caller applies <see cref="CanonicalizeZero"/>, keeping the
-    /// parse reusable (D-096/G-6).
+    /// parse reusable (D-096/D-101).
     /// </summary>
     public static bool TryParse(string text, CultureInfo culture, out double value)
     {

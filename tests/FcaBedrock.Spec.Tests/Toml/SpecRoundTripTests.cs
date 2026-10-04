@@ -157,7 +157,7 @@ public sealed class SpecRoundTripTests
     [InlineData("3e1")]
     public void RoundTrip_WhenExactEntrySpelledVariously_ThenAllCanonicalizeToTheWritersForm(string spelling)
     {
-        // §10.4/D-091 (round-6 High-1): 30 / 30.0 / 3e1 are equivalent inputs that all
+        // §10.4/D-091: 30 / 30.0 / 3e1 are equivalent inputs that all
         // canonicalize to the writer's `{ value = 30 }`, and the canonical text is
         // re-readable, so parse → write → parse is stable. This is the one layer where spelling
         // exists; after parsing they are the same double.

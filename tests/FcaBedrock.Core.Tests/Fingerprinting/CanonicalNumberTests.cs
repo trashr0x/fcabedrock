@@ -6,7 +6,7 @@ namespace FcaBedrock.Core.Tests.Fingerprinting;
 public sealed class CanonicalNumberTests
 {
     // Format reproduces the existing canonical encoder byte-for-byte (invariant, shortest
-    // round-trippable): the same pins CanonicalJson.AppendNumber carries (G-6).
+    // round-trippable): the same pins CanonicalJson.AppendNumber carries (D-101).
     [Theory]
     [InlineData(90.0, "90")]
     [InlineData(0.1, "0.1")]
@@ -33,7 +33,7 @@ public sealed class CanonicalNumberTests
     [Fact]
     public void Format_WhenNegativeZero_ThenStillMinusZero() =>
         // Format itself NEVER canonicalizes — it must reproduce the fp_format = 1 encoder, which
-        // renders -0.0 as "-0" (G-6). Callers apply CanonicalizeZero first for new M4 identities.
+        // renders -0.0 as "-0" (D-101). Callers apply CanonicalizeZero first for new M4 identities.
         Assert.Equal("-0", CanonicalNumber.Format(-0.0));
 
     [Theory]

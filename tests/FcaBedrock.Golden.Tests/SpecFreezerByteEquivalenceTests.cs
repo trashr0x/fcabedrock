@@ -10,7 +10,7 @@ using FcaBedrock.Spec.Toml;
 
 namespace FcaBedrock.Golden.Tests;
 
-// SpecFreezer cross-package output equivalence (S4, D-122 part 10). For each retained
+// SpecFreezer cross-package output equivalence (D-122 part 10). For each retained
 // outcome kind (and a combined spec exercising all four at once), the calibrated automatic form
 // and its frozen re-resolved form must emit byte-identical .cxt and .dat in BOTH native and
 // --v2-compat modes over the calibration data (D-088 generalized to every calibration outcome).
@@ -242,7 +242,7 @@ public sealed class SpecFreezerByteEquivalenceTests
         var datDiagnostics = new List<BedrockDiagnostic>();
         await DatWriter.WriteAsync(emit(datDiagnostics), options, datStream);
 
-        // A valid artifact carries no Error/Fatal (G-12); the two passes see the same data.
+        // A valid artifact carries no Error/Fatal (D-105); the two passes see the same data.
         Assert.DoesNotContain(cxtDiagnostics, IsError);
         Assert.DoesNotContain(datDiagnostics, IsError);
 

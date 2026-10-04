@@ -6,7 +6,7 @@ using FcaBedrock.Core.Spec;
 
 namespace FcaBedrock.Sources.Tests;
 
-// The two-stage source bootstrap sessions (D-098/G-1): schema caching/retry lifecycle and binding.
+// The two-stage source bootstrap sessions (D-098): schema caching/retry lifecycle and binding.
 public sealed class SessionTests
 {
     private static SourceReadSettings WideSettings(bool hasHeader = false, string missingToken = "?") =>

@@ -31,16 +31,16 @@ public static class SpecResolver
 
     /// <summary>
     /// Resolves <paramref name="document"/> into a paired
-    /// <see cref="ResolvedDocument"/> (D-098/G-1): the resolved
+    /// <see cref="ResolvedDocument"/> (D-098): the resolved
     /// <see cref="ResolvedSpec"/> token plus an immutable snapshot of the document.
     /// <paramref name="schema"/> is needed only when something binds a column by
     /// header name (§5.3/§5.4/§10.2); when it is supplied, direct column indexes are
     /// also range-checked against it. The conversion pipeline resolves schema-aware via
     /// the two-stage source bootstrap, so all binding range checks are seam-owned
-    /// (G-1). On any Error/Fatal the result is <see cref="Diagnosed{T}.Failed"/> and the
+    /// (D-098). On any Error/Fatal the result is <see cref="Diagnosed{T}.Failed"/> and the
     /// trust-boundary factories (<c>SourceReadSettings.Create</c>,
     /// <c>ResolvedSpec.Create</c>) are never called, so an authored error never leaves as
-    /// an exception (round-7 High-1). The per-attribute strict factories run earlier,
+    /// an exception (D-098 step 3). The per-attribute strict factories run earlier,
     /// only on arguments the reader and this pass have already checked.
     /// </summary>
     public static Diagnosed<ResolvedDocument> Resolve(SpecDocument document, SourceSchema? schema = null)
@@ -231,7 +231,7 @@ public static class SpecResolver
     }
 
     /// <summary>
-    /// Stage-1 bootstrap resolution (D-098/G-1): resolves only the §5.1
+    /// Stage-1 bootstrap resolution (D-098): resolves only the §5.1
     /// schema-independent read settings a source session needs before the schema is
     /// known, via the same private helpers as full resolution (so no condition gains
     /// a second owner). Enforces the same prefix checks as <see cref="Resolve"/>: an
@@ -530,7 +530,7 @@ public static class SpecResolver
                     $"object_key column index {byIndex.Index} is negative (§5.4)."));
                 return null;
 
-            // The upper-bound check is seam-owned (G-1/D-098): the conversion pipeline
+            // The upper-bound check is seam-owned (D-098): the conversion pipeline
             // resolves schema-aware via the two-stage bootstrap, so this is the single home
             // for the wide key-index range check. A schema-less resolve (spec tooling) leaves
             // the upper bound unchecked; ResolvedSpec.Create is the trust-boundary backstop.
@@ -753,7 +753,7 @@ public static class SpecResolver
 
         Discretizer? discretizer = null;
         Scale? scale = null;
-        // Presence preserved (D-122 §15, revising D-071): null = omitted (calibrated where a
+        // Presence preserved (D-122 part 15, revising D-071): null = omitted (calibrated where a
         // discretizer consumes it), any non-null list incl. [] is authored-complete. The
         // document keeps the authored form verbatim for round-trip (D-049 provenance).
         IReadOnlyList<string>? declaredDomain = section.DeclaredDomain;
@@ -871,7 +871,7 @@ public static class SpecResolver
     // numeric identities under binding.locale, preserving declaration order (§17 rule 3, over
     // the first occurrence of each identity). An unparseable, non-finite, or normalization-duplicate
     // entry is DeclaredDomainInvalid (one per bad entry: spec-validate diagnostics aggregate).
-    // Presence is preserved (D-122 §15): an omitted domain resolves to null (calibrated later),
+    // Presence is preserved (D-122 part 15): an omitted domain resolves to null (calibrated later),
     // an authored [] resolves to the empty list (authored-complete), and otherwise the canonical
     // list is what the resolved Core graph and fingerprint carry (the document keeps the authored
     // spellings for round-trip).
@@ -1350,7 +1350,7 @@ public static class SpecResolver
             $"Attribute '{attribute}' has an invalid restrict_to range: {reason} (§10.4).",
             new DiagnosticLocation(AttributeName: attribute)));
 
-    // §10.4/G-6/D-096: valid exact values and provided bounds are zero-canonicalized at
+    // §10.4/D-096/D-105: valid exact values and provided bounds are zero-canonicalized at
     // resolution, so an authored -0 resolves (and therefore matches, plans, and hashes)
     // identically to 0. This is the "already-numeric" arm of the D-101 chain (the values arrive
     // as TOML doubles; there is no text to parse), and it is scoped to the numeric identities
@@ -1640,7 +1640,7 @@ public static class SpecResolver
             try
             {
                 // Authored presence flows straight through: a null Values stays null (omitted) and
-                // an authored empty list stays empty (G-11); Create never normalizes one to the
+                // an authored empty list stays empty (D-104); Create never normalizes one to the
                 // other, and the pattern text is retained verbatim.
                 groups.Add(ValueGroup.Create(group.Label, group.Values, group.Pattern));
             }
@@ -1762,7 +1762,7 @@ public static class SpecResolver
         return -1;
     }
 
-    // The success check (round-7 High-1): on any Error/Fatal, fail before building
+    // The success check (D-098 step 3): on any Error/Fatal, fail before building
     // anything; only on a clean pass build the read settings, the ResolvedSpec token
     // (the trust boundary), and the document-paired wrapper. An exception beyond
     // this check is an implementation invariant, never a user-input channel.

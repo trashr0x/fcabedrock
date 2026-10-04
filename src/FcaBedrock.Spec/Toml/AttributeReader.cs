@@ -362,7 +362,7 @@ internal static class AttributeReader
 
     // §11.6 (D-090/D-104): value_groups' authored fields. Parse owns every field shape: the
     // groups array and each group's label/values/pattern validity (including the regex compile
-    // check and the G-11 matcher predicate) and the unmatched spelling, all as SpecFieldInvalid,
+    // check and the D-104 matcher predicate) and the unmatched spelling, all as SpecFieldInvalid,
     // the one code §11.6 assigns; there is deliberately no dedicated regex-error code. The seam
     // owns what the values IMPLY across groups (ValueGroupsLabelDuplicate,
     // OrdinalNotAllowedWithValueGroupsPassthrough).
@@ -512,7 +512,7 @@ internal static class AttributeReader
             }
         }
 
-        // G-11: at least one NON-EMPTY explicit value or a non-empty pattern, so `values = []`
+        // D-104: at least one NON-EMPTY explicit value or a non-empty pattern, so `values = []`
         // alone is invalid while `values = []` alongside a pattern is valid.
         if (!usableValues && !usablePattern)
         {
@@ -548,7 +548,7 @@ internal static class AttributeReader
 
     // An omitted `values` and an authored `values = []` are DIFFERENT authored states the
     // document must keep apart: the §14 encoding writes `values` only when authored, so the two
-    // are byte-distinct (G-11/D-094), hence the explicit authored flag rather than "null means
+    // are byte-distinct (D-094/D-104), hence the explicit authored flag rather than "null means
     // absent". Authored order and duplicates are preserved verbatim.
     private static (IReadOnlyList<string>? Value, bool Authored) TakeGroupValues(
         TomlReadContext context, TomlTableCursor cursor)

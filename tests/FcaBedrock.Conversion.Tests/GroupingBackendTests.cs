@@ -7,7 +7,7 @@ namespace FcaBedrock.Conversion.Tests;
 
 // Behavioural tests for the bounded grouping backend and its two-channel storage-failure model (D-082),
 // driven end-to-end through the internal spill-forcing EmitTripleAsync overload with an injected
-// filesystem and observer. Wide dedupe reuses the same backend (C3); triple unordered exercises it here.
+// filesystem and observer. Wide dedupe shares the backend (D-083); triple unordered exercises it here.
 public sealed class GroupingBackendTests
 {
     [Theory]
@@ -190,7 +190,7 @@ public sealed class GroupingBackendTests
     public async Task Backend_WhenMergeReadFaultsWithIOException_ThenErrorMergeReadNoExceptionEscapes()
     {
         // A read fault after a run opens (mid-merge) is an owned Error, not a raw exception across the
-        // seam (F1). WrapReadStream returns a stream that throws IOException on Read.
+        // seam (D-082). WrapReadStream returns a stream that throws IOException on Read.
         var fs = new FakeSpoolFileSystem
         {
             WrapReadStream = (_, stream) =>
@@ -212,7 +212,7 @@ public sealed class GroupingBackendTests
     public async Task Backend_WhenDeleteFailsOnceThenSucceeds_ThenCompletesNoEscalationAndCountsTransient()
     {
         // A transient deletion failure is retried at the next batch boundary and succeeds, so the merge
-        // completes without a 3T escalation; the transient failure is still counted in the Warning (F4).
+        // completes without a 3T escalation; the transient failure is still counted in the Warning.
         var failedOnce = false;
         var fs = new FakeSpoolFileSystem
         {
@@ -262,7 +262,7 @@ public sealed class GroupingBackendTests
     {
         // A reader whose Dispose faults is a cleanup-class failure: the merge still delivers every object
         // and the close failure surfaces as one CleanupClose Warning, never a raw exception escaping
-        // disposal (F2). Reads succeed (the decorator delegates them); only Dispose throws.
+        // disposal. Reads succeed (the decorator delegates them); only Dispose throws.
         var fs = new FakeSpoolFileSystem { WrapReadStream = (_, stream) => new ThrowOnDisposeStream(stream) };
         var options = new GroupingOptions(maxBufferedBytes: 1, maxMergeFanIn: 2, fileSystem: fs);
 
@@ -334,7 +334,7 @@ public sealed class GroupingBackendTests
     public async Task Backend_WhenReaderLengthFails_ThenMergeReadErrorAndStreamDisposed()
     {
         // OpenRun succeeds but the SpoolRunReader ctor's stream.Length read faults: an in-path MergeRead
-        // Error, and the already-open stream is disposed, never leaked (F2 / Codex point 2).
+        // Error, and the already-open stream is disposed, never leaked.
         var streams = new List<ThrowOnLengthStream>();
         var fs = new FakeSpoolFileSystem
         {
@@ -361,7 +361,7 @@ public sealed class GroupingBackendTests
     {
         // The reader ctor's stream.Length faults (in-path MergeRead), and disposing the opened stream
         // during cleanup ALSO faults (CleanupClose). Both surface, in first-occurrence order: MergeRead
-        // then CleanupClose. The in-path failure is recorded before its cleanup (Codex point 3).
+        // then CleanupClose. The in-path failure is recorded before its cleanup.
         var fs = new FakeSpoolFileSystem { WrapReadStream = (_, stream) => new ThrowOnLengthStream(stream, throwOnDispose: true) };
         var options = new GroupingOptions(maxBufferedBytes: 1, maxMergeFanIn: 2, fileSystem: fs);
 
@@ -383,7 +383,7 @@ public sealed class GroupingBackendTests
         // 7, 8, 9. Consumed-run deletes always fail (a CleanupDelete Warning first appears at the create-7
         // batch's deletes); the create-8 merge write then fails (a MergeWrite Error). The ledger keeps the
         // true order [CleanupDelete Warning, MergeWrite Error], the opposite of the MergeRead-first case
-        // above, proving chronology, not a fixed rule (Codex point 3, assertion 2).
+        // above, proving chronology, not a fixed rule.
         var creates = 0;
         var fs = new FakeSpoolFileSystem
         {

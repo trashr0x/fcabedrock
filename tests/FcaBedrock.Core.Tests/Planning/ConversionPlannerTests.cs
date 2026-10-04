@@ -576,7 +576,7 @@ public sealed class ConversionPlannerTests
     public void Resolve_WhenObjectKeyColumnIndexOutOfRange_ThenThrowsAtTrustBoundary()
     {
         // D-085/D-098: an out-of-range key INDEX is a binding error. The conversion pipeline
-        // resolves schema-aware (G-1), so the range check is seam-owned: the resolver emits
+        // resolves schema-aware, so the range check is seam-owned: the resolver emits
         // ObjectKeyBindingInvalid over the document, and the ResolvedSpec trust boundary rejects a
         // hand-built spec with ArgumentException before Plan (the planner's residual is unreachable).
         var spec = new BedrockSpec(
@@ -802,8 +802,8 @@ public sealed class ConversionPlannerTests
     [Fact]
     public void Plan_WhenValueBinOrdinalOmitsOrder_ThenReportsOrdinalOrderMissing()
     {
-        // The F1 silent path, closed: identity + ordinal with no order used to plan
-        // and emit while ignoring the authored order/boundary — now rejected (§12.3).
+        // §12.3/D-081: identity + ordinal with no order is OrdinalOrderMissing at plan. Without
+        // that check the scale would plan and emit while silently ignoring the authored order/boundary.
         var scale = new OrdinalScale(OrdinalDirection.Ge, DropTop: false, OrdinalBoundary.Inclusive, Order: null);
         var spec = new BedrockSpec(SpecFixtures.WideRowIndex(),
             [SpecFixtures.OrdinalValueBins("edu", 0, ["a", "b"], scale)]);
@@ -856,7 +856,7 @@ public sealed class ConversionPlannerTests
         Assert.Equal(2, Assert.Single(plan.Attributes).MissingFormalAttributeId);
     }
 
-    // --- empty-universe value-bin ordinal (D-122 §15) ---
+    // --- empty-universe value-bin ordinal (D-122 part 15) ---
     // An authored declared_domain = [] is a complete empty universe. It is NOT exempt from the
     // permutation rule: an omitted order is OrdinalOrderMissing and order = [] is the valid empty
     // permutation. Identity follows the same rule as the free_per_value/value_groups blocks. The
@@ -943,7 +943,7 @@ public sealed class ConversionPlannerTests
         Assert.DoesNotContain(result.Diagnostics, d => d.Code == DiagnosticCode.OrdinalOrderMissing);
     }
 
-    // --- authored empty domain, non-ordinal (D-122 §15) ---
+    // --- authored empty domain, non-ordinal (D-122 part 15) ---
 
     [Fact]
     public void Plan_WhenIdentityNominalOverAuthoredEmptyDomain_ThenZeroColumnsAndNoFormalAttributes()
@@ -964,7 +964,7 @@ public sealed class ConversionPlannerTests
     public void Plan_WhenIdentityNominalOverAuthoredEmptyDomainWithAsAttribute_ThenOnlyMissingColumn()
     {
         // [] adds no value columns, but missing_policy = "as_attribute" still appends the missing
-        // column, so [] does not by itself guarantee zero formal attributes (D-122 §15).
+        // column, so [] does not by itself guarantee zero formal attributes (D-122 part 15).
         var spec = new BedrockSpec(SpecFixtures.WideRowIndex(),
             [SpecFixtures.Nominal("g", 0, [], missing: MissingPolicy.AsAttribute)]);
 

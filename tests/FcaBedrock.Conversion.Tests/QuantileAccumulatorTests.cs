@@ -386,7 +386,7 @@ public sealed class QuantileAccumulatorTests
         Feed(harness.Accumulator, [1.0]);
 
         // Seeded rather than fed: a long.MaxValue-sized fixture is not constructible, and the
-        // condition is a contract-totality row, not a data scenario (G-13).
+        // condition is a contract-totality row, not a data scenario (D-103).
         harness.Accumulator.SeedTotalForTest(long.MaxValue);
 
         var ex = Assert.Throws<CalibrationPopulationOverflowException>(() => Feed(harness.Accumulator, [2.0]));
@@ -423,7 +423,7 @@ public sealed class QuantileAccumulatorTests
         harness.Accumulator.Observe("-1", tally);
 
         // The gap is -1 → 0, so right_value places the cut on the zero group's value. It must be
-        // positive zero: a -0 cut would render "-0" into a bin label and a hash (G-6).
+        // positive zero: a -0 cut would render "-0" into a bin label and a hash (D-103).
         var cuts = Cuts(harness.Accumulator, bins: 2, TiePolicy.Left, CutPlacement.RightValue);
 
         Assert.Equal(BitConverter.DoubleToInt64Bits(0.0), BitConverter.DoubleToInt64Bits(cuts[0]));
@@ -464,17 +464,17 @@ public sealed class QuantileAccumulatorTests
         //    split {1,2},{3,4} results, where a naive "always apply the policy" rule gives 2.
         { "exact-group-edge", [1, 2, 3, 4], 2, TiePolicy.Right, CutPlacement.RightValue, [3] },
 
-        // 4. G-5 example 1 (collision): both boundaries prefer gap 2, so the window pushes the
+        // 4. The §11.5 collision example: both boundaries prefer gap 2, so the window pushes the
         //    first down to gap 1 (against "left") to keep a gap for the second.
-        { "g5-collision", [1, 2, 2, 2, 3], 3, TiePolicy.Left, CutPlacement.RightValue, [2, 3] },
+        { "spec-example-collision", [1, 2, 2, 2, 3], 3, TiePolicy.Left, CutPlacement.RightValue, [2, 3] },
 
-        // 5. G-5 example 2 (last-group edge): d = m = 5 is not a gap, so the tied 5-group lands
+        // 5. The §11.5 last-group edge example: d = m = 5 is not a gap, so the tied 5-group lands
         //    upper despite "left".
-        { "g5-last-edge", [1, 2, 3, 4, 5, 5, 5, 5, 5, 5], 2, TiePolicy.Left, CutPlacement.RightValue, [5] },
+        { "spec-example-last-group-edge", [1, 2, 3, 4, 5, 5, 5, 5, 5, 5], 2, TiePolicy.Left, CutPlacement.RightValue, [5] },
 
-        // 6. G-5 example 3 (first-group edge): d = 0 is not a gap, so the tied 5-group lands lower
-        //    despite "right".
-        { "g5-first-edge", [5, 5, 5, 5, 5, 5, 6, 7, 8, 9], 2, TiePolicy.Right, CutPlacement.RightValue, [6] },
+        // 6. The §11.5 first-group edge example: d = 0 is not a gap, so the tied 5-group lands
+        //    lower despite "right".
+        { "spec-example-first-group-edge", [5, 5, 5, 5, 5, 5, 6, 7, 8, 9], 2, TiePolicy.Right, CutPlacement.RightValue, [6] },
 
         // 7. d = 0 infeasible on a two-distinct population.
         { "head-tie-right", [5, 5, 5, 9], 2, TiePolicy.Right, CutPlacement.RightValue, [9] },

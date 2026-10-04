@@ -175,7 +175,7 @@ public sealed class FingerprintCalculatorTests
         Assert.NotEqual(withMissing, without);
     }
 
-    // --- Cut-bin structural encoding (review amendment 1) --------------------
+    // --- Cut-bin structural encoding -----------------------------------------
     //
     // lo_open/hi_open mean "unbounded end" (null bound), never interval
     // inclusivity: <10 has hi_open:false because its high bound is finite,
@@ -270,7 +270,7 @@ public sealed class FingerprintCalculatorTests
     [Fact]
     public void Compute_WhenMatchedStylePairsDiffer_ThenOnlyCxtFingerprintChanges()
     {
-        // Review amendment 2: the calculator's precondition is that inputs pair
+        // The calculator's precondition is that inputs pair
         // the style the plan was produced with: Native/Native vs
         // V2Compat/V2Compat. Style is a cxt-only input (D-011/D-044).
         var spec = GoldenSpec();
@@ -764,7 +764,7 @@ public sealed class FingerprintCalculatorTests
             StringComparison.Ordinal);
     }
 
-    // --- G-11: omitted `values` vs authored `values = []` ---------------------
+    // --- D-104: omitted `values` vs authored `values = []` --------------------
 
     private static BedrockSpec PatternOnlySpec() =>
         new(SpecFixtures.WideRowIndex(), [
@@ -781,7 +781,7 @@ public sealed class FingerprintCalculatorTests
     [Fact]
     public void BuildCxtOutputJson_WhenValuesOmittedVersusAuthoredEmpty_ThenTheBytesDiffer()
     {
-        // The G-11 lock, with two VALID groups (both carry the same pattern, so both are usable
+        // The D-104 lock, with two VALID groups (both carry the same pattern, so both are usable
         // matchers): authored presence is encoded, so `values` appears only when authored, and an
         // authored empty list appears as [].
         var patternOnly = FingerprintCalculator.BuildCxtOutputJson(Plan(PatternOnlySpec()), PatternOnlySpec(), NativeCxt());
@@ -1211,12 +1211,12 @@ public sealed class FingerprintCalculatorTests
             FingerprintCalculator.BuildDatOutputJson(auto, auto.Calibrated.Spec, NativeDat()));
     }
 
-    // --- existing-kind regression: authored -0.0 manual cut stays -0 (G-6) ----
+    // --- existing-kind regression: authored -0.0 manual cut stays -0 (D-101) --
 
     [Fact]
     public void BuildSchemaJson_WhenAuthoredNegativeZeroManualCut_ThenEncodesMinusZeroUnderFpFormat1()
     {
-        // G-6: the fp_format = 1 encoder is UNTOUCHED — an authored -0.0 manual cut is a valid
+        // D-101: the fp_format = 1 encoder is UNTOUCHED — an authored -0.0 manual cut is a valid
         // current spec whose stored hash embeds "-0"; CanonicalNumber.CanonicalizeZero is NOT applied
         // to existing-kind authored cuts, so those bytes must not move.
         var discretizer = ManualCutsDiscretizer.Create([-0.0, 10.0], BinEnds.Open, CultureInfo.InvariantCulture).Value!;

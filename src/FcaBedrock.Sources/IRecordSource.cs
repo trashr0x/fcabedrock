@@ -19,7 +19,7 @@ namespace FcaBedrock.Sources;
 public interface IRecordSource
 {
     /// <summary>
-    /// What this source can prove about its preparation (D-098/G-1): a bound source
+    /// What this source can prove about its preparation (D-098): a bound source
     /// carries a <see cref="TokenProvenance"/>, a direct-constructed production source
     /// a <see cref="DescriptorProvenance"/>, and a descriptor-less adapter/test fake
     /// the explicit <see cref="SourceProvenance.Unvalidated"/> opt-out. Every

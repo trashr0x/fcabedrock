@@ -9,7 +9,7 @@ namespace FcaBedrock.Benchmarks.Corpus;
 /// <para>
 /// The geometry is deliberately frozen here, in one place, because a corpus definition is a
 /// measurement boundary: changing a distribution invalidates every comparison stated against it
-/// (the base plan's corpus contract and the S5 invalidation rule). Every value is a pure function
+/// (D-124's corpus contract and its invalidation/recheck rule). Every value is a pure function
 /// of <c>(row, column)</c> through <see cref="Determinism"/>, so a file regenerates byte-for-byte
 /// anywhere and an oracle can re-derive any single row without reading the file.
 /// </para>
