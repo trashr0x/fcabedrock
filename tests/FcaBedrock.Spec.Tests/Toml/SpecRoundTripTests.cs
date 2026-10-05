@@ -1,5 +1,13 @@
+using System.Text;
+using FcaBedrock.Conversion;
+using FcaBedrock.Core.Calibration;
+using FcaBedrock.Core.Discretization;
+using FcaBedrock.Core.Planning;
 using FcaBedrock.Core.Scaling;
 using FcaBedrock.Core.Spec;
+using FcaBedrock.Diagnostics;
+using FcaBedrock.Export;
+using FcaBedrock.Sources;
 using FcaBedrock.Spec.Toml;
 
 namespace FcaBedrock.Spec.Tests.Toml;
@@ -9,7 +17,9 @@ namespace FcaBedrock.Spec.Tests.Toml;
 /// fidelity of authored files, so the primary oracle is <em>canonical-text
 /// idempotence</em>: after one write canonicalizes the form, read∘write is the
 /// identity on the text (and therefore on the document). Targeted structural
-/// asserts pin the D-049/D-071 presence guarantees through a full cycle.
+/// asserts pin the D-049/D-071 presence guarantees through a full cycle. Text
+/// idempotence cannot see a lossy <em>first</em> write, so one shared property also
+/// requires a spec's fingerprints, formal names and conversion bytes to survive it.
 /// </summary>
 public sealed class SpecRoundTripTests
 {
@@ -430,6 +440,228 @@ public sealed class SpecRoundTripTests
 
         Assert.Equal("{column}-{value}", reread.Attributes[0].FormalAttributeFormat);
     }
+
+    // --- the shared semantic round trip (§14, D-075/D-101) --------------------
+
+    // Each case is a valid fully declared or include-calibrated spec over a one- or two-column
+    // headerless CSV whose records sit on, just below and just above the boundaries it tests.
+    public static TheoryData<string, string, string> SemanticRoundTripCases() => new()
+    {
+        {
+            "negative-zero manual cut",
+            Numeric("discretizer = { kind = \"manual_cuts\", cuts = [-0.0, 10] }"),
+            "-5\n-0\n0\n5\n10\n15\n"
+        },
+        {
+            "positive-zero manual cut",
+            Numeric("discretizer = { kind = \"manual_cuts\", cuts = [0, 10] }"),
+            "-5\n-0\n0\n5\n10\n15\n"
+        },
+        {
+            "negative-zero vmin",
+            Numeric("discretizer = { kind = \"equal_width\", bins = 2, range = \"manual\", vmin = -0.0, vmax = 10 }"),
+            "-1\n-0\n0\n5\n10\n11\n"
+        },
+        {
+            "negative-zero vmax",
+            Numeric("discretizer = { kind = \"equal_width\", bins = 2, range = \"manual\", vmin = -10, vmax = -0.0 }"),
+            "-11\n-10\n-5\n-0\n0\n1\n"
+        },
+        {
+            "2^53 and its neighbours",
+            Numeric("discretizer = { kind = \"manual_cuts\", cuts = [9007199254740991, 9007199254740992, 9007199254740994] }"),
+            "9007199254740990\n9007199254740991\n9007199254740992\n9007199254740993\n9007199254740994\n9007199254740996\n"
+        },
+        {
+            "-2^53 and its neighbours",
+            Numeric("discretizer = { kind = \"manual_cuts\", cuts = [-9007199254740994, -9007199254740992, -9007199254740991] }"),
+            "-9007199254740996\n-9007199254740994\n-9007199254740993\n-9007199254740992\n-9007199254740991\n0\n"
+        },
+        {
+            "1e17 and its neighbours",
+            Numeric("discretizer = { kind = \"manual_cuts\", cuts = [99999999999999984, 1e17, 100000000000000016] }"),
+            "99999999999999968\n99999999999999984\n1e17\n100000000000000008\n100000000000000016\n1e18\n"
+        },
+        {
+            "ordinary non-integral cuts",
+            Numeric("discretizer = { kind = \"manual_cuts\", cuts = [1e-5, 0.1, 2.5, 49.5] }"),
+            "0\n0.00001\n0.05\n0.1\n2.5\n49.5\n50\n"
+        },
+        {
+            "computed negative zero",
+            Numeric("discretizer = { kind = \"equal_width\", bins = 2, range = \"manual\", vmin = -1, vmax = 0.6, precision = { round_to = 1 } }"),
+            "-1\n-0.5\n-0\n0\n0.5\n"
+        },
+        {
+            "extreme range",
+            Numeric("discretizer = { kind = \"equal_width\", bins = 2, range = \"manual\", vmin = -1.7e308, vmax = 1.7e308 }"),
+            "-1e308\n-0\n0\n1e308\n"
+        },
+        {
+            "restriction and numeric free_per_value zeros",
+            RestrictionAndFreePerValue,
+            "0,-0\n-0,1\n5,0\n"
+        },
+        {
+            "six value_labels keys",
+            Labels(string.Empty),
+            "red\ntan\nash\nfig\nelm\noak\n"
+        },
+        {
+            "case-distinct and quoted label keys",
+            CaseDistinctLabels,
+            "Red\nred\nRED\nx y\na.b\ncafé\n"
+        },
+        {
+            "template-supplied value_labels",
+            TemplateLabels,
+            "red\ntan\nash\nfig\nelm\noak\n"
+        },
+        {
+            "include-calibrated value_labels",
+            Labels("unknown_value_policy = \"include\"\n"),
+            "red\ntan\nash\nfig\nelm\noak\nextra\n"
+        },
+    };
+
+    [Theory]
+    [MemberData(nameof(SemanticRoundTripCases))]
+    public async Task RoundTrip_WhenTheAuthoredSpecIsWrittenAndReread_ThenItMeansWhatItMeantBefore(
+        string name, string toml, string csv)
+    {
+        _ = name; // labels the case in a test report
+        var authored = Read(toml);
+        var before = await ConvertAsync(authored, csv);
+
+        var written = SpecWriter.Write(authored);
+        var reread = Read(written);
+        var after = await ConvertAsync(reread, csv);
+
+        Assert.Equal(before.Fingerprints, after.Fingerprints);
+        Assert.Equal(before.Names, after.Names);
+        Assert.Equal(before.Cxt, after.Cxt);
+        Assert.Equal(before.Dat, after.Dat);
+        Assert.Equal(before.V2CompatCxt, after.V2CompatCxt);
+
+        // Canonical-text idempotence, and a resolver snapshot that writes exactly like the document
+        // it was taken from (calibrate writes that snapshot, D-075/D-098).
+        Assert.Equal(written, SpecWriter.Write(reread));
+        Assert.Equal(written, SpecWriter.Write(before.Snapshot));
+    }
+
+    private const string Header = "[spec]\nversion = 1\n\n[binding]\nshape = \"wide\"\nhas_header = false\n\n";
+
+    private const string DSixDomain = "declared_domain = [\"red\", \"tan\", \"ash\", \"fig\", \"elm\", \"oak\"]\n";
+
+    private const string DSixLabels =
+        "value_labels = { red = \"L-red\", tan = \"L-tan\", ash = \"L-ash\", fig = \"L-fig\", elm = \"L-elm\", oak = \"L-oak\" }\n";
+
+    private const string RestrictionAndFreePerValue = Header
+        + "[[attribute]]\nname = \"x\"\nsource = { kind = \"column\", index = 0 }\n"
+        + "discretizer = { kind = \"manual_cuts\", cuts = [5] }\nscale = { kind = \"nominal\" }\n"
+        + "restrict_to = [{ value = -0.0 }, { from = -0.0, to = 1 }]\n\n"
+        + "[[attribute]]\nname = \"y\"\nsource = { kind = \"column\", index = 1, value_type = \"number\" }\n"
+        + "declared_domain = [\"-0\", \"1\"]\nvalue_labels = { \"-0\" = \"zero\", \"1\" = \"one\" }\n"
+        + "discretizer = { kind = \"free_per_value\" }\nscale = { kind = \"nominal\" }\n";
+
+    private const string CaseDistinctLabels = Header
+        + "[[attribute]]\nname = \"k\"\nsource = { kind = \"column\", index = 0 }\n"
+        + "declared_domain = [\"Red\", \"red\", \"RED\", \"x y\", \"a.b\", \"café\"]\n"
+        + "value_labels = { Red = \"L-Red\", red = \"L-red\", RED = \"L-RED\", \"x y\" = \"L-x y\", \"a.b\" = \"L-a.b\", \"café\" = \"L-café\" }\n"
+        + "discretizer = { kind = \"identity\" }\nscale = { kind = \"nominal\" }\n";
+
+    private const string TemplateLabels = Header
+        + "[[template]]\nid = \"t\"\n" + DSixLabels + "\n"
+        + "[[attribute]]\nname = \"k\"\ntemplate = \"t\"\nsource = { kind = \"column\", index = 0 }\n" + DSixDomain
+        + "discretizer = { kind = \"identity\" }\nscale = { kind = \"nominal\" }\n";
+
+    private static string Numeric(string discretizer) =>
+        Header + "[[attribute]]\nname = \"x\"\nsource = { kind = \"column\", index = 0, value_type = \"number\" }\n"
+        + discretizer + "\nscale = { kind = \"nominal\" }\n";
+
+    private static string Labels(string extraKeys) =>
+        Header + "[[attribute]]\nname = \"k\"\nsource = { kind = \"column\", index = 0 }\n" + DSixDomain + extraKeys
+        + DSixLabels + "discretizer = { kind = \"identity\" }\nscale = { kind = \"nominal\" }\n";
+
+    // Resolve, calibrate when the spec needs data, plan, fingerprint and convert, exactly as a run
+    // does, over the given CSV text.
+    private static async Task<Converted> ConvertAsync(FcaBedrock.Spec.Toml.SpecDocument document, string csv)
+    {
+        var settings = SpecResolver.ResolveReadSettings(document);
+        Assert.True(settings.TryGetValue(out var readSettings), Describe(settings.Diagnostics));
+        var session = new WideCsvSession(() => new MemoryStream(Encoding.UTF8.GetBytes(csv)), readSettings);
+        var schema = await session.GetSchemaAsync(TestContext.Current.CancellationToken);
+        var resolved = SpecResolver.Resolve(document, schema);
+        Assert.True(resolved.TryGetValue(out var resolvedDocument), Describe(resolved.Diagnostics));
+
+        var token = resolvedDocument.Resolved;
+        var source = session.Bind(token);
+        CalibratedSpec calibrated;
+        if (CalibratedSpec.RequiresData(token.Spec))
+        {
+            var result = await Calibrator.CalibrateAsync(token, source, TestContext.Current.CancellationToken);
+            Assert.True(result.TryGetValue(out var value), Describe(result.Diagnostics));
+            calibrated = value;
+        }
+        else
+        {
+            calibrated = CalibratedSpec.FromFullyDeclared(token);
+        }
+
+        var native = Plan(calibrated, LabelStyle.Native);
+        return new Converted(
+            resolvedDocument.Document,
+            SpecFingerprints.ComputeNative(resolvedDocument, native),
+            [.. native.FormalAttributes.Select(attribute => attribute.RenderedName)],
+            await CxtAsync(native, source, WriterOptions.Native),
+            await DatAsync(native, source, WriterOptions.Native),
+            await CxtAsync(Plan(calibrated, LabelStyle.V2Compat), source, WriterOptions.V2Compat));
+    }
+
+    private static ConversionPlan Plan(CalibratedSpec calibrated, LabelStyle style)
+    {
+        var planned = ConversionPlanner.Plan(calibrated, style);
+        Assert.True(planned.TryGetValue(out var plan), Describe(planned.Diagnostics));
+        return plan;
+    }
+
+    private static async Task<byte[]> CxtAsync(ConversionPlan plan, IRecordSource source, WriterOptions options)
+    {
+        Func<ICollection<BedrockDiagnostic>, IAsyncEnumerable<EmittedObject>> emit =
+            sink => Emitter.EmitAsync(plan, source, sink);
+        using var output = new MemoryStream();
+        var diagnostics = new List<BedrockDiagnostic>();
+        using (var replay = EmitReplay.Begin(emit, diagnostics))
+        {
+            await CxtWriter.WriteAsync(plan, replay.Open, options, output, TestContext.Current.CancellationToken);
+        }
+
+        Assert.DoesNotContain(diagnostics, IsError);
+        return output.ToArray();
+    }
+
+    private static async Task<byte[]> DatAsync(ConversionPlan plan, IRecordSource source, WriterOptions options)
+    {
+        using var output = new MemoryStream();
+        var diagnostics = new List<BedrockDiagnostic>();
+        await DatWriter.WriteAsync(Emitter.EmitAsync(plan, source, diagnostics), options, output, TestContext.Current.CancellationToken);
+        Assert.DoesNotContain(diagnostics, IsError);
+        return output.ToArray();
+    }
+
+    private static bool IsError(BedrockDiagnostic diagnostic) =>
+        diagnostic.Severity is DiagnosticSeverity.Error or DiagnosticSeverity.Fatal;
+
+    private static string Describe(IReadOnlyList<BedrockDiagnostic> diagnostics) =>
+        string.Join("; ", diagnostics.Select(d => $"{d.Code}: {d.Message}"));
+
+    private sealed record Converted(
+        FcaBedrock.Spec.Toml.SpecDocument Snapshot,
+        ComputedFingerprints Fingerprints,
+        string[] Names,
+        byte[] Cxt,
+        byte[] Dat,
+        byte[] V2CompatCxt);
 
     private static FcaBedrock.Spec.Toml.SpecDocument Read(string toml)
     {

@@ -1,15 +1,20 @@
 using System.Collections.Frozen;
 using System.Collections.Immutable;
+using System.Collections.ObjectModel;
 
 namespace FcaBedrock.Spec.Toml;
 
 /// <summary>
-/// Produces an immutable deep snapshot of a <see cref="SpecDocument"/> for
-/// <see cref="ResolvedDocument"/> (D-098): every section list/dictionary is
-/// rebuilt over <see cref="ImmutableArray{T}"/> / frozen maps, so post-resolve
-/// mutation of a caller-owned document cannot leak into fingerprinting. The
-/// scalar-only sections (<c>[spec]</c>, <c>[provenance]</c>, <c>[output]</c>,
-/// <c>[defaults]</c>) are already immutable records and are reused.
+/// Produces a deep snapshot of a <see cref="SpecDocument"/> for
+/// <see cref="ResolvedDocument"/> (D-098): every section list is rebuilt over
+/// <see cref="ImmutableArray{T}"/>, and every non-empty <c>value_labels</c> map is copied in
+/// its stored (authored) order into an ordinal <see cref="OrderedDictionary{TKey, TValue}"/>
+/// behind a <see cref="ReadOnlyDictionary{TKey, TValue}"/>. The wrapper refuses writes, but its
+/// <c>SyncRoot</c>, and that of its <c>Keys</c> and <c>Values</c>, is the copy, which a caller
+/// can change. Every copy belongs to this snapshot, so post-resolve mutation of a caller-owned
+/// document cannot leak into fingerprinting or into a written spec. The scalar-only sections
+/// (<c>[spec]</c>, <c>[provenance]</c>, <c>[output]</c>, <c>[defaults]</c>) are already
+/// immutable records and are reused.
 /// </summary>
 internal static class DocumentSnapshot
 {
@@ -78,10 +83,14 @@ internal static class DocumentSnapshot
             ? ordinal with { Order = order.ToImmutableArray() }
             : scale;
 
+    // §10.8/D-075: calibrate writes this snapshot back out, so a non-empty map is copied in its
+    // stored (authored) order; the copy is reachable through the wrapper's SyncRoot (D-098). An
+    // empty map stays the frozen empty map, never ReadOnlyDictionary.Empty: that is one shared
+    // instance over one mutable Dictionary.
     private static IReadOnlyDictionary<string, string>? SnapshotLabels(IReadOnlyDictionary<string, string>? labels) =>
         labels is null
             ? null
             : labels.Count == 0
                 ? FrozenDictionary<string, string>.Empty
-                : labels.ToFrozenDictionary(StringComparer.Ordinal);
+                : new ReadOnlyDictionary<string, string>(new OrderedDictionary<string, string>(labels, StringComparer.Ordinal));
 }

@@ -85,7 +85,7 @@ changes an earlier one. A new entry MUST add its line here.
 - D-130: Authored-text integrity: one mechanical command over raw decoded text, two fixed instruction-entry checks, an include/exclude manifest and a process-level test runner *(supersedes the checker portion of D-129 rule 5)*
 - D-131: One-time heading-separator migration in the decision log, roadmap and benchmark record: colons replace em dashes, changed anchors are accepted, and no alias is kept *(supersedes the heading-anchor clause of D-129 rule 1 for this migration only)*
 - D-132: No separate public evidence file; the benchmark guide carries only the identities that qualify its current claims
-- D-134: Spec passages that contradict their rule's owner are corrected to it, and enforced defaults, bounds and allowed values shown only in examples, and enforced rules stated nowhere, are stated in prose
+- D-134: Spec passages that contradict their rule's owner are corrected to it, and enforced defaults, bounds and allowed values shown only in examples, and enforced rules stated nowhere, are stated in prose *(probe guard defaults covered in place on 2026-10-05)*
 
 ### M1 (mini-mushroom walking skeleton)
 
@@ -171,13 +171,13 @@ changes an earlier one. A new entry MUST add its line here.
 
 ### M4 Slice A (calibration preparation)
 
-- D-098: M4 preparation contract: two-stage source bootstrap, token-paired provenance, calibrated state *(realizes D-093; makes the schema-aware-resolve move D-083 reserved; delimiter-alphabet refusal added in place on 2026-10-01; closed-union claim corrected in place on 2026-10-04)*
+- D-098: M4 preparation contract: two-stage source bootstrap, token-paired provenance, calibrated state *(realizes D-093; makes the schema-aware-resolve move D-083 reserved; delimiter-alphabet refusal added in place on 2026-10-01; closed-union claim corrected in place on 2026-10-04; document snapshot's `value_labels` immutability narrowed in place on 2026-10-05)*
 - D-099: Triple structural validity widens to calibrate/emit *(refines D-082/D-085/D-095; probe phase added by D-111)*
 - D-100: Per-phase `SourceValueUnparseable` aggregation across calibrate and emit *(refines D-097)*
 
 ### M4 Slice B (free_per_value + numeric identity)
 
-- D-101: `free_per_value` executable: string + numeric identity, `CanonicalNumber`, scoped zero canonicalization, seam-normalized numeric keys, natural-order default *(realizes D-061/D-092/D-096; whitespace-tolerant `TryParse` added in place on 2026-10-01)*
+- D-101: `free_per_value` executable: string + numeric identity, `CanonicalNumber`, scoped zero canonicalization, seam-normalized numeric keys, natural-order default *(realizes D-061/D-092/D-096; whitespace-tolerant `TryParse` added in place on 2026-10-01; authored manual-cut and manual-range zero canonicalization added in place on 2026-10-05)*
 
 ### M4 Slice C (equal_width + the shared cut engine)
 
@@ -1197,7 +1197,7 @@ Refinements from the second audit pass.
 
 ### D-134: Spec passages that contradict their rule's owner are corrected to it, and enforced defaults, bounds and allowed values shown only in examples, and enforced rules stated nowhere, are stated in prose
 
-- **Status:** accepted; amended in place on 2026-09-27 to add the third kind
+- **Status:** accepted; amended in place on 2026-09-27 to add the third kind, and on 2026-10-05 to cover §7.1's probe guard defaults
 - **Date:** 2026-09-26
 - **Decision:** M8.2's review of the Bedrock spec makes three kinds of normative text change
   without a decision of its own for each. (1) A passage that contradicts the section or decision
@@ -1222,7 +1222,9 @@ Refinements from the second audit pass.
   data-derived `equal_width` range, `round_to` must be finite and greater than zero, and `bins` is
   at most 2,147,483,647. This entry also covers §8's exact `.cxt` size-advisory default,
   1,073,741,824 bytes: its example showed the value and its prose said only 1 GB, and the CLI, not
-  the reader or resolver, applies it.
+  the reader or resolver, applies it. Amended in place on 2026-10-05: it also covers §7.1's three
+  probe aggregate-guard defaults, which no spec text stated and which Discovery's `ProbeOptions`
+  applies and its tests pin.
 - **Why:** EP-8 and the spec's status line require a reviewed, recorded change whenever spec text is
   corrected to match the implementation. These corrections change no behavior, so one rule records
   them instead of one entry each. Both §7 passages date from the spec's first version: the
@@ -3610,13 +3612,15 @@ M4 Slices A to F (D-098 to D-105) implement the contracts of the two pre-M4 audi
 ### D-098: M4 preparation contract: two-stage source bootstrap, token-paired provenance, calibrated state
 
 - **Status:** accepted (M4 Slice A; realizes D-093; the D-083-reserved schema-aware-resolve move);
-  amended in place on 2026-10-01 for the delimiter-alphabet refusal, and on 2026-10-04 to
-  correct item 4's closed-union claim
+  amended in place on 2026-10-01 for the delimiter-alphabet refusal, on 2026-10-04 to correct
+  item 4's closed-union claim, and on 2026-10-05 to narrow the document snapshot's immutability
+  for `value_labels` (item 3)
 - **Date:** 2026-07-15
 - **Decision:** M4's Calibrate phase needs one preparation identity threaded from resolve
   through emit, and a source cannot exist before resolution (a source constructor needs the
   resolved `Binding`, and name-bound resolution needs the schema). Preparation is therefore a
-  **two-stage bootstrap** over an opaque, validated, recursively-immutable token chain:
+  **two-stage bootstrap** over an opaque, validated, recursively-immutable token chain (narrowed
+  in place on 2026-10-05 for the document snapshot's `value_labels` maps; see item 3):
   1. **Read settings first** (schema-independent): `SpecResolver.ResolveReadSettings(document)
      → Diagnosed<SourceReadSettings>` resolves only the §5.1 scalars (shape, encoding,
      delimiter, quote, has_header, missing_token, triple ordering) via helpers shared with full
@@ -3649,6 +3653,20 @@ M4 Slices A to F (D-098 to D-105) implement the contracts of the two pre-M4 audi
      checks return to their §16.4 spec-validate home (the D-083 "interim at plan" parentheticals
      retire). Strict factories run only behind the resolver's success gate: on any Error/Fatal the
      result is `Diagnosed.Failed` with no factory called, so aggregation never throws.
+     Amended in place on 2026-10-05: the document snapshot is not wholly immutable. To keep the
+     authored order of `value_labels` (spec §10.8, D-075), each non-empty map is copied into an
+     ordinal `OrderedDictionary` exposed through a `ReadOnlyDictionary`, the library wrapper
+     chosen over a custom read-only view. The wrapper refuses writes, but its
+     `ICollection.SyncRoot`, and that of its `Keys` and `Values`, is the copied dictionary, so a
+     caller holding `ResolvedDocument.Document` can change that copy. The copy belongs to one
+     snapshot: the caller's document, another resolution and Core never share it. Fingerprints
+     and conversion read labels from `ResolvedSpec`, so such a change reaches only what reads the
+     snapshot itself, such as `SpecWriter` and `SpecFreezer`, and what is resolved again from
+     their output. An empty map stays `FrozenDictionary<string, string>.Empty`. The rest of this
+     entry stands: the snapshot's lists are `ImmutableArray` and its scalar sections immutable
+     records; the internal constructor and token pairing are unchanged; `ResolvedSpec`,
+     `CalibratedSpec`, `ConversionPlan` and the schema stay recursively immutable; and a mutable
+     calibrated state stays rejected.
   4. **Bind**: `session.Bind(resolvedDocument.Resolved)` validates settings + schema value
      equality and returns the concrete source **carrying the token**. Source provenance is a
      mechanically-closed three-state Core union on both source interfaces
@@ -3746,7 +3764,8 @@ M4 Slices A to F (D-098 to D-105) implement the contracts of the two pre-M4 audi
 
 ### D-101: `free_per_value` executable: string + numeric identity, `CanonicalNumber`, scoped zero canonicalization, seam-normalized numeric keys, natural-order default
 
-- **Status:** accepted (M4 Slice B; realizes D-061/D-092/D-096); amended in place on 2026-10-01 for whitespace-tolerant `TryParse`
+- **Status:** accepted (M4 Slice B; realizes D-061/D-092/D-096); amended in place on 2026-10-01 for whitespace-tolerant `TryParse`,
+  and on 2026-10-05 to canonicalize an authored `-0` manual cut or manual `equal_width` bound at resolve
 - **Date:** 2026-07-16
 - **Decision:** the `free_per_value` discretizer (§11.3) becomes executable and leaves the
   transitional read-reject set (D-070). It is **type-flexible** (D-061): with
@@ -3769,7 +3788,19 @@ M4 Slices A to F (D-098 to D-105) implement the contracts of the two pre-M4 audi
     (text-sourced `TryParse → CanonicalizeZero → Format`; already-numeric `CanonicalizeZero → Format`);
     Slice B uses the text-sourced chain for numeric `free_per_value` domain/label/order keys at the
     seam and observed/emitted values. Authored manual-cut bytes keep their standing `-0` exception
-    (a golden pins it).
+    (a golden pins it). Amended in place on 2026-10-05: that exception is withdrawn. The resolve
+    seam also applies `CanonicalizeZero` to authored `manual_cuts` values and a manual
+    `equal_width` range's `vmin` and `vmax` (spec §11.2 and §11.4), so an authored `-0` there
+    resolves, renders and hashes as `0`. The document keeps the authored value; the writer,
+    `Format` and `CanonicalJson.AppendNumber` are unchanged, so a `-0` that a programmatic Core
+    caller passes still encodes `"-0"`. The pin called a golden above is a Core unit test
+    (`FingerprintCalculatorTests`), not a v2 fixture, and now pins that encoder case. A spec that
+    authors a `-0` cut or bound fingerprints differently once; `fp_format` is unchanged. The
+    statements that such bytes or stored hashes stay unmoved describe the state before this
+    amendment: "every stored hash are untouched" above, the Why's "without moving the
+    `fp_format = 1` bytes", the Rejected reason here and in D-102, and the matching clauses of
+    D-103 and D-105. Both rejections stand: the seam canonicalizes authored values, not the
+    shared encoder.
   - **Seam-normalized numeric keys; authored spellings survive in the document (D-096).** A numeric
     `free_per_value` `declared_domain`, `value_labels` key, and `scale.order` entry is the §5.1
     exception to verbatim strings: the resolve seam parses each to its canonical numeric identity,
@@ -3926,7 +3957,8 @@ M4 Slices A to F (D-098 to D-105) implement the contracts of the two pre-M4 audi
   (span-based binning tolerates sparse data, D-089); re-encoding resolved cuts in the discretizer
   sub-object (redundant with the schema bins, D-094); subject-local dedup or a grouped second pass
   for the triple min/max read (count-insensitive: it would buy nothing and cost a pass);
-  canonicalizing zero inside `Format` (would move the standing authored `-0` bytes);
+  canonicalizing zero inside `Format` (would move the standing authored `-0` bytes; since
+  2026-10-05 the seam canonicalizes those values instead, D-101, and this rejection stands);
   accepting `percentile_p1_p99` before its calibration existed (a silent map to `min_max` would
   convert a spelling error into wrong output).
 - **Affects:** Core (`NumericCutBins`, `EqualWidthDiscretizer`, `EqualWidthRange`,
@@ -3982,7 +4014,7 @@ M4 Slices A to F (D-098 to D-105) implement the contracts of the two pre-M4 audi
     doubles) falls back to `v_{g+1}`: membership-identical under half-open geometry, and it keeps
     the cut inside its own gap so the list's strict ascent survives. Every computed cut is
     positive-zero canonicalized; authored existing-kind bytes and `fp_format = 1` are
-    untouched.
+    untouched (since 2026-10-05 the seam canonicalizes an authored `-0` manual cut, D-101).
   - **Percentile is exact order statistics (D-089).** `p1`/`p99` are selected by the same `UInt128`
     comparisons over the same aggregated population, never interpolated between neighbours, never
     from a sketch, never from a machine-dependent library percentile, any of which would break the
@@ -4268,7 +4300,9 @@ M4 Slices A to F (D-098 to D-105) implement the contracts of the two pre-M4 audi
     `CanonicalJson.AppendNumber` is **untouched** and still formats `-0.0` as `-0`,
     which is precisely what keeps every authored manual-cut byte and every stored
     `fp_format = 1` hash unmoved. Canonicalization at the seam is what makes the
-    untouched encoder safe.
+    untouched encoder safe. Since 2026-10-05 the seam also canonicalizes authored manual
+    cuts and manual `equal_width` bounds (D-101), so an authored `-0` there no longer keeps
+    its bytes.
   - **Matching is existential, over formed objects.** One shared matcher serves all four
     emit paths, so wide streaming, wide `dedupe`, and both triple orderings cannot drift
     about what a restriction means: an object passes a restriction when **at least one**

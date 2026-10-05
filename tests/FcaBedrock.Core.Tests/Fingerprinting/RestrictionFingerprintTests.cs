@@ -257,10 +257,9 @@ public sealed class RestrictionFingerprintTests
         // numeric restriction identities BY CONSTRUCTION.
         //
         // This matters because CanonicalJson.AppendNumber is deliberately untouched and still
-        // formats -0.0 as "-0" (that is what keeps authored manual-cut bytes and fp_format = 1
-        // stable). Without canonicalization at the boundary, a programmatic -0 would encode "-0"
-        // — while MATCHING identically to 0, since IEEE says 0.0 == -0.0. Same behaviour, different
-        // hash, is exactly the determinism bug EP-7 forbids.
+        // formats -0.0 as "-0" (D-101). Without canonicalization at the boundary, a programmatic -0
+        // would encode "-0" while MATCHING identically to 0, since IEEE says 0.0 == -0.0. Same
+        // behaviour, different hash, is exactly the determinism bug EP-7 forbids.
         var negative = Cxt(Restricting([new RestrictToNumber(-0.0)]));
 
         Assert.Contains("\"entries\":[{\"value\":0}]", negative, StringComparison.Ordinal);

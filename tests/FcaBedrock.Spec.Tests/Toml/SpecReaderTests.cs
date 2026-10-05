@@ -198,6 +198,22 @@ public sealed class SpecReaderTests
     }
 
     [Fact]
+    public void Read_WhenACutOrAManualBoundIsNegativeZero_ThenTheDocumentKeepsTheSign()
+    {
+        // The reader transcribes; the seam canonicalizes (D-101). The TOML float -0.0 keeps its
+        // sign here, while the TOML integer -0 is the integer zero.
+        var cuts = Assert.IsType<ManualCutsDiscretizerSection>(ReadOk(Attribute(
+            "discretizer = { kind = \"manual_cuts\", cuts = [-0.0, -0, 10] }")).Attributes[0].Discretizer);
+        var bounds = Assert.IsType<EqualWidthDiscretizerSection>(ReadOk(Attribute(
+            "discretizer = { kind = \"equal_width\", bins = 2, range = \"manual\", vmin = -0.0, vmax = -0.0 }")).Attributes[0].Discretizer);
+
+        Assert.True(double.IsNegative(cuts.Cuts![0]));
+        Assert.False(double.IsNegative(cuts.Cuts[1]));
+        Assert.True(double.IsNegative(bounds.VMin!.Value));
+        Assert.True(double.IsNegative(bounds.VMax!.Value));
+    }
+
+    [Fact]
     public void Read_WhenRestrictToRepeatsEntries_ThenOrderAndDuplicatesArePreserved()
     {
         // Authored order and duplicates are document state; only the fingerprint projects a

@@ -32,8 +32,9 @@ public sealed class CanonicalNumberTests
 
     [Fact]
     public void Format_WhenNegativeZero_ThenStillMinusZero() =>
-        // Format itself NEVER canonicalizes — it must reproduce the fp_format = 1 encoder, which
-        // renders -0.0 as "-0" (D-101). Callers apply CanonicalizeZero first for new M4 identities.
+        // Format itself NEVER canonicalizes: it must reproduce the fp_format = 1 encoder, which
+        // renders -0.0 as "-0" (D-101). Each numeric identity site, authored manual cuts and
+        // manual equal_width bounds included, applies CanonicalizeZero first.
         Assert.Equal("-0", CanonicalNumber.Format(-0.0));
 
     [Theory]

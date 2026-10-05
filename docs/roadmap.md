@@ -45,7 +45,9 @@ whitespace removed around fields and numbers is the full Unicode whitespace set,
 validated and malformed quoting is refused, the delimiter alphabet is fixed, and quoted CR content
 read through a stream that returns short reads is no longer reordered (D-137). Its other
 product-behavior changes are the wording of TOML syntax-error messages (D-133), the rejection of
-three kinds of malformed spec, with one new diagnostic (D-135), and wording edits to some diagnostic
+three kinds of malformed spec, with one new diagnostic (D-135), `calibrate` keeping the authored
+order of `value_labels` (D-075), an authored negative zero in `manual_cuts` or a manual
+`equal_width` range resolving as zero (D-101), and wording edits to some diagnostic
 messages, the `--help` text and the package description. M9 begins after M8.2 is accepted and
 integrated. Work deferred beyond v1 is in the [deferred backlog](#deferred-backlog-not-v1).
 
@@ -364,14 +366,24 @@ predicate `SourceReadSettings.IsInDelimiterAlphabet` (D-054). It declares TOML
 syntax-error message now names that grammar (D-133). It rejects three inputs the spec never
 allowed: a composed spec with no `[[attribute]]` is the new `AttributesMissing` (Error, spec
 resolve), and a `base_index` other than 0 or 1 or a negative `size_advisory_bytes` is
-`SpecFieldInvalid` (D-135). No other diagnostic code, severity or phase changes. The wording of some
+`SpecFieldInvalid` (D-135). No other diagnostic code, severity or phase changes. `calibrate` now
+writes `value_labels` in their authored order, as D-075 requires; it could reorder a map before,
+with no effect on any fingerprint or on `.cxt` or `.dat` bytes. For a library caller, each
+non-empty `value_labels` map of `ResolvedDocument.Document` is now a read-only wrapper whose
+`SyncRoot` reaches the snapshot's own copy (D-098); Core's resolved state stays immutable. An
+authored negative zero in `manual_cuts` or in a manual `equal_width` range's `vmin` or `vmax` now
+resolves as zero, like every other numeric identity (D-101): such a spec's fingerprints change
+once (all three for a cut, the two output fingerprints for a bound) with no `fp_format` change, a
+`-0` cut's `.cxt` column names change (`<-0` becomes `<0`) while its incidence and `.dat` bytes do
+not, and a diagnostic about such a value shows `0`. The wording of some
 diagnostic and internal exception messages changes to remove dashes used as punctuation and
 references to past milestones, `--help` headings take the form `name: summary`, and the package
 description loses its dash (WP-1, WP-6). Otherwise, normative spec
 prose changes follow D-134's three reviewed kinds: correcting a passage to its rule owner, stating
 enforced defaults, bounds or allowed values that were shown only in examples, and stating rules
 already enforced by the reader or resolver. Spec §8 also states the exact `.cxt` size-advisory
-default applied by the CLI, 1,073,741,824 bytes, as D-134 records, and D-136 settles the
+default applied by the CLI, 1,073,741,824 bytes, as D-134 records, spec §7.1 states the three
+probe aggregate-guard defaults that `ProbeOptions` applies, and D-136 settles the
 stored-fingerprint limit in spec §3 and §14 as a recommendation. These prose changes leave
 implemented behavior unchanged.
 

@@ -314,6 +314,38 @@ public sealed class FingerprintWriteTests
         AssertReport(verified.StdOut, "match");
     }
 
+    [Theory]
+    [InlineData("{ kind = \"manual_cuts\", cuts = [-0.0, 10] }")]
+    [InlineData("{ kind = \"equal_width\", bins = 2, range = \"manual\", vmin = -0.0, vmax = 10 }")]
+    [InlineData("{ kind = \"equal_width\", bins = 2, range = \"manual\", vmin = -10, vmax = -0.0 }")]
+    public async Task FingerprintWrite_WhenTheSpecAuthorsANegativeZero_ThenTheWrittenSpecVerifiesAndRewritesIdentically(string discretizer)
+    {
+        // §11.2/§11.4/D-101: the written spec says 0, so the fingerprints it stores must be those of
+        // the 0 spec; reporting it then reads match, and writing it again changes nothing.
+        using var temp = TempDirectory.Create();
+        var spec = temp.Write(
+            "spec.toml",
+            "[spec]\nversion = 1\n\n[binding]\nshape = \"wide\"\nhas_header = false\n\n"
+            + "[[attribute]]\nname = \"x\"\nsource = { kind = \"column\", index = 0, value_type = \"number\" }\n"
+            + "discretizer = " + discretizer + "\nscale = { kind = \"nominal\" }\n");
+        var data = temp.Write("data.csv", "-6\n-5\n0\n5\n15\n");
+        var first = temp.Resolve("first.toml");
+        var second = temp.Resolve("second.toml");
+
+        var write = new CliTestHarness();
+        Assert.Equal(0, await write.RunAsync("fingerprint", spec, data, "--write", "--out", first));
+        AssertReport(write.StdOut, "absent");
+
+        var verified = new CliTestHarness();
+        Assert.Equal(0, await verified.RunAsync("fingerprint", first, data));
+        Assert.Equal(string.Empty, verified.StdErr);
+        AssertReport(verified.StdOut, "match");
+
+        var rewrite = new CliTestHarness();
+        Assert.Equal(0, await rewrite.RunAsync("fingerprint", first, data, "--write", "--out", second));
+        Assert.Equal(await File.ReadAllBytesAsync(first), await File.ReadAllBytesAsync(second));
+    }
+
     // ---- publication (D-122 part 4) ----------------------------------------------------------------
 
     public static TheoryData<string> CollisionTargets() => new() { "data", "root", "base" };

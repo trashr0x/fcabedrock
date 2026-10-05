@@ -636,9 +636,9 @@ public sealed class ResolvedSpec
     //
     // The seam canonicalizes what it resolves, so through the ordinary pipeline this is a no-op.
     // It matters for a PROGRAMMATIC caller: -0.0 would otherwise survive and, because
-    // CanonicalJson.AppendNumber faithfully formats it "-0" (untouched, D-101; that is what keeps
-    // authored manual-cut bytes and fp_format = 1 stable), two specs that MATCH identically
-    // (IEEE: 0.0 == -0.0) would produce different canonical bytes and hashes, and would fail to
+    // CanonicalJson.AppendNumber faithfully formats it "-0" (the encoder never canonicalizes,
+    // D-101), two specs that MATCH identically (IEEE: 0.0 == -0.0) would produce different
+    // canonical bytes and hashes, and would fail to
     // deduplicate. Same behaviour ⇒ same fingerprint is exactly EP-7, so the boundary makes it
     // structural rather than trusting every caller to pre-canonicalize.
     private static ImmutableArray<RestrictToEntry> SnapshotRestrictTo(IReadOnlyList<RestrictToEntry> entries)

@@ -151,8 +151,9 @@ missing_token = "?"                          # default "?"; "" disables token de
 `"triple"` for subject-predicate-value DSV. An absent `shape` is
 `BindingShapeMissing` (Error).
 
-**`encoding`** *(default `"utf-8"`)*. Any encoding accepted by the
-implementation. Implementations MUST support at least UTF-8.
+**`encoding`** *(default `"utf-8"`)*. v1 supports only UTF-8: `utf-8` or
+`utf8`, in any letter case and with surrounding whitespace ignored, selects
+it, and any other value is `SourceBindingInvalid` (Error, spec validate).
 
 **`delimiter`** *(default `","`)*. One character of the v1 delimiter alphabet
 (§5.1.1), for example `","`, `"\t"`, `";"`, `"|"`, a space or `":"`. A value
@@ -212,7 +213,8 @@ entry written in the spec (a numeric `restrict_to` value (§10.4), or a numeric
 identity rather than compared as an opaque string, so `90`, `90.0`, and `9e1`
 denote the same value and all zero spellings canonicalize to `0` (D-096). This is
 a value-identity rule, not a whitespace one; W at the ends of such an entry
-remains insignificant (§5.1.1).
+remains insignificant (§5.1.1). Authored `manual_cuts` values and a manual
+`equal_width` range's `vmin` and `vmax` follow the same zero rule (§11.2, §11.4).
 
 ### 5.1.1 Reading delimited text
 
@@ -315,7 +317,8 @@ columns = { subject = 0, predicate = 1, value = 2 }
 
 **`ordering`** *(required for triple, enum)*. `"subject_grouped"` allows
 single-pass streaming (faster, less memory). `"unordered"` requires
-external sort-merge or buffering (slower, more memory).
+external sort-merge or buffering (slower, more memory). A triple binding
+without `ordering` is `SourceBindingInvalid` (Error, spec validate).
 
 **`columns`** *(optional for triple, table; omitted ⇒ `{ subject = 0,
 predicate = 1, value = 2 }`)*. Maps the three logical roles to source columns,
@@ -796,7 +799,10 @@ Future SQL ────┘
 **Boundedness.** Per-attribute retention is bounded by `limit` above. Three additional
 deterministic **aggregate guards** (advanced probe options) bound a probe as a whole: maximum
 discovered attributes, maximum total retained distinct values, and maximum total retained
-value text. Their defaults and accounting constants are pinned public-API values, chosen against
+value text. Their defaults are **10,000** discovered attributes, **2,000,000** retained
+distinct values summed across attributes, and **50,000,000** UTF-16 code units of retained
+value text summed across attributes. These defaults and the accounting constants are pinned
+public-API values, chosen against
 representative workloads (D-110; the motivating figure: 1,554 attributes × 100,000 values
 permits a theoretical 155.4M retained strings). Guards use **deterministic logical accounting,
 never available machine memory**. An aggregate breach emits `ProbeLimitExceeded` and yields
@@ -1663,7 +1669,12 @@ discretizer = {
 }
 ```
 
-**`cuts`** *(required, array of numbers, length ≥ 1, strictly ascending)*.
+**`cuts`** *(required, array of numbers, length ≥ 1, finite and strictly
+ascending)*. A NaN or infinite cut, or a cut not greater than the one before
+it, is `DiscretizerCutsNotAscending` (Error, spec validate). When the spec is
+resolved, an authored zero of either sign is canonicalized to `0`, so
+`cuts = [-0.0, 10]` and `cuts = [0, 10]` have the same bins, bin labels and
+fingerprints (§14, decisions.md D-101).
 
 **`ends`** *(default `"open"`)*. With `"open"`, bins extend to ±∞ at the
 ends: three cuts produce four bins (`<c0`, `[c0,c1)`, `[c1,c2)`, `≥c2`).
@@ -1744,7 +1755,10 @@ fully-declared spec (§14). Missing `vmin`/`vmax` under `range = "manual"` is
 data-derived range (including an omitted `range`); a non-finite or non-increasing
 (`vmin ≥ vmax`) authored range is `EqualWidthRangeInvalid` (Error, spec validate);
 and a `precision` / `round_to` that collapses the derived cuts (two cuts round to
-the same value) is `EqualWidthCutsCollapsed` (Error, spec validate).
+the same value) is `EqualWidthCutsCollapsed` (Error, spec validate). When the spec
+is resolved, an authored `vmin` or `vmax` of either zero sign is canonicalized to
+`0`, so `vmin = -0.0` and `vmin = 0` give the same fingerprints (§14, decisions.md
+D-101).
 
 With a **data-derived** range (`min_max` / `percentile_p1_p99`), the span is drawn
 from the calibration population (§7): data with **no usable spread** (all values
@@ -3235,7 +3249,7 @@ line_endings = "crlf"` or `--v2-compat`.
 
 **Trailing newline** after the last line: emitted by default, like `.cxt`
 (§18.1). Set `[output.dat] trailing_newline = false` to suppress **only** the
-final line terminator; the single-space separators *between* lines are
+final line terminator; the line terminators *between* lines are
 unaffected. Under `--v2-compat` the final `.dat` newline is **shape-dependent**:
 present for a wide source (matching v2's wide converter) but **absent for a
 triple source**; v2's triple converter wrote no final `.dat` line terminator.

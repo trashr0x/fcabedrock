@@ -1441,10 +1441,10 @@ public sealed class SpecResolverTests
     [Fact]
     public void Resolve_WhenCallerMutatesTheRestrictListAfterwards_ThenTheDocumentSnapshotIsUnaffected()
     {
-        // D-098: ResolvedDocument holds an immutable deep snapshot, so a caller mutating the list
-        // it passed cannot reach the document the fingerprints read. Discriminating on purpose:
-        // the injected entry is a NUMERIC exact one, so a snapshot that copied only some variants
-        // (or aliased the list) would show it.
+        // D-098: ResolvedDocument holds a deep snapshot whose restriction list is its own immutable
+        // copy, so a caller mutating the list it passed cannot reach the document the fingerprints
+        // read. Discriminating on purpose: the injected entry is a NUMERIC exact one, so a snapshot
+        // that copied only some variants (or aliased the list) would show it.
         var authored = new List<RestrictToEntry> { new RestrictToNumber(30) };
         var document = DocumentFixtures.Document(
             [DocumentFixtures.Attribute("age", DocumentFixtures.Column(0),
@@ -1476,6 +1476,175 @@ public sealed class SpecResolverTests
         Assert.IsNotType<RestrictToEntry[]>(entries);
         Assert.IsNotType<List<RestrictToEntry>>(entries);
     }
+
+    // §10.8/D-075: calibrate writes the snapshot back out, so every map keeps its stored order.
+    // Six keys of one length, or keys whose lengths are far apart, are shapes a frozen map stores
+    // in hash order; the last two rows are shapes a frozen map happened to keep.
+    public static TheoryData<string[]> AuthoredLabelOrders() => new()
+    {
+        new[] { "red", "tan", "ash", "fig", "elm", "oak" },
+        new[] { "WA", "CA", "NY", "TX", "FL", "IL" },
+        new[] { "n", "y", "not_applicable" },
+        new[] { "10.0", "20.0", "30.0", "40.0", "50.0", "60.0" },
+        new[] { "m", "zz", "a", "bbbb", "ccc" },
+        new[] { "Red", "red", "RED", "x y", "a.b", "café" },
+    };
+
+    [Theory]
+    [MemberData(nameof(AuthoredLabelOrders))]
+    public void Resolve_WhenValueLabelsAreAuthored_ThenTheSnapshotKeepsTheirOrder(string[] keys)
+    {
+        var labels = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var key in keys)
+        {
+            labels[key] = "L-" + key;
+        }
+
+        var document = DocumentFixtures.Document(
+            [
+                DocumentFixtures.Attribute("k", DocumentFixtures.Column(0),
+                    discretizer: Discretizer("identity"), scale: new NominalScaleSection(),
+                    declaredDomain: keys, valueLabels: labels),
+                DocumentFixtures.Attribute("parked", DocumentFixtures.Column(1), include: false, valueLabels: labels),
+            ],
+            templates: [DocumentFixtures.Template("t", valueLabels: labels)]);
+
+        var resolved = SpecResolver.Resolve(document, new SourceSchema(2));
+
+        Assert.True(resolved.TryGetValue(out var doc), string.Join("; ", resolved.Diagnostics.Select(d => $"{d.Code}: {d.Message}")));
+        var expected = keys.Select(key => KeyValuePair.Create(key, "L-" + key)).ToArray();
+        Assert.Equal(expected, doc!.Document.Attributes[0].ValueLabels!.ToArray());
+        Assert.Equal(expected, doc.Document.Attributes[1].ValueLabels!.ToArray());
+        Assert.Equal(expected, doc.Document.Templates[0].ValueLabels!.ToArray());
+        Assert.Equal(keys, doc.Document.Attributes[0].ValueLabels!.Keys);
+    }
+
+    [Fact]
+    public void Resolve_WhenValueLabelKeysDifferOnlyInCase_ThenTheSnapshotLooksEachUpOrdinally()
+    {
+        string[] keys = ["Red", "red", "RED"];
+        var document = DocumentFixtures.Document(
+            [DocumentFixtures.Attribute("k", DocumentFixtures.Column(0),
+                discretizer: Discretizer("identity"), scale: new NominalScaleSection(),
+                declaredDomain: keys, valueLabels: keys.ToDictionary(key => key, key => "L-" + key, StringComparer.Ordinal))]);
+
+        var resolved = SpecResolver.Resolve(document, new SourceSchema(1));
+
+        Assert.True(resolved.TryGetValue(out var doc));
+        var labels = doc!.Document.Attributes[0].ValueLabels!;
+        Assert.Equal(3, labels.Count);
+        Assert.Equal("L-red", labels["red"]);
+        Assert.Equal("L-RED", labels["RED"]);
+        Assert.True(labels.ContainsKey("Red"));
+        Assert.False(labels.TryGetValue("rEd", out _));
+    }
+
+    [Fact]
+    public void Resolve_WhenCallerMutatesTheValueLabelsAfterwards_ThenTheSnapshotTextAndFingerprintsAreUnaffected()
+    {
+        // D-098: the snapshot owns a copy, so the caller's later edits reach neither the snapshot
+        // nor the text and fingerprints computed from the resolution.
+        string[] keys = ["red", "tan", "ash", "fig", "elm", "oak"];
+        var labels = keys.ToDictionary(key => key, key => "L-" + key, StringComparer.Ordinal);
+        var document = DocumentFixtures.Document(
+            [DocumentFixtures.Attribute("k", DocumentFixtures.Column(0),
+                discretizer: Discretizer("identity"), scale: new NominalScaleSection(),
+                declaredDomain: keys, valueLabels: labels)]);
+        var resolved = SpecResolver.Resolve(document, new SourceSchema(1));
+        Assert.True(resolved.TryGetValue(out var doc));
+        var plan = ConversionPlanner.Plan(CalibratedSpec.FromFullyDeclared(doc!.Resolved)).Value!;
+        var snapshot = doc.Document.Attributes[0].ValueLabels!.ToArray();
+        var text = SpecWriter.Write(doc.Document);
+        var fingerprints = SpecFingerprints.ComputeNative(doc, plan);
+
+        labels["red"] = "changed";
+        labels.Remove("tan");
+        labels.Add("zzz", "added");
+
+        Assert.Equal(snapshot, doc.Document.Attributes[0].ValueLabels!.ToArray());
+        Assert.Equal(text, SpecWriter.Write(doc.Document));
+        Assert.Equal(fingerprints, SpecFingerprints.ComputeNative(doc, plan));
+    }
+
+    [Fact]
+    public void Resolve_WhenSnapshotted_ThenTheValueLabelsRefuseWritesButSyncRootReachesTheirOwnCopy()
+    {
+        // D-098: the read-only wrapper refuses every write through its mutable interfaces, but its
+        // SyncRoot, and that of its Keys and Values, is the snapshot's own OrderedDictionary copy.
+        // A change through that copy reaches what reads the snapshot (its written text), never the
+        // caller's map, another resolution, the Core labels, the plan or its fingerprints.
+        string[] keys = ["red", "tan", "ash", "fig", "elm", "oak"];
+        var labels = keys.ToDictionary(key => key, key => "L-" + key, StringComparer.Ordinal);
+        var authored = labels.ToArray();
+        var document = DocumentFixtures.Document(
+            [DocumentFixtures.Attribute("k", DocumentFixtures.Column(0),
+                discretizer: Discretizer("identity"), scale: new NominalScaleSection(),
+                declaredDomain: keys, valueLabels: labels)]);
+        Assert.True(SpecResolver.Resolve(document, new SourceSchema(1)).TryGetValue(out var doc));
+        Assert.True(SpecResolver.Resolve(document, new SourceSchema(1)).TryGetValue(out var other));
+        var plan = ConversionPlanner.Plan(CalibratedSpec.FromFullyDeclared(doc!.Resolved)).Value!;
+        var names = plan.FormalAttributes.Select(attribute => attribute.RenderedName).ToArray();
+        var fingerprints = SpecFingerprints.ComputeNative(doc, plan);
+        var snapshot = doc.Document.Attributes[0].ValueLabels!;
+
+        var generic = Assert.IsAssignableFrom<IDictionary<string, string>>(snapshot);
+        Assert.True(generic.IsReadOnly);
+        Assert.Throws<NotSupportedException>(() => generic.Add("x", "y"));
+        Assert.Throws<NotSupportedException>(() => generic.Remove("red"));
+        Assert.Throws<NotSupportedException>(() => generic["red"] = "z");
+        Assert.Throws<NotSupportedException>(generic.Clear);
+        var untyped = Assert.IsAssignableFrom<System.Collections.IDictionary>(snapshot);
+        Assert.True(untyped.IsReadOnly);
+        Assert.Throws<NotSupportedException>(() => untyped.Add("x", "y"));
+        Assert.Throws<NotSupportedException>(() => untyped.Remove("red"));
+        Assert.Throws<NotSupportedException>(() => untyped["red"] = "z");
+        Assert.Throws<NotSupportedException>(untyped.Clear);
+
+        var copy = Assert.IsType<OrderedDictionary<string, string>>(SyncRootOf(snapshot));
+        Assert.Same(copy, SyncRootOf(snapshot.Keys));
+        Assert.Same(copy, SyncRootOf(snapshot.Values));
+        Assert.NotSame(labels, copy);
+        Assert.NotSame(copy, SyncRootOf(other!.Document.Attributes[0].ValueLabels!));
+
+        copy["red"] = "changed";
+        Assert.True(copy.Remove("tan"));
+        copy.Add("zzz", "added");
+
+        Assert.Equal("changed", snapshot["red"]);
+        Assert.Contains(
+            "value_labels = { red = \"changed\", ash = \"L-ash\", fig = \"L-fig\", elm = \"L-elm\", oak = \"L-oak\", zzz = \"added\" }",
+            SpecWriter.Write(doc.Document), StringComparison.Ordinal);
+        Assert.Equal(authored, labels.ToArray());
+        Assert.Equal(authored, other.Document.Attributes[0].ValueLabels!.ToArray());
+        Assert.Equal("L-red", doc.Resolved.Spec.Attributes[0].ValueLabels["red"]);
+        Assert.Equal(names, plan.FormalAttributes.Select(attribute => attribute.RenderedName));
+        Assert.Equal(fingerprints, SpecFingerprints.ComputeNative(doc, plan));
+    }
+
+    [Fact]
+    public void Resolve_WhenValueLabelsAreEmptyOrOmitted_ThenTheSnapshotKeepsThePresenceDistinction()
+    {
+        var document = DocumentFixtures.Document(
+        [
+            DocumentFixtures.Attribute("empty", DocumentFixtures.Column(0), discretizer: Discretizer("identity"),
+                scale: new NominalScaleSection(), declaredDomain: ["x"], valueLabels: new Dictionary<string, string>()),
+            DocumentFixtures.Attribute("omitted", DocumentFixtures.Column(1), discretizer: Discretizer("identity"),
+                scale: new NominalScaleSection(), declaredDomain: ["x"]),
+        ]);
+
+        var resolved = SpecResolver.Resolve(document, new SourceSchema(2));
+
+        Assert.True(resolved.TryGetValue(out var doc));
+        Assert.NotNull(doc!.Document.Attributes[0].ValueLabels);
+        Assert.Empty(doc.Document.Attributes[0].ValueLabels!);
+        Assert.Null(doc.Document.Attributes[1].ValueLabels);
+
+        // An empty map stays a frozen map, never ReadOnlyDictionary.Empty, which is one shared
+        // instance over one mutable Dictionary.
+        Assert.IsAssignableFrom<System.Collections.Frozen.FrozenDictionary<string, string>>(doc.Document.Attributes[0].ValueLabels);
+    }
+
+    private static object SyncRootOf(object collection) => ((System.Collections.ICollection)collection).SyncRoot;
 
     // --- D-105 zero canonicalization at the seam ------------------------------
 
@@ -1821,6 +1990,123 @@ public sealed class SpecResolverTests
 
         Assert.Equal(DiagnosticCode.ObjectKeyModeInvalidForShape, Assert.Single(result.Diagnostics).Code);
         Assert.False(result.TryGetValue(out _));
+    }
+
+    // --- D-101 zero canonicalization of authored cuts and manual bounds -------
+
+    [Fact]
+    public void Resolve_WhenAManualCutIsNegativeZero_ThenItResolvesAsPositiveZeroAndTheDocumentKeepsTheSign()
+    {
+        // §11.2/D-101: the seam canonicalizes an authored -0 cut, so it renders and hashes like 0,
+        // while the caller's list and the document snapshot keep the authored value. Only the bit
+        // pattern can show this, since -0.0 == 0.0.
+        var authored = new List<double> { -0.0, 10.0 };
+        var document = DocumentFixtures.Document(
+            [DocumentFixtures.Attribute("x", DocumentFixtures.Column(0, SourceValueType.Number),
+                discretizer: new ManualCutsDiscretizerSection(authored, Ends: null), scale: new NominalScaleSection())]);
+
+        var resolved = SpecResolver.Resolve(document, new SourceSchema(1));
+
+        Assert.True(resolved.TryGetValue(out var doc), string.Join("; ", resolved.Diagnostics.Select(d => $"{d.Code}: {d.Message}")));
+        var cuts = Assert.IsType<ManualCutsDiscretizer>(doc!.Resolved.Spec.Attributes[0].Discretizer).Cuts;
+        Assert.Equal(BitConverter.DoubleToInt64Bits(0.0), BitConverter.DoubleToInt64Bits(cuts[0]));
+        Assert.True(double.IsNegative(authored[0]));
+        var snapshot = Assert.IsType<ManualCutsDiscretizerSection>(doc.Document.Attributes[0].Discretizer);
+        Assert.True(double.IsNegative(snapshot.Cuts![0]));
+    }
+
+    [Theory]
+    [InlineData("vmin")]
+    [InlineData("vmax")]
+    public void Resolve_WhenAManualEqualWidthBoundIsNegativeZero_ThenItResolvesAsPositiveZeroWithTheSameCuts(string bound)
+    {
+        // §11.4/D-101: the bound resolves as +0, and the derived cut has the same bits either way.
+        var (vmin, vmax) = bound == "vmin" ? (-0.0, 10.0) : (-10.0, -0.0);
+        var negative = ResolvedEqualWidth(vmin, vmax);
+        var positive = ResolvedEqualWidth(vmin == 0.0 ? 0.0 : vmin, vmax == 0.0 ? 0.0 : vmax);
+
+        Assert.Equal(BitConverter.DoubleToInt64Bits(positive.VMin!.Value), BitConverter.DoubleToInt64Bits(negative.VMin!.Value));
+        Assert.Equal(BitConverter.DoubleToInt64Bits(positive.VMax!.Value), BitConverter.DoubleToInt64Bits(negative.VMax!.Value));
+        Assert.Equal(positive.Cuts.Select(BitConverter.DoubleToInt64Bits), negative.Cuts.Select(BitConverter.DoubleToInt64Bits));
+    }
+
+    [Fact]
+    public void Resolve_WhenSignedZeroCutsAreInvalid_ThenTheyReportExactlyLikeTheirPositiveZeroTwins()
+    {
+        // D-056/D-101: zero is made positive before the factory validates, so the codes, severities,
+        // count and order are the 0 twin's, and a message shows the resolved 0.
+        (double[] Negative, double[] Positive, BinEnds Ends)[] cases =
+        [
+            (new[] { 0.0, -0.0 }, new[] { 0.0, 0.0 }, BinEnds.Open),
+            (new[] { -0.0, double.NaN }, new[] { 0.0, double.NaN }, BinEnds.Open),
+            (new[] { -0.0 }, new[] { 0.0 }, BinEnds.Closed),
+        ];
+
+        foreach (var (negative, positive, ends) in cases)
+        {
+            var negativeResult = Resolve(CutsDocument(negative, ends), new SourceSchema(1));
+            var positiveResult = Resolve(CutsDocument(positive, ends), new SourceSchema(1));
+
+            Assert.False(negativeResult.TryGetValue(out _));
+            Assert.NotEmpty(positiveResult.Diagnostics);
+            Assert.Equal(
+                positiveResult.Diagnostics.Select(d => (d.Code, d.Severity, d.Message)),
+                negativeResult.Diagnostics.Select(d => (d.Code, d.Severity, d.Message)));
+        }
+    }
+
+    [Fact]
+    public void Resolve_WhenASignedZeroManualRangeIsInvalid_ThenItReportsExactlyLikeItsPositiveZeroTwin()
+    {
+        // EqualWidthRangeInvalid for the empty span [0, 0]; EqualWidthCutsCollapsed for bins = 4 over
+        // [0, 1] with round_to = 1, whose first two cuts both round to 0.
+        (long Bins, double VMax, CutPrecision? Precision)[] cases =
+        [
+            (2, 0.0, null),
+            (4, 1.0, RoundToPrecision.Create(1.0)),
+        ];
+
+        foreach (var (bins, vmax, precision) in cases)
+        {
+            var negativeResult = Resolve(EqualWidthDocument(bins, -0.0, vmax, precision), new SourceSchema(1));
+            var positiveResult = Resolve(EqualWidthDocument(bins, 0.0, vmax, precision), new SourceSchema(1));
+
+            Assert.False(negativeResult.TryGetValue(out _));
+            Assert.NotEmpty(positiveResult.Diagnostics);
+            Assert.Equal(
+                positiveResult.Diagnostics.Select(d => (d.Code, d.Severity, d.Message)),
+                negativeResult.Diagnostics.Select(d => (d.Code, d.Severity, d.Message)));
+        }
+    }
+
+    [Fact]
+    public void Resolve_WhenManualCutsHoldNoNegativeZero_ThenEveryBitSurvivesResolution()
+    {
+        double[] authored = [-5.0, 0.0, 2.5, 9007199254740992.0, 1e17];
+
+        var resolved = Resolve(CutsDocument(authored, BinEnds.Open), new SourceSchema(1));
+
+        Assert.True(resolved.TryGetValue(out var spec));
+        var cuts = Assert.IsType<ManualCutsDiscretizer>(spec.Attributes[0].Discretizer).Cuts;
+        Assert.Equal(authored.Select(BitConverter.DoubleToInt64Bits), cuts.Select(BitConverter.DoubleToInt64Bits));
+    }
+
+    private static SpecDocument CutsDocument(IReadOnlyList<double> cuts, BinEnds ends) =>
+        DocumentFixtures.Document(
+            [DocumentFixtures.Attribute("x", DocumentFixtures.Column(0, SourceValueType.Number),
+                discretizer: new ManualCutsDiscretizerSection(cuts, ends), scale: new NominalScaleSection())]);
+
+    private static SpecDocument EqualWidthDocument(long bins, double vmin, double vmax, CutPrecision? precision) =>
+        DocumentFixtures.Document(
+            [DocumentFixtures.Attribute("x", DocumentFixtures.Column(0, SourceValueType.Number),
+                discretizer: new EqualWidthDiscretizerSection(bins, EqualWidthRange.Manual, vmin, vmax, precision),
+                scale: new NominalScaleSection())]);
+
+    private static EqualWidthDiscretizer ResolvedEqualWidth(double vmin, double vmax)
+    {
+        var resolved = Resolve(EqualWidthDocument(2, vmin, vmax, precision: null), new SourceSchema(1));
+        Assert.True(resolved.TryGetValue(out var spec), string.Join("; ", resolved.Diagnostics.Select(d => $"{d.Code}: {d.Message}")));
+        return Assert.IsType<EqualWidthDiscretizer>(spec.Attributes[0].Discretizer);
     }
 
     // --- Duplicate names + value_labels re-homed to the seam (D-080) ---
@@ -2501,6 +2787,37 @@ public sealed class SpecResolverTests
         Assert.True(unspecified.TryGetValue(out var unspecifiedSpec));
         Assert.Equal("utf-8", authoredSpec.Binding.Encoding);
         Assert.Equal(unspecifiedSpec.Binding.Encoding, authoredSpec.Binding.Encoding);
+    }
+
+    [Theory]
+    [InlineData("utf8")]
+    [InlineData("Utf8")]
+    [InlineData(" utf-8 ")]
+    [InlineData("\tUTF8\t")]
+    public void Resolve_WhenEncodingIsAnotherUtf8Spelling_ThenItResolvesToUtf8(string spelling)
+    {
+        // §5.1/D-082: utf-8 or utf8, in any letter case and with surrounding whitespace ignored.
+        var result = Resolve(DocumentFixtures.Document(
+            [DocumentFixtures.Nominal("g", 0, ["b"])],
+            binding: DocumentFixtures.WideBinding() with { Encoding = spelling }), new SourceSchema(1));
+
+        Assert.True(result.TryGetValue(out var spec));
+        Assert.Equal("utf-8", spec.Binding.Encoding);
+    }
+
+    [Theory]
+    [InlineData("utf-16")]
+    [InlineData("UTF_8")]
+    [InlineData("utf 8")]
+    [InlineData("")]
+    public void Resolve_WhenEncodingIsNotAUtf8Spelling_ThenSourceBindingInvalid(string encoding)
+    {
+        var result = Resolve(DocumentFixtures.Document(
+            [DocumentFixtures.Nominal("g", 0, ["b"])],
+            binding: DocumentFixtures.WideBinding() with { Encoding = encoding }), new SourceSchema(1));
+
+        Assert.Equal(DiagnosticCode.SourceBindingInvalid, Assert.Single(result.Diagnostics).Code);
+        Assert.False(result.TryGetValue(out _));
     }
 
     [Fact]

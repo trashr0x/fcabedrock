@@ -94,8 +94,11 @@ public static class SpecFreezer
         }
 
         // Apply outcomes by attribute identity, preserving attribute order; an attribute with no
-        // outcome (and every non-attribute section) is reused by reference: the sections are
-        // immutable, so the returned graph exposes no new mutable backing state.
+        // outcome (and every non-attribute section) is reused by reference from the resolver's own
+        // snapshot, never the caller's document. The rewritten fields are new records over the
+        // calibrated state's immutable lists, so the returned graph exposes no new mutable backing
+        // state; a reused value_labels map keeps the SyncRoot-reachable backing it has in the
+        // snapshot (D-098).
         var attributes = ImmutableArray.CreateBuilder<AttributeSection>(document.Attributes.Count);
         foreach (var section in document.Attributes)
         {

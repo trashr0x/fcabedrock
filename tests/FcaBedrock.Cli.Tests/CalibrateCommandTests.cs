@@ -523,6 +523,103 @@ public sealed class CalibrateCommandTests
             await File.ReadAllBytesAsync(temp.Resolve("baseB.dat")));
     }
 
+    // ---- authored values survive the freeze (§10.8, §11.2, §11.4, D-075/D-101) ------------------
+
+    [Fact]
+    public async Task Calibrate_WhenAFullyFrozenSpecAuthorsValueLabels_ThenItWritesTheSameBytesAsFingerprintWrite()
+    {
+        // Nothing calibrates here, so calibrate and fingerprint --write must write the same spec,
+        // value_labels in their authored order included (six keys of one length are the shape a
+        // frozen map reordered).
+        using var temp = TempDirectory.Create();
+        var spec = temp.Write("spec.toml", AuthoredLabelsSpec);
+        var data = temp.Write("data.csv", "red\ntan\nash\nfig\nelm\noak\n");
+        var calibrated = temp.Resolve("calibrated.toml");
+        var written = temp.Resolve("written.toml");
+
+        var calibrate = new CliTestHarness();
+        Assert.Equal(0, await calibrate.RunAsync("calibrate", spec, data, "--out", calibrated));
+        Assert.Equal(string.Empty, calibrate.StdErr);
+        var fingerprint = new CliTestHarness();
+        Assert.Equal(0, await fingerprint.RunAsync("fingerprint", spec, data, "--write", "--out", written));
+
+        Assert.Contains(
+            "value_labels = { red = \"L-red\", tan = \"L-tan\", ash = \"L-ash\", fig = \"L-fig\", elm = \"L-elm\", oak = \"L-oak\" }",
+            await ReadCommittedAsync(calibrated), StringComparison.Ordinal);
+        Assert.Equal(await File.ReadAllBytesAsync(written), await File.ReadAllBytesAsync(calibrated));
+    }
+
+    public static TheoryData<string, string> NegativeZeroSpecs() => new()
+    {
+        { "{ kind = \"manual_cuts\", cuts = [-0.0, 10] }", "-5\n0\n5\n15\n" },
+        { "{ kind = \"equal_width\", bins = 2, range = \"manual\", vmin = -0.0, vmax = 10 }", "-5\n0\n5\n15\n" },
+        { "{ kind = \"equal_width\", bins = 2, range = \"manual\", vmin = -10, vmax = -0.0 }", "-6\n-5\n0\n" },
+    };
+
+    [Theory]
+    [MemberData(nameof(NegativeZeroSpecs))]
+    public async Task Calibrate_WhenTheSpecAuthorsANegativeZero_ThenItsOutputVerifiesRecalibratesAndConvertsUnchanged(
+        string discretizer, string csv)
+    {
+        // §11.2/§11.4/D-101: the frozen text says 0, so its stored fingerprints, a second calibrate
+        // and its conversion must all agree with the authored -0 spec. Every bin is crossed, so a
+        // clean run writes nothing to stderr.
+        using var temp = TempDirectory.Create();
+        var spec = temp.Write("spec.toml", NegativeZeroSpec(discretizer));
+        var data = temp.Write("data.csv", csv);
+        var first = temp.Resolve("first.toml");
+        var second = temp.Resolve("second.toml");
+
+        var one = new CliTestHarness();
+        Assert.Equal(0, await one.RunAsync("calibrate", spec, data, "--out", first));
+        Assert.Equal(string.Empty, one.StdErr);
+        var two = new CliTestHarness();
+        Assert.Equal(0, await two.RunAsync("calibrate", first, data, "--out", second));
+        Assert.Equal(string.Empty, two.StdErr);
+        Assert.Equal(await File.ReadAllBytesAsync(first), await File.ReadAllBytesAsync(second));
+
+        var report = new CliTestHarness();
+        Assert.Equal(0, await report.RunAsync("fingerprint", first, data));
+        Assert.Equal(3, Lines(report.StdOut).Count(line => line.EndsWith("stored=match", StringComparison.Ordinal)));
+
+        var authored = new CliTestHarness();
+        Assert.Equal(0, await authored.RunAsync(
+            "convert", spec, data, "--out", temp.Resolve("authored"), "--format", "both", "--no-manifest"));
+        Assert.Equal(string.Empty, authored.StdErr);
+        var frozen = new CliTestHarness();
+        Assert.Equal(0, await frozen.RunAsync(
+            "convert", first, data, "--out", temp.Resolve("frozen"), "--format", "both", "--no-manifest"));
+        Assert.Equal(string.Empty, frozen.StdErr);
+        Assert.Equal(
+            await File.ReadAllBytesAsync(temp.Resolve("authored.cxt")),
+            await File.ReadAllBytesAsync(temp.Resolve("frozen.cxt")));
+        Assert.Equal(
+            await File.ReadAllBytesAsync(temp.Resolve("authored.dat")),
+            await File.ReadAllBytesAsync(temp.Resolve("frozen.dat")));
+    }
+
+    private const string AuthoredLabelsSpec = """
+        [spec]
+        version = 1
+
+        [binding]
+        shape = "wide"
+        has_header = false
+
+        [[attribute]]
+        name = "k"
+        source = { kind = "column", index = 0 }
+        declared_domain = ["red", "tan", "ash", "fig", "elm", "oak"]
+        discretizer = { kind = "identity" }
+        scale = { kind = "nominal" }
+        value_labels = { red = "L-red", tan = "L-tan", ash = "L-ash", fig = "L-fig", elm = "L-elm", oak = "L-oak" }
+        """;
+
+    private static string NegativeZeroSpec(string discretizer) =>
+        "[spec]\nversion = 1\n\n[binding]\nshape = \"wide\"\nhas_header = false\n\n"
+        + "[[attribute]]\nname = \"x\"\nsource = { kind = \"column\", index = 0, value_type = \"number\" }\n"
+        + "discretizer = " + discretizer + "\nscale = { kind = \"nominal\" }\n";
+
     // ---- the two destinations -------------------------------------------------------------------
 
     [Fact]

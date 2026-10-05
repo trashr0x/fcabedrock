@@ -1211,14 +1211,15 @@ public sealed class FingerprintCalculatorTests
             FingerprintCalculator.BuildDatOutputJson(auto, auto.Calibrated.Spec, NativeDat()));
     }
 
-    // --- existing-kind regression: authored -0.0 manual cut stays -0 (D-101) --
+    // --- programmatic Core input: a -0.0 manual cut encodes "-0" (D-101) ------
 
     [Fact]
-    public void BuildSchemaJson_WhenAuthoredNegativeZeroManualCut_ThenEncodesMinusZeroUnderFpFormat1()
+    public void BuildCxtOutputJson_WhenCoreIsGivenANegativeZeroManualCut_ThenItEncodesMinusZero()
     {
-        // D-101: the fp_format = 1 encoder is UNTOUCHED — an authored -0.0 manual cut is a valid
-        // current spec whose stored hash embeds "-0"; CanonicalNumber.CanonicalizeZero is NOT applied
-        // to existing-kind authored cuts, so those bytes must not move.
+        // D-101: the resolve seam canonicalizes an authored -0 cut, so a TOML spec never brings one
+        // here (SpecResolverTests and SpecFingerprintsTests pin that). Core keeps what a programmatic
+        // caller builds: ResolvedSpec.Create does not canonicalize cuts, and the fp_format = 1
+        // encoder formats -0.0 as "-0" rather than canonicalizing it.
         var discretizer = ManualCutsDiscretizer.Create([-0.0, 10.0], BinEnds.Open, CultureInfo.InvariantCulture).Value!;
         var attribute = new AttributeSpec(
             "v", new ColumnSource(0, SourceValueType.Number), Include: true, discretizer, new NominalScale(),
@@ -1228,7 +1229,7 @@ public sealed class FingerprintCalculatorTests
 
         var json = FingerprintCalculator.BuildCxtOutputJson(plan!, spec, NativeCxt());
 
-        // The authored cut renders "-0" in both the schema bin bounds and the manual_cuts sub-object.
+        // The programmatic cut renders "-0" in both the schema bin bounds and the manual_cuts sub-object.
         Assert.Contains("\"lo\":-0,\"lo_open\":false", json, StringComparison.Ordinal);
         Assert.Contains("\"cuts\":[-0,10]", json, StringComparison.Ordinal);
     }

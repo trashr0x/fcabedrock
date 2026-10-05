@@ -8,13 +8,13 @@ namespace FcaBedrock.Core.Fingerprinting;
 /// (<see cref="CanonicalJson.AppendNumber(System.Text.StringBuilder,double)"/>)
 /// byte-for-byte (invariant, shortest round-trippable, so <c>90</c>, <c>90.0</c>,
 /// and <c>9e1</c> all render <c>90</c>) and, like that encoder, formats
-/// <c>-0.0</c> as <c>"-0"</c> so the <c>fp_format = 1</c> bytes never move.
+/// <c>-0.0</c> as <c>"-0"</c>, so the <c>fp_format = 1</c> encoding of a value never changes.
 /// <see cref="CanonicalizeZero"/> is applied at the numeric identity sites (numeric
-/// <c>free_per_value</c> keys and values, numeric <c>restrict_to</c> entries, and
-/// computed cuts), so a signed zero never leaks into their bin identities, labels, or
-/// hashes. Authored <c>manual_cuts</c> are not canonicalized: an authored <c>-0</c> cut
-/// keeps its <c>"-0"</c> canonical-JSON bytes. The two type-correct chains
-/// (D-096/D-101):
+/// <c>free_per_value</c> keys and values, numeric <c>restrict_to</c> entries, authored
+/// <c>manual_cuts</c> values and manual <c>equal_width</c> bounds, and computed cuts), so a
+/// signed zero never leaks into their bin identities, labels, or hashes. The Spec resolve seam
+/// canonicalizes the authored values; a programmatic Core caller that hands <c>-0</c> to a cut
+/// factory directly keeps it. The two type-correct chains (D-096/D-101):
 /// <list type="bullet">
 /// <item><b>text-sourced:</b> <c>TryParse(text, culture)</c> →
 /// <c>CanonicalizeZero(value)</c> → <c>Format(value)</c>;</item>

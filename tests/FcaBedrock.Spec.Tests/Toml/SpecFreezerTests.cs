@@ -13,8 +13,7 @@ namespace FcaBedrock.Spec.Tests.Toml;
 // SpecResolver.Resolve + CalibratedSpec.Create over hand-built retained outcomes (no data pass),
 // freezes, and asserts the four mappings, effective template/matcher preservation, the
 // fully-frozen check, canonical/idempotent output, and the three-fingerprint write flow. The
-// cross-package .cxt/.dat byte equivalence lives in FcaBedrock.Golden.Tests (this project cannot
-// emit output bytes).
+// cross-package .cxt/.dat byte equivalence of a freeze lives in FcaBedrock.Golden.Tests.
 public sealed class SpecFreezerTests
 {
     // ---- API, pairing, purity, preservation ------------------------------------------------
@@ -81,8 +80,8 @@ public sealed class SpecFreezerTests
 
         var frozen = SpecFreezer.Freeze(resolved, calibrated);
 
-        // The freezer works over the resolver's immutable snapshot (ResolvedDocument.Document),
-        // not the caller's original document, so unchanged sections are reference-identical to the
+        // The freezer works over the resolver's own snapshot (ResolvedDocument.Document), not the
+        // caller's original document, so unchanged sections are reference-identical to the
         // snapshot's: nothing was rebuilt.
         var snapshot = resolved.Document;
         Assert.Equal(["first", "second", "third"], frozen.Attributes.Select(a => a.Name));
@@ -112,8 +111,9 @@ public sealed class SpecFreezerTests
 
         _ = SpecFreezer.Freeze(resolved, calibrated);
 
-        // Freeze takes no source and is synchronous, so it can perform no data read; and both inputs
-        // are immutable records, so nothing observable moved.
+        // Freeze takes no source and is synchronous, so it can perform no data read; and it builds
+        // its result from record `with` copies without writing to either input, so nothing
+        // observable moved.
         Assert.Same(originalDiscretizer, document.Attributes[0].Discretizer);
         Assert.IsType<EqualFrequencyDiscretizerSection>(document.Attributes[0].Discretizer);
         Assert.Equal(originalOutcomeCount, calibrated.Calibrations.Count);
@@ -133,7 +133,8 @@ public sealed class SpecFreezerTests
 
         var frozen = SpecFreezer.Freeze(resolved, calibrated);
 
-        // Not a caller-mutable list: the returned graph exposes no new mutable backing state.
+        // Not a caller-mutable list: the frozen domain is immutable storage, and Freeze adds no new
+        // mutable backing state. A value_labels map would keep its snapshot backing (D-098).
         Assert.IsNotType<List<string>>(frozen.Attributes[0].DeclaredDomain);
     }
 
@@ -641,6 +642,46 @@ public sealed class SpecFreezerTests
         Assert.Contains("kind = \"manual_cuts\"", text);
         Assert.Contains("cuts = [0, 45, 90]", text);
         Assert.DoesNotContain("ends", text);
+    }
+
+    [Fact]
+    public void Freeze_WhenTheSpecIsFullyDeclared_ThenItWritesValueLabelsInTheirAuthoredOrder()
+    {
+        // §10.8/D-075: calibrate writes this snapshot even with nothing to calibrate, so the frozen
+        // text must equal the authored document's, value_labels order included (six keys of one
+        // length are the shape a frozen map reordered).
+        var document = LabelsDocument(UnknownValuePolicy.Warn);
+        var resolved = Resolve(document, new SourceSchema(1));
+
+        var text = SpecWriter.Write(SpecFreezer.Freeze(resolved, CalibratedSpec.FromFullyDeclared(resolved.Resolved)));
+
+        Assert.Equal(SpecWriter.Write(document), text);
+    }
+
+    [Fact]
+    public void Freeze_WhenIncludeAdditionsAreFrozen_ThenValueLabelsKeepTheirAuthoredOrder()
+    {
+        var resolved = Resolve(LabelsDocument(UnknownValuePolicy.Include), new SourceSchema(1));
+        var calibrated = Create(resolved, new IncludeAdditions("k", ["extra"]));
+
+        var text = SpecWriter.Write(SpecFreezer.Freeze(resolved, calibrated));
+
+        Assert.Equal(2, text.Split(DSixLabels).Length - 1); // the attribute's map and the template's
+        Assert.Contains("declared_domain = [\"red\", \"tan\", \"ash\", \"fig\", \"elm\", \"oak\", \"extra\"]", text, StringComparison.Ordinal);
+    }
+
+    private const string DSixLabels =
+        "value_labels = { red = \"L-red\", tan = \"L-tan\", ash = \"L-ash\", fig = \"L-fig\", elm = \"L-elm\", oak = \"L-oak\" }";
+
+    private static SpecDocument LabelsDocument(UnknownValuePolicy policy)
+    {
+        string[] keys = ["red", "tan", "ash", "fig", "elm", "oak"];
+        var labels = keys.ToDictionary(key => key, key => "L-" + key, StringComparer.Ordinal);
+        return DocumentFixtures.Document(
+            [DocumentFixtures.Attribute("k", DocumentFixtures.Column(0),
+                discretizer: new IdentityDiscretizerSection(), scale: new NominalScaleSection(),
+                declaredDomain: keys, valueLabels: labels, unknownValuePolicy: policy)],
+            templates: [DocumentFixtures.Template("t", valueLabels: labels)]);
     }
 
     // ---- Fully-frozen fingerprint write flow -----------------------------------------------

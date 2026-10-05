@@ -976,7 +976,7 @@ internal static class AttributeReader
         }
 
         // Insertion order is the authored order; the writer preserves it (D-075).
-        var labels = new Dictionary<string, string>(StringComparer.Ordinal);
+        var labels = new OrderedDictionary<string, string>(StringComparer.Ordinal);
         foreach (var item in table.Items)
         {
             if (item.KeyValue is not { } pair || pair.Key is not { } key)

@@ -32,7 +32,8 @@ public static class SpecResolver
     /// <summary>
     /// Resolves <paramref name="document"/> into a paired
     /// <see cref="ResolvedDocument"/> (D-098): the resolved
-    /// <see cref="ResolvedSpec"/> token plus an immutable snapshot of the document.
+    /// <see cref="ResolvedSpec"/> token plus a deep snapshot of the document, immutable except
+    /// for its <c>value_labels</c> backing maps (<see cref="ResolvedDocument"/>).
     /// <paramref name="schema"/> is needed only when something binds a column by
     /// header name (§5.3/§5.4/§10.2); when it is supplied, direct column indexes are
     /// also range-checked against it. The conversion pipeline resolves schema-aware via
@@ -1353,8 +1354,9 @@ public static class SpecResolver
     // §10.4/D-096/D-105: valid exact values and provided bounds are zero-canonicalized at
     // resolution, so an authored -0 resolves (and therefore matches, plans, and hashes)
     // identically to 0. This is the "already-numeric" arm of the D-101 chain (the values arrive
-    // as TOML doubles; there is no text to parse), and it is scoped to the numeric identities
-    // D-101 canonicalizes: CanonicalJson.AppendNumber and every authored manual-cut byte are untouched.
+    // as TOML doubles; there is no text to parse), the arm ResolveDiscretizer and
+    // ResolveEqualWidth also apply to authored cuts and manual bounds. CanonicalJson.AppendNumber
+    // itself is untouched.
     //
     // Authored ORDER and DUPLICATES survive verbatim: resolved Core state mirrors the document
     // (D-057). Canonical sorting/deduplication is a fingerprint projection only (§14) and must
@@ -1384,6 +1386,20 @@ public static class SpecResolver
 
     private static double? CanonicalizeBound(double? bound) =>
         bound is { } value ? CanonicalNumber.CanonicalizeZero(value) : null;
+
+    // §11.2/D-101: the authored cuts with every zero made positive, in a new array, so the
+    // caller's document list keeps the authored value. Non-zero and non-finite values pass through
+    // unchanged for the factory to validate.
+    private static double[] CanonicalizeZeros(IReadOnlyList<double> cuts)
+    {
+        var canonical = new double[cuts.Count];
+        for (var i = 0; i < cuts.Count; i++)
+        {
+            canonical[i] = CanonicalNumber.CanonicalizeZero(cuts[i]);
+        }
+
+        return canonical;
+    }
 
     // §12.3 (D-060): over cut bins the discretizer geometry is the single source
     // of order and operator. Both checks read the document sections (the
@@ -1498,9 +1514,10 @@ public static class SpecResolver
 
             case ManualCutsDiscretizerSection manual:
                 // §11.2 defaults; the D-056 factory owns cut validation and its
-                // diagnostics merge into this pass.
+                // diagnostics merge into this pass. An authored zero of either sign resolves as
+                // positive zero first (D-101), so -0.0 and 0 are one cut and a diagnostic shows 0.
                 return Merge(
-                    ManualCutsDiscretizer.Create(manual.Cuts ?? [], manual.Ends ?? BinEnds.Open, culture),
+                    ManualCutsDiscretizer.Create(CanonicalizeZeros(manual.Cuts ?? []), manual.Ends ?? BinEnds.Open, culture),
                     attribute, diagnostics);
 
             case EqualWidthDiscretizerSection equalWidth:
@@ -1560,7 +1577,12 @@ public static class SpecResolver
                 return null;
             }
 
-            return Merge(EqualWidthDiscretizer.CreateManual(bins, vmin, vmax, precision, culture), attribute, diagnostics);
+            // §11.4/D-101: an authored zero bound of either sign resolves as positive zero. The
+            // derived cuts never depend on that sign; only the encoded vmin/vmax would.
+            return Merge(
+                EqualWidthDiscretizer.CreateManual(
+                    bins, CanonicalNumber.CanonicalizeZero(vmin), CanonicalNumber.CanonicalizeZero(vmax), precision, culture),
+                attribute, diagnostics);
         }
 
         return new CalibrationPending(new PendingEqualWidth(bins, range, precision), culture);

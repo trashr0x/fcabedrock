@@ -242,6 +242,29 @@ public sealed class SpecFingerprintsTests
         Assert.Equal(plain, exponent);
     }
 
+    [Theory]
+    [InlineData("-0.0")]
+    [InlineData("-0e0")]
+    [InlineData("-0")]
+    [InlineData("0.0")]
+    public void ComputeNative_WhenACutIsAnySpellingOfZero_ThenAllThreeMatchTheZeroCut(string spelling)
+    {
+        // §11.2/D-101: an authored zero of either sign is one cut. The TOML integer -0 is already
+        // the integer zero; the float spellings keep their sign until the seam canonicalizes it.
+        var zero = ComputeFor(CutSpellingTemplate.Replace("{CUT}", "0", StringComparison.Ordinal));
+        var spelled = ComputeFor(CutSpellingTemplate.Replace("{CUT}", spelling, StringComparison.Ordinal));
+
+        Assert.Equal(zero, spelled);
+    }
+
+    [Fact]
+    public void ComputeNative_WhenACutIsNegativeZero_ThenTheRenderedNamesAreThoseOfTheZeroCut()
+    {
+        var (_, _, plan) = Pipeline(CutSpellingTemplate.Replace("{CUT}", "-0.0", StringComparison.Ordinal), new SourceSchema(1));
+
+        Assert.Equal(["age-<0", "age->=0"], plan.FormalAttributes.Select(attribute => attribute.RenderedName));
+    }
+
     [Fact]
     public void ComputeNative_WhenInlineTablesSpanLines_ThenAllThreeFingerprintsMatchTheSingleLineTwin()
     {
@@ -491,6 +514,47 @@ public sealed class SpecFingerprintsTests
         Assert.Equal(plain, spelled);
     }
 
+    [Theory]
+    [InlineData("vmin = -0.0, vmax = 100", "vmin = 0, vmax = 100")]
+    [InlineData("vmin = -100, vmax = -0.0", "vmin = -100, vmax = 0")]
+    public void ComputeNative_WhenAManualEqualWidthBoundIsNegativeZero_ThenAllThreeMatchTheZeroBound(string negative, string zero)
+    {
+        // §11.4/D-101: the derived cuts never depended on the sign; the encoded vmin/vmax did.
+        var withNegative = ComputeFor(EqualWidthManualTemplate.Replace("vmin = 0, vmax = 100", negative, StringComparison.Ordinal));
+        var withZero = ComputeFor(EqualWidthManualTemplate.Replace("vmin = 0, vmax = 100", zero, StringComparison.Ordinal));
+
+        Assert.Equal(withZero, withNegative);
+    }
+
+    [Theory]
+    [InlineData("discretizer = { kind = \"manual_cuts\", cuts = [-0.0, 10] }")]
+    [InlineData("discretizer = { kind = \"equal_width\", bins = 2, range = \"manual\", vmin = -0.0, vmax = 10 }")]
+    public void VerifyStored_WhenANegativeZeroSpecStoresItsFingerprintsAndIsReread_ThenNothingIsStale(string discretizer)
+    {
+        // The fingerprint --write flow at library level. The writer renders the authored -0 as 0, so
+        // the stored values must already be those of the 0 spec for the reread spec to verify.
+        var toml = EqualWidthManualTemplate.Replace(
+            "discretizer = { kind = \"equal_width\", bins = 4, range = \"manual\", vmin = 0, vmax = 100 }",
+            discretizer, StringComparison.Ordinal);
+        var (document, spec, plan) = Pipeline(toml, new SourceSchema(1));
+        var computed = ComputeNative(document, spec, plan);
+        var stored = document.Document with
+        {
+            Spec = document.Document.Spec! with
+            {
+                SchemaFingerprint = computed.SchemaFingerprint,
+                CxtOutputFingerprint = computed.CxtOutputFingerprint,
+                DatOutputFingerprint = computed.DatOutputFingerprint,
+            },
+        };
+
+        var reread = SpecReader.Read(SpecWriter.Write(stored));
+        Assert.True(reread.TryGetValue(out var rereadDocument));
+        var (rereadResolved, rereadSpec, rereadPlan) = Prepare(rereadDocument, new SourceSchema(1));
+
+        Assert.Empty(VerifyStored(rereadResolved, ComputeNative(rereadResolved, rereadSpec, rereadPlan)));
+    }
+
     [Fact]
     public void ComputeNative_WhenEqualWidthPrecisionDiffers_ThenOutputFingerprintsDiffer()
     {
@@ -613,8 +677,9 @@ public sealed class SpecFingerprintsTests
     [Fact]
     public void Resolve_WhenOriginalDocumentMutatedAfterResolve_ThenSnapshotAndFingerprintsUnchanged()
     {
-        // D-098: the ResolvedDocument holds an immutable deep snapshot, so a caller mutating the
-        // original document's reader-produced collections after resolution cannot reach fingerprinting.
+        // D-098: the ResolvedDocument holds the resolver's own deep copy of the document (its section
+        // lists are ImmutableArray), so a caller mutating the original document's reader-produced
+        // collections after resolution cannot reach fingerprinting.
         Assert.True(SpecReader.Read(TomlFixtures.MiniMushroom).TryGetValue(out var document));
         Assert.True(SpecResolver.Resolve(document, new SourceSchema(5)).TryGetValue(out var resolvedDoc));
         var plan = ConversionPlanner.Plan(CalibratedSpec.FromFullyDeclared(resolvedDoc.Resolved)).Value!;
