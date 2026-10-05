@@ -47,9 +47,11 @@ read through a stream that returns short reads is no longer reordered (D-137). I
 product-behavior changes are the wording of TOML syntax-error messages (D-133), the rejection of
 three kinds of malformed spec, with one new diagnostic (D-135), `calibrate` keeping the authored
 order of `value_labels` (D-075), an authored negative zero in `manual_cuts` or a manual
-`equal_width` range resolving as zero (D-101), and wording edits to some diagnostic
-messages, the `--help` text and the package description. M9 begins after M8.2 is accepted and
-integrated. Work deferred beyond v1 is in the [deferred backlog](#deferred-backlog-not-v1).
+`equal_width` range resolving as zero (D-101), an `ordinal` scale over closed-ended
+`manual_cuts` or `ordered_cuts` bins getting one correctly crossed threshold per bin (spec §12.3),
+and wording edits to some diagnostic messages, the `--help` text and the package description.
+M9 begins after M8.2 is accepted and integrated. Work deferred beyond v1 is in the
+[deferred backlog](#deferred-backlog-not-v1).
 
 ## Milestones
 
@@ -375,10 +377,25 @@ authored negative zero in `manual_cuts` or in a manual `equal_width` range's `vm
 resolves as zero, like every other numeric identity (D-101): such a spec's fingerprints change
 once (all three for a cut, the two output fingerprints for a bound) with no `fp_format` change, a
 `-0` cut's `.cxt` column names change (`<-0` becomes `<0`) while its incidence and `.dat` bytes do
-not, and a diagnostic about such a value shows `0`. The wording of some
-diagnostic and internal exception messages changes to remove dashes used as punctuation and
-references to past milestones, `--help` headings take the form `name: summary`, and the package
-description loses its dash (WP-1, WP-6). Otherwise, normative spec
+not, and a diagnostic about such a value shows `0`. An `ordinal` scale over `manual_cuts` or
+`ordered_cuts` bins with `ends = "closed"` now gets one threshold per bin at that bin's own edge,
+as spec §12.3 requires: closed cuts 30/40/50 give `<40` and `<50` for `le`, and `>=30`
+and `>=40` for `ge`. It used to get one threshold per cut: `le` named its thresholds one cut too
+low (`<30` crossed `[30, 40)`) and added a last one that crossed the same bins as the one before
+it, and `ge` added a last threshold, `>=50` here, that no object could cross. Such a spec's `.cxt`
+bytes and three fingerprints change, with no `fp_format` change. Its `.dat` bytes change only where
+an object's crossed column IDs change, through different crossings or the renumbering of crossed
+columns after a removed one: dropping a closed `ge` attribute's never-crossed last column changes
+only the IDs of crossed columns after it, and input whose values all fall outside the closed range
+writes the same `.dat` bytes. A run manifest records the changed fingerprints and the hashes of
+the changed files. `drop_top = true` now suppresses the outermost cut threshold of closed bins, as
+it already suppressed the `all` of open ones, and a closed `ge` attribute no longer draws an
+`AttributeHasNoCrosses` warning for that column. Every other combination of discretizer and scale,
+ordinal over open-ended cut bins included, keeps its output, and so do the v2 fixtures. The
+`NoFormalAttributes` warning now also names an attribute that yields no column as a cause. The
+wording of some diagnostic and internal exception messages changes to remove dashes used as
+punctuation and references to past milestones, `--help` headings take the form `name: summary`,
+and the package description loses its dash (WP-1, WP-6). Otherwise, normative spec
 prose changes follow D-134's three reviewed kinds: correcting a passage to its rule owner, stating
 enforced defaults, bounds or allowed values that were shown only in examples, and stating rules
 already enforced by the reader or resolver. Spec §8 also states the exact `.cxt` size-advisory

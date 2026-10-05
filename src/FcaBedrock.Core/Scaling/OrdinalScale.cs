@@ -6,7 +6,7 @@ namespace FcaBedrock.Core.Scaling;
 /// v2's progressive scaling is <see cref="OrdinalDirection.Le"/> ("below": <c>&lt;</c>
 /// at each bin's upper edge), the path the v2 golden fixtures pin.
 ///
-/// <para>Over half-open cut bins the boundary is fixed by direction (D-044):
+/// <para>Over half-open cut bins the boundary is fixed by direction (D-047/D-060):
 /// <c>le</c> ⇒ <c>&lt;</c> at upper edges, <c>ge</c> ⇒ <c>&gt;=</c> at lower edges, the
 /// only whole-bin-clean pairings, so <see cref="Boundary"/> is not read there. Over
 /// <b>value</b> bins (<c>identity</c>, <c>free_per_value</c> or <c>value_groups</c>,
@@ -14,9 +14,12 @@ namespace FcaBedrock.Core.Scaling;
 /// <c>direction × boundary</c> combinations are well-defined and both knobs are live
 /// (§12.3, D-081/D-096/D-104).</para>
 ///
-/// <para>The threshold of an open end (±∞) has no finite cut and renders
-/// <c>all</c> (spec §12.3); it is kept unless <see cref="DropTop"/>. Value schemes
-/// have no open ends, hence no <c>all</c> threshold.</para>
+/// <para>Over cut bins the threshold that every bin crosses (the top bin's for
+/// <c>le</c>, the bottom bin's for <c>ge</c>) sits at an end of the cut range: an open
+/// end (±∞) has no finite cut, so that threshold renders <c>all</c> (spec §12.3), and a
+/// closed end is the outermost cut itself. <see cref="DropTop"/> suppresses that
+/// threshold in both cases (§12.3). Value schemes have no open ends, hence no
+/// <c>all</c> threshold.</para>
 ///
 /// <para><see cref="BuildShapes"/> selects the path by
 /// <see cref="BinScheme.CutBins"/>: cut schemes keep the geometry paths above;
@@ -39,50 +42,65 @@ public sealed record OrdinalScale(
             ? (Direction == OrdinalDirection.Le ? BuildBelow(bins) : BuildAtOrAbove(bins))
             : BuildValueThresholds();
 
-    // "Below": bin i's threshold is its upper edge (cut i); it crosses every bin at
-    // or below i. The open top has no finite edge → `all`, crossing all bins.
+    // "Below": bin i's threshold is its upper edge, `<`, crossed by objects in bin i and in
+    // every bin below it. Every object that has a bin crosses the top bin's threshold, so it
+    // is the tautological one drop_top suppresses: `all` when the top is open (no finite
+    // edge), the last cut when it is closed.
     private List<FormalAttributeShape> BuildBelow(BinScheme bins)
     {
+        var top = bins.Labels.Count - 1;
         var shapes = new List<FormalAttributeShape>(bins.Labels.Count);
-        for (var i = 0; i < bins.Thresholds.Count; i++)
+        for (var i = 0; i <= top; i++)
         {
-            var cut = bins.Thresholds[i];
-            shapes.Add(new FormalAttributeShape(
-                cut, ScaleOp: "<", BinKey: cut, Bin: new ValueBin(cut), CrossingBins: [.. bins.Labels.Take(i + 1)]));
-        }
+            if (DropTop && i == top)
+            {
+                continue;
+            }
 
-        if (bins.OpenHigh && !DropTop)
-        {
-            shapes.Add(OpenEnd(bins.Labels));
+            IReadOnlyList<string> crossing = [.. bins.Labels.Take(i + 1)];
+            shapes.Add(i == top && bins.OpenHigh
+                ? OpenEnd(crossing)
+                : CutThreshold(bins.Thresholds[LowerEdge(bins, i) + 1], "<", crossing));
         }
 
         return shapes;
     }
 
-    // "At or above": bin i's threshold is its lower edge (cut i-1); it crosses every
-    // bin at or above it. The open bottom has no finite edge → `all`, crossing all.
+    // "At or above": bin i's threshold is its lower edge, `>=`, crossed by objects in bin i
+    // and in every bin above it. Every object that has a bin crosses the bottom bin's
+    // threshold, so it is the tautological one drop_top suppresses: `all` when the bottom is
+    // open (no finite edge), the first cut when it is closed.
     private List<FormalAttributeShape> BuildAtOrAbove(BinScheme bins)
     {
         var shapes = new List<FormalAttributeShape>(bins.Labels.Count);
-        if (bins.OpenLow && !DropTop)
+        for (var i = 0; i < bins.Labels.Count; i++)
         {
-            shapes.Add(OpenEnd(bins.Labels));
-        }
+            if (DropTop && i == 0)
+            {
+                continue;
+            }
 
-        for (var i = 0; i < bins.Thresholds.Count; i++)
-        {
-            var cut = bins.Thresholds[i];
-            var fromBin = bins.OpenLow ? i + 1 : i; // the open-bottom bin sits before the first cut
-            shapes.Add(new FormalAttributeShape(
-                cut, ScaleOp: ">=", BinKey: cut, Bin: new ValueBin(cut), CrossingBins: [.. bins.Labels.Skip(fromBin)]));
+            IReadOnlyList<string> crossing = [.. bins.Labels.Skip(i)];
+            shapes.Add(i == 0 && bins.OpenLow
+                ? OpenEnd(crossing)
+                : CutThreshold(bins.Thresholds[LowerEdge(bins, i)], ">=", crossing));
         }
 
         return shapes;
     }
 
-    private static FormalAttributeShape OpenEnd(IReadOnlyList<string> labels) =>
+    // The index in Thresholds of bin i's lower edge; its upper edge is the next cut. With an
+    // open bottom, bin 0 runs from −∞ to the first cut, so bin i starts at cut `i - 1`; with a
+    // closed bottom, bin 0 starts at the first cut, so bin i starts at cut `i` (§11.2). Edges
+    // are read from the cut list and the open flags, never from a rendered bin label.
+    private static int LowerEdge(BinScheme bins, int bin) => bins.OpenLow ? bin - 1 : bin;
+
+    private static FormalAttributeShape CutThreshold(string cut, string op, IReadOnlyList<string> crossing) =>
+        new(cut, ScaleOp: op, BinKey: cut, Bin: new ValueBin(cut), CrossingBins: crossing);
+
+    private static FormalAttributeShape OpenEnd(IReadOnlyList<string> crossing) =>
         new(ValueLabel: OpenEndLabel, ScaleOp: "", BinKey: OpenEndLabel, Bin: new ValueBin(OpenEndLabel),
-            CrossingBins: [.. labels]);
+            CrossingBins: crossing);
 
     // Value-bin ordinal (§12.3, D-081/D-096/D-104): identity, free_per_value or value_groups
     // bins ordered by scale.order (authored, or the planner's natural numeric order for a

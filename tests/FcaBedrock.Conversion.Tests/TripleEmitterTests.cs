@@ -45,7 +45,7 @@ public sealed class TripleEmitterTests
     [Fact]
     public async Task EmitTripleAsync_WhenPredicateUnbound_ThenSubjectIsKeptWithNoCrosses()
     {
-        // A subject whose only rows carry unbound predicates still forms its object (§10.1).
+        // A subject whose only rows carry unbound predicates still forms its object (§5.3.1).
         var spec = new BedrockSpec(ConversionFixtures.Triple(),
             [ConversionFixtures.PredicateNominal("a", "a", ["x", "y"])]);
 

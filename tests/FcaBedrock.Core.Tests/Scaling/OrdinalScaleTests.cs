@@ -64,6 +64,15 @@ public sealed class OrdinalScaleTests
     }
 
     [Fact]
+    public void BuildShapes_WhenGeWithDropTop_ThenOmitsTheOpenEndAllColumn()
+    {
+        var shapes = new OrdinalScale(OrdinalDirection.Ge, DropTop: true).BuildShapes(AgeScheme());
+
+        Assert.Equal(["30", "40", "50"], shapes.Select(s => s.ValueLabel));
+        Assert.Equal(["[30, 40)", "[40, 50)", ">=50"], shapes[0].CrossingBins); // >=30 keeps its crossings
+    }
+
+    [Fact]
     public void BuildShapes_WhenGe_ThenAllThenAtOrAboveThresholdsWithCumulativeCrossings()
     {
         var shapes = new OrdinalScale(OrdinalDirection.Ge).BuildShapes(AgeScheme());
@@ -132,6 +141,107 @@ public sealed class OrdinalScaleTests
 
         Assert.All(geStrict.Where(s => s.ScaleOp.Length > 0), s => Assert.Equal(">=", s.ScaleOp));
         Assert.All(leInclusive.Where(s => s.ScaleOp.Length > 0), s => Assert.Equal("<", s.ScaleOp));
+    }
+
+    // --- Closed ends: interior bins only, every threshold a cut (§11.2/§12.3) ---
+
+    // age cuts 30/40/50 with closed ends: two bins, and the outer cuts are their outer edges.
+    private static BinScheme ClosedAgeScheme() =>
+        new(
+            ["[30, 40)", "[40, 50)"],
+            [new NumericCutBin(30, 40), new NumericCutBin(40, 50)],
+            ["30", "40", "50"],
+            OpenLow: false,
+            OpenHigh: false,
+            CutBins: true);
+
+    // ordered cuts b/c/d over a..e with closed ends: the categorical twin.
+    private static BinScheme ClosedOrderedScheme() =>
+        new(
+            ["[b, c)", "[c, d)"],
+            [new TextCutBin("b", "c"), new TextCutBin("c", "d")],
+            ["b", "c", "d"],
+            OpenLow: false,
+            OpenHigh: false,
+            CutBins: true);
+
+    [Fact]
+    public void BuildShapes_WhenClosedLe_ThenEachBinsUpperEdgeIsItsThreshold()
+    {
+        var shapes = new OrdinalScale(OrdinalDirection.Le).BuildShapes(ClosedAgeScheme());
+
+        // [30, 40) ends at 40 and [40, 50) at 50. The closed top is the finite cut 50, so
+        // there is no `all`, and the bottom cut 30 is no bin's upper edge.
+        Assert.Equal(["40", "50"], shapes.Select(s => s.ValueLabel));
+        Assert.Equal(["<", "<"], shapes.Select(s => s.ScaleOp));
+        Assert.Equal(["[30, 40)"], shapes[0].CrossingBins);
+        Assert.Equal(["[30, 40)", "[40, 50)"], shapes[1].CrossingBins);
+        Assert.Equal(shapes.Select(s => s.ValueLabel), shapes.Select(s => s.BinKey));
+        Assert.Equal(["40", "50"], shapes.Select(s => Assert.IsType<ValueBin>(s.Bin).Label));
+    }
+
+    [Fact]
+    public void BuildShapes_WhenClosedGe_ThenEachBinsLowerEdgeIsItsThreshold()
+    {
+        var shapes = new OrdinalScale(OrdinalDirection.Ge).BuildShapes(ClosedAgeScheme());
+
+        // The closed bottom is the finite cut 30, so it is a threshold rather than `all`, and
+        // the top cut 50 is no bin's lower edge, so no threshold sits there.
+        Assert.Equal(["30", "40"], shapes.Select(s => s.ValueLabel));
+        Assert.Equal([">=", ">="], shapes.Select(s => s.ScaleOp));
+        Assert.Equal(["[30, 40)", "[40, 50)"], shapes[0].CrossingBins);
+        Assert.Equal(["[40, 50)"], shapes[1].CrossingBins);
+    }
+
+    [Theory]
+    [InlineData(OrdinalDirection.Le, "<", "[30, 40)")]  // <50 crosses both bins and is dropped
+    [InlineData(OrdinalDirection.Ge, ">=", "[40, 50)")] // >=30 crosses both bins and is dropped
+    public void BuildShapes_WhenClosedWithDropTop_ThenTheOutermostCutThresholdIsSuppressed(
+        OrdinalDirection direction, string op, string onlyBin)
+    {
+        var shape = Assert.Single(new OrdinalScale(direction, DropTop: true).BuildShapes(ClosedAgeScheme()));
+
+        Assert.Equal("40", shape.ValueLabel);
+        Assert.Equal(op, shape.ScaleOp);
+        Assert.Equal([onlyBin], shape.CrossingBins);
+    }
+
+    [Theory]
+    [InlineData(OrdinalDirection.Le, "40", "<")]
+    [InlineData(OrdinalDirection.Ge, "30", ">=")]
+    public void BuildShapes_WhenASingleClosedBin_ThenOneThresholdThatDropTopSuppresses(
+        OrdinalDirection direction, string cut, string op)
+    {
+        var single = new BinScheme(
+            ["[30, 40)"], [new NumericCutBin(30, 40)], ["30", "40"], OpenLow: false, OpenHigh: false, CutBins: true);
+
+        var shape = Assert.Single(new OrdinalScale(direction).BuildShapes(single));
+        Assert.Equal(cut, shape.ValueLabel);
+        Assert.Equal(op, shape.ScaleOp);
+        Assert.Equal(["[30, 40)"], shape.CrossingBins);
+
+        // The only threshold crosses the only bin, so it is tautological: drop_top leaves none.
+        Assert.Empty(new OrdinalScale(direction, DropTop: true).BuildShapes(single));
+    }
+
+    [Fact]
+    public void BuildShapes_WhenClosedOrderedCutsLe_ThenTheUpperCategoryEdgesAreTheThresholds()
+    {
+        var shapes = new OrdinalScale(OrdinalDirection.Le).BuildShapes(ClosedOrderedScheme());
+
+        Assert.Equal(["c", "d"], shapes.Select(s => s.ValueLabel));
+        Assert.Equal(["[b, c)"], shapes[0].CrossingBins);
+        Assert.Equal(["[b, c)", "[c, d)"], shapes[1].CrossingBins);
+    }
+
+    [Fact]
+    public void BuildShapes_WhenClosedOrderedCutsGe_ThenTheLowerCategoryEdgesAreTheThresholds()
+    {
+        var shapes = new OrdinalScale(OrdinalDirection.Ge).BuildShapes(ClosedOrderedScheme());
+
+        Assert.Equal(["b", "c"], shapes.Select(s => s.ValueLabel));
+        Assert.Equal(["[b, c)", "[c, d)"], shapes[0].CrossingBins);
+        Assert.Equal(["[c, d)"], shapes[1].CrossingBins);
     }
 
     // --- Value-bin ordinal (identity + explicit order, D-081) ---
@@ -216,8 +326,8 @@ public sealed class OrdinalScaleTests
     [InlineData(OrdinalDirection.Le)]
     public void BuildShapes_WhenValueBinsStrictDropTop_ThenNoOpAllThresholdsKept(OrdinalDirection direction)
     {
-        // drop_top is a no-op under strict: there is no tautological threshold, and the
-        // statically-empty end is kept and simply never crosses (D-081).
+        // Over value bins drop_top is a no-op under strict: there is no tautological threshold,
+        // and the statically-empty end is kept and simply never crosses (D-081).
         var withoutDrop = ValueOrdinal(direction, OrdinalBoundary.Strict).BuildShapes(ValueScheme("low", "mid", "high"));
         var withDrop = ValueOrdinal(direction, OrdinalBoundary.Strict, dropTop: true).BuildShapes(ValueScheme("low", "mid", "high"));
 

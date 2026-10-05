@@ -51,6 +51,25 @@ public sealed class OrderedCutsDiscretizerTests
         }
     }
 
+    [Theory]
+    [InlineData("Unskilled", null)]                         // below the first cut: outside the closed range
+    [InlineData("Clerical", "[Clerical, Professional)")]    // the first cut is the lower edge
+    [InlineData("Professional", "[Professional, Managerial)")]
+    [InlineData("Managerial", null)]                        // the last cut is outside: half-open
+    public void Discretize_WhenClosedEnds_ThenOnlyInteriorBinsAndTheLastCutIsOutside(string raw, string? expected)
+    {
+        var discretizer = OrderedCutsDiscretizer.Create(
+            Employment, ["Clerical", "Professional", "Managerial"], BinEnds.Closed).Value!;
+
+        Assert.Equal(expected is null ? BinResult.NoBin : BinResult.Bin(expected), discretizer.Discretize(raw));
+    }
+
+    [Fact]
+    public void Discretize_WhenClosedEndsAndValueNotInOrder_ThenStillUnknown() =>
+        Assert.Equal(
+            BinResult.Unknown("Director"),
+            OrderedCutsDiscretizer.Create(Employment, ["Clerical", "Managerial"], BinEnds.Closed).Value!.Discretize("Director"));
+
     [Fact]
     public void RenderBinLabel_WhenV2CompatInterior_ThenBecomesToLess() =>
         Assert.Equal(

@@ -658,7 +658,7 @@ public static class Emitter
                     // Route the observation: a present predicate that binds attribute(s) classifies its
                     // value into the object's crosses (null value → present-missing → missing_policy in
                     // Classify). Absent/empty/unknown predicate = no observation; the subject still forms
-                    // its object (empty crosses are legal, §10.1). Repeated and multi-valued predicates
+                    // its object (empty crosses are legal, §5.3.1). Repeated and multi-valued predicates
                     // union their crosses (§5.3.1/§17 r8) and OR their restriction matches (§10.4).
                     if (row.Predicate is { } predicate)
                     {

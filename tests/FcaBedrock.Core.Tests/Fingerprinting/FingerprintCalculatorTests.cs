@@ -508,6 +508,77 @@ public sealed class FingerprintCalculatorTests
             FingerprintCalculator.ComputeSchemaFingerprint(acb!));
     }
 
+    // --- Ordinal over closed cut bins (§12.3): one threshold per bin, at its own edge ---
+
+    // One `age` attribute over cuts 30/40/50 (manual) or b/c/d over a..e (ordered), closed
+    // ends, so two bins.
+    private static BedrockSpec ClosedCutsOrdinalSpec(string kind, OrdinalDirection direction)
+    {
+        Discretizer discretizer = kind == "manual"
+            ? ManualCutsDiscretizer.Create([30, 40, 50], BinEnds.Closed, CultureInfo.InvariantCulture).Value!
+            : OrderedCutsDiscretizer.Create(["a", "b", "c", "d", "e"], ["b", "c", "d"], BinEnds.Closed).Value!;
+        var valueType = kind == "manual" ? SourceValueType.Number : SourceValueType.String;
+        var attribute = new AttributeSpec(
+            "age", new ColumnSource(0, valueType), Include: true, discretizer, new OrdinalScale(direction),
+            DeclaredDomain: [], RestrictTo: [], SpecFixtures.NoLabels, MissingPolicy.Skip, UnknownValuePolicy.Warn);
+        return new BedrockSpec(SpecFixtures.WideRowIndex(), [attribute]);
+    }
+
+    [Theory]
+    [InlineData("manual", OrdinalDirection.Le)]
+    [InlineData("manual", OrdinalDirection.Ge)]
+    [InlineData("ordered", OrdinalDirection.Le)]
+    [InlineData("ordered", OrdinalDirection.Ge)]
+    public void BuildSchemaJson_WhenOrdinalOverClosedCutBins_ThenOneThresholdPerBinAtItsEdge(
+        string kind, OrdinalDirection direction)
+    {
+        // `le` thresholds at each bin's upper edge, `ge` at each bin's lower edge; the encoder is
+        // unchanged (D-069). Hash literals computed independently over the expected bytes.
+        var (json, fingerprint) = (kind, direction) switch
+        {
+            ("manual", OrdinalDirection.Le) => (
+                "{\"attributes\":[{\"bin\":\"40\",\"name\":\"age\",\"op\":\"<\",\"scale\":\"ordinal\"},"
+                    + "{\"bin\":\"50\",\"name\":\"age\",\"op\":\"<\",\"scale\":\"ordinal\"}],\"fp_format\":1,\"kind\":\"schema\"}",
+                "sha256:0351328917b749acabce413b79d817c1e96141803b11876d1caf73f72bbd0aa0"),
+            ("manual", OrdinalDirection.Ge) => (
+                "{\"attributes\":[{\"bin\":\"30\",\"name\":\"age\",\"op\":\">=\",\"scale\":\"ordinal\"},"
+                    + "{\"bin\":\"40\",\"name\":\"age\",\"op\":\">=\",\"scale\":\"ordinal\"}],\"fp_format\":1,\"kind\":\"schema\"}",
+                "sha256:5d67b7d41a0508ff8b43040732faeca0bca6b830e111998752c93cc8104ffc7d"),
+            ("ordered", OrdinalDirection.Le) => (
+                "{\"attributes\":[{\"bin\":\"c\",\"name\":\"age\",\"op\":\"<\",\"scale\":\"ordinal\"},"
+                    + "{\"bin\":\"d\",\"name\":\"age\",\"op\":\"<\",\"scale\":\"ordinal\"}],\"fp_format\":1,\"kind\":\"schema\"}",
+                "sha256:149de3cd891aa0a08f58978708f2e823ec382e5f2e4ba598181a018df0ef6bc4"),
+            ("ordered", OrdinalDirection.Ge) => (
+                "{\"attributes\":[{\"bin\":\"b\",\"name\":\"age\",\"op\":\">=\",\"scale\":\"ordinal\"},"
+                    + "{\"bin\":\"c\",\"name\":\"age\",\"op\":\">=\",\"scale\":\"ordinal\"}],\"fp_format\":1,\"kind\":\"schema\"}",
+                "sha256:6432ac3214a253efd7ee937e5599b88606fde7f9d1ec73a1bf2f59527d0c83a4"),
+            _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null),
+        };
+        Assert.True(Diag(ClosedCutsOrdinalSpec(kind, direction), new SourceSchema(1)).TryGetValue(out var plan));
+
+        Assert.Equal(json, FingerprintCalculator.BuildSchemaJson(plan!));
+        Assert.Equal(fingerprint, FingerprintCalculator.ComputeSchemaFingerprint(plan!));
+    }
+
+    [Fact]
+    public void BuildOutputJson_WhenOrdinalOverClosedCutBins_ThenBothNestTheCorrectedSchemaAndCxtNamesIt()
+    {
+        // Both output encodings nest the same schema array, so both move with it; the .cxt one
+        // also lists the two thresholds' rendered names.
+        var spec = ClosedCutsOrdinalSpec("manual", OrdinalDirection.Le);
+        Assert.True(Diag(spec, new SourceSchema(1)).TryGetValue(out var plan));
+        var schema =
+            "\"schema\":[{\"bin\":\"40\",\"name\":\"age\",\"op\":\"<\",\"scale\":\"ordinal\"},"
+            + "{\"bin\":\"50\",\"name\":\"age\",\"op\":\"<\",\"scale\":\"ordinal\"}]";
+
+        var cxt = FingerprintCalculator.BuildCxtOutputJson(plan!, spec, NativeCxt());
+        var dat = FingerprintCalculator.BuildDatOutputJson(plan!, spec, NativeDat());
+
+        Assert.Contains("\"rendered_names\":[\"age-<40\",\"age-<50\"]", cxt, StringComparison.Ordinal);
+        Assert.Contains(schema, cxt, StringComparison.Ordinal);
+        Assert.Contains(schema, dat, StringComparison.Ordinal);
+    }
+
     // --- free_per_value discretizer encoding (D-094 golden-lock) --------------
     //
     // The per-kind canonical bytes and their SHA-256 vectors are golden-locked (§14/D-094): a

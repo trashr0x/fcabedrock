@@ -45,6 +45,14 @@ public sealed class ManualCutsDiscretizerTests
     public void Discretize_WhenClosedEndsAndInRange_ThenInteriorBin() =>
         Assert.Equal(BinResult.Bin("[30, 40)"), Closed(30, 40, 50).Discretize("35"));
 
+    [Theory]
+    [InlineData("30", "[30, 40)")]   // the first cut is the first closed bin's lower edge
+    [InlineData("39.5", "[30, 40)")]
+    [InlineData("40", "[40, 50)")]   // an interior cut opens the bin above it
+    [InlineData("49.5", "[40, 50)")]
+    public void Discretize_WhenClosedEndsAndOnOrBetweenCuts_ThenTheHalfOpenInteriorBin(string raw, string expected) =>
+        Assert.Equal(BinResult.Bin(expected), Closed(30, 40, 50).Discretize(raw));
+
     [Fact]
     public void BinLabels_WhenOpenEnds_ThenOrderedWithOpenOuterBins() =>
         Assert.Equal(["<30", "[30, 40)", "[40, 50)", ">=50"], Open(30, 40, 50).BinLabels([]));

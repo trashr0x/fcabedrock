@@ -286,7 +286,7 @@ public sealed class BedMigratorTests
     public void Migrate_WhenProgressiveMode_ThenOrdinalLeWithNoBoundaryOrderOrDropTopAuthored()
     {
         // direction is the migration's choice, so it is authored; boundary/order/
-        // drop_top must stay unauthored — over cut bins an authored boundary or
+        // drop_top must stay unauthored: over cut bins an authored boundary or
         // order is a D-060 validation error, and the defaults already match v2.
         var document = MigrateOk(BedFixtures.EmploymentOrdinalBed, mode: ScalingMode.Progressive);
 
@@ -303,6 +303,40 @@ public sealed class BedMigratorTests
         Assert.IsType<NominalScaleSection>(document.Attributes[1].Scale);    // education (c)
         Assert.IsType<DichotomicScaleSection>(document.Attributes[4].Scale); // US-citizen (b)
     }
+
+    [Fact]
+    public void Migrate_WhenASentinelLessCutSpecIsProgressive_ThenTheClosedBinsPlanOneThresholdPerBin()
+    {
+        // A sentinel-less v2 cut spec migrates to closed ends, and progressive mode to an `le`
+        // ordinal with an unauthored boundary. Planned, each closed bin gets the threshold at its
+        // upper edge, and a value outside the cuts' range crosses nothing.
+        var document = MigrateOk(
+            Bed(new BedAttr("age", "o", "30,40,50"),
+                new BedAttr("employment", "n", "Clerical,Professional,Managerial",
+                    Categories: "Unskilled,Clerical,Professional,Managerial")),
+            mode: ScalingMode.Progressive);
+
+        var (_, plan) = Prepare(document, new SourceSchema(2));
+
+        Assert.Equal(
+            ["age-<40", "age-<50", "employment-<Professional", "employment-<Managerial"],
+            plan.FormalAttributes.Select(f => f.RenderedName));
+        Assert.Empty(CrossedNames(plan, 0, "29"));
+        Assert.Equal(["age-<40", "age-<50"], CrossedNames(plan, 0, "30"));
+        Assert.Equal(["age-<50"], CrossedNames(plan, 0, "45"));
+        Assert.Empty(CrossedNames(plan, 0, "50"));
+        Assert.Empty(CrossedNames(plan, 1, "Unskilled"));
+        Assert.Equal(["employment-<Professional", "employment-<Managerial"], CrossedNames(plan, 1, "Clerical"));
+        Assert.Equal(["employment-<Managerial"], CrossedNames(plan, 1, "Professional"));
+        Assert.Empty(CrossedNames(plan, 1, "Managerial"));
+    }
+
+    // The names a raw value crosses through the plan: discretize, then the bin's planned crossings.
+    private static string[] CrossedNames(ConversionPlan plan, int attribute, string raw) =>
+        plan.Attributes[attribute].Discretizer.Discretize(raw).TryGetLabel(out var label)
+            && plan.Attributes[attribute].CrossesByBin.TryGetValue(label, out var ids)
+            ? [.. ids.Select(id => plan.FormalAttributes[id].RenderedName)]
+            : [];
 
     // --- resolved Core shape ------------------------------------------------
 

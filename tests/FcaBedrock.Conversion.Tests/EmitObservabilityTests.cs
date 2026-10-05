@@ -363,7 +363,7 @@ public sealed class EmitObservabilityTests
     [Fact]
     public async Task Emit_WhenObjectsHaveNoCrosses_ThenOneAggregateWithCountAndEmissionOrderSample()
     {
-        // §10.1: an empty row is legal and still written. Aggregated with up to three object names
+        // §16.4: an empty row is legal and still written. Aggregated with up to three object names
         // in EMISSION order.
         var spec = Wide(ConversionFixtures.Nominal("t", 0, "a"));
 

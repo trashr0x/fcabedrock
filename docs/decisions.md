@@ -142,7 +142,7 @@ changes an earlier one. A new entry MUST add its line here.
 - D-078: Slice F composition/carrier contract details *(realizes D-027/D-052; refines D-067/D-075; pattern semantics, template application and duplicate-id validation settled by D-114/D-115/D-116/D-118; extends canonical file identity settled by D-122)*
 - D-079: Slice G `.bed` migrator contract: document-model target, Diagnosed surfaces *(realizes D-009/D-049/D-057/D-068; numeric restrict migration refined by D-091)*
 - D-080: `AttributeNameDuplicate` / `ValueLabelKeyNotInDomain` re-homed to the resolve seam *(realizes D-067; supersedes its "not re-homed" parenthetical)*
-- D-081: Value-bin ordinal path (Slice H): identity + explicit order *(realizes the D-047-deferred path; refines D-060)*
+- D-081: Value-bin ordinal path (Slice H): identity + explicit order *(realizes the D-047-deferred path; refines D-060; its closed-ends cut precedent corrected in place on 2026-10-05)*
 
 ### M3 (triple source + wide column object keys)
 
@@ -2616,7 +2616,8 @@ built; they refine, not reverse, D-009 / D-049 / D-050…D-065.
 
 - **Status:** accepted (M2 Slice H; realizes the D-047-deferred value-bin path
   and closes the silent-output hole in which an `identity` + `ordinal` spec ignored its
-  authored `order` and `boundary`; refines D-060)
+  authored `order` and `boundary`; refines D-060); the closed-ends cut precedent it
+  cites, and its citation for empty columns, corrected in place on 2026-10-05
 - **Date:** 2026-07-05
 - **Decision:** the value-bin ordinal path (§12.3) is implemented, so an
   `ordinal` scale over a **value-bin** discretizer thresholds on the explicit
@@ -2656,9 +2657,16 @@ built; they refine, not reverse, D-009 / D-049 / D-050…D-065.
     the first, `le` → the last). Under a **strict** boundary it is a **no-op**:
     there is no tautological threshold; the statically-empty end (`> highest` /
     `< lowest`) is **kept and simply never crosses** (the closed-ends cut
-    precedent: an empty column is legal, §10.1). An empty column that never
+    precedent: an empty column is legal, §16.4). An empty column that never
     crosses is left to the **emit-phase** `AttributeHasNoCrosses` (D-058),
-    whose emit site D-105 added.
+    whose emit site D-105 added. Correction adopted on 2026-10-05: the closed-ends cut
+    precedent cited here and under **Rejected** was a defect in ordinal scaling over
+    closed-ended cut bins, whose last `ge` threshold no object could cross. The fix that
+    accompanies this correction makes that scaling follow spec §12.3, under which every
+    cut threshold crosses at least its own bin, so none is statically empty. The strict
+    no-op rests on the other two reasons alone: the statically-empty end is not
+    tautological, and an empty column is legal. Both places also cited §10.1 for that
+    rule; they now cite §16.4, which is where the spec states it.
   - **Naming / identity.** Names render through the existing `RenderName`
     (`{attr}-{op}{display}`, `value_labels` applied since `identity` consults
     them); the canonical identity's `BinKey` is the **raw** order value, so it
@@ -2680,7 +2688,7 @@ built; they refine, not reverse, D-009 / D-049 / D-050…D-065.
 - **Rejected:** *drop_top drops the statically-empty end under strict*: that
   end is not tautological, and dropping it would make `drop_top` mean two
   different things by boundary; keeping it matches the closed-ends cut
-  precedent and an empty column is already legal (§10.1). *A new §16.4 code for
+  precedent and an empty column is already legal (§16.4). *A new §16.4 code for
   "order omits a domain value"*: it is the same defect as an omitted `order` (a
   bin with no threshold), so a message variant of `OrdinalOrderMissing` keeps
   the registry closed. *Plan-phase duplicate/empty order validation*: that would
@@ -2706,7 +2714,8 @@ implementation added.
 
 ### D-082: M3 triple source contract: reader, orderings, object identity, absent-vs-missing
 
-- **Status:** accepted (M3 triple-source audit; realizes D-072)
+- **Status:** accepted (M3 triple-source audit; realizes D-072); its citation for an object
+  with no crosses corrected from §10.1 to §5.3.1 in place on 2026-10-05
 - **Date:** 2026-07-07
 - **Decision:** M3 implements the triple source under this audit-settled contract:
   - **Reader + orderings.** A triple `IRecordSource` streams subject/predicate/value
@@ -2721,7 +2730,7 @@ implementation added.
     subject). An authored `[binding.object_key]` under `shape = "triple"` is
     rejected (`ObjectKeyModeInvalidForShape`, D-085): identity is not repointable.
     Every valid subject row establishes/keeps an object, **including rows whose
-    predicate matches no attribute** (an object with no crosses is legal, §10.1).
+    predicate matches no attribute** (an object with no crosses is legal, §5.3.1).
     Contiguity and first-appearance order are judged over **every valid subject
     row**, ignored-predicate and no-cross rows included.
   - **Absent vs missing.** An **absent** predicate (no triple for that

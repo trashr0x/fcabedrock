@@ -341,9 +341,9 @@ public sealed class ValueGroupsPlanningTests
     [Fact]
     public void Plan_WhenLeStrict_ThenTheLowestThresholdIsStaticallyEmptyAndKept()
     {
-        // le+strict: threshold order[i] means "< order[i]", so it is crossed by order[..i] —
+        // le+strict: threshold order[i] means "< order[i]", so it is crossed by order[..i]:
         // "<School" (column 0) is crossed by nothing, since no group is below the lowest. §12.3
-        // KEEPS that statically-empty column (an empty column is legal, §10.1) rather than
+        // KEEPS that statically-empty column (an empty column is legal, §16.4) rather than
         // dropping it, which is why drop_top is a no-op under strict.
         var plan = Ok(Plan(Spec(ValueGroupsUnmatched.Skip,
             Ordinal(["School", "Undergrad", "Postgrad"], OrdinalDirection.Le, OrdinalBoundary.Strict))));
@@ -361,7 +361,7 @@ public sealed class ValueGroupsPlanningTests
     [Fact]
     public void Plan_WhenDropTopAndGeInclusive_ThenTheTautologicalLowestThresholdIsSuppressed()
     {
-        // §12.3: over value bins drop_top removes the INCLUSIVE tautological threshold — for `ge`
+        // §12.3: over value bins drop_top removes the INCLUSIVE tautological threshold; for `ge`
         // that is the first order position (≥lowest is true for everything).
         var plan = Ok(Plan(Spec(ValueGroupsUnmatched.Skip,
             Ordinal(["School", "Undergrad", "Postgrad"], OrdinalDirection.Ge, OrdinalBoundary.Inclusive, dropTop: true))));

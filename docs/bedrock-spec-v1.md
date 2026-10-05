@@ -2218,28 +2218,42 @@ normalized identity as the bins (so `90`, `90.0`, `9e1` are one key); an
 `order` entry is `OrderDomainInvalid` (Error, spec validate), while a valid entry
 not among the bins stays `OrdinalOrderHasUnknownValue` (D-096).
 
-**`drop_top`** *(default `false`)*. The "top" formal attribute (the one
-true for everything in `direction = "ge"`, i.e., `≥<lowest>`, and `≤<highest>`
-for `direction = "le"`) is tautological for objects with non-missing data. Set
-`drop_top = true` to suppress it. The lattice's supremum is unaffected; only the
-explicit formal attribute is omitted. Over **value** bins under a **strict**
-`boundary` there is no tautological threshold: the extreme threshold (`>{highest}`
-/ `<{lowest}`) is instead statically empty and is **kept** (an empty column is
-legal, §16.4), so `drop_top` is a no-op there.
+**`drop_top`** *(default `false`)*. The "top" formal attribute is the threshold
+that every object with a bin crosses: `≥<lowest>` for `direction = "ge"` and
+`≤<highest>` for `direction = "le"` over value bins, and the outermost threshold
+over cut bins (below). It is tautological: an object whose value falls in a bin
+always crosses it, and an object whose value falls in no bin (a missing value, or
+a value the discretizer places in no bin, such as one outside closed cut ends)
+crosses no threshold at all. Set `drop_top = true` to suppress it, leaving a
+threshold for every bin but one (none for a single bin). The lattice's supremum is
+unaffected; only the explicit formal attribute is omitted. Over **value** bins
+under a **strict** `boundary` there is no tautological threshold: the extreme
+threshold (`>{highest}` / `<{lowest}`) is instead statically empty and is **kept**
+(an empty column is legal, §16.4), so `drop_top` is a no-op there.
 
-**Over cut bins.** When the ordered bins come
-from a cut discretizer, each threshold sits at a bin's far edge: for `le`, bin
-*i*'s **upper** edge (so cuts 30/40/50 give `<30`, `<40`, `<50`); for `ge`, its
-**lower** edge. An **open** end (§11.2 `ends = "open"`) has no finite edge there,
-so its tautological threshold is labelled **`all`** rather than a value (v2's
-`age-all`). This keeps "N bins → N formal attributes" exact (four open bins → four
-columns). `all` is **canonical**: it is emitted on the native path too, so a
-`--v2-compat` run does not change the schema (§14: column count/identity is
-style-independent); `drop_top` suppresses it. Because half-open `[lo, hi)` cut
-bins can only be crossed whole, only the boundary aligned with that half-openness
-is well-defined: `le` pairs with `<` (strict), `ge` with `>=` (inclusive); the
-straddling combinations (`le`+inclusive, `ge`+strict) are meaningful only over
-*value* bins (e.g. `identity` with an explicit `order`).
+**Over cut bins.** When the ordered bins come from a cut discretizer, each bin has
+one threshold at its far edge, in bin order (§17): for `le`, bin *i*'s **upper**
+edge, crossed by objects in bin *i* and in every bin below it; for `ge`, its
+**lower** edge, crossed by objects in bin *i* and in every bin above it. This keeps
+"N bins → N formal attributes" exact. An **open** end (§11.2 `ends = "open"`) has
+no finite edge, so its threshold is labelled **`all`** rather than a value (v2's
+`age-all`): with open ends, cuts 30/40/50 give four bins, and `le` gives `<30`,
+`<40`, `<50`, `all` while `ge` gives `all`, `>=30`, `>=40`, `>=50`. `all` is
+**canonical**: it is emitted on the native path too, so a `--v2-compat` run does
+not change the schema (§14: column count/identity is style-independent). A
+**closed** end is a finite cut, so with closed ends every threshold is a cut:
+cuts 30/40/50 give the two bins `[30, 40)` and `[40, 50)`, and `le` gives `<40`,
+crossed by objects in `[30, 40)`, and `<50`, crossed by objects in either bin,
+while `ge` gives `>=30`, crossed by objects in either bin, and `>=40`, crossed by
+objects in `[40, 50)`. A value outside the closed range, the last cut included,
+falls in no bin and crosses none of them (§11.2). `ordered_cuts` works the same way
+over category positions (§11.8). The threshold that every bin's objects cross is
+the tautological top that `drop_top` suppresses: `all` at an open end, and the
+outermost cut at a closed one (`<50` for `le` and `>=30` for `ge` above). Because
+half-open `[lo, hi)` cut bins can only be crossed whole, only the boundary aligned
+with that half-openness is well-defined: `le` pairs with `<` (strict), `ge` with
+`>=` (inclusive); the straddling combinations (`le`+inclusive, `ge`+strict) are
+meaningful only over *value* bins (e.g. `identity` with an explicit `order`).
 
 Over cut bins the cut **geometry** determines the operator. An **omitted or
 defaulted** `boundary` (including one inherited from `[defaults].ordinal_boundary`,

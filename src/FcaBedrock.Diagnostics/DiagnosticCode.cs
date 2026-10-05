@@ -155,7 +155,8 @@ public enum DiagnosticCode
     /// for at least one, so a base file in an <c>extends</c> chain may declare none and the reader,
     /// which sees one file, never reports this. One per resolve, first in the effective-attribute
     /// family, with no location. Distinct from <see cref="NoFormalAttributes"/>, which reports
-    /// attributes that are all excluded or filter-only. Error, spec resolve. Spec §2 / §16.4
+    /// attributes that exist but yield no column, such as attributes that are all excluded or
+    /// filter-only. Error, spec resolve. Spec §2 / §16.4
     /// (D-135).
     /// </summary>
     AttributesMissing,
@@ -409,8 +410,9 @@ public enum DiagnosticCode
 
     /// <summary>
     /// A plan produced zero formal attributes: every attribute is excluded or
-    /// filter-only. A degenerate but structurally-valid schema; the run
-    /// proceeds. Warning. Spec §16.4.
+    /// filter-only, or yields no column (for example an authored empty domain, or
+    /// ordinal <c>drop_top</c> over a single bin). A degenerate but
+    /// structurally-valid schema; the run proceeds. Warning. Spec §16.4.
     /// </summary>
     NoFormalAttributes,
 
@@ -641,7 +643,7 @@ public enum DiagnosticCode
 
     /// <summary>
     /// One or more emitted objects carry no crosses at all: an empty <b>row</b>.
-    /// Legal (§10.1) and still written. Warning, <b>aggregated</b>: one diagnostic
+    /// Legal (§16.4) and still written. Warning, <b>aggregated</b>: one diagnostic
     /// carrying the count and a bounded sample of object names in emission order,
     /// flushed on normal completion only. Counts <em>emitted</em> objects only: an
     /// object <c>restrict_to</c> excluded never had a row to be empty. Spec §16.4

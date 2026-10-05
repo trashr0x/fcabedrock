@@ -85,14 +85,16 @@ public static class ConversionPlanner
             return Diagnosed<ConversionPlan>.Failed(diagnostics);
         }
 
-        // §16.4: a plan with zero columns (every attribute excluded or filter-only) is
-        // degenerate but structurally valid; warn, do not fail. An all-filter-only spec
-        // still filters objects; it just emits no columns.
+        // §16.4: a plan with zero columns is degenerate but structurally valid; warn, do not
+        // fail. It has none when every attribute is excluded or filter-only, or yields no
+        // column (an authored empty domain, or ordinal drop_top over a single bin). An
+        // all-filter-only spec still filters objects; it just emits no columns.
         if (formalAttributes.Count == 0)
         {
             diagnostics.Add(new BedrockDiagnostic(
                 DiagnosticCode.NoFormalAttributes, DiagnosticSeverity.Warning,
-                "The plan produced no formal attributes; every attribute is excluded or filter-only (§16.4)."));
+                "The plan produced no formal attributes; every attribute is excluded or filter-only, " +
+                "or yields no column (§16.4)."));
         }
 
         var plan = new ConversionPlan(
