@@ -278,17 +278,13 @@ internal static partial class PublicationNative
     private const int ErrorFileExists = 80;
     private const int ErrorAlreadyExists = 183;
 
-    // The traditional path limit. At or above it the Win32 call needs the extended prefix, exactly
-    // as the managed move applies it, so these native calls reach the same paths the managed move does.
-    private const int MaxShortPath = 260;
-
     [SupportedOSPlatform("windows")]
     private static SafeFileHandle? OpenWindowsReference(string fullPath)
     {
         // A null security descriptor means a non-inheritable handle, which is what this must be:
         // it exists to hold an object alive inside this process, never to be handed to a child.
         var raw = CreateFile(
-            Extended(fullPath),
+            WindowsPath.Extended(fullPath),
             FileReadAttributes,
             FileShareRead | FileShareWrite | FileShareDelete,
             IntPtr.Zero,
@@ -301,30 +297,13 @@ internal static partial class PublicationNative
         return raw == -1 ? null : new SafeFileHandle(raw, ownsHandle: true);
     }
 
-    private static string Extended(string path)
-    {
-        if (path.Length < MaxShortPath
-            || path.StartsWith(@"\\?\", StringComparison.Ordinal)
-            || path.StartsWith(@"\\.\", StringComparison.Ordinal))
-        {
-            return path;
-        }
-
-        if (path.StartsWith(@"\\", StringComparison.Ordinal))
-        {
-            return @"\\?\UNC\" + path[2..];
-        }
-
-        return Path.IsPathFullyQualified(path) ? @"\\?\" + path : path;
-    }
-
     /// <summary>Windows: one <c>MoveFileExW</c> with no flags (no replacement, and no copy).</summary>
     [SupportedOSPlatform("windows")]
     private sealed class WindowsPrimitives : IPublicationRenamePrimitives
     {
         public ExclusiveRenameResult Exclusive(string source, string destination)
         {
-            if (MoveFileEx(Extended(source), Extended(destination), 0))
+            if (MoveFileEx(WindowsPath.Extended(source), WindowsPath.Extended(destination), 0))
             {
                 return new ExclusiveRenameResult(ExclusiveRename.Renamed, 0);
             }

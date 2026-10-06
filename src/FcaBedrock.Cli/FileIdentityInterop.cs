@@ -33,9 +33,15 @@ internal static partial class FileIdentityInterop
     /// sharing at all, so between the proof and the removal nobody can rename the name away,
     /// delete the object, or put a different one there.
     /// <para>
-    /// Returns null when nothing is at that path. Deletion is <em>not</em> requested here: the
-    /// disposition is set only after the caller has proved the object, so a handle opened on
-    /// something unowned is simply closed and the file survives.
+    /// Returns null when nothing is at that path: the file, or a directory on the way to it, does
+    /// not exist. The path is spelled by <see cref="WindowsPath.Extended"/>, as the lifetime
+    /// reference and the publication rename spell theirs, so at 260 characters or more this opens
+    /// the file rather than reporting it absent.
+    /// </para>
+    /// <para>
+    /// Deletion is <em>not</em> requested here: the disposition is set only after the caller has
+    /// proved the object, so a handle opened on something unowned is simply closed and the file
+    /// survives.
     /// </para>
     /// </summary>
     [SupportedOSPlatform("windows")]
@@ -43,7 +49,8 @@ internal static partial class FileIdentityInterop
     {
         ArgumentNullException.ThrowIfNull(fullPath);
 
-        var raw = CreateFile(fullPath, DeleteAccess | GenericRead, 0, IntPtr.Zero, OpenExisting, 0, IntPtr.Zero);
+        var raw = CreateFile(
+            WindowsPath.Extended(fullPath), DeleteAccess | GenericRead, 0, IntPtr.Zero, OpenExisting, 0, IntPtr.Zero);
         if (raw != -1)
         {
             return new SafeFileHandle(raw, ownsHandle: true);

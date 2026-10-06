@@ -168,9 +168,10 @@ internal interface IPublicationFileSystem
     /// may follow. Nothing sleeps, forces a collection, or opens a reference gap to achieve it.
     /// </para>
     /// <para>
-    /// Returns <see langword="true"/> when the path no longer holds that object (removed, or
-    /// already absent) and <see langword="false"/> when the object there is not the expected one,
-    /// in which case <b>nothing is touched</b>.
+    /// Returns <see langword="true"/> when the object is already absent or its proved removal was
+    /// accepted. On Windows the deletion can remain pending, and the name occupied, until the caller
+    /// releases its lifetime reference, as described above. Returns <see langword="false"/> when the
+    /// proof refuses the object, in which case <b>nothing is touched</b>.
     /// </para>
     /// </summary>
     /// <param name="path">The object's path.</param>
