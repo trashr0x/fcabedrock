@@ -539,6 +539,93 @@ public sealed class ConversionPlannerTests
         Assert.Equal(["g-b"], plan.FormalAttributes.Select(f => f.RenderedName));
     }
 
+    // --- reserved date value type (§10.2/§11.7/§20, D-038) ---
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void Plan_WhenASourceDeclaresTheReservedDate_ThenFatalDateValueTypeNotImplementedV1(bool include)
+    {
+        // Refused whether or not the attribute is included: a source is live configuration on an
+        // excluded attribute too (§10.1, D-076), unlike a parked deferred scale (D-049).
+        var spec = new BedrockSpec(SpecFixtures.WideRowIndex(), [SpecFixtures.Date("born", include)]);
+
+        var result = Plan(spec, new SourceSchema(1));
+
+        AssertFailsWith(result, DiagnosticCode.DateValueTypeNotImplementedV1);
+        var diagnostic = Assert.Single(result.Diagnostics);
+        Assert.Equal(DiagnosticSeverity.Fatal, diagnostic.Severity);
+        Assert.Equal(
+            "Attribute 'born' declares value_type = \"date\", which v1 does not implement (§10.2/§11.7/§20).",
+            diagnostic.Message);
+        Assert.Equal("born", diagnostic.Location?.AttributeName);
+        Assert.Null(diagnostic.Location?.Line);
+    }
+
+    [Fact]
+    public void Plan_WhenAFilterOnlyAttributeDeclaresTheReservedDate_ThenItIsRefusedBeforeItsRestrictionIsPlanned()
+    {
+        // A restriction would read the date column, and no restriction mode reads a date; the
+        // static refusal returns before PlannedRestriction asks the source for a value type.
+        var filter = SpecFixtures.Date("born", include: false) with { RestrictTo = [new RestrictToValue("2026-01-01")] };
+        var spec = new BedrockSpec(SpecFixtures.WideRowIndex(), [filter, SpecFixtures.Nominal("g", 0, ["b"])]);
+
+        var result = Plan(spec, new SourceSchema(1));
+
+        Assert.Equal([DiagnosticCode.DateValueTypeNotImplementedV1], result.Diagnostics.Select(d => d.Code));
+    }
+
+    [Fact]
+    public void Plan_WhenTwoSourcesDeclareTheReservedDate_ThenOneRefusalEachInSpecOrder()
+    {
+        var spec = new BedrockSpec(
+            SpecFixtures.WideRowIndex(),
+            [SpecFixtures.Date("born"), SpecFixtures.Nominal("g", 0, ["b"]), SpecFixtures.Date("seen")]);
+
+        var result = Plan(spec, new SourceSchema(1));
+
+        Assert.All(result.Diagnostics, d => Assert.Equal(DiagnosticCode.DateValueTypeNotImplementedV1, d.Code));
+        Assert.Equal(["born", "seen"], result.Diagnostics.Select(d => d.Location?.AttributeName));
+    }
+
+    [Fact]
+    public void Plan_WhenADateSourceAlsoUsesADeferredScale_ThenBothRefusalsReportDateFirst()
+    {
+        // Two permanent reservations on one attribute: both report (EP-14), the source first.
+        var spec = new BedrockSpec(
+            SpecFixtures.WideRowIndex(), [SpecFixtures.Date("born", scale: new UnimplementedScale("interordinal"))]);
+
+        var result = Plan(spec, new SourceSchema(1));
+
+        Assert.Equal(
+            [DiagnosticCode.DateValueTypeNotImplementedV1, DiagnosticCode.ScaleNotImplementedV1],
+            result.Diagnostics.Select(d => d.Code));
+    }
+
+    [Fact]
+    public void Plan_WhenTheObjectKeyIsCompositeAndASourceDeclaresTheReservedDate_ThenTheKeyReportsFirst()
+    {
+        var spec = new BedrockSpec(WideWithKey(new CompositeObjectKey()), [SpecFixtures.Date("born")]);
+
+        var result = Plan(spec, new SourceSchema(1));
+
+        Assert.Equal(
+            [DiagnosticCode.ObjectKeyCompositeNotImplementedV1, DiagnosticCode.DateValueTypeNotImplementedV1],
+            result.Diagnostics.Select(d => d.Code));
+    }
+
+    [Fact]
+    public void Plan_WhenADateSourceHasAnOrdinalScaleWithNoOrder_ThenOnlyTheDateIsRefused()
+    {
+        // The value-bin order checks key off the discretizer, and a date source carries none, so
+        // OrdinalOrderMissing adds no second report about a reading v1 does not have.
+        var spec = new BedrockSpec(SpecFixtures.WideRowIndex(), [SpecFixtures.Date("born", scale: new OrdinalScale())]);
+
+        var result = Plan(spec, new SourceSchema(1));
+
+        Assert.Equal([DiagnosticCode.DateValueTypeNotImplementedV1], result.Diagnostics.Select(d => d.Code));
+    }
+
     // --- Plan guards (D-057/D-063/D-064/D-071/D-076) ---
 
     [Fact]

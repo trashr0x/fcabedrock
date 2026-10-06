@@ -42,9 +42,9 @@ public sealed class PlanCommandTests
     private const string EmptyCxt = "sha256:7498c96bd9452d43649ea4b1b8fd8a77486ae5a25a3a80aeddeff812dad232ef";
     private const string EmptyDat = "sha256:c9438f6a49166f63189418509d5e47ad2e9fe0e915a2b352f8d6adea04dbac15";
 
-    private const string EscapingSchema = "sha256:6bf32c3ac72b635d835b08326d37e3312d3b1891b33c21f726aac471528a907c";
-    private const string EscapingCxt = "sha256:8e05599e004b5737ad9596f1f5af06db10c160a1ec02f9dfd5ad59f3f976b1dc";
-    private const string EscapingDat = "sha256:b2f877e296a73f38981e69bfe10b7376550e39139322522476990be4741201cd";
+    private const string EscapingSchema = "sha256:ed7749a2a14d9d4a63e5f1666c34d6991cab2ce8d39e4f9afa2c1a7382c9355b";
+    private const string EscapingCxt = "sha256:fc3fe45b157ab399da5a4f55dd5294b266e5a153f187eb01b1f338da22b26a61";
+    private const string EscapingDat = "sha256:25fbc11f2ef04846121566cb7d0f818e548c7c6f6502326ff1ca778171a11c79";
 
     // ---- complete report locks ----------------------------------------------------------
 
@@ -167,8 +167,8 @@ public sealed class PlanCommandTests
     [Fact]
     public async Task Plan_WhenNamesAndValuesAreHostile_ThenOneRecordStaysOneLine()
     {
-        // Quotes, backslashes, tabs and non-ASCII text in names, bin labels and selectors; a
-        // real line break inside a restriction entry. Every one of them is escaped, so the
+        // Backslashes, tabs and non-ASCII text in names, bin labels and selectors; a quote and
+        // a real line break inside a restriction entry. Every one of them is escaped, so the
         // line count still equals the record count and printable Unicode survives verbatim.
         using var temp = TempDirectory.Create();
         var spec = temp.Write("spec.toml", CliFixtures.PlanTripleEscapingSpec);
@@ -181,14 +181,14 @@ public sealed class PlanCommandTests
         Assert.Equal(
             Document(
                 "formal_attributes = 2",
-                @"formal_attribute 0: attribute=""q\""u\\b\ttab"" scale=""nominal"" bin_key=""a\\b"" operator="""""
-                    + @" rendered=""q\""u\\b\ttab-a\\b"" source=predicate name=""péé"" bin=value label=""a\\b""",
-                @"formal_attribute 1: attribute=""q\""u\\b\ttab"" scale=""nominal"" bin_key=""é中"" operator="""""
-                    + @" rendered=""q\""u\\b\ttab-é中"" source=predicate name=""péé"" bin=value label=""é中""",
+                @"formal_attribute 0: attribute=""qu\\b\ttab"" scale=""nominal"" bin_key=""a\\b"" operator="""""
+                    + @" rendered=""qu\\b\ttab-a\\b"" source=predicate name=""péé"" bin=value label=""a\\b""",
+                @"formal_attribute 1: attribute=""qu\\b\ttab"" scale=""nominal"" bin_key=""é中"" operator="""""
+                    + @" rendered=""qu\\b\ttab-é中"" source=predicate name=""péé"" bin=value label=""é中""",
                 "calibrations = 0",
                 "restrictions = 1",
                 @"restriction 0: attribute=""filt"" source=predicate name=""f"" value_type=string"
-                    + @" unknown_value_policy=warn entries=[string(""line1\nline2\ttab"")]",
+                    + @" unknown_value_policy=warn entries=[string(""q\""line1\nline2\ttab"")]",
                 "schema_fingerprint = " + EscapingSchema,
                 "cxt_output_fingerprint = " + EscapingCxt,
                 "dat_output_fingerprint = " + EscapingDat),

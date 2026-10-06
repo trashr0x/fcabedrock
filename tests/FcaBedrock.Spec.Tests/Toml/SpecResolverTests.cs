@@ -2726,6 +2726,18 @@ public sealed class SpecResolverTests
     }
 
     [Fact]
+    public void Resolve_WhenASourceDeclaresBothAValueTypeAndTheReservedDate_ThenThrows()
+    {
+        // No TOML document can hold two value_type keys, so this hand-built state is corrupt
+        // document state: the resolver refuses it rather than choosing one (§10.2).
+        var source = new ColumnSourceSection(0, Name: null, SourceValueType.String) { HasDateValueType = true };
+        var document = DocumentFixtures.Document(
+            [DocumentFixtures.Attribute("d", source, discretizer: new IdentityDiscretizerSection(), scale: new NominalScaleSection())]);
+
+        Assert.Throws<InvalidOperationException>(() => SpecResolver.Resolve(document));
+    }
+
+    [Fact]
     public void Resolve_WhenTripleOrderingMissing_ThenSourceBindingInvalid()
     {
         var document = DocumentFixtures.Document(
@@ -2735,6 +2747,33 @@ public sealed class SpecResolverTests
         var result = Resolve(document);
 
         Assert.Equal(DiagnosticCode.SourceBindingInvalid, Assert.Single(result.Diagnostics).Code);
+    }
+
+    [Fact]
+    public void Resolve_WhenADerivedFileMakesTheComposedBindingWide_ThenTheInheritedTripleFieldsAreSourceBindingInvalid()
+    {
+        // §5.2/§13: the reader refuses ordering and columns only in a file that itself declares
+        // shape = "wide", so a derived file that turns a triple base wide inherits them field by
+        // field. The resolver refuses them in the composed binding; composition itself is unchanged.
+        var document = Compose(
+            "[spec]\nversion = 1\nextends = \"base.toml\"\n[binding]\nshape = \"wide\"\nhas_header = false\n" +
+            "[[attribute]]\nname = \"g\"\nsource = { kind = \"column\", index = 0 }\n" +
+            "discretizer = { kind = \"identity\" }\nscale = { kind = \"nominal\" }\ndeclared_domain = [\"b\"]\n",
+            ("base.toml",
+                "[spec]\nversion = 1\n[binding]\nshape = \"triple\"\nordering = \"unordered\"\n" +
+                "columns = { subject = 0, predicate = 1, value = 2 }\n"));
+
+        Assert.Equal(TripleOrdering.Unordered, document.Binding?.Ordering);
+        Assert.NotNull(document.Binding?.Columns);
+        var result = Resolve(document, new SourceSchema(1));
+        Assert.False(result.IsOk);
+        Assert.Equal(
+            [
+                (DiagnosticCode.SourceBindingInvalid, "binding.ordering applies only to shape = \"triple\"; a wide binding has no additional fields (§5.2/§5.3)."),
+                (DiagnosticCode.SourceBindingInvalid, "binding.columns applies only to shape = \"triple\"; a wide binding has no additional fields (§5.2/§5.3)."),
+            ],
+            result.Diagnostics.Select(d => (d.Code, d.Message)));
+        Assert.All(result.Diagnostics, d => Assert.Null(d.Location));
     }
 
     [Fact]

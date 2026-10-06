@@ -429,12 +429,14 @@ public sealed class InternetAdsExitTests
     {
         var defined = Enum.GetNames<DiagnosticCode>();
 
-        // 81 at the M6 exit, plus OutputCxtSizeAdvisory landed at its M7 Slice B export emit site
-        // (D-123), 81 → 82, plus AttributesMissing at its resolve emit site (D-135), 82 → 83. The
-        // M6 contract below is unchanged.
+        // 83 codes. OutputCxtSizeAdvisory joined at its export emit site (D-123) and AttributesMissing
+        // at its resolve emit site (D-135). DateValueTypeNotImplementedV1 replaced the parse-phase
+        // SpecSurfaceNotYetSupported at its plan emit site (D-038), so that swap left the count as it
+        // was. The template, matcher and naming codes below are unchanged.
         Assert.Equal(83, defined.Length);
         Assert.Contains(nameof(DiagnosticCode.OutputCxtSizeAdvisory), defined);
         Assert.Contains(nameof(DiagnosticCode.AttributesMissing), defined);
+        Assert.Contains(nameof(DiagnosticCode.DateValueTypeNotImplementedV1), defined);
 
         foreach (var code in new[]
                  {
@@ -451,7 +453,7 @@ public sealed class InternetAdsExitTests
         }
 
         Assert.DoesNotContain("TemplateMatcherNotImplementedV1", defined);
-        Assert.Contains(nameof(DiagnosticCode.SpecSurfaceNotYetSupported), defined);
+        Assert.DoesNotContain("SpecSurfaceNotYetSupported", defined);
     }
 
     // ---------------------------------------------------------------------

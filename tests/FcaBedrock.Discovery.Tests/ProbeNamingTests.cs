@@ -222,6 +222,19 @@ public sealed class ProbeNamingTests
     }
 
     [Fact]
+    public async Task Probe_WhenHeadersBreakTheNameRule_ThenTheDraftRereadsUnderTheReadersNameRule()
+    {
+        // The reader enforces §10.1 itself (SpecFieldInvalid), and the matrix applies the same rule,
+        // so a header holding a quote or an LF never becomes a name and the draft still reads.
+        var draft = ProbeFixtures.Draft(await ProbeFixtures.ProbeCsvAsync("\"q\"\"t\",\"a\nb\",ok\n1,2,3\n"));
+
+        var reread = SpecReader.Read(SpecWriter.Write(draft));
+
+        Assert.True(reread.TryGetValue(out var document), ProbeFixtures.Describe(reread.Diagnostics));
+        Assert.Equal(["column_0", "column_1", "ok"], document.Attributes.Select(a => a.Name!));
+    }
+
+    [Fact]
     public async Task Probe_WhenSchemaHeaderIsShorterThanTheColumnCount_ThenTrailingColumnsAreHeaderless()
     {
         // Only reachable from a hand-built schema (the CSV adapter derives the count FROM the

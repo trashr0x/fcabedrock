@@ -238,10 +238,11 @@ internal static class CliFixtures
 
     /// <summary>
     /// Triple sources plus every character class the line-oriented report must survive: a
-    /// quote, a backslash, and a tab in an attribute name; a backslash and non-ASCII text in
-    /// domain values; a non-ASCII predicate selector; and CR/LF inside a restriction entry,
-    /// which is where a line break can legally appear, since a rendered <em>name</em>
-    /// containing one is rejected at plan (§10.7).
+    /// backslash and a tab in an attribute name; a backslash and non-ASCII text in domain
+    /// values; a non-ASCII predicate selector; and a quote and CR/LF inside a restriction
+    /// entry. The quote sits there because an attribute name cannot carry one (§10.1), and
+    /// a line break sits there because a rendered <em>name</em> containing one is rejected at
+    /// plan (§10.7).
     /// </summary>
     public const string PlanTripleEscapingSpec = """
         [spec]
@@ -253,7 +254,7 @@ internal static class CliFixtures
         columns = { subject = 0, predicate = 1, value = 2 }
 
         [[attribute]]
-        name = "q\"u\\b\ttab"
+        name = "qu\\b\ttab"
         source = { kind = "predicate", name = "péé" }
         discretizer = { kind = "identity" }
         scale = { kind = "nominal" }
@@ -266,7 +267,7 @@ internal static class CliFixtures
         scale = { kind = "nominal" }
         declared_domain = ["k"]
         include = false
-        restrict_to = ["line1\nline2\ttab"]
+        restrict_to = ["q\"line1\nline2\ttab"]
         """;
 
     /// <summary>A triple source matching <see cref="PlanTripleEscapingSpec"/>.</summary>

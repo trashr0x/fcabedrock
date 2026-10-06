@@ -26,7 +26,7 @@ internal static class AttributeReader
         try
         {
             var section = new AttributeSection(
-                name,
+                ValidName(context, cursor, name),
                 ReadSource(context, cursor),
                 cursor.TakeString("description"),
                 cursor.TakeBool("include"),
@@ -146,6 +146,31 @@ internal static class AttributeReader
     }
 
     /// <summary>
+    /// Checks an authored attribute <c>name</c> against §10.1: any non-empty string without CR,
+    /// LF or the TOML key-quoting character <c>"</c>, judged by the one owner,
+    /// <see cref="AttributeNameValidity"/>, which probe's naming matrix also uses (EP-5). An empty
+    /// name is not judged here: <c>AttributeNameMissing</c> owns the missing and empty cases at
+    /// resolve, and a name that is not a string has already been reported by the cursor. A
+    /// rejected name carries null, exactly like any other malformed field; its Error already fails
+    /// the read. The diagnostic scope keeps the authored text, so the attribute's other
+    /// diagnostics still name it.
+    /// </summary>
+    private static string? ValidName(TomlReadContext context, TomlTableCursor cursor, string? name)
+    {
+        if (name is not { Length: > 0 } || AttributeNameValidity.IsValid(name))
+        {
+            return name;
+        }
+
+        var pair = cursor.Take("name")!; // authored: TakeString just returned its value
+        context.Error(
+            DiagnosticCode.SpecFieldInvalid,
+            "[[attribute]] key 'name' contains a CR, LF or '\"'; an attribute name is any non-empty string without them (§10.1).",
+            pair.Value?.Span ?? pair.Span);
+        return null;
+    }
+
+    /// <summary>
     /// Reads an authored <c>display_name</c> (§10.1): a string that must be
     /// non-empty and contain neither CR nor LF. The reason is structural, not
     /// stylistic: a display name can reach a rendered formal-attribute name, and
@@ -238,17 +263,17 @@ internal static class AttributeReader
         switch (kind)
         {
             case TomlSpellings.ColumnSourceKind:
-                var column = new ColumnSourceSection(
-                    inner.TakeInt("index"),
-                    inner.TakeString("name"),
-                    ReadValueType(context, inner));
+                var index = inner.TakeInt("index");
+                var columnName = inner.TakeString("name");
+                var (columnType, columnDate) = ReadValueType(context, inner);
+                var column = new ColumnSourceSection(index, columnName, columnType) { HasDateValueType = columnDate };
                 inner.Finish();
                 return column;
 
             case TomlSpellings.PredicateSourceKind:
-                var predicate = new PredicateSourceSection(
-                    inner.TakeString("name"),
-                    ReadValueType(context, inner));
+                var predicateName = inner.TakeString("name");
+                var (predicateType, predicateDate) = ReadValueType(context, inner);
+                var predicate = new PredicateSourceSection(predicateName, predicateType) { HasDateValueType = predicateDate };
                 inner.Finish();
                 return predicate;
 
@@ -264,38 +289,34 @@ internal static class AttributeReader
         }
     }
 
-    private static SourceValueType? ReadValueType(TomlReadContext context, TomlTableCursor cursor)
+    // §10.2: "string" and "number" are the live value types. "date" is reserved (§11.7, D-038):
+    // SourceValueType deliberately has no Date member, so it comes back as its own flag, which
+    // the resolver turns into the reject-carrier the planner refuses (DateValueTypeNotImplementedV1).
+    private static (SourceValueType? ValueType, bool Date) ReadValueType(TomlReadContext context, TomlTableCursor cursor)
     {
         if (cursor.Take("value_type") is not { } pair)
         {
-            return null;
+            return (null, false);
         }
 
         if (pair.Value is StringValueSyntax { Value: { } text })
         {
             if (TomlSpellings.TryParse(TomlSpellings.ValueTypes, text, out var valueType))
             {
-                return valueType;
+                return (valueType, false);
             }
 
             if (string.Equals(text, TomlSpellings.DateValueType, StringComparison.Ordinal))
             {
-                // Interim D-075 reject: the Core enum deliberately lacks Date
-                // until its carrier lands (D-038); the v1 end-state is a
-                // plan-phase DateValueTypeNotImplementedV1 over a real carrier.
-                context.Error(
-                    DiagnosticCode.SpecSurfaceNotYetSupported,
-                    "value_type = \"date\" is reserved v1 surface with no carrier in this build (D-038/D-075).",
-                    pair.Value.Span);
-                return null;
+                return (null, true);
             }
         }
 
         context.Error(
             DiagnosticCode.SpecFieldInvalid,
-            $"source value_type expects {TomlSpellings.Allowed(TomlSpellings.ValueTypes)} (§10.2).",
+            $"source value_type expects {TomlSpellings.Allowed(TomlSpellings.ValueTypes)}, or the reserved \"{TomlSpellings.DateValueType}\" (§10.2).",
             pair.Value?.Span ?? pair.Span);
-        return null;
+        return (null, false);
     }
 
     private static DiscretizerSection? ReadDiscretizer(TomlReadContext context, TomlTableCursor cursor, string owner = "attribute")

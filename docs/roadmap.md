@@ -45,7 +45,9 @@ whitespace removed around fields and numbers is the full Unicode whitespace set,
 validated and malformed quoting is refused, the delimiter alphabet is fixed, and quoted CR content
 read through a stream that returns short reads is no longer reordered (D-137). Its other
 product-behavior changes are the wording of TOML syntax-error messages (D-133), the rejection of
-three kinds of malformed spec, with one new diagnostic (D-135), `calibrate` keeping the authored
+three kinds of malformed spec, with one new diagnostic (D-135), the rejection of attribute names and
+wide-binding fields that spec §10.1 and §5.2 forbid, `value_type = "date"` passing `validate` and
+being refused at plan instead of at parse (D-038), `calibrate` keeping the authored
 order of `value_labels` (D-075), an authored negative zero in `manual_cuts` or a manual
 `equal_width` range resolving as zero (D-101), an `ordinal` scale over closed-ended
 `manual_cuts` or `ordered_cuts` bins getting one correctly crossed threshold per bin (spec §12.3),
@@ -362,13 +364,27 @@ them and no blank lines, read as before, and so do the v2 fixtures. A library ca
 returns short reads can also see corrected quoted CR content; no CLI file read was observed to be
 affected (D-137). The reading change's elapsed cost on small inputs is not bounded (D-138);
 `docs/benchmarks.md` has its comparison with the previous reader. Its public API additions are
-the binding-only resolver stage `SpecResolver.ResolveBinding` (D-135) and the delimiter-alphabet
-predicate `SourceReadSettings.IsInDelimiterAlphabet` (D-054). It declares TOML
+the binding-only resolver stage `SpecResolver.ResolveBinding` (D-135), the delimiter-alphabet
+predicate `SourceReadSettings.IsInDelimiterAlphabet` (D-054), the attribute-name rule
+`AttributeNameValidity.IsValid` (spec §10.1), and the date reject-carrier: the document flag
+`SourceSection.HasDateValueType`, the Core source `UnimplementedDateSource` and the
+`DiagnosticCode` member `DateValueTypeNotImplementedV1`, which replaces the removed member
+`SpecSurfaceNotYetSupported` (D-038). Removing that member lowers by one the numeric value of the
+47 members from `SpecVersionUnsupported` to `ObjectKeyCompositeNotImplementedV1`, and the new
+member takes the value the last of them had. The CLI and the registry name diagnostics, but the
+public enum's integral values still change: code compiled against the earlier enum, or a stored
+numeric value, maps to a different code. It declares TOML
 1.1.0, the grammar of the parser the spec reader has always used, and the `SpecTomlInvalid`
-syntax-error message now names that grammar (D-133). It rejects three inputs the spec never
+syntax-error message now names that grammar (D-133). It rejects five inputs the spec never
 allowed: a composed spec with no `[[attribute]]` is the new `AttributesMissing` (Error, spec
-resolve), and a `base_index` other than 0 or 1 or a negative `size_advisory_bytes` is
-`SpecFieldInvalid` (D-135). No other diagnostic code, severity or phase changes. `calibrate` now
+resolve); a `base_index` other than 0 or 1 or a negative `size_advisory_bytes` is
+`SpecFieldInvalid` (D-135), and so is an attribute `name` containing CR, LF or `"` (spec §10.1)
+or a `[binding]` that declares `shape = "wide"` and sets `ordering` or `columns` (spec §5.2); a
+composed wide binding that inherits either from another file is `SourceBindingInvalid` instead. A
+spec with `value_type = "date"` now passes `validate`, and every command that plans refuses it with
+`DateValueTypeNotImplementedV1` (Fatal, plan) instead of the parse-phase
+`SpecSurfaceNotYetSupported` (spec §10.2); the registry keeps 83 codes. No other diagnostic code,
+severity or phase changes. `calibrate` now
 writes `value_labels` in their authored order, as D-075 requires; it could reorder a map before,
 with no effect on any fingerprint or on `.cxt` or `.dat` bytes. For a library caller, each
 non-empty `value_labels` map of `ResolvedDocument.Document` is now a read-only wrapper whose
@@ -477,6 +493,13 @@ Items modelled in the spec can be added later without a format break.
   reserved, planner rejects (`DateValueTypeNotImplementedV1`); reproduces v2's
   `d` type when implemented. `mini-dates` is the parked fixture. Re-enabling is
   a non-breaking addition (the `value_type` field already exists).
+- **Refuse reserved v1 features before the calibration data pass**: when a spec needs calibration,
+  `convert` and the other commands that plan read the whole data file before the planner refuses an
+  advanced scale (`ScaleNotImplementedV1`), a composite object key
+  (`ObjectKeyCompositeNotImplementedV1`) or `value_type = "date"` (`DateValueTypeNotImplementedV1`).
+  The refusal needs no data, so the cost is time spent before a certain error; no output is wrong.
+  A fix moves the planner's data-independent refusal checks ahead of the data pass and needs its
+  own small design; the refusal stays a plan-phase diagnostic (D-010).
 - **`std_dev` discretizer** (D-020): removed entirely. It can return as a new discretizer kind if a
   real need appears, without a breaking change.
 - **Cross-attribute restrict** ("include attribute A only when attribute B = X"): not modelled in

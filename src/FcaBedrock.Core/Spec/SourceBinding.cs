@@ -4,7 +4,9 @@ namespace FcaBedrock.Core.Spec;
 /// Binds an attribute to a place in the source. Spec §10.2. A closed set of
 /// resolved bindings: column-by-name is a document-model state the spec
 /// resolver turns into an index (D-066); a triple <see cref="PredicateSource"/>
-/// binds by predicate string (matched against data at emit, D-082).
+/// binds by predicate string (matched against data at emit, D-082); and an
+/// <see cref="UnimplementedDateSource"/> stands for a source that declares the reserved
+/// <c>value_type = "date"</c>, which v1 cannot read (§11.7, D-038).
 /// </summary>
 public abstract record SourceBinding;
 
@@ -28,3 +30,13 @@ public sealed record ColumnSource(int Index, SourceValueType ValueType) : Source
 /// <param name="Predicate">The predicate selector string (taken verbatim from the spec).</param>
 /// <param name="ValueType">How matching raw values are read (§10.2 / D-061).</param>
 public sealed record PredicateSource(string Predicate, SourceValueType ValueType) : SourceBinding;
+
+/// <summary>
+/// The source of an attribute that declares the reserved <c>value_type = "date"</c> (§10.2,
+/// §11.7, §20; D-038): a reject-carrier only. v1 defines no date reading, so it carries no
+/// column, predicate or value type, and its attribute carries no discretizer; the resolver
+/// checks where the authored source points before it resolves to this. Nothing calibrates or
+/// emits it: <c>ConversionPlanner</c> refuses the attribute with
+/// <c>DateValueTypeNotImplementedV1</c> (Fatal), whether or not the attribute is included.
+/// </summary>
+public sealed record UnimplementedDateSource : SourceBinding;

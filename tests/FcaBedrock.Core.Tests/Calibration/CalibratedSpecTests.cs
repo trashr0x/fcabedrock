@@ -85,6 +85,24 @@ public sealed class CalibratedSpecTests
         // Cut discretizers ignore declared_domain (§10.3).
         Assert.False(CalibratedSpec.RequiresData(With(SpecFixtures.NumericCuts("age", 0, [30.0], new NominalScale()))));
 
+    [Fact]
+    public void RequiresData_WhenTheOnlyIncludedAttributeIsADateSource_ThenFalse() =>
+        // §11.7/D-038: a date source carries no discretizer, so its omitted domain asks for no data
+        // pass; calibration never observes, types or calibrates a date.
+        Assert.False(CalibratedSpec.RequiresData(With(SpecFixtures.Date("born"))));
+
+    [Fact]
+    public void Create_WhenADateSourceSitsBesideAnObservedAttribute_ThenOnlyTheOtherConsumesAnOutcome()
+    {
+        var resolved = Resolve(With(SpecFixtures.Nominal("g", 0, null), SpecFixtures.Date("born")), 1);
+
+        Assert.True(CalibratedSpec.Create(resolved, [new ObservedDomain("g", ["b"])]).TryGetValue(out var calibrated));
+        Assert.Equal("g", Assert.IsType<ObservedDomain>(Assert.Single(calibrated.Calibrations)).AttributeName);
+        Assert.IsType<UnimplementedDateSource>(calibrated.Spec.Attributes[1].Source);
+        Assert.Null(calibrated.Spec.Attributes[1].Discretizer);
+        Assert.Null(calibrated.Spec.Attributes[1].DeclaredDomain);
+    }
+
     // --- Create: observed domain ---
 
     [Fact]

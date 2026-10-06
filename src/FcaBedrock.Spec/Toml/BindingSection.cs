@@ -4,8 +4,12 @@ namespace FcaBedrock.Spec.Toml;
 
 /// <summary>
 /// The authored <c>[binding]</c> section (§5). Wide and triple fields coexist
-/// here as authored (possibly-invalid states are document territory, D-066);
-/// the resolver applies the §5.1 defaults and shape rules.
+/// here as authored (possibly-invalid states are document territory, D-066). The
+/// reader refuses <c>ordering</c> and <c>columns</c> in a file that itself declares
+/// <c>shape = "wide"</c> (<c>SpecFieldInvalid</c>), and the resolver refuses them in a
+/// wide binding that another file of a composed chain supplied them to
+/// (<c>SourceBindingInvalid</c>, §5.2/§13); the resolver also applies the §5.1
+/// defaults and the other shape rules.
 /// </summary>
 /// <param name="Shape">Source shape (§5.1); required: absent is <c>BindingShapeMissing</c>.</param>
 /// <param name="Encoding">Source text encoding (§5.1, default <c>"utf-8"</c>); resolved/validated at the seam (D-082).</param>

@@ -11,9 +11,7 @@ namespace FcaBedrock.Spec.Toml;
 /// <see cref="Finish"/>, which raises <c>SpecKeyUnrecognized</c> for every
 /// unconsumed key. The allow-list is therefore exactly the set of keys a reader
 /// takes; there is no separate list to drift. (No D-075 deferred-key set remains,
-/// D-120. The one <c>SpecSurfaceNotYetSupported</c> owner is the value-level
-/// <c>value_type = "date"</c> check in <see cref="AttributeReader"/>, which takes the
-/// key like any other and then judges its value.)
+/// D-120.)
 /// </summary>
 internal sealed class TomlTableCursor
 {

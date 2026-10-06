@@ -371,14 +371,174 @@ public sealed class SpecReaderDiagnosticsTests
         AssertFailsWith(SpecReader.Read(toml), DiagnosticCode.SpecFieldInvalid);
     }
 
-    [Fact]
-    public void Read_WhenValueTypeIsDate_ThenInterimSurfaceReject()
+    [Theory]
+    [InlineData("{ kind = \"column\", index = 0, value_type = \"date\" }")]
+    [InlineData("{ kind = \"predicate\", name = \"born\", value_type = \"date\" }")]
+    public void Read_WhenValueTypeIsDate_ThenItReadsAndWritesBackUnchanged(string source)
     {
-        // D-038/D-075: reserved surface with no carrier; the v1 end-state is a
-        // plan-phase DateValueTypeNotImplementedV1 once the carrier lands.
-        AssertFailsWith(
-            SpecReader.Read(Attribute(string.Empty, source: "{ kind = \"column\", index = 0, value_type = \"date\" }")),
-            DiagnosticCode.SpecSurfaceNotYetSupported);
+        // §10.2/§11.7 (D-038): the reserved date parses, and the planner, not the reader, refuses
+        // it. The canonical writer must give it back, or a read-write cycle would drop it.
+        var result = SpecReader.Read(Attribute(string.Empty, source));
+
+        Assert.True(result.TryGetValue(out var document), Describe(result.Diagnostics));
+        Assert.Empty(result.Diagnostics);
+        var written = SpecWriter.Write(document);
+        Assert.Contains($"source = {source}", written, StringComparison.Ordinal);
+        var reread = SpecReader.Read(written);
+        Assert.True(reread.TryGetValue(out var rereadDocument), Describe(reread.Diagnostics));
+        Assert.Equal(written, SpecWriter.Write(rereadDocument));
+    }
+
+    [Fact]
+    public void Read_WhenValueTypeSpellingIsUnknown_ThenTheMessageNamesTheLiveTypesAndTheReservedDate()
+    {
+        var result = SpecReader.Read(Attribute(string.Empty, "{ kind = \"column\", index = 0, value_type = \"datetime\" }"));
+
+        var diagnostic = Assert.Single(result.Diagnostics);
+        Assert.Equal(DiagnosticCode.SpecFieldInvalid, diagnostic.Code);
+        Assert.Equal("source value_type expects \"string\" or \"number\", or the reserved \"date\" (§10.2).", diagnostic.Message);
+        Assert.Equal(5, diagnostic.Location?.Line);
+        Assert.Equal(53, diagnostic.Location?.Column);
+    }
+
+    // ---- §10.1 attribute names ----------------------------------------------------------
+
+    [Theory]
+    [InlineData("\"a\\\"b\"", "a\"b")]          // an escaped quote
+    [InlineData("'a\"b'", "a\"b")]               // a quote inside a literal string
+    [InlineData("\"\\\"\"", "\"")]               // nothing but a quote
+    [InlineData("\"a\\nb\"", "a\nb")]            // an escaped LF
+    [InlineData("\"a\\rb\"", "a\rb")]            // an escaped CR
+    [InlineData("\"a\\r\\nb\"", "a\r\nb")]       // CRLF
+    [InlineData("\"\"\"a\nb\"\"\"", "a\nb")]     // a literal LF inside a multi-line string
+    [InlineData("\"ends\\n\"", "ends\n")]        // a trailing LF
+    public void Read_WhenAttributeNameContainsCrLfOrQuote_ThenSpecFieldInvalidAtTheName(string toml, string name)
+    {
+        // §10.1: a name is any non-empty string without CR, LF or the TOML key-quoting character.
+        // The reader enforces it at the value, and the diagnostic still names the attribute by its
+        // authored text.
+        var result = SpecReader.Read(NamedAttribute(toml), "spec.toml");
+
+        var diagnostic = Assert.Single(result.Diagnostics);
+        Assert.Equal(DiagnosticCode.SpecFieldInvalid, diagnostic.Code);
+        Assert.Equal(
+            "[[attribute]] key 'name' contains a CR, LF or '\"'; an attribute name is any non-empty string without them (§10.1).",
+            diagnostic.Message);
+        Assert.Equal(4, diagnostic.Location?.Line);
+        Assert.Equal(8, diagnostic.Location?.Column);
+        Assert.Equal(name, diagnostic.Location?.AttributeName);
+    }
+
+    [Theory]
+    [InlineData("\"   \"", "   ")]               // whitespace only
+    [InlineData("\"a\\tb\"", "a\tb")]            // TAB
+    [InlineData("\"a\\bb\"", "a\bb")]            // BACKSPACE: a control character other than CR or LF
+    [InlineData("\"a\\fb\"", "a\fb")]            // FORM FEED
+    [InlineData("\"a\\\\b\"", "a\\b")]           // a backslash
+    [InlineData("'bruises?'", "bruises?")]
+    [InlineData("\"feature.1\"", "feature.1")]
+    [InlineData("\"days@home\"", "days@home")]
+    public void Read_WhenAttributeNameIsPermissive_ThenItReadsAndRoundTrips(string toml, string name)
+    {
+        // §10.1 is deliberately permissive: everything but CR, LF and the quote is a valid name,
+        // and the canonical writer escapes what it must so the name survives a reread.
+        var result = SpecReader.Read(NamedAttribute(toml));
+
+        Assert.True(result.TryGetValue(out var document), Describe(result.Diagnostics));
+        Assert.Equal(name, document.Attributes[0].Name);
+        var reread = SpecReader.Read(SpecWriter.Write(document));
+        Assert.True(reread.TryGetValue(out var rereadDocument), Describe(reread.Diagnostics));
+        Assert.Equal(name, rereadDocument.Attributes[0].Name);
+    }
+
+    [Theory]
+    [InlineData("name = \"\"\n")]
+    [InlineData("")]
+    public void Read_WhenAttributeNameIsEmptyOrOmitted_ThenParseIsSilentAndResolveOwnsIt(string nameLine)
+    {
+        // A missing or empty name is AttributeNameMissing at resolve (§10.1); the reader's name
+        // rule judges only a non-empty string, so it adds no second report.
+        var result = SpecReader.Read($"[spec]\nversion = 1\n[[attribute]]\n{nameLine}source = {{ kind = \"column\", index = 0 }}\n");
+
+        Assert.True(result.IsOk);
+        Assert.Empty(result.Diagnostics);
+    }
+
+    [Fact]
+    public void Read_WhenAttributeNameIsNotAString_ThenOnlyTheTypeIsReported()
+    {
+        var result = SpecReader.Read(NamedAttribute("7"));
+
+        var diagnostic = Assert.Single(result.Diagnostics);
+        Assert.Equal(DiagnosticCode.SpecFieldInvalid, diagnostic.Code);
+        Assert.Equal("[[attribute]] key 'name' expects a string.", diagnostic.Message);
+    }
+
+    // ---- §5.2 wide bindings -------------------------------------------------------------
+
+    [Theory]
+    [InlineData("ordering = \"unordered\"", "ordering")]
+    [InlineData("ordering = \"wibble\"", "ordering")]                          // the value is never judged
+    [InlineData("ordering = 7", "ordering")]
+    [InlineData("columns = { subject = 0, predicate = 1, value = 2 }", "columns")]
+    [InlineData("columns = { subject = 0 }", "columns")]
+    [InlineData("columns = \"subject\"", "columns")]
+    public void Read_WhenAWideBindingSetsATripleOnlyField_ThenSpecFieldInvalidAtTheKey(string line, string key)
+    {
+        // §5.2: a wide binding has no additional fields. The key itself is the violation, so it is
+        // reported once, at the key, whatever its value.
+        var result = SpecReader.Read($"[spec]\nversion = 1\n[binding]\nshape = \"wide\"\n{line}\n", "spec.toml");
+
+        var diagnostic = Assert.Single(result.Diagnostics);
+        Assert.Equal(DiagnosticCode.SpecFieldInvalid, diagnostic.Code);
+        Assert.Equal(
+            $"[binding] key '{key}' applies only to shape = \"triple\"; a wide binding has no additional fields (§5.2/§5.3).",
+            diagnostic.Message);
+        Assert.Equal(5, diagnostic.Location?.Line);
+        Assert.Equal(1, diagnostic.Location?.Column);
+    }
+
+    [Fact]
+    public void Read_WhenAWideBindingSetsBothTripleOnlyFields_ThenEachReportsInSourceOrder()
+    {
+        // The shape is taken first, so a field written above it is refused too, and the two
+        // reports keep source order (D-120).
+        var result = SpecReader.Read(
+            "[spec]\nversion = 1\n[binding]\ncolumns = { subject = 0, predicate = 1, value = 2 }\nshape = \"wide\"\nordering = \"unordered\"\n");
+
+        Assert.Equal(
+            [(DiagnosticCode.SpecFieldInvalid, 4), (DiagnosticCode.SpecFieldInvalid, 6)],
+            result.Diagnostics.Select(d => (d.Code, d.Location?.Line ?? 0)));
+        Assert.Contains("'columns'", result.Diagnostics[0].Message, StringComparison.Ordinal);
+        Assert.Contains("'ordering'", result.Diagnostics[1].Message, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("shape = \"triple\"\nordering = \"unordered\"\ncolumns = { subject = 0, predicate = 1, value = 2 }")]
+    [InlineData("ordering = \"subject_grouped\"\ncolumns = { subject = \"s\", predicate = \"p\", value = \"v\" }")] // no shape: it may extend a triple base (§13)
+    [InlineData("shape = \"wide\"\nhas_header = true")]
+    [InlineData("shape = \"wide\"\n[binding.object_key]\nmode = \"column\"\ncolumn = 0")]
+    [InlineData("shape = \"wide\"\n[binding.object_key]\nmode = \"composite\"\ncolumns = [\"a\", \"b\"]\naggregate = \"union\"")] // the key's own columns
+    public void Read_WhenABindingSetsOnlyWhatItsShapeAllows_ThenItReadsAsBefore(string body)
+    {
+        var result = SpecReader.Read($"[spec]\nversion = 1\n[binding]\n{body}\n");
+
+        Assert.True(result.IsOk, Describe(result.Diagnostics));
+        Assert.Empty(result.Diagnostics);
+    }
+
+    [Theory]
+    [InlineData("shape = \"wibble\"\nordering = \"unordered\"", DiagnosticCode.SpecFieldInvalid)]          // only the shape is reported
+    [InlineData("shape = \"wide\"\n[binding.columns]\nsubject = 0", DiagnosticCode.SpecKeyUnrecognized)]    // the table form, for any shape
+    [InlineData("shape = \"triple\"\n[binding.columns]\nsubject = 0", DiagnosticCode.SpecKeyUnrecognized)]
+    [InlineData("shape = \"wide\"\ncolumns.subject = 0", DiagnosticCode.SpecKeyUnrecognized)]               // a dotted key
+    public void Read_WhenTheShapeIsUnknownOrColumnsIsNotAnInlineTable_ThenTheEarlierDiagnosticStands(string body, DiagnosticCode code)
+    {
+        // The wide check needs a recognized shape = "wide" and an inline-table key; the other
+        // forms keep the diagnostic they had before it existed.
+        var result = SpecReader.Read($"[spec]\nversion = 1\n[binding]\n{body}\n");
+
+        Assert.Equal(code, Assert.Single(result.Diagnostics).Code);
     }
 
     [Theory]
@@ -828,4 +988,12 @@ public sealed class SpecReaderDiagnosticsTests
 
     private static string Attribute(string body, string source = "{ kind = \"column\", index = 0 }") =>
         $"[spec]\nversion = 1\n[[attribute]]\nname = \"a\"\nsource = {source}\n{body}\n";
+
+    // The name is authored TOML text, so every escape and string form can be tried; it sits on
+    // line 4, and its value starts at column 8.
+    private static string NamedAttribute(string name) =>
+        $"[spec]\nversion = 1\n[[attribute]]\nname = {name}\nsource = {{ kind = \"column\", index = 0 }}\n";
+
+    private static string Describe(IEnumerable<BedrockDiagnostic> diagnostics) =>
+        string.Join("; ", diagnostics.Select(d => $"{d.Code}: {d.Message}"));
 }

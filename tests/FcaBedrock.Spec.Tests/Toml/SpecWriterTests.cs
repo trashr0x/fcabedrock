@@ -65,6 +65,34 @@ public sealed class SpecWriterTests
     }
 
     [Fact]
+    public void Write_WhenASourceDeclaresTheReservedDate_ThenItWritesValueTypeDate()
+    {
+        // §10.2/§11.7 (D-038): the flag writes back as the reserved spelling, so read-write keeps it.
+        var document = DocumentFixtures.Document(
+        [
+            DocumentFixtures.Attribute("born", new ColumnSourceSection(0, Name: null, ValueType: null) { HasDateValueType = true }),
+            DocumentFixtures.Attribute("seen", new PredicateSourceSection("seen", ValueType: null) { HasDateValueType = true }),
+        ]);
+
+        var toml = SpecWriter.Write(document);
+
+        Assert.Contains("source = { kind = \"column\", index = 0, value_type = \"date\" }", toml, StringComparison.Ordinal);
+        Assert.Contains("source = { kind = \"predicate\", name = \"seen\", value_type = \"date\" }", toml, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Write_WhenASourceDeclaresBothAValueTypeAndTheReservedDate_ThenItThrows()
+    {
+        // Two value_type keys are not writable TOML, so the writer refuses the state rather than
+        // choosing one; the reader never produces it.
+        var document = DocumentFixtures.Document(
+            [DocumentFixtures.Attribute("born", new ColumnSourceSection(0, Name: null, SourceValueType.Number) { HasDateValueType = true })]);
+
+        var exception = Assert.Throws<ArgumentException>(() => SpecWriter.Write(document));
+        Assert.Equal("source", exception.ParamName);
+    }
+
+    [Fact]
     public void Write_WhenValueLabelKeyIsNotBare_ThenKeyQuoted()
     {
         var document = DocumentFixtures.Document(

@@ -6,14 +6,16 @@ namespace FcaBedrock.Core.Spec;
 /// <summary>
 /// One logical attribute and how it becomes zero or more formal attributes. Spec
 /// §10. <see cref="Discretizer"/>/<see cref="Scale"/> are required when
-/// <see cref="Include"/> is true; when it is false they may still be present but
-/// are parked: the planner ignores all emitted config of an excluded attribute
-/// (§10.9 / D-049, an authoring toggle).
+/// <see cref="Include"/> is true, except that an attribute whose <see cref="Source"/> is
+/// an <see cref="UnimplementedDateSource"/> never carries a discretizer: v1 cannot read its
+/// values, and the planner refuses it (§11.7, D-038). When <see cref="Include"/> is false
+/// they may still be present but are parked: the planner ignores all emitted config of an
+/// excluded attribute (§10.9 / D-049, an authoring toggle).
 /// </summary>
 /// <param name="Name">Unique logical name.</param>
 /// <param name="Source">Where the raw value comes from.</param>
 /// <param name="Include">Whether the attribute emits formal attributes.</param>
-/// <param name="Discretizer">Raw value → bin label (when included).</param>
+/// <param name="Discretizer">Raw value → bin label (when included; never with an <see cref="UnimplementedDateSource"/>).</param>
 /// <param name="Scale">Bin label → formal attribute(s) (when included).</param>
 /// <param name="DeclaredDomain">Schema-bearing raw values, in column order (§10.3).
 /// <see langword="null"/> = omitted, which requests observed-domain calibration where a

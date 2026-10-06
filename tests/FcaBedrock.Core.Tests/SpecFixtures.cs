@@ -135,6 +135,12 @@ internal static class SpecFixtures
         new(name, new ColumnSource(index, SourceValueType.String), Include: false, Discretizer: null, Scale: null,
             DeclaredDomain: [], RestrictTo: [], NoLabels, MissingPolicy.Skip, UnknownValuePolicy.Warn);
 
+    // A source declaring the reserved value_type = "date" (§10.2/§11.7, D-038), as the resolve seam
+    // builds it: no discretizer, because v1 cannot read a date, and refused at plan.
+    public static AttributeSpec Date(string name, bool include = true, Scale? scale = null) =>
+        new(name, new UnimplementedDateSource(), include, Discretizer: null, scale ?? new NominalScale(),
+            DeclaredDomain: null, RestrictTo: [], NoLabels, MissingPolicy.Skip, UnknownValuePolicy.Warn);
+
     public static BedrockSpec MiniMushroom() =>
         new(WideRowIndex(), [
             Excluded("class", 0),

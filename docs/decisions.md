@@ -136,11 +136,11 @@ changes an earlier one. A new entry MUST add its line here.
 ### M2 implementation (slices)
 
 - D-074: `as_attribute` missing-column position uniform across scale kinds (appendix to D-068) *(default-path rendering; an explicit `formal_attribute_format` renders the missing column too; D-117)*
-- D-075: Slice C TOML reader/writer contract: strictness, parse codes, canonical form *(deferred-surface set narrowed by D-078/D-120 to `value_type = "date"`)*
+- D-075: Slice C TOML reader/writer contract: strictness, parse codes, canonical form *(deferred-surface set narrowed by D-078/D-120 to `value_type = "date"`; emptied in place on 2026-10-06)*
 - D-076: Slice D seam/plan validation contract details *(appends D-067; exact numeric form added + diagnostic renamed by D-091)*
 - D-077: Slice E fingerprint encoding/verification contract details *(appends D-069)*
 - D-078: Slice F composition/carrier contract details *(realizes D-027/D-052; refines D-067/D-075; pattern semantics, template application and duplicate-id validation settled by D-114/D-115/D-116/D-118; extends canonical file identity settled by D-122)*
-- D-079: Slice G `.bed` migrator contract: document-model target, Diagnosed surfaces *(realizes D-009/D-049/D-057/D-068; numeric restrict migration refined by D-091)*
+- D-079: Slice G `.bed` migrator contract: document-model target, Diagnosed surfaces *(realizes D-009/D-049/D-057/D-068; numeric restrict migration refined by D-091; date-type retirement condition clarified in place on 2026-10-06)*
 - D-080: `AttributeNameDuplicate` / `ValueLabelKeyNotInDomain` re-homed to the resolve seam *(realizes D-067; supersedes its "not re-homed" parenthetical)*
 - D-081: Value-bin ordinal path (Slice H): identity + explicit order *(realizes the D-047-deferred path; refines D-060; its closed-ends cut precedent corrected in place on 2026-10-05)*
 
@@ -2140,7 +2140,8 @@ built; they refine, not reverse, D-009 / D-049 / D-050…D-065.
 ### D-075: Slice C TOML reader/writer contract: strictness, parse codes, canonical form
 
 - **Status:** accepted; the deferred-surface set narrowed by D-078/D-120 to
-  `value_type = "date"`
+  `value_type = "date"`, and emptied in place on 2026-10-06 when that value gained its
+  plan-phase refusal
 - **Date:** 2026-07-04
 - **Decision:** the M2 Slice C reader/writer fixes the contracts the spec left
   open:
@@ -2171,6 +2172,12 @@ built; they refine, not reverse, D-009 / D-049 / D-050…D-065.
     D-078 retired the `extends`, template and matcher entries, and D-120
     retired the naming keys. `SpecSurfaceNotYetSupported` now covers only the
     value-level `value_type = "date"` reject (spec §16.4).
+    Amended in place on 2026-10-06: the `date` entry retired as planned.
+    `value_type = "date"` now parses, resolves to a Core reject-carrier and fails
+    at plan with the permanent `DateValueTypeNotImplementedV1` (D-038), so
+    `SpecSurfaceNotYetSupported` left the enum and the spec §16.4 registry, which
+    keeps 83 codes. The sentence above, and the clauses of D-105, D-120 and D-121
+    that call the code live, record the state before this change.
   - **Canonical writer:** hand-rolled emission (not Tomlyn serialization: the
     canonical form is owned here and cannot drift with a library upgrade):
     authored-only fields (presence tracking survives verbatim, D-049/D-071),
@@ -2469,7 +2476,7 @@ built; they refine, not reverse, D-009 / D-049 / D-050…D-065.
 
 - **Status:** accepted (realizes D-009's save-as-TOML face, the D-049
   migrator-hygiene item, D-068's migrator branch, and D-057's carriage;
-  supersedes the M1 Core-targeting `BedToSpec`) *(numeric restrict migration refined by D-091: a parseable v2 numeric token migrates to an exact `{ value = n }` entry)*
+  supersedes the M1 Core-targeting `BedToSpec`); its date-type retirement condition clarified in place on 2026-10-06 *(numeric restrict migration refined by D-091: a parseable v2 numeric token migrates to an exact `{ value = n }` entry)*
 - **Date:** 2026-07-05
 - **Decision:** the one-way v2 migrator targets the **document model**:
   `BedMigrator.Migrate(BedDocument, BindingSection, ScalingMode, derivedFrom?) →
@@ -2492,6 +2499,10 @@ built; they refine, not reverse, D-009 / D-049 / D-050…D-065.
     deferral: failing is honest, a spec silently missing an included attribute
     changes the analysis; retires if the date carrier lands); an unknown type
     code → `BedTypeUnrecognized` (the D-070 typo-vs-deferred tiering).
+    Clarified in place on 2026-10-06: "the date carrier" here means date
+    support (D-038). The reject-carrier that lets a spec declare
+    `value_type = "date"` gives a v2 `d` attribute's cuts no discretizer, so
+    `BedDateTypeNotSupported` stays until date support lands.
   - **Parked config (D-049):** an excluded attribute parks its **full** config,
     including representable-but-invalid config, which the seam skips while
     parked, so flipping `include = true` is what surfaces validation (better

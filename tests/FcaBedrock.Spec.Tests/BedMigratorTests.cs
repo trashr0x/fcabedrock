@@ -738,6 +738,19 @@ public sealed class BedMigratorTests
     }
 
     [Fact]
+    public void Migrate_WhenIncludedTypeD_ThenTheMessageWaitsForDateSupport()
+    {
+        // A spec may declare the reserved value_type = "date", but v1 has no discretizer for a date
+        // attribute's cuts, so the refusal names date support rather than a missing carrier (D-038).
+        var migrated = BedMigrator.Migrate(
+            ReadBed(Bed(new BedAttr("dob", "d", "<,01/01/1980,01/01/2000,>"))), WideBinding());
+
+        Assert.Equal(
+            "Attribute 'dob' uses the v2 date type 'd'; date support is deferred (D-038), so v1 has nothing to migrate it to.",
+            Assert.Single(migrated.Diagnostics).Message);
+    }
+
+    [Fact]
     public void Migrate_WhenRealMiniDatesFixture_ThenErrorBedDateTypeNotSupported()
     {
         // The real on-disk fixtures/v2/mini-dates .bed (not a synthetic one): its included `dob` attribute

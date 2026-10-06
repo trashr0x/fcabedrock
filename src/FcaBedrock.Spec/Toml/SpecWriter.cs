@@ -500,7 +500,7 @@ public static class SpecWriter
                     items.Add(Item("name", TomlLiteral.FormatString(name)));
                 }
 
-                AddValueType(items, column.ValueType);
+                AddValueType(items, source, column.ValueType);
                 break;
 
             case PredicateSourceSection predicate:
@@ -510,7 +510,7 @@ public static class SpecWriter
                     items.Add(Item("name", TomlLiteral.FormatString(predicateName)));
                 }
 
-                AddValueType(items, predicate.ValueType);
+                AddValueType(items, source, predicate.ValueType);
                 break;
 
             default:
@@ -520,8 +520,25 @@ public static class SpecWriter
         return InlineTable(items);
     }
 
-    private static void AddValueType(List<string> items, SourceValueType? valueType)
+    // §10.2: a live value type is written from the one spelling table; the reserved "date" (§11.7,
+    // D-038) has no SourceValueType member and is written from the source's own flag. A source that
+    // sets both would need two value_type keys, which no TOML document can hold, so it is refused
+    // rather than written; the reader never produces one.
+    private static void AddValueType(List<string> items, SourceSection source, SourceValueType? valueType)
     {
+        if (source.HasDateValueType)
+        {
+            if (valueType is not null)
+            {
+                throw new ArgumentException(
+                    "A source cannot declare both a value_type and the reserved value_type = \"date\" (§10.2).",
+                    nameof(source));
+            }
+
+            items.Add(Item("value_type", TomlLiteral.FormatString(TomlSpellings.DateValueType)));
+            return;
+        }
+
         if (valueType is { } authored)
         {
             items.Add(Item("value_type", TomlLiteral.FormatString(TomlSpellings.ToToml(TomlSpellings.ValueTypes, authored))));

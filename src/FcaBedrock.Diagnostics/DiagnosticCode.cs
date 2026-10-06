@@ -26,25 +26,18 @@ public enum DiagnosticCode
     SpecKeyUnrecognized,
 
     /// <summary>
-    /// A known key has the wrong type, shape, or an unrecognized enum/kind
-    /// spelling. One code, message variants naming the expected form. Spec §16.4
+    /// A known key has the wrong type or shape, an unrecognized enum/kind spelling, or a
+    /// value or placement the spec forbids within one file, such as an attribute
+    /// <c>name</c> containing CR, LF or <c>"</c>, or <c>ordering</c> in a wide
+    /// <c>[binding]</c>. One code, message variants naming the expected form. Spec §16.4
     /// (D-075; covers the D-070 tier-3 unknown-kind case).
     /// </summary>
     SpecFieldInvalid,
 
     // No discretizer-kind deferral code exists: every v1 kind executes (D-104), and an
-    // unknown kind spelling is an ordinary SpecFieldInvalid (D-070 tier 3).
-
-    /// <summary>
-    /// A recognized v1 surface the reader does not yet model was authored. This is
-    /// <b>exactly one</b> condition, <c>value_type = "date"</c>, and it is a
-    /// <em>value-level</em> reject inside the source reader, never a key-level one
-    /// (D-078, D-120). Never a fallback for unknown keys; those are
-    /// <see cref="SpecKeyUnrecognized"/>. Transitional: per spec §16.4, this code retires
-    /// when the D-038 date carrier lands and hands over to the permanent plan-phase
-    /// <c>DateValueTypeNotImplementedV1</c>, which is not yet an enum member (D-085).
-    /// </summary>
-    SpecSurfaceNotYetSupported,
+    // unknown kind spelling is an ordinary SpecFieldInvalid (D-070 tier 3). Nor is there a
+    // parse-phase reject of value_type = "date": it parses, and the planner refuses it
+    // (DateValueTypeNotImplementedV1, D-038).
 
     // --- Spec resolve ---
 
@@ -409,6 +402,13 @@ public enum DiagnosticCode
     ObjectKeyCompositeNotImplementedV1,
 
     /// <summary>
+    /// An attribute's source declares the reserved <c>value_type = "date"</c>, which v1 does
+    /// not implement; the v1 planner rejects it whether or not the attribute is included.
+    /// Fatal. Spec §10.2 / §11.7 / §16.4 / §20 (D-038; permanent v1 reservation).
+    /// </summary>
+    DateValueTypeNotImplementedV1,
+
+    /// <summary>
     /// A plan produced zero formal attributes: every attribute is excluded or
     /// filter-only, or yields no column (for example an authored empty domain, or
     /// ordinal <c>drop_top</c> over a single bin). A degenerate but
@@ -510,10 +510,12 @@ public enum DiagnosticCode
     BedStructureInvalid,
 
     /// <summary>
-    /// An included attribute uses the v2 date type <c>d</c>, which is deferred from
-    /// v1 (D-038) and has no spec carrier; the migration fails rather than silently
-    /// producing a spec missing an included attribute. This is the recognized-but-deferred
-    /// tier; a typo'd type code is <see cref="BedTypeUnrecognized"/>. Spec §16.4 (D-079).
+    /// An included attribute uses the v2 date type <c>d</c>, which v1 does not support
+    /// (D-038): a spec may declare the reserved <c>value_type = "date"</c>, but no v1
+    /// discretizer can carry a v2 date attribute's cuts, so the migration fails rather than
+    /// silently producing a spec missing an included attribute. This is the
+    /// recognized-but-deferred tier; a typo'd type code is <see cref="BedTypeUnrecognized"/>.
+    /// It retires when date support lands. Spec §16.4 (D-079).
     /// </summary>
     BedDateTypeNotSupported,
 

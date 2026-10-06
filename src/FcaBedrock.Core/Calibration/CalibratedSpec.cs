@@ -8,7 +8,9 @@ namespace FcaBedrock.Core.Calibration;
 /// <summary>
 /// The single Plan input (D-093): the <b>effective</b> spec (every included
 /// attribute executable: no <see cref="CalibrationPending"/>, no absent consumed
-/// domain), the schema snapshot the conversion was prepared against, and the
+/// domain; the one exception is an attribute whose source is an
+/// <see cref="UnimplementedDateSource"/>, which carries no discretizer and which Plan
+/// refuses), the schema snapshot the conversion was prepared against, and the
 /// retained calibration outcomes (manifest-ready, §15). Immutable; produced only
 /// by the two factories below over a <see cref="ResolvedSpec"/> token, and paired
 /// downstream by reference identity of that token: the emitter pairs its source with
@@ -27,7 +29,11 @@ public sealed class CalibratedSpec
         Calibrations = calibrations;
     }
 
-    /// <summary>The effective, executable spec the planner walks and the output fingerprints hash (D-094).</summary>
+    /// <summary>
+    /// The effective prepared spec the planner walks and the output fingerprints hash (D-094). It
+    /// may still hold a reserved marker the planner refuses, such as an
+    /// <see cref="UnimplementedDateSource"/> source.
+    /// </summary>
     public BedrockSpec Spec { get; }
 
     /// <summary>The opaque resolution token this state was prepared from (pairing is by reference identity).</summary>
@@ -181,7 +187,9 @@ public sealed class CalibratedSpec
     /// consuming discretizer with an omitted (null) domain, or a consuming discretizer under
     /// <c>unknown_value_policy = "include"</c>. An authored <c>[]</c> is complete and never
     /// counts on its own (D-122 part 15). Excluded attributes and
-    /// <c>restrict_to</c> never count.
+    /// <c>restrict_to</c> never count, and neither does an attribute whose source is an
+    /// <see cref="UnimplementedDateSource"/>: it carries no discretizer, so calibration never
+    /// observes, types or calibrates it (§11.7, D-038).
     /// </summary>
     public static bool RequiresData(BedrockSpec spec)
     {

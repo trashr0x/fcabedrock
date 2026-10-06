@@ -414,6 +414,25 @@ public static class SpecResolver
             ? ResolveOrdering(bindingSection, diagnostics)
             : (TripleOrdering?)null;
 
+        // §5.2: a wide binding has no additional fields. A file that declares shape = "wide" cannot
+        // set ordering or columns (the reader refuses them, SpecFieldInvalid), so they reach here
+        // only from another file of a composed chain (§13) or from a hand-built document. Nothing
+        // would read them, and a frozen spec that kept them could not be read back.
+        if (shape == SourceShape.Wide)
+        {
+            if (bindingSection.Ordering is not null)
+            {
+                AddBindingInvalid(diagnostics,
+                    "binding.ordering applies only to shape = \"triple\"; a wide binding has no additional fields (§5.2/§5.3).");
+            }
+
+            if (bindingSection.Columns is not null)
+            {
+                AddBindingInvalid(diagnostics,
+                    "binding.columns applies only to shape = \"triple\"; a wide binding has no additional fields (§5.2/§5.3).");
+            }
+        }
+
         var binding = new Binding(
             shape,
             encoding,
@@ -741,14 +760,24 @@ public static class SpecResolver
             diagnostics.Add(bindingDiagnostic);
         }
 
-        var source = BuildSource(addressed.Source, section.Discretizer);
+        // §10.2/§11.7 (D-038): value_type = "date" reserves a reading v1 does not implement. Its
+        // location was still addressed (and diagnosed) above; it then resolves to the Core
+        // UnimplementedDateSource, which the planner refuses (DateValueTypeNotImplementedV1), and
+        // it has no effective value type: a null valueType below stands for that reserved reading,
+        // and every check that depends on how raw values are typed stands down for it.
+        var dateSource = DeclaresDate(section.Source);
+        SourceBinding? source = dateSource
+            ? (addressed.Source is null ? null : new UnimplementedDateSource())
+            : BuildSource(addressed.Source, section.Discretizer);
 
         // §10.2/D-061: the EFFECTIVE source value type: authored, else fixed by the
         // effective discretizer, which may itself have arrived from a template. Derived
         // here rather than in the addressing pass precisely because it depends on the
         // post-application discretizer (D-121): addressing is source-only and runs before
         // the merge, typing is discretizer-dependent and runs after it.
-        var valueType = ResolveValueType(AuthoredValueType(section.Source), section.Discretizer);
+        SourceValueType? valueType = dateSource
+            ? null
+            : ResolveValueType(AuthoredValueType(section.Source), section.Discretizer);
         var numericFreePerValue = section.Discretizer is FreePerValueDiscretizerSection
             && valueType == SourceValueType.Number;
 
@@ -761,7 +790,12 @@ public static class SpecResolver
         IReadOnlyDictionary<string, string> valueLabels = section.ValueLabels ?? NoLabels;
         if (include)
         {
-            discretizer = ResolveDiscretizer(section.Discretizer, label, culture, valueType, diagnostics);
+            // A date source carries no discretizer: v1 cannot type or bin its values (§11.7). Its
+            // discretizer is still resolved, so a malformed field is reported here, at resolve,
+            // before planning; a resolve Error stops the run before any date refusal. The resolved
+            // discretizer is then dropped.
+            var resolvedDiscretizer = ResolveDiscretizer(section.Discretizer, label, culture, valueType, diagnostics);
+            discretizer = dateSource ? null : resolvedDiscretizer;
 
             // §10.3/§10.8/D-096: a numeric free_per_value's declared_domain and value_labels keys
             // are the §5.1 exception to verbatim strings: parsed under binding.locale to their
@@ -782,7 +816,8 @@ public static class SpecResolver
 
         ValidateAttributeConstraints(section, label, include, valueType, defaults, diagnostics);
 
-        if (string.IsNullOrEmpty(name) || source is null || (include && (discretizer is null || scale is null)))
+        if (string.IsNullOrEmpty(name) || source is null
+            || (include && (scale is null || (discretizer is null && !dateSource))))
         {
             return null; // the diagnostics above explain why; the Error fails the result
         }
@@ -867,6 +902,28 @@ public static class SpecResolver
         PredicateSourceSection predicate => predicate.ValueType,
         _ => null,
     };
+
+    // §10.2/§11.7 (D-038): whether the source declares the reserved value_type = "date". The
+    // reader sets the flag only with no live value type. A hand-built source that sets both would
+    // need two value_type keys, which no TOML document can hold, so it is corrupt document state
+    // rather than authored input and throws instead of reporting: a parse-shape condition has no
+    // resolve-phase code (D-067), the ParseEffectiveFormat posture.
+    private static bool DeclaresDate(SourceSection? source)
+    {
+        if (source is not { HasDateValueType: true })
+        {
+            return false;
+        }
+
+        if (AuthoredValueType(source) is not null)
+        {
+            throw new InvalidOperationException(
+                "A source declares both a value_type and the reserved value_type = \"date\"; " +
+                "SpecReader never produces this (§10.2, corrupt document state).");
+        }
+
+        return true;
+    }
 
     // §10.3/§5.1 (D-096): normalize a numeric free_per_value declared_domain to canonical
     // numeric identities under binding.locale, preserving declaration order (§17 rule 3, over
@@ -1016,12 +1073,14 @@ public static class SpecResolver
     // The static attribute checks (D-067/D-076). They read the document
     // sections directly (authored-vs-default provenance exists only there,
     // D-060) and run whether or not the source/discretizer/scale resolved,
-    // so one bad field does not mask another (EP-14).
+    // so one bad field does not mask another (EP-14). A null valueType is the
+    // reserved date reading (§11.7): the checks that type or identify raw values
+    // stand down for it, and the others still run.
     private static void ValidateAttributeConstraints(
         AttributeSection section,
         string attribute,
         bool include,
-        SourceValueType valueType,
+        SourceValueType? valueType,
         DefaultsSection? defaults,
         List<BedrockDiagnostic> diagnostics)
     {
@@ -1037,7 +1096,7 @@ public static class SpecResolver
         // restrict_to is live config even when the attribute is excluded (the
         // filter-only pattern, §10.1/§10.4), so its shape checks are include-independent;
         // only the domain typo-catcher is skipped while the attribute is excluded (D-076).
-        ValidateRestrictTo(section, attribute, include, diagnostics);
+        ValidateRestrictTo(section, attribute, include, valueType, diagnostics);
     }
 
     // §10.2 (D-061): a type-fixing discretizer disallows the other authored
@@ -1171,13 +1230,15 @@ public static class SpecResolver
     // kinds are exactly Discretizer.ConsultsValueLabels: identity and free_per_value
     // (§10.8). A numeric free_per_value is handled during resolution (its keys normalize
     // to canonical identities, D-096) and is skipped here to avoid a double report;
-    // identity and string free_per_value compare verbatim. Under any other discretizer
-    // value_labels is dormant (§10.8/D-049): ignored here and in name rendering, never an
-    // error. The caller runs this only for an included attribute (D-049).
+    // identity and string free_per_value compare verbatim. A date source (a null valueType)
+    // has no v1 value identity (§11.7), so its keys are not judged either. Under any other
+    // discretizer value_labels is dormant (§10.8/D-049): ignored here and in name rendering,
+    // never an error. The caller runs this only for an included attribute (D-049).
     private static void ValidateValueLabels(
-        AttributeSection section, string attribute, SourceValueType valueType, List<BedrockDiagnostic> diagnostics)
+        AttributeSection section, string attribute, SourceValueType? valueType, List<BedrockDiagnostic> diagnostics)
     {
-        if (section.Discretizer is FreePerValueDiscretizerSection && valueType == SourceValueType.Number)
+        if (valueType is null
+            || (section.Discretizer is FreePerValueDiscretizerSection && valueType == SourceValueType.Number))
         {
             return;
         }
@@ -1210,22 +1271,23 @@ public static class SpecResolver
     // owned by RestrictToNumericEntryRequired). Source-kind agnostic: the value-type shape
     // checks apply to any source carrying a value_type (§10.2).
     //
-    // The attribute's single effective value_type is resolved ONCE here under the D-061 matrix
-    // and decides which entry forms are legal: string-fixing accepts only bare strings,
+    // The attribute's single effective value_type, resolved once by the caller under the D-061
+    // matrix, decides which entry forms are legal: string-fixing accepts only bare strings,
     // number-fixing only numeric entries (exact or range). No value_type admits both, so a
-    // genuinely mixed list always reports.
+    // genuinely mixed list always reports. A date source has none (a null valueType, §11.7), so
+    // only each entry's own validity is checked.
     private static void ValidateRestrictTo(
         AttributeSection section,
         string attribute,
         bool include,
+        SourceValueType? valueType,
         List<BedrockDiagnostic> diagnostics)
     {
-        if (section.RestrictTo is not { Count: > 0 } entries || section.Source is not { } source)
+        if (section.RestrictTo is not { Count: > 0 } entries || section.Source is null)
         {
             return;
         }
 
-        var valueType = ResolveValueType(AuthoredValueType(source), section.Discretizer);
         foreach (var entry in entries)
         {
             // Two INDEPENDENT questions, checked independently so both report when both hold
@@ -1233,7 +1295,11 @@ public static class SpecResolver
             // delimiter/quote conflict co-fire). Compatibility with the source's value_type is
             // one condition; the entry's own validity is another, and an entry can be wrong on
             // both counts at once, e.g. `{ value = nan }` on a string source.
-            ValidateRestrictEntryCompatibility(entry, valueType, attribute, diagnostics);
+            if (valueType is { } type)
+            {
+                ValidateRestrictEntryCompatibility(entry, type, attribute, diagnostics);
+            }
+
             ValidateRestrictEntryValidity(entry, attribute, diagnostics);
         }
 
@@ -1456,11 +1522,13 @@ public static class SpecResolver
     // report. The caller runs this only for an included attribute, so a parked order
     // never blocks (D-049), exactly like the ordinal-over-cuts checks.
     private static void ValidateOrdinalOrderShape(
-        AttributeSection section, string attribute, SourceValueType valueType, List<BedrockDiagnostic> diagnostics)
+        AttributeSection section, string attribute, SourceValueType? valueType, List<BedrockDiagnostic> diagnostics)
     {
         // A numeric free_per_value order is normalized + validated during resolution
         // (OrderDomainInvalid over canonical identities, D-096); skip here to avoid a double
-        // report. String free_per_value orders compare verbatim, exactly like identity.
+        // report. String free_per_value orders compare verbatim, exactly like identity, and so
+        // does a date source (a null valueType): distinct, non-empty entries are a raw shape check
+        // that needs no date typing (D-081).
         if (section.Discretizer is FreePerValueDiscretizerSection && valueType == SourceValueType.Number)
         {
             return;
@@ -1499,7 +1567,7 @@ public static class SpecResolver
         DiscretizerSection? section,
         string attribute,
         CultureInfo culture,
-        SourceValueType valueType,
+        SourceValueType? valueType,
         List<BedrockDiagnostic> diagnostics)
     {
         switch (section)
@@ -1509,8 +1577,9 @@ public static class SpecResolver
 
             case FreePerValueDiscretizerSection:
                 // §11.3/D-061: type-flexible: the resolved value_type decides string-vs-numeric
-                // identity; the culture parses numeric values (unused in string mode).
-                return new FreePerValueDiscretizer(valueType, culture);
+                // identity; the culture parses numeric values (unused in string mode). A date
+                // source has no value type (§11.7) and keeps no discretizer, so none is built.
+                return valueType is { } type ? new FreePerValueDiscretizer(type, culture) : null;
 
             case ManualCutsDiscretizerSection manual:
                 // §11.2 defaults; the D-056 factory owns cut validation and its

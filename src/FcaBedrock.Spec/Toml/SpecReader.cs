@@ -8,14 +8,14 @@ namespace FcaBedrock.Spec.Toml;
 /// Parses authored Bedrock-spec TOML, under the TOML 1.1.0 grammar (D-133), into a
 /// presence-tracked <see cref="SpecDocument"/> (D-066/D-075). Strict over the v1 vocabulary:
 /// unknown keys and tables fail the read (<c>SpecKeyUnrecognized</c>) so a
-/// write never silently drops authored content; the one recognized-but-unmodelled
-/// v1 surface left, <c>value_type = "date"</c>, fails with the transitional
-/// <c>SpecSurfaceNotYetSupported</c>; wrong shapes fail with
+/// write never silently drops authored content, and wrong shapes fail with
 /// <c>SpecFieldInvalid</c>. The reader enforces parse shape and leaves
 /// possibly-invalid <em>values</em> in the document for the resolve/validate
-/// seam to judge (D-066/D-067), apart from two file-local value checks that
-/// also fail with <c>SpecFieldInvalid</c> (D-135): an authored
-/// <c>[output.dat]</c> <c>base_index</c> other than 0 or 1, and a negative
+/// seam to judge (D-066/D-067), apart from these file-local checks, which also
+/// fail with <c>SpecFieldInvalid</c>: an attribute <c>name</c> containing CR, LF or
+/// <c>"</c> (§10.1), a triple-only <c>ordering</c> or <c>columns</c> in a
+/// <c>[binding]</c> that declares <c>shape = "wide"</c> (§5.2), and (D-135) an authored
+/// <c>[output.dat]</c> <c>base_index</c> other than 0 or 1 or a negative
 /// <c>[output.cxt]</c> <c>size_advisory_bytes</c>. Diagnostics aggregate in two
 /// phases (EP-14): all TOML-level errors together (<c>SpecTomlInvalid</c>,
 /// terminal: a broken tree would cascade garbage), then all semantic issues

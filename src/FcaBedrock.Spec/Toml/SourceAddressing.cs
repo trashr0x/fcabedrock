@@ -157,8 +157,10 @@ internal static class SourceAddressing
             {
                 // Record the site-typed name binding for the ResolvedSpec trust boundary
                 // (D-098); an empty attribute name is already an AttributeNameMissing error
-                // that fails the success check, so the binding is never consumed there.
-                if (!string.IsNullOrEmpty(attributeName))
+                // that fails the success check, so the binding is never consumed there. A source
+                // that declares the reserved value_type = "date" resolves to no column (the Core
+                // UnimplementedDateSource, refused at plan, D-038), so it records no binding.
+                if (!string.IsNullOrEmpty(attributeName) && !column.HasDateValueType)
                 {
                     nameBindings.Add(new AttributeSourceNameBinding(attributeName, byName, found));
                 }

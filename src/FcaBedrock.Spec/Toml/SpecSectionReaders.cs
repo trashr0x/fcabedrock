@@ -9,11 +9,12 @@ namespace FcaBedrock.Spec.Toml;
 /// <see cref="TomlTableCursor"/> and finishes, so every unconsumed key is
 /// <c>SpecKeyUnrecognized</c> (D-075; no deferred-key set remains, D-078/D-120).
 /// Possibly-invalid values are document territory (D-066), so nothing here validates
-/// semantics, with three exceptions: authored shape the grammar owns
+/// semantics, with four exceptions: authored shape the grammar owns
 /// (<c>formal_attribute_format</c>, §10.7), the <c>[[matcher]]</c> shape rules (a
-/// <c>template</c> reference and exactly one valid selector, §9.2), and the
-/// <c>[output]</c> values §8 allows for one file (<c>base_index</c> 0 or 1, a
-/// <c>size_advisory_bytes</c> that is not negative, D-135).
+/// <c>template</c> reference and exactly one valid selector, §9.2), the triple-only
+/// <c>ordering</c> and <c>columns</c> in a <c>[binding]</c> that declares
+/// <c>shape = "wide"</c> (§5.2), and the <c>[output]</c> values §8 allows for one file
+/// (<c>base_index</c> 0 or 1, a <c>size_advisory_bytes</c> that is not negative, D-135).
 /// </summary>
 internal static class SpecSectionReaders
 {
@@ -86,19 +87,49 @@ internal static class SpecSectionReaders
     public static BindingSection ReadBinding(TomlReadContext context, TableSyntaxBase table)
     {
         var cursor = new TomlTableCursor(context, "[binding]", table);
+        var shape = cursor.TakeEnum("shape", TomlSpellings.Shapes);
+
+        // §5.2: a wide binding has no additional fields. In a file that declares shape = "wide" the
+        // triple-only ordering and columns (§5.3) are refused at their keys, whatever their values,
+        // so a malformed value is not reported as well. A file that declares another shape, or none,
+        // reads them as before, because it may be layered over a triple base (§13); the resolver
+        // refuses them if the composed binding is wide.
+        var wide = shape == SourceShape.Wide;
+        if (wide)
+        {
+            RefuseTripleOnly(context, cursor, "ordering");
+            RefuseTripleOnly(context, cursor, "columns");
+        }
+
         var section = new BindingSection(
-            cursor.TakeEnum("shape", TomlSpellings.Shapes),
+            shape,
             cursor.TakeString("encoding"),
             cursor.TakeChar("delimiter", SourceReadSettings.IsInDelimiterAlphabet, DelimiterExpectation),
             cursor.TakeChar("quote_char"),
             cursor.TakeBool("has_header"),
             cursor.TakeString("locale"),
             cursor.TakeString("missing_token"),
-            cursor.TakeEnum("ordering", TomlSpellings.Orderings),
-            ReadTripleColumns(context, cursor),
+            wide ? null : cursor.TakeEnum("ordering", TomlSpellings.Orderings),
+            wide ? null : ReadTripleColumns(context, cursor),
             ObjectKey: null); // [binding.object_key] is its own table; merged by SpecReader
         cursor.Finish();
         return section;
+    }
+
+    // §5.2/§5.3: ordering and columns belong to shape = "triple". Under a wide shape the key itself
+    // is the violation, so it is consumed (Finish would otherwise also call it unrecognized) and
+    // reported at the key, and its value is never examined.
+    private static void RefuseTripleOnly(TomlReadContext context, TomlTableCursor cursor, string key)
+    {
+        if (cursor.Take(key) is not { } pair)
+        {
+            return;
+        }
+
+        context.Error(
+            DiagnosticCode.SpecFieldInvalid,
+            $"[binding] key '{key}' applies only to shape = \"triple\"; a wide binding has no additional fields (§5.2/§5.3).",
+            pair.Key?.Span ?? pair.Span);
     }
 
     public static ObjectKeySection ReadObjectKey(TomlReadContext context, TableSyntaxBase table)

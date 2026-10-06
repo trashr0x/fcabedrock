@@ -4,9 +4,9 @@ namespace FcaBedrock.Spec.Toml;
 /// Presence-tracked document model of an authored TOML Bedrock spec (D-066):
 /// a faithful mirror of what was written, where <c>null</c> means "not
 /// authored"; defaults are merged only when <see cref="SpecResolver"/>
-/// resolves the document into a Core <c>BedrockSpec</c>. The one v1 surface the
-/// model does not carry is <c>value_type = "date"</c>, which the reader rejects
-/// (<c>SpecSurfaceNotYetSupported</c>, D-038/D-075).
+/// resolves the document into a Core <c>BedrockSpec</c>. It carries the whole v1
+/// surface, the reserved <c>value_type = "date"</c> included
+/// (<see cref="SourceSection.HasDateValueType"/>, D-038).
 /// </summary>
 /// <param name="Spec">The <c>[spec]</c> section (§3); null when absent.</param>
 /// <param name="Provenance">The <c>[provenance]</c> section (§4); carried inert.</param>

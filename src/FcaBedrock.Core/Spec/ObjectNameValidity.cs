@@ -8,7 +8,7 @@ namespace FcaBedrock.Core.Spec;
 /// which subjects a source admits.
 /// <para>
 /// This is <b>not</b> §10.1 attribute-name validity: a different predicate over a
-/// different alphabet, owned elsewhere. Do not conflate the two.
+/// different alphabet, owned by <see cref="AttributeNameValidity"/>. Do not conflate the two.
 /// </para>
 /// </summary>
 public static class ObjectNameValidity

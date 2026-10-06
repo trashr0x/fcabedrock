@@ -55,8 +55,8 @@ public sealed class MigrateCommandTests
     private static readonly string TwoWarningBed =
         Bed(["colour", "size"], ["red,unknown", "big,unknown"], ["r,?", "b,?"], ["c", "c"]);
 
-    // v2's date type is deferred (D-038) and has no v1 carrier, so an INCLUDED attribute of
-    // that type cannot be transcribed: the migrator's own Error, and no document.
+    // v1 does not support v2's date type (D-038), so it has nothing to migrate an INCLUDED
+    // attribute of that type to: the migrator's own Error, and no document.
     private static readonly string DateBed = Bed(["born"], ["d"], ["d"], ["d"]);
 
     // Column 0 is the only bound column; both rows are the missing token.

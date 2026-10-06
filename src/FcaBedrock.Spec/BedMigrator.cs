@@ -147,7 +147,7 @@ public static class BedMigrator
                 []),
             "d" => MappedAttribute.Error(Diagnostic(
                 DiagnosticCode.BedDateTypeNotSupported,
-                $"Attribute '{name}' uses the v2 date type 'd'; date scaling is deferred (D-038) and has no v1 carrier.",
+                $"Attribute '{name}' uses the v2 date type 'd'; date support is deferred (D-038), so v1 has nothing to migrate it to.",
                 name)),
             _ => MappedAttribute.Error(Diagnostic(
                 DiagnosticCode.BedTypeUnrecognized,

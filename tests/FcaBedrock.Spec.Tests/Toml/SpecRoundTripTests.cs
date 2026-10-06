@@ -321,13 +321,15 @@ public sealed class SpecRoundTripTests
     [Fact]
     public void RoundTrip_WhenEscapableStringsEverywhere_ThenVerbatim()
     {
+        // A quote, CR or LF is not a valid attribute name (§10.1), so those escapes travel in the
+        // domain; the name keeps the escapes a name may carry.
         var document = DocumentFixtures.Document(
-            [DocumentFixtures.Attribute("quote\"back\\slash", declaredDomain: ["tab\there", "new\nline", "日本"])]);
+            [DocumentFixtures.Attribute("tab\tback\\slash", declaredDomain: ["quote\"here", "tab\there", "new\nline", "日本"])]);
 
         var reread = Read(SpecWriter.Write(document));
 
-        Assert.Equal("quote\"back\\slash", reread.Attributes[0].Name);
-        Assert.Equal(["tab\there", "new\nline", "日本"], reread.Attributes[0].DeclaredDomain);
+        Assert.Equal("tab\tback\\slash", reread.Attributes[0].Name);
+        Assert.Equal(["quote\"here", "tab\there", "new\nline", "日本"], reread.Attributes[0].DeclaredDomain);
     }
 
     [Fact]

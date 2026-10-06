@@ -51,6 +51,57 @@ public sealed class ResolvedSpecTests
             Create(new BedrockSpec(SpecFixtures.TripleSubjectGrouped(), [attr]), new SourceSchema(3)));
     }
 
+    // --- the reserved date source (§10.2/§11.7, D-038) ---
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Create_WhenADateSourceCarriesNoDiscretizer_ThenSucceedsUnderEitherShape(bool triple)
+    {
+        // The reject-carrier names no column or predicate, so there is no range or shape to check;
+        // the planner refuses it before anything reads it.
+        var binding = triple ? SpecFixtures.TripleSubjectGrouped() : SpecFixtures.WideRowIndex();
+
+        var resolved = Create(new BedrockSpec(binding, [SpecFixtures.Date("born")]), new SourceSchema(triple ? 3 : 1));
+
+        Assert.IsType<UnimplementedDateSource>(Assert.Single(resolved.Spec.Attributes).Source);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void Create_WhenADateSourceCarriesADiscretizer_ThenThrowsWhetherOrNotIncluded(bool include)
+    {
+        var attr = SpecFixtures.Date("born", include) with { Discretizer = new IdentityDiscretizer() };
+
+        var exception = Assert.Throws<ArgumentException>(() =>
+            Create(new BedrockSpec(SpecFixtures.WideRowIndex(), [attr]), new SourceSchema(1)));
+        Assert.Equal(
+            "attribute 'born' declares value_type = \"date\" and carries a discretizer; no v1 discretizer reads a date (§11.7).",
+            exception.Message);
+    }
+
+    [Fact]
+    public void Create_WhenAnIncludedDateSourceHasNoScale_ThenThrows()
+    {
+        var attr = SpecFixtures.Date("born") with { Scale = null };
+
+        var exception = Assert.Throws<ArgumentException>(() =>
+            Create(new BedrockSpec(SpecFixtures.WideRowIndex(), [attr]), new SourceSchema(1)));
+        Assert.Equal("included attribute 'born' must carry a scale.", exception.Message);
+    }
+
+    [Fact]
+    public void Create_WhenAnExcludedDateSourceHasNoScale_ThenSucceeds()
+    {
+        var attr = SpecFixtures.Date("born", include: false) with { Scale = null };
+
+        var resolved = Create(
+            new BedrockSpec(SpecFixtures.WideRowIndex(), [attr, SpecFixtures.Nominal("g", 0, ["b"])]), new SourceSchema(1));
+
+        Assert.Equal(2, resolved.Spec.Attributes.Count);
+    }
+
     [Fact]
     public void Create_WhenTripleBindingHasNullOrdering_ThenThrows()
     {

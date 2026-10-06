@@ -16,7 +16,9 @@ internal sealed record DiscoveredColumn(int Index, string Name, string? BindByNa
 
 /// <summary>
 /// The §7.1 / D-107 wide naming and binding matrix, computed over the ordered schema before
-/// any record is read.
+/// any record is read. A header cell is usable as a name when <see cref="AttributeNameValidity"/>
+/// accepts it (§10.1), the rule the spec reader enforces, so every name the matrix authors
+/// rereads (D-107).
 /// <para>
 /// <b>The invariant that drives every branch: no source selector is ever silently changed.</b>
 /// A name that must be adjusted is adjusted; the column it reads is not. That is why a
@@ -29,39 +31,6 @@ internal sealed record DiscoveredColumn(int Index, string Name, string? BindByNa
 /// </summary>
 internal static class AttributeNaming
 {
-    /// <summary>
-    /// §10.1 attribute-name validity: any non-empty string containing no newline and no
-    /// <c>"</c> (the TOML key-quoting character). Deliberately permissive: real headers look
-    /// like <c>bruises?</c>, <c>feature.1</c>, <c>days@home</c>, and a draft must round-trip
-    /// them unrenamed.
-    /// <para>
-    /// This is <b>not</b> <see cref="ObjectNameValidity"/>, which governs data-derived object
-    /// names (subjects, wide key cells) over a different alphabet: whitespace-only is a
-    /// <em>usable</em> attribute name but an unusable object name, and a control character
-    /// other than CR/LF is unusable as an object name but harmless in a TOML string. Two
-    /// predicates, two owners, deliberately not merged. Discovery owns this one because the
-    /// resolve seam does not enforce it: <c>SpecResolver</c> checks only missing and
-    /// duplicate names, so probe's naming matrix is its sole enforcement point.
-    /// </para>
-    /// </summary>
-    public static bool IsUsableName(string? name)
-    {
-        if (string.IsNullOrEmpty(name))
-        {
-            return false;
-        }
-
-        foreach (var ch in name)
-        {
-            if (ch is '\n' or '\r' or '"')
-            {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
     /// <summary>
     /// Plans one attribute per physical schema column, in schema order.
     /// </summary>
@@ -78,7 +47,7 @@ internal static class AttributeNaming
             // headerless, the same case as a source with no header row at all.
             var cell = schema.Header is { } header && i < header.Count ? header[i] : null;
             cells[i] = cell;
-            if (IsUsableName(cell))
+            if (AttributeNameValidity.IsValid(cell))
             {
                 usableOccurrences[cell!] = usableOccurrences.GetValueOrDefault(cell!) + 1;
             }
@@ -91,7 +60,7 @@ internal static class AttributeNaming
         for (var i = 0; i < count; i++)
         {
             var cell = cells[i];
-            if (IsUsableName(cell) && usableOccurrences[cell!] == 1)
+            if (AttributeNameValidity.IsValid(cell) && usableOccurrences[cell!] == 1)
             {
                 byName[i] = true;
                 candidates[i] = cell!;
@@ -102,7 +71,7 @@ internal static class AttributeNaming
                 // authored name to depart from.
                 candidates[i] = FallbackName(i);
             }
-            else if (IsUsableName(cell))
+            else if (AttributeNameValidity.IsValid(cell))
             {
                 // A duplicate usable header keeps its own text as the candidate. The first
                 // column to claim it keeps it verbatim: its NAME is untouched, so it is not a

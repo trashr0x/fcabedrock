@@ -232,12 +232,33 @@ public sealed class ResolvedSpec
                     RequireDefined(predicate.ValueType, "source.ValueType");
                     break;
 
+                case UnimplementedDateSource:
+                    // §10.2/§11.7 (D-038): the reserved date reading names no column, predicate or
+                    // value type, so there is nothing to range-check; the resolver checked where the
+                    // authored source points, and the planner refuses it before anything reads it.
+                    break;
+
                 default:
                     throw new ArgumentException($"attribute '{attribute.Name}' has an unrecognized source binding.");
             }
 
-            // Every included attribute carries a discretizer and a scale.
-            if (attribute.Include)
+            // Every included attribute carries a discretizer and a scale. The reserved date source
+            // is the one exception, and it holds both ways: no v1 discretizer can read a date, so
+            // that attribute never carries one, included or not (§11.7, D-038).
+            if (attribute.Source is UnimplementedDateSource)
+            {
+                if (attribute.Discretizer is not null)
+                {
+                    throw new ArgumentException(
+                        $"attribute '{attribute.Name}' declares value_type = \"date\" and carries a discretizer; no v1 discretizer reads a date (§11.7).");
+                }
+
+                if (attribute.Include && attribute.Scale is null)
+                {
+                    throw new ArgumentException($"included attribute '{attribute.Name}' must carry a scale.");
+                }
+            }
+            else if (attribute.Include)
             {
                 if (attribute.Discretizer is null || attribute.Scale is null)
                 {

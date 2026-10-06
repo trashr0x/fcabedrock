@@ -223,6 +223,72 @@ public sealed class ValidateCommandTests
             StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task Validate_WhenAWideBindingSetsATripleOnlyField_ThenSpecFieldInvalidExit1AndNoDataOpened()
+    {
+        // §5.2: a wide binding has no additional fields, so the spec read refuses ordering at its key
+        // and the data file is never opened.
+        using var temp = TempDirectory.Create();
+        var spec = temp.Write(
+            "spec.toml",
+            CliFixtures.IndexBoundSpec.Replace("shape = \"wide\"", "shape = \"wide\"\nordering = \"unordered\"", StringComparison.Ordinal));
+        var data = temp.Write("data.csv", CliFixtures.WideData);
+        var harness = new CliTestHarness();
+
+        var exit = await harness.RunAsync("validate", spec, data);
+
+        Assert.Equal(1, exit);
+        Assert.DoesNotContain(data, harness.Opened);
+        Assert.Equal(string.Empty, harness.StdOut);
+        Assert.Equal(
+            $"file=\"{Path.GetFullPath(spec).Replace("\\", "\\\\")}\" line=6 column=1: error SpecFieldInvalid: " +
+            "[binding] key 'ordering' applies only to shape = \\\"triple\\\"; a wide binding has no additional fields (§5.2/§5.3).\n",
+            harness.StdErr);
+    }
+
+    [Fact]
+    public async Task Validate_WhenAnAttributeNameContainsAQuote_ThenSpecFieldInvalidExit1NamingTheAttribute()
+    {
+        // §10.1: the name is refused at its value, and the rendered scope is the authored name.
+        using var temp = TempDirectory.Create();
+        var spec = temp.Write(
+            "spec.toml", CliFixtures.IndexBoundSpec.Replace("name = \"colour\"", "name = 'col\"our'", StringComparison.Ordinal));
+        var harness = new CliTestHarness();
+
+        var exit = await harness.RunAsync("validate", spec);
+
+        Assert.Equal(1, exit);
+        Assert.Equal(string.Empty, harness.StdOut);
+        Assert.Equal(
+            $"file=\"{Path.GetFullPath(spec).Replace("\\", "\\\\")}\" line=9 column=8 attribute=\"col\\\"our\": error SpecFieldInvalid: " +
+            "[[attribute]] key 'name' contains a CR, LF or '\\\"'; an attribute name is any non-empty string without them (§10.1).\n",
+            harness.StdErr);
+    }
+
+    [Fact]
+    public async Task Validate_WhenADerivedFileMakesATripleBaseWide_ThenTheInheritedTripleFieldsFailTheComposedSpec()
+    {
+        // §5.2/§13: each file reads cleanly on its own, and the composed wide binding still may not
+        // carry the base's ordering and columns: a frozen spec written from it could not be read back.
+        using var temp = TempDirectory.Create();
+        temp.Write(
+            "base.toml",
+            "[spec]\nversion = 1\n[binding]\nshape = \"triple\"\nordering = \"unordered\"\ncolumns = { subject = 0, predicate = 1, value = 2 }\n");
+        var spec = temp.Write(
+            "root.toml",
+            CliFixtures.IndexBoundSpec.Replace("version = 1", "version = 1\nextends = \"base.toml\"", StringComparison.Ordinal));
+        var harness = new CliTestHarness();
+
+        var exit = await harness.RunAsync("validate", spec);
+
+        Assert.Equal(1, exit);
+        Assert.Equal(string.Empty, harness.StdOut);
+        Assert.Equal(
+            "error SourceBindingInvalid: binding.ordering applies only to shape = \\\"triple\\\"; a wide binding has no additional fields (§5.2/§5.3).\n" +
+            "error SourceBindingInvalid: binding.columns applies only to shape = \\\"triple\\\"; a wide binding has no additional fields (§5.2/§5.3).\n",
+            harness.StdErr);
+    }
+
     // ---- exit codes ------------------------------------------------------------------
 
     [Fact]

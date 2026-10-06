@@ -306,6 +306,35 @@ public sealed class SpecReaderTests
         Assert.Equal(SourceValueType.Number, column.ValueType);
     }
 
+    [Theory]
+    [InlineData("{ kind = \"column\", index = 0, value_type = \"date\" }")]
+    [InlineData("{ kind = \"predicate\", name = \"born\", value_type = \"date\" }")]
+    public void Read_WhenValueTypeIsDate_ThenTheSourceFlagsTheReservedDateWithNoValueType(string source)
+    {
+        // §10.2/§11.7 (D-038): SourceValueType has no Date member, so the reserved value is the
+        // source's own flag and the live value type stays unauthored.
+        var section = ReadOk(Attribute(string.Empty, source)).Attributes[0].Source!;
+
+        Assert.True(section.HasDateValueType);
+        Assert.Null(section switch
+        {
+            ColumnSourceSection column => column.ValueType,
+            PredicateSourceSection predicate => predicate.ValueType,
+            _ => throw new InvalidOperationException($"unexpected source section {section.GetType().Name}"),
+        });
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData(", value_type = \"string\"")]
+    [InlineData(", value_type = \"number\"")]
+    public void Read_WhenValueTypeIsLiveOrOmitted_ThenTheDateFlagIsClear(string valueType)
+    {
+        var section = ReadOk(Attribute(string.Empty, $"{{ kind = \"column\", index = 0{valueType} }}")).Attributes[0].Source!;
+
+        Assert.False(section.HasDateValueType);
+    }
+
     [Fact]
     public void Read_WhenOrdinalScaleFullyAuthored_ThenAllFieldsCarry()
     {

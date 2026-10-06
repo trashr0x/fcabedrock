@@ -63,6 +63,26 @@ public sealed class CalibratorTests
         Assert.Contains(result.Diagnostics, d => d.Code == DiagnosticCode.ObservedDomainUsed);
     }
 
+    [Fact]
+    public async Task CalibrateAsync_WhenADateSourceSitsBesideAnObservedAttribute_ThenOnlyTheOtherIsObserved()
+    {
+        // §11.7/D-038: a date source has no discretizer, so it builds no observer. Its column is
+        // never typed, tallied or reported, and "not a date" draws nothing.
+        var date = new AttributeSpec("born", new UnimplementedDateSource(), Include: true, Discretizer: null,
+            new NominalScale(), DeclaredDomain: null, RestrictTo: [], ConversionFixtures.NoLabels,
+            MissingPolicy.Skip, UnknownValuePolicy.Warn);
+        var spec = new BedrockSpec(ConversionFixtures.Wide(hasHeader: false), [Identity("g", 0, null), date]);
+        var (resolved, source) = await WidePrep(spec, "a,2026-01-01\nb,not a date");
+
+        var result = await Calibrator.CalibrateAsync(resolved, source);
+
+        Assert.True(result.TryGetValue(out var calibrated));
+        Assert.Equal("g", Assert.IsType<ObservedDomain>(Assert.Single(calibrated.Calibrations)).AttributeName);
+        Assert.Null(calibrated.Spec.Attributes[1].Discretizer);
+        Assert.Null(calibrated.Spec.Attributes[1].DeclaredDomain);
+        Assert.Equal("g", Assert.Single(result.Diagnostics).Location?.AttributeName);
+    }
+
     // --- authored empty domain (D-122 part 15): [] is complete, distinct from omission ---
 
     [Fact]

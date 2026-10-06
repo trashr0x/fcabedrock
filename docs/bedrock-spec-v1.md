@@ -297,7 +297,11 @@ of the underlying source is not interrupted.
 
 ### 5.2 Wide-CSV binding
 
-No additional fields. Attributes bind by `index` or `name`:
+No additional fields. A `[binding]` table that declares `shape = "wide"` and also
+sets the triple-only `ordering` or `columns` (§5.3) is `SpecFieldInvalid` (Error,
+spec parse). A composed wide binding (§13) that holds an `ordering` or `columns` from
+a file that did not itself declare `shape = "wide"` is `SourceBindingInvalid` (Error,
+spec validate). Attributes bind by `index` or `name`:
 
 ```toml
 [binding]
@@ -1108,7 +1112,8 @@ template     = "..."                         # optional template id to inherit f
 ```
 
 **`name`** *(required, unique, string)*. Any non-empty string excluding
-newlines and the TOML key-quoting character `"`. Real-world data files
+CR, LF and the TOML key-quoting character `"`; a name that contains one of them is
+`SpecFieldInvalid` (Error, spec parse). Real-world data files
 use names like `"bruises?"`, `"feature.1"`, `"days@home"`; the spec
 accepts these as-is so it can round-trip through `.bed` migration and
 other external sources without renaming. A matcher's `name_regex` selects on
@@ -1193,14 +1198,22 @@ type or is **flexible**:
   distinct-value binning.
 
 The value `"date"` is **reserved but not implemented in v1** (§11.7): a spec setting
-`value_type = "date"` parses but is rejected by the v1 planner with
-`DateValueTypeNotImplementedV1`. A `value_type` that is not one of these, that a
+`value_type = "date"` parses and validates but is rejected by the v1 planner with
+`DateValueTypeNotImplementedV1` (Fatal), whether or not the attribute is included
+(§10.9). A `value_type` that is not one of these, that a
 type-fixing discretizer disallows (e.g. `identity` + `"number"`, or `manual_cuts` +
 `"string"`), or that conflicts with the `restrict_to`-implied type, a **string**
 `value_type` paired with a numeric-entry `restrict_to` (an exact `{ value = n }`
 or a range), is `SourceValueTypeInvalid` (Error). The mirror case, a **numeric**
 source with a **bare string** `restrict_to` entry, is owned by
 `RestrictToNumericEntryRequired` (§10.4), not this code.
+
+A source with `value_type = "date"` is validated like any other, except by the rules
+that need to know how a value is typed or compared, which v1 does not define for a
+date: the type rules above, the `restrict_to` entry-type and domain checks (§10.4),
+and the checks of `value_labels` keys and `scale.order` entries against values
+(§10.8, §12.3). Where the source points, and every other rule of its attribute, is
+checked as usual.
 
 With no `discretizer`, an omitted source `value_type` defaults to `"string"`.
 Without a `discretizer`, a filter-only attribute (§10.4) needs
@@ -2075,7 +2088,8 @@ Date-valued scaling is **reserved but not implemented in v1**. v1 treats dates
 as strings (via `identity` / `value_groups`) unless a future date value type
 and discretizer are implemented. A spec that sets `value_type = "date"`
 (§10.2) is parsed but rejected by the v1 planner with
-`DateValueTypeNotImplementedV1`.
+`DateValueTypeNotImplementedV1`. Calibration (§7) never observes, types or
+calibrates a date-valued attribute.
 
 This is a deliberate scope decision: continuous *numeric* support is the v1
 priority, and full date support pulls in cut syntax, `DateOnly`/`DateTime`
@@ -2866,7 +2880,6 @@ never join this registry (D-122). Phase-owned conditions such as
 | `SpecTomlInvalid` | Fatal (parser warnings surface as Warning) | spec parse |
 | `SpecKeyUnrecognized` | Error | spec parse |
 | `SpecFieldInvalid` | Error | spec parse |
-| `SpecSurfaceNotYetSupported` | Error | spec parse (transitional) |
 | `SpecExtendsCycle` | Fatal | spec resolve |
 | `SpecExtendsNotFound` | Fatal | spec resolve |
 | `BindingShapeMissing` | Error | spec validate |
@@ -2954,29 +2967,12 @@ still write a structurally-valid (if degenerate) output rather than failing.
 
 **Transitional codes.** A transitional code is emitted only by milestones *before*
 the feature's implementation milestone; it is removed once the feature lands and is
-**not** part of the v1 end-state set. **No milestone transitional remains.**
+**not** part of the v1 end-state set. **No transitional code remains.**
 Transitional codes are distinct from the permanent `*NotImplementedV1` reservations
 in §20. (Every §11 discretizer kind has a carrier and executes, so an
-unrecognized kind spelling is an ordinary `SpecFieldInvalid`.) One parse-phase code
-remains transitional: `SpecSurfaceNotYetSupported`, now carrying **exactly one**
-recognized-but-unmodelled surface — **`value_type = "date"`**. The
-extends/template/matcher entries were retired by their Slice F carriers (D-078),
-and the **naming carriers** (`display_name`, `formal_attribute_format` on
-`[[attribute]]`/`[[template]]`, `formal_attribute_format` on `[defaults]`) retired
-at **M6 Slice A** when they gained real carriers (D-120) — with them the closed
-per-table deferred-**key** sets are gone entirely, so the surviving owner is a
-*value-level* reject inside the source reader rather than a key. The row retires
-when the D-038 date carrier lands and hands over to the permanent plan-phase
-`DateValueTypeNotImplementedV1`.
-
-**M6 retirement schedule — complete.** The M6 template/matcher and naming contract
-(decisions.md D-114…D-119) has landed in full. **The naming half landed at M6
-Slice A (D-120):** the `display_name` / `formal_attribute_format` portion of
-`SpecSurfaceNotYetSupported` retired, and that code now carries **only**
-`value_type = "date"` until the D-038 carrier hands over to
-`DateValueTypeNotImplementedV1`. **The application half landed at M6 Slice B
-(D-121):** `TemplateMatcherNotImplementedV1` is **removed entirely** — member,
-emit sites, and registry row — so **no M6 transitional remains**.
+unrecognized kind spelling is an ordinary `SpecFieldInvalid`; and
+`value_type = "date"` parses, so the planner rejects it with the permanent
+`DateValueTypeNotImplementedV1`, §10.2.)
 
 **Template, matcher and naming conditions.** Each condition below is named in the
 table above, and its **owner phase, severity, and granularity** is as settled in
@@ -3052,7 +3048,9 @@ a tooling phase outside the §7 processing pipeline. The migrator carries what t
 document model can represent and defers semantic validation to the resolve seam,
 so only transcription failures own codes here; a migrated spec then flows through
 the ordinary parse/resolve/validate/plan phases above. `BedDateTypeNotSupported`
-retires if the date carrier lands (D-038).
+retires when date support lands (D-038): a spec may declare the reserved
+`value_type = "date"` (§10.2), but v1 has nothing to migrate a v2 date attribute's
+cuts to.
 
 **The `probe` phase.** Discovery / `probe` (§7.1) is a draft-generation
 operation outside the §7 conversion pipeline. Its five codes above
@@ -3073,13 +3071,8 @@ count with a bounded sample, never one diagnostic per row, so a malformed column
 at 73M records does not produce 73M diagnostics.
 
 The `DiagnosticCode` enum is the authority for the codes a build can actually
-raise; it grows per slice (EP-3), so it holds fewer members than this registry — a
-registry row joins the enum when the milestone owning its site lands (D-085). After
-**M7 Slice B** the enum had **82** members: 81 after M6 Slice B, plus
-`OutputCxtSizeAdvisory` at its export emit site (D-123). `AttributesMissing`, at its
-resolve emit site, makes **83** (D-135). Exactly one row remains
-outstanding — `DateValueTypeNotImplementedV1` (the D-038 date carrier) — joining
-the enum when its own milestone lands. Every other row is live.
+raise. A registry row joins the enum when its emit site lands (D-085, EP-3), and
+every row above is live, so the enum holds exactly these **83** codes.
 
 ## 17. Determinism rules
 

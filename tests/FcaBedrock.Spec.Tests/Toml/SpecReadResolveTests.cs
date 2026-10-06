@@ -147,6 +147,126 @@ public sealed class SpecReadResolveTests
         Assert.Equal(["head"], discretizer.Groups.Select(g => g.Label));
     }
 
+    // ---- value_type = "date": reserved, refused at plan (§10.2/§11.7, D-038) --------------
+    //
+    // These name the carrier and the refusal code as text, so they compile against a build that
+    // has neither.
+
+    [Theory]
+    [InlineData("{ kind = \"identity\" }")]
+    [InlineData("{ kind = \"free_per_value\" }")]
+    [InlineData("{ kind = \"value_groups\", groups = [{ label = \"g\", values = [\"a\"] }] }")]
+    [InlineData("{ kind = \"ordered_cuts\", order = [\"a\", \"b\"], cuts = [\"b\"] }")]
+    [InlineData("{ kind = \"manual_cuts\", cuts = [30] }")]
+    [InlineData("{ kind = \"equal_width\", bins = 4 }")]
+    [InlineData("{ kind = \"equal_frequency\", bins = 4 }")]
+    public void ReadResolve_WhenValueTypeIsDate_ThenItResolvesWithNoDiscretizerUnderEveryKind(string discretizer)
+    {
+        // v1 has no date reading, so no discretizer is kept and no value-type rule fires: identity
+        // is string-fixing and manual_cuts number-fixing, yet neither reports SourceValueTypeInvalid
+        // for the reserved date (§10.2).
+        var spec = ResolveOk(DateSpec(DateColumn + $"discretizer = {discretizer}\nscale = {{ kind = \"nominal\" }}"), new SourceSchema(1));
+
+        var attribute = Assert.Single(spec.Attributes);
+        Assert.Equal("UnimplementedDateSource", attribute.Source.GetType().Name);
+        Assert.Null(attribute.Discretizer);
+        Assert.IsType<NominalScale>(attribute.Scale);
+    }
+
+    [Theory]
+    [InlineData("source = { kind = \"column\", index = 5, value_type = \"date\" }\ndiscretizer = { kind = \"identity\" }\nscale = { kind = \"nominal\" }", DiagnosticCode.SourceBindingInvalid)]
+    [InlineData("source = { kind = \"column\", name = \"born\", value_type = \"date\" }\ndiscretizer = { kind = \"identity\" }\nscale = { kind = \"nominal\" }", DiagnosticCode.SourceBindingInvalid)]
+    [InlineData("source = { kind = \"predicate\", name = \"born\", value_type = \"date\" }\ndiscretizer = { kind = \"identity\" }\nscale = { kind = \"nominal\" }", DiagnosticCode.SourceBindingInvalid)]
+    [InlineData(DateColumn + "discretizer = { kind = \"identity\" }", DiagnosticCode.AttributeScalingMissing)]
+    [InlineData(DateColumn + "discretizer = { kind = \"manual_cuts\", cuts = [40, 30] }\nscale = { kind = \"nominal\" }", DiagnosticCode.DiscretizerCutsNotAscending)]
+    [InlineData(DateColumn + "discretizer = { kind = \"manual_cuts\", cuts = [30, 40] }\nscale = { kind = \"ordinal\", order = [\"a\"] }", DiagnosticCode.OrdinalOrderNotAllowedWithCuts)]
+    [InlineData(DateColumn + "discretizer = { kind = \"identity\" }\nscale = { kind = \"nominal\" }\nrestrict_to = [{ value = nan }]", DiagnosticCode.RestrictToRangeInvalid)]
+    [InlineData(DateColumn + "discretizer = { kind = \"identity\" }\nscale = { kind = \"ordinal\", order = [\"a\", \"a\"] }\ndeclared_domain = [\"a\"]", DiagnosticCode.OrderDomainInvalid)]
+    [InlineData(DateColumn + "discretizer = { kind = \"identity\" }\nscale = { kind = \"ordinal\", order = [\"a\", \"\"] }\ndeclared_domain = [\"a\"]", DiagnosticCode.OrderDomainInvalid)]
+    [InlineData(DateColumn + "discretizer = { kind = \"value_groups\", groups = [{ label = \"g\", values = [\"a\"] }] }\nscale = { kind = \"ordinal\", order = [\"g\", \"g\"] }", DiagnosticCode.OrderDomainInvalid)]
+    public void Resolve_WhenValueTypeIsDate_ThenTheChecksThatDoNotTypeValuesStillReport(string body, DiagnosticCode code)
+    {
+        // Where the source points (§10.2) and every rule that does not depend on how a value is
+        // typed or compared still apply to a date attribute (EP-14), the raw distinct and non-empty
+        // scale.order check included (D-081): the date stands down only the rules that type or
+        // compare values.
+        var read = SpecReader.Read(DateSpec(body));
+        Assert.True(read.TryGetValue(out var document), Describe(read.Diagnostics));
+
+        var resolved = SpecResolver.Resolve(document, new SourceSchema(1));
+
+        Assert.False(resolved.IsOk);
+        Assert.Equal(code, Assert.Single(resolved.Diagnostics).Code);
+    }
+
+    [Theory]
+    [InlineData("discretizer = { kind = \"identity\" }\nscale = { kind = \"nominal\" }\nrestrict_to = [{ value = 3 }]")]                         // a string source: SourceValueTypeInvalid
+    [InlineData("discretizer = { kind = \"manual_cuts\", cuts = [30] }\nscale = { kind = \"nominal\" }\nrestrict_to = [\"x\"]")]               // a number source: RestrictToNumericEntryRequired
+    [InlineData("discretizer = { kind = \"identity\" }\nscale = { kind = \"nominal\" }\ndeclared_domain = [\"a\"]\nvalue_labels = { b = \"B\" }")] // ValueLabelKeyNotInDomain
+    [InlineData("discretizer = { kind = \"identity\" }\nscale = { kind = \"nominal\" }\ndeclared_domain = [\"a\"]\nrestrict_to = [\"b\"]")]      // the RestrictToValueNotInDomain warning
+    public void Resolve_WhenValueTypeIsDate_ThenTheChecksThatTypeOrCompareValuesStandDown(string body)
+    {
+        // v1 defines no date value type and no date identity, so a check that needs either has
+        // nothing to judge (§10.2): each input below draws its noted diagnostic for a string or
+        // number source, and nothing for a date.
+        var read = SpecReader.Read(DateSpec(DateColumn + body));
+        Assert.True(read.TryGetValue(out var document), Describe(read.Diagnostics));
+
+        var resolved = SpecResolver.Resolve(document, new SourceSchema(1));
+
+        Assert.True(resolved.IsOk, Describe(resolved.Diagnostics));
+        Assert.Empty(resolved.Diagnostics);
+    }
+
+    [Theory]
+    [InlineData("discretizer = { kind = \"identity\" }\nscale = { kind = \"nominal\" }")]
+    [InlineData("include = false\ndiscretizer = { kind = \"identity\" }\nscale = { kind = \"nominal\" }")]
+    [InlineData("include = false\nrestrict_to = [\"2026-01-01\"]")]
+    [InlineData("discretizer = { kind = \"identity\" }\nscale = { kind = \"ordinal\", order = [\"a\", \"b\"] }")]                         // a valid order
+    [InlineData("discretizer = { kind = \"identity\" }\nscale = { kind = \"ordinal\" }")]                                                    // no order
+    [InlineData("include = false\ndiscretizer = { kind = \"identity\" }\nscale = { kind = \"ordinal\", order = [\"a\", \"a\"] }")]   // a parked malformed order (D-049)
+    public void ReadResolve_WhenValueTypeIsDate_ThenPlanRefusesItWhetherOrNotIncluded(string body)
+    {
+        // §10.2/§11.7/§20: the planner refuses the reserved date. A source is live configuration on
+        // an excluded attribute too (§10.1, D-076), and a filter-only one would read the column, so
+        // include does not change the refusal. Nor does an ordinal order that is valid, omitted or
+        // parked: the plan's order checks need a discretizer, and a date keeps none (D-049, D-081).
+        var spec = ResolveOk(DateSpec(DateColumn + body), new SourceSchema(1));
+
+        var plan = Plan(spec, new SourceSchema(1));
+
+        Assert.False(plan.TryGetValue(out _));
+        var diagnostic = Assert.Single(plan.Diagnostics);
+        Assert.Equal("DateValueTypeNotImplementedV1", diagnostic.Code.ToString());
+        Assert.Equal(DiagnosticSeverity.Fatal, diagnostic.Severity);
+        Assert.Equal("d", diagnostic.Location?.AttributeName);
+    }
+
+    [Fact]
+    public void ReadResolve_WhenATemplateSuppliesTheDateAttributesScaling_ThenItStillKeepsNoDiscretizer()
+    {
+        // Templates cannot carry a source (§9.1), so the date flag survives the effective-section
+        // fold (D-121) unchanged: the template's discretizer is resolved and dropped, and its scale
+        // is kept for the planner's refusal.
+        var spec = ResolveOk(
+            DateSpec(DateColumn + "template = \"t\"\n[[template]]\nid = \"t\"\n" +
+                "discretizer = { kind = \"identity\" }\nscale = { kind = \"nominal\" }"),
+            new SourceSchema(1));
+
+        var attribute = Assert.Single(spec.Attributes);
+        Assert.Equal("UnimplementedDateSource", attribute.Source.GetType().Name);
+        Assert.Null(attribute.Discretizer);
+        Assert.IsType<NominalScale>(attribute.Scale);
+    }
+
+    private const string DateColumn = "source = { kind = \"column\", index = 0, value_type = \"date\" }\n";
+
+    private static string DateSpec(string attributeBody) =>
+        $"[spec]\nversion = 1\n[binding]\nshape = \"wide\"\nhas_header = false\n[[attribute]]\nname = \"d\"\n{attributeBody}\n";
+
+    private static string Describe(IEnumerable<BedrockDiagnostic> diagnostics) =>
+        string.Join("; ", diagnostics.Select(d => $"{d.Code}: {d.Message}"));
+
     private static BedrockSpec ResolveOk(string toml, SourceSchema? schema)
     {
         var read = SpecReader.Read(toml);

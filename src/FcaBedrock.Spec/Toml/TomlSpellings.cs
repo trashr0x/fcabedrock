@@ -8,9 +8,9 @@ namespace FcaBedrock.Spec.Toml;
 /// Single source of truth for the TOML surface's vocabulary: one spelling table
 /// per enum, consumed in both directions by the reader and the writer so the two
 /// can never drift (EP-5), plus the kind names behind the D-070 dispatch. It holds no
-/// deferred-surface set (D-078 and D-120 removed the D-075 sets), so
-/// <c>SpecSurfaceNotYetSupported</c> has one value-level owner in
-/// <see cref="AttributeReader"/>: the <c>value_type = "date"</c> reject.
+/// deferred-surface set (D-078 and D-120 removed the D-075 sets); the reserved
+/// <c>value_type = "date"</c> is a spelling here (<see cref="DateValueType"/>) that the reader
+/// carries as a flag on the source and the planner refuses (D-038).
 /// </summary>
 internal static class TomlSpellings
 {
@@ -160,8 +160,6 @@ internal static class TomlSpellings
     // There is no D-075 key-level deferred-surface set (D-120): display_name and
     // formal_attribute_format have carriers on [defaults], [[attribute]] and [[template]],
     // and an empty set would be dead scaffolding, as with the tier-2 kind set above.
-    // SpecSurfaceNotYetSupported keeps one owner, the value-level `value_type = "date"`
-    // reject in AttributeReader.ReadValueType (D-038 defers date support).
 
     /// <summary>Parses <paramref name="text"/> against a spelling table; exact (ordinal) match only.</summary>
     internal static bool TryParse<T>((string Text, T Value)[] table, string text, out T value)

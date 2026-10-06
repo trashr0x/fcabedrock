@@ -1,4 +1,5 @@
 using System.Globalization;
+using FcaBedrock.Core.Spec;
 
 namespace FcaBedrock.Discovery;
 
@@ -45,7 +46,7 @@ internal static class PredicateNaming
         var used = new HashSet<string>(StringComparer.Ordinal);
         for (var i = 0; i < count; i++)
         {
-            if (AttributeNaming.IsUsableName(predicates[i]))
+            if (AttributeNameValidity.IsValid(predicates[i]))
             {
                 used.Add(predicates[i]);
             }
@@ -55,7 +56,7 @@ internal static class PredicateNaming
         for (var i = 0; i < count; i++)
         {
             var predicate = predicates[i];
-            if (AttributeNaming.IsUsableName(predicate))
+            if (AttributeNameValidity.IsValid(predicate))
             {
                 // A usable predicate is both selector and name, the ordinary case, and not an
                 // adjustment: nothing departed from what the data spells.

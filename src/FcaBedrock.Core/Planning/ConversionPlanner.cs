@@ -25,9 +25,9 @@ public static class ConversionPlanner
     /// effective spec and its schema come from <paramref name="calibrated"/>, so Plan
     /// cannot be handed an unrelated schema and "plan an uncalibrated spec" is a
     /// compile error. Aggregates plan diagnostics (EP-14) in two stages: every static
-    /// check (object key, deferred scale, value-bin ordinal order) reports first, and the
-    /// per-attribute checks (collisions, invalid rendered names) run only when no static
-    /// check is an Error or Fatal. <paramref name="labelStyle"/>
+    /// check (object key, reserved date value type, deferred scale, value-bin ordinal order)
+    /// reports first, and the per-attribute checks (collisions, invalid rendered names) run
+    /// only when no static check is an Error or Fatal. <paramref name="labelStyle"/>
     /// selects how cut bin labels render in names (spec §8/§14); it affects rendered
     /// names only, never identity (EP-15, D-044), and is carried on the plan so the cxt
     /// output fingerprint pairs with it.
@@ -134,8 +134,9 @@ public static class ConversionPlanner
         Dictionary<FormalAttributeIdentity, int> idByIdentity,
         List<BedrockDiagnostic> diagnostics)
     {
-        // ResolvedSpec.Create guarantees both for an included attribute; a violation is an
-        // internal invariant, not user error.
+        // ResolvedSpec.Create guarantees both for an included attribute, except one whose source
+        // is the reserved date reading, and ValidateStatic refuses that one before any attribute
+        // is planned; a violation is an internal invariant, not user error.
         var discretizer = attribute.Discretizer
             ?? throw new InvalidOperationException($"Included attribute '{attribute.Name}' has no discretizer.");
         var scale = attribute.Scale
@@ -411,6 +412,19 @@ public static class ConversionPlanner
         // document model (D-080); the planner keeps only its plan-phase checks.
         foreach (var attribute in spec.Attributes)
         {
+            // §10.2/§11.7/§20 / D-038: value_type = "date" is a reserved reading the v1 planner
+            // refuses, a permanent reservation like the deferred scales below. Unlike them it is
+            // refused whether or not the attribute is included: a source is live configuration on
+            // an excluded attribute too (§10.1, D-076), and v1 cannot read its values.
+            if (attribute.Source is UnimplementedDateSource)
+            {
+                diagnostics.Add(new BedrockDiagnostic(
+                    DiagnosticCode.DateValueTypeNotImplementedV1,
+                    DiagnosticSeverity.Fatal,
+                    $"Attribute '{attribute.Name}' declares value_type = \"date\", which v1 does not implement (§10.2/§11.7/§20).",
+                    new DiagnosticLocation(AttributeName: attribute.Name)));
+            }
+
             if (!attribute.Include)
             {
                 // §10.9 / D-049: include = false is an authoring toggle. Any emitted
