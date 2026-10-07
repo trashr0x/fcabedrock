@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using System.Text;
 using FcaBedrock.Diagnostics;
 
@@ -8,9 +9,10 @@ namespace FcaBedrock.Cli.Tests;
 /// target names, the stdout/stderr/exit contract, the <c>--v2-compat</c> override, the size
 /// advisory, and the rule that an invalid run publishes nothing.
 /// <para>
-/// Every expected artifact below is derived by hand from the spec text and the two data rows
-/// beside it (two declared values, two objects, one cross each), so the byte locks are an
-/// independent statement of what the format is, not a recording of what the writer did.
+/// Every expected artifact below is derived from its spec text and data alone: by hand from the
+/// two data rows of a small fixture, or from the rule that generates the rows of the large one.
+/// So the byte locks are an independent statement of what the format is, not a recording of
+/// what the writer did.
 /// </para>
 /// </summary>
 public sealed class ConvertCommandTests
@@ -367,6 +369,192 @@ public sealed class ConvertCommandTests
         Assert.Equal(1, Occurrences(both.Harness.StdErr, DiagnosticCode.UnknownValueObserved.ToString()));
     }
 
+    // ---- a halt before any pass reaches the end of DATA --------------------------------------
+    //
+    // The halt cases below place a structural halt (an unusable or duplicate object key, or a
+    // non-contiguous subject) about halfway through DATA, with far more data after it than the
+    // reader reads ahead. Every pass over that unchanged input stops before the end of DATA (each
+    // emit pass at the halting record), so no input digest completes, though nothing failed to
+    // read. Unless a signal cancels the run, the halt's diagnostic is the whole report. Each halt
+    // case first checks that no read reached the end of DATA, so it cannot pass for the wrong
+    // reason if the reader ever reads further ahead.
+
+    [Theory]
+    [InlineData("dat", false)]
+    [InlineData("cxt", false)]
+    [InlineData("both", false)]
+    [InlineData("both", true)]
+    public async Task Convert_WhenAnUnusableKeyHaltsBeforeAnyPassReachesTheEnd_ThenItsDiagnosticIsTheWholeReport(
+        string format, bool noManifest)
+    {
+        using var run = ConvertRun.Wide(KeyedSpec, KeyedData(",red"));
+        var ends = 0;
+        run.Harness.OpenInput = CountingEnds(run.Data, () => ends++);
+
+        var exit = await run.ConvertAsync(Options(format, noManifest));
+
+        Assert.True(ends == 0, $"a read reached the end of DATA {ends} time(s)");
+        Assert.Equal(1, exit);
+        Assert.Equal(string.Empty, run.Harness.StdOut);
+        Assert.Equal(UnusableKeyLine(HaltRecord), run.Harness.StdErr);
+        Assert.Empty(Directory.GetFiles(run.Directory, "out*"));
+    }
+
+    [Theory]
+    [InlineData("dat", false)]
+    [InlineData("cxt", true)]
+    public async Task Convert_WhenADuplicateKeyHaltsBeforeAnyPassReachesTheEnd_ThenItsDiagnosticIsTheWholeReport(
+        string format, bool noManifest)
+    {
+        // duplicate_object_policy defaults to "fail" (§6.1), so repeating an earlier key halts.
+        using var run = ConvertRun.Wide(KeyedSpec, KeyedData("k0000010,red"));
+        var ends = 0;
+        run.Harness.OpenInput = CountingEnds(run.Data, () => ends++);
+
+        var exit = await run.ConvertAsync(Options(format, noManifest));
+
+        Assert.True(ends == 0, $"a read reached the end of DATA {ends} time(s)");
+        Assert.Equal(1, exit);
+        Assert.Equal(string.Empty, run.Harness.StdOut);
+        Assert.Equal(DuplicateKeyLine, run.Harness.StdErr);
+        Assert.Empty(Directory.GetFiles(run.Directory, "out*"));
+    }
+
+    [Fact]
+    public async Task Convert_WhenANonContiguousSubjectHaltsBeforeAnyPassReachesTheEnd_ThenItsDiagnosticIsTheWholeReport()
+    {
+        // The same rule for a triple halt: under ordering = "subject_grouped", a subject recurs
+        // after its group has closed.
+        using var temp = TempDirectory.Create();
+        var harness = new CliTestHarness();
+        var spec = temp.Write("spec.toml", GroupedTripleSpec);
+        var data = temp.Write("data.csv", GroupedTripleData());
+        var ends = 0;
+        harness.OpenInput = CountingEnds(data, () => ends++);
+
+        var exit = await harness.RunAsync("convert", spec, data, "--out", temp.Resolve("out"), "--format", "both");
+
+        Assert.True(ends == 0, $"a read reached the end of DATA {ends} time(s)");
+        Assert.Equal(1, exit);
+        Assert.Equal(string.Empty, harness.StdOut);
+        Assert.Equal(NonContiguousSubjectLine, harness.StdErr);
+        Assert.Empty(Directory.GetFiles(temp.Path, "out*"));
+    }
+
+    [Fact]
+    public async Task Convert_WhenATinyInputHaltsAfterAPassReachedTheEnd_ThenItsDiagnosticIsTheWholeReport()
+    {
+        // The control for the halt cases: the whole input arrives in the reader's first fill, so a
+        // pass reaches the end and completes the input digest before the halt.
+        using var run = ConvertRun.Wide(KeyedSpec, "id,colour\nk1,red\n,green\nk3,blue\n");
+        var ends = 0;
+        run.Harness.OpenInput = CountingEnds(run.Data, () => ends++);
+
+        var exit = await run.ConvertAsync("--format", "dat");
+
+        Assert.True(ends > 0, "no read reached the end of DATA");
+        Assert.Equal(1, exit);
+        Assert.Equal(string.Empty, run.Harness.StdOut);
+        Assert.Equal(UnusableKeyLine(1), run.Harness.StdErr);
+        Assert.Empty(Directory.GetFiles(run.Directory, "out*"));
+    }
+
+    [Fact]
+    public async Task Convert_WhenAValidInputSpansManyReaderFills_ThenTheRunCommitsWithItsRawHashes()
+    {
+        // The success side of the same boundary: a pass that reads to the end completes the digest
+        // however many fills it takes, and the manifest records the raw SHA-256 of DATA and of both
+        // committed files.
+        using var run = ConvertRun.Wide(KeyedSpec, KeyedData(null));
+        var ends = 0;
+        run.Harness.OpenInput = CountingEnds(run.Data, () => ends++);
+
+        var exit = await run.ConvertAsync("--format", "both");
+
+        Assert.True(ends > 0, "no read reached the end of DATA");
+        Assert.Equal(0, exit);
+        Assert.Equal(string.Empty, run.Harness.StdOut);
+        Assert.Equal(string.Empty, run.Harness.StdErr);
+        Assert.Equal(
+            $"B\n\n{KeyedRows}\n3\n\n"
+                + string.Concat(Enumerable.Range(0, KeyedRows).Select(i => $"k{i:D7}\n"))
+                + "colour-red\ncolour-green\ncolour-blue\n"
+                + string.Concat(Enumerable.Range(0, KeyedRows).Select(i => Incidence[i % 3] + "\n")),
+            run.Text(".cxt"));
+        Assert.Equal(string.Concat(Enumerable.Range(0, KeyedRows).Select(i => $"{(i % 3) + 1}\n")), run.Text(".dat"));
+
+        var manifest = run.Text(".manifest.toml");
+        Assert.Contains($"input_hash = \"{HashOf(File.ReadAllBytes(run.Data))}\"", manifest, StringComparison.Ordinal);
+        Assert.Contains($"hash = \"{HashOf(run.Bytes(".cxt"))}\"", manifest, StringComparison.Ordinal);
+        Assert.Contains($"hash = \"{HashOf(run.Bytes(".dat"))}\"", manifest, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Convert_WhenAMalformedFieldFollowsTheReadAhead_ThenItStaysTheCodelessDataFailure()
+    {
+        // A read failure is not a halt: DATA could not be read, so the code-less DATA error is the
+        // whole report.
+        using var run = ConvertRun.Wide(KeyedSpec, KeyedData("k0030000,re\"d"));
+
+        var exit = await run.ConvertAsync("--format", "dat");
+
+        Assert.Equal(1, exit);
+        Assert.Equal(string.Empty, run.Harness.StdOut);
+        Assert.Equal(DiagnosticRenderer.RenderHostError(RunPipeline.DataReadMessage(run.Data)), run.Harness.StdErr);
+        Assert.Empty(Directory.GetFiles(run.Directory, "out*"));
+    }
+
+    [Fact]
+    public async Task Convert_WhenTheDataChangesAndTheChangedBytesHalt_ThenTheChangeIsReportedAfterTheHalt()
+    {
+        // Tiny inputs complete a pass on every read. The schema pass reads valid bytes and the .dat
+        // pass reads bytes that halt at record 1, so two completed passes disagree. The changed
+        // input is the run's failure: its code-less error follows the halt's diagnostic.
+        using var run = ConvertRun.Wide(KeyedSpec, "id,colour\nk1,red\nk2,green\n");
+        var opens = 0;
+        run.Harness.OpenInput = path =>
+        {
+            if (!string.Equals(path, run.Data, StringComparison.Ordinal))
+            {
+                return File.OpenRead(path);
+            }
+
+            var pass = opens++ == 0 ? "id,colour\nk1,red\nk2,green\n" : "id,colour\nk1,red\n,green\n";
+            return new MemoryStream(Encoding.UTF8.GetBytes(pass), writable: false);
+        };
+
+        var exit = await run.ConvertAsync("--format", "dat");
+
+        Assert.Equal(1, exit);
+        Assert.Equal(string.Empty, run.Harness.StdOut);
+        Assert.Equal(
+            UnusableKeyLine(1) + DiagnosticRenderer.RenderHostError(RunPipeline.InputChangedMessage(run.Data)),
+            run.Harness.StdErr);
+        Assert.Empty(Directory.GetFiles(run.Directory, "out*"));
+    }
+
+    [Fact]
+    public async Task Convert_WhenTheSignalArrivesAfterAHaltedPassIsStaged_ThenTheRunIsCancelledAndReportsNothing()
+    {
+        // The signal lands as the halted .dat stage closes: the halt's diagnostic exists and the
+        // run's result checks have not run yet. Cancellation still wins: nothing is reported or
+        // committed, and the run's private files are removed.
+        using var run = ConvertRun.Wide(KeyedSpec, KeyedData(",red"));
+        var ends = 0;
+        run.Harness.OpenInput = CountingEnds(run.Data, () => ends++);
+        run.Harness.PublicationFiles.MutateBefore = "StreamClose:out.dat.fcabedrock-stage-T";
+        run.Harness.PublicationFiles.Mutate = run.Harness.Signals.Cancel;
+
+        var exit = await run.ConvertAsync("--format", "dat");
+
+        Assert.True(ends == 0, $"a read reached the end of DATA {ends} time(s)");
+        Assert.Equal(1, run.Harness.PublicationFiles.MutationsFired);
+        Assert.Equal(3, exit);
+        Assert.Equal(string.Empty, run.Harness.StdOut);
+        Assert.Equal(string.Empty, run.Harness.StdErr);
+        Assert.Empty(Directory.GetFiles(run.Directory, "out*"));
+    }
+
     // ---- the .cxt size advisory ---------------------------------------------------------------
 
     [Theory]
@@ -520,6 +708,100 @@ public sealed class ConvertCommandTests
 
     private const string V2LabelCollisionData = "age,label\n35,30to<40\n";
 
+    // Keyed wide rows `k0000000,red`, `k0000001,green`, `k0000002,blue` and so on under an
+    // `id,colour` header: about 840 KB, in which every declared value occurs and every object
+    // crosses one column. A test replaces record HaltRecord with a halting or malformed row; it
+    // starts about 420 KB in, well past the reader's first fill, and about 420 KB of rows follow it.
+    private const int KeyedRows = 60_000;
+
+    private const int HaltRecord = 30_000;
+
+    private const string KeyedSpec = """
+        [spec]
+        version = 1
+
+        [binding]
+        shape = "wide"
+        has_header = true
+
+        [binding.object_key]
+        mode = "column"
+        column = 0
+
+        [[attribute]]
+        name = "colour"
+        source = { kind = "column", index = 1 }
+        discretizer = { kind = "identity" }
+        scale = { kind = "nominal" }
+        declared_domain = ["red", "green", "blue"]
+        """;
+
+    private const string GroupedTripleSpec = """
+        [spec]
+        version = 1
+
+        [binding]
+        shape = "triple"
+        ordering = "subject_grouped"
+        columns = { subject = 0, predicate = 1, value = 2 }
+
+        [[attribute]]
+        name = "colour"
+        source = { kind = "predicate", name = "colour" }
+        discretizer = { kind = "identity" }
+        scale = { kind = "nominal" }
+        declared_domain = ["red", "green", "blue"]
+        """;
+
+    private const string DuplicateKeyLine =
+        "record=30000: error DuplicateObjectKey: The wide object key 'k0000010' at record 30000 duplicates an "
+        + "earlier record; duplicate_object_policy = \\\"fail\\\" (§6.1).\n";
+
+    private const string NonContiguousSubjectLine =
+        "record=30000: error TripleSubjectNotContiguous: Triple subject 's0000005' recurs at record 30000 after "
+        + "an intervening subject; ordering = \\\"subject_grouped\\\" requires contiguous subjects (§5.3).\n";
+
+    private static readonly string[] Colours = ["red", "green", "blue"];
+
+    private static readonly string[] Incidence = ["X..", ".X.", "..X"];
+
+    // The rendered ObjectKeyValueInvalid line for the empty key at `record`.
+    private static string UnusableKeyLine(int record) =>
+        $"record={record}: error ObjectKeyValueInvalid: The wide object key at record {record} is empty, "
+        + "whitespace-only, a missing token, absent, or contains a control character; it cannot name an object (§5.4).\n";
+
+    // KeyedRows keyed rows, with `replacement`, when given, in place of record HaltRecord.
+    private static string KeyedData(string? replacement) =>
+        "id,colour\n" + string.Concat(Enumerable.Range(0, KeyedRows).Select(i =>
+            (i == HaltRecord && replacement is not null ? replacement : $"k{i:D7},{Colours[i % 3]}") + "\n"));
+
+    // One subject_grouped triple per subject, except that record HaltRecord repeats `s0000005` after
+    // its group has closed.
+    private static string GroupedTripleData() =>
+        string.Concat(Enumerable.Range(0, KeyedRows).Select(i =>
+            (i == HaltRecord ? "s0000005,colour,red" : $"s{i:D7},colour,{Colours[i % 3]}") + "\n"));
+
+    private static string[] Options(string format, bool noManifest) =>
+        noManifest ? ["--format", format, "--no-manifest"] : ["--format", format];
+
+    // Opens every input as a file except DATA, whose bytes are served from memory by a stream that
+    // reports each read reaching the end of DATA.
+    private static Func<string, Stream> CountingEnds(string data, Action reachedEnd)
+    {
+        var bytes = File.ReadAllBytes(data);
+        return path =>
+        {
+            if (string.Equals(path, data, StringComparison.Ordinal))
+            {
+                return new EndCountingStream(bytes, reachedEnd);
+            }
+
+            return File.OpenRead(path);
+        };
+    }
+
+    private static string HashOf(byte[] bytes) => "sha256:" + Convert.ToHexStringLower(SHA256.HashData(bytes));
+
     private static int Occurrences(string text, string value)
     {
         var count = 0;
@@ -531,6 +813,28 @@ public sealed class ConvertCommandTests
         }
 
         return count;
+    }
+
+    /// <summary>
+    /// DATA's bytes served from memory, reporting each read that reached the end of the input: a
+    /// read that returned nothing for a non-empty request. A pass completes its input digest only on
+    /// such a read.
+    /// </summary>
+    private sealed class EndCountingStream(byte[] bytes, Action reachedEnd) : MemoryStream(bytes, writable: false)
+    {
+        public override int Read(byte[] buffer, int offset, int count) => Count(base.Read(buffer, offset, count), count);
+
+        public override int Read(Span<byte> buffer) => Count(base.Read(buffer), buffer.Length);
+
+        private int Count(int read, int requested)
+        {
+            if (read == 0 && requested > 0)
+            {
+                reachedEnd();
+            }
+
+            return read;
+        }
     }
 }
 

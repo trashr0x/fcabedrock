@@ -52,8 +52,9 @@ order of `value_labels` (D-075), an authored negative zero in `manual_cuts` or a
 `equal_width` range resolving as zero (D-101), an `ordinal` scale over closed-ended
 `manual_cuts` or `ordered_cuts` bins getting one correctly crossed threshold per bin (spec §12.3),
 publication cleanup on Windows becoming able to reach its private transaction files at full paths
-of 260 characters or more (D-125), and wording edits to some diagnostic messages, the `--help`
-text and the package description.
+of 260 characters or more (D-125), a halted `convert` run no longer reporting that its readable
+data file could not be read, and wording edits to some diagnostic messages, the `--help` text and
+the package description.
 M9 begins after M8.2 is accepted and integrated. Work deferred beyond v1 is in the
 [deferred backlog](#deferred-backlog-not-v1).
 
@@ -416,7 +417,12 @@ and the refusal was read as the file being gone, so a successful run could leave
 beside its outputs, and a later run to the same output base could refuse at exit 1 because of
 them. Cleanup is otherwise unchanged: it is best effort, it removes only an object it proves is
 its own, and an object it cannot remove (after an I/O or permission failure, or a refused proof)
-stays in place as before. The
+stays in place as before. A `convert` run that collects an Error or Fatal diagnostic no longer
+adds the code-less error that its readable data file could not be read when no input pass read
+that file to the end, as happens when a halt (an unusable or duplicate object key, or a
+non-contiguous subject) comes well before the end of a large file. Unless an output stage failed,
+the data file could not be read, two complete input passes hashed differently or the run was
+cancelled, each reported as before, such a run reports its diagnostics alone and exits 1. The
 `NoFormalAttributes` warning now also names an attribute that yields no column as a cause. The
 wording of some diagnostic and internal exception messages changes to remove dashes used as
 punctuation and references to past milestones, `--help` headings take the form `name: summary`,

@@ -246,24 +246,31 @@ internal static class ConvertCommand
                 environment, diagnostics, RunPipeline.InputChangedMessage(run.DataPath), cancellation);
         }
 
-        if (run.Input.Digest is null)
-        {
-            // Every emit pass reads the source to its end, so a run with no completed pass never
-            // read the data at all — the same condition, and the same honest message, as any
-            // other unreadable input.
-            transaction.Rollback();
-            return RunPipeline.HostFailure(
-                environment, diagnostics, RunPipeline.DataReadMessage(run.DataPath), cancellation);
-        }
-
         if (DiagnosticRenderer.HasErrors(diagnostics))
         {
             // Every staged artifact is invalid; nothing is committed and nothing becomes public
-            // (D-105's caller-discard rule, realized as a discarded stage).
+            // (D-105's caller-discard rule, realized as a discarded stage). This holds for every
+            // collected Error or Fatal, including a storage failure that the session aggregated
+            // across passes and added at disposal, and whether or not a pass completed a digest.
+            // It precedes the digest check because a halt (an unusable or duplicate object key, a
+            // non-contiguous subject) can stop a pass before the end of DATA. A missing digest
+            // alone therefore does not show that DATA could not be read. The code-less DATA error
+            // is only for an input that cannot be read (D-122 part 2).
             transaction.Rollback();
             cancellation.ThrowIfCancellationRequested();
             DiagnosticRenderer.Write(environment.Error, diagnostics);
             return 1;
+        }
+
+        if (run.Input.Digest is null)
+        {
+            // A guard, not an expected path: with no Error or Fatal there was no halt, so every emit
+            // pass read to the end of the input and completed a digest. A run without one has no
+            // evidence that its input was stable, so it is refused with the code-less DATA error
+            // rather than published.
+            transaction.Rollback();
+            return RunPipeline.HostFailure(
+                environment, diagnostics, RunPipeline.DataReadMessage(run.DataPath), cancellation);
         }
 
         if (writesManifest)
