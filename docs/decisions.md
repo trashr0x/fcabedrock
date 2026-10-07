@@ -85,7 +85,7 @@ changes an earlier one. A new entry MUST add its line here.
 - D-130: Authored-text integrity: one mechanical command over raw decoded text, two fixed instruction-entry checks, an include/exclude manifest and a process-level test runner *(supersedes the checker portion of D-129 rule 5)*
 - D-131: One-time heading-separator migration in the decision log, roadmap and benchmark record: colons replace em dashes, changed anchors are accepted, and no alias is kept *(supersedes the heading-anchor clause of D-129 rule 1 for this migration only)*
 - D-132: No separate public evidence file; the benchmark guide carries only the identities that qualify its current claims
-- D-134: Spec passages that contradict their rule's owner are corrected to it, and enforced defaults, bounds and allowed values shown only in examples, and enforced rules stated nowhere, are stated in prose *(probe guard defaults covered in place on 2026-10-05)*
+- D-134: Spec passages that contradict their rule's owner are corrected to it, and enforced defaults, bounds and allowed values shown only in examples, and enforced rules stated nowhere, are stated in prose *(probe guard defaults covered in place on 2026-10-05; spec-file bytes covered in place on 2026-10-07)*
 
 ### M1 (mini-mushroom walking skeleton)
 
@@ -1197,7 +1197,7 @@ Refinements from the second audit pass.
 
 ### D-134: Spec passages that contradict their rule's owner are corrected to it, and enforced defaults, bounds and allowed values shown only in examples, and enforced rules stated nowhere, are stated in prose
 
-- **Status:** accepted; amended in place on 2026-09-27 to add the third kind, and on 2026-10-05 to cover §7.1's probe guard defaults
+- **Status:** accepted; amended in place on 2026-09-27 to add the third kind, on 2026-10-05 to cover §7.1's probe guard defaults, and on 2026-10-07 to cover §2's spec-file bytes
 - **Date:** 2026-09-26
 - **Decision:** M8.2's review of the Bedrock spec makes three kinds of normative text change
   without a decision of its own for each. (1) A passage that contradicts the section or decision
@@ -1224,7 +1224,12 @@ Refinements from the second audit pass.
   1,073,741,824 bytes: its example showed the value and its prose said only 1 GB, and the CLI, not
   the reader or resolver, applies it. Amended in place on 2026-10-05: it also covers §7.1's three
   probe aggregate-guard defaults, which no spec text stated and which Discovery's `ProbeOptions`
-  applies and its tests pin.
+  applies and its tests pin. Amended in place on 2026-10-07: it also covers §2's rule for
+  the bytes of a spec file (well-formed UTF-8; one optional initial UTF-8 byte-order mark is
+  consumed, and every later `EF BB BF` sequence is U+FEFF document text, whose placement the TOML
+  grammar judges) and §13's statement that a base file §2 rejects is
+  `SpecExtendsNotFound`. No spec text stated either rule; the CLI's spec decoder and its
+  file-backed `extends` host apply them, and their tests pin them.
 - **Why:** EP-8 and the spec's status line require a reviewed, recorded change whenever spec text is
   corrected to match the implementation. These corrections change no behavior, so one rule records
   them instead of one entry each. Both §7 passages date from the spec's first version: the
@@ -1235,9 +1240,11 @@ Refinements from the second audit pass.
   implementation to match the contradicting passages (it would move `FormalAttributeCollision` to a
   phase that cannot see a data-dependent collision, and force a calibration pass on specs every
   build has treated as fully declared).
-- **Affects:** spec §3, §5.4, §7, §8, §9.2, §10.4, §10.5, §11.2, §11.4, §11.5, §11.6, §12.3,
-  §14, §16.2 and §16.4; `docs/roadmap.md` (the M8.2 paragraph). No code, test, public API,
-  diagnostic, fingerprint or output byte changes.
+- **Affects:** spec §2, §3, §5.4, §7, §8, §9.2, §10.4, §10.5, §11.2, §11.4, §11.5, §11.6,
+  §12.3, §13, §14, §16.2 and §16.4; `docs/roadmap.md` (the M8.2 paragraph). The normative prose
+  corrections alone change no code or tests, public API, diagnostics, fingerprints or output bytes.
+  Separate CLI tests added with the 2026-10-07 amendment pin the existing byte policy and change no
+  behavior.
 
 ---
 

@@ -239,6 +239,39 @@ public sealed class FileSpecTextSourceTests
     }
 
     [Fact]
+    public void ReadText_WhenASecondUtf8ByteOrderMarkFollowsTheFirst_ThenOnlyTheFirstIsConsumed()
+    {
+        // Only the first mark is a byte-order mark (§2). The second is text: it reaches the TOML
+        // reader as U+FEFF, and the grammar, not the decoder, decides whether it is allowed there.
+        var host = HostOver([0xEF, 0xBB, 0xBF, 0xEF, 0xBB, 0xBF, (byte)'a', (byte)'=', (byte)'1']);
+
+        Assert.Equal("\uFEFFa=1", host.ReadText("spec.toml"));
+    }
+
+    [Fact]
+    public void ReadText_WhenTheMarkBytesComeAfterTheStart_ThenTheyDecodeAsText()
+    {
+        // Only a file's first three bytes can be the mark; the same bytes later are the character
+        // U+FEFF, kept where they were written.
+        var host = HostOver([(byte)'#', 0xEF, 0xBB, 0xBF, (byte)'\n', (byte)'a', (byte)'=', (byte)'1']);
+
+        Assert.Equal("#\uFEFF\na=1", host.ReadText("spec.toml"));
+    }
+
+    [Theory]
+    [InlineData(new byte[] { 0xEF, 0xBB })]                                    // a mark cut short
+    [InlineData(new byte[] { (byte)'a', (byte)'=', (byte)'"', 0xC3 })]         // a character cut short at the end
+    [InlineData(new byte[] { 0xEF, 0xBB, 0xBF, (byte)'#', 0xED, 0xA0, 0x80 })] // an encoded surrogate after a mark
+    public void ReadText_WhenTheBytesAreTruncatedOrEncodeASurrogate_ThenTheyAreRejected(byte[] bytes)
+    {
+        // An incomplete sequence at the end of the file is as ill-formed as one in the middle, and a
+        // leading mark does not exempt the bytes after it.
+        var host = HostOver(bytes);
+
+        Assert.Throws<DecoderFallbackException>(() => host.ReadText("spec.toml"));
+    }
+
+    [Fact]
     public void Load_WhenABaseIsNotUtf8_ThenItTakesTheEstablishedUnreadableBaseOutcome()
     {
         // An invalidly encoded BASE keeps the phase-owned diagnostic; it never becomes an

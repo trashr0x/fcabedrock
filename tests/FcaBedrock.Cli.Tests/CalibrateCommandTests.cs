@@ -452,6 +452,27 @@ public sealed class CalibrateCommandTests
         Assert.Equal(await File.ReadAllBytesAsync(first), await File.ReadAllBytesAsync(second));
     }
 
+    [Fact]
+    public async Task Calibrate_WhenTheSpecCarriesAByteOrderMarkAndCrlf_ThenItFreezesAsTheUnmarkedSpecDoes()
+    {
+        // The mark and the line endings belong to the file, not to the document (§2), so neither
+        // reaches the frozen spec or its stored fingerprints. The oracle reads an unmarked LF copy.
+        using var temp = TempDirectory.Create();
+        var plain = temp.Write("plain.toml", CliFixtures.CalibrateCutsSpec.ReplaceLineEndings("\n"));
+        var marked = temp.Resolve("marked.toml");
+        byte[] markedBytes =
+            [0xEF, 0xBB, 0xBF, .. Encoding.UTF8.GetBytes(CliFixtures.CalibrateCutsSpec.ReplaceLineEndings("\r\n"))];
+        File.WriteAllBytes(marked, markedBytes);
+        var data = temp.Write("data.csv", CliFixtures.CalibrateWideData);
+        var harness = new CliTestHarness();
+
+        var exit = await harness.RunAsync("calibrate", marked, data, "--out", "-");
+
+        Assert.Equal(0, exit);
+        Assert.Equal(string.Empty, harness.StdErr);
+        Assert.Equal(await FrozenViaLibraryAsync(plain, data), harness.StdOut);
+    }
+
     // ---- composition (§13) ---------------------------------------------------------------------
 
     [Fact]

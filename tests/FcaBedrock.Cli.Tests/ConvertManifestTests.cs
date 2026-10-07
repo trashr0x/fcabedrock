@@ -307,6 +307,46 @@ public sealed class ConvertManifestTests
             StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task Manifest_WhenABaseCarriesAByteOrderMarkAndCrlf_ThenItsHashIsRawAndTheFingerprintsDoNotMove()
+    {
+        // A base's mark and line endings belong to the file, not to the document (§2): its chain
+        // entry hashes them, and the composed spec fingerprints as the unmarked flat spec does.
+        using var temp = TempDirectory.Create();
+        var harness = new CliTestHarness();
+
+        var basePath = Path.Combine(temp.Path, "base.toml");
+        var raw = new List<byte> { 0xEF, 0xBB, 0xBF };
+        raw.AddRange(Encoding.UTF8.GetBytes(CliFixtures.IndexBoundSpec.ReplaceLineEndings("\r\n")));
+        await File.WriteAllBytesAsync(basePath, raw.ToArray());
+
+        var root = temp.Write("root.toml", "[spec]\nversion = 1\nextends = \"base.toml\"\n");
+        var data = temp.Write("data.csv", CliFixtures.WideData);
+        var outputBase = temp.Resolve("out");
+
+        var exit = await harness.RunAsync("convert", root, data, "--out", outputBase, "--format", "both");
+
+        Assert.Equal(0, exit);
+        Assert.Equal(string.Empty, harness.StdErr);
+        var manifest = File.ReadAllText(outputBase + ".manifest.toml");
+        Assert.Contains(
+            $"""
+            [[run.spec_files]]
+            path = "base.toml"
+            hash = "{Hash(basePath)}"
+            """.ReplaceLineEndings("\n"),
+            manifest,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            $"""
+            schema_fingerprint = "{IndexBoundSchemaFingerprint}"
+            cxt_output_fingerprint = "{IndexBoundCxtFingerprint}"
+            dat_output_fingerprint = "{IndexBoundDatFingerprint}"
+            """.ReplaceLineEndings("\n"),
+            manifest,
+            StringComparison.Ordinal);
+    }
+
     // ---- native versus effective ---------------------------------------------------------------
 
     [Fact]

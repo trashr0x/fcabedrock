@@ -56,6 +56,16 @@ Order within the file is informative. Fingerprints are computed over a canonical
 structure derived from the **resolved/calibrated plan**, not over the spec's TOML
 text (§14), so file formatting never affects schema or output identity.
 
+A spec file's bytes MUST be well-formed UTF-8. The file MAY begin with one UTF-8
+byte-order mark, the bytes `EF BB BF`. The mark is part of the file's raw bytes, which
+the run manifest hashes (§15), but it is not part of the TOML document, so it changes
+no fingerprint. Only the first three bytes can be the mark: the same bytes anywhere
+else, including directly after the mark, decode to the character `U+FEFF`. That
+character is document text, and the TOML grammar decides whether it may appear where
+it does. An implementation MUST reject a file whose bytes are not well-formed UTF-8,
+including a file that begins with a UTF-16 or UTF-32 byte-order mark, as unreadable.
+It MUST NOT transcode such a file or replace its ill-formed bytes.
+
 The canonical writer (the one tool that serializes a `SpecDocument`, decisions.md D-075) is
 deterministic. It renders a long top-level
 `declared_domain` array **multiline, one escaped value per line**, rather than as a single
@@ -2363,9 +2373,9 @@ The base spec is loaded and merged with the current spec. Merge semantics:
    smuggle content into a v1 composed spec.
 
 Multi-level `extends` is allowed (a chain); the merge above is applied at **each**
-step, base-most first. A referenced base spec that cannot be found is
-`SpecExtendsNotFound` (Fatal); cycles MUST be detected and rejected with
-`SpecExtendsCycle` (Fatal).
+step, base-most first. A referenced base spec that cannot be found, or that §2
+rejects as unreadable, is `SpecExtendsNotFound` (Fatal); cycles MUST be detected and
+rejected with `SpecExtendsCycle` (Fatal).
 
 Cycle detection compares **canonical file identities** owned by the host source
 (D-078): the CLI's file-backed host resolves **actual filesystem identity** where

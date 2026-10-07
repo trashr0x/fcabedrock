@@ -431,9 +431,10 @@ prose changes follow D-134's three reviewed kinds: correcting a passage to its r
 enforced defaults, bounds or allowed values that were shown only in examples, and stating rules
 already enforced by the reader or resolver. Spec §8 also states the exact `.cxt` size-advisory
 default applied by the CLI, 1,073,741,824 bytes, as D-134 records, spec §7.1 states the three
-probe aggregate-guard defaults that `ProbeOptions` applies, and D-136 settles the
-stored-fingerprint limit in spec §3 and §14 as a recommendation. These prose changes leave
-implemented behavior unchanged.
+probe aggregate-guard defaults that `ProbeOptions` applies, spec §2 states which bytes a spec
+file may hold, including one optional leading UTF-8 byte-order mark, §13 states the outcome
+for a base file that §2 rejects, and D-136 settles the stored-fingerprint limit in spec §3
+and §14 as a recommendation. These prose changes leave implemented behavior unchanged.
 
 Its work proceeds in this order:
 
