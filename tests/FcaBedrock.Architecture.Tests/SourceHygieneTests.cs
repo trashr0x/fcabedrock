@@ -70,7 +70,7 @@ public sealed class SourceHygieneTests
         Assert.True(
             offenders.Count == 0,
             $"authored sources must not contain raw C0 control characters other than TAB, LF and CR, "
-                + $"nor DEL — write the C# escape instead. {offenders.Count} occurrence(s) across "
+                + $"nor DEL; write the C# escape instead. {offenders.Count} occurrence(s) across "
                 + $"{authored.Count} scanned file(s):\n"
                 + Describe(offenders.Select(Format).ToList()));
     }

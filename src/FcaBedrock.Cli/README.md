@@ -63,8 +63,10 @@ Validate a spec, optionally against a data source's schema.
 fcabedrock validate spec.toml data.csv
 ```
 
-Schema validation only. With DATA it reads just enough to acquire the schema
-(the header, or the first non-blank record when headerless) and checks name bindings.
+Schema validation only. With DATA it uses only the first record (the header,
+or the first non-blank record when headerless) and checks name bindings; no
+later record is examined. Reading that record can read further into the file,
+and a failure while doing so still fails the command.
 DATA is optional; the spec alone validates too:
 
 ```text
@@ -192,7 +194,10 @@ finished output is always fine. `--force` does not relax this: it only
 authorizes replacing an existing destination.
 
 Within a single run, a file that is swapped for a different one is detected and
-the run refuses rather than publishing or deleting it. Across a crash that is
+the run fails without committing or deleting it. The run tries to move that file
+back to where it came from; if it cannot, the file stays where the run's own
+rename put it, which can be an output path, and the run keeps its private files
+beside it. Across a crash that is
 not possible to detect in general: an untouched leftover and a replacement that
 took its place can look identical to the next run, so if the leftovers may have
 been tampered with, remove them yourself rather than letting a retry decide.

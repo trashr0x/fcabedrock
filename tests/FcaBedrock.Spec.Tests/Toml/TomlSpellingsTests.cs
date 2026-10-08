@@ -46,7 +46,7 @@ public sealed class TomlSpellingsTests
     }
 
     [Fact]
-    public void TryParse_WhenAsAttribute_ThenMapsToTheD068Policy()
+    public void TryParse_WhenAsAttribute_ThenMapsToTheAsAttributePolicy()
     {
         Assert.True(TomlSpellings.TryParse(TomlSpellings.MissingPolicies, "as_attribute", out var policy));
         Assert.Equal(MissingPolicy.AsAttribute, policy);
@@ -71,17 +71,17 @@ public sealed class TomlSpellingsTests
             TomlSpellings.Allowed(TomlSpellings.UnknownValuePolicies));
 
     [Fact]
-    public void ValueGroupsUnmatchedKinds_WhenSliceELanded_ThenTheTableEqualsTheCoreEnum() =>
+    public void ValueGroupsUnmatchedKinds_WhenComparedToTheCoreEnum_ThenTheTableEqualsIt() =>
         // The accepted TOML surface and the Core enum must not drift: value_groups accepts exactly
         // skip/other/passthrough (§11.6), all three executable (D-104). Every v1 discretizer kind
-        // has a carrier, so an unknown spelling is an ordinary SpecFieldInvalid (tier 3).
+        // has a carrier, so an unknown spelling is an ordinary SpecFieldInvalid (D-070 tier 3).
         // IsIn's exact-ordinal contract keeps its live owner in DeferredScaleKinds below.
         Assert.Equal(
             Enum.GetValues<ValueGroupsUnmatched>().Order(),
             TomlSpellings.ValueGroupsUnmatchedKinds.Select(u => u.Value).Order());
 
     [Fact]
-    public void EqualWidthRanges_WhenSliceDLanded_ThenPercentileJoinedTheAcceptedSurface() =>
+    public void EqualWidthRanges_WhenComparedToTheCoreEnum_ThenTheTableEqualsIt() =>
         // The accepted range spellings equal the Core enum, percentile_p1_p99 included (D-103;
         // D-102 kept it out of the TOML surface until its calibration existed). Pinned here so
         // neither can drift from the other.

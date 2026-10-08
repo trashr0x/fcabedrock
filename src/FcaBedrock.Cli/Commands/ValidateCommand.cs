@@ -40,7 +40,7 @@ internal static class ValidateCommand
             rootKey = host.RegisterRoot(specPath);
             toml = host.ReadText(specPath);
         }
-        catch (Exception exception) when (IsInputFailure(exception))
+        catch (Exception exception) when (RunPipeline.IsSpecReadFailure(exception))
         {
             // A missing or unreadable operand is an ordinary host failure, not a pipeline
             // condition: code-less, exit 1, and the registry does not grow for it
@@ -94,7 +94,7 @@ internal static class ValidateCommand
             {
                 schema = await session.GetSchemaAsync(cancellation).ConfigureAwait(false);
             }
-            catch (Exception exception) when (IsInputFailure(exception))
+            catch (Exception exception) when (RunPipeline.IsDataReadFailure(exception))
             {
                 return HostFailure(environment, diagnostics, $"cannot read the data file '{dataPath}'.");
             }
@@ -116,20 +116,6 @@ internal static class ValidateCommand
             ? new TripleCsvSession(OpenStream, settings)
             : new WideCsvSession(OpenStream, settings);
     }
-
-    // Expected input failures only. OperationCanceledException is deliberately absent
-    // (cancellation is exit 3, not an input error) and so are argument/state errors from
-    // the session constructors, which are programmer errors the host reports as exit 4.
-    // InvalidDataException (a non-UTF-8 byte-order mark) derives from SystemException rather
-    // than IOException, so it is named; DecoderFallbackException (malformed UTF-8) arrives
-    // as an ArgumentException.
-    private static bool IsInputFailure(Exception exception) =>
-        exception is IOException
-            or InvalidDataException
-            or UnauthorizedAccessException
-            or SourceReadException
-            or ArgumentException
-            or NotSupportedException;
 
     private static int HostFailure(CliEnvironment environment, List<BedrockDiagnostic> diagnostics, string message)
     {

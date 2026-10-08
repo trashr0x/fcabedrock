@@ -108,15 +108,21 @@ internal static class PublicationMessages
 /// the phase markers, and the stage claims are each authoritative only through their exact
 /// canonical bytes (<see cref="ControlDocument"/>), which bind the run token, the base, the
 /// authoritative record's digest, the exact role or phase, and (for a claim) the stage identity
-/// it acknowledges. Discovery and removal both require those exact bytes, so an empty, partial,
-/// refused, invalid, or substituted object at any of those names is preserved and authorizes no
-/// mutation.
+/// it acknowledges. Discovery and removal both require those exact bytes, so an object at any of
+/// those names that does not hold them (empty, partial, invalid, or different) is preserved and
+/// authorizes no mutation. The bytes prove content, not history: an object that holds exactly
+/// them is treated as the control whatever wrote it, except that a running transaction removes
+/// only the markers its own create-new produced.
 /// </para>
 /// <para>
 /// <b>A refused acquisition creates nothing.</b> Where a create-new or a publishing rename is
 /// refused, the occupant that refused it is exactly the object this transaction did <em>not</em>
-/// create, so no durable state naming it is written, none is left behind by a failed withdrawal,
-/// and neither this run's rollback nor any later recovery may remove it.
+/// create, so no durable state naming it is written and none is left behind by a failed
+/// withdrawal. Rollback and recovery do not remove it on the strength of its name: a final or a
+/// stage goes only when it is the object whose identity this transaction recorded, a control,
+/// an evidence file or the authoritative record only when the object holds the exact bytes its
+/// proof requires, and the pending record only when it is the object the intent descriptor
+/// acknowledges.
 /// </para>
 /// <para>
 /// <b>Durable phase, not filesystem guesswork.</b> Recovery cannot read intent out of file
@@ -153,10 +159,12 @@ internal static class PublicationMessages
 /// never a rehash) and an old public manifest marker is demoted <em>before</em> any artifact it
 /// could certify is published, including when a <c>--no-manifest</c> run merely introduces one.
 /// Commit is per-file non-overwriting atomic rename in canonical order, manifest
-/// last, with the host token observed and both sides of every rename verified;
-/// a rename whose result is not the object it moved is put straight
-/// back, so no unowned file is ever left at a published path, least of all at the manifest, which
-/// <em>is</em> the run's public commit marker. No cross-file atomicity is claimed.
+/// last, with the host token observed and both sides of every rename verified.
+/// A backup or commit rename whose result is not the object it moved fails the run, and the
+/// transaction tries to rename that object back to where it came from. That attempt can fail
+/// too. The object then stays where the rename put it, even at a published path such as the
+/// manifest, which <em>is</em> the run's public commit marker; nothing deletes it, and rollback
+/// keeps the private state a later run needs to classify it. No cross-file atomicity is claimed.
 /// </para>
 /// </summary>
 internal sealed partial class PublicationTransaction : IDisposable
@@ -403,7 +411,10 @@ internal sealed partial class PublicationTransaction : IDisposable
 
         // The rename's RESULT. A different object substituted inside that boundary would otherwise
         // be accepted as this transaction's authority, published over, and finally deleted as owned.
-        // It is put back where the rename took it from and nothing is begun.
+        // Nothing is begun, and the transaction tries to rename the object back to where the rename
+        // took it from. If that fails, the object stays at the record name: this run deletes
+        // nothing there, and a later run classifies what it finds at that name like any other
+        // residue.
         if (!MatchesObject(RecordPath, isTheRecord))
         {
             TryMutate(() => _files.Move(RecordPath, pending, _references.Of(pending)));
@@ -438,8 +449,8 @@ internal sealed partial class PublicationTransaction : IDisposable
     /// this rollback nor any later recovery may remove it. Only once the object exists is the stage
     /// claim written, and its exact canonical bytes (token, base, record digest, this role with
     /// its target kind, and that object's identity) are what discovery and removal require. A
-    /// claim that is empty, partial, or substituted proves nothing: it authorizes no mutation of
-    /// the stage beside it and is itself preserved.
+    /// claim without those exact bytes (empty, partial, or different) proves nothing: it
+    /// authorizes no mutation of the stage beside it and is itself preserved.
     /// </para>
     /// <para>
     /// <b>A stage this host cannot identify is refused before the writer runs</b>. Such
@@ -587,8 +598,8 @@ internal sealed partial class PublicationTransaction : IDisposable
     /// is re-observed here and must still be the object preflight approved, and every staged target
     /// must carry usable stage identity: this runs after <see cref="Begin"/> and staging, so a
     /// failure rolls back this run's own private residue, but it is <em>before</em> any final
-    /// target is touched, so the externally observable target set is unchanged and no residue is
-    /// left.
+    /// target is touched, so the externally observable target set is unchanged, and a rollback
+    /// that completes leaves no residue.
     /// </para>
     /// </summary>
     public PublicationFailure? Seal(CancellationToken cancellation)
@@ -658,16 +669,20 @@ internal sealed partial class PublicationTransaction : IDisposable
     /// leaves the published run standing.
     /// </para>
     /// <para>
-    /// <b>Every transition is verified on both sides, and a rename that produced the wrong object is
-    /// undone.</b> A backup-bearing target must still be the very object preflight approved, and
-    /// after it is renamed aside the backup must hold that same object. A target about
+    /// <b>Every transition is verified on both sides, and a rename that produced the wrong object
+    /// fails the commit.</b> A backup-bearing target must still be the very object preflight
+    /// approved, and after it is renamed aside the backup must hold that same object. A target about
     /// to receive a stage must still be absent; the stage must still be the exact object this
     /// transaction created and sealed, and after the rename the published final must be that object.
-    /// Where a rename's result is <em>not</em> what it moved, that exact object is
-    /// renamed straight back: it is not this transaction's to delete, and leaving it at a published
-    /// path would mean a failed run had put an unrelated file where its output belongs: at the
-    /// manifest, the path that <em>is</em> the public commit marker, it would certify a run that
-    /// never happened.
+    /// Where a rename's result is <em>not</em> what it moved, the transaction tries to rename that
+    /// exact object back to the name it came from: it is not this transaction's to delete, and
+    /// leaving it at a published path would mean a failed run had put an unrelated file where its
+    /// output belongs: at the manifest, the path that <em>is</em> the public commit marker, it would
+    /// certify a run that never happened. If that reverse rename fails too, the object stays where
+    /// the original rename put it (a published path after a commit rename, the target's private
+    /// backup path after a backup rename) and the transaction records the hazard, so the rollback
+    /// that follows keeps the private state a later run needs to classify the object. That
+    /// rollback neither moves nor deletes it.
     /// </para>
     /// </summary>
     public PublicationFailure? Commit(CancellationToken cancellation)
@@ -747,9 +762,9 @@ internal sealed partial class PublicationTransaction : IDisposable
             }
 
             // And the published final must be that same object before the next artifact (or the
-            // manifest, last) can commit. If it is not, the object that landed there is put back
-            // at the stage path it was taken from: preserved, out of the public namespace, and
-            // recognizable to the rollback that follows.
+            // manifest, last) can commit. If it is not, the transaction tries to rename the object
+            // that landed there back to the stage path it was taken from, where it is preserved,
+            // out of the public namespace and recognizable to the rollback that follows.
             if (!Matches(target.FullPath, PublicationTargets.StageRole, target.FileName, sealedStage))
             {
                 if (!TryMutate(() => _files.Move(target.FullPath, stagePath, _references.Of(stagePath))))
@@ -777,7 +792,12 @@ internal sealed partial class PublicationTransaction : IDisposable
     }
 
     /// <summary>
-    /// Undoes everything this transaction did. Rollback intent is made <b>durable first</b>, so a
+    /// Tries to undo what this transaction did. It acts only on objects it can prove are its
+    /// own and preserves every object it cannot prove, but preserving an object does not by itself
+    /// keep the private state that classifies it (<c>Finish</c> says when that state survives).
+    /// The attempt can stop short: if the rollback phase cannot be made durable it starts no
+    /// cleanup at all, and the cleanup can fail or refuse a step, including the restoration of a
+    /// target this transaction does own. Rollback intent is made <b>durable first</b>, so a
     /// crash part-way through is resumed as a rollback by the next run rather than being
     /// reinterpreted as a commit from file presence; the work itself is the same
     /// idempotent routine recovery uses, so an in-process rollback and a resumed one cannot drift.
@@ -934,9 +954,12 @@ internal sealed partial class PublicationTransaction : IDisposable
     /// encoding.
     /// <para>
     /// <b>Both sides of that rename are proved</b>. A refused create-new leaves no
-    /// evidence and no claim on the occupant; a rename that lands a different object at the
-    /// authoritative name is undone rather than accepted, so cleanup can never remove an evidence
-    /// file this transaction did not publish.
+    /// evidence and no claim on the occupant. A rename that lands a different object at the
+    /// authoritative name is not accepted: the transaction tries to rename that object back to the
+    /// pending name and returns failure whether or not that succeeds. The cleanup that ends the
+    /// transaction removes an object at the authoritative name only when its bytes are this run's
+    /// own evidence for the target, and removes nothing at the pending name, so any other object
+    /// at either name is preserved and the cleanup reports itself incomplete.
     /// </para>
     /// </summary>
     private bool PublishEvidence(PublicationTargetKind kind, string targetFileName)
@@ -1073,7 +1096,8 @@ internal sealed partial class PublicationTransaction : IDisposable
     // Creates a phase marker. Best-effort by design for the phases where the LESS advanced
     // interpretation is the safe one; the rollback phase is not one of those, and its caller
     // treats a failure as "do not start". A marker whose create-new was refused is
-    // NOT recorded, so cleanup never removes the occupant that refused it.
+    // NOT recorded, so this run's cleanup never removes the occupant that refused it; a later
+    // run removes an object there only if it holds this marker's exact canonical bytes.
     private bool Mark(TransactionPhase phase)
     {
         var path = Path.Combine(_directory, PublicationTargets.MarkerName(_baseFileName, phase, _token));

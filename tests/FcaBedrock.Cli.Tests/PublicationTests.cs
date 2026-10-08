@@ -1334,7 +1334,7 @@ public sealed class PublicationTests
         // sitting in a directory others may list.
         if (OperatingSystem.IsWindows())
         {
-            Assert.Skip("Unix file modes — asserted on Unix; Windows has no equivalent mode to read back.");
+            Assert.Skip("Unix file modes are asserted on Unix; Windows has no equivalent mode to read back.");
             return;
         }
 
@@ -1353,7 +1353,7 @@ public sealed class PublicationTests
         // `FileShare.None` guards only a live handle, and crash residue is exactly the
         // case where no handle is left, so the boundary that matters is the file's own DACL,
         // established at creation and protected from inheritance, as the spool workspace does.
-        Assert.SkipUnless(OperatingSystem.IsWindows(), "Windows DACL — asserted on Windows.");
+        Assert.SkipUnless(OperatingSystem.IsWindows(), "Windows DACLs are asserted on Windows.");
         if (OperatingSystem.IsWindows())
         {
             using var run = ConvertRun.Wide();

@@ -152,7 +152,7 @@ public sealed class ValueCountMergerTests
     }
 
     [Fact]
-    public void Consolidate_WhenOnlyTheFinalOutputWouldPassThreeT_ThenTheFinalWriteIsGatedToo()
+    public void Consolidate_WhenOnlyTheFinalOutputWouldPassThreeT_ThenHaltsBeforeTheFinalWrite()
     {
         // The check that is easiest to forget: merge output coexists with its inputs until they
         // delete, so the FINAL consolidated write is no safer than an intermediate one. Deletions

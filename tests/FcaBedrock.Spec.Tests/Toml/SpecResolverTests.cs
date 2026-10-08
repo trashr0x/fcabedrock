@@ -2975,7 +2975,7 @@ public sealed class SpecResolverTests
     }
 
     [Fact]
-    public void Resolve_WhenAnUnusedTemplateAuthorsNaming_ThenItIsInertUntilApplicationLands()
+    public void Resolve_WhenAnUnusedTemplateAuthorsNaming_ThenNoAttributeTakesIt()
     {
         // Template naming is CARRIED and parse-validated, but an unused template contributes
         // nothing to a resolved attribute. The absence of leakage

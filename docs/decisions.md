@@ -1240,7 +1240,7 @@ Refinements from the second audit pass.
   implementation to match the contradicting passages (it would move `FormalAttributeCollision` to a
   phase that cannot see a data-dependent collision, and force a calibration pass on specs every
   build has treated as fully declared).
-- **Affects:** spec §2, §3, §5.4, §7, §8, §9.2, §10.4, §10.5, §11.2, §11.4, §11.5, §11.6,
+- **Affects:** spec §2, §3, §5.4, §7, §8, §9.2, §10.2, §10.4, §10.5, §11.2, §11.4, §11.5, §11.6,
   §12.3, §13, §14, §16.2 and §16.4; `docs/roadmap.md` (the M8.2 paragraph). The normative prose
   corrections alone change no code or tests, public API, diagnostics, fingerprints or output bytes.
   Separate CLI tests added with the 2026-10-07 amendment pin the existing byte policy and change no
@@ -1316,7 +1316,7 @@ Refinements from the second audit pass.
   goldens: *compatibility evidence* (EP-9). (2) **Spec-conformance tests** run the
   **native** (non-v2) path and assert documented behavior with spec-section
   citations (e.g. native `.cxt` is LF + trailing newline §18.1; native `.dat` has
-  no trailing space §18.2/§21.4; dichotomic name is `{column}` alone §10.7/§12.2;
+  no trailing space §18.2/§21-item-4; dichotomic name is `{column}` alone §10.7/§12.2;
   `value_labels` change names not order/count §10.8). Per-fixture binding (which
   the v2 `.bed` never recorded: delimiter/header/shape) lives in a typed
   `FixtureCase` table, as the fixtures README sanctions.

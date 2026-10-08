@@ -300,6 +300,21 @@ public sealed class ProbeCommandTests
     }
 
     [Fact]
+    public async Task Probe_WhenTheDataPathIsEmpty_ThenProbeSourceReadFailedIsReportedAndExitIsOne()
+    {
+        // An empty DATA operand names no file, so the library's schema read meets it as a missing
+        // file: the same Discovery diagnostic, never an internal fault.
+        var harness = new CliTestHarness();
+
+        var exit = await harness.RunAsync("probe", string.Empty, "--shape", "wide", "--out", "-");
+
+        Assert.Equal(1, exit);
+        Assert.Equal(string.Empty, harness.StdOut);
+        Assert.Contains("error ProbeSourceReadFailed:", harness.StdErr, StringComparison.Ordinal);
+        Assert.DoesNotContain("error: ", harness.StdErr, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task ProbeTriple_WhenTheHaltIsSelectedAndCloseFails_ThenTheDiagnosticNotAnOutputFailure()
     {
         // The second open is the row pass, whose stream fails when it is closed. The structural halt

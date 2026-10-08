@@ -92,7 +92,7 @@ public sealed class W16DeclaredOracleTests
     }
 
     [Fact]
-    public async Task Expect_ShouldMatchWhatTheProductionPipelineActuallyWrites()
+    public async Task Expect_ShouldMatchWhatTheProductionPipelineWrites()
     {
         // The test the oracle stands on. Two independent derivations of the same artifact (one from
         // the corpus definition plus the documented spec semantics, one from the shipped

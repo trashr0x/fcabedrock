@@ -51,7 +51,7 @@ public sealed class SpoolConfidentialityTests
     [Fact]
     public void CreateWorkspace_OnUnix_SetsMode700()
     {
-        Assert.SkipUnless(!OperatingSystem.IsWindows(), "Unix mode bits — asserted on Unix.");
+        Assert.SkipUnless(!OperatingSystem.IsWindows(), "Unix mode bits are asserted on Unix.");
         if (!OperatingSystem.IsWindows())
         {
             var root = FreshRoot();
@@ -72,7 +72,7 @@ public sealed class SpoolConfidentialityTests
     [Fact]
     public void CreateWorkspace_OnWindows_SetsOwnerOnlyProtectedDacl()
     {
-        Assert.SkipUnless(OperatingSystem.IsWindows(), "Windows DACL — asserted on Windows.");
+        Assert.SkipUnless(OperatingSystem.IsWindows(), "Windows DACLs are asserted on Windows.");
         if (OperatingSystem.IsWindows())
         {
             var root = FreshRoot();

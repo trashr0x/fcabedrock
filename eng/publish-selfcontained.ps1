@@ -1,4 +1,5 @@
 #!/usr/bin/env pwsh
+
 <#
 .SYNOPSIS
     Publishes and archives the self-contained `fcabedrock` distribution for one runtime identifier.

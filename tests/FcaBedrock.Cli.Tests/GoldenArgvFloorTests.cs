@@ -244,7 +244,7 @@ public sealed class GoldenArgvFloorTests
 
         Assert.Fail(
             $"argv .{kind} bytes differ for {row.Name}: {expected.Length} expected, {actual.Length} produced. "
-            + $"GoldenFixtureTests covers {row.Name}'s library route independently — if that suite is green "
+            + $"GoldenFixtureTests covers {row.Name}'s library route independently; if that suite is green "
             + "for this variant the divergence is in the argv orchestration, and no fixture or expected "
             + "output may be edited or regenerated to close it.");
     }

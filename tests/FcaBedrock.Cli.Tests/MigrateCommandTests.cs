@@ -336,6 +336,52 @@ public sealed class MigrateCommandTests
     }
 
     [Fact]
+    public async Task Migrate_WhenTheBedPathIsEmpty_ThenItIsACodeLessHostErrorAndExitIsOne()
+    {
+        var harness = new CliTestHarness();
+
+        var exit = await harness.RunAsync("migrate", string.Empty, "--out", "-");
+
+        Assert.Equal(1, exit);
+        Assert.Equal(string.Empty, harness.StdOut);
+        Assert.Equal(DiagnosticRenderer.RenderHostError("cannot read the .bed file ''."), harness.StdErr);
+    }
+
+    [Fact]
+    public async Task Migrate_WhenTheBedOpenThrowsObjectDisposedException_ThenItIsACodeLessHostErrorAndExitIsOne()
+    {
+        // An ObjectDisposedException from the .bed read is classified as an unreadable .bed file,
+        // never as the output failure the host keeps for a broken sink. Here the opener raises it.
+        using var temp = TempDirectory.Create();
+        var bed = temp.Resolve("model.bed");
+        var harness = new CliTestHarness { OpenInput = _ => throw new ObjectDisposedException("stream") };
+
+        var exit = await harness.RunAsync("migrate", bed, "--out", "-");
+
+        Assert.Equal(1, exit);
+        Assert.Equal(string.Empty, harness.StdOut);
+        Assert.Equal(DiagnosticRenderer.RenderHostError($"cannot read the .bed file '{bed}'."), harness.StdErr);
+    }
+
+    [Fact]
+    public async Task Migrate_WhenTheBedOpenThrowsAPlainArgumentException_ThenItStaysExitFour()
+    {
+        // The .bed read family stays narrow: a plain ArgumentException is a contract defect, not
+        // an unreadable file, so it reaches the sanitized internal fault.
+        using var temp = TempDirectory.Create();
+        var harness = new CliTestHarness
+        {
+            OpenInput = _ => throw new ArgumentException("a contract violation, not a read failure."),
+        };
+
+        var exit = await harness.RunAsync("migrate", temp.Resolve("model.bed"), "--out", "-");
+
+        Assert.Equal(4, exit);
+        Assert.Equal(string.Empty, harness.StdOut);
+        Assert.Equal(DiagnosticRenderer.RenderHostError(CliHost.UnexpectedFaultMessage), harness.StdErr);
+    }
+
+    [Fact]
     public async Task Migrate_WhenAnIncludedAttributeIsADeferredValueType_ThenTheMigratorsOwnDiagnosticIsReportedAndNothingIsWritten()
     {
         using var temp = TempDirectory.Create();

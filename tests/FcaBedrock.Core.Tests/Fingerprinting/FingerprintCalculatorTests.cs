@@ -727,7 +727,7 @@ public sealed class FingerprintCalculatorTests
         """;
 
     [Fact]
-    public void BuildCxtOutputJson_WhenValueGroups_ThenTheD094ExampleEncodingExactly() =>
+    public void BuildCxtOutputJson_WhenValueGroups_ThenTheWorkedExampleEncodesExactly() =>
         // The D-094 worked example, byte for byte: groups in declaration order, group keys sorted
         // label/pattern/values, and top-level keys sorted groups < kind < unmatched.
         Assert.Contains(

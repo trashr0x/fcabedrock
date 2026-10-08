@@ -143,15 +143,17 @@ internal static class MigrateCommand
             : ScalingMode.Discrete;
 
     // The narrow named-type set for reading ONE authored file, matching the established CLI
-    // boundaries. DecoderFallbackException and InvalidDataException are named specifically:
-    // the first derives from ArgumentException and the second from SystemException, so a real
-    // read failure stays on the code-less exit-1 path without admitting a broad base: those
-    // bases are the documented call-contract channel of the reader and the migrator, and
-    // absorbing one would disguise a defect as a broken file (EP-14).
+    // boundaries. DecoderFallbackException, InvalidDataException and ObjectDisposedException are
+    // named specifically: they derive from ArgumentException, SystemException and
+    // InvalidOperationException, so a real read failure stays on the code-less exit-1 path
+    // without admitting a broad base: those bases are the documented call-contract channel of
+    // the reader and the migrator, and absorbing one would disguise a defect as a broken file
+    // (EP-14).
     private static bool IsBedReadFailure(Exception exception) =>
         exception is IOException
             or InvalidDataException
             or DecoderFallbackException
             or UnauthorizedAccessException
-            or NotSupportedException;
+            or NotSupportedException
+            or ObjectDisposedException;
 }

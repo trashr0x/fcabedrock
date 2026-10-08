@@ -264,7 +264,7 @@ public sealed class QuantileAccumulatorTests
         // CoreCLR x64 only (each release candidate validates the other targets; see the roadmap).
         Assert.SkipUnless(
             RuntimeInformation.ProcessArchitecture == Architecture.X64,
-            "x64 retained-layout constants (D-082/D-103); other targets are the roadmap's M8 item.");
+            "x64 retained-layout constants (D-082/D-103); release candidates validate other targets.");
 
         const long budget = 100_000;
         var before = GC.GetAllocatedBytesForCurrentThread();

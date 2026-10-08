@@ -341,7 +341,7 @@ public sealed class BedMigratorTests
     // --- resolved Core shape ------------------------------------------------
 
     [Fact]
-    public void Migrate_WhenMushroomResolved_ThenCoreShapeMatchesTheM1Migration()
+    public void Migrate_WhenMushroomResolved_ThenTheCoreShapeHasTheExpectedBindingAndAttributes()
     {
         // The resolved Core shape of the migrated mini-mushroom, asserted explicitly: the migrator
         // targets the document model (D-079), so the resolver's defaults must reproduce the Core spec

@@ -76,7 +76,7 @@ public sealed class SpillEquivalenceTests
     }
 
     [Fact]
-    public async Task Spilling_ShouldActuallyHaveHappened()
+    public async Task Spilling_ShouldHappenUnderTheSpillForcingBudget()
     {
         // Without this, the two tests above could pass by never spilling at all, which would make
         // them agreements between two identical runs rather than evidence about the spill path.
@@ -154,7 +154,7 @@ public sealed class SpillEquivalenceTests
     /// <summary>
     /// Set to any value to run <see cref="ManyQuantiles_ShouldCalibrateAtEveryAttributeCountAndBudget"/>.
     /// </summary>
-    private const string MatrixGate = "FCABEDROCK_CALIBRATION_MATRIX";
+    private const string MatrixOptInVariable = "FCABEDROCK_CALIBRATION_MATRIX";
 
     // The reported reproduction's size. Kept here rather than at the 40,000 the tests above use,
     // because this check exists to re-run the controlled measurement that produced the recorded
@@ -174,8 +174,8 @@ public sealed class SpillEquivalenceTests
         // suite. The same property at hand-checkable size is an ordinary test in
         // Conversion.Tests/MultiAttributeCalibrationTests.
         Assert.SkipUnless(
-            !string.IsNullOrEmpty(Environment.GetEnvironmentVariable(MatrixGate)),
-            $"set {MatrixGate} to run the controlled attribute-count matrix.");
+            !string.IsNullOrEmpty(Environment.GetEnvironmentVariable(MatrixOptInVariable)),
+            $"set {MatrixOptInVariable} to run the controlled attribute-count matrix.");
 
         using var temp = TempDirectory.Create();
         var dataPath = temp.File("w16.csv");

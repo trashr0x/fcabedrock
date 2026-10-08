@@ -142,7 +142,7 @@ internal static class AdCorpus
 }
 
 /// <summary>
-/// Builds the exit spec forms (declarative, materialized, uncurated-draft-style, and the two
+/// Builds the spec forms (declarative, materialized, uncurated-draft-style, and the two
 /// draft-level de-shadow forms) as TOML text over <see cref="AdCorpus"/>, plus the section
 /// objects used to curate a real probe document. Each form is assembled independently (its own
 /// builder, from shared primitive emitters), so an equivalence claim can never pass merely

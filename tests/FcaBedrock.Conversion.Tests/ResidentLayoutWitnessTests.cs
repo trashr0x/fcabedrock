@@ -270,7 +270,7 @@ public sealed class ResidentLayoutWitnessTests
     }
 
     [Fact]
-    public void QuantileFloorBytes_ShouldCoverTheSmallestAccumulatorTheRuntimeWillActuallyBuild()
+    public void QuantileFloorBytes_ShouldCoverTheSmallestAccumulatorTheRuntimeBuilds()
     {
         // The floor exists because a budget share below one entry cannot be honoured. It has to
         // cover a real accumulator at the capacity the runtime accepts for a single entry, not at
@@ -305,7 +305,7 @@ public sealed class ResidentLayoutWitnessTests
     }
 
     [Fact]
-    public void Witnesses_ShouldRecordTheRuntimeTheyActuallyProved()
+    public void Witnesses_ShouldRecordTheRuntimeThatExecutedThem()
     {
         // A witness is only evidence for the target that executed it. Recording the identity here
         // makes the run self-describing, so a results file cannot later be read as covering a

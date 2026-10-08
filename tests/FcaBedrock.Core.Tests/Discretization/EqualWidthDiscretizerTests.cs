@@ -219,7 +219,7 @@ public sealed class EqualWidthDiscretizerTests
             new PendingEqualWidth(4, EqualWidthRange.MinMax, CutPrecision.Exact), cuts, CultureInfo.InvariantCulture));
 
     [Fact]
-    public void FromCalibratedCuts_WhenPercentileRange_ThenUnreachableBecauseThePendingCarrierIsMinMaxOnlyThisSlice() =>
+    public void PendingEqualWidth_WhenPercentileRange_ThenTheCarrierKeepsTheRange() =>
         // A pending percentile_p1_p99 range is a legitimate carrier: percentile has its calibration
         // (D-103), and CalibratedSpec.Create substitutes it exactly like min_max (see
         // CalibratedSpecTests). This test pins only that the carrier keeps the range.

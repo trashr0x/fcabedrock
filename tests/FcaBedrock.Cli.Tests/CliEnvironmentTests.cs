@@ -68,6 +68,14 @@ public sealed class CliEnvironmentTests
     }
 
     [Fact]
+    public void OpenFile_WhenThePathIsEmpty_ThenItFailsAsAMissingFile()
+    {
+        // An empty operand names no file, so every command meets it as the missing input it
+        // already reports, never as an argument fault.
+        Assert.Throws<FileNotFoundException>(() => CliEnvironment.OpenFile(string.Empty));
+    }
+
+    [Fact]
     public void Progress_WhenNotSupplied_ThenTheNoOpObserverIsTheDefault()
     {
         var environment = new CliEnvironment

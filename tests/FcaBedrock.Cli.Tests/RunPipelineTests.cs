@@ -593,6 +593,26 @@ public sealed class RunPipelineTests
         Assert.Equal(DiagnosticRenderer.RenderHostError(RunPipeline.DataReadMessage(data)), harness.StdErr);
     }
 
+    [Theory]
+    [MemberData(nameof(ExpectedDataFailures))]
+    public async Task Validate_WhenTheSchemaReadCannotBeRead_ThenItIsTheSameCodelessDataFailure(string family)
+    {
+        // validate's one DATA read classifies as every pipeline pass does: one unreadable
+        // source, one classification, whichever command meets it.
+        using var temp = TempDirectory.Create();
+        var spec = temp.Write("spec.toml", CliFixtures.IndexBoundSpec);
+        var data = temp.Resolve("data.csv");
+        var harness = new CliTestHarness();
+        harness.OpenInput = FailOnDataOpen(
+            spec, CliFixtures.IndexBoundSpec, data, CliFixtures.WideData, failFrom: 0, family);
+
+        var exit = await harness.RunAsync("validate", spec, data);
+
+        Assert.Equal(1, exit);
+        Assert.Equal(string.Empty, harness.StdOut);
+        Assert.Equal(DiagnosticRenderer.RenderHostError(RunPipeline.DataReadMessage(data)), harness.StdErr);
+    }
+
     [Fact]
     public async Task Plan_WhenTheCalibrationPassFailsMidRead_ThenItIsTheSameCodelessDataFailure()
     {
@@ -644,6 +664,57 @@ public sealed class RunPipelineTests
             Assert.Equal(string.Empty, harness.StdOut);
             Assert.Equal(DiagnosticRenderer.RenderHostError(CliHost.UnexpectedFaultMessage), harness.StdErr);
         }
+    }
+
+    [Theory]
+    [InlineData(nameof(ArgumentException))]
+    [InlineData(nameof(NotSupportedException))]
+    public async Task Validate_WhenTheSchemaReadThrowsABroadContractException_ThenItIsTheSanitizedFault(string family)
+    {
+        // The pipeline's counterexamples at validate's one DATA read: neither is a read failure,
+        // so each stays the sanitized internal fault, as it does at every pipeline pass.
+        using var temp = TempDirectory.Create();
+        var spec = temp.Write("spec.toml", CliFixtures.IndexBoundSpec);
+        var data = temp.Resolve("data.csv");
+        var harness = new CliTestHarness();
+        harness.OpenInput = FailOnDataOpen(
+            spec, CliFixtures.IndexBoundSpec, data, CliFixtures.WideData, failFrom: 0, family);
+
+        var exit = await harness.RunAsync("validate", spec, data);
+
+        Assert.Equal(4, exit);
+        Assert.Equal(string.Empty, harness.StdOut);
+        Assert.Equal(DiagnosticRenderer.RenderHostError(CliHost.UnexpectedFaultMessage), harness.StdErr);
+    }
+
+    [Theory]
+    [InlineData("validate")]
+    [InlineData("plan")]
+    [InlineData("stats")]
+    [InlineData("calibrate")]
+    [InlineData("fingerprint")]
+    [InlineData("convert")]
+    public async Task DataOperand_WhenItIsEmpty_ThenItIsTheCodelessDataFailure(string command)
+    {
+        // An empty DATA operand names no file. Every command reports it as it reports a missing
+        // file, never as an internal fault.
+        using var temp = TempDirectory.Create();
+        var spec = temp.Write("spec.toml", CliFixtures.IndexBoundSpec);
+        var harness = new CliTestHarness();
+        string[] options = command switch
+        {
+            "calibrate" => ["--out", "-"],
+            "convert" => ["--out", temp.Resolve("out"), "--format", "cxt"],
+            _ => [],
+        };
+
+        var exit = await harness.RunAsync([command, spec, string.Empty, .. options]);
+
+        Assert.Equal(1, exit);
+        Assert.Equal(string.Empty, harness.StdOut);
+        Assert.Equal(
+            DiagnosticRenderer.RenderHostError(RunPipeline.DataReadMessage(string.Empty)), harness.StdErr);
+        Assert.Empty(Directory.GetFiles(temp.Path, "out*"));
     }
 
     [Theory]
@@ -755,6 +826,7 @@ public sealed class RunPipelineTests
         nameof(InvalidDataException) => new InvalidDataException("the source is corrupt."),
         nameof(ArgumentException) => new ArgumentException("a contract violation, not a read failure."),
         nameof(InvalidOperationException) => new InvalidOperationException("a state defect, not a read failure."),
+        nameof(NotSupportedException) => new NotSupportedException("an unsupported operation, not a read failure."),
         _ => throw new ArgumentOutOfRangeException(nameof(family), family, "Unknown exception family."),
     };
 

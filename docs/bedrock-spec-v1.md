@@ -1,9 +1,9 @@
-# FcaBedrock vNext — Bedrock Spec Schema (v1)
+# FcaBedrock vNext: Bedrock Spec Schema (v1)
 
 **Status:** Normative. This is the canonical reference for the Bedrock v1
 format: when code and this spec disagree, the code is the bug
 (`docs/engineering-principles.md` EP-8). Changes go through review and are recorded in
-`docs/decisions.md` — never made silently.
+`docs/decisions.md`, never made silently.
 
 **Audience:** Project maintainers and tool authors implementing readers,
 writers, validators, and converters for the Bedrock spec format.
@@ -848,19 +848,19 @@ changes a warning, never output bytes, so it is not a fingerprint input
 
 ```toml
 [output]
-bin_label_unicode = false                    # default — ASCII operators (>=, <=)
+bin_label_unicode = false                    # default: ASCII operators (>=, <=)
 
 [output.cxt]
-line_endings      = "lf"                     # default — "lf" | "crlf"
-trailing_newline  = true                     # default — emit \n after last matrix row
-size_advisory_bytes = 1_073_741_824          # default — warn when output would exceed 1 GB
+line_endings      = "lf"                     # default: "lf" | "crlf"
+trailing_newline  = true                     # default: emit \n after last matrix row
+size_advisory_bytes = 1_073_741_824          # default: warn when output would exceed 1 GB
 
 [output.dat]
-line_endings              = "lf"             # default — "lf" | "crlf"
-trailing_newline          = true             # default — emit the final line terminator (see §18.2)
-base_index                = 1                # default — 1 | 0  (FIMI is 1-based; 0 for ML conventions)
-nonempty_line_trailing_space = false         # default — no trailing space after the last item id
-empty_line_trailing_space = false            # default — bare empty line for objects with no crosses
+line_endings              = "lf"             # default: "lf" | "crlf"
+trailing_newline          = true             # default: emit the final line terminator (see §18.2)
+base_index                = 1                # default: 1 | 0  (FIMI is 1-based; 0 for ML conventions)
+nonempty_line_trailing_space = false         # default: no trailing space after the last item id
+empty_line_trailing_space = false            # default: bare empty line for objects with no crosses
 ```
 
 **`bin_label_unicode`**. With `false` (default), bin labels and ordinal
@@ -1210,7 +1210,8 @@ type or is **flexible**:
 The value `"date"` is **reserved but not implemented in v1** (§11.7): a spec setting
 `value_type = "date"` parses and validates but is rejected by the v1 planner with
 `DateValueTypeNotImplementedV1` (Fatal), whether or not the attribute is included
-(§10.9). A `value_type` that is not one of these, that a
+(§10.9). Any other `value_type` value is `SpecFieldInvalid` (Error, spec parse). A
+`value_type` that a
 type-fixing discretizer disallows (e.g. `identity` + `"number"`, or `manual_cuts` +
 `"string"`), or that conflicts with the `restrict_to`-implied type, a **string**
 `value_type` paired with a numeric-entry `restrict_to` (an exact `{ value = n }`
@@ -1406,7 +1407,7 @@ can be fully frozen (§7, §14).
 ### 10.5 missing_policy
 
 ```toml
-missing_policy = "skip"           # default — missing produces no cross
+missing_policy = "skip"           # default: missing produces no cross
 missing_policy = "as_attribute"   # missing produces a "<name>-missing" formal attribute
 ```
 
@@ -1433,7 +1434,7 @@ value (present or missing) for every column, which triple input does not guarant
 ### 10.6 unknown_value_policy
 
 ```toml
-unknown_value_policy = "warn"     # default — no cross, object kept, emit UnknownValueObserved (Warning)
+unknown_value_policy = "warn"     # default: no cross, object kept, emit UnknownValueObserved (Warning)
 unknown_value_policy = "skip"     # observed value not in declared_domain → no cross, object kept, no diagnostic
 unknown_value_policy = "fail"     # abort conversion: UnknownValueObserved (Error)
 unknown_value_policy = "include"  # extend declared_domain on the fly with the observed value
@@ -2108,7 +2109,7 @@ that are not worth front-loading before coding. v2 had a distinct date type
 (`d`), so this is a conscious parity deferral, not an oversight (see
 decisions.md D-038, lineage.md). When date support lands post-v1, the intended
 shape is unchanged from the orthogonal model: a date source parses to a
-sortable date value that feeds the existing numeric discretizers — no new
+sortable date value that feeds the existing numeric discretizers and needs no new
 scale. The `mini-dates` example is correspondingly a **deferred** fixture, not
 part of the M1 compatibility target.
 
@@ -3306,7 +3307,7 @@ source = { kind = "column", index = 1 }
 discretizer = { kind = "identity" }
 scale = { kind = "dichotomic", true_value = "t" }
 declared_domain = ["t", "f"]
-# Formal attribute: "bruises?" (column name only — dichotomic default omits
+# Formal attribute: "bruises?" (column name only; dichotomic default omits
 # the value suffix, §10.7). No value_labels needed: the name carries no value.
 
 [[attribute]]

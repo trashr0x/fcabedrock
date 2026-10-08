@@ -226,7 +226,7 @@ public sealed class ValueGroupTests
     }
 
     [Fact]
-    public void Create_WhenCallerMutatesAListItWouldHaveSlippedAnEmptyValueInto_ThenTheSnapshotGateHeld()
+    public void Create_WhenAnEmptyValueIsMutatedInAfterwards_ThenTheValidatedSnapshotIsUnaffected()
     {
         // The snapshot is taken BEFORE validation, so a caller cannot pass a valid list, have it
         // accepted, and then mutate an empty value into the group's matcher.

@@ -401,9 +401,15 @@ internal static class RunPipeline
     }
 
     /// <summary>
-    /// Expected open/read failures for the <b>root SPEC</b> operand, matching
-    /// <c>validate</c>'s set exactly so the two commands classify one unreadable spec
-    /// identically. Cancellation is absent on purpose: it is exit 3, not an input error.
+    /// Expected open/read failures for the <b>root SPEC</b> operand, applied by every command
+    /// that reads one, <c>validate</c> included, so all of them classify one unreadable spec
+    /// identically. <see cref="InvalidDataException"/> (a non-UTF-8 byte-order mark) derives from
+    /// <see cref="SystemException"/> rather than <see cref="IOException"/>, so it is named;
+    /// <see cref="DecoderFallbackException"/> (malformed UTF-8) arrives as an
+    /// <see cref="ArgumentException"/>; and <see cref="ObjectDisposedException"/> is the read
+    /// family <see cref="IsDataReadFailure"/> also names. Cancellation is absent on purpose: it is
+    /// not an input error, so the host classifies it: a silent exit 3 when it is the host's own
+    /// requested cancellation, and the internal fault (exit 4) otherwise.
     /// </summary>
     internal static bool IsSpecReadFailure(Exception exception) =>
         exception is IOException
@@ -411,11 +417,13 @@ internal static class RunPipeline
             or UnauthorizedAccessException
             or SourceReadException
             or ArgumentException
-            or NotSupportedException;
+            or NotSupportedException
+            or ObjectDisposedException;
 
     /// <summary>
     /// Expected open/read failures for the <b>DATA</b> operand, applied identically at every
-    /// real data pass: schema acquisition, calibration, and the stats counting enumeration.
+    /// real data pass: schema acquisition (the only pass <c>validate</c> makes), calibration, the
+    /// <c>stats</c> counting enumeration and <c>convert</c>'s emission.
     /// An unreadable source must not change its public exit classification merely because the
     /// failure landed after the schema was acquired.
     /// <para>

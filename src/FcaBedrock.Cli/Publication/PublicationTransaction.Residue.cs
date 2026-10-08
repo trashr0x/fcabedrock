@@ -197,9 +197,10 @@ internal sealed partial class PublicationTransaction
             // produced, so it cannot be predicted into `owned`; it is recognized by grammar and
             // then bound to this record's token. Its BODY must then be exactly this
             // transaction's claim for this target kind and this identity: name, record, kind and
-            // acknowledged identity all agreeing. An empty, partial, or substituted object at that
-            // name is none of those, so it is neither believed as authority over the stage beside
-            // it nor removed: the run refuses with the location as it was found.
+            // acknowledged identity all agreeing. An object at that name without those exact bytes
+            // (empty, partial, or different) is none of those, so it is neither believed as
+            // authority over the stage beside it nor removed: the run refuses with the location as
+            // it was found.
             if (PublicationTargets.StageClaimOf(name, claimed) is { } stageClaim)
             {
                 if (record is null

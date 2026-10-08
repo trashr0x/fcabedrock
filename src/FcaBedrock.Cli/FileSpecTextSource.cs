@@ -198,6 +198,13 @@ internal sealed class FileSpecTextSource : ISpecTextSource
         {
             return null;
         }
+        catch (ObjectDisposedException)
+        {
+            // An ObjectDisposedException while reading the base: classified as unreadable, as the
+            // DATA reads classify it (RunPipeline.IsDataReadFailure). Only this family is added; a
+            // plain ArgumentException still escapes as a defect.
+            return null;
+        }
 
         return new SpecSourceText(Canonicalize(resolved), toml);
     }

@@ -208,7 +208,7 @@ public sealed class GroupingStorageSessionTests
         }
 
         // Explicitly prove pass 2 was active (suspended at a yielded object) when the writer threw.
-        Assert.True(pass2Yielded > 0 && pass2Yielded < subjects, $"pass 2 yielded {pass2Yielded}/{subjects} — the writer must fault while pass 2 is active");
+        Assert.True(pass2Yielded > 0 && pass2Yielded < subjects, $"pass 2 yielded {pass2Yielded}/{subjects}; the writer must fault while pass 2 is active");
         Assert.Equal(0, countBeforeDisposal); // storage intercepted, appended only at disposal
         Assert.Contains(diagnostics, d => d.Code == DiagnosticCode.GroupingStorageFailed && d.Severity == DiagnosticSeverity.Warning);
     }

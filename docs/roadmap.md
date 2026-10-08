@@ -25,21 +25,21 @@ lists the capabilities.
 | M7 | The `fcabedrock` command-line tool | Complete |
 | M8 | First scaling and benchmark pass | Complete |
 | M8.1 | Generation-tiered spill catalogue for count-sensitive calibration | Complete |
-| M8.2 | Writing, ownership and provenance hardening | In progress |
-| M9 | Avalonia desktop application | Planned; begins after M8.2 |
+| M8.2 | Writing, ownership and provenance hardening | Complete |
+| M9 | Avalonia desktop application | Next; starts once M8.2 is integrated on `main` and accepted |
 
 M8's evidence closed at `3b2e4a80`, where the whole-solution test run counted 4,623 tests: 20
 skipped and none failed. M8's documentation was integrated at `3d71524b`, and M8.1 is integrated on
-`main` at `47e2ce71` (D-128). The most recent recorded full-suite result is 4,686 tests (4,666
-passed, 20 skipped, none failed) from an offline Release run on 2026-09-22 of a candidate based on
-`47e2ce7` whose C# changes were comment-only. It is not a run at `47e2ce7` or at any later commit.
+`main` at `47e2ce71` (D-128). The most recent full-suite result this roadmap records is 5,480 tests
+(5,460 passed, 20 skipped, none failed), from a Release run on 2026-10-07 of the source later
+committed as `4c99ee8`; no run at `4c99ee8` itself or at any later commit is recorded here.
 
 No release has been made, and the `FcaBedrock.Cli` package is not published to a public NuGet feed.
 This roadmap records no five-target native CI, tested-archive, UCI Adult acceptance, scale-probe or
 `main`-push CI result for any revision after `3b2e4a80`. Each release candidate supplies its own
 evidence ([Release-candidate obligations](#release-candidate-obligations)).
 
-M8.2, the current milestone, changes how delimited data is read (spec §5.1.1, D-041, D-054), so it
+M8.2, the latest milestone, changes how delimited data is read (spec §5.1.1, D-041, D-054), so it
 can change the output of a spec it still accepts: blank records are skipped everywhere, the
 whitespace removed around fields and numbers is the full Unicode whitespace set, quoting is
 validated and malformed quoting is refused, the delimiter alphabet is fixed, and quoted CR content
@@ -53,8 +53,9 @@ order of `value_labels` (D-075), an authored negative zero in `manual_cuts` or a
 `manual_cuts` or `ordered_cuts` bins getting one correctly crossed threshold per bin (spec §12.3),
 publication cleanup on Windows becoming able to reach its private transaction files at full paths
 of 260 characters or more (D-125), a halted `convert` run no longer reporting that its readable
-data file could not be read, and wording edits to some diagnostic messages, the `--help` text and
-the package description.
+data file could not be read, an empty DATA or `.bed` operand being reported as an unreadable
+input instead of an internal fault, and wording edits to some diagnostic messages, the `--help`
+text and the package description.
 M9 begins after M8.2 is accepted and integrated. Work deferred beyond v1 is in the
 [deferred backlog](#deferred-backlog-not-v1).
 
@@ -203,9 +204,9 @@ complete attribute inventory plus one template and one matcher for the repeated 
 converts end to end, and its declarative and materialized forms resolve to identical plans,
 fingerprints and bytes. The exit measures the removal of repetitive per-attribute curation, not
 total file length, because §2 requires an `[[attribute]]` for every logical attribute and matchers
-configure rather than create. `InternetAdsExitTests` demonstrates it over a deterministic synthetic
-corpus with the complete raw `ad.data` layout (1,559 columns) and no UCI data row copied, and every
-exit spec carries the pinned Kushmerick/UCI `[provenance]`.
+configure rather than create. `InternetAdsWorkflowTests` demonstrates it over a deterministic
+synthetic corpus with the complete raw `ad.data` layout (1,559 columns) and no UCI data row
+copied, and every exit spec carries the pinned Kushmerick/UCI `[provenance]`.
 
 ### M7: CLI
 
@@ -355,7 +356,7 @@ the integrated revision was measured. `docs/benchmarks.md` has the figures and l
 
 ### M8.2: Writing, ownership and provenance hardening
 
-M8.2 is the current milestone, and M9 waits for it to be accepted and integrated. It hardens how
+M8.2's work is complete, and M9 waits for it to be integrated on `main` and accepted. It hardens how
 the repository is written, who owns each lasting fact, how evidence provenance is stated, and how
 authored text is checked. It changes no CLI command or option, exit-code meaning, determinism rule
 or fingerprint format. Reading delimited data by spec §5.1.1 (D-041, D-054) can change `.cxt`,
@@ -366,7 +367,13 @@ before. Ordinary CSV and TSV whose fields are unquoted or correctly quoted, with
 them and no blank lines, read as before, and so do the v2 fixtures. A library caller whose stream
 returns short reads can also see corrected quoted CR content; no CLI file read was observed to be
 affected (D-137). The reading change's elapsed cost on small inputs is not bounded (D-138);
-`docs/benchmarks.md` has its comparison with the previous reader. Its public API additions are
+`docs/benchmarks.md` has its comparison with the previous reader. The reading change also reaches
+the three UCI Adult (`External`) cases, so their passes recorded at `3b2e4a80`, under the previous
+reader and an earlier acquisition revision, do not carry forward: all three (the source drain, the
+`.dat` conversion and the `.cxt` conversion) must pass on the final Windows x64 build with the
+current reader and the corpus at acquisition revision 3 (32,561 records) before M8 as a whole is
+accepted, and for each release candidate (D-124). No such run is recorded here. Its public API
+additions are
 the binding-only resolver stage `SpecResolver.ResolveBinding` (D-135), the delimiter-alphabet
 predicate `SourceReadSettings.IsInDelimiterAlphabet` (D-054), the attribute-name rule
 `AttributeNameValidity.IsValid` (spec §10.1), and the date reject-carrier: the document flag
@@ -422,7 +429,15 @@ adds the code-less error that its readable data file could not be read when no i
 that file to the end, as happens when a halt (an unusable or duplicate object key, or a
 non-contiguous subject) comes well before the end of a large file. Unless an output stage failed,
 the data file could not be read, two complete input passes hashed differently or the run was
-cancelled, each reported as before, such a run reports its diagnostics alone and exits 1. The
+cancelled, each reported as before, such a run reports its diagnostics alone and exits 1. An
+empty DATA or `.bed` operand is now reported as an unreadable input, as a missing file is, where
+`plan`, `stats`, `calibrate`, `fingerprint`, `convert`, `probe` and `migrate` reported an
+unexpected internal fault (exit 4). An `ObjectDisposedException` while reading the spec, a base
+spec or a `.bed` file is now classified as that input being unreadable instead of as a failure to
+write standard output. The `validate` command now classifies a failed DATA read with the families
+the other commands use: an `ObjectDisposedException` there is an unreadable data file too, and an
+`ArgumentException` other than a decoding failure, or a `NotSupportedException`, is now the
+internal fault (exit 4). The
 `NoFormalAttributes` warning now also names an attribute that yields no column as a cause. The
 wording of some diagnostic and internal exception messages changes to remove dashes used as
 punctuation and references to past milestones, `--help` headings take the form `name: summary`,
@@ -436,7 +451,7 @@ file may hold, including one optional leading UTF-8 byte-order mark, §13 states
 for a base file that §2 rejects, and D-136 settles the stored-fingerprint limit in spec §3
 and §14 as a recommendation. These prose changes leave implemented behavior unchanged.
 
-Its work proceeds in this order:
+Its work proceeded in this order:
 
 1. `docs/writing-principles.md` owns how documents and comments are written (WP-1 to WP-10),
    `docs/engineering-principles.md` owns the engineering invariants as `EP-1` to `EP-23`, and the
@@ -444,11 +459,11 @@ Its work proceeds in this order:
 2. `eng/check-authored-text.ps1` checks authored text mechanically: strict UTF-8, control
    characters, obsolete spellings and the two instruction entry points (D-130). Links and style
    remain review judgments.
-3. The user documentation, the benchmark guide, the decision log and this roadmap are revised for
+3. The user documentation, the benchmark guide, the decision log and this roadmap were revised for
    readers. The decision log, the roadmap and the benchmark guide take colon heading separators
    (D-131), and no separate public evidence file exists (D-132).
-4. The remaining documents, source and test comments, and engineering and workflow files are
-   reviewed against the same rules, and a closing audit reconciles the whole pass.
+4. The remaining documents, source and test comments, and engineering and workflow files were
+   reviewed against the same rules, and a closing audit reconciled the whole pass.
 
 ### M9: Avalonia desktop
 
@@ -505,10 +520,10 @@ Items modelled in the spec can be added later without a format break.
   v1.1 once streaming is proven.
 - **Advanced scales** `interordinal`, `biordinal` and `contranominal` (D-010): modelled, and the
   planner rejects them. Implement after v1.
-- **Date value type** (`value_type = "date"`) and date scaling (D-038) —
-  reserved, planner rejects (`DateValueTypeNotImplementedV1`); reproduces v2's
-  `d` type when implemented. `mini-dates` is the parked fixture. Re-enabling is
-  a non-breaking addition (the `value_type` field already exists).
+- **Date value type** (`value_type = "date"`) and date scaling (D-038): reserved, and refused at
+  plan with `DateValueTypeNotImplementedV1`. When implemented, it reproduces v2's `d` type.
+  `mini-dates` is the parked fixture. Implementing it is a non-breaking addition, because the
+  `value_type` field already exists.
 - **Refuse reserved v1 features before the calibration data pass**: when a spec needs calibration,
   `convert` and the other commands that plan read the whole data file before the planner refuses an
   advanced scale (`ScaleNotImplementedV1`), a composite object key

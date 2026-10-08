@@ -1,4 +1,5 @@
 #Requires -Version 7.0
+
 <#
 .SYNOPSIS
     Behaviour tests for eng/check-authored-text.ps1 (D-130).
@@ -1453,7 +1454,7 @@ Add-Case @{
 
 $Dash = [string][char]0x2014
 Add-Case @{
-    Name = 'retired-markdown-links-and-style-produce-no-finding'
+    Name = 'markdown-links-and-style-produce-no-finding'
     Files = [ordered]@{
         'doc.md' = [string]::Join("`n", @(
                 '- item', '', "    $fence text", '    inside', "    $fence", '', 'Heading', '=======', '',
@@ -1467,7 +1468,7 @@ Add-Case @{
 }
 
 Add-Case @{
-    Name = 'retired-markdown-syntax-cannot-hide-a-spelling'
+    Name = 'markdown-syntax-cannot-hide-a-spelling'
     Files = [ordered]@{
         'doc.md' = [string]::Join("`n", @(
                 '- item', '', "    $fence text", "    $Id7", "    $fence$fence", '', $Stage2, '===', '',
@@ -1487,7 +1488,7 @@ Add-Case @{
 }
 
 Add-Case @{
-    Name = 'retired-inline-directive-cannot-hide-a-spelling'
+    Name = 'inline-directive-cannot-hide-a-spelling'
     Files = [ordered]@{
         'doc.md' = "<!-- check-writing: disable=identifier-obsolete reason=`"kept`" -->`n$Id7`n<!-- check-writing: disable=stage-label-obsolete reason=`"kept`" --> $Stage2`n"
     }

@@ -1,4 +1,4 @@
-# Lineage — what the predecessors settled
+# Lineage: what the predecessors settled
 
 A one-time synthesis (not a maintained wiki) of the prior work that informs
 FcaBedrock vNext: **FcaBedrock v2** (VB.NET), the **PhD thesis**, and

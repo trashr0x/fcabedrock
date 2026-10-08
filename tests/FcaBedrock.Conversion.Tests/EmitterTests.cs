@@ -138,7 +138,7 @@ public sealed class EmitterTests
             new NominalScale(), domain, RestrictTo: [], ConversionFixtures.NoLabels, MissingPolicy.Skip, UnknownValuePolicy.Warn);
 
     [Fact]
-    public async Task EmitAsync_WhenNumericFreePerValue_ThenCanonicalizesAtEmitAndGatesOnDomain()
+    public async Task EmitAsync_WhenNumericFreePerValue_ThenCanonicalizesAndChecksTheDomain()
     {
         // 90.0 and 9e1 canonicalize to the "90" bin at emit and cross it; an in-domain "5" crosses its
         // bin; a parseable-but-out-of-domain "999" is an unknown value (§10.6), so it crosses nothing.

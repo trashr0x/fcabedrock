@@ -88,7 +88,7 @@ public sealed class RenderNameFormatTests
     }
 
     [Fact]
-    public void Plan_WhenNumericFreePerValue_ThenValueUsesTheD092NumericIdentity()
+    public void Plan_WhenNumericFreePerValue_ThenValueUsesTheParsedNumericIdentity()
     {
         // D-092/§10.7: a numeric free_per_value bin renders its parsed numeric identity in
         // the §14 invariant shortest form, so 90/90.0/9e1 share one bin rendered "90".

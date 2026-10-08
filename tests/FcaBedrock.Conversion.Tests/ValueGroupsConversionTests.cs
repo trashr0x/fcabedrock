@@ -695,7 +695,7 @@ public sealed class ValueGroupsConversionTests
     }
 
     [Fact]
-    public async Task Emit_WhenAValueAppearsOnlyAfterCalibration_ThenTheKnownBinsGateMakesItUnknown()
+    public async Task Emit_WhenAValueAppearsOnlyAfterCalibration_ThenTheKnownBinsCheckMakesItUnknown()
     {
         // The between-pass data-change guard: a passthrough value the calibration never saw has no
         // planned column, so the planned KnownBins check turns it into an unknown rather than

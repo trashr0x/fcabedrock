@@ -28,7 +28,7 @@ public sealed class SpecConformanceTests
     [Fact]
     public async Task NativeDat_WhenWritten_ThenLfAndNoTrailingSpace()
     {
-        // §18.2 / §21.4: native .dat has no trailing space after the last id; LF endings.
+        // §18.2 / §21-item-4: native .dat has no trailing space after the last id; LF endings.
         var dat = await NativeDatAsync();
 
         Assert.Equal("1 2 4 6\n1 3 4 8\n3 4 6\n1 2 4 7\n3 4 6\n", dat);

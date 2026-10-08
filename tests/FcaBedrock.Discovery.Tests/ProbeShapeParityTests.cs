@@ -184,7 +184,7 @@ public sealed class ProbeShapeParityTests
     // --- The diagnostic inventory ---------------------------------------------------------------
 
     [Fact]
-    public void DiagnosticCode_WhenSliceDLanded_ThenNoSixthProbeCodeExists()
+    public void DiagnosticCode_WhenProbePrefixedNamesAreListed_ThenExactlyTheFiveProbeCodesExist()
     {
         // Probe reports its two structural conditions through `ObjectKeyValueInvalid` and
         // `TripleSubjectNotContiguous` (one condition, one code, three phases, D-067/D-111)

@@ -43,7 +43,7 @@ namespace FcaBedrock.Golden.Tests;
 /// (1999), Internet Advertisements (UCI), without copying any UCI data row.
 /// </para>
 /// </summary>
-public sealed class InternetAdsExitTests
+public sealed class InternetAdsWorkflowTests
 {
     // The frozen D-119 contract boundaries, as LITERALS independent of AdCorpus. These are the
     // oracle; the generator's own constants are graded against them.
@@ -79,7 +79,7 @@ public sealed class InternetAdsExitTests
     }
 
     [Fact]
-    public void Corpus_WhenTheWidthIsReduced_ThenTheLiteralLayoutGateRejectsIt()
+    public void Corpus_WhenTheWidthIsReduced_ThenTheLiteralLayoutCheckRejectsIt()
     {
         // A "coordinated reduced helper" proxy: drop the last field from every row. A check that
         // echoed the generator's own width would accept 1,558; the literal check must reject it.
@@ -421,11 +421,11 @@ public sealed class InternetAdsExitTests
     }
 
     // ---------------------------------------------------------------------
-    // 7. Closing locks
+    // 7. Registry locks
     // ---------------------------------------------------------------------
 
     [Fact]
-    public void ClosingLocks_WhenTheRegistryAndM6ContractAreInspected_ThenTheExitStateHolds()
+    public void DiagnosticRegistry_WhenInspected_ThenItsCountAndExpectedCodesHold()
     {
         var defined = Enum.GetNames<DiagnosticCode>();
 
@@ -463,7 +463,7 @@ public sealed class InternetAdsExitTests
     [Fact]
     public async Task Provenance_IsAuthoredOnEveryGeneratedFormAndIsFingerprintInert()
     {
-        // Every generated exit spec authors the exact Kushmerick/UCI provenance, parsed and
+        // Every generated spec form authors the exact Kushmerick/UCI provenance, parsed and
         // asserted on the document, not merely present in the header text.
         foreach (var toml in new[]
                  {

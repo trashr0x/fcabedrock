@@ -7,7 +7,7 @@ using FcaBedrock.Diagnostics;
 
 namespace FcaBedrock.Conversion.Tests;
 
-public sealed class EmitterSliceATests
+public sealed class PhaseHandoffTests
 {
     private static AttributeSpec Identity(
         string name, int index, IReadOnlyList<string>? domain, UnknownValuePolicy policy = UnknownValuePolicy.Warn) =>

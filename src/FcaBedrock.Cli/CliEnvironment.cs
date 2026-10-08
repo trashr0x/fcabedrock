@@ -92,6 +92,11 @@ internal sealed class CliEnvironment
     /// <summary>Progress observation; the no-op observer in production.</summary>
     public IProgressObserver Progress { get; init; } = NoProgressObserver.Instance;
 
-    /// <summary>The production <see cref="OpenInput"/> implementation.</summary>
-    internal static Stream OpenFile(string path) => File.OpenRead(path);
+    /// <summary>
+    /// The production <see cref="OpenInput"/> implementation. An empty path names no file, so it
+    /// fails here as a missing file does, before <see cref="File.OpenRead(string)"/> sees it:
+    /// every command reports a missing input as an unreadable one (exit 1).
+    /// </summary>
+    internal static Stream OpenFile(string path) =>
+        path.Length == 0 ? throw new FileNotFoundException("The path is empty.") : File.OpenRead(path);
 }

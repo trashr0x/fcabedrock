@@ -86,9 +86,10 @@ public sealed class ProbeDraftContentTests
     [Fact]
     public async Task Probe_WhenWideShape_ThenAuthorsNoOrderingRoleMapOrObjectKey()
     {
-        // §5.3 gives wide neither an ordering nor a role map, and §5.4's wide default
-        // (row_index) is already correct — authoring any of the three would not resolve, or
-        // would restate a default as if it were a choice.
+        // §5.2 refuses the triple-only ordering and role map on a wide binding, and §5.4's wide
+        // default (row_index) is already correct: authoring either of the first two would make
+        // the draft unreadable, and authoring the third would restate a default as if it were a
+        // choice.
         var binding = ProbeFixtures.Draft(await ProbeFixtures.ProbeCsvAsync(Csv)).Binding!;
 
         Assert.Null(binding.Ordering);

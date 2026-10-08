@@ -228,14 +228,21 @@ internal sealed partial class PublicationTransaction
     /// <para>
     /// <b>Every decision is taken from the state as found, before anything moves, and proved
     /// again at the moment it acts.</b> Going <b>forward</b>, the backups are superseded and are
-    /// dropped. Going <b>backward</b>, each target is returned to the state preflight found it in,
-    /// and the restoring rename's own result is proved before any evidence can be discarded.
-    /// Either way it acts only on objects the transaction can prove are its own: a
-    /// final is deleted only when it is the very object this transaction staged, and a backup is
-    /// deleted or renamed home only when it is the very object this transaction renamed aside. A
-    /// file it cannot prove is preserved and the cleanup reports itself incomplete, which keeps the
-    /// record in place for a later attempt rather than destroying something
-    /// unowned.
+    /// dropped. Going <b>backward</b>, it tries to return each target to the state preflight found
+    /// it in, and the restoring rename's own result is proved before any evidence can be discarded.
+    /// Either way it acts only on objects the transaction can prove are its own: a final is
+    /// deleted only when it is the very object this transaction staged, and a backup is deleted or
+    /// renamed home only when it is the very object this transaction renamed aside. A file it
+    /// cannot prove is preserved. The pass reports itself incomplete, keeping the record for a
+    /// later attempt, when a participant cannot be held open at the start (it then touches
+    /// nothing), when <paramref name="hazard"/> is set, when a removal it attempts fails or is
+    /// refused, when a backward restoration fails or is refused, or when a manifest final this run
+    /// introduced is still present going backward. While any of these holds it removes no control
+    /// file; otherwise it removes them most advanced first, and a control file it cannot remove
+    /// leaves the pass incomplete too. Lacking an ownership proof does not by itself make the pass
+    /// incomplete: an unrelated file at a final path that had no backup, other than a manifest this
+    /// run introduced, is preserved without being acted on, and whether the pass completes still
+    /// depends on the conditions above.
     /// </para>
     /// <para>
     /// The two passes are not redundant. The first is what keeps a decision from being taken
@@ -249,9 +256,13 @@ internal sealed partial class PublicationTransaction
     /// touched (D-125).
     /// </para>
     /// <para>
-    /// <paramref name="hazard"/> is set when a commit rename put an object this transaction cannot
-    /// identify at a published path and could not put it back. Nothing may then erase the private
-    /// state that lets a later run classify what is there.
+    /// <paramref name="hazard"/> is set when the commit found an object it cannot identify where
+    /// one of its renames put it and could not rename that object back: at a published path after
+    /// a commit rename, or at the target's private backup path after a backup rename. The pass then
+    /// reports itself incomplete from the start, so nothing erases the private state that lets a
+    /// later run classify what is there. Its other steps still run, each acting only on objects it
+    /// can prove are its own: it neither moves nor deletes the unidentified object, and it does not
+    /// restore that target's public path.
     /// </para>
     /// </summary>
     private static bool Finish(TransactionView view, bool forward, RecoveryGuard guard, bool hazard)
@@ -365,8 +376,11 @@ internal sealed partial class PublicationTransaction
                 && TryMutate(() => view.Files.Move(backupPath, finalPath, anchor));
 
             // And the restoring rename's RESULT, before anything can discard the evidence that
-            // makes this state recognizable. A different object substituted inside
-            // that boundary is put back rather than published as the restored prior target.
+            // makes this state recognizable. A different object substituted inside that boundary
+            // is not counted as the restored prior target: the pass tries to rename it back to the
+            // backup path, and whether or not that succeeds the restoration stays incomplete, so
+            // the record and its evidence survive. If the rename back fails, the object stays at
+            // the target path.
             //
             // Asked of the backup's own reference, which is what still holds the object the rename
             // moved: it is re-filed under the destination only once this has proved that is where
@@ -420,12 +434,18 @@ internal sealed partial class PublicationTransaction
     /// is the last complete, classifiable phase, which a later run resumes.
     /// </para>
     /// <para>
-    /// Every one of these is an object, not a path, and every one goes only when it is provably
-    /// still its own exact bytes: the descriptor, the markers and the claims their canonical
-    /// role-specific documents, evidence and the record their own encodings. A raced-in occupant at
-    /// any of those names refused this transaction's create-new or rename (and an empty, partial,
-    /// or substituted object proves nothing whatever its length), so it is preserved and the
-    /// cleanup reports itself incomplete.
+    /// Every one of these is an object, not a path, and each goes only when its own proof holds at
+    /// the moment of removal. The descriptor and the claims need their exact canonical
+    /// role-specific documents, and the evidence and the record their own exact encodings. A
+    /// marker needs its exact canonical document too, but a running transaction removes only the
+    /// markers its own create-new produced: a marker it did not create that is present at that
+    /// name leaves the cleanup incomplete whatever its bytes. The pending record needs the identity
+    /// the descriptor acknowledges, and a pending evidence file is never removed here, so one that
+    /// is still present leaves the cleanup incomplete. An object that fails its proof (empty,
+    /// partial, or holding other bytes or another identity) is preserved and the cleanup reports
+    /// itself incomplete. Where the proof is the bytes alone (the descriptor, the claims, the
+    /// evidence, the record, and a marker in a resumed run), it establishes content, not history:
+    /// an object holding exactly those bytes is removed whatever put it there (D-125).
     /// </para>
     /// </summary>
     private static bool RemoveControl(TransactionView view, RecoveryGuard guard)

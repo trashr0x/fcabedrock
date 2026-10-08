@@ -272,7 +272,7 @@ public sealed class ProbeOracleTests
     }
 
     [Fact]
-    public async Task W16Truncating_ShouldNameTheColumnsARealProbeActuallyTruncates()
+    public async Task W16Truncating_ShouldNameTheColumnsARealProbeTruncates()
     {
         // The derivation is only worth stating if it agrees with the prober. At this limit three of
         // the sixteen columns exceed it and thirteen do not, so the expectation is a real partition

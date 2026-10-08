@@ -172,10 +172,11 @@ internal sealed partial class PublicationTransaction
         {
             var path = Path.Combine(directory, PublicationTargets.EvidenceName(record.BaseFileName, kind, token));
 
-            // The authoritative evidence arrives by a rename whose result this run proved, and it
-            // is self-validating besides: the bytes must be this run's own evidence for this target
-            // and must agree with the record. A raced-in occupant at that name (one whose presence
-            // refused the publishing rename) can prove neither.
+            // Removal is decided by the bytes alone: they must be this run's own evidence for this
+            // target and must agree with the record. An occupant with any other bytes is preserved,
+            // including one whose presence refused the publishing rename. The bytes prove content,
+            // not history: an object holding exactly this evidence is removed as it, whether or not
+            // this run's rename put it there (PublishEvidence may have refused that rename's result).
             return RemoveOwned(
                 files,
                 path,
@@ -194,10 +195,10 @@ internal sealed partial class PublicationTransaction
             !Exists(Path.Combine(directory, PublicationTargets.EvidencePendingName(record.BaseFileName, kind, token)));
 
         /// <summary>
-        /// A stage claim goes only when the object at its name is exactly this transaction's claim
-        /// for this target kind and this acknowledged identity, proved, like every removal, from
-        /// the handle the deletion acts through. An object substituted at that name inside the
-        /// removal itself fails that proof and survives.
+        /// A stage claim goes only when the object at its name holds exactly this transaction's
+        /// claim bytes for this target kind and this acknowledged identity, proved, like every
+        /// removal, from the handle the deletion acts through. An object substituted at that name
+        /// inside the removal itself survives unless it holds those same bytes.
         /// </summary>
         public bool RemoveStageClaim(PublicationTargetKind kind, string targetFileName, RecoveryGuard guard)
         {
@@ -250,9 +251,10 @@ internal sealed partial class PublicationTransaction
         }
 
         /// <summary>
-        /// The authoritative record, the last thing a finished transaction removes. It arrived at
-        /// that name by a rename this run proved on both sides, and it is its own exact bytes; an
-        /// object that is not those bytes is not the record and is left where it is.
+        /// The authoritative record, the last thing a finished transaction removes. Removal is
+        /// decided by the record's own exact bytes: an object that is not those bytes is not the
+        /// record and is left where it is, and an object that is those bytes is removed as the
+        /// record, whatever put it at that name.
         /// </summary>
         public bool RemoveRecord(RecoveryGuard guard)
         {

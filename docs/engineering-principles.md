@@ -1,4 +1,4 @@
-# Engineering Principles — FcaBedrock vNext
+# Engineering Principles: FcaBedrock vNext
 
 Project-wide invariants to check code against before committing. These are
 **not** general "write good code" advice: each one states a choice whose

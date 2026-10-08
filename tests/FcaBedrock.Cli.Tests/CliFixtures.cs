@@ -692,7 +692,7 @@ internal static class CliFixtures
     /// One spec per fully-frozen check reason (§14), each with exactly <b>one</b> included
     /// attribute so each row's stderr is a single independent literal. The set mirrors the
     /// library's check matrix; every row must <em>calibrate successfully</em> to reach the check at
-    /// all, which is what <see cref="GateData"/> is sized for.
+    /// all, which is what <see cref="FullyFrozenCheckData"/> is sized for.
     /// </summary>
     public static string NotFullyFrozenSpec(string reason) => $$"""
         [spec]
@@ -742,8 +742,9 @@ internal static class CliFixtures
             scale = { kind = "nominal" }
             """,
 
-        // The three cut modes: each calibrates SUCCESSFULLY over GateData, and a successful cut
-        // calibration is silent, so these rows render the host error and nothing else.
+        // The three cut modes: each calibrates SUCCESSFULLY over FullyFrozenCheckData, and a
+        // successful cut calibration is silent, so these rows render the host error and nothing
+        // else.
         "equal-frequency" => """
             name = "age"
             source = { kind = "column", index = 1, value_type = "number" }
@@ -765,7 +766,7 @@ internal static class CliFixtures
             scale = { kind = "nominal" }
             """,
 
-        _ => throw new ArgumentOutOfRangeException(nameof(reason), reason, "Unknown gate reason."),
+        _ => throw new ArgumentOutOfRangeException(nameof(reason), reason, "Unknown reason."),
     };
 
     /// <summary>
@@ -774,7 +775,7 @@ internal static class CliFixtures
     /// distinct-count, and percentile-span guards are all cleared and every cut row reaches the
     /// fully-frozen check instead of failing calibration first.
     /// </summary>
-    public const string GateData = "colour,age\nred,10\ngreen,20\nblue,30\nred,40\ngreen,50\n";
+    public const string FullyFrozenCheckData = "colour,age\nred,10\ngreen,20\nblue,30\nred,40\ngreen,50\n";
 
     /// <summary>
     /// A fully-frozen root that authors <c>extends</c> plus <c>[provenance]</c>,

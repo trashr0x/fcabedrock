@@ -344,6 +344,22 @@ public sealed class ValidateCommandTests
         Assert.Equal($"error: cannot read the data file '{missing.Replace("\\", "\\\\")}'.\n", harness.StdErr);
     }
 
+    [Fact]
+    public async Task Validate_WhenTheSpecOpenThrowsObjectDisposedException_ThenACodeLessHostErrorAndExitOne()
+    {
+        // An ObjectDisposedException from the root SPEC read is classified as an unreadable spec,
+        // not as the output failure the host keeps for a broken sink. Here the opener raises it.
+        using var temp = TempDirectory.Create();
+        var spec = temp.Write("spec.toml", CliFixtures.NameBoundSpec);
+        var harness = new CliTestHarness { OpenInput = _ => throw new ObjectDisposedException("stream") };
+
+        var exit = await harness.RunAsync("validate", spec);
+
+        Assert.Equal(1, exit);
+        Assert.Equal(string.Empty, harness.StdOut);
+        Assert.Equal(DiagnosticRenderer.RenderHostError(RunPipeline.SpecReadMessage(spec)), harness.StdErr);
+    }
+
     [Theory]
     [InlineData(new byte[] { 0xFF, 0xFE, (byte)'a', 0x00 })]
     [InlineData(new byte[] { 0xFE, 0xFF, 0x00, (byte)'a' })]
@@ -407,6 +423,50 @@ public sealed class ValidateCommandTests
         Assert.Equal(1, exit);
         Assert.Contains("fatal SpecExtendsNotFound:", harness.StdErr, StringComparison.Ordinal);
         Assert.DoesNotContain("error:", harness.StdErr, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Validate_WhenABaseOpenThrowsObjectDisposedException_ThenTheSpecDiagnosticAndExitOne()
+    {
+        // An ObjectDisposedException while reading a base is classified as an unreadable base:
+        // the phase-owned diagnostic, as for a missing one, never an escaped fault. Here the
+        // opener raises it.
+        using var temp = TempDirectory.Create();
+        var spec = temp.Write("spec.toml", "[spec]\nversion = 1\nextends = \"./base.toml\"\n");
+        var harness = new CliTestHarness
+        {
+            OpenInput = path => path.EndsWith("base.toml", StringComparison.Ordinal)
+                ? throw new ObjectDisposedException("stream")
+                : File.OpenRead(path),
+        };
+
+        var exit = await harness.RunAsync("validate", spec);
+
+        Assert.Equal(1, exit);
+        Assert.Equal(string.Empty, harness.StdOut);
+        Assert.Contains("fatal SpecExtendsNotFound:", harness.StdErr, StringComparison.Ordinal);
+        Assert.DoesNotContain("error:", harness.StdErr, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Validate_WhenABaseOpenThrowsAPlainArgumentException_ThenItStaysExitFour()
+    {
+        // The base-read family stays narrow: a plain ArgumentException is a contract defect, not
+        // an unreadable base, so it reaches the sanitized internal fault.
+        using var temp = TempDirectory.Create();
+        var spec = temp.Write("spec.toml", "[spec]\nversion = 1\nextends = \"./base.toml\"\n");
+        var harness = new CliTestHarness
+        {
+            OpenInput = path => path.EndsWith("base.toml", StringComparison.Ordinal)
+                ? throw new ArgumentException("a contract violation, not a read failure.")
+                : File.OpenRead(path),
+        };
+
+        var exit = await harness.RunAsync("validate", spec);
+
+        Assert.Equal(4, exit);
+        Assert.Equal(string.Empty, harness.StdOut);
+        Assert.Equal(DiagnosticRenderer.RenderHostError(CliHost.UnexpectedFaultMessage), harness.StdErr);
     }
 
     [Fact]

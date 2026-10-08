@@ -284,9 +284,9 @@ internal static class PublicationTargets
     /// <b>The name classifies; it does not prove.</b> Ownership rests on the descriptor's exact
     /// canonical bytes (<see cref="ControlDocument"/>), which bind the token, the base, the
     /// authoritative record's digest, and this role. Discovery and removal both require those exact
-    /// bytes: an empty, partial, refused, invalid, or substituted object at this name is preserved
-    /// and authorizes no mutation, least of all removal of the pending record it would otherwise
-    /// have named.
+    /// bytes: an object at this name without them (empty, partial, invalid, or different) is
+    /// preserved and authorizes no mutation, least of all removal of the pending record it would
+    /// otherwise have named. The bytes prove content, not which writer produced them.
     /// </para>
     /// <para>
     /// Written after the acquisition, the descriptor states the one thing that authorizes removing
@@ -353,8 +353,9 @@ internal static class PublicationTargets
     /// canonical bytes (<see cref="ControlDocument"/>), which bind the token, the base, the
     /// authoritative record's digest, this role <em>with its target kind</em>, and that same stage
     /// identity, so name and body must agree. Discovery and removal both require those exact
-    /// bytes: an empty, partial, refused, invalid, or substituted object at this name is preserved,
-    /// authorizes no mutation of the stage beside it, and is not removed as this run's residue.
+    /// bytes: an object at this name without them (empty, partial, invalid, or different) is
+    /// preserved, authorizes no mutation of the stage beside it, and is not removed as this run's
+    /// residue. The bytes prove content, not which writer produced them.
     /// </para>
     /// <para>
     /// <b>The order is the other half.</b> A record entry only <em>predicts</em> a private path,
@@ -429,8 +430,9 @@ internal static class PublicationTargets
     /// <summary>
     /// The phase marker's file name. It confines the marker to this base and classifies which phase
     /// it records; the phase is durable only when the object there holds the exact canonical bytes
-    /// for that role (<see cref="ControlDocument"/>). An empty, partial, invalid, or substituted
-    /// object at this name records no phase, authorizes no cleanup, and is preserved.
+    /// for that role (<see cref="ControlDocument"/>). An object at this name without those bytes
+    /// (empty, partial, invalid, or different) records no phase, authorizes no cleanup, and is
+    /// preserved.
     /// </summary>
     public static string MarkerName(string baseFileName, TransactionPhase phase, string token) =>
         baseFileName + Marker + PhaseName(phase) + "-" + token;

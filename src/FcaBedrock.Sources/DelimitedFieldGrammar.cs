@@ -74,8 +74,8 @@ internal struct NoCheckpoints : IWorkBudget
 /// several passes over the candidate (the quote search, the blank and whitespace tests, validation
 /// of quoted fields, line-break counts, the copies into strings, the column traversal and, on a
 /// fault, the diagnostic rescan), each at most the candidate's length, plus the allocation of its
-/// strings: the size gate bounds input size, not work. No latency bound follows from any of this,
-/// and none is promised.
+/// strings: the size threshold bounds input size, not work. No latency bound follows from any
+/// of this, and none is promised.
 /// </para>
 /// </summary>
 internal struct CancellationBudget : IWorkBudget

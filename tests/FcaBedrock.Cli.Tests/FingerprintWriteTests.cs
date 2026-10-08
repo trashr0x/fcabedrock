@@ -155,7 +155,7 @@ public sealed class FingerprintWriteTests
 
     // ---- the fully-frozen check (§14) -------------------------------------------------------------
 
-    public static TheoryData<string, string?> GateReasons() => new()
+    public static TheoryData<string, string?> FullyFrozenCheckReasons() => new()
     {
         { "omitted-domain", "ObservedDomainUsed" },
         { "omitted-domain-include", "ObservedDomainUsed" },
@@ -167,7 +167,7 @@ public sealed class FingerprintWriteTests
     };
 
     [Theory]
-    [MemberData(nameof(GateReasons))]
+    [MemberData(nameof(FullyFrozenCheckReasons))]
     public async Task FingerprintWrite_WhenTheSpecIsNotFullyFrozen_ThenItIsRefusedAndAnyPreparationWarningStillRenders(
         string reason, string? warning)
     {
@@ -177,7 +177,7 @@ public sealed class FingerprintWriteTests
         // cut rows (whose successful calibration is silent) carry the error alone.
         using var temp = TempDirectory.Create();
         var spec = temp.Write("spec.toml", CliFixtures.NotFullyFrozenSpec(reason));
-        var data = temp.Write("data.csv", CliFixtures.GateData);
+        var data = temp.Write("data.csv", CliFixtures.FullyFrozenCheckData);
         var target = temp.Resolve("new.toml");
         var harness = new CliTestHarness();
 
