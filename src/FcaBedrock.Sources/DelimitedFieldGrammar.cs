@@ -115,7 +115,7 @@ internal struct CancellationBudget : IWorkBudget
 
 /// <summary>
 /// The Bedrock delimited-text grammar (spec §5.1.1) for one raw field: the untouched span Sep
-/// 0.15.0 returns with <c>Unescape = false</c> and <c>Trim = SepTrim.None</c>. Sep has already
+/// 0.17.1 returns with <c>Unescape = false</c> and <c>Trim = SepTrim.None</c>. Sep has already
 /// split the candidate, so nothing here searches across fields or records; within a candidate it
 /// searches for quotes, and for line breaks only inside quoted content.
 /// <para>

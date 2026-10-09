@@ -4,7 +4,7 @@ using static FcaBedrock.Sources.Tests.SourceTestSupport;
 namespace FcaBedrock.Sources.Tests;
 
 /// <summary>
-/// A characterization of the pinned Sep 0.15.0 reader, read directly with no Sources code between
+/// A characterization of the pinned Sep 0.17.1 reader, read directly with no Sources code between
 /// it and a reader that returns short reads. It records the defect the whole-span reader exists for
 /// (D-137): after a short read that ends in a carriage return, Sep holds back a following carriage
 /// return and restores it after the characters read in between. Review this test at every Sep

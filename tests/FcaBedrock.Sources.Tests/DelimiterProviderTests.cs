@@ -5,7 +5,7 @@ using static FcaBedrock.Sources.Tests.SourceTestSupport;
 namespace FcaBedrock.Sources.Tests;
 
 /// <summary>
-/// The v1 delimiter alphabet (spec §5.1.1) against the pinned Sep 0.15.0 reader, as three separate
+/// The v1 delimiter alphabet (spec §5.1.1) against the pinned Sep 0.17.1 reader, as three separate
 /// exhaustive locks: what the provider accepts, that every usable v1 delimiter reads, and that the
 /// usable set (the alphabet without the double quote) equals the provider's accepted set. The
 /// alphabet itself is locked in Core. A Sep version change that moves any of these must be
@@ -13,7 +13,7 @@ namespace FcaBedrock.Sources.Tests;
 /// </summary>
 public sealed class DelimiterProviderTests
 {
-    // The 95 characters pinned Sep 0.15.0 accepts as a separator, written out literally.
+    // The 95 characters pinned Sep 0.17.1 accepts as a separator, written out literally.
     private static readonly string ProviderAccepted =
         "\t" + (char)0x1F + " !$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~";
 

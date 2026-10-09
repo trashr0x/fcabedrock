@@ -401,7 +401,7 @@ public sealed class UnboundSessionTests
     [Fact]
     public async Task WideUnbound_WhenRowExceedsSepsLimit_ThenSourceReadExceptionWithInnerCause()
     {
-        // Sep 0.15.0 signals its row/buffer ceiling as NotSupportedException. The adapter normalizes
+        // Sep 0.17.1 signals its row/buffer ceiling as NotSupportedException. The adapter normalizes
         // it, with its own limit message, so no consumer needs to know Sep exists.
         var session = WideSession(new string('x', 20 * 1024 * 1024) + "\n");
 

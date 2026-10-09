@@ -1566,7 +1566,7 @@ fingerprints, manifests, and `extends` are implemented.
   on 2026-10-01: `delimiter` is one character of the fixed v1 alphabet, TAB or U+001F through U+007E
   except `#` (96 characters, `"` included), and must differ from `quote_char`, so 95 are usable
   with the fixed quote. The usable delimiter set, the fixed v1 alphabet with the double quote
-  excluded by the existing quote-conflict rule, equals the set accepted by pinned Sep 0.15.0.
+  excluded by the existing quote-conflict rule, equals the set accepted by pinned Sep 0.17.1.
   `SourceReadSettings.IsInDelimiterAlphabet` owns alphabet membership only. The spec reader
   reports an authored value outside the alphabet as `SpecFieldInvalid` at the value (CR and LF
   included); the CLI's `--delimiter` rejects it, and `"`, with usage exit 2; and
@@ -7267,7 +7267,7 @@ with its small-input elapsed cost unbounded (D-138).
 - **Date:** 2026-10-01
 - **Decision:** Sep reads through a whole-span reader. `WholeSpanTextReader` (internal,
   `FcaBedrock.Sources`) wraps the `StreamReader` that decodes an acquired stream, and it is the
-  reader Sep 0.15.0 receives on the one construction path used by schema, replay, bound, unbound,
+  reader Sep 0.17.1 receives on the one construction path used by schema, replay, bound, unbound,
   wide and triple reads. Each `Read(Span<char>)` fills the requested span from the decoder,
   calling it again after every short return, until the span is full or the decoder returns zero
   at the end of input; the characters, their order and the decoder's configuration are unchanged,
@@ -7291,7 +7291,7 @@ with its small-input elapsed cost unbounded (D-138).
   and after refills, and disposal that disposes nothing. The reader may be removed only when a
   pinned Sep release keeps decoded character order under legal short reads, shown by the
   characterization test passing without it, with the product regression tests still green.
-- **Why:** after a read that returns fewer characters than requested and ends in CR, Sep 0.15.0
+- **Why:** after a read that returns fewer characters than requested and ends in CR, Sep 0.17.1
   reads one more character to see whether a CR LF pair was split. When that character is another
   CR it holds it back and keeps filling the buffer, then restores it at the start of the next
   fill, after the characters read in between. Valid quoted content loses a CR and a later record
@@ -7300,13 +7300,13 @@ with its small-input elapsed cost unbounded (D-138).
   every read fills its span, the only short read is the last one, after which there is no next
   character, so nothing is held back. Short reads are legal from any stream that returns fewer
   bytes than requested before its end (pipes, network streams, wrappers), and the public sources
-  accept any `Func<Stream>`. In bounded tests a file stream (0 of 286 positions) and whole reads
-  (0 of 3,000) showed no reordering and a stream capped at 1,000 bytes per read showed it at 3 of
-  3,000 positions, each where a CR pair straddled a read; no CLI file read was observed to be
-  affected, and neither immunity of every file stream nor failure of every short-reading stream
-  is claimed. The fill code is identical in the tagged sources of Sep 0.15.0 and 0.17.1
-  (compared on 2026-09-30), so moving the pin to 0.17.1 alone would not remove the defect; no
-  other version was compared. What the reader
+  accept any `Func<Stream>`. In bounded tests with Sep 0.15.0 a file stream (0 of 286 positions)
+  and whole reads (0 of 3,000) showed no reordering and a stream capped at 1,000 bytes per read
+  showed it at 3 of 3,000 positions, each where a CR pair straddled a read; no CLI file read was
+  observed to be affected, and neither immunity of every file stream nor failure of every
+  short-reading stream is claimed. Sep 0.17.1 has the same fill code as 0.15.0, and the
+  characterization test reproduces the defect with it, so moving the pin to 0.17.1 did not
+  remove the defect; no other version was checked. What the reader
   preserves is the decoder's character sequence; it makes no claim that decoding is independent
   of how the stream splits its bytes (a non-UTF-8 byte-order mark is still recognized only when
   the first byte read is long enough, a separate encoding question), and raw input hashes stay
@@ -7320,7 +7320,7 @@ with its small-input elapsed cost unbounded (D-138).
   where the hint's value is small); larger stream, decoder or Sep buffers (they move the boundary,
   not the defect); accepting only stream types assumed to return whole reads (it narrows the public
   `Func<Stream>` contract without proof); rewriting or rejecting CR CR (it contradicts spec
-  §5.1.1); upgrading Sep to 0.17.1 (its tagged source has the same fill code); replacing the
+  §5.1.1); upgrading Sep alone (0.17.1 has the same fill code and still reorders); replacing the
   provider or writing a tokenizer (withdrawn on maintenance grounds, D-041).
 - **Affects:** `FcaBedrock.Sources` (`WholeSpanTextReader`; the owned read chain behind
   `CsvReadPipeline`); tests in `FcaBedrock.Sources.Tests`. No public API, diagnostic, spec rule,

@@ -197,7 +197,7 @@ internal sealed class DelimitedSourceReader
     // Origin, not message text: only a NotSupportedException thrown from within Sep itself is the
     // limit. Sep reads through the caller's stream, so a stream whose Read throws
     // NotSupportedException surfaces through the very same call, and wrapping it would disguise a
-    // contract error as an expected read failure. Verified against pinned Sep 0.15.0: the limit's
+    // contract error as an expected read failure. Verified against pinned Sep 0.17.1: the limit's
     // TargetSite is a Sep throw helper (assembly "Sep"), a throwing stream's is its own Read.
     private static bool IsProviderLimit(NotSupportedException ex) =>
         ex.TargetSite?.DeclaringType?.Assembly == typeof(Sep).Assembly;

@@ -1,7 +1,7 @@
 namespace FcaBedrock.Sources;
 
 /// <summary>
-/// Hands the pinned Sep 0.15.0 reader every character span it requests in full, reading the
+/// Hands the pinned Sep 0.17.1 reader every character span it requests in full, reading the
 /// Sources-owned decoder as many times as needed, so that a request comes back short only at the
 /// end of the input.
 /// <para>
@@ -15,8 +15,8 @@ namespace FcaBedrock.Sources;
 /// return either fills Sep's request (its fill loop then ends, and the next fill restores the
 /// carriage return in order) or is the last read of the input (nothing follows to set aside). The
 /// same logic exists in Sep's asynchronous fill, so an asynchronous read path would need its own
-/// whole-span reader and its own review and proof. The behavior is verified in Sep 0.15.0 by
-/// execution and in the 0.17.1 source by comparison (D-137).
+/// whole-span reader and its own review and proof. The behavior is verified in Sep 0.17.1 by
+/// execution (D-137).
 /// </para>
 /// <para>
 /// <b>Contract.</b> It changes read sizes only: it never transforms, buffers, reorders or retains
