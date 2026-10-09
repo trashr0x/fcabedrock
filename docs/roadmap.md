@@ -26,18 +26,22 @@ lists the capabilities.
 | M8 | First scaling and benchmark pass | Complete |
 | M8.1 | Generation-tiered spill catalogue for count-sensitive calibration | Complete |
 | M8.2 | Writing, ownership and provenance hardening | Complete |
-| M9 | Avalonia desktop application | Next; starts once M8.2 is integrated on `main` and accepted |
+| M9 | Avalonia desktop application | Next |
 
 M8's evidence closed at `3b2e4a80`, where the whole-solution test run counted 4,623 tests: 20
-skipped and none failed. M8's documentation was integrated at `3d71524b`, and M8.1 is integrated on
-`main` at `47e2ce71` (D-128). The most recent full-suite result this roadmap records is 5,480 tests
-(5,460 passed, 20 skipped, none failed), from a Release run on 2026-10-07 of the source later
-committed as `4c99ee8`; no run at `4c99ee8` itself or at any later commit is recorded here.
+skipped and none failed. M8's documentation was integrated at `3d71524b`, M8.1 was integrated on
+`main` at `47e2ce71` (D-128), and M8.2 was integrated on `main` at `1c5b5bc5` and accepted there.
+The most recent full-suite results this roadmap records come from the `main`-push CI run at
+`4d452d3a`, a later commit that updates package versions: on each of the five native targets, the
+suite counted 5,502 tests, none failed, and 13 to 17 were skipped, depending on the platform.
 
 No release has been made, and the `FcaBedrock.Cli` package is not published to a public NuGet feed.
-This roadmap records no five-target native CI, tested-archive, UCI Adult acceptance, scale-probe or
-`main`-push CI result for any revision after `3b2e4a80`. Each release candidate supplies its own
-evidence ([Release-candidate obligations](#release-candidate-obligations)).
+The same CI run also passed the resident-accounting witnesses, the Small benchmark smoke and both
+package smokes on all five targets, and produced the three tested archives. The three UCI Adult
+cases passed on Windows x64 at `1c5b5bc5`, as the M8.2 section records. No scale-probe result is
+recorded for any revision after `3b2e4a80`. Each of these results belongs to its revision, and
+each release candidate supplies its own evidence
+([Release-candidate obligations](#release-candidate-obligations)).
 
 M8.2, the latest milestone, changes how delimited data is read (spec §5.1.1, D-041, D-054), so it
 can change the output of a spec it still accepts: blank records are skipped everywhere, the
@@ -56,7 +60,7 @@ of 260 characters or more (D-125), a halted `convert` run no longer reporting th
 data file could not be read, an empty DATA or `.bed` operand being reported as an unreadable
 input instead of an internal fault, and wording edits to some diagnostic messages, the `--help`
 text and the package description.
-M9 begins after M8.2 is accepted and integrated. Work deferred beyond v1 is in the
+M9 is next and has not started. Work deferred beyond v1 is in the
 [deferred backlog](#deferred-backlog-not-v1).
 
 ## Milestones
@@ -356,7 +360,7 @@ the integrated revision was measured. `docs/benchmarks.md` has the figures and l
 
 ### M8.2: Writing, ownership and provenance hardening
 
-M8.2's work is complete, and M9 waits for it to be integrated on `main` and accepted. It hardens how
+M8.2 is complete, and it was integrated on `main` at `1c5b5bc5` and accepted there. It hardens how
 the repository is written, who owns each lasting fact, how evidence provenance is stated, and how
 authored text is checked. It changes no CLI command or option, exit-code meaning, determinism rule
 or fingerprint format. Reading delimited data by spec §5.1.1 (D-041, D-054) can change `.cxt`,
@@ -369,11 +373,13 @@ returns short reads can also see corrected quoted CR content; no CLI file read w
 affected (D-137). The reading change's elapsed cost on small inputs is not bounded (D-138);
 `docs/benchmarks.md` has its comparison with the previous reader. The reading change also reaches
 the three UCI Adult (`External`) cases, so their passes recorded at `3b2e4a80`, under the previous
-reader and an earlier acquisition revision, do not carry forward: all three (the source drain, the
-`.dat` conversion and the `.cxt` conversion) must pass on the final Windows x64 build with the
-current reader and the corpus at acquisition revision 3 (32,561 records) before M8 as a whole is
-accepted, and for each release candidate (D-124). No such run is recorded here. Its public API
-additions are
+reader and an earlier acquisition revision, do not carry forward. All three (the source drain, the
+`.dat` conversion and the `.cxt` conversion) passed on Windows x64 at `1c5b5bc5` on 2026-10-08,
+with the current reader and the corpus at acquisition revision 3 (32,561 records), in a `Dry` run
+that executed and validated each case once. That run is functional evidence only: it gives no
+timing, no repeatability across iterations and no independent oracle for the output bytes. It
+describes `1c5b5bc5` alone, and each release candidate must pass all three again (D-124). M8.2's
+public API additions are
 the binding-only resolver stage `SpecResolver.ResolveBinding` (D-135), the delimiter-alphabet
 predicate `SourceReadSettings.IsInDelimiterAlphabet` (D-054), the attribute-name rule
 `AttributeNameValidity.IsValid` (spec §10.1), and the date reject-carrier: the document flag
@@ -468,7 +474,7 @@ Its work proceeded in this order:
 ### M9: Avalonia desktop
 
 An Avalonia desktop application (D-008), MVVM over the same Core, which also exposes M5's `probe`
-in the UI. M9 begins after M8.2 is accepted and integrated. It does not block the CLI track: UI work
+in the UI. M9 is next and has not started. It does not block the CLI track: UI work
 must not hold up converter progress. The library APIs already accept cancellation; progress
 observation exists only as a CLI-internal seam (D-122 part 3).
 

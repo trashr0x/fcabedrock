@@ -103,10 +103,10 @@ native target, so a green CI run proves the Small-category cases and their oracl
 and makes **no claim** about Adult. The real-data evidence is required of the *candidate* instead:
 all three `External` cases (the source drain, `.dat` and `.cxt`) must pass on the final Windows x64
 build with the current delimited reader and the pinned corpus at acquisition revision 3 (32,561
-records). That is a blocking acceptance obligation before M8 as a whole is accepted and for each
-release candidate (D-124, `docs/roadmap.md`); a result from an earlier acquisition revision does
-not count. Routine CI can be green while it is outstanding; an unreachable UCI host is then an
-evidence-availability failure, not a defect in the build.
+records). That is a blocking acceptance obligation for each release candidate (D-124,
+`docs/roadmap.md`); a result from an earlier acquisition revision does not count. Routine CI can be
+green while it is outstanding; an unreachable UCI host is then an evidence-availability failure,
+not a defect in the build.
 
 ## Exit codes
 

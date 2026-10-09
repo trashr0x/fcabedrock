@@ -156,10 +156,10 @@ dotnet run -c Release --project tests/FcaBedrock.Benchmarks -- --anyCategories E
 
 That run covers all three UCI Adult cases: the source drain, the `.dat` conversion and the `.cxt`
 conversion. With the current delimited reader and the pinned corpus at acquisition revision 3
-(32,561 records), it is a **blocking** acceptance obligation before M8 as a whole is accepted and
-for each release candidate, not an optional extra: routine CI can be green while it is still
-outstanding, and a result from an earlier acquisition revision does not count. It is enforced by
-review rather than by a status check (D-124, `docs/roadmap.md`).
+(32,561 records), it is a **blocking** acceptance obligation for each release candidate, not an
+optional extra: routine CI can be green while it is still outstanding, and a result from an earlier
+acquisition revision does not count. It is enforced by review rather than by a status check (D-124,
+`docs/roadmap.md`).
 
 Real runs, corpus preparation, and the target-scale tiers are documented in
 `tests/FcaBedrock.Benchmarks/README.md`; the evidence they produce is `docs/benchmarks.md`.

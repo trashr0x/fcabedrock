@@ -170,11 +170,16 @@ the acquired dataset.
 The real-data evidence is required of each release candidate instead: all three `External` cases
 must pass on the final Windows x64 build against the verified corpus (D-124). An unreachable host, a
 length or digest mismatch, and a failure on verified bytes are kept apart, and none of them becomes a
-pass. The most recent recorded pass was at `3b2e4a80` on 2026-09-11, with every completed iteration
-validated after disposal and the Adult plan-shape proof run once per conversion case before
-measurement. At the same revision the five `probe` rows in the result tables were re-validated under
-the per-attribute probe oracle, not re-timed. Both are correctness results for that revision, and
-the Adult obligation applies again at every later release candidate.
+pass. At `3b2e4a80` on 2026-09-11, before the delimited reading change and at an earlier
+acquisition revision, all three passed with every completed iteration validated after disposal and
+the Adult plan-shape proof run once per conversion case before measurement. At the same revision
+the five `probe` rows in the result tables were re-validated under the per-attribute probe oracle,
+not re-timed. Both are correctness results for that revision. The most recent recorded pass is a
+later functional check at `1c5b5bc5` on 2026-10-08, on Windows x64 after the delimited reading
+change and with the corpus at acquisition revision 3: a `Dry` run that executed and validated each
+of the three cases once. It measured nothing, shows no repeatability across iterations and gives
+no independent oracle for the output bytes. The Adult obligation applies again at every later
+release candidate.
 
 ## Environment and applicability
 
