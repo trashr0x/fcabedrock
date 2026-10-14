@@ -525,15 +525,59 @@ public sealed class ConvertCommandTests
     public async Task Convert_WhenAMalformedFieldFollowsTheReadAhead_ThenItStaysTheCodelessDataFailure()
     {
         // A read failure is not a halt: DATA could not be read, so the code-less DATA error is the
-        // whole report.
+        // whole report. It names the reason and the position: data record 30000 is on line 30002,
+        // after the header.
         using var run = ConvertRun.Wide(KeyedSpec, KeyedData("k0030000,re\"d"));
 
         var exit = await run.ConvertAsync("--format", "dat");
 
         Assert.Equal(1, exit);
         Assert.Equal(string.Empty, run.Harness.StdOut);
-        Assert.Equal(DiagnosticRenderer.RenderHostError(RunPipeline.DataReadMessage(run.Data)), run.Harness.StdErr);
+        Assert.Equal(
+            DiagnosticRenderer.RenderHostError(
+                $"cannot read the data file '{run.Data}': a quote appears inside an unquoted field (data record 30000, "
+                + "field 1, counted from 0; line 30002). Quote the whole field and double each quote inside it."),
+            run.Harness.StdErr);
         Assert.Empty(Directory.GetFiles(run.Directory, "out*"));
+    }
+
+    [Fact]
+    public async Task Convert_WhenABytePastTheReadAheadIsNotUtf8_ThenNothingIsPublishedAndTheErrorSaysSo()
+    {
+        // An invalid byte inside record HaltRecord, about 420 KB in: the decoder refuses it during
+        // the emit pass, so the run publishes nothing instead of converting a replaced character.
+        using var run = ConvertRun.Wide(KeyedSpec, KeyedData(null));
+        var bytes = File.ReadAllBytes(run.Data);
+        var at = Encoding.UTF8.GetString(bytes).IndexOf($"k{HaltRecord:D7},", StringComparison.Ordinal) + 9;
+        bytes[at] = 0xE9;
+        File.WriteAllBytes(run.Data, bytes);
+
+        var exit = await run.ConvertAsync("--format", "both");
+
+        Assert.Equal(1, exit);
+        Assert.Equal(string.Empty, run.Harness.StdOut);
+        Assert.Equal(
+            DiagnosticRenderer.RenderHostError($"cannot read the data file '{run.Data}': it is not valid UTF-8. Save it as UTF-8."),
+            run.Harness.StdErr);
+        Assert.Empty(Directory.GetFiles(run.Directory, "out*"));
+    }
+
+    [Fact]
+    public async Task Convert_WhenTheDataStartsWithAUtf8Mark_ThenTheContextIsUnchangedAndTheInputHashCoversTheMark()
+    {
+        // One leading UTF-8 byte order mark is consumed, not data, so the committed context is the
+        // one the unmarked file produces; the input hash is still over the raw bytes, mark included.
+        using var plain = ConvertRun.Wide(CliFixtures.IndexBoundSpec, CliFixtures.WideData);
+        using var marked = ConvertRun.Wide(CliFixtures.IndexBoundSpec, CliFixtures.WideData);
+        byte[] markedBytes = [0xEF, 0xBB, 0xBF, .. Encoding.UTF8.GetBytes(CliFixtures.WideData)];
+        File.WriteAllBytes(marked.Data, markedBytes);
+
+        Assert.Equal(0, await plain.ConvertAsync("--format", "both"));
+        Assert.Equal(0, await marked.ConvertAsync("--format", "both"));
+
+        Assert.Equal(plain.Bytes(".cxt"), marked.Bytes(".cxt"));
+        Assert.Equal(plain.Bytes(".dat"), marked.Bytes(".dat"));
+        Assert.Contains($"input_hash = \"{HashOf(markedBytes)}\"", marked.Text(".manifest.toml"), StringComparison.Ordinal);
     }
 
     [Fact]

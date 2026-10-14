@@ -25,13 +25,13 @@ public sealed class ProbeTripleReadFailureTests
 
     private static readonly SourceReadSettings Settings = TripleProbeFixtures.TripleSettings();
 
-    private static void AssertReadFailed(Diagnosed<SpecDocument> result, string expectedTypeName)
+    private static void AssertReadFailed(Diagnosed<SpecDocument> result, string expectedText)
     {
         var diagnostic = Assert.Single(result.Diagnostics);
 
         Assert.Equal(DiagnosticCode.ProbeSourceReadFailed, diagnostic.Code);
         Assert.Equal(DiagnosticSeverity.Error, diagnostic.Severity);
-        Assert.Contains(expectedTypeName, diagnostic.Message, StringComparison.Ordinal);
+        Assert.Contains(expectedText, diagnostic.Message, StringComparison.Ordinal);
         Assert.True(result.HasErrors);
         Assert.False(result.TryGetValue(out _));
         Assert.Null(result.Value);
@@ -43,7 +43,7 @@ public sealed class ProbeTripleReadFailureTests
         { nameof(IOException), () => new IOException("device not ready") },
         { nameof(UnauthorizedAccessException), () => new UnauthorizedAccessException("denied") },
         { nameof(ObjectDisposedException), () => new ObjectDisposedException("stream") },
-        { nameof(DecoderFallbackException), () => new DecoderFallbackException("bad bytes") },
+        { "it is not valid UTF-8 text", () => new DecoderFallbackException("bad bytes") },
         { nameof(InvalidDataException), () => new InvalidDataException("corrupt") },
     };
 
@@ -64,19 +64,19 @@ public sealed class ProbeTripleReadFailureTests
     [Theory]
     [MemberData(nameof(ExpectedFailures))]
     public async Task ProbeTriple_WhenSchemaReadFails_ThenReportsProbeSourceReadFailed(
-        string typeName, Func<Exception> failure)
+        string expectedText, Func<Exception> failure)
     {
         var session = new TripleProbeFixtures.FakeTripleSession(Schema, [], schemaFailure: failure);
 
         var result = await Prober.ProbeTripleAsync(session, Settings);
 
-        AssertReadFailed(result, typeName);
+        AssertReadFailed(result, expectedText);
     }
 
     [Theory]
     [MemberData(nameof(ExpectedFailures))]
     public async Task ProbeTriple_WhenRowEnumerationFails_ThenReportsProbeSourceReadFailed(
-        string typeName, Func<Exception> failure)
+        string expectedText, Func<Exception> failure)
     {
         var session = new TripleProbeFixtures.FakeTripleSession(
             Schema,
@@ -86,14 +86,14 @@ public sealed class ProbeTripleReadFailureTests
 
         var result = await Prober.ProbeTripleAsync(session, Settings);
 
-        AssertReadFailed(result, typeName);
+        AssertReadFailed(result, expectedText);
         Assert.Equal(1, session.RowsYielded);
     }
 
     [Theory]
     [MemberData(nameof(ExpectedFailures))]
     public async Task ProbeTriple_WhenReadRowsAsyncItselfThrows_ThenReportsProbeSourceReadFailed(
-        string typeName, Func<Exception> failure)
+        string expectedText, Func<Exception> failure)
     {
         // Row acquisition is two calls before the first row arrives, and this is the first. A
         // compiler-generated async iterator can never fail here (which is exactly why leaving it
@@ -103,25 +103,25 @@ public sealed class ProbeTripleReadFailureTests
 
         var result = await Prober.ProbeTripleAsync(session, Settings);
 
-        AssertReadFailed(result, typeName);
+        AssertReadFailed(result, expectedText);
     }
 
     [Theory]
     [MemberData(nameof(ExpectedFailures))]
     public async Task ProbeTriple_WhenGetAsyncEnumeratorThrows_ThenReportsProbeSourceReadFailed(
-        string typeName, Func<Exception> failure)
+        string expectedText, Func<Exception> failure)
     {
         var session = new ThrowingEnumeratorSession(Schema, failure);
 
         var result = await Prober.ProbeTripleAsync(session, Settings);
 
-        AssertReadFailed(result, typeName);
+        AssertReadFailed(result, expectedText);
     }
 
     [Theory]
     [MemberData(nameof(ExpectedFailures))]
     public async Task ProbeTriple_WhenCurrentThrows_ThenReportsProbeSourceReadFailed(
-        string typeName, Func<Exception> failure)
+        string expectedText, Func<Exception> failure)
     {
         // An enumerator that materializes its row lazily does its real work in Current, not
         // MoveNextAsync, so a read failure can land there just as easily.
@@ -129,7 +129,7 @@ public sealed class ProbeTripleReadFailureTests
 
         var result = await Prober.ProbeTripleAsync(session, Settings);
 
-        AssertReadFailed(result, typeName);
+        AssertReadFailed(result, expectedText);
     }
 
     // --- Counterexamples: programmer errors are not absorbed -----------------------------------

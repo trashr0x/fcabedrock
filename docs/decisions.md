@@ -200,10 +200,10 @@ changes an earlier one. A new entry MUST add its line here.
 - D-106: Discovery `probe`: caller-selected shape, no inference, universal identity + nominal, one set-based observation pass *(refines D-003/D-036)*
 - D-107: Draft naming/binding matrix, validity guarantee, and content inventory; no stored fingerprints/clock/tool version; caller enrichment
 - D-108: Retention limit (100,000 default), strictly-greater truncation, prefix + `include` recovery, marker + always-written notes, probe options ownership; legacy retention-cap correction
-- D-109: The general unbound streaming source session; adapter/engine split; package dependency direction; required EP-4 review
+- D-109: The general unbound streaming source session; adapter/engine split; package dependency direction; required EP-4 review *(read-failure reason and position added in place on 2026-10-14)*
 - D-110: Probe boundedness: per-attribute limit + three aggregate guards, deterministic accounting, hard-failure semantics, no spill machinery, inherited subject-metadata carve-out *(refines D-095; guard precedence added in place on 2026-09-29)*
-- D-111: Probe diagnostic governance: five future codes, two phase widenings, `ProbeSourceReadFailed` scope, cancellation is not a diagnostic, registry 70 → expected 75 *(refines D-067/D-085/D-099)*
-- D-112: Probe determinism and cancellation: record-sequence input, no ambient state, byte/diagnostic repeatability, no partial artifact; the M5 verification suite
+- D-111: Probe diagnostic governance: five future codes, two phase widenings, `ProbeSourceReadFailed` scope, cancellation is not a diagnostic, registry 70 → expected 75 *(refines D-067/D-085/D-099; `ProbeSourceReadFailed` message detail amended in place on 2026-10-14)*
+- D-112: Probe determinism and cancellation: record-sequence input, no ambient state, byte/diagnostic repeatability, no partial artifact; the M5 verification suite *(physical-line read-failure positions qualified in place on 2026-10-14)*
 - D-113: Canonical-writer deterministic multiline wrapping for long top-level `declared_domain` arrays; private byte-pinned cutoff *(refines D-075)*
 
 ### M6 (templates + matchers) pre-implementation audit
@@ -225,11 +225,11 @@ changes an earlier one. A new entry MUST add its line here.
 
 ### M7 (CLI) pre-implementation adjudication
 
-- D-122: M7 CLI contract: commands, process model, publication, manifest, freeze, authored-empty domains, per-command semantics, non-goals, distribution, and the exit floor *(revises D-071's empty-domain reading; refines D-026/D-078/D-088; realizes the CLI faces of D-005/D-028/D-067/D-077; implementation architecture realized by D-123; reach of parts 4–5 qualified by D-125; part 10's headerless schema record amended in place on 2026-10-01; part 3's escaping and code-less warning form amended in place on 2026-10-14; parts 1, 2, 4, 8 and 10 amended in place on 2026-10-14 for attached option values, the `tab` delimiter spelling, the `migrate` named object-key header rule, and the `--temp-dir` and `--out` text checks)*
+- D-122: M7 CLI contract: commands, process model, publication, manifest, freeze, authored-empty domains, per-command semantics, non-goals, distribution, and the exit floor *(revises D-071's empty-domain reading; refines D-026/D-078/D-088; realizes the CLI faces of D-005/D-028/D-067/D-077; implementation architecture realized by D-123; reach of parts 4–5 qualified by D-125; part 10's headerless schema record amended in place on 2026-10-01; part 3's escaping and code-less warning form amended in place on 2026-10-14; parts 1, 2, 4, 8 and 10 amended in place on 2026-10-14 for attached option values, the `tab` delimiter spelling, the `migrate` named object-key header rule, and the `--temp-dir` and `--out` text checks; parts 2 and 10 amended in place on 2026-10-14 for DATA read explanations and strict UTF-8 schema reads)*
 
 ### M7 (CLI) implementation
 
-- D-123: M7 implementation architecture and public surfaces: CLI boundary, parser, presentation, audit argv, filesystem identity, publication transaction, run manifest, freeze pairing, runtime options, and the CXT size advisory (registry 81 → 82) *(realizes D-122's implementation architecture; refines D-085's registry-timing rule; reach of point 7 qualified by D-125; point 3's escaping amended in place on 2026-10-14; point 2's parser grammar amended in place on 2026-10-14)*
+- D-123: M7 implementation architecture and public surfaces: CLI boundary, parser, presentation, audit argv, filesystem identity, publication transaction, run manifest, freeze pairing, runtime options, and the CXT size advisory (registry 81 → 82) *(realizes D-122's implementation architecture; refines D-085's registry-timing rule; reach of point 7 qualified by D-125; point 3's escaping amended in place on 2026-10-14; point 2's parser grammar amended in place on 2026-10-14; point 3's DATA read explanation added in place on 2026-10-14)*
 
 ### M8 (first scaling / benchmark pass)
 
@@ -254,7 +254,7 @@ changes an earlier one. A new entry MUST add its line here.
 
 ### M8.2 delimited reading
 
-- D-137: Preserve decoded delimited input across short reads with the pinned Sep reader
+- D-137: Preserve decoded delimited input across short reads with the pinned Sep reader *(strict UTF-8 decoding recorded in place on 2026-10-14)*
 - D-138: Accept the delimited reading change with its small-input elapsed cost unbounded *(qualifies D-124's evidence policy for that change only)*
 
 Spec-field defaults are recorded in spec §21 items 1–11 (see the final section
@@ -4667,7 +4667,8 @@ and §17.
 
 ### D-109: The general unbound streaming source session; adapter/engine split; package dependency direction; required EP-4 review
 
-- **Status:** accepted (M5 pre-implementation audit)
+- **Status:** accepted (M5 pre-implementation audit); amended in place on 2026-10-14 for the
+  read-failure detail
 - **Date:** 2026-07-18
 - **Decision:** Discovery consumes a **general unbound streaming source session** whose stable
   boundary is **ordered schema + streamed cleaned/normalized records + source-shape
@@ -4683,6 +4684,26 @@ and §17.
   file output. Exact interface/member names were left to the implementation-time
   **public-API (EP-4) review**; the docs record the seam's shape and dependency direction, not
   signatures.
+
+  Amended in place on 2026-10-14: the seam's read-failure channel, `SourceReadException`, carries
+  closed detail, an additive public surface reviewed under EP-4, so a consumer can explain a
+  failure without reading any message text. `SourceReadFailureReason` is `Unknown` (0),
+  `QuoteInUnquotedField`, `TextAfterClosingQuote`, `UnterminatedQuote` and `ReaderLimit`, and
+  `SourceReadRecordKind` is `Unknown` (0), `Header` and `Data`. The immutable
+  `SourceReadPosition` record struct has get-only `RecordKind`, `DataRecordIndex`, `FieldIndex`,
+  `RecordStartLine` and `DefectLine`, all but the kind nullable; indices count from 0 and
+  physical lines from 1 (spec §5.1.1), and it holds no path, excerpt or byte offset. Its one
+  constructor refuses an undefined kind, a negative index, a line below 1, a defect line before
+  a known start line, a `Data` position without an index and a `Header` or `Unknown` one with an
+  index; its default is an `Unknown` record with no coordinates. The exception gains get-only
+  `Reason` and `Position` and exactly one constructor,
+  `SourceReadException(SourceReadFailureReason reason, SourceReadPosition? position, Exception?
+  innerException)`, whose three arguments are all required, so no existing call can bind to it,
+  and whose message is built from the reason and position alone. The three free-text
+  constructors keep their binding, message and inner exception, with `Unknown` and no position.
+  A free-text or inner message is not an explanation a consumer may show: it can hold a path or
+  source data. Invalid UTF-8 stays the decoder's own `DecoderFallbackException` (spec §5.1.1);
+  no UTF-8 reason joins the public enum, because no decoder position is known to report.
 - **Why:** an abstraction over *schema + normalized records* (rather than over a byte
   stream) is what lets an in-memory or future SQL/SPARQL source feed Discovery with no CSV
   coupling; the determinism guarantee (D-112) must hold over a record sequence, not a file.
@@ -4734,7 +4755,8 @@ and §17.
 
 ### D-111: Probe diagnostic governance: five future codes, two phase widenings, `ProbeSourceReadFailed` scope, cancellation is not a diagnostic, registry 70 → expected 75
 
-- **Status:** accepted (M5 pre-implementation audit; refines D-067/D-085/D-099)
+- **Status:** accepted (M5 pre-implementation audit; refines D-067/D-085/D-099); amended in
+  place on 2026-10-14 for the `ProbeSourceReadFailed` message
 - **Date:** 2026-07-18
 - **Decision:** M5 implementation is **expected** to add **five** diagnostic codes (recorded
   before implementation, while the registry was **70**):
@@ -4754,6 +4776,13 @@ and §17.
   widenings add **no** enum member; with the five additions the registry moves **70 → expected
   75** when M5 implementation lands (M5 landed with 75). **Cancellation is not a diagnostic**
   (D-112).
+
+  Amended in place on 2026-10-14: `ProbeSourceReadFailed` explains what it can from closed facts
+  only (D-109). A read failure with a closed reason states that reason and its known position;
+  the decoder's failure states that the source is not valid UTF-8; any other read failure keeps
+  its exception type's name. No exception's message is copied, and Discovery names no path. The
+  code, its severity, its scope and the registry are unchanged; the CLI adds the DATA operand as
+  the diagnostic's `file` location.
 - **Why:** the five codes cover exactly the outcomes probe can produce that a caller must
   distinguish (read failure, empty vocabulary, name adjustment, per-attribute truncation,
   aggregate breach); pinning their severities/aggregation before the sites land keeps M5 from
@@ -4771,7 +4800,8 @@ and §17.
 
 ### D-112: Probe determinism and cancellation: record-sequence input, no ambient state, byte/diagnostic repeatability, no partial artifact; the M5 verification suite
 
-- **Status:** accepted (M5 pre-implementation audit)
+- **Status:** accepted (M5 pre-implementation audit); amended in place on 2026-10-14 for
+  read-failure positions
 - **Date:** 2026-07-18
 - **Decision:** probe's input is defined **generically**: the same ordered normalized record
   sequence + ordered schema + effective source settings + probe options ⇒ an **identical**
@@ -4793,6 +4823,14 @@ and §17.
   coupling; (12) cancellation/read failure with no partial document; (13)
   short/wrap-boundary/large/idempotent canonical-writer tests (D-113); (14) a compact
   ordered-distinct/truncation property test.
+
+  Amended in place on 2026-10-14: a read failure is not a record, and the position a
+  `ProbeSourceReadFailed` message states (D-111) names physical lines of the source (spec
+  §5.1.1). Two sources with the same record sequence but a different layout of lines, such as
+  extra blank records, can therefore fail with different line numbers.
+  That is a property of the failure's report only: drafts, record-sequence determinism and
+  conversion are unchanged, and no normalization or fingerprint hides the difference. The same
+  failure over the same bytes still produces the same diagnostic.
 - **Why:** because Discovery's boundary is a record sequence (D-109), determinism must be
   defined over that sequence, not over file bytes; otherwise a future in-memory or SQL source
   could not inherit the guarantee. Enumerating the test categories now fixes M5's acceptance
@@ -5643,7 +5681,8 @@ and §16.4; D-120 and D-121 record the implemented naming, template and matcher 
   (2026-09-09); part 10's headerless schema record amended in place on 2026-10-01; part 3's
   escaping and code-less warning form amended in place on 2026-10-14; parts 1, 2, 4, 8 and 10
   amended in place on 2026-10-14 for attached option values, the `tab` delimiter spelling, the
-  `migrate` named object-key header rule, and the `--temp-dir` and `--out` text checks
+  `migrate` named object-key header rule, and the `--temp-dir` and `--out` text checks; parts 2
+  and 10 amended in place on 2026-10-14 for DATA read explanations and strict UTF-8 schema reads
 - **Date:** 2026-07-22
 - **Decision:** the complete M7 CLI contract is settled **before any M7 code**, in
   fifteen parts.
@@ -5684,6 +5723,18 @@ and §16.4; D-120 and D-121 record the implemented naming, template and matcher 
   `--out` spelling that cannot name a file (part 4) are usage errors, exit 2, reported before any
   input is opened. A blank `--temp-dir` was an exit-1 host error, although every other invalid
   option value was already usage.
+
+  Amended in place on 2026-10-14: the code-less error for DATA that cannot be read stays one line
+  and exit 1, and now says what the reader knows. A read failure with a closed reason (D-109)
+  states it, its known position (data record or header, field, physical lines; spec §5.1.1) and
+  a next step, such as `cannot read the data file 'bad.csv': a quoted field is not closed before
+  the end of the input (data record 1, field 0, counted from 0; record starts on line 3, defect
+  on line 4). Add the missing closing quote, or double each quote inside the field.` A decoding
+  failure says the file is not valid UTF-8 or, where the failing pass began with one, names the
+  UTF-16 or UTF-32 byte order mark, and says to save the file as UTF-8. Every other failure keeps
+  `cannot read the data file 'DATA'.` No exception's message is shown, because a free-text or
+  inner message can hold a path, operating-system text or data. Opening failures and SPEC or BED
+  decoding keep their existing messages.
 
   **3. Rendering.** Each diagnostic renders as **one deterministic stderr line** in
   the **sparse labelled** form:
@@ -5904,6 +5955,13 @@ and §16.4; D-120 and D-121 record the implemented naming, template and matcher 
   (§5.1), so only `--header false` reaches this rule, and unlike the triple role options a name
   needs no explicit `--header true`. A zero-based index needs no header.
 
+  Amended in place on 2026-10-14: DATA is strict UTF-8 (spec §5.1.1), and schema acquisition
+  decodes ahead of the schema record by an amount no command promises. So `validate SPEC DATA`
+  fails on bytes that are not UTF-8 near the start of DATA, even in a record after the header,
+  and a successful `validate` does not show that the rest of DATA is valid UTF-8: only the data
+  passes of the other commands read it all. `probe` names its DATA operand as the `file` location
+  of `ProbeSourceReadFailed`, whose message stays Discovery's (D-111).
+
   **11. Extends canonical identity.** The file-backed host resolves **actual
   filesystem identity** where available, which unifies supported symlink/hardlink
   aliases as well as `.`/`..` and case spellings of one file. Otherwise it falls back
@@ -6010,7 +6068,8 @@ and §16.4; D-120 and D-121 record the implemented naming, template and matcher 
   refines D-085's registry-timing rule). All eleven implementation steps landed by M7
   Slice K, merged 2026-08-08; the roadmap's M7 exit block is the landed record. The reach of
   point 7 qualified by D-125 (2026-09-09); point 3's escaping amended in place on 2026-10-14;
-  point 2's parser grammar amended in place on 2026-10-14.
+  point 2's parser grammar amended in place on 2026-10-14; point 3's DATA read explanation added
+  in place on 2026-10-14.
 - **Date:** 2026-07-24
 - **Decision:** M7's implementation architecture and every new public surface are
   settled here. It records the concrete parser, serializer and transaction-mechanism
@@ -6044,6 +6103,19 @@ and §16.4; D-120 and D-121 record the implemented naming, template and matcher 
   quoted-location form (D-122 part 3), separate from the generic JSON string escaping that
   the plan report and the private publication record keep; and it renders the code-less
   `warning:` line beside the code-less `error:` line.
+
+  Amended in place on 2026-10-14: one CLI-internal explanation builder writes the code-less DATA
+  read error (D-122 part 2) at every catch that meets a DATA read failure: schema acquisition and
+  calibration in the shared pipeline, the `stats` counting pass, `convert`'s emission and
+  `validate`'s schema read. It reads only closed facts: `SourceReadException.Reason` and
+  `Position`, the type `DecoderFallbackException`, and the byte order mark the failing pass began
+  with. The input-hash wrapper (D-122 part 5) keeps that mark from the first four bytes the pass
+  consumed, through the same reads it hashes. Each open resets it, so an earlier pass's bytes
+  never stand in for the failing one, and it survives a pass that stops before the end. A UTF-32
+  mark is checked before the UTF-16 mark it overlaps, and when only their shared `FF FE` (or
+  `FF FE 00`) was consumed the message names both rather than reading on. `validate` hashes no
+  pass, so its decoding failures say only that DATA is not valid UTF-8. The builder returns plain
+  text for the renderer's one escaping pass.
 
   **4. Audit argv.** The manifest `command_line` is the **complete process command-line
   array including its actual argv[0]** (`Environment.GetCommandLineArgs()`), captured
@@ -7373,7 +7445,7 @@ with its small-input elapsed cost unbounded (D-138).
 
 ### D-137: Preserve decoded delimited input across short reads with the pinned Sep reader
 
-- **Status:** accepted
+- **Status:** accepted; amended in place on 2026-10-14 for strict UTF-8 decoding
 - **Date:** 2026-10-01
 - **Decision:** Sep reads through a whole-span reader. `WholeSpanTextReader` (internal,
   `FcaBedrock.Sources`) wraps the `StreamReader` that decodes an acquired stream, and it is the
@@ -7401,6 +7473,23 @@ with its small-input elapsed cost unbounded (D-138).
   and after refills, and disposal that disposes nothing. The reader may be removed only when a
   pinned Sep release keeps decoded character order under legal short reads, shown by the
   characterization test passing without it, with the product regression tests still green.
+
+  Amended in place on 2026-10-14: the decoder the whole-span reader wraps is strict UTF-8 (spec
+  §5.1.1), a `UTF8Encoding` that throws on invalid bytes and carries the UTF-8 preamble, with byte
+  order mark detection off. The preamble is what consumes one leading UTF-8 mark, because the
+  decoder skips a mark only when it equals its encoding's preamble. No other mark is recognized,
+  so the encoding question this entry left open is settled: decoding no longer depends on the
+  size of the first read, and a UTF-16 or UTF-32 mark is invalid UTF-8 that fails the read.
+  Invalid, overlong and truncated UTF-8 reach the caller as the decoder's own
+  `DecoderFallbackException`, unwrapped by the whole-span reader and Sep, at the read that
+  decodes them, which can be ahead of the record that holds them; a sequence cut off by the end
+  of the input fails when the decoder is flushed there. Decoding stays incremental, so a
+  character split across stream reads still decodes, and a read that stops early never flushes
+  the decoder. The stream construction, buffer size, leave-open ownership, cancellation checks,
+  close order and primary-failure precedence are unchanged, and raw input hashes remain hashes
+  of the original bytes, a mark included. The decoder-parity tests now compare the provider's own
+  route only for valid UTF-8, and the rejected inputs are tested through the public sources in
+  both shapes.
 - **Why:** after a read that returns fewer characters than requested and ends in CR, Sep 0.17.1
   reads one more character to see whether a CR LF pair was split. When that character is another
   CR it holds it back and keeps filling the buffer, then restores it at the start of the next

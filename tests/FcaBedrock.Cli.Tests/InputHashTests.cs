@@ -353,13 +353,12 @@ public sealed class InputHashTests
     // ---- through the delimited reader (spec §5.1.1) ------------------------------------------
     //
     // The reader decodes the bytes it is handed and never re-reads, skips or rewrites them, so a
-    // pass it completes hashes exactly the original bytes: a byte order mark, invalid bytes and CR
-    // CR included.
+    // pass it completes hashes exactly the original bytes: a byte order mark and CR CR included.
+    // Bytes that are not UTF-8 fail the pass, so it completes no digest.
 
     public static TheoryData<string, byte[]> ReaderInputs() => new()
     {
         { "a byte order mark", [0xEF, 0xBB, 0xBF, .. Encoding.UTF8.GetBytes("a,b\n1,2\n")] },
-        { "an invalid byte", [.. Encoding.UTF8.GetBytes("a,b"), 0xFF, .. Encoding.UTF8.GetBytes("c\n\nd,e\n")] },
         { "quoted CR CR between multibyte characters", Encoding.UTF8.GetBytes("x,\"é\r\r中" + char.ConvertFromUtf32(0x1F600) + "\",z\n \n") },
     };
 
@@ -386,6 +385,18 @@ public sealed class InputHashTests
 
         Assert.True(tracker.CompletedPasses == 1, what);
         Assert.Equal(ExpectedDigest(bytes), tracker.Digest);
+    }
+
+    [Fact]
+    public async Task CompletedPasses_WhenTheReaderRefusesBytesThatAreNotUtf8_ThenThePassCompletesNoDigest()
+    {
+        var tracker = TrackerOver([.. Encoding.UTF8.GetBytes("a,b"), 0xFF, .. Encoding.UTF8.GetBytes("c\n\nd,e\n")]);
+
+        await Assert.ThrowsAsync<DecoderFallbackException>(() => ReadThroughReaderAsync(tracker));
+
+        Assert.Equal(0, tracker.CompletedPasses);
+        Assert.Null(tracker.Digest);
+        Assert.Equal(DataByteOrderMark.None, tracker.CurrentPassMark);
     }
 
     [Fact]
@@ -432,6 +443,107 @@ public sealed class InputHashTests
         Assert.Null(tracker.Digest);
     }
 
+    // ---- the leading bytes of a pass ------------------------------------------------------------
+    //
+    // Each pass keeps the first four bytes it consumed, from its own reads, so a decoding failure
+    // can name the UTF-16 or UTF-32 mark the failing pass began with.
+
+    public static TheoryData<string, byte[], string> Prefixes() => new()
+    {
+        { "nothing", [], nameof(DataByteOrderMark.None) },
+        { "UTF-8 mark", [0xEF, 0xBB, 0xBF, 0x61], nameof(DataByteOrderMark.None) },
+        { "a lone FF", [0xFF], nameof(DataByteOrderMark.None) },
+        { "Latin-1 text", [0xE9, 0x74, 0xE9], nameof(DataByteOrderMark.None) },
+        { "UTF-16 LE", [0xFF, 0xFE, 0x61, 0x00], nameof(DataByteOrderMark.Utf16LittleEndian) },
+        { "UTF-16 LE, three bytes", [0xFF, 0xFE, 0x61], nameof(DataByteOrderMark.Utf16LittleEndian) },
+        { "UTF-16 LE, character 4100", [0xFF, 0xFE, 0x00, 0x41], nameof(DataByteOrderMark.Utf16LittleEndian) },
+        { "UTF-16 BE", [0xFE, 0xFF], nameof(DataByteOrderMark.Utf16BigEndian) },
+        { "UTF-32 LE", [0xFF, 0xFE, 0x00, 0x00], nameof(DataByteOrderMark.Utf32LittleEndian) },
+        { "UTF-32 BE", [0x00, 0x00, 0xFE, 0xFF], nameof(DataByteOrderMark.Utf32BigEndian) },
+        { "part of UTF-32 BE", [0x00, 0x00, 0xFE], nameof(DataByteOrderMark.None) },
+        { "FF FE alone", [0xFF, 0xFE], nameof(DataByteOrderMark.Utf16OrUtf32) },
+        { "FF FE 00", [0xFF, 0xFE, 0x00], nameof(DataByteOrderMark.Utf16OrUtf32) },
+    };
+
+    [Theory]
+    [MemberData(nameof(Prefixes))]
+    public void Classify_WhenGivenALeadingByteSequence_ThenItNamesOnlyAMarkItCanProve(string what, byte[] prefix, string mark) =>
+        Assert.True(Enum.Parse<DataByteOrderMark>(mark) == InputHashTracker.Classify(prefix), what);
+
+    [Fact]
+    public void CurrentPassMark_WhenAPassStopsAfterTwoBytes_ThenItIsJudgedFromThoseTwoAndNothingMoreIsRead()
+    {
+        // A pass that stops early (a failure, or a schema read) keeps the bytes it consumed, even
+        // after its stream is disposed; the tracker never reads ahead to finish the mark.
+        var source = new CountingStream([0xFF, 0xFE, 0x00, 0x00, 0x61, 0x00, 0x00, 0x00]);
+        var tracker = new InputHashTracker(_ => source, "data.csv");
+
+        using (var stream = tracker.OpenHashed())
+        {
+            Assert.Equal(2, stream.Read(new byte[2], 0, 2));
+        }
+
+        Assert.Equal(2, source.Served);
+        Assert.Equal(DataByteOrderMark.Utf16OrUtf32, tracker.CurrentPassMark);
+        Assert.Equal(0, tracker.CompletedPasses);
+    }
+
+    [Fact]
+    public void CurrentPassMark_WhenANewPassOpens_ThenTheEarlierPassesMarkIsGone()
+    {
+        byte[] marked = [0xFE, 0xFF, 0x00, 0x61];
+        var opens = 0;
+        var tracker = new InputHashTracker(
+            _ => opens++ switch
+            {
+                0 => new MemoryStream(marked, writable: false),
+                1 => new MemoryStream(Encoding.UTF8.GetBytes("a,b\n"), writable: false),
+                2 => new MemoryStream(marked, writable: false),
+                _ => throw new IOException("the file is gone."),
+            },
+            "data.csv");
+
+        using (var first = tracker.OpenHashed())
+        {
+            DrainSync(first, 3);
+        }
+
+        Assert.Equal(DataByteOrderMark.Utf16BigEndian, tracker.CurrentPassMark);
+
+        using (var second = tracker.OpenHashed())
+        {
+            Assert.Equal(DataByteOrderMark.None, tracker.CurrentPassMark);
+            DrainSync(second, 1);
+        }
+
+        Assert.Equal(DataByteOrderMark.None, tracker.CurrentPassMark);
+
+        using (var third = tracker.OpenHashed())
+        {
+            DrainSync(third, 2);
+        }
+
+        Assert.Equal(DataByteOrderMark.Utf16BigEndian, tracker.CurrentPassMark);
+
+        // A pass whose open fails has no mark, rather than the previous pass's.
+        Assert.Throws<IOException>(tracker.OpenHashed);
+        Assert.Equal(DataByteOrderMark.None, tracker.CurrentPassMark);
+    }
+
+    [Fact]
+    public async Task CurrentPassMark_WhenReadAsynchronously_ThenTheMarkComesFromTheSameReads()
+    {
+        var tracker = TrackerOver([0x00, 0x00, 0xFE, 0xFF, 0x00, 0x00, 0x00, 0x61]);
+
+        await using (var stream = tracker.OpenHashed())
+        {
+            await DrainAsync(stream, 1);
+        }
+
+        Assert.Equal(DataByteOrderMark.Utf32BigEndian, tracker.CurrentPassMark);
+        Assert.Equal(1, tracker.CompletedPasses);
+    }
+
     /// <summary>An in-memory stream that reports each read that returned zero for a non-empty request.</summary>
     private sealed class ZeroCountingStream(byte[] bytes, Action onZero) : MemoryStream(bytes, writable: false)
     {
@@ -465,6 +577,20 @@ public sealed class InputHashTests
         {
             Disposed = true;
             base.Dispose(disposing);
+        }
+    }
+
+    /// <summary>A stream that counts the bytes it handed out, readable after disposal.</summary>
+    private sealed class CountingStream(byte[] bytes) : MemoryStream(bytes, writable: false)
+    {
+        public long Served { get; private set; }
+
+        // A derived MemoryStream's span read is routed to this array read.
+        public override int Read(byte[] buffer, int offset, int count)
+        {
+            var read = base.Read(buffer, offset, count);
+            Served += read;
+            return read;
         }
     }
 

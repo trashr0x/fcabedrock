@@ -75,7 +75,9 @@ fcabedrock validate spec.toml data.csv
 Schema validation only. With DATA it uses only the first record (the header,
 or the first non-blank record when headerless) and checks name bindings; no
 later record is examined. Reading that record can read further into the file,
-and a failure while doing so still fails the command.
+and a failure while doing so still fails the command, such as bytes that are
+not UTF-8 a few lines in. A file that validates can still fail a later command
+on a record that `validate` never read (see [Data files](#data-files)).
 DATA is optional; the spec alone validates too:
 
 ```text
@@ -253,6 +255,30 @@ double-quoted string, which reads as the same character. A single-quoted string
 or a comment has no escape, so it cannot hold the character. When the tool
 writes a spec or a run manifest, it spells the character `\uFFFD`, so the
 values that contain it read back.
+
+## Data files
+
+DATA must be UTF-8 text. One UTF-8 byte order mark at the start is allowed and
+skipped, and a replacement character (U+FFFD) stored in the file is ordinary
+data. Anything else that is not UTF-8 is refused, never replaced or guessed:
+invalid or cut-off byte sequences, and a file that starts with a UTF-16 or
+UTF-32 byte order mark, such as a spreadsheet's "Unicode text" export. Save the
+file as UTF-8 and run the command again.
+
+When a command cannot read DATA, its `error:` line says why and, when the
+reader knows it, where:
+
+```text
+error: cannot read the data file 'data.csv': a quoted field is not closed before the end of the input (data record 1, field 0, counted from 0; record starts on line 3, defect on line 4). Add the missing closing quote, or double each quote inside the field.
+```
+
+Data record and field numbers count from 0 and skip the header and blank
+lines, as `record=` locations do. Line numbers count from 1 and count every line
+of the file, including blank lines and the lines inside a quoted field. A file
+that is not UTF-8 gets no position, and its error can appear before the
+command reaches the record that holds the bad bytes. `probe` reports the same
+explanation in its `ProbeSourceReadFailed` diagnostic, with the data file named
+at the start of the line.
 
 ## Exit codes and diagnostics
 

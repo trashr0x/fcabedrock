@@ -63,7 +63,10 @@ internal static class StatsCommand
         catch (Exception exception) when (RunPipeline.IsDataReadFailure(exception))
         {
             return RunPipeline.HostFailure(
-                environment, diagnostics, RunPipeline.DataReadMessage(run.DataPath), cancellation);
+                environment,
+                diagnostics,
+                DataReadExplanation.Message(run.DataPath, exception, run.Input.CurrentPassMark),
+                cancellation);
         }
 
         // The counting pass may follow earlier complete passes, so stability is

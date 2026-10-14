@@ -345,6 +345,86 @@ public sealed class ValidateCommandTests
             harness.StdErr);
     }
 
+    // ---- strict UTF-8 at schema acquisition ---------------------------------------------
+    //
+    // The schema read decodes ahead of the header, so an invalid byte near the start of DATA fails
+    // validate even when it is in a later record, and one far beyond what that read decodes is not
+    // seen at all: a clean validate does not certify the whole file. No read size is promised.
+
+    [Fact]
+    public async Task Validate_WhenAnInvalidByteSitsInARecordNearTheStart_ThenTheSchemaReadRefusesIt()
+    {
+        using var temp = TempDirectory.Create();
+        var spec = temp.Write("spec.toml", CliFixtures.NameBoundSpec);
+        var data = temp.Resolve("data.csv");
+        File.WriteAllBytes(data, [.. Encoding.UTF8.GetBytes("colour,size\nred,1\ngr"), 0xE9, .. Encoding.UTF8.GetBytes("en,2\n")]);
+        var harness = new CliTestHarness();
+
+        var exit = await harness.RunAsync("validate", spec, data);
+
+        Assert.Equal(1, exit);
+        Assert.Equal(string.Empty, harness.StdOut);
+        Assert.Equal(
+            DiagnosticRenderer.RenderHostError($"cannot read the data file '{data}': it is not valid UTF-8. Save it as UTF-8."),
+            harness.StdErr);
+    }
+
+    [Fact]
+    public async Task Validate_WhenAnInvalidByteSitsFarBeyondTheSchemaRead_ThenValidationPasses()
+    {
+        // About 4 MB of valid rows precede the invalid byte; validate reads only what the schema needs.
+        using var temp = TempDirectory.Create();
+        var spec = temp.Write("spec.toml", CliFixtures.NameBoundSpec);
+        var data = temp.Resolve("data.csv");
+        var rows = string.Concat(Enumerable.Repeat("green,2\n", 500_000));
+        File.WriteAllBytes(data, [.. Encoding.UTF8.GetBytes("colour,size\n" + rows + "r"), 0xE9, .. Encoding.UTF8.GetBytes("d,1\n")]);
+        var harness = new CliTestHarness();
+
+        var exit = await harness.RunAsync("validate", spec, data);
+
+        Assert.Equal(0, exit);
+        Assert.Equal(string.Empty, harness.StdErr);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    public async Task Validate_WhenValidMultibyteTextStraddlesWhereTheSchemaReadStops_ThenValidationPasses(int padding)
+    {
+        // Every data character is three bytes long. Whatever byte the schema read stops at, two of
+        // the three paddings put a character across it, so the decoder must keep a split character
+        // pending rather than reject it.
+        using var temp = TempDirectory.Create();
+        var spec = temp.Write("spec.toml", CliFixtures.NameBoundSpec);
+        var row = new string('日', 20) + ",1\n";
+        var data = temp.Write("data.csv", "colour,size" + new string('x', padding) + "\n" + string.Concat(Enumerable.Repeat(row, 4_000)));
+        var harness = new CliTestHarness();
+
+        var exit = await harness.RunAsync("validate", spec, data);
+
+        Assert.Equal(0, exit);
+        Assert.Equal(string.Empty, harness.StdErr);
+    }
+
+    [Fact]
+    public async Task Validate_WhenEveryReadReturnsOneByte_ThenSplitCharactersAndTheMarkStillDecode()
+    {
+        using var temp = TempDirectory.Create();
+        var spec = temp.Write("spec.toml", CliFixtures.NameBoundSpec);
+        var data = temp.Resolve("data.csv");
+        byte[] bytes = [0xEF, 0xBB, 0xBF, .. Encoding.UTF8.GetBytes("colour,größe\nrot,日本\n")];
+        var harness = new CliTestHarness();
+        harness.OpenInput = path => string.Equals(path, data, StringComparison.Ordinal)
+            ? new OneByteStream(bytes)
+            : File.OpenRead(path);
+
+        var exit = await harness.RunAsync("validate", spec, data);
+
+        Assert.Equal(0, exit);
+        Assert.Equal(string.Empty, harness.StdErr);
+    }
+
     [Fact]
     public async Task Validate_WhenTheDataIsMissing_ThenACodeLessHostErrorAndExitOne()
     {
@@ -967,4 +1047,11 @@ internal sealed class CountingStream(Stream inner, Action<int> onRead) : Stream
 
         base.Dispose(disposing);
     }
+}
+
+/// <summary>A source that returns one byte per read, so every multibyte character and the mark arrive split.</summary>
+internal sealed class OneByteStream(byte[] bytes) : MemoryStream(bytes, writable: false)
+{
+    // A derived MemoryStream's span read is routed to this array read.
+    public override int Read(byte[] buffer, int offset, int count) => base.Read(buffer, offset, Math.Min(count, 1));
 }

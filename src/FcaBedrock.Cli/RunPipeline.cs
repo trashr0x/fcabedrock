@@ -139,7 +139,10 @@ internal static class RunPipeline
     /// <summary>The code-less host error for a root SPEC open or read failure.</summary>
     internal static string SpecReadMessage(string specPath) => $"cannot read the spec file '{specPath}'.";
 
-    /// <summary>The code-less host error for a DATA open or read failure.</summary>
+    /// <summary>
+    /// The generic code-less host error for a DATA open or read failure: the whole message when no
+    /// closed explanation applies (<see cref="DataReadExplanation"/>).
+    /// </summary>
     internal static string DataReadMessage(string dataPath) => $"cannot read the data file '{dataPath}'.";
 
     /// <summary>The code-less host error for an input that changed between passes (§17 / D-122 part 5).</summary>
@@ -237,7 +240,8 @@ internal static class RunPipeline
         }
         catch (Exception exception) when (IsDataReadFailure(exception))
         {
-            return new PipelineHostFailure(DataReadMessage(dataPath), diagnostics);
+            return new PipelineHostFailure(
+                DataReadExplanation.Message(dataPath, exception, input.CurrentPassMark), diagnostics);
         }
 
         cancellation.ThrowIfCancellationRequested();
@@ -270,7 +274,8 @@ internal static class RunPipeline
             }
             catch (Exception exception) when (IsDataReadFailure(exception))
             {
-                return new PipelineHostFailure(DataReadMessage(dataPath), diagnostics);
+                return new PipelineHostFailure(
+                    DataReadExplanation.Message(dataPath, exception, input.CurrentPassMark), diagnostics);
             }
 
             diagnostics.AddRange(calibrated.Diagnostics);

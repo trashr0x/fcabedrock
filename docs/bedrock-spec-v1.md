@@ -174,7 +174,9 @@ missing_token = "?"                          # default "?"; "" disables token de
 
 **`encoding`** *(default `"utf-8"`)*. v1 supports only UTF-8: `utf-8` or
 `utf8`, in any letter case and with surrounding whitespace ignored, selects
-it, and any other value is `SourceBindingInvalid` (Error, spec validate).
+it, and any other value is `SourceBindingInvalid` (Error, spec validate). Data
+is decoded as strict UTF-8 (§5.1.1): bytes that are not UTF-8 are refused,
+never replaced.
 
 **`delimiter`** *(default `","`)*. One character of the v1 delimiter alphabet
 (§5.1.1), for example `","`, `"\t"`, `";"`, `"|"`, a space or `":"`. A value
@@ -246,6 +248,16 @@ conformance. W is the whitespace of §5.1. Outer whitespace (O) is W without the
 selected delimiter, CR and LF: a delimiter or line break is structural before any
 whitespace rule applies, so a TAB or space delimiter always separates fields.
 
+**Text.** The input is UTF-8. One UTF-8 byte order mark (`EF BB BF`) at the
+start of the input is not data; a second one is the character U+FEFF. A
+sequence that is not well-formed UTF-8 (an invalid byte, an overlong form, or a
+character cut off by the end of the input) is a read failure, and so is input
+that starts with a UTF-16 or UTF-32 byte order mark, whose bytes are not UTF-8.
+No other encoding is detected or guessed, and nothing is replaced: the
+character U+FFFD is data only where the input encodes it. A character whose
+bytes arrive in separate reads of the underlying source decodes as one
+character.
+
 **Delimiter alphabet.** The v1 delimiter alphabet is TAB (U+0009) and every
 character from U+001F through U+007E except `#` (U+0023): 96 characters. It
 includes `"`, which cannot be a delimiter while v1 fixes `quote_char` to `"`
@@ -303,13 +315,26 @@ for a numeric attribute. The value itself is not changed. A numeric spec-side en
 
 **Reading failures.** Malformed quoting, a record longer than the reader's limit
 (about 16 million UTF-16 code units for one record or the reader's buffer holding
-it; the exact figure depends on the reader and the machine) and an unreadable
-source are read failures, not diagnostics: `convert` and the other data-reading
-commands report a code-less error and exit 1, and `probe` reports
-`ProbeSourceReadFailed`. A never-closed quote can run into the length limit before
-the end of input. A read failure can be reported before an earlier malformed field
-has been examined, but a malformed record is never read as data. An unsupported
+it; the exact figure depends on the reader and the machine), input that is not
+UTF-8 (**Text** above) and an unreadable source are read failures, not
+diagnostics: `convert` and the other data-reading commands report a code-less
+error and exit 1, and `probe` reports `ProbeSourceReadFailed`. A never-closed
+quote can run into the length limit before the end of input. A read failure can
+be reported before an earlier malformed field has been examined, but a malformed
+record is never read as data. Text is decoded ahead of the record being
+examined, by an amount that is not specified, so a read that stops after the
+schema record, such as `validate` with DATA, can fail on bytes that are not UTF-8
+in a later record, and can also finish without reaching them. An unsupported
 `delimiter` is a spec or option error before the source is opened.
+
+**Failure detail.** A malformed-quoting failure states its defect and its
+position: the record (the header, or a data record by its record index), the
+field, counted from 0, and the physical lines on which the record starts and the
+defect lies, counted from 1. Physical lines count every record terminator
+outside quoted content, blank records included, and every line break inside a
+quoted field, so two inputs whose records are equal can report different lines.
+The reader-limit failure and a decoding failure carry no position: no record,
+field, line or byte offset is estimated from how far the reader has decoded.
 
 **Cancellation.** A cancelled read ends with the cancellation, never with a read
 failure or a diagnostic, and makes no further record or schema available once the
@@ -846,7 +871,10 @@ first-occurrence diagnostic ordering, and identical bounded samples. This is
 future non-file adapters. Probe reads **no** clock, ambient culture, environment variable,
 current directory, random source, or available-memory figure. **Cancellation propagates with
 no diagnostic and no partial document, ever.** As for every output-producing path, the
-repeatability test ships with the implementation (EP-7).
+repeatability test ships with the implementation (EP-7). A read failure is the one exception
+to record-sequence inputs: `ProbeSourceReadFailed` states the failure's reason and known
+position (§5.1.1), whose lines are physical lines of the source, and it names no path; the
+CLI adds the DATA operand as its file location.
 
 ## 8. The `[output]` block
 
@@ -3099,9 +3127,12 @@ operation outside the §7 conversion pipeline. Its five codes above
 structural codes `TripleSubjectNotContiguous` and `ObjectKeyValueInvalid` report at
 their probe-phase sites on the triple path (decisions.md D-111).
 `ProbeSourceReadFailed` is a stream/read failure only and MUST NOT absorb a
-structural subject error (that stays `ObjectKeyValueInvalid` / `TripleSubjectNotContiguous`);
-`ProbeAttributeNameAdjusted` and `ProbeDomainTruncated` are aggregated (count + bounded
-sample), and plain headerless `column_N` synthesis alone is not a warning. Cancellation is
+structural subject error (that stays `ObjectKeyValueInvalid` / `TripleSubjectNotContiguous`).
+Its message states the failure's reason and known position (§5.1.1), or that the source is
+not valid UTF-8; any other read failure is named by its exception type, and no exception's
+own message is copied. `ProbeAttributeNameAdjusted` and `ProbeDomainTruncated` are
+aggregated (count + bounded sample), and plain headerless `column_N` synthesis alone is not a
+warning. Cancellation is
 **not** a diagnostic: a canceled probe leaves no document and no diagnostic (§7.1, D-112).
 
 **Aggregation.** Data-phase diagnostics that can fire per value or per object

@@ -152,7 +152,10 @@ internal static class ConvertCommand
         {
             transaction.Rollback();
             return RunPipeline.HostFailure(
-                environment, diagnostics, RunPipeline.DataReadMessage(run.DataPath), cancellation);
+                environment,
+                diagnostics,
+                DataReadExplanation.Message(run.DataPath, exception, run.Input.CurrentPassMark),
+                cancellation);
         }
         catch
         {

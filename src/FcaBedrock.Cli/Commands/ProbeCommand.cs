@@ -1,5 +1,6 @@
 using System.Globalization;
 using FcaBedrock.Core.Spec;
+using FcaBedrock.Diagnostics;
 using FcaBedrock.Discovery;
 using FcaBedrock.Sources;
 using FcaBedrock.Spec.Toml;
@@ -22,7 +23,9 @@ namespace FcaBedrock.Cli.Commands;
 /// <b>Every DATA read failure past the argv boundary is Discovery's</b>, a missing file
 /// included: the CLI opens nothing itself, so the first open happens inside the library's own
 /// schema acquisition and its failure is that library's <c>ProbeSourceReadFailed</c>: one
-/// condition, one owner, no second classification and no double report (D-067).
+/// condition, one owner, no second classification and no double report (D-067). Discovery names
+/// no path (D-109), so the CLI adds the DATA operand to that diagnostic as its <c>file</c>
+/// location, a presentation detail that leaves its code, severity and message unchanged.
 /// </para>
 /// </summary>
 internal static class ProbeCommand
@@ -55,10 +58,19 @@ internal static class ProbeCommand
         var draft = probed.TryGetValue(out var document) ? document : null;
         return await SingleFileOutput
             .DeliverAsync(
-                environment, invocation, draft, probed.Diagnostics,
+                environment, invocation, draft, WithDataLocation(probed.Diagnostics, dataPath),
                 additionalInputs: [], committedReport: null, cancellation)
             .ConfigureAwait(false);
     }
+
+    // The library's order and wording are kept; only the read failure, the one probe diagnostic
+    // about the file itself, gains the DATA operand as its file location.
+    private static List<BedrockDiagnostic> WithDataLocation(IReadOnlyList<BedrockDiagnostic> diagnostics, string dataPath) =>
+        [
+            .. diagnostics.Select(d => d.Code == DiagnosticCode.ProbeSourceReadFailed
+                ? d with { Location = (d.Location ?? default) with { File = dataPath } }
+                : d),
+        ];
 
     // Overrides only. Every omitted setting keeps the factory's own §5.1/§7.1 value, including
     // the shape-specific has_header and the encoding and quote character the CLI exposes no flag

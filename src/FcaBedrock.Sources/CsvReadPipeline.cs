@@ -273,7 +273,7 @@ internal static class CsvReadPipeline
         {
             if (!quoteFree)
             {
-                ValidateRow(row, count, delimiter, 0, ref lines, ref budget);
+                ValidateRow(row, count, delimiter, SourceReadRecordKind.Data, 0, ref lines, ref budget);
             }
 
             return new SourceSchema(count);
@@ -291,7 +291,7 @@ internal static class CsvReadPipeline
             else
             {
                 cells[i] = DelimitedFieldGrammar.DecodeField(raw, quote, delimiter, ref budget, out var fault, out var breaks)
-                    ?? throw Fault(row, delimiter, null, i, fault, ref lines, ref budget);
+                    ?? throw Fault(row, delimiter, SourceReadRecordKind.Header, null, i, fault, ref lines, ref budget);
                 lines.AddBreakCount(breaks);
             }
         }
@@ -321,7 +321,7 @@ internal static class CsvReadPipeline
             needHeader = false;
             if (!quoteFree)
             {
-                ValidateRow(row, count, delimiter, null, ref lines, ref budget);
+                ValidateRow(row, count, delimiter, SourceReadRecordKind.Header, null, ref lines, ref budget);
             }
 
             return null;
@@ -340,7 +340,7 @@ internal static class CsvReadPipeline
             else
             {
                 value = DelimitedFieldGrammar.DecodeField(raw, quote, delimiter, ref budget, out var fault, out var breaks)
-                    ?? throw Fault(row, delimiter, index, i, fault, ref lines, ref budget);
+                    ?? throw Fault(row, delimiter, SourceReadRecordKind.Data, index, i, fault, ref lines, ref budget);
                 lines.AddBreakCount(breaks);
             }
 
@@ -375,7 +375,7 @@ internal static class CsvReadPipeline
             needHeader = false;
             if (!quoteFree)
             {
-                ValidateRow(row, count, delimiter, null, ref lines, ref budget);
+                ValidateRow(row, count, delimiter, SourceReadRecordKind.Header, null, ref lines, ref budget);
             }
 
             return false;
@@ -399,7 +399,7 @@ internal static class CsvReadPipeline
                 var check = DelimitedFieldGrammar.Check(unused, delimiter, ref budget);
                 if (!check.IsValid)
                 {
-                    throw Fault(row, delimiter, index, i, check, ref lines, ref budget);
+                    throw Fault(row, delimiter, SourceReadRecordKind.Data, index, i, check, ref lines, ref budget);
                 }
 
                 lines.AddBreaks(unused, check, ref budget);
@@ -416,7 +416,7 @@ internal static class CsvReadPipeline
             else
             {
                 decoded = DelimitedFieldGrammar.DecodeField(raw, quote, delimiter, ref budget, out var fault, out var breaks)
-                    ?? throw Fault(row, delimiter, index, i, fault, ref lines, ref budget);
+                    ?? throw Fault(row, delimiter, SourceReadRecordKind.Data, index, i, fault, ref lines, ref budget);
                 lines.AddBreakCount(breaks);
             }
 
@@ -441,9 +441,10 @@ internal static class CsvReadPipeline
     }
 
     // A candidate with a quote somewhere, validated field by field without decoding: a consumed
-    // header, or the record that gives a headerless schema its width.
+    // header, or the record that gives a headerless schema its width, which is data record 0.
     private static void ValidateRow<TBudget>(
-        SepReader.Row row, int count, char delimiter, int? index, ref LineState lines, ref TBudget budget)
+        SepReader.Row row, int count, char delimiter, SourceReadRecordKind kind, int? index, ref LineState lines,
+        ref TBudget budget)
         where TBudget : struct, IWorkBudget
     {
         for (var i = 0; i < count; i++)
@@ -452,19 +453,22 @@ internal static class CsvReadPipeline
             var check = DelimitedFieldGrammar.Check(raw, delimiter, ref budget);
             if (!check.IsValid)
             {
-                throw Fault(row, delimiter, index, i, check, ref lines, ref budget);
+                throw Fault(row, delimiter, kind, index, i, check, ref lines, ref budget);
             }
 
             lines.AddBreaks(raw, check, ref budget);
         }
     }
 
-    // The read failure for a malformed field. The physical line of the defect is recomputed only
-    // here, on the failure path; the rescan charges the same budget, so a cancellation observed
-    // during it wins over the defect that has been found but not yet raised.
+    // The read failure for a malformed field, with its closed reason and every coordinate the read
+    // knows: the record kind, the data record index (data records only), the field and both
+    // physical lines. The physical line of the defect is recomputed only here, on the failure
+    // path; the rescan charges the same budget, so a cancellation observed during it wins over
+    // the defect that has been found but not yet raised.
     [MethodImpl(MethodImplOptions.NoInlining)]
     private static SourceReadException Fault<TBudget>(
-        SepReader.Row row, char delimiter, int? index, int column, in FieldCheck check, ref LineState lines, ref TBudget budget)
+        SepReader.Row row, char delimiter, SourceReadRecordKind kind, int? index, int column, in FieldCheck check,
+        ref LineState lines, ref TBudget budget)
         where TBudget : struct, IWorkBudget
     {
         long before = 0;
@@ -476,7 +480,16 @@ internal static class CsvReadPipeline
         }
 
         var faultLine = lines.Start + before + DelimitedFieldGrammar.CountLineBreaks(row[column].Span[..check.FaultOffset], ref budget);
-        return new SourceReadException(DelimitedFieldGrammar.FaultMessage(check.Fault, index, lines.Start, column, faultLine));
+        var reason = check.Fault switch
+        {
+            FieldFault.QuoteInUnquotedField => SourceReadFailureReason.QuoteInUnquotedField,
+            FieldFault.TextAfterClosingQuote => SourceReadFailureReason.TextAfterClosingQuote,
+            FieldFault.UnterminatedQuote => SourceReadFailureReason.UnterminatedQuote,
+            _ => throw new ArgumentOutOfRangeException(nameof(check), check.Fault, "A valid field has no read failure."),
+        };
+
+        return new SourceReadException(
+            reason, new SourceReadPosition(kind, index, column, lines.Start, faultLine), innerException: null);
     }
 
     // Missing detection over the decoded value (§5.1): an empty value, or one equal to the verbatim

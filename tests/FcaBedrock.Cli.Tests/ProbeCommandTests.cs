@@ -300,6 +300,36 @@ public sealed class ProbeCommandTests
     }
 
     [Fact]
+    public async Task Probe_WhenTheDataIsMalformed_ThenTheReadFailureNamesTheDataFileAndNoDraftIsWritten()
+    {
+        // Discovery explains the failure without a path; the CLI adds the DATA operand as the
+        // diagnostic's file location.
+        using var temp = TempDirectory.Create();
+        var data = temp.Write("data.csv", "a,b\nx,\"open\n");
+        var output = temp.Resolve("draft.toml");
+        var harness = new CliTestHarness();
+
+        var exit = await harness.RunAsync("probe", data, "--shape", "wide", "--out", output);
+
+        var expected = new StringWriter();
+        DiagnosticRenderer.Write(
+            expected,
+            [
+                new BedrockDiagnostic(
+                    DiagnosticCode.ProbeSourceReadFailed,
+                    DiagnosticSeverity.Error,
+                    "The probe could not read the source: a quoted field is not closed before the end of the input "
+                    + "(data record 0, field 1, counted from 0; line 2); no draft was produced (§7.1).",
+                    new DiagnosticLocation(File: data)),
+            ]);
+        Assert.Equal(1, exit);
+        Assert.Equal(string.Empty, harness.StdOut);
+        Assert.Equal(expected.ToString(), harness.StdErr);
+        Assert.StartsWith("file=\"", harness.StdErr, StringComparison.Ordinal);
+        Assert.False(File.Exists(output));
+    }
+
+    [Fact]
     public async Task Probe_WhenTheDataPathIsEmpty_ThenProbeSourceReadFailedIsReportedAndExitIsOne()
     {
         // An empty DATA operand names no file, so the library's schema read meets it as a missing

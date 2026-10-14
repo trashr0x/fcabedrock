@@ -57,5 +57,42 @@ public sealed class RecordIndexTests
             $"data record {record}, column {column}, starting on line {startLine} (the defect is on line {defectLine})",
             refused.Message,
             StringComparison.Ordinal);
+        Assert.Equal(new SourceReadPosition(SourceReadRecordKind.Data, record, column, startLine, defectLine), refused.Position);
+        Assert.Null(refused.InnerException);
+    }
+
+    [Theory]
+    [InlineData("a\"b\n", SourceReadFailureReason.QuoteInUnquotedField)]
+    [InlineData("\"a\"b\n", SourceReadFailureReason.TextAfterClosingQuote)]
+    [InlineData("x,\"a\n", SourceReadFailureReason.UnterminatedQuote)]
+    public async Task Read_WhenAFieldIsMalformed_ThenTheRefusalCarriesItsClosedReasonInBothShapes(
+        string text, SourceReadFailureReason reason)
+    {
+        var wide = await Assert.ThrowsAsync<SourceReadException>(() => DrainAsync(WideSession(Opener(text)).ReadAsync()));
+        var triple = await Assert.ThrowsAsync<SourceReadException>(
+            () => DrainAsync(TripleSession(Opener(text)).ReadRowsAsync(new TripleColumns(0, 1, 0))));
+
+        Assert.Equal(reason, wide.Reason);
+        Assert.Equal(reason, triple.Reason);
+        Assert.Equal(wide.Position, triple.Position);
+        Assert.Equal(SourceReadRecordKind.Data, wide.Position?.RecordKind);
+        Assert.Equal(0, wide.Position?.DataRecordIndex);
+    }
+
+    [Fact]
+    public async Task Read_WhenADataRecordFollowsAHeaderAndBlankLines_ThenItsPositionCountsOnlyDataRecordsButEveryLine()
+    {
+        // Line 1 is the header and lines 2 and 4 are blank: the second data record starts on line 5,
+        // and its quoted first field ends on line 6, where text follows the closing quote.
+        const string Text = "h1,h2\n\nok,1\n\n\"a\nb\"c,2\n";
+
+        var wide = await Assert.ThrowsAsync<SourceReadException>(() => DrainAsync(WideSession(Opener(Text), hasHeader: true).ReadAsync()));
+        var bound = await Assert.ThrowsAsync<SourceReadException>(
+            () => DrainAsync(new WideCsvSource(Opener(Text), WideBinding(hasHeader: true)).ReadAsync()));
+
+        var expected = new SourceReadPosition(SourceReadRecordKind.Data, 1, 0, 5, 6);
+        Assert.Equal(expected, wide.Position);
+        Assert.Equal(expected, bound.Position);
+        Assert.Equal(SourceReadFailureReason.TextAfterClosingQuote, wide.Reason);
     }
 }

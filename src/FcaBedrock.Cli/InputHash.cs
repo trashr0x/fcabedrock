@@ -27,6 +27,12 @@ namespace FcaBedrock.Cli;
 /// endings, delimiters, and non-ASCII UTF-8 all included. Nothing is decoded, normalized, or
 /// canonicalized, and the spec file is never hashed here.
 /// </para>
+/// <para>
+/// <b>The leading bytes of a pass.</b> From the same reads, each pass also keeps its first four
+/// bytes, so a decoding failure can be explained by the UTF-16 or UTF-32 byte order mark the
+/// failing pass began with (<see cref="CurrentPassMark"/>). Nothing is read for it beyond what the
+/// pass reads anyway.
+/// </para>
 /// </summary>
 internal sealed class InputHashTracker
 {
@@ -34,6 +40,7 @@ internal sealed class InputHashTracker
     private readonly string _path;
     private string? _first;
     private bool _mismatch;
+    private PassPrefix? _current;
 
     /// <summary>Tracks passes over <paramref name="path"/>, opened through <paramref name="open"/>.</summary>
     public InputHashTracker(Func<string, Stream> open, string path)
@@ -54,10 +61,42 @@ internal sealed class InputHashTracker
     public string? Digest => _first;
 
     /// <summary>
+    /// The byte order mark the most recently opened pass begins with, judged only from the bytes
+    /// that pass has consumed, whether or not it reached the end of the input. Passes run one at a
+    /// time, so after a read failure this is the failing pass's mark. It stays available after the
+    /// pass's stream is disposed, and opening a pass resets it.
+    /// </summary>
+    public DataByteOrderMark CurrentPassMark => _current?.Mark ?? DataByteOrderMark.None;
+
+    /// <summary>
     /// Opens the input for one pass. The returned stream owns the underlying stream: disposing
     /// it disposes both, and disposal before end of stream discards the incomplete pass.
     /// </summary>
-    public Stream OpenHashed() => new HashingStream(_open(_path), this);
+    public Stream OpenHashed()
+    {
+        // Reset before the open: a pass whose open fails, or that reads nothing, has no mark, and
+        // an earlier pass's bytes never stand in for it.
+        var prefix = new PassPrefix();
+        _current = prefix;
+        return new HashingStream(_open(_path), this, prefix);
+    }
+
+    /// <summary>
+    /// Classifies a pass's leading bytes. A four-byte UTF-32 mark is checked before the two-byte
+    /// UTF-16 mark it overlaps; when only <c>FF FE</c>, or <c>FF FE 00</c>, has been consumed, the
+    /// two cannot be told apart and the answer is <see cref="DataByteOrderMark.Utf16OrUtf32"/>.
+    /// Bytes that begin with no such mark are <see cref="DataByteOrderMark.None"/>; no encoding is
+    /// guessed from them.
+    /// </summary>
+    internal static DataByteOrderMark Classify(ReadOnlySpan<byte> prefix) => prefix switch
+    {
+        [0xFF, 0xFE, 0x00, 0x00, ..] => DataByteOrderMark.Utf32LittleEndian,
+        [0x00, 0x00, 0xFE, 0xFF, ..] => DataByteOrderMark.Utf32BigEndian,
+        [0xFF, 0xFE] or [0xFF, 0xFE, 0x00] => DataByteOrderMark.Utf16OrUtf32,
+        [0xFF, 0xFE, ..] => DataByteOrderMark.Utf16LittleEndian,
+        [0xFE, 0xFF, ..] => DataByteOrderMark.Utf16BigEndian,
+        _ => DataByteOrderMark.None,
+    };
 
     private void Complete(string digest)
     {
@@ -85,14 +124,16 @@ internal sealed class InputHashTracker
     {
         private readonly Stream _inner;
         private readonly InputHashTracker _owner;
+        private readonly PassPrefix _prefix;
         private IncrementalHash? _hash;
         private bool _completed;
         private bool _disposed;
 
-        public HashingStream(Stream inner, InputHashTracker owner)
+        public HashingStream(Stream inner, InputHashTracker owner, PassPrefix prefix)
         {
             _inner = inner;
             _owner = owner;
+            _prefix = prefix;
             _hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
         }
 
@@ -196,6 +237,7 @@ internal sealed class InputHashTracker
         // also gets zero back, and that is not the end of anything.
         private void Observe(int requested, ReadOnlySpan<byte> data)
         {
+            _prefix.Observe(data);
             if (_hash is not { } hash || _completed)
             {
                 return;
@@ -216,4 +258,45 @@ internal sealed class InputHashTracker
             _owner.Complete(Convert.ToHexString(hash.GetCurrentHash()).ToLowerInvariant());
         }
     }
+
+    /// <summary>The first four bytes one pass has consumed, kept from its own reads.</summary>
+    private sealed class PassPrefix
+    {
+        private readonly byte[] _bytes = new byte[4];
+        private int _length;
+
+        public DataByteOrderMark Mark => Classify(_bytes.AsSpan(0, _length));
+
+        public void Observe(ReadOnlySpan<byte> data)
+        {
+            var take = Math.Min(_bytes.Length - _length, data.Length);
+            data[..take].CopyTo(_bytes.AsSpan(_length));
+            _length += take;
+        }
+    }
+}
+
+/// <summary>
+/// The UTF-16 or UTF-32 byte order mark a DATA pass begins with, which explains why its bytes are
+/// not UTF-8. A UTF-8 mark is not listed: it is valid data input, and the reader consumes it.
+/// </summary>
+internal enum DataByteOrderMark
+{
+    /// <summary>The consumed bytes begin with none of the marks below.</summary>
+    None = 0,
+
+    /// <summary><c>FF FE</c>, followed by bytes that rule out the UTF-32 mark.</summary>
+    Utf16LittleEndian,
+
+    /// <summary><c>FE FF</c>.</summary>
+    Utf16BigEndian,
+
+    /// <summary><c>FF FE 00 00</c>.</summary>
+    Utf32LittleEndian,
+
+    /// <summary><c>00 00 FE FF</c>.</summary>
+    Utf32BigEndian,
+
+    /// <summary>Only <c>FF FE</c> or <c>FF FE 00</c> was consumed, which begins both little-endian marks.</summary>
+    Utf16OrUtf32,
 }

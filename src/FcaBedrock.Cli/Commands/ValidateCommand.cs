@@ -17,7 +17,9 @@ namespace FcaBedrock.Cli.Commands;
 /// after the one that gives the schema, and it does not plan, calibrate, freeze, verify stored
 /// fingerprints, hash the data, compute fingerprints, emit, publish, or mutate anything. A file
 /// whose schema is valid but whose later records are malformed validates successfully: that is
-/// the boundary, not an oversight.
+/// the boundary, not an oversight. Bytes that are not UTF-8 differ only in where they are found:
+/// the schema read decodes ahead of its record, so such bytes near the start of the file fail
+/// validate, and ones further on are not seen (D-122 part 10).
 /// </para>
 /// </summary>
 internal static class ValidateCommand
@@ -96,7 +98,10 @@ internal static class ValidateCommand
             }
             catch (Exception exception) when (RunPipeline.IsDataReadFailure(exception))
             {
-                return HostFailure(environment, diagnostics, $"cannot read the data file '{dataPath}'.");
+                // Validate hashes no pass, so it has no leading bytes to name a UTF-16 or UTF-32
+                // mark from; a decoding failure is explained as invalid UTF-8.
+                return HostFailure(
+                    environment, diagnostics, DataReadExplanation.Message(dataPath, exception, DataByteOrderMark.None));
             }
         }
 

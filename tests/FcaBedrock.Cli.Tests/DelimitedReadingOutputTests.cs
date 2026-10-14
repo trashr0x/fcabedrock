@@ -177,7 +177,6 @@ public sealed class DelimitedReadingOutputTests
     public static TheoryData<string, byte[]> RawInputs() => new()
     {
         { "a byte order mark", [0xEF, 0xBB, 0xBF, .. Encoding.UTF8.GetBytes("colour,size\nred,1\ngreen,2\n")] },
-        { "an invalid byte in an unused column", [.. Encoding.UTF8.GetBytes("colour,size\nred,1"), 0xFF, .. Encoding.UTF8.GetBytes("\ngreen,2\n")] },
         { "quoted CR CR in an unused column", Encoding.UTF8.GetBytes("colour,size\nred,\"1\r\r\"\n\ngreen,2\n") },
     };
 

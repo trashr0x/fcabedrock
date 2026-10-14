@@ -1,4 +1,3 @@
-using System.Globalization;
 using System.Runtime.CompilerServices;
 
 namespace FcaBedrock.Sources;
@@ -429,27 +428,6 @@ internal static class DelimitedFieldGrammar
             count++;
             position = at + (text[at] == '\r' && at + 1 < text.Length && text[at + 1] == '\n' ? 2 : 1);
         }
-    }
-
-    /// <summary>
-    /// The read failure for a malformed field: invariant, with zero-based record and column indices
-    /// and one-based physical lines, and no raw data.
-    /// </summary>
-    public static string FaultMessage(FieldFault fault, int? recordIndex, long startLine, int column, long faultLine)
-    {
-        var record = recordIndex is { } index
-            ? string.Create(CultureInfo.InvariantCulture, $"data record {index}")
-            : "the header record";
-        var defect = fault switch
-        {
-            FieldFault.QuoteInUnquotedField => "a quote appears inside an unquoted field",
-            FieldFault.TextAfterClosingQuote => "text follows the closing quote of a quoted field",
-            FieldFault.UnterminatedQuote => "a quoted field is not closed before the end of the input",
-            _ => throw new ArgumentOutOfRangeException(nameof(fault)),
-        };
-        return string.Create(
-            CultureInfo.InvariantCulture,
-            $"The source could not be read: {record}, column {column}, starting on line {startLine} (the defect is on line {faultLine}): {defect}.");
     }
 
     // The windowed searches. Each window is one vectorized search; the budget is charged the units

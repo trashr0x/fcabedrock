@@ -25,6 +25,10 @@ public sealed class SourceLimitTests
         var failure = Assert.IsType<SourceReadException>(error);
         Assert.Equal(LimitMessage, failure.Message);
         Assert.IsType<NotSupportedException>(failure.InnerException);
+
+        // The provider reports no position for the limit, so none is claimed.
+        Assert.Equal(SourceReadFailureReason.ReaderLimit, failure.Reason);
+        Assert.Null(failure.Position);
     }
 
     [Fact]

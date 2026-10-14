@@ -550,7 +550,7 @@ public sealed class RunPipelineTests
 
         Assert.Equal(1, exit);
         Assert.Equal(string.Empty, harness.StdOut);
-        Assert.Equal(DiagnosticRenderer.RenderHostError(RunPipeline.DataReadMessage(data)), harness.StdErr);
+        Assert.Equal(DiagnosticRenderer.RenderHostError(FamilyMessage(data, family)), harness.StdErr);
     }
 
     [Theory]
@@ -570,7 +570,7 @@ public sealed class RunPipelineTests
 
         Assert.Equal(1, exit);
         Assert.Equal(string.Empty, harness.StdOut);
-        Assert.Equal(DiagnosticRenderer.RenderHostError(RunPipeline.DataReadMessage(data)), harness.StdErr);
+        Assert.Equal(DiagnosticRenderer.RenderHostError(FamilyMessage(data, family)), harness.StdErr);
     }
 
     [Theory]
@@ -590,7 +590,7 @@ public sealed class RunPipelineTests
 
         Assert.Equal(1, exit);
         Assert.Equal(string.Empty, harness.StdOut);
-        Assert.Equal(DiagnosticRenderer.RenderHostError(RunPipeline.DataReadMessage(data)), harness.StdErr);
+        Assert.Equal(DiagnosticRenderer.RenderHostError(FamilyMessage(data, family)), harness.StdErr);
     }
 
     [Theory]
@@ -610,7 +610,7 @@ public sealed class RunPipelineTests
 
         Assert.Equal(1, exit);
         Assert.Equal(string.Empty, harness.StdOut);
-        Assert.Equal(DiagnosticRenderer.RenderHostError(RunPipeline.DataReadMessage(data)), harness.StdErr);
+        Assert.Equal(DiagnosticRenderer.RenderHostError(FamilyMessage(data, family)), harness.StdErr);
     }
 
     [Fact]
@@ -717,6 +717,216 @@ public sealed class RunPipelineTests
         Assert.Empty(Directory.GetFiles(temp.Path, "out*"));
     }
 
+    // ---- DATA read explanations ------------------------------------------------------------
+    //
+    // A data file the reader refuses says why and, where the reader knows it, where: the record
+    // and field indices, counted from 0, and the physical lines, counted from 1. The cause and the
+    // position come from the reader's closed facts, never from an exception's own text.
+
+    [Fact]
+    public async Task Plan_WhenTheCalibrationPassMeetsMalformedQuoting_ThenTheErrorNamesTheReasonThePositionAndTheFix()
+    {
+        // Line 2 is blank and data record 1 starts on line 4; its quoted field closes on line 5,
+        // where text follows the closing quote.
+        using var temp = TempDirectory.Create();
+        var spec = temp.Write("spec.toml", ObservedDomainSpec);
+        var data = temp.Write("data.csv", "colour\n\nred\n\"gr\neen\"x\n");
+        var harness = new CliTestHarness();
+
+        var exit = await harness.RunAsync("plan", spec, data);
+
+        Assert.Equal(1, exit);
+        Assert.Equal(string.Empty, harness.StdOut);
+        Assert.Equal(
+            DiagnosticRenderer.RenderHostError(
+                $"cannot read the data file '{data}': text follows the closing quote of a quoted field (data record 1, "
+                + "field 0, counted from 0; record starts on line 4, defect on line 5). End the field right after its "
+                + "closing quote, or double each quote inside it."),
+            harness.StdErr);
+    }
+
+    [Fact]
+    public async Task Plan_WhenTheHeaderIsMalformed_ThenTheErrorNamesTheHeaderRecordWithoutADataIndex()
+    {
+        using var temp = TempDirectory.Create();
+        var spec = temp.Write("spec.toml", CliFixtures.NameBoundSpec);
+        var data = temp.Write("data.csv", "\"col\"our,size\nred,1\n");
+        var harness = new CliTestHarness();
+
+        var exit = await harness.RunAsync("plan", spec, data);
+
+        Assert.Equal(1, exit);
+        Assert.Equal(
+            DiagnosticRenderer.RenderHostError(
+                $"cannot read the data file '{data}': text follows the closing quote of a quoted field (the header "
+                + "record, field 0, counted from 0; line 1). End the field right after its closing quote, or double each "
+                + "quote inside it."),
+            harness.StdErr);
+    }
+
+    [Fact]
+    public async Task Plan_WhenTheFirstRecordOfAHeaderlessSourceIsMalformed_ThenItIsDataRecordZero()
+    {
+        // Without a header the first record gives the schema its width, and it is data record 0.
+        using var temp = TempDirectory.Create();
+        var spec = temp.Write("spec.toml", CliFixtures.TripleSpec);
+        var data = temp.Write("data.csv", "o1,col\"our,red\no2,colour,green\n");
+        var harness = new CliTestHarness();
+
+        var exit = await harness.RunAsync("plan", spec, data);
+
+        Assert.Equal(1, exit);
+        Assert.Equal(
+            DiagnosticRenderer.RenderHostError(
+                $"cannot read the data file '{data}': a quote appears inside an unquoted field (data record 0, field 1, "
+                + "counted from 0; line 1). Quote the whole field and double each quote inside it."),
+            harness.StdErr);
+    }
+
+    [Fact]
+    public async Task Stats_WhenTheCountingPassMeetsAnUnclosedQuote_ThenTheErrorNamesTheReasonAndThePosition()
+    {
+        using var temp = TempDirectory.Create();
+        var spec = temp.Write("spec.toml", CliFixtures.IndexBoundSpec);
+        var data = temp.Write("data.csv", "colour,size\nred,1\ngreen,\"2\n\n");
+        var harness = new CliTestHarness();
+
+        var exit = await harness.RunAsync("stats", spec, data);
+
+        Assert.Equal(1, exit);
+        Assert.Equal(string.Empty, harness.StdOut);
+        Assert.Equal(
+            DiagnosticRenderer.RenderHostError(
+                $"cannot read the data file '{data}': a quoted field is not closed before the end of the input (data "
+                + "record 1, field 1, counted from 0; line 3). Add the missing closing quote, or double each quote inside "
+                + "the field."),
+            harness.StdErr);
+    }
+
+    [Theory]
+    [InlineData("plan")]
+    [InlineData("calibrate")]
+    [InlineData("fingerprint")]
+    public async Task Pipeline_WhenTheDataIsNotUtf8_ThenTheErrorSaysSoAndNothingIsWritten(string command)
+    {
+        using var temp = TempDirectory.Create();
+        var spec = temp.Write("spec.toml", ObservedDomainSpec);
+        var data = temp.Resolve("data.csv");
+        File.WriteAllBytes(data, [.. Encoding.UTF8.GetBytes("colour\nr"), 0xE9, .. Encoding.UTF8.GetBytes("d\nred\n")]);
+        var output = temp.Resolve("frozen.toml");
+        var harness = new CliTestHarness();
+        string[] options = command == "calibrate" ? ["--out", output] : [];
+
+        var exit = await harness.RunAsync([command, spec, data, .. options]);
+
+        Assert.Equal(1, exit);
+        Assert.Equal(string.Empty, harness.StdOut);
+        Assert.Equal(
+            DiagnosticRenderer.RenderHostError($"cannot read the data file '{data}': it is not valid UTF-8. Save it as UTF-8."),
+            harness.StdErr);
+        Assert.False(File.Exists(output));
+    }
+
+    public static TheoryData<string, byte[], string> MarkedFiles() => new()
+    {
+        { "UTF-16 little-endian", [0xFF, 0xFE, .. Encoding.Unicode.GetBytes("colour\nred\n")], "UTF-16 little-endian" },
+        { "UTF-16 big-endian", [0xFE, 0xFF, .. Encoding.BigEndianUnicode.GetBytes("colour\nred\n")], "UTF-16 big-endian" },
+        { "UTF-32 little-endian", [0xFF, 0xFE, 0x00, 0x00, .. new UTF32Encoding(false, false).GetBytes("colour\nred\n")], "UTF-32 little-endian" },
+        { "UTF-32 big-endian", [0x00, 0x00, 0xFE, 0xFF, .. new UTF32Encoding(true, false).GetBytes("colour\nred\n")], "UTF-32 big-endian" },
+    };
+
+    [Theory]
+    [MemberData(nameof(MarkedFiles))]
+    public async Task Plan_WhenTheDataStartsWithAUtf16OrUtf32Mark_ThenTheErrorNamesTheMark(string label, byte[] bytes, string mark)
+    {
+        _ = label;
+        using var temp = TempDirectory.Create();
+        var spec = temp.Write("spec.toml", ObservedDomainSpec);
+        var data = temp.Resolve("data.csv");
+        File.WriteAllBytes(data, bytes);
+        var harness = new CliTestHarness();
+
+        var exit = await harness.RunAsync("plan", spec, data);
+
+        Assert.Equal(1, exit);
+        Assert.Equal(
+            DiagnosticRenderer.RenderHostError(
+                $"cannot read the data file '{data}': it starts with a {mark} byte order mark, but data must be UTF-8. "
+                + "Save it as UTF-8."),
+            harness.StdErr);
+    }
+
+    [Fact]
+    public async Task Plan_WhenOnlyTheFailingPassStartsWithAMark_ThenTheMarkComesFromThatPass()
+    {
+        // The schema pass reads valid UTF-8; the calibration pass meets a UTF-16 file. The mark
+        // is the failing pass's own, read from the bytes that pass consumed.
+        using var temp = TempDirectory.Create();
+        var spec = temp.Write("spec.toml", ObservedDomainSpec);
+        var data = temp.Resolve("data.csv");
+        var passes = new[] { Encoding.UTF8.GetBytes("colour\nred\n"), [0xFF, 0xFE, .. Encoding.Unicode.GetBytes("colour\nred\n")] };
+        var opened = 0;
+        var harness = new CliTestHarness();
+        harness.OpenInput = path => string.Equals(path, spec, StringComparison.Ordinal)
+            ? new MemoryStream(Encoding.UTF8.GetBytes(ObservedDomainSpec), writable: false)
+            : new MemoryStream(passes[Math.Min(opened++, 1)], writable: false);
+
+        var exit = await harness.RunAsync("plan", spec, data);
+
+        Assert.Equal(1, exit);
+        Assert.Equal(2, opened);
+        Assert.Equal(
+            DiagnosticRenderer.RenderHostError(
+                $"cannot read the data file '{data}': it starts with a UTF-16 little-endian byte order mark, but data must "
+                + "be UTF-8. Save it as UTF-8."),
+            harness.StdErr);
+    }
+
+    [Fact]
+    public async Task Plan_WhenOnlyTheSharedPrefixOfTwoMarksWasRead_ThenTheErrorNamesBothWithoutReadingMore()
+    {
+        // FF FE starts both the UTF-16 and the UTF-32 little-endian mark. A stream that returns two
+        // bytes per read lets the decoder fail after exactly those two, and nothing reads further
+        // only to tell the two marks apart.
+        using var temp = TempDirectory.Create();
+        var spec = temp.Write("spec.toml", ObservedDomainSpec);
+        var data = temp.Resolve("data.csv");
+        byte[] bytes = [0xFF, 0xFE, 0x00, 0x00, .. new UTF32Encoding(false, false).GetBytes("colour\nred\n")];
+        ChunkedStream? stream = null;
+        var harness = new CliTestHarness();
+        harness.OpenInput = path => string.Equals(path, spec, StringComparison.Ordinal)
+            ? new MemoryStream(Encoding.UTF8.GetBytes(ObservedDomainSpec), writable: false)
+            : stream = new ChunkedStream(bytes, chunk: 2);
+
+        var exit = await harness.RunAsync("plan", spec, data);
+
+        Assert.Equal(1, exit);
+        Assert.Equal(2, stream!.Consumed);
+        Assert.Equal(
+            DiagnosticRenderer.RenderHostError(
+                $"cannot read the data file '{data}': it starts with a UTF-16 or UTF-32 byte order mark, but data must be "
+                + "UTF-8. Save it as UTF-8."),
+            harness.StdErr);
+    }
+
+    [Fact]
+    public async Task Pipeline_WhenAReadFailureCarriesFreeText_ThenOnlyTheGenericSentenceIsShown()
+    {
+        using var temp = TempDirectory.Create();
+        var spec = temp.Write("spec.toml", CliFixtures.IndexBoundSpec);
+        var data = temp.Resolve("data.csv");
+        var harness = new CliTestHarness();
+        harness.OpenInput = path => string.Equals(path, spec, StringComparison.Ordinal)
+            ? new MemoryStream(Encoding.UTF8.GetBytes(CliFixtures.IndexBoundSpec), writable: false)
+            : throw new SourceReadException("SECRET free text", new IOException("SECRET inner text"));
+
+        var exit = await harness.RunAsync("plan", spec, data);
+
+        Assert.Equal(1, exit);
+        Assert.Equal(DiagnosticRenderer.RenderHostError(RunPipeline.DataReadMessage(data)), harness.StdErr);
+        Assert.DoesNotContain("SECRET", harness.StdErr, StringComparison.Ordinal);
+    }
+
     [Theory]
     [InlineData("plan")]
     [InlineData("stats")]
@@ -816,6 +1026,13 @@ public sealed class RunPipelineTests
         };
     }
 
+    // The decoder's own failure is the one family with a closed explanation; every other family
+    // keeps the generic sentence, whatever its exception says.
+    private static string FamilyMessage(string data, string family) =>
+        family == nameof(DecoderFallbackException)
+            ? $"cannot read the data file '{data}': it is not valid UTF-8. Save it as UTF-8."
+            : RunPipeline.DataReadMessage(data);
+
     private static Exception Create(string family) => family switch
     {
         nameof(SourceReadException) => new SourceReadException("the source could not be read."),
@@ -829,6 +1046,20 @@ public sealed class RunPipelineTests
         nameof(NotSupportedException) => new NotSupportedException("an unsupported operation, not a read failure."),
         _ => throw new ArgumentOutOfRangeException(nameof(family), family, "Unknown exception family."),
     };
+
+    /// <summary>A source that returns at most <c>chunk</c> bytes per read and counts what it handed out.</summary>
+    private sealed class ChunkedStream(byte[] bytes, int chunk) : MemoryStream(bytes, writable: false)
+    {
+        public long Consumed { get; private set; }
+
+        // A derived MemoryStream's span read is routed to this array read.
+        public override int Read(byte[] buffer, int offset, int count)
+        {
+            var read = base.Read(buffer, offset, Math.Min(count, chunk));
+            Consumed += read;
+            return read;
+        }
+    }
 
     /// <summary>A source that reads a prefix and then fails, like a truncated or unplugged device.</summary>
     private sealed class BreakingStream(byte[] bytes, int after) : MemoryStream(bytes, writable: false)

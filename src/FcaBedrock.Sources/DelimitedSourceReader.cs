@@ -25,10 +25,12 @@ internal sealed class DelimitedSourceReader
     /// <summary>The <see cref="Exception.Data"/> key under which cleanup failures ride on a primary failure.</summary>
     public const string SecondaryCleanupFailuresKey = "FcaBedrock.Sources.SecondaryCleanupFailures";
 
-    /// <summary>The read failure for the provider's row and buffer limit (spec §5.1.1).</summary>
-    public const string LimitMessage =
-        "The source could not be read: a record exceeded the reader's row and buffer limit of about "
-        + "16 million UTF-16 code units. A quoted field that is never closed can run into this limit.";
+    // Strict UTF-8 (spec §5.1.1). Invalid bytes throw DecoderFallbackException instead of becoming
+    // U+FFFD. The preamble flag is what consumes one leading UTF-8 byte order mark: the decoder
+    // skips a mark only when it equals the encoding's own preamble, so an encoding without one
+    // would decode the mark as content. With byte order mark detection off, a UTF-16 or UTF-32
+    // mark is never a reason to switch encodings; its bytes are invalid UTF-8 and fail the read.
+    private static readonly UTF8Encoding StrictUtf8 = new(encoderShouldEmitUTF8Identifier: true, throwOnInvalidBytes: true);
 
     private readonly Stream _stream;
     private readonly CancellationToken _cancellationToken;
@@ -73,18 +75,18 @@ internal sealed class DelimitedSourceReader
         var owner = new DelimitedSourceReader(stream, cancellationToken);
         try
         {
-            // The decoder is configured exactly as Sep's own From(Stream) configures it, so decoding
-            // is unchanged: UTF-8, byte order mark detection, the default buffer, replacement of
-            // invalid bytes. leaveOpen keeps the stream's single disposal with this owner.
+            // Strict UTF-8 with the default buffer. The decoder is incremental: a character split
+            // across reads waits for its remaining bytes, and only the end of the input completes
+            // or rejects a pending one. leaveOpen keeps the stream's single disposal with this owner.
             owner._decoder = new StreamReader(
-                stream, Encoding.UTF8, detectEncodingFromByteOrderMarks: true, bufferSize: -1, leaveOpen: true);
+                stream, StrictUtf8, detectEncodingFromByteOrderMarks: false, bufferSize: -1, leaveOpen: true);
             owner._sep = options.From(new WholeSpanTextReader(owner._decoder, cancellationToken), leaveOpen: true);
             owner.ThrowIfCancellationRequested(); // Sep read and parsed the first candidate while it was built
             return owner;
         }
         catch (NotSupportedException ex) when (IsProviderLimit(ex))
         {
-            var wrapped = new SourceReadException(LimitMessage, ex);
+            var wrapped = new SourceReadException(SourceReadFailureReason.ReaderLimit, position: null, ex);
             owner.Fail(wrapped);
             owner.Close();
             throw wrapped;
@@ -113,7 +115,7 @@ internal sealed class DelimitedSourceReader
         }
         catch (NotSupportedException ex) when (IsProviderLimit(ex))
         {
-            var wrapped = new SourceReadException(LimitMessage, ex);
+            var wrapped = new SourceReadException(SourceReadFailureReason.ReaderLimit, position: null, ex);
             Fail(wrapped);
             throw wrapped;
         }

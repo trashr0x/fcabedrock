@@ -1,5 +1,7 @@
 using System.Globalization;
+using System.Text;
 using FcaBedrock.Diagnostics;
+using FcaBedrock.Sources;
 
 namespace FcaBedrock.Discovery;
 
@@ -10,9 +12,12 @@ namespace FcaBedrock.Discovery;
 /// <b>Every message is a function of the input alone</b> (D-112): counts and limits render as
 /// ungrouped invariant decimal digits, and nothing carries a stack trace, a path, an ambient
 /// culture's formatting, or a provider's own message text, any of which would make the same
-/// record sequence produce different diagnostics on a different machine. A read failure names
-/// its exception <em>type</em>, which is stable and says which channel failed, but never the
-/// exception's message.
+/// record sequence produce different diagnostics on a different machine. A read failure states
+/// its closed reason and known position (<see cref="SourceReadException.Reason"/> and
+/// <see cref="SourceReadException.Position"/>) or that the source is not valid UTF-8; any other
+/// read failure names its exception <em>type</em>, which is stable and says which channel failed.
+/// None of them copies an exception's message. A position's lines are physical lines of the
+/// source, the one input fact here that is not a function of the record sequence alone.
 /// </para>
 /// <para>
 /// <b>No <c>Context</c> payload.</b> <see cref="BedrockDiagnostic"/> is a record struct, so a
@@ -29,7 +34,7 @@ internal static class ProbeDiagnostics
     /// </summary>
     public static BedrockDiagnostic SourceReadFailed(Exception cause) =>
         new(DiagnosticCode.ProbeSourceReadFailed, DiagnosticSeverity.Error,
-            $"The probe could not read the source ({cause.GetType().Name}); no draft was produced (§7.1).");
+            $"The probe could not read the source{ReadFailureDetail(cause)}; no draft was produced (§7.1).");
 
     /// <summary>
     /// The D-107 no-valid-draft outcome for a wide source with no columns. Error: a draft must
@@ -151,4 +156,69 @@ internal static class ProbeDiagnostics
             string.Create(
                 CultureInfo.InvariantCulture,
                 $"The probe exceeded its maximum of {max} total retained value text (UTF-16 code units); no draft was produced (§7.1)."));
+
+    // ": <reason> (<position>)" for a closed reason, ": it is not valid UTF-8 text" for the
+    // decoder's failure, and " (<exception type>)" for any other read failure.
+    private static string ReadFailureDetail(Exception cause)
+    {
+        if (cause is SourceReadException { Reason: not SourceReadFailureReason.Unknown } read)
+        {
+            var where = read.Position is { } position ? Where(position) : string.Empty;
+            return where.Length == 0 ? ": " + Reason(read.Reason) : $": {Reason(read.Reason)} ({where})";
+        }
+
+        return cause is DecoderFallbackException ? ": it is not valid UTF-8 text" : $" ({cause.GetType().Name})";
+    }
+
+    private static string Reason(SourceReadFailureReason reason) => reason switch
+    {
+        SourceReadFailureReason.QuoteInUnquotedField => "a quote appears inside an unquoted field",
+        SourceReadFailureReason.TextAfterClosingQuote => "text follows the closing quote of a quoted field",
+        SourceReadFailureReason.UnterminatedQuote => "a quoted field is not closed before the end of the input",
+        SourceReadFailureReason.ReaderLimit =>
+            "a record exceeded the reader's row and buffer limit of about 16 million UTF-16 code units",
+        _ => throw new ArgumentOutOfRangeException(nameof(reason), reason, "The read failure reason has no explanation."),
+    };
+
+    // "data record 1, field 0, counted from 0; record starts on line 3, defect on line 4", naming
+    // only the coordinates the reader knows.
+    private static string Where(SourceReadPosition position)
+    {
+        var indices = new List<string>(2);
+        if (position.RecordKind == SourceReadRecordKind.Header)
+        {
+            indices.Add("the header record");
+        }
+        else if (position.DataRecordIndex is { } record)
+        {
+            indices.Add(string.Create(CultureInfo.InvariantCulture, $"data record {record}"));
+        }
+
+        if (position.FieldIndex is { } field)
+        {
+            indices.Add(string.Create(CultureInfo.InvariantCulture, $"field {field}"));
+        }
+
+        var parts = new List<string>(2);
+        if (indices.Count > 0)
+        {
+            var counted = position.DataRecordIndex is not null || position.FieldIndex is not null;
+            parts.Add(string.Join(", ", indices) + (counted ? ", counted from 0" : string.Empty));
+        }
+
+        var lines = (position.RecordStartLine, position.DefectLine) switch
+        {
+            ({ } start, { } defect) when start == defect => string.Create(CultureInfo.InvariantCulture, $"line {start}"),
+            ({ } start, { } defect) => string.Create(CultureInfo.InvariantCulture, $"record starts on line {start}, defect on line {defect}"),
+            ({ } start, null) => string.Create(CultureInfo.InvariantCulture, $"record starts on line {start}"),
+            (null, { } defect) => string.Create(CultureInfo.InvariantCulture, $"defect on line {defect}"),
+            _ => null,
+        };
+        if (lines is not null)
+        {
+            parts.Add(lines);
+        }
+
+        return string.Join("; ", parts);
+    }
 }

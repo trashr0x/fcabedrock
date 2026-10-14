@@ -100,6 +100,40 @@ public sealed class HeaderAndSchemaTests
         Assert.Equal(
             DelimitedGrammarConformanceTests.Message(DelimitedGrammarConformanceTests.Defect.TextAfterClosingQuote, null, 2, 0, 2),
             refused.Message);
+        Assert.Equal(SourceReadFailureReason.TextAfterClosingQuote, refused.Reason);
+        Assert.Equal(new SourceReadPosition(SourceReadRecordKind.Header, null, 0, 2, 2), refused.Position);
+    }
+
+    [Fact]
+    public async Task Read_WhenTheConsumedHeaderIsMalformed_ThenTheRecordReadsNameTheHeaderWithoutADataIndex()
+    {
+        // The record reads validate the header they consume without decoding it, in both shapes.
+        const string Text = "a,b\"c\n1,2\n";
+
+        var wide = await Assert.ThrowsAsync<SourceReadException>(() => DrainAsync(WideSession(Opener(Text), hasHeader: true).ReadAsync()));
+        var triple = await Assert.ThrowsAsync<SourceReadException>(
+            () => DrainAsync(TripleSession(Opener(Text), hasHeader: true).ReadRowsAsync(new TripleColumns(0, 1, 0))));
+
+        var expected = new SourceReadPosition(SourceReadRecordKind.Header, null, 1, 1, 1);
+        Assert.Equal(expected, wide.Position);
+        Assert.Equal(expected, triple.Position);
+        Assert.Equal(SourceReadFailureReason.QuoteInUnquotedField, wide.Reason);
+    }
+
+    [Fact]
+    public async Task Schema_WhenTheFirstRecordOfAHeaderlessSourceIsMalformed_ThenItIsDataRecordZero()
+    {
+        // Without a header the first non-blank record gives the schema its width, and it is the
+        // first data record: the schema read and the record read report the same position.
+        const string Text = "\n\nx,\"a\"b\n";
+
+        var schema = await Assert.ThrowsAsync<SourceReadException>(async () => await WideSession(Opener(Text)).GetSchemaAsync());
+        var records = await Assert.ThrowsAsync<SourceReadException>(() => DrainAsync(WideSession(Opener(Text)).ReadAsync()));
+
+        var expected = new SourceReadPosition(SourceReadRecordKind.Data, 0, 1, 3, 3);
+        Assert.Equal(expected, schema.Position);
+        Assert.Equal(expected, records.Position);
+        Assert.Equal(SourceReadFailureReason.TextAfterClosingQuote, schema.Reason);
     }
 
     [Fact]

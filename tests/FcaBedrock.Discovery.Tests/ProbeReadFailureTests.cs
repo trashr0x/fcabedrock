@@ -24,13 +24,13 @@ public sealed class ProbeReadFailureTests
 {
     private static readonly SourceSchema Schema = new(1, ["a"]);
 
-    private static void AssertReadFailed(Diagnosed<SpecDocument> result, string expectedTypeName)
+    private static void AssertReadFailed(Diagnosed<SpecDocument> result, string expectedText)
     {
         var diagnostic = Assert.Single(result.Diagnostics);
 
         Assert.Equal(DiagnosticCode.ProbeSourceReadFailed, diagnostic.Code);
         Assert.Equal(DiagnosticSeverity.Error, diagnostic.Severity);
-        Assert.Contains(expectedTypeName, diagnostic.Message, StringComparison.Ordinal);
+        Assert.Contains(expectedText, diagnostic.Message, StringComparison.Ordinal);
 
         // No draft, ever, not even a partial one.
         Assert.True(result.HasErrors);
@@ -46,7 +46,7 @@ public sealed class ProbeReadFailureTests
         { nameof(IOException), () => new IOException("device not ready") },
         { nameof(UnauthorizedAccessException), () => new UnauthorizedAccessException("denied") },
         { nameof(ObjectDisposedException), () => new ObjectDisposedException("stream") },
-        { nameof(DecoderFallbackException), () => new DecoderFallbackException("bad bytes") },
+        { "it is not valid UTF-8 text", () => new DecoderFallbackException("bad bytes") },
         { nameof(InvalidDataException), () => new InvalidDataException("corrupt") },
     };
 
@@ -69,31 +69,31 @@ public sealed class ProbeReadFailureTests
 
     [Theory]
     [MemberData(nameof(ExpectedFailures))]
-    public async Task Probe_WhenSchemaReadFails_ThenReportsProbeSourceReadFailed(string typeName, Func<Exception> failure)
+    public async Task Probe_WhenSchemaReadFails_ThenReportsProbeSourceReadFailed(string expectedText, Func<Exception> failure)
     {
         var session = new ProbeFixtures.FakeWideSession(Schema, [], schemaFailure: failure);
 
         var result = await Prober.ProbeAsync(session, ProbeFixtures.WideSettings());
 
-        AssertReadFailed(result, typeName);
+        AssertReadFailed(result, expectedText);
     }
 
     [Theory]
     [MemberData(nameof(ExpectedFailures))]
-    public async Task Probe_WhenRecordEnumerationFails_ThenReportsProbeSourceReadFailed(string typeName, Func<Exception> failure)
+    public async Task Probe_WhenRecordEnumerationFails_ThenReportsProbeSourceReadFailed(string expectedText, Func<Exception> failure)
     {
         var session = new ProbeFixtures.FakeWideSession(
             Schema, ProbeFixtures.Records(["x"], ["y"]), recordFailure: failure, failAfterRecords: 1);
 
         var result = await Prober.ProbeAsync(session, ProbeFixtures.WideSettings());
 
-        AssertReadFailed(result, typeName);
+        AssertReadFailed(result, expectedText);
         Assert.Equal(1, session.RecordsYielded);
     }
 
     [Theory]
     [MemberData(nameof(ExpectedFailures))]
-    public async Task Probe_WhenReadAsyncItselfThrows_ThenReportsProbeSourceReadFailed(string typeName, Func<Exception> failure)
+    public async Task Probe_WhenReadAsyncItselfThrows_ThenReportsProbeSourceReadFailed(string expectedText, Func<Exception> failure)
     {
         // Record acquisition is two calls, not one, and the first is ReadAsync. A compiler-
         // generated async iterator can never fail here (its body does not run until the first
@@ -103,12 +103,12 @@ public sealed class ProbeReadFailureTests
 
         var result = await Prober.ProbeAsync(session, ProbeFixtures.WideSettings());
 
-        AssertReadFailed(result, typeName);
+        AssertReadFailed(result, expectedText);
     }
 
     [Theory]
     [MemberData(nameof(ExpectedFailures))]
-    public async Task Probe_WhenGetAsyncEnumeratorThrows_ThenReportsProbeSourceReadFailed(string typeName, Func<Exception> failure)
+    public async Task Probe_WhenGetAsyncEnumeratorThrows_ThenReportsProbeSourceReadFailed(string expectedText, Func<Exception> failure)
     {
         // The second acquisition call. A session that opens its underlying reader eagerly when
         // enumeration begins fails exactly here, and that is a read failure however early it lands.
@@ -116,7 +116,7 @@ public sealed class ProbeReadFailureTests
 
         var result = await Prober.ProbeAsync(session, ProbeFixtures.WideSettings());
 
-        AssertReadFailed(result, typeName);
+        AssertReadFailed(result, expectedText);
     }
 
     [Theory]
@@ -145,7 +145,7 @@ public sealed class ProbeReadFailureTests
 
     [Theory]
     [MemberData(nameof(ExpectedFailures))]
-    public async Task Probe_WhenCurrentThrows_ThenReportsProbeSourceReadFailed(string typeName, Func<Exception> failure)
+    public async Task Probe_WhenCurrentThrows_ThenReportsProbeSourceReadFailed(string expectedText, Func<Exception> failure)
     {
         // The third provider-owned call in the pass. An enumerator that materializes its row
         // lazily does its real work in Current, not MoveNextAsync, so a read failure can land
@@ -155,7 +155,7 @@ public sealed class ProbeReadFailureTests
 
         var result = await Prober.ProbeAsync(session, ProbeFixtures.WideSettings());
 
-        AssertReadFailed(result, typeName);
+        AssertReadFailed(result, expectedText);
     }
 
     [Fact]
@@ -308,6 +308,64 @@ public sealed class ProbeReadFailureTests
         var result = await ProbeFixtures.ProbeCsvAsync("a\nx\n");
 
         Assert.DoesNotContain(result.Diagnostics, d => d.Code == DiagnosticCode.ProbeSourceReadFailed);
+    }
+
+    [Fact]
+    public async Task Probe_WhenTheRealCsvAdapterMeetsMalformedQuoting_ThenTheDiagnosticNamesTheReasonAndThePosition()
+    {
+        // The header is line 1 and line 2 is blank. Data record 1 starts on line 4 with a quoted
+        // field that spans two lines, so its unquoted second field's stray quote is on line 5.
+        var result = await ProbeFixtures.ProbeCsvAsync("a,b\n\nx,y\n\"p\nq\",z\"w\n");
+
+        var diagnostic = Assert.Single(result.Diagnostics);
+        Assert.Equal(DiagnosticCode.ProbeSourceReadFailed, diagnostic.Code);
+        Assert.Equal(
+            "The probe could not read the source: a quote appears inside an unquoted field (data record 1, field 1, "
+            + "counted from 0; record starts on line 4, defect on line 5); no draft was produced (§7.1).",
+            diagnostic.Message);
+        Assert.Null(diagnostic.Location);
+        Assert.False(result.TryGetValue(out _));
+    }
+
+    [Fact]
+    public async Task Probe_WhenTheRealCsvAdapterReadsBytesThatAreNotUtf8_ThenTheDiagnosticSaysSoAndNoDraftIsProduced()
+    {
+        var settings = ProbeFixtures.WideSettings();
+        byte[] bytes = [.. Encoding.UTF8.GetBytes("name\ncaf"), 0xE9, .. Encoding.UTF8.GetBytes("\ncafe\n")];
+        var session = new WideCsvSession(() => new MemoryStream(bytes, writable: false), settings);
+
+        var result = await Prober.ProbeAsync(session, settings);
+
+        var diagnostic = Assert.Single(result.Diagnostics);
+        Assert.Equal(DiagnosticCode.ProbeSourceReadFailed, diagnostic.Code);
+        Assert.Equal(
+            "The probe could not read the source: it is not valid UTF-8 text; no draft was produced (§7.1).",
+            diagnostic.Message);
+        Assert.False(result.TryGetValue(out _));
+    }
+
+    public static TheoryData<Func<Exception>> FreeTextFailures()
+    {
+        var data = new TheoryData<Func<Exception>>();
+        data.Add(() => new SourceReadException("SECRET free text", new IOException("SECRET inner text")));
+        data.Add(() => new SourceReadException(SourceReadFailureReason.ReaderLimit, null, new NotSupportedException("SECRET inner text")));
+        data.Add(() => new DecoderFallbackException("SECRET decoder text"));
+        return data;
+    }
+
+    [Theory]
+    [MemberData(nameof(FreeTextFailures))]
+    public async Task Probe_WhenAReadFailureCarriesFreeText_ThenNoneOfItReachesTheDiagnostic(Func<Exception> failure)
+    {
+        // Only the closed reason and position are rendered. A free-text message, from an adapter
+        // or from the exception a read failure wraps, may hold a path or data and is never copied.
+        var session = new ProbeFixtures.FakeWideSession(Schema, [], schemaFailure: failure);
+
+        var result = await Prober.ProbeAsync(session, ProbeFixtures.WideSettings());
+
+        var diagnostic = Assert.Single(result.Diagnostics);
+        Assert.Equal(DiagnosticCode.ProbeSourceReadFailed, diagnostic.Code);
+        Assert.DoesNotContain("SECRET", diagnostic.Message, StringComparison.Ordinal);
     }
 
     // A session whose ReadAsync is an ordinary method, so its body runs (and can fail) on the
