@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using FcaBedrock.Core.Spec;
 
 namespace FcaBedrock.Spec.Toml;
@@ -15,10 +16,31 @@ namespace FcaBedrock.Spec.Toml;
 /// </summary>
 public sealed class ResolvedDocument
 {
-    internal ResolvedDocument(SpecDocument documentSnapshot, ResolvedSpec resolved)
+    internal ResolvedDocument(SpecDocument documentSnapshot, ResolvedSpec resolved, ImmutableArray<AuthoredDomain> authoredDomains)
     {
+        // SpecFreezer pairs each captured domain with its document attribute by position, so the
+        // two lists must describe the same attributes in the same order.
+        if (authoredDomains.Length != documentSnapshot.Attributes.Count)
+        {
+            throw new ArgumentException(
+                $"{authoredDomains.Length} authored domains were captured for {documentSnapshot.Attributes.Count} attributes.",
+                nameof(authoredDomains));
+        }
+
+        for (var i = 0; i < authoredDomains.Length; i++)
+        {
+            if (!string.Equals(authoredDomains[i].AttributeName, documentSnapshot.Attributes[i].Name, StringComparison.Ordinal))
+            {
+                throw new ArgumentException(
+                    $"The authored domain at position {i} belongs to '{authoredDomains[i].AttributeName}', not to attribute " +
+                    $"'{documentSnapshot.Attributes[i].Name}'.",
+                    nameof(authoredDomains));
+            }
+        }
+
         Document = documentSnapshot;
         Resolved = resolved;
+        AuthoredDomains = authoredDomains;
     }
 
     /// <summary>The deep snapshot of the resolved document, immutable except for its <c>value_labels</c> backing maps.</summary>
@@ -26,4 +48,11 @@ public sealed class ResolvedDocument
 
     /// <summary>The opaque resolution token.</summary>
     public ResolvedSpec Resolved { get; }
+
+    /// <summary>
+    /// Each attribute's winning <c>declared_domain</c> as authored, in <see cref="Document"/>
+    /// attribute order. Internal: only <see cref="SpecFreezer"/> reads it, to write an authored
+    /// prefix back exactly (spec §7).
+    /// </summary>
+    internal ImmutableArray<AuthoredDomain> AuthoredDomains { get; }
 }

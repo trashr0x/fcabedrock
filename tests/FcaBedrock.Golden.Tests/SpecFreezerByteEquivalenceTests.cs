@@ -133,6 +133,37 @@ public sealed class SpecFreezerByteEquivalenceTests
         "10,red,keep,a1\n20,green,extra,x\n30,red,keep,y\n40,blue,keep,a1\n" +
         "50,red,new,x\n60,green,keep,z\n70,red,keep,a1\n80,blue,extra,y\n";
 
+    // Numeric free_per_value domains under a decimal-comma locale: amount freezes an observed domain,
+    // rate extends an authored prefix under include. The frozen spec goes through its written text,
+    // which is what the locale must be able to reread.
+    private const string CommaLocaleNumericSpec = """
+        [spec]
+        version = 1
+        [binding]
+        shape = "wide"
+        has_header = false
+        delimiter = ";"
+        locale = "de-DE"
+        [[attribute]]
+        name = "amount"
+        source = { kind = "column", index = 0, value_type = "number" }
+        discretizer = { kind = "free_per_value" }
+        scale = { kind = "nominal" }
+        [[attribute]]
+        name = "rate"
+        source = { kind = "column", index = 1, value_type = "number" }
+        discretizer = { kind = "free_per_value" }
+        scale = { kind = "nominal" }
+        declared_domain = ["2,50", "1e1"]
+        unknown_value_policy = "include"
+        """;
+
+    private const string CommaLocaleNumericCsv = "1,5;2,5\n-2,25;10\n0;-0,5\n1,5;2,50\n-0;3E-5\n";
+
+    [Fact]
+    public Task Freeze_WhenNumericDomainsFreezeUnderACommaLocale_ThenAutoAndFrozenEmitByteIdentical() =>
+        AssertAutoFrozenByteIdentical(CommaLocaleNumericSpec, CommaLocaleNumericCsv, throughWrittenSpec: true);
+
     [Fact]
     public Task Freeze_WhenCalibratedCuts_ThenAutoAndFrozenEmitByteIdentical() =>
         AssertAutoFrozenByteIdentical(CutsSpec, CutsCsv);
@@ -157,7 +188,7 @@ public sealed class SpecFreezerByteEquivalenceTests
     public Task Freeze_WhenCombined_ThenAutoAndFrozenEmitByteIdentical() =>
         AssertAutoFrozenByteIdentical(CombinedSpec, CombinedCsv);
 
-    private static async Task AssertAutoFrozenByteIdentical(string autoToml, string csv)
+    private static async Task AssertAutoFrozenByteIdentical(string autoToml, string csv, bool throughWrittenSpec = false)
     {
         var autoDocument = Read(autoToml);
 
@@ -165,6 +196,10 @@ public sealed class SpecFreezerByteEquivalenceTests
         var (resolved, calibrated) = await ResolveAndCalibrateAsync(autoDocument, csv);
         Assert.NotEmpty(calibrated.Calibrations); // the auto spec really was data-dependent
         var frozenDocument = SpecFreezer.Freeze(resolved, calibrated);
+        if (throughWrittenSpec)
+        {
+            frozenDocument = Read(SpecWriter.Write(frozenDocument));
+        }
 
         foreach (var (options, style) in Modes)
         {

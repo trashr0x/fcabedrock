@@ -148,7 +148,7 @@ changes an earlier one. A new entry MUST add its line here.
 
 - D-082: M3 triple source contract: reader, orderings, object identity, absent-vs-missing *(realizes D-072)*
 - D-083: Wide `column` object-key execution + `duplicate_object_policy` *(realizes D-064/D-034; interim key-index phase retired by D-098)*
-- D-084: Ordinal string comparison is the project-wide rule *(adds principle EP-12)*
+- D-084: Ordinal string comparison is the project-wide rule *(adds principle EP-12; the reach of `binding.locale` qualified in place on 2026-10-14)*
 - D-085: M3 diagnostic taxonomy: structural triple/column-key codes *(refines D-067; interim key-index phase retired by D-098; `ObjectKeyValueInvalid` phase widened by D-099/D-111)*
 - D-086: Shape-aware `.bed` migration sources *(refines D-079)*
 - D-087: Symmetrical final-newline controls and v2 triple `.dat` compatibility
@@ -166,18 +166,18 @@ changes an earlier one. A new entry MUST add its line here.
 - D-093: Calibrated-state model: Core-owned resolved calibration outcomes; Plan consumes calibrated state *(refines D-036/D-088; realizes D-028's freeze face; realized by D-098)*
 - D-094: M4 canonical fingerprint encodings; effective-configuration hashing rule *(appendix to D-069/D-077)*
 - D-095: Bounded-memory calibration; subject-local triple deduplication; `GroupingStorageFailed` calibrate ownership *(refines D-088/D-082; realized by D-103)*
-- D-096: Numeric `free_per_value` identity: locale-parsed, zero-canonicalized; normalized domain/label/order keys *(refines D-061/D-081/D-092)*
+- D-096: Numeric `free_per_value` identity: locale-parsed, zero-canonicalized; normalized domain/label/order keys *(refines D-061/D-081/D-092; the text `calibrate` writes amended in place on 2026-10-14)*
 - D-097: Filter-only restriction diagnostics: unparseable values report under `unknown_value_policy` *(refines D-049/D-076)*
 
 ### M4 Slice A (calibration preparation)
 
-- D-098: M4 preparation contract: two-stage source bootstrap, token-paired provenance, calibrated state *(realizes D-093; makes the schema-aware-resolve move D-083 reserved; delimiter-alphabet refusal added in place on 2026-10-01; closed-union claim corrected in place on 2026-10-04; document snapshot's `value_labels` immutability narrowed in place on 2026-10-05)*
+- D-098: M4 preparation contract: two-stage source bootstrap, token-paired provenance, calibrated state *(realizes D-093; makes the schema-aware-resolve move D-083 reserved; delimiter-alphabet refusal added in place on 2026-10-01; closed-union claim corrected in place on 2026-10-04; document snapshot's `value_labels` immutability narrowed in place on 2026-10-05; internal authored-domain capture added in place on 2026-10-14)*
 - D-099: Triple structural validity widens to calibrate/emit *(refines D-082/D-085/D-095; probe phase added by D-111)*
 - D-100: Per-phase `SourceValueUnparseable` aggregation across calibrate and emit *(refines D-097)*
 
 ### M4 Slice B (free_per_value + numeric identity)
 
-- D-101: `free_per_value` executable: string + numeric identity, `CanonicalNumber`, scoped zero canonicalization, seam-normalized numeric keys, natural-order default *(realizes D-061/D-092/D-096; whitespace-tolerant `TryParse` added in place on 2026-10-01; authored manual-cut and manual-range zero canonicalization added in place on 2026-10-05)*
+- D-101: `free_per_value` executable: string + numeric identity, `CanonicalNumber`, scoped zero canonicalization, seam-normalized numeric keys, natural-order default *(realizes D-061/D-092/D-096; whitespace-tolerant `TryParse` added in place on 2026-10-01; authored manual-cut and manual-range zero canonicalization added in place on 2026-10-05; frozen numeric domain text added in place on 2026-10-14)*
 
 ### M4 Slice C (equal_width + the shared cut engine)
 
@@ -225,11 +225,11 @@ changes an earlier one. A new entry MUST add its line here.
 
 ### M7 (CLI) pre-implementation adjudication
 
-- D-122: M7 CLI contract: commands, process model, publication, manifest, freeze, authored-empty domains, per-command semantics, non-goals, distribution, and the exit floor *(revises D-071's empty-domain reading; refines D-026/D-078/D-088; realizes the CLI faces of D-005/D-028/D-067/D-077; implementation architecture realized by D-123; reach of parts 4–5 qualified by D-125; part 10's headerless schema record amended in place on 2026-10-01; part 3's escaping and code-less warning form amended in place on 2026-10-14; parts 1, 2, 4, 8 and 10 amended in place on 2026-10-14 for attached option values, the `tab` delimiter spelling, the `migrate` named object-key header rule, and the `--temp-dir` and `--out` text checks; parts 2 and 10 amended in place on 2026-10-14 for DATA read explanations and strict UTF-8 schema reads)*
+- D-122: M7 CLI contract: commands, process model, publication, manifest, freeze, authored-empty domains, per-command semantics, non-goals, distribution, and the exit floor *(revises D-071's empty-domain reading; refines D-026/D-078/D-088; realizes the CLI faces of D-005/D-028/D-067/D-077; implementation architecture realized by D-123; reach of parts 4–5 qualified by D-125; part 10's headerless schema record amended in place on 2026-10-01; part 3's escaping and code-less warning form amended in place on 2026-10-14; parts 1, 2, 4, 8 and 10 amended in place on 2026-10-14 for attached option values, the `tab` delimiter spelling, the `migrate` named object-key header rule, and the `--temp-dir` and `--out` text checks; parts 2 and 10 amended in place on 2026-10-14 for DATA read explanations and strict UTF-8 schema reads; part 10's frozen numeric domain text amended in place on 2026-10-14)*
 
 ### M7 (CLI) implementation
 
-- D-123: M7 implementation architecture and public surfaces: CLI boundary, parser, presentation, audit argv, filesystem identity, publication transaction, run manifest, freeze pairing, runtime options, and the CXT size advisory (registry 81 → 82) *(realizes D-122's implementation architecture; refines D-085's registry-timing rule; reach of point 7 qualified by D-125; point 3's escaping amended in place on 2026-10-14; point 2's parser grammar amended in place on 2026-10-14; point 3's DATA read explanation added in place on 2026-10-14)*
+- D-123: M7 implementation architecture and public surfaces: CLI boundary, parser, presentation, audit argv, filesystem identity, publication transaction, run manifest, freeze pairing, runtime options, and the CXT size advisory (registry 81 → 82) *(realizes D-122's implementation architecture; refines D-085's registry-timing rule; reach of point 7 qualified by D-125; point 3's escaping amended in place on 2026-10-14; point 2's parser grammar amended in place on 2026-10-14; point 3's DATA read explanation added in place on 2026-10-14; point 9's source of an `include` prefix amended in place on 2026-10-14)*
 
 ### M8 (first scaling / benchmark pass)
 
@@ -2973,7 +2973,8 @@ implementation added.
 
 ### D-084: Ordinal string comparison is the project-wide rule
 
-- **Status:** accepted (M3 audit; adds principle EP-12)
+- **Status:** accepted (M3 audit; adds principle EP-12); the reach of `binding.locale` qualified
+  in place on 2026-10-14
 - **Date:** 2026-07-07
 - **Decision:** all string identity, equality, matching, deduplication, grouping,
   source binding, and deterministic string **ordering** use ordinal comparison
@@ -2981,6 +2982,11 @@ implementation added.
   collation; `binding.locale` (§5.1) governs numeric/date **parsing** only, never
   string collation. Recorded as new principle **EP-12** ("Strings compare and sort
   ordinally…"), the string-side companion to EP-11 (numeric/locale parsing).
+  Amended in place on 2026-10-14: besides parsing, `binding.locale` sets how `calibrate`
+  writes a generated numeric domain entry: the culture's decimal mark with ASCII `-`, `+` and
+  `E`, or the culture's own signs for a number whose ASCII-sign text would not read back
+  (spec §7). String identity, matching and ordering, and the invariant canonical numeric
+  identities, are unchanged.
 - **Why:** the audit found "invariant culture" for the unordered subject
   grouping a determinism hazard: `InvariantCulture` string collation is ICU/NLS-version
   dependent and can mis-group or reorder across machines/runtimes, drifting output bytes
@@ -3566,7 +3572,8 @@ diagnostics.
 
 ### D-096: Numeric `free_per_value` identity: locale-parsed, zero-canonicalized; normalized domain/label/order keys
 
-- **Status:** accepted (pre-M4 Tier 2 audit; refines D-061/D-081/D-092)
+- **Status:** accepted (pre-M4 Tier 2 audit; refines D-061/D-081/D-092); amended in place on
+  2026-10-14 for the text `calibrate` writes
 - **Date:** 2026-07-13
 - **Decision:**
   - **Identity.** A numeric `free_per_value` bin's identity is **finite parsed
@@ -3592,7 +3599,11 @@ diagnostics.
   - **Authored spellings survive; Core keys are canonical.** The document model
     round-trips the authored spellings verbatim (round-trip fidelity, D-081); the
     resolved keys the Core planner and fingerprint see are the canonical numeric
-    identities.
+    identities. Amended in place on 2026-10-14: authored spellings also survive
+    `calibrate`. A frozen domain keeps its winning authored entries as written, and the
+    entries calibration generated are written for `binding.locale` with ASCII signs,
+    checked per number to read back as the same identity (spec §7). The identity rules
+    above are unchanged.
 - **Why:** D-092 pinned how a numeric `free_per_value` bin *renders*; it did not pin
   how spec-side **keys** (`declared_domain`, `value_labels`, `scale.order`) that
   refer to those bins are identified. Without normalized identity, `90` and `90.0`
@@ -3661,8 +3672,9 @@ M4 Slices A to F (D-098 to D-105) implement the contracts of the two pre-M4 audi
 
 - **Status:** accepted (M4 Slice A; realizes D-093; the D-083-reserved schema-aware-resolve move);
   amended in place on 2026-10-01 for the delimiter-alphabet refusal, on 2026-10-04 to correct
-  item 4's closed-union claim, and on 2026-10-05 to narrow the document snapshot's immutability
-  for `value_labels` (item 3)
+  item 4's closed-union claim, on 2026-10-05 to narrow the document snapshot's immutability
+  for `value_labels` (item 3), and on 2026-10-14 to add the internal authored-domain capture
+  (item 3)
 - **Date:** 2026-07-15
 - **Decision:** M4's Calibrate phase needs one preparation identity threaded from resolve
   through emit, and a source cannot exist before resolution (a source constructor needs the
@@ -3715,6 +3727,10 @@ M4 Slices A to F (D-098 to D-105) implement the contracts of the two pre-M4 audi
      records; the internal constructor and token pairing are unchanged; `ResolvedSpec`,
      `CalibratedSpec`, `ConversionPlan` and the schema stay recursively immutable; and a mutable
      calibrated state stays rejected.
+     Amended in place on 2026-10-14: `ResolvedDocument` also carries each attribute's winning
+     `declared_domain` as authored, captured before numeric normalization, for the freezer
+     (D-123 point 9, spec §7). It is an immutable internal list in attribute order, checked
+     against the snapshot's attributes at construction; no public member exposes it.
   4. **Bind**: `session.Bind(resolvedDocument.Resolved)` validates settings + schema value
      equality and returns the concrete source **carrying the token**. Source provenance is a
      mechanically-closed three-state Core union on both source interfaces
@@ -3813,7 +3829,8 @@ M4 Slices A to F (D-098 to D-105) implement the contracts of the two pre-M4 audi
 ### D-101: `free_per_value` executable: string + numeric identity, `CanonicalNumber`, scoped zero canonicalization, seam-normalized numeric keys, natural-order default
 
 - **Status:** accepted (M4 Slice B; realizes D-061/D-092/D-096); amended in place on 2026-10-01 for whitespace-tolerant `TryParse`,
-  and on 2026-10-05 to canonicalize an authored `-0` manual cut or manual `equal_width` bound at resolve
+  on 2026-10-05 to canonicalize an authored `-0` manual cut or manual `equal_width` bound at resolve,
+  and on 2026-10-14 for the text of a frozen numeric domain
 - **Date:** 2026-07-16
 - **Decision:** the `free_per_value` discretizer (§11.3) becomes executable and leaves the
   transitional read-reject set (D-070). It is **type-flexible** (D-061): with
@@ -3866,6 +3883,10 @@ M4 Slices A to F (D-098 to D-105) implement the contracts of the two pre-M4 audi
     present-but-unparseable numeric value read during calibration is excluded from the population and
     reported as this phase's own aggregated `SourceValueUnparseable` at the severity
     `unknown_value_policy` selects (D-100); under `fail` the calibrate Error aborts with no result.
+    Amended in place on 2026-10-14: when `calibrate` freezes these retained identities it writes
+    them for `binding.locale`, not as their invariant text, and it keeps an authored entry's
+    spelling (spec §7). `CanonicalNumber` gains no member: the freezer formats with a private copy
+    of the binding culture's number format and checks each text with `TryParse`.
   - **Numeric value-bin ordinal natural-order default (§12.3/D-096).** A numeric `free_per_value`
     ordinal with **no authored `scale.order`** derives natural numeric **ascending** order from its
     (canonical) domain at plan, the one value-bin case exempt from `OrdinalOrderMissing`; every other
@@ -5682,7 +5703,8 @@ and §16.4; D-120 and D-121 record the implemented naming, template and matcher 
   escaping and code-less warning form amended in place on 2026-10-14; parts 1, 2, 4, 8 and 10
   amended in place on 2026-10-14 for attached option values, the `tab` delimiter spelling, the
   `migrate` named object-key header rule, and the `--temp-dir` and `--out` text checks; parts 2
-  and 10 amended in place on 2026-10-14 for DATA read explanations and strict UTF-8 schema reads
+  and 10 amended in place on 2026-10-14 for DATA read explanations and strict UTF-8 schema reads;
+  part 10's frozen numeric domain text amended in place on 2026-10-14
 - **Date:** 2026-07-22
 - **Decision:** the complete M7 CLI contract is settled **before any M7 code**, in
   fifteen parts.
@@ -5962,6 +5984,19 @@ and §16.4; D-120 and D-121 record the implemented naming, template and matcher 
   passes of the other commands read it all. `probe` names its DATA operand as the `file` location
   of `ProbeSourceReadFailed`, whose message stays Discovery's (D-111).
 
+  Amended in place on 2026-10-14: the `calibrate` bullet's "D-096/D-101 canonical numeric
+  spellings" wrote each numeric `free_per_value` entry as invariant text, which a decimal-comma
+  `binding.locale` cannot read back, and it rewrote authored entries such as `2.50` as `2.5`. A
+  frozen numeric domain now keeps its winning authored entries (direct, template- or
+  matcher-supplied) exactly as written, in order, and writes only the generated entries (an
+  observed domain, `include` additions) for `binding.locale` (spec §7). A generated entry uses
+  the culture's decimal mark with ASCII `-`, `+` and `E`, no grouping and zero as `0`. Each one is
+  checked to read back under the binding culture as the same canonical number, and a number
+  whose ASCII-sign text does not read back uses the culture's own signs. Generated text follows
+  the runtime's culture data, so it can differ between configurations; the canonical identities,
+  stored fingerprints and converted contexts do not. The frozen spec's text and raw hash can
+  change even for an `"invariant"` spec whose authored spellings were normalized before.
+
   **11. Extends canonical identity.** The file-backed host resolves **actual
   filesystem identity** where available, which unifies supported symlink/hardlink
   aliases as well as `.`/`..` and case spellings of one file. Otherwise it falls back
@@ -6069,7 +6104,7 @@ and §16.4; D-120 and D-121 record the implemented naming, template and matcher 
   Slice K, merged 2026-08-08; the roadmap's M7 exit block is the landed record. The reach of
   point 7 qualified by D-125 (2026-09-09); point 3's escaping amended in place on 2026-10-14;
   point 2's parser grammar amended in place on 2026-10-14; point 3's DATA read explanation added
-  in place on 2026-10-14.
+  in place on 2026-10-14; point 9's source of an `include` prefix amended in place on 2026-10-14.
 - **Date:** 2026-07-24
 - **Decision:** M7's implementation architecture and every new public surface are
   settled here. It records the concrete parser, serializer and transaction-mechanism
@@ -6169,6 +6204,15 @@ and §16.4; D-120 and D-121 record the implemented naming, template and matcher 
   `ArgumentException` on mismatch (the `SpecFingerprints.ComputeNative` posture, EP-14), so
   template/matcher-won values invisible in the composed document are read from the
   effective resolved state before calibration additions are appended.
+
+  Amended in place on 2026-10-14: the `include` prefix domain is no longer read from the
+  effective resolved state, whose numeric entries are canonical identities that cannot give back
+  an authored spelling (spec §7). The resolver captures each attribute's winning
+  `declared_domain` as authored, after template and matcher application and before numeric
+  normalization, and `ResolvedDocument` carries that capture to the freezer as an immutable
+  internal list in attribute order. It adds no public member and no Core state. The freezer
+  writes the captured prefix back unchanged and formats only the additions; `value_groups`
+  groups and the effective policies are still read from the effective resolved state.
 
   **10. Presence carrier.** `AttributeSpec.DeclaredDomain` is the nullable presence
   carrier: `null` = omitted (requests observed-domain calibration); any non-null list

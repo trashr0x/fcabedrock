@@ -198,9 +198,11 @@ included, is ICU/NLS-version dependent: the same two strings can order or match
 differently across machines and runtimes, a determinism bug on any path feeding
 output bytes, IDs, or fingerprints (e.g. triple predicate matching, or object-key
 deduplication and `keep` name uniqueness). This is the string-side companion to EP-11 ("Floating-point and
-locale…"): `binding.locale` governs numeric/date *parsing* only (decimal
-separators), never string collation; the two are separate concerns and must not
-be conflated. Where a spec section fixes a *non-string* order (numeric or
+locale…"): `binding.locale` governs numeric/date *parsing* (decimal
+separators) and the text `calibrate` writes for a generated numeric domain entry
+(the culture's decimal mark with ASCII signs, or the culture's own signs for a
+number that would not read back; spec §7), never string collation; the two are
+separate concerns and must not be conflated. Where a spec section fixes a *non-string* order (numeric or
 positional cut order), that order governs; this principle is about string-keyed
 comparison and ordering.
 

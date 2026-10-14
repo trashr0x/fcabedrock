@@ -641,6 +641,105 @@ public sealed class CalibrateCommandTests
         + "[[attribute]]\nname = \"x\"\nsource = { kind = \"column\", index = 0, value_type = \"number\" }\n"
         + "discretizer = " + discretizer + "\nscale = { kind = \"nominal\" }\n";
 
+    // ---- numeric domains under the binding locale (§7, §10.3) -----------------------------------
+
+    [Fact]
+    public async Task Calibrate_WhenNumericDomainsFreezeUnderACommaLocale_ThenTheAuthoredPrefixIsKeptAndTheSpecRereadsAndReconverts()
+    {
+        using var temp = TempDirectory.Create();
+        var spec = temp.Write("spec.toml", CommaLocaleNumericSpec);
+        var data = temp.Write("data.csv", CommaLocaleNumericData);
+        var frozen = temp.Resolve("frozen.toml");
+        var second = temp.Resolve("second.toml");
+
+        var calibrate = new CliTestHarness();
+        Assert.Equal(0, await calibrate.RunAsync("calibrate", spec, data, "--out", frozen));
+        Assert.Equal(string.Empty, calibrate.StdOut);
+        var warnings = Lines(calibrate.StdErr);
+        Assert.Equal(2, warnings.Length);
+        Assert.Contains("warning ObservedDomainUsed", warnings[0], StringComparison.Ordinal);
+        Assert.Contains("warning UnknownValuePolicyInclude", warnings[1], StringComparison.Ordinal);
+
+        // The authored prefix keeps its spelling and order; generated entries take the de-DE
+        // decimal comma with an ASCII sign and E. -0 and 0 are one member, written 0.
+        var text = await ReadCommittedAsync(frozen);
+        Assert.Contains("declared_domain = [\"1,5\", \"-2,25\", \"0\"]", text, StringComparison.Ordinal);
+        Assert.Contains("declared_domain = [\"2,50\", \"1e1\", \"-0,5\", \"3E-05\"]", text, StringComparison.Ordinal);
+        Assert.Contains("unknown_value_policy = \"warn\"", text, StringComparison.Ordinal);
+
+        var validate = new CliTestHarness();
+        Assert.Equal(0, await validate.RunAsync("validate", frozen, data));
+        Assert.Equal(string.Empty, validate.StdErr);
+
+        var report = new CliTestHarness();
+        Assert.Equal(0, await report.RunAsync("fingerprint", frozen, data));
+        Assert.Equal(string.Empty, report.StdErr);
+        Assert.Equal(3, Lines(report.StdOut).Count(line => line.EndsWith("stored=match", StringComparison.Ordinal)));
+
+        var refreeze = new CliTestHarness();
+        Assert.Equal(0, await refreeze.RunAsync("calibrate", frozen, data, "--out", second));
+        Assert.Equal(string.Empty, refreeze.StdErr);
+        Assert.Equal(await File.ReadAllBytesAsync(frozen), await File.ReadAllBytesAsync(second));
+
+        foreach (var v2Compat in new[] { false, true })
+        {
+            string[] mode = v2Compat ? ["--v2-compat"] : [];
+            var original = temp.Resolve(v2Compat ? "original-v2" : "original");
+            var reconverted = temp.Resolve(v2Compat ? "frozen-v2" : "frozen-out");
+
+            var onTheFly = new CliTestHarness();
+            Assert.Equal(0, await onTheFly.RunAsync(
+                ["convert", spec, data, "--out", original, "--format", "both", "--no-manifest", .. mode]));
+            var fromFrozen = new CliTestHarness();
+            Assert.Equal(0, await fromFrozen.RunAsync(
+                ["convert", frozen, data, "--out", reconverted, "--format", "both", "--no-manifest", .. mode]));
+            Assert.Equal(string.Empty, fromFrozen.StdErr);
+
+            Assert.Equal(
+                await File.ReadAllBytesAsync(original + ".cxt"), await File.ReadAllBytesAsync(reconverted + ".cxt"));
+            Assert.Equal(
+                await File.ReadAllBytesAsync(original + ".dat"), await File.ReadAllBytesAsync(reconverted + ".dat"));
+        }
+
+        // Formal attribute names keep the invariant canonical number (§11.3); the locale spelling
+        // of the domain never reaches them.
+        var cxt = File.ReadAllLines(temp.Resolve("frozen-out.cxt"));
+        Assert.Equal("5", cxt[2].Trim());
+        Assert.Equal("7", cxt[3].Trim());
+        Assert.Equal(
+            ["amount-1.5", "amount--2.25", "amount-0", "rate-2.5", "rate-10", "rate--0.5", "rate-3E-05"],
+            cxt.Skip(5 + 5).Take(7));
+    }
+
+    // Semicolon-delimited, so a decimal comma needs no quoting. amount has no domain (observed);
+    // rate authors a prefix that is extended under include.
+    private const string CommaLocaleNumericSpec = """
+        [spec]
+        version = 1
+
+        [binding]
+        shape = "wide"
+        has_header = true
+        delimiter = ";"
+        locale = "de-DE"
+
+        [[attribute]]
+        name = "amount"
+        source = { kind = "column", name = "amount", value_type = "number" }
+        discretizer = { kind = "free_per_value" }
+        scale = { kind = "nominal" }
+
+        [[attribute]]
+        name = "rate"
+        source = { kind = "column", name = "rate", value_type = "number" }
+        declared_domain = ["2,50", "1e1"]
+        unknown_value_policy = "include"
+        discretizer = { kind = "free_per_value" }
+        scale = { kind = "nominal" }
+        """;
+
+    private const string CommaLocaleNumericData = "amount;rate\n1,5;2,5\n-2,25;10\n0;-0,5\n1,5;2,50\n-0;3E-5\n";
+
     // ---- the two destinations -------------------------------------------------------------------
 
     [Fact]

@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Reflection;
 using FcaBedrock.Core.Calibration;
 using FcaBedrock.Core.Discretization;
@@ -752,6 +753,331 @@ public sealed class SpecFreezerTests
         var text2 = FreezeFingerprintWrite(resolved2, calibrated2, schema);
 
         Assert.Equal(text1, text2);
+    }
+
+    // ---- Numeric domain text (§7) -----------------------------------------------------------
+    //
+    // A numeric free_per_value domain is written for the binding locale: the winning authored
+    // prefix keeps its exact spelling and order, and only generated entries are formatted. Each
+    // witness pins the text expected under its culture and rereads the written spec through the
+    // product parser, so a frozen spec its own locale cannot read fails here.
+
+    // Finite canonical identities a calibration can retain: signed values, an exponent of each
+    // sign, a value grouping would split, both finite extremes, the smallest subnormal and another
+    // subnormal.
+    private static readonly string[] RetainedIdentities =
+    [
+        "1.5", "-2.25", "0", "1E-05", "1E+20", "1234567.5",
+        "-1.7976931348623157E+308", "1.7976931348623157E+308", "5E-324", "-3E-310",
+    ];
+
+    private static readonly string[] CommaDecimalText =
+    [
+        "1,5", "-2,25", "0", "1E-05", "1E+20", "1234567,5",
+        "-1,7976931348623157E+308", "1,7976931348623157E+308", "5E-324", "-3E-310",
+    ];
+
+    public static TheoryData<string, string[]> GeneratedNumberWitnesses() => new()
+    {
+        { "invariant", RetainedIdentities },
+        { "de-DE", CommaDecimalText },
+        { "fr-FR", CommaDecimalText },
+        { "sv-SE", CommaDecimalText },
+    };
+
+    [Theory]
+    [MemberData(nameof(GeneratedNumberWitnesses))]
+    public void Freeze_WhenANumericObservedDomainIsFrozen_ThenEachEntryUsesTheBindingDecimalMarkAndRereadsToItsIdentity(
+        string locale, string[] expected)
+    {
+        var resolved = Resolve(NumericDocument(locale, domain: null), new SourceSchema(1));
+        var calibrated = Create(resolved, new ObservedDomain("x", RetainedIdentities));
+
+        var frozen = SpecFreezer.Freeze(resolved, calibrated);
+
+        // ASCII signs and E, the culture's decimal mark, no group separator (sv-SE's own minus is
+        // U+2212 under ICU, and the ASCII candidate still reads back under that culture).
+        Assert.Equal(expected, frozen.Attributes[0].DeclaredDomain!);
+        Assert.Equal(RetainedIdentities, Reread(frozen).Resolved.Spec.Attributes[0].DeclaredDomain!);
+    }
+
+    [Fact]
+    public void Freeze_WhenAGeneratedEntryIsASignedZero_ThenItIsWrittenAsZero()
+    {
+        var resolved = Resolve(NumericDocument("de-DE", ["5"], UnknownValuePolicy.Include), new SourceSchema(1));
+        var calibrated = Create(resolved, new IncludeAdditions("x", ["-0"]));
+
+        var frozen = SpecFreezer.Freeze(resolved, calibrated);
+
+        Assert.Equal(["5", "0"], frozen.Attributes[0].DeclaredDomain!);
+        Assert.Equal(["5", "0"], Reread(frozen).Resolved.Spec.Attributes[0].DeclaredDomain!);
+    }
+
+    public static TheoryData<string, string[], string[]> AuthoredNumericPrefixes() => new()
+    {
+        { "invariant", ["2.50", "1e3", "-0.0", "9E1"], ["2.5", "1000", "0", "90"] },
+        { "de-DE", ["2,50", "1e3", "-0,0", "+7"], ["2.5", "1000", "0", "7"] },
+    };
+
+    [Theory]
+    [MemberData(nameof(AuthoredNumericPrefixes))]
+    public void Freeze_WhenAnAuthoredNumericPrefixIsExtended_ThenItsSpellingAndOrderAreKeptAndOnlyAdditionsAreFormatted(
+        string locale, string[] prefix, string[] prefixIdentities)
+    {
+        var resolved = Resolve(NumericDocument(locale, prefix, UnknownValuePolicy.Include), new SourceSchema(1));
+        var calibrated = Create(resolved, new IncludeAdditions("x", ["-1.5", "1E-05"]));
+
+        var frozen = SpecFreezer.Freeze(resolved, calibrated);
+
+        var additions = locale == "invariant" ? new[] { "-1.5", "1E-05" } : ["-1,5", "1E-05"];
+        Assert.Equal([.. prefix, .. additions], frozen.Attributes[0].DeclaredDomain!);
+        Assert.Equal(UnknownValuePolicy.Warn, frozen.Attributes[0].UnknownValuePolicy);
+
+        // Membership is still by numeric identity: the authored spellings name the same members.
+        Assert.Equal(
+            [.. prefixIdentities, "-1.5", "1E-05"],
+            Reread(frozen).Resolved.Spec.Attributes[0].DeclaredDomain!);
+    }
+
+    [Theory]
+    [InlineData("direct", new[] { "2.50", "1e1" })]
+    [InlineData("template", new[] { "3.50", "2e1" })]
+    [InlineData("matcher", new[] { "4.50" })]
+    [InlineData("last-matcher", new[] { "5.50", "6.0" })]
+    public void Freeze_WhenTheWinningPrefixComesFromAnyTier_ThenTheWholeWinnerIsWrittenVerbatim(
+        string tier, string[] winner)
+    {
+        // Every tier authors a different domain, so only the whole winning list can appear. The
+        // winner is chosen by the existing template/matcher precedence (§9.2); [defaults] has no
+        // declared_domain, so it can supply only the include policy.
+        var document = PrecedenceDocument(tier);
+        var resolved = Resolve(document, new SourceSchema(1));
+        var calibrated = Create(resolved, new IncludeAdditions("x", ["-1.5"]));
+
+        var frozen = SpecFreezer.Freeze(resolved, calibrated);
+
+        Assert.Equal([.. winner, "-1.5"], frozen.Attributes[0].DeclaredDomain!);
+        Assert.Equal(UnknownValuePolicy.Warn, frozen.Attributes[0].UnknownValuePolicy);
+        AssertFullyFrozen(frozen, new SourceSchema(1));
+    }
+
+    [Theory]
+    [InlineData("attribute")]
+    [InlineData("template")]
+    public void Freeze_WhenTheAuthoredPrefixIsAnExplicitEmptyDomain_ThenOnlyTheFormattedAdditionsAreWritten(string tier)
+    {
+        var attribute = DocumentFixtures.Attribute("x", DocumentFixtures.Column(0, SourceValueType.Number),
+            discretizer: new FreePerValueDiscretizerSection(), scale: new NominalScaleSection(),
+            declaredDomain: tier == "attribute" ? [] : null, unknownValuePolicy: UnknownValuePolicy.Include,
+            template: tier == "template" ? "t" : null);
+        var document = DocumentFixtures.Document(
+            [attribute],
+            binding: DocumentFixtures.WideBinding(locale: "de-DE"),
+            templates: tier == "template" ? [DocumentFixtures.Template("t", declaredDomain: [])] : []);
+        var resolved = Resolve(document, new SourceSchema(1));
+        var calibrated = Create(resolved, new IncludeAdditions("x", ["-1.5", "2.5"]));
+
+        var frozen = SpecFreezer.Freeze(resolved, calibrated);
+
+        Assert.Equal(["-1,5", "2,5"], frozen.Attributes[0].DeclaredDomain!);
+        Assert.Equal(["-1.5", "2.5"], Reread(frozen).Resolved.Spec.Attributes[0].DeclaredDomain!);
+    }
+
+    [Fact]
+    public void Freeze_WhenAnAuthoredEmptyNumericDomainHasNoInclude_ThenItStaysEmpty()
+    {
+        var resolved = Resolve(NumericDocument("de-DE", []), new SourceSchema(1));
+
+        var frozen = SpecFreezer.Freeze(resolved, CalibratedSpec.FromFullyDeclared(resolved.Resolved));
+
+        Assert.Empty(frozen.Attributes[0].DeclaredDomain!);
+    }
+
+    [Theory]
+    [InlineData("invariant")]
+    [InlineData("de-DE")]
+    public void Freeze_WhenANumericFreezeIsRefrozen_ThenTheWrittenBytesAreIdenticalAndTheStoredFingerprintsVerify(string locale)
+    {
+        var schema = new SourceSchema(1);
+        var prefix = locale == "invariant" ? new[] { "2.50", "1e3" } : ["2,50", "1e3"];
+        var resolved = Resolve(NumericDocument(locale, prefix, UnknownValuePolicy.Include), schema);
+        var calibrated = Create(resolved, new IncludeAdditions("x", ["-1.5", "1E-05"]));
+
+        var first = FreezeFingerprintWrite(resolved, calibrated, schema);
+
+        var expected = locale == "invariant"
+            ? "declared_domain = [\"2.50\", \"1e3\", \"-1.5\", \"1E-05\"]"
+            : "declared_domain = [\"2,50\", \"1e3\", \"-1,5\", \"1E-05\"]";
+        Assert.Contains(expected, first, StringComparison.Ordinal);
+
+        var reread = SpecReader.Read(first);
+        Assert.True(reread.TryGetValue(out var document), Describe(reread.Diagnostics));
+        var (rereadResolved, rereadPlan) = FrozenPlan(document, schema);
+        Assert.Empty(SpecFingerprints.VerifyStored(document, SpecFingerprints.ComputeNative(rereadResolved, rereadPlan)));
+
+        var second = FreezeFingerprintWrite(
+            rereadResolved, CalibratedSpec.FromFullyDeclared(rereadResolved.Resolved), schema);
+        Assert.Equal(first, second);
+    }
+
+    [Theory]
+    [InlineData("invariant", new[] { "2.50", "1e3" }, new[] { "2.5", "1000", "-1.5" })]
+    [InlineData("de-DE", new[] { "2,50", "1e3" }, new[] { "2,5", "1000", "-1,5" })]
+    public void Freeze_WhenAuthoredSpellingsAreKept_ThenTheFingerprintsEqualThoseOfTheShortestSpellings(
+        string locale, string[] prefix, string[] shortest)
+    {
+        // The written text keeps the authored spelling, so its raw hash changes, but the stored
+        // fingerprints hash numeric identities (§14): spellings of the same members hash alike.
+        var schema = new SourceSchema(1);
+        var resolved = Resolve(NumericDocument(locale, prefix, UnknownValuePolicy.Include), schema);
+        var frozen = SpecFreezer.Freeze(resolved, Create(resolved, new IncludeAdditions("x", ["-1.5"])));
+        var twin = frozen with { Attributes = [frozen.Attributes[0] with { DeclaredDomain = shortest }] };
+
+        Assert.NotEqual(SpecWriter.Write(twin), SpecWriter.Write(frozen));
+
+        var (frozenResolved, frozenPlan) = FrozenPlan(frozen, schema);
+        var (twinResolved, twinPlan) = FrozenPlan(twin, schema);
+        Assert.Equal(
+            SpecFingerprints.ComputeNative(twinResolved, twinPlan),
+            SpecFingerprints.ComputeNative(frozenResolved, frozenPlan));
+    }
+
+    [Fact]
+    public void Freeze_WhenTheLocaleUsesACommaDecimalMark_ThenStringDomainsGroupLabelsCutsAndValueLabelsAreUntouched()
+    {
+        // Only numeric free_per_value domain entries are numbers written for the locale. String
+        // domains and group labels are verbatim text, cuts are TOML floats, and value_labels keys
+        // stay as authored.
+        var labels = new Dictionary<string, string>(StringComparer.Ordinal) { ["2,50"] = "two and a half" };
+        var document = DocumentFixtures.Document(
+        [
+            DocumentFixtures.Attribute("s", DocumentFixtures.Column(0),
+                discretizer: new IdentityDiscretizerSection(), scale: new NominalScaleSection()),
+            DocumentFixtures.Attribute("g", DocumentFixtures.Column(1),
+                discretizer: new ValueGroupsDiscretizerSection([new ValueGroupSection("1.5", ["1.5"], null)], ValueGroupsUnmatched.Passthrough),
+                scale: new NominalScaleSection()),
+            DocumentFixtures.Attribute("c", DocumentFixtures.Column(2),
+                discretizer: new EqualFrequencyDiscretizerSection(3, null, null), scale: new NominalScaleSection()),
+            DocumentFixtures.Attribute("n", DocumentFixtures.Column(3, SourceValueType.Number),
+                discretizer: new FreePerValueDiscretizerSection(), scale: new NominalScaleSection(),
+                declaredDomain: ["2,50"], valueLabels: labels, unknownValuePolicy: UnknownValuePolicy.Include),
+        ],
+        binding: DocumentFixtures.WideBinding(locale: "de-DE"));
+        var resolved = Resolve(document, new SourceSchema(4));
+        var calibrated = Create(resolved,
+            new ObservedDomain("s", ["1.5", "-2"]),
+            new PassthroughBins("g", ["2.5"]),
+            new CalibratedCuts("c", [1.5, 2.5]),
+            new IncludeAdditions("n", ["3.5"]));
+
+        var frozen = SpecFreezer.Freeze(resolved, calibrated);
+
+        Assert.Equal(["1.5", "-2"], frozen.Attributes[0].DeclaredDomain!);
+        var groups = Assert.IsType<ValueGroupsDiscretizerSection>(frozen.Attributes[1].Discretizer);
+        Assert.Equal(["1.5", "2.5"], groups.Groups!.Select(group => group.Label));
+        Assert.Equal([1.5, 2.5], Assert.IsType<ManualCutsDiscretizerSection>(frozen.Attributes[2].Discretizer).Cuts!);
+        Assert.Equal(["2,50", "3,5"], frozen.Attributes[3].DeclaredDomain!);
+        Assert.Same(resolved.Document.Attributes[3].ValueLabels, frozen.Attributes[3].ValueLabels);
+
+        var text = SpecWriter.Write(frozen);
+        Assert.Contains("cuts = [1.5, 2.5]", text, StringComparison.Ordinal);
+        Assert.Contains("value_labels = { \"2,50\" = \"two and a half\" }", text, StringComparison.Ordinal);
+        AssertFullyFrozen(frozen, new SourceSchema(4));
+    }
+
+    [Fact]
+    public void Freeze_WhenTheBindingCultureIsProviderSensitive_ThenEveryGeneratedEntryRereadsToItsIdentityAndRefreezesUnchanged()
+    {
+        // ar-SA's signs and decimal mark differ between culture-data providers, and under some
+        // providers the ASCII-sign spelling of a signed or exponent value does not parse. Each
+        // number then uses the culture's own symbols. Which spelling applies depends on the
+        // provider, so this witness pins closure, not bytes, and records the branch per number.
+        var schema = new SourceSchema(1);
+        var culture = CultureInfo.GetCultureInfo("ar-SA", predefinedOnly: true);
+        var resolved = Resolve(NumericDocument("ar-SA", domain: null), schema);
+        var calibrated = Create(resolved, new ObservedDomain("x", RetainedIdentities));
+
+        var frozen = SpecFreezer.Freeze(resolved, calibrated);
+
+        var written = frozen.Attributes[0].DeclaredDomain!;
+        Assert.Equal(RetainedIdentities.Length, written.Count);
+        for (var i = 0; i < written.Count; i++)
+        {
+            var value = double.Parse(RetainedIdentities[i], NumberStyles.Float, CultureInfo.InvariantCulture);
+            var branch = string.Equals(written[i], value.ToString(AsciiSignFormat(culture)), StringComparison.Ordinal)
+                ? "ASCII-sign candidate"
+                : string.Equals(written[i], value.ToString(culture), StringComparison.Ordinal)
+                    ? "culture symbols"
+                    : null;
+            Assert.NotNull(branch);
+            TestContext.Current.TestOutputHelper?.WriteLine(
+                $"ar-SA {RetainedIdentities[i]}: {branch} ({Escape(written[i])})");
+        }
+
+        Assert.Equal(RetainedIdentities, Reread(frozen).Resolved.Spec.Attributes[0].DeclaredDomain!);
+
+        var first = FreezeFingerprintWrite(resolved, calibrated, schema);
+        var reread = SpecReader.Read(first);
+        Assert.True(reread.TryGetValue(out var document), Describe(reread.Diagnostics));
+        var rereadResolved = Resolve(document, schema);
+        Assert.Equal(
+            first,
+            FreezeFingerprintWrite(rereadResolved, CalibratedSpec.FromFullyDeclared(rereadResolved.Resolved), schema));
+    }
+
+    // The test's own oracle for the ASCII-sign candidate: the culture's number format with ASCII
+    // signs. Built here rather than read from the product, so the branch record is independent.
+    private static NumberFormatInfo AsciiSignFormat(CultureInfo culture)
+    {
+        var format = (NumberFormatInfo)culture.NumberFormat.Clone();
+        format.NegativeSign = "-";
+        format.PositiveSign = "+";
+        return format;
+    }
+
+    private static string Escape(string text) =>
+        string.Concat(text.Select(ch => ch is >= ' ' and <= '~' ? ch.ToString() : $"U+{(int)ch:X4} "));
+
+    private static SpecDocument NumericDocument(
+        string locale, IReadOnlyList<string>? domain, UnknownValuePolicy? unknownValuePolicy = null) =>
+        DocumentFixtures.Document(
+            [DocumentFixtures.Attribute("x", DocumentFixtures.Column(0, SourceValueType.Number),
+                discretizer: new FreePerValueDiscretizerSection(), scale: new NominalScaleSection(),
+                declaredDomain: domain, unknownValuePolicy: unknownValuePolicy)],
+            binding: DocumentFixtures.WideBinding(locale: locale));
+
+    // One attribute, two named templates and two matchers, each authoring a different domain; the
+    // tier decides which sources apply, and include always comes from [defaults].
+    private static SpecDocument PrecedenceDocument(string tier)
+    {
+        var attribute = DocumentFixtures.Attribute("x", DocumentFixtures.Column(0, SourceValueType.Number),
+            discretizer: new FreePerValueDiscretizerSection(), scale: new NominalScaleSection(),
+            declaredDomain: tier == "direct" ? ["2.50", "1e1"] : null,
+            template: tier is "direct" or "template" ? "named" : null);
+        IReadOnlyList<MatcherSection> matchers = tier switch
+        {
+            "direct" or "template" or "matcher" => [DocumentFixtures.Matcher(nameRegex: "x", template: "first")],
+            _ => [DocumentFixtures.Matcher(nameRegex: "x", template: "first"), DocumentFixtures.Matcher(nameRegex: "x", template: "last")],
+        };
+
+        return DocumentFixtures.Document(
+            [attribute],
+            defaults: new DefaultsSection(null, null, UnknownValuePolicy.Include, null, null, null),
+            templates:
+            [
+                DocumentFixtures.Template("named", declaredDomain: ["3.50", "2e1"]),
+                DocumentFixtures.Template("first", declaredDomain: ["4.50"]),
+                DocumentFixtures.Template("last", declaredDomain: ["5.50", "6.0"]),
+            ],
+            matchers: matchers);
+    }
+
+    // Writes the frozen document, reads it back and resolves it: the route a frozen spec takes.
+    private static ResolvedDocument Reread(SpecDocument frozen)
+    {
+        var read = SpecReader.Read(SpecWriter.Write(frozen));
+        Assert.True(read.TryGetValue(out var document), Describe(read.Diagnostics));
+        return Resolve(document, new SourceSchema(frozen.Attributes.Count));
     }
 
     // ---- Helpers ---------------------------------------------------------------------------

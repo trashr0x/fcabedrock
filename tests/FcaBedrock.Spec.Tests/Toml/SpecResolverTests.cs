@@ -1646,6 +1646,69 @@ public sealed class SpecResolverTests
 
     private static object SyncRootOf(object collection) => ((System.Collections.ICollection)collection).SyncRoot;
 
+    // --- authored domains for the freeze (§7, D-122 part 10) ------------------
+
+    [Fact]
+    public void Resolve_WhenDomainsArriveFromEveryTier_ThenEachWinnerIsCapturedAsAuthoredInAttributeOrder()
+    {
+        // The Core domain holds canonical identities; the capture keeps the whole winning list as
+        // authored, null for no domain at all and empty for an authored [].
+        var document = DocumentFixtures.Document(
+            [
+                NumericFreePerValue("direct", 0, ["2.50", "1e1"], template: "named"),
+                NumericFreePerValue("templated", 1, null, template: "named"),
+                NumericFreePerValue("matched", 2, null),
+                NumericFreePerValue("empty", 3, []),
+                NumericFreePerValue("none", 4, null),
+            ],
+            templates:
+            [
+                DocumentFixtures.Template("named", declaredDomain: ["3.50"]),
+                DocumentFixtures.Template("pattern", declaredDomain: ["4.50", "-0.0"]),
+            ],
+            matchers: [DocumentFixtures.Matcher(nameRegex: "matched", template: "pattern")]);
+
+        var resolved = SpecResolver.Resolve(document, new SourceSchema(5));
+        Assert.True(resolved.TryGetValue(out var doc),
+            string.Join("; ", resolved.Diagnostics.Select(d => $"{d.Code}: {d.Message}")));
+
+        Assert.Equal(["direct", "templated", "matched", "empty", "none"], doc!.AuthoredDomains.Select(d => d.AttributeName));
+        Assert.Equal(["2.50", "1e1"], doc.AuthoredDomains[0].Values!);
+        Assert.Equal(["3.50"], doc.AuthoredDomains[1].Values!);
+        Assert.Equal(["4.50", "-0.0"], doc.AuthoredDomains[2].Values!);
+        Assert.Empty(doc.AuthoredDomains[3].Values!);
+        Assert.Null(doc.AuthoredDomains[4].Values);
+
+        var spec = doc.Resolved.Spec;
+        Assert.Equal(["2.5", "10"], spec.Attributes[0].DeclaredDomain!);
+        Assert.Equal(["3.5"], spec.Attributes[1].DeclaredDomain!);
+        Assert.Equal(["4.5", "0"], spec.Attributes[2].DeclaredDomain!);
+    }
+
+    [Fact]
+    public void Resolve_WhenCallerMutatesATemplateDomainAfterwards_ThenTheCapturedDomainIsUnaffected()
+    {
+        var domain = new List<string> { "2.50" };
+        var document = DocumentFixtures.Document(
+            [NumericFreePerValue("x", 0, null, template: "named")],
+            templates: [DocumentFixtures.Template("named", declaredDomain: domain)]);
+
+        var resolved = SpecResolver.Resolve(document, new SourceSchema(1));
+        Assert.True(resolved.TryGetValue(out var doc));
+
+        domain.Add("9");
+
+        var captured = doc!.AuthoredDomains[0].Values!;
+        Assert.Equal(["2.50"], captured);
+        Assert.IsNotType<List<string>>(captured);
+    }
+
+    private static AttributeSection NumericFreePerValue(
+        string name, int index, IReadOnlyList<string>? domain, string? template = null) =>
+        DocumentFixtures.Attribute(name, DocumentFixtures.Column(index, SourceValueType.Number),
+            discretizer: new FreePerValueDiscretizerSection(), scale: new NominalScaleSection(),
+            declaredDomain: domain, template: template);
+
     // --- D-105 zero canonicalization at the seam ------------------------------
 
     [Fact]

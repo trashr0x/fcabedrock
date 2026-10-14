@@ -124,6 +124,15 @@ fcabedrock calibrate spec.toml data.csv --out frozen.toml
 Freezes automatic cuts, observed domains, `include` additions, and pass-through
 bins into a fully-fingerprinted standalone spec; an `extends` chain is
 flattened. The result is byte-idempotent when rerun on its own output.
+
+`declared_domain` entries you wrote, directly or through a template or matcher,
+are written back exactly as you wrote them. Entries the run discovered are
+written by the tool: a number uses the decimal mark of `binding.locale` with
+plain `-`, `+` and `E` (for example `-2,25` under `de-DE`), or the locale's own
+signs where plain ones would not read back. These spellings come from the
+culture data of the machine that runs `calibrate`. A machine whose culture data
+differs can spell a discovered number differently, and for a few locales it
+cannot read the other machine's spelling.
 `--out -` writes the spec to stdout instead; `--force` is a file-target option
 and is rejected with `--out -`. See
 [How output files are written](#how-output-files-are-written).

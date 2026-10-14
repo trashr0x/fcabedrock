@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using System.Globalization;
 using FcaBedrock.Core.Calibration;
 using FcaBedrock.Core.Discretization;
@@ -149,6 +150,7 @@ public static class SpecResolver
         }
 
         var attributes = new List<AttributeSpec>(document.Attributes.Count);
+        var authoredDomains = ImmutableArray.CreateBuilder<AuthoredDomain>(document.Attributes.Count);
         var seenNames = new HashSet<string>(StringComparer.Ordinal);
         for (var i = 0; i < document.Attributes.Count; i++)
         {
@@ -173,6 +175,11 @@ public static class SpecResolver
             // complete: a field winning on an excluded attribute still counts as a win.
             var effective = TemplateApplication.Apply(section, namedTemplates[i], matching[i], matchers);
 
+            // §7/D-122 part 10: the winning declared_domain exactly as authored, copied before
+            // ResolveAttribute parses a numeric one to canonical identities, so calibrate can write
+            // an authored prefix back with its own spelling and order.
+            authoredDomains.Add(new AuthoredDomain(section.Name, effective.DeclaredDomain?.ToImmutableArray()));
+
             if (ResolveAttribute(effective, addressed[i], document.Defaults, culture, attributeDiagnostics) is { } attribute)
             {
                 attributes.Add(attribute);
@@ -193,7 +200,8 @@ public static class SpecResolver
         diagnostics.AddRange(attributeDiagnostics);
         diagnostics.AddRange(warnings);
 
-        return Finish(new BedrockSpec(binding, attributes), document, schema, nameBindings, diagnostics);
+        return Finish(
+            new BedrockSpec(binding, attributes), document, schema, nameBindings, authoredDomains.MoveToImmutable(), diagnostics);
     }
 
     /// <summary>
@@ -1862,6 +1870,7 @@ public static class SpecResolver
         SpecDocument document,
         SourceSchema? schema,
         List<ResolvedNameBinding> nameBindings,
+        ImmutableArray<AuthoredDomain> authoredDomains,
         List<BedrockDiagnostic> diagnostics)
     {
         foreach (var diagnostic in diagnostics)
@@ -1881,7 +1890,7 @@ public static class SpecResolver
             spec.Binding.MissingToken,
             spec.Binding.Ordering);
         var resolvedSpec = ResolvedSpec.Create(spec, schema, settings, nameBindings);
-        var resolvedDocument = new ResolvedDocument(DocumentSnapshot.Take(document), resolvedSpec);
+        var resolvedDocument = new ResolvedDocument(DocumentSnapshot.Take(document), resolvedSpec, authoredDomains);
         return Diagnosed<ResolvedDocument>.Ok(resolvedDocument, diagnostics);
     }
 }

@@ -19,12 +19,21 @@ namespace FcaBedrock.Spec.Toml;
 /// attribute sections in their <em>pre-application</em> form: the resolver folds
 /// templates/matchers into an effective section it discards, so a template- or
 /// matcher-won base value (an <c>include</c> prefix domain, a <c>value_groups</c>
-/// group set) is invisible there. Those effective values are therefore read from the
-/// paired <see cref="CalibratedSpec.Spec"/>, the effective resolved state, before the
-/// retained additions are appended (D-123 point 9). Templates and
-/// matchers are <b>retained</b>, not stripped: the returned document is flattened only
+/// group set) is invisible there. A <c>value_groups</c> group set and the effective
+/// policies are therefore read from the paired <see cref="CalibratedSpec.Spec"/>, the
+/// effective resolved state (D-123 point 9). An <c>include</c> prefix domain is read from
+/// the resolver's capture of the winning domain as authored
+/// (<see cref="ResolvedDocument.AuthoredDomains"/>), because the effective numeric domain
+/// holds canonical identities that cannot give back an authored spelling such as
+/// <c>2.50</c>. Templates and matchers are <b>retained</b>, not stripped: the returned
+/// document is flattened only
 /// in that the paired resolved snapshot is already <c>extends</c>-free (the resolver
 /// rejects an un-composed document), so no root <c>extends</c> survives.
+/// </para>
+/// <para>
+/// Only <b>generated</b> domain entries (an observed domain, <c>include</c> additions) are
+/// formatted. A numeric <c>free_per_value</c> entry is written for the binding locale by
+/// <see cref="GeneratedNumberText"/>, and every other entry stays the retained string (§7).
 /// </para>
 /// <para>
 /// The <c>[spec]</c> section (including any stored fingerprint fields) is carried
@@ -79,8 +88,9 @@ public static class SpecFreezer
         // Retained outcomes and the effective (post-application) Core attributes, both keyed by
         // attribute name: a total key over both, because a successfully resolved spec has unique,
         // non-empty attribute names (AttributeNameDuplicate / AttributeNameMissing are resolve
-        // Errors, so they cannot reach a successful calibration). The effective index is what the
-        // composed document cannot supply: the template/matcher-won base values (D-123 point 9).
+        // Errors, so they cannot reach a successful calibration). The effective index supplies what
+        // the composed document cannot: template/matcher-won groups and policies, and the culture a
+        // numeric domain is written for (D-123 point 9).
         var outcomes = new Dictionary<string, AttributeCalibration>(calibrated.Calibrations.Count, StringComparer.Ordinal);
         foreach (var outcome in calibrated.Calibrations)
         {
@@ -95,15 +105,17 @@ public static class SpecFreezer
 
         // Apply outcomes by attribute identity, preserving attribute order; an attribute with no
         // outcome (and every non-attribute section) is reused by reference from the resolver's own
-        // snapshot, never the caller's document. The rewritten fields are new records over the
-        // calibrated state's immutable lists, so the returned graph exposes no new mutable backing
-        // state; a reused value_labels map keeps the SyncRoot-reachable backing it has in the
-        // snapshot (D-098).
+        // snapshot, never the caller's document. The rewritten fields are new records over
+        // immutable lists, so the returned graph exposes no new mutable backing state; a reused
+        // value_labels map keeps the SyncRoot-reachable backing it has in the snapshot (D-098).
+        // The authored domains are paired by position: ResolvedDocument holds one per attribute.
+        var authored = resolved.AuthoredDomains;
         var attributes = ImmutableArray.CreateBuilder<AttributeSection>(document.Attributes.Count);
-        foreach (var section in document.Attributes)
+        for (var i = 0; i < document.Attributes.Count; i++)
         {
+            var section = document.Attributes[i];
             attributes.Add(section.Name is { } name && outcomes.TryGetValue(name, out var outcome)
-                ? FreezeAttribute(section, name, outcome, effective)
+                ? FreezeAttribute(section, name, outcome, effective, authored[i])
                 : section);
         }
 
@@ -115,7 +127,11 @@ public static class SpecFreezer
     // policies the outcome does not touch) carried verbatim, so a template/matcher still supplies
     // any it authored on re-resolve while the explicit frozen field (tier 5) overrides its winner.
     private static AttributeSection FreezeAttribute(
-        AttributeSection section, string name, AttributeCalibration outcome, IReadOnlyDictionary<string, AttributeSpec> effective) =>
+        AttributeSection section,
+        string name,
+        AttributeCalibration outcome,
+        IReadOnlyDictionary<string, AttributeSpec> effective,
+        AuthoredDomain authored) =>
         outcome switch
         {
             // Automatic numeric cuts → manual_cuts over the retained cuts, with ends omitted so the
@@ -133,12 +149,11 @@ public static class SpecFreezer
             // data-dependent (D-122 part 10).
             ObservedDomain observed => FreezeObservedDomain(section, name, observed, effective),
 
-            // include additions → the effective final domain (prefix ++ additions, already assembled
-            // once in the calibrated effective spec, D-122 part 15) with the policy rewritten to warn.
-            // MissingPolicy and every other field are preserved.
-            IncludeAdditions => section with
+            // include additions → the winning authored prefix followed by the generated additions,
+            // with the policy rewritten to warn. MissingPolicy and every other field are preserved.
+            IncludeAdditions additions => section with
             {
-                DeclaredDomain = EffectiveIncludeDomain(name, effective),
+                DeclaredDomain = IncludeDomain(name, additions, authored, effective),
                 UnknownValuePolicy = UnknownValuePolicy.Warn,
             },
 
@@ -174,27 +189,42 @@ public static class SpecFreezer
                 "effective attribute for it; the resolution/calibration pair is inconsistent.");
         }
 
-        var frozen = section with { DeclaredDomain = observed.Values };
+        // The domain was omitted, so every entry is generated.
+        var frozen = section with { DeclaredDomain = Generated(attribute, observed.Values) };
         return attribute.UnknownValuePolicy == UnknownValuePolicy.Include
             ? frozen with { UnknownValuePolicy = UnknownValuePolicy.Warn }
             : frozen;
     }
 
-    // §10.6/D-122 part 15: the frozen final domain for an include-additions attribute is the effective
-    // one the calibrated spec already holds: the effective pre-existing prefix (which may itself be
-    // template/matcher-won) with the retained additions appended exactly once. Reading it here (rather
-    // than re-appending) is why additions are never duplicated. Unreachable-null is a corrupt pair.
-    private static IReadOnlyList<string> EffectiveIncludeDomain(string name, IReadOnlyDictionary<string, AttributeSpec> effective)
+    // §10.6/D-122 part 10: the frozen final domain for an include-additions attribute is the winning
+    // authored prefix, exactly as written whichever tier supplied it (an authored [] included),
+    // followed by the retained additions, each appended once. Membership was already decided over
+    // canonical identities when the additions were retained, so an authored 2.50 and a retained 2.5
+    // are never both present. A missing prefix or effective attribute is a corrupt pair.
+    private static IReadOnlyList<string> IncludeDomain(
+        string name, IncludeAdditions additions, AuthoredDomain authored, IReadOnlyDictionary<string, AttributeSpec> effective)
     {
-        if (effective.TryGetValue(name, out var attribute) && attribute.DeclaredDomain is { } domain)
+        if (authored.Values is not { } prefix || !effective.TryGetValue(name, out var attribute))
         {
-            return domain;
+            throw new InvalidOperationException(
+                $"Attribute '{name}' carries an include-additions outcome, but the paired resolution exposes no " +
+                "authored declared domain for it; the resolution/calibration pair is inconsistent.");
         }
 
-        throw new InvalidOperationException(
-            $"Attribute '{name}' carries an include-additions outcome, but the paired calibrated spec exposes no " +
-            "effective declared domain for it; the resolution/calibration pair is inconsistent.");
+        var generated = Generated(attribute, additions.Values);
+        var domain = ImmutableArray.CreateBuilder<string>(prefix.Count + generated.Count);
+        domain.AddRange(prefix);
+        domain.AddRange(generated);
+        return domain.MoveToImmutable();
     }
+
+    // §7: a generated numeric free_per_value entry is written for the binding locale, using the
+    // culture the effective discretizer parses with (the resolved binding.locale). Every other
+    // generated entry is already the string the domain matches verbatim (§10.3).
+    private static IReadOnlyList<string> Generated(AttributeSpec attribute, IReadOnlyList<string> values) =>
+        attribute.Discretizer is FreePerValueDiscretizer { ValueType: SourceValueType.Number } numeric
+            ? GeneratedNumberText.Format(values, numeric.Culture)
+            : values;
 
     // §11.6/D-122 part 10: the frozen passthrough discretizer preserves the effective pre-existing
     // groups in order (each read verbatim from the effective ValueGroup, so an omitted values list and

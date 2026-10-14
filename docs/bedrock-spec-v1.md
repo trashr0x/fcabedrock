@@ -650,10 +650,31 @@ becomes an explicit `declared_domain` (an **empty** observed outcome freezes as
 "include"` additions are folded into the domain and the policy becomes fixed
 `"warn"`; `value_groups` `unmatched = "passthrough"` bins become ordered singleton
 groups and `unmatched` becomes fixed `"skip"`. Declaration/first-observation order is
-preserved (§17 rule 3) and numeric entries use the canonical numeric spellings
-(§11.3, D-096/D-101). The frozen result is fully frozen (§14):
+preserved (§17 rule 3), and a numeric `free_per_value` domain is written as the next
+paragraph states. The frozen result is fully frozen (§14):
 calibrate writes all three native stored fingerprints, and recalibrating its own
 output is **byte-idempotent**. On an `extends` chain, §13 states what calibrate writes.
+
+**Frozen numeric domain text.** In a frozen numeric `free_per_value` `declared_domain`
+(§10.3), the **authored** entries that won (§9.2: on the attribute, or from a template or
+matcher) keep their exact spelling and order, so `2.50` stays `2.50`. Only the entries
+calibration **generated** (an observed domain, `include` additions) are written by the
+tool. A generated entry is the shortest round-trippable text of its canonical number
+(§11.3, D-096/D-101) with the `binding.locale` decimal mark, ASCII `-`, `+` and `E`, no
+group separator, and every zero written `0`: under `de-DE`, `-2.25` is written `-2,25` and
+`1E-05` stays `1E-05`; under `"invariant"` the text is the canonical spelling itself. Each
+generated entry MUST read back under `binding.locale` as the same canonical number. A
+number whose ASCII-sign text does not read back is written with the culture's own signs
+instead, and that text MUST read back the same way.
+
+The culture's decimal mark and signs come from the culture data of the runtime. On one
+configuration the generated text is deterministic. Another configuration can spell a
+generated entry differently, and a spec written on one is not guaranteed to read on another
+whose culture data differs: `ar-SA`, for example, has a different decimal mark and signs in
+the ICU and NLS culture data on Windows. Reading DATA under `binding.locale` has the same
+dependence (§5.1). The numeric identities, the stored fingerprints and the converted contexts
+do not depend on the spelling, and authored entries are written back exactly on every
+configuration.
 
 **Auto and frozen calibration are byte-equivalent.** For **every** freeze mapping
 above (auto cuts (`equal_width`, `equal_frequency`), observed domains, `include`
