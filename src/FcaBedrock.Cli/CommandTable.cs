@@ -4,9 +4,9 @@ using FcaBedrock.Core.Spec;
 namespace FcaBedrock.Cli;
 
 /// <summary>
-/// What an option carries after its name. Every kind except <see cref="Text"/> fixes both
-/// the accepted values <em>and</em> the advertised spelling, so the grammar the parser
-/// enforces and the grammar help prints cannot drift apart.
+/// What an option carries after its name. Every kind except <see cref="Text"/> and
+/// <see cref="NonBlankPath"/> fixes both the accepted values <em>and</em> the advertised spelling,
+/// so the grammar the parser enforces and the grammar help prints cannot drift apart.
 /// </summary>
 internal enum OptionValueKind
 {
@@ -15,6 +15,13 @@ internal enum OptionValueKind
 
     /// <summary>An arbitrary text value; its usage label comes from <see cref="CliOption.ValueLabel"/>.</summary>
     Text,
+
+    /// <summary>
+    /// A path that is not empty or whitespace-only; its usage label comes from
+    /// <see cref="CliOption.ValueLabel"/>. Only the text is checked: nothing is looked up, created
+    /// or normalized here.
+    /// </summary>
+    NonBlankPath,
 
     /// <summary>One of <see cref="CliOption.AllowedValues"/>, compared ordinally.</summary>
     Enumerated,
@@ -25,7 +32,10 @@ internal enum OptionValueKind
     /// <summary>A whole invariant number of at least 1 (§7.1 retention limits are positive).</summary>
     PositiveInteger,
 
-    /// <summary>A §5.1.1 delimiter: one character of the v1 alphabet (TAB, or U+001F through U+007E except '#'), other than the quote.</summary>
+    /// <summary>
+    /// A §5.1.1 delimiter: one character of the v1 alphabet (TAB, or U+001F through U+007E except
+    /// '#'), other than the quote, or the word <c>tab</c> in any letter case (<see cref="DelimiterSpelling"/>).
+    /// </summary>
     Delimiter,
 
     /// <summary>§5.1 <c>binding.locale</c>: <c>invariant</c>, or a predefined culture name.</summary>
@@ -44,7 +54,7 @@ internal sealed record CliPositional(string Label, bool Required);
 /// </summary>
 /// <param name="Name">The exact spelling, including the leading <c>--</c>. No aliases, no abbreviations.</param>
 /// <param name="Kind">What follows the name.</param>
-/// <param name="ValueLabel">The usage placeholder (<see cref="OptionValueKind.Text"/> only); every other kind derives its own.</param>
+/// <param name="ValueLabel">The usage placeholder (<see cref="OptionValueKind.Text"/> and <see cref="OptionValueKind.NonBlankPath"/> only); every other kind derives its own.</param>
 /// <param name="AllowedValues">The closed value set for <see cref="OptionValueKind.Enumerated"/>, which is also its advertised spelling.</param>
 /// <param name="Required">Whether the option must be supplied.</param>
 /// <param name="UsageGroup">Options sharing a non-zero group render inside one bracket, in table order.</param>
@@ -125,7 +135,7 @@ internal static class CommandTable
                 new CliOption("--v2-compat", OptionValueKind.Flag),
                 new CliOption("--no-manifest", OptionValueKind.Flag),
                 new CliOption("--force", OptionValueKind.Flag),
-                new CliOption("--temp-dir", OptionValueKind.Text, "DIR"),
+                new CliOption("--temp-dir", OptionValueKind.NonBlankPath, "DIR"),
             ],
             [
                 "--out names a base; the ruled extension is appended, and there is no default or inferred format.",
@@ -147,7 +157,7 @@ internal static class CommandTable
             "plan",
             "Print the conversion plan and the three native fingerprints; write nothing.",
             [new CliPositional("SPEC", Required: true), new CliPositional("DATA", Required: true)],
-            [new CliOption("--temp-dir", OptionValueKind.Text, "DIR")],
+            [new CliOption("--temp-dir", OptionValueKind.NonBlankPath, "DIR")],
             ["DATA is required for every plan; rows are read only when calibration requires them."],
             PlanCommand.RunAsync),
 
@@ -155,7 +165,7 @@ internal static class CommandTable
             "stats",
             "Print formal-context statistics; write nothing.",
             [new CliPositional("SPEC", Required: true), new CliPositional("DATA", Required: true)],
-            [new CliOption("--temp-dir", OptionValueKind.Text, "DIR")],
+            [new CliOption("--temp-dir", OptionValueKind.NonBlankPath, "DIR")],
             [],
             StatsCommand.RunAsync),
 
@@ -166,7 +176,7 @@ internal static class CommandTable
             [
                 new CliOption("--out", OptionValueKind.Text, "PATH|-", Required: true, AllowsStdout: true),
                 new CliOption("--force", OptionValueKind.Flag),
-                new CliOption("--temp-dir", OptionValueKind.Text, "DIR"),
+                new CliOption("--temp-dir", OptionValueKind.NonBlankPath, "DIR"),
             ],
             ["--out - writes to stdout; --force is a file-target option and is rejected with --out -."],
             CalibrateCommand.RunAsync),
@@ -220,6 +230,7 @@ internal static class CommandTable
                 "--shape defaults to wide and --scaling defaults to discrete.",
                 "--object-key and --object-key-column require the wide shape, and --object-key-column"
                     + " is required exactly when --object-key column.",
+                "A NAME for --object-key-column needs a header row, so it is refused with --header false; an index N needs none.",
                 "--subject, --predicate and --value require --shape triple and follow probe's addressing rules.",
                 "Triple output always authors ordering = \"unordered\"; there is no --ordering option.",
                 "--out - writes to stdout; --force is a file-target option and is rejected with --out -.",
@@ -234,7 +245,7 @@ internal static class CommandTable
                 new CliOption("--write", OptionValueKind.Flag, UsageGroup: 1),
                 new CliOption("--out", OptionValueKind.Text, "NEW_SPEC|-", UsageGroup: 1, AllowsStdout: true),
                 new CliOption("--force", OptionValueKind.Flag),
-                new CliOption("--temp-dir", OptionValueKind.Text, "DIR"),
+                new CliOption("--temp-dir", OptionValueKind.NonBlankPath, "DIR"),
             ],
             [
                 "--out and --force are valid only with --write, and --write requires --out.",

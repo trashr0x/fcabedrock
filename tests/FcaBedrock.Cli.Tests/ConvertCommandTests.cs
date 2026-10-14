@@ -127,12 +127,44 @@ public sealed class ConvertCommandTests
     }
 
     [Fact]
-    public async Task Convert_WhenTheOutBaseIsADash_ThenItIsAFileNameAndStdoutStaysEmpty()
+    public async Task Convert_WhenTheBaseIsADirectory_ThenTheTargetsArePublishedBesideIt()
     {
-        // The settled parser rejects `-` as a SPEC or DATA operand (there is no stdin source) but
-        // does not special-case it as an `--out` VALUE for convert, whose --out is a base rather
-        // than a sink. The behaviour that matters is D-122 part 4's: convert publishes no artifact
-        // to stdout. It does not: `-` names an ordinary file, and stdout is still exactly empty.
+        // The targets are BASE plus a ruled extension, so a directory named BASE does not stand
+        // in their way and is left exactly as it was.
+        using var run = ConvertRun.Wide();
+        Directory.CreateDirectory(run.Base);
+
+        Assert.Equal(0, await run.ConvertAsync("--format", "both"));
+
+        Assert.Equal(ExpectedWideCxt, run.Text(".cxt"));
+        Assert.True(File.Exists(run.Target(".dat")));
+        Assert.True(File.Exists(run.Target(".manifest.toml")));
+        Assert.Empty(Directory.EnumerateFileSystemEntries(run.Base));
+        Assert.Empty(run.Residue());
+    }
+
+    [Fact]
+    public async Task Convert_WhenATargetIsADirectory_ThenThePublicationFailsAndTheDirectoryStays()
+    {
+        // A directory at an actual target is a publication failure (exit 1), not a usage error:
+        // the parser never looks at the filesystem.
+        using var run = ConvertRun.Wide();
+        Directory.CreateDirectory(run.Target(".cxt"));
+
+        Assert.Equal(1, await run.ConvertAsync("--format", "cxt"));
+
+        Assert.StartsWith("error: ", run.Harness.StdErr, StringComparison.Ordinal);
+        Assert.True(Directory.Exists(run.Target(".cxt")));
+        Assert.False(File.Exists(run.Target(".manifest.toml")));
+        Assert.Empty(run.Residue());
+    }
+
+    [Fact]
+    public async Task Convert_WhenTheBaseFileNameIsADash_ThenItIsAnOrdinaryFileAndStdoutStaysEmpty()
+    {
+        // An exact `--out -` is refused, because convert has no stdout output (D-122 part 4). A
+        // path whose final name is `-` is different: it names an ordinary file, and stdout stays
+        // exactly empty.
         using var temp = TempDirectory.Create();
         var harness = new CliTestHarness();
         var spec = temp.Write("spec.toml", CliFixtures.IndexBoundSpec);

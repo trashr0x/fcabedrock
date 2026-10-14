@@ -8,7 +8,7 @@ using FcaBedrock.Spec.Toml;
 namespace FcaBedrock.Cli.Commands;
 
 /// <summary>
-/// <c>migrate BED --out PATH|- [--force] [--shape wide|triple] [--delimiter CHAR]
+/// <c>migrate BED --out PATH|- [--force] [--shape wide|triple] [--delimiter CHAR|tab]
 /// [--header true|false] [--locale TAG|invariant] [--missing-token TOKEN]
 /// [--scaling discrete|progressive]</c>, plus wide-only <c>[--object-key …]
 /// [--object-key-column …]</c> and triple-only role options (D-122 part 10; D-079).
@@ -92,7 +92,8 @@ internal static class MigrateCommand
             // could not resolve. Omitted --shape means wide (D-122 part 10).
             Shape: triple ? SourceShape.Triple : SourceShape.Wide,
             Encoding: null,
-            Delimiter: invocation.Value("--delimiter") is { } delimiter ? delimiter[0] : null,
+            // Decoded, never indexed: the spelling `tab` authors TAB, not its first letter.
+            Delimiter: invocation.Value("--delimiter") is { } delimiter ? DelimiterSpelling.Decode(delimiter) : null,
             QuoteChar: null,
             HasHeader: invocation.Value("--header") is { } header
                 ? string.Equals(header, "true", StringComparison.Ordinal)

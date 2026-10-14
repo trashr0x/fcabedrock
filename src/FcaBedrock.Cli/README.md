@@ -33,7 +33,12 @@ dotnet tool uninstall --global FcaBedrock.Cli
 ## Commands
 
 `SPEC`, `DATA` and `BED` are positional operands; everything else is a named
-option, spelled in full, with no aliases and no abbreviations.
+option, spelled in full, with no aliases and no abbreviations. An option's
+value is the next argument (`--out draft.toml`) or follows `=` in the same
+argument (`--out=draft.toml`). The `=` form passes any value, including one
+that starts with `--`, such as `--missing-token=--`; the separate form reads
+such an argument as the next option. A mistake in the command line, an invalid
+option value included, is reported with exit 2 before any input file is read.
 
 ### convert
 
@@ -47,8 +52,12 @@ Writes `out/context.cxt` and/or `out/context.dat`, plus
 `out/context.manifest.toml`: the run's audit record, emitted by default and
 suppressed with `--no-manifest`. `--out` names a base: the ruled extension is
 appended, there is no default and no inference from an extension, and
-`--format cxt|dat|both` is required. Existing targets are refused without
-`--force`. `--temp-dir DIR` relocates spill storage. Stdout is empty on
+`--format cxt|dat|both` is required. `--out` must end in a file name, and
+`--out -` is refused, because `convert` writes files only (see
+[How output files are written](#how-output-files-are-written)). Existing
+targets are refused without `--force`. `--temp-dir DIR` relocates spill
+storage. The folder is used only if the run spills, so it is not checked in
+advance, but an empty value is refused. Stdout is empty on
 success; nothing becomes public unless the whole run succeeds. `--v2-compat`
 applies the v2 compatibility preset (CRLF, v2 bin-label style, v2 `.dat`
 conventions); exact byte equality with v2 output is locked for the checked-in
@@ -129,7 +138,9 @@ Generates an editable draft spec. `--shape wide|triple` is required and never
 inferred. A file target leaves stdout empty; `--out -` emits the canonical
 draft on stdout instead; `--force` applies only to a file target and is
 rejected with `--out -`. Optional read settings: `--delimiter`, `--header`,
-`--missing-token`, `--locale`, `--limit`. Triple also accepts
+`--missing-token`, `--locale`, `--limit`. `--delimiter` takes one character, or
+the word `tab` in any letter case for a tab, which cmd.exe cannot type; the
+draft still records the tab character itself. Triple also accepts
 `--ordering` and the `--subject`/`--predicate`/`--value` trio: supplied
 together, in one addressing mode (all zero-based indices or all header names),
 with names requiring `--header true`. See
@@ -146,7 +157,10 @@ fcabedrock migrate legacy.bed --out migrated.toml
 One-way v2 `.bed` → TOML. `--shape` defaults to `wide`;
 `--scaling discrete|progressive` defaults to `discrete`. Under the wide shape,
 `--object-key row_index|column` is available and `--object-key-column` is
-required exactly when `--object-key column`, and invalid otherwise. Triple role
+required exactly when `--object-key column`, and invalid otherwise. A column
+given by name needs a header row, so it is refused with `--header false`; a
+zero-based index works either way. `--delimiter` takes the same spellings as
+probe's, `tab` included. Triple role
 options follow probe's addressing rules, and triple output always authors
 `ordering = "unordered"`; there is no `--ordering` option. Delivery matches
 probe: a file target leaves stdout empty, `--out -` writes to stdout, `--force`
@@ -185,6 +199,21 @@ complete.
 **`--out -` bypasses all of this.** It writes the document to stdout, so no
 file is created, nothing is staged, and `--force` is rejected (`convert` has no
 `-` form; it always publishes files).
+
+**`--out` must end in a file name.** The value is checked as text, before any
+input is read, and a value that cannot name the file to write is refused with
+exit 2: an empty value, and one whose last part is a folder, such as `.`, `..`
+or `out/` (on Windows also `out\`, `C:` or `\\server\share`). On Windows a
+name that ends in a dot or a space, such as `report.`, is refused too, because
+Windows would drop the trailing dots and spaces from the name it writes. Names
+with inner dots or spaces, such as
+`report v1.data`, and a drive-relative name such as `C:report` are fine, and an
+extended path (`\\?\C:\...`) may keep a final dot or space. On Linux and macOS
+only `/` separates folders, so a backslash, a final dot and a final space are
+ordinary characters there. For `convert`, `--out` names a base, so a folder of
+that name does not stop the run: `--out out/context` writes
+`out/context.cxt` beside a folder called `out/context`. A folder at the actual
+file name, such as `out/context.cxt`, makes the run fail.
 
 **One condition applies while a run is publishing.** The output files it is
 writing, the directories on the way to them, and the private files it keeps

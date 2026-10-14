@@ -23,6 +23,8 @@ public sealed class UsageTextTests
         "",
         "usage: fcabedrock <command> [operands] [options]",
         "",
+        "option values: --name VALUE or --name=VALUE; only --name=VALUE passes a VALUE that starts with --.",
+        "",
         "commands:",
         "  convert      Convert a data source into a formal context using a Bedrock spec.",
         "  validate     Validate a Bedrock spec, optionally against a data source's schema.",
@@ -54,15 +56,16 @@ public sealed class UsageTextTests
         "    note: --out - writes to stdout; --force is a file-target option and is rejected with --out -.",
         "",
         "probe: Generate a draft spec from a data source.",
-        "  usage: fcabedrock probe DATA --shape wide|triple --out PATH|- [--force] [--delimiter CHAR] [--header true|false] [--missing-token TOKEN] [--locale TAG|invariant] [--limit N] [--ordering subject_grouped|unordered] [--subject N|NAME] [--predicate N|NAME] [--value N|NAME]",
+        "  usage: fcabedrock probe DATA --shape wide|triple --out PATH|- [--force] [--delimiter CHAR|tab] [--header true|false] [--missing-token TOKEN] [--locale TAG|invariant] [--limit N] [--ordering subject_grouped|unordered] [--subject N|NAME] [--predicate N|NAME] [--value N|NAME]",
         "    note: --ordering, --subject, --predicate and --value require --shape triple.",
         "    note: --subject, --predicate and --value are supplied together in one addressing mode: all zero-based indices, or all header names, and names require --header true.",
         "    note: --out - writes to stdout; --force is a file-target option and is rejected with --out -.",
         "",
         "migrate: Migrate a v2 .bed file to a Bedrock spec.",
-        "  usage: fcabedrock migrate BED --out PATH|- [--force] [--shape wide|triple] [--delimiter CHAR] [--header true|false] [--locale TAG|invariant] [--missing-token TOKEN] [--scaling discrete|progressive] [--object-key row_index|column] [--object-key-column N|NAME] [--subject N|NAME] [--predicate N|NAME] [--value N|NAME]",
+        "  usage: fcabedrock migrate BED --out PATH|- [--force] [--shape wide|triple] [--delimiter CHAR|tab] [--header true|false] [--locale TAG|invariant] [--missing-token TOKEN] [--scaling discrete|progressive] [--object-key row_index|column] [--object-key-column N|NAME] [--subject N|NAME] [--predicate N|NAME] [--value N|NAME]",
         "    note: --shape defaults to wide and --scaling defaults to discrete.",
         "    note: --object-key and --object-key-column require the wide shape, and --object-key-column is required exactly when --object-key column.",
+        "    note: A NAME for --object-key-column needs a header row, so it is refused with --header false; an index N needs none.",
         "    note: --subject, --predicate and --value require --shape triple and follow probe's addressing rules.",
         "    note: Triple output always authors ordering = \"unordered\"; there is no --ordering option.",
         "    note: --out - writes to stdout; --force is a file-target option and is rejected with --out -.",
@@ -114,8 +117,8 @@ public sealed class UsageTextTests
     [InlineData("plan", "plan SPEC DATA [--temp-dir DIR]")]
     [InlineData("stats", "stats SPEC DATA [--temp-dir DIR]")]
     [InlineData("calibrate", "calibrate SPEC DATA --out PATH|- [--force] [--temp-dir DIR]")]
-    [InlineData("probe", "probe DATA --shape wide|triple --out PATH|- [--force] [--delimiter CHAR] [--header true|false] [--missing-token TOKEN] [--locale TAG|invariant] [--limit N] [--ordering subject_grouped|unordered] [--subject N|NAME] [--predicate N|NAME] [--value N|NAME]")]
-    [InlineData("migrate", "migrate BED --out PATH|- [--force] [--shape wide|triple] [--delimiter CHAR] [--header true|false] [--locale TAG|invariant] [--missing-token TOKEN] [--scaling discrete|progressive] [--object-key row_index|column] [--object-key-column N|NAME] [--subject N|NAME] [--predicate N|NAME] [--value N|NAME]")]
+    [InlineData("probe", "probe DATA --shape wide|triple --out PATH|- [--force] [--delimiter CHAR|tab] [--header true|false] [--missing-token TOKEN] [--locale TAG|invariant] [--limit N] [--ordering subject_grouped|unordered] [--subject N|NAME] [--predicate N|NAME] [--value N|NAME]")]
+    [InlineData("migrate", "migrate BED --out PATH|- [--force] [--shape wide|triple] [--delimiter CHAR|tab] [--header true|false] [--locale TAG|invariant] [--missing-token TOKEN] [--scaling discrete|progressive] [--object-key row_index|column] [--object-key-column N|NAME] [--subject N|NAME] [--predicate N|NAME] [--value N|NAME]")]
     [InlineData("fingerprint", "fingerprint SPEC DATA [--write --out NEW_SPEC|-] [--force] [--temp-dir DIR]")]
     public void Signature_WhenGenerated_ThenItIsTheSettledGrammar(string command, string expected)
     {

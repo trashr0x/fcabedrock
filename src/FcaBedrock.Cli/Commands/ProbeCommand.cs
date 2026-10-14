@@ -7,7 +7,7 @@ using FcaBedrock.Spec.Toml;
 namespace FcaBedrock.Cli.Commands;
 
 /// <summary>
-/// <c>probe DATA --shape wide|triple --out PATH|- [--force] [--delimiter CHAR]
+/// <c>probe DATA --shape wide|triple --out PATH|- [--force] [--delimiter CHAR|tab]
 /// [--header true|false] [--missing-token TOKEN] [--locale TAG|invariant] [--limit N]</c>,
 /// plus triple-only <c>[--ordering …] [--subject …] [--predicate …] [--value …]</c>
 /// (D-122 part 10; spec §7.1).
@@ -66,7 +66,8 @@ internal static class ProbeCommand
     private static SourceReadSettings Settings(CommandInvocation invocation, bool triple)
     {
         var library = triple ? SourceReadSettings.CreateTriple() : SourceReadSettings.CreateWide();
-        var delimiter = invocation.Value("--delimiter") is { } spelled ? spelled[0] : library.Delimiter;
+        // Decoded, never indexed: the spelling `tab` means TAB, not its first letter.
+        var delimiter = invocation.Value("--delimiter") is { } spelled ? DelimiterSpelling.Decode(spelled) : library.Delimiter;
         var hasHeader = invocation.Value("--header") is { } header
             ? string.Equals(header, "true", StringComparison.Ordinal)
             : library.HasHeader;

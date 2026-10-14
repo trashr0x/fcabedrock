@@ -123,6 +123,36 @@ public sealed class ConvertManifestTests
         Assert.Contains($"hash = \"{Hash(run.Target(".dat"))}\"", manifest, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task Manifest_WhenOptionValuesAreAttached_ThenTheArtifactsAreUnchangedAndTheCommandLineIsAsGiven()
+    {
+        // An attached value parses exactly as a separated one, so the artifacts and fingerprints
+        // are identical. command_line is the separately captured argv, so each run records the
+        // spelling it was given rather than a normalized one.
+        using var separated = ConvertRun.Wide();
+        using var attached = ConvertRun.Wide();
+        string[] separatedArgs = ["convert", separated.Spec, separated.Data, "--out", separated.Base, "--format", "both"];
+        string[] attachedArgs = ["convert", attached.Spec, attached.Data, $"--out={attached.Base}", "--format=both"];
+        separated.Harness.AuditArgv = ["fcabedrock", .. separatedArgs];
+        attached.Harness.AuditArgv = ["fcabedrock", .. attachedArgs];
+
+        Assert.Equal(0, await separated.Harness.RunAsync(separatedArgs));
+        Assert.Equal(0, await attached.Harness.RunAsync(attachedArgs));
+
+        Assert.Equal(separated.Bytes(".cxt"), attached.Bytes(".cxt"));
+        Assert.Equal(separated.Bytes(".dat"), attached.Bytes(".dat"));
+
+        var manifest = attached.Text(".manifest.toml");
+        Assert.Contains(
+            $"command_line = [\"fcabedrock\", \"convert\", \"{Escape(attached.Spec)}\", \"{Escape(attached.Data)}\","
+                + $" \"--out={Escape(attached.Base)}\", \"--format=both\"]\n",
+            manifest,
+            StringComparison.Ordinal);
+        Assert.Contains($"cxt_output_fingerprint = \"{IndexBoundCxtFingerprint}\"", manifest, StringComparison.Ordinal);
+        Assert.Contains($"dat_output_fingerprint = \"{IndexBoundDatFingerprint}\"", manifest, StringComparison.Ordinal);
+        Assert.Contains($"schema_fingerprint = \"{IndexBoundSchemaFingerprint}\"", manifest, StringComparison.Ordinal);
+    }
+
     // ---- calibrations ---------------------------------------------------------------------------
 
     [Fact]

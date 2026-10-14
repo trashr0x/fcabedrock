@@ -73,13 +73,15 @@ public sealed class CliHostTests
     {
         var harness = new CliTestHarness();
 
-        var exit = await harness.RunAsync("probe", "x", "--delimiter", "TAB");
+        // A backslash followed by t is two characters, not a tab, so it is refused, and the
+        // message names it with its backslash doubled.
+        var exit = await harness.RunAsync("probe", "x", "--delimiter", "\\t");
 
         Assert.Equal(2, exit);
         Assert.Equal(string.Empty, harness.StdOut);
         Assert.Equal(
-            "error: option '--delimiter' accepts TAB or one character from U+001F to U+007E other than '#'"
-            + " and the quote character '\"', not 'TAB'.\n" + UsageText.For("probe"),
+            "error: option '--delimiter' accepts a tab character, the word tab, or one character from U+001F to U+007E"
+            + " other than '#' and the quote character '\"', not '\\\\t'.\n" + UsageText.For("probe"),
             harness.StdErr);
     }
 
@@ -111,6 +113,155 @@ public sealed class CliHostTests
         Assert.Equal(2, exit);
         Assert.Equal(string.Empty, harness.StdOut);
         Assert.StartsWith($"error: unknown option '{flag}'", harness.StdErr, StringComparison.Ordinal);
+    }
+
+    // ---- usage failures come before any input is opened ------------------------------------
+    //
+    // Every input below is missing, so a run that read one would fail with exit 1: exit 2 with
+    // nothing opened and no publication operation proves the value was refused first.
+
+    [Theory]
+    [InlineData("convert")]
+    [InlineData("plan")]
+    [InlineData("stats")]
+    [InlineData("calibrate")]
+    [InlineData("fingerprint")]
+    public async Task RunAsync_WhenTempDirIsBlank_ThenUsageExit2BeforeAnyInputIsOpened(string command)
+    {
+        using var temp = TempDirectory.Create();
+        string[] output = command switch
+        {
+            "convert" => ["--out", temp.Resolve("out"), "--format", "cxt"],
+            "calibrate" => ["--out", temp.Resolve("out.toml")],
+            _ => [],
+        };
+        var harness = new CliTestHarness();
+
+        var exit = await harness.RunAsync(
+            [command, temp.Resolve("missing.toml"), temp.Resolve("missing.csv"), .. output, "--temp-dir", " "]);
+
+        Assert.Equal(2, exit);
+        Assert.Equal(string.Empty, harness.StdOut);
+        Assert.Equal(
+            "error: the --temp-dir value must be a non-empty, non-whitespace path.\n" + UsageText.For(command),
+            harness.StdErr);
+        Assert.Empty(harness.Opened);
+        Assert.Empty(harness.PublicationFiles.Operations);
+        Assert.Empty(Directory.EnumerateFileSystemEntries(temp.Path));
+    }
+
+    // One writing command over missing inputs, with --out last.
+    private static string[] Writer(string command, TempDirectory temp, string output) => command switch
+    {
+        "convert" => ["convert", temp.Resolve("missing.toml"), temp.Resolve("missing.csv"), "--format", "cxt", "--out", output],
+        "calibrate" => ["calibrate", temp.Resolve("missing.toml"), temp.Resolve("missing.csv"), "--out", output],
+        "probe" => ["probe", temp.Resolve("missing.csv"), "--shape", "wide", "--out", output],
+        "migrate" => ["migrate", temp.Resolve("missing.bed"), "--out", output],
+        _ => ["fingerprint", temp.Resolve("missing.toml"), temp.Resolve("missing.csv"), "--write", "--out", output],
+    };
+
+    [Theory]
+    [InlineData("convert")]
+    [InlineData("calibrate")]
+    [InlineData("probe")]
+    [InlineData("migrate")]
+    [InlineData("fingerprint")]
+    public async Task RunAsync_WhenOutNamesNoFile_ThenUsageExit2BeforeAnyInputIsOpenedAndNothingIsWritten(string command)
+    {
+        using var temp = TempDirectory.Create();
+        var separator = Path.DirectorySeparatorChar;
+        static string Names(string value) => $"the --out value '{value}' names a directory; it must end in a file name.";
+        static string Trimmed(string value) =>
+            $"the --out value '{value}' ends in a dot or a space, which Windows removes from a file name.";
+
+        // Absolute spellings under the run's own directory, so any file a run wrote would show
+        // there, plus the relative forms whose meaning depends on the working directory.
+        var cases = new List<(string Output, string Message)>
+        {
+            (string.Empty, "the --out value must be a non-empty, non-whitespace path."),
+            (".", Names(".")),
+            ("..", Names("..")),
+            (temp.Path + separator, Names(temp.Path + separator)),
+            (temp.Path + separator + ".", Names(temp.Path + separator + ".")),
+            (temp.Resolve("sub") + separator + "..", Names(temp.Resolve("sub") + separator + "..")),
+        };
+
+        if (OperatingSystem.IsWindows())
+        {
+            cases.Add((temp.Resolve("foo."), Trimmed(temp.Resolve("foo."))));
+            cases.Add((temp.Resolve("foo "), Trimmed(temp.Resolve("foo "))));
+            cases.Add((temp.Resolve("..."), Trimmed(temp.Resolve("..."))));
+            cases.Add((temp.Resolve(@"sub\..."), Trimmed(temp.Resolve(@"sub\..."))));
+        }
+
+        foreach (var (output, message) in cases)
+        {
+            var harness = new CliTestHarness();
+
+            var exit = await harness.RunAsync(Writer(command, temp, output));
+
+            Assert.Equal(2, exit);
+            Assert.Equal(string.Empty, harness.StdOut);
+            Assert.Equal(DiagnosticRenderer.RenderHostError(message) + UsageText.For(command), harness.StdErr);
+            Assert.Empty(harness.Opened);
+            Assert.Empty(harness.PublicationFiles.Operations);
+        }
+
+        Assert.Empty(Directory.EnumerateFileSystemEntries(temp.Path));
+    }
+
+    [Fact]
+    public async Task RunAsync_WhenConvertOutIsADash_ThenUsageExit2BeforeAnyInputIsOpened()
+    {
+        using var temp = TempDirectory.Create();
+        var harness = new CliTestHarness();
+
+        var exit = await harness.RunAsync(Writer("convert", temp, "-"));
+
+        Assert.Equal(2, exit);
+        Assert.Equal(
+            "error: command 'convert' has no stdout output, so --out cannot be '-'.\n" + UsageText.For("convert"),
+            harness.StdErr);
+        Assert.Empty(harness.Opened);
+        Assert.Empty(harness.PublicationFiles.Operations);
+    }
+
+    [Fact]
+    public async Task RunAsync_WhenOutEndsInADotFromSeveralWorkingDirectories_ThenEveryRunIsAUsageFailure()
+    {
+        // The refused spelling is judged as text, so the working directory cannot change the
+        // outcome. Only a child process has a working directory of its own, so the built tool
+        // runs in one at three depths; the in-process harness shares the test host's.
+        var tool = Path.Combine(AppContext.BaseDirectory, "FcaBedrock.Cli.dll");
+        Assert.SkipUnless(
+            File.Exists(tool) && File.Exists(Path.ChangeExtension(tool, ".runtimeconfig.json")),
+            "the CLI assembly and its runtime configuration are not copied into this test's output.");
+
+        using var temp = TempDirectory.Create();
+        var middle = Directory.CreateDirectory(Path.Combine(temp.Path, "a")).FullName;
+        var deepest = Directory.CreateDirectory(Path.Combine(middle, "b")).FullName;
+
+        foreach (var directory in new[] { temp.Path, middle, deepest })
+        {
+            foreach (var output in new[] { ".", "..", Path.Combine("sub", ".") })
+            {
+                var result = await ToolProcess.RunAsync(
+                    ToolProcess.DotnetHost(),
+                    [tool, "convert", "missing.toml", "missing.csv", "--out", output, "--format", "cxt"],
+                    directory,
+                    timeout: TimeSpan.FromMinutes(1));
+
+                Assert.Equal(2, result.ExitCode);
+                Assert.Equal(string.Empty, result.StandardOutput);
+                Assert.StartsWith(
+                    DiagnosticRenderer.RenderHostError($"the --out value '{output}' names a directory; it must end in a file name."),
+                    result.StandardError,
+                    StringComparison.Ordinal);
+            }
+        }
+
+        // Nothing was written anywhere in the tree, at any depth.
+        Assert.Empty(Directory.EnumerateFiles(temp.Path, "*", SearchOption.AllDirectories));
     }
 
     [Fact]

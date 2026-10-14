@@ -357,11 +357,10 @@ public sealed class StatsCommandTests
     [Theory]
     [InlineData("")]
     [InlineData("   ")]
-    public async Task Stats_WhenTheTempDirectoryValueIsUnusable_ThenItIsACodelessHostFailure(string value)
+    public async Task Stats_WhenTheTempDirectoryValueIsBlank_ThenItIsAUsageFailure(string value)
     {
-        // The value reaches ConversionRuntimeOptions verbatim, which is exactly why an empty
-        // one is rejected there rather than silently becoming "use the default". Its
-        // ArgumentException is an ordinary option failure, so it must not become exit 4.
+        // A blank value is a mistake in the command line, so the parser refuses it as usage
+        // (exit 2) rather than letting it reach ConversionRuntimeOptions as a host failure.
         using var temp = TempDirectory.Create();
         var harness = new CliTestHarness();
 
@@ -372,13 +371,35 @@ public sealed class StatsCommandTests
             "--temp-dir",
             value);
 
-        Assert.Equal(1, exit);
+        Assert.Equal(2, exit);
         Assert.Equal(string.Empty, harness.StdOut);
         Assert.Equal(
-            DiagnosticRenderer.RenderHostError(RunPipeline.TempDirectoryMessage), harness.StdErr);
+            DiagnosticRenderer.RenderHostError(RunPipeline.TempDirectoryMessage) + UsageText.For("stats"),
+            harness.StdErr);
 
         // Failing on the option alone means nothing was opened at all.
         Assert.Empty(harness.Opened);
+    }
+
+    [Fact]
+    public async Task Stats_WhenTheTempDirectoryIsUnusableButNoSpillHappens_ThenItIsNeverTouched()
+    {
+        // A non-blank value is used only when a spill needs storage (D-082), so a run that does
+        // not spill succeeds even when the value names an ordinary file, which leaves it alone.
+        using var temp = TempDirectory.Create();
+        var spec = temp.Write("spec.toml", CliFixtures.DedupeSpec);
+        var data = temp.Write("data.csv", CliFixtures.DedupeData);
+        var blocker = temp.Write("blocked", "not a directory");
+
+        var plain = new CliTestHarness();
+        var custom = new CliTestHarness();
+
+        Assert.Equal(0, await plain.RunAsync("stats", spec, data));
+        Assert.Equal(0, await custom.RunAsync("stats", spec, data, "--temp-dir", blocker));
+
+        Assert.Equal(plain.StdOut, custom.StdOut);
+        Assert.Equal(plain.StdErr, custom.StdErr);
+        Assert.Equal("not a directory", await File.ReadAllTextAsync(blocker));
     }
 
     // ---- the density rule, at its own seam --------------------------------------------------

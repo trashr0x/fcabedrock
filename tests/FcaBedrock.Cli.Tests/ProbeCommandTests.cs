@@ -447,12 +447,53 @@ public sealed class ProbeCommandTests
 
         Assert.Equal(2, exit);
         Assert.Equal(string.Empty, harness.StdOut);
-        // The host line escapes the quote character it names, so the prefix stops before it.
+        // The prefix stops before the value the message echoes, which differs per row.
         Assert.StartsWith(
-            "error: option '--delimiter' accepts TAB or one character from U+001F to U+007E other than '#' and the quote character '",
+            "error: option '--delimiter' accepts a tab character, the word tab, or one character from U+001F to U+007E"
+                + " other than '#' and the quote character '\"', not '",
             harness.StdErr,
             StringComparison.Ordinal);
         Assert.Empty(harness.Opened);
+    }
+
+    [Theory]
+    [InlineData("tab")]
+    [InlineData("TAB")]
+    [InlineData("Tab")]
+    [InlineData("\t")]
+    public async Task Probe_WhenTheDelimiterIsSpelledAsATab_ThenTheDraftIsTheLibraryDraftForATab(string spelling)
+    {
+        // The word means TAB, never its first letter: the draft equals the library's draft for a
+        // real tab delimiter, in the separated and the attached form alike.
+        using var temp = TempDirectory.Create();
+        var data = temp.Write("data.tsv", "colour\tsize\nred\tbig\ngreen\tsmall\n");
+        var expected = await WideDraftAsync(data, SourceReadSettings.CreateWide(delimiter: '\t'));
+
+        foreach (var option in new[] { new[] { "--delimiter", spelling }, new[] { $"--delimiter={spelling}" } })
+        {
+            var harness = new CliTestHarness();
+
+            var exit = await harness.RunAsync(["probe", data, "--shape", "wide", "--out", "-", .. option]);
+
+            Assert.Equal(0, exit);
+            Assert.Equal(expected, harness.StdOut);
+            Assert.Contains("delimiter = \"\\t\"", harness.StdOut, StringComparison.Ordinal);
+        }
+    }
+
+    [Fact]
+    public async Task Probe_WhenTheDelimiterIsTheLetterT_ThenItIsTheLetter()
+    {
+        // Control: a single character of the alphabet is taken literally, 't' included.
+        using var temp = TempDirectory.Create();
+        var data = temp.Write("data.csv", "atb\nxty\n");
+        var harness = new CliTestHarness();
+
+        var exit = await harness.RunAsync("probe", data, "--shape", "wide", "--out", "-", "--delimiter", "t");
+
+        Assert.Equal(0, exit);
+        Assert.Equal(await WideDraftAsync(data, SourceReadSettings.CreateWide(delimiter: 't')), harness.StdOut);
+        Assert.Contains("delimiter = \"t\"", harness.StdOut, StringComparison.Ordinal);
     }
 
     // ---- delivery: which stream, which bytes ----------------------------------------------

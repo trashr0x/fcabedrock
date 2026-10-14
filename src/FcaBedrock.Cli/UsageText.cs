@@ -81,15 +81,16 @@ internal static class UsageText
 
     // The advertised value form is derived from the option's KIND wherever the kind fixes it:
     // an enumerated option advertises exactly the set the parser accepts, and the constrained
-    // kinds advertise their own contract. Only free text carries a hand-written placeholder,
-    // so help cannot advertise a form the parser does not accept (D-122 part 10 spellings).
+    // kinds advertise their own contract. Only free text and paths carry a hand-written
+    // placeholder, so help cannot advertise a form the parser does not accept (D-122 part 10
+    // spellings).
     private static string Spell(CliOption option) => option.Kind switch
     {
         OptionValueKind.Flag => option.Name,
         OptionValueKind.Enumerated => $"{option.Name} {string.Join("|", option.AllowedValues!)}",
         OptionValueKind.Boolean => $"{option.Name} true|false",
         OptionValueKind.PositiveInteger => $"{option.Name} N",
-        OptionValueKind.Delimiter => $"{option.Name} CHAR",
+        OptionValueKind.Delimiter => $"{option.Name} CHAR|tab",
         OptionValueKind.Locale => $"{option.Name} TAG|invariant",
         _ => $"{option.Name} {option.ValueLabel}",
     };
@@ -118,6 +119,7 @@ internal static class UsageText
         var builder = new StringBuilder();
         builder.Append(Tool).Append(": Formal Concept Analysis preprocessing (FcaBedrock vNext)\n\n");
         builder.Append("usage: ").Append(Tool).Append(" <command> [operands] [options]\n\n");
+        builder.Append("option values: --name VALUE or --name=VALUE; only --name=VALUE passes a VALUE that starts with --.\n\n");
         builder.Append("commands:\n");
         AppendCommandList(builder);
 

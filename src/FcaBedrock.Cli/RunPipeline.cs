@@ -158,10 +158,10 @@ internal static class RunPipeline
         var diagnostics = new List<BedrockDiagnostic>();
 
         // Runtime options first: an unusable value is a caller mistake, and failing it here
-        // means no file is opened for a run that cannot proceed. The parser accepts any text
-        // for --temp-dir, so the empty case lands on the library's validating boundary, whose
-        // ArgumentException is caught HERE, because an ordinary environment/option failure must
-        // not reach the unexpected-fault exit (D-122 part 8).
+        // means no file is opened for a run that cannot proceed. The parser already refuses a
+        // blank --temp-dir as usage, with the same whitespace test, so this catch is the backstop
+        // for the library's validating boundary: its ArgumentException must not reach the
+        // unexpected-fault exit (D-122 part 8).
         ConversionRuntimeOptions runtimeOptions;
         try
         {

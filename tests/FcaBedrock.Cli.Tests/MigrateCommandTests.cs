@@ -129,8 +129,42 @@ public sealed class MigrateCommandTests
 
         Assert.Equal(2, exit);
         Assert.Equal(string.Empty, harness.StdOut);
-        Assert.StartsWith("error: option '--delimiter' accepts TAB or one character from U+001F to U+007E", harness.StdErr, StringComparison.Ordinal);
+        Assert.StartsWith(
+            "error: option '--delimiter' accepts a tab character, the word tab, or one character from U+001F to U+007E",
+            harness.StdErr,
+            StringComparison.Ordinal);
         Assert.Empty(harness.Opened);
+    }
+
+    [Theory]
+    [InlineData("--delimiter", "Tab")]
+    [InlineData("--delimiter", "\t")]
+    [InlineData("--delimiter=TAB")]
+    public async Task Migrate_WhenTheDelimiterIsSpelledAsATab_ThenATabIsAuthored(params string[] option)
+    {
+        // The word means TAB, never its first letter, and the spec still authors one character.
+        using var temp = TempDirectory.Create();
+        var bed = WriteMushroomBed(temp);
+        var harness = new CliTestHarness();
+
+        var exit = await harness.RunAsync(["migrate", bed, "--out", "-", "--shape", "wide", .. option]);
+
+        Assert.Equal(0, exit);
+        Assert.Equal(["shape = \"wide\"", "delimiter = \"\\t\""], Section(harness.StdOut, "[binding]"));
+        Assert.Equal(LibraryMigrate(BedText(), bed, Wide('\t')), harness.StdOut);
+    }
+
+    [Fact]
+    public async Task Migrate_WhenTheDelimiterIsTheLetterT_ThenTheLetterIsAuthored()
+    {
+        using var temp = TempDirectory.Create();
+        var bed = WriteMushroomBed(temp);
+        var harness = new CliTestHarness();
+
+        var exit = await harness.RunAsync("migrate", bed, "--out", "-", "--shape", "wide", "--delimiter", "t");
+
+        Assert.Equal(0, exit);
+        Assert.Equal(["shape = \"wide\"", "delimiter = \"t\""], Section(harness.StdOut, "[binding]"));
     }
 
     [Fact]
@@ -251,6 +285,44 @@ public sealed class MigrateCommandTests
 
         Assert.Equal(0, exit);
         Assert.Equal(["mode = \"column\"", expected], Section(harness.StdOut, "[binding.object_key]"));
+    }
+
+    [Fact]
+    public async Task Migrate_WhenANamedObjectKeyColumnMeetsHeaderFalse_ThenUsageExit2AndNoInputOpened()
+    {
+        // §5.4: without a header the name could never bind, so the spec is refused before the
+        // .bed is read, rather than written and refused by every later convert.
+        using var temp = TempDirectory.Create();
+        var bed = WriteMushroomBed(temp);
+        var harness = new CliTestHarness();
+
+        var exit = await harness.RunAsync(
+            "migrate", bed, "--out", temp.Resolve("spec.toml"), "--header", "false",
+            "--object-key", "column", "--object-key-column", "id");
+
+        Assert.Equal(2, exit);
+        Assert.Equal(string.Empty, harness.StdOut);
+        Assert.Equal(
+            "error: header-name addressing for --object-key-column needs a header row, so it is not valid"
+                + " with --header false.\n" + UsageText.For("migrate"),
+            harness.StdErr);
+        Assert.Empty(harness.Opened);
+        Assert.False(File.Exists(temp.Resolve("spec.toml")));
+    }
+
+    [Fact]
+    public async Task Migrate_WhenAnIndexedObjectKeyColumnMeetsHeaderFalse_ThenTheKeyAndHeaderAreAuthored()
+    {
+        using var temp = TempDirectory.Create();
+        var bed = WriteMushroomBed(temp);
+        var harness = new CliTestHarness();
+
+        var exit = await harness.RunAsync(
+            "migrate", bed, "--out", "-", "--header", "false", "--object-key", "column", "--object-key-column", "0");
+
+        Assert.Equal(0, exit);
+        Assert.Contains("has_header = false", Section(harness.StdOut, "[binding]"));
+        Assert.Equal(["mode = \"column\"", "column = 0"], Section(harness.StdOut, "[binding.object_key]"));
     }
 
     [Theory]

@@ -225,11 +225,11 @@ changes an earlier one. A new entry MUST add its line here.
 
 ### M7 (CLI) pre-implementation adjudication
 
-- D-122: M7 CLI contract: commands, process model, publication, manifest, freeze, authored-empty domains, per-command semantics, non-goals, distribution, and the exit floor *(revises D-071's empty-domain reading; refines D-026/D-078/D-088; realizes the CLI faces of D-005/D-028/D-067/D-077; implementation architecture realized by D-123; reach of parts 4–5 qualified by D-125; part 10's headerless schema record amended in place on 2026-10-01; part 3's escaping and code-less warning form amended in place on 2026-10-14)*
+- D-122: M7 CLI contract: commands, process model, publication, manifest, freeze, authored-empty domains, per-command semantics, non-goals, distribution, and the exit floor *(revises D-071's empty-domain reading; refines D-026/D-078/D-088; realizes the CLI faces of D-005/D-028/D-067/D-077; implementation architecture realized by D-123; reach of parts 4–5 qualified by D-125; part 10's headerless schema record amended in place on 2026-10-01; part 3's escaping and code-less warning form amended in place on 2026-10-14; parts 1, 2, 4, 8 and 10 amended in place on 2026-10-14 for attached option values, the `tab` delimiter spelling, the `migrate` named object-key header rule, and the `--temp-dir` and `--out` text checks)*
 
 ### M7 (CLI) implementation
 
-- D-123: M7 implementation architecture and public surfaces: CLI boundary, parser, presentation, audit argv, filesystem identity, publication transaction, run manifest, freeze pairing, runtime options, and the CXT size advisory (registry 81 → 82) *(realizes D-122's implementation architecture; refines D-085's registry-timing rule; reach of point 7 qualified by D-125; point 3's escaping amended in place on 2026-10-14)*
+- D-123: M7 implementation architecture and public surfaces: CLI boundary, parser, presentation, audit argv, filesystem identity, publication transaction, run manifest, freeze pairing, runtime options, and the CXT size advisory (registry 81 → 82) *(realizes D-122's implementation architecture; refines D-085's registry-timing rule; reach of point 7 qualified by D-125; point 3's escaping amended in place on 2026-10-14; point 2's parser grammar amended in place on 2026-10-14)*
 
 ### M8 (first scaling / benchmark pass)
 
@@ -5641,7 +5641,9 @@ and §16.4; D-120 and D-121 record the implemented naming, template and matcher 
   refines D-026/D-078/D-088; realizes the CLI faces of D-005/D-028/D-067/D-077); its
   implementation architecture realized by D-123; the reach of parts 4–5 qualified by D-125
   (2026-09-09); part 10's headerless schema record amended in place on 2026-10-01; part 3's
-  escaping and code-less warning form amended in place on 2026-10-14
+  escaping and code-less warning form amended in place on 2026-10-14; parts 1, 2, 4, 8 and 10
+  amended in place on 2026-10-14 for attached option values, the `tab` delimiter spelling, the
+  `migrate` named object-key header rule, and the `--temp-dir` and `--out` text checks
 - **Date:** 2026-07-22
 - **Decision:** the complete M7 CLI contract is settled **before any M7 code**, in
   fifteen parts.
@@ -5653,6 +5655,17 @@ and §16.4; D-120 and D-121 record the implemented naming, template and matcher 
   version text is the **same string** the manifest records as `tool_version` (§15).
   `plan --stats` does not exist: `stats` is a standalone command (part 10), never a
   plan flag.
+
+  Amended in place on 2026-10-14: an option that takes a value also accepts it attached, as
+  `--name=VALUE`. The argument splits at its first `=`, and the whole remainder is the value, so
+  an empty value, a further `=` and a value that starts with `--` all reach the option's own
+  validation. The attached form is the only way to pass a value that starts with `--`: the
+  separated form still reads such an argument as the next option and reports the first one as
+  missing its value. A flag with any attached value, an unknown name (reported without its
+  `=VALUE`) and a second occurrence of one option in either form are usage errors. Only an exact
+  standalone `--help` or `--version` argument is intercepted, `--help` first, before any other
+  check, so `--missing-token=--help` passes the value `--help`. The manifest's `command_line`
+  keeps the arguments as given (part 6), so an attached spelling is recorded attached.
 
   **2. Process contract.** Exit codes are fixed: **0** success (warnings and Info
   included; they never move it off 0), **1** any Error/Fatal diagnostic or a
@@ -5666,6 +5679,11 @@ and §16.4; D-120 and D-121 record the implemented naming, template and matcher 
   diagnostic-free** cancellation: cleanup runs, no committed run results, exit 3. A
   **repeated** interrupt restores immediate platform termination; only uncommitted
   residue may remain.
+
+  Amended in place on 2026-10-14: an empty or whitespace-only `--temp-dir` value (part 8) and an
+  `--out` spelling that cannot name a file (part 4) are usage errors, exit 2, reported before any
+  input is opened. A blank `--temp-dir` was an exit-1 host error, although every other invalid
+  option value was already usage.
 
   **3. Rendering.** Each diagnostic renders as **one deterministic stderr line** in
   the **sparse labelled** form:
@@ -5722,6 +5740,27 @@ and §16.4; D-120 and D-121 record the implemented naming, template and matcher 
   default**; `--force` authorizes replacing an **existing distinct destination
   only**. Any canonical-identity **input/output or output/output collision fails even
   with `--force`**, and the complete target set is preflighted **before** any staging.
+
+  Amended in place on 2026-10-14: `--out` must name a file, which the parser judges from the
+  text alone, as its last rule, before any input is opened (usage, exit 2). It refuses an empty
+  or whitespace-only value; a final component that names a directory, meaning nothing after a
+  root or a terminal separator, or a final `.` or `..`; and `-` for `convert`, which has no
+  stdout output. The separators and roots are the platform's own. On Windows `\` and `/` both
+  separate, and a bare drive (`C:`), a drive root, a share root (`\\server\share`) and the
+  explicit extended roots (`\\?\C:`, `\\?\UNC\server\share`) are roots. An ordinary Windows final
+  component that ends in a dot or a space, an all-dot one included, is refused too: Windows
+  removes those characters when it opens the file, so the run would write a different name.
+  That refuses some names that used to write the trimmed file. An explicit extended path keeps
+  such characters and is refused only for the directory forms. `C:name`, internal dots and
+  spaces, and extensions stay valid. Elsewhere only `/` separates and roots, and a backslash, a
+  final dot and a final space are ordinary file-name characters. The check queries no
+  filesystem and normalizes nothing: `Path.GetFullPath` can expand short 8.3 names through the
+  filesystem, and existence, identity and permissions stay with publication. A directory named
+  BASE does not stop `convert`, whose targets are BASE plus an extension; a directory at an
+  actual target is still a publication failure. Device-looking spellings and reserved device
+  names get the ordinary rules and keep their runtime behaviour; there is no namespace
+  catalogue. Before this, `convert --out .`, `..` or `sub\.` ended in the unexpected-fault exit,
+  and `convert --out -` wrote files named `-`.
 
   **5. Convert publication and input stability.** `convert` requires
   `--out BASE --format cxt|dat|both`; the ruled extensions are appended to BASE, with
@@ -5781,6 +5820,12 @@ and §16.4; D-120 and D-121 record the implemented naming, template and matcher 
   fingerprint-neutral, and needs only a **minimal public byte-neutral Conversion
   capability**. Memory budget and merge fan-in stay **internal**; M8 measured them and
   kept them unchanged (D-124).
+
+  Amended in place on 2026-10-14: an empty or whitespace-only `--temp-dir` value is a usage error
+  (exit 2), found when the parser reads the value, in argument order, before any input is
+  opened. Any other value stays unchecked text: the directory is used only when a spill needs
+  storage and is never probed in advance (D-082). The Conversion capability keeps its own check
+  as a backstop.
 
   **9. Ownership.** The run/publication coordinator is **CLI-internal** for M7; **no
   production package references `Cli`** (an architecture lock). An **EP-4
@@ -5846,6 +5891,18 @@ and §16.4; D-120 and D-121 record the implemented naming, template and matcher 
     indices zero-based). The invoked `.bed` path is recorded automatically as
     `derived_from`. Fixed one-value v1 facts (encoding, quote character) get no flags
     (EP-6).
+
+  Amended in place on 2026-10-14: `--delimiter` on `probe` and `migrate` also accepts the word
+  `tab` in any letter case, meaning TAB, because cmd.exe completes file names on the Tab key and
+  a tab cannot be typed there. One CLI-internal rule decodes the spelling for the parser and both
+  commands, and the argument keeps the spelling as given. It is a command-line spelling only: a
+  spec's `delimiter` stays one character (§5.1.1). A backslash followed by `t` is not an alias,
+  because an unquoted `\t` reaches the tool from a POSIX shell as a plain `t`, which is a valid
+  delimiter. Usage text advertises `--delimiter CHAR|tab`. On `migrate`, an `--object-key-column`
+  given by name (anything not all digits) is a usage error when the effective wide header is
+  false: the spec it would write could never bind the key (§5.4). The wide default reads a header
+  (§5.1), so only `--header false` reaches this rule, and unlike the triple role options a name
+  needs no explicit `--header true`. A zero-based index needs no header.
 
   **11. Extends canonical identity.** The file-backed host resolves **actual
   filesystem identity** where available, which unifies supported symlink/hardlink
@@ -5952,7 +6009,8 @@ and §16.4; D-120 and D-121 record the implemented naming, template and matcher 
 - **Status:** accepted (M7 implementation; realizes D-122's implementation architecture;
   refines D-085's registry-timing rule). All eleven implementation steps landed by M7
   Slice K, merged 2026-08-08; the roadmap's M7 exit block is the landed record. The reach of
-  point 7 qualified by D-125 (2026-09-09); point 3's escaping amended in place on 2026-10-14.
+  point 7 qualified by D-125 (2026-09-09); point 3's escaping amended in place on 2026-10-14;
+  point 2's parser grammar amended in place on 2026-10-14.
 - **Date:** 2026-07-24
 - **Decision:** M7's implementation architecture and every new public surface are
   settled here. It records the concrete parser, serializer and transaction-mechanism
@@ -5972,6 +6030,11 @@ and §16.4; D-120 and D-121 record the implemented naming, template and matcher 
   data-driven command table of positional operands + `--name VALUE`) owns the byte-locked
   usage text. `System.CommandLine` was rejected because its help/usage/implicit bytes sit
   inside M7's byte-locked stdout/stderr and would drift with upgrades (the D-075 hazard).
+  Amended in place on 2026-10-14: the parser also reads `--name=VALUE`, splitting the argument
+  once at its first `=` before it looks the option up (D-122 part 1). One CLI-internal helper
+  decodes `--delimiter` for the parser and both commands that take it. `--temp-dir` has its own
+  non-blank value kind, checked when its value is read, and a lexical `--out` check is the last
+  conditional rule (D-122 parts 4 and 8), so every earlier reason keeps its priority.
 
   **3. Centralized presentation.** All diagnostics and progress flow through one
   CLI-internal renderer (the D-122 part 3 grammar, byte-exact) plus a no-op progress

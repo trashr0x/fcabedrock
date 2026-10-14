@@ -225,13 +225,136 @@ public sealed class CommandLineParserTests
         Assert.Contains("unknown option '-v'", failure.Message, StringComparison.Ordinal);
     }
 
-    [Fact]
-    public void Parse_WhenAnOptionUsesTheEqualsForm_ThenUsageFailure()
-    {
-        // There is no --name=value spelling; the settled grammar is --name VALUE.
-        var failure = Reject("plan", "s.toml", "d.csv", "--temp-dir=t");
+    // ---- attached values (--name=value) -----------------------------------------------
 
-        Assert.Contains("unknown option '--temp-dir=t'", failure.Message, StringComparison.Ordinal);
+    [Theory]
+    [InlineData("convert s.toml d.csv --format cxt", "--out", "base")]
+    [InlineData("convert s.toml d.csv --out base", "--format", "dat")]
+    [InlineData("plan s.toml d.csv", "--temp-dir", "spill")]
+    [InlineData("probe d.csv --out o", "--shape", "triple")]
+    [InlineData("probe d.csv --shape wide --out o", "--header", "false")]
+    [InlineData("probe d.csv --shape wide --out o", "--limit", "5")]
+    [InlineData("probe d.csv --shape wide --out o", "--delimiter", ";")]
+    [InlineData("probe d.csv --shape wide --out o", "--locale", "fr-FR")]
+    [InlineData("probe d.csv --shape wide --out o", "--missing-token", "NA")]
+    [InlineData("migrate x.bed --out o --object-key column", "--object-key-column", "0")]
+    public void Parse_WhenAValueIsAttachedWithEquals_ThenItParsesExactlyAsTheSeparatedForm(
+        string prefix, string option, string value)
+    {
+        // One row per value kind: text, enumerated, path, boolean, positive integer,
+        // delimiter and locale.
+        string[] head = prefix.Split(' ');
+
+        var separated = Accept([.. head, option, value]);
+        var attached = Accept([.. head, $"{option}={value}"]);
+
+        Assert.Equal(value, separated.Value(option));
+        Assert.Equal(value, attached.Value(option));
+        Assert.Equal(separated.Options.Count, attached.Options.Count);
+    }
+
+    [Theory]
+    [InlineData("--missing-token=a=b", "a=b")]
+    [InlineData("--missing-token==", "=")]
+    [InlineData("--missing-token=", "")]
+    [InlineData("--missing-token=--", "--")]
+    [InlineData("--missing-token=--help", "--help")]
+    [InlineData("--missing-token=--version", "--version")]
+    [InlineData("--missing-token= -- ", " -- ")]
+    public void Parse_WhenAValueIsAttached_ThenTheWholeSuffixAfterTheFirstEqualsIsTheValue(
+        string token, string expected)
+    {
+        // The split happens once, at the first '=': a further '=', an empty remainder and a
+        // leading "--" are all data, and an attached --help or --version is not intercepted.
+        var invocation = Accept("probe", "d.csv", "--shape", "wide", "--out", "o", token);
+
+        Assert.Equal(expected, invocation.Value("--missing-token"));
+    }
+
+    [Fact]
+    public void Parse_WhenASeparatedValueStartsWithTwoDashes_ThenItIsStillMissing()
+    {
+        // The separated form keeps its rule: the next "--" token is an option, not a value.
+        var failure = Reject("probe", "d.csv", "--shape", "wide", "--out", "o", "--missing-token", "--");
+
+        Assert.Equal("option '--missing-token' requires a value.", failure.Message);
+    }
+
+    [Theory]
+    [InlineData("--limit=0", "a whole number of at least 1")]
+    [InlineData("--limit=", "a whole number of at least 1")]
+    [InlineData("--header=yes", "accepts true or false")]
+    [InlineData("--header=", "accepts true or false")]
+    [InlineData("--locale=nowhere-at-all", "invariant or a known culture name")]
+    [InlineData("--delimiter=", "one character from U+001F to U+007E")]
+    [InlineData("--delimiter=;;", "one character from U+001F to U+007E")]
+    public void Parse_WhenAnAttachedValueIsInvalid_ThenTheOptionsOwnValidationRejectsIt(
+        string token, string expected)
+    {
+        var failure = Reject("probe", "d.csv", "--shape", "wide", "--out", "o", token);
+
+        Assert.Equal("probe", failure.Command);
+        Assert.Contains(expected, failure.Message, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("--force=")]
+    [InlineData("--force=true")]
+    [InlineData("--force==")]
+    public void Parse_WhenAFlagHasAnAttachedValue_ThenUsageFailure(string token)
+    {
+        var failure = Reject("calibrate", "s.toml", "d.csv", "--out", "o.toml", token);
+
+        Assert.Equal("option '--force' does not take a value.", failure.Message);
+    }
+
+    [Theory]
+    [InlineData("--out", "a", "--out=b")]
+    [InlineData("--out=a", "--out", "b")]
+    [InlineData("--out=a", "--out=b")]
+    public void Parse_WhenAnOptionIsRepeatedInEitherForm_ThenUsageFailure(params string[] tail)
+    {
+        // Duplicates are keyed by the option's name, whichever form supplied each value.
+        var failure = Reject(["calibrate", "s.toml", "d.csv", .. tail]);
+
+        Assert.Equal("option '--out' is specified more than once.", failure.Message);
+    }
+
+    [Theory]
+    [InlineData("--bogus=1", "--bogus")]
+    [InlineData("--temp=t", "--temp")]
+    [InlineData("--=x", "--")]
+    public void Parse_WhenAnUnknownOptionHasAnAttachedValue_ThenTheUnknownNameIsReported(
+        string token, string name)
+    {
+        var failure = Reject("plan", "s.toml", "d.csv", token);
+
+        Assert.Equal($"unknown option '{name}' for command 'plan'.", failure.Message);
+    }
+
+    [Fact]
+    public void Parse_WhenAnAttachedOptionBelongsToAnotherCommand_ThenUsageFailure()
+    {
+        var failure = Reject("validate", "s.toml", "--temp-dir=t");
+
+        Assert.Equal("unknown option '--temp-dir' for command 'validate'.", failure.Message);
+    }
+
+    [Theory]
+    [InlineData("probe", "--bogus=1", "--limit=0", "--help")]
+    [InlineData("convert", "--out=", "--help", "--version")]
+    [InlineData("--missing-token=--version", "--help")]
+    public void Parse_WhenAStandaloneHelpAppearsAmidMalformedArguments_ThenHelpIsRequested(params string[] argv)
+    {
+        Assert.IsType<HelpRequested>(CommandLineParser.Parse(argv));
+    }
+
+    [Theory]
+    [InlineData("probe", "--bogus=1", "--limit=0", "--version")]
+    [InlineData("--missing-token=--help", "--version")]
+    public void Parse_WhenAStandaloneVersionAppearsAmidMalformedArguments_ThenVersionIsRequested(params string[] argv)
+    {
+        Assert.IsType<VersionRequested>(CommandLineParser.Parse(argv));
     }
 
     [Fact]
@@ -362,13 +485,35 @@ public sealed class CommandLineParserTests
     }
 
     [Theory]
+    [InlineData("probe", "tab")]
+    [InlineData("probe", "TAB")]
+    [InlineData("probe", "Tab")]
+    [InlineData("probe", "tAb")]
+    [InlineData("migrate", "tab")]
+    [InlineData("migrate", "TAB")]
+    public void Parse_WhenDelimiterIsTheWordTabInAnyCase_ThenItParsesAndKeepsTheSuppliedSpelling(
+        string command, string delimiter)
+    {
+        // A tab cannot be typed in cmd.exe, so the word is the CLI's spelling of TAB. The parser
+        // does not rewrite it: the supplied spelling survives, and each command decodes it.
+        var invocation = command == "probe"
+            ? Accept("probe", "d.csv", "--shape", "wide", "--out", "o", "--delimiter", delimiter)
+            : Accept("migrate", "x.bed", "--out", "o", "--delimiter", delimiter);
+
+        Assert.Equal(delimiter, invocation.Value("--delimiter"));
+    }
+
+    [Theory]
     [InlineData("probe", "||")]
     [InlineData("probe", ",,")]
     [InlineData("probe", "")]
     [InlineData("probe", "\n")]
     [InlineData("probe", "\r")]
     [InlineData("probe", "\"")]
-    [InlineData("probe", "tab")]
+    [InlineData("probe", "\\t")]
+    [InlineData("probe", "tabs")]
+    [InlineData("probe", "ta")]
+    [InlineData("probe", " tab")]
     [InlineData("probe", "\U0001F600")]
     [InlineData("probe", "é")]
     [InlineData("probe", "#")]
@@ -380,18 +525,23 @@ public sealed class CommandLineParserTests
     [InlineData("migrate", "")]
     [InlineData("migrate", "\n")]
     [InlineData("migrate", "\"")]
+    [InlineData("migrate", "\\t")]
     public void Parse_WhenDelimiterIsNotOneUsableCharacter_ThenUsageFailure(string command, string delimiter)
     {
         // A multi-character value cannot reach the char-typed source settings at all, and the
         // quote character is excluded by §5.1's delimiter/quote conflict rule. A non-BMP
         // character is two UTF-16 units and likewise cannot be a delimiter, and a character
-        // outside the v1 alphabet (§5.1.1) is refused.
+        // outside the v1 alphabet (§5.1.1) is refused. The word tab is the only spelling longer
+        // than one character; a backslash followed by t is not a tab.
         var failure = command == "probe"
             ? Reject("probe", "d.csv", "--shape", "wide", "--out", "o", "--delimiter", delimiter)
             : Reject("migrate", "x.bed", "--out", "o", "--delimiter", delimiter);
 
         Assert.Equal(command, failure.Command);
-        Assert.Contains("TAB or one character from U+001F to U+007E", failure.Message, StringComparison.Ordinal);
+        Assert.Equal(
+            "option '--delimiter' accepts a tab character, the word tab, or one character from U+001F to U+007E"
+                + $" other than '#' and the quote character '\"', not '{delimiter}'.",
+            failure.Message);
     }
 
     [Fact]
@@ -697,6 +847,49 @@ public sealed class CommandLineParserTests
         Accept("migrate", "x.bed", "--out", "o", "--object-key", "row_index");
     }
 
+    [Theory]
+    [InlineData("--object-key-column", "id", "--header", "false")]
+    [InlineData("--header", "false", "--object-key-column", "id")]
+    [InlineData("--object-key-column=id", "--header=false")]
+    [InlineData("--object-key-column", "-1", "--header", "false")]
+    public void Parse_WhenANamedObjectKeyColumnMeetsHeaderFalse_ThenUsageFailure(params string[] tail)
+    {
+        // §5.4: a column bound by name needs a header, so this spec could never bind its key.
+        // "-1" is not all digits, so it is a name, not an index.
+        var failure = Reject(["migrate", "x.bed", "--out", "o", "--object-key", "column", .. tail]);
+
+        Assert.Equal("migrate", failure.Command);
+        Assert.Equal(
+            "header-name addressing for --object-key-column needs a header row, so it is not valid with --header false.",
+            failure.Message);
+    }
+
+    [Theory]
+    [InlineData("id")]
+    [InlineData("id", "--header", "true")]
+    [InlineData("0", "--header", "false")]
+    [InlineData("0")]
+    public void Parse_WhenTheObjectKeyColumnHasAHeaderOrIsAnIndex_ThenItParses(params string[] tail)
+    {
+        // The effective wide header suffices: unlike the triple roles, a name needs no explicit
+        // --header true. An index needs no header at all.
+        var invocation = Accept(["migrate", "x.bed", "--out", "o", "--object-key", "column", "--object-key-column", .. tail]);
+
+        Assert.Equal(tail[0], invocation.Value("--object-key-column"));
+    }
+
+    [Fact]
+    public void Parse_WhenTripleRoleNamesOmitHeader_ThenTheExplicitHeaderRuleStillApplies()
+    {
+        // Control: the triple roles keep their own rule, an explicit --header true, which the
+        // object-key rule deliberately does not copy.
+        var failure = Reject(
+            "migrate", "x.bed", "--out", "o", "--shape", "triple", "--subject", "s", "--predicate", "p", "--value", "v");
+
+        Assert.Equal(
+            "header-name addressing for --subject, --predicate and --value requires --header true.", failure.Message);
+    }
+
     // ---- fingerprint write coupling ------------------------------------------------------
 
     [Fact]
@@ -778,6 +971,234 @@ public sealed class CommandLineParserTests
     public void Parse_WhenOutIsStdoutWithoutForce_ThenItParses(params string[] argv)
     {
         Assert.Equal("-", Accept(argv).Value("--out"));
+    }
+
+    // ---- --temp-dir text ---------------------------------------------------------------------
+
+    // The five commands with --temp-dir, each otherwise complete.
+    public static TheoryData<string> TempDirCommands() =>
+    [
+        "convert s.toml d.csv --out b --format cxt",
+        "plan s.toml d.csv",
+        "stats s.toml d.csv",
+        "calibrate s.toml d.csv --out o.toml",
+        "fingerprint s.toml d.csv",
+    ];
+
+    [Theory]
+    [MemberData(nameof(TempDirCommands))]
+    public void Parse_WhenTempDirIsBlankInEitherForm_ThenUsageFailure(string prefix)
+    {
+        string[] head = prefix.Split(' ');
+
+        foreach (var blank in new[] { string.Empty, " ", "\t", " \t " })
+        {
+            foreach (var tail in new[] { new[] { "--temp-dir", blank }, new[] { $"--temp-dir={blank}" } })
+            {
+                var failure = Reject([.. head, .. tail]);
+
+                Assert.Equal(head[0], failure.Command);
+                Assert.Equal("the --temp-dir value must be a non-empty, non-whitespace path.", failure.Message);
+            }
+        }
+    }
+
+    [Theory]
+    [InlineData(" spill ")]
+    [InlineData("does-not-exist")]
+    [InlineData(".")]
+    public void Parse_WhenTempDirIsNotBlank_ThenItIsAcceptedVerbatimAndUnchecked(string value)
+    {
+        // Text only: the directory is not looked up, created or normalized here (D-122 part 8).
+        Assert.Equal(value, Accept("plan", "s.toml", "d.csv", "--temp-dir", value).Value("--temp-dir"));
+    }
+
+    [Fact]
+    public void Parse_WhenTempDirIsBlank_ThenItIsReportedWhenItsValueIsAcquired()
+    {
+        // In argv order, before an unknown option that follows it and before the conditional
+        // rules (here, convert's missing required options); after an unknown option before it.
+        Assert.Equal(
+            "the --temp-dir value must be a non-empty, non-whitespace path.",
+            Reject("convert", "s.toml", "d.csv", "--temp-dir", " ", "--bogus").Message);
+        Assert.Equal(
+            "unknown option '--bogus' for command 'convert'.",
+            Reject("convert", "s.toml", "d.csv", "--bogus", "--temp-dir", " ").Message);
+    }
+
+    // ---- --out text --------------------------------------------------------------------------
+
+    // The five commands that write, each otherwise complete, with --out last.
+    private static readonly string[][] Writers =
+    [
+        ["convert", "s.toml", "d.csv", "--format", "cxt", "--out"],
+        ["calibrate", "s.toml", "d.csv", "--out"],
+        ["probe", "d.csv", "--shape", "wide", "--out"],
+        ["migrate", "x.bed", "--out"],
+        ["fingerprint", "s.toml", "d.csv", "--write", "--out"],
+    ];
+
+    private static void AssertEveryWriterRejects(string value, string expected)
+    {
+        foreach (var writer in Writers)
+        {
+            foreach (var argv in new string[][] { [.. writer, value], [.. writer[..^1], $"--out={value}"] })
+            {
+                var failure = Reject(argv);
+
+                Assert.Equal(writer[0], failure.Command);
+                Assert.Equal(expected, failure.Message);
+            }
+        }
+    }
+
+    private static void AssertEveryWriterAccepts(string value)
+    {
+        foreach (var writer in Writers)
+        {
+            Assert.Equal(value, Accept([.. writer, value]).Value("--out"));
+            Assert.Equal(value, Accept([.. writer[..^1], $"--out={value}"]).Value("--out"));
+        }
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData(" ")]
+    [InlineData("\t ")]
+    public void Parse_WhenOutIsBlank_ThenEveryWriterRejectsIt(string value)
+    {
+        AssertEveryWriterRejects(value, "the --out value must be a non-empty, non-whitespace path.");
+    }
+
+    [Theory]
+    [InlineData(".")]
+    [InlineData("..")]
+    [InlineData("sub/.")]
+    [InlineData("sub/..")]
+    [InlineData("a/b/..")]
+    [InlineData("../..")]
+    [InlineData("../sub/.")]
+    [InlineData("out/")]
+    [InlineData("/")]
+    public void Parse_WhenOutEndsInADirectoryOnEveryPlatform_ThenEveryWriterRejectsIt(string value)
+    {
+        // '/' separates on every platform, so these name a directory everywhere: the final
+        // component is empty, '.' or '..', at any nesting depth.
+        AssertEveryWriterRejects(value, $"the --out value '{value}' names a directory; it must end in a file name.");
+    }
+
+    [Theory]
+    [InlineData(@"out\")]
+    [InlineData(@"sub\.")]
+    [InlineData(@"sub\..")]
+    [InlineData(@"..\..\sub\.")]
+    [InlineData("C:")]
+    [InlineData(@"C:\")]
+    [InlineData("C:.")]
+    [InlineData(@"C:\work\..")]
+    [InlineData(@"\")]
+    [InlineData(@"\\server\share")]
+    [InlineData(@"\\server\share\")]
+    [InlineData(@"\\server")]
+    [InlineData(@"\\?\C:")]
+    [InlineData(@"\\?\C:\")]
+    [InlineData(@"\\?\C:\work\.")]
+    [InlineData(@"\\?\C:\work\..")]
+    [InlineData(@"\\?\UNC\server\share")]
+    public void Parse_WhenOutEndsInAWindowsDirectory_ThenWritersRejectItOnWindowsOnly(string value)
+    {
+        // A backslash separates only on Windows, where a drive or share root and the extended
+        // forms' roots are directories too. On other platforms each is an ordinary file name.
+        if (OperatingSystem.IsWindows())
+        {
+            AssertEveryWriterRejects(value, $"the --out value '{value}' names a directory; it must end in a file name.");
+        }
+        else
+        {
+            AssertEveryWriterAccepts(value);
+        }
+    }
+
+    [Theory]
+    [InlineData("...")]
+    [InlineData("....")]
+    [InlineData("foo.")]
+    [InlineData("foo ")]
+    [InlineData(@"sub\...")]
+    [InlineData("sub/report. ")]
+    [InlineData(@"C:\work\draft.")]
+    [InlineData(@"\\server\share\draft.")]
+    public void Parse_WhenOutEndsInADotOrSpace_ThenWritersRejectItOnWindowsOnly(string value)
+    {
+        // Windows removes a trailing dot or space from an ordinary file name, so the file
+        // written would not be the one named. Elsewhere these are ordinary file names.
+        if (OperatingSystem.IsWindows())
+        {
+            AssertEveryWriterRejects(
+                value, $"the --out value '{value}' ends in a dot or a space, which Windows removes from a file name.");
+        }
+        else
+        {
+            AssertEveryWriterAccepts(value);
+        }
+    }
+
+    [Theory]
+    [InlineData("report v1.data")]
+    [InlineData("a..b")]
+    [InlineData(".hidden")]
+    [InlineData("sub/out.toml")]
+    [InlineData("../out")]
+    [InlineData("C:driveleaf")]
+    [InlineData(@"C:\work\out.toml")]
+    [InlineData(@"\\server\share\out")]
+    [InlineData(@"\\?\C:\work\draft.")]
+    [InlineData(@"\\?\C:\work\draft ")]
+    [InlineData(@"\\?\C:\work\...")]
+    [InlineData(@"\\?\UNC\server\share\draft.")]
+    [InlineData(@"back\slash")]
+    public void Parse_WhenOutEndsInAFileName_ThenEveryWriterAcceptsIt(string value)
+    {
+        // Internal dots, spaces and extensions stay, as does a drive-relative leaf. The explicit
+        // extended forms (\\?\) keep a final dot or space, which that namespace preserves.
+        AssertEveryWriterAccepts(value);
+    }
+
+    [Fact]
+    public void Parse_WhenOutIsADash_ThenOnlyTheWritersWithStdoutAcceptIt()
+    {
+        foreach (var writer in Writers[1..])
+        {
+            Assert.Equal("-", Accept([.. writer, "-"]).Value("--out"));
+            Assert.Equal("-", Accept([.. writer[..^1], "--out=-"]).Value("--out"));
+        }
+
+        foreach (var argv in new string[][] { [.. Writers[0], "-"], [.. Writers[0][..^1], "--out=-"] })
+        {
+            Assert.Equal(
+                "command 'convert' has no stdout output, so --out cannot be '-'.", Reject(argv).Message);
+        }
+    }
+
+    [Fact]
+    public void Parse_WhenOutIsInvalidBesideAnotherMistake_ThenTheOtherMistakeIsReported()
+    {
+        // The --out text is the last rule checked, so every earlier reason keeps its priority.
+        Assert.Equal(
+            "unknown option '--bogus' for command 'calibrate'.",
+            Reject("calibrate", "s.toml", "d.csv", "--out", ".", "--bogus").Message);
+        Assert.Equal(
+            "command 'convert' requires the option '--format'.",
+            Reject("convert", "s.toml", "d.csv", "--out", ".").Message);
+        Assert.Equal(
+            "option '--object-key-column' is required when --object-key column.",
+            Reject("migrate", "x.bed", "--out", ".", "--object-key", "column").Message);
+        Assert.Equal(
+            "option '--out' is valid only with --write.",
+            Reject("fingerprint", "s.toml", "d.csv", "--out", ".").Message);
+        Assert.Equal(
+            "option '--force' is not valid with --out -; it authorizes replacing an existing file.",
+            Reject("calibrate", "s.toml", "d.csv", "--out", "-", "--force").Message);
     }
 
     // ---- excluded surface ------------------------------------------------------------------

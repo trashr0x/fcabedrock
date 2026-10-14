@@ -43,8 +43,9 @@ internal sealed record CommandInvocation(
 /// </para>
 /// <para>
 /// <b>The grammar is exactly what D-122 settled and nothing more.</b> No aliases, no
-/// abbreviations, no <c>--name=value</c> form, no response files, no environment
-/// fallbacks, no hidden options, no permissive coercions. Unknown options, including the
+/// abbreviations, no response files, no environment fallbacks, no hidden options, no
+/// permissive coercions. A value follows its option as the next argument or, attached, after
+/// the first <c>=</c> of the same argument (D-122 part 1). Unknown options, including the
 /// excluded surface (<c>--sample</c>, <c>--gzip</c>, colour/progress/machine spellings),
 /// are usage errors (D-122 part 12).
 /// </para>
@@ -109,9 +110,17 @@ internal static class CommandLineParser
                 continue;
             }
 
-            if (command.Option(token) is not { } option)
+            // `--name=value` splits at its FIRST '=' only, so the whole remainder is the value:
+            // empty, holding a further '=', or starting with `--` (the one way to pass such a
+            // value). Only an exact standalone --help or --version token was intercepted above,
+            // so an attached `--help` is data.
+            var equals = token.StartsWith("--", StringComparison.Ordinal) ? token.IndexOf('=') : -1;
+            var name = equals < 0 ? token : token[..equals];
+            var attached = equals < 0 ? null : token[(equals + 1)..];
+
+            if (command.Option(name) is not { } option)
             {
-                return new UsageFailure($"unknown option '{token}' for command '{command.Name}'.", command.Name);
+                return new UsageFailure($"unknown option '{name}' for command '{command.Name}'.", command.Name);
             }
 
             if (options.ContainsKey(option.Name))
@@ -121,20 +130,25 @@ internal static class CommandLineParser
 
             if (option.Kind == OptionValueKind.Flag)
             {
+                if (attached is not null)
+                {
+                    return new UsageFailure($"option '{option.Name}' does not take a value.", command.Name);
+                }
+
                 options.Add(option.Name, null);
                 continue;
             }
 
-            // A value is the NEXT token, taken verbatim; an empty one is legal
+            // A separated value is the NEXT token, taken verbatim; an empty one is legal
             // (`--missing-token ""` disables token detection, §5.1). A token that begins
-            // with `--` is never a value: it is the next option, so the option before it
-            // is missing its value. There is no `--name=value` escape.
-            if (i + 1 >= argv.Count || argv[i + 1].StartsWith("--", StringComparison.Ordinal))
+            // with `--` is never a separated value: it is the next option, so the option before
+            // it is missing its value.
+            if (attached is null && (i + 1 >= argv.Count || argv[i + 1].StartsWith("--", StringComparison.Ordinal)))
             {
                 return new UsageFailure($"option '{option.Name}' requires a value.", command.Name);
             }
 
-            var value = argv[++i];
+            var value = attached ?? argv[++i];
             if (Validate(option, value) is { } invalid)
             {
                 return new UsageFailure(invalid, command.Name);
@@ -151,7 +165,8 @@ internal static class CommandLineParser
             ?? CheckRoleOptions(command, options)
             ?? CheckObjectKeyOptions(command, options)
             ?? CheckWriteCoupling(command, options)
-            ?? CheckForceAgainstStdout(command, options);
+            ?? CheckForceAgainstStdout(command, options)
+            ?? CheckOutputText(command, options);
 
         return failure ?? (ParseOutcome)new CommandInvocation(command, operands, options);
     }
@@ -172,13 +187,19 @@ internal static class CommandLineParser
             $"option '{option.Name}' accepts true or false, not '{value}'.",
         OptionValueKind.PositiveInteger when !IsPositiveInteger(value) =>
             $"option '{option.Name}' accepts a whole number of at least 1, not '{value}'.",
-        OptionValueKind.Delimiter when !IsDelimiter(value) =>
-            $"option '{option.Name}' accepts TAB or one character from U+001F to U+007E other than '#'"
-                + $" and the quote character '\"', not '{value}'.",
+        OptionValueKind.Delimiter when !DelimiterSpelling.TryDecode(value, out _) =>
+            $"option '{option.Name}' accepts a tab character, the word tab, or one character from U+001F to U+007E"
+                + $" other than '#' and the quote character '\"', not '{value}'.",
         OptionValueKind.Locale when !IsLocale(value) =>
             $"option '{option.Name}' accepts invariant or a known culture name, not '{value}'.",
+        OptionValueKind.NonBlankPath when string.IsNullOrWhiteSpace(value) => BlankPath(option),
         _ => null,
     };
+
+    // Blank means string.IsNullOrWhiteSpace: the test ConversionRuntimeOptions applies to its temp
+    // directory, so the parser refuses exactly the --temp-dir values the library would.
+    private static string BlankPath(CliOption option) =>
+        $"the {option.Name} value must be a non-empty, non-whitespace path.";
 
     private static bool Contains(IReadOnlyList<string>? values, string value)
     {
@@ -207,12 +228,6 @@ internal static class CommandLineParser
     // so zero is a caller mistake to report here, not an exception in ProbeOptions.Create.
     private static bool IsPositiveInteger(string value) =>
         int.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out var parsed) && parsed >= 1;
-
-    // §5.1.1: one character of the v1 delimiter alphabet (SourceReadSettings.IsInDelimiterAlphabet)
-    // other than the quote character, which v1 fixes at '"'. Exactly one UTF-16 unit, because the
-    // resolved setting is a `char`.
-    private static bool IsDelimiter(string value) =>
-        value.Length == 1 && SourceReadSettings.IsInDelimiterAlphabet(value[0]) && value[0] != '"';
 
     // The predicate SpecResolver and ProbeOptions both apply (§5.1): "invariant"
     // case-insensitively, or a PREDEFINED culture; predefinedOnly matters, because under ICU
@@ -362,7 +377,8 @@ internal static class CommandLineParser
 
     // D-122 part 10: --object-key-column is required exactly when --object-key column,
     // and invalid otherwise. Both directions, so neither a silently ignored column nor a
-    // silently dropped key mode is possible.
+    // silently dropped key mode is possible. A column given by name also needs a header
+    // (§5.4), or the written spec could never bind its key.
     private static UsageFailure? CheckObjectKeyOptions(CliCommand command, Dictionary<string, string?> options)
     {
         if (command.Option("--object-key-column") is null)
@@ -372,7 +388,7 @@ internal static class CommandLineParser
 
         var columnMode = options.TryGetValue("--object-key", out var mode)
             && string.Equals(mode, "column", StringComparison.Ordinal);
-        var hasColumn = options.ContainsKey("--object-key-column");
+        var hasColumn = options.TryGetValue("--object-key-column", out var column);
 
         return (columnMode, hasColumn) switch
         {
@@ -380,9 +396,20 @@ internal static class CommandLineParser
                 "option '--object-key-column' is required when --object-key column.", command.Name),
             (false, true) => new UsageFailure(
                 "option '--object-key-column' is valid only with --object-key column.", command.Name),
+            (true, true) when !IsIndex(column!) && !EffectiveWideHeader(options) => new UsageFailure(
+                "header-name addressing for --object-key-column needs a header row, so it is not valid with --header false.",
+                command.Name),
             _ => null,
         };
     }
+
+    // The header a wide source is read with: the supplied --header, otherwise the library's own
+    // wide default, taken from its factory so the parser never restates it. The object key is
+    // wide-only (an earlier rule), and unlike the triple roles it needs no explicit --header true.
+    private static bool EffectiveWideHeader(Dictionary<string, string?> options) =>
+        options.TryGetValue("--header", out var header)
+            ? string.Equals(header, "true", StringComparison.Ordinal)
+            : SourceReadSettings.CreateWide().HasHeader;
 
     // fingerprint's write mode is one unit: --out and --force belong to it and mean
     // nothing without it, and --write cannot choose a destination on its own (D-122 part 10).
@@ -427,5 +454,37 @@ internal static class CommandLineParser
 
         return new UsageFailure(
             "option '--force' is not valid with --out -; it authorizes replacing an existing file.", command.Name);
+    }
+
+    // D-122 part 4: --out must name a file, judged from its text alone (OutputPathText), so a
+    // spelling whose final component names a directory, or that Windows would rename, is refused
+    // before any input is read. This is the LAST rule, so a line with any other mistake keeps
+    // reporting that mistake, and the value stays plain text until here.
+    private static UsageFailure? CheckOutputText(CliCommand command, Dictionary<string, string?> options)
+    {
+        if (command.Option("--out") is not { } option || !options.TryGetValue(option.Name, out var value) || value is null)
+        {
+            return null;
+        }
+
+        if (string.Equals(value, "-", StringComparison.Ordinal))
+        {
+            return option.AllowsStdout
+                ? null
+                : new UsageFailure(
+                    $"command '{command.Name}' has no stdout output, so {option.Name} cannot be '-'.", command.Name);
+        }
+
+        return OutputPathText.Check(value, OperatingSystem.IsWindows()) switch
+        {
+            null => null,
+            OutputPathProblem.Blank => new UsageFailure(BlankPath(option), command.Name),
+            OutputPathProblem.Directory => new UsageFailure(
+                $"the {option.Name} value '{value}' names a directory; it must end in a file name.", command.Name),
+            OutputPathProblem.TrailingDotOrSpace => new UsageFailure(
+                $"the {option.Name} value '{value}' ends in a dot or a space, which Windows removes from a file name.",
+                command.Name),
+            var problem => throw new ArgumentOutOfRangeException(nameof(options), problem, "Unknown output path problem."),
+        };
     }
 }
