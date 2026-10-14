@@ -150,7 +150,112 @@ public sealed class ConvertNativeEffectiveTests
             StringComparison.Ordinal);
     }
 
+    // ---- bin_label_unicode: native Unicode, v2-compatible ASCII (§8/§14) ------------------------
+
+    [Fact]
+    public async Task Convert_WhenBinLabelUnicodeIsTrue_ThenNativeNamesUseUnicodeForGeneratedOperatorsOnly()
+    {
+        // Written out by hand: ≥ and ≤ replace only the operators the planner generates (an open
+        // high cut bin, ordinal thresholds, {scale_op}). The ordered cut "=x" makes the open low
+        // bin "<" + "=x", the authored value "<=50K" and the authored label ">=50K" stay as written.
+        using var run = ConvertRun.Wide(CliFixtures.UnicodeLabelSpec, CliFixtures.UnicodeLabelData);
+
+        var exit = await run.ConvertAsync("--format", "both");
+
+        Assert.Equal(0, exit);
+        Assert.Equal(string.Empty, run.Harness.StdErr);
+        Assert.Equal(
+            string.Join(
+                "\n",
+                "B",
+                "",
+                "3",
+                "13",
+                "",
+                "0",
+                "1",
+                "2",
+                "age-<30",
+                "age-[30, 50)",
+                "age-≥50",
+                "age_ge-all",
+                "age_ge-≥30",
+                "age_ge-≥50",
+                "grade-<=x",
+                "grade-[=x, b)",
+                "grade-≥b",
+                "level ≤ low",
+                "level ≤ high",
+                "class-<=50K",
+                "class->=50K",
+                "X..X..X..XXX.",
+                ".X.XX..X..X.X",
+                "..XXXX..XXXX.") + "\n",
+            run.Text(".cxt"));
+    }
+
+    [Fact]
+    public async Task Convert_WhenV2CompatOverridesAUnicodeSpec_ThenItsBytesAndEffectiveFingerprintsAreTheAsciiSpecs()
+    {
+        // --v2-compat writes ASCII operators whatever the spec authors (§8), so the effective .cxt
+        // fingerprint the manifest records must describe ASCII names: exactly the value of the same
+        // spec with the flag false. The stored native fields are not involved (§14).
+        using var unicode = ConvertRun.Wide(CliFixtures.UnicodeLabelSpec, CliFixtures.UnicodeLabelData);
+        using var ascii = ConvertRun.Wide(CliFixtures.UnicodeLabelAsciiSpec, CliFixtures.UnicodeLabelData);
+
+        Assert.Equal(0, await unicode.ConvertAsync("--format", "both", "--v2-compat"));
+        Assert.Equal(0, await ascii.ConvertAsync("--format", "both", "--v2-compat"));
+        Assert.Equal(string.Empty, unicode.Harness.StdErr);
+
+        var cxt = unicode.Text(".cxt");
+        Assert.Contains("\r\nage->=50\r\n", cxt, StringComparison.Ordinal);
+        Assert.Contains("\r\nage-30to<50\r\n", cxt, StringComparison.Ordinal);
+        Assert.Contains("\r\nlevel <= low\r\n", cxt, StringComparison.Ordinal);
+        Assert.DoesNotContain('≥', cxt);
+        Assert.DoesNotContain('≤', cxt);
+
+        Assert.Equal(ascii.Bytes(".cxt"), unicode.Bytes(".cxt"));
+        Assert.Equal(ascii.Bytes(".dat"), unicode.Bytes(".dat"));
+        foreach (var field in new[] { "schema_fingerprint", "cxt_output_fingerprint", "dat_output_fingerprint" })
+        {
+            Assert.Equal(ManifestField(ascii, field), ManifestField(unicode, field));
+        }
+    }
+
+    [Fact]
+    public async Task Convert_WhenOnlyBinLabelUnicodeDiffers_ThenTheNamesMoveAndTheIdentitiesDoNot()
+    {
+        // Natively the flag changes the .cxt names and their fingerprint, and nothing else: the
+        // incidence, the .dat bytes, and the schema and .dat fingerprints stay equal (§14).
+        using var unicode = ConvertRun.Wide(CliFixtures.UnicodeLabelSpec, CliFixtures.UnicodeLabelData);
+        using var ascii = ConvertRun.Wide(CliFixtures.UnicodeLabelAsciiSpec, CliFixtures.UnicodeLabelData);
+
+        Assert.Equal(0, await unicode.ConvertAsync("--format", "both"));
+        Assert.Equal(0, await ascii.ConvertAsync("--format", "both"));
+
+        Assert.Equal(ascii.Bytes(".dat"), unicode.Bytes(".dat"));
+        Assert.Equal(Incidence(ascii.Text(".cxt")), Incidence(unicode.Text(".cxt")));
+        Assert.NotEqual(ascii.Bytes(".cxt"), unicode.Bytes(".cxt"));
+        Assert.Equal(ManifestField(ascii, "schema_fingerprint"), ManifestField(unicode, "schema_fingerprint"));
+        Assert.Equal(ManifestField(ascii, "dat_output_fingerprint"), ManifestField(unicode, "dat_output_fingerprint"));
+        Assert.NotEqual(ManifestField(ascii, "cxt_output_fingerprint"), ManifestField(unicode, "cxt_output_fingerprint"));
+    }
+
     private static string Stored(params string[] fields) =>
         CliFixtures.IndexBoundSpec.Replace(
             "version = 1", "version = 1\n" + string.Join('\n', fields), StringComparison.Ordinal);
+
+    // The complete line of one [run] field of the committed manifest.
+    private static string ManifestField(ConvertRun run, string field) =>
+        run.Text(".manifest.toml").Split('\n').Single(line => line.StartsWith(field + " = ", StringComparison.Ordinal));
+
+    // The incidence rows of a .cxt: the lines after the header, the object names and the
+    // attribute names (the header gives both counts).
+    private static string[] Incidence(string cxt)
+    {
+        var lines = cxt.Split('\n');
+        var objects = int.Parse(lines[2], System.Globalization.CultureInfo.InvariantCulture);
+        var attributes = int.Parse(lines[3], System.Globalization.CultureInfo.InvariantCulture);
+        return lines[(5 + objects + attributes)..];
+    }
 }

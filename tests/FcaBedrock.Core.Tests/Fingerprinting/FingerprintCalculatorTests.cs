@@ -64,6 +64,15 @@ public sealed class FingerprintCalculatorTests
         return plan!;
     }
 
+    // The Unicode-presentation plan (§8), through the three-argument overload.
+    private static ConversionPlan UnicodePlan(BedrockSpec spec, LabelStyle style = LabelStyle.Native)
+    {
+        Assert.True(ConversionPlanner.Plan(
+            CalibratedSpec.FromFullyDeclared(Resolve(spec, new SourceSchema(4))), style, binLabelUnicode: true)
+            .TryGetValue(out var plan));
+        return plan!;
+    }
+
     // The public output-fingerprint API takes no spec argument (it reads plan.Calibrated.Spec,
     // D-098); these thin shims give the tests a (plan, spec, inputs) call shape, and
     // the pinned bytes/hashes are hashed identically (plan.Calibrated.Spec is the spec's snapshot).
@@ -105,6 +114,40 @@ public sealed class FingerprintCalculatorTests
                 + GoldenRenderedNames + ",\"trailing_newline\":true},\"fp_format\":1,\"kind\":\"cxt_output\",\"schema\":"
                 + GoldenSchemaArray + ",\"shared\":" + GoldenShared + "}",
             FingerprintCalculator.BuildCxtOutputJson(Plan(GoldenSpec()), GoldenSpec(), NativeCxt()));
+
+    [Fact]
+    public void BuildCxtOutputJson_WhenGoldenPlanIsUnicode_ThenOnlyTheFlagAndTheGeneratedOperatorChange()
+    {
+        // §8/§14: against the pinned native bytes above, the Unicode plan's canonical bytes differ in
+        // exactly two places, the flag and the open high bin's generated operator. The schema and
+        // shared parts are the same pinned arrays, and fp_format is unchanged.
+        var expected =
+            "{\"cxt\":{\"bin_label_unicode\":true,\"label_style\":\"native\",\"line_endings\":\"lf\",\"rendered_names\":"
+                + "[\"age-<30\",\"age-[30, 50)\",\"age-≥50\",\"risk-<30\",\"risk-all\",\"sex-M\",\"sex-F\",\"sex-missing\",\"employed\"]"
+                + ",\"trailing_newline\":true},\"fp_format\":1,\"kind\":\"cxt_output\",\"schema\":"
+                + GoldenSchemaArray + ",\"shared\":" + GoldenShared + "}";
+        var plan = UnicodePlan(GoldenSpec());
+
+        Assert.Equal(expected, FingerprintCalculator.BuildCxtOutputJson(plan, GoldenSpec(), NativeCxt(unicode: true)));
+        Assert.Equal(Sha256Of(expected), FingerprintCalculator.ComputeCxtOutputFingerprint(plan, NativeCxt(unicode: true)));
+    }
+
+    [Fact]
+    public void ComputeCxtOutputFingerprint_WhenAV2PlanRequestedUnicode_ThenItPairsOnlyWithAsciiInputs()
+    {
+        // V2Compat makes the effective flag false whatever was requested, so the plan hashes exactly
+        // as the ASCII v2 plan does, and Unicode inputs are refused for it.
+        var requested = UnicodePlan(GoldenSpec(), LabelStyle.V2Compat);
+        var ascii = Plan(GoldenSpec(), LabelStyle.V2Compat);
+        var inputs = NativeCxt(style: LabelStyle.V2Compat);
+
+        Assert.False(requested.BinLabelUnicode);
+        Assert.Equal(
+            FingerprintCalculator.ComputeCxtOutputFingerprint(ascii, inputs),
+            FingerprintCalculator.ComputeCxtOutputFingerprint(requested, inputs));
+        Assert.Throws<ArgumentException>(() =>
+            FingerprintCalculator.ComputeCxtOutputFingerprint(requested, NativeCxt(style: LabelStyle.V2Compat, unicode: true)));
+    }
 
     [Fact]
     public void BuildDatOutputJson_WhenGoldenPlanNativeInputs_ThenMatchesPinnedCanonicalBytes() =>
@@ -268,6 +311,22 @@ public sealed class FingerprintCalculatorTests
     }
 
     [Fact]
+    public void ComputeCxtOutputFingerprint_WhenInputUnicodeDiffersFromPlan_ThenThrowsNamingTheMatchingOverload()
+    {
+        // §14: the rendered names bake the Unicode presentation in exactly as they bake the style,
+        // so an ASCII plan (the two-argument overload) cannot be hashed as a Unicode one. The
+        // message names the overload that plans with the flag.
+        var plan = Plan(GoldenSpec());
+
+        var exception = Assert.Throws<ArgumentException>(() =>
+            FingerprintCalculator.ComputeCxtOutputFingerprint(plan, NativeCxt(unicode: true)));
+
+        Assert.Contains(
+            "ConversionPlanner.Plan(CalibratedSpec, LabelStyle, bool binLabelUnicode)", exception.Message, StringComparison.Ordinal);
+        Assert.Equal("inputs", exception.ParamName);
+    }
+
+    [Fact]
     public void Compute_WhenMatchedStylePairsDiffer_ThenOnlyCxtFingerprintChanges()
     {
         // The calculator's precondition is that inputs pair
@@ -297,14 +356,19 @@ public sealed class FingerprintCalculatorTests
         var baselineDat = ComputeDat(plan, spec, NativeDat());
 
         Assert.NotEqual(baselineCxt, ComputeCxt(plan, spec, NativeCxt(trailingNewline: false)));
-        Assert.NotEqual(baselineCxt, ComputeCxt(plan, spec, NativeCxt(unicode: true)));
         Assert.NotEqual(baselineCxt, ComputeCxt(plan, spec, NativeCxt(lineEnding: LineEnding.Crlf)));
+
+        // Unicode is a presentation the plan's names bake in, so it is hashed only with the plan
+        // that renders it (the guard refuses the ASCII plan above with Unicode inputs).
+        var unicode = UnicodePlan(spec);
+        Assert.NotEqual(baselineCxt, ComputeCxt(unicode, spec, NativeCxt(unicode: true)));
 
         // None of those knobs perturbs schema or dat.
         Assert.Equal(baselineDat, ComputeDat(plan, spec, NativeDat()));
+        Assert.Equal(baselineDat, ComputeDat(unicode, spec, NativeDat()));
         Assert.Equal(
             FingerprintCalculator.ComputeSchemaFingerprint(plan),
-            FingerprintCalculator.ComputeSchemaFingerprint(plan));
+            FingerprintCalculator.ComputeSchemaFingerprint(unicode));
     }
 
     [Fact]

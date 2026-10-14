@@ -61,11 +61,13 @@ internal static class ConvertCommand
         if (v2Compat)
         {
             // One extra plan from the same calibrated state. A successful one carries exactly the
-            // native plan's diagnostics: the label style reaches only rendered names (D-044), and
-            // every rendered-name defect is an Error that would have failed the plan, so nothing
-            // is added here and no diagnostic is reported twice. A FAILING one is different: it
-            // found a defect the native labels do not have, and that is the run's failure.
-            var planned = run.PlanEffective(LabelStyle.V2Compat);
+            // native plan's diagnostics: the label style and the operator presentation reach only
+            // rendered names (D-044, §8), and every rendered-name defect is an Error that would
+            // have failed the plan, so nothing is added here and no diagnostic is reported twice.
+            // A FAILING one is different: it found a defect the native labels do not have, and
+            // that is the run's failure. The v2 settings carry bin_label_unicode = false, so the
+            // plan and the manifest's .cxt fingerprint both describe the ASCII names written.
+            var planned = run.PlanEffective(LabelStyle.V2Compat, settings);
             if (!planned.TryGetValue(out var effective))
             {
                 diagnostics.AddRange(planned.Diagnostics);

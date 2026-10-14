@@ -14,7 +14,8 @@ namespace FcaBedrock.Cli;
 /// here (<c>lf</c>, trailing newline, <c>base_index = 1</c>, no trailing spaces,
 /// <c>bin_label_unicode = false</c>, a 1 GiB <c>.cxt</c> size advisory), and <c>--v2-compat</c>,
 /// the sole settled conversion override (D-011), is applied here too, as a whole replacement of
-/// the writer settings rather than a scattering of per-knob conditions.
+/// the writer settings and the operator presentation rather than a scattering of per-knob
+/// conditions.
 /// </para>
 /// <para>
 /// <b>The fingerprint inputs are read back off the very options the writers receive</b>, so
@@ -45,9 +46,10 @@ internal sealed record OutputSettings
     public required long CxtSizeAdvisoryBytes { get; init; }
 
     /// <summary>
-    /// The resolved <c>bin_label_unicode</c> flag. It is a plan/fingerprint input only; no
-    /// writer consults it, so <c>--v2-compat</c>, whose ruled overrides are all writer byte
-    /// conventions, leaves it exactly as authored.
+    /// The resolved <c>bin_label_unicode</c> flag: the presentation the plan renders names with
+    /// and the matching <c>.cxt</c> fingerprint input. No writer consults it. Natively it is the
+    /// authored value; <see cref="ToV2Compat"/> makes it false, because v2 compatibility renders
+    /// ASCII operators (§8).
     /// </summary>
     public required bool BinLabelUnicode { get; init; }
 
@@ -83,17 +85,23 @@ internal sealed record OutputSettings
     /// line, and the D-087 shape-dependent <c>.dat</c> final newline: present for a wide source,
     /// absent for a triple one, because v2's triple converter wrote none.
     /// <para>
-    /// The size advisory and <c>bin_label_unicode</c> are deliberately untouched: neither is a v2
-    /// byte convention, and the advisory changes a warning rather than a byte.
+    /// <c>bin_label_unicode</c> becomes false: v2 compatibility renders ASCII operators, so the
+    /// effective plan and the effective <c>.cxt</c> fingerprint input both describe ASCII names
+    /// whatever the spec authors (§8/§14). The size advisory is untouched: it is not a v2 byte
+    /// convention, and it changes a warning rather than a byte.
     /// </para>
     /// </summary>
     public OutputSettings ToV2Compat(SourceShape shape) => this with
     {
         Cxt = WriterOptions.V2Compat,
         Dat = WriterOptions.V2Compat with { TrailingNewline = shape != SourceShape.Triple },
+        BinLabelUnicode = false,
     };
 
-    /// <summary>The §14 <c>.cxt</c> fingerprint inputs for a plan rendered with <paramref name="style"/>.</summary>
+    /// <summary>
+    /// The §14 <c>.cxt</c> fingerprint inputs for a plan rendered with <paramref name="style"/> and
+    /// planned with <see cref="BinLabelUnicode"/>.
+    /// </summary>
     public CxtFingerprintInputs CxtFingerprint(LabelStyle style) =>
         new(style, BinLabelUnicode, Ending(Cxt.LineEnding), Cxt.TrailingNewline);
 

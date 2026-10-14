@@ -42,6 +42,14 @@ public sealed class PlanCommandTests
     private const string EmptyCxt = "sha256:7498c96bd9452d43649ea4b1b8fd8a77486ae5a25a3a80aeddeff812dad232ef";
     private const string EmptyDat = "sha256:c9438f6a49166f63189418509d5e47ad2e9fe0e915a2b352f8d6adea04dbac15";
 
+    private const string AsAttributeSchema = "sha256:1b913fc83b13b7e9ee491087c5055e47486217a6b8b4380888fdfb6a3e0cc11b";
+    private const string AsAttributeCxt = "sha256:f81810b29300d7975dd443573821d23749cb500dac13efe77e9f9975b6f5373e";
+    private const string AsAttributeDat = "sha256:80a974371a5ae410c65d58f447201836c5a6d42234bdd8c21aeeff95116939d4";
+
+    private const string NamedMissingSchema = "sha256:61e13d0fec95ed3da76a7fe19479cb3cd57b4bdf2d6654e0118e871065a588e5";
+    private const string NamedMissingCxt = "sha256:a9ea4665b748b0836bae73999d9d35b04b9a6c30b8016f1f79f7bed9f5c07d9d";
+    private const string NamedMissingDat = "sha256:0a5560ab9cd03beec565b87987e2c395b895af08450135e5847e8e4dc028500c";
+
     private const string EscapingSchema = "sha256:ed7749a2a14d9d4a63e5f1666c34d6991cab2ce8d39e4f9afa2c1a7382c9355b";
     private const string EscapingCxt = "sha256:fc3fe45b157ab399da5a4f55dd5294b266e5a153f187eb01b1f338da22b26a61";
     private const string EscapingDat = "sha256:25fbc11f2ef04846121566cb7d0f818e548c7c6f6502326ff1ca778171a11c79";
@@ -246,6 +254,147 @@ public sealed class PlanCommandTests
         Assert.Contains("schema_fingerprint = " + IndexBoundSchema, tripleHarness.StdOut, StringComparison.Ordinal);
     }
 
+    // ---- the synthetic missing column (§10.5) --------------------------------------------
+
+    [Fact]
+    public async Task Plan_WhenMissingPolicyIsAsAttribute_ThenOnlyTheMissingColumnCarriesItsRole()
+    {
+        // The missing column's identity and bin are those of a value bin named "missing" (§14), so
+        // the report marks it from the plan's own missing-column id. The fingerprints are the ones
+        // this spec had before the marker existed: the report changed, the plan did not.
+        using var temp = TempDirectory.Create();
+        var spec = temp.Write("spec.toml", CliFixtures.AsAttributeMissingSpec);
+        var data = temp.Write("data.csv", CliFixtures.AsAttributeMissingData);
+        var harness = new CliTestHarness();
+
+        var exit = await harness.RunAsync("plan", spec, data);
+
+        Assert.Equal(0, exit);
+        Assert.Equal(string.Empty, harness.StdErr);
+        Assert.Equal(
+            Document(
+                "formal_attributes = 3",
+                "formal_attribute 0: attribute=\"x\" scale=\"nominal\" bin_key=\"a\" operator=\"\""
+                    + " rendered=\"x-a\" source=column index=0 bin=value label=\"a\"",
+                "formal_attribute 1: attribute=\"x\" scale=\"nominal\" bin_key=\"b\" operator=\"\""
+                    + " rendered=\"x-b\" source=column index=0 bin=value label=\"b\"",
+                "formal_attribute 2: attribute=\"x\" scale=\"nominal\" bin_key=\"missing\" operator=\"\""
+                    + " rendered=\"x-missing\" source=column index=0 bin=value label=\"missing\" role=missing",
+                "calibrations = 0",
+                "restrictions = 0",
+                "schema_fingerprint = " + AsAttributeSchema,
+                "cxt_output_fingerprint = " + AsAttributeCxt,
+                "dat_output_fingerprint = " + AsAttributeDat),
+            harness.StdOut);
+    }
+
+    [Fact]
+    public async Task Plan_WhenARealValueIsNamedMissing_ThenItsRowCarriesNoRole()
+    {
+        // The same identity, bin and rendered name as the missing column above, but a real value:
+        // the role comes from the plan's provenance, never from the value's spelling.
+        using var temp = TempDirectory.Create();
+        var spec = temp.Write("spec.toml", CliFixtures.ValueNamedMissingSpec);
+        var data = temp.Write("data.csv", CliFixtures.ValueNamedMissingData);
+        var harness = new CliTestHarness();
+
+        var exit = await harness.RunAsync("plan", spec, data);
+
+        Assert.Equal(0, exit);
+        Assert.Equal(string.Empty, harness.StdErr);
+        Assert.Equal(
+            Document(
+                "formal_attributes = 2",
+                "formal_attribute 0: attribute=\"x\" scale=\"nominal\" bin_key=\"missing\" operator=\"\""
+                    + " rendered=\"x-missing\" source=column index=0 bin=value label=\"missing\"",
+                "formal_attribute 1: attribute=\"x\" scale=\"nominal\" bin_key=\"other\" operator=\"\""
+                    + " rendered=\"x-other\" source=column index=0 bin=value label=\"other\"",
+                "calibrations = 0",
+                "restrictions = 0",
+                "schema_fingerprint = " + NamedMissingSchema,
+                "cxt_output_fingerprint = " + NamedMissingCxt,
+                "dat_output_fingerprint = " + NamedMissingDat),
+            harness.StdOut);
+    }
+
+    [Fact]
+    public async Task Plan_WhenARealValueNamedMissingMeetsTheMissingColumn_ThenTheIdentityCollisionRemains()
+    {
+        // The current restriction (§10.5): relabelling separates the rendered names but not the
+        // canonical identities, so the plan still fails, and no report is printed.
+        using var temp = TempDirectory.Create();
+        var spec = temp.Write("spec.toml", CliFixtures.ValueNamedMissingAsAttributeSpec);
+        var data = temp.Write("data.csv", CliFixtures.ValueNamedMissingData);
+        var harness = new CliTestHarness();
+
+        var exit = await harness.RunAsync("plan", spec, data);
+
+        Assert.Equal(1, exit);
+        Assert.Equal(string.Empty, harness.StdOut);
+        Assert.Equal(
+            "attribute=\"x\": error FormalAttributeCollision: Formal attribute identity (x/nominal/missing)"
+                + " collides with an earlier one.\n",
+            harness.StdErr);
+    }
+
+    // ---- generated Unicode operators (§8) -------------------------------------------------
+
+    [Fact]
+    public async Task Plan_WhenBinLabelUnicodeIsTrue_ThenOnlyGeneratedOperatorsInRenderedNamesChange()
+    {
+        // The identity columns (bin_key, operator, bin) are the canonical ASCII ones whatever the
+        // flag; rendered names take ≥/≤ only where the planner generated the operator. The
+        // ordered cut "=x" gives the open low bin "<" + "=x", authored text that stays "<=x".
+        using var temp = TempDirectory.Create();
+        var spec = temp.Write("spec.toml", CliFixtures.UnicodeLabelSpec);
+        var ascii = temp.Write("ascii.toml", CliFixtures.UnicodeLabelAsciiSpec);
+        var data = temp.Write("data.csv", CliFixtures.UnicodeLabelData);
+        var harness = new CliTestHarness();
+        var asciiHarness = new CliTestHarness();
+
+        Assert.Equal(0, await harness.RunAsync("plan", spec, data));
+        Assert.Equal(0, await asciiHarness.RunAsync("plan", ascii, data));
+
+        Assert.Equal(string.Empty, harness.StdErr);
+        Assert.Equal(
+            [
+                "formal_attribute 0: attribute=\"age\" scale=\"nominal\" bin_key=\"<30\" operator=\"\""
+                    + " rendered=\"age-<30\" source=column index=0 bin=numeric_cut lo=none hi=30",
+                "formal_attribute 1: attribute=\"age\" scale=\"nominal\" bin_key=\"[30, 50)\" operator=\"\""
+                    + " rendered=\"age-[30, 50)\" source=column index=0 bin=numeric_cut lo=30 hi=50",
+                "formal_attribute 2: attribute=\"age\" scale=\"nominal\" bin_key=\">=50\" operator=\"\""
+                    + " rendered=\"age-≥50\" source=column index=0 bin=numeric_cut lo=50 hi=none",
+                "formal_attribute 3: attribute=\"age_ge\" scale=\"ordinal\" bin_key=\"all\" operator=\"\""
+                    + " rendered=\"age_ge-all\" source=column index=0 bin=value label=\"all\"",
+                "formal_attribute 4: attribute=\"age_ge\" scale=\"ordinal\" bin_key=\"30\" operator=\">=\""
+                    + " rendered=\"age_ge-≥30\" source=column index=0 bin=value label=\"30\"",
+                "formal_attribute 5: attribute=\"age_ge\" scale=\"ordinal\" bin_key=\"50\" operator=\">=\""
+                    + " rendered=\"age_ge-≥50\" source=column index=0 bin=value label=\"50\"",
+                "formal_attribute 6: attribute=\"grade\" scale=\"nominal\" bin_key=\"<=x\" operator=\"\""
+                    + " rendered=\"grade-<=x\" source=column index=1 bin=text_cut lo=none hi=\"=x\"",
+                "formal_attribute 7: attribute=\"grade\" scale=\"nominal\" bin_key=\"[=x, b)\" operator=\"\""
+                    + " rendered=\"grade-[=x, b)\" source=column index=1 bin=text_cut lo=\"=x\" hi=\"b\"",
+                "formal_attribute 8: attribute=\"grade\" scale=\"nominal\" bin_key=\">=b\" operator=\"\""
+                    + " rendered=\"grade-≥b\" source=column index=1 bin=text_cut lo=\"b\" hi=none",
+                "formal_attribute 9: attribute=\"level\" scale=\"ordinal\" bin_key=\"low\" operator=\"<=\""
+                    + " rendered=\"level ≤ low\" source=column index=2 bin=value label=\"low\"",
+                "formal_attribute 10: attribute=\"level\" scale=\"ordinal\" bin_key=\"high\" operator=\"<=\""
+                    + " rendered=\"level ≤ high\" source=column index=2 bin=value label=\"high\"",
+                "formal_attribute 11: attribute=\"class\" scale=\"nominal\" bin_key=\"<=50K\" operator=\"\""
+                    + " rendered=\"class-<=50K\" source=column index=3 bin=value label=\"<=50K\"",
+                "formal_attribute 12: attribute=\"class\" scale=\"nominal\" bin_key=\">50K\" operator=\"\""
+                    + " rendered=\"class->=50K\" source=column index=3 bin=value label=\">50K\"",
+            ],
+            Lines(harness.StdOut).Where(line => line.StartsWith("formal_attribute ", StringComparison.Ordinal)));
+
+        // The schema and .dat fingerprints describe identity and ids, which the flag never moves;
+        // the .cxt one describes the names and the flag, so it does.
+        Assert.Equal(Field(asciiHarness.StdOut, "schema_fingerprint"), Field(harness.StdOut, "schema_fingerprint"));
+        Assert.Equal(Field(asciiHarness.StdOut, "dat_output_fingerprint"), Field(harness.StdOut, "dat_output_fingerprint"));
+        Assert.NotEqual(
+            Field(asciiHarness.StdOut, "cxt_output_fingerprint"), Field(harness.StdOut, "cxt_output_fingerprint"));
+    }
+
     // ---- determinism and byte shape -----------------------------------------------------
 
     [Fact]
@@ -418,6 +567,12 @@ public sealed class PlanCommandTests
     }
 
     // ---- helpers ---------------------------------------------------------------------------
+
+    private static string[] Lines(string stream) => stream.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+
+    // The value of one "<label> = <value>" report line.
+    private static string Field(string report, string label) =>
+        Lines(report).Single(line => line.StartsWith(label + " = ", StringComparison.Ordinal))[(label.Length + 3)..];
 
     private static string WithStoredFingerprints(string schema, string cxt, string dat) =>
         CliFixtures.IndexBoundSpec.Replace(

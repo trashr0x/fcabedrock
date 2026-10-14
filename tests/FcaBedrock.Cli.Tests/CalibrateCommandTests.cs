@@ -544,6 +544,42 @@ public sealed class CalibrateCommandTests
             await File.ReadAllBytesAsync(temp.Resolve("baseB.dat")));
     }
 
+    [Fact]
+    public async Task Calibrate_WhenBinLabelUnicodeIsTrue_ThenTheStoredFieldsDescribeTheUnicodeContextItReconvertsTo()
+    {
+        // The frozen replan pairs with the frozen document's own flag (§14): its stored fields
+        // verify as current, its native conversion writes the same Unicode names as the
+        // on-the-fly run, and its stored .cxt field is that run's manifest value.
+        using var temp = TempDirectory.Create();
+        var spec = temp.Write("spec.toml", CliFixtures.UnicodeLabelSpec);
+        var data = temp.Write("data.csv", CliFixtures.UnicodeLabelData);
+        var frozen = temp.Resolve("frozen.toml");
+
+        var onTheFly = new CliTestHarness();
+        Assert.Equal(0, await onTheFly.RunAsync("convert", spec, data, "--out", temp.Resolve("baseA"), "--format", "both"));
+        Assert.Equal(0, await new CliTestHarness().RunAsync("calibrate", spec, data, "--out", frozen));
+
+        var report = new CliTestHarness();
+        Assert.Equal(0, await report.RunAsync("fingerprint", frozen, data));
+        Assert.Equal(string.Empty, report.StdErr);
+        Assert.Equal(3, Lines(report.StdOut).Count(line => line.EndsWith("stored=match", StringComparison.Ordinal)));
+
+        var reconverted = new CliTestHarness();
+        Assert.Equal(0, await reconverted.RunAsync(
+            "convert", frozen, data, "--out", temp.Resolve("baseB"), "--format", "both", "--no-manifest"));
+        Assert.Equal(string.Empty, reconverted.StdErr);
+
+        var cxt = await File.ReadAllBytesAsync(temp.Resolve("baseA.cxt"));
+        Assert.Equal(cxt, await File.ReadAllBytesAsync(temp.Resolve("baseB.cxt")));
+        Assert.Contains("\nage-≥50\n", Encoding.UTF8.GetString(cxt), StringComparison.Ordinal);
+
+        var stored = Parse(await ReadCommittedAsync(frozen)).Spec!.CxtOutputFingerprint;
+        Assert.Contains(
+            $"cxt_output_fingerprint = \"{stored}\"",
+            await ReadCommittedAsync(temp.Resolve("baseA.manifest.toml")),
+            StringComparison.Ordinal);
+    }
+
     // ---- authored values survive the freeze (§10.8, §11.2, §11.4, D-075/D-101) ------------------
 
     [Fact]

@@ -44,7 +44,7 @@ changes an earlier one. A new entry MUST add its line here.
 - D-008: Avalonia for the desktop UI
 - D-009: New TOML spec format; one-way `.bed` migration *(migrator realized by D-079)*
 - D-010: Modelled-but-rejected scales/features carry forward-compat
-- D-011: v2 byte-equality is a CLI flag, not a spec setting
+- D-011: v2 byte-equality is a CLI flag, not a spec setting *(precedence over `bin_label_unicode` added in place on 2026-10-14)*
 - D-133: A Bedrock spec is a UTF-8 TOML 1.1.0 document; the TOML version is independent of `[spec].version` *(the pinned reader's rejection of a literal U+FFFD recorded in place on 2026-10-14)*
 
 ### Scope / feature decisions
@@ -92,7 +92,7 @@ changes an earlier one. A new entry MUST add its line here.
 - D-041: Sep as the DSV tokenizer for the wide-CSV source *(amended in place on 2026-10-01: raw-mode splitting under Sources-owned reading rules; the reader adaptation is D-137)*
 - D-042: Drop the `BedrockResult<T>` alias; use `Result<T, BedrockDiagnostic>`
 - D-043: Two test axes: golden = v2-compat evidence, conformance = native spec
-- D-044: Bin-label style is a plan-time render hook, not a writer flag
+- D-044: Bin-label style is a plan-time render hook, not a writer flag *(Unicode operator presentation added in place on 2026-10-14)*
 - D-045: v2 `o` and `n` are both cut-based; discrete→nominal, progressive→ordinal
 - D-046: `ordered_cuts` discretizer (spec §11.8); v2 `.bed` section-role asymmetry
 - D-047: Open-end ordinal threshold renders `all`, canonical in both paths
@@ -135,10 +135,10 @@ changes an earlier one. A new entry MUST add its line here.
 
 ### M2 implementation (slices)
 
-- D-074: `as_attribute` missing-column position uniform across scale kinds (appendix to D-068) *(default-path rendering; an explicit `formal_attribute_format` renders the missing column too; D-117)*
+- D-074: `as_attribute` missing-column position uniform across scale kinds (appendix to D-068) *(default-path rendering; an explicit `formal_attribute_format` renders the missing column too; D-117; identity shared with a value bin `missing` and the plan report's marker recorded in place on 2026-10-14)*
 - D-075: Slice C TOML reader/writer contract: strictness, parse codes, canonical form *(deferred-surface set narrowed by D-078/D-120 to `value_type = "date"`; emptied in place on 2026-10-06; U+FFFD string escape added in place on 2026-10-14)*
 - D-076: Slice D seam/plan validation contract details *(appends D-067; exact numeric form added + diagnostic renamed by D-091)*
-- D-077: Slice E fingerprint encoding/verification contract details *(appends D-069)*
+- D-077: Slice E fingerprint encoding/verification contract details *(appends D-069; pairing precondition extended to `bin_label_unicode` in place on 2026-10-14)*
 - D-078: Slice F composition/carrier contract details *(realizes D-027/D-052; refines D-067/D-075; pattern semantics, template application and duplicate-id validation settled by D-114/D-115/D-116/D-118; extends canonical file identity settled by D-122)*
 - D-079: Slice G `.bed` migrator contract: document-model target, Diagnosed surfaces *(realizes D-009/D-049/D-057/D-068; numeric restrict migration refined by D-091; date-type retirement condition clarified in place on 2026-10-06)*
 - D-080: `AttributeNameDuplicate` / `ValueLabelKeyNotInDomain` re-homed to the resolve seam *(realizes D-067; supersedes its "not re-homed" parenthetical)*
@@ -225,11 +225,11 @@ changes an earlier one. A new entry MUST add its line here.
 
 ### M7 (CLI) pre-implementation adjudication
 
-- D-122: M7 CLI contract: commands, process model, publication, manifest, freeze, authored-empty domains, per-command semantics, non-goals, distribution, and the exit floor *(revises D-071's empty-domain reading; refines D-026/D-078/D-088; realizes the CLI faces of D-005/D-028/D-067/D-077; implementation architecture realized by D-123; reach of parts 4–5 qualified by D-125; part 10's headerless schema record amended in place on 2026-10-01; part 3's escaping and code-less warning form amended in place on 2026-10-14; parts 1, 2, 4, 8 and 10 amended in place on 2026-10-14 for attached option values, the `tab` delimiter spelling, the `migrate` named object-key header rule, and the `--temp-dir` and `--out` text checks; parts 2 and 10 amended in place on 2026-10-14 for DATA read explanations and strict UTF-8 schema reads; part 10's frozen numeric domain text amended in place on 2026-10-14)*
+- D-122: M7 CLI contract: commands, process model, publication, manifest, freeze, authored-empty domains, per-command semantics, non-goals, distribution, and the exit floor *(revises D-071's empty-domain reading; refines D-026/D-078/D-088; realizes the CLI faces of D-005/D-028/D-067/D-077; implementation architecture realized by D-123; reach of parts 4–5 qualified by D-125; part 10's headerless schema record amended in place on 2026-10-01; part 3's escaping and code-less warning form amended in place on 2026-10-14; parts 1, 2, 4, 8 and 10 amended in place on 2026-10-14 for attached option values, the `tab` delimiter spelling, the `migrate` named object-key header rule, and the `--temp-dir` and `--out` text checks; parts 2 and 10 amended in place on 2026-10-14 for DATA read explanations and strict UTF-8 schema reads; part 10's frozen numeric domain text amended in place on 2026-10-14; part 10's missing-column report marker amended in place on 2026-10-14)*
 
 ### M7 (CLI) implementation
 
-- D-123: M7 implementation architecture and public surfaces: CLI boundary, parser, presentation, audit argv, filesystem identity, publication transaction, run manifest, freeze pairing, runtime options, and the CXT size advisory (registry 81 → 82) *(realizes D-122's implementation architecture; refines D-085's registry-timing rule; reach of point 7 qualified by D-125; point 3's escaping amended in place on 2026-10-14; point 2's parser grammar amended in place on 2026-10-14; point 3's DATA read explanation added in place on 2026-10-14; point 9's source of an `include` prefix amended in place on 2026-10-14)*
+- D-123: M7 implementation architecture and public surfaces: CLI boundary, parser, presentation, audit argv, filesystem identity, publication transaction, run manifest, freeze pairing, runtime options, and the CXT size advisory (registry 81 → 82) *(realizes D-122's implementation architecture; refines D-085's registry-timing rule; reach of point 7 qualified by D-125; point 3's escaping amended in place on 2026-10-14; point 2's parser grammar amended in place on 2026-10-14; point 3's DATA read explanation added in place on 2026-10-14; point 9's source of an `include` prefix amended in place on 2026-10-14; point 9's native and effective presentation pairing amended in place on 2026-10-14)*
 
 ### M8 (first scaling / benchmark pass)
 
@@ -413,16 +413,23 @@ of this file).
 
 ### D-011: v2 byte-equality is a CLI flag, not a spec setting
 
-- **Status:** accepted
+- **Status:** accepted; its precedence over `bin_label_unicode` added in place on 2026-10-14
 - **Decision:** `--v2-compat` on the `convert` command overrides `[output]`
   to v2's exact byte conventions (CRLF, `30to<40` bin labels, trailing space
   on `.dat` lines). Not expressible as spec fields.
+
+  Amended in place on 2026-10-14: the override also renders ASCII operators, because v2
+  wrote `>=`. It takes precedence over `bin_label_unicode = true` (spec §8), so the
+  effective plan's `ConversionPlan.BinLabelUnicode` and the effective `.cxt` fingerprint
+  input the manifest records are both false (D-044, D-077). The spec's stored native
+  fingerprints keep its own flag (§14).
 - **Why:** v2-compat is a one-time migration/testing concern, not a property
   of a spec. Keeps the spec format clean. M1's byte-equality goal uses this
   flag.
 - **Rejected:** a `bin_label_style = "math" | "v2"` spec field (originally
   proposed, then pulled): pollutes the spec with a transient concern.
-- **Affects:** Cli, Export, spec §8 ("The [output] block") / §18 ("Output formats").
+- **Affects:** Cli, Export, spec §8 ("The [output] block") / §18 ("Output formats");
+  Core's planner for the Unicode precedence.
 
 ### D-133: A Bedrock spec is a UTF-8 TOML 1.1.0 document; the TOML version is independent of `[spec].version`
 
@@ -1347,7 +1354,7 @@ Refinements from the second audit pass.
 
 ### D-044: Bin-label style is a plan-time render hook, not a writer flag
 
-- **Status:** accepted
+- **Status:** accepted; the Unicode operator presentation added in place on 2026-10-14
 - **Date:** 2026-06-25
 - **Decision:** the v2 `30to<40` vs native `[30, 40)` cut-bin label difference is
   applied once, at name render, via a `LabelStyle { Native, V2Compat }` input to
@@ -1356,12 +1363,27 @@ Refinements from the second audit pass.
   form). Discretizers emit **one canonical label** (`<c0`, `[a, b)`, `>=cn`) used
   as the bin key / `BinKey` / `CrossesByBin` key; the style touches only the
   rendered name. `WriterOptions` gains no label flag.
+
+  Amended in place on 2026-10-14: `bin_label_unicode` (spec §8) is a second plan-time
+  render input beside the style. The existing `Plan(CalibratedSpec, LabelStyle = Native)`
+  keeps its signature and renders ASCII: it delegates to the additive public overload
+  `Plan(CalibratedSpec, LabelStyle, bool binLabelUnicode)`, and the read-only
+  `ConversionPlan.BinLabelUnicode` records the effective flag, which is false under
+  `V2Compat` whatever was requested (D-011). Only operators the planner generates change:
+  an ordinal shape's operator token (`>=` to `≥` and `<=` to `≤`, in a default name and in
+  `{scale_op}`) and the open high cut bin (`>=cn` to `≥cn`), which the shape's
+  `CanonicalBin` structure identifies. A name's spelling is never read, because a cut
+  category may itself begin with `=`: the open low bin of an `ordered_cuts` cut `=x` is
+  `<` + `=x`, and it stays `<=x`. Values, labels, format literals and cut text keep their
+  spelling. Canonical keys, identities and ids do not change, the `RenderBinLabel` hook
+  keeps its single style input, and no global setting reaches Core.
 - **Why:** label style affects `output_fingerprint` (now split per-format, D-051)
   only, never the schema (§8/§14, D-011/D-035). Canonical identity + late render keeps writers dumb (EP-15) and lets
   one planner path serve both styles.
 - **Affects:** `FcaBedrock.Core` (`Discretizer.RenderBinLabel`, `LabelStyle`,
-  `ConversionPlanner`); the golden harness derives the style from the v2-compat
-  line ending.
+  `ConversionPlanner`, and from 2026-10-14 the `Plan` overload and
+  `ConversionPlan.BinLabelUnicode`); the golden harness derives the style from the
+  v2-compat line ending.
 
 ---
 
@@ -2131,7 +2153,8 @@ built; they refine, not reverse, D-009 / D-049 / D-050…D-065.
   clause describes the **default** naming path: under an explicit
   `formal_attribute_format` the missing column renders through that format like
   every other formal attribute the logical attribute emits (D-117). Its
-  **position** and canonical identity are unchanged.
+  **position** and canonical identity are unchanged. Its identity shared with a value bin
+  named `missing` and the plan report's marker recorded in place on 2026-10-14.
 - **Date:** 2026-07-04
 - **Decision:** the `{column}-missing` column appends **after the scale's columns
   for every scale kind**. D-068 named nominal (after the value bins) and
@@ -2144,6 +2167,18 @@ built; they refine, not reverse, D-009 / D-049 / D-050…D-065.
   missing values skip) instead of the policy enum, so the emitter never
   reinterprets policy; `AttributeSpec.MissingPolicy` remains the policy source
   for planning and for the Slice E output-fingerprint shared inputs.
+
+  Amended in place on 2026-10-14: the canonical key `missing` is also the key of a value
+  bin named `missing`, so a nominal value bin `missing` and the missing column are one
+  identity. One attribute cannot have both: the plan fails with
+  `FormalAttributeCollision`, and `value_labels` or `formal_attribute_format` cannot
+  separate them, because they change only rendered names. Two plans that differ only in
+  whether a column keyed `missing` is that value or the missing column have the same
+  `schema_fingerprint`, although the columns mean different things; their output
+  fingerprints still differ, because `missing_policy` is one of their shared inputs (§14). The `plan` report marks the
+  missing column `role=missing`, read from `PlannedAttribute.MissingFormalAttributeId`
+  (D-122 part 10). A distinct, tagged missing identity needs a fingerprint-format
+  migration and is deferred (`docs/roadmap.md`).
 - **Why:** the planner's append branch is scale-agnostic, so ordinal support is
   free; excluding it would cost a scale-kind special case and leave
   `ordinal + as_attribute` silently behaving as skip (the exact gap D-068
@@ -2310,7 +2345,8 @@ built; they refine, not reverse, D-009 / D-049 / D-050…D-065.
 
 ### D-077: Slice E fingerprint encoding/verification contract details
 
-- **Status:** accepted (appends D-069; realizes D-035/D-051/D-053/D-069 in code)
+- **Status:** accepted (appends D-069; realizes D-035/D-051/D-053/D-069 in code); the
+  pairing precondition extended to `bin_label_unicode` in place on 2026-10-14
 - **Date:** 2026-07-05
 - **Decision:** Slice E ships the fingerprint encoder
   (`FcaBedrock.Core.Fingerprinting`), the plan-side structural bin, and
@@ -2371,6 +2407,18 @@ built; they refine, not reverse, D-009 / D-049 / D-050…D-065.
     in); `SpecFingerprints.ComputeNative` guarantees the Native/Native pairing
     (v2-compat is a CLI override, D-011); the M7 effective path pairs
     V2Compat/V2Compat.
+
+    Amended in place on 2026-10-14: Unicode rendering is built (D-044), and the
+    precondition covers it. `ComputeCxtOutputFingerprint` also requires
+    `inputs.BinLabelUnicode` to equal the plan's effective `ConversionPlan.BinLabelUnicode`,
+    and `ComputeNative` requires the plan's flag to equal the document's own. The
+    two-argument `Plan` overload plans ASCII, so pairing its plan with a document that
+    authors `true` throws `ArgumentException`, even when the plan renders no inequality;
+    both messages name `ConversionPlanner.Plan(CalibratedSpec, LabelStyle, bool
+    binLabelUnicode)` and the flag to match. This is a stricter public precondition, not a
+    new hash input or encoding. A `cxt_output_fingerprint` stored under `true` before
+    rendering existed reads as stale wherever a generated operator now renders as `≥` or
+    `≤`, as the `bin_label_unicode` clause above foresaw.
   - **Verification:** defined over a successful plan only (a failed
     resolve/plan already fails the run). Absent stored field → silent (§3
     optional); match → silent (no "verified" noise, EP-3); mismatch → its own
@@ -5704,7 +5752,8 @@ and §16.4; D-120 and D-121 record the implemented naming, template and matcher 
   amended in place on 2026-10-14 for attached option values, the `tab` delimiter spelling, the
   `migrate` named object-key header rule, and the `--temp-dir` and `--out` text checks; parts 2
   and 10 amended in place on 2026-10-14 for DATA read explanations and strict UTF-8 schema reads;
-  part 10's frozen numeric domain text amended in place on 2026-10-14
+  part 10's frozen numeric domain text amended in place on 2026-10-14; part 10's missing-column
+  report marker amended in place on 2026-10-14
 - **Date:** 2026-07-22
 - **Decision:** the complete M7 CLI contract is settled **before any M7 code**, in
   fifteen parts.
@@ -5918,6 +5967,10 @@ and §16.4; D-120 and D-121 record the implemented naming, template and matcher 
     canonical identity, rendered name, source/scale/bin detail, calibration and
     restriction summaries, then the **three native fingerprints**. No artifact, no
     manifest, no machine document; stale-fingerprint warnings stay stderr diagnostics.
+    Amended in place on 2026-10-14: the row of the column `missing_policy = "as_attribute"`
+    adds ends with ` role=missing`, read from the plan's missing-column id rather than from
+    any spelling, because its identity and bin are those of a value bin named `missing`
+    (D-074). No other row changes, and the report's fingerprints do not move.
   - **`stats SPEC DATA`**: DATA required; the full pipeline plus **one bounded
     emit-counting pass**; exactly six fields: `objects`, `formal_attributes`,
     `crosses`, `density` (an exact ratio with fixed six-decimal invariant rendering),
@@ -6104,7 +6157,8 @@ and §16.4; D-120 and D-121 record the implemented naming, template and matcher 
   Slice K, merged 2026-08-08; the roadmap's M7 exit block is the landed record. The reach of
   point 7 qualified by D-125 (2026-09-09); point 3's escaping amended in place on 2026-10-14;
   point 2's parser grammar amended in place on 2026-10-14; point 3's DATA read explanation added
-  in place on 2026-10-14; point 9's source of an `include` prefix amended in place on 2026-10-14.
+  in place on 2026-10-14; point 9's source of an `include` prefix amended in place on 2026-10-14;
+  point 9's native and effective presentation pairing amended in place on 2026-10-14.
 - **Date:** 2026-07-24
 - **Decision:** M7's implementation architecture and every new public surface are
   settled here. It records the concrete parser, serializer and transaction-mechanism
@@ -6213,6 +6267,15 @@ and §16.4; D-120 and D-121 record the implemented naming, template and matcher 
   internal list in attribute order. It adds no public member and no Core state. The freezer
   writes the captured prefix back unchanged and formats only the additions; `value_groups`
   groups and the effective policies are still read from the effective resolved state.
+
+  Amended in place on 2026-10-14: the shared preparation's native plan and `calibrate`'s
+  replan of the frozen document both plan with that document's own `bin_label_unicode`,
+  the flag `ComputeNative` now requires (D-077), so the stored fingerprints describe the
+  names a native reconversion writes, Unicode where the document sets the flag.
+  `convert --v2-compat` plans its effective plan
+  through `PlanEffective` with the v2 output settings, whose flag `ToV2Compat` sets false
+  (D-011), so the manifest's effective `cxt_output_fingerprint` describes the ASCII names it
+  writes.
 
   **10. Presence carrier.** `AttributeSpec.DeclaredDomain` is the nullable presence
   carrier: `null` = omitted (requests observed-domain calibration); any non-null list

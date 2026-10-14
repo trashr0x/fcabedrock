@@ -924,10 +924,21 @@ empty_line_trailing_space = false            # default: bare empty line for obje
 ```
 
 **`bin_label_unicode`**. With `false` (default), bin labels and ordinal
-thresholds use ASCII operators (`<30`, `[30, 40)`, `>=50`). With `true`,
-Unicode operators (`<30`, `[30, 40)`, `≥50`). ASCII default chosen for
-ConExp compatibility: ConExp is Java/2009-era and not all installations
-handle UTF-8 reliably.
+thresholds use ASCII operators (`<30`, `[30, 40)`, `>=50`). With `true`, the
+operators the planner generates use Unicode (`<30`, `[30, 40)`, `≥50`): an
+ordinal threshold's `>=` and `<=` become `≥` and `≤`, in the default name and in
+`{scale_op}` (§10.7), and an open high cut bin `>=c` becomes `≥c`. `<`, `>`, `all`
+and the interior `[a, b)` have no Unicode form and do not change. Text the spec
+authors is never rewritten, even where it reads like an operator: values and
+`value_labels` (`<=50K`, §21 item 7), `formal_attribute_format` literals, a
+dichotomic `true_value` and `ordered_cuts` categories keep their spelling, so a cut
+`=x` still gives the open low bin `<=x` (`<` followed by `=x`). The flag changes
+rendered names and therefore `cxt_output_fingerprint`; it never changes a canonical
+identity, a `.dat` id, `schema_fingerprint` or `dat_output_fingerprint` (§14). A
+Unicode name that equals a name the spec authors is a
+`FormalAttributeNameCollision` (§10.2). `--v2-compat` renders ASCII whatever the
+flag says (below). ASCII default chosen for ConExp compatibility: ConExp is
+Java/2009-era and not all installations handle UTF-8 reliably.
 
 **`line_endings`**. `"lf"` (default) or `"crlf"`, set separately in `[output.cxt]`
 and `[output.dat]` (§18.1, §18.2).
@@ -958,12 +969,16 @@ Both knobs exist for callers whose FIMI consumer has a specific expectation.
 **v2 byte-equality mode** is *not* a spec setting; it's a CLI flag
 (`--v2-compat`) on the convert command that overrides `[output]` to v2's exact
 byte conventions. The complete set of v2-isms, all behind this one flag: CRLF
-line endings (`.cxt` and `.dat`), `30to<40`-style bin labels, a trailing
+line endings (`.cxt` and `.dat`), `30to<40`-style bin labels, ASCII operators
+even when `bin_label_unicode = true`, a trailing
 space on every non-empty `.dat` line, and a **shape-dependent `.dat` final
 newline**, present for a wide source, absent for a triple source (v2's triple
 converter wrote no final `.dat` line terminator; §18.2, D-087). Keeping every
 v2-ism behind the single flag means the vNext default output is uniformly clean;
-v2 reproduction is one switch, not a scattering of legacy defaults.
+v2 reproduction is one switch, not a scattering of legacy defaults. Because the
+flag renders ASCII, the run's effective `cxt_output_fingerprint` (§15) hashes
+`bin_label_unicode` as `false`; the spec's stored native fingerprints keep the
+spec's own value (§14, D-011).
 
 ## 9. Templates and matchers
 
@@ -1483,6 +1498,17 @@ when present, missing crosses when absent); for ordinal scales it
 follows the threshold formal attributes. The rule is uniform: the
 missing attribute appends after the scale's formal attributes (D-074).
 
+**A value named `missing` (current restriction).** The missing attribute's canonical
+identity (§14) has the bin key `missing`, which is also the key of a nominal value bin
+named `missing`: a `declared_domain` value, an observed or `include`-added value, or a
+`value_groups` label. The two cannot coexist in one attribute. The plan fails with
+`FormalAttributeCollision` (§10.2), and neither `value_labels` nor
+`formal_attribute_format` can separate them, because both change only rendered names.
+Group such a value under another label (`value_groups`, §11.6) or use `"skip"`. In
+`plan` output the missing attribute's row ends with `role=missing`, which tells it
+apart from a value bin named `missing` (D-122). A distinct identity for the missing
+attribute needs a fingerprint-format change and is deferred (D-074).
+
 **Triple input (what counts as missing).** For a predicate-backed attribute,
 "missing" requires a **matching-predicate row** for the subject whose value is
 empty, equals `missing_token`, or is absent because the row is too short. A
@@ -1625,9 +1651,12 @@ under `identity` / `free_per_value`. For a **dichotomic** scale this means the
 `bruises?-bruised`. Under a discretizer that does not consult labels, the raw bin
 label is used.
 
-If two formal attributes render to the same name under the chosen format (e.g. a
-real category value `missing` colliding with the missing column), the planner
-emits `FormalAttributeNameCollision` (§10.2).
+If two formal attributes render to the same name under the chosen format (e.g.
+`formal_attribute_format = "{value}"` on two attributes that share a value), the
+planner emits `FormalAttributeNameCollision` (§10.2). A real category value
+`missing` and the missing column are a different case: they share a canonical
+identity, which is `FormalAttributeCollision`, and no format or label can separate
+them (§10.5).
 
 **Rendered-name validity (normative).** After final substitution, **every**
 rendered formal-attribute name MUST be **non-empty** and MUST contain **neither
@@ -2479,12 +2508,19 @@ underpins both fingerprints, so it is stated first:
   attribute: `(logical_attribute_name, scale_kind, canonical_bin_or_threshold_key,
   scale_operator)`. It determines `.dat` column identity and ordering, and it is
   what `schema_fingerprint` hashes. It is independent of how the attribute is
-  *named* in output.
+  *named* in output: its key and operator keep their ASCII spelling (`>=50`, `>=`)
+  whatever the presentation (§8). The missing column's key is the string `missing`
+  (§10.5), which is also the key of a nominal value bin named `missing`. Within one
+  attribute the two collide. Two plans that differ only in whether a column keyed
+  `missing` is that value or the missing column have the same `schema_fingerprint`,
+  although the columns mean different things; their output fingerprints differ,
+  because `missing_policy` is a shared input. A distinct missing identity is deferred
+  to a fingerprint-format change (D-074).
 - **Rendered name** is the string that appears in a `.cxt` for that column,
   produced from the canonical identity by `formal_attribute_format`,
-  `display_name`, and `value_labels`. These affect rendered names and
-  `cxt_output_fingerprint` only, never canonical identity, `schema_fingerprint`,
-  or `dat_output_fingerprint`.
+  `display_name`, `value_labels`, the label style and `bin_label_unicode`. These
+  affect rendered names and `cxt_output_fingerprint` only, never canonical
+  identity, `schema_fingerprint`, or `dat_output_fingerprint`.
 
 **`schema_fingerprint`** is computed from the **final ordered list of planned
 formal attributes only**: their canonical identities, in plan order, as
@@ -2689,7 +2725,12 @@ what the spec produces with no CLI overrides. A CLI override such as
 applies every v2 byte convention §8 lists at run time. The
 run manifest (§15) records the **effective** `cxt_output_fingerprint` /
 `dat_output_fingerprint` after overrides, which may legitimately differ from the
-spec-stored values. On load, each spec-stored fingerprint is verified against the
+spec-stored values. The native settings include `bin_label_unicode`: the native plan
+renders with the spec's own value and the stored `cxt_output_fingerprint` hashes it,
+while under `--v2-compat` the effective plan renders ASCII and the manifest's effective
+value hashes `bin_label_unicode` as `false` (§8). Each `.cxt` fingerprint is computed
+from a plan rendered with exactly the presentation it hashes (D-077). On load, each
+spec-stored fingerprint is verified against the
 spec's *native* settings only: a mismatch there is a real warning
 (`SchemaFingerprintStale` / `CxtOutputFingerprintStale` /
 `DatOutputFingerprintStale`); a difference between the spec-stored and manifest
@@ -3640,7 +3681,8 @@ number, e.g. "§21-item-16" in D-051).
    Configurable via `[output.cxt] size_advisory_bytes`.
 
 6. **ASCII vs Unicode operators** → ASCII default (`>=`, `<=`) for
-   ConExp compat. Unicode via `[output] bin_label_unicode = true`.
+   ConExp compat. Unicode via `[output] bin_label_unicode = true`, for the
+   operators the planner generates; `--v2-compat` keeps ASCII (§8).
 
 7. **Literal value strings that look like operators** (e.g., `>50K`,
    `<=50K` in mini-adult's class column) → treated as opaque string

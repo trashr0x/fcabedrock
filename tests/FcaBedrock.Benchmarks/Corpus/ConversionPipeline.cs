@@ -101,7 +101,7 @@ internal static class ConversionPipeline
     /// <b>calibrated state</b> rather than a plan.
     /// <para>
     /// It exists for the pure-planner benchmark, which needs exactly the input
-    /// <see cref="FcaBedrock.Core.Planning.ConversionPlanner.Plan"/> takes and must not have the
+    /// <see cref="FcaBedrock.Core.Planning.ConversionPlanner.Plan(CalibratedSpec, LabelStyle)"/> takes and must not have the
     /// planning already done for it (D-093/D-098: plan consumes calibrated state, so this is the
     /// honest boundary between the two).
     /// </para>

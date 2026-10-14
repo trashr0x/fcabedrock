@@ -12,7 +12,12 @@ namespace FcaBedrock.Core.Fingerprinting;
 /// The bin-label render style. Must match the style the plan was produced with.
 /// See <see cref="FingerprintCalculator.ComputeCxtOutputFingerprint"/>.
 /// </param>
-/// <param name="BinLabelUnicode">Whether bin labels render Unicode operators (§8).</param>
+/// <param name="BinLabelUnicode">
+/// Whether bin labels render Unicode operators (§8). Must match the plan's effective
+/// <see cref="Planning.ConversionPlan.BinLabelUnicode"/>, which is always false under
+/// <see cref="LabelStyle.V2Compat"/>. See
+/// <see cref="FingerprintCalculator.ComputeCxtOutputFingerprint"/>.
+/// </param>
 /// <param name="LineEnding">The <c>.cxt</c> line-ending convention (§8).</param>
 /// <param name="TrailingNewline">Whether the file ends with a newline (§8).</param>
 public sealed record CxtFingerprintInputs(

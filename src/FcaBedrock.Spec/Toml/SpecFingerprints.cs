@@ -25,13 +25,19 @@ public static class SpecFingerprints
     /// D-011), and <c>size_advisory_bytes</c> is ignored: advisory, not
     /// byte-affecting (D-077).
     /// <para><b>Precondition:</b> <paramref name="plan"/> was produced with
-    /// <see cref="LabelStyle.Native"/>, so its rendered names pair with the
-    /// native label style this method hashes (see
-    /// <see cref="FingerprintCalculator.ComputeCxtOutputFingerprint"/>).</para>
+    /// <see cref="LabelStyle.Native"/> and with the document's own <c>bin_label_unicode</c>
+    /// through <see cref="ConversionPlanner.Plan(Core.Calibration.CalibratedSpec, LabelStyle, bool)"/>,
+    /// so its rendered names pair with the native presentation this method hashes (see
+    /// <see cref="FingerprintCalculator.ComputeCxtOutputFingerprint"/>). The two-argument
+    /// overload plans ASCII, so its plan pairs only with a document whose flag is false or
+    /// absent; with a document that authors <c>true</c> it is refused even when the plan
+    /// renders no inequality.</para>
     /// </summary>
     /// <exception cref="ArgumentException">
     /// <paramref name="plan"/> was not produced from <paramref name="resolved"/>'s resolution
-    /// (D-098), or was produced with a label style other than <see cref="LabelStyle.Native"/>.
+    /// (D-098), was produced with a label style other than <see cref="LabelStyle.Native"/>, or
+    /// its <see cref="ConversionPlan.BinLabelUnicode"/> differs from the document's
+    /// <c>bin_label_unicode</c>.
     /// </exception>
     public static ComputedFingerprints ComputeNative(ResolvedDocument resolved, ConversionPlan plan)
     {
@@ -49,10 +55,22 @@ public static class SpecFingerprints
                 nameof(plan));
         }
 
+        // Checked here as well as in the calculator, so the refusal names the document's flag
+        // and the overload that plans with it.
         var output = resolved.Document.Output;
+        var binLabelUnicode = output?.BinLabelUnicode ?? false;
+        if (plan.BinLabelUnicode != binLabelUnicode)
+        {
+            throw new ArgumentException(
+                $"The document's bin_label_unicode is {(binLabelUnicode ? "true" : "false")} but the plan's effective "
+                + $"BinLabelUnicode is {(plan.BinLabelUnicode ? "true" : "false")}; plan natively with "
+                + "ConversionPlanner.Plan(CalibratedSpec, LabelStyle, bool binLabelUnicode) using the document's flag (§14).",
+                nameof(plan));
+        }
+
         var cxt = new CxtFingerprintInputs(
             LabelStyle.Native,
-            output?.BinLabelUnicode ?? false,
+            binLabelUnicode,
             ToLineEnding(output?.Cxt?.LineEndings ?? LineEndings.Lf),
             output?.Cxt?.TrailingNewline ?? true);
         var dat = new DatFingerprintInputs(

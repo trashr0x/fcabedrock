@@ -814,4 +814,129 @@ internal static class CliFixtures
         scale = { kind = "nominal" }
         declared_domain = ["red", "green"]
         """;
+
+    /// <summary>
+    /// Fully declared, with <c>bin_label_unicode = true</c> and every route a generated <c>&gt;=</c>
+    /// or <c>&lt;=</c> takes into a name: a numeric open high bin, ordinal <c>ge</c> thresholds over
+    /// cuts, an ordered-cuts open high bin, and an ordinal <c>le</c> operator through
+    /// <c>{scale_op}</c>. It also carries the authored text that must not change: the ordered cut
+    /// <c>=x</c>, whose open low bin <c>&lt;</c> + <c>=x</c> reads <c>&lt;=x</c>, a value
+    /// <c>&lt;=50K</c>, and a label <c>&gt;=50K</c>. <see cref="UnicodeLabelAsciiSpec"/> is the
+    /// same spec with the flag false.
+    /// </summary>
+    public const string UnicodeLabelSpec = """
+        [spec]
+        version = 1
+
+        [binding]
+        shape = "wide"
+        has_header = true
+
+        [output]
+        bin_label_unicode = true
+
+        [[attribute]]
+        name = "age"
+        source = { kind = "column", index = 0, value_type = "number" }
+        discretizer = { kind = "manual_cuts", cuts = [30, 50], ends = "open" }
+        scale = { kind = "nominal" }
+
+        [[attribute]]
+        name = "age_ge"
+        source = { kind = "column", index = 0, value_type = "number" }
+        discretizer = { kind = "manual_cuts", cuts = [30, 50], ends = "open" }
+        scale = { kind = "ordinal", direction = "ge" }
+
+        [[attribute]]
+        name = "grade"
+        source = { kind = "column", index = 1 }
+        discretizer = { kind = "ordered_cuts", order = ["w", "=x", "b"], cuts = ["=x", "b"], ends = "open" }
+        scale = { kind = "nominal" }
+
+        [[attribute]]
+        name = "level"
+        source = { kind = "column", index = 2 }
+        declared_domain = ["low", "high"]
+        discretizer = { kind = "identity" }
+        scale = { kind = "ordinal", direction = "le", order = ["low", "high"] }
+        formal_attribute_format = "{name} {scale_op} {value}"
+
+        [[attribute]]
+        name = "class"
+        source = { kind = "column", index = 3 }
+        declared_domain = ["<=50K", ">50K"]
+        value_labels = { ">50K" = ">=50K" }
+        discretizer = { kind = "identity" }
+        scale = { kind = "nominal" }
+        """;
+
+    /// <summary><see cref="UnicodeLabelSpec"/> with <c>bin_label_unicode = false</c>.</summary>
+    public static string UnicodeLabelAsciiSpec =>
+        UnicodeLabelSpec.Replace("bin_label_unicode = true", "bin_label_unicode = false", StringComparison.Ordinal);
+
+    /// <summary>Four columns matching <see cref="UnicodeLabelSpec"/>; every formal attribute is crossed.</summary>
+    public const string UnicodeLabelData = "age,grade,level,class\n25,w,low,<=50K\n40,=x,high,>50K\n60,b,low,<=50K\n";
+
+    /// <summary>One identity attribute with <c>missing_policy = "as_attribute"</c>: two value columns, then the missing column.</summary>
+    public const string AsAttributeMissingSpec = """
+        [spec]
+        version = 1
+
+        [binding]
+        shape = "wide"
+        has_header = true
+
+        [[attribute]]
+        name = "x"
+        source = { kind = "column", index = 0 }
+        declared_domain = ["a", "b"]
+        missing_policy = "as_attribute"
+        discretizer = { kind = "identity" }
+        scale = { kind = "nominal" }
+        """;
+
+    /// <summary>One column for <see cref="AsAttributeMissingSpec"/>, with one missing value.</summary>
+    public const string AsAttributeMissingData = "x\na\n?\nb\n";
+
+    /// <summary>A real category value named <c>missing</c>, with missing values skipped.</summary>
+    public const string ValueNamedMissingSpec = """
+        [spec]
+        version = 1
+
+        [binding]
+        shape = "wide"
+        has_header = true
+
+        [[attribute]]
+        name = "x"
+        source = { kind = "column", index = 0 }
+        declared_domain = ["missing", "other"]
+        discretizer = { kind = "identity" }
+        scale = { kind = "nominal" }
+        """;
+
+    /// <summary>
+    /// The real value <c>missing</c> together with the missing column, relabelled so the two
+    /// rendered names differ: their canonical identities are still equal (spec §10.5).
+    /// </summary>
+    public const string ValueNamedMissingAsAttributeSpec = """
+        [spec]
+        version = 1
+
+        [binding]
+        shape = "wide"
+        has_header = true
+
+        [[attribute]]
+        name = "x"
+        source = { kind = "column", index = 0 }
+        declared_domain = ["missing", "other"]
+        value_labels = { missing = "real-missing" }
+        missing_policy = "as_attribute"
+        discretizer = { kind = "identity" }
+        scale = { kind = "nominal" }
+        """;
+
+    /// <summary>One column whose values include the real value <c>missing</c>.</summary>
+    public const string ValueNamedMissingData = "x\nmissing\nother\n";
 }

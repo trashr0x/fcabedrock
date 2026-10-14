@@ -14,7 +14,7 @@ namespace FcaBedrock.Cli.Commands;
 /// LF only, one final LF, no byte-order mark, and deterministic for a given plan.
 /// <code>
 /// formal_attributes = &lt;N&gt;
-/// formal_attribute &lt;i&gt;: attribute=&lt;str&gt; scale=&lt;str&gt; bin_key=&lt;str&gt; operator=&lt;str&gt; rendered=&lt;str&gt; source=&lt;src&gt; bin=&lt;bin&gt;
+/// formal_attribute &lt;i&gt;: attribute=&lt;str&gt; scale=&lt;str&gt; bin_key=&lt;str&gt; operator=&lt;str&gt; rendered=&lt;str&gt; source=&lt;src&gt; bin=&lt;bin&gt;[ role=missing]
 /// calibrations = &lt;M&gt;
 /// calibration &lt;j&gt;: attribute=&lt;str&gt; kind=&lt;kind&gt; &lt;values&gt;
 /// restrictions = &lt;K&gt;
@@ -32,7 +32,10 @@ namespace FcaBedrock.Cli.Commands;
 /// settled calibration vocabulary (<c>cuts</c>, <c>observed_domain</c>,
 /// <c>include_additions</c>, <c>passthrough_bins</c>). <c>&lt;e&gt;</c> is
 /// <c>string(&lt;str&gt;)</c>, <c>number(&lt;num&gt;)</c>, or
-/// <c>range(from=&lt;num|none&gt;, to=&lt;num|none&gt;)</c>.
+/// <c>range(from=&lt;num|none&gt;, to=&lt;num|none&gt;)</c>. The trailing <c>role=missing</c>
+/// appears only on the column <c>missing_policy = "as_attribute"</c> adds: its identity and
+/// bin are those of a value bin named <c>missing</c> (§10.5/§14), so the role is what tells
+/// the two apart. It is read from the plan's own missing-column id, never from a spelling.
 /// </para>
 /// <para>
 /// <b>Why every string is a JSON literal.</b> Attribute names, rendered names, bin labels,
@@ -59,11 +62,17 @@ internal static class PlanReport
 
         // Source lookup by logical attribute name: names are unique by the time a plan exists
         // (AttributeNameDuplicate is an Error at resolve), and the planner registers a
-        // PlannedAttribute for every attribute that contributes a formal column.
+        // PlannedAttribute for every attribute that contributes a formal column. The same walk
+        // collects the missing-column ids the emitter crosses for a missing value (D-074).
         var sources = new Dictionary<string, AttributeSource>(StringComparer.Ordinal);
+        var missingIds = new HashSet<int>();
         foreach (var attribute in plan.Attributes)
         {
             sources[attribute.Name] = attribute.Source;
+            if (attribute.MissingFormalAttributeId is { } missingId)
+            {
+                missingIds.Add(missingId);
+            }
         }
 
         var builder = new StringBuilder();
@@ -71,7 +80,7 @@ internal static class PlanReport
         AppendCount(builder, "formal_attributes", plan.FormalAttributes.Count);
         foreach (var formal in plan.FormalAttributes)
         {
-            AppendFormalAttribute(builder, formal, sources);
+            AppendFormalAttribute(builder, formal, sources, missingIds.Contains(formal.Id));
         }
 
         AppendCount(builder, "calibrations", plan.Calibrated.Calibrations.Count);
@@ -112,7 +121,7 @@ internal static class PlanReport
     // The zero-based plan position is FormalAttribute.Id: the same number the .dat column
     // order and the emitter's crossed-id lists use, not a re-derived counter.
     private static void AppendFormalAttribute(
-        StringBuilder builder, FormalAttribute formal, Dictionary<string, AttributeSource> sources)
+        StringBuilder builder, FormalAttribute formal, Dictionary<string, AttributeSource> sources, bool missingColumn)
     {
         builder.Append("formal_attribute ");
         builder.Append(Integer(formal.Id));
@@ -133,6 +142,11 @@ internal static class PlanReport
         AppendSource(builder, sources[formal.Identity.AttributeName]);
         builder.Append(' ');
         AppendBin(builder, formal.Bin);
+        if (missingColumn)
+        {
+            builder.Append(" role=missing");
+        }
+
         builder.Append('\n');
     }
 

@@ -65,7 +65,10 @@ internal sealed class PreparedRun
     /// <summary>The resolved source shape; the D-087 v2-compat <c>.dat</c> final newline reads it.</summary>
     public required SourceShape Shape { get; init; }
 
-    /// <summary>The native plan (<see cref="LabelStyle.Native"/>), planned once.</summary>
+    /// <summary>
+    /// The native plan (<see cref="LabelStyle.Native"/>, with the document's own
+    /// <c>bin_label_unicode</c>), planned once.
+    /// </summary>
     public required ConversionPlan Plan { get; init; }
 
     /// <summary>The three native fingerprints computed from the paired resolved document and plan.</summary>
@@ -104,11 +107,14 @@ internal sealed class PreparedRun
     public required string DataPath { get; init; }
 
     /// <summary>
-    /// Plans this run's <em>same</em> calibrated state under <paramref name="style"/>: the only
-    /// way a second plan is produced, which is what keeps the native/effective pair exact
-    /// (D-044/D-077). Planning is pure, so the second plan costs no data pass.
+    /// Plans this run's <em>same</em> calibrated state under the effective <paramref name="style"/>
+    /// and <paramref name="settings"/>: the only way a second plan is produced, which is what keeps
+    /// the native/effective pair exact (D-044/D-077). The plan takes the settings' own
+    /// <c>bin_label_unicode</c>, the flag their <c>.cxt</c> fingerprint inputs hash. Planning is
+    /// pure, so the second plan costs no data pass.
     /// </summary>
-    public Diagnosed<ConversionPlan> PlanEffective(LabelStyle style) => ConversionPlanner.Plan(Calibrated, style);
+    public Diagnosed<ConversionPlan> PlanEffective(LabelStyle style, OutputSettings settings) =>
+        ConversionPlanner.Plan(Calibrated, style, settings.BinLabelUnicode);
 }
 
 /// <summary>
@@ -295,8 +301,10 @@ internal static class RunPipeline
         cancellation.ThrowIfCancellationRequested();
 
         // Native only. v2-compatible labels are a convert-only override (D-011), and effective
-        // override fingerprints are a manifest fact, never a report one (§14).
-        var planned = ConversionPlanner.Plan(calibratedSpec, LabelStyle.Native);
+        // override fingerprints are a manifest fact, never a report one (§14). The presentation is
+        // the document's own bin_label_unicode, the flag the native fingerprints hash.
+        var output = OutputSettings.Native(resolvedDocument.Document);
+        var planned = ConversionPlanner.Plan(calibratedSpec, LabelStyle.Native, output.BinLabelUnicode);
         diagnostics.AddRange(planned.Diagnostics);
         if (!planned.TryGetValue(out var plan))
         {
@@ -319,7 +327,7 @@ internal static class RunPipeline
             Shape = readSettings.Shape,
             Plan = plan,
             Fingerprints = fingerprints,
-            Output = OutputSettings.Native(resolvedDocument.Document),
+            Output = output,
             SpecChain = host.Chain,
             EmitWith = triple
                 ? effective => sink =>

@@ -90,12 +90,14 @@ internal static class CalibrateCommand
         }
 
         // Fully declared by construction now, so planning takes no data pass at all. Native only:
-        // v2-compatible labels are a convert-only override (D-011), and the style is named
-        // explicitly rather than defaulted so the stored fingerprints' pairing is visible here. It
-        // is qualified because LabelStyle lives in Core.Discretization, which this file does not
-        // import.
+        // v2-compatible labels are a convert-only override (D-011), and the style and the frozen
+        // document's own bin_label_unicode are named explicitly rather than defaulted so the
+        // stored fingerprints' pairing is visible here (§14). The style is qualified because
+        // LabelStyle lives in Core.Discretization, which this file does not import.
         var planned = ConversionPlanner.Plan(
-            CalibratedSpec.FromFullyDeclared(resolved.Resolved), Core.Discretization.LabelStyle.Native);
+            CalibratedSpec.FromFullyDeclared(resolved.Resolved),
+            Core.Discretization.LabelStyle.Native,
+            OutputSettings.Native(resolved.Document).BinLabelUnicode);
         if (!planned.TryGetValue(out var plan))
         {
             return (null, reResolved.Diagnostics, planned.Diagnostics);

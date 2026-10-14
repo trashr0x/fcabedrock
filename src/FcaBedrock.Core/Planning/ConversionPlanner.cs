@@ -31,11 +31,38 @@ public static class ConversionPlanner
     /// selects how cut bin labels render in names (spec §8/§14); it affects rendered
     /// names only, never identity (EP-15, D-044), and is carried on the plan so the cxt
     /// output fingerprint pairs with it.
+    /// <para>
+    /// This overload always renders ASCII operators: it is
+    /// <see cref="Plan(CalibratedSpec, LabelStyle, bool)"/> with <c>binLabelUnicode</c>
+    /// <see langword="false"/>. A plan for a spec that authors
+    /// <c>bin_label_unicode = true</c> comes from that overload instead, because the output
+    /// fingerprints require the plan's flag to match the one they hash.
+    /// </para>
     /// </summary>
     public static Diagnosed<ConversionPlan> Plan(
-        CalibratedSpec calibrated, LabelStyle labelStyle = LabelStyle.Native)
+        CalibratedSpec calibrated, LabelStyle labelStyle = LabelStyle.Native) =>
+        Plan(calibrated, labelStyle, binLabelUnicode: false);
+
+    /// <summary>
+    /// Plans as <see cref="Plan(CalibratedSpec, LabelStyle)"/> does, and renders the operators
+    /// the planner generates with Unicode <c>≥</c>/<c>≤</c> when <paramref name="binLabelUnicode"/>
+    /// is set (spec §8): an ordinal scale's <c>&gt;=</c>/<c>&lt;=</c> operator, in a default
+    /// name and in <c>{scale_op}</c>, and the <c>&gt;=</c> of an open high cut bin. Which
+    /// operators are generated comes from the plan's structure, never from a name's spelling, so
+    /// authored text (values, labels, format literals, ordered cut categories) is never changed.
+    /// <para>
+    /// <see cref="LabelStyle.V2Compat"/> takes precedence and always renders ASCII, so the
+    /// effective flag, <see cref="ConversionPlan.BinLabelUnicode"/>, is
+    /// <see langword="false"/> under it whatever <paramref name="binLabelUnicode"/> requests. The
+    /// flag reaches rendered names only, never identity or ids (§14).
+    /// </para>
+    /// </summary>
+    public static Diagnosed<ConversionPlan> Plan(
+        CalibratedSpec calibrated, LabelStyle labelStyle, bool binLabelUnicode)
     {
         ArgumentNullException.ThrowIfNull(calibrated);
+
+        var unicode = binLabelUnicode && labelStyle == LabelStyle.Native;
 
         var spec = calibrated.Spec;
         var schema = calibrated.Schema;
@@ -77,7 +104,7 @@ public static class ConversionPlanner
                           // restrict_to was planned above.
             }
 
-            PlanAttribute(attribute, schema, labelStyle, formalAttributes, plannedAttributes, idByName, idByIdentity, diagnostics);
+            PlanAttribute(attribute, schema, labelStyle, unicode, formalAttributes, plannedAttributes, idByName, idByIdentity, diagnostics);
         }
 
         if (HasError(diagnostics))
@@ -104,7 +131,8 @@ public static class ConversionPlanner
             spec.Binding.ObjectKey,
             ResolveExecution(spec.Binding),
             calibrated,
-            labelStyle);
+            labelStyle,
+            unicode);
         return Diagnosed<ConversionPlan>.Ok(plan, diagnostics);
     }
 
@@ -128,6 +156,7 @@ public static class ConversionPlanner
         AttributeSpec attribute,
         SourceSchema schema,
         LabelStyle labelStyle,
+        bool binLabelUnicode,
         List<FormalAttribute> formalAttributes,
         List<PlannedAttribute> plannedAttributes,
         Dictionary<string, int> idByName,
@@ -164,7 +193,7 @@ public static class ConversionPlanner
         var crossesByBin = new Dictionary<string, List<int>>(StringComparer.Ordinal);
         foreach (var shape in scale.BuildShapes(scheme))
         {
-            var name = RenderName(attribute, shape, discretizer, scale, labelStyle);
+            var name = RenderName(attribute, shape, discretizer, scale, labelStyle, binLabelUnicode);
             RecordIfInvalid(name, invalidNames);
             var identity = new FormalAttributeIdentity(attribute.Name, scale.Kind, shape.BinKey, shape.ScaleOp);
             var id = AddFormalAttribute(name, identity, shape.Bin, formalAttributes, idByName, idByIdentity, diagnostics);
@@ -256,14 +285,18 @@ public static class ConversionPlanner
         Scaling.FormalAttributeShape shape,
         Discretizer discretizer,
         Scale scale,
-        LabelStyle labelStyle)
+        LabelStyle labelStyle,
+        bool binLabelUnicode)
     {
+        var scaleOp = RenderScaleOp(shape.ScaleOp, binLabelUnicode);
         if (attribute.NameFormat is { } format)
         {
             // §10.7/D-117: an explicit format overrides the scale default ENTIRELY, for
             // every formal attribute the logical attribute emits. {scale_op} is the
-            // planned operator (empty for non-ordinal shapes).
-            return format.Render(attribute.Name, attribute.DisplayName, RenderValue(attribute, shape, discretizer, scale, labelStyle), shape.ScaleOp);
+            // planned operator in the plan's presentation (empty for non-ordinal shapes).
+            return format.Render(
+                attribute.Name, attribute.DisplayName,
+                RenderValue(attribute, shape, discretizer, scale, labelStyle, binLabelUnicode), scaleOp);
         }
 
         // Scale-specific default naming (§10.7). The v2 golden fixtures pin these bytes:
@@ -273,11 +306,24 @@ public static class ConversionPlanner
             return attribute.Name; // dichotomic: column alone
         }
 
-        var display = RenderValue(attribute, shape, discretizer, scale, labelStyle);
-        return shape.ScaleOp.Length == 0
-            ? $"{attribute.Name}-{display}"               // nominal
-            : $"{attribute.Name}-{shape.ScaleOp}{display}"; // ordinal
+        var display = RenderValue(attribute, shape, discretizer, scale, labelStyle, binLabelUnicode);
+        return scaleOp.Length == 0
+            ? $"{attribute.Name}-{display}"         // nominal
+            : $"{attribute.Name}-{scaleOp}{display}"; // ordinal
     }
+
+    // §8: an ordinal shape's operator is a token the scale generated (">=", ">", "<=", "<" or
+    // empty), separate from the value it precedes, so mapping it never touches authored text.
+    // Only the two inclusive operators have a Unicode form. The identity keeps the ASCII token.
+    private static string RenderScaleOp(string scaleOp, bool binLabelUnicode) =>
+        !binLabelUnicode
+            ? scaleOp
+            : scaleOp switch
+            {
+                ">=" => "≥",
+                "<=" => "≤",
+                _ => scaleOp,
+            };
 
     // The value side of a name (§10.7's {value} table), shared by the default and
     // explicit paths so the two cannot disagree about what a value renders as.
@@ -287,22 +333,30 @@ public static class ConversionPlanner
     // label for the style: a cut bin takes the v2-compat interior form under that style,
     // and a numeric free_per_value bin renders its D-092 identity. Under a cut
     // discretizer the labels are dormant, so a label keyed to a bin string is ignored.
+    // With Unicode (native style only) an open high cut bin renders "≥", chosen by the
+    // shape's structural bin rather than by the label's spelling (§8).
     //
     // A dichotomic shape carries no value label of its own (the default name is the
     // column alone), so {value} resolves to the scale's true_value, through
     // value_labels when they are live, which is the labelled-dichotomic case §10.7
-    // spells out: true_value = "t" labelled "bruised" renders "bruises?-bruised".
+    // spells out: true_value = "t" labelled "bruised" renders "bruises?-bruised". Its
+    // structural bin is the empty dichotomic key, so the authored true_value never changes.
     private static string RenderValue(
         AttributeSpec attribute,
         Scaling.FormalAttributeShape shape,
         Discretizer discretizer,
         Scale scale,
-        LabelStyle labelStyle)
+        LabelStyle labelStyle,
+        bool binLabelUnicode)
     {
         var raw = shape.ValueLabel ?? (scale as DichotomicScale)?.TrueValue ?? "";
-        return discretizer.ConsultsValueLabels && attribute.ValueLabels.TryGetValue(raw, out var label)
-            ? label
-            : discretizer.RenderBinLabel(raw, labelStyle);
+        if (discretizer.ConsultsValueLabels && attribute.ValueLabels.TryGetValue(raw, out var label))
+        {
+            return label;
+        }
+
+        var rendered = discretizer.RenderBinLabel(raw, labelStyle);
+        return binLabelUnicode ? CutBinLabels.RenderUnicode(rendered, shape.Bin) : rendered;
     }
 
     // §10.7/D-117: after final substitution, on the default path too, because raw

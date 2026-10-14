@@ -675,6 +675,75 @@ public sealed class SpecFingerprintsTests
     }
 
     [Fact]
+    public void ComputeNative_WhenTheDocumentAuthorsUnicodeAndThePlanUsedTheAsciiOverload_ThenThrowsNamingTheMatchingOverload()
+    {
+        // §14: a native plan pairs with the document's own bin_label_unicode. The two-argument
+        // Plan overload always plans ASCII, so pairing it with a document that authors true is
+        // refused, even though this plan has no inequality to render: the precondition is about
+        // the inputs, not about whether the names happen to differ.
+        Assert.True(SpecReader.Read(MinimalSpec() + "\n[output]\nbin_label_unicode = true\n").TryGetValue(out var document));
+        Assert.True(SpecResolver.Resolve(document, new SourceSchema(1)).TryGetValue(out var resolvedDoc));
+        var plan = ConversionPlanner.Plan(CalibratedSpec.FromFullyDeclared(resolvedDoc.Resolved)).Value!;
+
+        var exception = Assert.Throws<ArgumentException>(() => SpecFingerprints.ComputeNative(resolvedDoc, plan));
+
+        Assert.Contains(
+            "ConversionPlanner.Plan(CalibratedSpec, LabelStyle, bool binLabelUnicode)", exception.Message, StringComparison.Ordinal);
+        Assert.Equal("plan", exception.ParamName);
+    }
+
+    [Fact]
+    public void ComputeNative_WhenTheDocumentIsAsciiAndThePlanIsUnicode_ThenThrows()
+    {
+        // The pairing is exact in both directions: a Unicode plan does not describe a document
+        // whose native presentation is ASCII.
+        Assert.True(SpecReader.Read(MinimalSpec()).TryGetValue(out var document));
+        Assert.True(SpecResolver.Resolve(document, new SourceSchema(1)).TryGetValue(out var resolvedDoc));
+        var plan = ConversionPlanner.Plan(
+            CalibratedSpec.FromFullyDeclared(resolvedDoc.Resolved), LabelStyle.Native, binLabelUnicode: true).Value!;
+
+        var exception = Assert.Throws<ArgumentException>(() => SpecFingerprints.ComputeNative(resolvedDoc, plan));
+
+        Assert.Equal("plan", exception.ParamName);
+    }
+
+    [Fact]
+    public void ComputeNative_WhenTheDocumentAuthorsUnicode_ThenTheCxtFingerprintHashesTheUnicodeNames()
+    {
+        // Paired natively, the document's flag reaches both the plan's names and the cxt inputs;
+        // the schema and dat fingerprints equal the ASCII twin's, because identity and ids do not
+        // depend on the presentation (§14).
+        const string cuts = """
+            [spec]
+            version = 1
+
+            [binding]
+            shape = "wide"
+
+            [[attribute]]
+            name = "age"
+            source = { kind = "column", index = 0, value_type = "number" }
+            discretizer = { kind = "manual_cuts", cuts = [30, 50], ends = "open" }
+            scale = { kind = "ordinal", direction = "ge" }
+            """;
+        var (unicodeDoc, unicodeSpec, unicodePlan) = Pipeline(cuts + "\n[output]\nbin_label_unicode = true\n", new SourceSchema(1));
+        var (asciiDoc, asciiSpec, asciiPlan) = Pipeline(cuts, new SourceSchema(1));
+
+        var unicode = ComputeNative(unicodeDoc, unicodeSpec, unicodePlan);
+        var ascii = ComputeNative(asciiDoc, asciiSpec, asciiPlan);
+
+        Assert.True(unicodePlan.BinLabelUnicode);
+        Assert.Equal(["age-all", "age-≥30", "age-≥50"], unicodePlan.FormalAttributes.Select(f => f.RenderedName));
+        Assert.Equal(
+            ComputeCxt(
+                unicodePlan, unicodeSpec, new CxtFingerprintInputs(LabelStyle.Native, BinLabelUnicode: true, LineEnding.Lf, TrailingNewline: true)),
+            unicode.CxtOutputFingerprint);
+        Assert.Equal(ascii.SchemaFingerprint, unicode.SchemaFingerprint);
+        Assert.Equal(ascii.DatOutputFingerprint, unicode.DatOutputFingerprint);
+        Assert.NotEqual(ascii.CxtOutputFingerprint, unicode.CxtOutputFingerprint);
+    }
+
+    [Fact]
     public void Resolve_WhenOriginalDocumentMutatedAfterResolve_ThenSnapshotAndFingerprintsUnchanged()
     {
         // D-098: the ResolvedDocument holds the resolver's own deep copy of the document (its section
@@ -978,8 +1047,9 @@ public sealed class SpecFingerprintsTests
         return Prepare(document, schema);
     }
 
-    // Resolve → fully-declared calibrated state → plan (D-098). The plan's
-    // Calibrated.Resolution is resolvedDoc.Resolved, so ComputeNative's reference-identity guard holds.
+    // Resolve → fully-declared calibrated state → native plan with the document's own
+    // bin_label_unicode (D-098, §14). The plan's Calibrated.Resolution is resolvedDoc.Resolved, so
+    // ComputeNative's reference-identity guard holds, and its flag pairs with the document's.
     private static (ResolvedDocument Document, BedrockSpec Spec, ConversionPlan Plan) Prepare(
         SpecDocument document, SourceSchema schema)
     {
@@ -987,7 +1057,10 @@ public sealed class SpecFingerprintsTests
         Assert.True(resolved.TryGetValue(out var resolvedDoc),
             string.Join("; ", resolved.Diagnostics.Select(d => $"{d.Code}: {d.Message}")));
 
-        var planned = ConversionPlanner.Plan(CalibratedSpec.FromFullyDeclared(resolvedDoc.Resolved));
+        var planned = ConversionPlanner.Plan(
+            CalibratedSpec.FromFullyDeclared(resolvedDoc.Resolved),
+            LabelStyle.Native,
+            resolvedDoc.Document.Output?.BinLabelUnicode ?? false);
         Assert.True(planned.TryGetValue(out var plan),
             string.Join("; ", planned.Diagnostics.Select(d => $"{d.Code}: {d.Message}")));
 

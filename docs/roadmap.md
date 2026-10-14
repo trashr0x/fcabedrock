@@ -543,6 +543,14 @@ Items modelled in the spec can be added later without a format break.
   writer escapes it, so a written value that contains it rereads, but a hand-written spec must
   spell it `\uFFFD` in a basic string and cannot carry it in a literal string or a comment. A
   later repair makes the reader accept it; the approach needs its own review.
+- **Distinct identity for the missing column**: under `missing_policy = "as_attribute"` the
+  missing column's canonical key is the string `missing`, which a nominal value bin named
+  `missing` also has (spec §10.5, §14, D-074). The two cannot coexist in one attribute, and two
+  specs that differ only in that choice share a `schema_fingerprint`; meanwhile the `plan`
+  report marks the missing column `role=missing`. The repair is a tagged missing identity in
+  both the formal-attribute identity and the canonical bin encoding, never another reserved
+  string. It changes `schema_fingerprint` for every spec that uses `as_attribute`, so it ships
+  with an explicit `fp_format` migration and a review of public library consumers.
 - **`std_dev` discretizer** (D-020): removed entirely. It can return as a new discretizer kind if a
   real need appears, without a breaking change.
 - **Cross-attribute restrict** ("include attribute A only when attribute B = X"): not modelled in

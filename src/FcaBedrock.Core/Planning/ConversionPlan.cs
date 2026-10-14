@@ -16,7 +16,8 @@ namespace FcaBedrock.Core.Planning;
 /// unrepresentable outside Core (D-098): its lists are planner-built immutable
 /// arrays, and it carries the <see cref="CalibratedSpec"/> it was planned from so
 /// the plan ↔ spec/schema pairing is structural, and the
-/// <see cref="LabelStyle"/> its rendered names were baked with.
+/// <see cref="LabelStyle"/> and <see cref="BinLabelUnicode"/> presentation its
+/// rendered names were baked with.
 /// </para>
 /// </summary>
 public sealed class ConversionPlan
@@ -28,7 +29,8 @@ public sealed class ConversionPlan
         ObjectKey objectKey,
         SourceExecution execution,
         CalibratedSpec calibrated,
-        LabelStyle labelStyle)
+        LabelStyle labelStyle,
+        bool binLabelUnicode)
     {
         FormalAttributes = formalAttributes;
         Attributes = attributes;
@@ -37,6 +39,7 @@ public sealed class ConversionPlan
         Execution = execution;
         Calibrated = calibrated;
         LabelStyle = labelStyle;
+        BinLabelUnicode = binLabelUnicode;
     }
 
     /// <summary>The ordered formal-attribute schema.</summary>
@@ -67,4 +70,12 @@ public sealed class ConversionPlan
 
     /// <summary>The label style the rendered names were baked with (D-044); pairs with the cxt output fingerprint (§14).</summary>
     public LabelStyle LabelStyle { get; }
+
+    /// <summary>
+    /// Whether the rendered names were baked with Unicode <c>≥</c>/<c>≤</c> for the operators the
+    /// planner generates (§8): the <b>effective</b> presentation, always <see langword="false"/>
+    /// under <see cref="LabelStyle.V2Compat"/> whatever was requested. Pairs with the cxt output
+    /// fingerprint's <c>bin_label_unicode</c> input (§14).
+    /// </summary>
+    public bool BinLabelUnicode { get; }
 }

@@ -38,10 +38,15 @@ public static class FingerprintCalculator
     /// writer settings (§14, D-051). The shared inputs are read from the plan's
     /// calibrated spec (D-094 effective-configuration rule).
     /// <para><b>Precondition:</b> <paramref name="inputs"/>.<see cref="CxtFingerprintInputs.LabelStyle"/>
-    /// must equal <paramref name="plan"/>.<see cref="ConversionPlan.LabelStyle"/>;
-    /// <see cref="FormalAttribute.RenderedName"/> already bakes the style in, so a
+    /// must equal <paramref name="plan"/>.<see cref="ConversionPlan.LabelStyle"/>, and
+    /// <paramref name="inputs"/>.<see cref="CxtFingerprintInputs.BinLabelUnicode"/> must equal
+    /// <paramref name="plan"/>.<see cref="ConversionPlan.BinLabelUnicode"/>, the effective
+    /// presentation; <see cref="FormalAttribute.RenderedName"/> already bakes both in, so a
     /// mismatched pair would hash an inconsistent, unreproducible combination. This is
-    /// validated (throws <see cref="ArgumentException"/>) rather than merely documented.</para>
+    /// validated (throws <see cref="ArgumentException"/>) rather than merely documented, even
+    /// where the plan renders no inequality. A Unicode plan comes from
+    /// <see cref="ConversionPlanner.Plan(Calibration.CalibratedSpec, LabelStyle, bool)"/>; the two-argument
+    /// overload plans ASCII.</para>
     /// </summary>
     public static string ComputeCxtOutputFingerprint(ConversionPlan plan, CxtFingerprintInputs inputs)
     {
@@ -51,6 +56,15 @@ public static class FingerprintCalculator
         {
             throw new ArgumentException(
                 $"inputs.LabelStyle ({inputs.LabelStyle}) must match the plan's LabelStyle ({plan.LabelStyle}) (§14).",
+                nameof(inputs));
+        }
+
+        if (inputs.BinLabelUnicode != plan.BinLabelUnicode)
+        {
+            throw new ArgumentException(
+                $"inputs.BinLabelUnicode ({inputs.BinLabelUnicode}) must match the plan's effective BinLabelUnicode "
+                + $"({plan.BinLabelUnicode}); plan with ConversionPlanner.Plan(CalibratedSpec, LabelStyle, bool binLabelUnicode) "
+                + "using the flag these inputs hash (§8/§14).",
                 nameof(inputs));
         }
 

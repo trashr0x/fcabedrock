@@ -59,10 +59,15 @@ targets are refused without `--force`. `--temp-dir DIR` relocates spill
 storage. The folder is used only if the run spills, so it is not checked in
 advance, but an empty value is refused. Stdout is empty on
 success; nothing becomes public unless the whole run succeeds. `--v2-compat`
-applies the v2 compatibility preset (CRLF, v2 bin-label style, v2 `.dat`
+applies the v2 compatibility preset (CRLF, v2 bin-label style, ASCII `>=` and
+`<=` even when the spec sets `bin_label_unicode = true`, v2 `.dat`
 conventions); exact byte equality with v2 output is locked for the checked-in
 golden fixture families; it is not a promise of universal v2 byte reproduction
 for arbitrary inputs. See [How output files are written](#how-output-files-are-written).
+
+Without `--v2-compat`, `bin_label_unicode = true` writes `≥` and `≤` only where the
+tool generates the operator, as in `age-≥50`; values, labels and name formats
+you wrote keep their spelling.
 
 ### validate
 
@@ -99,6 +104,11 @@ Prints the full plan to stdout: every formal attribute with its canonical
 identity and rendered name, the calibration and restriction summaries, and the
 three native fingerprints. DATA is required for every plan (calibration may
 need rows), and no file is written.
+
+The column `missing_policy = "as_attribute"` adds ends its line with
+`role=missing`. Its identity is the same as that of a nominal bin for a value
+named `missing`, so one attribute cannot have both: that plan fails with
+`FormalAttributeCollision`, and relabelling does not help.
 
 ### stats
 
