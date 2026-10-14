@@ -213,6 +213,18 @@ Windows does not have that window. Which filesystems are affected is decided by
 what the operations report, never by the path's spelling: a
 Windows-backed WSL mount is not automatically one of them.
 
+## The replacement character in specs
+
+This version cannot read a spec that contains the replacement character U+FFFD
+written literally anywhere in the file. The read fails with `SpecTomlInvalid`,
+and the message speaks of an invalid UTF-16 surrogate sequence. The file is
+valid: TOML allows the character, and the limitation is in the tool's TOML
+reader. In a spec you write by hand, spell the character `\uFFFD` inside a
+double-quoted string, which reads as the same character. A single-quoted string
+or a comment has no escape, so it cannot hold the character. When the tool
+writes a spec or a run manifest, it spells the character `\uFFFD`, so the
+values that contain it read back.
+
 ## Exit codes and diagnostics
 
 Exit codes. 0 success (warnings are included and never move it off 0). 1 any

@@ -66,13 +66,24 @@ it does. An implementation MUST reject a file whose bytes are not well-formed UT
 including a file that begins with a UTF-16 or UTF-32 byte-order mark, as unreadable.
 It MUST NOT transcode such a file or replace its ill-formed bytes.
 
+**Known reader limitation.** The replacement character U+FFFD (UTF-8 bytes `EF BF BD`) is
+well-formed UTF-8, and TOML 1.1.0 allows it in strings and comments. This implementation's TOML
+reader nevertheless rejects U+FFFD written literally anywhere in a spec file, including in a
+literal string or a comment, and the read fails with `SpecTomlInvalid` (decisions.md D-133). The
+file is not malformed: this is a conformance gap in the reader, not a rule of the format. Until
+the reader is repaired, write the character as the escape `\uFFFD` inside a basic
+(double-quoted) string, which reads as the same character. A literal string or a comment has no
+escape, so under this reader neither can contain U+FFFD.
+
 The canonical writer (the one tool that serializes a `SpecDocument`, decisions.md D-075) is
 deterministic. It renders a long top-level
 `declared_domain` array **multiline, one escaped value per line**, rather than as a single
 unbounded line, so that large machine-generated domains, such as a `probe` draft's
 `declared_domain` (§7.1), stay readable and diff-friendly (decisions.md D-113). The wrapping cutoff is a
 private, byte-pinned formatting constant. It is never a spec field, a setting, or a fingerprint
-input, and wrapping never changes document semantics or any fingerprint.
+input, and wrapping never changes document semantics or any fingerprint. The writer writes
+U+FFFD as `\uFFFD` in every string and quoted key (decisions.md D-075), so a written value that
+contains the character rereads despite the reader limitation above.
 
 A spec MUST declare `version` in `[spec]`. Implementations encountering
 an unknown `version` MUST refuse to load the spec and emit

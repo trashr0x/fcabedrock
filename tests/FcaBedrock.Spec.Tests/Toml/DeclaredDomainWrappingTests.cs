@@ -79,6 +79,25 @@ public sealed class DeclaredDomainWrappingTests
     }
 
     [Fact]
+    public void Write_WhenReplacementCharacterEscapeReachesCutoff_ThenInlineAtItAndWrappedPastIt()
+    {
+        // U+FFFD is one code unit raw and six as its escape, and the escape is what is measured: a
+        // line at the cutoff stays inline, and one code unit more wraps, although the same line
+        // with the raw character would measure only 96.
+        var atCutoff = new[] { new string('a', 31) + "\uFFFD", new string('b', 37) };
+        var atCutoffLine = KeyPrefix + "[\"" + new string('a', 31) + "\\uFFFD\", \"" + atCutoff[1] + "\"]";
+        Assert.Equal(Cutoff, atCutoffLine.Length);
+
+        var pastCutoff = new[] { new string('a', 32) + "\uFFFD", new string('b', 37) };
+
+        Assert.Contains(atCutoffLine + "\n", WriteAttributeWithDomain(atCutoff), StringComparison.Ordinal);
+        Assert.Contains(
+            "declared_domain = [\n  \"" + new string('a', 32) + "\\uFFFD\",\n  \"" + pastCutoff[1] + "\",\n]\n",
+            WriteAttributeWithDomain(pastCutoff),
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Write_WhenDeclaredDomainAuthoredEmpty_ThenInlineEmptyArray()
     {
         // D-071's authored-[] provenance survives unchanged; wrapping never

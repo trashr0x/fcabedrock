@@ -537,6 +537,12 @@ Items modelled in the spec can be added later without a format break.
   The refusal needs no data, so the cost is time spent before a certain error; no output is wrong.
   A fix moves the planner's data-independent refusal checks ahead of the data pass and needs its
   own small design; the refusal stays a plan-phase diagnostic (D-010).
+- **Read a literal U+FFFD in spec files**: the pinned TOML reader rejects the replacement
+  character U+FFFD written literally anywhere in a spec, although the bytes are well-formed UTF-8
+  and TOML 1.1.0 allows the character in strings and comments (spec §2, D-133). The canonical
+  writer escapes it, so a written value that contains it rereads, but a hand-written spec must
+  spell it `\uFFFD` in a basic string and cannot carry it in a literal string or a comment. A
+  later repair makes the reader accept it; the approach needs its own review.
 - **`std_dev` discretizer** (D-020): removed entirely. It can return as a new discretizer kind if a
   real need appears, without a breaking change.
 - **Cross-attribute restrict** ("include attribute A only when attribute B = X"): not modelled in

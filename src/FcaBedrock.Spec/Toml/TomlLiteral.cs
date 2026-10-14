@@ -15,7 +15,10 @@ internal static class TomlLiteral
     /// <summary>
     /// Renders a TOML basic string, quotes included: <c>\</c>, <c>"</c>, and
     /// control characters escape (<c>\b \t \n \f \r</c>, else <c>\uXXXX</c>);
-    /// printable non-ASCII passes through raw with no normalization.
+    /// printable non-ASCII passes through raw with no normalization, except
+    /// U+FFFD, which escapes as <c>\uFFFD</c> because the pinned TOML reader
+    /// rejects it written literally (spec §2, D-133). The escape reads back as
+    /// the same character, so the string itself is unchanged.
     /// </summary>
     internal static string FormatString(string value)
     {
@@ -47,7 +50,7 @@ internal static class TomlLiteral
                     builder.Append(@"\r");
                     break;
                 default:
-                    if (ch < ' ' || ch == '\u007F')
+                    if (ch < ' ' || ch == '\u007F' || ch == '\uFFFD')
                     {
                         builder.Append(CultureInfo.InvariantCulture, $"\\u{(int)ch:X4}");
                     }

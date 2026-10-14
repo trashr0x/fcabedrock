@@ -111,6 +111,29 @@ public sealed class SpecWriterTests
     }
 
     [Fact]
+    public void Write_WhenStringsAndQuotedKeysCarryTheReplacementCharacter_ThenEachIsTheUnicodeEscape()
+    {
+        // The pinned TOML reader rejects U+FFFD written literally anywhere in a spec (§2, D-133),
+        // so every string and quoted key the writer emits spells it as the escape instead.
+        var document = DocumentFixtures.Document(
+        [
+            DocumentFixtures.Nominal("x\uFFFDname", 0, ["x\uFFFDy", "plain"], new Dictionary<string, string>
+            {
+                ["x\uFFFDy"] = "label\uFFFD",
+                ["plain"] = "p",
+            }),
+        ]);
+
+        var toml = SpecWriter.Write(document);
+
+        Assert.Contains("name = \"x\\uFFFDname\"\n", toml, StringComparison.Ordinal);
+        Assert.Contains("declared_domain = [\"x\\uFFFDy\", \"plain\"]\n", toml, StringComparison.Ordinal);
+        Assert.Contains(
+            "value_labels = { \"x\\uFFFDy\" = \"label\\uFFFD\", plain = \"p\" }\n", toml, StringComparison.Ordinal);
+        Assert.DoesNotContain('\uFFFD', toml);
+    }
+
+    [Fact]
     public void Write_WhenManualCuts_ThenIntegralCutsEmitAsBareIntegers()
     {
         var document = DocumentFixtures.Document(

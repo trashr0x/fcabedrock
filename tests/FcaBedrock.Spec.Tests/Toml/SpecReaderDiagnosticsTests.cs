@@ -91,6 +91,31 @@ public sealed class SpecReaderDiagnosticsTests
         AssertFailsWith(result, DiagnosticCode.SpecTomlInvalid);
     }
 
+    [Theory]
+    [InlineData("[spec]\nversion = 1\ndescription = \"x\uFFFDy\"\n")] // basic string
+    [InlineData("[spec]\nversion = 1\ndescription = 'x\uFFFDy'\n")]   // literal string
+    [InlineData("[spec]\nversion = 1 # x\uFFFDy\n")]                   // comment
+    public void Read_WhenReplacementCharacterIsWrittenLiterally_ThenSpecTomlInvalid(string toml)
+    {
+        // A documented limitation of the pinned TOML reader, not a Bedrock rule (§2, D-133):
+        // TOML 1.1.0 allows U+FFFD in each of these places, yet the reader rejects it as an
+        // invalid surrogate sequence wherever it is written literally.
+        var result = SpecReader.Read(toml);
+
+        AssertFailsWith(result, DiagnosticCode.SpecTomlInvalid);
+        Assert.All(result.Diagnostics, d => Assert.Equal(DiagnosticSeverity.Fatal, d.Severity));
+    }
+
+    [Fact]
+    public void Read_WhenReplacementCharacterIsEscaped_ThenTheStringHoldsIt()
+    {
+        // The escape is the spelling the reader accepts, and the one the canonical writer emits.
+        var result = SpecReader.Read("[spec]\nversion = 1\ndescription = \"x\\uFFFDy\"\n");
+
+        Assert.True(result.TryGetValue(out var document), Describe(result.Diagnostics));
+        Assert.Equal("x\uFFFDy", document.Spec?.Description);
+    }
+
     [Fact]
     public void Read_WhenKeyUnknown_ThenSpecKeyUnrecognizedWithPosition()
     {

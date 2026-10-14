@@ -45,7 +45,7 @@ changes an earlier one. A new entry MUST add its line here.
 - D-009: New TOML spec format; one-way `.bed` migration *(migrator realized by D-079)*
 - D-010: Modelled-but-rejected scales/features carry forward-compat
 - D-011: v2 byte-equality is a CLI flag, not a spec setting
-- D-133: A Bedrock spec is a UTF-8 TOML 1.1.0 document; the TOML version is independent of `[spec].version`
+- D-133: A Bedrock spec is a UTF-8 TOML 1.1.0 document; the TOML version is independent of `[spec].version` *(the pinned reader's rejection of a literal U+FFFD recorded in place on 2026-10-14)*
 
 ### Scope / feature decisions
 
@@ -136,7 +136,7 @@ changes an earlier one. A new entry MUST add its line here.
 ### M2 implementation (slices)
 
 - D-074: `as_attribute` missing-column position uniform across scale kinds (appendix to D-068) *(default-path rendering; an explicit `formal_attribute_format` renders the missing column too; D-117)*
-- D-075: Slice C TOML reader/writer contract: strictness, parse codes, canonical form *(deferred-surface set narrowed by D-078/D-120 to `value_type = "date"`; emptied in place on 2026-10-06)*
+- D-075: Slice C TOML reader/writer contract: strictness, parse codes, canonical form *(deferred-surface set narrowed by D-078/D-120 to `value_type = "date"`; emptied in place on 2026-10-06; U+FFFD string escape added in place on 2026-10-14)*
 - D-076: Slice D seam/plan validation contract details *(appends D-067; exact numeric form added + diagnostic renamed by D-091)*
 - D-077: Slice E fingerprint encoding/verification contract details *(appends D-069)*
 - D-078: Slice F composition/carrier contract details *(realizes D-027/D-052; refines D-067/D-075; pattern semantics, template application and duplicate-id validation settled by D-114/D-115/D-116/D-118; extends canonical file identity settled by D-122)*
@@ -426,7 +426,8 @@ of this file).
 
 ### D-133: A Bedrock spec is a UTF-8 TOML 1.1.0 document; the TOML version is independent of `[spec].version`
 
-- **Status:** accepted
+- **Status:** accepted; the pinned reader's rejection of a literal U+FFFD recorded in place on
+  2026-10-14
 - **Date:** 2026-09-26
 - **Decision:** spec §2 declares a Bedrock spec a UTF-8 TOML 1.1.0 document instead of a TOML 1.0
   document. The whole TOML 1.1.0 grammar is the contract, not a subset, and the version is spelled
@@ -459,6 +460,16 @@ of this file).
     is a reviewed change that must keep those tests passing. Input that a parser accepts although
     TOML 1.1.0 forbids it carries no compatibility promise. Adopting a later TOML version needs its
     own decision.
+  - **Literal U+FFFD.** Amended in place on 2026-10-14: the pinned reader also rejects input that
+    TOML 1.1.0 allows. Its lexer reports any character that decodes to U+FFFD as an invalid
+    surrogate sequence, so a genuine U+FFFD written literally anywhere in a spec, in a basic or
+    literal string or in a comment, fails the read with `SpecTomlInvalid`. The bytes are
+    well-formed UTF-8, so this is a conformance gap in the reader, not a grammar or encoding rule,
+    and spec §2 states it. The escape `\uFFFD` in a basic string reads as the same character, and
+    the canonical writer always uses it (D-075), so a written value that contains the character
+    rereads. A literal string or a comment has no escape, so the writer workaround does not repair
+    the reader. That repair is later work in the roadmap's deferred backlog, and its approach needs
+    its own review. The grammar tests pin both the rejection and the escaped spelling's acceptance.
 - **Why:** §2 said TOML 1.0 while nine spec examples write inline tables across lines, and the
   reader has parsed TOML 1.1.0 since it was introduced. EP-8 allows either correction. Declaring
   the grammar that the reader and the examples already use changes no accepted input, keeps every
@@ -2148,7 +2159,7 @@ built; they refine, not reverse, D-009 / D-049 / D-050…D-065.
 
 - **Status:** accepted; the deferred-surface set narrowed by D-078/D-120 to
   `value_type = "date"`, and emptied in place on 2026-10-06 when that value gained its
-  plan-phase refusal
+  plan-phase refusal; the canonical writer's U+FFFD string escape added in place on 2026-10-14
 - **Date:** 2026-07-04
 - **Decision:** the M2 Slice C reader/writer fixes the contracts the spec left
   open:
@@ -2195,6 +2206,16 @@ built; they refine, not reverse, D-009 / D-049 / D-050…D-065.
     round-trip contract is **document-model fidelity, not byte fidelity** of
     authored files (§2 makes formatting informative; fingerprints hash the
     plan, D-053); the test oracle is canonical-text idempotence.
+    Amended in place on 2026-10-14: strings and quoted keys are TOML basic
+    strings that escape `\`, `"`, the C0 controls and DEL, and pass every other
+    character through raw, with one exception. U+FFFD is written as the
+    escape `\uFFFD`, because the pinned reader rejects the literal character
+    (D-133). The escape reads back as the same character, so the document,
+    the conversion output and every fingerprint are unchanged; only the written
+    text and its raw file hash differ. The run manifest shares this rule
+    (D-123 point 8). D-113 measures the escaped line, so the five extra code
+    units can move a `declared_domain` or manifest `values` array near the
+    cutoff from inline to wrapped.
   - **`created_at`:** offset date-times verbatim; local forms coerce to a
     zero-offset `DateTimeOffset` (deterministic across machines; the field is
     inert provenance, §4).

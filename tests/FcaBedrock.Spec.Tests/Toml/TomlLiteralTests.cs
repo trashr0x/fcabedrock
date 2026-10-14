@@ -28,6 +28,10 @@ public sealed class TomlLiteralTests
     public void FormatString_WhenPrintableNonAscii_ThenRawPassthrough() =>
         Assert.Equal("\"café 日本\"", TomlLiteral.FormatString("café 日本"));
 
+    [Fact]
+    public void FormatString_WhenReplacementCharacter_ThenUnicodeEscape() =>
+        Assert.Equal("\"x\\uFFFDy\"", TomlLiteral.FormatString("x\uFFFDy"));
+
     [Theory]
     [InlineData("odor")]
     [InlineData("HS-grad")]
@@ -42,6 +46,7 @@ public sealed class TomlLiteralTests
     [InlineData("a.b", "\"a.b\"")]
     [InlineData("", "\"\"")]
     [InlineData("café", "\"café\"")]
+    [InlineData("x\uFFFDy", "\"x\\uFFFDy\"")]
     public void FormatKey_WhenNotBare_ThenQuoted(string key, string expected) =>
         Assert.Equal(expected, TomlLiteral.FormatKey(key));
 

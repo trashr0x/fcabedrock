@@ -524,6 +524,11 @@ public sealed class SpecRoundTripTests
             Labels("unknown_value_policy = \"include\"\n"),
             "red\ntan\nash\nfig\nelm\noak\nextra\n"
         },
+        {
+            "replacement character in strings and quoted keys",
+            ReplacementCharacter,
+            "x\uFFFDy\nplain\n"
+        },
     };
 
     [Theory]
@@ -575,6 +580,16 @@ public sealed class SpecRoundTripTests
     private const string TemplateLabels = Header
         + "[[template]]\nid = \"t\"\n" + DSixLabels + "\n"
         + "[[attribute]]\nname = \"k\"\ntemplate = \"t\"\nsource = { kind = \"column\", index = 0 }\n" + DSixDomain
+        + "discretizer = { kind = \"identity\" }\nscale = { kind = \"nominal\" }\n";
+
+    // U+FFFD in the description, provenance notes, attribute name, domain values and a quoted
+    // value_labels key and value. The authored text uses the escape because the pinned reader
+    // rejects the character written literally (§2, D-133); the data carries it raw.
+    private const string ReplacementCharacter =
+        "[spec]\nversion = 1\ndescription = \"d\\uFFFD\"\n\n[provenance]\nnotes = \"n\\uFFFD\"\n\n"
+        + "[binding]\nshape = \"wide\"\nhas_header = false\n\n"
+        + "[[attribute]]\nname = \"k\\uFFFD\"\nsource = { kind = \"column\", index = 0 }\n"
+        + "declared_domain = [\"x\\uFFFDy\", \"plain\"]\nvalue_labels = { \"x\\uFFFDy\" = \"L\\uFFFD\" }\n"
         + "discretizer = { kind = \"identity\" }\nscale = { kind = \"nominal\" }\n";
 
     private static string Numeric(string discretizer) =>

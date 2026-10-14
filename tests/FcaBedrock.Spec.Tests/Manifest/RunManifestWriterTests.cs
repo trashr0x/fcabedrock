@@ -1,6 +1,9 @@
 using System.Reflection;
 using FcaBedrock.Core.Calibration;
 using FcaBedrock.Spec.Manifest;
+using FcaBedrock.Spec.Toml;
+using Tomlyn.Parsing;
+using Tomlyn.Syntax;
 
 namespace FcaBedrock.Spec.Tests.Manifest;
 
@@ -519,6 +522,35 @@ public sealed class RunManifestWriterTests
     }
 
     [Fact]
+    public void Write_WhenStringsCarryTheReplacementCharacter_ThenThePinnedReaderRereadsTheSameStrings()
+    {
+        // U+FFFD reaches a manifest through argv, paths and retained calibration values. The
+        // pinned TOML reader rejects it written literally (§2, D-133), so it is written as the
+        // escape, which that reader decodes back to the same strings.
+        var manifest = new RunManifest(
+            Run(commandLine: ["fcabedrock", "convert", "x\uFFFD.toml"], specPath: "x\uFFFD.toml", inputPath: "d\uFFFD.csv"),
+            [new RunOutput(RunOutputFormat.Cxt, "o\uFFFD.cxt", "sha256:cxtart")],
+            [new SpecFileEntry("b\uFFFD.toml", "sha256:base")],
+            [new RunCalibration(new ObservedDomain("a\uFFFDb", ["v\uFFFD", "plain"]), null)]);
+
+        var toml = RunManifestWriter.Write(manifest);
+
+        Assert.DoesNotContain('\uFFFD', toml);
+        Assert.Contains("input_path = \"d\\uFFFD.csv\"\n", toml, StringComparison.Ordinal);
+        Assert.Equal(
+            [
+                ("command_line", "x\uFFFD.toml"),
+                ("spec_path", "x\uFFFD.toml"),
+                ("input_path", "d\uFFFD.csv"),
+                ("path", "o\uFFFD.cxt"),
+                ("path", "b\uFFFD.toml"),
+                ("attribute", "a\uFFFDb"),
+                ("values", "v\uFFFD"),
+            ],
+            ReadStrings(toml).Where(pair => pair.Value.Contains('\uFFFD', StringComparison.Ordinal)));
+    }
+
+    [Fact]
     public void RunSection_WhenTimestampIsNotWholeSecondUtc_ThenThrows()
     {
         // Rejected rather than normalized: §15 names timestamp an audit field, so silently
@@ -733,6 +765,25 @@ public sealed class RunManifestWriterTests
     }
 
     [Fact]
+    public void Write_WhenReplacementCharacterEscapeReachesValuesCutoff_ThenInlineAtItAndWrappedPastIt()
+    {
+        // U+FFFD measures as its six-unit escape here too: at the cutoff the line stays inline,
+        // and one code unit more wraps, although the same line with the raw character would
+        // measure only 96.
+        var atCutoff = new[] { new string('a', 36) + "\uFFFD", new string('b', 41) };
+        var atCutoffLine = ValuesKeyPrefix + "[\"" + new string('a', 36) + "\\uFFFD\", \"" + atCutoff[1] + "\"]";
+        Assert.Equal(Cutoff, atCutoffLine.Length);
+
+        var pastCutoff = new[] { new string('a', 37) + "\uFFFD", new string('b', 41) };
+
+        Assert.Contains(atCutoffLine + "\n", WriteObserved(atCutoff), StringComparison.Ordinal);
+        Assert.Contains(
+            "values = [\n  \"" + new string('a', 37) + "\\uFFFD\",\n  \"" + pastCutoff[1] + "\",\n]\n",
+            WriteObserved(pastCutoff),
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Write_WhenValuesAreEmptyOrShort_ThenInline()
     {
         Assert.Contains("values = []\n", WriteObserved([]), StringComparison.Ordinal);
@@ -828,6 +879,40 @@ public sealed class RunManifestWriterTests
     private static string WriteObserved(IReadOnlyList<string> values) =>
         RunManifestWriter.Write(Manifest(calibrations:
             [new RunCalibration(new ObservedDomain("a", values), null)]));
+
+    // Every string value in the manifest, keyed by its own key and in document order, with array
+    // elements listed one by one. It parses with the same Tomlyn call SpecReader makes, so a
+    // string this reader rejects fails the test here.
+    private static List<(string Key, string Value)> ReadStrings(string toml)
+    {
+        var document = SyntaxParser.Parse(toml, null, validate: true);
+        Assert.False(document.Diagnostics.HasErrors, document.Diagnostics.ToString());
+
+        var strings = new List<(string Key, string Value)>();
+        foreach (var table in document.Tables)
+        {
+            foreach (var pair in table.Items)
+            {
+                var key = TomlSyntaxHelpers.KeyText(pair.Key?.Key) ?? string.Empty;
+                if (pair.Value is StringValueSyntax { Value: { } single })
+                {
+                    strings.Add((key, single));
+                }
+                else if (pair.Value is ArraySyntax array)
+                {
+                    foreach (var item in array.Items)
+                    {
+                        if (item.Value is StringValueSyntax { Value: { } element })
+                        {
+                            strings.Add((key, element));
+                        }
+                    }
+                }
+            }
+        }
+
+        return strings;
+    }
 
     private static void AssertSingleLineDiffers(RunManifest left, RunManifest right, string keyPrefix)
     {
