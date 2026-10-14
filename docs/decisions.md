@@ -225,11 +225,11 @@ changes an earlier one. A new entry MUST add its line here.
 
 ### M7 (CLI) pre-implementation adjudication
 
-- D-122: M7 CLI contract: commands, process model, publication, manifest, freeze, authored-empty domains, per-command semantics, non-goals, distribution, and the exit floor *(revises D-071's empty-domain reading; refines D-026/D-078/D-088; realizes the CLI faces of D-005/D-028/D-067/D-077; implementation architecture realized by D-123; reach of parts 4–5 qualified by D-125; part 10's headerless schema record amended in place on 2026-10-01)*
+- D-122: M7 CLI contract: commands, process model, publication, manifest, freeze, authored-empty domains, per-command semantics, non-goals, distribution, and the exit floor *(revises D-071's empty-domain reading; refines D-026/D-078/D-088; realizes the CLI faces of D-005/D-028/D-067/D-077; implementation architecture realized by D-123; reach of parts 4–5 qualified by D-125; part 10's headerless schema record amended in place on 2026-10-01; part 3's escaping and code-less warning form amended in place on 2026-10-14)*
 
 ### M7 (CLI) implementation
 
-- D-123: M7 implementation architecture and public surfaces: CLI boundary, parser, presentation, audit argv, filesystem identity, publication transaction, run manifest, freeze pairing, runtime options, and the CXT size advisory (registry 81 → 82) *(realizes D-122's implementation architecture; refines D-085's registry-timing rule; reach of point 7 qualified by D-125)*
+- D-123: M7 implementation architecture and public surfaces: CLI boundary, parser, presentation, audit argv, filesystem identity, publication transaction, run manifest, freeze pairing, runtime options, and the CXT size advisory (registry 81 → 82) *(realizes D-122's implementation architecture; refines D-085's registry-timing rule; reach of point 7 qualified by D-125; point 3's escaping amended in place on 2026-10-14)*
 
 ### M8 (first scaling / benchmark pass)
 
@@ -5640,7 +5640,8 @@ and §16.4; D-120 and D-121 record the implemented naming, template and matcher 
 - **Status:** accepted (M7 pre-implementation contract; **revises D-071**;
   refines D-026/D-078/D-088; realizes the CLI faces of D-005/D-028/D-067/D-077); its
   implementation architecture realized by D-123; the reach of parts 4–5 qualified by D-125
-  (2026-09-09); part 10's headerless schema record amended in place on 2026-10-01
+  (2026-09-09); part 10's headerless schema record amended in place on 2026-10-01; part 3's
+  escaping and code-less warning form amended in place on 2026-10-14
 - **Date:** 2026-07-22
 - **Decision:** the complete M7 CLI contract is settled **before any M7 code**, in
   fifteen parts.
@@ -5690,6 +5691,27 @@ and §16.4; D-120 and D-121 record the implemented naming, template and matcher 
   anticipated later requirement**, so M7 MUST **centralize** diagnostic presentation
   and progress observation such that adding them later needs no run-orchestration
   refactoring. M7 defines no flag or schema for any of them.
+
+  Amended in place on 2026-10-14: the escaping above is made exact, and a code-less warning
+  form joins the code-less error form. Message prose gets **one transport pass** over the
+  whole message. An ordinary double quote is written as itself, because prose has no
+  surrounding quotes. A backslash is written `\\`; backspace, tab, LF, form feed and CR keep
+  the short escapes `\b \t \n \f \r`; every other C0 control (U+0000 to U+001F), DEL
+  (U+007F), every C1 control (U+0080 to U+009F) and the separators U+2028 and U+2029 are
+  written as lowercase four-digit escapes such as `\u0085`; every other character,
+  printable non-BMP text included, is written verbatim. String location fields are quoted JSON
+  string literals with the same rules plus `\"`, so each parses back to its original string.
+  The transport owns only its own pass. A producer that already quotes and escapes a sample,
+  such as D-120's invalid-name samples, keeps that representation; the CLI neither recognizes
+  nor undoes it, so a sample the producer wrote as `"bad\nvalue"` renders as `"bad\\nvalue"`.
+  The code-less forms are `error: escaped-message` and `warning: escaped-message`: one
+  LF-terminated line each, through the same prose transport, even for an empty message, and
+  neither joins the registry (part 2). Escaping quotes in unquoted prose only made messages
+  harder to read, while DEL, C1 and the two separators reached stderr raw although this part
+  promised every control character escaped: C1 includes terminal control codes, and some
+  readers split lines at U+2028 and U+2029. The plan report and the private publication
+  record keep their narrower generic JSON string escaping, and Core's canonical fingerprint
+  JSON is untouched (D-069), so only stderr bytes change.
 
   **4. Input/output policy.** Neither SPEC nor DATA accepts `-`: there is **no stdin
   source** and no implicit spooling or synthetic composition base. Report commands
@@ -5930,7 +5952,7 @@ and §16.4; D-120 and D-121 record the implemented naming, template and matcher 
 - **Status:** accepted (M7 implementation; realizes D-122's implementation architecture;
   refines D-085's registry-timing rule). All eleven implementation steps landed by M7
   Slice K, merged 2026-08-08; the roadmap's M7 exit block is the landed record. The reach of
-  point 7 qualified by D-125 (2026-09-09).
+  point 7 qualified by D-125 (2026-09-09); point 3's escaping amended in place on 2026-10-14.
 - **Date:** 2026-07-24
 - **Decision:** M7's implementation architecture and every new public surface are
   settled here. It records the concrete parser, serializer and transaction-mechanism
@@ -5954,7 +5976,11 @@ and §16.4; D-120 and D-121 record the implemented naming, template and matcher 
   **3. Centralized presentation.** All diagnostics and progress flow through one
   CLI-internal renderer (the D-122 part 3 grammar, byte-exact) plus a no-op progress
   observer, so the committed color/progress/machine-mode follow-ups become later renderer
-  implementations rather than run-orchestration refactors.
+  implementations rather than run-orchestration refactors. Amended in place on 2026-10-14:
+  the renderer escapes through its own CLI-internal helper, with a prose form and a
+  quoted-location form (D-122 part 3), separate from the generic JSON string escaping that
+  the plan report and the private publication record keep; and it renders the code-less
+  `warning:` line beside the code-less `error:` line.
 
   **4. Audit argv.** The manifest `command_line` is the **complete process command-line
   array including its actual argv[0]** (`Environment.GetCommandLineArgs()`), captured

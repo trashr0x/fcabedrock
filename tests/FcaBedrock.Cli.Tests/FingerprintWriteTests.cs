@@ -535,9 +535,9 @@ public sealed class FingerprintWriteTests
         AssertReport(harness.StdOut, "absent");
 
         // The rendered line: the attribute location, then the code, then the library message with
-        // its embedded quotes JSON-escaped per the D-122 part 3 grammar.
+        // its embedded quotes literal per the D-122 part 3 grammar.
         Assert.Equal(
-            "attribute=\"colour\": warning RestrictToValueNotInDomain: restrict_to value \\\"blue\\\""
+            "attribute=\"colour\": warning RestrictToValueNotInDomain: restrict_to value \"blue\""
                 + " on attribute 'colour' is not in its declared_domain (§10.4).",
             Assert.Single(Lines(harness.StdErr)));
 

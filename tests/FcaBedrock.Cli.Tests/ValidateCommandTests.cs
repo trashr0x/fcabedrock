@@ -242,7 +242,7 @@ public sealed class ValidateCommandTests
         Assert.Equal(string.Empty, harness.StdOut);
         Assert.Equal(
             $"file=\"{Path.GetFullPath(spec).Replace("\\", "\\\\")}\" line=6 column=1: error SpecFieldInvalid: " +
-            "[binding] key 'ordering' applies only to shape = \\\"triple\\\"; a wide binding has no additional fields (§5.2/§5.3).\n",
+            "[binding] key 'ordering' applies only to shape = \"triple\"; a wide binding has no additional fields (§5.2/§5.3).\n",
             harness.StdErr);
     }
 
@@ -261,7 +261,7 @@ public sealed class ValidateCommandTests
         Assert.Equal(string.Empty, harness.StdOut);
         Assert.Equal(
             $"file=\"{Path.GetFullPath(spec).Replace("\\", "\\\\")}\" line=9 column=8 attribute=\"col\\\"our\": error SpecFieldInvalid: " +
-            "[[attribute]] key 'name' contains a CR, LF or '\\\"'; an attribute name is any non-empty string without them (§10.1).\n",
+            "[[attribute]] key 'name' contains a CR, LF or '\"'; an attribute name is any non-empty string without them (§10.1).\n",
             harness.StdErr);
     }
 
@@ -284,8 +284,8 @@ public sealed class ValidateCommandTests
         Assert.Equal(1, exit);
         Assert.Equal(string.Empty, harness.StdOut);
         Assert.Equal(
-            "error SourceBindingInvalid: binding.ordering applies only to shape = \\\"triple\\\"; a wide binding has no additional fields (§5.2/§5.3).\n" +
-            "error SourceBindingInvalid: binding.columns applies only to shape = \\\"triple\\\"; a wide binding has no additional fields (§5.2/§5.3).\n",
+            "error SourceBindingInvalid: binding.ordering applies only to shape = \"triple\"; a wide binding has no additional fields (§5.2/§5.3).\n" +
+            "error SourceBindingInvalid: binding.columns applies only to shape = \"triple\"; a wide binding has no additional fields (§5.2/§5.3).\n",
             harness.StdErr);
     }
 
@@ -328,6 +328,21 @@ public sealed class ValidateCommandTests
 
         Assert.Equal(1, exit);
         Assert.Equal($"error: cannot read the spec file '{missing.Replace("\\", "\\\\")}'.\n", harness.StdErr);
+    }
+
+    [Fact]
+    public async Task Validate_WhenTheMissingSpecNameHasControlCharacters_ThenTheHostErrorEscapesThem()
+    {
+        using var temp = TempDirectory.Create();
+        var harness = new CliTestHarness();
+        var missing = temp.Resolve("a" + (char)0x2028 + "b\u0085c.toml");
+
+        var exit = await harness.RunAsync("validate", missing);
+
+        Assert.Equal(1, exit);
+        Assert.Equal(
+            $"error: cannot read the spec file '{temp.Resolve("a").Replace("\\", "\\\\")}\\u2028b\\u0085c.toml'.\n",
+            harness.StdErr);
     }
 
     [Fact]

@@ -321,6 +321,29 @@ public sealed class PlanCommandTests
         Assert.Contains("ObservedDomainUsed", harness.StdErr, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task Plan_WhenARenderedNameHasALineBreak_ThenTheQuotedSampleIsEscapedOnceMoreOnItsLine()
+    {
+        // The planner quotes the invalid name and spells its line break as backslash-n (D-120);
+        // the stderr transport then doubles that backslash and keeps the quotes literal.
+        using var temp = TempDirectory.Create();
+        var spec = temp.Write(
+            "spec.toml",
+            CliFixtures.IndexBoundSpec.Replace(
+                "declared_domain = [\"red\", \"green\"]", "declared_domain = [\"red\", \"bad\\nline\"]", StringComparison.Ordinal));
+        var data = temp.Write("data.csv", CliFixtures.WideData);
+        var harness = new CliTestHarness();
+
+        var exit = await harness.RunAsync("plan", spec, data);
+
+        Assert.Equal(1, exit);
+        Assert.Equal(string.Empty, harness.StdOut);
+        Assert.Equal(
+            "attribute=\"colour\": error FormalAttributeNameInvalid: Attribute 'colour' renders 1 invalid "
+            + "formal-attribute name(s), empty or containing CR/LF: \"colour-bad\\\\nline\" (§10.7).\n",
+            harness.StdErr);
+    }
+
     // ---- stale stored fingerprints --------------------------------------------------------
 
     [Fact]

@@ -68,6 +68,34 @@ public sealed class CliHostTests
             "error: command 'validate' requires the SPEC operand.\n" + UsageText.For("validate"), harness.StdErr);
     }
 
+    [Fact]
+    public async Task RunAsync_WhenAUsageMessageQuotesADoubleQuote_ThenTheQuoteStaysLiteral()
+    {
+        var harness = new CliTestHarness();
+
+        var exit = await harness.RunAsync("probe", "x", "--delimiter", "TAB");
+
+        Assert.Equal(2, exit);
+        Assert.Equal(string.Empty, harness.StdOut);
+        Assert.Equal(
+            "error: option '--delimiter' accepts TAB or one character from U+001F to U+007E other than '#'"
+            + " and the quote character '\"', not 'TAB'.\n" + UsageText.For("probe"),
+            harness.StdErr);
+    }
+
+    [Fact]
+    public async Task RunAsync_WhenAUsageMessageEchoesControlCharacters_ThenTheyAreEscapedOnOneLine()
+    {
+        var harness = new CliTestHarness();
+
+        var exit = await harness.RunAsync("a\u0085b" + (char)0x2028 + "c\\nd\ne");
+
+        Assert.Equal(2, exit);
+        Assert.Equal(string.Empty, harness.StdOut);
+        Assert.Equal(
+            "error: unknown command 'a\\u0085b\\u2028c\\\\nd\\ne'.\n" + UsageText.General, harness.StdErr);
+    }
+
     [Theory]
     [InlineData("--sample")]
     [InlineData("--gzip")]

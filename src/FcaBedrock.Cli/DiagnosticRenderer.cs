@@ -6,7 +6,7 @@ namespace FcaBedrock.Cli;
 
 /// <summary>
 /// The one place a diagnostic becomes text (D-122 part 3 / D-123 part 3). Every
-/// diagnostic and every code-less host error in the CLI flows through here, so the
+/// diagnostic and every code-less host error or warning in the CLI flows through here, so the
 /// committed colour/progress/machine-readable follow-ups become alternative renderer
 /// implementations rather than a run-orchestration refactor.
 /// <para>
@@ -20,10 +20,11 @@ namespace FcaBedrock.Cli;
 /// with only <b>populated</b> location fields (present = non-null, so an empty string
 /// still renders as <c>file=""</c>), always in that order regardless of construction
 /// order, fields separated by a single ASCII space; string fields as JSON string
-/// literals and integers invariant; lowercase severity; the message JSON-escaped
-/// without surrounding quotes. When no field is populated the whole prefix (including
-/// the <c>": "</c>) is omitted and the line starts at the severity. Code-less host
-/// errors render <c>error: escaped-message</c>.
+/// literals and integers invariant; lowercase severity; the message without surrounding
+/// quotes, through one prose transport pass. <see cref="DiagnosticEscaping"/> owns both
+/// escapings. When no field is populated the whole prefix (including the <c>": "</c>) is
+/// omitted and the line starts at the severity. Code-less host lines render
+/// <c>error: escaped-message</c> or <c>warning: escaped-message</c>.
 /// </para>
 /// <para>
 /// Nothing here sorts, groups, deduplicates, suppresses, or rewords: the library's
@@ -42,7 +43,7 @@ internal static class DiagnosticRenderer
         builder.Append(' ');
         builder.Append(diagnostic.Code.ToString());
         builder.Append(": ");
-        JsonStringEscaping.AppendEscaped(builder, diagnostic.Message);
+        DiagnosticEscaping.AppendProse(builder, diagnostic.Message);
         builder.Append('\n');
         return builder.ToString();
     }
@@ -52,13 +53,14 @@ internal static class DiagnosticRenderer
     /// a missing or unreadable input, a publication failure, an unexpected internal
     /// fault. These never join the diagnostic registry (D-122 part 2).
     /// </summary>
-    public static string RenderHostError(string message)
-    {
-        var builder = new StringBuilder("error: ");
-        JsonStringEscaping.AppendEscaped(builder, message);
-        builder.Append('\n');
-        return builder.ToString();
-    }
+    public static string RenderHostError(string message) => RenderHostLine("error: ", message);
+
+    /// <summary>
+    /// The rendered line for a CLI-owned, code-less host warning: the same prose transport as
+    /// <see cref="RenderHostError"/>, under <c>warning: </c>. Like a code-less error it never
+    /// joins the diagnostic registry; rendering it decides no exit code.
+    /// </summary>
+    public static string RenderHostWarning(string message) => RenderHostLine("warning: ", message);
 
     /// <summary>Writes <paramref name="diagnostics"/> to <paramref name="writer"/> in the supplied order.</summary>
     public static void Write(TextWriter writer, IEnumerable<BedrockDiagnostic> diagnostics)
@@ -99,7 +101,7 @@ internal static class DiagnosticRenderer
         {
             Separate(builder, ref fields);
             builder.Append("file=");
-            JsonStringEscaping.AppendLiteral(builder, file);
+            DiagnosticEscaping.AppendQuoted(builder, file);
         }
 
         if (present.Line is { } line)
@@ -120,7 +122,7 @@ internal static class DiagnosticRenderer
         {
             Separate(builder, ref fields);
             builder.Append("attribute=");
-            JsonStringEscaping.AppendLiteral(builder, attribute);
+            DiagnosticEscaping.AppendQuoted(builder, attribute);
         }
 
         if (present.RecordIndex is { } record)
@@ -134,6 +136,14 @@ internal static class DiagnosticRenderer
         {
             builder.Append(": ");
         }
+    }
+
+    private static string RenderHostLine(string prefix, string message)
+    {
+        var builder = new StringBuilder(prefix);
+        DiagnosticEscaping.AppendProse(builder, message);
+        builder.Append('\n');
+        return builder.ToString();
     }
 
     private static void Separate(StringBuilder builder, ref int fields)

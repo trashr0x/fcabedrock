@@ -4,9 +4,11 @@ using System.Text;
 namespace FcaBedrock.Cli;
 
 /// <summary>
-/// The CLI's own JSON string escaping: the §16.4 stderr grammar
-/// (<see cref="DiagnosticRenderer"/>) and the private publication transaction record, which
-/// needs one unambiguous way to write a file name it can later reconstruct exactly.
+/// The CLI's own generic JSON string escaping: the quoted strings of the plan report and of the
+/// private publication transaction record, which needs one unambiguous way to write a file name
+/// it can later reconstruct exactly. The §16.4 stderr grammar uses
+/// <see cref="DiagnosticEscaping"/> instead, which escapes more controls and leaves a double
+/// quote literal in message prose.
 /// <para>
 /// <b>Deliberately not Core's <c>CanonicalJson</c>.</b> That one is a frozen hash
 /// contract (D-053/D-069/D-077): every fingerprint in the repository is pinned to its
@@ -25,7 +27,7 @@ namespace FcaBedrock.Cli;
 /// </summary>
 internal static class JsonStringEscaping
 {
-    /// <summary>Appends <paramref name="value"/> escaped, <b>without</b> surrounding quotes: the message form.</summary>
+    /// <summary>Appends <paramref name="value"/> escaped, <b>without</b> surrounding quotes.</summary>
     public static void AppendEscaped(StringBuilder builder, string value)
     {
         foreach (var ch in value)

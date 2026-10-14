@@ -3048,9 +3048,10 @@ diagnostic contract. The CLI renders each diagnostic as **one deterministic
 stderr line** in the sparse labelled form `file="…" line=N column=N attribute="…"
 record=N: severity Code: escaped-message`: only populated location fields, in that
 order; string fields as JSON string literals, integers invariant; lowercase
-severity; all control characters and literal backslashes escaped; no location prefix
-when no field is populated (`warning NoObjectsEmitted: …`); code-less host errors
-render `error: escaped-message`. Library order is preserved and the CLI does **no**
+severity; the message without surrounding quotes, escaped once as prose (**CLI
+escaping** below); no location prefix when no field is populated
+(`warning NoObjectsEmitted: …`); code-less host lines render `error: escaped-message`
+or `warning: escaped-message`. Library order is preserved and the CLI does **no**
 additional grouping (D-122). Within the resolve phase the deterministic family order
 is:
 
@@ -3064,6 +3065,23 @@ is:
 with declaration order (matchers, templates) or logical-attribute order preserved
 **within** each family. Parse-phase diagnostics retain reader source-position
 order.
+
+**CLI escaping.** The CLI escapes message prose and string location fields by one set of
+rules. A backslash is written `\\`. Backspace, tab, LF, form feed and CR keep the short
+escapes `\b`, `\t`, `\n`, `\f` and `\r`. Every other C0 control (U+0000 to U+001F), DEL
+(U+007F), every C1 control (U+0080 to U+009F) and the separators U+2028 and U+2029 are
+written as a lowercase four-digit escape such as `\u0085`. Every other character,
+printable non-BMP text included, is written unchanged. A location field is a quoted JSON
+string literal, so a double quote in it is written `\"` and the field parses back to its
+original string. Message prose has no surrounding quotes, so a double quote in it is written
+as itself. The CLI escapes the whole message exactly once and never recognizes or undoes an
+escape the message already contains: a producer that quotes and escapes a sample, as
+`FormalAttributeNameInvalid` does, owns that representation, and the CLI escapes its
+backslashes like any other. A sample the producer wrote as `"bad\nvalue"` therefore appears
+on stderr as `"bad\\nvalue"`. A code-less host error renders `error: escaped-message` and a
+code-less host warning renders `warning: escaped-message`, each with its message escaped as
+prose and one terminating LF, even when the message is empty. Neither carries a code: the
+registry above covers pipeline conditions only.
 
 **The `migrate (v2)` phase** is the one-way `.bed` → TOML migration (D-009/D-079),
 a tooling phase outside the §7 processing pipeline. The migrator carries what the

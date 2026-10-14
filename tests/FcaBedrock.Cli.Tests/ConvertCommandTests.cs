@@ -755,11 +755,11 @@ public sealed class ConvertCommandTests
 
     private const string DuplicateKeyLine =
         "record=30000: error DuplicateObjectKey: The wide object key 'k0000010' at record 30000 duplicates an "
-        + "earlier record; duplicate_object_policy = \\\"fail\\\" (§6.1).\n";
+        + "earlier record; duplicate_object_policy = \"fail\" (§6.1).\n";
 
     private const string NonContiguousSubjectLine =
         "record=30000: error TripleSubjectNotContiguous: Triple subject 's0000005' recurs at record 30000 after "
-        + "an intervening subject; ordering = \\\"subject_grouped\\\" requires contiguous subjects (§5.3).\n";
+        + "an intervening subject; ordering = \"subject_grouped\" requires contiguous subjects (§5.3).\n";
 
     private static readonly string[] Colours = ["red", "green", "blue"];
 

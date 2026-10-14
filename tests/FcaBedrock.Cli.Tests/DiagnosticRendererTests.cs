@@ -1,3 +1,4 @@
+using System.Text.Json;
 using FcaBedrock.Diagnostics;
 
 namespace FcaBedrock.Cli.Tests;
@@ -138,24 +139,81 @@ public sealed class DiagnosticRendererTests
         Assert.Equal("fatal SpecExtendsCycle: m\n", rendered);
     }
 
+    // The prose transport over the complete escape set and its neighbours: the input text,
+    // then its exact escaped spelling. A double quote stays literal; a backslash doubles; the
+    // five short escapes stay; every other C0, DEL, C1, LS and PS becomes a lowercase \u
+    // escape; the printable characters on either side of each range pass through.
+    private static readonly (string Value, string Prose)[] EscapeTable =
+    [
+        ("a\"b", "a\"b"),
+        ("a\\b", "a\\\\b"),
+        ("a/b", "a/b"),
+        ("a\\nb", "a\\\\nb"),
+        ("a\nb", "a\\nb"),
+        ("a\tb", "a\\tb"),
+        ("a\rb", "a\\rb"),
+        ("a\bb", "a\\bb"),
+        ("a\fb", "a\\fb"),
+        ("a\u0000b", "a\\u0000b"),
+        ("a\u0001b", "a\\u0001b"),
+        ("a\u000bb", "a\\u000bb"),
+        ("a\u001bb", "a\\u001bb"),
+        ("a\u001fb", "a\\u001fb"),
+        ("a\u0020b", "a\u0020b"),
+        ("a\u007eb", "a\u007eb"),
+        ("a\u007fb", "a\\u007fb"),
+        ("a\u0080b", "a\\u0080b"),
+        ("a\u0085b", "a\\u0085b"),
+        ("a\u009fb", "a\\u009fb"),
+        ("a\u00a0b", "a\u00a0b"),
+        ("a\u2027b", "a\u2027b"),
+        ("a\u2028b", "a\\u2028b"),
+        ("a\u2029b", "a\\u2029b"),
+        ("a\u202fb", "a\u202fb"),
+        ("a\U0001D11Eb", "a\U0001D11Eb"),
+        (string.Empty, string.Empty),
+    ];
+
+    public static TheoryData<string, string> ProseEscapes()
+    {
+        var data = new TheoryData<string, string>();
+        foreach (var (value, prose) in EscapeTable)
+        {
+            data.Add(value, prose);
+        }
+
+        return data;
+    }
+
     [Theory]
-    [InlineData("a\"b", "a\\\"b")]
-    [InlineData("a\\b", "a\\\\b")]
-    [InlineData("a/b", "a/b")]
-    [InlineData("a\nb", "a\\nb")]
-    [InlineData("a\tb", "a\\tb")]
-    [InlineData("a\rb", "a\\rb")]
-    [InlineData("a\bb", "a\\bb")]
-    [InlineData("a\fb", "a\\fb")]
-    [InlineData("a\u0000b", "a\\u0000b")]
-    [InlineData("a\u001fb", "a\\u001fb")]
-    [InlineData("a\u0001b", "a\\u0001b")]
-    public void Render_WhenMessageCarriesSpecials_ThenJsonEscapingIsAppliedWithoutQuotes(string message, string expected)
+    [MemberData(nameof(ProseEscapes))]
+    public void Render_WhenMessageCarriesSpecials_ThenTheProseTransportEscapesThem(string message, string expected)
     {
         var rendered = DiagnosticRenderer.Render(new BedrockDiagnostic(
             DiagnosticCode.NoObjectsEmitted, DiagnosticSeverity.Error, message));
 
         Assert.Equal($"error NoObjectsEmitted: {expected}\n", rendered);
+    }
+
+    [Fact]
+    public void Render_WhenALibrarySampleIsAlreadyQuotedAndEscaped_ThenTheTransportEscapesItOnce()
+    {
+        // FormalAttributeNameInvalid's producer quotes each sample and escapes its backslash,
+        // quote, CR and LF (D-120). The transport then escapes the whole message once more:
+        // the producer's quotes stay literal and each producer backslash doubles, so an
+        // actual line break in a name ends up as backslash, backslash, n on the line.
+        const string message =
+            "Attribute 'x' renders 3 invalid formal-attribute name(s), empty or containing CR/LF: "
+            + "\"x-bad\\nline\", \"q\\\"t\", \"\" (§10.7).";
+
+        var rendered = DiagnosticRenderer.Render(new BedrockDiagnostic(
+            DiagnosticCode.FormalAttributeNameInvalid, DiagnosticSeverity.Error, message,
+            new DiagnosticLocation(AttributeName: "x")));
+
+        Assert.Equal(
+            "attribute=\"x\": error FormalAttributeNameInvalid: Attribute 'x' renders 3 invalid formal-attribute "
+            + "name(s), empty or containing CR/LF: \"x-bad\\\\nline\", \"q\\\\\"t\", \"\" (§10.7).\n",
+            rendered);
     }
 
     [Fact]
@@ -183,6 +241,53 @@ public sealed class DiagnosticRendererTests
             "file=\"C:\\\\dir\\\\a\\\"b.toml\" attribute=\"a\\tb\u00e9\": error SpecFieldInvalid: m\n", rendered);
     }
 
+    // The quoted-location form over the same set: identical to the prose transport except
+    // that a double quote is escaped, so the field stays one valid JSON string literal.
+    public static TheoryData<string, string> LocationEscapes()
+    {
+        var data = new TheoryData<string, string>();
+        foreach (var (value, prose) in EscapeTable)
+        {
+            data.Add(value, value == "a\"b" ? "a\\\"b" : prose);
+        }
+
+        return data;
+    }
+
+    [Theory]
+    [MemberData(nameof(LocationEscapes))]
+    public void Render_WhenStringLocationsCarrySpecials_ThenEachIsAJsonLiteralOfTheOriginal(string value, string expected)
+    {
+        var location = new DiagnosticLocation(File: value, AttributeName: value);
+
+        var rendered = DiagnosticRenderer.Render(new BedrockDiagnostic(
+            DiagnosticCode.SpecFieldInvalid, DiagnosticSeverity.Error, "m", location));
+
+        Assert.Equal($"file=\"{expected}\" attribute=\"{expected}\": error SpecFieldInvalid: m\n", rendered);
+
+        // Read back from the rendered line itself: each literal is valid JSON and decodes to
+        // exactly the original string.
+        var file = ReadLiteral(rendered, "file=");
+        var attribute = ReadLiteral(rendered, " attribute=");
+        Assert.Equal(value, JsonDocument.Parse(file).RootElement.GetString());
+        Assert.Equal(value, JsonDocument.Parse(attribute).RootElement.GetString());
+    }
+
+    // The JSON string literal that starts right after the first occurrence of label: from its
+    // opening quote to the first quote not preceded by an escaping backslash.
+    private static string ReadLiteral(string line, string label)
+    {
+        var start = line.IndexOf(label, StringComparison.Ordinal) + label.Length;
+        Assert.Equal('"', line[start]);
+        var end = start + 1;
+        while (line[end] != '"')
+        {
+            end += line[end] == '\\' ? 2 : 1;
+        }
+
+        return line[start..(end + 1)];
+    }
+
     [Fact]
     public void Render_WhenIntegerLocationsAreLarge_ThenTheyRenderInvariantAndUngrouped()
     {
@@ -204,7 +309,34 @@ public sealed class DiagnosticRendererTests
     [Fact]
     public void RenderHostError_WhenMessageCarriesSpecials_ThenItIsEscaped()
     {
-        Assert.Equal("error: a\\nb \\\"c\\\" d\\\\e\n", DiagnosticRenderer.RenderHostError("a\nb \"c\" d\\e"));
+        Assert.Equal("error: a\\nb \"c\" d\\\\e\n", DiagnosticRenderer.RenderHostError("a\nb \"c\" d\\e"));
+    }
+
+    [Theory]
+    [MemberData(nameof(ProseEscapes))]
+    public void RenderHostError_WhenMessageCarriesSpecials_ThenTheProseTransportEscapesThem(string message, string expected)
+    {
+        Assert.Equal($"error: {expected}\n", DiagnosticRenderer.RenderHostError(message));
+    }
+
+    [Fact]
+    public void RenderHostWarning_WhenCalled_ThenTheCodeLessWarningFormIsUsed()
+    {
+        Assert.Equal("warning: a code-less warning about 'out.cxt'.\n",
+            DiagnosticRenderer.RenderHostWarning("a code-less warning about 'out.cxt'."));
+    }
+
+    [Fact]
+    public void RenderHostWarning_WhenMessageIsEmpty_ThenOnlyThePrefixAndTheLineEndAreWritten()
+    {
+        Assert.Equal("warning: \n", DiagnosticRenderer.RenderHostWarning(string.Empty));
+    }
+
+    [Theory]
+    [MemberData(nameof(ProseEscapes))]
+    public void RenderHostWarning_WhenMessageCarriesSpecials_ThenTheProseTransportEscapesThem(string message, string expected)
+    {
+        Assert.Equal($"warning: {expected}\n", DiagnosticRenderer.RenderHostWarning(message));
     }
 
     [Fact]

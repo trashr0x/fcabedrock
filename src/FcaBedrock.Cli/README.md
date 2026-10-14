@@ -236,6 +236,18 @@ Diagnostics render one LF-terminated line each on stderr; primary results go to
 stdout. `fcabedrock --help` prints the full grammar for every command, and
 `fcabedrock --version` prints the tool version.
 
+A line that starts with `error:` or `warning:` and has no code comes from the
+tool itself, for example a missing input file; a diagnostic line names its code
+after the severity. File and attribute names at the start of a diagnostic line
+are JSON strings, so a quote in them appears as `\"`. In a message, a quote
+appears as itself. In both, a backslash appears doubled (`\\`); a tab, line
+break, carriage return, backspace or form feed appears as `\t`, `\n`, `\r`, `\b`
+or `\f`; and any other control character or a line or paragraph separator
+appears as an escape such as `\u0085`, so one diagnostic never spans two lines.
+A message that already quotes a value with its own escapes, such as an invalid
+formal-attribute name, has those backslashes doubled too: a name containing a
+line break appears as `"x-bad\\nline"`.
+
 ## Technical preview
 
 Continuous integration builds and tests this tool natively on **Windows x64**,

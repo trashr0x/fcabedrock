@@ -56,7 +56,7 @@ public sealed class DateValueTypeRefusalTests
 
     // The single stderr line of every plan-refusing command over DateSpec.
     private const string Refusal =
-        """attribute="born": fatal DateValueTypeNotImplementedV1: Attribute 'born' declares value_type = \"date\", which v1 does not implement (§10.2/§11.7/§20).""" + "\n";
+        """attribute="born": fatal DateValueTypeNotImplementedV1: Attribute 'born' declares value_type = "date", which v1 does not implement (§10.2/§11.7/§20).""" + "\n";
 
     private const string ColourCalibrated =
         """attribute="colour": warning ObservedDomainUsed: Attribute 'colour' had no declared_domain; it was calibrated from 2 observed value(s), so the schema depends on this input (§10.3).""";
