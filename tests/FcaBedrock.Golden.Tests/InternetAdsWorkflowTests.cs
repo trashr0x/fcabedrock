@@ -429,11 +429,12 @@ public sealed class InternetAdsWorkflowTests
     {
         var defined = Enum.GetNames<DiagnosticCode>();
 
-        // 83 codes. OutputCxtSizeAdvisory joined at its export emit site (D-123) and AttributesMissing
+        // 85 codes. OutputCxtSizeAdvisory joined at its export emit site (D-123) and AttributesMissing
         // at its resolve emit site (D-135). DateValueTypeNotImplementedV1 replaced the parse-phase
         // SpecSurfaceNotYetSupported at its plan emit site (D-038), so that swap left the count as it
-        // was. The template, matcher and naming codes below are unchanged.
-        Assert.Equal(83, defined.Length);
+        // was. ProbeValueOmitted and ProbeUnsafeTruncatedDomain joined at their probe emit sites
+        // (D-111). The template, matcher and naming codes below are unchanged.
+        Assert.Equal(85, defined.Length);
         Assert.Contains(nameof(DiagnosticCode.OutputCxtSizeAdvisory), defined);
         Assert.Contains(nameof(DiagnosticCode.AttributesMissing), defined);
         Assert.Contains(nameof(DiagnosticCode.DateValueTypeNotImplementedV1), defined);

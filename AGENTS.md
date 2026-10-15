@@ -236,7 +236,7 @@ Don't implement first and explain later.
 **M1–M7 are complete.** M7 (CLI) landed under **D-122** (the adjudicated pre-implementation
 contract) and **D-123** (the implementation decisions): the `fcabedrock` global tool with all
 eight commands, the publication transaction, the run manifest, the freeze engine, filesystem
-identity, and the argv-boundary exit floor. The diagnostic registry is **83**, and no M7
+identity, and the argv-boundary exit floor. The diagnostic registry is **85**, and no M7
 transitional diagnostic remains. M8, M8.1 and M8.2 are complete. **M9 (the Avalonia desktop
 application) is next.**
 `docs/roadmap.md` is the live source for current position, test count, and the deferred

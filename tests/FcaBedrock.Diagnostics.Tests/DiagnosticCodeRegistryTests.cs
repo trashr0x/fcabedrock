@@ -71,9 +71,11 @@ public sealed class DiagnosticCodeRegistryTests
         nameof(DiagnosticCode.ValueGroupsPassthroughDataDependent),
     ];
 
-    // The five probe codes (D-111), each registered with a live wide emit site: no half-registered
+    // The seven probe codes (D-111), each registered with a live wide emit site: no half-registered
     // code, and no code waiting for the triple half. The two structural widenings
     // (TripleSubjectNotContiguous and ObjectKeyValueInvalid gaining the probe phase) add no member.
+    // ProbeValueOmitted and ProbeUnsafeTruncatedDomain joined with their emit sites, for categories
+    // containing CR or LF (§7.1).
     private static readonly string[] ProbeCodes =
     [
         nameof(DiagnosticCode.ProbeSourceReadFailed),
@@ -81,6 +83,8 @@ public sealed class DiagnosticCodeRegistryTests
         nameof(DiagnosticCode.ProbeAttributeNameAdjusted),
         nameof(DiagnosticCode.ProbeDomainTruncated),
         nameof(DiagnosticCode.ProbeLimitExceeded),
+        nameof(DiagnosticCode.ProbeValueOmitted),
+        nameof(DiagnosticCode.ProbeUnsafeTruncatedDomain),
     ];
 
     // The rendered-name code (D-120): one plan-phase code for an invalid rendered formal-attribute
@@ -139,14 +143,15 @@ public sealed class DiagnosticCodeRegistryTests
         "SpecSurfaceNotYetSupported",                    // value_type = "date" is refused at plan (D-038, D-075)
     ];
 
-    // The registry size, 83. AttributesMissing at its resolve emit site (D-135) made it 83, and
+    // The registry size, 85. AttributesMissing at its resolve emit site (D-135) made it 83, and
     // DateValueTypeNotImplementedV1 replacing SpecSurfaceNotYetSupported (D-038, D-075) kept it
-    // there. Update this number ONLY together with the decisions.md entry that changes the registry:
+    // there; ProbeValueOmitted and ProbeUnsafeTruncatedDomain at their probe emit sites (D-111)
+    // made it 85. Update this number ONLY together with the decisions.md entry that changes the registry:
     // that deliberate edit is the point (D-085: a code exists once it has a real emit site, so the
     // enum grows with its emit sites rather than drifting). Without it the presence/absence
     // assertions below would let an unrelated member in unnoticed, and the change would not be
     // locked.
-    private const int RegistrySize = 83;
+    private const int RegistrySize = 85;
 
     private static readonly string[] Defined = Enum.GetNames<DiagnosticCode>();
 
@@ -155,7 +160,7 @@ public sealed class DiagnosticCodeRegistryTests
         Assert.All(RestrictToExecutionCodes, name => Assert.Contains(name, Defined));
 
     [Fact]
-    public void DiagnosticCode_WhenProbeRuns_ThenItsFiveCodesAreDefined() =>
+    public void DiagnosticCode_WhenProbeRuns_ThenItsSevenCodesAreDefined() =>
         Assert.All(ProbeCodes, name => Assert.Contains(name, Defined));
 
     [Fact]
@@ -175,7 +180,7 @@ public sealed class DiagnosticCodeRegistryTests
         Assert.All(AttributeMinimumCodes, name => Assert.Contains(name, Defined));
 
     [Fact]
-    public void DiagnosticCode_WhenCounted_ThenTheRegistryIsExactlyEightyThree() =>
+    public void DiagnosticCode_WhenCounted_ThenTheRegistryIsExactlyEightyFive() =>
         // The count lock. On its own a count proves little; combined with the presence lists above
         // and the absence lists below it pins BOTH which codes arrived, that earlier retirements
         // really stuck, and that nothing else moved, which the targeted assertions alone cannot do.

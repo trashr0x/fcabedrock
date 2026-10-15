@@ -483,6 +483,11 @@ public-surface extraction review must happen before any Desktop reuse of it. No 
 may reference `Cli`, and `EmitReplaySession` stays the supported public bracket for one conversion
 attempt until a proven replacement exists.
 
+**Requirement:** opening a spec shows its saved notices prominently, so a probe draft's omission
+summary (spec §7.1) is seen without reading the file. The simplest form that meets it shows every
+non-empty root `[provenance].notes` on opening; the display and any marker are M9's design. A
+derived spec's notes stay its own, because provenance is not inherited (spec §13 rule 7).
+
 **Exit:** load, inspect, edit a spec and export, on Windows, macOS and Linux.
 
 ## Release-candidate obligations

@@ -197,13 +197,13 @@ changes an earlier one. A new entry MUST add its line here.
 
 ### M5 (discovery / probe) pre-implementation audit
 
-- D-106: Discovery `probe`: caller-selected shape, no inference, universal identity + nominal, one set-based observation pass *(refines D-003/D-036)*
-- D-107: Draft naming/binding matrix, validity guarantee, and content inventory; no stored fingerprints/clock/tool version; caller enrichment
-- D-108: Retention limit (100,000 default), strictly-greater truncation, prefix + `include` recovery, marker + always-written notes, probe options ownership; legacy retention-cap correction
+- D-106: Discovery `probe`: caller-selected shape, no inference, universal identity + nominal, one set-based observation pass *(refines D-003/D-036; observation separated from the saved draft in place on 2026-10-15)*
+- D-107: Draft naming/binding matrix, validity guarantee, and content inventory; no stored fingerprints/clock/tool version; caller enrichment *(categories containing CR or LF, collision repair and baseline-name timing amended in place on 2026-10-15)*
+- D-108: Retention limit (100,000 default), strictly-greater truncation, prefix + `include` recovery, marker + always-written notes, probe options ownership; legacy retention-cap correction *(names across retention limits qualified in place on 2026-10-15)*
 - D-109: The general unbound streaming source session; adapter/engine split; package dependency direction; required EP-4 review *(read-failure reason and position added in place on 2026-10-14)*
-- D-110: Probe boundedness: per-attribute limit + three aggregate guards, deterministic accounting, hard-failure semantics, no spill machinery, inherited subject-metadata carve-out *(refines D-095; guard precedence added in place on 2026-09-29)*
-- D-111: Probe diagnostic governance: five future codes, two phase widenings, `ProbeSourceReadFailed` scope, cancellation is not a diagnostic, registry 70 → expected 75 *(refines D-067/D-085/D-099; `ProbeSourceReadFailed` message detail amended in place on 2026-10-14)*
-- D-112: Probe determinism and cancellation: record-sequence input, no ambient state, byte/diagnostic repeatability, no partial artifact; the M5 verification suite *(physical-line read-failure positions qualified in place on 2026-10-14)*
+- D-110: Probe boundedness: per-attribute limit + three aggregate guards, deterministic accounting, hard-failure semantics, no spill machinery, inherited subject-metadata carve-out *(refines D-095; guard precedence added in place on 2026-09-29; collision state and saved omission text bounded in place on 2026-10-15)*
+- D-111: Probe diagnostic governance: five future codes, two phase widenings, `ProbeSourceReadFailed` scope, cancellation is not a diagnostic, registry 70 → expected 75 *(refines D-067/D-085/D-099; `ProbeSourceReadFailed` message detail amended in place on 2026-10-14; two codes for categories containing CR or LF and the naming warning amended in place on 2026-10-15)*
+- D-112: Probe determinism and cancellation: record-sequence input, no ambient state, byte/diagnostic repeatability, no partial artifact; the M5 verification suite *(physical-line read-failure positions qualified in place on 2026-10-14; cancellation in the probe's own work during and after the record pass added in place on 2026-10-15)*
 - D-113: Canonical-writer deterministic multiline wrapping for long top-level `declared_domain` arrays; private byte-pinned cutoff *(refines D-075)*
 
 ### M6 (templates + matchers) pre-implementation audit
@@ -225,7 +225,7 @@ changes an earlier one. A new entry MUST add its line here.
 
 ### M7 (CLI) pre-implementation adjudication
 
-- D-122: M7 CLI contract: commands, process model, publication, manifest, freeze, authored-empty domains, per-command semantics, non-goals, distribution, and the exit floor *(revises D-071's empty-domain reading; refines D-026/D-078/D-088; realizes the CLI faces of D-005/D-028/D-067/D-077; implementation architecture realized by D-123; reach of parts 4–5 qualified by D-125; part 10's headerless schema record amended in place on 2026-10-01; part 3's escaping and code-less warning form amended in place on 2026-10-14; parts 1, 2, 4, 8 and 10 amended in place on 2026-10-14 for attached option values, the `tab` delimiter spelling, the `migrate` named object-key header rule, and the `--temp-dir` and `--out` text checks; parts 2 and 10 amended in place on 2026-10-14 for DATA read explanations and strict UTF-8 schema reads; part 10's frozen numeric domain text amended in place on 2026-10-14; part 10's missing-column report marker amended in place on 2026-10-14)*
+- D-122: M7 CLI contract: commands, process model, publication, manifest, freeze, authored-empty domains, per-command semantics, non-goals, distribution, and the exit floor *(revises D-071's empty-domain reading; refines D-026/D-078/D-088; realizes the CLI faces of D-005/D-028/D-067/D-077; implementation architecture realized by D-123; reach of parts 4–5 qualified by D-125; part 10's headerless schema record amended in place on 2026-10-01; part 3's escaping and code-less warning form amended in place on 2026-10-14; parts 1, 2, 4, 8 and 10 amended in place on 2026-10-14 for attached option values, the `tab` delimiter spelling, the `migrate` named object-key header rule, and the `--temp-dir` and `--out` text checks; parts 2 and 10 amended in place on 2026-10-14 for DATA read explanations and strict UTF-8 schema reads; part 10's frozen numeric domain text amended in place on 2026-10-14; part 10's missing-column report marker amended in place on 2026-10-14; part 15's probe-authored `[]` amended in place on 2026-10-15)*
 
 ### M7 (CLI) implementation
 
@@ -4573,7 +4573,8 @@ and §17.
 
 ### D-106: Discovery `probe`: caller-selected shape, no inference, universal identity + nominal, one set-based observation pass
 
-- **Status:** accepted (M5 pre-implementation audit; refines D-003/D-036)
+- **Status:** accepted (M5 pre-implementation audit; refines D-003/D-036); amended in place on
+  2026-10-15 to separate observation from the saved draft
 - **Date:** 2026-07-18
 - **Decision:** `probe` is an **optional draft-generation operation outside** the
   Parse/validate → Calibrate → Plan → Emit pipeline (D-003/D-036; §7's "convert calibrates
@@ -4605,6 +4606,13 @@ and §17.
   row-index based and does **no** object-key validation. Cross-checks: a probed attribute's
   domain equals Calibrate's observed domain (same values, same order) for the same input,
   and probe's grouped-input rejection is symmetric with conversion's.
+
+  Amended in place on 2026-10-15: observation and the saved draft are separate. A cleaned value
+  containing CR or LF is observed like any other: it is retained, charged to the guards and
+  counted toward truncation. The observation also records that the attribute has seen such a
+  value, whether it was retained, repeated or discarded. Only the draft leaves such a category
+  out (D-107, spec §7.1). Sources still owns cleaning and missing normalization, and Discovery
+  reinterprets neither.
 - **Why:** legacy FcaBedrock already required choosing CSV/TSV, wide/triple, and header
   handling before autodetection: it was never a zero-configuration sniffer, so requiring
   the caller to select the shape is continuity, not a new constraint. A conservative base
@@ -4625,7 +4633,8 @@ and §17.
 
 ### D-107: Draft naming/binding matrix, validity guarantee, and content inventory; no stored fingerprints/clock/tool version; caller enrichment
 
-- **Status:** accepted (M5 pre-implementation audit)
+- **Status:** accepted (M5 pre-implementation audit); amended in place on 2026-10-15 for
+  categories containing CR or LF, collision repair and baseline-name timing
 - **Date:** 2026-07-18
 - **Decision:** a **successful** probe produces a draft that (1) contains **at least one
   attribute**; (2) **rereads** under the strict `SpecReader`; (3) **resolves** against the
@@ -4663,6 +4672,36 @@ and §17.
     defaults are correct: wide `row_index`, triple subject-pinned). The initial Discovery API
     accepts **no speculative provenance parameters** (EP-6); the caller may enrich the returned
     `SpecDocument` afterwards (it is a public record).
+  - **Amended in place on 2026-10-15: categories containing CR or LF.** Such a category cannot
+    name a formal attribute (spec §10.7). A complete attribute leaves those categories out,
+    keeps the others in first-observation order and authors `unknown_value_policy = "warn"`
+    explicitly, so a later `[defaults]` edit cannot turn the omission into `fail`. If none
+    remains it authors `declared_domain = []` with `warn`, the one `[]` probe authors (D-122
+    part 15). An all-missing attribute still authors no domain. A truncated attribute that
+    observed such a category, retained or not, yields no draft (`ProbeUnsafeTruncatedDomain`,
+    D-111), because include would recover it. The draft saves the omission: a file-wide summary
+    as the first line of `[provenance].notes`, and a bounded `description` on each affected
+    attribute (spec §7.1). Both are ordinary free text, kept as written by rewriting and
+    freezing and never recomputed. A spec that `extends` the draft does not inherit the notes
+    (spec §13 rule 7); a description is inherited with its attribute unless the derived spec
+    replaces that whole attribute (spec §13 rule 5).
+  - **Amended in place on 2026-10-15: collision repair.** The matrix above gives the
+    **baseline** names. For baseline names `N` and `N-r`, a shorter value renders the same name
+    as a longer value `w` only when it equals `r + "-" + w`. A pair's flag records whether any
+    observed shorter value, retained, discarded or containing CR or LF, started with
+    `r + "-"`, or whether the pair formed after the shorter domain truncated. A false flag
+    requests no repair. A true flag repairs only an actual collision of saved categories when
+    both domains are complete, and repairs when either is truncated. The later attribute of
+    every witness is selected, all at once, and renamed to the first `probe_<i>_<k>` that is not
+    any baseline name's text before its first hyphen; selectors never change. The renamed set
+    is checked again before the draft is built, and a failed check is a defect, never a new
+    refusal.
+  - **Amended in place on 2026-10-15: baseline timing.** Wide baseline names are planned from
+    the schema before the first value, after the attribute-count and zero-column checks. Triple
+    names are kept equal to the matrix over the predicates discovered so far: a newly usable
+    predicate that spells a fallback's current name takes it, and that one fallback moves along
+    its own ladder. The names kept during the pass must equal the matrix over the final
+    predicate list. Neither changes a name, selector or warning of a draft that needs no repair.
 - **Why:** the four-part guarantee makes "a probe draft is immediately usable" a *tested*
   property, not a hope: the reread/resolve/convert chain is exactly what a user does next.
   Binding a unique header by name preserves the reorder protection wide binding already gives;
@@ -4688,7 +4727,8 @@ and §17.
 
 ### D-108: Retention limit (100,000 default), strictly-greater truncation, prefix + `include` recovery, marker + always-written notes, probe options ownership; legacy retention-cap correction
 
-- **Status:** accepted (M5 pre-implementation audit)
+- **Status:** accepted (M5 pre-implementation audit); amended in place on 2026-10-15 for names
+  that collision repair changes at one retention limit only, and the omission summary
 - **Date:** 2026-07-18
 - **Decision:** probe retains, **per attribute**, at most the first `limit` **distinct
   cleaned non-missing** values in first-observation order, allocated as observed (no
@@ -4715,6 +4755,16 @@ and §17.
     limit**; all discovered values were retained and usable (Adult 21,648 distinct; Internet
     Ads up to 781; Mushroom 12; EMAGE gene values ≈ 6,800). **M5 has no presentation/display
     limit.** The correction is recorded in `roadmap.md` M5 and `lineage.md` §1.
+  - **Amended in place on 2026-10-15: names across limits.** The convergence above holds for
+    columns, their order and the schema identity, with one qualification for names. The same
+    source probed at two limits has the same baseline names, and the same final names, columns
+    and `schema_fingerprint`, unless collision repair (D-107) selects an attribute at one limit
+    only. That needs a true pair flag with a truncated domain at that limit, a triple pair
+    formed after its shorter domain truncated included. Even then the categories, their order,
+    the selectors, the objects and the incidence match under the renamed attribute. Output
+    fingerprints were never promised equal across limits, because the recovering `include`
+    policy is an output input. The notes are still always written; when categories containing
+    CR or LF were omitted (D-107), the omission summary is their first line.
 - **Why:** the strictly-greater rule plus prefix + `include` is what lets a *truncated* draft
   still round-trip to the complete schema: the include pass re-appends the tail deterministically,
   so a 100k-limit draft and an untruncated one converge on the same columns. Writing the notes
@@ -4789,7 +4839,7 @@ and §17.
 
 ### D-110: Probe boundedness: per-attribute limit + three aggregate guards, deterministic accounting, hard-failure semantics, no spill machinery, inherited subject-metadata carve-out
 
-- **Status:** accepted (M5 pre-implementation audit; refines D-095); amended in place on 2026-09-29 to record the aggregate-guard precedence
+- **Status:** accepted (M5 pre-implementation audit; refines D-095); amended in place on 2026-09-29 to record the aggregate-guard precedence; amended in place on 2026-10-15 for the collision state and the saved omission text
 - **Date:** 2026-07-18
 - **Decision:** per-attribute retention is bounded by the D-108 limit. Also, three
   deterministic **aggregate guards**, exposed as advanced probe options: (1) maximum
@@ -4810,6 +4860,24 @@ and §17.
   attribute guard against the schema before any record is read. Triple checks it when a row
   brings a new predicate, before that row's value is retained. A newly retained value that
   would breach both record guards reports the values guard.
+
+  Amended in place on 2026-10-15: collision repair and omission notices (D-107) add state that
+  no guard charges and that refuses nothing. Current names live in a character trie with one
+  entry per character of every name assigned: at most 2A names during the pass, because each
+  newly usable predicate moves at most one fallback, plus at most A repair names. Each attribute
+  records when its name was assigned and when its domain first truncated. A discarded value
+  that reaches a longer name records that pair of attributes in a set kept per shorter
+  attribute. Those sets hold only the pairs reached, but a dense extreme reaches
+  A(A-1)/2 of them, so the extra state is O(A + H + B) for A attributes, H characters of name
+  text and B reached pairs, beside the retained domains it reuses; no pair table, discarded
+  value or value index is kept. Each discarded value is walked from its attribute's name as it
+  arrives and the retained values once at the end. An exact check of two complete domains
+  hashes the text after the matched hyphen, so text work is the retained and discarded text
+  plus that remainder text, which can grow with the square of a long nested value. These are
+  logical bounds, not measured memory or speed. The saved notes stay within 512 UTF-16 code
+  units and each affected description within 3,072, because each sample keeps at most 128 code
+  units and at most three are written. That text is accounted apart from the retained-text
+  guard and is never a reason to refuse.
 - **Why:** probe reads data at the v1 target scale (D-007), so it needs the same bounded-memory
   discipline as calibration, but because its observation is set-based it needs none of the
   spill/merge machinery (D-095) that count-sensitive calibration does. Distinguishing a
@@ -4825,7 +4893,8 @@ and §17.
 ### D-111: Probe diagnostic governance: five future codes, two phase widenings, `ProbeSourceReadFailed` scope, cancellation is not a diagnostic, registry 70 → expected 75
 
 - **Status:** accepted (M5 pre-implementation audit; refines D-067/D-085/D-099); amended in
-  place on 2026-10-14 for the `ProbeSourceReadFailed` message
+  place on 2026-10-14 for the `ProbeSourceReadFailed` message; amended in place on 2026-10-15
+  for two codes about categories containing CR or LF (registry 83 → 85) and the naming warning
 - **Date:** 2026-07-18
 - **Decision:** M5 implementation is **expected** to add **five** diagnostic codes (recorded
   before implementation, while the registry was **70**):
@@ -4852,6 +4921,19 @@ and §17.
   its exception type's name. No exception's message is copied, and Discovery names no path. The
   code, its severity, its scope and the registry are unchanged; the CLI adds the DATA operand as
   the diagnostic's `file` location.
+
+  Amended in place on 2026-10-15: two probe codes join the registry with their emit sites,
+  83 → 85, for categories containing CR or LF (D-107). `ProbeValueOmitted` (Warning,
+  aggregated) accompanies a draft that omitted such categories: the exact number of omitted
+  distinct categories, counted per attribute and summed, the number of affected attributes, and
+  at most three attribute and category samples. `ProbeUnsafeTruncatedDomain` (Error, no draft)
+  counts the truncated attributes that observed such a category and names at most three of
+  them. Collision repair reuses `ProbeAttributeNameAdjusted`, which counts each adjusted
+  attribute once under its final name; its message now says that source selectors are
+  unchanged, the same words for both shapes. Read, structural, guard and disposal failures come
+  before both codes, and a draft's warnings keep the order name adjustment, truncation,
+  omission. These counts are of distinct categories, not the occurrence counts that conversion
+  diagnostics report.
 - **Why:** the five codes cover exactly the outcomes probe can produce that a caller must
   distinguish (read failure, empty vocabulary, name adjustment, per-attribute truncation,
   aggregate breach); pinning their severities/aggregation before the sites land keeps M5 from
@@ -4870,7 +4952,8 @@ and §17.
 ### D-112: Probe determinism and cancellation: record-sequence input, no ambient state, byte/diagnostic repeatability, no partial artifact; the M5 verification suite
 
 - **Status:** accepted (M5 pre-implementation audit); amended in place on 2026-10-14 for
-  read-failure positions
+  read-failure positions; amended in place on 2026-10-15 for cancellation in the probe's own
+  work during and after the record pass
 - **Date:** 2026-07-18
 - **Decision:** probe's input is defined **generically**: the same ordered normalized record
   sequence + ordered schema + effective source settings + probe options ⇒ an **identical**
@@ -4900,6 +4983,17 @@ and §17.
   That is a property of the failure's report only: drafts, record-sequence determinism and
   conversion are unchanged, and no normalization or fingerprint hides the difference. The same
   failure over the same bytes still produces the same diagnostic.
+
+  Amended in place on 2026-10-15: the probe's own work observes cancellation, not only the
+  source. Assigning a name, moving a triple fallback along its ladder and walking a discarded
+  value check it at every character or ladder step, because no probe guard bounds the length
+  of a name or of a discarded value. The work after the record pass (the refusal for a
+  truncated domain with a category containing CR or LF, collision selection, repair and its
+  recheck, and the draft, D-107) depends only on the record sequence and the probe options. It
+  checks cancellation in each of its loops, at every character of a name walk, and
+  immediately before each of its two returns, the refusal and the draft. A cancellation that
+  one of these checks observes propagates, so no draft, refusal, or later guard or read
+  failure replaces it.
 - **Why:** because Discovery's boundary is a record sequence (D-109), determinism must be
   defined over that sequence, not over file bytes; otherwise a future in-memory or SQL source
   could not inherit the guarantee. Enumerating the test categories now fixes M5's acceptance
@@ -5753,7 +5847,8 @@ and §16.4; D-120 and D-121 record the implemented naming, template and matcher 
   `migrate` named object-key header rule, and the `--temp-dir` and `--out` text checks; parts 2
   and 10 amended in place on 2026-10-14 for DATA read explanations and strict UTF-8 schema reads;
   part 10's frozen numeric domain text amended in place on 2026-10-14; part 10's missing-column
-  report marker amended in place on 2026-10-14
+  report marker amended in place on 2026-10-14; part 15's probe-authored `[]` for an attribute
+  whose every category contains CR or LF amended in place on 2026-10-15
 - **Date:** 2026-07-22
 - **Decision:** the complete M7 CLI contract is settled **before any M7 code**, in
   fifteen parts.
@@ -6106,7 +6201,9 @@ and §16.4; D-120 and D-121 record the implemented naming, template and matcher 
   column, so `[]` **does not by itself guarantee zero formal attributes**. This holds
   through every resolution tier: a template-supplied `[]` is likewise
   authored-complete (D-114 whole-value layering). `probe` **omits** `declared_domain`
-  for an attribute whose observations were all missing; it never authors `[]`;
+  for an attribute whose observations were all missing. Amended in place on 2026-10-15: it
+  authors `[]` only for a complete attribute whose every category contains CR or LF, with
+  `unknown_value_policy = "warn"` (D-107, spec §7.1), and never otherwise.
   `calibrate` freezes an empty observed outcome **as `[]`**. The fully-frozen gate
   (§3/§14) therefore reads "**omitted** `declared_domain` under a consuming
   discretizer", so an authored `[]` no longer disqualifies. The code gap this

@@ -25,12 +25,14 @@ namespace FcaBedrock.Discovery;
 /// subjects are legal, and probe runs no grouping pass to make them contiguous.
 /// </para>
 /// </summary>
-internal sealed class TripleObservation(ProbeOptions options, bool subjectGrouped)
+internal sealed class TripleObservation(ProbeOptions options, bool subjectGrouped, CancellationToken cancellationToken)
 {
-    private readonly Dictionary<string, RetainedDomain> _domains = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, int> _ordinals = new(StringComparer.Ordinal);
+    private readonly List<RetainedDomain> _domains = [];
     private readonly List<string> _predicates = [];
     private readonly RetentionBudget _budget =
         new(options.MaxTotalRetainedValues, options.MaxTotalRetainedValueText);
+    private readonly IncrementalPredicateNaming _naming = new(cancellationToken);
 
     // The contiguity state. `_completed` is D-110's inherited EP-16 bounded-metadata carve-out,
     // the object-names class the converter already retains, so it is charged to no guard and
@@ -42,8 +44,14 @@ internal sealed class TripleObservation(ProbeOptions options, bool subjectGroupe
     /// <summary>The discovered predicates, in first-appearance order.</summary>
     public IReadOnlyList<string> Predicates => _predicates;
 
-    /// <summary>The domain observed for a discovered predicate.</summary>
-    public RetainedDomain Domain(string predicate) => _domains[predicate];
+    /// <summary>The observed domains, indexed by predicate first-appearance ordinal.</summary>
+    public IReadOnlyList<RetainedDomain> Domains => _domains;
+
+    /// <summary>
+    /// The predicates' current names, kept equal to <see cref="PredicateNaming.Plan"/> over the
+    /// predicates discovered so far.
+    /// </summary>
+    public NameRelations Names => _naming.Names;
 
     /// <summary>
     /// Observes one cleaned row, returning the diagnostic that must end the pass (a structural
@@ -89,7 +97,7 @@ internal sealed class TripleObservation(ProbeOptions options, bool subjectGroupe
         }
 
         var predicate = row.Predicate;
-        if (!_domains.TryGetValue(predicate, out var domain))
+        if (!_ordinals.TryGetValue(predicate, out var ordinal))
         {
             // Guard 1, charged as attributes are discovered rather than counted up front, and
             // charged BEFORE the value is retained so the guard precedence is
@@ -103,16 +111,33 @@ internal sealed class TripleObservation(ProbeOptions options, bool subjectGroupe
                 return ProbeDiagnostics.DynamicAttributeLimitExceeded(options.MaxDiscoveredAttributes);
             }
 
-            domain = new RetainedDomain(options.ValueRetentionLimit);
-            _domains.Add(predicate, domain);
+            // Named here, before this row's value is observed, so the name and any fallback it
+            // displaces are current for every value that follows, this one included.
+            ordinal = _naming.Discover(predicate);
+            _ordinals.Add(predicate, ordinal);
+            _domains.Add(new RetainedDomain(options.ValueRetentionLimit));
             _predicates.Add(predicate);
         }
 
         // A predicate is discovered even when its value is missing: the attribute is real, and an
         // all-missing one simply authors no domain (§10.3, D-107). Missing values enter neither
         // retention nor the guard totals.
-        if (row.Value is not { } value || !domain.TryReserve(value))
+        if (row.Value is not { } value)
         {
+            return null;
+        }
+
+        var domain = _domains[ordinal];
+        var reservation = domain.Reserve(value);
+        if (reservation is Reservation.Repeat)
+        {
+            return null;
+        }
+
+        if (reservation is Reservation.Discarded)
+        {
+            // Not retained, so the only chance to check it against the longer names.
+            _naming.Names.RecordDiscard(ordinal, value);
             return null;
         }
 

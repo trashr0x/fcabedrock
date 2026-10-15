@@ -170,7 +170,19 @@ public static class Prober
             return Failed(ProbeDiagnostics.NoAttributesDiscovered());
         }
 
-        var observation = new WideObservation(schema.ColumnCount, options);
+        // The baseline names are a pure function of the schema, so they are planned before the
+        // first value: every discarded value can then be checked against the longer names as it
+        // arrives. Planning them here changes no name and no selector.
+        var columns = AttributeNaming.Plan(schema);
+        var names = new NameRelations(cancellationToken);
+        var baseline = new List<BaselineAttribute>(columns.Count);
+        foreach (var column in columns)
+        {
+            names.Add(column.Name);
+            baseline.Add(new BaselineAttribute(column.Name, column.NameAdjusted, ProbeDraft.ColumnSource(column)));
+        }
+
+        var observation = new WideObservation(schema.ColumnCount, options, names);
         if (await ObserveAsync(session, observation, options, cancellationToken).ConfigureAwait(false) is { } failure)
         {
             // A failure after partial observation still yields no document: half a draft reads as
@@ -178,39 +190,8 @@ public static class Prober
             return Failed(failure);
         }
 
-        var columns = AttributeNaming.Plan(schema);
-        var warnings = new List<BedrockDiagnostic>();
-
-        // Both aggregates are flushed at end of pass in physical attribute order, so their
-        // counts, ordering, and bounded samples depend only on the schema and the record
-        // sequence (D-112).
-        var adjusted = new ProbeTally();
-        var truncated = new ProbeTally();
-        foreach (var column in columns)
-        {
-            if (column.NameAdjusted)
-            {
-                adjusted.Record(column.Name);
-            }
-
-            if (observation.Domain(column.Index).Truncated)
-            {
-                truncated.Record(column.Name);
-            }
-        }
-
-        if (adjusted.Any)
-        {
-            warnings.Add(ProbeDiagnostics.AttributeNameAdjusted(adjusted));
-        }
-
-        if (truncated.Any)
-        {
-            warnings.Add(ProbeDiagnostics.DomainTruncated(truncated, options.ValueRetentionLimit));
-        }
-
-        var draft = ProbeDraft.Build(readSettings, options, columns, observation.Domain, truncated.Count);
-        return Diagnosed<SpecDocument>.Ok(draft, warnings);
+        return DraftFinalization.Finish(
+            ProbeDraft.WideBinding(readSettings, options), options, baseline, observation.Domains, names, cancellationToken);
     }
 
     private static async ValueTask<Diagnosed<SpecDocument>> ProbeTripleCoreAsync(
@@ -261,7 +242,7 @@ public static class Prober
         var roles = resolvedBinding.TripleColumns!;
 
         var observation = new TripleObservation(
-            options, subjectGrouped: readSettings.Ordering is TripleOrdering.SubjectGrouped);
+            options, subjectGrouped: readSettings.Ordering is TripleOrdering.SubjectGrouped, cancellationToken);
         if (await ObserveTripleAsync(session, roles, observation, cancellationToken).ConfigureAwait(false) is { } failure)
         {
             return Failed(failure);
@@ -274,39 +255,25 @@ public static class Prober
             return Failed(ProbeDiagnostics.NoPredicatesDiscovered());
         }
 
+        // The names kept current during the pass must be exactly the batch plan over the final
+        // predicate list. A difference is a defect in the incremental naming, never a reason to
+        // change an ordinary name, so it throws rather than picking one.
         var predicates = PredicateNaming.Plan(observation.Predicates);
-        var warnings = new List<BedrockDiagnostic>();
-
-        // Flushed at end of pass in predicate first-appearance order, the same fixed shape as
-        // wide's physical-column order, so counts and bounded samples depend only on the record
-        // sequence (D-112).
-        var adjusted = new ProbeTally();
-        var truncated = new ProbeTally();
+        var baseline = new List<BaselineAttribute>(predicates.Count);
         foreach (var predicate in predicates)
         {
-            if (predicate.NameAdjusted)
+            cancellationToken.ThrowIfCancellationRequested();
+            if (!string.Equals(predicate.Name, observation.Names.NameOf(predicate.Ordinal), StringComparison.Ordinal))
             {
-                adjusted.Record(predicate.Name);
+                throw new InvalidOperationException(
+                    $"The incremental name of predicate {predicate.Ordinal} differs from the planned name.");
             }
 
-            if (observation.Domain(predicate.Predicate).Truncated)
-            {
-                truncated.Record(predicate.Name);
-            }
+            baseline.Add(new BaselineAttribute(predicate.Name, predicate.NameAdjusted, ProbeDraft.PredicateSource(predicate)));
         }
 
-        if (adjusted.Any)
-        {
-            warnings.Add(ProbeDiagnostics.AttributeNameAdjusted(adjusted));
-        }
-
-        if (truncated.Any)
-        {
-            warnings.Add(ProbeDiagnostics.DomainTruncated(truncated, options.ValueRetentionLimit));
-        }
-
-        var draft = ProbeDraft.BuildTriple(binding, options, predicates, observation.Domain, truncated.Count);
-        return Diagnosed<SpecDocument>.Ok(draft, warnings);
+        return DraftFinalization.Finish(
+            binding, options, baseline, observation.Domains, observation.Names, cancellationToken);
     }
 
     /// <summary>

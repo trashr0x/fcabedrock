@@ -778,15 +778,48 @@ attribute authors its retained **prefix** as `declared_domain` (first-observatio
 `unknown_value_policy = "include"`, so converting the draft over the probed source **recovers
 the complete schema** through the existing §10.6 include calibration (include-appended values
 follow the declared prefix in first-observation order, §17 rule 3, so the resulting column set
-and order match an untruncated probe's). An **untruncated** attribute authors its complete
+and order match an untruncated probe's; the column *names* can differ only as **Collisions
+between attributes** below allows). An **untruncated** attribute authors its complete
 non-empty domain; an **all-missing** attribute authors **no** domain (omitted), so converting the
-draft calibrates it; probe never authors `[]`, which denotes a **fixed empty domain** (§10.3, D-122).
+draft calibrates it. Probe authors `[]`, which denotes a **fixed empty domain** (§10.3, D-122),
+only for the all-unrepresentable attribute below.
 Each truncated attribute carries a deterministic human-readable **marker in its `description`**, and
 `[provenance].notes` **always** records the effective per-attribute limit and the number of
 truncated attributes, **including zero**, so an untruncated draft still explains which limit
 produced it. Description and notes are fingerprint-inert (§14). `limit` is a probe option,
 never a `[binding]` field and never a fingerprint input; re-probe with a higher
 limit to inspect more values.
+
+**Categories containing CR or LF.** Such a category cannot be part of a formal-attribute name
+(§10.7). Probe observes it like any other value: it takes its place in retention, counts toward
+the aggregate guards and can make the domain truncated. Only the saved draft differs:
+
+- A **complete** attribute leaves those categories out of `declared_domain`, keeps the others in
+  first-observation order and authors `unknown_value_policy = "warn"` explicitly (the default, but
+  stated so a later `[defaults]` edit cannot turn it into `fail`). Converting the draft reports
+  the left-out values as unknown, and every object is kept.
+- A complete attribute whose **every** category contains CR or LF authors `declared_domain = []`
+  with `warn`. An all-missing attribute still authors no domain.
+- A **truncated** attribute that observed such a category, retained or not, yields **no draft**
+  (`ProbeUnsafeTruncatedDomain`), because its include recovery would bring the category back.
+
+The warning `ProbeValueOmitted` reports the omissions, and the draft saves them, because a
+shared file must say what it left out. The first line of `[provenance].notes` is then:
+
+```text
+probe: WARNING: omitted <K> distinct categories containing CR/LF across <A> attributes (counts are per attribute). These categories produce no crosses; objects are kept. Review the affected attribute descriptions.
+```
+
+followed by an LF and the retention notes above, unchanged. Each affected attribute's
+`description` states how many categories it omitted and how many it retained, with at most three
+quoted, escaped samples of what it omitted (each at most 128 UTF-16 code units of the value), and
+an all-unrepresentable attribute adds `The declared domain is fixed empty; unknown values warn.`
+Counts are distinct categories of one attribute: a repeated value counts once, and the same text
+in two attributes counts in both. A draft that omits nothing writes only the retention notes
+and truncation markers above. The notes and descriptions are ordinary free
+text: a later rewrite keeps them as written and never recomputes them. A spec that `extends`
+the draft does not inherit the notes (§13 rule 7); a description is inherited with its
+attribute unless the derived spec replaces that whole attribute (§13 rule 5).
 
 **Draft validity guarantee.** A **successful** probe produces a draft that (1) contains **at
 least one attribute**; (2) **rereads** under the strict TOML reader; (3) **resolves** against
@@ -795,7 +828,8 @@ effective settings** with no Error/Fatal (warnings and structurally valid degene
 are allowed; probe does not itself run conversion; tests enforce this). Probe returns **no
 draft** (diagnostics only) when no valid draft exists: zero-column wide input, triple input
 with no usable predicates, structural invalidity (unusable subjects under either ordering;
-non-contiguous input under explicit `subject_grouped`), or impossible binding/naming.
+non-contiguous input under explicit `subject_grouped`), a truncated attribute that observed a
+category containing CR or LF, or impossible binding/naming.
 **All-missing columns and header-only sources succeed**: attributes are authored with their
 domains omitted, and their data-side emptiness surfaces at convert as the ordinary
 degenerate-context warnings (§16.4).
@@ -813,17 +847,52 @@ name satisfies §10.1 validity and §10.2 uniqueness. Every adjustment or disamb
 diagnosed (aggregated Warning, `ProbeAttributeNameAdjusted`); plain headerless `column_N`
 synthesis alone is **not** a warning.
 
+**Collisions between attributes.** The names above are the **baseline** names; they depend on the
+schema (wide) or the discovered predicates (triple) only, never on values or the retention limit.
+Two identity + nominal attributes named `N` and `N-r` (`r` may be empty) render a value `v` of
+the shorter and a value `w` of the longer as the same formal-attribute name exactly when
+`v = r + "-" + w`. So for each such pair of baseline names (shorter means the shorter name, not
+the earlier attribute) probe keeps a **flag**: true when any cleaned non-missing value of the
+shorter attribute, retained or discarded, containing CR or LF or not, starts with `r + "-"`, or
+when the pair formed after the shorter domain truncated (possible only for triple names, which
+arrive during the pass, so the shorter attribute's earlier history is unknown). Then:
+
+| Pair | Repair |
+| --- | --- |
+| Flag false | None, truncated or not: no value of this source can collide. |
+| Flag true, both domains complete | Only when two saved categories render the same name. |
+| Flag true, either domain truncated | Yes, because a recovered value could collide. |
+
+Every such witness selects its **later** attribute (source order), all witnesses together, and a
+selected attribute at zero-based position `i` is renamed to the first `probe_<i>_<k>`
+(`k` = 0, 1, …) that differs from the text before the first hyphen of every baseline name. Such a
+name contains no hyphen, so no value can make it collide with any other attribute. Its source
+selector never changes, and it is counted in `ProbeAttributeNameAdjusted` under its final name. A
+truncated attribute with a category containing CR or LF yields no draft before any repair.
+
+Probing the same source at two retention limits therefore gives the same baseline names, and the
+same final names, formal-attribute columns and `schema_fingerprint` whenever no pair is repaired
+at one limit only. Such a difference needs a true flag with a truncated domain at that limit,
+including a triple pair formed after its shorter domain truncated. Even then the categories,
+their order, the source selectors, the objects and the incidence are the same under the renamed
+attribute; only names and the identities built from them differ. Output fingerprints are not
+promised equal across limits in any case: the recovering `include` policy is an output input
+(§14).
+
 **Draft content inventory.** The generated draft contains exactly:
 
 - `[spec]`: `version = 1` and a deterministic probe `description`.
 - `[binding]`: **every effective read setting, authored explicitly even when defaulted** (a
   self-documenting draft), including the complete triple ordering and role mappings.
-- `[provenance]`: the deterministic notes above, and nothing else.
+- `[provenance]`: the deterministic notes above, with the omission summary first when categories
+  were omitted, and nothing else.
 - Per attribute: `name`, `source` (with an **explicit** `value_type = "string"`),
   `discretizer = { kind = "identity" }`, and `scale = { kind = "nominal" }`, authored
   explicitly; the complete domain when untruncated and non-empty; the retained prefix plus
   `unknown_value_policy = "include"` plus the description marker when truncated; the domain
-  omitted when all-missing.
+  omitted when all-missing; and, when categories containing CR or LF were omitted, the
+  remaining categories (`[]` when none remains) plus `unknown_value_policy = "warn"` plus the
+  omission description.
 
 ```toml
 [[attribute]]
@@ -879,7 +948,9 @@ permits a theoretical 155.4M retained strings). Guards use **deterministic logic
 never available machine memory**. An aggregate breach emits `ProbeLimitExceeded` and yields
 **no draft**; aggregate pressure **never silently truncates** further attributes: only the
 per-attribute `limit` produces a usable, marked, truncated draft. Probe uses **no
-spill/count-sensitive calibration machinery** (it is set-based and idempotent). At the CLI
+spill/count-sensitive calibration machinery** (it is set-based and idempotent). The collision
+flags and the saved omission text are bounded by the attributes, their names and the observed
+text, not charged to any guard, and refuse nothing (D-110). At the CLI
 (D-122) `probe` exposes the shape, the ordinary §5.1 read settings, locale, and the
 retention `--limit` only; the three aggregate guards remain **pinned public-API defaults
 with no CLI flags**.
@@ -3071,6 +3142,8 @@ never join this registry (D-122). Phase-owned conditions such as
 | `ProbeAttributeNameAdjusted` | Warning (aggregated) | probe |
 | `ProbeDomainTruncated` | Warning (aggregated) | probe |
 | `ProbeLimitExceeded` | Error | probe |
+| `ProbeValueOmitted` | Warning (aggregated) | probe |
+| `ProbeUnsafeTruncatedDomain` | Error | probe |
 
 An empty column is `AttributeHasNoCrosses` (emit) and an empty row is
 `ObjectHasNoCrosses` (emit); whole-context emptiness is `NoFormalAttributes` (zero
@@ -3183,9 +3256,10 @@ retires when date support lands (D-038): a spec may declare the reserved
 cuts to.
 
 **The `probe` phase.** Discovery / `probe` (§7.1) is a draft-generation
-operation outside the §7 conversion pipeline. Its five codes above
+operation outside the §7 conversion pipeline. Its seven codes above
 (`ProbeSourceReadFailed`, `ProbeNoAttributesDiscovered`, `ProbeAttributeNameAdjusted`,
-`ProbeDomainTruncated`, `ProbeLimitExceeded`) apply to both shapes, and the two
+`ProbeDomainTruncated`, `ProbeLimitExceeded`, `ProbeValueOmitted`,
+`ProbeUnsafeTruncatedDomain`) apply to both shapes, and the two
 structural codes `TripleSubjectNotContiguous` and `ObjectKeyValueInvalid` report at
 their probe-phase sites on the triple path (decisions.md D-111).
 `ProbeSourceReadFailed` is a stream/read failure only and MUST NOT absorb a
@@ -3194,7 +3268,17 @@ Its message states the failure's reason and known position (§5.1.1), or that th
 not valid UTF-8; any other read failure is named by its exception type, and no exception's
 own message is copied. `ProbeAttributeNameAdjusted` and `ProbeDomainTruncated` are
 aggregated (count + bounded sample), and plain headerless `column_N` synthesis alone is not a
-warning. Cancellation is
+warning. `ProbeAttributeNameAdjusted` counts each adjusted attribute once under its final name,
+collision repairs included, and says that source selectors are unchanged.
+`ProbeValueOmitted` accompanies a draft that omitted categories containing CR or LF: it states
+the exact number of omitted distinct categories, counted per attribute and summed, and of
+affected attributes, with at most three attribute and category samples.
+`ProbeUnsafeTruncatedDomain` replaces the draft when a truncated attribute observed such a
+category, and states the number of affected attributes, with at most three of their names; it
+holds no unretained value. A read, structural, guard or disposal failure is reported instead of
+either, and a successful draft's warnings come in the order name adjustment, truncation,
+omission. These probe counts are of distinct categories, not of occurrences in the data.
+Cancellation is
 **not** a diagnostic: a canceled probe leaves no document and no diagnostic (§7.1, D-112).
 
 **Aggregation.** Data-phase diagnostics that can fire per value or per object
@@ -3205,7 +3289,7 @@ at 73M records does not produce 73M diagnostics.
 
 The `DiagnosticCode` enum is the authority for the codes a build can actually
 raise. A registry row joins the enum when its emit site lands (D-085, EP-3), and
-every row above is live, so the enum holds exactly these **83** codes.
+every row above is live, so the enum holds exactly these **85** codes.
 
 ## 17. Determinism rules
 

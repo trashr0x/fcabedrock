@@ -23,8 +23,12 @@ internal sealed class WideObservation
 {
     private readonly RetainedDomain[] _domains;
     private readonly RetentionBudget _budget;
+    private readonly NameRelations _names;
 
-    public WideObservation(int columnCount, ProbeOptions options)
+    /// <param name="columnCount">The schema's column count.</param>
+    /// <param name="options">The retention limit and the aggregate guards.</param>
+    /// <param name="names">Every column's baseline name, already assigned in column order, so a column's ordinal is its index.</param>
+    public WideObservation(int columnCount, ProbeOptions options, NameRelations names)
     {
         _domains = new RetainedDomain[columnCount];
         for (var i = 0; i < columnCount; i++)
@@ -33,10 +37,11 @@ internal sealed class WideObservation
         }
 
         _budget = new RetentionBudget(options.MaxTotalRetainedValues, options.MaxTotalRetainedValueText);
+        _names = names;
     }
 
-    /// <summary>The domain observed for a physical column.</summary>
-    public RetainedDomain Domain(int column) => _domains[column];
+    /// <summary>The observed domains, indexed by physical column.</summary>
+    public IReadOnlyList<RetainedDomain> Domains => _domains;
 
     /// <summary>
     /// Observes one cleaned record, returning the guard it breached, at which point the probe
@@ -57,8 +62,16 @@ internal sealed class WideObservation
             }
 
             var domain = _domains[column];
-            if (!domain.TryReserve(value))
+            var reservation = domain.Reserve(value);
+            if (reservation is Reservation.Repeat)
             {
+                continue;
+            }
+
+            if (reservation is Reservation.Discarded)
+            {
+                // Not retained, so the only chance to check it against the longer names.
+                _names.RecordDiscard(column, value);
                 continue;
             }
 

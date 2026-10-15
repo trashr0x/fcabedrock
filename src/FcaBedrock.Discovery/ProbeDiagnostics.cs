@@ -6,7 +6,7 @@ using FcaBedrock.Sources;
 namespace FcaBedrock.Discovery;
 
 /// <summary>
-/// The five probe diagnostics (§16.4, D-111), constructed in one place so their severities,
+/// The seven probe diagnostics (§16.4, D-111), constructed in one place so their severities,
 /// wording, and number formatting cannot drift apart.
 /// <para>
 /// <b>Every message is a function of the input alone</b> (D-112): counts and limits render as
@@ -87,14 +87,16 @@ internal static class ProbeDiagnostics
 
     /// <summary>
     /// The aggregated naming warning (D-107): names that had to be synthesized from an unusable
-    /// header or disambiguated against an already-taken name. Routine headerless
-    /// <c>column_N</c> synthesis is <b>not</b> counted here (D-111).
+    /// header or predicate, disambiguated against an already-taken name, or repaired so no two
+    /// formal-attribute names can collide. Each adjusted attribute counts once, under its final
+    /// name. Routine headerless <c>column_N</c> synthesis is <b>not</b> counted here (D-111).
+    /// The wording names no column or predicate, so it reads the same for both shapes.
     /// </summary>
     public static BedrockDiagnostic AttributeNameAdjusted(ProbeTally tally) =>
         new(DiagnosticCode.ProbeAttributeNameAdjusted, DiagnosticSeverity.Warning,
             string.Create(
                 CultureInfo.InvariantCulture,
-                $"The probe adjusted {tally.Count} attribute name(s) (e.g. {tally.Sample}); every source selector still reads its original column (§7.1)."));
+                $"The probe adjusted {tally.Count} attribute name(s) (e.g. {tally.Sample}); source selectors are unchanged (§7.1)."));
 
     /// <summary>
     /// The aggregated truncation warning (D-108). Fires only on the strictly-greater boundary:
@@ -105,6 +107,35 @@ internal static class ProbeDiagnostics
             string.Create(
                 CultureInfo.InvariantCulture,
                 $"The probe truncated {tally.Count} attribute domain(s) after {limit} distinct values (e.g. {tally.Sample}); each authors its retained prefix with unknown_value_policy = \"include\" (§7.1)."));
+
+    /// <summary>
+    /// The aggregated omission warning on a successful draft (§7.1): categories containing CR or
+    /// LF left out of complete domains. It states the exact totals, distinct categories counted
+    /// per attribute and the attributes affected, and samples at most three
+    /// <c>attribute: category</c> pairs in attribute order, then first-observation order, both
+    /// sides in <see cref="ProbeSample"/> form.
+    /// </summary>
+    public static BedrockDiagnostic ValueOmitted(
+        long omittedCategories, int attributes, IReadOnlyList<(string Attribute, string Category)> sample) =>
+        new(DiagnosticCode.ProbeValueOmitted, DiagnosticSeverity.Warning,
+            string.Create(
+                CultureInfo.InvariantCulture,
+                $"The probe omitted {omittedCategories} distinct categories containing CR/LF across {attributes} attribute(s) (counts are per attribute; e.g. {Pairs(sample)}); they produce no crosses, every object is kept, and the draft records the omission in its notes and the affected attribute descriptions (§7.1)."));
+
+    /// <summary>
+    /// A category containing CR or LF observed in a <b>truncated</b> domain (§7.1). Error, no
+    /// draft: converting a truncated draft recovers the unretained values through
+    /// <c>include</c>, so such a category cannot be left out. It counts the affected attributes
+    /// and samples at most three of their names; it never holds an unretained value.
+    /// </summary>
+    public static BedrockDiagnostic UnsafeTruncatedDomain(int attributes, IReadOnlyList<string> sample) =>
+        new(DiagnosticCode.ProbeUnsafeTruncatedDomain, DiagnosticSeverity.Error,
+            string.Create(
+                CultureInfo.InvariantCulture,
+                $"The probe observed categories containing CR/LF in {attributes} truncated attribute(s) (e.g. {string.Join(", ", sample.Select(ProbeSample.Format))}); a truncated domain cannot omit them, because converting the draft would recover them through unknown_value_policy = \"include\", so no draft was produced (§7.1)."));
+
+    private static string Pairs(IReadOnlyList<(string Attribute, string Category)> sample) =>
+        string.Join(", ", sample.Select(pair => $"{ProbeSample.Format(pair.Attribute)}: {ProbeSample.Format(pair.Category)}"));
 
     /// <summary>
     /// Guard 1, <b>wide</b>: more schema columns than the probe may discover (D-110). The count

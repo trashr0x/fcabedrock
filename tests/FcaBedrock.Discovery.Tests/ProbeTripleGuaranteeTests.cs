@@ -211,7 +211,8 @@ public sealed class ProbeTripleGuaranteeTests
     {
         // D-108's recovery claim for triple: a truncated draft converted over the probed source
         // must plan the SAME columns, in the same order, as an untruncated probe's: the retained
-        // prefix first, then the dropped tail re-appended by the `include` calibration.
+        // prefix first, then the dropped tail re-appended by the `include` calibration. One
+        // predicate forms no name pair, so collision repair (D-108) cannot rename a column here.
         const string csv = "s1,p,q\ns2,p,r\ns3,p,s\ns4,p,t\n";
 
         var full = ProbeFixtures.Draft(await TripleProbeFixtures.ProbeTripleCsvAsync(csv));

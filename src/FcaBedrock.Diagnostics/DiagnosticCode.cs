@@ -717,4 +717,22 @@ public enum DiagnosticCode
     /// (D-110/D-111).
     /// </summary>
     ProbeLimitExceeded,
+
+    /// <summary>
+    /// A <c>probe</c> omitted categories containing CR or LF from complete attribute domains,
+    /// because such a category cannot name a formal attribute. Warning on a successful draft,
+    /// <b>aggregated</b>: the exact total of omitted distinct categories, counted per attribute,
+    /// the number of affected attributes and a bounded sample. Every object and every other
+    /// category is kept, and the draft saves the omission in its notes and the affected
+    /// descriptions. Spec §7.1 / §16.4 (D-107/D-111).
+    /// </summary>
+    ProbeValueOmitted,
+
+    /// <summary>
+    /// A <c>probe</c> observed a category containing CR or LF in a <b>truncated</b> attribute,
+    /// retained or not. Error and <b>no draft</b>: a truncated domain recovers its unretained
+    /// values through <c>unknown_value_policy = "include"</c>, so it cannot omit them. The
+    /// message counts the affected attributes. Spec §7.1 / §16.4 (D-108/D-111).
+    /// </summary>
+    ProbeUnsafeTruncatedDomain,
 }

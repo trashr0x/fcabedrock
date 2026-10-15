@@ -182,7 +182,9 @@ public sealed class ProbeDraftGuaranteeTests
         // D-108's recovery claim, made concrete: a truncated draft converted over the probed
         // source must produce the SAME columns, in the same order, as an untruncated probe's:
         // the retained prefix first, then the dropped tail re-appended in first-observation
-        // order by the `include` calibration (§10.6 / §17 rule 3).
+        // order by the `include` calibration (§10.6 / §17 rule 3). One attribute forms no name
+        // pair, so collision repair, the one thing that can rename a column at one limit only
+        // (D-108), cannot apply and the names match exactly.
         const string csv = "col\nq\nr\ns\nt\n";
 
         var full = ProbeFixtures.Draft(await ProbeFixtures.ProbeCsvAsync(csv));

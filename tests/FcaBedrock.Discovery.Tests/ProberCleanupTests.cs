@@ -69,6 +69,21 @@ public sealed class ProberCleanupTests
     }
 
     [Fact]
+    public async Task ProbeWide_WhenAnUnsafeDomainTruncatesAndTheCloseFails_ThenTheCloseFailureIsReported()
+    {
+        // The pass ends normally with a truncated domain that observed a multiline value, but
+        // the close fails: the read failure comes first, and nothing about the domain is said.
+        var fault = new CloseFault { DisposeFailure = new IOException("injected: close failed") };
+        ObjectRecord[] records = [new("0", ["a", "k"]), new("1", ["b", "k"]), new("2", ["x\ny", "k"])];
+
+        var (result, error) = await ProbeWideAsync(fault, records, ProbeOptions.Create(valueRetentionLimit: 2));
+
+        Assert.Null(error);
+        AssertFailedWith(result, DiagnosticCode.ProbeSourceReadFailed);
+        Assert.DoesNotContain(result!.Value.Diagnostics, d => d.Code == DiagnosticCode.ProbeUnsafeTruncatedDomain);
+    }
+
+    [Fact]
     public async Task ProbeWide_WhenAGuardIsBreachedAndTheCloseFails_ThenProbeLimitExceededIsKept()
     {
         var fault = new CloseFault { DisposeFailure = new IOException("injected: close failed") };

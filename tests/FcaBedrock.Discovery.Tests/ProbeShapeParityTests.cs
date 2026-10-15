@@ -184,12 +184,13 @@ public sealed class ProbeShapeParityTests
     // --- The diagnostic inventory ---------------------------------------------------------------
 
     [Fact]
-    public void DiagnosticCode_WhenProbePrefixedNamesAreListed_ThenExactlyTheFiveProbeCodesExist()
+    public void DiagnosticCode_WhenProbePrefixedNamesAreListed_ThenExactlyTheSevenProbeCodesExist()
     {
         // Probe reports its two structural conditions through `ObjectKeyValueInvalid` and
         // `TripleSubjectNotContiguous` (one condition, one code, three phases, D-067/D-111)
         // rather than minting probe-specific twins, and the triple "nothing to author" case
-        // reuses `ProbeNoAttributesDiscovered`.
+        // reuses `ProbeNoAttributesDiscovered`. A collision repair reuses
+        // `ProbeAttributeNameAdjusted`.
         var probeCodes = Enum.GetNames<DiagnosticCode>()
             .Where(name => name.StartsWith("Probe", StringComparison.Ordinal))
             .Order(StringComparer.Ordinal);
@@ -197,7 +198,8 @@ public sealed class ProbeShapeParityTests
         Assert.Equal(
             [
                 "ProbeAttributeNameAdjusted", "ProbeDomainTruncated", "ProbeLimitExceeded",
-                "ProbeNoAttributesDiscovered", "ProbeSourceReadFailed",
+                "ProbeNoAttributesDiscovered", "ProbeSourceReadFailed", "ProbeUnsafeTruncatedDomain",
+                "ProbeValueOmitted",
             ],
             probeCodes);
     }
@@ -227,6 +229,9 @@ public sealed class ProbeShapeParityTests
             "a\nx\ny\n", options: ProbeOptions.Create(valueRetentionLimit: 1)));
         Record(await ProbeFixtures.ProbeCsvAsync(
             "a,b\n1,2\n", options: ProbeOptions.Create(maxDiscoveredAttributes: 1)));
+        Record(await ProbeFixtures.ProbeCsvAsync("a\n\"x\ny\"\nz\n"));
+        Record(await ProbeFixtures.ProbeCsvAsync(
+            "a\nz\n\"x\ny\"\n", options: ProbeOptions.Create(valueRetentionLimit: 1)));
 
         // The two structural codes: probe-phase sites, live only on the triple path (wide probe
         // is row-index based and does no object-key validation, D-106).
@@ -244,6 +249,8 @@ public sealed class ProbeShapeParityTests
                 DiagnosticCode.ProbeAttributeNameAdjusted,
                 DiagnosticCode.ProbeDomainTruncated,
                 DiagnosticCode.ProbeLimitExceeded,
+                DiagnosticCode.ProbeValueOmitted,
+                DiagnosticCode.ProbeUnsafeTruncatedDomain,
                 DiagnosticCode.ObjectKeyValueInvalid,
                 DiagnosticCode.TripleSubjectNotContiguous,
             },

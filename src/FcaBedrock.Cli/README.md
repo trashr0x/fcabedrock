@@ -167,6 +167,28 @@ together, in one addressing mode (all zero-based indices or all header names),
 with names requiring `--header true`. See
 [How output files are written](#how-output-files-are-written).
 
+A category that contains a line break (CR or LF) cannot name a column. When
+all of an attribute's distinct values fit within `--limit`, the draft leaves
+those categories out, keeps the others, sets that attribute's
+`unknown_value_policy = "warn"`, and records the omission in the first line of
+`[provenance].notes` and in the attribute's `description`, so the file itself
+says what was left out. Every object is kept. If no category of the attribute
+is left, its domain is written as `declared_domain = []`. If an attribute has
+more distinct values than `--limit` and any of its values contains a line
+break, probe writes no draft (`ProbeUnsafeTruncatedDomain`), because converting
+the draft would bring those values back. A higher `--limit` that keeps every
+value of that attribute lets probe leave them out instead, but it is not
+guaranteed to: the probe's fixed limits on total retained values and text can
+then stop it with no draft. Removing the line breaks from the data always
+works.
+
+Probe also renames an attribute whose columns could collide with another
+attribute's, for example `a` holding `b-z` beside `a-b` holding `z`: both would
+name the column `a-b-z`. The renamed attribute still reads the same source
+column or predicate; its name becomes `probe_<n>_<k>`, and the
+`ProbeAttributeNameAdjusted` warning lists it. Whether a rename is needed can
+depend on `--limit`.
+
 ### migrate
 
 Migrate a v2 `.bed` file to a Bedrock spec.
