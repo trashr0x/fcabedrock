@@ -930,7 +930,9 @@ public sealed class PublicationRecoveryTests
                     "convert", run.Spec, run.Data, "--out", run.Base, "--format", "cxt", "--no-manifest"));
             Assert.Equal(
                 DiagnosticRenderer.RenderHostError(
-                    $"cannot clean up an incomplete fcabedrock run for the output base '{run.Base}'."),
+                    $"cannot clean up an incomplete fcabedrock run for the output base '{run.Base}': "
+                    + $"'{Path.GetFileName(pending)}' is not a file fcabedrock can prove it created, so it was left"
+                    + " untouched; inspect it, or choose a different --out."),
                 retry.StdErr);
 
             Assert.Equal(bytes, await File.ReadAllBytesAsync(pending));
@@ -1436,7 +1438,7 @@ public sealed class PublicationRecoveryTests
         run.Harness.PublicationFiles.SuppressReferenceNamePrefix = "out.fcabedrock-pending-";
 
         Assert.Equal(1, await run.ConvertAsync("--format", "cxt", "--no-manifest"));
-        AssertRecoveryRefused(run);
+        AssertRecoveryRefused(run, Path.GetFileName(pending));
 
         Assert.Equal("version = 1\ntoken =", await File.ReadAllTextAsync(pending));
         Assert.True(File.Exists(intent));
@@ -1460,7 +1462,7 @@ public sealed class PublicationRecoveryTests
         run.Harness.PublicationFiles.SuppressReferenceNamePrefix = "out.fcabedrock-intent-";
 
         Assert.Equal(1, await run.ConvertAsync("--format", "cxt", "--no-manifest"));
-        AssertRecoveryRefused(run);
+        AssertRecoveryRefused(run, Path.GetFileName(intent));
 
         // The pending record (the one this pass could have held, and would have removed first)
         // is exactly as it was.
@@ -1485,7 +1487,7 @@ public sealed class PublicationRecoveryTests
         run.Harness.PublicationFiles.SuppressReferenceNamePrefix = "out.cxt.fcabedrock-stage-";
 
         Assert.Equal(1, await run.ConvertAsync("--format", "cxt"));
-        AssertRecoveryRefused(run);
+        AssertRecoveryRefused(run, Path.GetFileName(residue.PrivatePath("stage", "out.cxt")));
 
         Assert.Equal("half-written", await File.ReadAllTextAsync(residue.PrivatePath("stage", "out.cxt")));
         Assert.True(File.Exists(claim));
@@ -1517,7 +1519,7 @@ public sealed class PublicationRecoveryTests
         run.Harness.PublicationFiles.SuppressReferenceNamePrefix = "out.cxt.fcabedrock-backup-";
 
         Assert.Equal(1, await run.ConvertAsync("--format", "cxt"));
-        AssertRecoveryRefused(run);
+        AssertRecoveryRefused(run, Path.GetFileName(residue.PrivatePath("backup", "out.cxt")));
 
         Assert.Equal("the old cxt", await File.ReadAllTextAsync(residue.PrivatePath("backup", "out.cxt")));
         Assert.Equal("the committed cxt", await File.ReadAllTextAsync(run.Target(".cxt")));
@@ -1555,7 +1557,7 @@ public sealed class PublicationRecoveryTests
         run.Harness.PublicationFiles.SuppressReferenceNamePrefix = "out.cxt.fcabedrock-backup-";
 
         Assert.Equal(1, await run.ConvertAsync("--format", "cxt"));
-        AssertRecoveryRefused(run);
+        AssertRecoveryRefused(run, Path.GetFileName(residue.PrivatePath("backup", "out.cxt")));
 
         Assert.Equal("the failed run's cxt", await File.ReadAllTextAsync(run.Target(".cxt")));
         Assert.Equal("the old cxt", await File.ReadAllTextAsync(residue.PrivatePath("backup", "out.cxt")));
@@ -1598,7 +1600,7 @@ public sealed class PublicationRecoveryTests
         run.Harness.PublicationFiles.SuppressReferenceNamePrefix = "out.dat";
 
         Assert.Equal(1, await run.ConvertAsync("--format", "both"));
-        AssertRecoveryRefused(run);
+        AssertRecoveryRefused(run, "out.dat");
 
         // The earlier target: the one this pass could hold, and would have deleted first.
         Assert.Equal("this run's cxt", await File.ReadAllTextAsync(run.Target(".cxt")));
@@ -1618,13 +1620,15 @@ public sealed class PublicationRecoveryTests
 
     // ---- helpers ------------------------------------------------------------------------------------
 
-    // The refusal every anchor case produces: the sanitized, code-less recovery failure, the
-    // suppression proved to have fired, and not one mutating operation anywhere in the run.
-    private static void AssertRecoveryRefused(ConvertRun run)
+    // The refusal every anchor case produces: the sanitized, code-less recovery failure naming the
+    // entry that could not be held, the suppression proved to have fired, and not one mutating
+    // operation anywhere in the run.
+    private static void AssertRecoveryRefused(ConvertRun run, string unheld)
     {
         Assert.Equal(
             DiagnosticRenderer.RenderHostError(
-                $"cannot clean up an incomplete fcabedrock run for the output base '{run.Base}'."),
+                $"cannot clean up an incomplete fcabedrock run for the output base '{run.Base}': '{unheld}' could not"
+                + " be opened; a later run tries the cleanup again."),
             run.Harness.StdErr);
         Assert.Equal(string.Empty, run.Harness.StdOut);
 

@@ -70,6 +70,24 @@ internal interface IPublicationFileSystem
     bool Exists(string path);
 
     /// <summary>
+    /// True when a directory exists at <paramref name="path"/>. Preflight asks it of each target, so
+    /// a directory where an output must go is reported as one before any work starts.
+    /// </summary>
+    bool IsDirectory(string path);
+
+    /// <summary>
+    /// Whether the object <paramref name="reference"/> holds carries the Windows read-only attribute,
+    /// which stops the removal a replaced or demoted participant ends with. Asked of the held object,
+    /// never of whatever the name resolves to, and it is not ownership authority.
+    /// <para>
+    /// Null means unknown: off Windows, where no attribute blocks that removal, and wherever the
+    /// query itself fails. Unknown makes no read-only claim and refuses nothing; every other
+    /// publication check still applies.
+    /// </para>
+    /// </summary>
+    bool? IsReadOnly(PublicationObjectReference reference);
+
+    /// <summary>
     /// Creates <paramref name="path"/> for writing, <b>failing when it already exists</b>, and
     /// reports the identity of the object it created. Create-new is a safety requirement here:
     /// a stage, a backup, and the transaction record may never silently replace something already
@@ -229,6 +247,16 @@ internal sealed class PublicationFileSystem : IPublicationFileSystem
 
     /// <inheritdoc/>
     public bool Exists(string path) => File.Exists(path);
+
+    /// <inheritdoc/>
+    public bool IsDirectory(string path) => Directory.Exists(path);
+
+    /// <inheritdoc/>
+    public bool? IsReadOnly(PublicationObjectReference reference)
+    {
+        ArgumentNullException.ThrowIfNull(reference);
+        return reference.IsReadOnly();
+    }
 
     /// <inheritdoc/>
     public CreatedFile CreateNew(string path)

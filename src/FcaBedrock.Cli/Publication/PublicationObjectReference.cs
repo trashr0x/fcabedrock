@@ -110,6 +110,46 @@ internal sealed class PublicationObjectReference : IDisposable
         return FileIdentity.CreateDefault().KeyFor(path) == Identity;
     }
 
+    /// <summary>
+    /// Whether the held object carries the Windows read-only attribute, read through this
+    /// reference's own handle, or null when that is unknown.
+    /// <para>
+    /// On Windows the attribute stops the handle-bound removal a replaced or demoted participant
+    /// ends with (<see cref="FileIdentityInterop.MarkForDeletion"/>), while a rename still succeeds,
+    /// so a run that does not ask commits and then cannot clean up. The query reads the attribute
+    /// through <c>GetFileInformationByHandle</c> (<see cref="File.GetAttributes(SafeFileHandle)"/>),
+    /// which needs only the attribute access this handle already has, and it describes the object
+    /// held, not the name. A later change to the attribute is not prevented. Off Windows no attribute
+    /// blocks an unlink, so the answer is null and nothing is refused.
+    /// </para>
+    /// <para>
+    /// A failed query answers null: the runtime reports an error from that call as an
+    /// <see cref="IOException"/> or an <see cref="UnauthorizedAccessException"/>. Nothing else is
+    /// caught (an aborted call's <see cref="OperationCanceledException"/> included), so a defect
+    /// propagates.
+    /// </para>
+    /// </summary>
+    public bool? IsReadOnly()
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            return null;
+        }
+
+        try
+        {
+            return (File.GetAttributes(_handle) & FileAttributes.ReadOnly) != 0;
+        }
+        catch (IOException)
+        {
+            return null;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return null;
+        }
+    }
+
     /// <inheritdoc/>
     public void Dispose() => _handle.Dispose();
 }

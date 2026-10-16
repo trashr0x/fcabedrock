@@ -350,7 +350,8 @@ public sealed class SingleFilePublicationTests
         var before = run.Snapshot();
 
         Assert.Equal(
-            $"the output base '{run.Out}' has unrecognized fcabedrock transaction residue; remove it and retry.",
+            $"the output base '{run.Out}' has unrecognized fcabedrock transaction residue, which was left untouched;"
+            + " inspect it, or choose a different --out.",
             await run.PublishAsync(New, force: true));
 
         run.AssertNoMutation();
@@ -372,7 +373,8 @@ public sealed class SingleFilePublicationTests
         var before = run.Snapshot();
 
         Assert.Equal(
-            $"the output base '{run.Out}' has unrecognized fcabedrock transaction residue; remove it and retry.",
+            $"the output base '{run.Out}' has unrecognized fcabedrock transaction residue, which was left untouched;"
+            + " inspect it, or choose a different --out.",
             await run.PublishAsync(New, force: true));
 
         run.AssertNoMutation();
@@ -500,7 +502,8 @@ public sealed class SingleFilePublicationTests
         // 4/5. Two compatible retries on fresh harnesses without identity suppression. Each
         //      classifies the valid same-family record, enters recovery, and reaches the removal
         //      boundary for the unprovable stage, where the proof refuses. The literal message is
-        //      fixed text, never captured: UnknownResidue would mean classification failed.
+        //      fixed text, never captured: UnknownResidue would mean classification failed. It
+        //      names that stage, the one entry left in the way, and claims nothing about its owner.
         var map = run.Snapshot();
         for (var attempt = 1; attempt <= 2; attempt++)
         {
@@ -508,9 +511,10 @@ public sealed class SingleFilePublicationTests
 
             var refused = Assert.IsType<PublicationRefused>(run.Preflight(force: true));
             Assert.Equal(
-                $"cannot clean up an incomplete fcabedrock run for the output base '{run.Out}'.",
+                $"cannot clean up an incomplete fcabedrock run for the output base '{run.Out}': "
+                + $"'{Path.GetFileName(stage)}' is not a file fcabedrock can prove it created, so it was left untouched;"
+                + " inspect it, or choose a different --out.",
                 refused.Message);
-            Assert.DoesNotContain(".fcabedrock-", refused.Message, StringComparison.Ordinal);
 
             // Nothing created or renamed; exactly one removal ATTEMPT, at the same preserved stage.
             // That attempt beside an unchanged byte map and identity key proves the acting-boundary

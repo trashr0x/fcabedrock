@@ -53,15 +53,40 @@ internal sealed record PublicationRefused(string Message) : PublicationPreparati
 internal sealed record PublicationFailure(string Message);
 
 /// <summary>
-/// The code-less host-error texts publication produces (D-122 part 2). None names an exception
-/// type, a stack, a localized OS message, a transaction token, a private path, or an identity
-/// key: every one is written from the run's own operands.
+/// The code-less host texts publication produces (D-122 parts 2–3). None names an exception type,
+/// a stack, a localized OS message, a resolved private path, or an identity key: each is written
+/// from the run's own operands and a cause the failed step established. One exception is narrow
+/// and deliberate: a recovery error or a cleanup warning names the one private entry that blocked
+/// it, by file name only, so the user can find it beside the output base. That name can carry a
+/// transaction token, and it proves nothing about who owns the entry. Each text is plain; the
+/// renderer escapes it once.
 /// </summary>
 internal static class PublicationMessages
 {
     /// <summary>An existing selected target, without <c>--force</c>.</summary>
     public static string ExistingTarget(string spelling) =>
         $"the output '{spelling}' already exists; use --force to replace it.";
+
+    /// <summary>
+    /// An old manifest a <c>--no-manifest</c> run would leave beside outputs it does not describe,
+    /// without <c>--force</c>. Nothing replaces it: <c>--force</c> removes it.
+    /// </summary>
+    public static string StaleManifest(string spelling) =>
+        $"the manifest '{spelling}' is from an earlier run and would not describe this run's outputs; "
+        + "use --force to remove it.";
+
+    /// <summary>A directory where an output file must go: refused with or without <c>--force</c>.</summary>
+    public static string TargetDirectory(string spelling) =>
+        $"the output '{spelling}' is a directory; choose a different --out.";
+
+    /// <summary>A Windows read-only target <c>--force</c> would replace. The attribute is never cleared for the user.</summary>
+    public static string ReadOnlyTarget(string spelling) =>
+        $"the output '{spelling}' is read-only; clear its read-only attribute to replace it, or choose a different --out.";
+
+    /// <summary>A Windows read-only old manifest a forced <c>--no-manifest</c> run would remove.</summary>
+    public static string ReadOnlyManifest(string spelling) =>
+        $"the manifest '{spelling}' is read-only, so --force cannot remove it; clear its read-only attribute, "
+        + "or choose a different --out.";
 
     /// <summary>An output that is canonically the same file as an input: refused even with <c>--force</c>.</summary>
     public static string InputCollision(string output, string input) =>
@@ -71,23 +96,89 @@ internal static class PublicationMessages
     public static string OutputCollision(string first, string second) =>
         $"the outputs '{first}' and '{second}' are the same file.";
 
-    /// <summary>Residue claiming the private namespace that no valid transaction record accounts for.</summary>
+    /// <summary>
+    /// Residue claiming the private namespace that no valid transaction record accounts for. It is
+    /// never removed for the user: what it is cannot be proved, so the advice is to inspect it.
+    /// </summary>
     public static string UnknownResidue(string baseSpelling) =>
-        $"the output base '{baseSpelling}' has unrecognized fcabedrock transaction residue; remove it and retry.";
+        $"the output base '{baseSpelling}' has unrecognized fcabedrock transaction residue, which was left untouched; "
+        + "inspect it, or choose a different --out.";
 
-    /// <summary>A prior incomplete run was found but could not be cleaned up.</summary>
-    public static string RecoveryFailed(string baseSpelling) =>
-        $"cannot clean up an incomplete fcabedrock run for the output base '{baseSpelling}'.";
+    /// <summary>
+    /// A prior incomplete run was found but could not be cleaned up; <paramref name="blocker"/> is
+    /// the first step that did not complete, where the recovery knows it.
+    /// </summary>
+    public static string RecoveryFailed(string baseSpelling, CleanupFact? blocker = null) =>
+        blocker is null
+            ? $"cannot clean up an incomplete fcabedrock run for the output base '{baseSpelling}'."
+            : $"cannot clean up an incomplete fcabedrock run for the output base '{baseSpelling}': {Describe(blocker)}";
 
-    /// <summary>Publication could not be started: the location is unusable, or a control file refused to be created.</summary>
-    public static string RecordFailed(string baseSpelling) =>
-        $"cannot start publication for the output base '{baseSpelling}'.";
+    /// <summary>
+    /// Publication could not be started: the location is unusable, or a control file refused to be
+    /// created. A missing or refusing folder is named where the failed step established it.
+    /// </summary>
+    public static string RecordFailed(string baseSpelling, PublicationCause cause = PublicationCause.Unknown) =>
+        cause switch
+        {
+            PublicationCause.FolderMissing =>
+                $"cannot start publication for the output base '{baseSpelling}': its folder does not exist, and "
+                + "fcabedrock does not create folders; create it, or choose a different --out.",
+            PublicationCause.FolderDenied =>
+                $"cannot start publication for the output base '{baseSpelling}': access to its folder was denied; "
+                + "choose a folder you can write to.",
+            _ => $"cannot start publication for the output base '{baseSpelling}'.",
+        };
 
     /// <summary>A staged artifact could not be created, written, flushed, or closed.</summary>
     public static string StageFailed(string spelling) => $"cannot write the output '{spelling}'.";
 
-    /// <summary>An artifact could not be committed.</summary>
-    public static string CommitFailed(string spelling) => $"cannot publish the output '{spelling}'.";
+    /// <summary>An artifact could not be committed; a rename's own failure may say why.</summary>
+    public static string CommitFailed(string spelling, PublicationCause cause = PublicationCause.Unknown) =>
+        cause switch
+        {
+            PublicationCause.InUse =>
+                $"cannot publish the output '{spelling}': another program is using it; close that program, "
+                + "or choose a different --out.",
+            PublicationCause.AccessDenied =>
+                $"cannot publish the output '{spelling}': access to it was denied; choose a different --out.",
+            _ => $"cannot publish the output '{spelling}'.",
+        };
+
+    /// <summary>
+    /// The warning for a committed run whose private cleanup did not finish (exit 0). The outputs
+    /// and any manifest are complete and public; what remains is recovered by a later run with the
+    /// same output base.
+    /// </summary>
+    public static string CleanupIncomplete(string baseSpelling, CleanupFact? blocker) =>
+        blocker is null
+            ? $"the output base '{baseSpelling}' is published and complete, but its private cleanup did not finish; "
+                + "a later run tries the cleanup again."
+            : $"the output base '{baseSpelling}' is published and complete, but its private cleanup did not finish: "
+                + Describe(blocker);
+
+    // Clearing the named blocker lets a later run try again; it does not promise the cleanup will
+    // then finish, so no text here says it will.
+    private static string Describe(CleanupFact blocker)
+    {
+        var name = blocker.EntryName;
+        var verb = blocker.Step == CleanupStep.Restore ? "moved back" : "removed";
+        return blocker.Cause switch
+        {
+            PublicationCause.NotProved =>
+                $"'{name}' is not a file fcabedrock can prove it created, so it was left untouched; inspect it, "
+                + "or choose a different --out.",
+            PublicationCause.NotHeld => $"'{name}' could not be opened; a later run tries the cleanup again.",
+            PublicationCause.ReadOnly =>
+                $"'{name}' could not be {verb} because it is read-only; after that attribute is cleared, "
+                + "a later run tries the cleanup again.",
+            PublicationCause.InUse =>
+                $"'{name}' could not be {verb} because another program is using it; after that program closes it, "
+                + "a later run tries the cleanup again.",
+            PublicationCause.AccessDenied =>
+                $"'{name}' could not be {verb} because access to it was denied; a later run tries the cleanup again.",
+            _ => $"'{name}' could not be {verb}; a later run tries the cleanup again.",
+        };
+    }
 }
 
 /// <summary>
@@ -139,7 +230,9 @@ internal static class PublicationMessages
 /// and control-path checks run, so a recovery that restores a target cannot slip an aliased output
 /// past the one identity check. A participant this run would rename aside but
 /// cannot identify is refused <em>there</em>, before a record, a stage, or one pass of conversion
-/// work exists.
+/// work exists. So is one whose held object Windows reports read-only: the rename aside would
+/// succeed and the removal after the commit point would not. The seal asks that question again;
+/// later than that, an attribute change is met by the ordinary failure or cleanup outcome.
 /// </para>
 /// <para>
 /// <b>An identity is only as good as the object that still holds it</b> (D-125). An identifier
@@ -230,6 +323,13 @@ internal sealed partial class PublicationTransaction : IDisposable
     public bool Committed { get; private set; }
 
     /// <summary>
+    /// The warning a committed run owes because its private cleanup did not finish, or null. It is
+    /// set only past the commit point, and only when the cleanup pass itself reported that work
+    /// remains; it never changes the outcome, the exit code or the published files.
+    /// </summary>
+    public string? CleanupWarning { get; private set; }
+
+    /// <summary>
     /// Releases every live reference this transaction still holds. Deterministic, and called on
     /// success, refusal, cancellation and fault alike: a reference outliving its transaction would
     /// keep a Windows deletion pending and an object allocated for no purpose. It is idempotent, so
@@ -278,7 +378,10 @@ internal sealed partial class PublicationTransaction : IDisposable
             // unreadable directory. Here an ArgumentException or a NotSupportedException genuinely
             // describes the user's operand rather than an internal defect, which is why the broad
             // family is admitted; it is admitted only where a path the user typed is resolved.
-            return new PublicationRefused(PublicationMessages.RecordFailed(baseOperand));
+            // Listing the folder for residue is the one preflight step whose access or missing-folder
+            // failure is not absorbed, so those two types name the folder.
+            return new PublicationRefused(
+                PublicationMessages.RecordFailed(baseOperand, PublicationCauses.OfLocation(exception)));
         }
     }
 
@@ -305,7 +408,8 @@ internal sealed partial class PublicationTransaction : IDisposable
         catch (Exception exception) when (FailureFamily.IsPublicationFailure(exception))
         {
             // As in Preflight: here the broad family describes the user's own operand.
-            return new PublicationRefused(PublicationMessages.RecordFailed(outPath));
+            return new PublicationRefused(
+                PublicationMessages.RecordFailed(outPath, PublicationCauses.OfLocation(exception)));
         }
     }
 
@@ -351,8 +455,11 @@ internal sealed partial class PublicationTransaction : IDisposable
         catch (Exception exception) when (FailureFamily.IsEnvironmentFailure(exception))
         {
             // Refused. Nothing durable was written naming this path, and nothing will be: the
-            // occupant is preserved by this run and by every later one.
-            return new PublicationFailure(PublicationMessages.RecordFailed(_baseSpelling));
+            // occupant is preserved by this run and by every later one. This is the run's first
+            // creation in the output folder, so a missing or refusing folder surfaces here, and the
+            // exception's type says which; folders are never created for the user.
+            return new PublicationFailure(
+                PublicationMessages.RecordFailed(_baseSpelling, PublicationCauses.OfLocation(exception)));
         }
         catch (Exception exception) when (FailureFamily.IsContractFault(exception))
         {
@@ -595,7 +702,8 @@ internal sealed partial class PublicationTransaction : IDisposable
     /// The evidence is what makes ownership provable rather than inferred, so it must be durable
     /// before the staged marker (the fact that authorizes reading a missing stage as "a commit
     /// rename consumed it") and therefore before any commit mutation. Each backup-bearing target
-    /// is re-observed here and must still be the object preflight approved, and every staged target
+    /// is re-observed here: it must still be the object preflight approved, and Windows must not
+    /// report it read-only. Every staged target
     /// must carry usable stage identity: this runs after <see cref="Begin"/> and staging, so a
     /// failure rolls back this run's own private residue, but it is <em>before</em> any final
     /// target is touched, so the externally observable target set is unchanged, and a rollback
@@ -620,6 +728,17 @@ internal sealed partial class PublicationTransaction : IDisposable
                 // and it must be provable at all: a host that cannot identify it cannot authorize
                 // a forced replacement.
                 return new PublicationFailure(PublicationMessages.CommitFailed(SpellingOf(targetFileName)));
+            }
+
+            // Preflight asked too, but the attribute can be set in between. This is the last point
+            // at which refusing still leaves every final target untouched; after it, an attribute
+            // set later surfaces as a failed rename or an unfinished cleanup instead.
+            if (_preflightIdentity.ContainsKey(targetFileName)
+                && _references.Of(Path.Combine(_directory, targetFileName)) is { } held
+                && IsReadOnly(_files, held))
+            {
+                return new PublicationFailure(
+                    ReadOnlyMessage(SpellingOf(targetFileName), demoted: !IsFinal(targetFileName)));
             }
 
             // Every staged target already published its evidence as its stage closed; what remains
@@ -708,9 +827,9 @@ internal sealed partial class PublicationTransaction : IDisposable
                 return new PublicationFailure(PublicationMessages.CommitFailed(spelling));
             }
 
-            if (!TryMutate(() => _files.Move(targetPath, backupPath, _references.Of(targetPath))))
+            if (!TryMutate(() => _files.Move(targetPath, backupPath, _references.Of(targetPath)), out var backupCause))
             {
-                return new PublicationFailure(PublicationMessages.CommitFailed(spelling));
+                return new PublicationFailure(PublicationMessages.CommitFailed(spelling, backupCause));
             }
 
             // The interval between the check and the rename is irreducible, so the rename's RESULT
@@ -756,9 +875,9 @@ internal sealed partial class PublicationTransaction : IDisposable
             }
 
             var stagePath = StagePath(target.FileName);
-            if (!TryMutate(() => _files.Move(stagePath, target.FullPath, _references.Of(stagePath))))
+            if (!TryMutate(() => _files.Move(stagePath, target.FullPath, _references.Of(stagePath)), out var commitCause))
             {
-                return new PublicationFailure(PublicationMessages.CommitFailed(target.Spelling));
+                return new PublicationFailure(PublicationMessages.CommitFailed(target.Spelling, commitCause));
             }
 
             // And the published final must be that same object before the next artifact (or the
@@ -784,10 +903,17 @@ internal sealed partial class PublicationTransaction : IDisposable
 
         // Past the commit point the run is public, so cleanup is best-effort and never downgrades
         // the outcome. Anything that survives stays owned by the record, which a later run
-        // recovers as an already-committed transaction.
+        // recovers as an already-committed transaction. The pass's own answer decides the
+        // warning: a marker that could not be made but whose cleanup still completed leaves
+        // nothing behind and nothing to report.
         Committed = true;
         Mark(TransactionPhase.Committed);
-        Finish(View(), forward: true, Guard(CancellationToken.None), hazard: false);
+        var cleanup = Guard(CancellationToken.None);
+        if (!Finish(View(), forward: true, cleanup, hazard: false))
+        {
+            CleanupWarning = PublicationMessages.CleanupIncomplete(_baseSpelling, cleanup.Incomplete);
+        }
+
         return null;
     }
 
@@ -1174,6 +1300,24 @@ internal sealed partial class PublicationTransaction : IDisposable
     }
 
     private string SpellingOf(string targetFileName) => SpellingOfName(targetFileName, _targets);
+
+    private bool IsFinal(string targetFileName)
+    {
+        foreach (var target in _finals)
+        {
+            if (string.Equals(target.FileName, targetFileName, StringComparison.Ordinal))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    // A participant that is not a selected final is the old manifest a --no-manifest run removes,
+    // so its refusal says removal rather than replacement.
+    private static string ReadOnlyMessage(string spelling, bool demoted) =>
+        demoted ? PublicationMessages.ReadOnlyManifest(spelling) : PublicationMessages.ReadOnlyTarget(spelling);
 
     private static string SpellingOfName(
         string targetFileName, IReadOnlyDictionary<PublicationTargetKind, PublicationTarget> targets)

@@ -2822,7 +2822,34 @@ then marks the run incomplete until the complete requested artifact set commits,
 disappears only on success, and preserves identical incomplete-run detection
 (D-122). Failed, cancelled, or invalid runs **leave no committed run**; commit-phase
 failures roll back best-effort, and surviving residue remains uncommitted and is
-detected, reported, and safely cleaned on a later collision.
+detected, reported, and safely cleaned on a later collision, once nothing blocks that
+cleanup (below).
+
+**Cleanup after the commit point, and recovery (D-122, D-125).** A run whose outputs
+committed stays committed: nothing is rolled back, and the committed files stand. When an
+ordinary obstacle (a private transaction file the run cannot open, prove or remove) keeps
+the cleanup that follows from finishing, the run still exits 0, and the CLI writes one
+code-less warning (§16.4) that names, where it is known, the first private file that stayed
+and why. A cancellation request that arrives after the commit point changes neither. An
+unexpected internal fault and a failure to write the run's own stdout or stderr keep their
+exit codes (§16.2). The next run with the same output base resumes the cleanup before it
+publishes. Where a file blocks that cleanup (on Windows, for example, a read-only one), the
+run refuses and names it by file name; it cleans up only when its own authority and proofs
+succeed. Clearing a named blocker lets a later run try again; it does not guarantee that
+the cleanup then finishes. A file the run cannot prove it created is preserved, never
+removed.
+
+**Read-only files on Windows (D-122, D-125).** When `--force` would replace an existing
+file, or remove the old manifest a `--no-manifest` run meets, the run checks whether that
+file carries the read-only attribute, through the open handle it already holds on the
+file. It checks once before it stages anything, and again after staging, before it
+renames any existing file aside. It refuses a file the check reports as read-only,
+because the removal at the end of publication would then fail, and it never clears the
+attribute for the user. When the check cannot answer (the query itself fails), the run
+neither refuses the file nor reports it as read-only on that account; its other checks
+decide as before. The two checks do not make the attribute stable: an attribute set after
+the second one is not prevented, and the run then meets the ordinary rename failure, or
+commits and writes the warning above.
 
 **Supported publication environment (D-125).** Every guarantee in this section and in
 §16.2 holds under one stated precondition: the run's **output participants, their
@@ -2992,7 +3019,12 @@ manifest-bearing run the manifest publishes **last** as the public commit marker
 under `--no-manifest` implementation-private transaction state preserves the same
 incomplete-run detection (§15, D-122). **Exit codes:** 0 success (warnings included),
 1 any Error/Fatal diagnostic or a host/runtime/publication failure, 2 usage, 3
-cooperative cancellation, 4 unexpected internal fault (D-122).
+cooperative cancellation, 4 unexpected internal fault (D-122). Once the outputs have
+committed, nothing is rolled back and the committed files stand. A private cleanup that did
+not finish for an ordinary reason is reported as a code-less warning (§15, §16.4), and the
+exit stays 0. A signal that arrives after the commit point does not turn the run into a
+cancellation. An unexpected internal fault after the commit point still exits 4, and a
+failure to write the run's own stdout or stderr still exits 1.
 
 **Publication renames (normative, D-125).** Every commit, backup, restore and
 compensation is a **same-directory, same-filesystem native metadata rename**. It MUST
@@ -3244,7 +3276,12 @@ backslashes like any other. A sample the producer wrote as `"bad\nvalue"` theref
 on stderr as `"bad\\nvalue"`. A code-less host error renders `error: escaped-message` and a
 code-less host warning renders `warning: escaped-message`, each with its message escaped as
 prose and one terminating LF, even when the message is empty. Neither carries a code: the
-registry above covers pipeline conditions only.
+registry above covers pipeline conditions only. The CLI writes a code-less warning in one
+case: a publication whose outputs committed but whose private cleanup did not finish (§15).
+It is written once, after the run's diagnostics, and does not move the exit off 0. Its
+message names the output base and, where the cleanup knows it, the first private file that
+stayed, by file name; that name can carry a transaction token, and it says nothing about who
+owns the file.
 
 **The `migrate (v2)` phase** is the one-way `.bed` → TOML migration (D-009/D-079),
 a tooling phase outside the §7 processing pipeline. The migrator carries what the

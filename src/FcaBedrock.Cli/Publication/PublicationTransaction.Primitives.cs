@@ -31,11 +31,21 @@ internal sealed partial class PublicationTransaction
     /// authority D-125 withdraws.
     /// </para>
     /// <para>
-    /// An unanswerable existence question reads as "present", so it fails closed too.
+    /// An unanswerable existence question reads as "present", so it fails closed too. A false
+    /// answer tells <paramref name="guard"/> which entry could not be held.
     /// </para>
     /// </summary>
-    private static bool Anchor(IPublicationFileSystem files, PublicationReferences references, string path) =>
-        references.Ensure(path) is not null || !Exists(files, path);
+    private static bool Anchor(
+        IPublicationFileSystem files, PublicationReferences references, string path, RecoveryGuard guard)
+    {
+        if (references.Ensure(path) is not null || !Exists(files, path))
+        {
+            return true;
+        }
+
+        guard.Note(CleanupStep.Remove, PublicationCause.NotHeld, path);
+        return false;
+    }
 
     /// <summary>
     /// Removes the object at <paramref name="path"/>, and <b>only</b> the object
@@ -65,6 +75,12 @@ internal sealed partial class PublicationTransaction
     /// still have to act on that object, and re-acquiring it by name is exactly what this design
     /// does not do (D-125).
     /// </para>
+    /// <para>
+    /// A removal that answers false tells <paramref name="guard"/> which entry stayed and why, as
+    /// far as this step knows: the entry could not be held, it is not the expected object, or the
+    /// removal itself failed. For that last case the held object is asked whether it is read-only,
+    /// because on Windows the access failure that attribute causes looks like any other.
+    /// </para>
     /// </summary>
     private static bool RemoveOwned(
         IPublicationFileSystem files,
@@ -85,6 +101,7 @@ internal sealed partial class PublicationTransaction
 
         if (!guard.Allows(path))
         {
+            guard.Note(CleanupStep.Remove, PublicationCause.Unknown, path);
             return false;
         }
 
@@ -101,8 +118,9 @@ internal sealed partial class PublicationTransaction
         // at the cost of a file open on every removal, including the post-commit cleanup inside a
         // successful conversion. Where the transaction already holds the reference, which is every
         // in-process removal, this is a dictionary lookup and touches the filesystem not at all.
-        if (references.Ensure(path) is null)
+        if (references.Ensure(path) is not { } held)
         {
+            guard.Note(CleanupStep.Remove, PublicationCause.NotHeld, path);
             return false;
         }
 
@@ -110,11 +128,16 @@ internal sealed partial class PublicationTransaction
         {
             if (!files.Remove(path, isExpected))
             {
+                guard.Note(CleanupStep.Remove, PublicationCause.NotProved, path);
                 return false;
             }
         }
         catch (Exception exception) when (FailureFamily.IsEnvironmentFailure(exception))
         {
+            guard.Note(
+                CleanupStep.Remove,
+                IsReadOnly(files, held) ? PublicationCause.ReadOnly : PublicationCauses.OfObject(exception),
+                path);
             return false;
         }
         catch (Exception exception) when (FailureFamily.IsContractFault(exception))
@@ -140,14 +163,34 @@ internal sealed partial class PublicationTransaction
         }
     }
 
+    /// <summary>
+    /// A directory at <paramref name="path"/>, asked so a target that is one is refused by name
+    /// before any work starts. The real filesystem answers false for a path it cannot examine,
+    /// which leaves the outcome to the operation that later meets that path.
+    /// </summary>
+    private static bool IsDirectory(IPublicationFileSystem files, string path) =>
+        Guarded(() => files.IsDirectory(path));
+
+    /// <summary>
+    /// True only when the held object is known to be read-only. Unknown (off Windows, or a query
+    /// that failed) is false: it neither claims the attribute nor refuses anything.
+    /// </summary>
+    private static bool IsReadOnly(IPublicationFileSystem files, PublicationObjectReference reference) =>
+        Guarded(() => files.IsReadOnly(reference)) == true;
+
     // Every publication-filesystem MUTATION goes through here. A genuine I/O, access, or provider
     // failure is the ordinary environment condition the caller reports as exit 1; an
     // ObjectDisposedException, an ArgumentException, or a NotSupportedException from a create,
     // rename, or delete of a path this code derived is a contract or state defect with no
     // user-facing reading at all, and is tagged at its origin so it reaches the sanitized
     // unexpected-fault exit rather than being blamed on the user's output location.
-    private static bool TryMutate(Action action)
+    private static bool TryMutate(Action action) => TryMutate(action, out _);
+
+    // The same, answering what the environment failure established about the object, for the
+    // renames whose refusal a user can act on.
+    private static bool TryMutate(Action action, out PublicationCause cause)
     {
+        cause = PublicationCause.Unknown;
         try
         {
             action();
@@ -155,6 +198,7 @@ internal sealed partial class PublicationTransaction
         }
         catch (Exception exception) when (FailureFamily.IsEnvironmentFailure(exception))
         {
+            cause = PublicationCauses.OfObject(exception);
             return false;
         }
         catch (Exception exception) when (FailureFamily.IsContractFault(exception))

@@ -19,6 +19,10 @@ public sealed class PublicationOwnershipTests
 {
     private const string Keep = "keep me";
 
+    // What a recovery refusal says after naming an entry it found but cannot prove it created.
+    private const string NotProved =
+        "is not a file fcabedrock can prove it created, so it was left untouched; inspect it, or choose a different --out.";
+
     // ---- a refused stage acquisition writes nothing that names the occupant ----------------------
 
     [Fact]
@@ -88,7 +92,8 @@ public sealed class PublicationOwnershipTests
                     "convert", run.Spec, run.Data, "--out", run.Base, "--format", "cxt", "--force"));
             Assert.Equal(
                 DiagnosticRenderer.RenderHostError(
-                    $"cannot clean up an incomplete fcabedrock run for the output base '{run.Base}'."),
+                    $"cannot clean up an incomplete fcabedrock run for the output base '{run.Base}': "
+                    + $"'{Path.GetFileName(stage)}' {NotProved}"),
                 retry.StdErr);
 
             Assert.True(File.Exists(stage), "the unprovable object was removed on a guess");
@@ -185,7 +190,8 @@ public sealed class PublicationOwnershipTests
                 1, await harness.RunAsync("convert", run.Spec, run.Data, "--out", run.Base, "--format", "cxt"));
             Assert.Equal(
                 DiagnosticRenderer.RenderHostError(
-                    $"cannot clean up an incomplete fcabedrock run for the output base '{run.Base}'."),
+                    $"cannot clean up an incomplete fcabedrock run for the output base '{run.Base}': "
+                    + $"'{Path.GetFileName(pending)}' {NotProved}"),
                 harness.StdErr);
 
             Assert.Equal(expected, await File.ReadAllBytesAsync(pending));
@@ -762,7 +768,8 @@ public sealed class PublicationOwnershipTests
             Assert.Equal(string.Empty, retry.StdOut);
             Assert.Equal(
                 DiagnosticRenderer.RenderHostError(
-                    $"cannot clean up an incomplete fcabedrock run for the output base '{run.Base}'."),
+                    $"cannot clean up an incomplete fcabedrock run for the output base '{run.Base}': "
+                    + $"'{Path.GetFileName(stage)}' {NotProved}"),
                 retry.StdErr);
 
             Assert.True(File.Exists(stage), $"attempt {attempt + 1} removed an object nothing names");
@@ -994,7 +1001,8 @@ public sealed class PublicationOwnershipTests
         Assert.Equal(1, await run.ConvertAsync("--format", "cxt"));
         Assert.Equal(
             DiagnosticRenderer.RenderHostError(
-                $"cannot clean up an incomplete fcabedrock run for the output base '{run.Base}'."),
+                $"cannot clean up an incomplete fcabedrock run for the output base '{run.Base}': "
+                + $"'{Path.GetFileName(pending)}' {NotProved}"),
             run.Harness.StdErr);
 
         // The removal really was attempted: the seam records that call only when the proof is
@@ -1414,7 +1422,8 @@ public sealed class PublicationOwnershipTests
             1, await retry.RunAsync("convert", run.Spec, run.Data, "--out", run.Base, "--format", "cxt"));
         Assert.Equal(
             DiagnosticRenderer.RenderHostError(
-                $"cannot clean up an incomplete fcabedrock run for the output base '{run.Base}'."),
+                $"cannot clean up an incomplete fcabedrock run for the output base '{run.Base}': "
+                + $"'out.manifest.toml' {NotProved}"),
             retry.StdErr);
         Assert.Equal("an impostor", await File.ReadAllTextAsync(run.Target(".manifest.toml")));
         Assert.Contains(run.Residue(), name => name.Contains(".fcabedrock-transaction-", StringComparison.Ordinal));
@@ -1451,12 +1460,14 @@ public sealed class PublicationOwnershipTests
 
         // The retry cannot remove an object it does not own, so it says so, every time, without
         // touching anything.
+        var impostor = Path.GetFileName(Single(run.Directory, "out.manifest.toml.fcabedrock-stage-*"));
         var retry = new CliTestHarness();
         Assert.Equal(
             1, await retry.RunAsync("convert", run.Spec, run.Data, "--out", run.Base, "--format", "cxt"));
         Assert.Equal(
             DiagnosticRenderer.RenderHostError(
-                $"cannot clean up an incomplete fcabedrock run for the output base '{run.Base}'."),
+                $"cannot clean up an incomplete fcabedrock run for the output base '{run.Base}': "
+                + $"'{impostor}' {NotProved}"),
             retry.StdErr);
         Assert.False(File.Exists(run.Target(".manifest.toml")));
         Assert.False(File.Exists(run.Target(".cxt")));

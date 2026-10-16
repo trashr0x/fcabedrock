@@ -59,9 +59,16 @@ internal sealed partial class PublicationTransaction
             return new PublicationRefused(participantCollision);
         }
 
+        if (DirectoryTarget(files, finals) is { } directoryTarget)
+        {
+            return new PublicationRefused(directoryTarget);
+        }
+
+        // Nothing replaces the demoted marker: --force authorizes removing it, and the refusal
+        // says so rather than asking for a replacement that will not happen.
         if (demotesManifest && !force)
         {
-            return new PublicationRefused(PublicationMessages.ExistingTarget(manifest.Spelling));
+            return new PublicationRefused(PublicationMessages.StaleManifest(manifest.Spelling));
         }
 
         foreach (var target in finals)
@@ -121,6 +128,14 @@ internal sealed partial class PublicationTransaction
                 PublicationMessages.CommitFailed(SpellingOfName(unprovable, targets)));
         }
 
+        if (ReadOnlyParticipant(files, references, directory, entries) is { } readOnly)
+        {
+            references.Dispose();
+            return new PublicationRefused(ReadOnlyMessage(
+                SpellingOfName(readOnly, targets),
+                demoted: demotesManifest && string.Equals(readOnly, manifest.FileName, StringComparison.Ordinal)));
+        }
+
         try
         {
             cancellation.ThrowIfCancellationRequested();
@@ -170,6 +185,11 @@ internal sealed partial class PublicationTransaction
             return new PublicationRefused(collision);
         }
 
+        if (DirectoryTarget(files, finals) is { } directoryTarget)
+        {
+            return new PublicationRefused(directoryTarget);
+        }
+
         var exists = Exists(files, target.FullPath);
         if (exists && !force)
         {
@@ -196,6 +216,12 @@ internal sealed partial class PublicationTransaction
         {
             references.Dispose();
             return new PublicationRefused(PublicationMessages.CommitFailed(SpellingOfName(unprovable, targets)));
+        }
+
+        if (ReadOnlyParticipant(files, references, directory, entries) is { } readOnly)
+        {
+            references.Dispose();
+            return new PublicationRefused(ReadOnlyMessage(SpellingOfName(readOnly, targets), demoted: false));
         }
 
         try
@@ -264,15 +290,12 @@ internal sealed partial class PublicationTransaction
         }
 
         // A validated prior transaction is completed FIRST: it belongs to that run, not this one.
-        if (!Recover(
-                files,
-                references,
-                identityFactory,
-                directory,
-                residue,
-                new RecoveryGuard(identityFactory, inputs, cancellation)))
+        // Where it cannot be, the refusal names the first entry that stopped it, which is the one
+        // thing the user can act on; nothing here says the rest would then succeed.
+        var guard = new RecoveryGuard(identityFactory, inputs, cancellation);
+        if (!Recover(files, references, identityFactory, directory, residue, guard))
         {
-            return new PublicationRefused(PublicationMessages.RecoveryFailed(baseOperand));
+            return new PublicationRefused(PublicationMessages.RecoveryFailed(baseOperand, guard.Incomplete));
         }
 
         // Recovery may have restored a target, and a memoized "does not exist" would still say so.
@@ -316,6 +339,44 @@ internal sealed partial class PublicationTransaction
 
         unprovable = string.Empty;
         return true;
+    }
+
+    // The first backup-bearing participant (a replaced target, or the old manifest a --no-manifest
+    // run demotes) whose HELD object is known to be read-only, or null. On Windows that attribute
+    // lets the rename aside succeed and then stops the removal after the commit point, so refusing
+    // here is the only point at which nothing has moved yet. The question is asked of the
+    // reference TryPreflightIdentity just took, so it describes the object approved, not the name.
+    // Unknown is not read-only: it refuses nothing, and every other check still applies.
+    private static string? ReadOnlyParticipant(
+        IPublicationFileSystem files, PublicationReferences references, string directory,
+        IReadOnlyList<TransactionFileEntry> entries)
+    {
+        foreach (var entry in entries)
+        {
+            if (string.Equals(entry.Role, PublicationTargets.BackupRole, StringComparison.Ordinal)
+                && references.Of(TransactionRecord.TargetPathOf(directory, entry)) is { } held
+                && IsReadOnly(files, held))
+            {
+                return entry.TargetFileName;
+            }
+        }
+
+        return null;
+    }
+
+    // A directory where an output must go can never be written, with or without --force, so it is
+    // named here rather than surfacing as a failed commit after the whole conversion.
+    private static string? DirectoryTarget(IPublicationFileSystem files, IReadOnlyList<PublicationTarget> finals)
+    {
+        foreach (var target in finals)
+        {
+            if (IsDirectory(files, target.FullPath))
+            {
+                return PublicationMessages.TargetDirectory(target.Spelling);
+            }
+        }
+
+        return null;
     }
 
     // Canonical identity, not path text: a hardlinked or symlinked alias of the input is the

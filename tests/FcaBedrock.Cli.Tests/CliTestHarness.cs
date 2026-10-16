@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using System.Text;
 using FcaBedrock.Cli.Publication;
 
@@ -345,6 +346,15 @@ internal sealed class RecordingPublicationFileSystem : IPublicationFileSystem
     /// <summary>True once <see cref="CrashAfter"/> fired.</summary>
     public bool Crashed { get; private set; }
 
+    /// <summary>
+    /// Report the read-only fact as unavailable (null) for references acquired at a file name that
+    /// starts with this: the result a host gives when the attribute query itself fails.
+    /// </summary>
+    public string? ReadOnlyUnavailablePrefix { get; set; }
+
+    /// <summary>How many read-only queries <see cref="ReadOnlyUnavailablePrefix"/> answered as unavailable.</summary>
+    public int ReadOnlyUnavailable { get; private set; }
+
     /// <inheritdoc/>
     public bool Exists(string path)
     {
@@ -352,6 +362,44 @@ internal sealed class RecordingPublicationFileSystem : IPublicationFileSystem
         Observe("Exists:" + name);
         FailRead("Exists", name);
         return _real.Exists(path);
+    }
+
+    /// <inheritdoc/>
+    public bool IsDirectory(string path)
+    {
+        var name = Path.GetFileName(path);
+        Observe("IsDirectory:" + name);
+        FailRead("IsDirectory", name);
+        return _real.IsDirectory(path);
+    }
+
+    /// <inheritdoc/>
+    /// <remarks>
+    /// Recorded as <c>ReadOnly:name</c>, where the name is the one the reference was first acquired
+    /// at: a rename re-files a reference without telling the seam, so the original name is the
+    /// stable way for a test to say which object was asked about.
+    /// </remarks>
+    public bool? IsReadOnly(PublicationObjectReference reference)
+    {
+        var name = _referenceNames.TryGetValue(reference, out var acquired) ? acquired : string.Empty;
+        Observe("ReadOnly:" + name);
+        if (Matches(ReadOnlyUnavailablePrefix, name))
+        {
+            ReadOnlyUnavailable++;
+            return null;
+        }
+
+        return _real.IsReadOnly(reference);
+    }
+
+    private readonly ConditionalWeakTable<PublicationObjectReference, string> _referenceNames = new();
+
+    private void Name(PublicationObjectReference? reference, string name)
+    {
+        if (reference is not null)
+        {
+            _referenceNames.AddOrUpdate(reference, name);
+        }
     }
 
     /// <inheritdoc/>
@@ -369,6 +417,7 @@ internal sealed class RecordingPublicationFileSystem : IPublicationFileSystem
         }
 
         CrashIfRequested($"CreateNew:{name}");
+        Name(file.Reference, name);
         return file with { Content = Wrap(file.Content, name) };
     }
 
@@ -391,6 +440,7 @@ internal sealed class RecordingPublicationFileSystem : IPublicationFileSystem
 
         StageIdentities[name] = stage.Identity;
         CrashIfRequested($"Confidential:{name}");
+        Name(stage.Reference, name);
         return stage with { Content = Wrap(stage.Content, name) };
     }
 
@@ -434,7 +484,9 @@ internal sealed class RecordingPublicationFileSystem : IPublicationFileSystem
             return null;
         }
 
-        return _real.TryAcquire(path);
+        var reference = _real.TryAcquire(path);
+        Name(reference, name);
+        return reference;
     }
 
     /// <inheritdoc/>

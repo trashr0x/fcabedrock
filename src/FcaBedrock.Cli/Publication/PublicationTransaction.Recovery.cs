@@ -62,7 +62,7 @@ internal sealed partial class PublicationTransaction
             //
             // Either one that is present and cannot be held ends the pass with nothing touched:
             // the residue stays exactly as it was found, and the next attempt says the same thing.
-            if (!Anchor(files, references, intent.PendingPath) || !Anchor(files, references, intent.Path))
+            if (!Anchor(files, references, intent.PendingPath, guard) || !Anchor(files, references, intent.Path, guard))
             {
                 return false;
             }
@@ -99,7 +99,7 @@ internal sealed partial class PublicationTransaction
         // from an identity nobody holds is exactly the authority D-125 withdraws. Finish anchors
         // again (it has in-process callers of its own) and Ensure is idempotent, so a reference
         // taken here is kept rather than released and taken a second time.
-        if (!AnchorParticipants(view))
+        if (!AnchorParticipants(view, guard))
         {
             return false;
         }
@@ -137,21 +137,21 @@ internal sealed partial class PublicationTransaction
     /// to anchor and nothing to act on, which is the ordinary idempotent case.
     /// </para>
     /// </summary>
-    private static bool AnchorParticipants(TransactionView view)
+    private static bool AnchorParticipants(TransactionView view, RecoveryGuard guard)
     {
         foreach (var targetFileName in view.Record.Targets)
         {
-            if (!view.Anchor(view.FinalPath(targetFileName)))
+            if (!view.Anchor(view.FinalPath(targetFileName), guard))
             {
                 return false;
             }
 
-            if (view.BackupPath(targetFileName) is { } backup && !view.Anchor(backup))
+            if (view.BackupPath(targetFileName) is { } backup && !view.Anchor(backup, guard))
             {
                 return false;
             }
 
-            if (view.HasStage(targetFileName) && !view.Anchor(view.StagePath(targetFileName)))
+            if (view.HasStage(targetFileName) && !view.Anchor(view.StagePath(targetFileName), guard))
             {
                 return false;
             }
@@ -201,7 +201,7 @@ internal sealed partial class PublicationTransaction
         // place, and a later attempt reaches the same state and says the same thing.
         foreach (var entry in view.Record.Files)
         {
-            if (!view.Anchor(view.Record.PathOf(view.Directory, entry)))
+            if (!view.Anchor(view.Record.PathOf(view.Directory, entry), guard))
             {
                 return false;
             }
@@ -256,6 +256,12 @@ internal sealed partial class PublicationTransaction
     /// touched (D-125).
     /// </para>
     /// <para>
+    /// The answer stays a boolean, and <paramref name="guard"/> keeps the first step that fell
+    /// short: the participant that could not be held, the removal that failed or was refused, the
+    /// restoration that did not happen, or the unproved manifest. A caller reports that step
+    /// rather than an inventory of what is left.
+    /// </para>
+    /// <para>
     /// <paramref name="hazard"/> is set when the commit found an object it cannot identify where
     /// one of its renames put it and could not rename that object back: at a published path after
     /// a commit rename, or at the target's private backup path after a backup rename. The pass then
@@ -275,7 +281,7 @@ internal sealed partial class PublicationTransaction
         //    references only as each target came up would mean an earlier target had already been
         //    removed or restored by the time the failure surfaced, which is the ordering D-125
         //    requires and the reason this is an up-front check rather than a per-target one.
-        if (!AnchorParticipants(view))
+        if (!AnchorParticipants(view, guard))
         {
             return false;
         }
@@ -323,6 +329,7 @@ internal sealed partial class PublicationTransaction
             if (!forward && !decision.HasBackup && present && view.IsManifest(decision.TargetFileName))
             {
                 complete = false;
+                guard.Note(CleanupStep.Remove, PublicationCause.NotProved, finalPath);
             }
 
             if (!decision.HasBackup)
@@ -366,6 +373,7 @@ internal sealed partial class PublicationTransaction
             // reissued, which is the authority D-125 withdraws (the check above has already refused
             // that case, and this states it where the mutation happens).
             var anchor = view.References.Of(backupPath);
+            var cause = PublicationCause.Unknown;
             var restored = decision.BackupIsExpected
                 && view.BackupIsExpected(decision.TargetFileName)
                 && !present
@@ -373,7 +381,7 @@ internal sealed partial class PublicationTransaction
                 && anchor.IsStillAt(backupPath)
                 && guard.Allows(backupPath)
                 && guard.Allows(finalPath)
-                && TryMutate(() => view.Files.Move(backupPath, finalPath, anchor));
+                && TryMutate(() => view.Files.Move(backupPath, finalPath, anchor), out cause);
 
             // And the restoring rename's RESULT, before anything can discard the evidence that
             // makes this state recognizable. A different object substituted inside that boundary
@@ -395,6 +403,11 @@ internal sealed partial class PublicationTransaction
                 // Verified home. The anchor follows the object to the name it now occupies, rather
                 // than being dropped and taken again from a path.
                 view.References.Rekey(backupPath, finalPath);
+            }
+
+            if (!restored)
+            {
+                guard.Note(CleanupStep.Restore, cause, backupPath);
             }
 
             complete &= restored;
@@ -464,7 +477,7 @@ internal sealed partial class PublicationTransaction
         {
             var kind = KindOfTarget(targetFileName, view.Record.BaseFileName);
             if (!view.RemoveEvidence(kind, targetFileName, guard)
-                || !view.RemovePendingEvidence(kind)
+                || !view.RemovePendingEvidence(kind, guard)
                 || !view.RemoveStageClaim(kind, targetFileName, guard))
             {
                 return false;

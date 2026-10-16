@@ -129,7 +129,8 @@ internal sealed partial class PublicationTransaction
         /// <see cref="PublicationTransaction.Anchor"/>. False means an object is there and cannot
         /// be held, so nothing about it may be decided or done.
         /// </summary>
-        public bool Anchor(string path) => PublicationTransaction.Anchor(files, references, path);
+        public bool Anchor(string path, RecoveryGuard guard) =>
+            PublicationTransaction.Anchor(files, references, path, guard);
 
         public bool Owns(string targetFileName) =>
             At(FinalPath(targetFileName), PublishedObject(targetFileName));
@@ -160,7 +161,7 @@ internal sealed partial class PublicationTransaction
             // it never created is not its own, whatever occupies that name.
             if (marked is not null && !marked.Contains(phase))
             {
-                return !Exists(path);
+                return Absent(path, guard);
             }
 
             // And a resumed run asks the same question of the bytes: exactly this transaction's
@@ -191,8 +192,8 @@ internal sealed partial class PublicationTransaction
         /// names that object, so it preserves whatever is there and reports the cleanup
         /// incomplete, rather than inferring ownership from the name or the bytes.
         /// </summary>
-        public bool RemovePendingEvidence(PublicationTargetKind kind) =>
-            !Exists(Path.Combine(directory, PublicationTargets.EvidencePendingName(record.BaseFileName, kind, token)));
+        public bool RemovePendingEvidence(PublicationTargetKind kind, RecoveryGuard guard) =>
+            Absent(Path.Combine(directory, PublicationTargets.EvidencePendingName(record.BaseFileName, kind, token)), guard);
 
         /// <summary>
         /// A stage claim goes only when the object at its name holds exactly this transaction's
@@ -239,7 +240,7 @@ internal sealed partial class PublicationTransaction
             var path = Path.Combine(directory, PublicationTargets.PendingRecordName(record.BaseFileName, token));
             if (pendingIdentity is not { } digest)
             {
-                return !Exists(path);
+                return Absent(path, guard);
             }
 
             return RemoveOwned(
@@ -265,6 +266,19 @@ internal sealed partial class PublicationTransaction
                 (_, actual) => actual is not null && actual.AsSpan().SequenceEqual(bytes),
                 guard,
                 references);
+        }
+
+        // A name this pass may not remove anything at: clear only when nothing is there. An entry
+        // that is there is recorded as one the transaction cannot prove, and it stays.
+        private bool Absent(string path, RecoveryGuard guard)
+        {
+            if (!Exists(path))
+            {
+                return true;
+            }
+
+            guard.Note(CleanupStep.Remove, PublicationCause.NotProved, path);
+            return false;
         }
 
         private bool IsOurEvidence(byte[] bytes, string targetFileName) =>
@@ -297,10 +311,23 @@ internal sealed partial class PublicationTransaction
     /// <summary>
     /// The guard every recovery mutation passes: the exact host token, and a fresh check that the
     /// path is not one of this run's inputs.
+    /// <para>
+    /// It also keeps the first cleanup step of its pass that did not complete. A pass keeps going
+    /// past a failed removal and then reports only a boolean, so the step that first fell short is
+    /// recorded where it fell short, by the step itself, and never reconstructed from a later look
+    /// at the directory.
+    /// </para>
     /// </summary>
     private sealed class RecoveryGuard(
         Func<FileIdentity> identityFactory, IReadOnlyList<PublicationInput> inputs, CancellationToken cancellation)
     {
+        /// <summary>The first step of this pass that did not complete, or null.</summary>
+        public CleanupFact? Incomplete { get; private set; }
+
+        /// <summary>Records a step that did not complete; the first one recorded is kept.</summary>
+        public void Note(CleanupStep step, PublicationCause cause, string path) =>
+            Incomplete ??= new CleanupFact(step, cause, Path.GetFileName(path));
+
         public void ThrowIfCancelled() => cancellation.ThrowIfCancellationRequested();
 
         public bool Allows(string path)

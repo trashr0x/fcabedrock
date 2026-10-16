@@ -50,12 +50,16 @@ fcabedrock convert spec.toml data.csv --out out/context --format both
 
 Writes `out/context.cxt` and/or `out/context.dat`, plus
 `out/context.manifest.toml`: the run's audit record, emitted by default and
-suppressed with `--no-manifest`. `--out` names a base: the ruled extension is
+suppressed with `--no-manifest`. The folder `out` must already exist: the tool
+does not create the folder its outputs go in. `--out` names a base: the ruled extension is
 appended, there is no default and no inference from an extension, and
 `--format cxt|dat|both` is required. `--out` must end in a file name, and
 `--out -` is refused, because `convert` writes files only (see
 [How output files are written](#how-output-files-are-written)). Existing
-targets are refused without `--force`. `--temp-dir DIR` relocates spill
+targets are refused without `--force`. With `--no-manifest`, an old
+`out/context.manifest.toml` from an earlier run is refused as well, because it
+would not describe the new outputs; `--force` removes it rather than replacing
+it. `--temp-dir DIR` relocates spill
 storage. The folder is used only if the run spills, so it is not checked in
 advance, but an empty value is refused. Stdout is empty on
 success; nothing becomes public unless the whole run succeeds. `--v2-compat`
@@ -256,7 +260,35 @@ only `/` separates folders, so a backslash, a final dot and a final space are
 ordinary characters there. For `convert`, `--out` names a base, so a folder of
 that name does not stop the run: `--out out/context` writes
 `out/context.cxt` beside a folder called `out/context`. A folder at the actual
-file name, such as `out/context.cxt`, makes the run fail.
+file name, such as `out/context.cxt`, is refused before any work starts. The
+folder the files go in must already exist; a run whose folder is missing says so
+and creates nothing.
+
+**A read-only file is not replaced on Windows.** With `--force`, a run checks
+each existing file it would replace (and an old manifest a `--no-manifest` run
+would remove) for the read-only attribute: once before it starts writing the new
+files, and again just before it renames the first existing file aside. It
+refuses a file the check finds read-only, because Windows lets the run rename
+such a file aside but not delete it afterwards. If Windows cannot answer the
+check, the run does not refuse the file on that account, and its other checks
+still apply. An attribute set after the second check is not caught: the run
+then meets the ordinary failure, or publishes and reports the unfinished cleanup
+(below). The run never clears the attribute for you: clear it yourself if the
+file may be replaced, or choose a different `--out`. On Linux and macOS, missing
+write permission on the file itself does not stop the replacement.
+
+**When cleanup after a successful run does not finish.** A run whose outputs are
+published still exits 0 when something in its way, such as a file another
+program has open, stops it removing all of its private files (names that
+contain `.fcabedrock-`). It then prints one `warning:` line naming the output
+base and, where known, the first private file that stayed and why. The outputs
+and manifest are complete. The next run with the same `--out` finishes that
+cleanup before it publishes, or refuses and names the file in its way, such as a
+private file that is read-only. Fixing that one obstacle, for example by clearing
+the attribute, lets the next run try again; another obstacle can still stop it.
+Private files the tool cannot prove it created, and any it does not recognize,
+are left in place: inspect them, or choose a different `--out`, rather than
+deleting them on the strength of their names.
 
 **One condition applies while a run is publishing.** The output files it is
 writing, the directories on the way to them, and the private files it keeps

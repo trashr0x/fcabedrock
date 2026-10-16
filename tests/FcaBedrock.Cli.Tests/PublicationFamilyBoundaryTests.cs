@@ -80,9 +80,7 @@ public sealed class PublicationFamilyBoundaryTests
         // Refused as unrecognized residue, naming only the caller's own operand; not one mutating
         // operation was even attempted; and every file in the directory is byte-identical.
         var refused = Assert.IsType<PublicationRefused>(preparation);
-        Assert.Equal(
-            $"the output base '{run.Base}' has unrecognized fcabedrock transaction residue; remove it and retry.",
-            refused.Message);
+        Assert.Equal(UnknownResidue(run.Base), refused.Message);
         run.AssertNoMutation();
         Assert.Equal(before, run.Snapshot());
 
@@ -153,10 +151,7 @@ public sealed class PublicationFamilyBoundaryTests
 
         var refused = Assert.IsType<PublicationRefused>(run.Single(run.Resolve("out.cxt")));
 
-        Assert.Equal(
-            $"the output base '{run.Resolve("out.cxt")}' has unrecognized fcabedrock transaction residue;"
-            + " remove it and retry.",
-            refused.Message);
+        Assert.Equal(UnknownResidue(run.Resolve("out.cxt")), refused.Message);
         run.AssertNoMutation();
         Assert.Equal(before, run.Snapshot());
     }
@@ -173,9 +168,7 @@ public sealed class PublicationFamilyBoundaryTests
 
         var refused = Assert.IsType<PublicationRefused>(run.Convert());
 
-        Assert.Equal(
-            $"the output base '{run.Base}' has unrecognized fcabedrock transaction residue; remove it and retry.",
-            refused.Message);
+        Assert.Equal(UnknownResidue(run.Base), refused.Message);
         run.AssertNoMutation();
         Assert.Equal(before, run.Snapshot());
     }
@@ -199,9 +192,7 @@ public sealed class PublicationFamilyBoundaryTests
 
         var refused = Assert.IsType<PublicationRefused>(run.Convert());
 
-        Assert.Equal(
-            $"the output base '{run.Base}' has unrecognized fcabedrock transaction residue; remove it and retry.",
-            refused.Message);
+        Assert.Equal(UnknownResidue(run.Base), refused.Message);
         run.AssertNoMutation();
         Assert.Equal(before, run.Snapshot());
         Assert.True(File.Exists(intent));
@@ -294,6 +285,12 @@ public sealed class PublicationFamilyBoundaryTests
 
     private static string Final(string family) =>
         string.Equals(family, "single", StringComparison.Ordinal) ? "out" : "out.cxt";
+
+    // The refusal every foreign or unaccounted-for residue gets, spelled out so a wording change
+    // fails here: it names only the caller's operand and advises inspection, never removal.
+    private static string UnknownResidue(string baseSpelling) =>
+        $"the output base '{baseSpelling}' has unrecognized fcabedrock transaction residue, which was left untouched;"
+        + " inspect it, or choose a different --out.";
 }
 
 /// <summary>

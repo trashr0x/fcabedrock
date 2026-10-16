@@ -321,8 +321,14 @@ internal static class ConvertCommand
 
         // Committed. Warnings and Info are rendered and the exit stays 0, and no cancellation
         // check runs here, because a signal arriving after the commit point must not report a
-        // published run as cancelled.
+        // published run as cancelled. A private cleanup that did not finish adds one code-less
+        // warning after them; the published run stands either way.
         DiagnosticRenderer.Write(environment.Error, diagnostics);
+        if (transaction.CleanupWarning is { } warning)
+        {
+            environment.Error.Write(DiagnosticRenderer.RenderHostWarning(warning));
+        }
+
         return 0;
     }
 

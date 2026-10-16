@@ -225,11 +225,11 @@ changes an earlier one. A new entry MUST add its line here.
 
 ### M7 (CLI) pre-implementation adjudication
 
-- D-122: M7 CLI contract: commands, process model, publication, manifest, freeze, authored-empty domains, per-command semantics, non-goals, distribution, and the exit floor *(revises D-071's empty-domain reading; refines D-026/D-078/D-088; realizes the CLI faces of D-005/D-028/D-067/D-077; implementation architecture realized by D-123; reach of parts 4–5 qualified by D-125; part 10's headerless schema record amended in place on 2026-10-01; part 3's escaping and code-less warning form amended in place on 2026-10-14; parts 1, 2, 4, 8 and 10 amended in place on 2026-10-14 for attached option values, the `tab` delimiter spelling, the `migrate` named object-key header rule, and the `--temp-dir` and `--out` text checks; parts 2 and 10 amended in place on 2026-10-14 for DATA read explanations and strict UTF-8 schema reads; part 10's frozen numeric domain text amended in place on 2026-10-14; part 10's missing-column report marker amended in place on 2026-10-14; part 15's probe-authored `[]` amended in place on 2026-10-15)*
+- D-122: M7 CLI contract: commands, process model, publication, manifest, freeze, authored-empty domains, per-command semantics, non-goals, distribution, and the exit floor *(revises D-071's empty-domain reading; refines D-026/D-078/D-088; realizes the CLI faces of D-005/D-028/D-067/D-077; implementation architecture realized by D-123; reach of parts 4–5 qualified by D-125; part 10's headerless schema record amended in place on 2026-10-01; part 3's escaping and code-less warning form amended in place on 2026-10-14; parts 1, 2, 4, 8 and 10 amended in place on 2026-10-14 for attached option values, the `tab` delimiter spelling, the `migrate` named object-key header rule, and the `--temp-dir` and `--out` text checks; parts 2 and 10 amended in place on 2026-10-14 for DATA read explanations and strict UTF-8 schema reads; part 10's frozen numeric domain text amended in place on 2026-10-14; part 10's missing-column report marker amended in place on 2026-10-14; part 15's probe-authored `[]` amended in place on 2026-10-15; parts 2–5 amended in place on 2026-10-15 for publication causes, the Windows read-only participant refusal and the committed-cleanup warning)*
 
 ### M7 (CLI) implementation
 
-- D-123: M7 implementation architecture and public surfaces: CLI boundary, parser, presentation, audit argv, filesystem identity, publication transaction, run manifest, freeze pairing, runtime options, and the CXT size advisory (registry 81 → 82) *(realizes D-122's implementation architecture; refines D-085's registry-timing rule; reach of point 7 qualified by D-125; point 3's escaping amended in place on 2026-10-14; point 2's parser grammar amended in place on 2026-10-14; point 3's DATA read explanation added in place on 2026-10-14; point 9's source of an `include` prefix amended in place on 2026-10-14; point 9's native and effective presentation pairing amended in place on 2026-10-14)*
+- D-123: M7 implementation architecture and public surfaces: CLI boundary, parser, presentation, audit argv, filesystem identity, publication transaction, run manifest, freeze pairing, runtime options, and the CXT size advisory (registry 81 → 82) *(realizes D-122's implementation architecture; refines D-085's registry-timing rule; reach of point 7 qualified by D-125; point 3's escaping amended in place on 2026-10-14; point 2's parser grammar amended in place on 2026-10-14; point 3's DATA read explanation added in place on 2026-10-14; point 9's source of an `include` prefix amended in place on 2026-10-14; point 9's native and effective presentation pairing amended in place on 2026-10-14; point 7's read-only participant check and cleanup outcome amended in place on 2026-10-15)*
 
 ### M8 (first scaling / benchmark pass)
 
@@ -237,7 +237,7 @@ changes an earlier one. A new entry MUST add its line here.
 
 ### M7 publication ownership (corrected under M8's first native gate)
 
-- D-125: Lifetime-bound publication ownership, the exclusive-first native rename and its guarded fallback, the stated namespace precondition, and the closed package-metadata producer set *(qualifies the reach of D-122 parts 4–5 and D-123 point 7; corrects the defects D-124's first native run exposed; measurement claims corrected by D-126)*
+- D-125: Lifetime-bound publication ownership, the exclusive-first native rename and its guarded fallback, the stated namespace precondition, and the closed package-metadata producer set *(qualifies the reach of D-122 parts 4–5 and D-123 point 7; corrects the defects D-124's first native run exposed; measurement claims corrected by D-126; recovery explanation amended in place on 2026-10-15)*
 
 ### M8 evidence policy
 
@@ -5848,7 +5848,9 @@ and §16.4; D-120 and D-121 record the implemented naming, template and matcher 
   and 10 amended in place on 2026-10-14 for DATA read explanations and strict UTF-8 schema reads;
   part 10's frozen numeric domain text amended in place on 2026-10-14; part 10's missing-column
   report marker amended in place on 2026-10-14; part 15's probe-authored `[]` for an attribute
-  whose every category contains CR or LF amended in place on 2026-10-15
+  whose every category contains CR or LF amended in place on 2026-10-15; parts 2, 3, 4 and 5
+  amended in place on 2026-10-15 for publication causes, the Windows read-only participant
+  refusal, and the code-less warning of a committed run whose cleanup did not finish
 - **Date:** 2026-07-22
 - **Decision:** the complete M7 CLI contract is settled **before any M7 code**, in
   fifteen parts.
@@ -5902,6 +5904,17 @@ and §16.4; D-120 and D-121 record the implemented naming, template and matcher 
   inner message can hold a path, operating-system text or data. Opening failures and SPEC or BED
   decoding keep their existing messages.
 
+  Amended in place on 2026-10-15: a publication failure stays a code-less exit-1 error, and it
+  now says why where the step that failed established it: an output folder that does not exist
+  (folders are never created) or that refuses access, a directory where an output must go, a
+  Windows read-only file `--force` would replace or remove (part 4), a rename refused because
+  another program is using the file or access was denied, and a recovery stopped by a named
+  file (part 5). The cause comes from the failed operation's exception type and code, or from
+  the object the transaction holds, never from an exception's message; every other failure keeps
+  its generic message. A run whose outputs committed is a success even when its private cleanup
+  did not finish: it exits 0 and writes one code-less warning (part 3), and a signal that
+  arrives after the commit point changes neither.
+
   **3. Rendering.** Each diagnostic renders as **one deterministic stderr line** in
   the **sparse labelled** form:
 
@@ -5948,6 +5961,12 @@ and §16.4; D-120 and D-121 record the implemented naming, template and matcher 
   record keep their narrower generic JSON string escaping, and Core's canonical fingerprint
   JSON is untouched (D-069), so only stderr bytes change.
 
+  Amended in place on 2026-10-15: the code-less warning form has one producer, a publication
+  whose outputs committed but whose private cleanup did not finish (part 5). The command writes
+  it once, after the run's diagnostics, through the same prose transport, and the exit stays 0.
+  The message is plain text holding the output base and, where known, the first private file
+  that stayed, by file name only, with why it stayed; the transport escapes it once.
+
   **4. Input/output policy.** Neither SPEC nor DATA accepts `-`: there is **no stdin
   source** and no implicit spooling or synthetic composition base. Report commands
   write their primary result to **stdout**. `probe`, `migrate`, `calibrate`, and
@@ -5979,6 +5998,21 @@ and §16.4; D-120 and D-121 record the implemented naming, template and matcher 
   catalogue. Before this, `convert --out .`, `..` or `sub\.` ended in the unexpected-fault exit,
   and `convert --out -` wrote files named `-`.
 
+  Amended in place on 2026-10-15: preflight now refuses two more cases by name, before any
+  record, stage or rename exists, with or without `--force`. A directory at an actual target is
+  refused there instead of failing at commit after the whole conversion. On Windows, an existing
+  participant that `--force` would replace, or the old manifest a `--no-manifest` run removes, is
+  refused when its held object carries the read-only attribute: that attribute lets the rename
+  aside succeed and then stops the removal after the commit point, so the run used to commit and
+  leave private files that blocked every later run. The attribute is read through the reference
+  preflight already holds (D-125), again at the seal before any target moves, and never cleared
+  for the user; it is not ownership authority. An unknown answer (the query failed) claims and
+  refuses nothing. There is no write-permission refusal off Windows, where such a file in a
+  writable directory is still removed. An attribute set after the seal is not prevented: the run
+  then meets the ordinary rename failure or unfinished cleanup. Parent folders remain the
+  caller's to create. A `--no-manifest` run that meets an old manifest without `--force` now
+  says that `--force` removes it, instead of asking to replace it; the behaviour is unchanged.
+
   **5. Convert publication and input stability.** `convert` requires
   `--out BASE --format cxt|dat|both`; the ruled extensions are appended to BASE, with
   **no default and no inference** from an extension. Publication stages every artifact
@@ -6001,6 +6035,18 @@ and §16.4; D-120 and D-121 record the implemented naming, template and matcher 
   identically even though no commit was attempted. M7 exposes **no toggle**; M8
   measured the cost; any later opt-out needs its own explicit ruling and **never**
   activates by file size.
+
+  Amended in place on 2026-10-15: past the commit point an unfinished cleanup is no longer
+  silent. The run stays committed at exit 0 with nothing rolled back, and writes the warning
+  of part 3, naming, where the cleanup pass recorded one, the first private file that stopped
+  it and the cause that step established; the fact is carried from the step itself, never
+  rebuilt by listing the directory. Surviving residue is cleaned by a later run only once nothing blocks
+  that cleanup. A recovery that cannot finish refuses at exit 1 and names, where it knows it,
+  the first file that stopped it, by file name only, which can reveal a transaction token and
+  proves no ownership. Clearing that blocker lets a later run try again; it does not promise
+  that the rest then succeeds. Unknown residue is left untouched, and its refusal advises
+  inspecting it or choosing another `--out` rather than removing it. The manifest, artifact
+  bytes, target set and commit order are unchanged.
 
   **6. Manifest.** **By default, each `convert` run emits exactly one
   `BASE.manifest.toml`; `--no-manifest` suppresses that audit sidecar only** (never
@@ -6255,7 +6301,8 @@ and §16.4; D-120 and D-121 record the implemented naming, template and matcher 
   point 7 qualified by D-125 (2026-09-09); point 3's escaping amended in place on 2026-10-14;
   point 2's parser grammar amended in place on 2026-10-14; point 3's DATA read explanation added
   in place on 2026-10-14; point 9's source of an `include` prefix amended in place on 2026-10-14;
-  point 9's native and effective presentation pairing amended in place on 2026-10-14.
+  point 9's native and effective presentation pairing amended in place on 2026-10-14; point 7's
+  read-only participant check and cleanup outcome amended in place on 2026-10-15.
 - **Date:** 2026-07-24
 - **Decision:** M7's implementation architecture and every new public surface are
   settled here. It records the concrete parser, serializer and transaction-mechanism
@@ -6340,6 +6387,21 @@ and §16.4; D-120 and D-121 record the implemented naming, template and matcher 
   preflight+stage+backup+atomic-rename matrix, refuse an existing target without
   `--force`, preserve the old target on failure/cancellation, and treat **`--force --out
   -` as usage exit 2**; `--out -` bypasses publication.
+
+  Amended in place on 2026-10-15: the filesystem seam answers two more questions, whether a
+  target path is a directory and, for a held `PublicationObjectReference`, whether the object
+  carries the Windows read-only attribute. The second reads `File.GetAttributes` through the
+  reference's own attribute-only handle, which the .NET runtime source at the v10.0.13 tag (the
+  runtime the change was tested on, identical there to v10.0.12) implements with
+  `GetFileInformationByHandle`; it answers null off Windows and when that query fails with an
+  I/O or access error, and anything else propagates. Preflight asks it of every backup-bearing
+  participant and the seal asks again; there is no third query before each rename aside, and
+  the commit's at-path identity and result checks are unchanged. The first cleanup step that
+  falls short (removal, restoration or anchoring; its cause where that step established it; and
+  the entry's file name) is recorded by the step itself and carried through `Finish` and
+  `Commit`, so recovery reports it in its refusal and the committed transaction exposes one
+  warning text that `ConvertCommand` and `SingleFileOutput` render after their diagnostics. All
+  of it is internal to `FcaBedrock.Cli`; no public type, record format or residue name changes.
 
   **8. Run manifest.** `FcaBedrock.Spec` owns the public `RunManifest` model
   (`RunSection`, `RunOutput`, `SpecFileEntry`, and calibration entries built directly from
@@ -6903,7 +6965,8 @@ and §16.4; D-120 and D-121 record the implemented naming, template and matcher 
   2026-09-08, after an independent bounded review). It **qualifies the reach** of D-122 parts 4–5 and
   D-123 point 7 rather than restating them, and corrects the two defects M8's first native run
   exposed. D-122/D-123 are not rewritten: they said what they said, and this entry records what
-  holds. *Corrected 2026-09-09 by D-126:* its measurement claims (see *Evidence*).
+  holds. *Corrected 2026-09-09 by D-126:* its measurement claims (see *Evidence*). The recovery
+  explanation amended in place on 2026-10-15 (see the end of this entry).
 - **Date:** 2026-09-09
 - **Decision:** publication owns objects by **lifetime**, not by remembered
   identifier, and renames through the platform's **exclusive** primitive with one
@@ -7226,6 +7289,20 @@ and §16.4; D-120 and D-121 record the implemented naming, template and matcher 
   cannot be taken and the earlier one is untouched): each suppresses one participant's acquisition,
   asserts the suppression fired, and ends by showing the same state converging under an ordinary
   retry.
+- **Amended in place on 2026-10-15: what a refused or unfinished cleanup says.** Part 6 and the
+  correction above kept every message unchanged; D-122 parts 2 to 5 now change them, and this
+  entry's authority rules do not move. The recovery refusal keeps its opening words and, where the
+  pass recorded one, names the first participant it could not hold, prove or remove, by file name
+  only, with the cause that step established (on Windows, a read-only attribute read through the
+  reference already held). The same fact becomes the warning of a committed run whose cleanup did
+  not finish. A named file can carry the transaction token; naming it proves nothing about who
+  owns it, and nothing is removed because it was named. References, anchoring before any
+  decision, the proofs at each mutation boundary, unknown-object preservation, the commit point
+  and the namespace precondition act exactly as above. The read-only attribute is a reason to
+  refuse before anything moves, never authority: it is never cleared, an unknown answer refuses
+  nothing, and an attribute set after the seal is met by the ordinary failure or cleanup outcome,
+  because no check here makes the attribute stable. Clearing a named blocker lets a later run try
+  again; whether that run finishes still depends on every other condition in this entry.
 
 ---
 

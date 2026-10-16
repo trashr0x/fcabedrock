@@ -219,9 +219,15 @@ internal static class SingleFileOutput
         }
 
         // Committed. Only now do Info and Warning reach stderr, once and in library order, and no
-        // cancellation check runs after this point. Stdout stays empty on a file target unless the
-        // caller owed it a post-commit report.
+        // cancellation check runs after this point. A private cleanup that did not finish adds one
+        // code-less warning after them. Stdout stays empty on a file target unless the caller owed
+        // it a post-commit report.
         DiagnosticRenderer.Write(environment.Error, diagnostics);
+        if (transaction.CleanupWarning is { } warning)
+        {
+            environment.Error.Write(DiagnosticRenderer.RenderHostWarning(warning));
+        }
+
         if (committedReport is not null)
         {
             environment.Out.Write(committedReport);

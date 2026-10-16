@@ -694,7 +694,8 @@ public sealed class PublicationTests
     public async Task Publication_WhenANoManifestRunWouldLeaveAnOldMarker_ThenItIsRefusedWithoutForce()
     {
         // Only the old manifest exists; the requested artifact is brand new. Publishing
-        // it would leave a public marker beside output it does not describe.
+        // it would leave a public marker beside output it does not describe. Nothing replaces
+        // that marker, so the refusal says --force removes it.
         using var run = ConvertRun.Wide();
         await File.WriteAllTextAsync(run.Target(".manifest.toml"), "the old marker");
 
@@ -703,7 +704,8 @@ public sealed class PublicationTests
         Assert.Equal(1, exit);
         Assert.Equal(
             DiagnosticRenderer.RenderHostError(
-                $"the output '{run.Target(".manifest.toml")}' already exists; use --force to replace it."),
+                $"the manifest '{run.Target(".manifest.toml")}' is from an earlier run and would not describe this"
+                + " run's outputs; use --force to remove it."),
             run.Harness.StdErr);
         Assert.Equal("the old marker", await File.ReadAllTextAsync(run.Target(".manifest.toml")));
         Assert.False(File.Exists(run.Target(".cxt")));
@@ -1400,8 +1402,8 @@ public sealed class PublicationTests
         Assert.Equal(string.Empty, run.Harness.StdOut);
         Assert.Equal(
             DiagnosticRenderer.RenderHostError(
-                $"the output base '{run.Base}' has unrecognized fcabedrock transaction residue;"
-                + " remove it and retry."),
+                $"the output base '{run.Base}' has unrecognized fcabedrock transaction residue, which was left"
+                + " untouched; inspect it, or choose a different --out."),
             run.Harness.StdErr);
         Assert.Equal(content, await File.ReadAllTextAsync(path));
         Assert.False(File.Exists(run.Target(".cxt")));
@@ -1488,10 +1490,14 @@ public sealed class PublicationTests
         run.Harness.PublicationFiles.FailDeletePrefix = "out.cxt.fcabedrock-stage-";
         var exit = await run.ConvertAsync("--format", "cxt");
 
+        // The refusal names the entry whose removal failed; the injected failure carries no
+        // known cause, so it says only that.
         Assert.Equal(1, exit);
         Assert.Equal(
             DiagnosticRenderer.RenderHostError(
-                $"cannot clean up an incomplete fcabedrock run for the output base '{run.Base}'."),
+                $"cannot clean up an incomplete fcabedrock run for the output base '{run.Base}': "
+                + $"'{Path.GetFileName(residue.PrivatePath("stage", "out.cxt"))}' could not be removed; a later run"
+                + " tries the cleanup again."),
             run.Harness.StdErr);
 
         // Honest residue: the stage that could not be removed is still owned by a record, so a
