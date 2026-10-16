@@ -123,7 +123,79 @@ public sealed class RunPipelineTests
 
         Assert.Equal(1, exit);
         Assert.Equal(string.Empty, harness.StdOut);
-        Assert.Equal(DiagnosticRenderer.RenderHostError(RunPipeline.SpecReadMessage(missing)), harness.StdErr);
+        Assert.Equal(
+            DiagnosticRenderer.RenderHostError($"cannot read the spec file '{missing}': it does not exist. Check the path."),
+            harness.StdErr);
+    }
+
+    [Theory]
+    [InlineData("plan")]
+    [InlineData("stats")]
+    [InlineData("fingerprint")]
+    public async Task Pipeline_WhenTheRootSpecIsAFolder_ThenTheOpensRefusalIsExplained(string command)
+    {
+        // Opening a folder as a file is refused as denied access on Windows and on Unix alike, so
+        // the advice covers both: a file, and one the user can read.
+        using var temp = TempDirectory.Create();
+        var folder = temp.Resolve("spec.toml");
+        Directory.CreateDirectory(folder);
+        var harness = new CliTestHarness();
+
+        var exit = await harness.RunAsync(command, folder, temp.Write("data.csv", CliFixtures.WideData));
+
+        Assert.Equal(1, exit);
+        Assert.Equal(string.Empty, harness.StdOut);
+        Assert.Equal(
+            DiagnosticRenderer.RenderHostError(
+                $"cannot read the spec file '{folder}': access to it was denied. Check that it is a file you can read."),
+            harness.StdErr);
+    }
+
+    public static TheoryData<string, byte[], string> UnreadableRootSpecBytes() => new()
+    {
+        { "UTF-16 LE", [0xFF, 0xFE, (byte)'a', 0x00], "it starts with a UTF-16 or UTF-32 byte order mark, but a spec must be UTF-8. Save it as UTF-8." },
+        { "UTF-32 BE", [0x00, 0x00, 0xFE, 0xFF, 0x00, 0x00, 0x00, (byte)'a'], "it starts with a UTF-16 or UTF-32 byte order mark, but a spec must be UTF-8. Save it as UTF-8." },
+        { "invalid byte", [(byte)'#', 0xFF, (byte)'\n'], "it is not valid UTF-8. Save it as UTF-8." },
+    };
+
+    [Theory]
+    [MemberData(nameof(UnreadableRootSpecBytes))]
+    public async Task Pipeline_WhenTheRootSpecIsNotUtf8_ThenTheMessageSaysSo(string what, byte[] bytes, string explanation)
+    {
+        Assert.NotEmpty(what);
+        using var temp = TempDirectory.Create();
+        var spec = temp.Resolve("spec.toml");
+        File.WriteAllBytes(spec, bytes);
+        var harness = new CliTestHarness();
+
+        var exit = await harness.RunAsync("plan", spec, temp.Write("data.csv", CliFixtures.WideData));
+
+        Assert.Equal(1, exit);
+        Assert.Equal(string.Empty, harness.StdOut);
+        Assert.Equal(
+            DiagnosticRenderer.RenderHostError($"cannot read the spec file '{spec}': {explanation}"), harness.StdErr);
+    }
+
+    [Fact]
+    public async Task Pipeline_WhenTheRootSpecOpenFailsForAnotherReason_ThenTheMessageIsGenericAndDisclosesNothing()
+    {
+        // An I/O failure with no closed cause keeps the generic sentence; the exception's own text,
+        // which can hold a path or operating-system wording, never reaches the user.
+        using var temp = TempDirectory.Create();
+        var spec = temp.Resolve("spec.toml");
+        var data = temp.Write("data.csv", CliFixtures.WideData);
+        var harness = new CliTestHarness
+        {
+            OpenInput = path => string.Equals(path, spec, StringComparison.Ordinal)
+                ? throw new IOException("SECRET C:\\private\\volume text")
+                : File.OpenRead(path),
+        };
+
+        var exit = await harness.RunAsync("plan", spec, data);
+
+        Assert.Equal(1, exit);
+        Assert.Equal(DiagnosticRenderer.RenderHostError($"cannot read the spec file '{spec}'."), harness.StdErr);
+        Assert.DoesNotContain("SECRET", harness.StdErr, StringComparison.Ordinal);
     }
 
     [Theory]
@@ -140,7 +212,30 @@ public sealed class RunPipelineTests
 
         Assert.Equal(1, exit);
         Assert.Equal(string.Empty, harness.StdOut);
-        Assert.Equal(DiagnosticRenderer.RenderHostError(RunPipeline.DataReadMessage(missing)), harness.StdErr);
+        Assert.Equal(
+            DiagnosticRenderer.RenderHostError($"cannot read the data file '{missing}': it does not exist. Check the path."),
+            harness.StdErr);
+    }
+
+    [Theory]
+    [InlineData("plan")]
+    [InlineData("stats")]
+    [InlineData("fingerprint")]
+    public async Task Pipeline_WhenTheDataIsAFolder_ThenTheOpensRefusalIsExplained(string command)
+    {
+        using var temp = TempDirectory.Create();
+        var folder = temp.Resolve("data.csv");
+        Directory.CreateDirectory(folder);
+        var harness = new CliTestHarness();
+
+        var exit = await harness.RunAsync(command, temp.Write("spec.toml", CliFixtures.IndexBoundSpec), folder);
+
+        Assert.Equal(1, exit);
+        Assert.Equal(string.Empty, harness.StdOut);
+        Assert.Equal(
+            DiagnosticRenderer.RenderHostError(
+                $"cannot read the data file '{folder}': access to it was denied. Check that it is a file you can read."),
+            harness.StdErr);
     }
 
     [Theory]
@@ -696,8 +791,8 @@ public sealed class RunPipelineTests
     [InlineData("convert")]
     public async Task DataOperand_WhenItIsEmpty_ThenItIsTheCodelessDataFailure(string command)
     {
-        // An empty DATA operand names no file. Every command reports it as it reports a missing
-        // file, never as an internal fault.
+        // An empty DATA operand names no file. Every command reports it as a missing file, never as
+        // an internal fault.
         using var temp = TempDirectory.Create();
         var spec = temp.Write("spec.toml", CliFixtures.IndexBoundSpec);
         var harness = new CliTestHarness();
@@ -713,7 +808,8 @@ public sealed class RunPipelineTests
         Assert.Equal(1, exit);
         Assert.Equal(string.Empty, harness.StdOut);
         Assert.Equal(
-            DiagnosticRenderer.RenderHostError(RunPipeline.DataReadMessage(string.Empty)), harness.StdErr);
+            DiagnosticRenderer.RenderHostError("cannot read the data file '': it does not exist. Check the path."),
+            harness.StdErr);
         Assert.Empty(Directory.GetFiles(temp.Path, "out*"));
     }
 
@@ -1026,12 +1122,15 @@ public sealed class RunPipelineTests
         };
     }
 
-    // The decoder's own failure is the one family with a closed explanation; every other family
-    // keeps the generic sentence, whatever its exception says.
-    private static string FamilyMessage(string data, string family) =>
-        family == nameof(DecoderFallbackException)
-            ? $"cannot read the data file '{data}': it is not valid UTF-8. Save it as UTF-8."
-            : RunPipeline.DataReadMessage(data);
+    // The decoder's own failure and a refused open are the families with a closed explanation;
+    // every other family keeps the generic sentence, whatever its exception says.
+    private static string FamilyMessage(string data, string family) => family switch
+    {
+        nameof(DecoderFallbackException) => $"cannot read the data file '{data}': it is not valid UTF-8. Save it as UTF-8.",
+        nameof(UnauthorizedAccessException) =>
+            $"cannot read the data file '{data}': access to it was denied. Check that it is a file you can read.",
+        _ => RunPipeline.DataReadMessage(data),
+    };
 
     private static Exception Create(string family) => family switch
     {

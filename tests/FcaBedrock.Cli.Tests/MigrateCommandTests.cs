@@ -404,7 +404,27 @@ public sealed class MigrateCommandTests
 
         Assert.Equal(1, exit);
         Assert.Equal(string.Empty, harness.StdOut);
-        Assert.Equal(DiagnosticRenderer.RenderHostError($"cannot read the .bed file '{absent}'."), harness.StdErr);
+        Assert.Equal(
+            DiagnosticRenderer.RenderHostError($"cannot read the .bed file '{absent}': it does not exist. Check the path."),
+            harness.StdErr);
+    }
+
+    [Fact]
+    public async Task Migrate_WhenTheBedIsAFolder_ThenTheOpensRefusalIsExplained()
+    {
+        using var temp = TempDirectory.Create();
+        var folder = temp.Resolve("model.bed");
+        Directory.CreateDirectory(folder);
+        var harness = new CliTestHarness();
+
+        var exit = await harness.RunAsync("migrate", folder, "--out", "-");
+
+        Assert.Equal(1, exit);
+        Assert.Equal(string.Empty, harness.StdOut);
+        Assert.Equal(
+            DiagnosticRenderer.RenderHostError(
+                $"cannot read the .bed file '{folder}': access to it was denied. Check that it is a file you can read."),
+            harness.StdErr);
     }
 
     [Fact]
@@ -416,7 +436,9 @@ public sealed class MigrateCommandTests
 
         Assert.Equal(1, exit);
         Assert.Equal(string.Empty, harness.StdOut);
-        Assert.Equal(DiagnosticRenderer.RenderHostError("cannot read the .bed file ''."), harness.StdErr);
+        Assert.Equal(
+            DiagnosticRenderer.RenderHostError("cannot read the .bed file '': it does not exist. Check the path."),
+            harness.StdErr);
     }
 
     [Fact]
@@ -725,20 +747,23 @@ public sealed class MigrateCommandTests
     public async Task Migrate_WhenTheBedIsNotAcceptedUtf8_ThenItIsRefusedWithOneSanitizedLine(
         string reason, byte[] bytes)
     {
-        // Every rejection is identical and total: exit 1, empty stdout, exactly one sanitized
-        // code-less line naming the authored operand, no target created, and a pre-existing
-        // target byte-identical EVEN WITH --force, because the refusal precedes publication.
-        Assert.NotEmpty(reason);
+        // Every rejection is total: exit 1, empty stdout, exactly one sanitized code-less line
+        // naming the authored operand and saying which encoding rule refused it, no target created,
+        // and a pre-existing target byte-identical EVEN WITH --force, because the refusal precedes
+        // publication.
         using var temp = TempDirectory.Create();
         var bed = WriteBytes(temp, "input.bed", bytes);
         var target = temp.Write("spec.toml", "the old file");
         var harness = new CliTestHarness();
+        var explanation = reason.EndsWith(" BOM", StringComparison.Ordinal)
+            ? "it starts with a UTF-16 or UTF-32 byte order mark, but a .bed file must be UTF-8. Save it as UTF-8."
+            : "it is not valid UTF-8. Save it as UTF-8.";
 
         var exit = await harness.RunAsync("migrate", bed, "--out", target, "--shape", "wide", "--force");
 
         Assert.Equal(1, exit);
         Assert.Equal(string.Empty, harness.StdOut);
-        Assert.Equal(DiagnosticRenderer.RenderHostError($"cannot read the .bed file '{bed}'."), harness.StdErr);
+        Assert.Equal(DiagnosticRenderer.RenderHostError($"cannot read the .bed file '{bed}': {explanation}"), harness.StdErr);
         Assert.Equal("the old file", await File.ReadAllTextAsync(target));
         Assert.DoesNotContain(Directory.GetFiles(temp.Path), Residue);
     }

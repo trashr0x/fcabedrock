@@ -201,7 +201,9 @@ Migrate a v2 `.bed` file to a Bedrock spec.
 fcabedrock migrate legacy.bed --out migrated.toml
 ```
 
-One-way v2 `.bed` → TOML. `--shape` defaults to `wide`;
+One-way v2 `.bed` → TOML. The `.bed` file must be UTF-8, like a spec: one
+UTF-8 byte order mark at the start is allowed, and anything else that is not
+UTF-8 is refused. `--shape` defaults to `wide`;
 `--scaling discrete|progressive` defaults to `discrete`. Under the wide shape,
 `--object-key row_index|column` is available and `--object-key-column` is
 required exactly when `--object-key column`, and invalid otherwise. A column
@@ -225,8 +227,14 @@ fcabedrock fingerprint spec.toml data.csv
 
 Reports the three computed native fingerprints and each stored field's
 `match` / `stale` / `absent` state. `--write --out NEW_SPEC` writes a corrected
-copy of the root spec, only for a fully-frozen spec, and it preserves
-`extends`. With `--out -` only the corrected spec is written and the report is
+copy of the root spec, only for a fully-frozen spec, and it keeps the root's
+`extends` chain. A copy written into another folder still inherits from the same
+base file, reached by the same path: if the authored `extends` no longer leads
+there from the new folder, the copy gets a relative reference that does, so its
+text can differ from the original while its fingerprints and conversions do not.
+The command refuses, writing nothing, when the base is on another drive or share
+(no relative reference can reach it) or cannot be verified. With `--out -` only
+the corrected spec is written, with `extends` as authored, and the report is
 suppressed; on a file target the report goes to stdout after the file commits.
 `--out` and `--force` are valid only with `--write`, and `--write` requires
 `--out`. There is deliberately no `--v2-compat` here: v2 byte compatibility is
@@ -375,6 +383,15 @@ appears as an escape such as `\u0085`, so one diagnostic never spans two lines.
 A message that already quotes a value with its own escapes, such as an invalid
 formal-attribute name, has those backslashes doubled too: a name containing a
 line break appears as `"x-bad\\nline"`.
+
+When a spec, `.bed` or data file cannot be opened, its `error:` line says that
+the file does not exist or that access to it was denied, where the failed open
+established which; a folder named in place of a file is refused as denied
+access. A spec or `.bed` file that is not UTF-8 is reported as such, and any
+other failure gets a plain `cannot read` line. A base named by `extends` that
+cannot be loaded is the `SpecExtendsNotFound` diagnostic instead: the reference
+must be a path relative to the folder of the file that holds it, naming a
+readable UTF-8 spec.
 
 ## Technical preview
 

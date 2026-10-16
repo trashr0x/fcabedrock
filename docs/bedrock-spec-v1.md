@@ -2563,8 +2563,17 @@ fingerprint fields stored in a **base** spec's `[spec]` block are ignored when
 resolving a derived spec and recomputed for the resolved result.
 
 **Writing commands treat a chain by purpose** (D-122): `calibrate` writes one
-standalone flattened spec with `extends` consumed; `fingerprint --write` preserves
-the root's `extends` and changes only its stored fingerprint fields semantically.
+standalone flattened spec with `extends` consumed; `fingerprint --write` keeps the
+chain and changes only the root's stored fingerprint fields semantically. Because a
+base resolves its own references from the directory it was reached through, a root
+written elsewhere keeps its meaning only if its `extends` still reaches the base by
+the same full path, not merely the same file. A file target therefore keeps the
+authored reference when, from the new file's directory, it reaches that path and
+finds there the object that was loaded; otherwise the command writes a relative
+reference to that path, separated by `/`, and checks it the same way. It refuses,
+writing nothing, when no relative reference exists (a base on another drive or share)
+or a check fails. Written to standard output, the root keeps its authored `extends`,
+which resolves against the original root's directory.
 
 ## 14. Fingerprints
 

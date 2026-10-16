@@ -73,6 +73,9 @@ internal sealed class CliTestHarness
     /// </summary>
     public RecordingPublicationFileSystem PublicationFiles { get; } = new();
 
+    /// <summary>Replaces the spec chain's identity-service factory; the default is the platform's real one.</summary>
+    public Func<FileIdentity>? FileIdentities { get; set; }
+
     public TestClock Clock { get; } = new();
 
     public TestSignalSource Signals { get; } = new();
@@ -97,6 +100,7 @@ internal sealed class CliTestHarness
         OpenInput = Open,
         PublicationFiles = PublicationFiles,
         Progress = Progress,
+        FileIdentities = FileIdentities ?? FileIdentity.CreateDefault,
     };
 
     /// <summary>Runs the CLI at the argv boundary.</summary>

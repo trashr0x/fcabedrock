@@ -53,10 +53,11 @@ internal static class MigrateCommand
         }
         catch (Exception exception) when (IsBedReadFailure(exception))
         {
-            // One sanitized, code-less line naming the operand and nothing else: no exception
-            // type, no decoder text, no localized OS wording, no resolved path (D-122 part 2).
+            // One sanitized, code-less line naming the operand and the cause the failed operation
+            // established, and nothing else: no exception text, no decoder text, no localized OS
+            // wording, no resolved path (D-122 part 2).
             return RunPipeline.HostFailure(
-                environment, diagnostics, $"cannot read the .bed file '{bedPath}'.", cancellation);
+                environment, diagnostics, InputReadExplanation.Message(InputFile.Bed, bedPath, exception), cancellation);
         }
 
         var read = BedReader.Read(text, bedPath);

@@ -150,6 +150,24 @@ public sealed class SpecComposerTests
     }
 
     [Fact]
+    public void Compose_WhenTheSourceLoadsNoBase_ThenTheMessageSaysItCouldNotBeLoadedAndWhatABaseMustBe()
+    {
+        // The source answers only "no base": it may be missing, absolute, unreadable or not UTF-8.
+        // So the message claims none of those, and says what a loadable base is instead.
+        var result = SpecComposer.Compose(
+            Read("[spec]\nversion = 1\nextends = \"../missing.toml\"\n"),
+            "derived.toml",
+            new InMemorySpecTextSource());
+
+        var diagnostic = Assert.Single(result.Diagnostics);
+        Assert.Equal(
+            "extends = \"../missing.toml\" (referenced from 'derived.toml') could not be loaded: a base must be a "
+                + "readable UTF-8 spec file, named by a path relative to the folder of the file that references it (§13).",
+            diagnostic.Message);
+        Assert.Equal("derived.toml", diagnostic.Location?.File);
+    }
+
+    [Fact]
     public void Compose_WhenBaseTomlInvalid_ThenBaseParseDiagnosticsCarryBaseLocation()
     {
         var source = new InMemorySpecTextSource().Add("base.toml", "not = valid = toml\n");

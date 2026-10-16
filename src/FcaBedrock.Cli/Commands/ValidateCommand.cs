@@ -46,9 +46,10 @@ internal static class ValidateCommand
         {
             // A missing or unreadable operand is an ordinary host failure, not a pipeline
             // condition: code-less, exit 1, and the registry does not grow for it
-            // (D-122 part 2). The message names the operand and nothing else: no
-            // exception type, no localized OS text, no internal path.
-            return HostFailure(environment, diagnostics, $"cannot read the spec file '{specPath}'.");
+            // (D-122 part 2). The message names the operand and the cause the failed operation
+            // established, and nothing else: no exception text, no localized OS text, no
+            // internal path.
+            return HostFailure(environment, diagnostics, InputReadExplanation.Message(InputFile.Spec, specPath, exception));
         }
 
         // Phase boundaries observe the host token, so a signal delivered after dispatch stops

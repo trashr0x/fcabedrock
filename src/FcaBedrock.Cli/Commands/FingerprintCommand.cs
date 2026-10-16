@@ -33,10 +33,19 @@ namespace FcaBedrock.Cli.Commands;
 /// <b><c>--write</c> shares that one preparation path and adds only a rewrite.</b> It refuses a
 /// spec that is not <b>fully frozen</b> (<see cref="CalibratedSpec.RequiresData"/> applies the §14
 /// definition) with a code-less host error and exit 1, having opened no output. Otherwise it rewrites
-/// the <b>authored root</b> document's three stored fingerprint fields and nothing else, so the
-/// root's <c>extends</c> and every other section survive verbatim (§13 rule 8): deliberately the
-/// opposite of <c>calibrate</c>, which writes the flattened composed document. It freezes,
-/// re-resolves, and replans nothing, and (like report mode) never calls <c>VerifyStored</c>.
+/// the <b>authored root</b> document's three stored fingerprint fields, so every other section
+/// survives verbatim and the chain is not flattened (§13 rule 8): deliberately the opposite of
+/// <c>calibrate</c>, which writes the flattened composed document. It freezes, re-resolves, and
+/// replans nothing, and (like report mode) never calls <c>VerifyStored</c>.
+/// </para>
+/// <para>
+/// <b>The root's <c>extends</c> keeps its meaning, not necessarily its text.</b> A file target
+/// writes the authored reference where it still reaches, from the target's folder, the base the
+/// chain was loaded through, and otherwise a relative reference rebuilt to reach it;
+/// <see cref="ExtendsRelocation"/> checks either before anything is opened for output and again
+/// just before publication writes, and refuses when neither can be written and verified. The
+/// spec's raw bytes can change with that text; its composition, native fingerprints and
+/// conversions do not. <c>--out -</c> writes the authored reference.
 /// </para>
 /// <para>
 /// The report is built <b>before</b> the rewrite, from the input root's stored values, so its
@@ -88,21 +97,46 @@ internal static class FingerprintCommand
                 cancellation);
         }
 
-        // The ROOT document, as authored, never the composed one, with only the three stored
-        // fields replaced. Everything else the record carries, `extends` included, is untouched.
-        var written = run.RootDocument with
+        // The ROOT document, as authored, never the composed one, with the three stored fields
+        // replaced. Everything else the record carries is untouched, `extends` included unless a
+        // file target needs it rewritten below.
+        var spec = run.RootDocument.Spec! with
         {
-            Spec = run.RootDocument.Spec! with
-            {
-                SchemaFingerprint = run.Fingerprints.SchemaFingerprint,
-                CxtOutputFingerprint = run.Fingerprints.CxtOutputFingerprint,
-                DatOutputFingerprint = run.Fingerprints.DatOutputFingerprint,
-            },
+            SchemaFingerprint = run.Fingerprints.SchemaFingerprint,
+            CxtOutputFingerprint = run.Fingerprints.CxtOutputFingerprint,
+            DatOutputFingerprint = run.Fingerprints.DatOutputFingerprint,
         };
+
+        // A file target keeps the root's inheritance from wherever it is written: its extends must
+        // still reach the base the chain was loaded through (§13). Stdout has no folder of its own,
+        // so the authored reference goes out as it is.
+        var outPath = invocation.Value("--out")!;
+        Func<string?>? verifyBeforeWrite = null;
+        if (spec.Extends is { } authored && !string.Equals(outPath, "-", StringComparison.Ordinal))
+        {
+            // Load order is root first, so the base the root's own extends loaded is the second file.
+            var immediateBase = run.SpecChain.Count > 1
+                ? run.SpecChain[1]
+                : throw new InvalidOperationException("A composed root that extends a base has that base in its chain.");
+
+            switch (ExtendsRelocation.Relocate(authored, outPath, immediateBase, environment.FileIdentities))
+            {
+                case RelocationRefused refused:
+                    return RunPipeline.HostFailure(environment, prepared.Diagnostics, refused.Message, cancellation);
+
+                case RelocatedReference(var reference):
+                    spec = spec with { Extends = reference };
+                    verifyBeforeWrite = () =>
+                        ExtendsRelocation.Recheck(reference, authored, outPath, immediateBase, environment.FileIdentities);
+                    break;
+            }
+        }
+
+        var written = run.RootDocument with { Spec = spec };
 
         return await SingleFileOutput.DeliverAsync(
                 environment, invocation, written, prepared.Diagnostics,
-                additionalInputs: ChainInputs(run), committedReport: report.ToString(), cancellation)
+                additionalInputs: ChainInputs(run), committedReport: report.ToString(), verifyBeforeWrite, cancellation)
             .ConfigureAwait(false);
     }
 

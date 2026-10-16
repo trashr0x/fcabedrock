@@ -93,9 +93,18 @@ internal sealed class CliEnvironment
     public IProgressObserver Progress { get; init; } = NoProgressObserver.Instance;
 
     /// <summary>
+    /// Creates the file-identity service that loads a spec chain and, for <c>fingerprint --write</c>,
+    /// freshly checks that the chain's base is still the object it loaded. One factory serves both,
+    /// so a check compares keys from the same kind of probe; production is
+    /// <see cref="FileIdentity.CreateDefault"/>, and tests inject a probe that reports OS identity
+    /// unavailable. Publication keeps its own identity services (D-125).
+    /// </summary>
+    public Func<FileIdentity> FileIdentities { get; init; } = FileIdentity.CreateDefault;
+
+    /// <summary>
     /// The production <see cref="OpenInput"/> implementation. An empty path names no file, so it
     /// fails here as a missing file does, before <see cref="File.OpenRead(string)"/> sees it:
-    /// every command reports a missing input as an unreadable one (exit 1).
+    /// every command reports it as a missing input (exit 1).
     /// </summary>
     internal static Stream OpenFile(string path) =>
         path.Length == 0 ? throw new FileNotFoundException("The path is empty.") : File.OpenRead(path);

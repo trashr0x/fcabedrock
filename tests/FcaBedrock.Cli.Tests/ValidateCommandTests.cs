@@ -327,7 +327,28 @@ public sealed class ValidateCommandTests
         var exit = await harness.RunAsync("validate", missing);
 
         Assert.Equal(1, exit);
-        Assert.Equal($"error: cannot read the spec file '{missing.Replace("\\", "\\\\")}'.\n", harness.StdErr);
+        Assert.Equal(
+            $"error: cannot read the spec file '{missing.Replace("\\", "\\\\")}': it does not exist. Check the path.\n",
+            harness.StdErr);
+    }
+
+    [Fact]
+    public async Task Validate_WhenTheSpecOpenIsDenied_ThenTheMessageSaysSoAndDisclosesNothing()
+    {
+        // The refused open is explained from its exception type alone; the exception's text never
+        // reaches the user.
+        using var temp = TempDirectory.Create();
+        var spec = temp.Write("spec.toml", CliFixtures.NameBoundSpec);
+        var harness = new CliTestHarness { OpenInput = _ => throw new UnauthorizedAccessException("SECRET acl text") };
+
+        var exit = await harness.RunAsync("validate", spec);
+
+        Assert.Equal(1, exit);
+        Assert.Equal(string.Empty, harness.StdOut);
+        Assert.Equal(
+            DiagnosticRenderer.RenderHostError(
+                $"cannot read the spec file '{spec}': access to it was denied. Check that it is a file you can read."),
+            harness.StdErr);
     }
 
     [Fact]
@@ -341,7 +362,8 @@ public sealed class ValidateCommandTests
 
         Assert.Equal(1, exit);
         Assert.Equal(
-            $"error: cannot read the spec file '{temp.Resolve("a").Replace("\\", "\\\\")}\\u2028b\\u0085c.toml'.\n",
+            $"error: cannot read the spec file '{temp.Resolve("a").Replace("\\", "\\\\")}\\u2028b\\u0085c.toml': it does not exist. "
+                + "Check the path.\n",
             harness.StdErr);
     }
 
@@ -436,7 +458,9 @@ public sealed class ValidateCommandTests
         var exit = await harness.RunAsync("validate", spec, missing);
 
         Assert.Equal(1, exit);
-        Assert.Equal($"error: cannot read the data file '{missing.Replace("\\", "\\\\")}'.\n", harness.StdErr);
+        Assert.Equal(
+            $"error: cannot read the data file '{missing.Replace("\\", "\\\\")}': it does not exist. Check the path.\n",
+            harness.StdErr);
     }
 
     [Fact]
@@ -456,10 +480,10 @@ public sealed class ValidateCommandTests
     }
 
     [Theory]
-    [InlineData(new byte[] { 0xFF, 0xFE, (byte)'a', 0x00 })]
-    [InlineData(new byte[] { 0xFE, 0xFF, 0x00, (byte)'a' })]
-    [InlineData(new byte[] { (byte)'#', 0xFF, (byte)'\n' })]
-    public async Task Validate_WhenTheRootSpecIsNotValidUtf8_ThenACodeLessHostErrorAndExitOne(byte[] bytes)
+    [InlineData(new byte[] { 0xFF, 0xFE, (byte)'a', 0x00 }, "it starts with a UTF-16 or UTF-32 byte order mark, but a spec must be UTF-8. Save it as UTF-8.")]
+    [InlineData(new byte[] { 0xFE, 0xFF, 0x00, (byte)'a' }, "it starts with a UTF-16 or UTF-32 byte order mark, but a spec must be UTF-8. Save it as UTF-8.")]
+    [InlineData(new byte[] { (byte)'#', 0xFF, (byte)'\n' }, "it is not valid UTF-8. Save it as UTF-8.")]
+    public async Task Validate_WhenTheRootSpecIsNotValidUtf8_ThenACodeLessHostErrorAndExitOne(byte[] bytes, string explanation)
     {
         // §2 makes UTF-8 part of the format boundary, so an invalidly encoded ROOT is an
         // ordinary unreadable-input failure: code-less, exit 1, never exit 4.
@@ -471,7 +495,7 @@ public sealed class ValidateCommandTests
         var exit = await harness.RunAsync("validate", spec);
 
         Assert.Equal(1, exit);
-        Assert.Equal($"error: cannot read the spec file '{spec.Replace("\\", "\\\\")}'.\n", harness.StdErr);
+        Assert.Equal($"error: cannot read the spec file '{spec.Replace("\\", "\\\\")}': {explanation}\n", harness.StdErr);
     }
 
     [Fact]

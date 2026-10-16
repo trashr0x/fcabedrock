@@ -15,8 +15,9 @@ namespace FcaBedrock.Cli;
 /// <para>
 /// <b>Only closed facts are disclosed.</b> The reason and position come from
 /// <see cref="SourceReadException.Reason"/> and <see cref="SourceReadException.Position"/>, and a
-/// decoding failure from its type and the failing pass's <see cref="DataByteOrderMark"/>. No
-/// exception message is copied: a free-text message or an inner exception can hold a path, an
+/// decoding failure from its type and the failing pass's <see cref="DataByteOrderMark"/>. A refused
+/// open is explained by <see cref="InputReadExplanation"/>, as for every input file. No exception
+/// message is copied: a free-text message or an inner exception can hold a path, an
 /// operating-system text or source data. Every other failure, and a read failure with no closed
 /// reason, keeps the generic sentence. The message is plain text; the renderer escapes it once.
 /// </para>
@@ -50,7 +51,9 @@ internal static class DataReadExplanation
                   + "must be UTF-8. Save it as UTF-8.";
         }
 
-        return RunPipeline.DataReadMessage(dataPath);
+        // An open the operating system refused, explained as every input's is; anything else keeps
+        // the generic sentence.
+        return InputReadExplanation.Message(InputFile.Data, dataPath, cause);
     }
 
     private static string Reason(SourceReadFailureReason reason) => reason switch

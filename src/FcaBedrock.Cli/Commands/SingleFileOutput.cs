@@ -47,6 +47,25 @@ internal static class SingleFileOutput
     /// </para>
     /// </summary>
     /// <returns>0 on a delivered document, 1 on any Error/Fatal or host failure.</returns>
+    public static Task<int> DeliverAsync(
+        CliEnvironment environment,
+        CommandInvocation invocation,
+        SpecDocument? document,
+        IReadOnlyList<BedrockDiagnostic> diagnostics,
+        IReadOnlyList<PublicationInput> additionalInputs,
+        string? committedReport,
+        CancellationToken cancellation) =>
+        DeliverAsync(
+            environment, invocation, document, diagnostics, additionalInputs, committedReport,
+            verifyBeforeWrite: null, cancellation);
+
+    /// <summary>
+    /// Delivers <paramref name="document"/> as the other overload does, and for a file target runs
+    /// <paramref name="verifyBeforeWrite"/> after preflight, and any recovery it performs, and before
+    /// the run's first write. It answers null to proceed or the code-less refusal to report; a
+    /// refusal there leaves nothing to roll back. Stdout never runs it.
+    /// </summary>
+    /// <returns>0 on a delivered document, 1 on any Error/Fatal or host failure.</returns>
     public static async Task<int> DeliverAsync(
         CliEnvironment environment,
         CommandInvocation invocation,
@@ -54,6 +73,7 @@ internal static class SingleFileOutput
         IReadOnlyList<BedrockDiagnostic> diagnostics,
         IReadOnlyList<PublicationInput> additionalInputs,
         string? committedReport,
+        Func<string?>? verifyBeforeWrite,
         CancellationToken cancellation)
     {
         ArgumentNullException.ThrowIfNull(environment);
@@ -80,7 +100,8 @@ internal static class SingleFileOutput
         }
 
         return await PublishAsync(
-                environment, invocation, spelling, document!, diagnostics, additionalInputs, committedReport, cancellation)
+                environment, invocation, spelling, document!, diagnostics, additionalInputs, committedReport,
+                verifyBeforeWrite, cancellation)
             .ConfigureAwait(false);
     }
 
@@ -112,6 +133,7 @@ internal static class SingleFileOutput
         IReadOnlyList<BedrockDiagnostic> diagnostics,
         IReadOnlyList<PublicationInput> additionalInputs,
         string? committedReport,
+        Func<string?>? verifyBeforeWrite,
         CancellationToken cancellation)
     {
         var bytes = Utf8NoBom.GetBytes(SpecWriter.Write(document));
@@ -164,6 +186,13 @@ internal static class SingleFileOutput
         // unexpected fault alike. That is not skippable cleanup: on Windows a surviving reference
         // keeps an already-requested deletion pending (D-125).
         using var owned = transaction;
+
+        // The caller's last check of what it is about to write: after preflight and any recovery,
+        // before Begin creates the first file of this run.
+        if (verifyBeforeWrite?.Invoke() is { } refusal)
+        {
+            return RunPipeline.HostFailure(environment, diagnostics, refusal, cancellation);
+        }
 
         try
         {

@@ -5,8 +5,8 @@ namespace FcaBedrock.Cli.Tests;
 
 /// <summary>
 /// The DATA read explanation at its own seam: each closed reason, every partial position, each
-/// byte order mark, and the generic sentence for everything without closed detail. No
-/// exception's own message ever reaches the result.
+/// byte order mark, each refused open, and the generic sentence for everything without closed
+/// detail. No exception's own message ever reaches the result.
 /// </summary>
 public sealed class DataReadExplanationTests
 {
@@ -70,13 +70,31 @@ public sealed class DataReadExplanationTests
             "cannot read the data file 'in.csv': " + explanation,
             DataReadExplanation.Message(Data, new DecoderFallbackException("SECRET bytes [FF] at index 3"), Enum.Parse<DataByteOrderMark>(mark)));
 
+    public static TheoryData<Exception, string> RefusedOpens() => new()
+    {
+        { new FileNotFoundException("SECRET path"), "it does not exist. Check the path." },
+        { new DirectoryNotFoundException("SECRET path"), "it does not exist. Check the path." },
+        { new UnauthorizedAccessException("SECRET path"), "access to it was denied. Check that it is a file you can read." },
+    };
+
+    [Theory]
+    [MemberData(nameof(RefusedOpens))]
+    public void Message_WhenTheOpenWasRefused_ThenItSaysWhyFromTheExceptionTypeAlone(Exception cause, string explanation)
+    {
+        // A mark explains only a decoding failure, so it never changes an open's explanation.
+        foreach (var mark in Enum.GetValues<DataByteOrderMark>())
+        {
+            Assert.Equal("cannot read the data file 'in.csv': " + explanation, DataReadExplanation.Message(Data, cause, mark));
+        }
+    }
+
     public static TheoryData<Exception> GenericFailures()
     {
         var data = new TheoryData<Exception>();
         data.Add(new SourceReadException("SECRET free text", new IOException("SECRET inner")));
         data.Add(new SourceReadException(SourceReadFailureReason.Unknown, new SourceReadPosition(SourceReadRecordKind.Data, 1), null));
         data.Add(new IOException("SECRET device text"));
-        data.Add(new UnauthorizedAccessException("SECRET path"));
+        data.Add(new PathTooLongException("SECRET"));
         data.Add(new InvalidDataException("SECRET"));
         data.Add(new ObjectDisposedException("SECRET"));
         return data;

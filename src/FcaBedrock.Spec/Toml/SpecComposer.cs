@@ -26,8 +26,8 @@ public static class SpecComposer
     /// <c>extends</c> passes through unchanged (after the version check). The result
     /// fails with a Fatal <c>SpecVersionUnsupported</c> on a missing or unsupported
     /// <c>[spec].version</c> anywhere in the chain (the root is checked before any
-    /// base loads, D-078), with a Fatal <c>SpecExtendsNotFound</c> on a base that
-    /// cannot be found, and with a Fatal <c>SpecExtendsCycle</c> on a cycle,
+    /// base loads, D-078), with a Fatal <c>SpecExtendsNotFound</c> on a base the source
+    /// cannot load, and with a Fatal <c>SpecExtendsCycle</c> on a cycle,
     /// including self-extends. It also fails on a base that does not parse, carrying
     /// that base's own diagnostics with base-file locations. Parse warnings of every
     /// loaded base are carried in the result either way.
@@ -64,9 +64,13 @@ public static class SpecComposer
         {
             if (source.Load(reference, currentKey) is not { } loaded)
             {
+                // A source answers only that it loaded nothing: the base may be missing, absolute,
+                // unreadable or not UTF-8. So the message claims none of those and says instead
+                // what a loadable base is (§2, §13).
                 diagnostics.Add(new BedrockDiagnostic(
                     DiagnosticCode.SpecExtendsNotFound, DiagnosticSeverity.Fatal,
-                    $"extends = \"{reference}\" (referenced from '{currentKey}') was not found (§13).",
+                    $"extends = \"{reference}\" (referenced from '{currentKey}') could not be loaded: a base must be "
+                    + "a readable UTF-8 spec file, named by a path relative to the folder of the file that references it (§13).",
                     new DiagnosticLocation(File: currentKey)));
                 return Diagnosed<SpecDocument>.Failed(diagnostics);
             }

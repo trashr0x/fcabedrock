@@ -13,7 +13,7 @@ public interface ISpecTextSource
     /// <summary>
     /// Resolves <paramref name="reference"/> (the authored <c>extends</c> value)
     /// against <paramref name="referrerKey"/> (the canonical key of the spec that
-    /// authored it); null when no such spec exists.
+    /// authored it); null when it cannot load a spec there, whatever the reason.
     /// </summary>
     SpecSourceText? Load(string reference, string referrerKey);
 }

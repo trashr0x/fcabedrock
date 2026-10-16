@@ -1,5 +1,6 @@
 using System.Text;
 using FcaBedrock.Cli.Commands;
+using FcaBedrock.Cli.Publication;
 using FcaBedrock.Spec.Toml;
 
 namespace FcaBedrock.Cli.Tests;
@@ -543,5 +544,411 @@ public sealed class FingerprintWriteTests
 
         Assert.True(File.Exists(target));
         Assert.DoesNotContain(Directory.GetFiles(temp.Path), Residue);
+    }
+
+    // ---- a root written into another folder keeps its inheritance (§13, D-122 part 10) ------------
+
+    // The base of a two-level chain: it extends a leaf beside it, so the chain is only kept when
+    // the base is reached by the same path it was loaded from.
+    private const string MidSpec = """
+        [spec]
+        version = 1
+        extends = "leaf.toml"
+
+        [[attribute]]
+        name = "age"
+        source = { kind = "column", index = 1, value_type = "number" }
+        discretizer = { kind = "manual_cuts", cuts = [20.0], ends = "open" }
+        scale = { kind = "nominal" }
+        """;
+
+    private const string LeafSpec = """
+        [spec]
+        version = 1
+
+        [[attribute]]
+        name = "colour"
+        source = { kind = "column", index = 0 }
+        discretizer = { kind = "identity" }
+        scale = { kind = "nominal" }
+        declared_domain = ["red", "green"]
+        """;
+
+    // A different leaf of the same shape, so a chain that reaches it plans different attributes.
+    private const string OtherLeafSpec = """
+        [spec]
+        version = 1
+
+        [[attribute]]
+        name = "other"
+        source = { kind = "column", index = 0 }
+        discretizer = { kind = "identity" }
+        scale = { kind = "nominal" }
+        declared_domain = ["red", "green"]
+        """;
+
+    private static string RootExtending(string reference) =>
+        CliFixtures.FrozenChainRootSpec.Replace("\"frozen-base.toml\"", $"\"{reference}\"", StringComparison.Ordinal);
+
+    private static async Task<string> WrittenExtendsAsync(string path) => (await ParseFileAsync(path)).Spec!.Extends!;
+
+    private static SpecDocument Composed(string path)
+    {
+        var host = new FileSpecTextSource(CliEnvironment.OpenFile, FileIdentity.CreateDefault());
+        var key = host.RegisterRoot(path);
+        var read = SpecReader.Read(host.ReadText(path), key);
+        Assert.True(read.TryGetValue(out var root));
+        var composed = SpecComposer.Compose(root, key, host);
+        Assert.True(composed.TryGetValue(out var document), string.Join("; ", composed.Diagnostics.Select(d => d.Message)));
+        return document;
+    }
+
+    // The composed document in canonical text, without the stored fingerprints only the written root
+    // carries: every section, the root's own description and provenance included (§13 rules 7, 8).
+    private static string ComposedWithoutStoredFingerprints(string path)
+    {
+        var composed = Composed(path);
+        return SpecWriter.Write(composed with
+        {
+            Spec = composed.Spec! with { SchemaFingerprint = null, CxtOutputFingerprint = null, DatOutputFingerprint = null },
+        });
+    }
+
+    // Everything the written root means, compared with the source root it was written from: the
+    // composed document, the plan with its three native fingerprints, the stored fingerprints
+    // verifying, and the converted contexts byte for byte.
+    private static async Task AssertSameMeaningAsync(string source, string written, string data, TempDirectory temp)
+    {
+        Assert.Equal(ComposedWithoutStoredFingerprints(source), ComposedWithoutStoredFingerprints(written));
+
+        var sourcePlan = new CliTestHarness();
+        Assert.Equal(0, await sourcePlan.RunAsync("plan", source, data));
+        var writtenPlan = new CliTestHarness();
+        Assert.Equal(0, await writtenPlan.RunAsync("plan", written, data));
+        Assert.Equal(string.Empty, writtenPlan.StdErr);
+        Assert.Equal(sourcePlan.StdOut, writtenPlan.StdOut);
+
+        var verified = new CliTestHarness();
+        Assert.Equal(0, await verified.RunAsync("fingerprint", written, data));
+        Assert.Equal(string.Empty, verified.StdErr);
+        AssertReport(verified.StdOut, "match");
+
+        var fromSource = temp.Resolve(Path.Combine("converted", "source"));
+        var fromWritten = temp.Resolve(Path.Combine("converted", "written"));
+        Directory.CreateDirectory(temp.Resolve("converted"));
+        Assert.Equal(0, await new CliTestHarness().RunAsync(
+            "convert", source, data, "--out", fromSource, "--format", "both", "--no-manifest"));
+        Assert.Equal(0, await new CliTestHarness().RunAsync(
+            "convert", written, data, "--out", fromWritten, "--format", "both", "--no-manifest"));
+        Assert.Equal(await File.ReadAllBytesAsync(fromSource + ".cxt"), await File.ReadAllBytesAsync(fromWritten + ".cxt"));
+        Assert.Equal(await File.ReadAllBytesAsync(fromSource + ".dat"), await File.ReadAllBytesAsync(fromWritten + ".dat"));
+    }
+
+    public static TheoryData<string, string> RelocatedTargets() => new()
+    {
+        // A sibling folder, a deeper folder, and the folder above the root's.
+        { "sibling", "../base/mid.toml" },
+        { "out/deep/er", "../../../base/mid.toml" },
+        { ".", "base/mid.toml" },
+    };
+
+    [Theory]
+    [MemberData(nameof(RelocatedTargets))]
+    public async Task FingerprintWrite_WhenTheTargetIsInAnotherFolder_ThenItsExtendsReachesTheSameBaseAndTheChainMeansTheSame(
+        string folder, string expected)
+    {
+        // specs/root.toml -> ../base/mid.toml -> leaf.toml. Copying the authored reference into
+        // another folder would name a base that is not there; the written reference is rebuilt from
+        // the target's folder to the base the chain was loaded through.
+        using var temp = TempDirectory.Create();
+        temp.Write("base/leaf.toml", LeafSpec);
+        temp.Write("base/mid.toml", MidSpec);
+        var root = temp.Write("specs/root.toml", RootExtending("../base/mid.toml"));
+        var data = temp.Write("data.csv", CliFixtures.FrozenData);
+        Directory.CreateDirectory(temp.Resolve(folder));
+        var target = Path.GetFullPath(Path.Combine(temp.Path, folder, "new.toml"));
+        var harness = new CliTestHarness();
+
+        var exit = await harness.RunAsync("fingerprint", root, data, "--write", "--out", target);
+
+        Assert.Equal(0, exit);
+        Assert.Equal(string.Empty, harness.StdErr);
+        AssertReport(harness.StdOut, "absent");
+        Assert.Equal(expected, await WrittenExtendsAsync(target));
+        await AssertSameMeaningAsync(root, target, data, temp);
+    }
+
+    [Fact]
+    public async Task FingerprintWrite_WhenTheAuthoredReferenceStillReachesTheBaseFromTheTarget_ThenItIsKeptAsWritten()
+    {
+        // From a folder at the same depth, "./../base/mid.toml" still names the same path, so its
+        // authored spelling, the leading "./" included, is written unchanged.
+        using var temp = TempDirectory.Create();
+        temp.Write("base/leaf.toml", LeafSpec);
+        temp.Write("base/mid.toml", MidSpec);
+        var root = temp.Write("specs/root.toml", RootExtending("./../base/mid.toml"));
+        var data = temp.Write("data.csv", CliFixtures.FrozenData);
+        Directory.CreateDirectory(temp.Resolve("copies"));
+        var target = temp.Resolve(Path.Combine("copies", "new.toml"));
+
+        Assert.Equal(0, await new CliTestHarness().RunAsync("fingerprint", root, data, "--write", "--out", target));
+
+        Assert.Equal("./../base/mid.toml", await WrittenExtendsAsync(target));
+        await AssertSameMeaningAsync(root, target, data, temp);
+    }
+
+    [Fact]
+    public async Task FingerprintWrite_WhenTheTargetFolderHoldsAHardLinkOfTheBase_ThenTheReferenceStillNamesTheOriginalPath()
+    {
+        // left/base.toml and right/base.toml are one file, each extending the "leaf.toml" beside it,
+        // and the two leaves differ. From right/, the authored "base.toml" names the same file but
+        // resolves its own base against right/, so the chain changes. Identity alone cannot see it.
+        using var temp = TempDirectory.Create();
+        temp.Write("left/leaf.toml", LeafSpec);
+        temp.Write("right/leaf.toml", OtherLeafSpec);
+        var leftBase = temp.Write("left/base.toml", MidSpec);
+        var root = temp.Write("left/root.toml", RootExtending("base.toml"));
+        var data = temp.Write("data.csv", CliFixtures.FrozenData);
+        Assert.SkipUnless(
+            PlatformLinks.TryCreateHardLink(
+                temp.Resolve(Path.Combine("right", "base.toml")), Path.GetFullPath(leftBase), out var reason),
+            $"hard links are unavailable on this host: {reason}");
+        var target = temp.Resolve(Path.Combine("right", "root2.toml"));
+
+        Assert.Equal(0, await new CliTestHarness().RunAsync("fingerprint", root, data, "--write", "--out", target));
+
+        Assert.Equal("../left/base.toml", await WrittenExtendsAsync(target));
+        await AssertSameMeaningAsync(root, target, data, temp);
+    }
+
+    [Fact]
+    public async Task FingerprintWrite_WhenTheRootWasReachedThroughADirectoryLink_ThenTheReferenceKeepsThatLinkedPath()
+    {
+        // alias -> left. The root was named as alias/root.toml, so its base was loaded as
+        // alias/base.toml, and that path, not the link's target, is what the written reference names.
+        using var temp = TempDirectory.Create();
+        temp.Write("left/leaf.toml", LeafSpec);
+        temp.Write("left/base.toml", MidSpec);
+        temp.Write("left/root.toml", RootExtending("base.toml"));
+        var data = temp.Write("data.csv", CliFixtures.FrozenData);
+        Assert.SkipUnless(
+            PlatformLinks.TryCreateDirectoryLink(temp.Resolve("alias"), temp.Resolve("left"), out var reason),
+            $"directory links are unavailable on this host: {reason}");
+        var root = temp.Resolve(Path.Combine("alias", "root.toml"));
+        Directory.CreateDirectory(temp.Resolve("dest"));
+        var target = temp.Resolve(Path.Combine("dest", "root.toml"));
+
+        Assert.Equal(0, await new CliTestHarness().RunAsync("fingerprint", root, data, "--write", "--out", target));
+
+        Assert.Equal("../alias/base.toml", await WrittenExtendsAsync(target));
+        await AssertSameMeaningAsync(root, target, data, temp);
+    }
+
+    [Fact]
+    public async Task FingerprintWrite_WhenACaseSensitiveFolderHoldsNamesThatDifferOnlyInCase_ThenTheReferenceKeepsTheExactSpelling()
+    {
+        // cs/Data and cs/data are different folders here. A case-insensitive comparison would take
+        // "data" for "Data" and write "../base.toml", which names cs/data/base.toml.
+        using var temp = TempDirectory.Create();
+        var folder = temp.Resolve("cs");
+        Directory.CreateDirectory(folder);
+        Assert.SkipUnless(
+            PlatformLinks.TryMakeCaseSensitive(folder, out var reason),
+            $"per-directory case sensitivity is unavailable on this host: {reason}");
+        temp.Write("cs/Data/leaf.toml", LeafSpec);
+        temp.Write("cs/Data/base.toml", MidSpec);
+        temp.Write("cs/data/leaf.toml", OtherLeafSpec);
+        temp.Write("cs/data/base.toml", MidSpec);
+        var root = temp.Write("cs/Data/root.toml", RootExtending("base.toml"));
+        var data = temp.Write("data.csv", CliFixtures.FrozenData);
+        Directory.CreateDirectory(temp.Resolve(Path.Combine("cs", "data", "out")));
+        var target = temp.Resolve(Path.Combine("cs", "data", "out", "root.toml"));
+
+        Assert.Equal(0, await new CliTestHarness().RunAsync("fingerprint", root, data, "--write", "--out", target));
+
+        Assert.Equal("../../Data/base.toml", await WrittenExtendsAsync(target));
+        await AssertSameMeaningAsync(root, target, data, temp);
+    }
+
+    [Fact]
+    public async Task FingerprintWrite_WhenTheTargetIsOnAnotherDrive_ThenItIsRefusedBeforePublication()
+    {
+        // No relative reference reaches a base on another drive, and an absolute extends is not
+        // allowed (§13). The refusal is lexical, so the other drive need not exist.
+        Assert.SkipUnless(OperatingSystem.IsWindows(), "only Windows paths can have another drive root");
+        using var temp = TempDirectory.Create();
+        temp.Write("frozen-base.toml", CliFixtures.FrozenChainBaseSpec);
+        var root = temp.Write("root.toml", CliFixtures.FrozenChainRootSpec);
+        var data = temp.Write("data.csv", CliFixtures.FrozenData);
+        var drive = char.ToUpperInvariant(temp.Path[0]) == 'Q' ? 'R' : 'Q';
+        var target = $"{drive}:\\fcabedrock-relocation\\root.toml";
+        var before = Snapshot(temp);
+        var harness = new CliTestHarness();
+
+        var exit = await harness.RunAsync("fingerprint", root, data, "--write", "--out", target);
+
+        Assert.Equal(1, exit);
+        Assert.Equal(string.Empty, harness.StdOut);
+        Assert.Equal(
+            DiagnosticRenderer.RenderHostError(
+                $"cannot write the output '{target}': the base that extends = \"frozen-base.toml\" names is on another "
+                + "drive or share, and a relative extends cannot reach it from there; choose an --out on the same drive "
+                + "or share as that base."),
+            harness.StdErr);
+        Assert.Equal(before, Snapshot(temp));
+        AssertNoMutation(harness);
+    }
+
+    [Fact]
+    public async Task FingerprintWrite_WhenTheTargetFolderIsMissing_ThenPublicationReportsTheMissingFolder()
+    {
+        // The reference is computed from the target's path alone, so a missing folder reaches the
+        // ordinary publication refusal; folders are never created.
+        using var temp = TempDirectory.Create();
+        temp.Write("frozen-base.toml", CliFixtures.FrozenChainBaseSpec);
+        var root = temp.Write("root.toml", CliFixtures.FrozenChainRootSpec);
+        var data = temp.Write("data.csv", CliFixtures.FrozenData);
+        var target = temp.Resolve(Path.Combine("absent", "root.toml"));
+        var harness = new CliTestHarness();
+
+        var exit = await harness.RunAsync("fingerprint", root, data, "--write", "--out", target);
+
+        Assert.Equal(1, exit);
+        Assert.Equal(string.Empty, harness.StdOut);
+        Assert.Equal(
+            DiagnosticRenderer.RenderHostError(PublicationMessages.RecordFailed(target, PublicationCause.FolderMissing)),
+            harness.StdErr);
+        Assert.False(Directory.Exists(temp.Resolve("absent")));
+    }
+
+    [Fact]
+    public async Task FingerprintWrite_WhenTheTargetIsADeeperChainFile_ThenItIsRefusedEvenWithForce()
+    {
+        // Every file the chain read is an input, not only the root and its immediate base.
+        using var temp = TempDirectory.Create();
+        var leaf = temp.Write("base/leaf.toml", LeafSpec);
+        temp.Write("base/mid.toml", MidSpec);
+        var root = temp.Write("specs/root.toml", RootExtending("../base/mid.toml"));
+        var data = temp.Write("data.csv", CliFixtures.FrozenData);
+        var leafBefore = await File.ReadAllBytesAsync(leaf);
+        var harness = new CliTestHarness();
+
+        var exit = await harness.RunAsync("fingerprint", root, data, "--write", "--out", leaf, "--force");
+
+        Assert.Equal(1, exit);
+        Assert.Equal(string.Empty, harness.StdOut);
+        Assert.Equal(
+            DiagnosticRenderer.RenderHostError($"the output '{leaf}' and the input 'leaf.toml' are the same file."),
+            harness.StdErr);
+        Assert.Equal(leafBefore, await File.ReadAllBytesAsync(leaf));
+        AssertNoMutation(harness);
+    }
+
+    [Fact]
+    public async Task FingerprintWrite_WhenTheHostHasNoOsFileIdentity_ThenTheExistingPathFallbackStillVerifiesTheBase()
+    {
+        // Loading and checking use the same factory, so both see path-fallback keys, which agree on
+        // one canonical path; there is no refusal merely because OS identity is unavailable.
+        using var temp = TempDirectory.Create();
+        temp.Write("base/leaf.toml", LeafSpec);
+        temp.Write("base/mid.toml", MidSpec);
+        var root = temp.Write("specs/root.toml", RootExtending("../base/mid.toml"));
+        var data = temp.Write("data.csv", CliFixtures.FrozenData);
+        Directory.CreateDirectory(temp.Resolve(Path.Combine("out", "deep")));
+        var target = temp.Resolve(Path.Combine("out", "deep", "new.toml"));
+        var harness = new CliTestHarness { FileIdentities = () => new FileIdentity(new UnavailableFileIdentityProbe()) };
+
+        var exit = await harness.RunAsync("fingerprint", root, data, "--write", "--out", target);
+
+        Assert.Equal(0, exit);
+        Assert.Equal(string.Empty, harness.StdErr);
+        Assert.Equal("../../base/mid.toml", await WrittenExtendsAsync(target));
+        await AssertSameMeaningAsync(root, target, data, temp);
+    }
+
+    [Fact]
+    public async Task FingerprintWrite_WhenTheCheckSeesAnotherKindOfIdentityThanTheLoad_ThenItIsRefusedBeforeAnyWrite()
+    {
+        // An OS key and a path-fallback key never agree, so the base cannot be shown to be the
+        // object the chain loaded.
+        using var temp = TempDirectory.Create();
+        temp.Write("frozen-base.toml", CliFixtures.FrozenChainBaseSpec);
+        var root = temp.Write("root.toml", CliFixtures.FrozenChainRootSpec);
+        var data = temp.Write("data.csv", CliFixtures.FrozenData);
+        Assert.SkipUnless(
+            FileIdentity.CreateDefault().KeyFor(root).IsOperatingSystemIdentity, "OS file identity is unavailable on this host.");
+        var target = temp.Resolve("new.toml");
+        var services = 0;
+        var harness = new CliTestHarness
+        {
+            FileIdentities = () => services++ == 0
+                ? FileIdentity.CreateDefault()
+                : new FileIdentity(new UnavailableFileIdentityProbe()),
+        };
+
+        var exit = await harness.RunAsync("fingerprint", root, data, "--write", "--out", target);
+
+        Assert.Equal(1, exit);
+        Assert.Equal(string.Empty, harness.StdOut);
+        Assert.Equal(
+            DiagnosticRenderer.RenderHostError(ExtendsRelocation.UnverifiedMessage(target, "frozen-base.toml")),
+            harness.StdErr);
+        Assert.False(File.Exists(target));
+        AssertNoMutation(harness);
+    }
+
+    [Fact]
+    public async Task FingerprintWrite_WhenTheBaseIsNoLongerTheLoadedObjectJustBeforeTheWrite_ThenNothingIsPublished()
+    {
+        // The check runs again after preflight with a fresh identity service. Here the third service,
+        // the one that recheck uses, sees a different object at the base's path.
+        using var temp = TempDirectory.Create();
+        temp.Write("frozen-base.toml", CliFixtures.FrozenChainBaseSpec);
+        var root = temp.Write("root.toml", CliFixtures.FrozenChainRootSpec);
+        var data = temp.Write("data.csv", CliFixtures.FrozenData);
+        var target = temp.Resolve("new.toml");
+        var services = 0;
+        var harness = new CliTestHarness
+        {
+            FileIdentities = () => ++services < 3
+                ? FileIdentity.CreateDefault()
+                : new FileIdentity(new ReplacedObjectProbe()),
+        };
+
+        var exit = await harness.RunAsync("fingerprint", root, data, "--write", "--out", target);
+
+        Assert.Equal(1, exit);
+        Assert.Equal(3, services);
+        Assert.Equal(string.Empty, harness.StdOut);
+        Assert.Equal(
+            DiagnosticRenderer.RenderHostError(ExtendsRelocation.UnverifiedMessage(target, "frozen-base.toml")),
+            harness.StdErr);
+        Assert.False(File.Exists(target));
+        AssertNoMutation(harness);
+    }
+
+    /// <summary>Reports one constant OS identity for every path, as if the object had been replaced.</summary>
+    private sealed class ReplacedObjectProbe : IFileIdentityProbe
+    {
+        public FileIdentityKey? TryGetIdentity(string fullPath) =>
+            FileIdentityKey.FromOperatingSystem(ulong.MaxValue, ulong.MaxValue, ulong.MaxValue);
+    }
+
+    [Fact]
+    public async Task FingerprintWrite_WhenOutIsStdout_ThenTheAuthoredReferenceIsWrittenUnchanged()
+    {
+        // Stdout has no folder of its own, so the reference keeps its original context.
+        using var temp = TempDirectory.Create();
+        temp.Write("base/leaf.toml", LeafSpec);
+        temp.Write("base/mid.toml", MidSpec);
+        var root = temp.Write("specs/root.toml", RootExtending("../base/mid.toml"));
+        var data = temp.Write("data.csv", CliFixtures.FrozenData);
+        var harness = new CliTestHarness();
+
+        var exit = await harness.RunAsync("fingerprint", root, data, "--write", "--out", "-");
+
+        Assert.Equal(0, exit);
+        Assert.Equal(string.Empty, harness.StdErr);
+        Assert.Equal("../base/mid.toml", Parse(harness.StdOut).Spec!.Extends);
     }
 }

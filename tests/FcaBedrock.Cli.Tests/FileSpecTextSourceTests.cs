@@ -71,7 +71,9 @@ public sealed class FileSpecTextSourceTests
     [Fact]
     public void Compose_WhenAReferenceIsAbsolute_ThenItTakesTheEstablishedNotFoundOutcome()
     {
-        // Authored references are relative-only; an absolute one is not resolved at all.
+        // Authored references are relative-only; an absolute one is not resolved at all, even though
+        // the file it names exists, so the message says the base could not be loaded and what a
+        // base must be rather than that it was not found.
         using var temp = TempDirectory.Create();
         var target = temp.Write("base.toml", Leaf);
         var root = temp.Write("root.toml", $"[spec]\nversion = 1\nextends = \"{target.Replace("\\", "\\\\")}\"\n");
@@ -80,6 +82,10 @@ public sealed class FileSpecTextSourceTests
 
         var diagnostic = Single(result, DiagnosticCode.SpecExtendsNotFound);
         Assert.Equal(rootKey, diagnostic.Location!.Value.File);
+        Assert.Equal(
+            $"extends = \"{target}\" (referenced from '{rootKey}') could not be loaded: a base must be a readable UTF-8 "
+                + "spec file, named by a path relative to the folder of the file that references it (§13).",
+            diagnostic.Message);
     }
 
     [Fact]
@@ -282,7 +288,7 @@ public sealed class FileSpecTextSourceTests
 
         var (result, _) = Compose(root);
 
-        Single(result, DiagnosticCode.SpecExtendsNotFound);
+        Assert.Contains("could not be loaded", Single(result, DiagnosticCode.SpecExtendsNotFound).Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -294,7 +300,19 @@ public sealed class FileSpecTextSourceTests
 
         var (result, _) = Compose(root);
 
-        Single(result, DiagnosticCode.SpecExtendsNotFound);
+        Assert.Contains("could not be loaded", Single(result, DiagnosticCode.SpecExtendsNotFound).Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Load_WhenABaseReferenceIsNotAUsablePath_ThenItTakesTheEstablishedUnreadableBaseOutcome()
+    {
+        // A NUL cannot be part of a path, so resolving the reference fails before any read.
+        using var temp = TempDirectory.Create();
+        var root = temp.Write("root.toml", "[spec]\nversion = 1\nextends = \"bad\\u0000name.toml\"\n");
+
+        var (result, _) = Compose(root);
+
+        Assert.Contains("could not be loaded", Single(result, DiagnosticCode.SpecExtendsNotFound).Message, StringComparison.Ordinal);
     }
 
     private static FileSpecTextSource HostOver(byte[] bytes) =>
@@ -370,6 +388,48 @@ public sealed class FileSpecTextSourceTests
         Assert.NotNull(first);
         Assert.NotNull(second);
         Assert.Equal(first.CanonicalKey, second.CanonicalKey);
+    }
+
+    [Fact]
+    public void Chain_WhenABaseIsLoaded_ThenItRetainsTheResolutionPathAndTheIdentityItHadWhenLoaded()
+    {
+        // The relocated-root check needs exactly these two facts about the root's own base: the path
+        // it was reached by, never a canonical or link-resolved one, and the identity the load saw.
+        using var temp = TempDirectory.Create();
+        var basePath = temp.Write("base.toml", Leaf);
+        var root = temp.Write("root.toml", "[spec]\nversion = 1\nextends = \"./sub/../base.toml\"\n");
+        Directory.CreateDirectory(temp.Resolve("sub"));
+        var identity = FileIdentity.CreateDefault();
+        var host = new FileSpecTextSource(CliEnvironment.OpenFile, identity);
+        var rootKey = host.RegisterRoot(root);
+
+        Assert.NotNull(host.Load("./sub/../base.toml", rootKey));
+
+        var loaded = host.Chain[^1];
+        Assert.Equal(Path.GetFullPath(basePath), loaded.FullPath);
+        Assert.Equal("./sub/../base.toml", loaded.Spelling);
+        Assert.Equal(FileIdentity.CreateDefault().KeyFor(basePath), loaded.Identity);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("bad\0name.toml")]
+    public void Resolve_WhenTheReferenceNamesNoPath_ThenItIsNull(string reference)
+    {
+        using var temp = TempDirectory.Create();
+
+        Assert.Null(FileSpecTextSource.Resolve(temp.Resolve("root.toml"), reference));
+        Assert.Null(FileSpecTextSource.Resolve(temp.Resolve("root.toml"), temp.Resolve("base.toml")));
+    }
+
+    [Fact]
+    public void Resolve_WhenTheReferenceIsRelative_ThenItIsResolvedFromTheReferrersFolder()
+    {
+        using var temp = TempDirectory.Create();
+
+        Assert.Equal(
+            Path.GetFullPath(temp.Resolve(Path.Combine("base", "mid.toml"))),
+            FileSpecTextSource.Resolve(temp.Resolve(Path.Combine("specs", "root.toml")), "../base/mid.toml"));
     }
 
     [Fact]

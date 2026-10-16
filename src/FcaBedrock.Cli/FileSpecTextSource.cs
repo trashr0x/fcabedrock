@@ -13,7 +13,12 @@ namespace FcaBedrock.Cli;
 /// paths never enter the manifest (§13/§15).
 /// </param>
 /// <param name="Hash">The prefixed hash of the file's exact raw bytes.</param>
-internal sealed record SpecChainFile(string FullPath, string Spelling, string Hash);
+/// <param name="Identity">
+/// The file's identity when it was loaded, from the host's identity service. It is a fact about
+/// that observation, never serialized; a later check that the same object is still there must
+/// probe again with a fresh service and compare.
+/// </param>
+internal sealed record SpecChainFile(string FullPath, string Spelling, string Hash, FileIdentityKey Identity);
 
 /// <summary>
 /// The file-backed <see cref="ISpecTextSource"/>, realizing §13 / D-122 part 11. It is a CLI
@@ -39,15 +44,16 @@ internal sealed record SpecChainFile(string FullPath, string Spelling, string Ha
 /// </para>
 /// <para>
 /// Authored references stay relative-only: an absolute reference is not resolved and
-/// takes the established not-found outcome (D-122 part 11), as does a base that cannot be
-/// read. Authored path text is never normalized or rewritten here.
+/// takes the established <c>SpecExtendsNotFound</c> outcome (D-122 part 11), as does a base
+/// that cannot be read. Authored path text is never normalized or rewritten here.
 /// </para>
 /// <para>
 /// <b>Every file it loads is retained as a §15 chain fact</b> (the authored spelling, the
-/// raw-bytes hash, and the resolved path) in load order, which is root-first-then-bases. The
-/// hash covers the bytes <em>as read</em>, byte-order mark and original line endings included,
-/// and is taken from the very read that produced the text: the run manifest never costs a
-/// second open, and a chain file is never re-read merely to hash it (D-122 part 5).
+/// raw-bytes hash, the resolved path, and the identity it had when loaded) in load order, which
+/// is root-first-then-bases. The hash covers the bytes <em>as read</em>, byte-order mark and
+/// original line endings included, and is taken from the very read that produced the text: the
+/// run manifest never costs a second open, and a chain file is never re-read merely to hash it
+/// (D-122 part 5).
 /// </para>
 /// </summary>
 internal sealed class FileSpecTextSource : ISpecTextSource
@@ -119,36 +125,37 @@ internal sealed class FileSpecTextSource : ISpecTextSource
         var text = SpecTextDecoding.Decode(bytes);
 
         // Recorded only after a successful decode: a file that is not a readable spec is not a
-        // chain fact. The hash is over the raw bytes, before the byte-order mark is consumed.
+        // chain fact. The hash is over the raw bytes, before the byte-order mark is consumed. The
+        // identity is the service's own memoized answer, the one canonicalization uses.
         var fullPath = Path.GetFullPath(path);
         if (_recorded.Add(fullPath))
         {
-            _chain.Add(new SpecChainFile(fullPath, spelling, ContentHash.Of(bytes)));
+            _chain.Add(new SpecChainFile(fullPath, spelling, ContentHash.Of(bytes), _identity.KeyFor(fullPath)));
         }
 
         return text;
     }
 
-    /// <inheritdoc/>
-    public SpecSourceText? Load(string reference, string referrerKey)
+    /// <summary>
+    /// The full path an authored <paramref name="reference"/> names when the file at
+    /// <paramref name="referrerPath"/> holds it, or null when it names none: an empty or absolute
+    /// reference, or one that is not a usable path. It is the one rule every reference is resolved
+    /// by, relative to the folder of the file that authored it (§13), so a check of where a
+    /// reference written into another file will lead uses exactly what a later load does.
+    /// </summary>
+    internal static string? Resolve(string referrerPath, string reference)
     {
+        ArgumentNullException.ThrowIfNull(referrerPath);
         ArgumentNullException.ThrowIfNull(reference);
-        ArgumentNullException.ThrowIfNull(referrerKey);
 
         if (reference.Length == 0 || Path.IsPathRooted(reference))
         {
             return null;
         }
 
-        if (!_resolutionPaths.TryGetValue(referrerKey, out var referrerPath))
-        {
-            return null;
-        }
-
-        string resolved;
         try
         {
-            resolved = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(referrerPath) ?? ".", reference));
+            return Path.GetFullPath(Path.Combine(Path.GetDirectoryName(referrerPath) ?? ".", reference));
         }
         catch (ArgumentException)
         {
@@ -159,6 +166,19 @@ internal sealed class FileSpecTextSource : ISpecTextSource
             return null;
         }
         catch (NotSupportedException)
+        {
+            return null;
+        }
+    }
+
+    /// <inheritdoc/>
+    public SpecSourceText? Load(string reference, string referrerKey)
+    {
+        ArgumentNullException.ThrowIfNull(reference);
+        ArgumentNullException.ThrowIfNull(referrerKey);
+
+        if (!_resolutionPaths.TryGetValue(referrerKey, out var referrerPath)
+            || Resolve(referrerPath, reference) is not { } resolved)
         {
             return null;
         }

@@ -242,7 +242,8 @@ internal sealed class FileIdentity
 
     // Drive letters and UNC server/share names are case-insensitive by definition on Windows,
     // so folding the root can only merge spellings of one volume. Elsewhere the root is "/".
-    private static string NormalizeRoot(string root) =>
+    // The extends relocation's resolution-path comparison folds roots by this same rule.
+    internal static string NormalizeRoot(string root) =>
         OperatingSystem.IsWindows() ? root.ToUpperInvariant() : root;
 
     private string RealSpelling(string directory, string name)

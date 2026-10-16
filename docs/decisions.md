@@ -225,11 +225,11 @@ changes an earlier one. A new entry MUST add its line here.
 
 ### M7 (CLI) pre-implementation adjudication
 
-- D-122: M7 CLI contract: commands, process model, publication, manifest, freeze, authored-empty domains, per-command semantics, non-goals, distribution, and the exit floor *(revises D-071's empty-domain reading; refines D-026/D-078/D-088; realizes the CLI faces of D-005/D-028/D-067/D-077; implementation architecture realized by D-123; reach of parts 4–5 qualified by D-125; part 10's headerless schema record amended in place on 2026-10-01; part 3's escaping and code-less warning form amended in place on 2026-10-14; parts 1, 2, 4, 8 and 10 amended in place on 2026-10-14 for attached option values, the `tab` delimiter spelling, the `migrate` named object-key header rule, and the `--temp-dir` and `--out` text checks; parts 2 and 10 amended in place on 2026-10-14 for DATA read explanations and strict UTF-8 schema reads; part 10's frozen numeric domain text amended in place on 2026-10-14; part 10's missing-column report marker amended in place on 2026-10-14; part 15's probe-authored `[]` amended in place on 2026-10-15; parts 2–5 amended in place on 2026-10-15 for publication causes, the Windows read-only participant refusal and the committed-cleanup warning)*
+- D-122: M7 CLI contract: commands, process model, publication, manifest, freeze, authored-empty domains, per-command semantics, non-goals, distribution, and the exit floor *(revises D-071's empty-domain reading; refines D-026/D-078/D-088; realizes the CLI faces of D-005/D-028/D-067/D-077; implementation architecture realized by D-123; reach of parts 4–5 qualified by D-125; part 10's headerless schema record amended in place on 2026-10-01; part 3's escaping and code-less warning form amended in place on 2026-10-14; parts 1, 2, 4, 8 and 10 amended in place on 2026-10-14 for attached option values, the `tab` delimiter spelling, the `migrate` named object-key header rule, and the `--temp-dir` and `--out` text checks; parts 2 and 10 amended in place on 2026-10-14 for DATA read explanations and strict UTF-8 schema reads; part 10's frozen numeric domain text amended in place on 2026-10-14; part 10's missing-column report marker amended in place on 2026-10-14; part 15's probe-authored `[]` amended in place on 2026-10-15; parts 2–5 amended in place on 2026-10-15 for publication causes, the Windows read-only participant refusal and the committed-cleanup warning; parts 2, 10 and 11 amended in place on 2026-10-16 for input-file explanations, the base-loading message and the `extends` of a root `fingerprint --write` writes to a file)*
 
 ### M7 (CLI) implementation
 
-- D-123: M7 implementation architecture and public surfaces: CLI boundary, parser, presentation, audit argv, filesystem identity, publication transaction, run manifest, freeze pairing, runtime options, and the CXT size advisory (registry 81 → 82) *(realizes D-122's implementation architecture; refines D-085's registry-timing rule; reach of point 7 qualified by D-125; point 3's escaping amended in place on 2026-10-14; point 2's parser grammar amended in place on 2026-10-14; point 3's DATA read explanation added in place on 2026-10-14; point 9's source of an `include` prefix amended in place on 2026-10-14; point 9's native and effective presentation pairing amended in place on 2026-10-14; point 7's read-only participant check and cleanup outcome amended in place on 2026-10-15)*
+- D-123: M7 implementation architecture and public surfaces: CLI boundary, parser, presentation, audit argv, filesystem identity, publication transaction, run manifest, freeze pairing, runtime options, and the CXT size advisory (registry 81 → 82) *(realizes D-122's implementation architecture; refines D-085's registry-timing rule; reach of point 7 qualified by D-125; point 3's escaping amended in place on 2026-10-14; point 2's parser grammar amended in place on 2026-10-14; point 3's DATA read explanation added in place on 2026-10-14; point 9's source of an `include` prefix amended in place on 2026-10-14; point 9's native and effective presentation pairing amended in place on 2026-10-14; point 7's read-only participant check and cleanup outcome amended in place on 2026-10-15; points 3, 6 and 14 amended in place on 2026-10-16 for the input-file explanation, the fresh identity check and the `extends` of a root `fingerprint --write` writes to a file)*
 
 ### M8 (first scaling / benchmark pass)
 
@@ -5850,7 +5850,9 @@ and §16.4; D-120 and D-121 record the implemented naming, template and matcher 
   report marker amended in place on 2026-10-14; part 15's probe-authored `[]` for an attribute
   whose every category contains CR or LF amended in place on 2026-10-15; parts 2, 3, 4 and 5
   amended in place on 2026-10-15 for publication causes, the Windows read-only participant
-  refusal, and the code-less warning of a committed run whose cleanup did not finish
+  refusal, and the code-less warning of a committed run whose cleanup did not finish; parts 2, 10
+  and 11 amended in place on 2026-10-16 for input-file explanations, the base-loading message and
+  the `extends` of a root `fingerprint --write` writes to a file
 - **Date:** 2026-07-22
 - **Decision:** the complete M7 CLI contract is settled **before any M7 code**, in
   fifteen parts.
@@ -5914,6 +5916,17 @@ and §16.4; D-120 and D-121 record the implemented naming, template and matcher 
   its generic message. A run whose outputs committed is a success even when its private cleanup
   did not finish: it exits 0 and writes one code-less warning (part 3), and a signal that
   arrives after the commit point changes neither.
+
+  Amended in place on 2026-10-16: opening failures and SPEC or BED decoding no longer keep their
+  earlier messages; they say why, where the failed operation established it. An open of SPEC, a
+  `.bed` file or DATA that found no file says `it does not exist. Check the path.`, and one that
+  was refused says `access to it was denied. Check that it is a file you can read.`, because the
+  .NET runtime refuses a folder opened as a file in the same way. A SPEC or `.bed` file that
+  starts with a UTF-16 or UTF-32 byte order mark, or is not valid UTF-8, says so and asks for
+  UTF-8, as DATA already did. The cause is the exception type of the failed open or decode, never
+  its message and never a check of whether the file exists; every other failure keeps its generic
+  sentence, such as `cannot read the spec file 'SPEC'.` A base that `extends` names stays the
+  phase-owned `SpecExtendsNotFound`, with the message part 11 describes.
 
   **3. Rendering.** Each diagnostic renders as **one deterministic stderr line** in
   the **sparse labelled** form:
@@ -6191,6 +6204,25 @@ and §16.4; D-120 and D-121 record the implemented naming, template and matcher 
   stored fingerprints and converted contexts do not. The frozen spec's text and raw hash can
   change even for an `"invariant"` spec whose authored spellings were normalized before.
 
+  Amended in place on 2026-10-16: `fingerprint --write` to a file keeps the root's inheritance,
+  not necessarily its `extends` text. A base resolves its own relative references from the folder
+  it was reached through, so from the new file's folder the written reference must reach the same
+  full path the chain loaded that base from, every component compared exactly except a Windows
+  drive or share root, and a fresh look must find there the object that was loaded. Naming the
+  same file by another path, such as a hard link beside the copy, can change the chain, and
+  identity alone cannot see that. The authored reference is written unchanged when it passes both
+  checks; otherwise the command writes a relative reference to that path, joined by `/`, and checks
+  it the same way. When no relative reference exists (another drive or share; an absolute
+  `extends` is not allowed, part 11) or a check fails, it refuses with a code-less exit-1 error
+  and publishes nothing. On a host without OS file identity both looks use the existing path
+  fallback (part 11), and two fallback keys agree on one canonical path; a fallback key never
+  matches an OS key. Every chain file stays an input the target may not replace, even with
+  `--force`. The written spec's text and raw hash can change; its composition, native
+  fingerprints and conversions do not, and the run manifest's spec paths stay as authored (§15).
+  `--out -` writes the authored reference, which resolves against the original root's folder.
+  Before this, a copy written into another folder kept the authored text, so it named a base that
+  was not there or, through a file of that name there, inherited a different chain.
+
   **11. Extends canonical identity.** The file-backed host resolves **actual
   filesystem identity** where available, which unifies supported symlink/hardlink
   aliases as well as `.`/`..` and case spellings of one file. Otherwise it falls back
@@ -6200,6 +6232,13 @@ and §16.4; D-120 and D-121 record the implemented naming, template and matcher 
   `..` is legal, and an absolute reference keeps the existing not-found outcome.
   Identity keys are internal: they never affect output bytes, fingerprints, or the
   manifest.
+
+  Amended in place on 2026-10-16: that outcome is `SpecExtendsNotFound`, and its message no longer
+  says the base was not found. The file-backed host tells the composer only that it loaded
+  nothing, which is its answer for an absolute reference, a missing or unreadable base and a base
+  that is not UTF-8 alike, so the message says the base could not be loaded and that a base must be
+  a readable UTF-8 spec file named by a path relative to the folder of the file that references
+  it. The code, its severity and the public loader types are unchanged.
 
   **12. Non-goals.** M7 ships **no sampling, no compressed artifacts, and no
   arbitrary output-setting overrides**; unknown flags are **usage errors** (exit 2).
@@ -6302,7 +6341,9 @@ and §16.4; D-120 and D-121 record the implemented naming, template and matcher 
   point 2's parser grammar amended in place on 2026-10-14; point 3's DATA read explanation added
   in place on 2026-10-14; point 9's source of an `include` prefix amended in place on 2026-10-14;
   point 9's native and effective presentation pairing amended in place on 2026-10-14; point 7's
-  read-only participant check and cleanup outcome amended in place on 2026-10-15.
+  read-only participant check and cleanup outcome amended in place on 2026-10-15; points 3, 6 and
+  14 amended in place on 2026-10-16 for the input-file explanation, the fresh identity check and
+  the `extends` of a root `fingerprint --write` writes to a file.
 - **Date:** 2026-07-24
 - **Decision:** M7's implementation architecture and every new public surface are
   settled here. It records the concrete parser, serializer and transaction-mechanism
@@ -6350,6 +6391,18 @@ and §16.4; D-120 and D-121 record the implemented naming, template and matcher 
   pass, so its decoding failures say only that DATA is not valid UTF-8. The builder returns plain
   text for the renderer's one escaping pass.
 
+  Amended in place on 2026-10-16: a second CLI-internal builder writes the code-less error for a
+  root SPEC, `.bed` or DATA input that could not be opened, and for a SPEC or `.bed` file the spec
+  text decoder refused (D-122 part 2), at the existing catches in the shared pipeline, `validate`
+  and `migrate`; the DATA builder hands it every failure it has no closed fact for. It reads only
+  the exception type: `FileNotFoundException` or `DirectoryNotFoundException` (it does not
+  exist), `UnauthorizedAccessException` (access was denied), and, for spec text only,
+  `InvalidDataException` (the decoder's UTF-16 or UTF-32 mark) and `DecoderFallbackException`
+  (not UTF-8). The .NET runtime source at the v10.0.12 and v10.0.13 tags maps a failed open's
+  missing-file and missing-path errors to the first two and a refusal to the third, including a
+  folder opened as a file on Windows (`ERROR_ACCESS_DENIED`) and on Unix (`EACCES` for a
+  directory). The catch families, their order and every other exit are unchanged.
+
   **4. Audit argv.** The manifest `command_line` is the **complete process command-line
   array including its actual argv[0]** (`Environment.GetCommandLineArgs()`), captured
   **separately** from the parser's ordinary arguments and written **verbatim**.
@@ -6368,6 +6421,14 @@ and §16.4; D-120 and D-121 record the implemented naming, template and matcher 
   paths are the **fallback only**. It is consumed by both the file-backed `extends` host
   and publication collision checks, adds **no dependency**, and its identity keys never
   reach output bytes, fingerprints, or the manifest.
+
+  Amended in place on 2026-10-16: each spec chain file keeps the key its load saw, and the check
+  of a relocated root's `extends` (point 14) compares that key with keys from a new service, so a
+  memoized answer never stands in for a new look. One CLI-internal factory creates the services
+  that load the chain and run that check, so both use the same kind of probe; it is
+  `FileIdentity.CreateDefault` in production and a test seam otherwise, and publication keeps its
+  own services. The root-folding rule the fallback applies is now internal rather than private,
+  and that check folds a path's root by it; its behaviour is unchanged.
 
   **7. Publication transaction.** Writing is a staged transaction: a
   complete **preflight** resolves the target set and fails any input/output or
@@ -6468,6 +6529,15 @@ and §16.4; D-120 and D-121 record the implemented naming, template and matcher 
   `ordering = "unordered"` (no `--ordering` flag); `fingerprint --write
   --out -` writes **only** the corrected canonical spec on stdout and suppresses the normal
   report, while file targets keep report-on-stdout plus spec-in-file.
+
+  Amended in place on 2026-10-16: a file target's root `extends` (D-122 part 10) is decided from
+  two facts the chain load kept about the root's own base, its resolution path and the key its load
+  saw (point 6); neither is serialized. A reference is resolved from the target exactly as a later
+  load resolves it. The decision runs after the fully-frozen check and before publication
+  preflight, and the chosen reference is checked again by `SingleFileOutput` after preflight and
+  any recovery, before the transaction creates its first file, so a refusal there leaves nothing
+  to roll back. No spec is read or hashed again, no input stays open, and no spec is composed a
+  second time.
 
 - **Why:** EP-4 requires public shapes to be designed before implementation, and the
   registry lock's convention requires the 81 → 82 count change to land **with** its

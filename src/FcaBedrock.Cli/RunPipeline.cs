@@ -142,7 +142,10 @@ internal static class RunPipeline
     internal const string TempDirectoryMessage =
         "the --temp-dir value must be a non-empty, non-whitespace path.";
 
-    /// <summary>The code-less host error for a root SPEC open or read failure.</summary>
+    /// <summary>
+    /// The generic code-less host error for a root SPEC open or read failure: the whole message when
+    /// no closed explanation applies (<see cref="InputReadExplanation"/>).
+    /// </summary>
     internal static string SpecReadMessage(string specPath) => $"cannot read the spec file '{specPath}'.";
 
     /// <summary>
@@ -183,7 +186,7 @@ internal static class RunPipeline
             return new PipelineHostFailure(TempDirectoryMessage, diagnostics);
         }
 
-        var host = new FileSpecTextSource(environment.OpenInput, FileIdentity.CreateDefault());
+        var host = new FileSpecTextSource(environment.OpenInput, environment.FileIdentities());
 
         string rootKey;
         string toml;
@@ -194,7 +197,7 @@ internal static class RunPipeline
         }
         catch (Exception exception) when (IsSpecReadFailure(exception))
         {
-            return new PipelineHostFailure(SpecReadMessage(specPath), diagnostics);
+            return new PipelineHostFailure(InputReadExplanation.Message(InputFile.Spec, specPath, exception), diagnostics);
         }
 
         cancellation.ThrowIfCancellationRequested();
