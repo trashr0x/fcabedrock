@@ -352,7 +352,7 @@ public sealed class CalibrateCommandTests
         // a silent no-cross in the unknown-VALUE sense, but still an empty ROW, which the
         // separate object-level aggregate reports (§16.4, D-058). Exactly one line.
         Assert.Equal(
-            "warning ObjectHasNoCrosses: 1 emitted object(s) cross no formal attribute (e.g. 0);"
+            "warning ObjectHasNoCrosses: 1 emitted object(s) cross no formal attribute (e.g. \"0\");"
                 + " their rows are empty (§16.4).\n",
             converted.StdErr);
 

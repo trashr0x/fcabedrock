@@ -80,7 +80,7 @@ public sealed class WideColumnKeyEmitterTests
         Assert.Equal(["P001#2", "P001", "P001#2#1"], objects.Select(o => o.Name));
         Assert.Equal(DiagnosticSeverity.Warning, Assert.Single(diagnostics, d => d.Code == DiagnosticCode.DuplicateObjectKey).Severity);
         var disambiguated = Assert.Single(diagnostics, d => d.Code == DiagnosticCode.ObjectKeyNameDisambiguated);
-        Assert.Contains("P001→P001#2#1", disambiguated.Message, StringComparison.Ordinal); // cleaned key → assigned name
+        Assert.Contains("\"P001\"→\"P001#2#1\"", disambiguated.Message, StringComparison.Ordinal); // cleaned key → assigned name
     }
 
     [Fact]

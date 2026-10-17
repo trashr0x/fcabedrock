@@ -11,6 +11,9 @@ namespace FcaBedrock.Cli.Tests;
 /// </summary>
 public sealed class ValidateCommandTests
 {
+    private const string HeaderAdvice =
+        "If a binding names a header column, give DATA so validate can read the header: fcabedrock validate SPEC DATA.";
+
     private static string Render(IEnumerable<BedrockDiagnostic> diagnostics)
     {
         var writer = new StringWriter();
@@ -44,11 +47,12 @@ public sealed class ValidateCommandTests
     }
 
     [Fact]
-    public async Task Validate_WhenNoDataIsSupplied_ThenTheExistingNoSchemaResolutionAppliesVerbatim()
+    public async Task Validate_WhenNoDataIsSupplied_ThenTheNoSchemaResolutionIsReportedWithTheHeaderAdviceOnce()
     {
-        // A name-bound source cannot resolve without a schema. The CLI must report exactly
-        // what SpecResolver.Resolve(document, null) reports: same codes, same order, same
-        // locations, same messages.
+        // A name-bound source cannot resolve without a schema. The CLI reports exactly what
+        // SpecResolver.Resolve(document, null) reports (same codes, order, locations and messages)
+        // and adds one sentence of its own after the first binding failure, because only the CLI
+        // knows that DATA was not given.
         using var temp = TempDirectory.Create();
         var spec = temp.Write("spec.toml", CliFixtures.NameBoundSpec);
         var harness = new CliTestHarness();
@@ -56,9 +60,151 @@ public sealed class ValidateCommandTests
         var exit = await harness.RunAsync("validate", spec);
 
         var oracle = ResolveWithLibrary(CliFixtures.NameBoundSpec, spec, schema: null);
-        Assert.NotEmpty(oracle.Diagnostics);
+        Assert.Equal(DiagnosticCode.SourceBindingInvalid, Assert.Single(oracle.Diagnostics).Code);
         Assert.Equal(1, exit);
-        Assert.Equal(Render(oracle.Diagnostics), harness.StdErr);
+        Assert.Equal(
+            "attribute=\"colour\": error SourceBindingInvalid: Attribute 'colour' binds source name 'colour' but no "
+            + "header schema was supplied (§10.2). " + HeaderAdvice + "\n",
+            harness.StdErr);
+    }
+
+    [Fact]
+    public async Task Validate_WhenSeveralNameBindingsFailWithoutData_ThenOnlyTheFirstBindingFailureCarriesTheAdvice()
+    {
+        // The object key and two attributes are bound by header name. Every library diagnostic is
+        // still reported in library order; the advice is not repeated per binding.
+        const string Toml = """
+            [spec]
+            version = 1
+
+            [binding]
+            shape = "wide"
+            has_header = true
+
+            [binding.object_key]
+            mode = "column"
+            column = "id"
+
+            [[attribute]]
+            name = "colour"
+            source = { kind = "column", name = "colour" }
+            discretizer = { kind = "identity" }
+            scale = { kind = "nominal" }
+            declared_domain = ["red"]
+
+            [[attribute]]
+            name = "size"
+            source = { kind = "column", name = "size" }
+            discretizer = { kind = "identity" }
+            scale = { kind = "nominal" }
+            declared_domain = ["1"]
+            """;
+        using var temp = TempDirectory.Create();
+        var spec = temp.Write("spec.toml", Toml);
+        var harness = new CliTestHarness();
+
+        var exit = await harness.RunAsync("validate", spec);
+
+        var oracle = ResolveWithLibrary(Toml, spec, schema: null).Diagnostics;
+        var bindingCodes = oracle
+            .Where(d => d.Code is DiagnosticCode.SourceBindingInvalid or DiagnosticCode.ObjectKeyBindingInvalid)
+            .ToList();
+        Assert.Equal(3, bindingCodes.Count);
+        Assert.Equal(1, exit);
+
+        var lines = harness.StdErr.Split('\n');
+        Assert.Equal(oracle.Count + 1, lines.Length); // one line per diagnostic, LF-terminated
+        var first = oracle.ToList().FindIndex(d => d.Code is DiagnosticCode.SourceBindingInvalid or DiagnosticCode.ObjectKeyBindingInvalid);
+        for (var i = 0; i < oracle.Count; i++)
+        {
+            var library = DiagnosticRenderer.Render(oracle[i]).TrimEnd('\n');
+            Assert.Equal(i == first ? library + " " + HeaderAdvice : library, lines[i]);
+        }
+    }
+
+    [Fact]
+    public async Task Validate_WhenTripleRolesAreBoundByNameWithoutData_ThenTheHeaderAdviceAppearsOnce()
+    {
+        const string Toml = """
+            [spec]
+            version = 1
+
+            [binding]
+            shape = "triple"
+            has_header = true
+            columns = { subject = "s", predicate = "p", value = "v" }
+
+            [[attribute]]
+            name = "colour"
+            source = { kind = "predicate", name = "colour" }
+            discretizer = { kind = "identity" }
+            scale = { kind = "nominal" }
+            declared_domain = ["red"]
+            """;
+        using var temp = TempDirectory.Create();
+        var spec = temp.Write("spec.toml", Toml);
+        var harness = new CliTestHarness();
+
+        var exit = await harness.RunAsync("validate", spec);
+
+        var oracle = ResolveWithLibrary(Toml, spec, schema: null).Diagnostics;
+        Assert.Equal(1, exit);
+        Assert.Equal(DiagnosticCode.SourceBindingInvalid, oracle[0].Code);
+        Assert.Equal(
+            DiagnosticRenderer.Render(oracle[0]).TrimEnd('\n') + " " + HeaderAdvice + "\n"
+            + Render(oracle.Skip(1)),
+            harness.StdErr);
+    }
+
+    [Fact]
+    public async Task Validate_WhenTheOnlyErrorIsNotABindingFailure_ThenNoHeaderAdviceIsAdded()
+    {
+        using var temp = TempDirectory.Create();
+        var spec = temp.Write("spec.toml", CliFixtures.ErrorSpec);
+        var harness = new CliTestHarness();
+
+        var exit = await harness.RunAsync("validate", spec);
+
+        Assert.Equal(1, exit);
+        Assert.Equal(Render(ResolveWithLibrary(CliFixtures.ErrorSpec, spec, schema: null).Diagnostics), harness.StdErr);
+        Assert.DoesNotContain("validate SPEC DATA", harness.StdErr, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Validate_WhenAProblemOnlyPlanningFinds_ThenValidateWithoutDataPassesWithNoAdvice()
+    {
+        // Two attributes rendering one formal-attribute name is a plan-phase collision (§10.7):
+        // validate resolves and binds, so it does not see it, and has nothing to advise about DATA.
+        const string Toml = """
+            [spec]
+            version = 1
+
+            [binding]
+            shape = "wide"
+            has_header = true
+
+            [[attribute]]
+            name = "a"
+            source = { kind = "column", index = 0 }
+            discretizer = { kind = "identity" }
+            scale = { kind = "nominal" }
+            declared_domain = ["b-c"]
+
+            [[attribute]]
+            name = "a-b"
+            source = { kind = "column", index = 1 }
+            discretizer = { kind = "identity" }
+            scale = { kind = "nominal" }
+            declared_domain = ["c"]
+            """;
+        using var temp = TempDirectory.Create();
+        var spec = temp.Write("spec.toml", Toml);
+        var harness = new CliTestHarness();
+
+        var exit = await harness.RunAsync("validate", spec);
+
+        Assert.Equal(0, exit);
+        Assert.Equal(string.Empty, harness.StdErr);
     }
 
     // ---- the DATA form --------------------------------------------------------------

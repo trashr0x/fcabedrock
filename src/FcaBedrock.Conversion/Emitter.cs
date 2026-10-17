@@ -235,7 +235,7 @@ public static class Emitter
 
                             if (disambiguated)
                             {
-                                keepDisambiguations.Record($"{key}→{name}");
+                                keepDisambiguations.RecordRename(key!, name);
                             }
 
                             break;
@@ -784,8 +784,11 @@ public static class Emitter
                 var bin = result.Value!; // a Bin always carries a non-null label
                 if (!attribute.KnownBins.Contains(bin))
                 {
-                    // Identity domain mismatch: the bin label is the raw value (§10.6).
-                    unknown.Record(bin);
+                    // A bin outside the planned bins is an unknown value (§10.6). Membership is
+                    // checked on the bin, which numeric free_per_value canonicalizes (2.50 and 2.5
+                    // are one bin, D-096), but the sample records the raw value so it shows each
+                    // spelling as read (§16.4).
+                    unknown.Record(raw);
                     return;
                 }
 
@@ -857,13 +860,18 @@ public static class Emitter
             return false; // no occurrences, or a silent policy (skip)
         }
 
+        // The reason comes from the planned discretizer, never from message text: value_groups never
+        // consults declared_domain (§11.6, D-055), so an authored domain beside it is dormant and
+        // its unknown values are the ones its groups and unmatched policy left without a bin.
         var reason = code == DiagnosticCode.SourceValueUnparseable
             ? "could not be parsed as a number"
-            : "are not in its declared domain";
+            : attribute.Discretizer is ValueGroupsDiscretizer
+                ? "match no group"
+                : "are not in its declared domain";
         diagnostics.Add(new BedrockDiagnostic(
             code,
             severity,
-            $"{tally.Count} value(s) on attribute '{attribute.Name}' {reason} (e.g. {tally.Sample}).",
+            $"Attribute '{attribute.Name}' had {tally.Count} occurrence(s) of values that {reason} (e.g. {tally.Sample}).",
             new DiagnosticLocation(AttributeName: attribute.Name)));
         return severity is DiagnosticSeverity.Error or DiagnosticSeverity.Fatal;
     }

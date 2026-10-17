@@ -219,7 +219,7 @@ public sealed class EmitterTests
         var diagnostic = Assert.Single(diagnostics);
         Assert.Equal(DiagnosticCode.SourceValueUnparseable, diagnostic.Code);
         Assert.Equal(DiagnosticSeverity.Warning, diagnostic.Severity);
-        Assert.Contains("2 value(s)", diagnostic.Message); // aggregated count
+        Assert.Contains("2 occurrence(s)", diagnostic.Message); // aggregated count
         Assert.Contains("abc", diagnostic.Message);
         Assert.Contains("xyz", diagnostic.Message);
     }
@@ -276,7 +276,7 @@ public sealed class EmitterTests
 
         var diagnostic = Assert.Single(diagnostics);
         Assert.Equal(DiagnosticCode.UnknownValueObserved, diagnostic.Code);
-        Assert.Contains("2 value(s)", diagnostic.Message);
+        Assert.Contains("2 occurrence(s)", diagnostic.Message);
         Assert.Contains("z", diagnostic.Message);
         Assert.Contains("w", diagnostic.Message);
     }

@@ -8,7 +8,10 @@ namespace FcaBedrock.Cli.Commands;
 /// <summary>
 /// <c>validate SPEC [DATA]</c> (D-122 part 10).
 /// <para>
-/// Without DATA the existing no-schema resolution applies verbatim. With DATA the source
+/// Without DATA the existing no-schema resolution applies verbatim, so a binding by header name
+/// fails; when the spec binds by header name, the command then adds one conditional sentence naming
+/// <c>validate SPEC DATA</c> to the first binding failure, because only it knows DATA was not
+/// given. With DATA the source
 /// schema (the header, or the first non-blank record when headerless) is acquired and the spec is
 /// resolved against it, so bindings by header name are checked.
 /// </para>
@@ -24,6 +27,12 @@ namespace FcaBedrock.Cli.Commands;
 /// </summary>
 internal static class ValidateCommand
 {
+    // Without DATA there is no header, so a binding by header name cannot resolve. The sentence is
+    // conditional because a binding failure can have another cause that DATA would not fix, and the
+    // library diagnostics stay as they are (D-122 part 10).
+    internal const string HeaderAdvice =
+        "If a binding names a header column, give DATA so validate can read the header: fcabedrock validate SPEC DATA.";
+
     /// <summary>Runs the command; 0 when no Error/Fatal diagnostic was produced, otherwise 1.</summary>
     public static async Task<int> RunAsync(CommandInvocation invocation, CliEnvironment environment)
     {
@@ -109,8 +118,18 @@ internal static class ValidateCommand
         cancellation.ThrowIfCancellationRequested();
         var resolved = SpecResolver.Resolve(effective, schema);
         diagnostics.AddRange(resolved.Diagnostics);
-        return Finish(environment, diagnostics, cancellation);
+        return Finish(
+            environment, diagnostics, cancellation, adviseHeader: dataPath is null && BindsByHeaderName(effective));
     }
+
+    // Whether the composed spec binds a column by header name anywhere one can be: an attribute's
+    // source, the object key or a triple role (§5.2 to §5.4). Read from the document itself, never
+    // from a diagnostic's wording, so a binding failure in a spec without names gets no advice.
+    private static bool BindsByHeaderName(SpecDocument document) =>
+        document.Attributes.Any(attribute => attribute.Source is ColumnSourceSection { Name: not null })
+        || document.Binding?.ObjectKey?.Column is NameColumnRef
+        || (document.Binding?.Columns is { } roles
+            && (roles.Subject is NameColumnRef || roles.Predicate is NameColumnRef || roles.Value is NameColumnRef));
 
     // The ONLY source call validate makes. The session is never bound and its record
     // stream is never enumerated: each row-reading path opens the stream factory again,
@@ -131,14 +150,28 @@ internal static class ValidateCommand
     }
 
     private static int Finish(
-        CliEnvironment environment, List<BedrockDiagnostic> diagnostics, CancellationToken cancellation)
+        CliEnvironment environment, List<BedrockDiagnostic> diagnostics, CancellationToken cancellation,
+        bool adviseHeader = false)
     {
         // The last boundary before anything is rendered: a cancelled run reports nothing at
         // all, so the check has to precede the write rather than follow it.
         cancellation.ThrowIfCancellationRequested();
 
-        // Library order, verbatim: no sorting, grouping, deduplication, or rewording.
-        DiagnosticRenderer.Write(environment.Error, diagnostics);
+        // Library order, verbatim: no sorting, grouping, deduplication, or rewording. The one
+        // addition is the header advice on the first binding failure of a run without DATA whose
+        // spec binds by header name.
+        var advised = adviseHeader ? diagnostics.FindIndex(IsBindingFailure) : -1;
+        for (var i = 0; i < diagnostics.Count; i++)
+        {
+            environment.Error.Write(i == advised
+                ? DiagnosticRenderer.Render(diagnostics[i], HeaderAdvice)
+                : DiagnosticRenderer.Render(diagnostics[i]));
+        }
+
         return DiagnosticRenderer.HasErrors(diagnostics) ? 1 : 0;
     }
+
+    // The two codes a binding by header name reports when no schema exists (§5.2 to §5.4).
+    private static bool IsBindingFailure(BedrockDiagnostic diagnostic) =>
+        diagnostic.Code is DiagnosticCode.SourceBindingInvalid or DiagnosticCode.ObjectKeyBindingInvalid;
 }

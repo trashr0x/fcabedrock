@@ -112,7 +112,7 @@ changes an earlier one. A new entry MUST add its line here.
 
 ### M1-adjacent conformance pass
 
-- D-059: Discretization outcomes and data-diagnostic aggregation
+- D-059: Discretization outcomes and data-diagnostic aggregation *(distinct quoted samples, occurrence counts and the `value_groups` reason amended in place on 2026-10-17)*
 
 ### Tier 1 spec audit (pre-M2)
 
@@ -146,8 +146,8 @@ changes an earlier one. A new entry MUST add its line here.
 
 ### M3 (triple source + wide column object keys)
 
-- D-082: M3 triple source contract: reader, orderings, object identity, absent-vs-missing *(realizes D-072)*
-- D-083: Wide `column` object-key execution + `duplicate_object_policy` *(realizes D-064/D-034; interim key-index phase retired by D-098)*
+- D-082: M3 triple source contract: reader, orderings, object identity, absent-vs-missing *(realizes D-072; the `GroupingStorageFailed` message amended in place on 2026-10-17)*
+- D-083: Wide `column` object-key execution + `duplicate_object_policy` *(realizes D-064/D-034; interim key-index phase retired by D-098; the `dedupe` sample's distinct keys amended in place on 2026-10-17)*
 - D-084: Ordinal string comparison is the project-wide rule *(adds principle EP-12; the reach of `binding.locale` qualified in place on 2026-10-14)*
 - D-085: M3 diagnostic taxonomy: structural triple/column-key codes *(refines D-067; interim key-index phase retired by D-098; `ObjectKeyValueInvalid` phase widened by D-099/D-111)*
 - D-086: Shape-aware `.bed` migration sources *(refines D-079)*
@@ -225,11 +225,11 @@ changes an earlier one. A new entry MUST add its line here.
 
 ### M7 (CLI) pre-implementation adjudication
 
-- D-122: M7 CLI contract: commands, process model, publication, manifest, freeze, authored-empty domains, per-command semantics, non-goals, distribution, and the exit floor *(revises D-071's empty-domain reading; refines D-026/D-078/D-088; realizes the CLI faces of D-005/D-028/D-067/D-077; implementation architecture realized by D-123; reach of parts 4–5 qualified by D-125; part 10's headerless schema record amended in place on 2026-10-01; part 3's escaping and code-less warning form amended in place on 2026-10-14; parts 1, 2, 4, 8 and 10 amended in place on 2026-10-14 for attached option values, the `tab` delimiter spelling, the `migrate` named object-key header rule, and the `--temp-dir` and `--out` text checks; parts 2 and 10 amended in place on 2026-10-14 for DATA read explanations and strict UTF-8 schema reads; part 10's frozen numeric domain text amended in place on 2026-10-14; part 10's missing-column report marker amended in place on 2026-10-14; part 15's probe-authored `[]` amended in place on 2026-10-15; parts 2–5 amended in place on 2026-10-15 for publication causes, the Windows read-only participant refusal and the committed-cleanup warning; parts 2, 10 and 11 amended in place on 2026-10-16 for input-file explanations, the base-loading message and the `extends` of a root `fingerprint --write` writes to a file)*
+- D-122: M7 CLI contract: commands, process model, publication, manifest, freeze, authored-empty domains, per-command semantics, non-goals, distribution, and the exit floor *(revises D-071's empty-domain reading; refines D-026/D-078/D-088; realizes the CLI faces of D-005/D-028/D-067/D-077; implementation architecture realized by D-123; reach of parts 4–5 qualified by D-125; part 10's headerless schema record amended in place on 2026-10-01; part 3's escaping and code-less warning form amended in place on 2026-10-14; parts 1, 2, 4, 8 and 10 amended in place on 2026-10-14 for attached option values, the `tab` delimiter spelling, the `migrate` named object-key header rule, and the `--temp-dir` and `--out` text checks; parts 2 and 10 amended in place on 2026-10-14 for DATA read explanations and strict UTF-8 schema reads; part 10's frozen numeric domain text amended in place on 2026-10-14; part 10's missing-column report marker amended in place on 2026-10-14; part 15's probe-authored `[]` amended in place on 2026-10-15; parts 2–5 amended in place on 2026-10-15 for publication causes, the Windows read-only participant refusal and the committed-cleanup warning; parts 2, 10 and 11 amended in place on 2026-10-16 for input-file explanations, the base-loading message and the `extends` of a root `fingerprint --write` writes to a file; parts 3 and 10 amended in place on 2026-10-17 for CLI advice after a library message and the next steps of `validate` without DATA and a refused `fingerprint --write`)*
 
 ### M7 (CLI) implementation
 
-- D-123: M7 implementation architecture and public surfaces: CLI boundary, parser, presentation, audit argv, filesystem identity, publication transaction, run manifest, freeze pairing, runtime options, and the CXT size advisory (registry 81 → 82) *(realizes D-122's implementation architecture; refines D-085's registry-timing rule; reach of point 7 qualified by D-125; point 3's escaping amended in place on 2026-10-14; point 2's parser grammar amended in place on 2026-10-14; point 3's DATA read explanation added in place on 2026-10-14; point 9's source of an `include` prefix amended in place on 2026-10-14; point 9's native and effective presentation pairing amended in place on 2026-10-14; point 7's read-only participant check and cleanup outcome amended in place on 2026-10-15; points 3, 6 and 14 amended in place on 2026-10-16 for the input-file explanation, the fresh identity check and the `extends` of a root `fingerprint --write` writes to a file)*
+- D-123: M7 implementation architecture and public surfaces: CLI boundary, parser, presentation, audit argv, filesystem identity, publication transaction, run manifest, freeze pairing, runtime options, and the CXT size advisory (registry 81 → 82) *(realizes D-122's implementation architecture; refines D-085's registry-timing rule; reach of point 7 qualified by D-125; point 3's escaping amended in place on 2026-10-14; point 2's parser grammar amended in place on 2026-10-14; point 3's DATA read explanation added in place on 2026-10-14; point 9's source of an `include` prefix amended in place on 2026-10-14; point 9's native and effective presentation pairing amended in place on 2026-10-14; point 7's read-only participant check and cleanup outcome amended in place on 2026-10-15; points 3, 6 and 14 amended in place on 2026-10-16 for the input-file explanation, the fresh identity check and the `extends` of a root `fingerprint --write` writes to a file; point 3's CLI advice amended in place on 2026-10-17)*
 
 ### M8 (first scaling / benchmark pass)
 
@@ -1709,7 +1709,8 @@ validation); the one new architectural decision is below.
 
 ### D-059: Discretization outcomes and data-diagnostic aggregation
 
-- **Status:** accepted
+- **Status:** accepted; the sample, its quoting and the `value_groups` reason amended in place on
+  2026-10-17
 - **Date:** 2026-06-28
 - **Decision:** discretizers return a structured `BinResult` distinguishing a recognized
   **bin**, **no-bin** (out-of-range), an **unknown** value, and an **unparseable** numeric,
@@ -1717,6 +1718,18 @@ validation); the one new architectural decision is below.
   diagnostics that can occur per row (`UnknownValueObserved`, `SourceValueUnparseable`) are
   **aggregated per attribute** with a count and a bounded sample, flushed in plan order after
   the stream (deterministic, EP-7), never one diagnostic per row.
+
+  Amended in place on 2026-10-17: the count is every occurrence, and the message says it counts
+  occurrences of values. The sample keeps at most three **distinct** examples, in the order the
+  pass first meets them, and checks a new value only against those three, so no set of every
+  distinct value is kept. Each example is quoted with the four escapes D-120 pins for invalid-name
+  samples (backslash, double quote, CR, LF); nothing else is escaped or shortened, and the CLI's
+  own pass escapes those backslashes again (D-122 part 3). For a `value_groups` attribute,
+  `UnknownValueObserved` says the values match no group, chosen from the planned discretizer,
+  because `value_groups` never consults `declared_domain` (D-055). The same sample rule serves every
+  tally the emitter and calibrator keep: unparseable restriction values, `keep` and `dedupe` key
+  reuse, renamed `keep` keys (`"key"→"name"`) and objects that cross nothing. Repeated, unquoted
+  examples let one value read as several, and the old reason called a group miss a domain miss.
 - **Why:** `string?` conflated the silent no-cross cases (out-of-range, §11.2) with the
   diagnosable ones (unparseable §11.5/D-050; unknown §10.6/§11.8), so malformed/unknown data
   could not be surfaced without re-deriving it in the emitter (EP-17); and per-row diagnostics
@@ -2802,7 +2815,8 @@ implementation added.
 ### D-082: M3 triple source contract: reader, orderings, object identity, absent-vs-missing
 
 - **Status:** accepted (M3 triple-source audit; realizes D-072); its citation for an object
-  with no crosses corrected from §10.1 to §5.3.1 in place on 2026-10-05
+  with no crosses corrected from §10.1 to §5.3.1 in place on 2026-10-05; the
+  `GroupingStorageFailed` message amended in place on 2026-10-17
 - **Date:** 2026-07-07
 - **Decision:** M3 implements the triple source under this audit-settled contract:
   - **Reader + orderings.** A triple `IRecordSource` streams subject/predicate/value
@@ -2923,7 +2937,14 @@ implementation added.
     cancellation, or in-path failure. The emitter renders the ledger after the stream in
     **first-occurrence order**, one aggregate per identity at worst severity (count + ≤3
     first-occurrence samples); the replay session re-aggregates across passes, preserving each
-    pass's positions.
+    pass's positions. Amended in place on 2026-10-17: the rendered message says what temporary
+    storage was doing, whether the operation stopped (Error) or continued past a cleanup failure
+    (Warning), and the cause the kind establishes, before the identity, count and path samples.
+    A stopping failure that another directory can address (workspace creation, access denied,
+    full storage) ends with a remedy for the configured temporary directory. The message names
+    no command or option and claims no cause beyond the kind; the CLI adds its own `--temp-dir`
+    sentence (D-122 part 3). It used to say that the conversion used external sort-merge spool
+    storage in every phase, statistics and calibration included, and offered nothing to do.
   - **Replay session + `.cxt` invariant.** The public `EmitReplaySession`
     (`EmitReplay.Begin`) brackets one conversion attempt: data diagnostics collect
     once (first pass), storage failures are intercepted on every pass and the final
@@ -2949,7 +2970,8 @@ implementation added.
 ### D-083: Wide `column` object-key execution + `duplicate_object_policy`
 
 - **Status:** accepted (M3; realizes D-064 / D-034); its interim key-index phase retired by
-  D-098, which moved the range check to spec-validate
+  D-098, which moved the range check to spec-validate; the `dedupe` sample's distinct keys
+  amended in place on 2026-10-17
 - **Date:** 2026-07-07
 - **Decision:** wide `object_key.mode = "column"` executes at M3 with
   `duplicate_object_policy` over the **cleaned** key value:
@@ -3015,7 +3037,9 @@ implementation added.
   (Info): a count of the merged (duplicate) rows with a bounded **source-order** sample
   (the duplicate keys in the order they recurred, detected via the grouper's intake hook
   so no second seen-set is needed). It is **silent** when every key is unique, and it is
-  flushed only on normal completion (suppressed on a structural halt). The object name is
+  flushed only on normal completion (suppressed on a structural halt). Amended in place on
+  2026-10-17: the sample holds each repeated key once, quoted, in the order it first recurred
+  (D-059); the count still includes every merged row. The object name is
   the cleaned key; the wide key column may double as an `[[attribute]]` source (D-033), and
   its crosses union with the other attributes' onto the one object.
 
@@ -5852,7 +5876,9 @@ and §16.4; D-120 and D-121 record the implemented naming, template and matcher 
   amended in place on 2026-10-15 for publication causes, the Windows read-only participant
   refusal, and the code-less warning of a committed run whose cleanup did not finish; parts 2, 10
   and 11 amended in place on 2026-10-16 for input-file explanations, the base-loading message and
-  the `extends` of a root `fingerprint --write` writes to a file
+  the `extends` of a root `fingerprint --write` writes to a file; parts 3 and 10 amended in place
+  on 2026-10-17 for CLI advice after a library message, the `--temp-dir` sentence on a storage
+  failure and the next steps of `validate` without DATA and a refused `fingerprint --write`
 - **Date:** 2026-07-22
 - **Decision:** the complete M7 CLI contract is settled **before any M7 code**, in
   fifteen parts.
@@ -5979,6 +6005,17 @@ and §16.4; D-120 and D-121 record the implemented naming, template and matcher 
   it once, after the run's diagnostics, through the same prose transport, and the exit stays 0.
   The message is plain text holding the output base and, where known, the first private file
   that stayed, by file name only, with why it stayed; the transport escapes it once.
+
+  Amended in place on 2026-10-17: the CLI can add a sentence of its own after a library message,
+  on the same line and through the same transport pass, and never changes the library text before
+  it. A `GroupingStorageFailed` Error line gets `For a new run, --temp-dir DIR chooses the
+  directory for temporary storage.` and a `GroupingStorageFailed` Warning line gets `Choosing
+  another --temp-dir for a new run does not remove storage that remains from this one.` Code and
+  severity alone select them, never the message, location or context, and neither claims that
+  another directory cures every cause. The library's storage text names no option, because each
+  host spells that setting its own way (D-082). `validate` adds its header sentence (part 10). An
+  aggregated sample quoted by its producer (D-059) is transported like D-120's invalid-name
+  samples, so its backslashes double.
 
   **4. Input/output policy.** Neither SPEC nor DATA accepts `-`: there is **no stdin
   source** and no implicit spooling or synthetic composition base. Report commands
@@ -6115,6 +6152,13 @@ and §16.4; D-120 and D-121 record the implemented naming, template and matcher 
     schema acquisition** (the header, or the first non-blank record when headerless; amended in
     place on 2026-10-01, spec §5.1.1). It does
     not plan, does not verify stored fingerprints, and writes nothing.
+    Amended in place on 2026-10-17: without DATA there is no header, so a binding by header name
+    fails. When the composed spec binds a column, the object key or a triple role by header name,
+    `validate` adds `If a binding names a header column, give DATA so validate can read the
+    header: fcabedrock validate SPEC DATA.` to its first `SourceBindingInvalid` or
+    `ObjectKeyBindingInvalid` line, once. The sentence is conditional because a binding failure
+    can have another cause; `validate` still reads no DATA, plans nothing, and reports the
+    library's diagnostics, codes and exit as before.
   - **`plan SPEC DATA`**: DATA is **required for every plan**; rows are read only
     when calibration requires them, and "dry run" means **no artifact publication**,
     not no source access. Stdout is **detailed fixed plain text in plan order**: index,
@@ -6152,6 +6196,11 @@ and §16.4; D-120 and D-121 record the implemented naming, template and matcher 
     meeting the fully-frozen gate; it **preserves the root's `extends`** and changes
     only the stored fingerprint fields semantically. It takes **no `--v2-compat`**
     (D-011 keeps that flag convert-only) and never stores effective override hashes.
+    Amended in place on 2026-10-17: the refusal of a spec that is not fully frozen also names the
+    next step: `If calibration succeeds, fcabedrock calibrate SPEC DATA --out NEW_SPEC writes a
+    fully frozen copy that stores them; SPEC is this spec, DATA its data and NEW_SPEC a new
+    file.` Placeholders stand for the operands, so no shell's quoting is implied; the refusal
+    still opens and writes nothing.
   - **`probe`**: `fcabedrock probe DATA --shape wide|triple --out PATH|-` plus
     `[--delimiter CHAR] [--header true|false] [--missing-token TOKEN]
     [--locale TAG|invariant] [--limit N]`, and triple-only
@@ -6343,7 +6392,8 @@ and §16.4; D-120 and D-121 record the implemented naming, template and matcher 
   point 9's native and effective presentation pairing amended in place on 2026-10-14; point 7's
   read-only participant check and cleanup outcome amended in place on 2026-10-15; points 3, 6 and
   14 amended in place on 2026-10-16 for the input-file explanation, the fresh identity check and
-  the `extends` of a root `fingerprint --write` writes to a file.
+  the `extends` of a root `fingerprint --write` writes to a file; point 3's CLI advice amended in
+  place on 2026-10-17.
 - **Date:** 2026-07-24
 - **Decision:** M7's implementation architecture and every new public surface are
   settled here. It records the concrete parser, serializer and transaction-mechanism
@@ -6402,6 +6452,14 @@ and §16.4; D-120 and D-121 record the implemented naming, template and matcher 
   missing-file and missing-path errors to the first two and a refusal to the third, including a
   folder opened as a file on Windows (`ERROR_ACCESS_DENIED`) and on Unix (`EACCES` for a
   directory). The catch families, their order and every other exit are unchanged.
+
+  Amended in place on 2026-10-17: the renderer appends CLI-owned advice to a diagnostic's message
+  before its one transport pass (D-122 part 3): the two `GroupingStorageFailed` sentences, chosen
+  by code and severity, and a sentence a command passes for one line it chooses. `validate`
+  passes its header sentence for the first `SourceBindingInvalid` or `ObjectKeyBindingInvalid`
+  line, and only when it was given no DATA and the composed document binds a column, the object
+  key or a triple role by header name. Advice reads no message text, no location and no
+  `Context`, so the storage payload stays internal and no public type changes.
 
   **4. Audit argv.** The manifest `command_line` is the **complete process command-line
   array including its actual argv[0]** (`Environment.GetCommandLineArgs()`), captured

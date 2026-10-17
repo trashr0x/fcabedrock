@@ -627,7 +627,7 @@ public static class Calibrator
                 {
                     diagnostics.Add(new BedrockDiagnostic(
                         DiagnosticCode.SourceValueUnparseable, severity,
-                        $"Attribute '{target.AttributeName}' had {unparseable.Count} present-but-unparseable numeric value(s) during calibration (e.g. {unparseable.Sample}); they were excluded from the calibration population (§11.5).",
+                        $"Attribute '{target.AttributeName}' had {unparseable.Count} occurrence(s) of present-but-unparseable numeric values during calibration (e.g. {unparseable.Sample}); they were excluded from the calibration population (§11.5).",
                         new DiagnosticLocation(AttributeName: target.AttributeName)));
                 }
             }

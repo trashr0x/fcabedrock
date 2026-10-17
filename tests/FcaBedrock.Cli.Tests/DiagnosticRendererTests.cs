@@ -217,6 +217,75 @@ public sealed class DiagnosticRendererTests
     }
 
     [Fact]
+    public void Render_WhenAnAggregatedSampleIsQuoted_ThenTheTransportEscapesTheWholeMessageOnce()
+    {
+        // An aggregated sample escapes only backslash, quote, CR and LF itself (§16.4), so a tab, a
+        // C1 control and a line separator reach the renderer raw and this one pass escapes them. The
+        // producer's backslashes double, so an actual line break and a typed backslash-n stay apart.
+        var message =
+            "Attribute 'v' had 4 occurrence(s) of values that are not in its declared domain (e.g. "
+            + "\"a\\nb\", \"a\\\\nb\", \"q\\\"" + (char)0x85 + (char)0x2028 + "\t\").";
+
+        var rendered = DiagnosticRenderer.Render(new BedrockDiagnostic(
+            DiagnosticCode.UnknownValueObserved, DiagnosticSeverity.Warning, message,
+            new DiagnosticLocation(AttributeName: "v")));
+
+        Assert.Equal(
+            "attribute=\"v\": warning UnknownValueObserved: Attribute 'v' had 4 occurrence(s) of values that are not in "
+            + "its declared domain (e.g. \"a\\\\nb\", \"a\\\\\\\\nb\", \"q\\\\\"" + Unicode("0085") + Unicode("2028")
+            + "\\t\").\n",
+            rendered);
+    }
+
+    [Fact]
+    public void Render_WhenTemporaryStorageStopsTheRun_ThenTheTempDirOptionIsNamedForANewRun()
+    {
+        var rendered = DiagnosticRenderer.Render(new BedrockDiagnostic(
+            DiagnosticCode.GroupingStorageFailed, DiagnosticSeverity.Error, "Temporary storage failed."));
+
+        Assert.Equal(
+            "error GroupingStorageFailed: Temporary storage failed. "
+            + "For a new run, --temp-dir DIR chooses the directory for temporary storage.\n",
+            rendered);
+    }
+
+    [Fact]
+    public void Render_WhenTemporaryStorageCleanupFails_ThenTheAdviceSaysAnotherDirectoryRemovesNothing()
+    {
+        var rendered = DiagnosticRenderer.Render(new BedrockDiagnostic(
+            DiagnosticCode.GroupingStorageFailed, DiagnosticSeverity.Warning, "Temporary storage cleanup failed."));
+
+        Assert.Equal(
+            "warning GroupingStorageFailed: Temporary storage cleanup failed. "
+            + "Choosing another --temp-dir for a new run does not remove storage that remains from this one.\n",
+            rendered);
+    }
+
+    [Theory]
+    [InlineData(DiagnosticCode.SourceValueUnparseable, DiagnosticSeverity.Error)]
+    [InlineData(DiagnosticCode.UnknownValueObserved, DiagnosticSeverity.Warning)]
+    [InlineData(DiagnosticCode.GroupingStorageFailed, DiagnosticSeverity.Info)]
+    public void Render_WhenTheCodeAndSeverityAreNotAStorageFailure_ThenNoAdviceIsAdded(DiagnosticCode code, DiagnosticSeverity severity)
+    {
+        // The advice keys on the code and severity alone, never on the message text.
+        var rendered = DiagnosticRenderer.Render(new BedrockDiagnostic(code, severity, "Temporary storage failed."));
+
+        Assert.EndsWith($"{code}: Temporary storage failed.\n", rendered, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Render_WhenACommandAddsAdvice_ThenItFollowsTheMessageThroughTheSameTransport()
+    {
+        var rendered = DiagnosticRenderer.Render(
+            new BedrockDiagnostic(
+                DiagnosticCode.SourceBindingInvalid, DiagnosticSeverity.Error, "Attribute 'c\\d' failed.",
+                new DiagnosticLocation(AttributeName: "c")),
+            "Then do \"this\".");
+
+        Assert.Equal("attribute=\"c\": error SourceBindingInvalid: Attribute 'c\\\\d' failed. Then do \"this\".\n", rendered);
+    }
+
+    [Fact]
     public void Render_WhenMessageCarriesPrintableUnicode_ThenItIsPreservedVerbatim()
     {
         // Printable Unicode is never \u-escaped and never normalized: "é" stays one
@@ -388,4 +457,7 @@ public sealed class DiagnosticRendererTests
 
         Assert.True(DiagnosticRenderer.HasErrors(diagnostics));
     }
+
+    // A backslash, u and four hex digits, built rather than typed so the expectation stays text.
+    private static string Unicode(string hex) => "\\" + "u" + hex;
 }

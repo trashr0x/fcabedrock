@@ -210,6 +210,35 @@ public sealed class FingerprintWriteTests
         AssertNoMutation(harness);
     }
 
+    [Fact]
+    public async Task FingerprintWrite_WhenTheSpecIsNotFullyFrozen_ThenTheRefusalGivesTheCalibrateStepAndWritesNothing()
+    {
+        // The exact bytes, written out: the refusal names the calibrate command with placeholders,
+        // not with the user's paths, so no shell quoting is implied, and it promises nothing.
+        using var temp = TempDirectory.Create();
+        var spec = temp.Write("spec.toml", CliFixtures.NotFullyFrozenSpec("equal-frequency"));
+        var data = temp.Write("data.csv", CliFixtures.FullyFrozenCheckData);
+        var target = temp.Resolve("new.toml");
+        var specBefore = await File.ReadAllBytesAsync(spec);
+        var harness = new CliTestHarness();
+
+        var exit = await harness.RunAsync("fingerprint", spec, data, "--write", "--out", target);
+
+        Assert.Equal(1, exit);
+        Assert.Equal(string.Empty, harness.StdOut);
+        Assert.Equal(
+            $"error: the spec '{spec.Replace("\\", "\\\\", StringComparison.Ordinal)}' is not fully frozen, so its "
+            + "fingerprints cannot be written. If calibration succeeds, fcabedrock calibrate SPEC DATA --out NEW_SPEC "
+            + "writes a fully frozen copy that stores them; SPEC is this spec, DATA its data and NEW_SPEC a new file.\n",
+            harness.StdErr);
+        Assert.False(File.Exists(target));
+        Assert.Equal(specBefore, await File.ReadAllBytesAsync(spec));
+        Assert.Equal(
+            [Path.GetFileName(data), Path.GetFileName(spec)],
+            Directory.GetFiles(temp.Path).Select(Path.GetFileName).Order(StringComparer.Ordinal));
+        AssertNoMutation(harness);
+    }
+
     // ---- root, not composed (§13 rule 8) ------------------------------------------------------------
 
     [Fact]

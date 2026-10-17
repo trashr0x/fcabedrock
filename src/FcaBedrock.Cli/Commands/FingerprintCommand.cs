@@ -140,9 +140,16 @@ internal static class FingerprintCommand
             .ConfigureAwait(false);
     }
 
-    /// <summary>The code-less host error a data-dependent spec produces under <c>--write</c>.</summary>
+    /// <summary>
+    /// The code-less host error a data-dependent spec produces under <c>--write</c>. It names the
+    /// <c>calibrate</c> step that writes a fully frozen copy, with placeholders rather than the
+    /// user's paths, so no shell's quoting rules are implied, and it promises nothing: calibration
+    /// can still fail on the data.
+    /// </summary>
     internal static string WriteRequiresFullyFrozenMessage(string specPath) =>
-        $"the spec '{specPath}' is not fully frozen, so its fingerprints cannot be written.";
+        $"the spec '{specPath}' is not fully frozen, so its fingerprints cannot be written. If calibration succeeds, "
+        + "fcabedrock calibrate SPEC DATA --out NEW_SPEC writes a fully frozen copy that stores them; SPEC is this "
+        + "spec, DATA its data and NEW_SPEC a new file.";
 
     /// <summary>
     /// The composed spec chain as publication inputs, in <see cref="PreparedRun.SpecChain"/>

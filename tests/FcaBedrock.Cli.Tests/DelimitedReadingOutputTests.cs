@@ -108,7 +108,7 @@ public sealed class DelimitedReadingOutputTests
         Assert.Equal(0, await second.ConvertAsync("--format", "both"));
 
         Assert.Equal(
-            "warning ObjectHasNoCrosses: 1 emitted object(s) cross no formal attribute (e.g. o3);"
+            "warning ObjectHasNoCrosses: 1 emitted object(s) cross no formal attribute (e.g. \"o3\");"
                 + " their rows are empty (§16.4).\n",
             first.Harness.StdErr);
         Assert.Equal(ExpectedTripleCxt, first.Text(".cxt"));

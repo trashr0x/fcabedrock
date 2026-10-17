@@ -210,7 +210,7 @@ public sealed class EmitObservabilityTests
         Assert.Empty(objects); // unparseable matches nothing → filtered out
         var diagnostic = Assert.Single(diagnostics, d => d.Code == DiagnosticCode.SourceValueUnparseable);
         Assert.Equal("age", diagnostic.Location?.AttributeName);
-        Assert.Contains("1 value(s)", diagnostic.Message, StringComparison.Ordinal);
+        Assert.Contains("1 occurrence(s)", diagnostic.Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -255,8 +255,8 @@ public sealed class EmitObservabilityTests
         var (_, diagnostics) = await EmitAsync(spec, "a,x\nb,x\nc,x\nd,x\ne,x");
 
         var diagnostic = Assert.Single(diagnostics, d => d.Code == DiagnosticCode.SourceValueUnparseable);
-        Assert.Contains("5 value(s)", diagnostic.Message, StringComparison.Ordinal);
-        Assert.Contains("(e.g. a, b, c)", diagnostic.Message, StringComparison.Ordinal); // bounded to 3
+        Assert.Contains("5 occurrence(s)", diagnostic.Message, StringComparison.Ordinal);
+        Assert.Contains("(e.g. \"a\", \"b\", \"c\")", diagnostic.Message, StringComparison.Ordinal); // bounded to 3
     }
 
     // --- NoObjectsEmitted ----------------------------------------------------
@@ -377,7 +377,7 @@ public sealed class EmitObservabilityTests
 
         // Emission order, bounded to three: objects 1..4 are empty, so the sample is exactly
         // "1, 2, 3"; object 4 is counted but not sampled.
-        Assert.Contains("(e.g. 1, 2, 3)", diagnostic.Message, StringComparison.Ordinal);
+        Assert.Contains("(e.g. \"1\", \"2\", \"3\")", diagnostic.Message, StringComparison.Ordinal);
     }
 
     [Fact]

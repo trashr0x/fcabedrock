@@ -31,11 +31,34 @@ namespace FcaBedrock.Cli;
 /// order and its codes, locations, and messages are reproduced exactly (D-122 declines
 /// §16.4's permission to group). No culture and no platform newline is consulted.
 /// </para>
+/// <para>
+/// The one addition is CLI-owned advice after the library message, in the same line and the
+/// same transport pass (D-122 part 3): a <c>GroupingStorageFailed</c> line names
+/// <c>--temp-dir</c>, chosen by the code and severity alone, and a command can add a sentence it
+/// owns to one line it chooses. The library text before it is never changed, and advice is
+/// never derived from a message, a location or a diagnostic's context.
+/// </para>
 /// </summary>
 internal static class DiagnosticRenderer
 {
+    // The library's storage text names no host option (D-082), so the CLI maps it to its own
+    // spelling. A stopping failure can be retried elsewhere; changing the option does not claim to
+    // fix every cause. A cleanup failure left storage behind, and a new location cannot remove it.
+    private const string StoppedStorageAdvice =
+        "For a new run, --temp-dir DIR chooses the directory for temporary storage.";
+
+    private const string CleanupStorageAdvice =
+        "Choosing another --temp-dir for a new run does not remove storage that remains from this one.";
+
     /// <summary>The rendered line for <paramref name="diagnostic"/>, LF-terminated.</summary>
-    public static string Render(BedrockDiagnostic diagnostic)
+    public static string Render(BedrockDiagnostic diagnostic) => Render(diagnostic, advice: null);
+
+    /// <summary>
+    /// The rendered line for <paramref name="diagnostic"/> with <paramref name="advice"/>, a
+    /// sentence the calling command owns, after the library message and any advice the CLI adds
+    /// for the code; LF-terminated.
+    /// </summary>
+    public static string Render(BedrockDiagnostic diagnostic, string? advice)
     {
         var builder = new StringBuilder();
         AppendLocation(builder, diagnostic.Location);
@@ -43,7 +66,20 @@ internal static class DiagnosticRenderer
         builder.Append(' ');
         builder.Append(diagnostic.Code.ToString());
         builder.Append(": ");
-        DiagnosticEscaping.AppendProse(builder, diagnostic.Message);
+
+        // One transport pass over the whole line's prose, the CLI's own sentences included.
+        var message = diagnostic.Message;
+        if (StorageAdvice(diagnostic) is { } storage)
+        {
+            message += " " + storage;
+        }
+
+        if (advice is not null)
+        {
+            message += " " + advice;
+        }
+
+        DiagnosticEscaping.AppendProse(builder, message);
         builder.Append('\n');
         return builder.ToString();
     }
@@ -145,6 +181,14 @@ internal static class DiagnosticRenderer
         builder.Append('\n');
         return builder.ToString();
     }
+
+    private static string? StorageAdvice(BedrockDiagnostic diagnostic) => diagnostic switch
+    {
+        { Code: DiagnosticCode.GroupingStorageFailed, Severity: DiagnosticSeverity.Error or DiagnosticSeverity.Fatal } =>
+            StoppedStorageAdvice,
+        { Code: DiagnosticCode.GroupingStorageFailed, Severity: DiagnosticSeverity.Warning } => CleanupStorageAdvice,
+        _ => null,
+    };
 
     private static void Separate(StringBuilder builder, ref int fields)
     {

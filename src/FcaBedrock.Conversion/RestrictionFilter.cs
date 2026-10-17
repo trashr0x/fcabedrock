@@ -207,8 +207,8 @@ internal sealed class RestrictionFilter
             diagnostics.Add(new BedrockDiagnostic(
                 DiagnosticCode.SourceValueUnparseable,
                 severity,
-                $"{tally.Count} value(s) read for the restrict_to filter on attribute '{restriction.AttributeName}' " +
-                $"could not be parsed as a number (e.g. {tally.Sample}); they match no numeric entry (§10.4).",
+                $"The restrict_to filter on attribute '{restriction.AttributeName}' read {tally.Count} occurrence(s) " +
+                $"of values that could not be parsed as a number (e.g. {tally.Sample}); they match no numeric entry (§10.4).",
                 new DiagnosticLocation(AttributeName: restriction.AttributeName)));
             aborted |= severity is DiagnosticSeverity.Error or DiagnosticSeverity.Fatal;
         }

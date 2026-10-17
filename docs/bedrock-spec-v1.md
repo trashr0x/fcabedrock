@@ -3280,17 +3280,27 @@ string literal, so a double quote in it is written `\"` and the field parses bac
 original string. Message prose has no surrounding quotes, so a double quote in it is written
 as itself. The CLI escapes the whole message exactly once and never recognizes or undoes an
 escape the message already contains: a producer that quotes and escapes a sample, as
-`FormalAttributeNameInvalid` does, owns that representation, and the CLI escapes its
-backslashes like any other. A sample the producer wrote as `"bad\nvalue"` therefore appears
-on stderr as `"bad\\nvalue"`. A code-less host error renders `error: escaped-message` and a
-code-less host warning renders `warning: escaped-message`, each with its message escaped as
-prose and one terminating LF, even when the message is empty. Neither carries a code: the
+`FormalAttributeNameInvalid` and the aggregated diagnostics (**Aggregation** below) do, owns
+that representation, and the CLI escapes its backslashes like any other. A sample the producer
+wrote as `"bad\nvalue"` therefore appears on stderr as `"bad\\nvalue"`, and one holding a
+typed backslash-n, written `"bad\\nvalue"`, appears as `"bad\\\\nvalue"`. A code-less host
+error renders `error: escaped-message` and a code-less host warning renders
+`warning: escaped-message`, each with its message escaped as prose and one terminating LF,
+even when the message is empty. Neither carries a code: the
 registry above covers pipeline conditions only. The CLI writes a code-less warning in one
 case: a publication whose outputs committed but whose private cleanup did not finish (§15).
 It is written once, after the run's diagnostics, and does not move the exit off 0. Its
 message names the output base and, where the cleanup knows it, the first private file that
 stayed, by file name; that name can carry a transaction token, and it says nothing about who
 owns the file.
+
+**CLI advice.** The CLI never changes a library message, but it can add a sentence of its own
+after one, on the same line and through the same escaping pass (D-122). A `GroupingStorageFailed`
+Error line names `--temp-dir` as the way to choose the temporary-storage directory for a new
+run, and a `GroupingStorageFailed` Warning line says that another directory does not remove
+storage the run left behind; the code and severity alone select these. `validate` without DATA,
+for a spec that binds a column by header name, adds one conditional sentence naming
+`validate SPEC DATA` to its first `SourceBindingInvalid` or `ObjectKeyBindingInvalid` line.
 
 **The `migrate (v2)` phase** is the one-way `.bed` → TOML migration (D-009/D-079),
 a tooling phase outside the §7 processing pipeline. The migrator carries what the
@@ -3332,6 +3342,33 @@ Cancellation is
 `ObjectHasNoCrosses`) are emitted **aggregated**: a per-attribute (or per-source)
 count with a bounded sample, never one diagnostic per row, so a malformed column
 at 73M records does not produce 73M diagnostics.
+
+The count is exact: every occurrence counts, repeats included, and the message says what it
+counted, occurrences of values for `SourceValueUnparseable` and `UnknownValueObserved`, and
+objects or records for `ObjectHasNoCrosses` and the object-key aggregates (§6.1). The sample
+holds at most three **distinct** examples, in the order the reporting pass first meets them; a
+repeat never takes a second place, and later distinct values only add to the count. For an
+`unordered` triple source or a wide `dedupe` key the emit pass reads grouped objects, so its
+order is object order, the same whether or not grouping used temporary storage; the `dedupe`
+count of merged records is taken as rows arrive, so its keys keep source order. Each raw value,
+object key or object name in a sample is written in double quotes with the four escapes
+`FormalAttributeNameInvalid` uses (backslash, double quote, CR, LF) and no other escaping or
+shortening, so a comma or quote inside a value stays inside its quotes and an actual line break
+stays distinct from a typed backslash-n; a renamed `keep` key reads `"key"→"name"`.
+`AttributeHasNoCrosses` lists formal-attribute names in plan order as they render.
+`UnknownValueObserved` states its reason: values not in the declared domain, or, for
+`value_groups`, values that match no group, because `value_groups` never consults
+`declared_domain` (§11.6, D-055), even when a dormant one is authored beside it.
+
+**Temporary storage.** `GroupingStorageFailed` says what temporary storage was doing, whether
+the operation stopped (Error) or continued past a cleanup failure (Warning, after which some
+temporary storage may remain), and the cause its failure kind establishes; then the
+`operation/kind` identity, the count and up to three path samples. A stopping failure that a
+different or emptier directory can address (the working directory could not be created,
+access was denied, the storage was full) ends with a remedy for the configured temporary
+directory, and no cause is claimed beyond the kind. The text names no command or option, so it
+fits every phase that uses temporary storage. Temporary storage is created only when a run needs
+it, so an unused temporary directory is never checked (D-082).
 
 The `DiagnosticCode` enum is the authority for the codes a build can actually
 raise. A registry row joins the enum when its emit site lands (D-085, EP-3), and

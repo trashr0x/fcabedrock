@@ -283,6 +283,114 @@ public sealed class StatsCommandTests
             harness.StdOut);
     }
 
+    [Fact]
+    public async Task Stats_WhenUnknownValuesNeedEscaping_ThenEachQuotedSampleCrossesTheTransportOnce()
+    {
+        // The library quotes each sample and escapes its backslash, quote, CR and LF; the renderer then
+        // escapes the whole line once (§16.4). So a quote shows as \\", a backslash as four, an actual
+        // line break as \\n beside a typed backslash-n as \\\\n, and the controls and separators the
+        // library left raw as their own escapes. Each attribute repeats a value and has more than
+        // three distinct ones, so the counts and the three-example bound are pinned here too.
+        const string Spec = """
+            [spec]
+            version = 1
+
+            [binding]
+            shape = "wide"
+            has_header = true
+
+            [[attribute]]
+            name = "a"
+            source = { kind = "column", index = 0 }
+            discretizer = { kind = "identity" }
+            scale = { kind = "nominal" }
+            declared_domain = ["ok"]
+
+            [[attribute]]
+            name = "b"
+            source = { kind = "column", index = 1 }
+            discretizer = { kind = "identity" }
+            scale = { kind = "nominal" }
+            declared_domain = ["ok"]
+
+            [[attribute]]
+            name = "c"
+            source = { kind = "column", index = 2 }
+            discretizer = { kind = "identity" }
+            scale = { kind = "nominal" }
+            declared_domain = ["ok"]
+            """;
+        var data =
+            "a,b,c\n"
+            + "\"x\"\"y\",\"l1\nl2\",l" + (char)0x2028 + "s\n"
+            + "\"p,q\",l1\\nl2,p" + (char)0x2029 + "s\n"
+            + "C:\\d,y" + (char)0x85 + "z,t\tt\n"
+            + "\"x\"\"y\",\"l1\nl2\",l" + (char)0x2028 + "s\n"
+            + "e,ok,ok\n";
+        using var temp = TempDirectory.Create();
+        var harness = new CliTestHarness();
+
+        var exit = await harness.RunAsync("stats", temp.Write("spec.toml", Spec), temp.Write("data.csv", data));
+
+        Assert.Equal(0, exit);
+        Assert.Equal(
+            "attribute=\"a\": warning UnknownValueObserved: Attribute 'a' had 5 occurrence(s) of values that are not in "
+            + "its declared domain (e.g. \"x\\\\\"y\", \"p,q\", \"C:\\\\\\\\d\").\n"
+            + "attribute=\"b\": warning UnknownValueObserved: Attribute 'b' had 4 occurrence(s) of values that are not in "
+            + "its declared domain (e.g. \"l1\\\\nl2\", \"l1\\\\\\\\nl2\", \"y" + Unicode("0085") + "z\").\n"
+            + "attribute=\"c\": warning UnknownValueObserved: Attribute 'c' had 4 occurrence(s) of values that are not in "
+            + "its declared domain (e.g. \"l" + Unicode("2028") + "s\", \"p" + Unicode("2029") + "s\", \"t\\tt\").\n"
+            + "warning ObjectHasNoCrosses: 4 emitted object(s) cross no formal attribute (e.g. \"0\", \"1\", \"2\"); "
+            + "their rows are empty (§16.4).\n"
+            + "warning AttributeHasNoCrosses: 1 formal attribute(s) were never crossed by an emitted object (e.g. a-ok); "
+            + "their columns are empty (§7/§16.4).\n",
+            harness.StdErr);
+    }
+
+    [Fact]
+    public async Task Stats_WhenNumericSpellingsShareAnUnknownBin_ThenTheSampleKeepsEachRawSpelling()
+    {
+        // 2.50, 2.5 and 2.500 are one canonical number outside the domain and 1 is in it (D-096), so the
+        // report counts one column and one cross; the warning still quotes the first three spellings read.
+        const string Spec = """
+            [spec]
+            version = 1
+
+            [binding]
+            shape = "wide"
+            has_header = true
+
+            [[attribute]]
+            name = "v"
+            source = { kind = "column", index = 0, value_type = "number" }
+            discretizer = { kind = "free_per_value" }
+            scale = { kind = "nominal" }
+            declared_domain = ["1"]
+            """;
+        using var temp = TempDirectory.Create();
+        var harness = new CliTestHarness();
+
+        var exit = await harness.RunAsync(
+            "stats", temp.Write("spec.toml", Spec), temp.Write("data.csv", "v\n2.50\n2.5\n2.500\n3.0\n2.50\n1"));
+
+        Assert.Equal(0, exit);
+        Assert.Equal(
+            Document(
+                "objects = 6",
+                "formal_attributes = 1",
+                "crosses = 1",
+                "density = 0.166667",
+                "crossless_objects = 5",
+                "empty_attributes = 0"),
+            harness.StdOut);
+        Assert.Equal(
+            "attribute=\"v\": warning UnknownValueObserved: Attribute 'v' had 5 occurrence(s) of values that are not in "
+            + "its declared domain (e.g. \"2.50\", \"2.5\", \"2.500\").\n"
+            + "warning ObjectHasNoCrosses: 5 emitted object(s) cross no formal attribute (e.g. \"0\", \"1\", \"2\"); "
+            + "their rows are empty (§16.4).\n",
+            harness.StdErr);
+    }
+
     // ---- --temp-dir ------------------------------------------------------------------------
 
     [Fact]
@@ -509,4 +617,7 @@ public sealed class StatsCommandTests
 
         return (objects, plan.FormalAttributes.Count, crosses, crossless, crossed.Count(seen => !seen));
     }
+
+    // A backslash, u and four hex digits, built rather than typed so the expectation stays text.
+    private static string Unicode(string hex) => "\\" + "u" + hex;
 }

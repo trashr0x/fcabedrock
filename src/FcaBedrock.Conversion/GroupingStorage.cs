@@ -102,31 +102,84 @@ internal sealed class GroupingStorageException : Exception
 /// <summary>
 /// Renders a <see cref="GroupingStorageFailure"/> aggregate into a single
 /// <see cref="DiagnosticCode.GroupingStorageFailed"/> diagnostic (§16.4 / D-082). The rendered message
-/// is application-authored and deterministic: identity, count, and up to three path samples in
-/// first-occurrence order. Shared by the emitter's per-enumeration flush (the single-pass <c>.dat</c>
-/// path), the replay session's cross-pass final flush, and the calibration run's completion.
+/// is application-authored and deterministic: what temporary storage was doing, whether the operation
+/// stopped (Error) or continued past a cleanup failure (Warning), the cause the failure kind
+/// establishes, then the identity, count, and up to three path samples in first-occurrence order.
+/// Shared by the emitter's per-enumeration flush (the single-pass <c>.dat</c> path), the replay
+/// session's cross-pass final flush, and the calibration run's completion.
+/// <para>
+/// The wording fits every caller (conversion, calibration, planning, statistics, fingerprinting), so it
+/// names the operation, never a command. A stopping failure whose kind a different directory can
+/// address ends with a remedy for the configured temporary directory; the remedy names no host option,
+/// because a host spells that setting its own way. No cause is claimed beyond the kind: a workspace
+/// that could not be created is not reported as a full or denied disk.
+/// </para>
 /// </summary>
 internal static class GroupingStorageDiagnostics
 {
     public static BedrockDiagnostic Render(GroupingStorageFailure failure, DiagnosticSeverity severity)
     {
+        var stopped = severity is DiagnosticSeverity.Error or DiagnosticSeverity.Fatal;
         var message = new StringBuilder()
-            .Append("Grouping spool storage failure (")
+            .Append(stopped ? "Temporary storage failed while " : "Temporary storage cleanup failed while ")
+            .Append(Activity(failure.Operation))
+            .Append(stopped ? ", so the operation stopped: " : ": ")
+            .Append(Cause(failure.Kind))
+            .Append(stopped ? " (" : "; the operation continued, but some temporary storage may remain (")
             .Append(failure.Operation)
             .Append('/')
             .Append(failure.Kind)
-            .Append(") affected ")
+            .Append(", ")
             .Append(failure.Count)
-            .Append(failure.Count == 1 ? " operation" : " operations");
+            .Append(failure.Count == 1 ? " occurrence" : " occurrences");
 
         if (failure.PathSamples.Count > 0)
         {
-            message.Append(" (e.g. ").AppendJoin(", ", failure.PathSamples).Append(')');
+            message.Append(", e.g. ").AppendJoin(", ", failure.PathSamples);
         }
 
-        message.Append("; the conversion used external sort-merge spool storage (§16.4, D-082).");
+        message.Append("; §16.4, D-082).");
+
+        if (stopped && Remedy(failure.Kind) is { } remedy)
+        {
+            message.Append(' ').Append(remedy);
+        }
 
         return new BedrockDiagnostic(
             DiagnosticCode.GroupingStorageFailed, severity, message.ToString(), Location: null, Context: failure);
     }
+
+    private static string Activity(GroupingOperation operation) => operation switch
+    {
+        GroupingOperation.Workspace => "creating its working directory",
+        GroupingOperation.Spill => "writing sorted data",
+        GroupingOperation.MergeRead => "reading sorted data back",
+        GroupingOperation.MergeWrite => "writing merged data",
+        GroupingOperation.CleanupDelete => "deleting files it no longer needed",
+        GroupingOperation.CleanupClose => "closing files it no longer needed",
+        _ => throw new ArgumentOutOfRangeException(nameof(operation), operation, "Unknown grouping operation."),
+    };
+
+    private static string Cause(SpoolFailureKind kind) => kind switch
+    {
+        SpoolFailureKind.AccessDenied => "access was denied",
+        SpoolFailureKind.StorageExhausted => "the storage was full",
+        SpoolFailureKind.CorruptRun => "stored data was inconsistent",
+        SpoolFailureKind.TruncatedRun => "stored data ended early",
+        SpoolFailureKind.DeleteFailed => "files could not be deleted",
+        SpoolFailureKind.WorkspaceCreation => "the directory could not be created",
+        SpoolFailureKind.Other => "the cause is not known",
+        _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, "Unknown spool failure kind."),
+    };
+
+    // Only the kinds a different or emptier temporary directory can address get a remedy; for
+    // inconsistent or truncated stored data, or an unknown cause, there is no honest one to give.
+    private static string? Remedy(SpoolFailureKind kind) => kind switch
+    {
+        SpoolFailureKind.WorkspaceCreation or SpoolFailureKind.AccessDenied =>
+            "Choose an existing, writable directory for temporary storage.",
+        SpoolFailureKind.StorageExhausted =>
+            "Free space, or choose a directory with more free space for temporary storage.",
+        _ => null,
+    };
 }

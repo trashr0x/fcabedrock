@@ -119,7 +119,7 @@ public sealed class WideDedupeEmitterTests
         var diagnostic = Assert.Single(diagnostics);
         Assert.Equal(DiagnosticSeverity.Info, diagnostic.Severity);
         Assert.Contains("2 record", diagnostic.Message, StringComparison.Ordinal);
-        Assert.Contains("B, A", diagnostic.Message, StringComparison.Ordinal);
+        Assert.Contains("\"B\", \"A\"", diagnostic.Message, StringComparison.Ordinal);
     }
 
     [Fact]

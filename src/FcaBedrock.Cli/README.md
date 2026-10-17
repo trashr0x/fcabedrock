@@ -87,11 +87,16 @@ later record is examined. Reading that record can read further into the file,
 and a failure while doing so still fails the command, such as bytes that are
 not UTF-8 a few lines in. A file that validates can still fail a later command
 on a record that `validate` never read (see [Data files](#data-files)).
-DATA is optional; the spec alone validates too:
+DATA can be left out when the spec binds everything by zero-based index:
 
 ```text
 fcabedrock validate spec.toml
 ```
+
+Without DATA there is no header, so a spec that binds an attribute's column, the
+object key or a triple role by header name fails validation with
+`SourceBindingInvalid` or `ObjectKeyBindingInvalid`; the first such line then
+suggests `fcabedrock validate SPEC DATA`.
 
 Prints nothing on success; exit 0 is the answer. Problems appear as stderr
 diagnostics. Writes nothing.
@@ -228,7 +233,11 @@ fcabedrock fingerprint spec.toml data.csv
 Reports the three computed native fingerprints and each stored field's
 `match` / `stale` / `absent` state. `--write --out NEW_SPEC` writes a corrected
 copy of the root spec, only for a fully-frozen spec, and it keeps the root's
-`extends` chain. A copy written into another folder still inherits from the same
+`extends` chain. A spec that still depends on its data (for example an omitted
+`declared_domain` or automatic cuts) is refused, writing nothing, and the error
+names the next step: `fcabedrock calibrate SPEC DATA --out NEW_SPEC` writes a
+fully frozen copy with its fingerprints already stored, if the data calibrates.
+A copy written into another folder still inherits from the same
 base file, reached by the same path: if the authored `extends` no longer leads
 there from the new folder, the copy gets a relative reference that does, so its
 text can differ from the original while its fingerprints and conversions do not.
@@ -383,6 +392,24 @@ appears as an escape such as `\u0085`, so one diagnostic never spans two lines.
 A message that already quotes a value with its own escapes, such as an invalid
 formal-attribute name, has those backslashes doubled too: a name containing a
 line break appears as `"x-bad\\nline"`.
+
+Warnings that summarize many rows, such as `UnknownValueObserved`, count every
+occurrence and show up to three different examples, in the order the run met
+them. Each example is in double quotes, with its own backslash, quote, carriage
+return and line feed escaped before the line's escaping doubles those
+backslashes: a value holding a line break shows as `"a\\nb"`, one holding a
+typed backslash-n as `"a\\\\nb"`, and one holding a quote as `"x\\"y"`. For a
+`value_groups` attribute the warning says the values match no group.
+
+Temporary storage is used only when a run's data no longer fits in memory:
+grouping an unordered triple source or `dedupe` keys, or counting values for
+`equal_frequency` and percentile cuts. It is created only then, so `--temp-dir`
+is not checked when nothing needs storing. `GroupingStorageFailed` says what the
+storage was doing and why it failed. As an error it stopped the run, and the
+line ends by naming `--temp-dir DIR`, which chooses another directory for a new
+run, such as an existing, writable folder with free space. As a warning the run
+went on, but some temporary files may remain; choosing another `--temp-dir`
+later does not remove them.
 
 When a spec, `.bed` or data file cannot be opened, its `error:` line says that
 the file does not exist or that access to it was denied, where the failed open

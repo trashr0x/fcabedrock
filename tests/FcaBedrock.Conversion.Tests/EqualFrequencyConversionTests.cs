@@ -398,7 +398,7 @@ public sealed class EqualFrequencyConversionTests
         Assert.True(result.TryGetValue(out _),
             string.Join("; ", result.Diagnostics.Select(d => $"{d.Code}: {d.Message}")));
         var diagnostic = Assert.Single(result.Diagnostics, d => d.Code == DiagnosticCode.SourceValueUnparseable);
-        Assert.Contains("had 1 present-but-unparseable", diagnostic.Message, StringComparison.Ordinal);
+        Assert.Contains("had 1 occurrence(s) of present-but-unparseable", diagnostic.Message, StringComparison.Ordinal);
     }
 
     [Fact]
