@@ -26,6 +26,7 @@ lists the capabilities.
 | M8 | First scaling and benchmark pass | Complete |
 | M8.1 | Generation-tiered spill catalogue for count-sensitive calibration | Complete |
 | M8.2 | Writing, ownership and provenance hardening | Complete |
+| M8.3 | CLI correctness and usable diagnostics | In progress |
 | M9 | Avalonia desktop application | Next |
 
 M8's evidence closed at `3b2e4a80`, where the whole-solution test run counted 4,623 tests: 20
@@ -43,10 +44,10 @@ recorded for any revision after `3b2e4a80`. Each of these results belongs to its
 each release candidate supplies its own evidence
 ([Release-candidate obligations](#release-candidate-obligations)).
 
-M8.2, the latest milestone, changes how delimited data is read (spec §5.1.1, D-041, D-054), so it
-can change the output of a spec it still accepts: blank records are skipped everywhere, the
-whitespace removed around fields and numbers is the full Unicode whitespace set, quoting is
-validated and malformed quoting is refused, the delimiter alphabet is fixed, and quoted CR content
+M8.2, the latest completed milestone, changes how delimited data is read (spec §5.1.1, D-041,
+D-054), so it can change the output of a spec it still accepts: blank records are skipped
+everywhere, the whitespace removed around fields and numbers is the full Unicode whitespace set,
+quoting is validated and malformed quoting is refused, the delimiter alphabet is fixed, and quoted CR content
 read through a stream that returns short reads is no longer reordered (D-137). Its other
 product-behavior changes are the wording of TOML syntax-error messages (D-133), the rejection of
 three kinds of malformed spec, with one new diagnostic (D-135), the rejection of attribute names and
@@ -60,7 +61,11 @@ of 260 characters or more (D-125), a halted `convert` run no longer reporting th
 data file could not be read, an empty DATA or `.bed` operand being reported as an unreadable
 input instead of an internal fault, and wording edits to some diagnostic messages, the `--help`
 text and the package description.
-M9 is next and has not started. Work deferred beyond v1 is in the
+
+M8.3 is in progress. It corrects how the `fcabedrock` tool behaves where its contract did not hold
+and makes its messages say what went wrong, where and what to do next;
+[its section](#m83-cli-correctness-and-usable-diagnostics) lists the changes and what it still
+needs before it is complete. M9 follows M8.3 and has not started. Work deferred beyond v1 is in the
 [deferred backlog](#deferred-backlog-not-v1).
 
 ## Milestones
@@ -471,10 +476,71 @@ Its work proceeded in this order:
 4. The remaining documents, source and test comments, and engineering and workflow files were
    reviewed against the same rules, and a closing audit reconciled the whole pass.
 
+### M8.3: CLI correctness and usable diagnostics
+
+M8.3 is in progress. It makes the `fcabedrock` tool keep its existing contract where it did not,
+and makes its messages say what went wrong, where and what to do next. It adds no command, option
+or fingerprint format, its only new command-line spellings are the attached `--name=VALUE` form and
+the `tab` delimiter word, and the v2 fixtures are unchanged. Its changes, with the decisions that
+own them:
+
+- **Command line.** An option also takes its value attached, as `--name=VALUE`, which is the only
+  way to pass a value that starts with `--`, and `--delimiter` accepts the word `tab`. An `--out`
+  that cannot name a file, a blank `--temp-dir` and a `migrate` object-key column named without a
+  header are usage errors (exit 2) reported before any input is read (D-122 parts 1, 2, 4, 8 and
+  10; D-123 point 2).
+- **Reading inputs.** DATA must be UTF-8, with one optional leading byte order mark, and other bytes
+  are refused rather than replaced (spec §5.1.1, D-137). A spec, `.bed` or data file that cannot be
+  opened or read is explained, and a data read failure gives its known position and a next step
+  (D-122 part 2, D-109, D-123 point 3).
+- **Writing specs.** The canonical writer escapes U+FFFD, so a written value that holds it reads
+  back (D-075, D-133). `calibrate` keeps authored numeric `declared_domain` entries as written and
+  writes the entries it discovers for `binding.locale` (D-122 part 10, D-096).
+  `bin_label_unicode = true` renders the operators the tool generates as `≥` and `≤` (D-044,
+  D-011). `fingerprint --write` into another folder keeps the root's inheritance (D-122 part 10).
+- **`probe`.** A complete attribute leaves out a category that contains CR or LF, with a warning
+  and a notice saved in the draft; a truncated attribute with such a value writes no draft; and
+  an attribute whose column names could collide with another's is renamed (D-107, D-108, D-110,
+  D-111, D-122 part 15). Its two new codes, `ProbeValueOmitted` and `ProbeUnsafeTruncatedDomain`,
+  take the registry from 83 to 85.
+- **Publication.** A refused or failed publication names its cause. On Windows, a read-only file
+  that `--force` would replace or remove is refused before anything moves. A committed run whose
+  private cleanup did not finish exits 0 with one warning, and a recovery that cannot finish names
+  the file in its way (D-122 parts 2 to 5, D-123 point 7, D-125).
+- **Diagnostics.** Message escaping is exact (D-122 part 3). A warning that summarizes many values
+  counts their occurrences and quotes up to three distinct examples, and a `value_groups` value is
+  said to match no group (D-059). Some messages end with the next step to take (D-122 parts 3 and
+  10). The `plan` report marks the missing column (D-074).
+- **Console output.** Each standard stream gets its own writer; on Windows a console receives the
+  text as Unicode, without conversion to its code page (D-122 part 3).
+- **Guidance.** The packed CLI README explains canonical rewriting and comment loss, what a
+  successful command shows, the `fingerprint` report and the manifest's `command_line`. Spec §§3,
+  14 and 15 state the last two (D-122 part 10, D-077, D-123 point 4).
+
+Several of these change bytes for a spec the tool still accepts: the written spec's text and raw
+hash, `.cxt` attribute names and `cxt_output_fingerprint` under `bin_label_unicode = true`, some
+`probe` drafts, and stderr text. Each owning decision states its effect. The public API gains
+the closed read-failure reason, record kind and position of `SourceReadException` with its
+three-argument constructor (D-109), the planner overload that takes the Unicode presentation and
+the plan's `BinLabelUnicode` (D-044), and the two `DiagnosticCode` members.
+
+M8.3 is complete only when its final revision has its own evidence for every
+[release-candidate obligation](#release-candidate-obligations), and when that revision shows
+through real processes what deterministic tests cannot: a first interrupt sent to a real console
+cancels a run before its commit point with exit 3 and commits nothing, a repeated interrupt
+leaves no committed run, whether the platform terminates the run or it finishes cancelling, and a
+conversion that spills under the shipped 64 MiB grouping budget fails on an unusable temporary
+directory and succeeds on a usable one. A check through a network (UNC) share stays unverified
+until a suitable share is available.
+
+Three follow-ups stay for later: reading a literal U+FFFD in a spec and a distinct identity for the
+missing column, both in the [deferred backlog](#deferred-backlog-not-v1), and showing a `probe`
+draft's saved notices when a spec is opened, an M9 requirement.
+
 ### M9: Avalonia desktop
 
 An Avalonia desktop application (D-008), MVVM over the same Core, which also exposes M5's `probe`
-in the UI. M9 is next and has not started. It does not block the CLI track: UI work
+in the UI. M9 follows M8.3 and has not started. It does not block the CLI track: UI work
 must not hold up converter progress. The library APIs already accept cancellation; progress
 observation exists only as a CLI-internal seam (D-122 part 3).
 

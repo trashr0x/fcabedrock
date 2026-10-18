@@ -138,7 +138,7 @@ changes an earlier one. A new entry MUST add its line here.
 - D-074: `as_attribute` missing-column position uniform across scale kinds (appendix to D-068) *(default-path rendering; an explicit `formal_attribute_format` renders the missing column too; D-117; identity shared with a value bin `missing` and the plan report's marker recorded in place on 2026-10-14)*
 - D-075: Slice C TOML reader/writer contract: strictness, parse codes, canonical form *(deferred-surface set narrowed by D-078/D-120 to `value_type = "date"`; emptied in place on 2026-10-06; U+FFFD string escape added in place on 2026-10-14)*
 - D-076: Slice D seam/plan validation contract details *(appends D-067; exact numeric form added + diagnostic renamed by D-091)*
-- D-077: Slice E fingerprint encoding/verification contract details *(appends D-069; pairing precondition extended to `bin_label_unicode` in place on 2026-10-14)*
+- D-077: Slice E fingerprint encoding/verification contract details *(appends D-069; pairing precondition extended to `bin_label_unicode` in place on 2026-10-14; the `fingerprint` command's report in place of stale warnings recorded in place on 2026-10-18)*
 - D-078: Slice F composition/carrier contract details *(realizes D-027/D-052; refines D-067/D-075; pattern semantics, template application and duplicate-id validation settled by D-114/D-115/D-116/D-118; extends canonical file identity settled by D-122)*
 - D-079: Slice G `.bed` migrator contract: document-model target, Diagnosed surfaces *(realizes D-009/D-049/D-057/D-068; numeric restrict migration refined by D-091; date-type retirement condition clarified in place on 2026-10-06)*
 - D-080: `AttributeNameDuplicate` / `ValueLabelKeyNotInDomain` re-homed to the resolve seam *(realizes D-067; supersedes its "not re-homed" parenthetical)*
@@ -225,7 +225,7 @@ changes an earlier one. A new entry MUST add its line here.
 
 ### M7 (CLI) pre-implementation adjudication
 
-- D-122: M7 CLI contract: commands, process model, publication, manifest, freeze, authored-empty domains, per-command semantics, non-goals, distribution, and the exit floor *(revises D-071's empty-domain reading; refines D-026/D-078/D-088; realizes the CLI faces of D-005/D-028/D-067/D-077; implementation architecture realized by D-123; reach of parts 4–5 qualified by D-125; part 10's headerless schema record amended in place on 2026-10-01; part 3's escaping and code-less warning form amended in place on 2026-10-14; parts 1, 2, 4, 8 and 10 amended in place on 2026-10-14 for attached option values, the `tab` delimiter spelling, the `migrate` named object-key header rule, and the `--temp-dir` and `--out` text checks; parts 2 and 10 amended in place on 2026-10-14 for DATA read explanations and strict UTF-8 schema reads; part 10's frozen numeric domain text amended in place on 2026-10-14; part 10's missing-column report marker amended in place on 2026-10-14; part 15's probe-authored `[]` amended in place on 2026-10-15; parts 2–5 amended in place on 2026-10-15 for publication causes, the Windows read-only participant refusal and the committed-cleanup warning; parts 2, 10 and 11 amended in place on 2026-10-16 for input-file explanations, the base-loading message and the `extends` of a root `fingerprint --write` writes to a file; parts 3 and 10 amended in place on 2026-10-17 for CLI advice after a library message and the next steps of `validate` without DATA and a refused `fingerprint --write`; part 3 amended in place on 2026-10-18 for the encoding of each standard stream and the exit code of a failed stream setup)*
+- D-122: M7 CLI contract: commands, process model, publication, manifest, freeze, authored-empty domains, per-command semantics, non-goals, distribution, and the exit floor *(revises D-071's empty-domain reading; refines D-026/D-078/D-088; realizes the CLI faces of D-005/D-028/D-067/D-077; implementation architecture realized by D-123; reach of parts 4–5 qualified by D-125; part 10's headerless schema record amended in place on 2026-10-01; part 3's escaping and code-less warning form amended in place on 2026-10-14; parts 1, 2, 4, 8 and 10 amended in place on 2026-10-14 for attached option values, the `tab` delimiter spelling, the `migrate` named object-key header rule, and the `--temp-dir` and `--out` text checks; parts 2 and 10 amended in place on 2026-10-14 for DATA read explanations and strict UTF-8 schema reads; part 10's frozen numeric domain text amended in place on 2026-10-14; part 10's missing-column report marker amended in place on 2026-10-14; part 15's probe-authored `[]` amended in place on 2026-10-15; parts 2–5 amended in place on 2026-10-15 for publication causes, the Windows read-only participant refusal and the committed-cleanup warning; parts 2, 10 and 11 amended in place on 2026-10-16 for input-file explanations, the base-loading message and the `extends` of a root `fingerprint --write` writes to a file; parts 3 and 10 amended in place on 2026-10-17 for CLI advice after a library message and the next steps of `validate` without DATA and a refused `fingerprint --write`; part 3 amended in place on 2026-10-18 for the encoding of each standard stream and the exit code of a failed stream setup; part 10 amended in place on 2026-10-18 for the `fingerprint` report standing in for stale-fingerprint warnings)*
 
 ### M7 (CLI) implementation
 
@@ -2359,7 +2359,8 @@ built; they refine, not reverse, D-009 / D-049 / D-050…D-065.
 ### D-077: Slice E fingerprint encoding/verification contract details
 
 - **Status:** accepted (appends D-069; realizes D-035/D-051/D-053/D-069 in code); the
-  pairing precondition extended to `bin_label_unicode` in place on 2026-10-14
+  pairing precondition extended to `bin_label_unicode` in place on 2026-10-14; the
+  `fingerprint` command's report in place of stale warnings recorded in place on 2026-10-18
 - **Date:** 2026-07-05
 - **Decision:** Slice E ships the fingerprint encoder
   (`FcaBedrock.Core.Fingerprinting`), the plan-side structural bin, and
@@ -2440,6 +2441,11 @@ built; they refine, not reverse, D-009 / D-049 / D-050…D-065.
     (the D-076 stance). Slice E added no production call site (the D-067
     pattern); the M7 CLI became its caller and enforces the §14 fully-frozen
     gate when writing stored fingerprints (D-122/D-123).
+
+    Amended in place on 2026-10-18: the `fingerprint` command is the one CLI caller that does
+    not run this verification. Its report states each stored field's state, `match`, `stale` or
+    `absent`, in place of the warnings, so one mismatch is not reported twice (D-122 part 10,
+    spec §14). `plan`, `stats`, `calibrate` and `convert` verify and warn as above.
 - **Why:** the first stored hash fossilizes the encoder's bytes, so every
   residual freedom (compactness, escaping, the unbounded-end encoding, the key
   vocabulary, the exact `shared` key set) had to be pinned and golden-locked
@@ -5880,7 +5886,8 @@ and §16.4; D-120 and D-121 record the implemented naming, template and matcher 
   on 2026-10-17 for CLI advice after a library message, the `--temp-dir` sentence on a storage
   failure and the next steps of `validate` without DATA and a refused `fingerprint --write`;
   part 3 amended in place on 2026-10-18 for the encoding of each standard stream and the exit
-  code of a failed stream setup
+  code of a failed stream setup; part 10 amended in place on 2026-10-18 for the `fingerprint`
+  report standing in for stale-fingerprint warnings
 - **Date:** 2026-07-22
 - **Decision:** the complete M7 CLI contract is settled **before any M7 code**, in
   fifteen parts.
@@ -6221,6 +6228,12 @@ and §16.4; D-120 and D-121 record the implemented naming, template and matcher 
     fully frozen copy that stores them; SPEC is this spec, DATA its data and NEW_SPEC a new
     file.` Placeholders stand for the operands, so no shell's quoting is implied; the refusal
     still opens and writes nothing.
+    Amended in place on 2026-10-18: the report is this command's comparison of the stored and
+    computed values, so `fingerprint` does not also verify the stored fields. It emits no
+    `*FingerprintStale` warning, in report mode or with `--write`, and a mismatch appears once,
+    as `stale`; reporting the field and warning about it would state one fact twice. `plan`,
+    `stats`, `calibrate` and `convert` keep their warnings (spec §§3, 14). This records the
+    behaviour the command already had; nothing changes.
   - **`probe`**: `fcabedrock probe DATA --shape wide|triple --out PATH|-` plus
     `[--delimiter CHAR] [--header true|false] [--missing-token TOKEN]
     [--locale TAG|invariant] [--limit N]`, and triple-only

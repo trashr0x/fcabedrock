@@ -40,7 +40,8 @@ per-platform build, test, accounting, and packaging checks. Its follow-up,
 M8.1, changed how count-sensitive (equal-frequency and percentile) calibration
 schedules its spill runs without changing its results. M8.2, the writing,
 ownership and provenance hardening pass, is complete, integrated on `main` and
-accepted. The desktop UI (M9) is next.
+accepted. M8.3, which corrects the command-line tool's behaviour and makes its
+diagnostics usable, is in progress; the desktop UI (M9) follows it.
 
 `docs/roadmap.md` is the live source for the detailed current position, and
 `docs/benchmarks.md` is the measurement record.

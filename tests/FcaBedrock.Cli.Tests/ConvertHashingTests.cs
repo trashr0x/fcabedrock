@@ -297,7 +297,71 @@ public sealed class ConvertHashingTests
         Assert.Empty(Directory.GetFiles(temp.Path, "out*"));
     }
 
+    [Fact]
+    public async Task Convert_WhenACalibratingRunOfBothFormatsReadsStableBytes_ThenEachPassOpensTheDataOnce()
+    {
+        // The schema, the calibration pass, the two .cxt passes and the .dat pass: five opens. The
+        // hash rides along with them, so a stable run opens DATA no more often and records the
+        // digest of the bytes every pass read.
+        using var temp = TempDirectory.Create();
+        var harness = new CliTestHarness();
+        var spec = temp.Write("spec.toml", ObservedDomainSpec);
+        var data = temp.Resolve("data.csv");
+        var basePath = temp.Resolve("out");
+        harness.OpenInput = ChangedOnOpen(spec, ObservedDomainSpec, changedOpen: -1);
+
+        var exit = await harness.RunAsync("convert", spec, data, "--out", basePath, "--format", "both");
+
+        Assert.Equal(0, exit);
+        Assert.Equal(CalibratingBothPasses, harness.Opened.Count(path => string.Equals(path, data, StringComparison.Ordinal)));
+        Assert.Contains(
+            $"input_hash = \"{Expected(StableData)}\"",
+            await File.ReadAllTextAsync(basePath + ".manifest.toml", TestContext.Current.CancellationToken),
+            StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData(0)] // the schema
+    [InlineData(1)] // the calibration pass
+    [InlineData(2)] // the .cxt counting pass
+    [InlineData(3)] // the .cxt writing pass
+    [InlineData(4)] // the .dat pass, the last one before the manifest
+    public async Task Convert_WhenOneCalibratingPassReadsReorderedValues_ThenTheRunFailsBeforeAnyCommit(int changedOpen)
+    {
+        // The changed bytes keep the header, the record count and the length, and every value stays
+        // in the domain; only two values trade places. Nothing but the hash of a complete pass can
+        // tell them apart, and the run must stop before it publishes anything.
+        using var temp = TempDirectory.Create();
+        var harness = new CliTestHarness();
+        var spec = temp.Write("spec.toml", ObservedDomainSpec);
+        var data = temp.Resolve("data.csv");
+        var basePath = temp.Resolve("out");
+        harness.OpenInput = ChangedOnOpen(spec, ObservedDomainSpec, changedOpen);
+
+        var exit = await harness.RunAsync("convert", spec, data, "--out", basePath, "--format", "both");
+
+        Assert.Equal(1, exit);
+        Assert.Equal(string.Empty, harness.StdOut);
+        Assert.EndsWith(
+            DiagnosticRenderer.RenderHostError(RunPipeline.InputChangedMessage(data)),
+            harness.StdErr,
+            StringComparison.Ordinal);
+        Assert.Empty(Directory.GetFiles(temp.Path, "out*"));
+        Assert.InRange(
+            harness.Opened.Count(path => string.Equals(path, data, StringComparison.Ordinal)),
+            changedOpen + 1,
+            CalibratingBothPasses);
+    }
+
     // ---- helpers -----------------------------------------------------------------------------------
+
+    // The DATA opens a calibrating `--format both` conversion makes.
+    private const int CalibratingBothPasses = 5;
+
+    private const string StableData = "colour\nred\ngreen\n";
+
+    // StableData with its two values swapped: the same length, header and record count.
+    private const string ReorderedData = "colour\ngreen\nred\n";
 
     private const string ObservedDomainSpec = """
         [spec]
@@ -344,6 +408,23 @@ public sealed class ConvertHashingTests
             }
 
             var pass = dataPasses[Math.Min(index++, dataPasses.Length - 1)];
+            return new MemoryStream(Encoding.UTF8.GetBytes(pass), writable: false);
+        };
+    }
+
+    // As PassIndexed, serving StableData on every DATA open except the zero-based open
+    // `changedOpen`, which gets ReorderedData; -1 changes none.
+    private static Func<string, Stream> ChangedOnOpen(string specPath, string specText, int changedOpen)
+    {
+        var index = 0;
+        return path =>
+        {
+            if (string.Equals(path, specPath, StringComparison.Ordinal))
+            {
+                return new MemoryStream(Encoding.UTF8.GetBytes(specText), writable: false);
+            }
+
+            var pass = index++ == changedOpen ? ReorderedData : StableData;
             return new MemoryStream(Encoding.UTF8.GetBytes(pass), writable: false);
         };
     }

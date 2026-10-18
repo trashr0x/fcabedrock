@@ -123,7 +123,9 @@ specs only**: §14 defines which specs are fully frozen, and a stored fingerprin
 for a data-dependent spec could be invalidated by the next dataset. When present
 they are verified on load and emitted as warnings if
 mismatched (`SchemaFingerprintStale`, `CxtOutputFingerprintStale`,
-`DatOutputFingerprintStale`). All are SHA-256 over the plan-derived canonical
+`DatOutputFingerprintStale`), with one exception: `fcabedrock fingerprint`
+reports each stored field's comparison as its result instead of warning about it
+(§14). All are SHA-256 over the plan-derived canonical
 structure described in §14.
 
 Two commands own **writing** these fields: `fcabedrock calibrate` writes them on
@@ -2819,6 +2821,15 @@ defined where a plan is computable: the resolved spec planned with its native
 settings; a spec that fails resolve or plan reports those failures instead
 (D-077). The `schema_fingerprint` is unaffected by output-only CLI overrides.
 
+**`fingerprint` reports the comparison instead of warning (D-122, D-077).** The
+comparison that the other commands report as `*FingerprintStale` warnings is the
+result of `fcabedrock fingerprint SPEC DATA`: its report compares each field the
+root spec stores with the native value computed for the composed spec and states
+it as `match`, `stale` or `absent`. It emits no `*FingerprintStale` warning, with
+or without `--write`, so one mismatch is never reported twice. Every other command
+that plans the spec (`plan`, `stats`, `calibrate` and `convert`) verifies the
+stored fields and warns as above; `validate` does not plan, so it verifies none.
+
 ## 15. Run manifest
 
 When `convert --out BASE --format cxt|dat|both` runs, it writes `BASE.cxt`, `BASE.dat`
@@ -2881,7 +2892,7 @@ ownership it MUST preserve what it finds and refuse, rather than act on it.
 [run]
 tool_version           = "fcabedrock-vnext 1.0.0"
 timestamp              = 2026-07-22T12:34:56Z
-command_line           = ["fcabedrock", "convert", "adult.toml", "adult.csv", "--out", "adult", "--format", "both"]
+command_line           = ["C:\\Users\\user\\.dotnet\\tools\\.store\\...\\FcaBedrock.Cli.dll", "convert", "adult.toml", "adult.csv", "--out", "adult", "--format", "both"]
 spec_path              = "adult.toml"
 spec_file_hash         = "sha256:..."
 schema_fingerprint     = "sha256:..."
@@ -2930,6 +2941,15 @@ format was written, and are the **effective** values (after any CLI override suc
 `spec_file_hash` is the raw TOML bytes, distinct from the canonical, plan-derived
 `schema_fingerprint`. `input_hash` is the raw input bytes: every complete pass hashes
 them inline and a replay hash must match before commit (§17, D-122).
+
+**`command_line`** is the complete argument array of the tool's process, captured
+apart from the arguments the command parses and written verbatim (D-123 point 4).
+Its first element is the program path the process reports, not the command name a
+user typed: for the `fcabedrock` tool it is the full path of `FcaBedrock.Cli.dll`.
+The other elements are the arguments exactly as given. No element is normalized,
+shortened or redacted. For a .NET global tool that path lies in the tool store
+under the user's profile directory, as the example's illustrative path shows, so a
+manifest that is shared or cited carries that directory.
 
 **`[[run.spec_files]]`** is present **only** when the spec is an `extends` chain (the
 example above has none). It sits between `[[run.outputs]]` and `[[run.calibrations]]`,

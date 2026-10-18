@@ -73,6 +73,18 @@ Without `--v2-compat`, `bin_label_unicode = true` writes `≥` and `≤` only wh
 tool generates the operator, as in `age-≥50`; values, labels and name formats
 you wrote keep their spelling.
 
+The manifest's `command_line` records the command exactly as the process
+received it, and nothing in it is shortened, normalized or removed. Its first
+entry is the full path of the tool's `FcaBedrock.Cli.dll`, which the .NET
+runtime reports in place of the command name you typed. For a global tool that
+path is in the tool store under your user profile, such as
+`C:\Users\<name>\.dotnet\tools\.store\fcabedrock.cli\...`, so a manifest you
+share or cite carries your profile directory. The list is a record of the
+run, not a command to paste: to run it again, use `fcabedrock` with the
+arguments after the first entry, from the folder the original run used. A
+relative path among them is relative to that folder, and the manifest does
+not record it.
+
 ### validate
 
 Validate a spec, optionally against a data source's schema.
@@ -99,7 +111,9 @@ object key or a triple role by header name fails validation with
 suggests `fcabedrock validate SPEC DATA`.
 
 Prints nothing on success; exit 0 is the answer. Problems appear as stderr
-diagnostics. Writes nothing.
+diagnostics. Writes nothing. `validate` does not plan the spec, so a spec
+that validates can still fail a later command (see
+[What a successful command shows](#what-a-successful-command-shows)).
 
 ### plan
 
@@ -131,6 +145,9 @@ One counting pass over the context. Prints exactly six fields: `objects`,
 `formal_attributes`, `crosses`, `density`, `crossless_objects`,
 `empty_attributes`. When the context has zero cells it prints exactly
 `density = n/a (0 cells)` and keeps the other five fields. Writes nothing.
+Because it builds the context, `stats` also applies the policies `convert`
+applies to each value, which `plan` and `calibrate` do not (see
+[What a successful command shows](#what-a-successful-command-shows)).
 
 ### calibrate
 
@@ -231,9 +248,13 @@ fcabedrock fingerprint spec.toml data.csv
 ```
 
 Reports the three computed native fingerprints and each stored field's
-`match` / `stale` / `absent` state. `--write --out NEW_SPEC` writes a corrected
-copy of the root spec, only for a fully-frozen spec, and it keeps the root's
-`extends` chain. A spec that still depends on its data (for example an omitted
+`match` / `stale` / `absent` state. The report is the comparison, so a `stale`
+field is not reported a second time as a `SchemaFingerprintStale`,
+`CxtOutputFingerprintStale` or `DatOutputFingerprintStale` warning; `plan`,
+`stats`, `calibrate` and `convert` give those warnings instead.
+`--write --out NEW_SPEC` writes a corrected copy of the root spec, only for a
+fully-frozen spec, and it keeps the root's `extends` chain. A spec that still
+depends on its data (for example an omitted
 `declared_domain` or automatic cuts) is refused, writing nothing, and the error
 names the next step: `fcabedrock calibrate SPEC DATA --out NEW_SPEC` writes a
 fully frozen copy with its fingerprints already stored, if the data calibrates.
@@ -250,6 +271,24 @@ suppressed; on a file target the report goes to stdout after the file commits.
 a convert-only override. See
 [How output files are written](#how-output-files-are-written).
 
+## What a successful command shows
+
+Each command checks only the steps it runs, so its success says nothing about
+the steps after them:
+
+- `validate` checks the spec and, given DATA, its bindings against the data's
+  first record. It does not plan the spec, so a spec that validates can still
+  fail when a later command plans it, as one with `value_type = "date"` does,
+  which this version cannot convert.
+- `plan`, `calibrate` and `fingerprint` go further and plan the spec, reading
+  data records only when calibration needs them. They do not build the formal
+  context, so they do not apply the policies that conversion applies to each
+  value. For example, a value outside a declared domain under
+  `unknown_value_policy = "fail"` passes all three and stops `convert`.
+- `stats` builds the formal context and applies those policies as `convert`
+  does, and writes no file. Run it to check a spec against its data before a
+  conversion.
+
 ## How output files are written
 
 Everything that writes a file (`convert` with or without its manifest, and
@@ -263,6 +302,27 @@ complete.
 **`--out -` bypasses all of this.** It writes the document to stdout, so no
 file is created, nothing is staged, and `--force` is rejected (`convert` has no
 `-` form; it always publishes files).
+
+**A spec the tool writes is canonical, and comments do not survive.** `probe`
+and `migrate` write new specs, and `calibrate` and `fingerprint --write`
+rewrite yours, all in one canonical form. A rewrite changes only what the
+command is for and keeps every other field the tool reads from a spec,
+including the text of `[provenance].notes` and of each attribute's
+`description`. So a notice that `probe` saved in a draft, such as the
+categories it left out, stays when you calibrate or fingerprint that draft. No
+written spec keeps comments, blank lines or the file's formatting, such as its
+spacing, quoting and key order. `calibrate` writes one flattened copy of the
+spec and the bases it extends: the copy has the root's `[provenance]` alone,
+because a base's provenance is not inherited, and an attribute inherited from a
+base keeps the base's `description` unless the root replaces that whole
+attribute.
+`fingerprint --write` rewrites the root file alone, so its bases stay as they
+are and the copy keeps its inheritance (see [fingerprint](#fingerprint)). No
+command writes over one of its own inputs: an `--out` that names the spec, a
+base it extends, the data or the `.bed` file is refused, even with `--force`,
+and so is another spelling of that path or a link to the same file. If your
+comments matter, keep the file you wrote, and treat each written copy as a new
+file.
 
 **`--out` must end in a file name.** The value is checked as text, before any
 input is read, and a value that cannot name the file to write is refused with

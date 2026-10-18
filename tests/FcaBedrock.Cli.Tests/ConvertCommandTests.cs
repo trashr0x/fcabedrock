@@ -236,8 +236,11 @@ public sealed class ConvertCommandTests
     }
 
     [Fact]
-    public async Task Convert_WhenTempDirIsSupplied_ThenTheSpillingRunStillCommitsIdenticalBytes()
+    public async Task Convert_WhenTempDirIsSuppliedAndTheDataFitsInMemory_ThenTheBytesMatchARunWithoutIt()
     {
+        // These few rows stay far below the grouping budget, so nothing spills and the directory
+        // stays unused: the test shows only that naming it changes no byte. A run that spills under
+        // the shipped budget needs an input too large for the normal suite (EP-20).
         using var spill = TempDirectory.Create();
         using var plain = ConvertRun.Wide(CliFixtures.DedupeSpec, CliFixtures.DedupeData);
         using var directed = ConvertRun.Wide(CliFixtures.DedupeSpec, CliFixtures.DedupeData);
