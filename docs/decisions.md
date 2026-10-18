@@ -225,7 +225,7 @@ changes an earlier one. A new entry MUST add its line here.
 
 ### M7 (CLI) pre-implementation adjudication
 
-- D-122: M7 CLI contract: commands, process model, publication, manifest, freeze, authored-empty domains, per-command semantics, non-goals, distribution, and the exit floor *(revises D-071's empty-domain reading; refines D-026/D-078/D-088; realizes the CLI faces of D-005/D-028/D-067/D-077; implementation architecture realized by D-123; reach of parts 4–5 qualified by D-125; part 10's headerless schema record amended in place on 2026-10-01; part 3's escaping and code-less warning form amended in place on 2026-10-14; parts 1, 2, 4, 8 and 10 amended in place on 2026-10-14 for attached option values, the `tab` delimiter spelling, the `migrate` named object-key header rule, and the `--temp-dir` and `--out` text checks; parts 2 and 10 amended in place on 2026-10-14 for DATA read explanations and strict UTF-8 schema reads; part 10's frozen numeric domain text amended in place on 2026-10-14; part 10's missing-column report marker amended in place on 2026-10-14; part 15's probe-authored `[]` amended in place on 2026-10-15; parts 2–5 amended in place on 2026-10-15 for publication causes, the Windows read-only participant refusal and the committed-cleanup warning; parts 2, 10 and 11 amended in place on 2026-10-16 for input-file explanations, the base-loading message and the `extends` of a root `fingerprint --write` writes to a file; parts 3 and 10 amended in place on 2026-10-17 for CLI advice after a library message and the next steps of `validate` without DATA and a refused `fingerprint --write`)*
+- D-122: M7 CLI contract: commands, process model, publication, manifest, freeze, authored-empty domains, per-command semantics, non-goals, distribution, and the exit floor *(revises D-071's empty-domain reading; refines D-026/D-078/D-088; realizes the CLI faces of D-005/D-028/D-067/D-077; implementation architecture realized by D-123; reach of parts 4–5 qualified by D-125; part 10's headerless schema record amended in place on 2026-10-01; part 3's escaping and code-less warning form amended in place on 2026-10-14; parts 1, 2, 4, 8 and 10 amended in place on 2026-10-14 for attached option values, the `tab` delimiter spelling, the `migrate` named object-key header rule, and the `--temp-dir` and `--out` text checks; parts 2 and 10 amended in place on 2026-10-14 for DATA read explanations and strict UTF-8 schema reads; part 10's frozen numeric domain text amended in place on 2026-10-14; part 10's missing-column report marker amended in place on 2026-10-14; part 15's probe-authored `[]` amended in place on 2026-10-15; parts 2–5 amended in place on 2026-10-15 for publication causes, the Windows read-only participant refusal and the committed-cleanup warning; parts 2, 10 and 11 amended in place on 2026-10-16 for input-file explanations, the base-loading message and the `extends` of a root `fingerprint --write` writes to a file; parts 3 and 10 amended in place on 2026-10-17 for CLI advice after a library message and the next steps of `validate` without DATA and a refused `fingerprint --write`; part 3 amended in place on 2026-10-18 for the encoding of each standard stream and the exit code of a failed stream setup)*
 
 ### M7 (CLI) implementation
 
@@ -5878,7 +5878,9 @@ and §16.4; D-120 and D-121 record the implemented naming, template and matcher 
   and 11 amended in place on 2026-10-16 for input-file explanations, the base-loading message and
   the `extends` of a root `fingerprint --write` writes to a file; parts 3 and 10 amended in place
   on 2026-10-17 for CLI advice after a library message, the `--temp-dir` sentence on a storage
-  failure and the next steps of `validate` without DATA and a refused `fingerprint --write`
+  failure and the next steps of `validate` without DATA and a refused `fingerprint --write`;
+  part 3 amended in place on 2026-10-18 for the encoding of each standard stream and the exit
+  code of a failed stream setup
 - **Date:** 2026-07-22
 - **Decision:** the complete M7 CLI contract is settled **before any M7 code**, in
   fifteen parts.
@@ -6016,6 +6018,24 @@ and §16.4; D-120 and D-121 record the implemented naming, template and matcher 
   host spells that setting its own way (D-082). `validate` adds its header sentence (part 10). An
   aggregated sample quoted by its producer (D-059) is transported like D-120's invalid-name
   samples, so its backslashes double.
+
+  Amended in place on 2026-10-18: each standard stream gets its own writer, chosen by whether
+  that stream is redirected, never by detecting a terminal, so output stays plain and
+  terminal-independent. Redirected stdout and stderr, files and pipes alike, carry UTF-8 with no
+  byte order mark and exactly the rendered LF line endings. On Windows a console stream receives
+  the rendered text through the .NET runtime's Unicode console route, independent of the
+  console's code page; converting to that code page replaced or dropped characters, depending on
+  the page and the console host. Elsewhere a console stream keeps the runtime's own console
+  writer. The process changes no native code page, console mode or input setting, so it restores
+  nothing at exit, and the text and its escaping are unchanged. Whether a character is drawn
+  still depends on the console host and its font. A UTF-8 console code page would have changed
+  the caller's console and needed restoring. Setting up the streams follows part 2.
+  `IOException` and `ObjectDisposedException`, the exceptions the host already treats as an
+  ordinary output failure, exit 1 with `error: cannot write to standard output.`, written only
+  when stderr was already set up to carry it. Every other setup failure is the sanitized exit 4.
+  On Unix the runtime reports a standard descriptor it cannot duplicate for a permission or
+  bad-descriptor reason as `UnauthorizedAccessException`, so that case exits 4. A failed setup
+  runs no command, and the writers it built are flushed as at the end of any run.
 
   **4. Input/output policy.** Neither SPEC nor DATA accepts `-`: there is **no stdin
   source** and no implicit spooling or synthetic composition base. Report commands

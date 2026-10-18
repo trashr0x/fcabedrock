@@ -2,8 +2,8 @@ namespace FcaBedrock.Cli;
 
 /// <summary>
 /// The argv boundary and the owner of the process-exit contract (D-122 part 2). Every
-/// argv-level test drives this method; <see cref="Program"/> adds only real-world wiring,
-/// so nothing testable lives outside it.
+/// argv-level test drives this method; <see cref="Program"/> adds only standard-stream setup,
+/// whose failures follow the same exit codes, and real-world wiring.
 /// <para>
 /// Exit codes: <b>0</b> success (warnings and info never move it off 0); <b>1</b> any
 /// Error/Fatal diagnostic or an ordinary host/runtime/input/output failure; <b>2</b> usage;

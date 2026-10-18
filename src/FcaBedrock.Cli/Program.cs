@@ -1,25 +1,53 @@
-using System.Text;
 using FcaBedrock.Cli.Publication;
 
 namespace FcaBedrock.Cli;
 
 /// <summary>
-/// The real entry point: wiring only, no behaviour. Everything decidable lives behind
-/// <see cref="CliHost.RunAsync"/>, which the argv-boundary tests drive directly.
+/// The real entry point: standard-stream setup and wiring only. Everything else decidable lives
+/// behind <see cref="CliHost.RunAsync"/>, which the argv-boundary tests drive directly.
 /// </summary>
 internal static class Program
 {
-    private static async Task<int> Main(string[] args)
+    private static Task<int> Main(string[] args) => RunAsync(args, SystemConsole.Instance, PosixSignalSource.Create);
+
+    /// <summary>
+    /// Sets up the standard writers (<see cref="StandardStreams"/>, D-122 part 3), wires the host
+    /// and runs it, then returns through <see cref="CliHost.Complete"/>, which flushes both
+    /// writers. The console and the signal registration are parameters so that tests can drive
+    /// setup without the test host's own console or a real signal handler.
+    /// </summary>
+    internal static async Task<int> RunAsync(string[] args, IStandardConsole console, Func<ISignalSource> createSignals)
     {
-        // Writers first, so even a failure while wiring the rest has somewhere to report.
-        var standardOut = CreateWriter(Console.OpenStandardOutput, Console.IsOutputRedirected, Console.Out);
-        var standardError = CreateWriter(Console.OpenStandardError, Console.IsErrorRedirected, Console.Error);
+        // Writers first, so even a failure while wiring the rest has somewhere to report. A
+        // setup failure is classified as CliHost classifies a failure during the run (D-122
+        // parts 2 and 3): IOException or ObjectDisposedException is the ordinary output
+        // failure, exit 1, and anything else is an unexpected fault, exit 4. Either stops here,
+        // before any signal, command, input or publication. The report can only reach a stderr
+        // that setup already built; it never goes to stdout.
+        var streams = new StandardStreams();
+        try
+        {
+            streams.Open(console);
+        }
+        catch (Exception exception) when (exception is IOException or ObjectDisposedException)
+        {
+            Report(streams.Error, CliHost.OutputFailureMessage);
+            return CliHost.Complete(1, streams.Output, streams.Error);
+        }
+        catch (Exception)
+        {
+            Report(streams.Error, CliHost.UnexpectedFaultMessage);
+            return CliHost.Complete(4, streams.Output, streams.Error);
+        }
+
+        var standardOut = streams.Output;
+        var standardError = streams.Error;
         ISignalSource? signals = null;
 
         var exitCode = 4;
         try
         {
-            signals = PosixSignalSource.Create();
+            signals = createSignals();
 
             var environment = new CliEnvironment
             {
@@ -43,16 +71,7 @@ internal static class Program
         {
             // A failure in the wiring above cannot reach CliHost's own handler, so the
             // exit-4 contract is honoured here too: one sanitized line, nothing leaked.
-            // The write itself is best-effort for the same reason CliHost's is.
-            try
-            {
-                standardError.Write(DiagnosticRenderer.RenderHostError(CliHost.UnexpectedFaultMessage));
-            }
-            catch (Exception report) when (report is IOException or ObjectDisposedException)
-            {
-                // Nowhere left to report; the exit code still carries the outcome.
-            }
-
+            Report(standardError, CliHost.UnexpectedFaultMessage);
             exitCode = 4;
         }
         finally
@@ -66,18 +85,17 @@ internal static class Program
         return CliHost.Complete(exitCode, standardOut, standardError);
     }
 
-    // Redirected output is pinned to UTF-8 with NO byte-order mark, so a piped or
-    // captured stream carries exactly the bytes the renderer produced. An interactive
-    // console keeps its own writer, which already speaks the console's encoding.
-    //
-    // The writer is not disposed: it wraps a standard handle owned by the process, and
-    // the finally above flushes it. Line endings never come from here: every rendered
-    // string carries its own LF, so output is identical on every platform.
-    private static TextWriter CreateWriter(Func<Stream> openStandard, bool redirected, TextWriter console) =>
-        redirected
-            ? new StreamWriter(openStandard(), new UTF8Encoding(encoderShouldEmitUTF8Identifier: false))
-            {
-                AutoFlush = false,
-            }
-            : console;
+    // Best-effort, like CliHost's own writes, and wider: whatever the report itself throws must
+    // not escape Main, because the exit code already carries the outcome.
+    private static void Report(TextWriter error, string message)
+    {
+        try
+        {
+            error.Write(DiagnosticRenderer.RenderHostError(message));
+        }
+        catch (Exception)
+        {
+            // Nowhere left to report; the exit code still carries the outcome.
+        }
+    }
 }

@@ -158,6 +158,68 @@ internal sealed class ThrowingWriter(bool failOnWrite, bool failOnFlush) : TextW
 }
 
 /// <summary>
+/// The standard streams of one simulated process. A console stream hands out a captured
+/// writer, a redirected one a captured byte stream. Every call is recorded in order and any
+/// one call can be made to fail, so the choice of writer, its order and a setup failure are
+/// observable. It never touches the test host's own console: no test may change the test
+/// host's console encoding or writers.
+/// </summary>
+internal sealed class RecordingConsole : IStandardConsole
+{
+    public bool IsWindows { get; init; } = true;
+
+    public bool OutputRedirected { get; init; }
+
+    public bool ErrorRedirected { get; init; }
+
+    /// <summary>The writer a console stdout gets.</summary>
+    public TextWriter ConsoleOutputWriter { get; init; } = new StringWriter();
+
+    /// <summary>The writer a console stderr gets.</summary>
+    public TextWriter ConsoleErrorWriter { get; init; } = new StringWriter();
+
+    /// <summary>Every byte written to a redirected stdout.</summary>
+    public MemoryStream StandardOutput { get; } = new();
+
+    /// <summary>Every byte written to a redirected stderr.</summary>
+    public MemoryStream StandardError { get; } = new();
+
+    /// <summary>Every call, by its <see cref="IStandardConsole"/> member name, in order.</summary>
+    public List<string> Calls { get; } = [];
+
+    /// <summary>The <see cref="IStandardConsole"/> member name whose call fails, if any.</summary>
+    public string? FailCall { get; init; }
+
+    /// <summary>The exception the failing call raises.</summary>
+    public Func<Exception> FailWith { get; init; } = static () => new IOException("the handle is invalid.");
+
+    bool IStandardConsole.IsOutputRedirected => Record(nameof(IStandardConsole.IsOutputRedirected), OutputRedirected);
+
+    bool IStandardConsole.IsErrorRedirected => Record(nameof(IStandardConsole.IsErrorRedirected), ErrorRedirected);
+
+    void IStandardConsole.UseUnicodeOutput() => Record(nameof(IStandardConsole.UseUnicodeOutput), true);
+
+    TextWriter IStandardConsole.ConsoleOutput() => Record(nameof(IStandardConsole.ConsoleOutput), ConsoleOutputWriter);
+
+    TextWriter IStandardConsole.ConsoleError() => Record(nameof(IStandardConsole.ConsoleError), ConsoleErrorWriter);
+
+    Stream IStandardConsole.OpenStandardOutput() => Record(nameof(IStandardConsole.OpenStandardOutput), StandardOutput);
+
+    Stream IStandardConsole.OpenStandardError() => Record(nameof(IStandardConsole.OpenStandardError), StandardError);
+
+    private T Record<T>(string call, T result)
+    {
+        Calls.Add(call);
+        if (string.Equals(call, FailCall, StringComparison.Ordinal))
+        {
+            throw FailWith();
+        }
+
+        return result;
+    }
+}
+
+/// <summary>
 /// The real publication filesystem with two test affordances: it records every operation in
 /// order, and it can be told to fail one boundary (the Nth operation of a given kind, optionally
 /// only for a chosen file name).

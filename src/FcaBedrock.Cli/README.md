@@ -381,6 +381,12 @@ Diagnostics render one LF-terminated line each on stderr; primary results go to
 stdout. `fcabedrock --help` prints the full grammar for every command, and
 `fcabedrock --version` prints the tool version.
 
+Output redirected to a file or a pipe is UTF-8 without a byte order mark, with
+LF line endings. On Windows, a console window receives the text as Unicode,
+without conversion to the console's code page, and the tool changes no console
+setting. Whether each character, such as `§`, is drawn depends on the console
+and its font.
+
 A line that starts with `error:` or `warning:` and has no code comes from the
 tool itself, for example a missing input file; a diagnostic line names its code
 after the severity. File and attribute names at the start of a diagnostic line
