@@ -26,25 +26,28 @@ lists the capabilities.
 | M8 | First scaling and benchmark pass | Complete |
 | M8.1 | Generation-tiered spill catalogue for count-sensitive calibration | Complete |
 | M8.2 | Writing, ownership and provenance hardening | Complete |
-| M8.3 | CLI correctness and usable diagnostics | In progress |
+| M8.3 | CLI correctness and usable diagnostics | Complete |
 | M9 | Avalonia desktop application | Next |
 
 M8's evidence closed at `3b2e4a80`, where the whole-solution test run counted 4,623 tests: 20
 skipped and none failed. M8's documentation was integrated at `3d71524b`, M8.1 was integrated on
-`main` at `47e2ce71` (D-128), and M8.2 was integrated on `main` at `1c5b5bc5` and accepted there.
-The most recent full-suite results this roadmap records come from the `main`-push CI run at
-`4d452d3a`, a later commit that updates package versions: on each of the five native targets, the
-suite counted 5,502 tests, none failed, and 13 to 17 were skipped, depending on the platform.
+`main` at `47e2ce71` (D-128), M8.2 was integrated on `main` at `1c5b5bc5` and accepted there, and
+M8.3 was integrated on `main` at `0c0ef8e8` and accepted there. The `main`-push CI run at
+`4d452d3a`, a commit after M8.2 that updates package versions, counted 5,502 tests on each of the
+five native targets: none failed, and 13 to 17 were skipped, depending on the platform. The most
+recent full-suite results this roadmap records come from the `main`-push CI run at `0c0ef8e8`: on
+each of the five native targets, the suite counted 6,257 tests, none failed, and 17 to 26 were
+skipped, depending on the platform.
 
 No release has been made, and the `FcaBedrock.Cli` package is not published to a public NuGet feed.
-The same CI run also passed the resident-accounting witnesses, the Small benchmark smoke and both
+Both CI runs also passed the resident-accounting witnesses, the Small benchmark smoke and both
 package smokes on all five targets, and produced the three tested archives. The three UCI Adult
-cases passed on Windows x64 at `1c5b5bc5`, as the M8.2 section records. No scale-probe result is
-recorded for any revision after `3b2e4a80`. Each of these results belongs to its revision, and
-each release candidate supplies its own evidence
+cases passed on Windows x64 at `1c5b5bc5` and at `0c0ef8e8`, as the M8.2 and M8.3 sections record.
+No scale-probe result is recorded for any revision after `3b2e4a80`. Each of these results belongs
+to its revision, and each release candidate supplies its own evidence
 ([Release-candidate obligations](#release-candidate-obligations)).
 
-M8.2, the latest completed milestone, changes how delimited data is read (spec §5.1.1, D-041,
+M8.2 changes how delimited data is read (spec §5.1.1, D-041,
 D-054), so it can change the output of a spec it still accepts: blank records are skipped
 everywhere, the whitespace removed around fields and numbers is the full Unicode whitespace set,
 quoting is validated and malformed quoting is refused, the delimiter alphabet is fixed, and quoted CR content
@@ -62,10 +65,10 @@ data file could not be read, an empty DATA or `.bed` operand being reported as a
 input instead of an internal fault, and wording edits to some diagnostic messages, the `--help`
 text and the package description.
 
-M8.3 is in progress. It corrects how the `fcabedrock` tool behaves where its contract did not hold
-and makes its messages say what went wrong, where and what to do next;
-[its section](#m83-cli-correctness-and-usable-diagnostics) lists the changes and what it still
-needs before it is complete. M9 follows M8.3 and has not started. Work deferred beyond v1 is in the
+M8.3, the latest completed milestone, corrects how the `fcabedrock` tool behaves where its
+contract did not hold and makes its messages say what went wrong, where and what to do next;
+[its section](#m83-cli-correctness-and-usable-diagnostics) lists the changes and the evidence for
+its completion. M9 is next and has not started. Work deferred beyond v1 is in the
 [deferred backlog](#deferred-backlog-not-v1).
 
 ## Milestones
@@ -478,11 +481,11 @@ Its work proceeded in this order:
 
 ### M8.3: CLI correctness and usable diagnostics
 
-M8.3 is in progress. It makes the `fcabedrock` tool keep its existing contract where it did not,
-and makes its messages say what went wrong, where and what to do next. It adds no command, option
-or fingerprint format, its only new command-line spellings are the attached `--name=VALUE` form and
-the `tab` delimiter word, and the v2 fixtures are unchanged. Its changes, with the decisions that
-own them:
+M8.3 is complete, and it was integrated on `main` at `0c0ef8e8` and accepted there. It makes the
+`fcabedrock` tool keep its existing contract where it did not, and makes its messages say what went
+wrong, where and what to do next. It adds no command, option or fingerprint format, its only new
+command-line spellings are the attached `--name=VALUE` form and the `tab` delimiter word, and the
+v2 fixtures are unchanged. Its changes, with the decisions that own them:
 
 - **Command line.** An option also takes its value attached, as `--name=VALUE`, which is the only
   way to pass a value that starts with `--`, and `--delimiter` accepts the word `tab`. An `--out`
@@ -524,14 +527,34 @@ the closed read-failure reason, record kind and position of `SourceReadException
 three-argument constructor (D-109), the planner overload that takes the Unicode presentation and
 the plan's `BinLabelUnicode` (D-044), and the two `DiagnosticCode` members.
 
-M8.3 is complete only when its final revision has its own evidence for every
-[release-candidate obligation](#release-candidate-obligations), and when that revision shows
-through real processes what deterministic tests cannot: a first interrupt sent to a real console
-cancels a run before its commit point with exit 3 and commits nothing, a repeated interrupt
-leaves no committed run, whether the platform terminates the run or it finishes cancelling, and a
-conversion that spills under the shipped 64 MiB grouping budget fails on an unusable temporary
-directory and succeeds on a usable one. A check through a network (UNC) share stays unverified
-until a suitable share is available.
+Revision `0c0ef8e8` has its own evidence for the native-proof and real-data
+[release-candidate obligations](#release-candidate-obligations). Its `main`-push CI run passed the
+ordinary suite, the resident-accounting witnesses, the Small benchmark smoke and both package
+smokes natively on Windows x64, Linux x64 and macOS ARM64, and produced the three tested archives.
+The suite counted 6,257 tests on each of those targets and none failed: Windows x64 skipped 17,
+Linux x64 25 and macOS ARM64 24. The skipped tests are those written for another platform, the
+opt-in tests and the two package smokes, which run as their own steps. macOS ARM64 also skipped the
+per-directory case-sensitivity test, because the runner's directory did not become case-sensitive,
+and the real-heap sizing test, which runs on x64 only. Linux ARM64 and Windows ARM64 passed the
+same checks, without an archive and with no support claim. All three UCI Adult cases passed on
+Windows x64 at `0c0ef8e8` on 2026-10-18, against the corpus pinned in `AdultCorpus.cs` (acquisition
+revision 3, 32,561 records), in a `Dry` run that executed and validated each case once. Like the
+M8.2 run, it is functional evidence only, with the same limits.
+
+Real processes on Windows x64 showed what deterministic tests cannot. On a build of `0c0ef8e8`,
+given an unusable temporary directory, a `convert` and a `stats` run that spill under the shipped
+64 MiB grouping budget each failed with `GroupingStorageFailed` and wrote no output. The
+`convert` run succeeded in both formats on a usable temporary directory, left it empty, and wrote
+the same bytes as a run of the same libraries whose grouping budget is large enough not to spill.
+Before integration, a build of the same product source showed three more behaviors. A first
+interrupt sent to a real console cancelled a run before its commit point with exit 3 and committed
+nothing. A repeated interrupt left no committed run, and the platform ended the process. Runs
+killed at two points during publication each left private files that the next ordinary run
+recovered, writing the expected output and leaving none behind. These three results carry to
+`0c0ef8e8` because the diff from the source they ran on reaches no compiled product source or
+configuration (D-126). They cover the recorded instants on one host, not every interrupt or kill
+instant, and no other platform. A check through a network (UNC) share stays unverified until a
+suitable share is available.
 
 Three follow-ups stay for later: reading a literal U+FFFD in a spec and a distinct identity for the
 missing column, both in the [deferred backlog](#deferred-backlog-not-v1), and showing a `probe`
@@ -540,7 +563,7 @@ draft's saved notices when a spec is opened, an M9 requirement.
 ### M9: Avalonia desktop
 
 An Avalonia desktop application (D-008), MVVM over the same Core, which also exposes M5's `probe`
-in the UI. M9 follows M8.3 and has not started. It does not block the CLI track: UI work
+in the UI. M9 is next and has not started. It does not block the CLI track: UI work
 must not hold up converter progress. The library APIs already accept cancellation; progress
 observation exists only as a CLI-internal seam (D-122 part 3).
 
