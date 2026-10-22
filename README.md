@@ -42,7 +42,7 @@ schedules its spill runs without changing its results. M8.2, the writing,
 ownership and provenance hardening pass, is complete, integrated on `main` and
 accepted. M8.3, which corrects the command-line tool's behaviour and makes its
 diagnostics usable, is complete, integrated on `main` and accepted. The desktop UI
-(M9) is next and has not started.
+(M9) is in progress: its contract is recorded, and no desktop code exists yet.
 
 `docs/roadmap.md` is the live source for the detailed current position, and
 `docs/benchmarks.md` is the measurement record.

@@ -2890,7 +2890,7 @@ ownership it MUST preserve what it finds and refuse, rather than act on it.
 
 ```toml
 [run]
-tool_version           = "fcabedrock-vnext 1.0.0"
+tool_version           = "fcabedrock-vnext-cli 1.0.0"
 timestamp              = 2026-07-22T12:34:56Z
 command_line           = ["C:\\Users\\user\\.dotnet\\tools\\.store\\...\\FcaBedrock.Cli.dll", "convert", "adult.toml", "adult.csv", "--out", "adult", "--format", "both"]
 spec_path              = "adult.toml"

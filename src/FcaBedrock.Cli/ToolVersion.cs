@@ -7,7 +7,8 @@ namespace FcaBedrock.Cli;
 /// prints and the run manifest records as <c>tool_version</c> (§15): one fact, one
 /// owner, so the two can never disagree.
 /// <para>
-/// Form: <c>fcabedrock-vnext &lt;version&gt;</c>, where the version is the assembly's
+/// Form: <c>fcabedrock-vnext-cli &lt;version&gt;</c>, the product name and then the program's,
+/// so a manifest names the program that wrote it (D-139 part 11). The version is the assembly's
 /// informational version with any <c>+metadata</c> suffix removed. The suffix is build
 /// metadata (a commit id, when a build supplies one) and would make an audit field
 /// vary with the build host rather than with the release.
@@ -16,7 +17,7 @@ namespace FcaBedrock.Cli;
 internal static class ToolVersion
 {
     /// <summary>The fixed product prefix.</summary>
-    internal const string Prefix = "fcabedrock-vnext ";
+    internal const string Prefix = "fcabedrock-vnext-cli ";
 
     /// <summary>The version string for the running tool.</summary>
     public static string Current { get; } = Compose(typeof(ToolVersion).Assembly);

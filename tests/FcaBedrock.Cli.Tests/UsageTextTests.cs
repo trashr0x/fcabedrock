@@ -277,7 +277,7 @@ public sealed class UsageTextTests
     [Fact]
     public void ToolVersion_WhenComposed_ThenItCarriesTheProductPrefix()
     {
-        Assert.Equal("fcabedrock-vnext 1.0.0", ToolVersion.Current);
+        Assert.Equal("fcabedrock-vnext-cli 1.0.0", ToolVersion.Current);
     }
 
     [Theory]

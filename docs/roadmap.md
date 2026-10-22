@@ -27,7 +27,7 @@ lists the capabilities.
 | M8.1 | Generation-tiered spill catalogue for count-sensitive calibration | Complete |
 | M8.2 | Writing, ownership and provenance hardening | Complete |
 | M8.3 | CLI correctness and usable diagnostics | Complete |
-| M9 | Avalonia desktop application | Next |
+| M9 | Avalonia desktop application | In progress |
 
 M8's evidence closed at `3b2e4a80`, where the whole-solution test run counted 4,623 tests: 20
 skipped and none failed. M8's documentation was integrated at `3d71524b`, M8.1 was integrated on
@@ -68,8 +68,8 @@ text and the package description.
 M8.3, the latest completed milestone, corrects how the `fcabedrock` tool behaves where its
 contract did not hold and makes its messages say what went wrong, where and what to do next;
 [its section](#m83-cli-correctness-and-usable-diagnostics) lists the changes and the evidence for
-its completion. M9 is next and has not started. Work deferred beyond v1 is in the
-[deferred backlog](#deferred-backlog-not-v1).
+its completion. M9 is in progress: its contract is recorded (D-139), and no desktop code exists
+yet. Work deferred beyond v1 is in the [deferred backlog](#deferred-backlog-not-v1).
 
 ## Milestones
 
@@ -563,21 +563,61 @@ draft's saved notices when a spec is opened, an M9 requirement.
 ### M9: Avalonia desktop
 
 An Avalonia desktop application (D-008), MVVM over the same Core, which also exposes M5's `probe`
-in the UI. M9 is next and has not started. It does not block the CLI track: UI work
-must not hold up converter progress. The library APIs already accept cancellation; progress
-observation exists only as a CLI-internal seam (D-122 part 3).
+in the UI. D-139 is its contract: the shared run coordinator, the document and revision model,
+what each operation runs, saving and exporting, file use and operation lifetime, progress, the
+desktop manifest, the evidence policy and the delivery order. M9 does not block the CLI track: UI
+work must not hold up converter progress, and after the coordinator extraction no M9 step changes
+CLI behavior.
 
-**Precondition:** the run and publication coordinator is CLI-internal (D-122 part 9), so an EP-4
-public-surface extraction review must happen before any Desktop reuse of it. No production package
-may reference `Cli`, and `EmitReplaySession` stays the supported public bracket for one conversion
-attempt until a proven replacement exists.
+**Current position:** M9's contract is recorded (D-139). No desktop code exists yet, and the next
+step is the extraction of the run coordinator. The library APIs already accept cancellation;
+progress observation exists only as a CLI-internal seam (D-122 part 3).
+
+**Precondition:** the run and publication coordinator is CLI-internal (D-122 part 9), so M9's first
+implementation step is its EP-4 public-surface extraction review and its extraction into a shared
+package (D-139 part 2). No production package may reference `Cli`, and `EmitReplaySession` stays
+the supported public bracket for one conversion attempt until a proven replacement exists.
+
+**Scope:** forms for the ordinary settings, a root TOML text editor for the rest, read-only views
+of the `extends` chain and of effective values, and bulk changes over selected attributes;
+structured template and matcher forms are deferred. Reports describe the edits on screen without a
+save. An export of unsaved edits writes a copy of the spec beside the outputs, named by its
+content, and runs that copy; it never saves the opened spec. The copies are not removed
+automatically, and a notice says so before such an export (D-139 part 7). The desktop writes
+standard vNext output only; users who need v2 bytes use the CLI. M9 includes self-contained
+desktop builds and a check that the published program starts; distribution archives, signing,
+notarization and Linux packaging are release work.
 
 **Requirement:** opening a spec shows its saved notices prominently, so a probe draft's omission
 summary (spec §7.1) is seen without reading the file. The simplest form that meets it shows every
 non-empty root `[provenance].notes` on opening; the display and any marker are M9's design. A
 derived spec's notes stay its own, because provenance is not inherited (spec §13 rule 7).
 
-**Exit:** load, inspect, edit a spec and export, on Windows, macOS and Linux.
+**Steps**, in order; D-139 part 15 states each step's obligations:
+
+| Step | Delivers | State |
+| --- | --- | --- |
+| The contract | D-139, this section, and the CLI's version string, now `fcabedrock-vnext-cli <version>` | Complete |
+| Coordinator extraction | the shared run and publication package, with every CLI byte unchanged | Planned |
+| Progress and cancellation | the progress observer and the cancellation contract | Planned |
+| Desktop skeleton | the application, Open as an owned operation, notices, diagnostics, the test harness and a real-backend check of the skeleton | Planned |
+| Inspection | preview, plan, stats and the fingerprint report on unsaved edits; the operation ledger and closing, with progress shown while a close waits | Planned |
+| Editing, part one | the editing session, Save As, the file-use rule and departure protection | Planned |
+| Editing, part two | every discretizer and scale editor, and bulk editing | Planned |
+| In-place Save | Save with stale-file reconciliation | Planned |
+| Export | the clean export and the export of unsaved edits, with progress and the spec §15 host wording | Planned |
+| Probe, migrate, freeze and fingerprint | their dialogs and documents | Planned |
+| Chains, text editor and polish | the chain view, the root TOML editor, and a keyboard and focus review | Planned |
+| Exit verification | self-contained publish and launch, and the complete evidence per platform and capability | Planned |
+
+Progress and cancellation may proceed beside the desktop skeleton once the extraction has landed,
+and both land before inspection. A design step settles the frame before the skeleton, and one
+precedes each later step that adds screens (D-139 part 14). The real-backend smoke grows as
+features land, and exit verification runs the complete workflow.
+
+**Exit:** load, inspect, edit a spec and export, on Windows, macOS and Linux. D-139 part 12 reads it
+per platform and capability, and a capability without evidence returns to the maintainer as a
+decision.
 
 ## Release-candidate obligations
 

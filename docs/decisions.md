@@ -257,6 +257,10 @@ changes an earlier one. A new entry MUST add its line here.
 - D-137: Preserve decoded delimited input across short reads with the pinned Sep reader *(strict UTF-8 decoding recorded in place on 2026-10-14)*
 - D-138: Accept the delimited reading change with its small-input elapsed cost unbounded *(qualifies D-124's evidence policy for that change only)*
 
+### M9 (desktop) pre-implementation contract
+
+- D-139: M9 desktop contract: the shared run coordinator, documents and revisions, the recipe rule and the spec snapshot, saving, file use and operation lifetime, progress, the desktop manifest, evidence and the delivery order
+
 Spec-field defaults are recorded in spec §21 items 1–11 (see the final section
 of this file).
 
@@ -8022,6 +8026,605 @@ with its small-input elapsed cost unbounded (D-138).
 - **Affects:** `docs/benchmarks.md` (the comparison and its scope), `docs/roadmap.md` (the M8.2
   status), `docs/decisions.md` (this entry, its index line and the cross-references in D-124). No
   production code, benchmark definition, job, corpus, oracle or limit changes.
+
+---
+
+## M9 (desktop) pre-implementation contract
+
+This section records the M9 contract, settled before any desktop code.
+
+### D-139: M9 desktop contract: the shared run coordinator, documents and revisions, the recipe rule and the spec snapshot, saving, file use and operation lifetime, progress, the desktop manifest, evidence and the delivery order
+
+- **Status:** accepted (M9 pre-implementation contract, approved by Constantinos Orphanides on
+  2026-10-22)
+- **Date:** 2026-10-22
+- **Decision:** the M9 contract is settled before any desktop code, in sixteen parts. Each part
+  binds the steps that implement it. Exact type names, signatures and synchronization primitives
+  are designed by those steps (EP-4).
+
+  **1. Scope and the settled choices.** M9 delivers an Avalonia desktop application (D-008) that
+  opens a spec and its data, inspects, edits and exports it, and exposes `probe`, `migrate`,
+  freeze and fingerprinting, on Windows, macOS and Linux. The editor's scope has four parts. Forms
+  cover the binding, defaults, output and provenance sections and every attribute field,
+  including every v1 discretizer and scale kind with its parameters, the three `declared_domain`
+  states, `value_labels`, `restrict_to` and the two value policies. A root TOML text editor covers
+  everything else, templates and matchers included. Read-only views show the `extends` chain and
+  each field's effective value, whether inherited or supplied by a template or matcher. Bulk
+  changes over selected attributes materialize or de-shadow, as D-119 describes. Structured
+  template and matcher forms are deferred. The reserved surface (`value_type = "date"`, the three
+  deferred scales, composite keys) is shown as reserved and refused exactly as the library
+  refuses it. The desktop writes standard vNext output only: it has no v2-compatibility switch,
+  users who need v2 bytes use the CLI's `--v2-compat` (D-011), and importing a legacy `.bed` spec
+  stays. M9 includes self-contained desktop builds that carry the .NET runtime and a check that
+  the published program starts; distribution archives, a macOS bundle, signing, notarization and
+  Linux packaging are release work. No further hardening precedes M9.
+
+  **2. Hosts and the shared run coordinator.** A *host* composes the library into user-facing
+  operations: the CLI today, the desktop in M9. The run and publication *coordinator* that the CLI
+  holds internally (D-122 part 9, D-123 point 1) moves into one new production package between
+  the library and the hosts, working name `FcaBedrock.Runs`, named at the extraction review. It
+  holds preparation, the file-backed spec source with its identity service and chain record,
+  input-stability hashing, the publication transaction and single-file delivery, `extends`
+  relocation, manifest composition, the convert sequence, freeze, the fingerprint report,
+  statistics and the read-failure explanations, and it references Diagnostics, Core, Sources,
+  Spec, Conversion and Export. The CLI keeps its argument grammar, usage text, stderr rendering
+  and escaping, exit codes, standard streams, signals, audit argv capture, host and entry point,
+  command-level observer and plan report, and its handlers map arguments to coordinator requests
+  and render the outcomes. The coordinator returns outcomes and renders nothing; each host
+  presents them. `src/FcaBedrock.Desktop` references the new package and the library, never
+  `Cli`; no production package references `Cli` or `Desktop`, and Core stays pure (EP-13).
+
+  The extraction is a move with that one seam, behind the EP-4 review that D-122 part 9 requires.
+  It changes no CLI byte (stdout, stderr, manifests, written specs, `.cxt`, `.dat`), no diagnostic
+  (the registry stays 85) and no public API of the seven library packages. It changes neither
+  publication family: a test pins the artifacts family's kinds, commit and backup orders, record
+  shape byte, private-name grammar and record format as they are. The architecture lock grows from
+  eight production assemblies to nine and then ten, with the no-host-reference rule over `Cli` and
+  `Desktop`, the new package's allowed references, and view models that reference no `Avalonia`
+  namespace. The benchmarked seams that move keep a friend grant to `FcaBedrock.Benchmarks`, and
+  the grant sets of the CLI and of the new package are asserted exactly (D-124).
+
+  The extraction review designs these members. Each is first used by the step part 15 names, and
+  a designed member is not a claim that its behavior exists before that step:
+  - a **root source** that is either a *file-backed root* (a path spelling: the CLI's operand, a
+    clean export's saved file, a spec snapshot) or an *in-memory root* (canonical text with an
+    *anchor* path, or for a never-saved document a display label and no anchor); after the root
+    is read, the sequence is one code path;
+  - the rule that the convert sequence and the manifest composer accept only a prepared run of a
+    file-backed root, so an in-memory export cannot be expressed;
+  - the *expected revision*, an optional precondition with a root part and a base part (part 4),
+    which the CLI never passes;
+  - *host-supplied protected files* on every publication operation: files the host adds to the
+    inputs the run reads, which join preflight's identity-collision check and recovery's
+    prior-collision check and never enter the spec chain, the prepared run or the manifest; the
+    CLI passes none;
+  - the convert operation in two steps, preflight of the output base and publication of a
+    prepared run, which the CLI calls in its existing order of preparation, preflight and
+    publication;
+  - a structured outcome from single-file delivery for an existing object at its target when
+    replacement is not authorized, reported after recovery of that target's own residue;
+  - the composition of an in-memory root anchored at a path, which records the bases it loads and
+    the anchor, and never a root entry;
+  - completion as one awaitable: a coordinator call returns only after the library's own cleanup
+    for it has run (part 8).
+
+  **3. Documents and revisions.** For each open document the desktop keeps:
+  - the *saved revision*: the path, the raw bytes' hash and the file identity observed at Open or
+    at the last committed save, with the *saved-at counter*, the authored counter those bytes
+    correspond to. A document from probe, migrate, freeze or New has none. It is never derived
+    from canonical text, and a spec snapshot (part 7) never becomes one;
+  - the *authored revision*: the current immutable `SpecDocument`, with a counter that increases
+    on every committed edit. The document is *dirty* when that counter differs from the saved-at
+    counter or when it has no saved revision;
+  - *pending text*: a field buffer that does not parse, and in the text editor a raw TOML buffer
+    that does not parse. It moves no counter and is unsaved work all the same (part 6);
+  - the *current chain facts*: the *base observations* the session last composed and accepted
+    (each base's spelling, resolution path, raw hash and identity, in load order), the anchor they
+    were composed from, and a *chain generation* that increases whenever they are replaced. They
+    change at Open, after a committed save and when a current completed validation composed
+    different bases, which the document shows as "bases changed"; a run never changes them;
+  - the *data snapshot*: the data path and the authored read settings;
+  - two cheap *observations*, of the data file and of the saved path (identity, length and
+    last-write time), refreshed on ordinary occasions. A difference marks results as possibly
+    out of date and offers a refresh or Reload. An observation proves nothing, refuses nothing
+    and reads no bytes: the raw-hash check happens where a file is about to be replaced or
+    executed.
+
+  Every result records the authored counter, the chain generation and the data snapshot it
+  started from. It is shown as current only while all three still match, and it is labelled with
+  the revision it describes; a late result for an older snapshot is dropped. A report never
+  changes the document. Save and Save As set the saved-at counter to the counter they wrote, so
+  edits made during the write stay dirty. Fingerprint write applies its three fields as one
+  committed edit only when the counter has not moved, and otherwise drops the result with a
+  notice. A relocated `extends` that Save As wrote is applied only when the authored reference is
+  still the text that was saved. Nothing overwrites a newer edit. The desktop never reads the data
+  file outside a run to check its freshness; runs hash each complete pass inline (D-122 part 5).
+
+  **4. What each operation runs: the recipe rule.** An operation that writes no file runs the
+  authored revision. Plan, stats, the fingerprint report, freeze and fingerprint write hand the
+  coordinator an in-memory root, the canonical text that `SpecWriter.Write` produces, with the
+  document's anchor, so they describe the edits the editor shows without a save. An operation
+  that publishes runs a file the manifest can name truthfully. An export of a clean document runs
+  its saved file. An export of a dirty or never-saved document first persists the spec snapshot
+  beside the outputs and runs that file (part 7). An export never writes, saves or rebinds the
+  opened spec file: a clean export reads it as its recipe, and an export of unsaved edits does
+  not read it. Run commands are never disabled for being dirty. Freeze opens its frozen copy, and
+  probe and migrate their result, as a new unsaved document. Fingerprint write requires a fully
+  frozen spec, as `fingerprint --write` does. None of freeze, fingerprint write, probe and migrate
+  publishes.
+
+  A desktop run is admitted only under a completed validation of the current snapshot that reports
+  no Error. This is a desktop rule beside the CLI's, which runs without `validate`; until such a
+  validation exists, the run commands are disabled with the reason. Runs then follow
+  **validated-base carry**: every desktop run captures the completed validation's base
+  observations at admission (its *validated base expectation*) and compares each composition it
+  performs with that captured set, by count, order, resolution path, identity and raw hash,
+  spellings excluded; a run never adopts its own composition's observations as the expectation; a
+  mismatch refuses before the schema read opens the data and triggers the existing revalidation
+  route, after which the user reissues the run. Spellings are excluded because relocation can
+  spell a base differently. A file-backed run also checks its root after reading it and before
+  composition, against the expected root fact: the saved revision's hash and identity for a clean
+  export, and the snapshot's hash and fresh identity for a snapshot export. A clean export refused
+  for a changed root offers Reload, Save As or Overwrite. Both checks use facts the read already
+  computes, and their refusals are structured outcomes, not diagnostic codes (D-122 part 2). The
+  interval between a check and the data passes is not locked; no watcher or cross-process lock is
+  added. A never-saved document that authors `extends` has no anchor, so its bases cannot
+  resolve, it is not validated and it cannot run; Save As supplies the location. A never-saved
+  document without `extends` runs and exports, with its snapshot anchored at the output folder.
+
+  **5. The validation route.** The editor validates through one route and no second grammar:
+  `SpecWriter.Write`, then `SpecReader.Read` (every parse-owned check), then
+  `SpecComposer.Compose` with the file-backed host rooted at the anchor (bases read from disk with
+  their observations, and no root entry), then `SpecResolver.Resolve` with the open data's schema
+  or none, as `validate` behaves with and without DATA. Composition always precedes resolve, so
+  the resolver's programmer-error exceptions are unreachable; if one fires, it is presented as an
+  unexpected fault. Validation runs off the UI thread, coalesced, one in flight per document,
+  with the latest edit winning. Its first three steps are an owned operation (part 8). The resolve
+  step is an *isolated computation*: it starts after every stream is closed, receives immutable
+  inputs and owns no file, permit, temporary storage or transaction, so it is the one kind of work
+  the desktop may stop waiting for. A matcher `name_regex` runs under `Regex.InfiniteMatchTimeout`
+  (D-115), and no cancellation token interrupts it. A resolve that has not returned within a fixed
+  interval is marked unresponsive and *abandoned*: the desktop stops waiting and records it in the
+  application-wide *operation ledger* until it returns. Closing or reopening a document releases
+  no entry; restarting the application clears them all. When the ledger holds a fixed allowance,
+  resolve is suspended for every document, with the remedy shown, while the first three steps,
+  editing and saving continue and runs stay disabled. Ledger transitions (admission, abandonment,
+  late return and document close) are serialized, so each computation is counted once and
+  released once, a repeated close and reopen cannot bypass the suspension, and a late result
+  reaches only a live session whose snapshot is current. The editor's design step fixes the
+  interval and the allowance, informed by a measured validation latency at Internet-Ads width.
+
+  A field buffer parses TOML numbers as invariant TOML values (EP-11) and passes strings to the
+  document verbatim, for the resolver to judge under `binding.locale` or their own grammar. A
+  buffer that cannot become its value is an inline error, the document keeps the last
+  representable value, and Save, Save As and every run are disabled with the reason. Every
+  optional field shows an explicit not-set state beside its inherited or default value;
+  `declared_domain` has three states; unchecking `include` keeps the rest of the attribute
+  (D-049); an explicit `false`, an empty collection and an authored value equal to its default
+  stay as authored; ordered collections keep and edit their order. The editor edits the authored
+  root, never the composed document.
+
+  **6. Saving and departure.** *Save As* writes the authored revision's canonical bytes to a new
+  path through the coordinator's single-file delivery. Its protected inputs are the data file,
+  every chain file (the current root included), every existing file the authored reference
+  resolves to from the anchor, and every other open document's saved path. A save composes the
+  root it writes from its anchor at save time: the saved path's folder for a saved root, the chosen
+  destination for a never-saved one. It reuses an earlier composition only when that composition's
+  snapshot is current and it came from the same anchor. A Save As into another folder relocates
+  `extends` by the existing rule (D-122 part 10, spec §13): the reference is kept or rebuilt when
+  it verifies, and refused with nothing written when it would cross a drive or share or does not
+  verify; the check runs again after preflight and recovery. A base that cannot be loaded refuses
+  a Save As into another folder but not a save in the same folder, so work in progress can be
+  saved with its diagnostic shown. Save As rebinds the document to the new path. An untouched Save
+  As whose reference was relocated is clean afterwards, because the relocated text is part of the
+  saved baseline. Edits made during a Save As stay dirty and intact. An `extends` edit made while
+  a Save As runs keeps the meaning it had when typed: either the field is read-only during the
+  write, or the reference is reconciled with the new anchor explicitly, as that step's contract
+  chooses.
+
+  *Save* writes the opened file in place. It is a new coordinator operation and the desktop's one
+  authorized root replacement. It leaves the CLI's prohibition of in-place writing (D-122 part 4)
+  unchanged and gets its own decision entry when it lands. Its protected inputs are the data file,
+  every base composed at save time and the other open documents' saved paths, never its own
+  target. It uses the existing sequence (record, stage, seal, rename aside, commit, remove the
+  backup), restores the root after a failure or cancellation before the commit point, and takes
+  one acknowledgement, at a document's first in-place Save, that FcaBedrock rewrites the file
+  canonically and keeps no comments or formatting (D-075). Opening a file whose decoded text
+  differs from its canonical form shows the same notice. Immediately before Save, the desktop
+  rereads the saved path under its own permit and compares identity and raw hash with the saved
+  revision. A difference offers Reload, Save As or Overwrite, and a deleted file offers Save As or
+  Overwrite. The interval between that check and the rename aside is not atomic, and the namespace
+  precondition and crash limits of D-125 apply as for the CLI. No save compares itself with a
+  validation, so a save may persist incomplete work.
+
+  Leaving a document (close, new, open or Revert) that is dirty or holds pending text offers Save,
+  Discard or Cancel. While pending text blocks Save, the prompt offers Discard and Cancel and says
+  why Save is unavailable, and Cancel returns to the exact buffer. Leaving needs an explicit
+  Discard or a completed valid save, and an older save's completion never makes newer pending
+  text appear saved. The guard arrives with the first editable step, with Save As as its write;
+  in-place Save adds Save and Overwrite to it, and the text editor brings its raw buffer under it.
+  No step discards unsaved work silently. Undo is a per-field reset to the inherited or default
+  value and a revert to saved.
+
+  **7. Export of unsaved edits: the spec snapshot.** The *spec snapshot* is the authored revision's
+  canonical bytes, with the relocated reference where relocation applies, persisted beside the
+  outputs as the export's recipe. The *recipe name rule* names it by its own bytes: the output
+  base, a fixed suffix and a fixed-width prefix of the lowercase hexadecimal SHA-256 of those
+  bytes, which is also the start of the manifest's `spec_file_hash`. The name is outside the
+  convert family's ruled extensions and private-name grammar, and its own single-file namespace
+  is disjoint from the output base's; the export step fixes the suffix and the width
+  (recommended: `BASE.spec-` followed by twelve hexadecimal digits and `.toml`). The prefix is a
+  convenience, not the equality test. A snapshot is written only when nothing is at its name. An
+  existing file is reused only when it is neither an input nor a protected file by identity and
+  its raw bytes hash to the snapshot's full hash, checked before any data byte is read. Anything
+  else at the name is refused and left as it was, whatever the replace-existing choice says about
+  the outputs: a file whose full hash differs under the same prefix, a directory, or a file that is
+  an input or a protected file by identity, even with matching bytes.
+
+  The export runs in this order, and a refusal before the snapshot is persisted leaves nothing new
+  written: admission (part 4); composition of the authored root from the anchor, compared with
+  the validated base expectation; relocation from the snapshot's folder; preflight of the output
+  base, protecting the data file, every base, the snapshot path, the opened document's saved path
+  and every other open document's saved path; persisting the snapshot or reusing an identical
+  one; file-backed preparation of the snapshot under its expected revision and the same validated
+  base expectation; publication of the outputs. The export is one owned operation that holds one
+  write claim over the snapshot's namespace and the output base's, from before the preflight until
+  the convert's references are released, whether or not it writes the snapshot; its reads at
+  those names are its own. The transaction the preflight returns belongs to that operation and is
+  disposed of on every exit, including a refusal, a cancellation, a changed base, a failed
+  preparation and a fault. Disposing of an unbegun transaction releases its references; rolling
+  back a begun, uncommitted one stays a separate step; a committed publication stands with any
+  cleanup warning; and a committed snapshot's commit and cleanup facts survive a later failure of
+  the conversion.
+
+  Three invariants hold:
+  - **Recipe preservation.** An export of unsaved edits that does not publish leaves every
+    previously published file at that base, its recipe included, as it was, within the convert's
+    existing rollback and recovery limits, and its outcome states what remains. The comparison is
+    with the state after the export's preflight has recovered any earlier transaction's residue:
+    an export refused after such a recovery created no recipe or publication state of its own, and
+    a recovery that cannot finish keeps its existing refusal.
+  - **Validated-base carry** (part 4) covers both of the export's compositions, before the
+    snapshot is written and when the written snapshot is prepared. Relocation proves only that a
+    reference reaches the same path and object; only the raw-hash comparison proves that the
+    object holds the bytes the validation evaluated.
+  - **Working-spec protection.** The exporting document's saved file is a protected input of
+    every publication the export performs, through preflight's collision check and recovery's
+    prior-collision check by canonical identity, without entering the executed spec chain or the
+    manifest.
+
+  The outcome keeps a newly committed snapshot, a verified reuse and a refused occupant apart, and
+  never calls an unverified file this export's settings. A failure or cancellation after the
+  snapshot exists and before the convert commits leaves the snapshot standing and named, no new
+  context, and the previous export at that base unchanged; an export of the same settings later
+  reuses it. The two transactions have two commit points and no joint atomicity (spec §16.2). The
+  guarantee is that an export never replaces an existing snapshot. Its snapshot write reuses only
+  an occupant that the check above verifies by identity and full hash and refuses any other, and
+  its convert never writes at a snapshot's name. A later export that fails therefore leaves an
+  earlier export's snapshot as it was, within the limits of recipe preservation above. A later
+  export that publishes with replacement authorized replaces the outputs at that base, including
+  context files an earlier manifest cites, but not that snapshot. With the
+  manifest off, the snapshot and the selected contexts are written and no manifest names the
+  snapshot. Residue of an interrupted snapshot write is recovered by the next write at that exact
+  name, and residue of the convert by the next publication at that base, within D-125's crash
+  limits. A document that extends a base on another drive or share than the output folder cannot
+  export unsaved edits there; a save or another folder serves instead.
+
+  Export and automatic cleanup never replace or delete a snapshot. Each distinct authored content
+  exported to a base leaves its own file, an identical one is reused, and ordinary editing and a
+  clean export write none. The snapshot is not opened as a document. This is the export policy,
+  not a file type: a user may open a snapshot as an ordinary spec and save it under part 6, after
+  which an older manifest can cite bytes that no longer exist and a later export meeting that name
+  refuses. The snapshot keeps the authored `[provenance]` unchanged and records no link to the
+  opened spec; the export dialog shows that link.
+
+  Copies accumulate, and the maintainer accepted that cost on one condition: before Export of
+  unsaved edits, a small visible notice states the snapshot's path and whether it is new or an
+  identical copy being reused, that the working spec stays unsaved, that copies are never removed
+  automatically and unwanted ones must be deleted by hand, and that copies needed to reproduce
+  kept exports should be kept. The notice offers no automatic cleanup and does not suggest that
+  older copies are disposable. The export dialog's design step settles its wording and layout. The
+  dialog lists the files the export will write or replace, derived from the formats, the manifest
+  choice and whether the snapshot is new or reused, and may list the older snapshots at the base
+  that the new manifest will not cite, without offering to delete them.
+
+  **8. File use, operation lifetime and closing.** The desktop may hold several documents. *File
+  use* is the interval during which an operation holds a stream open on a file or owns a
+  publication transaction over a namespace, and a *permit* records one file use in one
+  application-wide registry. A reader holds a shared permit per file from the moment the
+  coordinator's input-open seam opens the file until the stream closes, so bases found during
+  composition are covered and finished reads are not; pure phases, resolve included, hold none. A
+  write (Save, Save As or an export) holds one exclusive permit over its whole namespace (its
+  targets, every private name its transaction can create or recover, and recognized residue),
+  held by path from before preflight until its references are released, with an owner token so
+  that its own reads are never refused as another reader's. At most one write runs at a time. A
+  write waits for intersecting readers, showing what it waits for and offering Cancel, and no new
+  reader of its namespace starts meanwhile; readers never conflict with readers. Two files
+  intersect when a fresh identity service finds the same canonical identity, which matches a
+  hard-link alias, or, where no file exists, when their full paths are equal. Every publication
+  protects the exporting document's saved path and every other open document's saved path by
+  identity, so no export or Save As replaces a spec the application has open, whether or not that
+  document holds a permit; in-place Save excludes only its own target. After a committed write,
+  the desktop marks every open document whose chain names a written file "bases changed".
+
+  An *owned operation* is any unit of work the session starts through the coordinator or the
+  library: Open, validation's first three steps, preview, every run, probe, migrate, Save and Save
+  As. It is owned from its start to its terminal state (completed, failed, refused, cancelled or
+  faulted), which arrives only when the call has returned through the library's own cleanup;
+  post-input calibration, grouped replay and publication are inside that lifetime. Awaiting an
+  operation proves that its cleanup path ran and reported any failure, not that every private
+  file was deleted (D-082, D-095). A permit count of zero never makes an operation abandonable;
+  only the isolated resolve of part 5 is. Cancellation is cooperative and pending until the
+  terminal state arrives. Library code observes it at every asynchronous read, at each phase
+  boundary of preparation, per row in merge and replay and before each publication step, and not
+  inside a regex match, a synchronous read or an operating-system rename or delete, so no latency
+  is promised. The desktop shows "cancelling", with the operation and its current step, until the
+  call returns. Cancellation before the commit point yields no committed run; after it, the files
+  stand and the run shows as "Published" with any cleanup warning.
+
+  Closing a document or the application requests cancellation of its owned operations, awaits
+  each one to its terminal state with the wait shown, abandons its isolated computations to the
+  ledger, and then closes. It never rolls back unconditionally and promises no time bound. An
+  owned operation that never returns keeps the close pending, and ending the process is then the
+  remedy, with the crash consequences D-125 states and, beyond them, a calibration or grouping
+  workspace that can stay under the temporary directory. An offered "exit now" ends the whole
+  application, every document and its unsaved work included. It is never presented as a
+  cancellation or a rollback, and it carries no cleanup guarantee, because an explicit process
+  exit can bypass `finally` blocks; the step that offers it verifies its mechanism. Work runs on
+  thread-pool threads, which the runtime creates as background threads (verified at the runtime's
+  tag by the step that relies on it), and no operation moves to a dedicated foreground thread
+  without a recorded reason. No worker is killed and no second process is introduced.
+
+  **9. Progress and preview.** The coordinator takes one observer per run. It reports the start
+  of each data pass, with its sequence number, its kind and its length when the opened stream is
+  seekable (read before the hashing wrapper, which reports no seek); the bytes consumed and the
+  objects emitted in that pass; exactly one end per pass, as end of input, closed before end of
+  input (the schema read, a preview), failed or cancelled; indeterminate working steps (post-input
+  calibration, grouping, the coordinator's own staging, sealing, committing and cleaning, and for
+  an export the base check, the output preflight and the snapshot write); and completion. A pass's
+  start precedes its progress, its end precedes the next pass's start and the completion, and
+  completion is last. No overall percentage is derived from these events, and no seam is added
+  inside Conversion. Observer callbacks must be cheap, and an observer exception is a host
+  defect. Each host passes a no-op observer until it renders progress, and the CLI's progress flag
+  stays deferred. The desktop keeps one *progress snapshot*. Each notification replaces it as a
+  whole, so a fast producer loses no pass kind or length and no dispatcher queue grows, and nothing
+  changes it after completion. The progress display and the pending-cancel and pending-close
+  displays all read it. Bytes and diagnostics are identical with and without an observer (EP-7),
+  and the observer's cost is measured once, as an observation with its limits under D-124's rules.
+  Preview shows at most a fixed number of raw normalized source records, labelled as source
+  records rather than formal objects. It stops without draining the source, cancellation disposes
+  of it, and a long value is truncated in the display only.
+
+  **10. Notices, diagnostics and ambient state.** Opening a spec shows its non-empty root
+  `[provenance].notes` (spec §13 rule 7) as a banner above the editor: the first line prominent,
+  the rest expandable, dismissible per document and shown again on reopen. A derived spec shows
+  only its own notes, and a probe draft shows its banner before any file exists. Each attribute's
+  `description` shows in its editor header, where probe writes omission and truncation text
+  (D-107, D-108). Diagnostics appear as a structured list with severity, code and location, and
+  the desktop may group identical diagnostics for presentation without changing the structured
+  contract (D-116, spec §16.4). An unexpected fault shows the sanitized message the CLI shows
+  (D-122 part 2); the frame's design step decides whether a copy-details command also places the
+  exception type and stack on the clipboard, and nothing is ever sent anywhere. The desktop adds
+  its own sentence to `GroupingStorageFailed` for its temporary-directory setting, because the
+  library's text names no option (D-082). The application has no runtime telemetry and no network
+  access, keeps recent files and window geometry in one per-user settings file that no output
+  path reads, and keeps `InvariantGlobalization` off, because `binding.locale` needs ICU.
+
+  **11. The run manifest of a desktop export.** A desktop manifest records the desktop process's
+  complete argv verbatim as `command_line` (D-123 point 4) and the desktop's version string as
+  `tool_version`: `fcabedrock-vnext-desktop <version>`. With this entry the CLI's version string
+  changes from `fcabedrock-vnext <version>` to `fcabedrock-vnext-cli <version>`, so each string
+  names the program that wrote the manifest, the product name first and the program last, as in
+  the assembly names. Both are formed by one rule, the assembly's informational version without
+  build metadata. The rename changes the CLI's `--version` output and the `tool_version` of every
+  manifest it writes, and nothing else: no fingerprint, context byte, exit code or other manifest
+  field. The example in spec §15 shows the new string.
+  A desktop manifest's path fields are the spellings the desktop handed the coordinator: the
+  local path the storage provider returned for the spec and the data, and the output base as the
+  export dialog composed it. Such a manifest is machine-specific in its paths, as a CLI manifest
+  with absolute operands is. A snapshot export's manifest names the snapshot: `spec_path` and the
+  root `[[run.spec_files]]` entry are its spelling, `spec_file_hash` is its raw hash, and the base
+  entries are the relocated references it holds, with their raw hashes. No field is added to spec
+  §15, §8 is unchanged and no v2 setting exists. The export step amends §15's prose:
+  `command_line` becomes the argument array of the host process and `tool_version` the host's
+  version string, and the path spellings for any host are the text the host handed the
+  coordinator, which for the CLI are its verbatim operands. The amendment may note that a host can
+  record a spec it wrote beside the outputs.
+
+  The desktop shows how the CLI reproduces a published export: `fcabedrock convert` over the
+  recipe and the data the manifest names, with `--format` and, when the manifest was off,
+  `--no-manifest`, every path quoted for the shell the command is shown for, and either a fresh
+  output base or `--force` with the warning that it replaces the outputs. With the manifest off,
+  the desktop shows the operands and the recipe directly. Reproduction yields the same context
+  bytes while the recipe, every base and the data still hold their recorded bytes; a new
+  invocation records its own timestamp, argv and version. A snapshot preserves the root's
+  canonical text with its relocated reference and nothing else, neither the bases' contents nor
+  the data. Deleting a file a manifest cites leaves the manifest citing a missing file, and a
+  clean export's recipe is the working file as it was when it ran, which a later Save changes.
+  Nothing in M9 bundles the bases or the data with the outputs.
+
+  **12. Verification and exit evidence.** Each behavior ships with its tests in the step that
+  delivers it (EP-7). Most desktop tests are plain xUnit tests over view models, which need no UI
+  thread; a few headless tests cover bindings, commands, the notices banner and focus order. Host
+  parity is a tested rule. For every active golden and the Internet-Ads synthetic, a clean desktop
+  export writes the CLI's `.cxt` and `.dat` bytes and a manifest equal field by field under an
+  injected clock, with `tool_version` and `command_line` each asserted to its exact value for each
+  host and the path spellings equal because both hosts receive the same ones. Reports run through an
+  in-memory root equal the CLI's file-backed reports, including for a root file with comments and
+  a byte-order mark, and probe drafts, migrated specs and frozen copies equal the CLI's bytes. The
+  snapshot export is tested for each invariant of part 7, for the recipe name rule (including two
+  expected full hashes that share a name prefix, supplied through the naming seam) and for
+  reproduction through the CLI host, which is checked for context bytes; exact host-field parity
+  is checked only under an injected clock. Tests assert terminal results and files, never a
+  cancellation token's state. The new projects build and test on all five CI runners.
+
+  M9's exit, "load, inspect, edit a spec and export, on Windows, macOS and Linux", is read in three
+  parts, each recorded with its environment and process architecture. First, the desktop suite
+  passes on the three required native CI targets. Second, a real-backend smoke on Windows x64,
+  Linux x64 and macOS ARM64 launches the application with the platform's windowing backend, opens
+  a spec and its data, edits a field, exports without saving, saves, exports again, compares the
+  snapshot and the outputs with the CLI's, and closes. It runs through a separate smoke executable
+  under `tests/` that drives the application in process under a friend grant, so the product has
+  no knob for it (EP-6); it is automated where a hosted runner can host the backend, and otherwise
+  a manual walkthrough on an available machine. Third, manual walkthroughs cover the native file
+  pickers and the lifetime behavior a smoke cannot drive. Coverage is recorded per platform and
+  capability: launch under the real windowing backend; loading, editing, exporting and saving
+  through it; keyboard operation through real input events; native file pickers, never automated
+  in M9; closing during an operation; and the launch of the published self-contained program,
+  recorded apart from what the in-process smoke proves. A green headless suite is never presented
+  as native usability. A capability with neither automated nor manual evidence on a required
+  platform is a gap that returns to the maintainer as a decision when it becomes known; a narrowed
+  claim is recorded only in the maintainer's words, and this contract pre-approves none.
+
+  **13. Dependencies and tooling.** The desktop uses MVVM with `CommunityToolkit.Mvvm`, compiled
+  bindings and a hand-written composition root with constructor injection; it adds no ReactiveUI,
+  dependency-injection container, hosting or logging framework (EP-5, the D-123 precedent). Its
+  types are internal, with friend grants to its test project and the smoke executable. Packages
+  are MIT-licensed and pinned exactly under central package management. The planned pins, current
+  when this contract was settled, are `Avalonia`, `Avalonia.Desktop`, `Avalonia.Themes.Fluent` and
+  `Avalonia.Fonts.Inter` 12.1.4 and `CommunityToolkit.Mvvm` 8.4.2; the step that adds each one
+  verifies it at its source (EP-23). The product references no licensed or non-commercial tooling,
+  and no developer inspector is required. Whether `Avalonia.Headless.XUnit` runs under the
+  repository's xUnit v3 and Microsoft.Testing.Platform pins is unknown: the skeleton step tries
+  it, and otherwise drives `HeadlessUnitTestSession` from ordinary tests, with no second xUnit
+  major and no VSTest. Avalonia's build tooling documents build-time telemetry, so before the
+  first build that references the framework, `AVALONIA_TELEMETRY_OPTOUT=1` is set in CI and
+  documented for local builds, and the package's handling of it is confirmed. Warnings stay
+  errors, so XAML compiler warnings fail the build, and `.axaml` files join the authored-text
+  manifest.
+
+  **14. Design.** The whole application is not drawn before code. One design step settles the
+  frame before the first desktop step: the user journey with a spec and with a data file alone;
+  every document state (no data, clean, dirty, pending text, validating, unresponsive, suspended,
+  running, cancelling, waiting for a write, bases changed, file replaced and the two observation
+  hints); departure and the pending close; the shell and its navigation; which operation each
+  action runs and which document it runs; and how notices and diagnostics are presented. Then one
+  bounded design step precedes each later screen-bearing step: the inspect panels, with the result
+  labels and the pending-cancel and pending-close presentation; the editor, with the constants of
+  part 5, the save and stale-file dialogs and bulk editing; the export dialog, with its recipe
+  line, the notice of part 7, the list of files, the outcomes and the reproduction command; and
+  the probe, migrate, freeze and fingerprint dialogs. Each design step produces reference images
+  or HTML kept outside the repository and one short review by the maintainer. A design choice that
+  changes a contract becomes a decision entry, not a mockup.
+
+  **15. Delivery order.** M9 is delivered in the steps below, in this order. Each step has its own
+  plan before edits, its own worktree, an independent review and its own integration, and a step
+  begins only after the one before it is integrated, except that progress and cancellation may
+  proceed beside the desktop skeleton. Each consequential step records its own decision entry. A
+  step that cannot meet an outcome stated here returns the concrete incompatibility for review
+  instead of relaxing it, and re-verifies the evidence this entry cites before relying on it.
+  - **The contract**: this entry, the roadmap's M9 section, the M9 status sentences of the
+    roadmap, `AGENTS.md` and `README.md`, and the CLI's version string with the §15 example that
+    shows it (part 11); no other code and no normative spec edit.
+  - **Coordinator extraction** (part 2): the new package with its designed surface, every CLI byte
+    lock unchanged, every moved test accounted for by name, the benchmarks compiling against the
+    moved seams, and nine production assemblies. It adds no behavior: no observer events, save
+    operation, in-memory root, precondition or protected-file use.
+  - **Progress and cancellation** (parts 8 and 9): the observer, the cancellation contract tested
+    at each step with terminal results, and the observer-cost observation. It may proceed beside
+    the desktop skeleton once the extraction has landed, and it lands before inspection.
+  - **Desktop skeleton**: the application, its test project and the smoke project, built on all
+    five CI runners; the telemetry opt-out confirmed, then the headless-adapter and real-backend
+    checks run and recorded; Open through the coordinator's file-backed loading, with the saved
+    revision, the chain facts, the data snapshot and the observations; the notices banner and the
+    diagnostics list; ten production assemblies. Open is an owned operation from this step:
+    closing waits for it, shows the close as pending while it finishes, releases its resources and
+    drops a late result for a closed or replaced document, and a test pauses Open at its read seam
+    to prove it. The real-backend check proves that the backend and the in-process smoke can
+    launch and drive this skeleton only, its record names only the capabilities it showed, and a
+    platform gap found here returns to the maintainer when found.
+  - **Inspection**: the in-memory root, the validated base expectation, preview, plan, stats and
+    the fingerprint report on the authored revision, results tagged with their snapshot,
+    validation as one owned operation (its resolve not yet isolated), revalidation after a
+    base-change refusal, the two observations with Reload, and the operation ledger with the
+    closing policy, generalizing the skeleton's handling of Open. Its pending-cancel and
+    pending-close displays read the progress snapshot, including after a run's input has ended,
+    and a test shows that the snapshot's terminal state never changes back. It writes nothing.
+  - **Editing, part one**: the editing session, field buffers, presence, coalesced validation with
+    the isolated resolve and the ledger's allowance, the binding, defaults, output, provenance and
+    basic attribute editors, Save As as the first user of host-supplied protected files, the
+    file-use rule, departure protection with Save As, and the validation-latency observation.
+  - **Editing, part two**: every discretizer and scale editor, `declared_domain`, `value_labels`,
+    `restrict_to`, the policies, effective values and bulk editing.
+  - **In-place Save**: the save operation and its decision entry, the stale-file check with
+    Overwrite, departure protection with Save, revert to saved and per-field reset.
+  - **Export**: the root check; the export dialog with the notice of part 7; the clean export and
+    the spec snapshot export in the order of part 7; progress through the same snapshot that
+    inspection reads; the manifest fields, the desktop's version string and the §15 amendment of
+    part 11; host parity; and a decision entry that records the recipe name rule's suffix and
+    width.
+  - **Probe, migrate, freeze and fingerprint**: their dialogs and their documents; none publishes.
+  - **Chains, text editor and polish**: the chain view, the root TOML editor with its pending raw
+    text under the departure guard, the template and matcher views, a keyboard and focus review
+    across every view, About and recent files.
+  - **Exit verification**: the self-contained publish for each required runtime identifier with
+    its launch check, the complete smoke and the manual walkthroughs, the coverage record per
+    platform and capability, and documentation that describes no M9 work as outstanding.
+
+  The real-backend smoke grows as features land, and exit verification runs the complete
+  workflow. The CLI track is never blocked: after the extraction, no step changes CLI behavior.
+
+  **16. Deferred and unchanged.** Deferred beyond M9: the CLI's progress renderer and flag,
+  machine-readable diagnostics, the early refusal of reserved features, reading a literal U+FFFD,
+  a distinct identity for the missing column, guided type detection in `probe`, structured
+  template and matcher forms, a CLI command that writes a spec to a new path with relocation, a
+  CLI option that writes the recipe beside the outputs or bundles the bases and data, and release
+  packaging. A clean export that also keeps a copy of its recipe is not planned; the export
+  dialog's design step may still add it, because it changes no contract. Unchanged: spec §8 and
+  §13, the manifest schema, the CLI's prohibition of in-place writing, both publication families
+  with their record vocabulary and residue names (D-125 part 6), the namespace precondition (D-125
+  part 2) and the diagnostic registry.
+- **Why:** the desktop's state model, publication sequence and lifetime rules cross every step and
+  several shared surfaces, so settling them before any code keeps a later step from silently
+  breaking an assumption an earlier one made. The coordinator is extracted rather than copied
+  because the preparation sequence already exists three times (in the CLI, the golden harness and
+  the benchmark suite), and a fourth copy owned by a host could drift from the CLI's bytes. The
+  recipe rule serves the workflow the maintainer described: change a setting, look at the plan,
+  the statistics or the lattice of an exported context, and decide later whether to change the
+  spec. Requiring a save first would cost a canonical rewrite of the real spec, or a Save As that
+  rebinds the editor, on the most frequent authoring action. A manifest cites its recipe by path
+  and hash and contains no copy, and neither a `.cxt` nor a `.dat` names its spec (spec §15,
+  §18), so a published run must name a file whose bytes hash as recorded; writing the unsaved
+  bytes beside the outputs keeps that true without saving the spec. Naming the snapshot by its
+  content is the rule under which an export never replaces a snapshot an earlier manifest may
+  cite while a repeated experiment reuses its file. A replacement export that fails at its
+  commit, for example because another program holds `adult.cxt` open on Windows, therefore cannot
+  destroy the earlier export's recipe. The maintainer accepted that distinct experiments
+  accumulate snapshot files at a base, on the condition of the notice in part 7. Relocation checks
+  a path and an object, not bytes, which is why runs compare raw hashes with the validation they
+  were admitted under. A run requires a completed validation because a matcher regex that never
+  returns would otherwise stall a run's resolve, a phase that closing must await. Ownership, not
+  permit state, decides what closing waits for, because calibration and grouping keep working
+  after their input stream has closed.
+- **Rejected:** a desktop that references `Cli`, re-implements the pipeline or drives a CLI child
+  process (which loses structured causes and in-process progress), and a coordinator folded into
+  Conversion or Export (which would misplace filesystem identity and native marshalling);
+  requiring a saved, clean document for every data operation, or for export only (each look at an
+  exported result would cost a save or a rebinding copy); running an export in memory while the
+  manifest names the opened file (its bytes would not hash as recorded); embedding the spec text in
+  the manifest (a §15 schema change, and a recipe that cannot be opened as a spec); a snapshot in
+  the temporary directory (the recipe would disappear); one fixed snapshot name that each export
+  replaces (a failed replacement would leave the earlier manifest citing other bytes); a fresh name
+  per attempt (it preserves recipes too, but adds a file for every repeated experiment); the
+  snapshot as a fourth artifact of the convert transaction (it gains joint rollback, not
+  atomicity, at the cost of the record's one-byte shape, the intent-name grammar, their pinned
+  tests and a CLI residue case); interleaving the two commits (complex, and the window stays
+  open); a v2-compatibility switch in the desktop (the CLI keeps it); a suffixed desktop version
+  string beside the CLI's unsuffixed one (the maintainer wants both programs named alike), and the
+  program type in the middle of the name (it would split the product name); saving
+  only through Save As (the maintainer chose in-place Save with its protections); an abandonment
+  allowance per document (closing and reopening would reset it); drawing the whole application
+  before code; and a further hardening pass before M9 (no open CLI finding blocks a second host).
+- **Affects:** `docs/decisions.md` (this entry and its index line) and `docs/roadmap.md` (the M9
+  section). The steps of part 15 will affect a new production package and its tests,
+  `FcaBedrock.Cli` (internals moved under its byte locks), `src/FcaBedrock.Desktop` with its test
+  and smoke projects, `tests/FcaBedrock.Architecture.Tests`, the benchmark friend grants,
+  `Directory.Packages.props`, `eng/authored-files.txt`, `.github/workflows/ci.yml`, spec §15's
+  host wording (at the export step), and `AGENTS.md`, `README.md` and `docs/benchmarks.md` as their
+  facts change. The change that records this entry also renames the CLI's version string
+  (`ToolVersion` in `FcaBedrock.Cli`, the test that pins it and the §15 example) and updates the
+  status sentences of `AGENTS.md`, `README.md` and the roadmap. It changes no public API,
+  diagnostic, normative spec text, fingerprint or context byte, and the registry stays 85.
 
 ---
 

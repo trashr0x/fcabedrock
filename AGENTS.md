@@ -238,6 +238,7 @@ contract) and **D-123** (the implementation decisions): the `fcabedrock` global 
 eight commands, the publication transaction, the run manifest, the freeze engine, filesystem
 identity, and the argv-boundary exit floor. The diagnostic registry is **85**, and no M7
 transitional diagnostic remains. M8, M8.1, M8.2 and M8.3 (CLI correctness and usable diagnostics)
-are complete. **M9 (the Avalonia desktop application) is next and has not started.**
+are complete. **M9 (the Avalonia desktop application) is in progress: its contract is recorded
+(D-139), and no desktop code exists yet.**
 `docs/roadmap.md` is the live source for current position, test count, and the deferred
 backlog; consult it rather than duplicating the detail here.

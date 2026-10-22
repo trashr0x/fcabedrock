@@ -60,7 +60,7 @@ internal sealed class CliEnvironment
     /// <summary>The cooperative-cancellation source.</summary>
     public required ISignalSource Signals { get; init; }
 
-    /// <summary>The shared <c>fcabedrock-vnext …</c> string (<c>--version</c> and §15 <c>tool_version</c>).</summary>
+    /// <summary>The shared <c>fcabedrock-vnext-cli …</c> string (<c>--version</c> and §15 <c>tool_version</c>).</summary>
     public required string ToolVersion { get; init; }
 
     /// <summary>
