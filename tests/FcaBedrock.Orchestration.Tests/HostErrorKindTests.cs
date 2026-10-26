@@ -270,9 +270,16 @@ public sealed class HostErrorKindTests
         }
         else
         {
-            // The loaded base's object is replaced at its path, so neither reference verifies.
-            File.Delete(basePath);
+            // The loaded base's object is replaced at its path, so neither reference verifies. It is
+            // moved aside, not deleted: a deleted file's identifier can be handed to the replacement
+            // (on ext4 it often is, D-125), which would then verify as the loaded base. While the
+            // original exists no other file can have its identity, and the assertions check that.
+            var aside = temp.Resolve("base.toml.aside");
+            File.Move(basePath, aside);
             File.WriteAllText(basePath, "[spec]\nversion = 1\n");
+            var identities = FileIdentity.CreateDefault();
+            Assert.Equal(immediateBase.Identity, identities.KeyFor(aside));
+            Assert.NotEqual(immediateBase.Identity, identities.KeyFor(basePath));
             destination = temp.Resolve("nested/out.toml");
         }
 

@@ -56,8 +56,17 @@ public sealed class SpecRelocationTests
         var decision = Assert.IsType<OperationCompleted<VerifiedRelocation>>(
             SpecRelocation.Relocate("base.toml", destination, immediateBase, host)).Value;
 
-        File.Delete(immediateBase.FullPath);
+        // The loaded base is moved aside, not deleted. While it exists, no other file can have its
+        // identity, so the replacement is a distinguishable object. A deleted file's identifier can
+        // be handed to the next file created (on ext4 it often is, D-125), and the identity check
+        // could then not tell the replacement from the loaded base. The two assertions check that
+        // precondition on the platform the test runs on.
+        var aside = temp.Resolve("base.toml.aside");
+        File.Move(immediateBase.FullPath, aside);
         File.WriteAllText(immediateBase.FullPath, "[spec]\nversion = 1\n");
+        var identities = FileIdentity.CreateDefault();
+        Assert.Equal(immediateBase.Identity, identities.KeyFor(aside));
+        Assert.NotEqual(immediateBase.Identity, identities.KeyFor(immediateBase.FullPath));
 
         var error = Assert.IsType<OperationHostFailure<RelocationDecision>>(SpecRelocation.Recheck(decision, host)).Error;
         Assert.Equal(HostErrorKind.RelocationUnverified, error.Kind);
