@@ -58,6 +58,18 @@ public sealed class CliProjectContractTests
     }
 
     [Fact]
+    public void Project_ShouldReferenceTheOrchestrationPackage()
+    {
+        // The run and publication coordinator the handlers map to and render (D-140): a reference
+        // in addition to the seven library packages, exactly once.
+        Assert.Equal(
+            1,
+            CountOccurrences(
+                ProjectFile(),
+                "<ProjectReference Include=\"..\\FcaBedrock.Orchestration\\FcaBedrock.Orchestration.csproj\" />"));
+    }
+
+    [Fact]
     public void Project_ShouldAddNoPackageDependency()
     {
         // No parser, hosting, logging, or DI package: the whole grammar and the whole host

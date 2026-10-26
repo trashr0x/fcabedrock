@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using FcaBedrock.Diagnostics;
+using FcaBedrock.Orchestration;
 
 namespace FcaBedrock.Cli.Tests;
 

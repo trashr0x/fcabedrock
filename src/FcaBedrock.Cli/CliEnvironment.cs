@@ -1,4 +1,4 @@
-using FcaBedrock.Cli.Publication;
+using FcaBedrock.Orchestration;
 
 namespace FcaBedrock.Cli;
 
@@ -74,35 +74,20 @@ internal sealed class CliEnvironment
     public required IReadOnlyList<string> AuditArgv { get; init; }
 
     /// <summary>
-    /// Opens a named input for reading. Production opens the real file;
-    /// argv tests return pass-specific streams, which is what makes input behaviour,
-    /// input-stability replay included, deterministic rather than racy. Every
-    /// file the CLI <em>reads</em> goes through here: the root spec, each <c>extends</c>
-    /// base, and the data source. It is no public API and no user option.
+    /// What the CLI lends the run and publication coordinator (D-140). Every file the CLI
+    /// <em>reads</em> opens through its <see cref="OrchestrationHost.OpenInput"/>: the root spec,
+    /// each <c>extends</c> base, the data source, probe's DATA and migrate's <c>.bed</c>. Production
+    /// opens the real file; argv tests return pass-specific streams, which is what makes input
+    /// behaviour, input-stability replay included, deterministic rather than racy, and they also set
+    /// the host's publication filesystem and chain identity seams. None of it is a user option.
     /// </summary>
-    public required Func<string, Stream> OpenInput { get; init; }
+    public required OrchestrationHost Orchestration { get; init; }
 
-    /// <summary>
-    /// Every filesystem operation publication performs. Production is the real filesystem;
-    /// direct tests substitute one that fails a chosen boundary, which is how each commit,
-    /// backup, restore, and recovery step is proven rather than assumed (D-123 point 7).
-    /// </summary>
-    public IPublicationFileSystem PublicationFiles { get; init; } = PublicationFileSystem.Instance;
-
-    /// <summary>Progress observation; the no-op observer in production.</summary>
+    /// <summary>Progress observation; the no-op observer in production. The CLI's own, never the coordinator's.</summary>
     public IProgressObserver Progress { get; init; } = NoProgressObserver.Instance;
 
     /// <summary>
-    /// Creates the file-identity service that loads a spec chain and, for <c>fingerprint --write</c>,
-    /// freshly checks that the chain's base is still the object it loaded. One factory serves both,
-    /// so a check compares keys from the same kind of probe; production is
-    /// <see cref="FileIdentity.CreateDefault"/>, and tests inject a probe that reports OS identity
-    /// unavailable. Publication keeps its own identity services (D-125).
-    /// </summary>
-    public Func<FileIdentity> FileIdentities { get; init; } = FileIdentity.CreateDefault;
-
-    /// <summary>
-    /// The production <see cref="OpenInput"/> implementation. An empty path names no file, so it
+    /// The production input opener for <see cref="OrchestrationHost.OpenInput"/>. An empty path names no file, so it
     /// fails here as a missing file does, before <see cref="File.OpenRead(string)"/> sees it:
     /// every command reports it as a missing input (exit 1).
     /// </summary>

@@ -33,7 +33,7 @@ public sealed class ToolPackTests(ToolPackage package)
     // directions below. The package's own producer-chosen value is never compared to it.
     private const string CanonicalStemSample = "0123456789abcdef0123456789abcdef";
 
-    // The eight production assemblies. Each ships its assembly, its symbols and its documentation,
+    // The nine production assemblies. Each ships its assembly, its symbols and its documentation,
     // and all three are NAMED here rather than tolerated: a stray build or test payload has
     // nowhere to hide behind "it is not a DLL".
     private static readonly string[] ProductionAssemblies =
@@ -44,6 +44,7 @@ public sealed class ToolPackTests(ToolPackage package)
         "FcaBedrock.Diagnostics",
         "FcaBedrock.Discovery",
         "FcaBedrock.Export",
+        "FcaBedrock.Orchestration",
         "FcaBedrock.Sources",
         "FcaBedrock.Spec",
     ];
@@ -51,7 +52,7 @@ public sealed class ToolPackTests(ToolPackage package)
     // Sep, Tomlyn, and Sep's transitive float parser: assemblies only.
     private static readonly string[] DependencyAssemblies = ["Sep.dll", "Tomlyn.dll", "csFastFloat.dll"];
 
-    // The eleven-DLL contract as an EXACT set, so both a dropped assembly and an unannounced new
+    // The twelve-DLL contract as an EXACT set, so both a dropped assembly and an unannounced new
     // dependency fail.
     private static readonly string[] ExpectedAssemblies =
         [.. ProductionAssemblies.Select(assembly => assembly + ".dll").Concat(DependencyAssemblies)];
@@ -119,7 +120,7 @@ public sealed class ToolPackTests(ToolPackage package)
             + $"missing: {string.Join(", ", expected.Except(shipped, StringComparer.Ordinal))}; "
             + $"unexpected: {string.Join(", ", shipped.Except(expected, StringComparer.Ordinal))}.");
 
-        // The eleven-DLL contract, spelled separately so its failure names the assemblies.
+        // The twelve-DLL contract, spelled separately so its failure names the assemblies.
         var assemblies = shipped
             .Where(name => name.StartsWith(ToolDirectory, StringComparison.Ordinal))
             .Select(name => name[ToolDirectory.Length..])

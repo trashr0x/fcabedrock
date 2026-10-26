@@ -18,6 +18,10 @@
     <ProjectReference Include="..\..\src\FcaBedrock.Export\FcaBedrock.Export.csproj" />
     <ProjectReference Include="..\..\src\FcaBedrock.Spec\FcaBedrock.Spec.csproj" />
     <ProjectReference Include="..\..\src\FcaBedrock.Discovery\FcaBedrock.Discovery.csproj" />
+    <!-- Explicit, not left to the Cli reference's transitive copy: the Orchestration rules below
+         must inspect the loaded assembly, and an assembly missing from this project's output
+         would let them pass vacuously. -->
+    <ProjectReference Include="..\..\src\FcaBedrock.Orchestration\FcaBedrock.Orchestration.csproj" />
     <!-- Test-only. No production package may reference Cli, so nothing else
          would ever place FcaBedrock.Cli.dll in this project's output, and without the
          assembly loaded, Cli_ShouldNotBeReferencedByAnyProductionPackage would pass

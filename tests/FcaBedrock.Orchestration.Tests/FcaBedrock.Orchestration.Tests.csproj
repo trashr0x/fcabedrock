@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Common test config (IsTestProject, the zero-tests guard, xunit.v3, the
+       Xunit global using) is inherited from tests/Directory.Build.props. -->
+
+  <!-- Orchestration grants InternalsVisibleTo to this assembly: its unit tests reach the
+       publication engine, file identity, hashing and relocation internals directly. -->
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\FcaBedrock.Orchestration\FcaBedrock.Orchestration.csproj" />
+  </ItemGroup>
+
+  <!-- The shared test support lives under Support/ and keeps its own namespace, because
+       FcaBedrock.Cli.Tests compiles the same files through linked items: each test assembly
+       gets its own internal copy of the types from one source, so they cannot drift. -->
+  <ItemGroup>
+    <Using Include="FcaBedrock.TestSupport" />
+  </ItemGroup>
+
+  <!-- The Orchestration project file itself, as text, and the reviewed public-surface pin. The
+       reference set, the absence of a package dependency and the friend grants are build-time
+       facts, so OrchestrationProjectContractTests asserts them against the real file rather than
+       against a restatement of it, and compares the compiled surface with the pin. -->
+  <ItemGroup>
+    <Content Include="$(RepoRoot)src\FcaBedrock.Orchestration\FcaBedrock.Orchestration.csproj" Link="project\FcaBedrock.Orchestration.csproj.txt" CopyToOutputDirectory="PreserveNewest" Visible="false" />
+    <Content Include="PublicSurface.txt" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

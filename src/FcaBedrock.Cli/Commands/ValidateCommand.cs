@@ -1,6 +1,5 @@
-using FcaBedrock.Core.Spec;
 using FcaBedrock.Diagnostics;
-using FcaBedrock.Sources;
+using FcaBedrock.Orchestration;
 using FcaBedrock.Spec.Toml;
 
 namespace FcaBedrock.Cli.Commands;
@@ -39,87 +38,28 @@ internal static class ValidateCommand
         ArgumentNullException.ThrowIfNull(invocation);
         ArgumentNullException.ThrowIfNull(environment);
 
-        var specPath = invocation.Operand(0)!;
         var dataPath = invocation.Operand(1);
-        var host = new FileSpecTextSource(environment.OpenInput, FileIdentity.CreateDefault());
-        var diagnostics = new List<BedrockDiagnostic>();
-
-        string rootKey;
-        string toml;
-        try
-        {
-            rootKey = host.RegisterRoot(specPath);
-            toml = host.ReadText(specPath);
-        }
-        catch (Exception exception) when (RunPipeline.IsSpecReadFailure(exception))
-        {
-            // A missing or unreadable operand is an ordinary host failure, not a pipeline
-            // condition: code-less, exit 1, and the registry does not grow for it
-            // (D-122 part 2). The message names the operand and the cause the failed operation
-            // established, and nothing else: no exception text, no localized OS text, no
-            // internal path.
-            return HostFailure(environment, diagnostics, InputReadExplanation.Message(InputFile.Spec, specPath, exception));
-        }
-
-        // Phase boundaries observe the host token, so a signal delivered after dispatch stops
-        // this command too. Without DATA nothing else here is cancellable; the read, parse,
-        // compose and resolve stages are synchronous, so the first signal would otherwise be
-        // suppressed and then ignored, and the run would report success after the user
-        // cancelled it.
         var cancellation = environment.Signals.Token;
-        cancellation.ThrowIfCancellationRequested();
 
-        var read = SpecReader.Read(toml, rootKey);
-        diagnostics.AddRange(read.Diagnostics);
-        if (!read.TryGetValue(out var document))
+        var outcome = await SpecValidation.ValidateAsync(
+            invocation.Operand(0)!, dataPath, environment.Orchestration, cancellation).ConfigureAwait(false);
+
+        return outcome switch
         {
-            return Finish(environment, diagnostics, cancellation);
-        }
+            // A missing or unreadable operand is an ordinary host failure: code-less, exit 1, and
+            // rendered without a cancellation check (D-122 part 2).
+            OperationHostFailure<ValidatedSpec> host => HostFailure(environment, [.. host.Diagnostics], host.Error.Message),
 
-        cancellation.ThrowIfCancellationRequested();
-        var composed = SpecComposer.Compose(document, rootKey, host);
-        diagnostics.AddRange(composed.Diagnostics);
-        if (!composed.TryGetValue(out var effective))
-        {
-            // A missing or unreadable extends base is a phase-owned condition
-            // (SpecExtendsNotFound), so it keeps its registry code, unlike the root
-            // operand above, which the CLI owns.
-            return Finish(environment, diagnostics, cancellation);
-        }
+            // Resolve was reached: the diagnostics are the verdict, with the header advice when DATA
+            // was not given and the composed spec binds by header name.
+            OperationCompleted<ValidatedSpec> validated => Finish(
+                environment, [.. validated.Diagnostics], cancellation,
+                adviseHeader: dataPath is null && BindsByHeaderName(validated.Value.Composed)),
 
-        SourceSchema? schema = null;
-        if (dataPath is not null)
-        {
-            var settings = SpecResolver.ResolveReadSettings(effective);
-            if (!settings.TryGetValue(out var readSettings))
-            {
-                diagnostics.AddRange(settings.Diagnostics);
-                return Finish(environment, diagnostics, cancellation);
-            }
-
-            // On success this stage reports nothing at all: it fails its result on any
-            // Error/Fatal and raises no warning. Its conditions are re-evaluated by the
-            // full Resolve below through the same shared helpers (D-098, "no condition
-            // gains a second owner"), so rendering them here could only duplicate them.
-            var session = Open(readSettings, dataPath, environment);
-            try
-            {
-                schema = await session.GetSchemaAsync(cancellation).ConfigureAwait(false);
-            }
-            catch (Exception exception) when (RunPipeline.IsDataReadFailure(exception))
-            {
-                // Validate hashes no pass, so it has no leading bytes to name a UTF-16 or UTF-32
-                // mark from; a decoding failure is explained as invalid UTF-8.
-                return HostFailure(
-                    environment, diagnostics, DataReadExplanation.Message(dataPath, exception, DataByteOrderMark.None));
-            }
-        }
-
-        cancellation.ThrowIfCancellationRequested();
-        var resolved = SpecResolver.Resolve(effective, schema);
-        diagnostics.AddRange(resolved.Diagnostics);
-        return Finish(
-            environment, diagnostics, cancellation, adviseHeader: dataPath is null && BindsByHeaderName(effective));
+            // Parse, composition or read settings failed; a missing or unreadable extends base is a
+            // phase-owned condition (SpecExtendsNotFound) and keeps its registry code.
+            _ => Finish(environment, [.. outcome.Diagnostics], cancellation),
+        };
     }
 
     // Whether the composed spec binds a column by header name anywhere one can be: an attribute's
@@ -130,17 +70,6 @@ internal static class ValidateCommand
         || document.Binding?.ObjectKey?.Column is NameColumnRef
         || (document.Binding?.Columns is { } roles
             && (roles.Subject is NameColumnRef || roles.Predicate is NameColumnRef || roles.Value is NameColumnRef));
-
-    // The ONLY source call validate makes. The session is never bound and its record
-    // stream is never enumerated: each row-reading path opens the stream factory again,
-    // and this command opens it exactly once, for the schema read.
-    private static ISourceSession Open(SourceReadSettings settings, string dataPath, CliEnvironment environment)
-    {
-        Stream OpenStream() => environment.OpenInput(dataPath);
-        return settings.Shape == SourceShape.Triple
-            ? new TripleCsvSession(OpenStream, settings)
-            : new WideCsvSession(OpenStream, settings);
-    }
 
     private static int HostFailure(CliEnvironment environment, List<BedrockDiagnostic> diagnostics, string message)
     {

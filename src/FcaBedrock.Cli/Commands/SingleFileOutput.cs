@@ -1,6 +1,5 @@
-using System.Text;
-using FcaBedrock.Cli.Publication;
 using FcaBedrock.Diagnostics;
+using FcaBedrock.Orchestration;
 using FcaBedrock.Spec.Toml;
 
 namespace FcaBedrock.Cli.Commands;
@@ -12,7 +11,7 @@ namespace FcaBedrock.Cli.Commands;
 /// <b>It owns every rendering decision these commands make</b>, so a handler never calls
 /// <see cref="DiagnosticRenderer"/> and never touches the filesystem: the canonical bytes come
 /// from <see cref="SpecWriter"/> and nothing else, and every mutation goes through
-/// <see cref="PublicationTransaction"/> and nothing else.
+/// <see cref="SpecPublication"/> and nothing else.
 /// </para>
 /// <para>
 /// <b>The two destinations are deliberately separate sequences.</b> Stdout keeps the
@@ -33,12 +32,6 @@ namespace FcaBedrock.Cli.Commands;
 internal static class SingleFileOutput
 {
     /// <summary>
-    /// The canonical bytes' encoder. Output encoding only; all <em>decoding</em> of authored
-    /// text belongs to <see cref="SpecTextDecoding"/> (EP-5).
-    /// </summary>
-    private static readonly UTF8Encoding Utf8NoBom = new(encoderShouldEmitUTF8Identifier: false);
-
-    /// <summary>
     /// Delivers <paramref name="document"/> under <paramref name="invocation"/>'s <c>--out</c>.
     /// <para>
     /// <paramref name="document"/> is null exactly when the command's library call produced none,
@@ -52,11 +45,11 @@ internal static class SingleFileOutput
         CommandInvocation invocation,
         SpecDocument? document,
         IReadOnlyList<BedrockDiagnostic> diagnostics,
-        IReadOnlyList<PublicationInput> additionalInputs,
+        IReadOnlyList<SpecChainFile> chain,
         string? committedReport,
         CancellationToken cancellation) =>
         DeliverAsync(
-            environment, invocation, document, diagnostics, additionalInputs, committedReport,
+            environment, invocation, document, diagnostics, chain, committedReport,
             verifyBeforeWrite: null, cancellation);
 
     /// <summary>
@@ -71,7 +64,7 @@ internal static class SingleFileOutput
         CommandInvocation invocation,
         SpecDocument? document,
         IReadOnlyList<BedrockDiagnostic> diagnostics,
-        IReadOnlyList<PublicationInput> additionalInputs,
+        IReadOnlyList<SpecChainFile> chain,
         string? committedReport,
         Func<string?>? verifyBeforeWrite,
         CancellationToken cancellation)
@@ -100,12 +93,12 @@ internal static class SingleFileOutput
         }
 
         return await PublishAsync(
-                environment, invocation, spelling, document!, diagnostics, additionalInputs, committedReport,
+                environment, invocation, spelling, document!, diagnostics, chain, committedReport,
                 verifyBeforeWrite, cancellation)
             .ConfigureAwait(false);
     }
 
-    // The established report-command shape (RunPipeline.Complete): observe cancellation, render
+    // The established report-command shape (RunRendering.Complete): observe cancellation, render
     // in library order, then one logical write of the already-finished payload.
     private static int ToStdout(
         CliEnvironment environment,
@@ -131,152 +124,75 @@ internal static class SingleFileOutput
         string spelling,
         SpecDocument document,
         IReadOnlyList<BedrockDiagnostic> diagnostics,
-        IReadOnlyList<PublicationInput> additionalInputs,
+        IReadOnlyList<SpecChainFile> chain,
         string? committedReport,
         Func<string?>? verifyBeforeWrite,
         CancellationToken cancellation)
     {
-        var bytes = Utf8NoBom.GetBytes(SpecWriter.Write(document));
-
         // EVERY operand a single-file command consumed is a file the run read, so every one is an
         // input the identity-collision check compares the target against (D-122 part 4): probe's
         // DATA, migrate's BED, calibrate's and fingerprint's SPEC and DATA alike. The rule is total
         // over the command table rather than a per-command guess, so it cannot be forgotten. The
-        // caller adds anything it resolved itself: a composed extends chain, whose base paths are
-        // referrer-relative and must not be re-derived against the process working directory.
-        List<PublicationInput> inputs;
-        try
-        {
-            inputs = new List<PublicationInput>(invocation.Operands.Count + additionalInputs.Count);
-            foreach (var operand in invocation.Operands)
+        // caller adds the composed extends chain it read, whose base paths are referrer-relative and
+        // must not be re-derived against the process working directory.
+        var preflight = SpecPublication.Preflight(
+            new SpecDelivery
             {
-                inputs.Add(new PublicationInput(operand, Path.GetFullPath(operand)));
-            }
-
-            inputs.AddRange(additionalInputs);
-        }
-        catch (Exception exception) when (FailureFamily.IsPublicationFailure(exception))
-        {
-            return RunPipeline.HostFailure(
-                environment, diagnostics, PublicationMessages.RecordFailed(spelling), cancellation);
-        }
-
-        var preparation = PublicationTransaction.PreflightSingle(
-            environment.PublicationFiles,
-
-            // A factory, not an instance: identity is memoized per path, so the collision check
-            // must run on a service acquired after any recovery has finished moving files.
-            FileIdentity.CreateDefault,
-            spelling,
-            inputs,
-            invocation.Has("--force"),
+                Target = spelling,
+                ReplaceExisting = invocation.Has("--force"),
+                Operands = invocation.Operands,
+                Chain = chain,
+            },
+            environment.Orchestration,
 
             // The exact host token reaches residue classification, validated recovery, and every
             // mutation boundary inside it.
             cancellation);
 
-        if (preparation is not PublicationReady(var transaction))
+        if (preflight is not OperationCompleted<PreflightedSpecFile> { Value: var handle })
         {
-            return RunPipeline.HostFailure(
-                environment, diagnostics, ((PublicationRefused)preparation).Message, cancellation);
+            return RunRendering.HostFailure(
+                environment, diagnostics, ((OperationHostFailure<PreflightedSpecFile>)preflight).Error.Message, cancellation);
         }
 
-        // The transaction holds live references to every object whose identity authorizes a
-        // mutation, so it is released on every exit: success, host failure, cancellation and
-        // unexpected fault alike. That is not skippable cleanup: on Windows a surviving reference
-        // keeps an already-requested deletion pending (D-125).
-        using var owned = transaction;
-
-        // The caller's last check of what it is about to write: after preflight and any recovery,
-        // before Begin creates the first file of this run.
-        if (verifyBeforeWrite?.Invoke() is { } refusal)
+        // The handle holds live references to every object whose identity authorizes a mutation,
+        // so it is released on every exit: success, host failure, cancellation and unexpected fault
+        // alike. That is not skippable cleanup: on Windows a surviving reference keeps an
+        // already-requested deletion pending (D-125). A publish releases them itself.
+        using (handle)
         {
-            return RunPipeline.HostFailure(environment, diagnostics, refusal, cancellation);
-        }
-
-        try
-        {
-            if (transaction.Begin() is { } begun)
+            // The caller's last check of what it is about to write: after preflight and any
+            // recovery, before Begin creates the first file of this run.
+            if (verifyBeforeWrite?.Invoke() is { } refusal)
             {
-                transaction.Rollback();
-                return RunPipeline.HostFailure(environment, diagnostics, begun.Message, cancellation);
+                return RunRendering.HostFailure(environment, diagnostics, refusal, cancellation);
             }
 
-            if (await transaction.StageAsync(PublicationTargetKind.Single, Writer(bytes, cancellation))
-                .ConfigureAwait(false) is { } staged)
+            // A failure before the commit point has already been rolled back; cancellation and
+            // genuine faults propagate for the host to classify (exit 3 or exit 4).
+            var published = await SpecPublication.PublishAsync(document, handle, cancellation).ConfigureAwait(false);
+            if (published is not OperationCompleted<Published> committed)
             {
-                transaction.Rollback();
-                return RunPipeline.HostFailure(environment, diagnostics, staged.Message, cancellation);
+                return RunRendering.HostFailure(
+                    environment, diagnostics, ((OperationHostFailure<Published>)published).Error.Message, cancellation);
             }
 
-            if (transaction.Seal(cancellation) is { } sealing)
+            // Committed. Only now do Info and Warning reach stderr, once and in library order, and no
+            // cancellation check runs after this point. A private cleanup that did not finish adds
+            // one code-less warning after them. Stdout stays empty on a file target unless the
+            // caller owed it a post-commit report.
+            DiagnosticRenderer.Write(environment.Error, diagnostics);
+            if (committed.Value.CleanupWarning is { } warning)
             {
-                transaction.Rollback();
-                return RunPipeline.HostFailure(environment, diagnostics, sealing.Message, cancellation);
+                environment.Error.Write(DiagnosticRenderer.RenderHostWarning(warning));
             }
 
-            // Commit observes the host token before every pre-commit transition of its own; this
-            // is simply the last check before the first one.
-            cancellation.ThrowIfCancellationRequested();
-
-            if (transaction.Commit(cancellation) is { } committing)
+            if (committedReport is not null)
             {
-                transaction.Rollback();
-                return RunPipeline.HostFailure(environment, diagnostics, committing.Message, cancellation);
-            }
-        }
-        catch
-        {
-            // Cancellation and genuine faults alike: undo everything staged before the commit
-            // point, then let the host classify (exit 3 or exit 4). Past the commit point the
-            // file is public and is never unwound.
-            if (!transaction.Committed)
-            {
-                try
-                {
-                    transaction.Rollback();
-                }
-                catch (PublicationFaultException)
-                {
-                    // A contract defect met while undoing does not get to REPLACE the outcome
-                    // that sent the run here: letting it escape from inside this handler would
-                    // silently promote an exact-host cancellation from exit 3 to exit 4.
-                }
+                environment.Out.Write(committedReport);
             }
 
-            throw;
+            return 0;
         }
-
-        // Committed. Only now do Info and Warning reach stderr, once and in library order, and no
-        // cancellation check runs after this point. A private cleanup that did not finish adds one
-        // code-less warning after them. Stdout stays empty on a file target unless the caller owed
-        // it a post-commit report.
-        DiagnosticRenderer.Write(environment.Error, diagnostics);
-        if (transaction.CleanupWarning is { } warning)
-        {
-            environment.Error.Write(DiagnosticRenderer.RenderHostWarning(warning));
-        }
-
-        if (committedReport is not null)
-        {
-            environment.Out.Write(committedReport);
-        }
-
-        return 0;
     }
-
-    // The output side is tagged at its origin so a stage write failure is reported as the output
-    // failure it is; anything else (a cancellation, a contract defect) is left untouched for
-    // the caller to classify.
-    private static Func<Stream, Task> Writer(byte[] bytes, CancellationToken cancellation) => async stream =>
-    {
-        try
-        {
-            await stream.WriteAsync(bytes, cancellation).ConfigureAwait(false);
-        }
-        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
-        {
-            throw new PublicationStreamException(exception);
-        }
-    };
 }

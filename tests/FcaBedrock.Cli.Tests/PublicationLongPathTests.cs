@@ -1,4 +1,4 @@
-using FcaBedrock.Cli.Publication;
+using FcaBedrock.Orchestration.Publication;
 
 namespace FcaBedrock.Cli.Tests;
 

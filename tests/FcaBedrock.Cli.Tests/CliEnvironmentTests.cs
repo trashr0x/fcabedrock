@@ -1,3 +1,5 @@
+using FcaBedrock.Orchestration;
+
 namespace FcaBedrock.Cli.Tests;
 
 /// <summary>
@@ -86,7 +88,7 @@ public sealed class CliEnvironmentTests
             Signals = new TestSignalSource(),
             ToolVersion = "x",
             AuditArgv = ["fcabedrock"],
-            OpenInput = CliEnvironment.OpenFile,
+            Orchestration = new OrchestrationHost(CliEnvironment.OpenFile),
         };
 
         Assert.Same(NoProgressObserver.Instance, environment.Progress);

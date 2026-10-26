@@ -12,7 +12,7 @@ namespace FcaBedrock.Architecture.Tests;
 // no cycles. Rules are expressed against the loaded production assemblies (exact,
 // and correct-by-construction as packages are added). ArchUnitNET reads compiled
 // type-level metadata, so a rule over an assembly with no types would pass
-// vacuously; Architecture_ShouldIncludeExactlyTheEightProductionAssemblies and the
+// vacuously; Architecture_ShouldIncludeExactlyTheNineProductionAssemblies and the
 // non-vacuity assertions below are what show the suite really inspected the
 // production assemblies rather than nothing.
 public sealed class DependencyRulesTests
@@ -34,12 +34,13 @@ public sealed class DependencyRulesTests
         "FcaBedrock.Diagnostics",
         "FcaBedrock.Discovery",
         "FcaBedrock.Export",
+        "FcaBedrock.Orchestration",
         "FcaBedrock.Sources",
         "FcaBedrock.Spec",
     ];
 
     [Fact]
-    public void Architecture_ShouldIncludeExactlyTheEightProductionAssemblies()
+    public void Architecture_ShouldIncludeExactlyTheNineProductionAssemblies()
     {
         var names = Production.Select(a => a.GetName().Name).OfType<string>().Order(StringComparer.Ordinal);
 
@@ -50,8 +51,8 @@ public sealed class DependencyRulesTests
     public void Cli_ShouldNotBeReferencedByAnyProductionPackage()
     {
         // D-122 part 9 / D-123 part 1: the CLI depends on every library and no library
-        // depends on the CLI. The run/publication coordinator stays CLI-internal until an
-        // EP-4 extraction review says otherwise.
+        // depends on the CLI. The run and publication coordinator it uses is the
+        // FcaBedrock.Orchestration package (D-140), which no production package reaches through Cli.
         var others = ProductionExcept("FcaBedrock.Cli");
 
         // Non-vacuity in both directions: Cli must have real types to be depended ON, and
@@ -61,6 +62,46 @@ public sealed class DependencyRulesTests
 
         Types().That().ResideInAssembly(others[0], others[1..])
             .Should().NotDependOnAny(Types().That().ResideInAssembly(Asm("FcaBedrock.Cli")))
+            .Check(Architecture);
+    }
+
+    [Fact]
+    public void Orchestration_ShouldOnlyDependOnTheSixLibraryPackagesItUses()
+    {
+        // D-140: the shared run and publication coordinator sits between the library and the
+        // hosts. It references Diagnostics, Core, Sources, Spec, Conversion and Export, and never
+        // Discovery or a host.
+        var forbidden = ProductionExcept(
+            "FcaBedrock.Orchestration", "FcaBedrock.Diagnostics", "FcaBedrock.Core", "FcaBedrock.Sources",
+            "FcaBedrock.Spec", "FcaBedrock.Conversion", "FcaBedrock.Export");
+        string[] expectedForbidden = ["FcaBedrock.Cli", "FcaBedrock.Discovery"];
+
+        // Non-vacuity in both directions: Orchestration must have real types to do the depending,
+        // and both forbidden packages must be loaded to be depended on.
+        Assert.NotEmpty(Asm("FcaBedrock.Orchestration").GetTypes());
+        Assert.Equal(
+            expectedForbidden,
+            forbidden.Select(assembly => assembly.GetName().Name).OfType<string>().Order(StringComparer.Ordinal));
+
+        Types().That().ResideInAssembly(Asm("FcaBedrock.Orchestration"))
+            .Should().NotDependOnAny(Types().That().ResideInAssembly(forbidden[0], forbidden[1..]))
+            .Check(Architecture);
+    }
+
+    [Fact]
+    public void Orchestration_ShouldNotBeReferencedByAnyLibraryPackage()
+    {
+        // The cycle rule cannot catch a library package that Orchestration does not reference
+        // (Discovery) depending on Orchestration, so the direction is asserted on its own (D-140).
+        var library = ProductionExcept("FcaBedrock.Orchestration", "FcaBedrock.Cli");
+
+        // Non-vacuity in both directions: Orchestration must have real types to be depended ON,
+        // and all seven library packages must be loaded to do the depending.
+        Assert.NotEmpty(Asm("FcaBedrock.Orchestration").GetTypes());
+        Assert.Equal(ExpectedProduction.Length - 2, library.Length);
+
+        Types().That().ResideInAssembly(library[0], library[1..])
+            .Should().NotDependOnAny(Types().That().ResideInAssembly(Asm("FcaBedrock.Orchestration")))
             .Check(Architecture);
     }
 

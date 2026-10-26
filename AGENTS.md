@@ -57,6 +57,7 @@ raw value --[discretizer]--> bin label --[scale]--> formal attribute(s)
   FcaBedrock.Conversion/       # Plan (pure) + Calibrate + Emit (streaming) pipeline
   FcaBedrock.Export/           # .cxt + .dat writers
   FcaBedrock.Spec/             # TOML reader/writer, .bed migrator, fingerprinting
+  FcaBedrock.Orchestration/    # shared run/publication coordinator, between the library and the hosts
   FcaBedrock.Cli/              # `fcabedrock` command
   FcaBedrock.Desktop/          # Avalonia app (M9; doesn't block the CLI track)
 /tests/
@@ -70,6 +71,8 @@ raw value --[discretizer]--> bin label --[scale]--> formal attribute(s)
 Dependency rule: `Diagnostics` is the only internal package referenced by
 everything. `Core` references only `Diagnostics` and `System.*`. No circular
 references. `Core` never references `Sources`, `Export`, `Cli`, or `Desktop`.
+No library package references `Orchestration`; no production package
+references `Cli`.
 
 ## Writing rules and who owns which fact
 
@@ -239,6 +242,7 @@ eight commands, the publication transaction, the run manifest, the freeze engine
 identity, and the argv-boundary exit floor. The diagnostic registry is **85**, and no M7
 transitional diagnostic remains. M8, M8.1, M8.2 and M8.3 (CLI correctness and usable diagnostics)
 are complete. **M9 (the Avalonia desktop application) is in progress: its contract is recorded
-(D-139), and no desktop code exists yet.**
+(D-139), the run and publication coordinator is extracted into `FcaBedrock.Orchestration`
+(D-140), and no desktop code exists yet.**
 `docs/roadmap.md` is the live source for current position, test count, and the deferred
 backlog; consult it rather than duplicating the detail here.

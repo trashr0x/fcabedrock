@@ -1,6 +1,6 @@
 using System.Text;
-using FcaBedrock.Cli.Publication;
 using FcaBedrock.Core.Calibration;
+using FcaBedrock.Orchestration;
 
 namespace FcaBedrock.Cli.Commands;
 
@@ -42,7 +42,7 @@ namespace FcaBedrock.Cli.Commands;
 /// <b>The root's <c>extends</c> keeps its meaning, not necessarily its text.</b> A file target
 /// writes the authored reference where it still reaches, from the target's folder, the base the
 /// chain was loaded through, and otherwise a relative reference rebuilt to reach it;
-/// <see cref="ExtendsRelocation"/> checks either before anything is opened for output and again
+/// <see cref="SpecRelocation"/> checks either before anything is opened for output and again
 /// just before publication writes, and refuses when neither can be written and verified. The
 /// spec's raw bytes can change with that text; its composition, native fingerprints and
 /// conversions do not. <c>--out -</c> writes the authored reference.
@@ -63,23 +63,23 @@ internal static class FingerprintCommand
         ArgumentNullException.ThrowIfNull(invocation);
         ArgumentNullException.ThrowIfNull(environment);
 
-        var outcome = await RunPipeline.PrepareAsync(invocation, environment).ConfigureAwait(false);
-        if (outcome is not PipelinePrepared prepared)
+        var outcome = await RunRendering.PrepareAsync(invocation, environment).ConfigureAwait(false);
+        if (outcome is not OperationCompleted<PreparedFileRun> prepared)
         {
-            return RunPipeline.Fail(environment, outcome, environment.Signals.Token);
+            return RunRendering.Fail(environment, outcome, environment.Signals.Token);
         }
 
-        var run = prepared.Run;
-        var stored = run.RootDocument.Spec;
+        var run = prepared.Value;
+        var fingerprints = FingerprintReport.Of(run);
 
         var report = new StringBuilder();
-        Append(report, "schema_fingerprint", run.Fingerprints.SchemaFingerprint, stored?.SchemaFingerprint);
-        Append(report, "cxt_output_fingerprint", run.Fingerprints.CxtOutputFingerprint, stored?.CxtOutputFingerprint);
-        Append(report, "dat_output_fingerprint", run.Fingerprints.DatOutputFingerprint, stored?.DatOutputFingerprint);
+        Append(report, "schema_fingerprint", fingerprints.Schema);
+        Append(report, "cxt_output_fingerprint", fingerprints.CxtOutput);
+        Append(report, "dat_output_fingerprint", fingerprints.DatOutput);
 
         if (!invocation.Has("--write"))
         {
-            return RunPipeline.Complete(
+            return RunRendering.Complete(
                 environment, prepared.Diagnostics, report.ToString(), environment.Signals.Token);
         }
 
@@ -88,55 +88,52 @@ internal static class FingerprintCommand
         // The §14 check, after preparation because RequiresData needs the schema-aware resolution.
         // A data-dependent spec therefore reads DATA before being refused: deliberate, and still
         // exit 1 with nothing opened for output, no target created, and no transaction begun.
-        if (CalibratedSpec.RequiresData(run.Resolved.Resolved.Spec))
+        if (!run.IsFullyFrozen)
         {
-            return RunPipeline.HostFailure(
+            return RunRendering.HostFailure(
                 environment,
                 prepared.Diagnostics,
-                WriteRequiresFullyFrozenMessage(run.SpecPath),
+                WriteRequiresFullyFrozenMessage(invocation.Operand(0)!),
                 cancellation);
         }
 
         // The ROOT document, as authored, never the composed one, with the three stored fields
         // replaced. Everything else the record carries is untouched, `extends` included unless a
         // file target needs it rewritten below.
-        var spec = run.RootDocument.Spec! with
-        {
-            SchemaFingerprint = run.Fingerprints.SchemaFingerprint,
-            CxtOutputFingerprint = run.Fingerprints.CxtOutputFingerprint,
-            DatOutputFingerprint = run.Fingerprints.DatOutputFingerprint,
-        };
+        var written = FingerprintWriting.Corrected(run);
 
         // A file target keeps the root's inheritance from wherever it is written: its extends must
         // still reach the base the chain was loaded through (§13). Stdout has no folder of its own,
         // so the authored reference goes out as it is.
         var outPath = invocation.Value("--out")!;
         Func<string?>? verifyBeforeWrite = null;
-        if (spec.Extends is { } authored && !string.Equals(outPath, "-", StringComparison.Ordinal))
+        if (written.Spec!.Extends is { } authored && !string.Equals(outPath, "-", StringComparison.Ordinal))
         {
             // Load order is root first, so the base the root's own extends loaded is the second file.
             var immediateBase = run.SpecChain.Count > 1
                 ? run.SpecChain[1]
                 : throw new InvalidOperationException("A composed root that extends a base has that base in its chain.");
 
-            switch (ExtendsRelocation.Relocate(authored, outPath, immediateBase, environment.FileIdentities))
+            var relocated = SpecRelocation.Relocate(authored, outPath, immediateBase, environment.Orchestration);
+            if (relocated is not OperationCompleted<VerifiedRelocation> { Value: var decision })
             {
-                case RelocationRefused refused:
-                    return RunPipeline.HostFailure(environment, prepared.Diagnostics, refused.Message, cancellation);
-
-                case RelocatedReference(var reference):
-                    spec = spec with { Extends = reference };
-                    verifyBeforeWrite = () =>
-                        ExtendsRelocation.Recheck(reference, authored, outPath, immediateBase, environment.FileIdentities);
-                    break;
+                return RunRendering.HostFailure(
+                    environment,
+                    prepared.Diagnostics,
+                    ((OperationHostFailure<VerifiedRelocation>)relocated).Error.Message,
+                    cancellation);
             }
-        }
 
-        var written = run.RootDocument with { Spec = spec };
+            written = written with { Spec = written.Spec with { Extends = decision.Reference } };
+            verifyBeforeWrite = () =>
+                SpecRelocation.Recheck(decision, environment.Orchestration) is OperationHostFailure<RelocationDecision> refused
+                    ? refused.Error.Message
+                    : null;
+        }
 
         return await SingleFileOutput.DeliverAsync(
                 environment, invocation, written, prepared.Diagnostics,
-                additionalInputs: ChainInputs(run), committedReport: report.ToString(), verifyBeforeWrite, cancellation)
+                chain: run.SpecChain, committedReport: report.ToString(), verifyBeforeWrite, cancellation)
             .ConfigureAwait(false);
     }
 
@@ -151,37 +148,22 @@ internal static class FingerprintCommand
         + "fcabedrock calibrate SPEC DATA --out NEW_SPEC writes a fully frozen copy that stores them; SPEC is this "
         + "spec, DATA its data and NEW_SPEC a new file.";
 
-    /// <summary>
-    /// The composed spec chain as publication inputs, in <see cref="PreparedRun.SpecChain"/>
-    /// order: root first, then each base as the chain was walked. Base paths are
-    /// referrer-relative and are already resolved, so they are passed through verbatim and
-    /// are never re-derived against the process working directory.
-    /// </summary>
-    private static IReadOnlyList<PublicationInput> ChainInputs(PreparedRun run)
-    {
-        var inputs = new List<PublicationInput>(run.SpecChain.Count);
-        foreach (var file in run.SpecChain)
-        {
-            inputs.Add(new PublicationInput(file.Spelling, file.FullPath));
-        }
-
-        return inputs;
-    }
-
-    private static void Append(StringBuilder builder, string field, string computed, string? stored)
+    private static void Append(StringBuilder builder, string field, FingerprintComparison comparison)
     {
         builder.Append(field);
         builder.Append(" computed=");
-        builder.Append(computed);
+        builder.Append(comparison.Computed);
         builder.Append(" stored=");
-        builder.Append(State(stored, computed));
+        builder.Append(State(comparison.Stored));
         builder.Append('\n');
     }
 
-    // absent = the optional field was not authored (§3); match = ordinal equality with the
-    // COMPLETE computed string; stale = anything else, malformed values included.
-    private static string State(string? stored, string computed) =>
-        stored is null
-            ? "absent"
-            : string.Equals(stored, computed, StringComparison.Ordinal) ? "match" : "stale";
+    // The report's spelling of each state FingerprintReport decides (D-077).
+    private static string State(StoredFingerprintState stored) => stored switch
+    {
+        StoredFingerprintState.Absent => "absent",
+        StoredFingerprintState.Match => "match",
+        StoredFingerprintState.Stale => "stale",
+        _ => throw new ArgumentOutOfRangeException(nameof(stored), stored, "Unknown stored fingerprint state."),
+    };
 }

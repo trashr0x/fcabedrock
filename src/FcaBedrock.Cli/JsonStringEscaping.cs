@@ -4,9 +4,9 @@ using System.Text;
 namespace FcaBedrock.Cli;
 
 /// <summary>
-/// The CLI's own generic JSON string escaping: the quoted strings of the plan report and of the
-/// private publication transaction record, which needs one unambiguous way to write a file name
-/// it can later reconstruct exactly. The §16.4 stderr grammar uses
+/// The CLI's own generic JSON string escaping: the quoted strings of the plan report. The private
+/// publication transaction record has the same rules in its own type, RecordStringEscaping in
+/// FcaBedrock.Orchestration, so neither format can move the other. The §16.4 stderr grammar uses
 /// <see cref="DiagnosticEscaping"/> instead, which escapes more controls and leaves a double
 /// quote literal in message prose.
 /// <para>

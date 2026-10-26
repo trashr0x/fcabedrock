@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text;
 using FcaBedrock.Core.Spec;
 using FcaBedrock.Diagnostics;
+using FcaBedrock.Orchestration;
 using FcaBedrock.Spec;
 using FcaBedrock.Spec.Toml;
 
@@ -49,14 +50,14 @@ internal static class MigrateCommand
             // Strict UTF-8 with no byte-order mark or exactly one leading UTF-8 mark. A rejection
             // lands here, before the reader, the migrator, and any publication, so no target is
             // ever created or replaced by an input the CLI would not accept.
-            text = SpecTextDecoding.ReadAllText(environment.OpenInput, bedPath);
+            text = SpecTextDecoding.ReadAllText(environment.Orchestration.OpenInput, bedPath);
         }
         catch (Exception exception) when (IsBedReadFailure(exception))
         {
             // One sanitized, code-less line naming the operand and the cause the failed operation
             // established, and nothing else: no exception text, no decoder text, no localized OS
             // wording, no resolved path (D-122 part 2).
-            return RunPipeline.HostFailure(
+            return RunRendering.HostFailure(
                 environment, diagnostics, InputReadExplanation.Message(InputFile.Bed, bedPath, exception), cancellation);
         }
 
@@ -67,7 +68,7 @@ internal static class MigrateCommand
             return await SingleFileOutput
                 .DeliverAsync(
                     environment, invocation, null, diagnostics,
-                    additionalInputs: [], committedReport: null, cancellation).ConfigureAwait(false);
+                    chain: [], committedReport: null, cancellation).ConfigureAwait(false);
         }
 
         // derived_from is the invoked operand exactly as typed, never normalized, never made
@@ -79,7 +80,7 @@ internal static class MigrateCommand
         return await SingleFileOutput
             .DeliverAsync(
                 environment, invocation, document, diagnostics,
-                additionalInputs: [], committedReport: null, cancellation).ConfigureAwait(false);
+                chain: [], committedReport: null, cancellation).ConfigureAwait(false);
     }
 
     // Presence-faithful: a field is authored only when argv supplied it. Encoding and the quote

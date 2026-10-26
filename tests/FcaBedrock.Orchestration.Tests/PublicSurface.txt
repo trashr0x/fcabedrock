@@ -1,0 +1,327 @@
+FcaBedrock.Orchestration.CleanupFact..ctor(FcaBedrock.Orchestration.CleanupFact original) private
+FcaBedrock.Orchestration.CleanupFact..ctor(FcaBedrock.Orchestration.CleanupStep step, FcaBedrock.Orchestration.PublicationCause cause, System.String entryName) internal
+FcaBedrock.Orchestration.CleanupFact.<Clone>$(): FcaBedrock.Orchestration.CleanupFact public
+FcaBedrock.Orchestration.CleanupFact.Cause: FcaBedrock.Orchestration.PublicationCause { public get; }
+FcaBedrock.Orchestration.CleanupFact.EntryName: System.String { public get; }
+FcaBedrock.Orchestration.CleanupFact.Equals(FcaBedrock.Orchestration.CleanupFact? other): System.Boolean public
+FcaBedrock.Orchestration.CleanupFact.Equals(System.Object? obj): System.Boolean public override
+FcaBedrock.Orchestration.CleanupFact.GetHashCode(): System.Int32 public override
+FcaBedrock.Orchestration.CleanupFact.Step: FcaBedrock.Orchestration.CleanupStep { public get; }
+FcaBedrock.Orchestration.CleanupFact.ToString(): System.String public override
+FcaBedrock.Orchestration.CleanupFact.op_Equality(FcaBedrock.Orchestration.CleanupFact? left, FcaBedrock.Orchestration.CleanupFact? right): System.Boolean public static
+FcaBedrock.Orchestration.CleanupFact.op_Inequality(FcaBedrock.Orchestration.CleanupFact? left, FcaBedrock.Orchestration.CleanupFact? right): System.Boolean public static
+FcaBedrock.Orchestration.CleanupFact: sealed class implements System.IEquatable<FcaBedrock.Orchestration.CleanupFact>
+FcaBedrock.Orchestration.CleanupOutcome.Completed = 4
+FcaBedrock.Orchestration.CleanupOutcome.Incomplete = 3
+FcaBedrock.Orchestration.CleanupOutcome.Interrupted = 2
+FcaBedrock.Orchestration.CleanupOutcome.NotStarted = 1
+FcaBedrock.Orchestration.CleanupOutcome: enum : System.Int32
+FcaBedrock.Orchestration.CleanupStep.Remove = 0
+FcaBedrock.Orchestration.CleanupStep.Restore = 1
+FcaBedrock.Orchestration.CleanupStep: enum : System.Int32
+FcaBedrock.Orchestration.ContextStatistics..ctor(FcaBedrock.Orchestration.ContextStatistics original) private
+FcaBedrock.Orchestration.ContextStatistics..ctor(System.Int64 objects, System.Int64 formalAttributes, System.Int64 crosses, System.Int64 crosslessObjects, System.Int64 emptyAttributes) internal
+FcaBedrock.Orchestration.ContextStatistics.<Clone>$(): FcaBedrock.Orchestration.ContextStatistics public
+FcaBedrock.Orchestration.ContextStatistics.CountAsync(FcaBedrock.Orchestration.PreparedRun run, System.Collections.Generic.IReadOnlyList<FcaBedrock.Diagnostics.BedrockDiagnostic> diagnostics, System.Threading.CancellationToken cancellation): System.Threading.Tasks.Task<FcaBedrock.Orchestration.OperationOutcome<FcaBedrock.Orchestration.ContextStatistics>> public static
+FcaBedrock.Orchestration.ContextStatistics.Crosses: System.Int64 { public get; }
+FcaBedrock.Orchestration.ContextStatistics.CrosslessObjects: System.Int64 { public get; }
+FcaBedrock.Orchestration.ContextStatistics.EmptyAttributes: System.Int64 { public get; }
+FcaBedrock.Orchestration.ContextStatistics.Equals(FcaBedrock.Orchestration.ContextStatistics? other): System.Boolean public
+FcaBedrock.Orchestration.ContextStatistics.Equals(System.Object? obj): System.Boolean public override
+FcaBedrock.Orchestration.ContextStatistics.FormalAttributes: System.Int64 { public get; }
+FcaBedrock.Orchestration.ContextStatistics.GetHashCode(): System.Int32 public override
+FcaBedrock.Orchestration.ContextStatistics.Objects: System.Int64 { public get; }
+FcaBedrock.Orchestration.ContextStatistics.ToString(): System.String public override
+FcaBedrock.Orchestration.ContextStatistics.op_Equality(FcaBedrock.Orchestration.ContextStatistics? left, FcaBedrock.Orchestration.ContextStatistics? right): System.Boolean public static
+FcaBedrock.Orchestration.ContextStatistics.op_Inequality(FcaBedrock.Orchestration.ContextStatistics? left, FcaBedrock.Orchestration.ContextStatistics? right): System.Boolean public static
+FcaBedrock.Orchestration.ContextStatistics: sealed class implements System.IEquatable<FcaBedrock.Orchestration.ContextStatistics>
+FcaBedrock.Orchestration.ConvertOutput..ctor() public
+FcaBedrock.Orchestration.ConvertOutput..ctor(FcaBedrock.Orchestration.ConvertOutput original) private
+FcaBedrock.Orchestration.ConvertOutput.<Clone>$(): FcaBedrock.Orchestration.ConvertOutput public
+FcaBedrock.Orchestration.ConvertOutput.Base: System.String { public get; public init; } required
+FcaBedrock.Orchestration.ConvertOutput.Equals(FcaBedrock.Orchestration.ConvertOutput? other): System.Boolean public
+FcaBedrock.Orchestration.ConvertOutput.Equals(System.Object? obj): System.Boolean public override
+FcaBedrock.Orchestration.ConvertOutput.GetHashCode(): System.Int32 public override
+FcaBedrock.Orchestration.ConvertOutput.ReplaceExisting: System.Boolean { public get; public init; } required
+FcaBedrock.Orchestration.ConvertOutput.ToString(): System.String public override
+FcaBedrock.Orchestration.ConvertOutput.WritesCxt: System.Boolean { public get; public init; } required
+FcaBedrock.Orchestration.ConvertOutput.WritesDat: System.Boolean { public get; public init; } required
+FcaBedrock.Orchestration.ConvertOutput.WritesManifest: System.Boolean { public get; public init; } required
+FcaBedrock.Orchestration.ConvertOutput.op_Equality(FcaBedrock.Orchestration.ConvertOutput? left, FcaBedrock.Orchestration.ConvertOutput? right): System.Boolean public static
+FcaBedrock.Orchestration.ConvertOutput.op_Inequality(FcaBedrock.Orchestration.ConvertOutput? left, FcaBedrock.Orchestration.ConvertOutput? right): System.Boolean public static
+FcaBedrock.Orchestration.ConvertOutput: sealed class implements System.IEquatable<FcaBedrock.Orchestration.ConvertOutput>
+FcaBedrock.Orchestration.ConvertPublication.PlanConversion(FcaBedrock.Orchestration.PreparedFileRun run, System.Boolean v2Compatible, System.Collections.Generic.IReadOnlyList<FcaBedrock.Diagnostics.BedrockDiagnostic> diagnostics): FcaBedrock.Orchestration.OperationOutcome<FcaBedrock.Orchestration.EffectiveConversion> public static
+FcaBedrock.Orchestration.ConvertPublication.Preflight(FcaBedrock.Orchestration.ConvertOutput output, FcaBedrock.Orchestration.PreparedFileRun run, FcaBedrock.Orchestration.OrchestrationHost host, System.Threading.CancellationToken cancellation): FcaBedrock.Orchestration.OperationOutcome<FcaBedrock.Orchestration.PreflightedConvertOutput> public static
+FcaBedrock.Orchestration.ConvertPublication.PublishAsync(FcaBedrock.Orchestration.EffectiveConversion conversion, FcaBedrock.Orchestration.PreflightedConvertOutput handle, FcaBedrock.Orchestration.ManifestHostFacts manifest, System.Collections.Generic.IReadOnlyList<FcaBedrock.Diagnostics.BedrockDiagnostic> diagnostics, System.Threading.CancellationToken cancellation): System.Threading.Tasks.Task<FcaBedrock.Orchestration.OperationOutcome<FcaBedrock.Orchestration.Published>> public static
+FcaBedrock.Orchestration.ConvertPublication: static class
+FcaBedrock.Orchestration.EffectiveConversion..ctor(FcaBedrock.Orchestration.PreparedFileRun run, FcaBedrock.Core.Planning.ConversionPlan plan, FcaBedrock.Orchestration.OutputSettings settings) internal
+FcaBedrock.Orchestration.EffectiveConversion.Run: FcaBedrock.Orchestration.PreparedFileRun { public get; }
+FcaBedrock.Orchestration.EffectiveConversion: sealed class
+FcaBedrock.Orchestration.FileIdentityKey..ctor(System.String canonicalPath) private
+FcaBedrock.Orchestration.FileIdentityKey..ctor(System.UInt64 volume, System.UInt64 low, System.UInt64 high) private
+FcaBedrock.Orchestration.FileIdentityKey.Equals(FcaBedrock.Orchestration.FileIdentityKey other): System.Boolean public
+FcaBedrock.Orchestration.FileIdentityKey.Equals(System.Object? obj): System.Boolean public override
+FcaBedrock.Orchestration.FileIdentityKey.GetHashCode(): System.Int32 public override
+FcaBedrock.Orchestration.FileIdentityKey.op_Equality(FcaBedrock.Orchestration.FileIdentityKey left, FcaBedrock.Orchestration.FileIdentityKey right): System.Boolean public static
+FcaBedrock.Orchestration.FileIdentityKey.op_Inequality(FcaBedrock.Orchestration.FileIdentityKey left, FcaBedrock.Orchestration.FileIdentityKey right): System.Boolean public static
+FcaBedrock.Orchestration.FileIdentityKey: readonly struct implements System.IEquatable<FcaBedrock.Orchestration.FileIdentityKey>
+FcaBedrock.Orchestration.FileRunRequest..ctor() public
+FcaBedrock.Orchestration.FileRunRequest..ctor(FcaBedrock.Orchestration.FileRunRequest original) private
+FcaBedrock.Orchestration.FileRunRequest.<Clone>$(): FcaBedrock.Orchestration.FileRunRequest public
+FcaBedrock.Orchestration.FileRunRequest.DataPath: System.String { public get; public init; } required
+FcaBedrock.Orchestration.FileRunRequest.Equals(FcaBedrock.Orchestration.FileRunRequest? other): System.Boolean public
+FcaBedrock.Orchestration.FileRunRequest.Equals(System.Object? obj): System.Boolean public override
+FcaBedrock.Orchestration.FileRunRequest.GetHashCode(): System.Int32 public override
+FcaBedrock.Orchestration.FileRunRequest.SpecPath: System.String { public get; public init; } required
+FcaBedrock.Orchestration.FileRunRequest.TempDirectory: System.String? { public get; public init; }
+FcaBedrock.Orchestration.FileRunRequest.ToString(): System.String public override
+FcaBedrock.Orchestration.FileRunRequest.op_Equality(FcaBedrock.Orchestration.FileRunRequest? left, FcaBedrock.Orchestration.FileRunRequest? right): System.Boolean public static
+FcaBedrock.Orchestration.FileRunRequest.op_Inequality(FcaBedrock.Orchestration.FileRunRequest? left, FcaBedrock.Orchestration.FileRunRequest? right): System.Boolean public static
+FcaBedrock.Orchestration.FileRunRequest: sealed class implements System.IEquatable<FcaBedrock.Orchestration.FileRunRequest>
+FcaBedrock.Orchestration.FingerprintComparison..ctor(FcaBedrock.Orchestration.FingerprintComparison original) private
+FcaBedrock.Orchestration.FingerprintComparison..ctor(System.String computed, System.String? stored) internal
+FcaBedrock.Orchestration.FingerprintComparison.<Clone>$(): FcaBedrock.Orchestration.FingerprintComparison public
+FcaBedrock.Orchestration.FingerprintComparison.Computed: System.String { public get; }
+FcaBedrock.Orchestration.FingerprintComparison.Equals(FcaBedrock.Orchestration.FingerprintComparison? other): System.Boolean public
+FcaBedrock.Orchestration.FingerprintComparison.Equals(System.Object? obj): System.Boolean public override
+FcaBedrock.Orchestration.FingerprintComparison.GetHashCode(): System.Int32 public override
+FcaBedrock.Orchestration.FingerprintComparison.Stored: FcaBedrock.Orchestration.StoredFingerprintState { public get; }
+FcaBedrock.Orchestration.FingerprintComparison.ToString(): System.String public override
+FcaBedrock.Orchestration.FingerprintComparison.op_Equality(FcaBedrock.Orchestration.FingerprintComparison? left, FcaBedrock.Orchestration.FingerprintComparison? right): System.Boolean public static
+FcaBedrock.Orchestration.FingerprintComparison.op_Inequality(FcaBedrock.Orchestration.FingerprintComparison? left, FcaBedrock.Orchestration.FingerprintComparison? right): System.Boolean public static
+FcaBedrock.Orchestration.FingerprintComparison: sealed class implements System.IEquatable<FcaBedrock.Orchestration.FingerprintComparison>
+FcaBedrock.Orchestration.FingerprintReport..ctor(FcaBedrock.Orchestration.FingerprintComparison schema, FcaBedrock.Orchestration.FingerprintComparison cxtOutput, FcaBedrock.Orchestration.FingerprintComparison datOutput) private
+FcaBedrock.Orchestration.FingerprintReport..ctor(FcaBedrock.Orchestration.FingerprintReport original) private
+FcaBedrock.Orchestration.FingerprintReport.<Clone>$(): FcaBedrock.Orchestration.FingerprintReport public
+FcaBedrock.Orchestration.FingerprintReport.CxtOutput: FcaBedrock.Orchestration.FingerprintComparison { public get; }
+FcaBedrock.Orchestration.FingerprintReport.DatOutput: FcaBedrock.Orchestration.FingerprintComparison { public get; }
+FcaBedrock.Orchestration.FingerprintReport.Equals(FcaBedrock.Orchestration.FingerprintReport? other): System.Boolean public
+FcaBedrock.Orchestration.FingerprintReport.Equals(System.Object? obj): System.Boolean public override
+FcaBedrock.Orchestration.FingerprintReport.GetHashCode(): System.Int32 public override
+FcaBedrock.Orchestration.FingerprintReport.Of(FcaBedrock.Orchestration.PreparedRun run): FcaBedrock.Orchestration.FingerprintReport public static
+FcaBedrock.Orchestration.FingerprintReport.Schema: FcaBedrock.Orchestration.FingerprintComparison { public get; }
+FcaBedrock.Orchestration.FingerprintReport.ToString(): System.String public override
+FcaBedrock.Orchestration.FingerprintReport.op_Equality(FcaBedrock.Orchestration.FingerprintReport? left, FcaBedrock.Orchestration.FingerprintReport? right): System.Boolean public static
+FcaBedrock.Orchestration.FingerprintReport.op_Inequality(FcaBedrock.Orchestration.FingerprintReport? left, FcaBedrock.Orchestration.FingerprintReport? right): System.Boolean public static
+FcaBedrock.Orchestration.FingerprintReport: sealed class implements System.IEquatable<FcaBedrock.Orchestration.FingerprintReport>
+FcaBedrock.Orchestration.FingerprintWriting.Corrected(FcaBedrock.Orchestration.PreparedRun run): FcaBedrock.Spec.Toml.SpecDocument public static
+FcaBedrock.Orchestration.FingerprintWriting: static class
+FcaBedrock.Orchestration.HostError..ctor(FcaBedrock.Orchestration.HostError original) private
+FcaBedrock.Orchestration.HostError..ctor(FcaBedrock.Orchestration.HostErrorKind kind, System.String message, System.String? subject = null, System.String? counterpart = null, FcaBedrock.Orchestration.PublicationCause? cause = null, FcaBedrock.Orchestration.CleanupFact? blocker = null) internal
+FcaBedrock.Orchestration.HostError.<Clone>$(): FcaBedrock.Orchestration.HostError public
+FcaBedrock.Orchestration.HostError.Blocker: FcaBedrock.Orchestration.CleanupFact? { public get; }
+FcaBedrock.Orchestration.HostError.Cause: FcaBedrock.Orchestration.PublicationCause? { public get; }
+FcaBedrock.Orchestration.HostError.Counterpart: System.String? { public get; }
+FcaBedrock.Orchestration.HostError.Equals(FcaBedrock.Orchestration.HostError? other): System.Boolean public
+FcaBedrock.Orchestration.HostError.Equals(System.Object? obj): System.Boolean public override
+FcaBedrock.Orchestration.HostError.GetHashCode(): System.Int32 public override
+FcaBedrock.Orchestration.HostError.Kind: FcaBedrock.Orchestration.HostErrorKind { public get; }
+FcaBedrock.Orchestration.HostError.Message: System.String { public get; }
+FcaBedrock.Orchestration.HostError.Subject: System.String? { public get; }
+FcaBedrock.Orchestration.HostError.ToString(): System.String public override
+FcaBedrock.Orchestration.HostError.op_Equality(FcaBedrock.Orchestration.HostError? left, FcaBedrock.Orchestration.HostError? right): System.Boolean public static
+FcaBedrock.Orchestration.HostError.op_Inequality(FcaBedrock.Orchestration.HostError? left, FcaBedrock.Orchestration.HostError? right): System.Boolean public static
+FcaBedrock.Orchestration.HostError: sealed class implements System.IEquatable<FcaBedrock.Orchestration.HostError>
+FcaBedrock.Orchestration.HostErrorKind.CommitFailed = 18
+FcaBedrock.Orchestration.HostErrorKind.DataChanged = 4
+FcaBedrock.Orchestration.HostErrorKind.DataUnreadable = 3
+FcaBedrock.Orchestration.HostErrorKind.InputCollision = 12
+FcaBedrock.Orchestration.HostErrorKind.ManifestReadOnly = 11
+FcaBedrock.Orchestration.HostErrorKind.OutputCollision = 13
+FcaBedrock.Orchestration.HostErrorKind.PublicationControlFailed = 16
+FcaBedrock.Orchestration.HostErrorKind.RecoveryFailed = 15
+FcaBedrock.Orchestration.HostErrorKind.RelocationOtherRoot = 5
+FcaBedrock.Orchestration.HostErrorKind.RelocationUnverified = 6
+FcaBedrock.Orchestration.HostErrorKind.SpecUnreadable = 2
+FcaBedrock.Orchestration.HostErrorKind.StageFailed = 17
+FcaBedrock.Orchestration.HostErrorKind.StaleManifest = 8
+FcaBedrock.Orchestration.HostErrorKind.TargetIsDirectory = 9
+FcaBedrock.Orchestration.HostErrorKind.TargetOccupied = 7
+FcaBedrock.Orchestration.HostErrorKind.TargetReadOnly = 10
+FcaBedrock.Orchestration.HostErrorKind.TemporaryDirectoryInvalid = 1
+FcaBedrock.Orchestration.HostErrorKind.UnknownResidue = 14
+FcaBedrock.Orchestration.HostErrorKind: enum : System.Int32
+FcaBedrock.Orchestration.InputFile.Bed = 1
+FcaBedrock.Orchestration.InputFile.Data = 2
+FcaBedrock.Orchestration.InputFile.Spec = 0
+FcaBedrock.Orchestration.InputFile: enum : System.Int32
+FcaBedrock.Orchestration.InputReadExplanation.Message(FcaBedrock.Orchestration.InputFile file, System.String operand, System.Exception cause): System.String public static
+FcaBedrock.Orchestration.InputReadExplanation: static class
+FcaBedrock.Orchestration.ManifestHostFacts..ctor() public
+FcaBedrock.Orchestration.ManifestHostFacts..ctor(FcaBedrock.Orchestration.ManifestHostFacts original) private
+FcaBedrock.Orchestration.ManifestHostFacts.<Clone>$(): FcaBedrock.Orchestration.ManifestHostFacts public
+FcaBedrock.Orchestration.ManifestHostFacts.CommandLine: System.Collections.Generic.IReadOnlyList<System.String> { public get; public init; } required
+FcaBedrock.Orchestration.ManifestHostFacts.Equals(FcaBedrock.Orchestration.ManifestHostFacts? other): System.Boolean public
+FcaBedrock.Orchestration.ManifestHostFacts.Equals(System.Object? obj): System.Boolean public override
+FcaBedrock.Orchestration.ManifestHostFacts.GetHashCode(): System.Int32 public override
+FcaBedrock.Orchestration.ManifestHostFacts.ToString(): System.String public override
+FcaBedrock.Orchestration.ManifestHostFacts.ToolVersion: System.String { public get; public init; } required
+FcaBedrock.Orchestration.ManifestHostFacts.UtcNow: System.Func<System.DateTimeOffset> { public get; public init; } required
+FcaBedrock.Orchestration.ManifestHostFacts.op_Equality(FcaBedrock.Orchestration.ManifestHostFacts? left, FcaBedrock.Orchestration.ManifestHostFacts? right): System.Boolean public static
+FcaBedrock.Orchestration.ManifestHostFacts.op_Inequality(FcaBedrock.Orchestration.ManifestHostFacts? left, FcaBedrock.Orchestration.ManifestHostFacts? right): System.Boolean public static
+FcaBedrock.Orchestration.ManifestHostFacts: sealed class implements System.IEquatable<FcaBedrock.Orchestration.ManifestHostFacts>
+FcaBedrock.Orchestration.OperationCompleted<T>..ctor(T value, System.Collections.Generic.IReadOnlyList<FcaBedrock.Diagnostics.BedrockDiagnostic> diagnostics) internal
+FcaBedrock.Orchestration.OperationCompleted<T>.Value: T { public get; }
+FcaBedrock.Orchestration.OperationCompleted<T>: sealed class : FcaBedrock.Orchestration.OperationOutcome<T>
+FcaBedrock.Orchestration.OperationDiagnosticFailure<T>..ctor(System.Collections.Generic.IReadOnlyList<FcaBedrock.Diagnostics.BedrockDiagnostic> diagnostics) internal
+FcaBedrock.Orchestration.OperationDiagnosticFailure<T>: sealed class : FcaBedrock.Orchestration.OperationOutcome<T>
+FcaBedrock.Orchestration.OperationHostFailure<T>..ctor(FcaBedrock.Orchestration.HostError error, System.Collections.Generic.IReadOnlyList<FcaBedrock.Diagnostics.BedrockDiagnostic> diagnostics) internal
+FcaBedrock.Orchestration.OperationHostFailure<T>.Error: FcaBedrock.Orchestration.HostError { public get; }
+FcaBedrock.Orchestration.OperationHostFailure<T>: sealed class : FcaBedrock.Orchestration.OperationOutcome<T>
+FcaBedrock.Orchestration.OperationOutcome<T>..ctor(System.Collections.Generic.IReadOnlyList<FcaBedrock.Diagnostics.BedrockDiagnostic> diagnostics) private protected
+FcaBedrock.Orchestration.OperationOutcome<T>.Diagnostics: System.Collections.Generic.IReadOnlyList<FcaBedrock.Diagnostics.BedrockDiagnostic> { public get; }
+FcaBedrock.Orchestration.OperationOutcome<T>: abstract class
+FcaBedrock.Orchestration.OrchestrationHost..ctor(System.Func<System.String, System.IO.Stream> openInput) public
+FcaBedrock.Orchestration.OrchestrationHost.OpenInput: System.Func<System.String, System.IO.Stream> { public get; }
+FcaBedrock.Orchestration.OrchestrationHost: sealed class
+FcaBedrock.Orchestration.PreflightedConvertOutput..ctor(FcaBedrock.Orchestration.Publication.PublicationTransaction transaction, FcaBedrock.Orchestration.PreparedFileRun run, System.Boolean writesCxt, System.Boolean writesDat, System.Boolean writesManifest) internal
+FcaBedrock.Orchestration.PreflightedConvertOutput: sealed class : FcaBedrock.Orchestration.PreflightedPublication
+FcaBedrock.Orchestration.PreflightedPublication..ctor(FcaBedrock.Orchestration.Publication.PublicationTransaction transaction) private protected
+FcaBedrock.Orchestration.PreflightedPublication.Attempt: FcaBedrock.Orchestration.PublicationAttempt { public get; }
+FcaBedrock.Orchestration.PreflightedPublication.Dispose(): System.Void public
+FcaBedrock.Orchestration.PreflightedPublication: abstract class implements System.IDisposable
+FcaBedrock.Orchestration.PreflightedSpecFile..ctor(FcaBedrock.Orchestration.Publication.PublicationTransaction transaction) internal
+FcaBedrock.Orchestration.PreflightedSpecFile: sealed class : FcaBedrock.Orchestration.PreflightedPublication
+FcaBedrock.Orchestration.PreparedFileRun..ctor(FcaBedrock.Spec.Toml.SpecDocument rootDocument, System.String rootKey, FcaBedrock.Spec.Toml.ResolvedDocument resolved, FcaBedrock.Core.Calibration.CalibratedSpec calibrated, FcaBedrock.Core.Spec.SourceShape shape, FcaBedrock.Core.Planning.ConversionPlan plan, FcaBedrock.Spec.Toml.ComputedFingerprints fingerprints, FcaBedrock.Orchestration.OutputSettings output, System.Collections.Generic.IReadOnlyList<FcaBedrock.Orchestration.SpecChainFile> specChain, FcaBedrock.Orchestration.PreparedRunEmitter emit, FcaBedrock.Orchestration.InputHashTracker input, System.String specPath, System.String dataPath) internal
+FcaBedrock.Orchestration.PreparedFileRun: sealed class : FcaBedrock.Orchestration.PreparedRun
+FcaBedrock.Orchestration.PreparedRun..ctor(FcaBedrock.Spec.Toml.SpecDocument rootDocument, System.String rootKey, FcaBedrock.Spec.Toml.ResolvedDocument resolved, FcaBedrock.Core.Calibration.CalibratedSpec calibrated, FcaBedrock.Core.Spec.SourceShape shape, FcaBedrock.Core.Planning.ConversionPlan plan, FcaBedrock.Spec.Toml.ComputedFingerprints fingerprints, FcaBedrock.Orchestration.OutputSettings output, System.Collections.Generic.IReadOnlyList<FcaBedrock.Orchestration.SpecChainFile> specChain, FcaBedrock.Orchestration.PreparedRunEmitter emit, FcaBedrock.Orchestration.InputHashTracker input, System.String specPath, System.String dataPath) private protected
+FcaBedrock.Orchestration.PreparedRun.Fingerprints: FcaBedrock.Spec.Toml.ComputedFingerprints { public get; }
+FcaBedrock.Orchestration.PreparedRun.IsFullyFrozen: System.Boolean { public get; }
+FcaBedrock.Orchestration.PreparedRun.Plan: FcaBedrock.Core.Planning.ConversionPlan { public get; }
+FcaBedrock.Orchestration.PreparedRun.RootDocument: FcaBedrock.Spec.Toml.SpecDocument { public get; }
+FcaBedrock.Orchestration.PreparedRun.RootKey: System.String { public get; }
+FcaBedrock.Orchestration.PreparedRun.SpecChain: System.Collections.Generic.IReadOnlyList<FcaBedrock.Orchestration.SpecChainFile> { public get; }
+FcaBedrock.Orchestration.PreparedRun: abstract class
+FcaBedrock.Orchestration.PublicationAttempt..ctor(FcaBedrock.Orchestration.PublicationAttempt original) private
+FcaBedrock.Orchestration.PublicationAttempt..ctor(FcaBedrock.Orchestration.PublicationAttemptState state, FcaBedrock.Orchestration.RollbackOutcome rollback, FcaBedrock.Orchestration.CleanupFact? rollbackBlocker, FcaBedrock.Orchestration.Published? committed) internal
+FcaBedrock.Orchestration.PublicationAttempt.<Clone>$(): FcaBedrock.Orchestration.PublicationAttempt public
+FcaBedrock.Orchestration.PublicationAttempt.Committed: FcaBedrock.Orchestration.Published? { public get; }
+FcaBedrock.Orchestration.PublicationAttempt.Equals(FcaBedrock.Orchestration.PublicationAttempt? other): System.Boolean public
+FcaBedrock.Orchestration.PublicationAttempt.Equals(System.Object? obj): System.Boolean public override
+FcaBedrock.Orchestration.PublicationAttempt.GetHashCode(): System.Int32 public override
+FcaBedrock.Orchestration.PublicationAttempt.Rollback: FcaBedrock.Orchestration.RollbackOutcome { public get; }
+FcaBedrock.Orchestration.PublicationAttempt.RollbackBlocker: FcaBedrock.Orchestration.CleanupFact? { public get; }
+FcaBedrock.Orchestration.PublicationAttempt.State: FcaBedrock.Orchestration.PublicationAttemptState { public get; }
+FcaBedrock.Orchestration.PublicationAttempt.ToString(): System.String public override
+FcaBedrock.Orchestration.PublicationAttempt.op_Equality(FcaBedrock.Orchestration.PublicationAttempt? left, FcaBedrock.Orchestration.PublicationAttempt? right): System.Boolean public static
+FcaBedrock.Orchestration.PublicationAttempt.op_Inequality(FcaBedrock.Orchestration.PublicationAttempt? left, FcaBedrock.Orchestration.PublicationAttempt? right): System.Boolean public static
+FcaBedrock.Orchestration.PublicationAttempt: sealed class implements System.IEquatable<FcaBedrock.Orchestration.PublicationAttempt>
+FcaBedrock.Orchestration.PublicationAttemptState.BegunNotCommitted = 2
+FcaBedrock.Orchestration.PublicationAttemptState.Committed = 3
+FcaBedrock.Orchestration.PublicationAttemptState.NotBegun = 1
+FcaBedrock.Orchestration.PublicationAttemptState: enum : System.Int32
+FcaBedrock.Orchestration.PublicationCause.AccessDenied = 3
+FcaBedrock.Orchestration.PublicationCause.FolderDenied = 2
+FcaBedrock.Orchestration.PublicationCause.FolderMissing = 1
+FcaBedrock.Orchestration.PublicationCause.InUse = 4
+FcaBedrock.Orchestration.PublicationCause.NotHeld = 6
+FcaBedrock.Orchestration.PublicationCause.NotProved = 7
+FcaBedrock.Orchestration.PublicationCause.ReadOnly = 5
+FcaBedrock.Orchestration.PublicationCause.Unknown = 0
+FcaBedrock.Orchestration.PublicationCause: enum : System.Int32
+FcaBedrock.Orchestration.Published..ctor(FcaBedrock.Orchestration.Published original) private
+FcaBedrock.Orchestration.Published..ctor(System.Collections.Generic.IReadOnlyList<FcaBedrock.Orchestration.PublishedFile> files, FcaBedrock.Orchestration.CleanupOutcome cleanup, FcaBedrock.Orchestration.CleanupFact? cleanupBlocker, System.String? cleanupWarning) internal
+FcaBedrock.Orchestration.Published.<Clone>$(): FcaBedrock.Orchestration.Published public
+FcaBedrock.Orchestration.Published.Cleanup: FcaBedrock.Orchestration.CleanupOutcome { public get; }
+FcaBedrock.Orchestration.Published.CleanupBlocker: FcaBedrock.Orchestration.CleanupFact? { public get; }
+FcaBedrock.Orchestration.Published.CleanupWarning: System.String? { public get; }
+FcaBedrock.Orchestration.Published.Equals(FcaBedrock.Orchestration.Published? other): System.Boolean public
+FcaBedrock.Orchestration.Published.Equals(System.Object? obj): System.Boolean public override
+FcaBedrock.Orchestration.Published.Files: System.Collections.Generic.IReadOnlyList<FcaBedrock.Orchestration.PublishedFile> { public get; }
+FcaBedrock.Orchestration.Published.GetHashCode(): System.Int32 public override
+FcaBedrock.Orchestration.Published.ToString(): System.String public override
+FcaBedrock.Orchestration.Published.op_Equality(FcaBedrock.Orchestration.Published? left, FcaBedrock.Orchestration.Published? right): System.Boolean public static
+FcaBedrock.Orchestration.Published.op_Inequality(FcaBedrock.Orchestration.Published? left, FcaBedrock.Orchestration.Published? right): System.Boolean public static
+FcaBedrock.Orchestration.Published: sealed class implements System.IEquatable<FcaBedrock.Orchestration.Published>
+FcaBedrock.Orchestration.PublishedFile..ctor(FcaBedrock.Orchestration.PublishedFile original) private
+FcaBedrock.Orchestration.PublishedFile..ctor(FcaBedrock.Orchestration.PublishedFileKind kind, System.String spelling, System.String fullPath, System.String hash, FcaBedrock.Orchestration.FileIdentityKey identity) internal
+FcaBedrock.Orchestration.PublishedFile.<Clone>$(): FcaBedrock.Orchestration.PublishedFile public
+FcaBedrock.Orchestration.PublishedFile.Equals(FcaBedrock.Orchestration.PublishedFile? other): System.Boolean public
+FcaBedrock.Orchestration.PublishedFile.Equals(System.Object? obj): System.Boolean public override
+FcaBedrock.Orchestration.PublishedFile.FullPath: System.String { public get; }
+FcaBedrock.Orchestration.PublishedFile.GetHashCode(): System.Int32 public override
+FcaBedrock.Orchestration.PublishedFile.Hash: System.String { public get; }
+FcaBedrock.Orchestration.PublishedFile.Identity: FcaBedrock.Orchestration.FileIdentityKey { public get; }
+FcaBedrock.Orchestration.PublishedFile.Kind: FcaBedrock.Orchestration.PublishedFileKind { public get; }
+FcaBedrock.Orchestration.PublishedFile.Spelling: System.String { public get; }
+FcaBedrock.Orchestration.PublishedFile.ToString(): System.String public override
+FcaBedrock.Orchestration.PublishedFile.op_Equality(FcaBedrock.Orchestration.PublishedFile? left, FcaBedrock.Orchestration.PublishedFile? right): System.Boolean public static
+FcaBedrock.Orchestration.PublishedFile.op_Inequality(FcaBedrock.Orchestration.PublishedFile? left, FcaBedrock.Orchestration.PublishedFile? right): System.Boolean public static
+FcaBedrock.Orchestration.PublishedFile: sealed class implements System.IEquatable<FcaBedrock.Orchestration.PublishedFile>
+FcaBedrock.Orchestration.PublishedFileKind.Cxt = 0
+FcaBedrock.Orchestration.PublishedFileKind.Dat = 1
+FcaBedrock.Orchestration.PublishedFileKind.Manifest = 2
+FcaBedrock.Orchestration.PublishedFileKind.SpecFile = 3
+FcaBedrock.Orchestration.PublishedFileKind: enum : System.Int32
+FcaBedrock.Orchestration.RelocationDecision..ctor(System.String reference, System.String authored, System.String destination) private protected
+FcaBedrock.Orchestration.RelocationDecision.Authored: System.String { public get; }
+FcaBedrock.Orchestration.RelocationDecision.Destination: System.String { public get; }
+FcaBedrock.Orchestration.RelocationDecision.Reference: System.String { public get; }
+FcaBedrock.Orchestration.RelocationDecision: abstract class
+FcaBedrock.Orchestration.RollbackOutcome.Completed = 5
+FcaBedrock.Orchestration.RollbackOutcome.Incomplete = 4
+FcaBedrock.Orchestration.RollbackOutcome.Interrupted = 3
+FcaBedrock.Orchestration.RollbackOutcome.NotOwed = 1
+FcaBedrock.Orchestration.RollbackOutcome.NotStarted = 2
+FcaBedrock.Orchestration.RollbackOutcome: enum : System.Int32
+FcaBedrock.Orchestration.RunPreparation.PrepareAsync(FcaBedrock.Orchestration.FileRunRequest request, FcaBedrock.Orchestration.OrchestrationHost host, System.Threading.CancellationToken cancellation): System.Threading.Tasks.Task<FcaBedrock.Orchestration.OperationOutcome<FcaBedrock.Orchestration.PreparedFileRun>> public static
+FcaBedrock.Orchestration.RunPreparation: static class
+FcaBedrock.Orchestration.SpecChainFile..ctor(FcaBedrock.Orchestration.SpecChainFile original) private
+FcaBedrock.Orchestration.SpecChainFile..ctor(System.String fullPath, System.String spelling, System.String hash, FcaBedrock.Orchestration.FileIdentityKey identity) internal
+FcaBedrock.Orchestration.SpecChainFile.<Clone>$(): FcaBedrock.Orchestration.SpecChainFile public
+FcaBedrock.Orchestration.SpecChainFile.Equals(FcaBedrock.Orchestration.SpecChainFile? other): System.Boolean public
+FcaBedrock.Orchestration.SpecChainFile.Equals(System.Object? obj): System.Boolean public override
+FcaBedrock.Orchestration.SpecChainFile.FullPath: System.String { public get; }
+FcaBedrock.Orchestration.SpecChainFile.GetHashCode(): System.Int32 public override
+FcaBedrock.Orchestration.SpecChainFile.Hash: System.String { public get; }
+FcaBedrock.Orchestration.SpecChainFile.Identity: FcaBedrock.Orchestration.FileIdentityKey { public get; }
+FcaBedrock.Orchestration.SpecChainFile.Spelling: System.String { public get; }
+FcaBedrock.Orchestration.SpecChainFile.ToString(): System.String public override
+FcaBedrock.Orchestration.SpecChainFile.op_Equality(FcaBedrock.Orchestration.SpecChainFile? left, FcaBedrock.Orchestration.SpecChainFile? right): System.Boolean public static
+FcaBedrock.Orchestration.SpecChainFile.op_Inequality(FcaBedrock.Orchestration.SpecChainFile? left, FcaBedrock.Orchestration.SpecChainFile? right): System.Boolean public static
+FcaBedrock.Orchestration.SpecChainFile: sealed class implements System.IEquatable<FcaBedrock.Orchestration.SpecChainFile>
+FcaBedrock.Orchestration.SpecDelivery..ctor() public
+FcaBedrock.Orchestration.SpecDelivery..ctor(FcaBedrock.Orchestration.SpecDelivery original) private
+FcaBedrock.Orchestration.SpecDelivery.<Clone>$(): FcaBedrock.Orchestration.SpecDelivery public
+FcaBedrock.Orchestration.SpecDelivery.Chain: System.Collections.Generic.IReadOnlyList<FcaBedrock.Orchestration.SpecChainFile> { public get; public init; }
+FcaBedrock.Orchestration.SpecDelivery.Equals(FcaBedrock.Orchestration.SpecDelivery? other): System.Boolean public
+FcaBedrock.Orchestration.SpecDelivery.Equals(System.Object? obj): System.Boolean public override
+FcaBedrock.Orchestration.SpecDelivery.GetHashCode(): System.Int32 public override
+FcaBedrock.Orchestration.SpecDelivery.Operands: System.Collections.Generic.IReadOnlyList<System.String> { public get; public init; }
+FcaBedrock.Orchestration.SpecDelivery.ReplaceExisting: System.Boolean { public get; public init; } required
+FcaBedrock.Orchestration.SpecDelivery.Target: System.String { public get; public init; } required
+FcaBedrock.Orchestration.SpecDelivery.ToString(): System.String public override
+FcaBedrock.Orchestration.SpecDelivery.op_Equality(FcaBedrock.Orchestration.SpecDelivery? left, FcaBedrock.Orchestration.SpecDelivery? right): System.Boolean public static
+FcaBedrock.Orchestration.SpecDelivery.op_Inequality(FcaBedrock.Orchestration.SpecDelivery? left, FcaBedrock.Orchestration.SpecDelivery? right): System.Boolean public static
+FcaBedrock.Orchestration.SpecDelivery: sealed class implements System.IEquatable<FcaBedrock.Orchestration.SpecDelivery>
+FcaBedrock.Orchestration.SpecFreezing.Freeze(FcaBedrock.Orchestration.PreparedRun run, System.Collections.Generic.IReadOnlyList<FcaBedrock.Diagnostics.BedrockDiagnostic> preparationDiagnostics): FcaBedrock.Orchestration.OperationOutcome<FcaBedrock.Spec.Toml.SpecDocument> public static
+FcaBedrock.Orchestration.SpecFreezing: static class
+FcaBedrock.Orchestration.SpecPublication.Preflight(FcaBedrock.Orchestration.SpecDelivery delivery, FcaBedrock.Orchestration.OrchestrationHost host, System.Threading.CancellationToken cancellation): FcaBedrock.Orchestration.OperationOutcome<FcaBedrock.Orchestration.PreflightedSpecFile> public static
+FcaBedrock.Orchestration.SpecPublication.PublishAsync(FcaBedrock.Spec.Toml.SpecDocument document, FcaBedrock.Orchestration.PreflightedSpecFile handle, System.Threading.CancellationToken cancellation): System.Threading.Tasks.Task<FcaBedrock.Orchestration.OperationOutcome<FcaBedrock.Orchestration.Published>> public static
+FcaBedrock.Orchestration.SpecPublication: static class
+FcaBedrock.Orchestration.SpecRelocation.Recheck(FcaBedrock.Orchestration.RelocationDecision decision, FcaBedrock.Orchestration.OrchestrationHost host): FcaBedrock.Orchestration.OperationOutcome<FcaBedrock.Orchestration.RelocationDecision> public static
+FcaBedrock.Orchestration.SpecRelocation.Relocate(System.String authored, System.String destination, FcaBedrock.Orchestration.SpecChainFile immediateBase, FcaBedrock.Orchestration.OrchestrationHost host): FcaBedrock.Orchestration.OperationOutcome<FcaBedrock.Orchestration.VerifiedRelocation> public static
+FcaBedrock.Orchestration.SpecRelocation: static class
+FcaBedrock.Orchestration.SpecTextDecoding.Decode(System.Byte[] bytes): System.String public static
+FcaBedrock.Orchestration.SpecTextDecoding.ReadAllText(System.Func<System.String, System.IO.Stream> open, System.String path): System.String public static
+FcaBedrock.Orchestration.SpecTextDecoding: static class
+FcaBedrock.Orchestration.SpecValidation.ValidateAsync(System.String specPath, System.String? dataPath, FcaBedrock.Orchestration.OrchestrationHost host, System.Threading.CancellationToken cancellation): System.Threading.Tasks.Task<FcaBedrock.Orchestration.OperationOutcome<FcaBedrock.Orchestration.ValidatedSpec>> public static
+FcaBedrock.Orchestration.SpecValidation: static class
+FcaBedrock.Orchestration.StoredFingerprintState.Absent = 0
+FcaBedrock.Orchestration.StoredFingerprintState.Match = 1
+FcaBedrock.Orchestration.StoredFingerprintState.Stale = 2
+FcaBedrock.Orchestration.StoredFingerprintState: enum : System.Int32
+FcaBedrock.Orchestration.ValidatedSpec..ctor(FcaBedrock.Orchestration.ValidatedSpec original) private
+FcaBedrock.Orchestration.ValidatedSpec..ctor(FcaBedrock.Spec.Toml.SpecDocument composed) internal
+FcaBedrock.Orchestration.ValidatedSpec.<Clone>$(): FcaBedrock.Orchestration.ValidatedSpec public
+FcaBedrock.Orchestration.ValidatedSpec.Composed: FcaBedrock.Spec.Toml.SpecDocument { public get; }
+FcaBedrock.Orchestration.ValidatedSpec.Equals(FcaBedrock.Orchestration.ValidatedSpec? other): System.Boolean public
+FcaBedrock.Orchestration.ValidatedSpec.Equals(System.Object? obj): System.Boolean public override
+FcaBedrock.Orchestration.ValidatedSpec.GetHashCode(): System.Int32 public override
+FcaBedrock.Orchestration.ValidatedSpec.ToString(): System.String public override
+FcaBedrock.Orchestration.ValidatedSpec.op_Equality(FcaBedrock.Orchestration.ValidatedSpec? left, FcaBedrock.Orchestration.ValidatedSpec? right): System.Boolean public static
+FcaBedrock.Orchestration.ValidatedSpec.op_Inequality(FcaBedrock.Orchestration.ValidatedSpec? left, FcaBedrock.Orchestration.ValidatedSpec? right): System.Boolean public static
+FcaBedrock.Orchestration.ValidatedSpec: sealed class implements System.IEquatable<FcaBedrock.Orchestration.ValidatedSpec>
+FcaBedrock.Orchestration.VerifiedRelocation..ctor(System.String reference, System.String authored, System.String destination, FcaBedrock.Orchestration.SpecChainFile immediateBase) internal
+FcaBedrock.Orchestration.VerifiedRelocation.ImmediateBase: FcaBedrock.Orchestration.SpecChainFile { public get; }
+FcaBedrock.Orchestration.VerifiedRelocation: sealed class : FcaBedrock.Orchestration.RelocationDecision

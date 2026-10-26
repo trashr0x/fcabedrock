@@ -42,7 +42,7 @@ internal static class ProbeCommand
         // The one input seam (D-123 part 5), handed over unopened: the library's own read
         // owns every failure from here on, which is what keeps a missing DATA a
         // ProbeSourceReadFailed diagnostic rather than a code-less host line.
-        Stream Open() => environment.OpenInput(dataPath);
+        Stream Open() => environment.Orchestration.OpenInput(dataPath);
 
         var triple = string.Equals(invocation.Value("--shape"), "triple", StringComparison.Ordinal);
         var settings = Settings(invocation, triple);
@@ -59,7 +59,7 @@ internal static class ProbeCommand
         return await SingleFileOutput
             .DeliverAsync(
                 environment, invocation, draft, WithDataLocation(probed.Diagnostics, dataPath),
-                additionalInputs: [], committedReport: null, cancellation)
+                chain: [], committedReport: null, cancellation)
             .ConfigureAwait(false);
     }
 

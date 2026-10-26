@@ -225,15 +225,15 @@ changes an earlier one. A new entry MUST add its line here.
 
 ### M7 (CLI) pre-implementation adjudication
 
-- D-122: M7 CLI contract: commands, process model, publication, manifest, freeze, authored-empty domains, per-command semantics, non-goals, distribution, and the exit floor *(revises D-071's empty-domain reading; refines D-026/D-078/D-088; realizes the CLI faces of D-005/D-028/D-067/D-077; implementation architecture realized by D-123; reach of parts 4–5 qualified by D-125; part 10's headerless schema record amended in place on 2026-10-01; part 3's escaping and code-less warning form amended in place on 2026-10-14; parts 1, 2, 4, 8 and 10 amended in place on 2026-10-14 for attached option values, the `tab` delimiter spelling, the `migrate` named object-key header rule, and the `--temp-dir` and `--out` text checks; parts 2 and 10 amended in place on 2026-10-14 for DATA read explanations and strict UTF-8 schema reads; part 10's frozen numeric domain text amended in place on 2026-10-14; part 10's missing-column report marker amended in place on 2026-10-14; part 15's probe-authored `[]` amended in place on 2026-10-15; parts 2–5 amended in place on 2026-10-15 for publication causes, the Windows read-only participant refusal and the committed-cleanup warning; parts 2, 10 and 11 amended in place on 2026-10-16 for input-file explanations, the base-loading message and the `extends` of a root `fingerprint --write` writes to a file; parts 3 and 10 amended in place on 2026-10-17 for CLI advice after a library message and the next steps of `validate` without DATA and a refused `fingerprint --write`; part 3 amended in place on 2026-10-18 for the encoding of each standard stream and the exit code of a failed stream setup; part 10 amended in place on 2026-10-18 for the `fingerprint` report standing in for stale-fingerprint warnings)*
+- D-122: M7 CLI contract: commands, process model, publication, manifest, freeze, authored-empty domains, per-command semantics, non-goals, distribution, and the exit floor *(revises D-071's empty-domain reading; refines D-026/D-078/D-088; realizes the CLI faces of D-005/D-028/D-067/D-077; implementation architecture realized by D-123; reach of parts 4–5 qualified by D-125; part 10's headerless schema record amended in place on 2026-10-01; part 3's escaping and code-less warning form amended in place on 2026-10-14; parts 1, 2, 4, 8 and 10 amended in place on 2026-10-14 for attached option values, the `tab` delimiter spelling, the `migrate` named object-key header rule, and the `--temp-dir` and `--out` text checks; parts 2 and 10 amended in place on 2026-10-14 for DATA read explanations and strict UTF-8 schema reads; part 10's frozen numeric domain text amended in place on 2026-10-14; part 10's missing-column report marker amended in place on 2026-10-14; part 15's probe-authored `[]` amended in place on 2026-10-15; parts 2–5 amended in place on 2026-10-15 for publication causes, the Windows read-only participant refusal and the committed-cleanup warning; parts 2, 10 and 11 amended in place on 2026-10-16 for input-file explanations, the base-loading message and the `extends` of a root `fingerprint --write` writes to a file; parts 3 and 10 amended in place on 2026-10-17 for CLI advice after a library message and the next steps of `validate` without DATA and a refused `fingerprint --write`; part 3 amended in place on 2026-10-18 for the encoding of each standard stream and the exit code of a failed stream setup; part 10 amended in place on 2026-10-18 for the `fingerprint` report standing in for stale-fingerprint warnings; part 9's CLI-internal coordinator moved to `FcaBedrock.Orchestration` by D-140)*
 
 ### M7 (CLI) implementation
 
-- D-123: M7 implementation architecture and public surfaces: CLI boundary, parser, presentation, audit argv, filesystem identity, publication transaction, run manifest, freeze pairing, runtime options, and the CXT size advisory (registry 81 → 82) *(realizes D-122's implementation architecture; refines D-085's registry-timing rule; reach of point 7 qualified by D-125; point 3's escaping amended in place on 2026-10-14; point 2's parser grammar amended in place on 2026-10-14; point 3's DATA read explanation added in place on 2026-10-14; point 9's source of an `include` prefix amended in place on 2026-10-14; point 9's native and effective presentation pairing amended in place on 2026-10-14; point 7's read-only participant check and cleanup outcome amended in place on 2026-10-15; points 3, 6 and 14 amended in place on 2026-10-16 for the input-file explanation, the fresh identity check and the `extends` of a root `fingerprint --write` writes to a file; point 3's CLI advice amended in place on 2026-10-17)*
+- D-123: M7 implementation architecture and public surfaces: CLI boundary, parser, presentation, audit argv, filesystem identity, publication transaction, run manifest, freeze pairing, runtime options, and the CXT size advisory (registry 81 → 82) *(realizes D-122's implementation architecture; refines D-085's registry-timing rule; reach of point 7 qualified by D-125; point 3's escaping amended in place on 2026-10-14; point 2's parser grammar amended in place on 2026-10-14; point 3's DATA read explanation added in place on 2026-10-14; point 9's source of an `include` prefix amended in place on 2026-10-14; point 9's native and effective presentation pairing amended in place on 2026-10-14; point 7's read-only participant check and cleanup outcome amended in place on 2026-10-15; points 3, 6 and 14 amended in place on 2026-10-16 for the input-file explanation, the fresh identity check and the `extends` of a root `fingerprint --write` writes to a file; point 3's CLI advice amended in place on 2026-10-17; point 1's CLI-internal coordinator and point 13's eight-assembly lock revised by D-140)*
 
 ### M8 (first scaling / benchmark pass)
 
-- D-124: M8 benchmark architecture: one internal BenchmarkDotNet host, an explicit corpus/oracle layer, tier-gated selection with a pinned opt-in external corpus, two benchmark-only friend grants, and the conforming calibration fix the suite found *(invalidation/recheck rule amended for D-125's correction only, and live status corrected, by D-126; catalogue-at-most-fan-in restatement superseded by D-128; evidence policy qualified for the delimited reading change's small-input elapsed cost only by D-138)*
+- D-124: M8 benchmark architecture: one internal BenchmarkDotNet host, an explicit corpus/oracle layer, tier-gated selection with a pinned opt-in external corpus, two benchmark-only friend grants, and the conforming calibration fix the suite found *(invalidation/recheck rule amended for D-125's correction only, and live status corrected, by D-126; catalogue-at-most-fan-in restatement superseded by D-128; evidence policy qualified for the delimited reading change's small-input elapsed cost only by D-138; the benchmarked hash seams and their friend grant moved to `FcaBedrock.Orchestration` by D-140)*
 
 ### M7 publication ownership (corrected under M8's first native gate)
 
@@ -259,7 +259,11 @@ changes an earlier one. A new entry MUST add its line here.
 
 ### M9 (desktop) pre-implementation contract
 
-- D-139: M9 desktop contract: the shared run coordinator, documents and revisions, the recipe rule and the spec snapshot, saving, file use and operation lifetime, progress, the desktop manifest, evidence and the delivery order
+- D-139: M9 desktop contract: the shared run coordinator, documents and revisions, the recipe rule and the spec snapshot, saving, file use and operation lifetime, progress, the desktop manifest, evidence and the delivery order *(part 2's extraction realized by D-140, the working name `FcaBedrock.Runs` resolved to `FcaBedrock.Orchestration`)*
+
+### M9 (desktop) implementation
+
+- D-140: The run coordinator extracted into `FcaBedrock.Orchestration`: its public surface, outcome model, attempt record, host error kinds, relocation decisions, handle and association rules, friend grants, and the staging of the designed members
 
 Spec-field defaults are recorded in spec §21 items 1–11 (see the final section
 of this file).
@@ -5891,7 +5895,8 @@ and §16.4; D-120 and D-121 record the implemented naming, template and matcher 
   failure and the next steps of `validate` without DATA and a refused `fingerprint --write`;
   part 3 amended in place on 2026-10-18 for the encoding of each standard stream and the exit
   code of a failed stream setup; part 10 amended in place on 2026-10-18 for the `fingerprint`
-  report standing in for stale-fingerprint warnings
+  report standing in for stale-fingerprint warnings; part 9's CLI-internal coordinator moved to
+  `FcaBedrock.Orchestration` by D-140 (2026-10-25)
 - **Date:** 2026-07-22
 - **Decision:** the complete M7 CLI contract is settled **before any M7 code**, in
   fifteen parts.
@@ -6430,7 +6435,8 @@ and §16.4; D-120 and D-121 record the implemented naming, template and matcher 
   read-only participant check and cleanup outcome amended in place on 2026-10-15; points 3, 6 and
   14 amended in place on 2026-10-16 for the input-file explanation, the fresh identity check and
   the `extends` of a root `fingerprint --write` writes to a file; point 3's CLI advice amended in
-  place on 2026-10-17.
+  place on 2026-10-17. Point 1's CLI-internal coordinator and point 13's eight-assembly lock
+  revised by D-140 (2026-10-25).
 - **Date:** 2026-07-24
 - **Decision:** M7's implementation architecture and every new public surface are
   settled here. It records the concrete parser, serializer and transaction-mechanism
@@ -6670,7 +6676,9 @@ and §16.4; D-120 and D-121 record the implemented naming, template and matcher 
   invalidation/recheck rule is amended for D-125's correction only. *Superseded 2026-09-21 by D-128*
   for the restated per-accumulator catalogue-at-most-fan-in bound only. M8's evidence closed at
   `3b2e4a80` (D-126). *Qualified 2026-10-01 by D-138* for the delimited reading change's
-  small-input elapsed cost only.
+  small-input elapsed cost only. *Revised 2026-10-25 by D-140:* the two hash seams it measures
+  moved, with their friend grant, to `FcaBedrock.Orchestration`, which grants
+  `FcaBedrock.Benchmarks` as the CLI does.
 - **Date:** 2026-09-06
 - **Decision:** M8 is measured by **one internal BenchmarkDotNet executable**
   (`tests/FcaBedrock.Benchmarks`) plus a small tested corpus/oracle layer
@@ -8036,7 +8044,8 @@ This section records the M9 contract, settled before any desktop code.
 ### D-139: M9 desktop contract: the shared run coordinator, documents and revisions, the recipe rule and the spec snapshot, saving, file use and operation lifetime, progress, the desktop manifest, evidence and the delivery order
 
 - **Status:** accepted (M9 pre-implementation contract, approved by Constantinos Orphanides on
-  2026-10-22)
+  2026-10-22); part 2's extraction realized by D-140 (2026-10-25), which resolves the working
+  name `FcaBedrock.Runs` to `FcaBedrock.Orchestration`
 - **Date:** 2026-10-22
 - **Decision:** the M9 contract is settled before any desktop code, in sixteen parts. Each part
   binds the steps that implement it. Exact type names, signatures and synchronization primitives
@@ -8625,6 +8634,503 @@ This section records the M9 contract, settled before any desktop code.
   (`ToolVersion` in `FcaBedrock.Cli`, the test that pins it and the §15 example) and updates the
   status sentences of `AGENTS.md`, `README.md` and the roadmap. It changes no public API,
   diagnostic, normative spec text, fingerprint or context byte, and the registry stays 85.
+
+---
+
+## M9 (desktop) implementation
+
+This section records the decisions the M9 steps make as they land, each against the contract D-139
+settled.
+
+### D-140: The run coordinator extracted into `FcaBedrock.Orchestration`: its public surface, outcome model, attempt record, host error kinds, relocation decisions, handle and association rules, friend grants, and the staging of the designed members
+
+- **Status:** accepted (the coordinator extraction's contract, approved by Constantinos Orphanides
+  on 2026-10-25). It realizes D-139 part 2's extraction and resolves its working name, moves the
+  CLI-internal coordinator of D-122 part 9 and D-123 point 1, revises D-123 point 13's
+  eight-assembly lock, and moves the two hash seams D-124 benchmarks, with their friend grant.
+- **Date:** 2026-10-25
+- **Decision:** the run and publication coordinator moves out of `FcaBedrock.Cli` into a new
+  production package, in eighteen parts. Each later M9 step re-verifies the designed members of part
+  14 in its own contract step and may amend them there; this entry records each member's shape, the
+  step that first uses it and the rules below.
+
+  **1. The package.** `FcaBedrock.Orchestration` is the name the maintainer chose for the package
+  D-139 part 2 calls `FcaBedrock.Runs`. It is a class library between the library and the hosts. It
+  references Diagnostics, Core, Sources, Spec, Conversion and Export, and no NuGet package; it
+  references neither Discovery nor a host. `FcaBedrock.Cli` references it beside the seven library
+  packages, and the desktop will reference it and the library, never `Cli`. No library package
+  references `Orchestration`, and no production package references `Cli`. `AllowUnsafeBlocks` moves
+  from the CLI project to this one with the two files whose `LibraryImport` declarations need it,
+  `FileIdentityInterop` and `PublicationNative`. The public types are in `FcaBedrock.Orchestration`;
+  the moved publication engine is internal, in `FcaBedrock.Orchestration.Publication`. No type name
+  exists both in the CLI and in this package, so a test assembly that sees both never meets an
+  ambiguous name: the CLI's rendering half of the preparation pipeline is `RunRendering`, and the
+  record format's string escaping is `RecordStringEscaping`, with the rules of the CLI's
+  `JsonStringEscaping`, which the plan report keeps. The tool package and the self-contained folder
+  carry `FcaBedrock.Orchestration.dll` with its symbols and documentation, so the package holds nine
+  production assemblies and twelve DLLs.
+
+  **2. What moved, and what the CLI keeps.** Moved: preparation (`RunPipeline` keeps its name), the
+  file-backed spec source with its identity service and chain record, input-stability hashing, the
+  publication transaction with both families, the file half of single-file delivery, `extends`
+  relocation, manifest composition, the convert sequence, freeze, the fingerprint report and
+  rewrite, the statistics counting pass, validation, the spec text decoder and the read-failure
+  explanations. The CLI keeps what D-139 part 2 lists, together with the plan report, the statistics
+  rendering and its density formatter, `validate`'s header advice, the `fingerprint --write` refusal
+  text, `migrate`'s `.bed` explanation and the standard-output half of single-file delivery
+  (`SingleFileOutput`: standard output, the Error check, the caller step and rendering). Its
+  handlers map arguments to requests and render outcomes, each in its existing order of library
+  calls, checks and messages. The internal edits that keep the reported facts true are these: the
+  emit binder takes the token of each call; publication refusals and failures carry a classified
+  error, built by one factory per existing message builder, and keep their `Message`; the rollback
+  and the commit record their outcomes as they go (part 8); preparation's and relocation's refusals
+  carry a kind; the chain observation and the identity key become public types; returned lists are
+  immutable copies; validation keeps its own identity service (part 17); the manifest composer takes
+  the host's facts; a publish owns its transaction's lifetime and builds the attempt record; and
+  each preflight resolves its own operand paths, inside its own failure family. Two edits correct
+  defects (part 7): a preflight owns the references it acquires until the transaction takes them,
+  and a single-file publish checks for cancellation before `Begin`, as the convert already did.
+
+  **3. The public surface.** Forty-six types are public, and every other type is internal:
+  - the host seam `OrchestrationHost`, constructed with the function every read opens through, with
+    two internal seams that only the friend test assemblies set (the publication filesystem and the
+    factory of the identity service that loads a chain), so no production knob exists (EP-6);
+  - the outcomes `OperationOutcome<T>`, `OperationCompleted<T>`, `OperationDiagnosticFailure<T>` and
+    `OperationHostFailure<T>`, with `HostError`, `HostErrorKind`, `PublicationCause`, `CleanupStep`
+    and `CleanupFact`;
+  - the observations `FileIdentityKey` and `SpecChainFile`;
+  - preparation (`FileRunRequest`, `RunPreparation`, `PreparedRun`, `PreparedFileRun`), validation
+    (`SpecValidation`, `ValidatedSpec`), `ContextStatistics`, `SpecFreezing`, and the fingerprints
+    (`FingerprintReport`, `FingerprintComparison`, `StoredFingerprintState`, `FingerprintWriting`);
+  - relocation (`RelocationDecision`, `VerifiedRelocation`, `SpecRelocation`);
+  - publication (`PreflightedPublication`, `PreflightedSpecFile`, `PreflightedConvertOutput`,
+    `PublicationAttempt`, `PublicationAttemptState`, `RollbackOutcome`, `CleanupOutcome`,
+    `Published`, `PublishedFile`, `PublishedFileKind`, `SpecDelivery`, `SpecPublication`,
+    `ConvertOutput`, `ManifestHostFacts`, `EffectiveConversion`, `ConvertPublication`);
+  - the read utilities `migrate` keeps using (`SpecTextDecoding`, `InputFile`,
+    `InputReadExplanation`).
+
+  The surface is pinned by signature. A reflection formatter of the test project's own, not the
+  runtime's undocumented `MemberInfo.ToString()`, lists every exported type, every constructor and
+  every public or protected member, compiler-generated record members included, and compares the
+  text with the checked-in `PublicSurface.txt`, so any change to the surface is a reviewed edit of
+  the pin. Hosts construct only the requests (`FileRunRequest`, `SpecDelivery`, `ConvertOutput`,
+  `ManifestHostFacts`) and the host seam. Every returned type follows one of two conventions, and
+  each claims only what its type enforces:
+  - a **closed family** (the outcomes, the prepared runs, the publication handles, the relocation
+    decisions) is an abstract class whose only constructor is `private protected`, with sealed
+    members, so no other assembly can add a member and a host's `switch` over the members is
+    complete. This is a claim about constructor access, not a barrier against reflection or the
+    granted friend assemblies. No family is a record, because a record that is not sealed keeps a
+    protected copy constructor that any assembly can call;
+  - a **fact record** (`HostError`, `CleanupFact`, `SpecChainFile`, `ValidatedSpec`,
+    `ContextStatistics`, `FingerprintReport`, `FingerprintComparison`, `PublicationAttempt`,
+    `Published`, `PublishedFile`) is a sealed record with get-only properties and an internal
+    constructor, so `with` can only clone an instance Orchestration returned. Record equality
+    compares a list property by reference, and no contract relies on it.
+
+  `EffectiveConversion` is a sealed class with no public constructor. `FileIdentityKey` is a public
+  struct, opaque and equality-only, with no rendering and no public factory, and it is never
+  serialized. Its default value is representable, carries no observation and must never be compared
+  with an observed key.
+
+  **4. Outcomes and diagnostics.** Every fallible operation returns an outcome: completed with a
+  value, a diagnostic failure, or a host failure carrying one code-less `HostError` (D-122 part 2).
+  It writes nothing to any stream, and cancellation is never an outcome. Preparation starts a run's
+  diagnostic list. An operation that continues a prepared run takes the run's complete prior list
+  (preparation's diagnostics with whatever the host added, such as the stale-fingerprint warnings),
+  copies it at entry, appends what it produces and returns the complete run list, so its validity
+  decisions see the whole run (D-105). Every returned list is an immutable snapshot that cannot be
+  cast back to a mutable collection, the D-098 precedent, and nothing is sorted, grouped or
+  deduplicated. Preflight, relocation and single-file publication produce no diagnostics.
+
+  Which outcome follows an Error is fixed per operation. `ContextStatistics.CountAsync` completes
+  with its counts and a list that may hold an emit Error, and the host decides what to render.
+  `SpecFreezing.Freeze` completes only when the frozen document re-resolves and replans, so a
+  completed freeze carries no Error; it takes exactly the preparation's list as the baseline of its
+  order-preserving difference, because a host addition there could mask a phase diagnostic.
+  `ConvertPublication.PlanConversion` fails when the effective plan fails.
+  `ConvertPublication.PublishAsync` treats an Error or Fatal anywhere in the final list, the replay
+  session's disposal aggregates included, as an invalid run and rolls back; the session is disposed
+  before that check for both formats. `SpecValidation.ValidateAsync` completes when resolve was
+  reached, with a list that may hold Errors, and that completion is not admission to a run.
+
+  A `HostError`'s message is the existing sanitized plain text, moved with the code that builds it,
+  and a host escapes it once. Several messages name CLI options, because they are the CLI's
+  byte-locked text, so a host that words its own presentation classifies by `Kind` and reads the
+  structured fields, never the message. The registry stays 85.
+
+  **5. Cancellation, exceptions and completion.** Every asynchronous or cancellable operation
+  observes the token the host passed, never a linked one, so the `OperationCanceledException` it
+  raises carries that token. A prepared run captures no token: each call that reads data observes
+  its own. Expected failures are outcomes. Cancellation and unexpected faults propagate as
+  exceptions after the same pre-commit rollback and disposal as before. On that exceptional path a
+  `PublicationFaultException` met while rolling back is swallowed and the original exception
+  propagates; the convert's data-read branch, which turns a read failure into an outcome, keeps its
+  unguarded rollback.
+
+  An operation's task completes only after every resource the library created for it is released:
+  spool workspaces, replay sessions and every publication reference a publish holds. The one
+  exception is a successful preflight, whose handle holds live references that belong to the caller
+  until the handle is published or disposed. Awaiting an operation proves that its cleanup path ran
+  and reported any failure, not that every private file was deleted (D-082, D-095). Every await uses
+  `ConfigureAwait(false)`, so no caller synchronization context is required or captured. No worker
+  thread is promised either: the synchronous work before the first suspension, and the synchronous
+  operations (preflight, relocation and freeze), run on the caller's thread, so a UI host schedules
+  its calls off its UI thread. An `OrchestrationHost` is immutable and may be shared by concurrent
+  operations, whose reads its opening function must then serve concurrently. A prepared run, an
+  effective conversion and a handle belong to one operation and are never used concurrently, and
+  `Dispose` is never called concurrently with a publish of the same handle.
+
+  **6. The two two-step publications.** Single-file delivery is `SpecPublication.Preflight`, then
+  `SpecPublication.PublishAsync`. The preflight resolves the operands' full paths, recovers residue
+  at the target, checks identity collisions against the operands and then the chain files, refuses a
+  directory, and only then refuses an existing target when replacement is not authorized. The
+  publish writes the canonical bytes of `SpecWriter` through the handle's transaction: it begins,
+  stages, seals and commits, and rolls back before the commit point on every failure. The convert is
+  `ConvertPublication.PlanConversion`, `ConvertPublication.Preflight` and
+  `ConvertPublication.PublishAsync`. Its preflight protects the data file and then every spec chain
+  file; its publish stages each selected artifact inside one replay session, checks stage failures,
+  input stability, Errors and the digest, composes and stages the manifest, seals and commits.
+
+  The CLI calls these steps in its existing order. For `convert` that is preparation, the
+  stored-fingerprint verification, the conversion plan, preflight and publication. For
+  `fingerprint --write` to a file it is the report, the fully-frozen check, the corrected document,
+  relocation of the root's `extends` against the immediate base when the root authors one, preflight
+  with recovery, a recheck before the first created file, and publication. No public one-call
+  delivery exists, because a convenience that disposed its own handle could not show its caller an
+  exceptional attempt's facts.
+
+  **7. Handles.** Handles, prepared runs, relocation decisions and outcomes come only from the
+  operations that produce them, and the family is a type: each publish takes the handle of its own
+  family. `PlanConversion` returns a conversion bound to its run by reference, and the convert
+  preflight binds its handle to that run, so a publish whose handle was preflighted for another run
+  is refused. Argument and association failures throw before any mutation (`ArgumentNullException`,
+  or `ArgumentException` for a foreign conversion or handle or an invalid output request) and do not
+  consume the handle: its references stay held, it can still be published or disposed, and its
+  record stays `NotBegun`. A handle is spent once a publish has validated its arguments, on every
+  later path. A second publish throws `InvalidOperationException`, a publish after `Dispose` throws
+  `ObjectDisposedException`, and neither changes the record. Validation, spending and the existing
+  cancellation check before `Begin` run in that order. The record is read after the publish has
+  terminated, by any route, never while it runs, and a host binds a publish's committed facts from
+  the handle's record, never from the awaited result alone. A publish releases every reference its
+  handle holds before it returns or throws. `Dispose` releases the references of a handle that was
+  never published, creates and deletes nothing, is idempotent and never changes the record. Rolling
+  back a begun, uncommitted transaction is the publish's own step; disposal never stands in for it.
+
+  A preflight that refuses or throws holds nothing afterwards. It owns the reference registry from
+  the first acquisition until the transaction takes it, and releases it on every other exit: a
+  refusal, an acquisition or a read-only query that throws, and a cancellation alike. The release is
+  a `finally` that neither catches nor rethrows, so the exception that leaves keeps its type, its
+  tag and its token, and every refusal record and message is unchanged. The transfer into the public
+  handle is the last step of the public preflight: nothing fallible runs between the transaction's
+  return and the handle's construction, which only assigns fields. The existing classification
+  asymmetry stays. A contract fault the filesystem seam raises at acquisition is untagged and is
+  classified as a location failure (exit 1, with the text that publication cannot start), while the
+  same fault inside the read-only query is tagged and propagates (exit 4). Routing acquisition
+  through the tagging guard would be a separate CLI decision. A prepared run supports any number of
+  reads, each data pass hashed and compared with the first under the stability rule; publishing one
+  run more than once is outside the contract.
+
+  **8. The attempt record.** `PreflightedPublication.Attempt` is the fact channel of both families,
+  built under three rules.
+  1. *The state follows the transaction's flags*, never a method's result. It is `NotBegun` until
+     `Begin` sets its flag: for a handle never published, a publish that stopped before `Begin`, and
+     a `Begin` that returned a failure or threw before its flag. It is `BegunNotCommitted` on every
+     later exit that did not commit, including a `Begin` whose removal of its intent descriptor
+     raised a tagged fault after the flag. It is `Committed` once the commit point is crossed, after
+     the last verified commit rename and before the committed marker. Whenever the flags say begun
+     and not committed at an exit, the publish has rolled back on that exit.
+  2. *Each provisional fact is written immediately after the state change it describes and before
+     the next step that can fail.* The commit assembles its committed files from values it already
+     holds, sets its flag, records its cleanup as not started, creates the committed marker, records
+     the cleanup as interrupted, runs the forward cleanup, and then records the cleanup as completed
+     or as incomplete with its first blocker. The rollback records itself as not started when it
+     begins, as interrupted once its rolling-back marker exists, and as completed or incomplete
+     afterwards; a marker that cannot be created leaves `NotStarted`. No filesystem work, fresh path
+     lookup or missing-key assumption runs between the last commit rename and the committed flag, so
+     nothing there can turn a committed set into a rollback.
+  3. *The record is built once, at the publish's exit*, after the last transaction step of that exit
+     and before the transaction is released: on success right after the commit, so the completed
+     outcome's value is the record's committed instance, and otherwise in a `finally` after that
+     exit's rollback. Building is conservative: a field reports an outcome only when the step that
+     produced it ran. The three attempt enums start at 1, so 0 is no outcome.
+
+  The boundary exception is the one that escaped. It is rethrown with its tag and never unwrapped,
+  because unwrapping would change how the CLI classifies it (D-122 part 2). The record is available
+  once the publish task has completed, normally or with an exception, so a publish that throws after
+  its commit still reports its committed files and its cleanup state: `NotStarted` for a fault while
+  creating, writing or closing the committed marker, and `Interrupted` for a fault inside the
+  cleanup pass. The record describes this attempt only. `Completed` means that the routine reported
+  completion, not that the location is as it was when the call began, because recovery of an earlier
+  transaction's residue can run inside the preflight. `NotBegun` claims nothing about residue a
+  failed `Begin` left, which the next publication at that location classifies. Interrupted is never
+  reported as completed, and unknown is never written as restored. Building the record changes no
+  durable phase, retries no destructive work and reclassifies no fault.
+
+  **9. The committed files.** `Published` lists the committed files in commit order (`.cxt`, `.dat`,
+  manifest; or the one spec file), with the cleanup outcome, its first blocker where the pass
+  recorded one, and the existing warning text, which is present exactly when the cleanup is
+  incomplete. A publication that committed stands, whatever its cleanup did (spec §16.2, D-125).
+  Each `PublishedFile` carries its kind, the spelling §15 records, its full path, the hash of the
+  staged bytes that the committed object holds, and the committed object's identity, read through
+  the reference the transaction held at commit. That identity is never null: a stage whose identity
+  cannot be anchored is refused before its writer runs, and the commit proves each staged object at
+  its final path before re-keying its reference there.
+
+  **10. Host error kinds.** `HostErrorKind` has one member per existing message builder, with values
+  from 1, so 0 is no kind. Each error carries the facts its builder received: a subject (the
+  spelling the message names first), a counterpart (the second spelling a collision or a relocation
+  names), the cause where the failed publication step established one, and a recovery refusal's
+  first unfinished step where the pass recorded one. The kinds are:
+  - for preparation, `TemporaryDirectoryInvalid` (1), `SpecUnreadable` (2), `DataUnreadable` (3) and
+    `DataChanged` (4), whose subject is the operand concerned;
+  - for relocation, `RelocationOtherRoot` (5) and `RelocationUnverified` (6), naming the destination
+    and the authored reference;
+  - for publication, `TargetOccupied` (7), `StaleManifest` (8), `TargetIsDirectory` (9),
+    `TargetReadOnly` (10), `ManifestReadOnly` (11), `InputCollision` (12), `OutputCollision` (13),
+    `UnknownResidue` (14), `RecoveryFailed` (15), `PublicationControlFailed` (16), `StageFailed`
+    (17) and `CommitFailed` (18).
+
+  A kind names its builder, not its site, so the text that publication cannot start is
+  `PublicationControlFailed` even where a seal's marker could not be created. A cause is the one the
+  failed step established, from the failed operation's exception type and code or the held object's
+  read-only attribute, never one read from a message or from a later look at the directory. An
+  unknown cause stays `Unknown` or absent, so a plain `IOException` from a later acquisition gives
+  `PublicationControlFailed` with an unknown cause and the generic text. `TargetOccupied` classifies
+  both preflights' existing-target refusal, which comes after the target's own residue was recovered
+  and after the input-collision and directory checks, so an occupant reported this way is not an
+  input or a protected file by identity. The closed facts of a data read failure (its reason,
+  position and byte-order mark) and the cause of an input-open failure stay inside their messages,
+  which name no CLI option, so a desktop can show them as they are; a structured projection is
+  additive later. The CLI's `fingerprint --write` refusal and `migrate`'s `.bed` explanation are CLI
+  text with no kind. Two later kinds have no existing builder, and their host-neutral messages are
+  designed at their steps: `BaseChanged` (19) with inspection and `RootChanged` (20) with export.
+
+  **11. Relocation decisions.** A root written to another place gets its `extends` by the existing
+  rule (D-122 part 10, spec §13), through a closed family. A `RelocationDecision` carries the
+  reference to write, the authored reference and the destination it was decided for, and a
+  `VerifiedRelocation` adds the loaded immediate base it was verified against.
+  `SpecRelocation.Relocate` keeps the authored reference when it verifies, otherwise rebuilds a
+  relative reference and verifies it the same way, and refuses a destination on another drive or
+  share (`RelocationOtherRoot`) and a reference that does not verify (`RelocationUnverified`). The
+  decision depends only on the destination's folder, reads no spec, holds nothing open and produces
+  no diagnostics. `SpecRelocation.Recheck` probes a verified decision afresh with a new identity
+  service and completes with the same instance while it holds. Both use the host's identity factory.
+  A verified decision claims a path and an object, never that the chain composes (D-139 part 7).
+
+  Editing, part one, adds a retained decision, `RetainedReference`, and a `Relocate` overload over a
+  composition result, for the same-folder save of incomplete work. Its rule: the reference is
+  verified against the immediate base when that base was observed and no attempted base load at any
+  depth failed, whether or not the chain then composed; otherwise the authored reference is retained
+  for a save in the anchor's own folder, and a save into another folder is refused, as D-139 part 6
+  refuses a base that cannot be loaded. The composition result carries whether any attempted base
+  load failed, recorded by the file-backed source where it answers nothing and never derived from a
+  diagnostic. After a failed load deeper in the chain the immediate reference may still verify;
+  retention and refusal are then that part's rule, not an absence of verification evidence.
+  Relocation produces no diagnostics in either form, and a Save As presents its composition's
+  diagnostics once, in library order, from the composition outcome. A root without `extends` gets no
+  decision.
+
+  The chain vocabulary is `SpecChainFile` (the resolution path, the §15 spelling, the hash of the
+  raw bytes as read with any byte-order mark, and the identity at load) and `FileIdentityKey`, under
+  which two spellings of one existing file are equal and an operating-system key never equals a
+  path-fallback key (D-122 part 11, D-125).
+
+  **12. File-backed runs only, as a type.** `PreparedFileRun` is the prepared run of a root read
+  from a file. It is the only kind that `PlanConversion`, the convert preflight and the manifest
+  composer accept, so an export of an in-memory root cannot be expressed (D-139 part 2). The
+  in-memory preparation that inspection adds returns a `PreparedRun`, never a `PreparedFileRun`.
+
+  **13. Requests and documents.** Every operation copies each collection a request carries
+  (operands, chain files, the manifest's command line, and later the protected files and
+  expectations) at entry, so a caller that mutates or reuses a request cannot retarget a held handle
+  or change an admitted expectation. A returned document (a prepared run's root, a validated
+  composition, a frozen document, a corrected root) is an owned snapshot that Orchestration never
+  mutates after returning it and that callers must not mutate. The spec reader builds list-backed
+  collections behind read-only interfaces, so this is a convention, not deep immutability; a deep
+  snapshot would need a public helper in Spec, a separate library decision that M9 does not need.
+
+  **14. The designed later members.** Each is additive: a new `init` member whose default reproduces
+  today's behaviour, an overload, a type, an enum member, or a property of a record that does not
+  exist yet. None is declared now, and none changes a signature of part 3. The CLI never sets the
+  expected revision or a protected file, and never calls the occupant verification or the
+  composition overload of `Relocate`, so D-139 part 2's rule holds by construction. By the step of
+  D-139 part 15 that first uses them:
+  - **Progress and cancellation.** Each owned operation has one observer, and it reaches every
+    Orchestration call that operation makes (composition, preparation, statistics, either preflight,
+    the snapshot write and the convert publish), not only preparation. The host seam is not its
+    place, because a host is immutable and shared across operations. That step's own EP-4 review
+    chooses between an operation context passed to every call and a member on each request, with a
+    handle carrying its preflight request's observer into its publish and a run carrying its
+    preparation's observer into later passes; no signature of part 3 takes an observer or would
+    change shape for either. The observer is a presentation channel, not a fact channel: its events
+    and the coalesced snapshot report steps and passes for display, no host derives an outcome fact
+    from them, and a displayed step never says that a preparation's root check ran or passed.
+  - **Desktop skeleton.** Open's file-backed loading (`SpecLoading.OpenAsync`, returning the
+    reader's document, its decoded text, the root's chain facts, the base observations and the
+    composed document or none), which reads through the host's opening function, so a test can pause
+    it at its read seam.
+  - **Inspection.** Anchored composition and the in-memory root (`AnchoredRoot`,
+    `SpecComposition.ComposeAsync`, `ComposedSpec`, `MemoryRunRequest` and a
+    `RunPreparation.PrepareAsync` overload), with the validated base expectation
+    (`BaseExpectation`). The expectation is compared by count, order, resolution path, identity and
+    raw hash, spellings excluded, by one comparer that composition, memory preparation and later
+    file preparation share; a run never adopts its own observations, and a mismatch is
+    `BaseChanged`, refused before the schema read. The expectation takes precedence on failed reads
+    and compositions: the file-backed source records an observation for each read whose bytes were
+    read completely, before decoding, and a known mismatch at an observed position takes precedence
+    over the composition's diagnostic failure, while a base that could not be read at all produced
+    no observation and keeps the existing `SpecExtendsNotFound` outcome. The composition result also
+    carries the failed-load fact of part 11 and the path where the root's own reference resolves
+    from the anchor.
+  - **Editing, part one.** Host-supplied protected files on single-file delivery: spellings resolved
+    like the operands and appended after them and the chain files to the one input list that every
+    collision and recovery check reads, never entering a chain, a run or a manifest. With them comes
+    the retained relocation of part 11.
+  - **In-place Save.** Its own operation and decision entry beside D-122 part 4. It reuses the
+    single-file family and transaction unchanged, its own target is the authorized replacement, its
+    stale check compares raw hash and identity with the saved revision through the same comparer as
+    the export's expected root fact, and it reports through a handle and its record.
+  - **Export.** The expected root fact (`ExpectedRoot`), which always carries an identity and is
+    checked after the root's bytes are read and before their decoding is used, refusing as
+    `RootChanged`. A read-set preflight (`ConvertReadSet` and a `ConvertPublication.Preflight`
+    overload) under a binding coverage rule: a publish through such a handle requires its run to
+    come from the captured spec and data paths, with chain bases matching the expectation in count
+    and order, a checked root expectation and the same base expectation, and otherwise throws
+    `ArgumentException` before any mutation without spending the handle. Host-supplied protected
+    files on the convert. Hashed bytes that are the written bytes (`CanonicalSpecText` and a publish
+    overload). The recipe name rule (`RecipeNames.SnapshotPath`, with a naming seam). And occupant
+    verification as a coordinator operation (`SpecPublication.VerifyOccupantAsync`,
+    `RecipeOccupant`, `RecipeOccupancy`), which reads the file at a recipe's name, hashes its raw
+    bytes, takes a fresh identity and writes nothing. Its verified fact survives every later exit,
+    and what the export later states depends on what the run's preparation returned. A changed,
+    replaced or unreadable file at the recipe's name is stated as such, and the recipe is never
+    called current after an observation disproved it. A returned outcome that follows the root
+    check, or a completed preparation followed by a later failure, says the recipe stands as last
+    read. A preparation that throws supplies no root-check result, so the outcome states the
+    recipe's history and leaves the later root status unconfirmed, claiming neither that no later
+    read occurred nor that the root was verified.
+
+  On every exit of a publish, a host binds the committed facts from the handle. A Save As applies
+  its committed baseline once from them, whether the publish returned or threw; it runs no chain
+  refresh inside a faulted operation and marks the chain facts for revalidation instead. A committed
+  publish that threw is reported with its recorded cleanup state: `NotStarted` for a
+  committed-marker fault and `Interrupted` for a fault inside the cleanup pass.
+
+  **15. The locks.** The architecture tests assert nine production assemblies, that Orchestration
+  depends on no production package but the six it uses, and that no library package references it,
+  and the existing rules now cover nine assemblies; each rule keeps its non-vacuity checks in both
+  directions. The friend grants are exact and asserted as sets in the project text and in the
+  compiled assembly. `FcaBedrock.Orchestration` grants `FcaBedrock.Orchestration.Tests`,
+  `FcaBedrock.Cli.Tests` (whose harness injects the publication filesystem and the chain identity
+  factory, whose argv tests inspect private residue and call the transaction directly, and whose
+  shared support implements internal interfaces) and `FcaBedrock.Benchmarks` (which measures the two
+  hash seams by name, D-124). `FcaBedrock.Cli` keeps `FcaBedrock.Cli.Tests` and
+  `FcaBedrock.Benchmarks`, and `FcaBedrock.Conversion` is unchanged. `FcaBedrock.Benchmarks.Tests`
+  is granted nothing, and the CLI is not granted Orchestration's internals, because everything it
+  calls is public. Every grantee is a non-product assembly, so D-098's ban on
+  production-to-production internals access holds. The Orchestration grant set is expected to grow,
+  by a reviewed change to its assertion, to the desktop's test assembly and possibly its smoke
+  executable, at the step that first needs to inject the publication filesystem; that seam stays
+  internal, and no public test seam is proposed. The artifacts family is pinned as it is, by literal
+  expectations: commit order `.cxt`, `.dat`, manifest; backup order manifest, `.cxt`, `.dat`; the
+  kind letters `c`, `d`, `m` and `s`; the ruled extensions; only the shape bytes `0x41` and `0x43`
+  reachable for the single-file family; and a recipe-shaped name and its private siblings outside
+  the private-name grammar. The signature pin of part 3 and the closed-family constructor rule (no
+  exported abstract class has a constructor another assembly can call, and no public record is
+  unsealed) are tested.
+
+  **16. Where the tests live.** A test file moves to `FcaBedrock.Orchestration.Tests` when every
+  test in it calls only moved types and the shared test support; every other file stays in
+  `FcaBedrock.Cli.Tests`, whose argv-boundary suites are the CLI's byte locks. No file is split, a
+  moved class keeps its class and method names, and every theory keeps its rows. The shared support
+  (`TempDirectory`, `PlatformLinks` with its unavailable identity probe, the recording publication
+  filesystem with its faulty stream, and `Residue`, which builds a prior run's private files) lives
+  in `tests/FcaBedrock.Orchestration.Tests/Support/` under the namespace `FcaBedrock.TestSupport`.
+  `FcaBedrock.Cli.Tests` compiles the same files as linked items, so each test assembly gets its own
+  internal copy of one source.
+
+  The release of a preflight's references is observed on Windows by removing the target through the
+  filesystem seam, whose disposition keeps a name occupied while any handle on the object is open,
+  and then creating a file at that name; a held target is the positive control. A plain
+  `File.Delete` frees a name whose object a reference still holds, as the reference tests show on
+  Windows when they replace a held object, so a probe built on it could not see a leaked reference.
+  A leaked reference is an unreachable handle that the runtime may finalize at any time, so a free
+  name is evidence at that instant, not proof against every schedule; the guard's own control flow
+  is the structural evidence. Off Windows the release cases skip with that reason, and a skip is not
+  release evidence.
+
+  **17. Validation's identity service.** `SpecValidation` creates the default identity service, as
+  `validate` did. The host's identity factory reaches preparation and relocation, not validation: a
+  known asymmetry, kept because changing it is not part of the move (EP-1). The desktop validates
+  through composition, which takes the host's factory. Publication keeps the default service
+  (D-125).
+
+  **18. What does not change.** Every CLI byte (stdout, stderr, manifests, written specs, `.cxt` and
+  `.dat`), exit code, message, ordering, signal boundary (the single-file publish adds one before
+  `Begin`, below), and audit and clock behaviour; the
+  registry (85); the public API of the seven library packages; `EmitReplaySession` as the supported
+  bracket; both publication families (their kinds, orders, shape byte, private-name grammar, record
+  format, residue names and recovery); the namespace precondition and crash limits of D-125; the CLI
+  version string; the normative spec; and the CLI's packed README. The preflight's ownership
+  correction is byte-neutral: no message, exit code, ordering, record, marker or recovery behaviour
+  changes, and the one observable difference is that no reference stays held after a preflight that
+  refused or threw. The classification of the exception that escapes is unchanged, its asymmetry
+  included (part 7). Host error kinds are not diagnostics: they travel on the code-less channel, and
+  no `DiagnosticCode` is added, removed or changed. Of three internal timing differences, two are
+  unobservable in bytes: a transaction's references are released inside the publish, before the CLI
+  renders, rather than when the CLI's `using` ended; and a rollback the publish performed is not
+  repeated by a second call in a CLI catch, where `Rollback` was already single-shot. The third is
+  part 2's single-file correction. If cancellation is requested after a successful single-file
+  preflight and before the publish checks for it ahead of `Begin`, for example during
+  `fingerprint --write`'s recheck (part 6), the publish begins nothing. The CLI's single-file route
+  had no such check: it began the transaction and started staging before it observed the
+  cancellation, then rolled back. When no other fault occurs, the CLI still renders nothing and
+  exits 3. This entry claims nothing for a fault that coincides with the cancellation.
+- **Why:** a desktop needs the same orchestration, and a copy would be the fourth preparation
+  sequence (D-093, D-139). Outcomes instead of rendering are the one seam a second host needs. Facts
+  the engine already computes must survive an exception, or a host that owns two publications in one
+  operation cannot report them honestly (D-139 part 7). They are true only if each is recorded where
+  its step can fail and is read from a channel that an exception cannot empty, which is why the
+  handle and not the awaited result carries them. A preflight that cannot complete must own what it
+  acquired, or a refusal leaves references that no caller can release. Structured causes let each
+  host present its own wording without parsing CLI text. A raw public transaction would make the
+  hardened engine's call order a contract. Closed families and the type split between file-backed
+  and other runs make the file-backed rule, the publication family and the relocation kind
+  structural rather than checked. Relocation verifies a path and an object, so composition cannot be
+  its condition, and a save refuses another folder only where D-139 names the case. A verified reuse
+  is a fact the export needs on every exit, so an operation owns it rather than a run's success
+  value, and an outcome states what the export observed, never a claim that its own read disproved
+  or a result that its preparation never reported.
+- **Rejected:** public building blocks instead of operations; a public transaction (its call order
+  would become a contract); a public emit method (it has no caller, EP-3); an exception carrier for
+  publication facts (wrapping changes the exception type the CLI classifies, so a cancellation would
+  no longer match the host token); generic classification instead of one kind per builder (a host
+  would have to read messages); declaring the later members now (surface with no caller, and members
+  that throw or do nothing); splitting test files by method; a separate shared test-support project;
+  a public JSON helper; a production friend grant from Orchestration to the CLI; the observer on the
+  host seam (a host is immutable and shared across operations); abstract records for closed families
+  (a protected copy constructor reopens the family); a nullable `ImmediateBase` with a basis enum; a
+  preparation receipt for reuse; a hash-only expectation for a reused recipe (it loses the identity
+  binding); refusing another folder for every chain that does not compose (a restriction D-139 part
+  6 does not make); deriving the failed-load fact from a diagnostic code (it couples a relocation
+  policy to a diagnostic's emission set); general hardening of the preflight's acquisitions, or
+  routing acquisition through the tagging guard (a separate CLI decision); a rollback for a
+  transaction that never began (nothing exists to roll back); wrapping the preflight's escaping
+  exception; a root-observation receipt from preparation for the before-or-after distinction on a
+  thrown preparation (not adopted for this contract: the honest outcome needs no fact the host
+  lacks, and such a receipt would be a separate decision with its own EP-4 design and review,
+  available when a real need appears); inferring a root-check result from an exception, its message
+  or stack, or a progress step; and relocation overloads that return the composition's diagnostics
+  as their own (the relocation produced none).
+- **Affects:** `src/FcaBedrock.Orchestration` and `tests/FcaBedrock.Orchestration.Tests` (new);
+  `FcaBedrock.Cli` and its tests; `tests/FcaBedrock.Architecture.Tests`; the benchmark host's two
+  files and its project; `FcaBedrock.slnx`; `AGENTS.md`, `README.md` and `docs/roadmap.md`; and this
+  entry, its index line and the index and status notes of D-122, D-123, D-124 and D-139.
+  `eng/README.md` is unchanged, because the pinned runner accepts the positional
+  `dotnet test tests/FcaBedrock.Cli.Tests` form its two smoke commands use. No library package, spec
+  text, diagnostic, fingerprint or output byte changes, and the registry stays 85.
 
 ---
 

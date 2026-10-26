@@ -1,4 +1,4 @@
-using FcaBedrock.Cli.Publication;
+using FcaBedrock.Orchestration;
 
 namespace FcaBedrock.Cli;
 
@@ -61,8 +61,7 @@ internal static class Program
                 // Main's `args` never carries argv[0], so the audit value
                 // has to come from here; parsing continues over `args` alone.
                 AuditArgv = [.. Environment.GetCommandLineArgs()],
-                OpenInput = CliEnvironment.OpenFile,
-                PublicationFiles = PublicationFileSystem.Instance,
+                Orchestration = new OrchestrationHost(CliEnvironment.OpenFile),
             };
 
             exitCode = await CliHost.RunAsync(args, environment).ConfigureAwait(false);

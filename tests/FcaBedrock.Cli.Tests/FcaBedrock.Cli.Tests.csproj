@@ -9,6 +9,16 @@
     <ProjectReference Include="..\..\src\FcaBedrock.Cli\FcaBedrock.Cli.csproj" />
   </ItemGroup>
 
+  <!-- The shared test support (the temporary directory, the platform links and the recording
+       publication filesystem with its faulty stream) is owned by FcaBedrock.Orchestration.Tests
+       and compiled here from the same files, so both assemblies get their own internal copy of
+       one source. Orchestration grants both assemblies its internals, which the recording
+       filesystem needs because it implements the internal publication seam. -->
+  <ItemGroup>
+    <Compile Include="..\FcaBedrock.Orchestration.Tests\Support\*.cs" Link="Support\%(Filename)%(Extension)" />
+    <Using Include="FcaBedrock.TestSupport" />
+  </ItemGroup>
+
   <!-- User-supplied v2 golden fixtures, copied next to the test assembly so tests read
        them via AppContext.BaseDirectory (the established Golden.Tests rule). -->
   <ItemGroup>

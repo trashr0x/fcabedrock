@@ -1,6 +1,7 @@
 using FcaBedrock.Benchmarks.Corpus;
 using FcaBedrock.Benchmarks.Oracles;
 using FcaBedrock.Cli;
+using FcaBedrock.Orchestration;
 
 namespace FcaBedrock.Benchmarks;
 
@@ -208,7 +209,7 @@ internal sealed class CliHostRun(string label, CorpusCase corpus)
                 // Explicitly synthetic, and recorded as such: `command_line` is an audit record of
                 // what a process received, and a benchmark has none to report.
                 AuditArgv = [SyntheticArgv0, .. _argv],
-                OpenInput = CliEnvironment.OpenFile,
+                Orchestration = new OrchestrationHost(CliEnvironment.OpenFile),
             }).ConfigureAwait(false);
 
         return _exitCode;

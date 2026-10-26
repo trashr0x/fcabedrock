@@ -6,6 +6,7 @@
     <Project Path="src/FcaBedrock.Diagnostics/FcaBedrock.Diagnostics.csproj" />
     <Project Path="src/FcaBedrock.Discovery/FcaBedrock.Discovery.csproj" />
     <Project Path="src/FcaBedrock.Export/FcaBedrock.Export.csproj" />
+    <Project Path="src/FcaBedrock.Orchestration/FcaBedrock.Orchestration.csproj" />
     <Project Path="src/FcaBedrock.Sources/FcaBedrock.Sources.csproj" />
     <Project Path="src/FcaBedrock.Spec/FcaBedrock.Spec.csproj" />
   </Folder>
@@ -20,6 +21,7 @@
     <Project Path="tests/FcaBedrock.Discovery.Tests/FcaBedrock.Discovery.Tests.csproj" />
     <Project Path="tests/FcaBedrock.Export.Tests/FcaBedrock.Export.Tests.csproj" />
     <Project Path="tests/FcaBedrock.Golden.Tests/FcaBedrock.Golden.Tests.csproj" />
+    <Project Path="tests/FcaBedrock.Orchestration.Tests/FcaBedrock.Orchestration.Tests.csproj" />
     <Project Path="tests/FcaBedrock.Sources.Tests/FcaBedrock.Sources.Tests.csproj" />
     <Project Path="tests/FcaBedrock.Spec.Tests/FcaBedrock.Spec.Tests.csproj" />
   </Folder>

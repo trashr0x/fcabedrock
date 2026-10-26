@@ -13,12 +13,6 @@
     <ToolCommandName>fcabedrock</ToolCommandName>
     <PackageId>FcaBedrock.Cli</PackageId>
     <Description>Formal Concept Analysis preprocessing: the fcabedrock command.</Description>
-    <!-- Required, not optional: .editorconfig makes SYSLIB1054 a warning (and warnings
-         are errors), so OS file identity must go through the LibraryImport source
-         generator, whose marshalling stubs need unsafe code, verified by build:
-         removing this line fails with SYSLIB1062 + CS0227. No unsafe code is hand-written
-         anywhere in this package. -->
-    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <!-- The package carries its OWN readme, not the repository's: the root README
          is repository-facing (a `## Status` section, and path references that mean
          nothing to a package-only reader), so a purpose-built `README.md` beside this
@@ -34,6 +28,7 @@
     <ProjectReference Include="..\FcaBedrock.Conversion\FcaBedrock.Conversion.csproj" />
     <ProjectReference Include="..\FcaBedrock.Export\FcaBedrock.Export.csproj" />
     <ProjectReference Include="..\FcaBedrock.Discovery\FcaBedrock.Discovery.csproj" />
+    <ProjectReference Include="..\FcaBedrock.Orchestration\FcaBedrock.Orchestration.csproj" />
   </ItemGroup>
 
   <!-- `Update`, not `Include`: the SDK's default `None` glob already carries this
@@ -48,12 +43,13 @@
        D-098 posture):
 
          FcaBedrock.Cli.Tests:  the argv-boundary tests drive CliHost directly.
-         FcaBedrock.Benchmarks: the benchmark suite measures CliHost, InputHashTracker and
-                                HashingWriteStream themselves (D-124). Measuring the
-                                public executable instead would change the accepted
-                                boundary from host throughput to process latency, and
-                                copying the host's behaviour into the suite would make
-                                the measurement about the copy.
+         FcaBedrock.Benchmarks: the benchmark suite measures CliHost itself (D-124).
+                                Measuring the public executable instead would change the
+                                accepted boundary from host throughput to process latency,
+                                and copying the host's behaviour into the suite would make
+                                the measurement about the copy. The two hash seams it also
+                                measures live in FcaBedrock.Orchestration, which grants it
+                                access separately.
 
        FcaBedrock.Benchmarks.Tests is deliberately NOT granted: it reaches what it needs
        through the benchmark assembly. CliProjectContractTests asserts this exact set, in

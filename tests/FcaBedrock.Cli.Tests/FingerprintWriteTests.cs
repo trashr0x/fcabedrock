@@ -1,6 +1,7 @@
 using System.Text;
 using FcaBedrock.Cli.Commands;
-using FcaBedrock.Cli.Publication;
+using FcaBedrock.Orchestration;
+using FcaBedrock.Orchestration.Publication;
 using FcaBedrock.Spec.Toml;
 
 namespace FcaBedrock.Cli.Tests;

@@ -3,10 +3,11 @@ using FcaBedrock.Benchmarks.Configuration;
 using FcaBedrock.Benchmarks.Corpus;
 using FcaBedrock.Benchmarks.Oracles;
 using FcaBedrock.Cli;
-using FcaBedrock.Cli.Publication;
 using FcaBedrock.Core.Spec;
 using FcaBedrock.Diagnostics;
 using FcaBedrock.Export;
+using FcaBedrock.Orchestration;
+using FcaBedrock.Orchestration.Publication;
 using FcaBedrock.Sources;
 
 namespace FcaBedrock.Benchmarks;

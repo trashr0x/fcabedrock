@@ -1,4 +1,5 @@
 using FcaBedrock.Diagnostics;
+using FcaBedrock.Orchestration;
 using FcaBedrock.Spec.Toml;
 
 namespace FcaBedrock.Cli.Commands;
@@ -25,13 +26,13 @@ internal static class PlanCommand
         ArgumentNullException.ThrowIfNull(invocation);
         ArgumentNullException.ThrowIfNull(environment);
 
-        var outcome = await RunPipeline.PrepareAsync(invocation, environment).ConfigureAwait(false);
-        if (outcome is not PipelinePrepared prepared)
+        var outcome = await RunRendering.PrepareAsync(invocation, environment).ConfigureAwait(false);
+        if (outcome is not OperationCompleted<PreparedFileRun> prepared)
         {
-            return RunPipeline.Fail(environment, outcome, environment.Signals.Token);
+            return RunRendering.Fail(environment, outcome, environment.Signals.Token);
         }
 
-        var run = prepared.Run;
+        var run = prepared.Value;
         var diagnostics = new List<BedrockDiagnostic>(prepared.Diagnostics);
 
         // Verified once, against the root document, after a successful NATIVE plan (§14/D-077).
@@ -40,6 +41,6 @@ internal static class PlanCommand
         // Built complete before anything is written, so a failure after this point cannot leave
         // a half-emitted report behind.
         var report = PlanReport.Render(run.Plan, run.Fingerprints);
-        return RunPipeline.Complete(environment, diagnostics, report, environment.Signals.Token);
+        return RunRendering.Complete(environment, diagnostics, report, environment.Signals.Token);
     }
 }

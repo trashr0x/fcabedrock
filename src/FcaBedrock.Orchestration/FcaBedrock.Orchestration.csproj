@@ -1,0 +1,49 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The shared run and publication coordinator (D-140): preparation, publication, file
+       identity, input hashing, extends relocation, manifest composition, freezing and statistics,
+       returned to each host as outcomes that the host renders. It references the six library
+       packages it uses and neither Discovery nor any host; no library package references it, and
+       no production package references the CLI (FcaBedrock.Architecture.Tests asserts both). -->
+  <PropertyGroup>
+    <!-- Required, not optional: .editorconfig makes SYSLIB1054 a warning (and warnings
+         are errors), so OS file identity must go through the LibraryImport source
+         generator, whose marshalling stubs need unsafe code, verified by build:
+         removing this line fails with SYSLIB1062 + CS0227. No unsafe code is hand-written
+         anywhere in this package. -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\FcaBedrock.Diagnostics\FcaBedrock.Diagnostics.csproj" />
+    <ProjectReference Include="..\FcaBedrock.Core\FcaBedrock.Core.csproj" />
+    <ProjectReference Include="..\FcaBedrock.Sources\FcaBedrock.Sources.csproj" />
+    <ProjectReference Include="..\FcaBedrock.Spec\FcaBedrock.Spec.csproj" />
+    <ProjectReference Include="..\FcaBedrock.Conversion\FcaBedrock.Conversion.csproj" />
+    <ProjectReference Include="..\FcaBedrock.Export\FcaBedrock.Export.csproj" />
+  </ItemGroup>
+
+  <!-- Exactly three non-product assemblies are granted friend access, and no production
+       package is (the D-098 posture; the CLI calls only the public surface):
+
+         FcaBedrock.Orchestration.Tests: the unit tests of the internal engine, identity,
+                                         hashing and relocation types.
+         FcaBedrock.Cli.Tests:           the argv-boundary harness injects the publication
+                                         filesystem and the chain identity seam, many argv tests
+                                         inspect private residue or call the transaction
+                                         directly, and the shared test support implements
+                                         internal interfaces.
+         FcaBedrock.Benchmarks:          the benchmark suite measures InputHashTracker and
+                                         HashingWriteStream themselves (D-124), rather than a
+                                         copy of their behaviour.
+
+       FcaBedrock.Benchmarks.Tests is deliberately NOT granted: it reaches what it needs through
+       the benchmark assembly. OrchestrationProjectContractTests asserts this exact set, in the
+       project text and in the compiled assembly, independently of order. -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="FcaBedrock.Orchestration.Tests" />
+    <InternalsVisibleTo Include="FcaBedrock.Cli.Tests" />
+    <InternalsVisibleTo Include="FcaBedrock.Benchmarks" />
+  </ItemGroup>
+
+</Project>

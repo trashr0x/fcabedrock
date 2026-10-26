@@ -1,5 +1,6 @@
 using System.Text;
 using FcaBedrock.Diagnostics;
+using FcaBedrock.Orchestration;
 using FcaBedrock.Sources;
 
 namespace FcaBedrock.Cli.Tests;

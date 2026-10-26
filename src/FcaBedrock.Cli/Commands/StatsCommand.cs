@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text;
 using FcaBedrock.Diagnostics;
+using FcaBedrock.Orchestration;
 using FcaBedrock.Spec.Toml;
 
 namespace FcaBedrock.Cli.Commands;
@@ -41,13 +42,13 @@ internal static class StatsCommand
         ArgumentNullException.ThrowIfNull(invocation);
         ArgumentNullException.ThrowIfNull(environment);
 
-        var outcome = await RunPipeline.PrepareAsync(invocation, environment).ConfigureAwait(false);
-        if (outcome is not PipelinePrepared prepared)
+        var outcome = await RunRendering.PrepareAsync(invocation, environment).ConfigureAwait(false);
+        if (outcome is not OperationCompleted<PreparedFileRun> prepared)
         {
-            return RunPipeline.Fail(environment, outcome, environment.Signals.Token);
+            return RunRendering.Fail(environment, outcome, environment.Signals.Token);
         }
 
-        var run = prepared.Run;
+        var run = prepared.Value;
         var cancellation = environment.Signals.Token;
         var diagnostics = new List<BedrockDiagnostic>(prepared.Diagnostics);
 
@@ -55,76 +56,18 @@ internal static class StatsCommand
         // place ahead of the emit diagnostics in library order.
         diagnostics.AddRange(SpecFingerprints.VerifyStored(run.RootDocument, run.Fingerprints, run.RootKey));
 
-        Counts counts;
-        try
+        // The one counting pass, then the stability re-check, before any diagnostic or report byte
+        // is written.
+        var counted = await ContextStatistics.CountAsync(run, diagnostics, cancellation).ConfigureAwait(false);
+        if (counted is not OperationCompleted<ContextStatistics> counts)
         {
-            counts = await CountAsync(run, diagnostics, cancellation).ConfigureAwait(false);
-        }
-        catch (Exception exception) when (RunPipeline.IsDataReadFailure(exception))
-        {
-            return RunPipeline.HostFailure(
-                environment,
-                diagnostics,
-                DataReadExplanation.Message(run.DataPath, exception, run.Input.CurrentPassMark),
-                cancellation);
+            return RunRendering.Fail(environment, counted, cancellation);
         }
 
-        // The counting pass may follow earlier complete passes, so stability is
-        // re-checked here, before any diagnostic or report byte is written.
-        if (run.Input.HasMismatch)
-        {
-            return RunPipeline.HostFailure(
-                environment, diagnostics, RunPipeline.InputChangedMessage(run.DataPath), cancellation);
-        }
-
-        return RunPipeline.Complete(environment, diagnostics, Render(counts), cancellation);
+        return RunRendering.Complete(environment, counts.Diagnostics, Render(counts.Value), cancellation);
     }
 
-    /// <summary>The six counted fields.</summary>
-    private readonly record struct Counts(
-        long Objects, long FormalAttributes, long Crosses, long CrosslessObjects, long EmptyAttributes);
-
-    // One enumeration, bounded state: the per-column "was ever crossed" flags are the only
-    // collection, and their size is the planned column count.
-    private static async Task<Counts> CountAsync(
-        PreparedRun run, List<BedrockDiagnostic> diagnostics, CancellationToken cancellation)
-    {
-        var formalAttributes = run.Plan.FormalAttributes.Count;
-        var crossed = new bool[formalAttributes];
-        long objects = 0;
-        long crosses = 0;
-        long crosslessObjects = 0;
-
-        await foreach (var emitted in run.Emit(diagnostics).WithCancellation(cancellation).ConfigureAwait(false))
-        {
-            objects++;
-
-            var ids = emitted.CrossedFormalAttributeIds;
-            if (ids.Count == 0)
-            {
-                crosslessObjects++;
-            }
-
-            crosses += ids.Count;
-            for (var i = 0; i < ids.Count; i++)
-            {
-                crossed[ids[i]] = true;
-            }
-        }
-
-        long empty = 0;
-        foreach (var seen in crossed)
-        {
-            if (!seen)
-            {
-                empty++;
-            }
-        }
-
-        return new Counts(objects, formalAttributes, crosses, crosslessObjects, empty);
-    }
-
-    private static string Render(Counts counts)
+    private static string Render(ContextStatistics counts)
     {
         var builder = new StringBuilder();
         Append(builder, "objects", Integer(counts.Objects));

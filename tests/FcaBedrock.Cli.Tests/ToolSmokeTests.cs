@@ -2,6 +2,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Xml;
 using System.Xml.Linq;
+using FcaBedrock.Orchestration;
 
 namespace FcaBedrock.Cli.Tests;
 
