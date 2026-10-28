@@ -49,12 +49,21 @@ public sealed record ContextStatistics
     /// the counts, with a list that may hold an emit Error; the host decides what to present. Host
     /// failure: <see cref="HostErrorKind.DataUnreadable"/> or <see cref="HostErrorKind.DataChanged"/>.
     /// </para>
+    /// <para>
+    /// When <paramref name="run"/> carries an <see cref="OperationProgress"/>, the counting pass reports
+    /// to it as a <see cref="PassKind.Statistics"/> pass with its objects, and with
+    /// <see cref="WorkingStep.Grouping"/> once its input closed when the plan groups (D-141).
+    /// </para>
     /// </summary>
+    /// <exception cref="ArgumentException">
+    /// The progress <paramref name="run"/> carries is completed; thrown before any file opens.
+    /// </exception>
     public static async Task<OperationOutcome<ContextStatistics>> CountAsync(
         PreparedRun run, IReadOnlyList<BedrockDiagnostic> diagnostics, CancellationToken cancellation)
     {
         ArgumentNullException.ThrowIfNull(run);
         ArgumentNullException.ThrowIfNull(diagnostics);
+        OperationProgress.ThrowIfCompleted(run.Input.Progress, nameof(run));
 
         var collected = new List<BedrockDiagnostic>(diagnostics);
 
@@ -92,8 +101,9 @@ public sealed record ContextStatistics
         long crosses = 0;
         long crosslessObjects = 0;
 
-        await foreach (var emitted in run.EmitWith(run.Plan, diagnostics, cancellation)
-            .WithCancellation(cancellation).ConfigureAwait(false))
+        var enumeration = ObservedEmission.Over(
+            run.EmitWith(run.Plan, diagnostics, cancellation), run.Input, run.Plan, PassKind.Statistics, cancellation);
+        await foreach (var emitted in enumeration.WithCancellation(cancellation).ConfigureAwait(false))
         {
             objects++;
 

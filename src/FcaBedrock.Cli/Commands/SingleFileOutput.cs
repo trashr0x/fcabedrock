@@ -144,6 +144,7 @@ internal static class SingleFileOutput
                 Chain = chain,
             },
             environment.Orchestration,
+            environment.OperationProgress,
 
             // The exact host token reaches residue classification, validated recovery, and every
             // mutation boundary inside it.

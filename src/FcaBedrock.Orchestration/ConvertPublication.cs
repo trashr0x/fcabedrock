@@ -127,8 +127,16 @@ public static class ConvertPublication
     /// handle that holds live references; they belong to the caller until the handle is published or
     /// disposed. Cancellation propagates as <paramref name="cancellation"/>'s own exception.
     /// </para>
+    /// <para>
+    /// When <paramref name="run"/> carries an <see cref="OperationProgress"/>, the preflight reports
+    /// <see cref="WorkingStep.PreparingOutput"/> while it works and clears it when it returns or throws,
+    /// and the returned handle carries the progress into its publish (D-141).
+    /// </para>
     /// </summary>
-    /// <exception cref="ArgumentException"><paramref name="output"/> selects neither context.</exception>
+    /// <exception cref="ArgumentException">
+    /// <paramref name="output"/> selects neither context, or the progress <paramref name="run"/>
+    /// carries is completed; thrown before any path is resolved.
+    /// </exception>
     public static OperationOutcome<PreflightedConvertOutput> Preflight(
         ConvertOutput output, PreparedFileRun run, OrchestrationHost host, CancellationToken cancellation)
     {
@@ -146,6 +154,29 @@ public static class ConvertPublication
             throw new ArgumentException("A conversion writes at least one of the two contexts.", nameof(output));
         }
 
+        var progress = run.Input.Progress;
+        OperationProgress.ThrowIfCompleted(progress, nameof(run));
+        progress?.Step(WorkingStep.PreparingOutput);
+        try
+        {
+            return PreflightCore(baseSpelling, writesCxt, writesDat, writesManifest, replaceExisting, run, host, cancellation);
+        }
+        finally
+        {
+            progress?.Step(0);
+        }
+    }
+
+    private static OperationOutcome<PreflightedConvertOutput> PreflightCore(
+        string baseSpelling,
+        bool writesCxt,
+        bool writesDat,
+        bool writesManifest,
+        bool replaceExisting,
+        PreparedFileRun run,
+        OrchestrationHost host,
+        CancellationToken cancellation)
+    {
         var kinds = new List<PublicationTargetKind>();
         if (writesCxt)
         {
@@ -204,7 +235,8 @@ public static class ConvertPublication
         }
 
         // The transfer: the handle's constructor assigns fields only, and nothing fallible sits
-        // between the transaction's return and the handle's.
+        // between the transaction's return and the handle's. The progress is one more assignment.
+        transaction.Progress = run.Input.Progress;
         return new OperationCompleted<PreflightedConvertOutput>(
             new PreflightedConvertOutput(transaction, run, writesCxt, writesDat, writesManifest),
             OutcomeLists.NoDiagnostics);
@@ -224,10 +256,24 @@ public static class ConvertPublication
     /// same rollback; a fault met while rolling back on that path never replaces the exception that
     /// caused it. Past the commit point no cancellation is observed: a committed run stands.
     /// </para>
+    /// <para>
+    /// When the run carries an <see cref="OperationProgress"/>, the publish reports
+    /// <see cref="WorkingStep.Staging"/> after its cancellation check before beginning, each writer pass
+    /// (<see cref="PassKind.CxtNames"/>, <see cref="PassKind.CxtRows"/>, <see cref="PassKind.Dat"/>) with
+    /// its objects and with <see cref="WorkingStep.Grouping"/> once its input closed when the plan
+    /// groups, then <see cref="WorkingStep.Sealing"/>, <see cref="WorkingStep.Committing"/> and
+    /// <see cref="WorkingStep.Cleaning"/>, and clears the step on every exit after the record is built
+    /// and the references are released (D-141). A cancellation observed before beginning reports no
+    /// step. The attempt record, never the progress, holds the facts.
+    /// </para>
     /// </summary>
     /// <exception cref="ArgumentException">
-    /// <paramref name="handle"/> was not preflighted for <paramref name="conversion"/>'s run; thrown
-    /// before any mutation, and the handle stays usable.
+    /// <paramref name="handle"/> was not preflighted for <paramref name="conversion"/>'s run (the
+    /// parameter is <paramref name="handle"/>); or the progress <paramref name="conversion"/>'s run
+    /// carries is completed (the parameter is <paramref name="conversion"/>). Both are thrown before any
+    /// mutation and before the handle is spent: it stays unspent and disposable, its record stays
+    /// <see cref="PublicationAttemptState.NotBegun"/>, and a completed progress refuses every later
+    /// publish of it again.
     /// </exception>
     public static async Task<OperationOutcome<Published>> PublishAsync(
         EffectiveConversion conversion,
@@ -246,6 +292,11 @@ public static class ConvertPublication
         {
             throw new ArgumentException("The handle was preflighted for another run.", nameof(handle));
         }
+
+        // The conversion's run carries the progress, and the association above proves it is the
+        // handle's run, so the refusal names the conversion.
+        var progress = conversion.Run.Input.Progress;
+        OperationProgress.ThrowIfCompleted(progress, nameof(conversion));
 
         var facts = new ManifestHostFacts
         {
@@ -300,6 +351,10 @@ public static class ConvertPublication
         finally
         {
             handle.Finish();
+
+            // After the record is built and the references are released: a step never outlives the
+            // call that reported it.
+            progress?.Step(0);
         }
     }
 
@@ -316,11 +371,13 @@ public static class ConvertPublication
         var settings = conversion.Settings;
         var writesCxt = handle.WritesCxt;
         var writesDat = handle.WritesDat;
+        var progress = run.Input.Progress;
 
         // A signal that arrived during preparation stops the run here: after it, no new
         // transaction begins at all.
         cancellation.ThrowIfCancellationRequested();
 
+        progress?.Step(WorkingStep.Staging);
         if (transaction.Begin() is { } started)
         {
             return Failed(started, diagnostics);
@@ -334,12 +391,23 @@ public static class ConvertPublication
         // intercepted on every real pass and flushed, aggregated, at disposal (D-082/D-105).
         using (var replay = EmitReplay.Begin(sink => run.EmitWith(plan, sink, cancellation), diagnostics))
         {
+            // Observed, each replay pass is handed to its writer inside an enumeration scope: the
+            // .cxt writer's first request is its names pass and its second its rows pass. Unobserved,
+            // the writers receive the replay passes themselves.
+            Func<IAsyncEnumerable<EmittedObject>> openCxt = replay.Open;
+            if (progress is not null)
+            {
+                var cxtPasses = 0;
+                openCxt = () => ObservedEmission.Over(
+                    replay.Open(), run.Input, plan, cxtPasses++ == 0 ? PassKind.CxtNames : PassKind.CxtRows, cancellation);
+            }
+
             failure = writesCxt
                 ? await transaction.StageAsync(
                     PublicationTargetKind.Cxt,
                     stage => CxtWriter.WriteAsync(
                         plan,
-                        replay.Open,
+                        openCxt,
                         settings.Cxt,
                         stage,
                         diagnostics,
@@ -351,7 +419,11 @@ public static class ConvertPublication
             {
                 failure = await transaction.StageAsync(
                     PublicationTargetKind.Dat,
-                    stage => DatWriter.WriteAsync(replay.Open(), settings.Dat, stage, cancellation))
+                    stage => DatWriter.WriteAsync(
+                        ObservedEmission.Over(replay.Open(), run.Input, plan, PassKind.Dat, cancellation),
+                        settings.Dat,
+                        stage,
+                        cancellation))
                     .ConfigureAwait(false);
             }
         }
@@ -420,6 +492,7 @@ public static class ConvertPublication
         // evidence and then records that fact, which is what lets a later run tell "a commit
         // rename consumed this stage" from "this stage was never created", and what proves which
         // exact object each target holds before rollback may remove one.
+        progress?.Step(WorkingStep.Sealing);
         if (transaction.Seal(cancellation) is { } marked)
         {
             transaction.Rollback();
@@ -430,6 +503,7 @@ public static class ConvertPublication
         // simply the last check before the first one.
         cancellation.ThrowIfCancellationRequested();
 
+        progress?.Step(WorkingStep.Committing);
         if (transaction.Commit(cancellation) is { } committed)
         {
             transaction.Rollback();

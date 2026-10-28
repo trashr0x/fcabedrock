@@ -259,11 +259,12 @@ changes an earlier one. A new entry MUST add its line here.
 
 ### M9 (desktop) pre-implementation contract
 
-- D-139: M9 desktop contract: the shared run coordinator, documents and revisions, the recipe rule and the spec snapshot, saving, file use and operation lifetime, progress, the desktop manifest, evidence and the delivery order *(part 2's extraction realized by D-140, the working name `FcaBedrock.Runs` resolved to `FcaBedrock.Orchestration`)*
+- D-139: M9 desktop contract: the shared run coordinator, documents and revisions, the recipe rule and the spec snapshot, saving, file use and operation lifetime, progress, the desktop manifest, evidence and the delivery order *(part 2's extraction realized by D-140, the working name `FcaBedrock.Runs` resolved to `FcaBedrock.Orchestration`; parts 8 and 9 realized by D-141, which supersedes part 9's callback and desktop-held-snapshot mechanism)*
 
 ### M9 (desktop) implementation
 
-- D-140: The run coordinator extracted into `FcaBedrock.Orchestration`: its public surface, outcome model, attempt record, host error kinds, relocation decisions, handle and association rules, friend grants, and the staging of the designed members
+- D-140: The run coordinator extracted into `FcaBedrock.Orchestration`: its public surface, outcome model, attempt record, host error kinds, relocation decisions, handle and association rules, friend grants, and the staging of the designed members *(part 3's host-constructed types amended in place, and part 14's progress member realized, by D-141)*
+- D-141: Progress observation and the cancellation contract: one recorder per owned operation, passes with their closure and end, working steps, the latched snapshot, and what cancellation promises
 
 Spec-field defaults are recorded in spec §21 items 1–11 (see the final section
 of this file).
@@ -8045,7 +8046,8 @@ This section records the M9 contract, settled before any desktop code.
 
 - **Status:** accepted (M9 pre-implementation contract, approved by Constantinos Orphanides on
   2026-10-22); part 2's extraction realized by D-140 (2026-10-25), which resolves the working
-  name `FcaBedrock.Runs` to `FcaBedrock.Orchestration`
+  name `FcaBedrock.Runs` to `FcaBedrock.Orchestration`; parts 8 and 9 realized by D-141
+  (2026-10-27), which supersedes part 9's observer-callback and desktop-held-snapshot mechanism
 - **Date:** 2026-10-22
 - **Decision:** the M9 contract is settled before any desktop code, in sixteen parts. Each part
   binds the steps that implement it. Exact type names, signatures and synchronization primitives
@@ -8369,7 +8371,9 @@ This section records the M9 contract, settled before any desktop code.
   inside a regex match, a synchronous read or an operating-system rename or delete, so no latency
   is promised. The desktop shows "cancelling", with the operation and its current step, until the
   call returns. Cancellation before the commit point yields no committed run; after it, the files
-  stand and the run shows as "Published" with any cleanup warning.
+  stand and the run shows as "Published" with any cleanup warning. Realized by D-141 (2026-10-27),
+  whose part 9 states the observation points of the current read path exactly; no observation point
+  changes.
 
   Closing a document or the application requests cancellation of its owned operations, awaits
   each one to its terminal state with the wait shown, abandons its isolated computations to the
@@ -8402,7 +8406,10 @@ This section records the M9 contract, settled before any desktop code.
   and the observer's cost is measured once, as an observation with its limits under D-124's rules.
   Preview shows at most a fixed number of raw normalized source records, labelled as source
   records rather than formal objects. It stops without draining the source, cancellation disposes
-  of it, and a long value is truncated in the display only.
+  of it, and a long value is truncated in the display only. Realized by D-141 (2026-10-27) as an
+  Orchestration-owned recorder that the host creates and polls. This part's sentences on observer
+  callbacks and on a snapshot the desktop keeps describe a mechanism D-141 supersedes; every
+  behavioural guarantee of this part stands.
 
   **10. Notices, diagnostics and ambient state.** Opening a spec shows its non-empty root
   `[provenance].notes` (spec §13 rule 7) as a banner above the editor: the first line prominent,
@@ -8648,6 +8655,7 @@ settled.
   on 2026-10-25). It realizes D-139 part 2's extraction and resolves its working name, moves the
   CLI-internal coordinator of D-122 part 9 and D-123 point 1, revises D-123 point 13's
   eight-assembly lock, and moves the two hash seams D-124 benchmarks, with their friend grant.
+  Part 3 is amended in place, and part 14's progress member realized, by D-141 (2026-10-27).
 - **Date:** 2026-10-25
 - **Decision:** the run and publication coordinator moves out of `FcaBedrock.Cli` into a new
   production package, in eighteen parts. Each later M9 step re-verifies the designed members of part
@@ -8715,8 +8723,9 @@ settled.
   every public or protected member, compiler-generated record members included, and compares the
   text with the checked-in `PublicSurface.txt`, so any change to the surface is a reviewed edit of
   the pin. Hosts construct only the requests (`FileRunRequest`, `SpecDelivery`, `ConvertOutput`,
-  `ManifestHostFacts`) and the host seam. Every returned type follows one of two conventions, and
-  each claims only what its type enforces:
+  `ManifestHostFacts`) and the host seam. Amended in place on 2026-10-27: hosts also construct the
+  operation progress (D-141). Every returned type follows one of two conventions, and each claims
+  only what its type enforces:
   - a **closed family** (the outcomes, the prepared runs, the publication handles, the relocation
     decisions) is an abstract class whose only constructor is `private protected`, with sealed
     members, so no other assembly can add a member and a host's `switch` over the members is
@@ -8967,6 +8976,10 @@ settled.
     change shape for either. The observer is a presentation channel, not a fact channel: its events
     and the coalesced snapshot report steps and passes for display, no host derives an outcome fact
     from them, and a displayed step never says that a preparation's root check ran or passed.
+    Realized by D-141 on 2026-10-27 in the operation-context form: two additive overloads, runs and
+    handles carrying the progress, and the participating chains named apart from the pure and
+    no-report operations and CLI-only validation; composition and the snapshot write receive the
+    progress when their steps declare them.
   - **Desktop skeleton.** Open's file-backed loading (`SpecLoading.OpenAsync`, returning the
     reader's document, its decoded text, the root's chain facts, the base observations and the
     composed document or none), which reads through the host's opening function, so a test can pause
@@ -9131,6 +9144,315 @@ settled.
   `eng/README.md` is unchanged, because the pinned runner accepts the positional
   `dotnet test tests/FcaBedrock.Cli.Tests` form its two smoke commands use. No library package, spec
   text, diagnostic, fingerprint or output byte changes, and the registry stays 85.
+
+### D-141: Progress observation and the cancellation contract: one recorder per owned operation, passes with their closure and end, working steps, the latched snapshot, and what cancellation promises
+
+- **Status:** accepted (the progress observation and cancellation contract, approved by Constantinos
+  Orphanides on 2026-10-27). It realizes D-139 parts 8 and 9 and supersedes part 9's
+  observer-callback and desktop-held-snapshot mechanism, amends D-140 part 3's host-constructed
+  types in place, and realizes D-140 part 14's progress member.
+- **Date:** 2026-10-27
+- **Decision:** progress observation lives in the coordinator, as a recorder the host creates and
+  reads, and the cancellation contract is stated exactly for the current code, in thirteen parts.
+
+  **1. The operation progress.** `OperationProgress` is a sealed Orchestration class: one recorder
+  per owned operation (D-139 part 8), which the host creates with its public constructor and reads
+  through `Current`, at its own rate and from any thread. Orchestration records into it, and no host
+  code runs on the operation's threads. The no-op observer is `null`. Orchestration keeps the
+  snapshot and the host reads it. `Complete()` is the owner's declaration that the operation reached
+  its terminal state, and it carries no outcome. This realizes D-139 part 9 and supersedes its
+  sentences on observer callbacks ("Observer callbacks must be cheap, and an observer exception is a
+  host defect") and on a snapshot the desktop keeps: no callback exists to be cheap or to fail, and
+  Orchestration, not the desktop, keeps the snapshot. Every behavioural guarantee of part 9 stands:
+  the pass reports, exactly one reasoned end per pass, the indeterminate steps, completion last, no
+  percentage, no seam inside Conversion, a whole snapshot that a fast producer cannot mix across
+  passes and that nothing changes after completion, one snapshot for the progress and pending
+  displays, and identical bytes and diagnostics with and without observation (EP-7). The public
+  surface gains five types (`OperationProgress`, `ProgressSnapshot`, `PassKind`, `PassEnd`,
+  `WorkingStep`) and two overloads, pinned in `PublicSurface.txt` by 44 lines, and no closure flag.
+
+  **2. Attachment and carriage.** Two additive overloads start a participating chain:
+  `RunPreparation.PrepareAsync(request, host, progress, cancellation)` and
+  `SpecPublication.Preflight(delivery, host, progress, cancellation)`. The prepared run carries its
+  progress in its input tracker, and a publication handle's transaction carries its preflight's
+  progress, so `ContextStatistics.CountAsync`, `ConvertPublication.Preflight`,
+  `ConvertPublication.PublishAsync` and `SpecPublication.PublishAsync` report into the same object
+  without a parameter. The single-file publish reads the handle's progress through an internal
+  accessor that does not spend the handle. The pure operations (`ConvertPublication.PlanConversion`,
+  `SpecFreezing.Freeze`, `FingerprintReport.Of`, `FingerprintWriting.Corrected`), the identity
+  probes of `SpecRelocation` and the CLI-only `SpecValidation.ValidateAsync` report nothing and read
+  no progress. This qualifies D-140 part 14's "every Orchestration call that operation makes" as
+  every participating call; composition and the snapshot write receive the owned progress when their
+  steps declare them (part 11).
+
+  The host creates one progress per owned operation and passes the same instance to every
+  chain-starting call of that operation: a `calibrate --out` passes it to both preparation and the
+  single-file preflight. Runs and handles fix their progress at creation. No current call links two
+  chains, so nothing checks that two chains of one operation share an instance. `null`, and the
+  existing overloads, mean unobserved: today's code path, with no length read, scope, adapter or
+  step report. A participating call whose given or carried progress has completed throws
+  `ArgumentException` naming the parameter that carries it: `progress` for the two overloads, `run`
+  for statistics and the convert preflight, `conversion` for the convert publish, whose progress
+  comes from the conversion's run, and `handle` for the single-file publish. The convert publish's
+  existing association refusal names `handle`, so a host tells the two refusals apart by their
+  parameter name. The check follows the existing null, argument and association checks and precedes
+  any work: no file opens, no path resolves, no canonical bytes are written and no handle is spent.
+  A handle refused this way stays unspent and disposable, its references held and its record
+  `NotBegun` with rollback `NotOwed`, and it can never publish through that progress, because every
+  later publish refuses again. Completing a progress while a call still runs is a host defect that
+  harms nothing: the final snapshot is the state at that instant, and the call, its outcome, its
+  exceptions and its attempt record are unaffected. Passing one progress to two concurrent
+  operations is a host defect the recorder cannot detect, because it carries no operation identity.
+
+  **3. Passes, closure and the end.** A *pass* is one opening of the data file through the
+  input-stability tracker's hashing wrapper; spec files are not passes. Every pass belongs to the
+  *scope* the coordinator opened around the consumer that reads it. Preparation has two call scopes:
+  around `GetSchemaAsync` (kind `Schema`) and around the calibrator (kind `Calibration`, one or two
+  passes, post-input step `Calibrating`). Every enumeration the coordinator hands to a consumer has
+  an enumeration scope: the statistics pass (`Statistics`), the `.cxt` writer's two passes
+  (`CxtNames`, then `CxtRows`) and the `.dat` writer's pass (`Dat`), each with the post-input step
+  `Grouping` when the plan groups, that is when
+  `plan.Execution is TripleExecution { Ordering: TripleOrdering.Unordered }` or
+  `plan.ObjectKey is ColumnObjectKey { Policy: DuplicateObjectPolicy.Dedupe }`. An enumeration scope
+  starts at the enumeration's first advance, because an async iterator acquires its source there.
+  Scopes do not nest, and at most one is current. A scope remembers the step current when it
+  started, its outer step, and restores it at its exit.
+
+  A pass starts when the tracker opens it under a scope and the host's opening function has returned
+  a stream. The tracker asks that stream for `CanSeek` and, when it is true, reads `Length` once,
+  before wrapping it; an exception from either query leaves the length unknown. A pass whose open
+  throws never starts. A hashed open with no current scope would record no pass; that is a defect,
+  not an allowed shape, and the observed tracker counts its opens so the tests show that every open
+  recorded a pass. After each wrapper read that returned bytes, the pass's consumed total is
+  published, at most once per read call. An enumeration scope's adapter publishes its object count
+  after each object it yields; the count keeps rising after the input closed while a grouped
+  enumeration replays.
+
+  *Input closure*, the wrapper's first disposal, is not an end. At closure, when the wrapper
+  observed end of input, the end is recorded at once as `EndOfInput` and never revised; whether or
+  not it did, the scope's post-input step, when it has one, is set, because the consumer is still
+  running. Closure records no other end, because a non-EOF reason is not yet known there. A pass
+  ends exactly once, before the next pass starts: at closure as above; at the next pass's start, as
+  `EndOfInput` if its wrapper observed end of input and otherwise `ClosedBeforeEndOfInput`; or at
+  its scope's exit, as `EndOfInput` for a wrapper that observed end of input but was never disposed,
+  `Cancelled` when the first exception that reached the scope is an `OperationCanceledException`
+  carrying the call's own token, `Failed` for any other first exception, and
+  `ClosedBeforeEndOfInput` when nothing reached the scope. A call scope is reached by every
+  exception its call throws, an enumeration scope by the exceptions from advancing or disposing the
+  underlying enumerator. An exception thrown in a consumer's own loop body, such as a stage write
+  failure or the `.cxt` second pass's name mismatch, never reaches an enumeration scope, because the
+  `await foreach` expansion disposes the enumerator normally; such a fault before end of input ends
+  the pass `ClosedBeforeEndOfInput`, and the operation's own channel reports it. A pass end
+  describes what reached the scope that read the input, never the operation.
+
+  Consequences, all intended. The schema read of a file larger than one read-ahead ends
+  `ClosedBeforeEndOfInput`; whether a smaller file's schema read reaches end of input is the
+  reader's behaviour, which the tests pin and this entry does not promise. A structural halt (an
+  unusable `dedupe` key, an unusable `unordered` subject, a non-contiguous `subject_grouped`
+  subject) stops the stream without an exception: under a grouped plan `Grouping` shows from closure
+  while the grouper replays the collected prefix, the pass ends `ClosedBeforeEndOfInput`, and the
+  run fails by its diagnostic. A publish checks emit diagnostics only after its last artifact is
+  staged, so with `--format both` the `.dat` pass runs as well, truncated at the same offender. A
+  read failure inside a pass ends it `Failed`. End of input followed by a failure or a cancellation
+  ends the pass `EndOfInput`, and the operation's outcome or exception says the rest. A data open
+  that throws records no pass. End of input never means the operation succeeded.
+
+  **4. Working steps.** Each is reported from a fact the coordinator or the engine observes.
+  `Calibrating` starts at a calibration pass's input closure and lasts until the next pass starts or
+  the calibration scope exits. `Grouping` starts at an emit or statistics pass's input closure when
+  the plan groups and lasts until the enumeration scope exits. `PreparingOutput` is reported by
+  either preflight after its argument checks and lasts until it returns or throws. `Staging` is
+  reported by a publish after its cancellation check before `Begin`; it stands through the staging
+  of every artifact and the manifest, and each enumeration scope inside restores it at exit.
+  `Sealing` is reported immediately before `Seal`, and `Committing` immediately before `Commit`,
+  after the last cancellation check. The publication engine reports `Cleaning` at exactly two
+  positions: in `Rollback`, after the rolling-back marker was recorded, where the rollback's
+  progress becomes `Interrupted`; and in `Commit`, after recording the committed marker returned
+  without throwing, an ordinary refusal included, where the cleanup's progress becomes
+  `Interrupted`. A publish clears the step in its outermost `finally`, after its record is built and
+  its references are released, so a step never outlives the call that reported it. Hence a
+  cancellation observed before `Begin` reports no `Staging`, a fault while making the committed
+  marker reports no `Cleaning`, a rollback whose rolling-back marker could not be made reports no
+  `Cleaning`, and an ordinary marker refusal reports `Cleaning`, because the cleanup still runs.
+  `Calibrating` and `Grouping` mean running post-input work, unwinding included. Under a plan with
+  no post-input step, the interval between closure and the scope's exit shows the pass with no end
+  and no step; on every current path that interval is finishing work (the emitter's diagnostic flush
+  after a halt, the calibrator's finish, or an unwinding read), and no host derives anything from
+  it.
+
+  **5. The snapshot.** `ProgressSnapshot` is immutable: the pass sequence (0 for none), its kind,
+  its length (null when unknown), the bytes consumed, the objects emitted, its end (0 for no reason
+  yet), the step (0 for none) and the completion. With `IsCompleted`, the owner declared the
+  operation over and the snapshot is final. A step means that step runs, and it takes precedence
+  over byte progress; with a pass that has no end and a post-input step, the input closed and the
+  end reason is pending. A pass with no end and no step has its input open or, in the residual
+  interval of part 4, closed with no post-input step. An end with no step, or no pass and no step,
+  means work between reported phases: after a pass with no post-input step ended, between calls, or
+  during planning, freeze or the fingerprint report.
+
+  Every per-pass event (bytes, objects, a closure, a scope's exit) names its pass and has no effect
+  unless that pass is the current one; a scope that started no pass records no end at its exit and
+  only restores its outer step. A closure also has no effect once its pass's scope has exited. So a
+  wrapper disposed after a newer pass started, or after its own scope exited, changes nothing. The
+  guarantees, each tested: (1) a pass's start precedes its bytes, objects, closure and end; (2)
+  every started pass ends exactly once, before the next start and, for an owner that completes after
+  its last call returned or threw, before the completion; (3) sequences are 1, 2, 3, ... across the
+  operation's calls, with no gap or repeat; (4) completion is last: after `Complete()` returns,
+  `Current` returns the same final instance on every read, so a producer write already in flight is
+  never observed; (5) a snapshot's pass identity, end, step and completion come from one instant
+  read under the lock, and its counters belong to that pass, because they reset under the lock at
+  the pass's start and only that pass's producer writes them; (6) no queue exists; (7) the step is 0
+  while a pass's input is open; (8) no snapshot shows a non-EOF end with a post-input step, because
+  a scope's exit records the end and restores the outer step in one locked event. `Complete()`
+  schedules nothing and raises no event: a host that renders reads `Current` once more after its
+  owned task's terminal continuation has bound the call's facts.
+
+  **6. Threads, cost and the unobserved path.** Every producer event runs on the thread of the code
+  that observes it, inside one operation's sequential flow. Bytes, objects and every step write are
+  single volatile writes with no lock and no allocation, so the engine's two `Cleaning` reports and
+  the step reports in `catch` and `finally` paths cannot stall on a reader. The structural events (a
+  pass's start, end of input at closure, a scope's exit and `Complete()`) take one private
+  `System.Threading.Lock` for a few field reads and writes. Nothing inside it waits, calls out or
+  performs I/O, and only `Complete()` allocates there, its one final snapshot. The lock is a
+  non-null private field that no other code reaches, and it is never entered while held, so its
+  documented recursion failure is unreachable. At the source of the .NET 10.0.14 runtime the product
+  was tested on, acquiring it can otherwise fail only on exhaustion paths (a contended entry cannot
+  allocate its wait event, or its waiter count overflows) or when a waiting thread is interrupted,
+  which the product never does; that check does not cover an arbitrary later 10.0 build. The
+  guarantee is therefore bounded: no ordinary observation failure, and no host callback, can replace
+  an operation's primary result. It is not a promise under allocation exhaustion, runtime failure,
+  or forced thread or process interruption. `Current` returns the latched final snapshot when one
+  exists, and otherwise reads the structural fields and the counters under the lock and builds one
+  snapshot, so its cost scales with how often the host reads, never with the read rate. No per-read
+  or per-object event allocates; per pass, the tracker allocates one pass record and the adapter one
+  enumerator. With no progress, the read path gains one null check per wrapper read and nothing
+  else.
+
+  **7. Exceptions, tokens, resources and attempt records.** Observation raises nothing inside a
+  read, a writer, a disposal or a `finally`, cannot be absorbed by a read-failure or publication
+  classifier, and cannot replace a primary exception or a cancellation. A scope learns what reached
+  it through an exception filter that records the exception and returns false, so nothing is caught,
+  wrapped or rethrown: the handler that sees the exception without observation sees the same
+  instance, with its original throw origin, type, tag and token, its stack not reset and its
+  classification unchanged. The adapter's own asynchronous methods can add frames to the propagated
+  stack, so the formatted stack text is not promised to be identical. Every await the observation
+  adds uses `ConfigureAwait(false)`. Observation reads and links no token: `Cancelled` compares the
+  exception's token with the call's own by equality, as the CLI's host-cancellation check does, and
+  the adapter forwards the enumerator's token unchanged. A progress holds no handle, stream, file or
+  reference and is not disposable, and every resource is released exactly where it was. The two
+  `Cleaning` reports sit after the provisional fact they follow and before the next fallible step,
+  and nothing is reported, and nothing else runs, between the last verified commit rename and the
+  committed flag, so D-140 part 8's rules and every recorded state are unchanged. The only new throw
+  is part 2's `ArgumentException`, at six operations, before any work.
+
+  **8. Presentation, never fact.** No host derives from a snapshot or a step that a root or base
+  check ran or passed; that a file was committed, a recipe written or reused, or an output
+  published; a cleanup or rollback state; that a cancellation took effect; or that an input is
+  stable. Those come from outcomes, the attempt record and exceptions. `EndOfInput` says that the
+  pass's bytes were consumed to the end, not that a digest matched. A thrown preparation leaves the
+  later root status unconfirmed, whatever the last snapshot shows. `IsCompleted` says only that the
+  owner declared the operation over.
+
+  **9. The cancellation contract.** The call's own token, never a linked one, is observed: in the
+  reading pipeline, before and after each read of the delimited decoder, whose inner reads of the
+  stream are synchronous, and at the pipeline's own checkpoints (before acquisition, after reader
+  initialization, before and after each advance, inside owned work on a long candidate, and before a
+  schema or record is exposed); at each phase boundary of preparation; per row in merge and replay;
+  by the writers through their enumeration and their final flush; and in publication before `Begin`,
+  inside the seal and commit loops before each pre-commit transition, and never after the commit
+  point. It is not observed inside a regex match, inside a blocked read of the underlying stream,
+  which is not interrupted (spec §5.1.1), inside a synchronous spec read, or inside an
+  operating-system rename or delete. No latency is promised, and no observation point is added or
+  moved. This states D-139 part 8's observation sentence exactly for the current read path.
+
+  A requested cancellation has no effect a host may present until the call returns or throws, and
+  the call returns only after the library's cleanup for it has run; until the owner completes the
+  progress, the snapshot keeps showing the last pass and step. Orchestration neither reads nor
+  records the request. Before the commit point, an own-token cancellation observed at a publish's
+  check before `Begin` throws the host's `OperationCanceledException` with the handle spent, the
+  record `NotBegun` with rollback `NotOwed`, and no `Staging` reported. One observed after `Begin`
+  throws the same exception with the record `BegunNotCommitted` and the rollback's own recorded
+  outcome: `Completed`, `Incomplete` with its first blocker, `Interrupted`, or `NotStarted` when the
+  rolling-back marker could not be made. A cancellation in preparation or statistics throws the same
+  exception; the pass ends `Cancelled` when the cancellation reached its scope, or `EndOfInput` if
+  its input had already reached its end; a cancellation observed at a phase boundary leaves the last
+  pass with the end already recorded, and no pass ends `Cancelled`. A different fault that coincides
+  with a requested cancellation is not erased: whichever exception the code meets first propagates,
+  and no promise is made that no other can escape.
+
+  After the commit point no cancellation is observed. An ordinary return reports the committed
+  outcome with cleanup `Completed`, or `Incomplete` with its first blocker and the existing warning
+  text (spec §16.2). A contract fault while creating, writing or closing the committed marker
+  escapes with the record `Committed` and cleanup `NotStarted`, and no `Cleaning` was reported. A
+  fault inside the cleanup pass escapes with `Committed` and cleanup `Interrupted`, and `Cleaning`
+  was reported once. An ordinary marker refusal still runs the cleanup: `Cleaning` is reported and
+  the record carries the pass's own answer. Hosts bind the committed facts from the handle on every
+  exit and still await the owned operation (D-140 parts 8 and 14). Awaiting proves that the cleanup
+  path ran and reported any failure, not that every private file was deleted. No worker is killed,
+  no thread is aborted, no regex policy or timeout changes, and no second process exists.
+
+  **10. The CLI** passes no progress in production, so its commands run the coordinator unobserved.
+  Its own command observation (D-122 part 3, D-123 point 3) is unchanged, and its progress flag
+  stays deferred. An internal `CliEnvironment.OperationProgress` member, `null` unless a test sets
+  it, reaches the two overloads, so the CLI's tests run every command with and without a progress
+  and assert equal stdout, stderr, exit codes, file and manifest bytes, and publication operations.
+
+  **11. The later members**, none declared now, by the step that adds them. The desktop skeleton's
+  Open may take an `OperationProgress?` if its step wants a step display. Inspection's composition,
+  memory preparation and preview are born with an `OperationProgress?` parameter and report from
+  their first work; `PassKind.Preview` joins with preview, ending `ClosedBeforeEndOfInput` after its
+  records; and the pending-cancel and pending-close displays read `Current`, with the final read of
+  part 5. Save As uses the single-file preflight overload. The export's read-set convert preflight
+  takes the progress explicitly, its publish requires the prepared run to carry the same instance
+  (D-140 part 14), and its own steps (checking the bases, writing or reusing the snapshot) join
+  `WorkingStep` there. Probe and migrate run outside Orchestration, and their presentation is their
+  step's design.
+
+  **12. The observation's cost** is measured once under D-124, on the existing Working-tier hashed
+  source drain (`w16-working`): the drain with its tracker unobserved, against the same drain
+  observed by a fresh progress with its schema read and record pass each under a call scope, in one
+  build and two invocations of the Working job. Every check runs after disposal and outside timing:
+  the catalog's digest, one open that consumed the file, read calls per operation that stay the same
+  within a launch, the observed arm's final snapshot, and the schema pass's `ClosedBeforeEndOfInput`
+  end. The limits for this comparison, fixed before the run, are a ratio of the observed median to
+  the unobserved median of at most 1.05 and an allocation difference of at most 65,536 B/op in each
+  invocation, with the unobserved arm stable across the two invocations within the same limits. An
+  invocation that exits non-zero or whose report lacks a case has no result for it, which is checked
+  first; a present case missing a required value, or an unstable unobserved arm, leaves the
+  comparison inconclusive. Position within a launch is not balanced, and its effect, which can raise
+  or lower the ratio, is unknown and not bounded by these limits. The adapter, the step reports and
+  a concurrent reader are outside the drain. `docs/benchmarks.md` owns the method, values,
+  environment and limits; until it records the run, no result is claimed.
+
+  **13. What does not change.** No library package (Diagnostics, Core, Sources, Spec, Conversion,
+  Export, Discovery), no seam inside Conversion, and not `EmitReplaySession`'s ordering; no CLI
+  flag, renderer, byte, diagnostic, diagnostic order, exit code, manifest or clock behaviour; no
+  publication kind, order, shape byte, private-name grammar, record format, residue name or
+  recovery; no Desktop project; the nine production assemblies, the twelve package DLLs, the six
+  library references and the friend sets stay as they are; and the registry stays 85.
+- **Why:** one object per owned operation lets several calls share one ordered account. A recorder
+  keeps host code off library threads, which is what keeps every exit contract exact. Input closure
+  and the end are different moments, because the reason is known only where the consumer exits,
+  while the work after closure must be nameable at once. A pass end describes the input, because the
+  operation already has its own channel. A latched final instance makes completion last without a
+  pause seam or a queue.
+- **Rejected:** a host callback interface (not adopted for this contract; available additively
+  later, with every callback isolated so that its first fault is recorded, later callbacks are
+  suppressed, and the fault is rethrown only at the call's normal exit in a new public exception
+  type); a public closure flag on the snapshot (not adopted: no consumer needs to tell the residual
+  interval from an open input; available additively if one appears); `init` members on the requests
+  instead of the two overloads; an outer coordinator scope around each writer call (it would make a
+  pass end describe the operation); an outcome payload on completion; a production pause seam for
+  testing the completion latch (the latched instance makes the invariant structural); an overall
+  percentage; an estimate; a Conversion seam for calibration or grouping subphases; the observer on
+  `OrchestrationHost` (a host is immutable and shared across operations); a dispatcher queue; a CLI
+  flag or meter; and declaring a later member now.
+- **Affects:** `src/FcaBedrock.Orchestration` and `tests/FcaBedrock.Orchestration.Tests`; three CLI
+  files, by one internal test seam, and the CLI's tests; one new benchmark file;
+  `tests/FcaBedrock.Benchmarks/README.md`, `docs/roadmap.md`, `AGENTS.md` and `README.md`; and this
+  entry, its index line, and the notes on D-139 parts 8 and 9 and D-140 parts 3 and 14 with their
+  status and index lines. No library package, spec text, diagnostic, fingerprint or output byte
+  changes, and the registry stays 85.
 
 ---
 

@@ -1,7 +1,7 @@
 namespace FcaBedrock.Orchestration;
 
 /// <summary>
-/// A run whose root spec is read from a file: what <see cref="RunPreparation.PrepareAsync"/> prepares.
+/// A run whose root spec is read from a file: what <see cref="RunPreparation"/> prepares.
 /// The two paths are the spellings §15 records, kept as given.
 /// </summary>
 public sealed record FileRunRequest

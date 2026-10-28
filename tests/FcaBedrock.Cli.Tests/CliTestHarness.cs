@@ -81,6 +81,14 @@ internal sealed class CliTestHarness
 
     public RecordingProgressObserver Progress { get; } = new();
 
+    /// <summary>
+    /// The coordinator's operation progress the CLI's test seam passes (D-141); unset, the CLI runs
+    /// unobserved, as in production. A test sets a fresh one per invocation, and the harness completes
+    /// it after the run returns or throws, as an owner does. Not <see cref="Progress"/>, which observes
+    /// the CLI's own command bracket.
+    /// </summary>
+    public OperationProgress? OperationProgress { get; set; }
+
     /// <summary>Everything written to stdout.</summary>
     public string StdOut => _out.ToString();
 
@@ -102,10 +110,24 @@ internal sealed class CliTestHarness
             SpecIdentities = FileIdentities ?? FileIdentity.CreateDefault,
         },
         Progress = Progress,
+        OperationProgress = OperationProgress,
     };
 
     /// <summary>Runs the CLI at the argv boundary.</summary>
-    public Task<int> RunAsync(params string[] argv) => CliHost.RunAsync(argv, Environment);
+    public Task<int> RunAsync(params string[] argv) =>
+        OperationProgress is { } progress ? RunObservedAsync(argv, progress) : CliHost.RunAsync(argv, Environment);
+
+    private async Task<int> RunObservedAsync(string[] argv, OperationProgress progress)
+    {
+        try
+        {
+            return await CliHost.RunAsync(argv, Environment);
+        }
+        finally
+        {
+            progress.Complete();
+        }
+    }
 
     private Stream Open(string path)
     {

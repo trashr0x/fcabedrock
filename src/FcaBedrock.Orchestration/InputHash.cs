@@ -33,14 +33,24 @@ namespace FcaBedrock.Orchestration;
 /// failing pass began with (<see cref="CurrentPassMark"/>). Nothing is read for it beyond what the
 /// pass reads anyway.
 /// </para>
+/// <para>
+/// <b>Observed passes.</b> A tracker built with an <see cref="OperationProgress"/> also reports each
+/// pass to it (D-141): an open made while a scope is current starts a pass of the scope's kind, with
+/// the opened stream's length when it can seek; the wrapper publishes the consumed total after each
+/// read that returned data, reports end of input, and reports the input's closure at its first
+/// disposal. Without a progress none of that runs: no length is read, no pass record or scope is
+/// allocated, and each read gains one null check.
+/// </para>
 /// </summary>
 internal sealed class InputHashTracker
 {
     private readonly Func<string, Stream> _open;
     private readonly string _path;
+    private readonly OperationProgress? _progress;
     private string? _first;
     private bool _mismatch;
     private PassPrefix? _current;
+    private ProgressScope? _scope;
 
     /// <summary>Tracks passes over <paramref name="path"/>, opened through <paramref name="open"/>.</summary>
     public InputHashTracker(Func<string, Stream> open, string path)
@@ -49,6 +59,55 @@ internal sealed class InputHashTracker
         ArgumentNullException.ThrowIfNull(path);
         _open = open;
         _path = path;
+    }
+
+    /// <summary>
+    /// Tracks passes over <paramref name="path"/> and reports them to <paramref name="progress"/>;
+    /// a null progress is exactly the unobserved tracker.
+    /// </summary>
+    public InputHashTracker(Func<string, Stream> open, string path, OperationProgress? progress)
+        : this(open, path)
+    {
+        _progress = progress;
+    }
+
+    /// <summary>The progress this tracker reports to, or null when it is not observed; a run carries it into its later passes.</summary>
+    internal OperationProgress? Progress => _progress;
+
+    /// <summary>
+    /// How many opens succeeded on the observed tracker; never counted without a progress. Every open
+    /// is meant to be made under a scope, and an unscoped open records no pass, so tests compare this
+    /// count with the passes the progress recorded: an open outside every scope becomes visible
+    /// instead of silently missing from the display.
+    /// </summary>
+    internal int ObservedOpens { get; private set; }
+
+    /// <summary>
+    /// Begins the coordinator's bracket around the consumer that will read the next pass (D-141): the
+    /// pass takes <paramref name="kind"/>, and its closure names <paramref name="postInputStep"/>, when
+    /// set, as the work that runs after the input closed. <paramref name="cancellation"/> is the
+    /// call's own token, which decides whether an operation-cancelled exception that reaches the scope
+    /// is the call's cancellation. Unobserved, it returns the shared no-op scope.
+    /// </summary>
+    internal ProgressScope EnterScope(PassKind kind, WorkingStep postInputStep, CancellationToken cancellation)
+    {
+        if (_progress is null)
+        {
+            return ProgressScope.None;
+        }
+
+        var scope = new ProgressScope(this, _progress, kind, postInputStep, _progress.CurrentStep, cancellation);
+        _scope = scope;
+        return scope;
+    }
+
+    /// <summary>Forgets <paramref name="scope"/> as the current scope, when it still is.</summary>
+    internal void ScopeExited(ProgressScope scope)
+    {
+        if (ReferenceEquals(_scope, scope))
+        {
+            _scope = null;
+        }
     }
 
     /// <summary>True once a completed pass disagreed with the first completed pass.</summary>
@@ -78,7 +137,37 @@ internal sealed class InputHashTracker
         // an earlier pass's bytes never stand in for it.
         var prefix = new PassPrefix();
         _current = prefix;
-        return new HashingStream(_open(_path), this, prefix);
+        var inner = _open(_path);
+        return new HashingStream(inner, this, prefix, _progress is null ? null : StartPass(inner));
+    }
+
+    // Observed only. A pass whose open throws never gets here, so it never starts.
+    private ObservedPass? StartPass(Stream inner)
+    {
+        ObservedOpens++;
+        if (_scope is not { } scope)
+        {
+            return null;
+        }
+
+        // Read once, before the wrapper, which reports no seek. The length is a display denominator,
+        // so a stream that cannot answer leaves it unknown rather than failing the read.
+        long? length = null;
+        try
+        {
+            if (inner.CanSeek)
+            {
+                length = inner.Length;
+            }
+        }
+        catch (Exception)
+        {
+            length = null;
+        }
+
+        var sequence = _progress!.PassStarted(scope.Kind, length);
+        scope.Started(sequence);
+        return new ObservedPass(_progress, sequence, scope.PostInputStep);
     }
 
     /// <summary>
@@ -125,15 +214,17 @@ internal sealed class InputHashTracker
         private readonly Stream _inner;
         private readonly InputHashTracker _owner;
         private readonly PassPrefix _prefix;
+        private readonly ObservedPass? _pass;
         private IncrementalHash? _hash;
         private bool _completed;
         private bool _disposed;
 
-        public HashingStream(Stream inner, InputHashTracker owner, PassPrefix prefix)
+        public HashingStream(Stream inner, InputHashTracker owner, PassPrefix prefix, ObservedPass? pass)
         {
             _inner = inner;
             _owner = owner;
             _prefix = prefix;
+            _pass = pass;
             _hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
         }
 
@@ -209,6 +300,9 @@ internal sealed class InputHashTracker
                 _disposed = true;
                 if (disposing)
                 {
+                    // The input's closure, once, before the inner stream goes.
+                    _pass?.Close();
+
                     // An unfinished pass is simply dropped: the hash state goes away with it and
                     // the tracker never sees a digest for a prefix.
                     _hash?.Dispose();
@@ -225,6 +319,7 @@ internal sealed class InputHashTracker
             if (!_disposed)
             {
                 _disposed = true;
+                _pass?.Close();
                 _hash?.Dispose();
                 _hash = null;
                 await _inner.DisposeAsync().ConfigureAwait(false);
@@ -238,6 +333,7 @@ internal sealed class InputHashTracker
         private void Observe(int requested, ReadOnlySpan<byte> data)
         {
             _prefix.Observe(data);
+            _pass?.Observe(requested, data.Length);
             if (_hash is not { } hash || _completed)
             {
                 return;
@@ -274,6 +370,131 @@ internal sealed class InputHashTracker
             _length += take;
         }
     }
+
+    /// <summary>
+    /// One observed pass, held by its wrapper: the running total it publishes, from the same reads that
+    /// are hashed, and the facts its wrapper reports. Every report names the pass's sequence, so the
+    /// progress ignores it once a newer pass is current.
+    /// </summary>
+    private sealed class ObservedPass(OperationProgress progress, int sequence, WorkingStep postInputStep)
+    {
+        private long _consumed;
+        private bool _endOfInput;
+
+        // At most one report per read call: the total after a read with data, or end of input after a
+        // zero-length result for a non-empty request. A zero-length request reports nothing.
+        public void Observe(int requested, int read)
+        {
+            if (read > 0)
+            {
+                _consumed += read;
+                progress.Consumed(sequence, _consumed);
+            }
+            else if (requested > 0 && !_endOfInput)
+            {
+                _endOfInput = true;
+                progress.EndOfInput(sequence);
+            }
+        }
+
+        public void Close() => progress.Closed(sequence, postInputStep);
+    }
+}
+
+/// <summary>
+/// The coordinator's bracket around the consumer that reads one pass (D-141). A <em>call scope</em>
+/// wraps one awaited library call; an <em>enumeration scope</em> wraps an enumeration the coordinator
+/// hands out. It learns what reached it through a non-catching exception filter
+/// (<see cref="Reached"/>), and its <see cref="Exit"/> decides a pending end from that and restores
+/// the step that was current when it began, in one locked event.
+/// <para>
+/// Unobserved runs use the shared <see cref="None"/>, which records nothing and holds no state.
+/// </para>
+/// </summary>
+internal sealed class ProgressScope
+{
+    /// <summary>The no-op scope of an unobserved tracker.</summary>
+    internal static readonly ProgressScope None = new(null, null, 0, 0, 0, CancellationToken.None);
+
+    private readonly InputHashTracker? _tracker;
+    private readonly OperationProgress? _progress;
+    private readonly WorkingStep _outerStep;
+    private readonly CancellationToken _cancellation;
+    private Exception? _first;
+    private bool _exited;
+    private int _sequence;
+
+    internal ProgressScope(
+        InputHashTracker? tracker,
+        OperationProgress? progress,
+        PassKind kind,
+        WorkingStep postInputStep,
+        WorkingStep outerStep,
+        CancellationToken cancellation)
+    {
+        _tracker = tracker;
+        _progress = progress;
+        Kind = kind;
+        PostInputStep = postInputStep;
+        _outerStep = outerStep;
+        _cancellation = cancellation;
+    }
+
+    /// <summary>The kind every pass this scope starts takes.</summary>
+    internal PassKind Kind { get; }
+
+    /// <summary>The step a closure of this scope's pass names; 0 when the work after closure has no name.</summary>
+    internal WorkingStep PostInputStep { get; }
+
+    /// <summary>The latest pass this scope started; 0 while it has started none.</summary>
+    internal int Sequence => _sequence;
+
+    /// <summary>
+    /// Records the first exception that reached this scope and returns false, so the filter that calls
+    /// it catches nothing: the same exception object propagates, unwrapped and with its stack, tag and
+    /// token as they were. A field write only, so it cannot itself throw.
+    /// </summary>
+    internal bool Reached(Exception exception)
+    {
+        if (_progress is not null)
+        {
+            _first ??= exception;
+        }
+
+        return false;
+    }
+
+    /// <summary>A pass started under this scope: later reports and the exit name it.</summary>
+    internal void Started(int sequence) => _sequence = sequence;
+
+    /// <summary>
+    /// Ends this scope, once: the pass it started, when that pass is still current and has no end, ends
+    /// with end of input when its wrapper observed it, otherwise with the call's own cancellation, any
+    /// other exception that reached the scope (failed), or nothing (closed before end of input); then
+    /// the outer step is restored. Runs in a <c>finally</c>, so it takes no catch and only the
+    /// progress's lock.
+    /// </summary>
+    internal void Exit()
+    {
+        if (_progress is null || _exited)
+        {
+            return;
+        }
+
+        _exited = true;
+        _tracker!.ScopeExited(this);
+        _progress.ScopeExit(_sequence, PendingReason(), _outerStep);
+    }
+
+    // The call's own cancellation is decided by the exception's token alone, by equality with the
+    // call's token (D-141): no request state is read. The CLI's exit 3 also requires a request, but a
+    // pass end describes what reached the scope, not the operation, so the two need not agree.
+    private PassEnd PendingReason() => _first switch
+    {
+        null => PassEnd.ClosedBeforeEndOfInput,
+        OperationCanceledException cancelled when cancelled.CancellationToken == _cancellation => PassEnd.Cancelled,
+        _ => PassEnd.Failed,
+    };
 }
 
 /// <summary>

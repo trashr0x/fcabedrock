@@ -29,7 +29,8 @@ internal static class RunRendering
             TempDirectory = invocation.Value("--temp-dir"),
         };
 
-        return RunPreparation.PrepareAsync(request, environment.Orchestration, environment.Signals.Token);
+        return RunPreparation.PrepareAsync(
+            request, environment.Orchestration, environment.OperationProgress, environment.Signals.Token);
     }
 
     /// <summary>

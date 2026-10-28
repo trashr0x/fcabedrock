@@ -131,7 +131,7 @@ Every case below is Small-category unless its family says otherwise; the UCI Adu
 | Probe | complete, truncated, and guard-breach outcomes; the three limits straddled at their exact thresholds |
 | Grouping | budget 8/64/256 MiB and merge fan-in 4/16/32, one axis at a time |
 | CLI host | one complete `convert` at the argv boundary, through the real publication transaction and manifest |
-| Hash pairs | `InputHashTracker` and `HashingWriteStream`, each wrapped against unwrapped |
+| Hash pairs | `InputHashTracker` and `HashingWriteStream`, each wrapped against unwrapped; the hashed input pass also unobserved against observed by an operation progress |
 
 The CLI-host cases are labelled **CLI-host throughput** and are never installed-command latency:
 process start, host resolution, the tool shim, runtime startup, and console attachment are outside

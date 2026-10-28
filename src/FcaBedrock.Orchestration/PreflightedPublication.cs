@@ -51,6 +51,12 @@ public abstract class PreflightedPublication : IDisposable
     /// </summary>
     public PublicationAttempt Attempt => _attempt;
 
+    /// <summary>
+    /// The progress this handle's transaction carries, or null; read without spending the handle, so a
+    /// publish can refuse a completed progress before it spends (D-141).
+    /// </summary>
+    internal OperationProgress? Progress => _transaction.Progress;
+
     /// <summary>Releases the references a never-published handle holds; idempotent; writes nothing.</summary>
     public void Dispose()
     {

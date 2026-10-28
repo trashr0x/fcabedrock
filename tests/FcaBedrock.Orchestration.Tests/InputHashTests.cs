@@ -544,6 +544,525 @@ public sealed class InputHashTests
         Assert.Equal(1, tracker.CompletedPasses);
     }
 
+    // ---- observed passes and their scopes (D-141) -------------------------------------------------
+    //
+    // An observed tracker reports each pass opened under a scope: its kind and its length when the
+    // opened stream can seek, the consumed total from the hashed reads, end of input, the closure at
+    // the first disposal, and the end its scope's exit decides from what reached it.
+
+    private static (InputHashTracker Tracker, OperationProgress Progress, ProgressRecorder Recorder) Observed(
+        Func<string, Stream> open)
+    {
+        var (progress, recorder) = ProgressRecorder.Create();
+        return (new InputHashTracker(open, "data.csv", progress), progress, recorder);
+    }
+
+    [Fact]
+    public void OpenHashed_WhenTheOpenedStreamIsSeekable_ThenItsLengthIsReadOnceBeforeWrapping()
+    {
+        var source = new LengthStream(Encoding.UTF8.GetBytes("abcdef"));
+        var (tracker, progress, recorder) = Observed(_ => source);
+        var scope = tracker.EnterScope(PassKind.Schema, 0, CancellationToken.None);
+
+        using (var stream = tracker.OpenHashed())
+        {
+            Assert.Equal(1, source.LengthReads);
+            Assert.False(stream.CanSeek);
+            Assert.Equal(6, progress.Current.PassLength);
+            DrainSync(stream, 4);
+        }
+
+        scope.Exit();
+
+        Assert.Equal(1, source.LengthReads);
+        Assert.Equal("PassStarted(1, Schema, 6)", recorder.Events[0].ToString());
+    }
+
+    [Fact]
+    public void OpenHashed_WhenTheOpenedStreamIsNotSeekable_ThenTheLengthIsUnknown()
+    {
+        var source = new LengthStream(Encoding.UTF8.GetBytes("abcdef"), canSeek: false);
+        var (tracker, progress, _) = Observed(_ => source);
+        var scope = tracker.EnterScope(PassKind.Dat, 0, CancellationToken.None);
+
+        using (tracker.OpenHashed())
+        {
+            Assert.Null(progress.Current.PassLength);
+        }
+
+        scope.Exit();
+
+        Assert.Equal(1, source.CanSeekQueries);
+        Assert.Equal(0, source.LengthReads);
+    }
+
+    [Fact]
+    public void OpenHashed_WhenReadingTheLengthThrows_ThenTheLengthIsUnknownAndThePassReadsNormally()
+    {
+        var bytes = Encoding.UTF8.GetBytes("a,b\n1,2\n");
+        var source = new LengthStream(bytes, lengthThrows: true);
+        var (tracker, progress, _) = Observed(_ => source);
+        var scope = tracker.EnterScope(PassKind.Statistics, 0, CancellationToken.None);
+
+        using (var stream = tracker.OpenHashed())
+        {
+            Assert.Null(progress.Current.PassLength);
+            DrainSync(stream, 3);
+        }
+
+        scope.Exit();
+
+        Assert.Equal(1, source.LengthReads);
+        Assert.Equal(ExpectedDigest(bytes), tracker.Digest);
+        Assert.Equal(PassEnd.EndOfInput, progress.Current.PassEnd);
+        Assert.Equal(bytes.Length, progress.Current.BytesConsumed);
+    }
+
+    [Fact]
+    public void OpenHashed_WhenNotObserved_ThenTheLengthIsNeverRead()
+    {
+        var source = new LengthStream(Encoding.UTF8.GetBytes("abcdef"));
+        var tracker = new InputHashTracker(_ => source, "data.csv");
+        var scope = tracker.EnterScope(PassKind.Schema, 0, CancellationToken.None);
+
+        using (var stream = tracker.OpenHashed())
+        {
+            DrainSync(stream, 4);
+        }
+
+        scope.Exit();
+
+        Assert.Same(ProgressScope.None, scope);
+        Assert.Null(tracker.Progress);
+        Assert.Equal(0, source.CanSeekQueries);
+        Assert.Equal(0, source.LengthReads);
+        Assert.Equal(0, tracker.ObservedOpens);
+        Assert.Equal(1, tracker.CompletedPasses);
+    }
+
+    [Fact]
+    public void OpenHashed_WhenTheOpenThrows_ThenNoPassStarts()
+    {
+        var (tracker, progress, recorder) = Observed(_ => throw new IOException("the file is gone."));
+        var scope = tracker.EnterScope(PassKind.Schema, 0, CancellationToken.None);
+
+        Assert.Throws<IOException>(tracker.OpenHashed);
+        scope.Exit();
+
+        Assert.Equal(0, tracker.ObservedOpens);
+        Assert.Empty(recorder.Passes());
+        Assert.Equal(0, progress.Current.PassSequence);
+        Assert.Equal(["ScopeExited(0, 0, 0)"], recorder.Events.Select(e => e.ToString()));
+    }
+
+    [Fact]
+    public void OpenHashed_WhenNoScopeIsCurrent_ThenNoPassIsRecordedAndTheOpenCountShowsIt()
+    {
+        // The rule is a defence, not an allowed shape: an open outside every scope records no pass, and
+        // the observed open count is what lets a test see the pass that is missing from the display.
+        var (tracker, progress, recorder) = Observed(_ => new MemoryStream(Encoding.UTF8.GetBytes("abc"), writable: false));
+        var scope = tracker.EnterScope(PassKind.Schema, 0, CancellationToken.None);
+        scope.Exit();
+
+        using (var stream = tracker.OpenHashed())
+        {
+            DrainSync(stream, 8);
+        }
+
+        Assert.Equal(1, tracker.ObservedOpens);
+        Assert.Empty(recorder.Passes());
+        Assert.Equal(0, progress.Current.PassSequence);
+        Assert.NotNull(Record.Exception(() => recorder.AssertGrammar(completed: false, observedOpens: tracker.ObservedOpens)));
+    }
+
+    [Fact]
+    public void Read_WhenBytesArrive_ThenAtMostOneUpdatePerReadCallAndNoneForAZeroLengthResult()
+    {
+        var (tracker, _, recorder) = Observed(_ => new MemoryStream(Encoding.UTF8.GetBytes("abcdefgh"), writable: false));
+        var scope = tracker.EnterScope(PassKind.Dat, 0, CancellationToken.None);
+
+        using (var stream = tracker.OpenHashed())
+        {
+            Assert.Equal(0, stream.Read([], 0, 0));
+            DrainSync(stream, 3);
+            Assert.Equal(0, stream.Read(new byte[3], 0, 3));
+        }
+
+        scope.Exit();
+
+        Assert.Equal(
+            ["Consumed(1, 3)", "Consumed(1, 6)", "Consumed(1, 8)"],
+            recorder.Events.Where(e => e.Name == ProgressEvent.Consumed).Select(e => e.ToString()));
+    }
+
+    [Fact]
+    public void Dispose_WhenEndOfInputWasObserved_ThenThePassEndsAtEndOfInputAtClosure()
+    {
+        var (tracker, progress, recorder) = Observed(_ => new MemoryStream(Encoding.UTF8.GetBytes("abc"), writable: false));
+        var scope = tracker.EnterScope(PassKind.Calibration, WorkingStep.Calibrating, CancellationToken.None);
+
+        var stream = tracker.OpenHashed();
+        DrainSync(stream, 8);
+        Assert.Equal((PassEnd)0, progress.Current.PassEnd);
+        stream.Dispose();
+
+        // At closure, while the scope still runs: the end, and the work after the input closed.
+        Assert.Equal(PassEnd.EndOfInput, progress.Current.PassEnd);
+        Assert.Equal(WorkingStep.Calibrating, progress.Current.Step);
+        scope.Exit();
+        progress.Complete();
+
+        Assert.Equal(PassEnd.EndOfInput, recorder.EndOf(1));
+        recorder.AssertGrammar(observedOpens: tracker.ObservedOpens);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Dispose_WhenDisposedSynchronouslyAndAsynchronously_ThenClosureIsRecordedOnce(bool synchronousFirst)
+    {
+        var (tracker, _, recorder) = Observed(_ => new MemoryStream(Encoding.UTF8.GetBytes("abcdef"), writable: false));
+        var scope = tracker.EnterScope(PassKind.Dat, WorkingStep.Grouping, CancellationToken.None);
+        var stream = tracker.OpenHashed();
+        Assert.Equal(2, stream.Read(new byte[2], 0, 2));
+
+        if (synchronousFirst)
+        {
+            stream.Dispose();
+            await stream.DisposeAsync();
+        }
+        else
+        {
+            await stream.DisposeAsync();
+            stream.Dispose();
+        }
+
+        scope.Exit();
+
+        Assert.Single(recorder.Events, e => e.Name == ProgressEvent.Closed);
+        Assert.Equal(PassEnd.ClosedBeforeEndOfInput, recorder.EndOf(1));
+    }
+
+    [Fact]
+    public void ScopeExit_WhenClosedEarlyAndNothingReachedTheScope_ThenThePassEndsClosedBeforeEndOfInput()
+    {
+        var (tracker, progress, recorder) = Observed(_ => new MemoryStream(Encoding.UTF8.GetBytes("abcdef"), writable: false));
+        var scope = tracker.EnterScope(PassKind.Schema, 0, CancellationToken.None);
+
+        using (var stream = tracker.OpenHashed())
+        {
+            Assert.Equal(2, stream.Read(new byte[2], 0, 2));
+        }
+
+        Assert.Equal((PassEnd)0, progress.Current.PassEnd);
+        scope.Exit();
+        progress.Complete();
+
+        Assert.Equal(PassEnd.ClosedBeforeEndOfInput, progress.Current.PassEnd);
+        recorder.AssertGrammar(observedOpens: tracker.ObservedOpens);
+    }
+
+    [Fact]
+    public void ScopeExit_WhenTheCallsOwnCancellationReachedTheScope_ThenThePassEndsCancelled()
+    {
+        using var call = new CancellationTokenSource();
+        var (tracker, progress, _) = Observed(_ => new MemoryStream(Encoding.UTF8.GetBytes("abcdef"), writable: false));
+        var scope = tracker.EnterScope(PassKind.Calibration, WorkingStep.Calibrating, call.Token);
+
+        Assert.Throws<OperationCanceledException>(() => WithinScope(scope, () =>
+        {
+            using var stream = tracker.OpenHashed();
+            Assert.Equal(2, stream.Read(new byte[2], 0, 2));
+            call.Cancel();
+            call.Token.ThrowIfCancellationRequested();
+        }));
+
+        Assert.Equal(PassEnd.Cancelled, progress.Current.PassEnd);
+        Assert.Equal((WorkingStep)0, progress.Current.Step);
+    }
+
+    [Fact]
+    public void ScopeExit_WhenAnotherTokensCancellationReachedTheScope_ThenThePassEndsFailed()
+    {
+        using var call = new CancellationTokenSource();
+        using var other = new CancellationTokenSource();
+        var (tracker, progress, _) = Observed(_ => new MemoryStream(Encoding.UTF8.GetBytes("abcdef"), writable: false));
+        var scope = tracker.EnterScope(PassKind.Dat, 0, call.Token);
+
+        Assert.Throws<OperationCanceledException>(() => WithinScope(scope, () =>
+        {
+            using var stream = tracker.OpenHashed();
+            Assert.Equal(2, stream.Read(new byte[2], 0, 2));
+            call.Cancel();
+            other.Cancel();
+            other.Token.ThrowIfCancellationRequested();
+        }));
+
+        Assert.Equal(PassEnd.Failed, progress.Current.PassEnd);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ScopeExit_WhenTheCallsOwnTokenReachedTheScopeWithNoCancellationRequested_ThenTheTokenDecidesTheEnd(
+        bool afterEndOfInput)
+    {
+        // The pass end reads no request (D-141 part 3): an operation-cancelled exception that carries
+        // exactly the call's own token ends the pass Cancelled, although nothing cancelled that token.
+        // End of input, once the wrapper saw it, still takes precedence.
+        using var call = new CancellationTokenSource();
+        var expected = new OperationCanceledException("the consumer stopped.", call.Token);
+        var (tracker, progress, recorder) = Observed(_ => new MemoryStream(Encoding.UTF8.GetBytes("abcdef"), writable: false));
+        var scope = tracker.EnterScope(PassKind.Schema, 0, call.Token);
+
+        var caught = Assert.Throws<OperationCanceledException>(() => WithinScope(scope, () =>
+        {
+            using var stream = tracker.OpenHashed();
+            if (afterEndOfInput)
+            {
+                DrainSync(stream, 8);
+            }
+            else
+            {
+                Assert.Equal(2, stream.Read(new byte[2], 0, 2));
+            }
+
+            ThrowFromTheReader(expected);
+        }));
+        progress.Complete();
+
+        Assert.Same(expected, caught);
+        Assert.Equal(call.Token, caught.CancellationToken);
+        Assert.Equal(afterEndOfInput ? PassEnd.EndOfInput : PassEnd.Cancelled, recorder.EndOf(1));
+        Assert.Equal((WorkingStep)0, progress.Current.Step);
+        recorder.AssertGrammar(observedOpens: tracker.ObservedOpens);
+    }
+
+    [Fact]
+    public void ScopeExit_WhenAnyOtherExceptionReachedTheScope_ThenThePassEndsFailed()
+    {
+        var (tracker, progress, _) = Observed(_ => new FailingStream(Encoding.UTF8.GetBytes("abcdefgh"), 4));
+        var scope = tracker.EnterScope(PassKind.Statistics, WorkingStep.Grouping, CancellationToken.None);
+
+        Assert.Throws<IOException>(() => WithinScope(scope, () =>
+        {
+            using var stream = tracker.OpenHashed();
+            DrainSync(stream, 4);
+        }));
+
+        Assert.Equal(PassEnd.Failed, progress.Current.PassEnd);
+        Assert.Equal((WorkingStep)0, progress.Current.Step);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ScopeExit_WhenTheConsumerNeverDisposedTheWrapper_ThenTheExitEndsThePass(bool throws)
+    {
+        var (tracker, progress, recorder) = Observed(_ => new MemoryStream(Encoding.UTF8.GetBytes("abcdef"), writable: false));
+        var scope = tracker.EnterScope(PassKind.Dat, WorkingStep.Grouping, CancellationToken.None);
+        Stream? leaked = null;
+
+        var thrown = Record.Exception(() => WithinScope(scope, () =>
+        {
+            leaked = tracker.OpenHashed();
+            Assert.Equal(2, leaked.Read(new byte[2], 0, 2));
+            if (throws)
+            {
+                throw new InvalidDataException("the consumer failed.");
+            }
+        }));
+
+        Assert.Equal(throws, thrown is InvalidDataException);
+        var expected = throws ? PassEnd.Failed : PassEnd.ClosedBeforeEndOfInput;
+        Assert.Equal(expected, progress.Current.PassEnd);
+        Assert.Equal((WorkingStep)0, progress.Current.Step);
+
+        // The leaked wrapper's late disposal changes nothing: the pass already ended with its scope.
+        leaked!.Dispose();
+        progress.Complete();
+
+        Assert.Equal(expected, progress.Current.PassEnd);
+        Assert.Equal((WorkingStep)0, progress.Current.Step);
+        recorder.AssertGrammar(observedOpens: tracker.ObservedOpens);
+    }
+
+    [Fact]
+    public void ScopeExit_WhenTheUndisposedWrapperHadObservedEndOfInput_ThenThePassEndsAtEndOfInput()
+    {
+        var (tracker, progress, _) = Observed(_ => new MemoryStream(Encoding.UTF8.GetBytes("abc"), writable: false));
+        var scope = tracker.EnterScope(PassKind.Dat, 0, CancellationToken.None);
+        var stream = tracker.OpenHashed();
+        DrainSync(stream, 8);
+
+        scope.Exit();
+
+        Assert.Equal(PassEnd.EndOfInput, progress.Current.PassEnd);
+        stream.Dispose();
+    }
+
+    [Fact]
+    public void Dispose_WhenALeakedWrapperClosesAfterANewPassStarted_ThenTheNewPassIsUnchanged()
+    {
+        // Through real wrappers: a wrapper that saw end of input is never disposed by its consumer; its
+        // scope ends the pass; a new scope opens pass 2; the old wrapper is disposed late. Its closure
+        // neither ends pass 2 nor sets a step while pass 2's input is open.
+        var (tracker, progress, recorder) = Observed(_ => new MemoryStream(Encoding.UTF8.GetBytes("abcdef"), writable: false));
+        var first = tracker.EnterScope(PassKind.CxtNames, WorkingStep.Grouping, CancellationToken.None);
+        var leaked = tracker.OpenHashed();
+        DrainSync(leaked, 8);
+        first.Exit();
+
+        var second = tracker.EnterScope(PassKind.CxtRows, WorkingStep.Grouping, CancellationToken.None);
+        using (var stream = tracker.OpenHashed())
+        {
+            Assert.Equal(2, stream.Read(new byte[2], 0, 2));
+            leaked.Dispose();
+
+            var current = progress.Current;
+            Assert.Equal(2, current.PassSequence);
+            Assert.Equal((PassEnd)0, current.PassEnd);
+            Assert.Equal((WorkingStep)0, current.Step);
+        }
+
+        second.Exit();
+        progress.Complete();
+
+        Assert.Equal(PassEnd.EndOfInput, recorder.EndOf(1));
+        Assert.Equal(PassEnd.ClosedBeforeEndOfInput, recorder.EndOf(2));
+        recorder.AssertGrammar(observedOpens: tracker.ObservedOpens);
+    }
+
+    [Fact]
+    public void Scope_WhenAnExceptionReachesIt_ThenTheSameInstanceWithItsOriginAndTokenPropagates()
+    {
+        // The filter catches nothing: the exception object, its type, its token and its original throw
+        // origin reach the caller unchanged, nothing wraps it, and the scope still records it.
+        using var call = new CancellationTokenSource();
+        var expected = new OperationCanceledException("the read was cancelled.", call.Token);
+        var (tracker, progress, _) = Observed(_ => new MemoryStream(Encoding.UTF8.GetBytes("abcdef"), writable: false));
+        var scope = tracker.EnterScope(PassKind.Schema, 0, call.Token);
+        call.Cancel();
+
+        var caught = Assert.Throws<OperationCanceledException>(() => WithinScope(scope, () =>
+        {
+            using var stream = tracker.OpenHashed();
+            ThrowFromTheReader(expected);
+        }));
+
+        Assert.Same(expected, caught);
+        Assert.Equal(call.Token, caught.CancellationToken);
+        Assert.Null(caught.InnerException);
+        Assert.Contains(nameof(ThrowFromTheReader), caught.StackTrace, StringComparison.Ordinal);
+        Assert.Equal(PassEnd.Cancelled, progress.Current.PassEnd);
+    }
+
+    [Fact]
+    public async Task Scope_WhenAnAwaitedCallThrows_ThenTheSameInstanceWithItsOriginPropagates()
+    {
+        // The call scope's shape in preparation: an awaited call inside the filter, the exit in the
+        // finally. The await adds propagation frames; the instance and its origin are kept.
+        var expected = new IOException("the read failed.");
+        var (tracker, progress, _) = Observed(_ => new MemoryStream(Encoding.UTF8.GetBytes("abcdef"), writable: false));
+        var scope = tracker.EnterScope(PassKind.Calibration, WorkingStep.Calibrating, CancellationToken.None);
+
+        async Task ReadAsync()
+        {
+            await using var stream = tracker.OpenHashed();
+            await Task.Yield();
+            ThrowFromTheReader(expected);
+        }
+
+        var caught = await Assert.ThrowsAsync<IOException>(async () =>
+        {
+            try
+            {
+                await ReadAsync();
+            }
+            catch (Exception exception) when (scope.Reached(exception))
+            {
+                throw;
+            }
+            finally
+            {
+                scope.Exit();
+            }
+        });
+
+        Assert.Same(expected, caught);
+        Assert.Contains(nameof(ThrowFromTheReader), caught.StackTrace, StringComparison.Ordinal);
+        Assert.Equal(PassEnd.Failed, progress.Current.PassEnd);
+    }
+
+    [Fact]
+    public async Task Digest_WhenObserved_ThenEqualToTheUnobservedTrackersDigestAndPassCount()
+    {
+        var bytes = Encoding.UTF8.GetBytes("\nh1,h2\n\n1,\"a\r\nb\"\n  \n2,x\n");
+        var unobserved = TrackerOver(bytes);
+        var (observed, progress, recorder) = Observed(_ => new MemoryStream(bytes, writable: false));
+
+        var plain = await ReadThroughReaderAsync(unobserved);
+        var scope = observed.EnterScope(PassKind.Statistics, 0, CancellationToken.None);
+        var watched = await ReadThroughReaderAsync(observed);
+        scope.Exit();
+        progress.Complete();
+
+        Assert.Equal(plain, watched);
+        Assert.Equal(unobserved.Digest, observed.Digest);
+        Assert.Equal(unobserved.CompletedPasses, observed.CompletedPasses);
+        Assert.Equal(unobserved.HasMismatch, observed.HasMismatch);
+        Assert.Equal(bytes.Length, progress.Current.BytesConsumed);
+        Assert.Equal(PassEnd.EndOfInput, recorder.EndOf(1));
+        recorder.AssertGrammar(observedOpens: observed.ObservedOpens);
+    }
+
+    // A call scope's shape around a synchronous body: the filter records, the finally exits.
+    private static void WithinScope(ProgressScope scope, Action body)
+    {
+        try
+        {
+            body();
+        }
+        catch (Exception exception) when (scope.Reached(exception))
+        {
+            throw;
+        }
+        finally
+        {
+            scope.Exit();
+        }
+    }
+
+    [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+    private static void ThrowFromTheReader(Exception exception) => throw exception;
+
+    /// <summary>A stream that counts its seek queries and length reads, can refuse to seek, and can fail the length read.</summary>
+    private sealed class LengthStream(byte[] bytes, bool canSeek = true, bool lengthThrows = false)
+        : MemoryStream(bytes, writable: false)
+    {
+        public int CanSeekQueries { get; private set; }
+
+        public int LengthReads { get; private set; }
+
+        public override bool CanSeek
+        {
+            get
+            {
+                CanSeekQueries++;
+                return canSeek;
+            }
+        }
+
+        public override long Length
+        {
+            get
+            {
+                LengthReads++;
+                return lengthThrows ? throw new IOException("the length cannot be read.") : base.Length;
+            }
+        }
+    }
+
     /// <summary>An in-memory stream that reports each read that returned zero for a non-empty request.</summary>
     private sealed class ZeroCountingStream(byte[] bytes, Action onZero) : MemoryStream(bytes, writable: false)
     {

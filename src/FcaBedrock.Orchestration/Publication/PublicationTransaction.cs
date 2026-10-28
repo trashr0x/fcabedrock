@@ -373,6 +373,14 @@ internal sealed partial class PublicationTransaction : IDisposable
     internal CleanupFact? CleanupBlocker { get; private set; }
 
     /// <summary>
+    /// The operation's progress, or null when it is not observed: assigned by a public preflight
+    /// between this transaction's return and its handle's construction, an assignment rather than a
+    /// fallible step. Its only use here is the <see cref="WorkingStep.Cleaning"/> report, a lock-free
+    /// write that cannot throw, in <see cref="Commit"/> and <see cref="Rollback"/> (D-141).
+    /// </summary>
+    internal OperationProgress? Progress { get; set; }
+
+    /// <summary>
     /// Releases every live reference this transaction still holds. Deterministic, and called on
     /// success, refusal, cancellation and fault alike: a reference outliving its transaction would
     /// keep a Windows deletion pending and an object allocated for no purpose. It is idempotent, so
@@ -975,6 +983,7 @@ internal sealed partial class PublicationTransaction : IDisposable
         CleanupProgress = CleanupOutcome.NotStarted;
         Mark(TransactionPhase.Committed);
         CleanupProgress = CleanupOutcome.Interrupted;
+        Progress?.Step(WorkingStep.Cleaning);
         var cleanup = Guard(CancellationToken.None);
         if (!Finish(View(), forward: true, cleanup, hazard: false))
         {
@@ -1031,6 +1040,7 @@ internal sealed partial class PublicationTransaction : IDisposable
         }
 
         RollbackProgress = RollbackOutcome.Interrupted;
+        Progress?.Step(WorkingStep.Cleaning);
         var guard = Guard(CancellationToken.None);
         if (Finish(View(), forward: false, guard, _hazard))
         {

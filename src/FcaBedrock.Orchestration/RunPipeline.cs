@@ -60,9 +60,13 @@ internal static class RunPipeline
     internal static HostError DataChanged(string dataPath) =>
         new(HostErrorKind.DataChanged, InputChangedMessage(dataPath), subject: dataPath);
 
-    /// <summary>Prepares one read-only data run whose root is the file <paramref name="request"/> names.</summary>
+    /// <summary>
+    /// Prepares one read-only data run whose root is the file <paramref name="request"/> names. With a
+    /// <paramref name="progress"/>, the schema read and the calibration passes report to it, each
+    /// under a call scope, and the run carries it into its later passes (D-141).
+    /// </summary>
     public static async Task<OperationOutcome<PreparedFileRun>> PrepareAsync(
-        FileRunRequest request, OrchestrationHost host, CancellationToken cancellation)
+        FileRunRequest request, OrchestrationHost host, OperationProgress? progress, CancellationToken cancellation)
     {
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(host);
@@ -145,7 +149,7 @@ internal static class RunPipeline
 
         // Every data pass goes through the tracker, so hashing is inline with the bytes the
         // source was reading anyway, never a separate hash-only read (D-122 part 5).
-        var input = new InputHashTracker(host.OpenInput, dataPath);
+        var input = new InputHashTracker(host.OpenInput, dataPath, progress);
         var triple = readSettings.Shape == SourceShape.Triple;
         ISourceSession session = triple
             ? new TripleCsvSession(input.OpenHashed, readSettings)
@@ -154,7 +158,23 @@ internal static class RunPipeline
         SourceSchema schema;
         try
         {
-            schema = await session.GetSchemaAsync(cancellation).ConfigureAwait(false);
+            // The call scope around the schema read. Its filter only records what reached it and
+            // catches nothing; its exit runs in the finally, before this try's own handler builds an
+            // outcome from the same exception (D-141).
+            var scope = input.EnterScope(PassKind.Schema, postInputStep: 0, cancellation);
+            try
+            {
+                schema = await session.GetSchemaAsync(cancellation).ConfigureAwait(false);
+            }
+            catch (Exception exception) when (scope.Reached(exception))
+            {
+                // Unreachable: Reached returns false.
+                throw;
+            }
+            finally
+            {
+                scope.Exit();
+            }
         }
         catch (Exception exception) when (IsDataReadFailure(exception))
         {
@@ -185,11 +205,26 @@ internal static class RunPipeline
             Diagnosed<CalibratedSpec> calibrated;
             try
             {
-                calibrated = triple
-                    ? await Calibrator.CalibrateTripleAsync(
-                        resolvedDocument.Resolved, tripleSource!, runtimeOptions, cancellation).ConfigureAwait(false)
-                    : await Calibrator.CalibrateAsync(
-                        resolvedDocument.Resolved, wideSource!, runtimeOptions, cancellation).ConfigureAwait(false);
+                // One call scope for the calibrator's one or two passes; each pass's closure names the
+                // calibrator's post-input work.
+                var scope = input.EnterScope(PassKind.Calibration, WorkingStep.Calibrating, cancellation);
+                try
+                {
+                    calibrated = triple
+                        ? await Calibrator.CalibrateTripleAsync(
+                            resolvedDocument.Resolved, tripleSource!, runtimeOptions, cancellation).ConfigureAwait(false)
+                        : await Calibrator.CalibrateAsync(
+                            resolvedDocument.Resolved, wideSource!, runtimeOptions, cancellation).ConfigureAwait(false);
+                }
+                catch (Exception exception) when (scope.Reached(exception))
+                {
+                    // Unreachable: Reached returns false.
+                    throw;
+                }
+                finally
+                {
+                    scope.Exit();
+                }
             }
             catch (Exception exception) when (IsDataReadFailure(exception))
             {

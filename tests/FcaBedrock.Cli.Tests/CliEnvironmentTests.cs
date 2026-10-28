@@ -93,4 +93,23 @@ public sealed class CliEnvironmentTests
 
         Assert.Same(NoProgressObserver.Instance, environment.Progress);
     }
+
+    [Fact]
+    public void OperationProgress_WhenTheProductionEnvironmentIsBuilt_ThenItIsNull()
+    {
+        // Program builds the environment from these members only, so the CLI passes no operation
+        // progress in production: the coordinator runs unobserved (D-141).
+        var environment = new CliEnvironment
+        {
+            Out = TextWriter.Null,
+            Error = TextWriter.Null,
+            Clock = SystemClock.Instance,
+            Signals = new TestSignalSource(),
+            ToolVersion = "x",
+            AuditArgv = ["fcabedrock"],
+            Orchestration = new OrchestrationHost(CliEnvironment.OpenFile),
+        };
+
+        Assert.Null(environment.OperationProgress);
+    }
 }

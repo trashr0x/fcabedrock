@@ -243,6 +243,7 @@ identity, and the argv-boundary exit floor. The diagnostic registry is **85**, a
 transitional diagnostic remains. M8, M8.1, M8.2 and M8.3 (CLI correctness and usable diagnostics)
 are complete. **M9 (the Avalonia desktop application) is in progress: its contract is recorded
 (D-139), the run and publication coordinator is extracted into `FcaBedrock.Orchestration`
-(D-140), and no desktop code exists yet.**
+(D-140), progress observation and the cancellation contract are implemented in it (D-141), and no
+desktop code exists yet.**
 `docs/roadmap.md` is the live source for current position, test count, and the deferred
 backlog; consult it rather than duplicating the detail here.

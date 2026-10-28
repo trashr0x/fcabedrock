@@ -43,7 +43,8 @@ ownership and provenance hardening pass, is complete, integrated on `main` and
 accepted. M8.3, which corrects the command-line tool's behaviour and makes its
 diagnostics usable, is complete, integrated on `main` and accepted. The desktop UI
 (M9) is in progress: its contract is recorded, the run coordinator is extracted
-into a shared package, and no desktop code exists yet.
+into a shared package, progress observation and the cancellation contract are
+implemented in it, and no desktop code exists yet.
 
 `docs/roadmap.md` is the live source for the detailed current position, and
 `docs/benchmarks.md` is the measurement record.

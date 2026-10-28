@@ -87,6 +87,14 @@ internal sealed class CliEnvironment
     public IProgressObserver Progress { get; init; } = NoProgressObserver.Instance;
 
     /// <summary>
+    /// The coordinator's operation progress (D-141), passed to the two chain-starting calls: a test
+    /// seam that runs a command observed, so its bytes can be compared with the unobserved run (EP-7).
+    /// Null in production, where the CLI passes no progress; it is never a user option or a renderer
+    /// (EP-6), and the CLI's progress flag stays deferred.
+    /// </summary>
+    internal OperationProgress? OperationProgress { get; init; }
+
+    /// <summary>
     /// The production input opener for <see cref="OrchestrationHost.OpenInput"/>. An empty path names no file, so it
     /// fails here as a missing file does, before <see cref="File.OpenRead(string)"/> sees it:
     /// every command reports it as a missing input (exit 1).

@@ -33,12 +33,16 @@ public sealed class OrchestrationProjectContractTests
     private static readonly string[] ExpectedFriends =
         ["FcaBedrock.Orchestration.Tests", "FcaBedrock.Cli.Tests", "FcaBedrock.Benchmarks"];
 
-    /// <summary>The types a host constructs: the host seam and the four requests. Every other exported type is returned, never built.</summary>
+    /// <summary>
+    /// The types a host constructs: the host seam, the four requests and the operation progress. Every
+    /// other exported type is returned, never built.
+    /// </summary>
     private static readonly string[] HostConstructed =
     [
         "FcaBedrock.Orchestration.ConvertOutput",
         "FcaBedrock.Orchestration.FileRunRequest",
         "FcaBedrock.Orchestration.ManifestHostFacts",
+        "FcaBedrock.Orchestration.OperationProgress",
         "FcaBedrock.Orchestration.OrchestrationHost",
         "FcaBedrock.Orchestration.SpecDelivery",
     ];
@@ -153,8 +157,8 @@ public sealed class OrchestrationProjectContractTests
     [Fact]
     public void Assembly_ShouldGiveNoReturnedTypeAPublicConstructor()
     {
-        // Only the host seam and the requests are built by a host; everything else is obtained from
-        // the operation that produces it.
+        // Only the host seam, the requests and the operation progress are built by a host; everything
+        // else is obtained from the operation that produces it.
         var exported = Orchestration.GetExportedTypes();
         Assert.Equal(HostConstructed.Order(StringComparer.Ordinal), exported
             .Where(type => type.GetConstructors().Length > 0)

@@ -50,7 +50,8 @@ internal sealed class PublicationRun : IDisposable
         OrchestrationHost host,
         string specPath,
         string dataPath,
-        OperationCompleted<PreparedFileRun> prepared)
+        OperationCompleted<PreparedFileRun> prepared,
+        OperationProgress? progress)
     {
         _temp = temp;
         Family = family;
@@ -58,6 +59,7 @@ internal sealed class PublicationRun : IDisposable
         Host = host;
         SpecPath = specPath;
         DataPath = dataPath;
+        Progress = progress;
         Run = prepared.Value;
         Diagnostics = prepared.Diagnostics;
         Base = family == Convert ? temp.Resolve("out") : temp.Resolve("out.toml");
@@ -86,6 +88,9 @@ internal sealed class PublicationRun : IDisposable
     /// <summary>The data the run read.</summary>
     public string DataPath { get; }
 
+    /// <summary>The operation progress the run's chain carries, or null when it is not observed (D-141).</summary>
+    public OperationProgress? Progress { get; }
+
     /// <summary>The prepared run.</summary>
     public PreparedFileRun Run { get; }
 
@@ -112,8 +117,13 @@ internal sealed class PublicationRun : IDisposable
         UtcNow = static () => new DateTimeOffset(2026, 10, 25, 12, 0, 0, TimeSpan.Zero),
     };
 
-    /// <summary>Prepares a run of <paramref name="family"/>, reading through <paramref name="open"/> when one is given.</summary>
-    public static async Task<PublicationRun> CreateAsync(string family, Func<string, Stream>? open = null)
+    /// <summary>
+    /// Prepares a run of <paramref name="family"/>, reading through <paramref name="open"/> when one is
+    /// given. A <paramref name="progress"/> observes the preparation and, for the single-file family,
+    /// the preflight; the artifacts family's handle carries it from the run.
+    /// </summary>
+    public static async Task<PublicationRun> CreateAsync(
+        string family, Func<string, Stream>? open = null, OperationProgress? progress = null)
     {
         var temp = TempDirectory.Create();
         var files = new RecordingPublicationFileSystem();
@@ -122,8 +132,8 @@ internal sealed class PublicationRun : IDisposable
         var dataPath = temp.Write("data.csv", Data);
         var prepared = Assert.IsType<OperationCompleted<PreparedFileRun>>(
             await RunPreparation.PrepareAsync(
-                new FileRunRequest { SpecPath = specPath, DataPath = dataPath }, host, CancellationToken.None));
-        return new PublicationRun(temp, family, files, host, specPath, dataPath, prepared);
+                new FileRunRequest { SpecPath = specPath, DataPath = dataPath }, host, progress, CancellationToken.None));
+        return new PublicationRun(temp, family, files, host, specPath, dataPath, prepared, progress);
     }
 
     /// <summary>Writes <see cref="Old"/> at <paramref name="path"/>: an existing target.</summary>
@@ -153,6 +163,7 @@ internal sealed class PublicationRun : IDisposable
                     Chain = Run.SpecChain,
                 },
                 Host,
+                Progress,
                 Signals.Token);
 
     /// <summary>A completed preflight's handle.</summary>

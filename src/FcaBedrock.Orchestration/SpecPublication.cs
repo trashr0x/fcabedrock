@@ -48,14 +48,45 @@ public static class SpecPublication
     /// A refusal or a thrown exception leaves no reference held. A completed preflight returns a
     /// handle that holds live references; they belong to the caller until the handle is published or
     /// disposed. Cancellation propagates as <paramref name="cancellation"/>'s own exception.
+    /// Unobserved: exactly
+    /// <see cref="Preflight(SpecDelivery, OrchestrationHost, OperationProgress, CancellationToken)"/>
+    /// with no progress.
     /// </para>
     /// </summary>
     public static OperationOutcome<PreflightedSpecFile> Preflight(
-        SpecDelivery delivery, OrchestrationHost host, CancellationToken cancellation)
+        SpecDelivery delivery, OrchestrationHost host, CancellationToken cancellation) =>
+        Preflight(delivery, host, progress: null, cancellation);
+
+    /// <summary>
+    /// The single-file preflight as the other overload performs it, observed by
+    /// <paramref name="progress"/> (D-141): it reports <see cref="WorkingStep.PreparingOutput"/> while
+    /// it works and clears it when it returns or throws, and the returned handle carries the progress
+    /// into its publish. A null progress is exactly the unobserved overload.
+    /// </summary>
+    /// <exception cref="ArgumentException">
+    /// <paramref name="progress"/> is completed; thrown before any path is resolved.
+    /// </exception>
+    public static OperationOutcome<PreflightedSpecFile> Preflight(
+        SpecDelivery delivery, OrchestrationHost host, OperationProgress? progress, CancellationToken cancellation)
     {
         ArgumentNullException.ThrowIfNull(delivery);
         ArgumentNullException.ThrowIfNull(host);
+        OperationProgress.ThrowIfCompleted(progress, nameof(progress));
 
+        progress?.Step(WorkingStep.PreparingOutput);
+        try
+        {
+            return PreflightCore(delivery, host, progress, cancellation);
+        }
+        finally
+        {
+            progress?.Step(0);
+        }
+    }
+
+    private static OperationOutcome<PreflightedSpecFile> PreflightCore(
+        SpecDelivery delivery, OrchestrationHost host, OperationProgress? progress, CancellationToken cancellation)
+    {
         var target = delivery.Target;
         var replaceExisting = delivery.ReplaceExisting;
         var operands = delivery.Operands.ToImmutableArray();
@@ -106,7 +137,8 @@ public static class SpecPublication
         }
 
         // The transfer: the handle's constructor assigns fields only, and nothing fallible sits
-        // between the transaction's return and the handle's.
+        // between the transaction's return and the handle's. The progress is one more assignment.
+        transaction.Progress = progress;
         return new OperationCompleted<PreflightedSpecFile>(
             new PreflightedSpecFile(transaction), OutcomeLists.NoDiagnostics);
     }
@@ -124,12 +156,29 @@ public static class SpecPublication
     /// path never replaces the exception that caused it. Past the commit point no cancellation is
     /// observed: a committed file stands.
     /// </para>
+    /// <para>
+    /// When the handle carries an <see cref="OperationProgress"/>, the publish reports
+    /// <see cref="WorkingStep.Staging"/> after its cancellation check before beginning, then
+    /// <see cref="WorkingStep.Sealing"/>, <see cref="WorkingStep.Committing"/> and
+    /// <see cref="WorkingStep.Cleaning"/>, and clears the step on every exit after the record is built
+    /// and the references are released (D-141). A cancellation observed before beginning reports no
+    /// step. The attempt record, never the progress, holds the facts.
+    /// </para>
     /// </summary>
+    /// <exception cref="ArgumentException">
+    /// The progress <paramref name="handle"/> carries is completed; thrown before any bytes are written
+    /// and before the handle is spent: it stays unspent and disposable, its record stays
+    /// <see cref="PublicationAttemptState.NotBegun"/>, and every later publish of it refuses again.
+    /// </exception>
     public static async Task<OperationOutcome<Published>> PublishAsync(
         SpecDocument document, PreflightedSpecFile handle, CancellationToken cancellation)
     {
         ArgumentNullException.ThrowIfNull(document);
         ArgumentNullException.ThrowIfNull(handle);
+
+        // Read through the handle without spending it: the single-file family has no run to carry it.
+        var progress = handle.Progress;
+        OperationProgress.ThrowIfCompleted(progress, nameof(handle));
 
         var bytes = Utf8NoBom.GetBytes(SpecWriter.Write(document));
         var transaction = handle.Spend();
@@ -164,17 +213,24 @@ public static class SpecPublication
         finally
         {
             handle.Finish();
+
+            // After the record is built and the references are released: a step never outlives the
+            // call that reported it.
+            progress?.Step(0);
         }
     }
 
     private static async Task<OperationOutcome<Published>> PublishCoreAsync(
         PublicationTransaction transaction, PreflightedSpecFile handle, byte[] bytes, CancellationToken cancellation)
     {
+        var progress = transaction.Progress;
+
         // A signal that arrived before this publish stops it here, before Begin creates anything:
         // the handle is spent, the record stays NotBegun and no rollback is owed. This stays inside
         // the caller's try, so its finally still builds the record and releases every reference.
         cancellation.ThrowIfCancellationRequested();
 
+        progress?.Step(WorkingStep.Staging);
         if (transaction.Begin() is { } begun)
         {
             transaction.Rollback();
@@ -188,6 +244,7 @@ public static class SpecPublication
             return Failed(staged);
         }
 
+        progress?.Step(WorkingStep.Sealing);
         if (transaction.Seal(cancellation) is { } sealing)
         {
             transaction.Rollback();
@@ -198,6 +255,7 @@ public static class SpecPublication
         // simply the last check before the first one.
         cancellation.ThrowIfCancellationRequested();
 
+        progress?.Step(WorkingStep.Committing);
         if (transaction.Commit(cancellation) is { } committing)
         {
             transaction.Rollback();

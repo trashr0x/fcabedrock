@@ -25,4 +25,11 @@
     <Content Include="PublicSurface.txt" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
+  <!-- The v2 golden fixtures, copied beside the test assembly as the CLI and golden test projects
+       copy them, so the progress parity suite can run every active golden through the coordinator
+       with and without an operation progress. The fixtures are read, never written. -->
+  <ItemGroup>
+    <Content Include="$(RepoRoot)fixtures\v2\**\*" Exclude="$(RepoRoot)fixtures\v2\**\*.md" Link="fixtures\v2\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" Visible="false" />
+  </ItemGroup>
+
 </Project>

@@ -29,7 +29,8 @@ The suite is one BenchmarkDotNet host over the real production paths: source dra
 triple CSV, calibration (including count-sensitive calibration: `equal_frequency`, and `equal_width`
 over the `percentile_p1_p99` range, which need the exact count of every value), planning, emit,
 `.dat` and `.cxt` export, probe, the grouping backend's memory budget and merge fan-in, input and
-output hashing, and a complete `convert` through the in-process CLI host. The `CLI host` cases
+output hashing, the input-hashing pass with and without an operation progress observing it, and a
+complete `convert` through the in-process CLI host. The `CLI host` cases
 measure host throughput, not installed-command latency. Separate `dotnet-counters` traces of the
 real self-contained executable cover whole-command memory.
 
@@ -216,10 +217,12 @@ it measured, and later changes limit how far it reaches:
 | Shipped-code validation and memory traces (2026-09-10; traces on .NET 10.0.10) | `50f6aa62`, whose `src/` equals that of `3d71524b` | not after the delimited reading change, which reaches every one of these commands. Before it: yes, except the auto-calibrated rows and traces, which predate the tiered spill schedule |
 | Tiered spill schedule assessment (adopted 2026-09-21; a Windows host; environment not recorded) | a candidate whose source equals `47e2ce71` apart from one documentation comment | not after the delimited reading change, which reaches these cases. Before it: yes, for the three measured count-sensitive calibration cases at 730,000 and 7.3M records; no 73M run |
 | Delimited reading comparison (2026-10-01; .NET 10.0.12) | the delimited reading change, uncommitted on `a450b144`, against `a450b144` with only the lexical cases' benchmark source added | yes, for the cases it compared: the measured source is this change's, apart from later documentation and tests that no measured case executes and later diagnostic, exception and help wording that, by reading, no measured iteration produces; no build of the committed revision was measured |
+| Pass observation comparison (2026-10-28; .NET 10.0.14) | the progress observation change, uncommitted on `04f561bf`, unobserved against observed in one build | for the hashed record drain only, it describes that change as measured, and it does not bound the observation's elapsed cost; no build of the committed revision was measured |
 
 The details are in [Command latency after the publication correction](#command-latency-after-the-publication-correction),
-[Tiered spill schedule for count-sensitive calibration](#tiered-spill-schedule-for-count-sensitive-calibration)
-and [Delimited reading rules: comparison with the previous reader](#delimited-reading-rules-comparison-with-the-previous-reader).
+[Tiered spill schedule for count-sensitive calibration](#tiered-spill-schedule-for-count-sensitive-calibration),
+[Delimited reading rules: comparison with the previous reader](#delimited-reading-rules-comparison-with-the-previous-reader)
+and [Pass observation on the input-hashing pass](#pass-observation-on-the-input-hashing-pass).
 
 ## Findings
 
@@ -857,6 +860,111 @@ compared: the grouped triple drain at 7.3M, any 73M case, `CLI host`, Adult, and
 reads delimited input, so the results earlier in this guide describe the previous reader; only the
 cases here were measured after the change.
 
+## Pass observation on the input-hashing pass
+
+An operation progress observes each pass an operation reads (D-141). This comparison measured what
+that observation costs on the path it touches on every read: the hashed source drain over
+`w16-working` (730,000 records, 46,997,989 bytes), unobserved against observed, in one build.
+**The comparison does not bound the observation's elapsed cost.** The unobserved arm's median
+differed between the two invocations by a ratio of 1.185818, above the 1.05 limit set for its
+stability, so the two observed-to-unobserved time ratios support no conclusion, although each is
+within its own limit. The observed arm allocated 472 B/op more than the unobserved arm in both
+invocations, within the allocation limit. No claim is made that the observation's elapsed cost is
+within 5%, that it has no regression, or about any path outside this drain.
+
+**What was compared.** Both arms open the prepared input through the input-stability tracker's
+hashing wrapper and read the schema, then every record, inside timing. The unobserved arm,
+`Hashed`, gives the tracker no progress, as every unobserved operation does. The observed arm,
+`HashedObserved`, also creates an `OperationProgress` and observes the tracker with it, reads the
+schema under a call scope of kind `Schema` and the records under one of kind `Statistics`, and
+completes the progress, all inside the measured interval. Nothing reads `Current` during that
+interval, and no emission adapter is involved, because the drain enumerates records, not emitted
+objects.
+
+Every iteration of both arms is validated after disposal and outside timing. The input's digest
+must equal the corpus catalog's, exactly one open must have consumed the whole file, and the
+wrapper read calls per operation and per complete pass must equal those of the launch's first
+iteration. The observed arm's final snapshot must also show pass 2, of kind `Statistics`, ended
+`EndOfInput` with every input byte consumed and completed, and `Current` must return the same
+instance on every read. Before measuring, each case's process drains the input once through an
+observed progress and requires a schema pass ended `ClosedBeforeEndOfInput`, followed by a
+statistics pass ended `EndOfInput`.
+
+**How it was measured.** One Release build ran out of process under the Working job (D-124):
+Monitoring, one launch, two warmups and five measured iterations of one invocation each. Two
+invocations ran back to back, each running both cases, so the unobserved arm's stability across
+invocations is known. BenchmarkDotNet ran `Hashed` before `HashedObserved` in both. Each value is
+read from the invocation's full JSON report: the median of the five measured iterations, and the
+managed allocated bytes per operation.
+
+| | |
+| --- | --- |
+| OS | Windows 11 (10.0.26300.9711) |
+| CPU | AMD Ryzen 5 5600X: 1 CPU, 6 physical / 12 logical cores |
+| Runtime | .NET 10.0.14, X64 RyuJIT x86-64-v3, Concurrent Workstation GC |
+| SDK | 10.0.401 |
+| BenchmarkDotNet | 0.15.8, out-of-process toolchain, Release |
+| Power plan | High performance |
+| Storage | corpus and results on the system volume, a SATA SSD that also holds the page file |
+
+The limits set for this comparison, before it ran (D-141 part 12):
+
+- Time ratio, the observed median over the unobserved median: at most 1.05 in each invocation.
+- Allocation difference, observed minus unobserved: at most 65,536 B/op in each invocation.
+- The unobserved arm's time stability, its larger median over its smaller: at most 1.05.
+- The unobserved arm's allocation stability, the difference between its two allocations: at most
+  65,536 B/op.
+
+These are engineering acceptance limits, not a statistical bound on any slowdown. A value above its
+limit is in bold.
+
+| Invocation | Arm | Median | Mean | StdDev | Min | Max | Allocated |
+| ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| 1 | unobserved | 261.0358 ms | 261.8429 ms | 4.520 ms | 255.6950 ms | 266.4455 ms | 545,769,024 B/op |
+| 1 | observed | 261.8934 ms | 262.4526 ms | 4.009 ms | 259.3448 ms | 269.2410 ms | 545,769,496 B/op |
+| 2 | unobserved | 220.1315 ms | 225.7329 ms | 12.757 ms | 218.6146 ms | 248.4488 ms | 545,769,024 B/op |
+| 2 | observed | 224.2996 ms | 229.7313 ms | 11.804 ms | 221.8585 ms | 249.9299 ms | 545,769,496 B/op |
+
+| Check | Invocation 1 | Invocation 2 | Limit |
+| --- | ---: | ---: | ---: |
+| Time ratio, observed over unobserved | 1.003285 | 1.018935 | 1.05 |
+| Allocation difference, observed minus unobserved | +472 B/op | +472 B/op | 65,536 B/op |
+
+| Stability of the unobserved arm | Value | Limit |
+| --- | ---: | ---: |
+| Time, the larger median over the smaller | **1.185818** | 1.05 |
+| Allocation, the difference between the two invocations | 0 B/op | 65,536 B/op |
+
+**Read calls.** Every validated iteration of both arms, in both invocations, made 45,932 wrapper
+read calls per operation, 45,900 of them in the complete pass. A read call is one call on the
+hashing wrapper, not one record. At that count, the allocation limit detects an added allocation
+larger than about 1.43 bytes per read (65,536 / 45,932).
+
+**What the results show, and what they do not.** Both arms ran faster in the second invocation:
+the unobserved median fell from 261.0358 ms to 220.1315 ms, and the observed median from
+261.8934 ms to 224.2996 ms. The cause was not instrumented. A shift between invocations larger than
+the 5% the time limit is meant to resolve leaves the two time ratios without the stable control
+they need, in either direction. BenchmarkDotNet flagged one iteration of each arm as an outlier in
+the second invocation (248.4488 ms and 249.9299 ms) and one of the observed arm in the first
+(269.2410 ms); N is 5 for every case, so no iteration was removed. Each arm allocated the same number
+of bytes per operation in both invocations.
+
+`Hashed` ran first in both invocations, so case order was not balanced. Its effect could raise or
+lower a ratio, and it is unknown: neither the 1.05 limit nor the stability check bounds it, because
+stability across invocations says nothing about an effect that repeats in the same order within
+each one.
+
+**Scope.** Only the hashed record drain was measured. The emission adapter, the working-step
+reports and a concurrent reader polling `Current` are outside it. The comparison is unobserved
+against observed within one build, so the unobserved path's own cost against the build before
+observation existed, one null check per read, is not measured. It covers one Windows x64 machine,
+the Working tier, a warm cache and two invocations: no Scale tier, other platform or `CLI host`
+case.
+
+**Source identity.** The measured source is the progress observation change before its commit, on
+`04f561bf`, including this comparison's benchmark source. No build of a committed revision was
+measured, and BenchmarkDotNet deletes the worker it builds, so no worker hash is claimed.
+
 ## What has not been measured
 
 - **No admissible published elapsed result, derived throughput rate or overhead estimate is
@@ -869,6 +977,11 @@ cases here were measured after the change.
 - **The delimited reading change's elapsed cost on small inputs is not bounded**, and no result
   earlier in this guide was re-measured after the change
   ([Delimited reading rules: comparison with the previous reader](#delimited-reading-rules-comparison-with-the-previous-reader)).
+- **The elapsed cost of observing the input-hashing pass is not bounded.** Its comparison's
+  unobserved arm was not stable across the two invocations. The emission adapter, the working-step
+  reports, a concurrent reader of `Current`, and the unobserved path against the build before
+  observation existed were not measured
+  ([Pass observation on the input-hashing pass](#pass-observation-on-the-input-hashing-pass)).
 - **The five `probe` timings are baseline observations.** The probe cases were later re-validated
   under the corrected per-attribute oracle, which establishes correctness, not a new elapsed figure.
 - **A bounded successful probe scan at 7.3M or 73M is not represented.** Every synthetic family's
@@ -898,6 +1011,9 @@ $env:FCABEDROCK_BENCH_ROOT = '<absolute path>'
 dotnet run -c Release --project tests/FcaBedrock.Benchmarks -- --anyCategories Working --filter '*GroupingBudgetWorking*' '*GroupingFanInWorking*'
 dotnet run -c Release --project tests/FcaBedrock.Benchmarks -- --anyCategories Scale --filter '*GroupingBudgetScale7M*'
 dotnet run -c Release --project tests/FcaBedrock.Benchmarks -- --anyCategories Scale --filter '*GroupingBudgetScale73M*' --warmupCount 1 --iterationCount 3
+
+# the pass observation comparison (prepare w16-working first), run twice back to back
+dotnet run -c Release --project tests/FcaBedrock.Benchmarks -- --anyCategories Working --filter '*InputHashProgressWorking*'
 
 # the controlled attribute-count matrix, gated out of the ordinary suite
 $env:FCABEDROCK_CALIBRATION_MATRIX = '1'

@@ -171,9 +171,25 @@ FcaBedrock.Orchestration.OperationHostFailure<T>: sealed class : FcaBedrock.Orch
 FcaBedrock.Orchestration.OperationOutcome<T>..ctor(System.Collections.Generic.IReadOnlyList<FcaBedrock.Diagnostics.BedrockDiagnostic> diagnostics) private protected
 FcaBedrock.Orchestration.OperationOutcome<T>.Diagnostics: System.Collections.Generic.IReadOnlyList<FcaBedrock.Diagnostics.BedrockDiagnostic> { public get; }
 FcaBedrock.Orchestration.OperationOutcome<T>: abstract class
+FcaBedrock.Orchestration.OperationProgress..ctor() public
+FcaBedrock.Orchestration.OperationProgress.Complete(): System.Void public
+FcaBedrock.Orchestration.OperationProgress.Current: FcaBedrock.Orchestration.ProgressSnapshot { public get; }
+FcaBedrock.Orchestration.OperationProgress: sealed class
 FcaBedrock.Orchestration.OrchestrationHost..ctor(System.Func<System.String, System.IO.Stream> openInput) public
 FcaBedrock.Orchestration.OrchestrationHost.OpenInput: System.Func<System.String, System.IO.Stream> { public get; }
 FcaBedrock.Orchestration.OrchestrationHost: sealed class
+FcaBedrock.Orchestration.PassEnd.Cancelled = 4
+FcaBedrock.Orchestration.PassEnd.ClosedBeforeEndOfInput = 2
+FcaBedrock.Orchestration.PassEnd.EndOfInput = 1
+FcaBedrock.Orchestration.PassEnd.Failed = 3
+FcaBedrock.Orchestration.PassEnd: enum : System.Int32
+FcaBedrock.Orchestration.PassKind.Calibration = 2
+FcaBedrock.Orchestration.PassKind.CxtNames = 3
+FcaBedrock.Orchestration.PassKind.CxtRows = 4
+FcaBedrock.Orchestration.PassKind.Dat = 5
+FcaBedrock.Orchestration.PassKind.Schema = 1
+FcaBedrock.Orchestration.PassKind.Statistics = 6
+FcaBedrock.Orchestration.PassKind: enum : System.Int32
 FcaBedrock.Orchestration.PreflightedConvertOutput..ctor(FcaBedrock.Orchestration.Publication.PublicationTransaction transaction, FcaBedrock.Orchestration.PreparedFileRun run, System.Boolean writesCxt, System.Boolean writesDat, System.Boolean writesManifest) internal
 FcaBedrock.Orchestration.PreflightedConvertOutput: sealed class : FcaBedrock.Orchestration.PreflightedPublication
 FcaBedrock.Orchestration.PreflightedPublication..ctor(FcaBedrock.Orchestration.Publication.PublicationTransaction transaction) private protected
@@ -192,6 +208,24 @@ FcaBedrock.Orchestration.PreparedRun.RootDocument: FcaBedrock.Spec.Toml.SpecDocu
 FcaBedrock.Orchestration.PreparedRun.RootKey: System.String { public get; }
 FcaBedrock.Orchestration.PreparedRun.SpecChain: System.Collections.Generic.IReadOnlyList<FcaBedrock.Orchestration.SpecChainFile> { public get; }
 FcaBedrock.Orchestration.PreparedRun: abstract class
+FcaBedrock.Orchestration.ProgressSnapshot..ctor(FcaBedrock.Orchestration.ProgressSnapshot original) private
+FcaBedrock.Orchestration.ProgressSnapshot..ctor(System.Int32 passSequence, FcaBedrock.Orchestration.PassKind passKind, System.Int64? passLength, System.Int64 bytesConsumed, System.Int64 objectsEmitted, FcaBedrock.Orchestration.PassEnd passEnd, FcaBedrock.Orchestration.WorkingStep step, System.Boolean isCompleted) internal
+FcaBedrock.Orchestration.ProgressSnapshot.<Clone>$(): FcaBedrock.Orchestration.ProgressSnapshot public
+FcaBedrock.Orchestration.ProgressSnapshot.BytesConsumed: System.Int64 { public get; }
+FcaBedrock.Orchestration.ProgressSnapshot.Equals(FcaBedrock.Orchestration.ProgressSnapshot? other): System.Boolean public
+FcaBedrock.Orchestration.ProgressSnapshot.Equals(System.Object? obj): System.Boolean public override
+FcaBedrock.Orchestration.ProgressSnapshot.GetHashCode(): System.Int32 public override
+FcaBedrock.Orchestration.ProgressSnapshot.IsCompleted: System.Boolean { public get; }
+FcaBedrock.Orchestration.ProgressSnapshot.ObjectsEmitted: System.Int64 { public get; }
+FcaBedrock.Orchestration.ProgressSnapshot.PassEnd: FcaBedrock.Orchestration.PassEnd { public get; }
+FcaBedrock.Orchestration.ProgressSnapshot.PassKind: FcaBedrock.Orchestration.PassKind { public get; }
+FcaBedrock.Orchestration.ProgressSnapshot.PassLength: System.Int64? { public get; }
+FcaBedrock.Orchestration.ProgressSnapshot.PassSequence: System.Int32 { public get; }
+FcaBedrock.Orchestration.ProgressSnapshot.Step: FcaBedrock.Orchestration.WorkingStep { public get; }
+FcaBedrock.Orchestration.ProgressSnapshot.ToString(): System.String public override
+FcaBedrock.Orchestration.ProgressSnapshot.op_Equality(FcaBedrock.Orchestration.ProgressSnapshot? left, FcaBedrock.Orchestration.ProgressSnapshot? right): System.Boolean public static
+FcaBedrock.Orchestration.ProgressSnapshot.op_Inequality(FcaBedrock.Orchestration.ProgressSnapshot? left, FcaBedrock.Orchestration.ProgressSnapshot? right): System.Boolean public static
+FcaBedrock.Orchestration.ProgressSnapshot: sealed class implements System.IEquatable<FcaBedrock.Orchestration.ProgressSnapshot>
 FcaBedrock.Orchestration.PublicationAttempt..ctor(FcaBedrock.Orchestration.PublicationAttempt original) private
 FcaBedrock.Orchestration.PublicationAttempt..ctor(FcaBedrock.Orchestration.PublicationAttemptState state, FcaBedrock.Orchestration.RollbackOutcome rollback, FcaBedrock.Orchestration.CleanupFact? rollbackBlocker, FcaBedrock.Orchestration.Published? committed) internal
 FcaBedrock.Orchestration.PublicationAttempt.<Clone>$(): FcaBedrock.Orchestration.PublicationAttempt public
@@ -264,6 +298,7 @@ FcaBedrock.Orchestration.RollbackOutcome.Interrupted = 3
 FcaBedrock.Orchestration.RollbackOutcome.NotOwed = 1
 FcaBedrock.Orchestration.RollbackOutcome.NotStarted = 2
 FcaBedrock.Orchestration.RollbackOutcome: enum : System.Int32
+FcaBedrock.Orchestration.RunPreparation.PrepareAsync(FcaBedrock.Orchestration.FileRunRequest request, FcaBedrock.Orchestration.OrchestrationHost host, FcaBedrock.Orchestration.OperationProgress? progress, System.Threading.CancellationToken cancellation): System.Threading.Tasks.Task<FcaBedrock.Orchestration.OperationOutcome<FcaBedrock.Orchestration.PreparedFileRun>> public static
 FcaBedrock.Orchestration.RunPreparation.PrepareAsync(FcaBedrock.Orchestration.FileRunRequest request, FcaBedrock.Orchestration.OrchestrationHost host, System.Threading.CancellationToken cancellation): System.Threading.Tasks.Task<FcaBedrock.Orchestration.OperationOutcome<FcaBedrock.Orchestration.PreparedFileRun>> public static
 FcaBedrock.Orchestration.RunPreparation: static class
 FcaBedrock.Orchestration.SpecChainFile..ctor(FcaBedrock.Orchestration.SpecChainFile original) private
@@ -296,6 +331,7 @@ FcaBedrock.Orchestration.SpecDelivery.op_Inequality(FcaBedrock.Orchestration.Spe
 FcaBedrock.Orchestration.SpecDelivery: sealed class implements System.IEquatable<FcaBedrock.Orchestration.SpecDelivery>
 FcaBedrock.Orchestration.SpecFreezing.Freeze(FcaBedrock.Orchestration.PreparedRun run, System.Collections.Generic.IReadOnlyList<FcaBedrock.Diagnostics.BedrockDiagnostic> preparationDiagnostics): FcaBedrock.Orchestration.OperationOutcome<FcaBedrock.Spec.Toml.SpecDocument> public static
 FcaBedrock.Orchestration.SpecFreezing: static class
+FcaBedrock.Orchestration.SpecPublication.Preflight(FcaBedrock.Orchestration.SpecDelivery delivery, FcaBedrock.Orchestration.OrchestrationHost host, FcaBedrock.Orchestration.OperationProgress? progress, System.Threading.CancellationToken cancellation): FcaBedrock.Orchestration.OperationOutcome<FcaBedrock.Orchestration.PreflightedSpecFile> public static
 FcaBedrock.Orchestration.SpecPublication.Preflight(FcaBedrock.Orchestration.SpecDelivery delivery, FcaBedrock.Orchestration.OrchestrationHost host, System.Threading.CancellationToken cancellation): FcaBedrock.Orchestration.OperationOutcome<FcaBedrock.Orchestration.PreflightedSpecFile> public static
 FcaBedrock.Orchestration.SpecPublication.PublishAsync(FcaBedrock.Spec.Toml.SpecDocument document, FcaBedrock.Orchestration.PreflightedSpecFile handle, System.Threading.CancellationToken cancellation): System.Threading.Tasks.Task<FcaBedrock.Orchestration.OperationOutcome<FcaBedrock.Orchestration.Published>> public static
 FcaBedrock.Orchestration.SpecPublication: static class
@@ -325,3 +361,11 @@ FcaBedrock.Orchestration.ValidatedSpec: sealed class implements System.IEquatabl
 FcaBedrock.Orchestration.VerifiedRelocation..ctor(System.String reference, System.String authored, System.String destination, FcaBedrock.Orchestration.SpecChainFile immediateBase) internal
 FcaBedrock.Orchestration.VerifiedRelocation.ImmediateBase: FcaBedrock.Orchestration.SpecChainFile { public get; }
 FcaBedrock.Orchestration.VerifiedRelocation: sealed class : FcaBedrock.Orchestration.RelocationDecision
+FcaBedrock.Orchestration.WorkingStep.Calibrating = 1
+FcaBedrock.Orchestration.WorkingStep.Cleaning = 7
+FcaBedrock.Orchestration.WorkingStep.Committing = 6
+FcaBedrock.Orchestration.WorkingStep.Grouping = 2
+FcaBedrock.Orchestration.WorkingStep.PreparingOutput = 3
+FcaBedrock.Orchestration.WorkingStep.Sealing = 5
+FcaBedrock.Orchestration.WorkingStep.Staging = 4
+FcaBedrock.Orchestration.WorkingStep: enum : System.Int32
