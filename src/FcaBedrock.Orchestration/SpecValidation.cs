@@ -49,7 +49,7 @@ public static class SpecValidation
     /// identity seam, as the CLI's validation always has (D-140).
     /// </para>
     /// </summary>
-    public static async Task<OperationOutcome<ValidatedSpec>> ValidateAsync(
+    public static async Task<Result<Diagnosed<ValidatedSpec>, HostFailure>> ValidateAsync(
         string specPath, string? dataPath, OrchestrationHost host, CancellationToken cancellation)
     {
         ArgumentNullException.ThrowIfNull(specPath);
@@ -71,7 +71,7 @@ public static class SpecValidation
             // condition: code-less, and the registry does not grow for it (D-122 part 2). The
             // message names the operand and the cause the failed operation established, and
             // nothing else: no exception text, no localized OS text, no internal path.
-            return new OperationHostFailure<ValidatedSpec>(
+            return MixedOutcome<ValidatedSpec>.HostFailed(
                 new HostError(
                     HostErrorKind.SpecUnreadable,
                     InputReadExplanation.Message(InputFile.Spec, specPath, exception),
@@ -90,7 +90,7 @@ public static class SpecValidation
         diagnostics.AddRange(read.Diagnostics);
         if (!read.TryGetValue(out var document))
         {
-            return new OperationDiagnosticFailure<ValidatedSpec>(diagnostics);
+            return MixedOutcome<ValidatedSpec>.Failed(diagnostics);
         }
 
         cancellation.ThrowIfCancellationRequested();
@@ -101,7 +101,7 @@ public static class SpecValidation
             // A missing or unreadable extends base is a phase-owned condition
             // (SpecExtendsNotFound), so it keeps its registry code, unlike the root
             // operand above, which the host owns.
-            return new OperationDiagnosticFailure<ValidatedSpec>(diagnostics);
+            return MixedOutcome<ValidatedSpec>.Failed(diagnostics);
         }
 
         SourceSchema? schema = null;
@@ -111,7 +111,7 @@ public static class SpecValidation
             if (!settings.TryGetValue(out var readSettings))
             {
                 diagnostics.AddRange(settings.Diagnostics);
-                return new OperationDiagnosticFailure<ValidatedSpec>(diagnostics);
+                return MixedOutcome<ValidatedSpec>.Failed(diagnostics);
             }
 
             // On success this stage reports nothing at all: it fails its result on any
@@ -127,7 +127,7 @@ public static class SpecValidation
             {
                 // Validation hashes no pass, so it has no leading bytes to name a UTF-16 or UTF-32
                 // mark from; a decoding failure is explained as invalid UTF-8.
-                return new OperationHostFailure<ValidatedSpec>(
+                return MixedOutcome<ValidatedSpec>.HostFailed(
                     RunPipeline.DataUnreadable(
                         dataPath, DataReadExplanation.Message(dataPath, exception, DataByteOrderMark.None)),
                     diagnostics);
@@ -137,7 +137,7 @@ public static class SpecValidation
         cancellation.ThrowIfCancellationRequested();
         var resolved = SpecResolver.Resolve(effective, schema);
         diagnostics.AddRange(resolved.Diagnostics);
-        return new OperationCompleted<ValidatedSpec>(new ValidatedSpec(effective), diagnostics);
+        return MixedOutcome<ValidatedSpec>.Completed(new ValidatedSpec(effective), diagnostics);
     }
 
     // The ONLY source call validation makes. The session is never bound and its record

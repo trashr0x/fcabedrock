@@ -123,10 +123,11 @@ Operational summary; the invariants are authoritative in `docs/engineering-princ
   byte-identical output; ordering rules live in the planner. Spec §17, D-004, EP-7.
 - **Core is pure / UI-independent; exporters are dumb:** all semantics decided
   before export, writers only serialize. EP-13, EP-15.
-- **Error handling:** `Result<T, BedrockDiagnostic>` for single-error ops;
-  `Diagnosed<T>` (value + diagnostic list) for aggregating ops (validation,
-  planning); convert streams diagnostics alongside the emit stream. Codes are an
-  enum. EP-14.
+- **Error handling:** `Diagnosed<T>` for aggregating operations and `Result<T, TError>` for
+  single-error ones, composed where an operation fails both ways; `BedrockDiagnostic` (codes are
+  an enum) for pipeline conditions and Orchestration's code-less `HostError` for host failures;
+  the named exception transports and their owners are in EP-14 and D-140; convert streams
+  diagnostics alongside the emit stream. EP-14.
 - **Scale of intent:** v1 targets 10×–100× the v2 EMAGE workload (~7.3M–73M
   records); streaming is a v1 concern, not a retrofit. D-007.
 - **Small composable pieces over god classes.** EP-17.
@@ -221,7 +222,8 @@ unrelated refactors.
 
 For non-trivial work, don't start editing immediately. Inspect the docs/code,
 then propose a short concrete plan: what changes and which files/projects;
-whether any **public** API/contract/diagnostic changes (the workflow face of EP-4);
+whether any **public** API/contract/diagnostic changes (the workflow face of EP-4),
+with each changed public operation's expected-failure transport (EP-14);
 tests to add or update; and open questions. Present it and wait for a go-ahead.
 
 For consequential changes (new public surface, a cross-package contract, a

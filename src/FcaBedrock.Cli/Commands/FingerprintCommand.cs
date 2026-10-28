@@ -64,12 +64,11 @@ internal static class FingerprintCommand
         ArgumentNullException.ThrowIfNull(environment);
 
         var outcome = await RunRendering.PrepareAsync(invocation, environment).ConfigureAwait(false);
-        if (outcome is not OperationCompleted<PreparedFileRun> prepared)
+        if (outcome.IsError || outcome.Value.Value is not { } run)
         {
             return RunRendering.Fail(environment, outcome, environment.Signals.Token);
         }
 
-        var run = prepared.Value;
         var fingerprints = FingerprintReport.Of(run);
 
         var report = new StringBuilder();
@@ -80,7 +79,7 @@ internal static class FingerprintCommand
         if (!invocation.Has("--write"))
         {
             return RunRendering.Complete(
-                environment, prepared.Diagnostics, report.ToString(), environment.Signals.Token);
+                environment, outcome.Value.Diagnostics, report.ToString(), environment.Signals.Token);
         }
 
         var cancellation = environment.Signals.Token;
@@ -92,7 +91,7 @@ internal static class FingerprintCommand
         {
             return RunRendering.HostFailure(
                 environment,
-                prepared.Diagnostics,
+                outcome.Value.Diagnostics,
                 WriteRequiresFullyFrozenMessage(invocation.Operand(0)!),
                 cancellation);
         }
@@ -115,24 +114,25 @@ internal static class FingerprintCommand
                 : throw new InvalidOperationException("A composed root that extends a base has that base in its chain.");
 
             var relocated = SpecRelocation.Relocate(authored, outPath, immediateBase, environment.Orchestration);
-            if (relocated is not OperationCompleted<VerifiedRelocation> { Value: var decision })
+            if (relocated.IsError)
             {
                 return RunRendering.HostFailure(
                     environment,
-                    prepared.Diagnostics,
-                    ((OperationHostFailure<VerifiedRelocation>)relocated).Error.Message,
+                    outcome.Value.Diagnostics,
+                    relocated.Error.Message,
                     cancellation);
             }
 
+            var decision = relocated.Value;
             written = written with { Spec = written.Spec with { Extends = decision.Reference } };
             verifyBeforeWrite = () =>
-                SpecRelocation.Recheck(decision, environment.Orchestration) is OperationHostFailure<RelocationDecision> refused
+                SpecRelocation.Recheck(decision, environment.Orchestration) is { IsError: true } refused
                     ? refused.Error.Message
                     : null;
         }
 
         return await SingleFileOutput.DeliverAsync(
-                environment, invocation, written, prepared.Diagnostics,
+                environment, invocation, written, outcome.Value.Diagnostics,
                 chain: run.SpecChain, committedReport: report.ToString(), verifyBeforeWrite, cancellation)
             .ConfigureAwait(false);
     }

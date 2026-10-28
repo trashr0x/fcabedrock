@@ -50,7 +50,6 @@ public sealed class OrchestrationProjectContractTests
     /// <summary>The closed families: abstract bases a host's switch can treat as complete.</summary>
     private static readonly string[] ClosedFamilies =
     [
-        "FcaBedrock.Orchestration.OperationOutcome`1",
         "FcaBedrock.Orchestration.PreflightedPublication",
         "FcaBedrock.Orchestration.PreparedRun",
         "FcaBedrock.Orchestration.RelocationDecision",

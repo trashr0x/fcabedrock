@@ -101,7 +101,7 @@ public sealed class ProgressContractTests
         using var run = ProgressRun.Create(ProgressSpecs.WideDeclared, PublicationRun.Data, observed);
         run.Input.FailOpen = path => path == run.DataPath ? new FileNotFoundException("the data is gone.") : null;
 
-        var failure = Assert.IsType<OperationHostFailure<PreparedFileRun>>(await run.PrepareOutcomeAsync());
+        var failure = OutcomeAssert.HostFailed(await run.PrepareOutcomeAsync());
 
         Assert.Equal(HostErrorKind.DataUnreadable, failure.Error.Kind);
         if (observed)
@@ -120,8 +120,7 @@ public sealed class ProgressContractTests
         using var run = ProgressRun.Create(ProgressSpecs.WideCalibrated, ProgressSpecs.WideData(3_000), observed: true);
         var (prepared, diagnostics) = await run.PrepareAsync();
 
-        var counted = Assert.IsType<OperationCompleted<ContextStatistics>>(
-            await ContextStatistics.CountAsync(prepared, diagnostics, run.Signals.Token));
+        var counted = OutcomeAssert.Completed(await ContextStatistics.CountAsync(prepared, diagnostics, run.Signals.Token));
 
         var recorder = run.Recorder!;
         Assert.Equal((3, PassKind.Statistics), recorder.Passes()[^1]);
@@ -138,8 +137,7 @@ public sealed class ProgressContractTests
         using var run = ProgressRun.Create(ProgressSpecs.WideDedupe, ProgressSpecs.DedupeData(3_000, offender: false, 0), observed: true);
         var (prepared, diagnostics) = await run.PrepareAsync();
 
-        var counted = Assert.IsType<OperationCompleted<ContextStatistics>>(
-            await ContextStatistics.CountAsync(prepared, diagnostics, run.Signals.Token));
+        var counted = OutcomeAssert.Completed(await ContextStatistics.CountAsync(prepared, diagnostics, run.Signals.Token));
 
         var events = run.Recorder!.Events.ToList();
         var closed = events.FindIndex(e => e.Name == ProgressEvent.Closed && e.Sequence == 2);
@@ -196,7 +194,7 @@ public sealed class ProgressContractTests
             temp.Path, specPath, dataPath, observed: true, arrange: arrangement => watchedArrangement = arrangement);
 
         Assert.Equal(plain.Text, watched.Text);
-        Assert.Contains("publish: OperationDiagnosticFailure", watched.Text, StringComparison.Ordinal);
+        Assert.Contains("publish: DiagnosticFailure", watched.Text, StringComparison.Ordinal);
         Assert.Contains("attempt BegunNotCommitted rollback Completed", watched.Text, StringComparison.Ordinal);
         var recorder = watched.Recorder!;
         Assert.Equal(
@@ -247,9 +245,10 @@ public sealed class ProgressContractTests
         }
 
         var text = new System.Text.StringBuilder();
-        var prepared = Assert.IsType<OperationCompleted<PreparedFileRun>>(await RunPreparation.PrepareAsync(
-            new FileRunRequest { SpecPath = specPath, DataPath = dataPath }, host, progress, CancellationToken.None));
-        ProgressObservation.Render(text, "prepare", prepared);
+        var preparation = await RunPreparation.PrepareAsync(
+            new FileRunRequest { SpecPath = specPath, DataPath = dataPath }, host, progress, CancellationToken.None);
+        var prepared = OutcomeAssert.Completed(preparation);
+        ProgressObservation.Render(text, "prepare", preparation);
         var counted = await ContextStatistics.CountAsync(prepared.Value, prepared.Diagnostics, CancellationToken.None);
         ProgressObservation.Render(text, "count", counted);
         if (progress is not null)
@@ -285,7 +284,7 @@ public sealed class ProgressContractTests
             });
 
         Assert.Equal(plain.Text, watched.Text);
-        Assert.Contains("publish: OperationHostFailure`1 StageFailed", watched.Text, StringComparison.Ordinal);
+        Assert.Contains("publish: HostFailure StageFailed", watched.Text, StringComparison.Ordinal);
         Assert.Contains("attempt BegunNotCommitted rollback Completed", watched.Text, StringComparison.Ordinal);
         var recorder = watched.Recorder!;
         Assert.Equal([(1, PassKind.Schema), (2, PassKind.Dat)], recorder.Passes());
@@ -360,7 +359,7 @@ public sealed class ProgressContractTests
         var watched = await ProgressObservation.ConvertAsync(temp.Path, specPath, dataPath, observed: true, cxt: false, arrange: FailARead);
 
         Assert.Equal(plain.Text, watched.Text);
-        Assert.Contains("publish: OperationHostFailure`1 DataUnreadable", watched.Text, StringComparison.Ordinal);
+        Assert.Contains("publish: HostFailure DataUnreadable", watched.Text, StringComparison.Ordinal);
         Assert.Contains("attempt BegunNotCommitted rollback Completed", watched.Text, StringComparison.Ordinal);
         Assert.Equal(PassEnd.Failed, watched.Recorder!.EndOf(2));
     }
@@ -489,15 +488,15 @@ public sealed class ProgressContractTests
         // calibrate --out at the coordinator: one progress for the preparation and the delivery.
         using var run = ProgressRun.Create(ProgressSpecs.WideCalibrated, ProgressSpecs.WideData(200), observed: true);
         var (prepared, diagnostics) = await run.PrepareAsync();
-        var frozen = Assert.IsType<OperationCompleted<SpecDocument>>(SpecFreezing.Freeze(prepared, diagnostics)).Value;
+        var frozen = OutcomeAssert.Completed(SpecFreezing.Freeze(prepared, diagnostics)).Value;
         var target = Path.Combine(run.Directory, "frozen.toml");
 
-        var handle = Assert.IsType<OperationCompleted<PreflightedSpecFile>>(SpecPublication.Preflight(
+        var handle = OutcomeAssert.Completed(SpecPublication.Preflight(
             new SpecDelivery { Target = target, ReplaceExisting = false, Operands = [run.SpecPath, run.DataPath], Chain = prepared.SpecChain },
             run.Host,
             run.Progress,
-            run.Signals.Token)).Value;
-        Assert.IsType<OperationCompleted<Published>>(await SpecPublication.PublishAsync(frozen, handle, run.Signals.Token));
+            run.Signals.Token));
+        OutcomeAssert.Completed(await SpecPublication.PublishAsync(frozen, handle, run.Signals.Token));
 
         Assert.Equal(
             [WorkingStep.Calibrating, WorkingStep.PreparingOutput, WorkingStep.Staging, WorkingStep.Sealing, WorkingStep.Committing, WorkingStep.Cleaning],
@@ -644,7 +643,7 @@ public sealed class ProgressContractTests
         var watched = await ProgressObservation.ConvertAsync(temp.Path, specPath, dataPath, observed: true, manifest: manifest, v2: v2);
 
         Assert.Equal(plain.Text, watched.Text);
-        Assert.Contains("publish: OperationCompleted", watched.Text, StringComparison.Ordinal);
+        Assert.Contains("publish: Completed", watched.Text, StringComparison.Ordinal);
         Assert.Equal(
             [PassKind.Schema, PassKind.CxtNames, PassKind.CxtRows, PassKind.Dat],
             watched.Recorder!.Passes().Select(pass => pass.Kind));
@@ -708,7 +707,7 @@ public sealed class ProgressContractTests
         var watched = await ProgressObservation.ConvertAsync(temp.Path, specPath, dataPath, observed: true, manifest: manifest, v2: v2);
 
         Assert.Equal(plain.Text, watched.Text);
-        Assert.Contains("publish: OperationCompleted", watched.Text, StringComparison.Ordinal);
+        Assert.Contains("publish: Completed", watched.Text, StringComparison.Ordinal);
         Assert.Equal(4, watched.Recorder!.Passes().Count);
     }
 }

@@ -53,15 +53,15 @@ internal static class ProgressObservation
             var prepared = await RunPreparation.PrepareAsync(
                 new FileRunRequest { SpecPath = specPath, DataPath = dataPath }, host, progress, signals.Token);
             Render(text, "prepare", prepared);
-            if (prepared is not OperationCompleted<PreparedFileRun> { Value: var preparedRun })
+            if (prepared.IsError || prepared.Value.Value is not { } preparedRun)
             {
                 return Finish(text, recorder, progress, input, run);
             }
 
             run = preparedRun;
-            var planned = ConvertPublication.PlanConversion(run, v2, prepared.Diagnostics);
+            var planned = ConvertPublication.PlanConversion(run, v2, prepared.Value.Diagnostics);
             Render(text, "plan", planned);
-            if (planned is not OperationCompleted<EffectiveConversion> { Value: var conversion })
+            if (planned.Value is not { } conversion)
             {
                 return Finish(text, recorder, progress, input, run);
             }
@@ -72,12 +72,12 @@ internal static class ProgressObservation
                 host,
                 signals.Token);
             Render(text, "preflight", preflight);
-            if (preflight is not OperationCompleted<PreflightedConvertOutput> { Value: var preflighted })
+            if (preflight.IsError)
             {
                 return Finish(text, recorder, progress, input, run);
             }
 
-            handle = preflighted;
+            handle = preflight.Value;
             var facts = new ManifestHostFacts
             {
                 ToolVersion = "fcabedrock-vnext test",
@@ -134,26 +134,50 @@ internal static class ProgressObservation
         return Finish(text, recorder, progress, input, run);
     }
 
-    /// <summary>Renders an outcome and its diagnostics.</summary>
-    public static void Render<T>(StringBuilder text, string call, OperationOutcome<T> outcome)
+    /// <summary>
+    /// Renders a mixed result and its diagnostics under the test-only labels <c>HostFailure</c> with
+    /// its kind and message, <c>Completed</c> and <c>DiagnosticFailure</c>.
+    /// </summary>
+    public static void Render<T>(StringBuilder text, string call, Result<Diagnosed<T>, HostFailure> outcome)
     {
-        text.Append(call).Append(": ").Append(outcome.GetType().Name);
-        if (outcome is OperationHostFailure<T> failure)
+        if (!outcome.IsError)
         {
-            text.Append(' ').Append(failure.Error.Kind).Append(' ').Append(failure.Error.Message);
+            Render(text, call, outcome.Value);
+            return;
         }
 
-        text.Append('\n');
-        foreach (var diagnostic in outcome.Diagnostics)
-        {
-            text.Append("  ").Append(Describe(diagnostic)).Append('\n');
-        }
+        var failure = outcome.Error;
+        text.Append(call).Append(": HostFailure ").Append(failure.Error.Kind).Append(' ').Append(failure.Error.Message).Append('\n');
+        AppendDiagnostics(text, failure.Diagnostics);
+    }
 
-        if (outcome is OperationCompleted<ContextStatistics> { Value: var counts })
+    /// <summary>Renders a pure result and its diagnostics: <c>Completed</c> with a value, otherwise <c>DiagnosticFailure</c>.</summary>
+    public static void Render<T>(StringBuilder text, string call, Diagnosed<T> outcome)
+    {
+        text.Append(call).Append(": ").Append(outcome.Value is null ? "DiagnosticFailure" : "Completed").Append('\n');
+        AppendDiagnostics(text, outcome.Diagnostics);
+
+        if (outcome.Value is ContextStatistics counts)
         {
             text.Append("  counts ").Append(counts.Objects).Append(' ').Append(counts.FormalAttributes).Append(' ')
                 .Append(counts.Crosses).Append(' ').Append(counts.CrosslessObjects).Append(' ').Append(counts.EmptyAttributes).Append('\n');
         }
+    }
+
+    /// <summary>Renders a host-only result, which carries no list: <c>Completed</c>, or <c>HostFailure</c> with its kind and message.</summary>
+    public static void Render<T>(StringBuilder text, string call, Result<T, HostError> outcome)
+    {
+        text.Append(call).Append(": ");
+        if (outcome.IsError)
+        {
+            text.Append("HostFailure ").Append(outcome.Error.Kind).Append(' ').Append(outcome.Error.Message);
+        }
+        else
+        {
+            text.Append("Completed");
+        }
+
+        text.Append('\n');
     }
 
     /// <summary>Renders a publication attempt record: every fact but the committed objects' identities, which are fresh objects per run.</summary>
@@ -180,6 +204,14 @@ internal static class ProgressObservation
     /// <summary>One diagnostic, every field that a host renders.</summary>
     public static string Describe(BedrockDiagnostic diagnostic) =>
         $"{diagnostic.Severity} {diagnostic.Code} {diagnostic.Message} @ {diagnostic.Location}";
+
+    private static void AppendDiagnostics(StringBuilder text, IReadOnlyList<BedrockDiagnostic> diagnostics)
+    {
+        foreach (var diagnostic in diagnostics)
+        {
+            text.Append("  ").Append(Describe(diagnostic)).Append('\n');
+        }
+    }
 
     private static Result Finish(
         StringBuilder text, ProgressRecorder? recorder, OperationProgress? progress, ScriptedInput input, PreparedFileRun? run)

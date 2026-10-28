@@ -16,8 +16,7 @@ public sealed class SpecRelocationTests
         var host = new OrchestrationHost(File.OpenRead);
         var destination = temp.Resolve("copy.toml");
 
-        var decision = Assert.IsType<OperationCompleted<VerifiedRelocation>>(
-            SpecRelocation.Relocate("base.toml", destination, immediateBase, host)).Value;
+        var decision = OutcomeAssert.Completed(SpecRelocation.Relocate("base.toml", destination, immediateBase, host));
 
         Assert.Equal("base.toml", decision.Reference);
         Assert.Equal("base.toml", decision.Authored);
@@ -25,8 +24,7 @@ public sealed class SpecRelocationTests
         Assert.Same(immediateBase, decision.ImmediateBase);
 
         var rechecked = SpecRelocation.Recheck(decision, host);
-        Assert.Same(decision, Assert.IsType<OperationCompleted<RelocationDecision>>(rechecked).Value);
-        Assert.Empty(rechecked.Diagnostics);
+        Assert.Same(decision, OutcomeAssert.Completed(rechecked));
     }
 
     [Fact]
@@ -38,11 +36,10 @@ public sealed class SpecRelocationTests
 
         var outcome = SpecRelocation.Relocate("base.toml", destination, immediateBase, new OrchestrationHost(File.OpenRead));
 
-        var decision = Assert.IsType<OperationCompleted<VerifiedRelocation>>(outcome).Value;
+        var decision = OutcomeAssert.Completed(outcome);
         Assert.Equal("../base.toml", decision.Reference);
         Assert.Equal("base.toml", decision.Authored);
         Assert.Same(immediateBase, decision.ImmediateBase);
-        Assert.Empty(outcome.Diagnostics);
     }
 
     [Fact]
@@ -53,8 +50,7 @@ public sealed class SpecRelocationTests
         var immediateBase = Base(temp);
         var host = new OrchestrationHost(File.OpenRead);
         var destination = temp.Resolve("nested/copy.toml");
-        var decision = Assert.IsType<OperationCompleted<VerifiedRelocation>>(
-            SpecRelocation.Relocate("base.toml", destination, immediateBase, host)).Value;
+        var decision = OutcomeAssert.Completed(SpecRelocation.Relocate("base.toml", destination, immediateBase, host));
 
         // The loaded base is moved aside, not deleted. While it exists, no other file can have its
         // identity, so the replacement is a distinguishable object. A deleted file's identifier can
@@ -68,7 +64,7 @@ public sealed class SpecRelocationTests
         Assert.Equal(immediateBase.Identity, identities.KeyFor(aside));
         Assert.NotEqual(immediateBase.Identity, identities.KeyFor(immediateBase.FullPath));
 
-        var error = Assert.IsType<OperationHostFailure<RelocationDecision>>(SpecRelocation.Recheck(decision, host)).Error;
+        var error = OutcomeAssert.HostFailed(SpecRelocation.Recheck(decision, host));
         Assert.Equal(HostErrorKind.RelocationUnverified, error.Kind);
         Assert.Equal(ExtendsRelocation.UnverifiedMessage(destination, "base.toml"), error.Message);
         Assert.Equal(destination, error.Subject);
@@ -92,8 +88,8 @@ public sealed class SpecRelocationTests
         var refused = SpecRelocation.Relocate("base.toml", destination, immediateBase, fallbackOnly);
         var verified = SpecRelocation.Relocate("base.toml", destination, immediateBase, new OrchestrationHost(File.OpenRead));
 
-        Assert.Equal(HostErrorKind.RelocationUnverified, Assert.IsType<OperationHostFailure<VerifiedRelocation>>(refused).Error.Kind);
-        Assert.IsType<OperationCompleted<VerifiedRelocation>>(verified);
+        Assert.Equal(HostErrorKind.RelocationUnverified, OutcomeAssert.HostFailed(refused).Kind);
+        OutcomeAssert.Completed(verified);
     }
 
     // A base loaded with this platform's OS identity.

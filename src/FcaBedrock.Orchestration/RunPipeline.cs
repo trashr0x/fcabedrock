@@ -65,7 +65,7 @@ internal static class RunPipeline
     /// <paramref name="progress"/>, the schema read and the calibration passes report to it, each
     /// under a call scope, and the run carries it into its later passes (D-141).
     /// </summary>
-    public static async Task<OperationOutcome<PreparedFileRun>> PrepareAsync(
+    public static async Task<Result<Diagnosed<PreparedFileRun>, HostFailure>> PrepareAsync(
         FileRunRequest request, OrchestrationHost host, OperationProgress? progress, CancellationToken cancellation)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -90,7 +90,7 @@ internal static class RunPipeline
         }
         catch (ArgumentException)
         {
-            return new OperationHostFailure<PreparedFileRun>(
+            return MixedOutcome<PreparedFileRun>.HostFailed(
                 new HostError(HostErrorKind.TemporaryDirectoryInvalid, TempDirectoryMessage), diagnostics);
         }
 
@@ -105,7 +105,7 @@ internal static class RunPipeline
         }
         catch (Exception exception) when (IsSpecReadFailure(exception))
         {
-            return new OperationHostFailure<PreparedFileRun>(
+            return MixedOutcome<PreparedFileRun>.HostFailed(
                 new HostError(
                     HostErrorKind.SpecUnreadable,
                     InputReadExplanation.Message(InputFile.Spec, specPath, exception),
@@ -119,7 +119,7 @@ internal static class RunPipeline
         diagnostics.AddRange(read.Diagnostics);
         if (!read.TryGetValue(out var rootDocument))
         {
-            return new OperationDiagnosticFailure<PreparedFileRun>(diagnostics);
+            return MixedOutcome<PreparedFileRun>.Failed(diagnostics);
         }
 
         cancellation.ThrowIfCancellationRequested();
@@ -132,7 +132,7 @@ internal static class RunPipeline
         {
             // A missing or unreadable base keeps its phase-owned SpecExtendsNotFound; only the
             // ROOT operand is the host's own code-less failure.
-            return new OperationDiagnosticFailure<PreparedFileRun>(diagnostics);
+            return MixedOutcome<PreparedFileRun>.Failed(diagnostics);
         }
 
         cancellation.ThrowIfCancellationRequested();
@@ -144,7 +144,7 @@ internal static class RunPipeline
         if (!settings.TryGetValue(out var readSettings))
         {
             diagnostics.AddRange(settings.Diagnostics);
-            return new OperationDiagnosticFailure<PreparedFileRun>(diagnostics);
+            return MixedOutcome<PreparedFileRun>.Failed(diagnostics);
         }
 
         // Every data pass goes through the tracker, so hashing is inline with the bytes the
@@ -178,7 +178,7 @@ internal static class RunPipeline
         }
         catch (Exception exception) when (IsDataReadFailure(exception))
         {
-            return new OperationHostFailure<PreparedFileRun>(
+            return MixedOutcome<PreparedFileRun>.HostFailed(
                 DataUnreadable(dataPath, DataReadExplanation.Message(dataPath, exception, input.CurrentPassMark)),
                 diagnostics);
         }
@@ -189,7 +189,7 @@ internal static class RunPipeline
         diagnostics.AddRange(resolved.Diagnostics);
         if (!resolved.TryGetValue(out var resolvedDocument))
         {
-            return new OperationDiagnosticFailure<PreparedFileRun>(diagnostics);
+            return MixedOutcome<PreparedFileRun>.Failed(diagnostics);
         }
 
         cancellation.ThrowIfCancellationRequested();
@@ -228,7 +228,7 @@ internal static class RunPipeline
             }
             catch (Exception exception) when (IsDataReadFailure(exception))
             {
-                return new OperationHostFailure<PreparedFileRun>(
+                return MixedOutcome<PreparedFileRun>.HostFailed(
                     DataUnreadable(dataPath, DataReadExplanation.Message(dataPath, exception, input.CurrentPassMark)),
                     diagnostics);
             }
@@ -236,7 +236,7 @@ internal static class RunPipeline
             diagnostics.AddRange(calibrated.Diagnostics);
             if (!calibrated.TryGetValue(out var value))
             {
-                return new OperationDiagnosticFailure<PreparedFileRun>(diagnostics);
+                return MixedOutcome<PreparedFileRun>.Failed(diagnostics);
             }
 
             calibratedSpec = value;
@@ -257,14 +257,14 @@ internal static class RunPipeline
         diagnostics.AddRange(planned.Diagnostics);
         if (!planned.TryGetValue(out var plan))
         {
-            return new OperationDiagnosticFailure<PreparedFileRun>(diagnostics);
+            return MixedOutcome<PreparedFileRun>.Failed(diagnostics);
         }
 
         var fingerprints = SpecFingerprints.ComputeNative(resolvedDocument, plan);
 
         if (input.HasMismatch)
         {
-            return new OperationHostFailure<PreparedFileRun>(DataChanged(dataPath), diagnostics);
+            return MixedOutcome<PreparedFileRun>.HostFailed(DataChanged(dataPath), diagnostics);
         }
 
         // The emit binder captures the bound source and the runtime options, never a token: each
@@ -290,7 +290,7 @@ internal static class RunPipeline
             specPath,
             dataPath);
 
-        return new OperationCompleted<PreparedFileRun>(prepared, diagnostics);
+        return MixedOutcome<PreparedFileRun>.Completed(prepared, diagnostics);
     }
 
     /// <summary>

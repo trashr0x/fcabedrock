@@ -36,23 +36,21 @@ internal static class CalibrateCommand
         var cancellation = environment.Signals.Token;
 
         var outcome = await RunRendering.PrepareAsync(invocation, environment).ConfigureAwait(false);
-        if (outcome is not OperationCompleted<PreparedFileRun> prepared)
+        if (outcome.IsError || outcome.Value.Value is not { } run)
         {
             return RunRendering.Fail(environment, outcome, cancellation);
         }
 
-        var run = prepared.Value;
-
         // The preparation's own list, unchanged: the freeze verifies the stored fingerprints itself,
         // and keeps the stale warnings out of its multiset baseline.
-        var frozen = SpecFreezing.Freeze(run, prepared.Diagnostics);
-        if (frozen is not OperationCompleted<SpecDocument> stored)
+        var frozen = SpecFreezing.Freeze(run, outcome.Value.Diagnostics);
+        if (frozen.Value is not { } stored)
         {
             return RunRendering.Fail(environment, frozen, cancellation);
         }
 
         return await SingleFileOutput.DeliverAsync(
-                environment, invocation, stored.Value, stored.Diagnostics,
+                environment, invocation, stored, frozen.Diagnostics,
                 chain: run.SpecChain, committedReport: null, cancellation)
             .ConfigureAwait(false);
     }

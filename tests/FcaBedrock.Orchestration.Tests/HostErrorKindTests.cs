@@ -93,7 +93,7 @@ public sealed class HostErrorKindTests
         using var run = await PublicationRun.CreateAsync(family);
         PublicationRun.Occupy(run.Target);
 
-        Assert.IsType<OperationCompleted<Published>>(await run.PublishAsync(run.Preflight(replace: true)));
+        OutcomeAssert.Committed(await run.PublishAsync(run.Preflight(replace: true)));
 
         Assert.NotEqual(PublicationRun.Old, File.ReadAllText(run.Target));
         Assert.Empty(run.Residue());
@@ -125,7 +125,7 @@ public sealed class HostErrorKindTests
             run.Host,
             run.Signals.Token);
 
-        var error = Assert.IsType<OperationHostFailure<PreflightedSpecFile>>(outcome).Error;
+        var error = OutcomeAssert.HostFailed(outcome);
         Assert.Equal(HostErrorKind.InputCollision, error.Kind);
         Assert.Equal(run.DataPath, error.Subject);
         Assert.Equal(run.DataPath, error.Counterpart);
@@ -157,12 +157,12 @@ public sealed class HostErrorKindTests
         run.Files.FailMoveTo = Path.GetFileName(run.Target);
         run.Files.FailWith = static () => new UnauthorizedAccessException("injected refusal");
 
-        var failed = Assert.IsType<OperationHostFailure<Published>>(await run.PublishAsync(run.Preflight()));
+        var failed = OutcomeAssert.PublishHostFailed(await run.PublishAsync(run.Preflight()));
 
-        Assert.Equal(HostErrorKind.CommitFailed, failed.Error.Kind);
-        Assert.Equal(PublicationCause.AccessDenied, failed.Error.Cause);
-        Assert.Equal(run.Target, failed.Error.Subject);
-        Assert.Equal(PublicationMessages.CommitFailed(run.Target, PublicationCause.AccessDenied), failed.Error.Message);
+        Assert.Equal(HostErrorKind.CommitFailed, failed.Kind);
+        Assert.Equal(PublicationCause.AccessDenied, failed.Cause);
+        Assert.Equal(run.Target, failed.Subject);
+        Assert.Equal(PublicationMessages.CommitFailed(run.Target, PublicationCause.AccessDenied), failed.Message);
         Assert.False(File.Exists(run.Target));
     }
 
@@ -233,7 +233,7 @@ public sealed class HostErrorKindTests
 
         var outcome = await RunPreparation.PrepareAsync(request, host, CancellationToken.None);
 
-        var error = Assert.IsType<OperationHostFailure<PreparedFileRun>>(outcome).Error;
+        var error = OutcomeAssert.HostFailed(outcome).Error;
         var (kind, subject) = failure switch
         {
             "temporary directory" => (HostErrorKind.TemporaryDirectoryInvalid, (string?)null),
@@ -285,11 +285,10 @@ public sealed class HostErrorKindTests
 
         var outcome = SpecRelocation.Relocate("base.toml", destination, immediateBase, host);
 
-        var error = Assert.IsType<OperationHostFailure<VerifiedRelocation>>(outcome).Error;
+        var error = OutcomeAssert.HostFailed(outcome);
         Assert.Equal(refusal == "other root" ? HostErrorKind.RelocationOtherRoot : HostErrorKind.RelocationUnverified, error.Kind);
         Assert.Equal(destination, error.Subject);
         Assert.Equal("base.toml", error.Counterpart);
-        Assert.Empty(outcome.Diagnostics);
     }
 
     [Fact]

@@ -28,7 +28,8 @@ under the test stated above.
 
 Internal cross-references use number + short title (e.g. `EP-3 ("Do not invent
 callers…")`). Principles are never renumbered; a new principle takes the next
-free number, whatever its section.
+free number, whatever its section. A principle never cites a decision; a decision
+cites the principle it applies or amends.
 
 ---
 
@@ -80,8 +81,10 @@ might need it."
 
 For cross-package APIs, planner contracts, diagnostics, writers, sources, and
 spec-facing types, define the public shape first: types, signatures, the
-result/diagnostic model, ordering guarantees, streaming behavior, and
-determinism expectations. Implementation can move freely behind that surface;
+expected-failure transport of each public operation, with the states it produces
+and its classification owner under EP-14 ("Errors are values at package
+boundaries…"), ordering guarantees, streaming behavior, and determinism
+expectations. Implementation can move freely behind that surface;
 the surface itself should not churn casually. This explicitly does **not** apply
 to `internal`/`private` types within a package; internal refactoring stays
 cheap.
@@ -224,23 +227,47 @@ network. If you reach for `System.IO` in Core, the design is wrong.
 
 ### EP-14: Errors are values at package boundaries; exceptions are for the unexpected
 
-The project default for expected failures is result/diagnostic values, not
-exceptions. Across package seams and for anything a caller can sensibly handle,
-return `Result<T, BedrockDiagnostic>` or `Diagnosed<T>`. Exceptions are reserved
-for programmer errors, impossible states, corrupt invariants, and genuinely
-unexpected failures. Internal helpers may throw for violated preconditions or
-impossible states; public package APIs map expected failures to diagnostics.
-Aggregating operations such as validate and plan collect all diagnostics, not
-just the first.
+At a public operation boundary, the default transport for an expected failure is
+a result value: `Result<T, TError>` or `Diagnosed<T>`, composed when the
+operation can fail in more than one way. A pipeline condition is a
+`BedrockDiagnostic` with a registry code (spec §16.4). A host failure in
+`FcaBedrock.Orchestration` is its code-less `HostError`, and each coordinator
+operation's contract states its composition, completion rule and run ledger.
+Streaming conversion (`Emitter`, `EmitReplay`) and the `.cxt` writer's advisory
+overload report pipeline conditions through the caller-supplied diagnostic
+collector their signatures take, alongside the emitted objects or the written
+bytes; the complete collected ledger is authoritative at the completion point
+each contract names, which for the `.cxt` two-pass is the replay session's
+disposal (spec §16.2). A domain classification or an absence protocol
+(`BinResult`, `ISpecTextSource.Load`) is a payload, not another operation-result
+carrier, and no further operation-result mechanism is introduced without the
+design EP-4 ("Public surfaces are designed before implementation") requires and
+the record EP-5 ("One project-standard way per concern") requires.
 
-The distinction:
+Three expected-failure transports cross a public boundary as exceptions by
+design, each with one owner that fixes its scope and its classification: the
+source seam's documented read-failure families, carried unchanged through
+calibration, emission, replay and the writers to the operation that classifies
+them (spec §5.1.1); the Export writers' caller-owned output streams, classified
+by the publication that owns the stream; and the two eager methods of
+`SpecTextDecoding`, classified by the operation that owns the operand. Returning
+a value does not by itself end such a transport, and performing I/O does not by
+itself earn one. Cancellation propagates as the `OperationCanceledException` of
+the token the operation observes and is never a result or a diagnostic. Every
+other exception that crosses a public operation boundary is for programmer
+errors, impossible states, corrupt invariants and genuinely unexpected failures;
+internal helpers may throw for violated preconditions, and a public API throws
+for a call-contract violation. An owner-defined internal halt protocol records
+its coded diagnostic and is caught before the public boundary
+(`GroupingStorageException`, `CalibrationPopulationOverflowException`); it adds
+no exported exception transport. Aggregating operations such as validate and
+plan collect all diagnostics, not just the first, in production order.
 
-- bad spec field / invalid domain value / validation failure / handleable
-  infrastructure failure: result/diagnostic.
-- programmer error / impossible invariant / corrupt internal state: exception
-  or assertion.
-
-*Check when:* designing any public method that can fail.
+*Check when:* designing any public method that can fail, and reviewing a plan
+under EP-4 ("Public surfaces are designed before implementation"): its failure
+table names each public operation's transport (a value carrier or a documented
+diagnostic collector), the states it can produce and the owner of every
+exception it lets through.
 
 ### EP-15: Exporters are dumb; semantics happen before export
 

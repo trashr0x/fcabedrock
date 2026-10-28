@@ -22,7 +22,7 @@ FcaBedrock.Orchestration.CleanupStep: enum : System.Int32
 FcaBedrock.Orchestration.ContextStatistics..ctor(FcaBedrock.Orchestration.ContextStatistics original) private
 FcaBedrock.Orchestration.ContextStatistics..ctor(System.Int64 objects, System.Int64 formalAttributes, System.Int64 crosses, System.Int64 crosslessObjects, System.Int64 emptyAttributes) internal
 FcaBedrock.Orchestration.ContextStatistics.<Clone>$(): FcaBedrock.Orchestration.ContextStatistics public
-FcaBedrock.Orchestration.ContextStatistics.CountAsync(FcaBedrock.Orchestration.PreparedRun run, System.Collections.Generic.IReadOnlyList<FcaBedrock.Diagnostics.BedrockDiagnostic> diagnostics, System.Threading.CancellationToken cancellation): System.Threading.Tasks.Task<FcaBedrock.Orchestration.OperationOutcome<FcaBedrock.Orchestration.ContextStatistics>> public static
+FcaBedrock.Orchestration.ContextStatistics.CountAsync(FcaBedrock.Orchestration.PreparedRun run, System.Collections.Generic.IReadOnlyList<FcaBedrock.Diagnostics.BedrockDiagnostic> diagnostics, System.Threading.CancellationToken cancellation): System.Threading.Tasks.Task<FcaBedrock.Diagnostics.Result<FcaBedrock.Diagnostics.Diagnosed<FcaBedrock.Orchestration.ContextStatistics>, FcaBedrock.Orchestration.HostFailure>> public static
 FcaBedrock.Orchestration.ContextStatistics.Crosses: System.Int64 { public get; }
 FcaBedrock.Orchestration.ContextStatistics.CrosslessObjects: System.Int64 { public get; }
 FcaBedrock.Orchestration.ContextStatistics.EmptyAttributes: System.Int64 { public get; }
@@ -50,9 +50,9 @@ FcaBedrock.Orchestration.ConvertOutput.WritesManifest: System.Boolean { public g
 FcaBedrock.Orchestration.ConvertOutput.op_Equality(FcaBedrock.Orchestration.ConvertOutput? left, FcaBedrock.Orchestration.ConvertOutput? right): System.Boolean public static
 FcaBedrock.Orchestration.ConvertOutput.op_Inequality(FcaBedrock.Orchestration.ConvertOutput? left, FcaBedrock.Orchestration.ConvertOutput? right): System.Boolean public static
 FcaBedrock.Orchestration.ConvertOutput: sealed class implements System.IEquatable<FcaBedrock.Orchestration.ConvertOutput>
-FcaBedrock.Orchestration.ConvertPublication.PlanConversion(FcaBedrock.Orchestration.PreparedFileRun run, System.Boolean v2Compatible, System.Collections.Generic.IReadOnlyList<FcaBedrock.Diagnostics.BedrockDiagnostic> diagnostics): FcaBedrock.Orchestration.OperationOutcome<FcaBedrock.Orchestration.EffectiveConversion> public static
-FcaBedrock.Orchestration.ConvertPublication.Preflight(FcaBedrock.Orchestration.ConvertOutput output, FcaBedrock.Orchestration.PreparedFileRun run, FcaBedrock.Orchestration.OrchestrationHost host, System.Threading.CancellationToken cancellation): FcaBedrock.Orchestration.OperationOutcome<FcaBedrock.Orchestration.PreflightedConvertOutput> public static
-FcaBedrock.Orchestration.ConvertPublication.PublishAsync(FcaBedrock.Orchestration.EffectiveConversion conversion, FcaBedrock.Orchestration.PreflightedConvertOutput handle, FcaBedrock.Orchestration.ManifestHostFacts manifest, System.Collections.Generic.IReadOnlyList<FcaBedrock.Diagnostics.BedrockDiagnostic> diagnostics, System.Threading.CancellationToken cancellation): System.Threading.Tasks.Task<FcaBedrock.Orchestration.OperationOutcome<FcaBedrock.Orchestration.Published>> public static
+FcaBedrock.Orchestration.ConvertPublication.PlanConversion(FcaBedrock.Orchestration.PreparedFileRun run, System.Boolean v2Compatible, System.Collections.Generic.IReadOnlyList<FcaBedrock.Diagnostics.BedrockDiagnostic> diagnostics): FcaBedrock.Diagnostics.Diagnosed<FcaBedrock.Orchestration.EffectiveConversion> public static
+FcaBedrock.Orchestration.ConvertPublication.Preflight(FcaBedrock.Orchestration.ConvertOutput output, FcaBedrock.Orchestration.PreparedFileRun run, FcaBedrock.Orchestration.OrchestrationHost host, System.Threading.CancellationToken cancellation): FcaBedrock.Diagnostics.Result<FcaBedrock.Orchestration.PreflightedConvertOutput, FcaBedrock.Orchestration.HostError> public static
+FcaBedrock.Orchestration.ConvertPublication.PublishAsync(FcaBedrock.Orchestration.EffectiveConversion conversion, FcaBedrock.Orchestration.PreflightedConvertOutput handle, FcaBedrock.Orchestration.ManifestHostFacts manifest, System.Collections.Generic.IReadOnlyList<FcaBedrock.Diagnostics.BedrockDiagnostic> diagnostics, System.Threading.CancellationToken cancellation): System.Threading.Tasks.Task<FcaBedrock.Diagnostics.Result<FcaBedrock.Diagnostics.Diagnosed<FcaBedrock.Orchestration.Published>, FcaBedrock.Orchestration.HostFailure>> public static
 FcaBedrock.Orchestration.ConvertPublication: static class
 FcaBedrock.Orchestration.EffectiveConversion..ctor(FcaBedrock.Orchestration.PreparedFileRun run, FcaBedrock.Core.Planning.ConversionPlan plan, FcaBedrock.Orchestration.OutputSettings settings) internal
 FcaBedrock.Orchestration.EffectiveConversion.Run: FcaBedrock.Orchestration.PreparedFileRun { public get; }
@@ -141,6 +141,18 @@ FcaBedrock.Orchestration.HostErrorKind.TargetReadOnly = 10
 FcaBedrock.Orchestration.HostErrorKind.TemporaryDirectoryInvalid = 1
 FcaBedrock.Orchestration.HostErrorKind.UnknownResidue = 14
 FcaBedrock.Orchestration.HostErrorKind: enum : System.Int32
+FcaBedrock.Orchestration.HostFailure..ctor(FcaBedrock.Orchestration.HostError error, System.Collections.Generic.IReadOnlyList<FcaBedrock.Diagnostics.BedrockDiagnostic> diagnostics) internal
+FcaBedrock.Orchestration.HostFailure..ctor(FcaBedrock.Orchestration.HostFailure original) private
+FcaBedrock.Orchestration.HostFailure.<Clone>$(): FcaBedrock.Orchestration.HostFailure public
+FcaBedrock.Orchestration.HostFailure.Diagnostics: System.Collections.Generic.IReadOnlyList<FcaBedrock.Diagnostics.BedrockDiagnostic> { public get; }
+FcaBedrock.Orchestration.HostFailure.Equals(FcaBedrock.Orchestration.HostFailure? other): System.Boolean public
+FcaBedrock.Orchestration.HostFailure.Equals(System.Object? obj): System.Boolean public override
+FcaBedrock.Orchestration.HostFailure.Error: FcaBedrock.Orchestration.HostError { public get; }
+FcaBedrock.Orchestration.HostFailure.GetHashCode(): System.Int32 public override
+FcaBedrock.Orchestration.HostFailure.ToString(): System.String public override
+FcaBedrock.Orchestration.HostFailure.op_Equality(FcaBedrock.Orchestration.HostFailure? left, FcaBedrock.Orchestration.HostFailure? right): System.Boolean public static
+FcaBedrock.Orchestration.HostFailure.op_Inequality(FcaBedrock.Orchestration.HostFailure? left, FcaBedrock.Orchestration.HostFailure? right): System.Boolean public static
+FcaBedrock.Orchestration.HostFailure: sealed class implements System.IEquatable<FcaBedrock.Orchestration.HostFailure>
 FcaBedrock.Orchestration.InputFile.Bed = 1
 FcaBedrock.Orchestration.InputFile.Data = 2
 FcaBedrock.Orchestration.InputFile.Spec = 0
@@ -160,17 +172,6 @@ FcaBedrock.Orchestration.ManifestHostFacts.UtcNow: System.Func<System.DateTimeOf
 FcaBedrock.Orchestration.ManifestHostFacts.op_Equality(FcaBedrock.Orchestration.ManifestHostFacts? left, FcaBedrock.Orchestration.ManifestHostFacts? right): System.Boolean public static
 FcaBedrock.Orchestration.ManifestHostFacts.op_Inequality(FcaBedrock.Orchestration.ManifestHostFacts? left, FcaBedrock.Orchestration.ManifestHostFacts? right): System.Boolean public static
 FcaBedrock.Orchestration.ManifestHostFacts: sealed class implements System.IEquatable<FcaBedrock.Orchestration.ManifestHostFacts>
-FcaBedrock.Orchestration.OperationCompleted<T>..ctor(T value, System.Collections.Generic.IReadOnlyList<FcaBedrock.Diagnostics.BedrockDiagnostic> diagnostics) internal
-FcaBedrock.Orchestration.OperationCompleted<T>.Value: T { public get; }
-FcaBedrock.Orchestration.OperationCompleted<T>: sealed class : FcaBedrock.Orchestration.OperationOutcome<T>
-FcaBedrock.Orchestration.OperationDiagnosticFailure<T>..ctor(System.Collections.Generic.IReadOnlyList<FcaBedrock.Diagnostics.BedrockDiagnostic> diagnostics) internal
-FcaBedrock.Orchestration.OperationDiagnosticFailure<T>: sealed class : FcaBedrock.Orchestration.OperationOutcome<T>
-FcaBedrock.Orchestration.OperationHostFailure<T>..ctor(FcaBedrock.Orchestration.HostError error, System.Collections.Generic.IReadOnlyList<FcaBedrock.Diagnostics.BedrockDiagnostic> diagnostics) internal
-FcaBedrock.Orchestration.OperationHostFailure<T>.Error: FcaBedrock.Orchestration.HostError { public get; }
-FcaBedrock.Orchestration.OperationHostFailure<T>: sealed class : FcaBedrock.Orchestration.OperationOutcome<T>
-FcaBedrock.Orchestration.OperationOutcome<T>..ctor(System.Collections.Generic.IReadOnlyList<FcaBedrock.Diagnostics.BedrockDiagnostic> diagnostics) private protected
-FcaBedrock.Orchestration.OperationOutcome<T>.Diagnostics: System.Collections.Generic.IReadOnlyList<FcaBedrock.Diagnostics.BedrockDiagnostic> { public get; }
-FcaBedrock.Orchestration.OperationOutcome<T>: abstract class
 FcaBedrock.Orchestration.OperationProgress..ctor() public
 FcaBedrock.Orchestration.OperationProgress.Complete(): System.Void public
 FcaBedrock.Orchestration.OperationProgress.Current: FcaBedrock.Orchestration.ProgressSnapshot { public get; }
@@ -298,8 +299,8 @@ FcaBedrock.Orchestration.RollbackOutcome.Interrupted = 3
 FcaBedrock.Orchestration.RollbackOutcome.NotOwed = 1
 FcaBedrock.Orchestration.RollbackOutcome.NotStarted = 2
 FcaBedrock.Orchestration.RollbackOutcome: enum : System.Int32
-FcaBedrock.Orchestration.RunPreparation.PrepareAsync(FcaBedrock.Orchestration.FileRunRequest request, FcaBedrock.Orchestration.OrchestrationHost host, FcaBedrock.Orchestration.OperationProgress? progress, System.Threading.CancellationToken cancellation): System.Threading.Tasks.Task<FcaBedrock.Orchestration.OperationOutcome<FcaBedrock.Orchestration.PreparedFileRun>> public static
-FcaBedrock.Orchestration.RunPreparation.PrepareAsync(FcaBedrock.Orchestration.FileRunRequest request, FcaBedrock.Orchestration.OrchestrationHost host, System.Threading.CancellationToken cancellation): System.Threading.Tasks.Task<FcaBedrock.Orchestration.OperationOutcome<FcaBedrock.Orchestration.PreparedFileRun>> public static
+FcaBedrock.Orchestration.RunPreparation.PrepareAsync(FcaBedrock.Orchestration.FileRunRequest request, FcaBedrock.Orchestration.OrchestrationHost host, FcaBedrock.Orchestration.OperationProgress? progress, System.Threading.CancellationToken cancellation): System.Threading.Tasks.Task<FcaBedrock.Diagnostics.Result<FcaBedrock.Diagnostics.Diagnosed<FcaBedrock.Orchestration.PreparedFileRun>, FcaBedrock.Orchestration.HostFailure>> public static
+FcaBedrock.Orchestration.RunPreparation.PrepareAsync(FcaBedrock.Orchestration.FileRunRequest request, FcaBedrock.Orchestration.OrchestrationHost host, System.Threading.CancellationToken cancellation): System.Threading.Tasks.Task<FcaBedrock.Diagnostics.Result<FcaBedrock.Diagnostics.Diagnosed<FcaBedrock.Orchestration.PreparedFileRun>, FcaBedrock.Orchestration.HostFailure>> public static
 FcaBedrock.Orchestration.RunPreparation: static class
 FcaBedrock.Orchestration.SpecChainFile..ctor(FcaBedrock.Orchestration.SpecChainFile original) private
 FcaBedrock.Orchestration.SpecChainFile..ctor(System.String fullPath, System.String spelling, System.String hash, FcaBedrock.Orchestration.FileIdentityKey identity) internal
@@ -329,19 +330,19 @@ FcaBedrock.Orchestration.SpecDelivery.ToString(): System.String public override
 FcaBedrock.Orchestration.SpecDelivery.op_Equality(FcaBedrock.Orchestration.SpecDelivery? left, FcaBedrock.Orchestration.SpecDelivery? right): System.Boolean public static
 FcaBedrock.Orchestration.SpecDelivery.op_Inequality(FcaBedrock.Orchestration.SpecDelivery? left, FcaBedrock.Orchestration.SpecDelivery? right): System.Boolean public static
 FcaBedrock.Orchestration.SpecDelivery: sealed class implements System.IEquatable<FcaBedrock.Orchestration.SpecDelivery>
-FcaBedrock.Orchestration.SpecFreezing.Freeze(FcaBedrock.Orchestration.PreparedRun run, System.Collections.Generic.IReadOnlyList<FcaBedrock.Diagnostics.BedrockDiagnostic> preparationDiagnostics): FcaBedrock.Orchestration.OperationOutcome<FcaBedrock.Spec.Toml.SpecDocument> public static
+FcaBedrock.Orchestration.SpecFreezing.Freeze(FcaBedrock.Orchestration.PreparedRun run, System.Collections.Generic.IReadOnlyList<FcaBedrock.Diagnostics.BedrockDiagnostic> preparationDiagnostics): FcaBedrock.Diagnostics.Diagnosed<FcaBedrock.Spec.Toml.SpecDocument> public static
 FcaBedrock.Orchestration.SpecFreezing: static class
-FcaBedrock.Orchestration.SpecPublication.Preflight(FcaBedrock.Orchestration.SpecDelivery delivery, FcaBedrock.Orchestration.OrchestrationHost host, FcaBedrock.Orchestration.OperationProgress? progress, System.Threading.CancellationToken cancellation): FcaBedrock.Orchestration.OperationOutcome<FcaBedrock.Orchestration.PreflightedSpecFile> public static
-FcaBedrock.Orchestration.SpecPublication.Preflight(FcaBedrock.Orchestration.SpecDelivery delivery, FcaBedrock.Orchestration.OrchestrationHost host, System.Threading.CancellationToken cancellation): FcaBedrock.Orchestration.OperationOutcome<FcaBedrock.Orchestration.PreflightedSpecFile> public static
-FcaBedrock.Orchestration.SpecPublication.PublishAsync(FcaBedrock.Spec.Toml.SpecDocument document, FcaBedrock.Orchestration.PreflightedSpecFile handle, System.Threading.CancellationToken cancellation): System.Threading.Tasks.Task<FcaBedrock.Orchestration.OperationOutcome<FcaBedrock.Orchestration.Published>> public static
+FcaBedrock.Orchestration.SpecPublication.Preflight(FcaBedrock.Orchestration.SpecDelivery delivery, FcaBedrock.Orchestration.OrchestrationHost host, FcaBedrock.Orchestration.OperationProgress? progress, System.Threading.CancellationToken cancellation): FcaBedrock.Diagnostics.Result<FcaBedrock.Orchestration.PreflightedSpecFile, FcaBedrock.Orchestration.HostError> public static
+FcaBedrock.Orchestration.SpecPublication.Preflight(FcaBedrock.Orchestration.SpecDelivery delivery, FcaBedrock.Orchestration.OrchestrationHost host, System.Threading.CancellationToken cancellation): FcaBedrock.Diagnostics.Result<FcaBedrock.Orchestration.PreflightedSpecFile, FcaBedrock.Orchestration.HostError> public static
+FcaBedrock.Orchestration.SpecPublication.PublishAsync(FcaBedrock.Spec.Toml.SpecDocument document, FcaBedrock.Orchestration.PreflightedSpecFile handle, System.Threading.CancellationToken cancellation): System.Threading.Tasks.Task<FcaBedrock.Diagnostics.Result<FcaBedrock.Orchestration.Published, FcaBedrock.Orchestration.HostError>> public static
 FcaBedrock.Orchestration.SpecPublication: static class
-FcaBedrock.Orchestration.SpecRelocation.Recheck(FcaBedrock.Orchestration.RelocationDecision decision, FcaBedrock.Orchestration.OrchestrationHost host): FcaBedrock.Orchestration.OperationOutcome<FcaBedrock.Orchestration.RelocationDecision> public static
-FcaBedrock.Orchestration.SpecRelocation.Relocate(System.String authored, System.String destination, FcaBedrock.Orchestration.SpecChainFile immediateBase, FcaBedrock.Orchestration.OrchestrationHost host): FcaBedrock.Orchestration.OperationOutcome<FcaBedrock.Orchestration.VerifiedRelocation> public static
+FcaBedrock.Orchestration.SpecRelocation.Recheck(FcaBedrock.Orchestration.RelocationDecision decision, FcaBedrock.Orchestration.OrchestrationHost host): FcaBedrock.Diagnostics.Result<FcaBedrock.Orchestration.RelocationDecision, FcaBedrock.Orchestration.HostError> public static
+FcaBedrock.Orchestration.SpecRelocation.Relocate(System.String authored, System.String destination, FcaBedrock.Orchestration.SpecChainFile immediateBase, FcaBedrock.Orchestration.OrchestrationHost host): FcaBedrock.Diagnostics.Result<FcaBedrock.Orchestration.VerifiedRelocation, FcaBedrock.Orchestration.HostError> public static
 FcaBedrock.Orchestration.SpecRelocation: static class
 FcaBedrock.Orchestration.SpecTextDecoding.Decode(System.Byte[] bytes): System.String public static
 FcaBedrock.Orchestration.SpecTextDecoding.ReadAllText(System.Func<System.String, System.IO.Stream> open, System.String path): System.String public static
 FcaBedrock.Orchestration.SpecTextDecoding: static class
-FcaBedrock.Orchestration.SpecValidation.ValidateAsync(System.String specPath, System.String? dataPath, FcaBedrock.Orchestration.OrchestrationHost host, System.Threading.CancellationToken cancellation): System.Threading.Tasks.Task<FcaBedrock.Orchestration.OperationOutcome<FcaBedrock.Orchestration.ValidatedSpec>> public static
+FcaBedrock.Orchestration.SpecValidation.ValidateAsync(System.String specPath, System.String? dataPath, FcaBedrock.Orchestration.OrchestrationHost host, System.Threading.CancellationToken cancellation): System.Threading.Tasks.Task<FcaBedrock.Diagnostics.Result<FcaBedrock.Diagnostics.Diagnosed<FcaBedrock.Orchestration.ValidatedSpec>, FcaBedrock.Orchestration.HostFailure>> public static
 FcaBedrock.Orchestration.SpecValidation: static class
 FcaBedrock.Orchestration.StoredFingerprintState.Absent = 0
 FcaBedrock.Orchestration.StoredFingerprintState.Match = 1

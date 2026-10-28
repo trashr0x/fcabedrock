@@ -34,13 +34,12 @@ internal static class ConvertCommand
         var cancellation = environment.Signals.Token;
 
         var outcome = await RunRendering.PrepareAsync(invocation, environment).ConfigureAwait(false);
-        if (outcome is not OperationCompleted<PreparedFileRun> prepared)
+        if (outcome.IsError || outcome.Value.Value is not { } run)
         {
             return RunRendering.Fail(environment, outcome, cancellation);
         }
 
-        var run = prepared.Value;
-        var diagnostics = new List<BedrockDiagnostic>(prepared.Diagnostics);
+        var diagnostics = new List<BedrockDiagnostic>(outcome.Value.Diagnostics);
 
         // Once, against the ROOT document and the NATIVE fingerprints, never against an
         // effective override value, which is a manifest fact and never a stored one (§14/D-077).
@@ -48,7 +47,7 @@ internal static class ConvertCommand
 
         // A failing --v2-compat plan fails with the native list plus its own diagnostics.
         var planned = ConvertPublication.PlanConversion(run, invocation.Has("--v2-compat"), diagnostics);
-        if (planned is not OperationCompleted<EffectiveConversion> conversion)
+        if (planned.Value is not { } conversion)
         {
             return RunRendering.Fail(environment, planned, cancellation);
         }
@@ -66,14 +65,16 @@ internal static class ConvertCommand
         // The complete preflight (identity collisions, residue, existing targets) finishes before
         // any record, stage, or backup can exist, and DATA's full path is resolved before it.
         var preflight = ConvertPublication.Preflight(output, run, environment.Orchestration, cancellation);
-        if (preflight is not OperationCompleted<PreflightedConvertOutput> { Value: var handle })
+        if (preflight.IsError)
         {
             return RunRendering.HostFailure(
                 environment,
-                conversion.Diagnostics,
-                ((OperationHostFailure<PreflightedConvertOutput>)preflight).Error.Message,
+                planned.Diagnostics,
+                preflight.Error.Message,
                 cancellation);
         }
+
+        var handle = preflight.Value;
 
         // The handle holds live references to every object whose identity authorizes a mutation,
         // so it is disposed on every exit: success, host failure, cancellation and unexpected fault
@@ -84,7 +85,7 @@ internal static class ConvertCommand
         using (handle)
         {
             var published = await ConvertPublication.PublishAsync(
-                    conversion.Value,
+                    conversion,
                     handle,
                     new ManifestHostFacts
                     {
@@ -92,11 +93,11 @@ internal static class ConvertCommand
                         CommandLine = environment.AuditArgv,
                         UtcNow = () => environment.Clock.UtcNow,
                     },
-                    conversion.Diagnostics,
+                    planned.Diagnostics,
                     cancellation)
                 .ConfigureAwait(false);
 
-            if (published is not OperationCompleted<Published> committed)
+            if (published.IsError || published.Value.Value is not { } committed)
             {
                 return RunRendering.Fail(environment, published, cancellation);
             }
@@ -105,8 +106,8 @@ internal static class ConvertCommand
             // check runs here, because a signal arriving after the commit point must not report a
             // published run as cancelled. A private cleanup that did not finish adds one code-less
             // warning after them; the published run stands either way.
-            DiagnosticRenderer.Write(environment.Error, committed.Diagnostics);
-            if (committed.Value.CleanupWarning is { } warning)
+            DiagnosticRenderer.Write(environment.Error, published.Value.Diagnostics);
+            if (committed.CleanupWarning is { } warning)
             {
                 environment.Error.Write(DiagnosticRenderer.RenderHostWarning(warning));
             }

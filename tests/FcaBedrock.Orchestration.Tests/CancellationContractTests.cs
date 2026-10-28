@@ -1,5 +1,6 @@
 using System.Runtime.CompilerServices;
 using FcaBedrock.Core.Planning;
+using FcaBedrock.Diagnostics;
 using FcaBedrock.Orchestration.Publication;
 
 namespace FcaBedrock.Orchestration.Tests;
@@ -60,7 +61,7 @@ public sealed class CancellationContractTests
         using var run = ProgressRun.Create(spec, ProgressSpecs.WideData(40_000), observed);
         var open = pass == "schema" ? 0 : 1;
         PreparedFileRun? prepared = null;
-        Task<OperationOutcome<ContextStatistics>>? counting = null;
+        Task<Result<Diagnosed<ContextStatistics>, HostFailure>>? counting = null;
         if (pass == "statistics")
         {
             (prepared, var diagnostics) = await run.PrepareAsync();
@@ -103,7 +104,7 @@ public sealed class CancellationContractTests
         using var run = ProgressRun.Create(spec, ProgressSpecs.WideData(40_000), observed);
         var own = new OperationCanceledException("the data source stopped.", run.Signals.Token);
         var open = pass == "schema" ? 0 : 1;
-        Task<OperationOutcome<ContextStatistics>>? counting = null;
+        Task<Result<Diagnosed<ContextStatistics>, HostFailure>>? counting = null;
         if (pass == "statistics")
         {
             var (prepared, diagnostics) = await run.PrepareAsync();
@@ -291,7 +292,7 @@ public sealed class CancellationContractTests
         run.Files.MutateBefore = "CreateNew:out.fcabedrock-committed-T";
         run.Files.Mutate = run.Signals.Cancel;
 
-        var completed = Assert.IsType<OperationCompleted<Published>>(await run.PublishAsync(conversion, handle, diagnostics));
+        var completed = OutcomeAssert.Completed(await run.PublishAsync(conversion, handle, diagnostics));
 
         Assert.Equal(1, run.Files.MutationsFired);
         Assert.Equal(PublicationAttemptState.Committed, handle.Attempt.State);
@@ -368,11 +369,11 @@ public sealed class CancellationContractTests
         run.Files.FailDeletePrefix = run.BaseName + ".fcabedrock-committed-";
         var handle = run.Preflight();
 
-        var completed = Assert.IsType<OperationCompleted<Published>>(await run.PublishAsync(handle));
+        var published = OutcomeAssert.Committed(await run.PublishAsync(handle));
 
-        Assert.Equal(CleanupOutcome.Incomplete, completed.Value.Cleanup);
-        var blocker = Assert.IsType<CleanupFact>(completed.Value.CleanupBlocker);
-        Assert.Equal(PublicationMessages.CleanupIncomplete(run.Base, blocker), completed.Value.CleanupWarning);
+        Assert.Equal(CleanupOutcome.Incomplete, published.Cleanup);
+        var blocker = Assert.IsType<CleanupFact>(published.CleanupBlocker);
+        Assert.Equal(PublicationMessages.CleanupIncomplete(run.Base, blocker), published.CleanupWarning);
         AssertCommitted(handle, CleanupOutcome.Incomplete);
         if (recorder is not null)
         {
@@ -394,9 +395,9 @@ public sealed class CancellationContractTests
         run.Files.FailCreateNewPrefix = run.BaseName + ".fcabedrock-committed-";
         var handle = run.Preflight();
 
-        var completed = Assert.IsType<OperationCompleted<Published>>(await run.PublishAsync(handle));
+        var published = OutcomeAssert.Committed(await run.PublishAsync(handle));
 
-        Assert.Equal(CleanupOutcome.Completed, completed.Value.Cleanup);
+        Assert.Equal(CleanupOutcome.Completed, published.Cleanup);
         AssertCommitted(handle, CleanupOutcome.Completed);
         Assert.Empty(run.Residue());
         if (recorder is not null)
@@ -448,9 +449,9 @@ public sealed class CancellationContractTests
         run.Files.FailStreamWritePrefix = Path.GetFileName(run.Target) + ".fcabedrock-stage-";
         var handle = run.Preflight();
 
-        var failed = Assert.IsType<OperationHostFailure<Published>>(await run.PublishAsync(handle));
+        var failed = OutcomeAssert.PublishHostFailed(await run.PublishAsync(handle));
 
-        Assert.Equal(HostErrorKind.StageFailed, failed.Error.Kind);
+        Assert.Equal(HostErrorKind.StageFailed, failed.Kind);
         Assert.Equal(PublicationAttemptState.BegunNotCommitted, handle.Attempt.State);
         Assert.Equal(RollbackOutcome.Completed, handle.Attempt.Rollback);
         Assert.Empty(run.Residue());
@@ -698,12 +699,12 @@ public sealed class CancellationContractTests
     private static async Task PublishEarlierAsync(ProgressRun run)
     {
         var host = new OrchestrationHost(File.OpenRead) { PublicationFiles = new RecordingPublicationFileSystem() };
-        var prepared = Assert.IsType<OperationCompleted<PreparedFileRun>>(await RunPreparation.PrepareAsync(
+        var prepared = OutcomeAssert.Completed(await RunPreparation.PrepareAsync(
             new FileRunRequest { SpecPath = run.SpecPath, DataPath = run.DataPath }, host, CancellationToken.None));
         var conversion = ProgressRun.Plan(prepared.Value, prepared.Diagnostics);
-        using var handle = Assert.IsType<OperationCompleted<PreflightedConvertOutput>>(
-            ConvertPublication.Preflight(run.Output(dat: false), prepared.Value, host, CancellationToken.None)).Value;
-        Assert.IsType<OperationCompleted<Published>>(await ConvertPublication.PublishAsync(
+        using var handle = OutcomeAssert.Completed(
+            ConvertPublication.Preflight(run.Output(dat: false), prepared.Value, host, CancellationToken.None));
+        OutcomeAssert.Completed(await ConvertPublication.PublishAsync(
             conversion, handle, run.Facts, prepared.Diagnostics, CancellationToken.None));
     }
 

@@ -150,11 +150,12 @@ internal static class SingleFileOutput
             // mutation boundary inside it.
             cancellation);
 
-        if (preflight is not OperationCompleted<PreflightedSpecFile> { Value: var handle })
+        if (preflight.IsError)
         {
-            return RunRendering.HostFailure(
-                environment, diagnostics, ((OperationHostFailure<PreflightedSpecFile>)preflight).Error.Message, cancellation);
+            return RunRendering.HostFailure(environment, diagnostics, preflight.Error.Message, cancellation);
         }
+
+        var handle = preflight.Value;
 
         // The handle holds live references to every object whose identity authorizes a mutation,
         // so it is released on every exit: success, host failure, cancellation and unexpected fault
@@ -172,10 +173,9 @@ internal static class SingleFileOutput
             // A failure before the commit point has already been rolled back; cancellation and
             // genuine faults propagate for the host to classify (exit 3 or exit 4).
             var published = await SpecPublication.PublishAsync(document, handle, cancellation).ConfigureAwait(false);
-            if (published is not OperationCompleted<Published> committed)
+            if (published.IsError)
             {
-                return RunRendering.HostFailure(
-                    environment, diagnostics, ((OperationHostFailure<Published>)published).Error.Message, cancellation);
+                return RunRendering.HostFailure(environment, diagnostics, published.Error.Message, cancellation);
             }
 
             // Committed. Only now do Info and Warning reach stderr, once and in library order, and no
@@ -183,7 +183,7 @@ internal static class SingleFileOutput
             // one code-less warning after them. Stdout stays empty on a file target unless the
             // caller owed it a post-commit report.
             DiagnosticRenderer.Write(environment.Error, diagnostics);
-            if (committed.Value.CleanupWarning is { } warning)
+            if (published.Value.CleanupWarning is { } warning)
             {
                 environment.Error.Write(DiagnosticRenderer.RenderHostWarning(warning));
             }

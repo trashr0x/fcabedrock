@@ -1,3 +1,5 @@
+using FcaBedrock.Diagnostics;
+
 namespace FcaBedrock.Orchestration;
 
 /// <summary>Prepares runs: the one preparation path every file-backed run shares (D-122 part 10, D-140).</summary>
@@ -20,7 +22,7 @@ public static class RunPreparation
     /// own cleanup for the call has run; the run holds no open stream afterwards.
     /// </para>
     /// </summary>
-    public static Task<OperationOutcome<PreparedFileRun>> PrepareAsync(
+    public static Task<Result<Diagnosed<PreparedFileRun>, HostFailure>> PrepareAsync(
         FileRunRequest request, OrchestrationHost host, CancellationToken cancellation) =>
         PrepareAsync(request, host, progress: null, cancellation);
 
@@ -40,7 +42,7 @@ public static class RunPreparation
     /// <exception cref="ArgumentException">
     /// <paramref name="progress"/> is completed; thrown before any file opens.
     /// </exception>
-    public static Task<OperationOutcome<PreparedFileRun>> PrepareAsync(
+    public static Task<Result<Diagnosed<PreparedFileRun>, HostFailure>> PrepareAsync(
         FileRunRequest request, OrchestrationHost host, OperationProgress? progress, CancellationToken cancellation)
     {
         ArgumentNullException.ThrowIfNull(request);

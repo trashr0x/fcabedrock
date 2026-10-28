@@ -1,5 +1,4 @@
 using FcaBedrock.Diagnostics;
-using FcaBedrock.Orchestration;
 using FcaBedrock.Spec.Toml;
 
 namespace FcaBedrock.Cli.Commands;
@@ -27,13 +26,12 @@ internal static class PlanCommand
         ArgumentNullException.ThrowIfNull(environment);
 
         var outcome = await RunRendering.PrepareAsync(invocation, environment).ConfigureAwait(false);
-        if (outcome is not OperationCompleted<PreparedFileRun> prepared)
+        if (outcome.IsError || outcome.Value.Value is not { } run)
         {
             return RunRendering.Fail(environment, outcome, environment.Signals.Token);
         }
 
-        var run = prepared.Value;
-        var diagnostics = new List<BedrockDiagnostic>(prepared.Diagnostics);
+        var diagnostics = new List<BedrockDiagnostic>(outcome.Value.Diagnostics);
 
         // Verified once, against the root document, after a successful NATIVE plan (§14/D-077).
         diagnostics.AddRange(SpecFingerprints.VerifyStored(run.RootDocument, run.Fingerprints, run.RootKey));

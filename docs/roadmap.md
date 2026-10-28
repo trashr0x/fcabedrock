@@ -69,9 +69,10 @@ M8.3, the latest completed milestone, corrects how the `fcabedrock` tool behaves
 contract did not hold and makes its messages say what went wrong, where and what to do next;
 [its section](#m83-cli-correctness-and-usable-diagnostics) lists the changes and the evidence for
 its completion. M9 is in progress: its contract is recorded (D-139), the run and publication
-coordinator now lives in `FcaBedrock.Orchestration` (D-140), progress observation and the
-cancellation contract are implemented in it (D-141), and no desktop code exists yet. Work deferred
-beyond v1 is in the [deferred backlog](#deferred-backlog-not-v1).
+coordinator now lives in `FcaBedrock.Orchestration` and its operations return the standard result
+carriers (D-140), progress observation and the cancellation contract are implemented in it
+(D-141), and no desktop code exists yet. Work deferred beyond v1 is in the
+[deferred backlog](#deferred-backlog-not-v1).
 
 ## Milestones
 
@@ -573,11 +574,11 @@ work must not hold up converter progress, and after the coordinator extraction n
 CLI behavior.
 
 **Current position:** M9's contract is recorded (D-139), the run and publication coordinator now
-lives in `FcaBedrock.Orchestration` (D-140), and progress observation and the cancellation contract
-are implemented there (D-141), with no renderer; a measurement of the observation's cost on the
-hashed source drain does not bound its elapsed cost (`docs/benchmarks.md`). No
-desktop code exists yet; the desktop skeleton comes next. The library APIs already accept
-cancellation.
+lives in `FcaBedrock.Orchestration` and its operations return the standard result carriers
+(D-140), and progress observation and the cancellation contract are implemented there (D-141),
+with no renderer; a measurement of the observation's cost on the hashed source drain does not
+bound its elapsed cost (`docs/benchmarks.md`). No desktop code exists yet; the desktop skeleton
+comes next. The library APIs already accept cancellation.
 
 **Precondition:** the run and publication coordinator lives in `FcaBedrock.Orchestration`, the
 shared package D-139 part 2 requires, which the desktop will reference instead of `Cli` (D-140).
@@ -605,7 +606,8 @@ derived spec's notes stay its own, because provenance is not inherited (spec §1
 | --- | --- | --- |
 | The contract | D-139, this section, and the CLI's version string, now `fcabedrock-vnext-cli <version>` | Complete |
 | Coordinator extraction | the shared run and publication package, with every CLI byte unchanged | Complete |
-| Progress and cancellation | the progress observer and the cancellation contract | In progress |
+| Progress and cancellation | the progress observer and the cancellation contract | Complete |
+| Outcome carrier migration | the standard result carriers on every coordinator operation, with every CLI byte unchanged | Complete |
 | Desktop skeleton | the application, Open as an owned operation, notices, diagnostics, the test harness and a real-backend check of the skeleton | Planned |
 | Inspection | preview, plan, stats and the fingerprint report on unsaved edits; the operation ledger and closing, with progress shown while a close waits | Planned |
 | Editing, part one | the editing session, Save As, the file-use rule and departure protection | Planned |
@@ -616,10 +618,11 @@ derived spec's notes stay its own, because provenance is not inherited (spec §1
 | Chains, text editor and polish | the chain view, the root TOML editor, and a keyboard and focus review | Planned |
 | Exit verification | self-contained publish and launch, and the complete evidence per platform and capability | Planned |
 
-Progress and cancellation may proceed beside the desktop skeleton once the extraction has landed,
-and both land before inspection. A design step settles the frame before the skeleton, and one
-precedes each later step that adds screens (D-139 part 14). The real-backend smoke grows as
-features land, and exit verification runs the complete workflow.
+The desktop skeleton begins after the outcome carrier migration is integrated; the earlier allowance
+for progress and cancellation to proceed beside it is not used (D-139 part 15). A design step
+settles the frame before the skeleton, and one precedes each later step that adds screens (D-139
+part 14). The real-backend smoke grows as features land, and exit verification runs the complete
+workflow.
 
 **Exit:** load, inspect, edit a spec and export, on Windows, macOS and Linux. D-139 part 12 reads it
 per platform and capability, and a capability without evidence returns to the maintainer as a

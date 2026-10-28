@@ -39,7 +39,7 @@ public static class SpecFreezing
     /// carries no Error; otherwise a diagnostic failure.
     /// </para>
     /// </summary>
-    public static OperationOutcome<SpecDocument> Freeze(
+    public static Diagnosed<SpecDocument> Freeze(
         PreparedRun run, IReadOnlyList<BedrockDiagnostic> preparationDiagnostics)
     {
         ArgumentNullException.ThrowIfNull(run);
@@ -52,8 +52,8 @@ public static class SpecFreezing
         var (stored, reResolve, replan) = Frozen(run);
         var composed = Compose(preparationDiagnostics, stale, reResolve, replan);
         return stored is null
-            ? new OperationDiagnosticFailure<SpecDocument>(composed)
-            : new OperationCompleted<SpecDocument>(stored, composed);
+            ? PureOutcome<SpecDocument>.Failed(composed)
+            : PureOutcome<SpecDocument>.Completed(stored, composed);
     }
 
     /// <summary>

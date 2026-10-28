@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using System.Text;
+using FcaBedrock.Diagnostics;
 using FcaBedrock.Orchestration.Publication;
 using FcaBedrock.Spec.Toml;
 
@@ -53,7 +54,7 @@ public static class SpecPublication
     /// with no progress.
     /// </para>
     /// </summary>
-    public static OperationOutcome<PreflightedSpecFile> Preflight(
+    public static Result<PreflightedSpecFile, HostError> Preflight(
         SpecDelivery delivery, OrchestrationHost host, CancellationToken cancellation) =>
         Preflight(delivery, host, progress: null, cancellation);
 
@@ -66,7 +67,7 @@ public static class SpecPublication
     /// <exception cref="ArgumentException">
     /// <paramref name="progress"/> is completed; thrown before any path is resolved.
     /// </exception>
-    public static OperationOutcome<PreflightedSpecFile> Preflight(
+    public static Result<PreflightedSpecFile, HostError> Preflight(
         SpecDelivery delivery, OrchestrationHost host, OperationProgress? progress, CancellationToken cancellation)
     {
         ArgumentNullException.ThrowIfNull(delivery);
@@ -84,7 +85,7 @@ public static class SpecPublication
         }
     }
 
-    private static OperationOutcome<PreflightedSpecFile> PreflightCore(
+    private static Result<PreflightedSpecFile, HostError> PreflightCore(
         SpecDelivery delivery, OrchestrationHost host, OperationProgress? progress, CancellationToken cancellation)
     {
         var target = delivery.Target;
@@ -112,8 +113,7 @@ public static class SpecPublication
         }
         catch (Exception exception) when (FailureFamily.IsPublicationFailure(exception))
         {
-            return new OperationHostFailure<PreflightedSpecFile>(
-                PublicationErrors.RecordFailed(target).ToHostError(), OutcomeLists.NoDiagnostics);
+            return Result<PreflightedSpecFile, HostError>.Err(PublicationErrors.RecordFailed(target).ToHostError());
         }
 
         var preparation = PublicationTransaction.PreflightSingle(
@@ -132,15 +132,13 @@ public static class SpecPublication
 
         if (preparation is not PublicationReady(var transaction))
         {
-            return new OperationHostFailure<PreflightedSpecFile>(
-                ((PublicationRefused)preparation).Error.ToHostError(), OutcomeLists.NoDiagnostics);
+            return Result<PreflightedSpecFile, HostError>.Err(((PublicationRefused)preparation).Error.ToHostError());
         }
 
         // The transfer: the handle's constructor assigns fields only, and nothing fallible sits
         // between the transaction's return and the handle's. The progress is one more assignment.
         transaction.Progress = progress;
-        return new OperationCompleted<PreflightedSpecFile>(
-            new PreflightedSpecFile(transaction), OutcomeLists.NoDiagnostics);
+        return Result<PreflightedSpecFile, HostError>.Ok(new PreflightedSpecFile(transaction));
     }
 
     /// <summary>
@@ -170,7 +168,7 @@ public static class SpecPublication
     /// and before the handle is spent: it stays unspent and disposable, its record stays
     /// <see cref="PublicationAttemptState.NotBegun"/>, and every later publish of it refuses again.
     /// </exception>
-    public static async Task<OperationOutcome<Published>> PublishAsync(
+    public static async Task<Result<Published, HostError>> PublishAsync(
         SpecDocument document, PreflightedSpecFile handle, CancellationToken cancellation)
     {
         ArgumentNullException.ThrowIfNull(document);
@@ -220,7 +218,7 @@ public static class SpecPublication
         }
     }
 
-    private static async Task<OperationOutcome<Published>> PublishCoreAsync(
+    private static async Task<Result<Published, HostError>> PublishCoreAsync(
         PublicationTransaction transaction, PreflightedSpecFile handle, byte[] bytes, CancellationToken cancellation)
     {
         var progress = transaction.Progress;
@@ -263,11 +261,11 @@ public static class SpecPublication
         }
 
         // Committed: the record is built right here, so the outcome's value is its committed record.
-        return new OperationCompleted<Published>(handle.Record().Committed!, OutcomeLists.NoDiagnostics);
+        return Result<Published, HostError>.Ok(handle.Record().Committed!);
     }
 
-    private static OperationHostFailure<Published> Failed(PublicationFailure failure) =>
-        new(failure.Error.ToHostError(), OutcomeLists.NoDiagnostics);
+    private static Result<Published, HostError> Failed(PublicationFailure failure) =>
+        Result<Published, HostError>.Err(failure.Error.ToHostError());
 
     // The output side is tagged at its origin so a stage write failure is reported as the output
     // failure it is; anything else (a cancellation, a contract defect) is left untouched for

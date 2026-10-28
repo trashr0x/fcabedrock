@@ -69,9 +69,9 @@ public sealed class PublicationHandleTests
             other.Conversion, handle, mine.Facts, mine.Diagnostics, mine.Signals.Token));
 
         // Not spent: the correct conversion publishes through the same handle.
-        var completed = Assert.IsType<OperationCompleted<Published>>(await mine.PublishAsync(handle));
+        var published = OutcomeAssert.Committed(await mine.PublishAsync(handle));
         Assert.Equal(PublicationAttemptState.Committed, handle.Attempt.State);
-        Assert.Same(completed.Value, handle.Attempt.Committed);
+        Assert.Same(published, handle.Attempt.Committed);
         Assert.True(File.Exists(mine.Target));
     }
 
@@ -132,7 +132,7 @@ public sealed class PublicationHandleTests
     {
         using var run = await PublicationRun.CreateAsync(family);
         var handle = run.Preflight();
-        Assert.IsType<OperationCompleted<Published>>(await run.PublishAsync(handle));
+        OutcomeAssert.Committed(await run.PublishAsync(handle));
         var first = handle.Attempt;
 
         await Assert.ThrowsAsync<InvalidOperationException>(() => run.PublishAsync(handle));
@@ -180,7 +180,7 @@ public sealed class PublicationHandleTests
         }
         else
         {
-            Assert.IsType<OperationCompleted<Published>>(await run.PublishAsync(handle));
+            OutcomeAssert.Committed(await run.PublishAsync(handle));
         }
 
         Assert.SkipUnless(OperatingSystem.IsWindows(), PublicationRun.WindowsOnly);
@@ -327,10 +327,10 @@ public sealed class PublicationHandleTests
         using var run = await PublicationRun.CreateAsync(SpecFile);
         List<string> operands = [run.SpecPath, run.DataPath];
         List<SpecChainFile> chain = [.. run.Run.SpecChain];
-        var handle = Assert.IsType<OperationCompleted<PreflightedSpecFile>>(SpecPublication.Preflight(
+        var handle = OutcomeAssert.Completed(SpecPublication.Preflight(
             new SpecDelivery { Target = run.Base, ReplaceExisting = false, Operands = operands, Chain = chain },
             run.Host,
-            run.Signals.Token)).Value;
+            run.Signals.Token));
         var held = HeldInputs(handle).Select(input => input.Spelling).ToList();
 
         if (list == "operands")
@@ -345,7 +345,7 @@ public sealed class PublicationHandleTests
 
         Assert.Equal(held, HeldInputs(handle).Select(input => input.Spelling));
         Assert.Equal([run.SpecPath, run.DataPath, .. run.Run.SpecChain.Select(file => file.Spelling)], held);
-        Assert.IsType<OperationCompleted<Published>>(await run.PublishAsync(handle));
+        OutcomeAssert.Committed(await run.PublishAsync(handle));
     }
 
     [Fact]
@@ -510,7 +510,7 @@ public sealed class PublicationHandleTests
         var handle = (PreflightedConvertOutput)run.Preflight();
         var facts = new ManifestHostFacts { ToolVersion = "t", CommandLine = commandLine, UtcNow = run.Facts.UtcNow };
 
-        Assert.IsType<OperationCompleted<Published>>(await ConvertPublication.PublishAsync(
+        OutcomeAssert.Completed(await ConvertPublication.PublishAsync(
             run.Conversion, handle, facts, run.Diagnostics, run.Signals.Token));
 
         Assert.Contains("mutated", commandLine);

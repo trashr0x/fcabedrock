@@ -1,3 +1,5 @@
+using FcaBedrock.Diagnostics;
+
 namespace FcaBedrock.Orchestration;
 
 /// <summary>
@@ -43,7 +45,7 @@ public sealed class VerifiedRelocation : RelocationDecision
 
 /// <summary>
 /// Decides and rechecks a relocated <c>extends</c> through the host's identity seam. Relocation
-/// produces no diagnostics: every outcome's list is empty.
+/// produces no diagnostics: it returns no diagnostic list.
 /// </summary>
 public static class SpecRelocation
 {
@@ -58,7 +60,7 @@ public static class SpecRelocation
     /// <param name="destination">The destination, as the host spelled it.</param>
     /// <param name="immediateBase">The chain file that reference loaded: its resolution path and load-time identity.</param>
     /// <param name="host">The host whose identity seam loaded the chain.</param>
-    public static OperationOutcome<VerifiedRelocation> Relocate(
+    public static Result<VerifiedRelocation, HostError> Relocate(
         string authored, string destination, SpecChainFile immediateBase, OrchestrationHost host)
     {
         ArgumentNullException.ThrowIfNull(authored);
@@ -68,10 +70,10 @@ public static class SpecRelocation
 
         return ExtendsRelocation.Relocate(authored, destination, immediateBase, host.SpecIdentities) switch
         {
-            RelocatedReference(var reference) => new OperationCompleted<VerifiedRelocation>(
-                new VerifiedRelocation(reference, authored, destination, immediateBase), OutcomeLists.NoDiagnostics),
-            RelocationRefused refused => new OperationHostFailure<VerifiedRelocation>(
-                Refusal(refused.Kind, refused.Message, destination, authored), OutcomeLists.NoDiagnostics),
+            RelocatedReference(var reference) => Result<VerifiedRelocation, HostError>.Ok(
+                new VerifiedRelocation(reference, authored, destination, immediateBase)),
+            RelocationRefused refused => Result<VerifiedRelocation, HostError>.Err(
+                Refusal(refused.Kind, refused.Message, destination, authored)),
             _ => throw new InvalidOperationException("Unrecognized relocation result."),
         };
     }
@@ -81,7 +83,7 @@ public static class SpecRelocation
     /// new identity service: completed with the same instance while it holds, otherwise the
     /// <see cref="HostErrorKind.RelocationUnverified"/> refusal.
     /// </summary>
-    public static OperationOutcome<RelocationDecision> Recheck(RelocationDecision decision, OrchestrationHost host)
+    public static Result<RelocationDecision, HostError> Recheck(RelocationDecision decision, OrchestrationHost host)
     {
         ArgumentNullException.ThrowIfNull(decision);
         ArgumentNullException.ThrowIfNull(host);
@@ -94,10 +96,9 @@ public static class SpecRelocation
         return ExtendsRelocation.Recheck(
                 verified.Reference, verified.Authored, verified.Destination, verified.ImmediateBase, host.SpecIdentities)
             is { } message
-            ? new OperationHostFailure<RelocationDecision>(
-                Refusal(HostErrorKind.RelocationUnverified, message, verified.Destination, verified.Authored),
-                OutcomeLists.NoDiagnostics)
-            : new OperationCompleted<RelocationDecision>(decision, OutcomeLists.NoDiagnostics);
+            ? Result<RelocationDecision, HostError>.Err(
+                Refusal(HostErrorKind.RelocationUnverified, message, verified.Destination, verified.Authored))
+            : Result<RelocationDecision, HostError>.Ok(decision);
     }
 
     private static HostError Refusal(HostErrorKind kind, string message, string destination, string authored) =>

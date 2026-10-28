@@ -48,6 +48,7 @@ public sealed record ContextStatistics
     /// enumeration completes, the single-pass boundary, as for <c>.dat</c> (§16.2/D-105). Completed:
     /// the counts, with a list that may hold an emit Error; the host decides what to present. Host
     /// failure: <see cref="HostErrorKind.DataUnreadable"/> or <see cref="HostErrorKind.DataChanged"/>.
+    /// The result can represent a diagnostic failure, but this operation never produces one.
     /// </para>
     /// <para>
     /// When <paramref name="run"/> carries an <see cref="OperationProgress"/>, the counting pass reports
@@ -58,7 +59,7 @@ public sealed record ContextStatistics
     /// <exception cref="ArgumentException">
     /// The progress <paramref name="run"/> carries is completed; thrown before any file opens.
     /// </exception>
-    public static async Task<OperationOutcome<ContextStatistics>> CountAsync(
+    public static async Task<Result<Diagnosed<ContextStatistics>, HostFailure>> CountAsync(
         PreparedRun run, IReadOnlyList<BedrockDiagnostic> diagnostics, CancellationToken cancellation)
     {
         ArgumentNullException.ThrowIfNull(run);
@@ -74,7 +75,7 @@ public sealed record ContextStatistics
         }
         catch (Exception exception) when (RunPipeline.IsDataReadFailure(exception))
         {
-            return new OperationHostFailure<ContextStatistics>(
+            return MixedOutcome<ContextStatistics>.HostFailed(
                 RunPipeline.DataUnreadable(
                     run.DataPath, DataReadExplanation.Message(run.DataPath, exception, run.Input.CurrentPassMark)),
                 collected);
@@ -84,10 +85,10 @@ public sealed record ContextStatistics
         // before any count is returned.
         if (run.Input.HasMismatch)
         {
-            return new OperationHostFailure<ContextStatistics>(RunPipeline.DataChanged(run.DataPath), collected);
+            return MixedOutcome<ContextStatistics>.HostFailed(RunPipeline.DataChanged(run.DataPath), collected);
         }
 
-        return new OperationCompleted<ContextStatistics>(counts, collected);
+        return MixedOutcome<ContextStatistics>.Completed(counts, collected);
     }
 
     // One enumeration, bounded state: the per-column "was ever crossed" flags are the only

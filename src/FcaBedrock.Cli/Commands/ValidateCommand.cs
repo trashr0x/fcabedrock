@@ -44,22 +44,26 @@ internal static class ValidateCommand
         var outcome = await SpecValidation.ValidateAsync(
             invocation.Operand(0)!, dataPath, environment.Orchestration, cancellation).ConfigureAwait(false);
 
-        return outcome switch
+        // A missing or unreadable operand is an ordinary host failure: code-less, exit 1, and
+        // rendered without a cancellation check (D-122 part 2).
+        if (outcome.IsError)
         {
-            // A missing or unreadable operand is an ordinary host failure: code-less, exit 1, and
-            // rendered without a cancellation check (D-122 part 2).
-            OperationHostFailure<ValidatedSpec> host => HostFailure(environment, [.. host.Diagnostics], host.Error.Message),
+            var failure = outcome.Error;
+            return HostFailure(environment, [.. failure.Diagnostics], failure.Error.Message);
+        }
 
-            // Resolve was reached: the diagnostics are the verdict, with the header advice when DATA
-            // was not given and the composed spec binds by header name.
-            OperationCompleted<ValidatedSpec> validated => Finish(
-                environment, [.. validated.Diagnostics], cancellation,
-                adviseHeader: dataPath is null && BindsByHeaderName(validated.Value.Composed)),
+        // Resolve was reached: the diagnostics are the verdict, with the header advice when DATA
+        // was not given and the composed spec binds by header name.
+        if (outcome.Value.Value is { } validated)
+        {
+            return Finish(
+                environment, [.. outcome.Value.Diagnostics], cancellation,
+                adviseHeader: dataPath is null && BindsByHeaderName(validated.Composed));
+        }
 
-            // Parse, composition or read settings failed; a missing or unreadable extends base is a
-            // phase-owned condition (SpecExtendsNotFound) and keeps its registry code.
-            _ => Finish(environment, [.. outcome.Diagnostics], cancellation),
-        };
+        // Parse, composition or read settings failed; a missing or unreadable extends base is a
+        // phase-owned condition (SpecExtendsNotFound) and keeps its registry code.
+        return Finish(environment, [.. outcome.Value.Diagnostics], cancellation);
     }
 
     // Whether the composed spec binds a column by header name anywhere one can be: an attribute's

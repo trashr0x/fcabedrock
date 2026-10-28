@@ -50,7 +50,7 @@ internal sealed class PublicationRun : IDisposable
         OrchestrationHost host,
         string specPath,
         string dataPath,
-        OperationCompleted<PreparedFileRun> prepared,
+        (PreparedFileRun Value, IReadOnlyList<BedrockDiagnostic> Diagnostics) prepared,
         OperationProgress? progress)
     {
         _temp = temp;
@@ -63,8 +63,7 @@ internal sealed class PublicationRun : IDisposable
         Run = prepared.Value;
         Diagnostics = prepared.Diagnostics;
         Base = family == Convert ? temp.Resolve("out") : temp.Resolve("out.toml");
-        Conversion = Assert.IsType<OperationCompleted<EffectiveConversion>>(
-            ConvertPublication.PlanConversion(Run, v2Compatible: false, Diagnostics)).Value;
+        Conversion = OutcomeAssert.Completed(ConvertPublication.PlanConversion(Run, v2Compatible: false, Diagnostics)).Value;
     }
 
     /// <summary><see cref="Convert"/> or <see cref="SpecFile"/>.</summary>
@@ -130,7 +129,7 @@ internal sealed class PublicationRun : IDisposable
         var host = new OrchestrationHost(open ?? File.OpenRead) { PublicationFiles = files };
         var specPath = temp.Write("spec.toml", Spec);
         var dataPath = temp.Write("data.csv", Data);
-        var prepared = Assert.IsType<OperationCompleted<PreparedFileRun>>(
+        var prepared = OutcomeAssert.Completed(
             await RunPreparation.PrepareAsync(
                 new FileRunRequest { SpecPath = specPath, DataPath = dataPath }, host, progress, CancellationToken.None));
         return new PublicationRun(temp, family, files, host, specPath, dataPath, prepared, progress);
@@ -139,7 +138,7 @@ internal sealed class PublicationRun : IDisposable
     /// <summary>Writes <see cref="Old"/> at <paramref name="path"/>: an existing target.</summary>
     public static void Occupy(string path) => File.WriteAllText(path, Old);
 
-    /// <summary>The preflight outcome, unasserted.</summary>
+    /// <summary>The preflight result of the run's family, boxed and unasserted.</summary>
     public object PreflightOutcome(bool replace = false, bool writesDat = false) =>
         Family == Convert
             ? ConvertPublication.Preflight(
@@ -170,33 +169,35 @@ internal sealed class PublicationRun : IDisposable
     public PreflightedPublication Preflight(bool replace = false, bool writesDat = false) =>
         PreflightOutcome(replace, writesDat) switch
         {
-            OperationCompleted<PreflightedConvertOutput> convert => convert.Value,
-            OperationCompleted<PreflightedSpecFile> spec => spec.Value,
+            Result<PreflightedConvertOutput, HostError> { IsOk: true } convert => convert.Value,
+            Result<PreflightedSpecFile, HostError> { IsOk: true } spec => spec.Value,
             var other => throw new InvalidOperationException($"the preflight did not complete: {Describe(other)}"),
         };
 
-    /// <summary>A refused preflight's error, with its empty diagnostic list asserted.</summary>
+    /// <summary>A refused preflight's error; a host-only result carries no diagnostic list.</summary>
     public HostError Refused(bool replace = false, bool writesDat = false)
     {
         switch (PreflightOutcome(replace, writesDat))
         {
-            case OperationHostFailure<PreflightedConvertOutput> convert:
-                Assert.Empty(convert.Diagnostics);
+            case Result<PreflightedConvertOutput, HostError> { IsError: true } convert:
                 return convert.Error;
-            case OperationHostFailure<PreflightedSpecFile> spec:
-                Assert.Empty(spec.Diagnostics);
+            case Result<PreflightedSpecFile, HostError> { IsError: true } spec:
                 return spec.Error;
             case var other:
                 throw new InvalidOperationException($"the preflight was not refused: {Describe(other)}");
         }
     }
 
-    /// <summary>Publishes <paramref name="handle"/> through its family's public operation.</summary>
-    public Task<OperationOutcome<Published>> PublishAsync(PreflightedPublication handle) => handle switch
+    /// <summary>
+    /// Publishes <paramref name="handle"/> through its family's public operation and returns that
+    /// family's result, boxed: <see cref="OutcomeAssert.Committed"/> and
+    /// <see cref="OutcomeAssert.PublishHostFailed"/> read it.
+    /// </summary>
+    public async Task<object> PublishAsync(PreflightedPublication handle) => handle switch
     {
         PreflightedConvertOutput convert =>
-            ConvertPublication.PublishAsync(Conversion, convert, Facts, Diagnostics, Signals.Token),
-        PreflightedSpecFile spec => SpecPublication.PublishAsync(Run.RootDocument, spec, Signals.Token),
+            await ConvertPublication.PublishAsync(Conversion, convert, Facts, Diagnostics, Signals.Token),
+        PreflightedSpecFile spec => await SpecPublication.PublishAsync(Run.RootDocument, spec, Signals.Token),
         _ => throw new InvalidOperationException("Unknown handle."),
     };
 
@@ -249,8 +250,8 @@ internal sealed class PublicationRun : IDisposable
 
     private static string Describe(object outcome) => outcome switch
     {
-        OperationHostFailure<PreflightedConvertOutput> failure => failure.Error.Message,
-        OperationHostFailure<PreflightedSpecFile> failure => failure.Error.Message,
+        Result<PreflightedConvertOutput, HostError> { IsError: true } failure => failure.Error.Message,
+        Result<PreflightedSpecFile, HostError> { IsError: true } failure => failure.Error.Message,
         _ => outcome.GetType().Name,
     };
 }

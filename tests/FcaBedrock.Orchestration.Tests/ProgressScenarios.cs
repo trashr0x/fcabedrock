@@ -444,12 +444,12 @@ internal sealed class ProgressRun : IDisposable
         return new ProgressRun(temp, temp.Write("spec.toml", spec), temp.Write("data.csv", data), observed);
     }
 
-    public Task<OperationOutcome<PreparedFileRun>> PrepareOutcomeAsync() =>
+    public Task<Result<Diagnosed<PreparedFileRun>, HostFailure>> PrepareOutcomeAsync() =>
         RunPreparation.PrepareAsync(new FileRunRequest { SpecPath = SpecPath, DataPath = DataPath }, Host, Progress, Signals.Token);
 
     public async Task<(PreparedFileRun Run, IReadOnlyList<BedrockDiagnostic> Diagnostics)> PrepareAsync()
     {
-        var completed = Assert.IsType<OperationCompleted<PreparedFileRun>>(await PrepareOutcomeAsync());
+        var completed = OutcomeAssert.Completed(await PrepareOutcomeAsync());
         return (completed.Value, completed.Diagnostics);
     }
 
@@ -457,13 +457,12 @@ internal sealed class ProgressRun : IDisposable
         new() { Base = Base, WritesCxt = cxt, WritesDat = dat, WritesManifest = manifest, ReplaceExisting = replace };
 
     public PreflightedConvertOutput Preflight(PreparedFileRun run, ConvertOutput output) =>
-        Assert.IsType<OperationCompleted<PreflightedConvertOutput>>(
-            ConvertPublication.Preflight(output, run, Host, Signals.Token)).Value;
+        OutcomeAssert.Completed(ConvertPublication.Preflight(output, run, Host, Signals.Token));
 
     public static EffectiveConversion Plan(PreparedFileRun run, IReadOnlyList<BedrockDiagnostic> diagnostics, bool v2 = false) =>
-        Assert.IsType<OperationCompleted<EffectiveConversion>>(ConvertPublication.PlanConversion(run, v2, diagnostics)).Value;
+        OutcomeAssert.Completed(ConvertPublication.PlanConversion(run, v2, diagnostics)).Value;
 
-    public Task<OperationOutcome<Published>> PublishAsync(
+    public Task<Result<Diagnosed<Published>, HostFailure>> PublishAsync(
         EffectiveConversion conversion, PreflightedConvertOutput handle, IReadOnlyList<BedrockDiagnostic> diagnostics) =>
         ConvertPublication.PublishAsync(conversion, handle, Facts, diagnostics, Signals.Token);
 

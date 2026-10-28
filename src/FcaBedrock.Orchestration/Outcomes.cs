@@ -4,79 +4,6 @@ using FcaBedrock.Diagnostics;
 namespace FcaBedrock.Orchestration;
 
 /// <summary>
-/// What one Orchestration operation produced: completed with a value, a diagnostic failure, or a
-/// host failure carrying one code-less <see cref="HostError"/> (D-140). An outcome renders nothing;
-/// the host decides what reaches which stream. Cancellation is never an outcome: it propagates as
-/// the host token's <see cref="OperationCanceledException"/>.
-/// <para>
-/// A closed family: the only constructor is <see langword="private protected"/>, so no assembly but
-/// this one can add a member, and a host's <c>switch</c> over the three members below is complete.
-/// That is a constructor-access claim, not a barrier against reflection or the granted friend
-/// assemblies.
-/// </para>
-/// </summary>
-/// <typeparam name="T">The value a completed operation carries.</typeparam>
-public abstract class OperationOutcome<T>
-{
-    private protected OperationOutcome(IReadOnlyList<BedrockDiagnostic> diagnostics)
-    {
-        ArgumentNullException.ThrowIfNull(diagnostics);
-        Diagnostics = OutcomeLists.Snapshot(diagnostics);
-    }
-
-    /// <summary>
-    /// The operation's complete diagnostic list, in library order, never sorted, grouped or
-    /// deduplicated. An operation that continues a prepared run returns the whole run's list. It is
-    /// an immutable snapshot: a caller that changes the list it passed in changes nothing here.
-    /// </summary>
-    public IReadOnlyList<BedrockDiagnostic> Diagnostics { get; }
-}
-
-/// <summary>The operation completed; <see cref="Value"/> is its result.</summary>
-/// <typeparam name="T">The value type.</typeparam>
-public sealed class OperationCompleted<T> : OperationOutcome<T>
-{
-    internal OperationCompleted(T value, IReadOnlyList<BedrockDiagnostic> diagnostics)
-        : base(diagnostics)
-    {
-        Value = value;
-    }
-
-    /// <summary>The operation's result.</summary>
-    public T Value { get; }
-}
-
-/// <summary>
-/// A library phase failed; its own diagnostics, which carry an Error or Fatal, explain why.
-/// </summary>
-/// <typeparam name="T">The value type a completed operation would have carried.</typeparam>
-public sealed class OperationDiagnosticFailure<T> : OperationOutcome<T>
-{
-    internal OperationDiagnosticFailure(IReadOnlyList<BedrockDiagnostic> diagnostics)
-        : base(diagnostics)
-    {
-    }
-}
-
-/// <summary>
-/// An ordinary host or environment failure, reported as one code-less error beside the diagnostics
-/// collected so far (D-122 part 2).
-/// </summary>
-/// <typeparam name="T">The value type a completed operation would have carried.</typeparam>
-public sealed class OperationHostFailure<T> : OperationOutcome<T>
-{
-    internal OperationHostFailure(HostError error, IReadOnlyList<BedrockDiagnostic> diagnostics)
-        : base(diagnostics)
-    {
-        ArgumentNullException.ThrowIfNull(error);
-        Error = error;
-    }
-
-    /// <summary>The failure.</summary>
-    public HostError Error { get; }
-}
-
-/// <summary>
 /// An ordinary host or environment failure, without a diagnostic code (D-122 part 2): one member of
 /// a closed set of conditions, each produced by one existing message builder.
 /// <para>
@@ -195,13 +122,69 @@ public enum HostErrorKind
     CommitFailed = 18,
 }
 
+/// <summary>
+/// The host failure of an operation that also carries the run's diagnostics: one code-less
+/// <see cref="HostError"/> (D-122 part 2) and the run's complete diagnostic list at the moment it
+/// failed, in library order (D-140 part 4). A fact record: only Orchestration builds one, and
+/// <c>with</c> can only clone an instance an operation returned. Record equality compares the list
+/// by reference, and no contract relies on it.
+/// </summary>
+public sealed record HostFailure
+{
+    internal HostFailure(HostError error, IReadOnlyList<BedrockDiagnostic> diagnostics)
+    {
+        ArgumentNullException.ThrowIfNull(error);
+        ArgumentNullException.ThrowIfNull(diagnostics);
+        Error = error;
+        Diagnostics = OutcomeLists.Snapshot(diagnostics);
+    }
+
+    /// <summary>The failure.</summary>
+    public HostError Error { get; }
+
+    /// <summary>
+    /// The run's complete diagnostic list when the failure occurred, never sorted, grouped or
+    /// deduplicated; an immutable snapshot that a change to the list passed in cannot reach.
+    /// </summary>
+    public IReadOnlyList<BedrockDiagnostic> Diagnostics { get; }
+}
+
 // The one place an outcome or a fact record turns a caller's list into the immutable snapshot it
 // keeps (the ImmutableArray-backed precedent of D-098): a list that is already such a snapshot is
 // kept as it is, and anything else is copied.
 internal static class OutcomeLists
 {
-    public static IReadOnlyList<BedrockDiagnostic> NoDiagnostics { get; } = ImmutableArray<BedrockDiagnostic>.Empty;
-
     public static IReadOnlyList<T> Snapshot<T>(IReadOnlyList<T> items) =>
         items is ImmutableArray<T> ? items : items.ToImmutableArray();
+}
+
+// What a pure operation returns (D-140 part 4): a completion always carries its value, and every
+// list is the complete run list as an immutable snapshot. The class constraint keeps the
+// value-presence rule true: a value-type payload needs its own rule before it can use this.
+internal static class PureOutcome<T>
+    where T : class
+{
+    public static Diagnosed<T> Completed(T value, IReadOnlyList<BedrockDiagnostic> diagnostics)
+    {
+        ArgumentNullException.ThrowIfNull(value);
+        return new Diagnosed<T>(value, OutcomeLists.Snapshot(diagnostics));
+    }
+
+    public static Diagnosed<T> Failed(IReadOnlyList<BedrockDiagnostic> diagnostics) =>
+        Diagnosed<T>.Failed(OutcomeLists.Snapshot(diagnostics));
+}
+
+// What a mixed operation returns: the pure carrier inside Ok, or the host failure with the list
+// collected so far.
+internal static class MixedOutcome<T>
+    where T : class
+{
+    public static Result<Diagnosed<T>, HostFailure> Completed(T value, IReadOnlyList<BedrockDiagnostic> diagnostics) =>
+        Result<Diagnosed<T>, HostFailure>.Ok(PureOutcome<T>.Completed(value, diagnostics));
+
+    public static Result<Diagnosed<T>, HostFailure> Failed(IReadOnlyList<BedrockDiagnostic> diagnostics) =>
+        Result<Diagnosed<T>, HostFailure>.Ok(PureOutcome<T>.Failed(diagnostics));
+
+    public static Result<Diagnosed<T>, HostFailure> HostFailed(HostError error, IReadOnlyList<BedrockDiagnostic> diagnostics) =>
+        Result<Diagnosed<T>, HostFailure>.Err(new HostFailure(error, diagnostics));
 }

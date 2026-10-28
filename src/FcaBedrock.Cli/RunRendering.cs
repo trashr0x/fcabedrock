@@ -16,7 +16,7 @@ internal static class RunRendering
     /// Prepares the run a <c>SPEC DATA [--temp-dir DIR]</c> invocation names, observing the host's
     /// own cancellation token, so a cancellation it raises is classified as the host's.
     /// </summary>
-    public static Task<OperationOutcome<PreparedFileRun>> PrepareAsync(
+    public static Task<Result<Diagnosed<PreparedFileRun>, HostFailure>> PrepareAsync(
         CommandInvocation invocation, CliEnvironment environment)
     {
         ArgumentNullException.ThrowIfNull(invocation);
@@ -34,19 +34,31 @@ internal static class RunRendering
     }
 
     /// <summary>
-    /// Renders a failed operation: accumulated diagnostics first, then (for a host failure)
-    /// the one sanitized code-less line. Always exit 1; a diagnostic failure carries an
-    /// Error or Fatal by construction, and a host failure is exit 1 by contract.
+    /// Renders an operation that did not complete: for a host failure, its accumulated diagnostics
+    /// and then the one sanitized code-less line; otherwise the diagnostic failure, as the overload
+    /// over the inner list renders it. Exit 1.
     /// </summary>
-    public static int Fail<T>(CliEnvironment environment, OperationOutcome<T> outcome, CancellationToken cancellation)
+    public static int Fail<T>(
+        CliEnvironment environment, Result<Diagnosed<T>, HostFailure> outcome, CancellationToken cancellation)
     {
         ArgumentNullException.ThrowIfNull(environment);
-        ArgumentNullException.ThrowIfNull(outcome);
 
-        if (outcome is OperationHostFailure<T> host)
+        if (outcome.IsError)
         {
-            return HostFailure(environment, host.Diagnostics, host.Error.Message, cancellation);
+            var failure = outcome.Error;
+            return HostFailure(environment, failure.Diagnostics, failure.Error.Message, cancellation);
         }
+
+        return Fail(environment, outcome.Value, cancellation);
+    }
+
+    /// <summary>
+    /// Renders a diagnostic failure: the list in library order, after the cancellation check that
+    /// keeps a cancelled run silent. Exit 1, whatever severities the list holds.
+    /// </summary>
+    public static int Fail<T>(CliEnvironment environment, Diagnosed<T> outcome, CancellationToken cancellation)
+    {
+        ArgumentNullException.ThrowIfNull(environment);
 
         // A cancelled run reports nothing at all: the same rule the success path follows, so a
         // signal arriving as a phase failed cannot turn a cancellation into a reported failure.

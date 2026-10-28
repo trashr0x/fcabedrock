@@ -84,15 +84,15 @@ public sealed class PublicationAttemptTests
         run.Files.FailCreateNewPrefix = run.BaseName + ".fcabedrock-committed-";
         var handle = run.Preflight();
 
-        var completed = Assert.IsType<OperationCompleted<Published>>(await run.PublishAsync(handle));
+        var published = OutcomeAssert.Committed(await run.PublishAsync(handle));
 
         // The injected boundary fired: the marker's create-new was attempted, and refused.
         Assert.Contains(
             $"CreateNew:{run.BaseName}.fcabedrock-committed-T",
             run.Files.Operations.Select(RecordingPublicationFileSystem.Fold));
-        Assert.Equal(CleanupOutcome.Completed, completed.Value.Cleanup);
-        Assert.Null(completed.Value.CleanupBlocker);
-        Assert.Null(completed.Value.CleanupWarning);
+        Assert.Equal(CleanupOutcome.Completed, published.Cleanup);
+        Assert.Null(published.CleanupBlocker);
+        Assert.Null(published.CleanupWarning);
         Assert.Empty(run.Residue());
         AssertCommittedWithCleanup(run, handle, CleanupOutcome.Completed);
         AssertUnchangedByDisposal(handle);
@@ -130,9 +130,8 @@ public sealed class PublicationAttemptTests
         run.Files.FailDeletePrefix = run.BaseName + ".fcabedrock-committed-";
         var handle = run.Preflight();
 
-        var completed = Assert.IsType<OperationCompleted<Published>>(await run.PublishAsync(handle));
+        var published = OutcomeAssert.Committed(await run.PublishAsync(handle));
 
-        var published = completed.Value;
         Assert.Equal(CleanupOutcome.Incomplete, published.Cleanup);
         var blocker = Assert.IsType<CleanupFact>(published.CleanupBlocker);
         Assert.Equal(CleanupStep.Remove, blocker.Step);
@@ -151,14 +150,14 @@ public sealed class PublicationAttemptTests
         using var run = await PublicationRun.CreateAsync(family);
         var handle = run.Preflight();
 
-        var completed = Assert.IsType<OperationCompleted<Published>>(await run.PublishAsync(handle));
+        var published = OutcomeAssert.Committed(await run.PublishAsync(handle));
 
         var expected = family == Convert
             ? new[] { (PublishedFileKind.Cxt, run.Base + ".cxt"), (PublishedFileKind.Manifest, run.Base + ".manifest.toml") }
             : new[] { (PublishedFileKind.SpecFile, run.Base) };
-        Assert.Equal(expected, completed.Value.Files.Select(file => (file.Kind, file.Spelling)));
+        Assert.Equal(expected, published.Files.Select(file => (file.Kind, file.Spelling)));
 
-        foreach (var file in completed.Value.Files)
+        foreach (var file in published.Files)
         {
             // An independent hash of what the committed file holds, and a fresh identity of it.
             var bytes = File.ReadAllBytes(file.FullPath);
@@ -167,7 +166,7 @@ public sealed class PublicationAttemptTests
             Assert.Equal(Path.GetFullPath(file.Spelling), file.FullPath);
         }
 
-        Assert.Equal(CleanupOutcome.Completed, completed.Value.Cleanup);
+        Assert.Equal(CleanupOutcome.Completed, published.Cleanup);
         Assert.Empty(run.Residue());
     }
 
@@ -179,9 +178,9 @@ public sealed class PublicationAttemptTests
         using var run = await PublicationRun.CreateAsync(family);
         var handle = run.Preflight();
 
-        var completed = Assert.IsType<OperationCompleted<Published>>(await run.PublishAsync(handle));
+        var published = OutcomeAssert.Committed(await run.PublishAsync(handle));
 
-        Assert.Same(completed.Value, handle.Attempt.Committed);
+        Assert.Same(published, handle.Attempt.Committed);
     }
 
     // ---- before the commit point ------------------------------------------------------------------
@@ -283,9 +282,9 @@ public sealed class PublicationAttemptTests
         run.Files.FailDeletePrefix = stage;
         var handle = run.Preflight();
 
-        var failed = Assert.IsType<OperationHostFailure<Published>>(await run.PublishAsync(handle));
+        var failed = OutcomeAssert.PublishHostFailed(await run.PublishAsync(handle));
 
-        Assert.Equal(HostErrorKind.StageFailed, failed.Error.Kind);
+        Assert.Equal(HostErrorKind.StageFailed, failed.Kind);
         AssertBegunWithRollback(handle, RollbackOutcome.Incomplete);
         var blocker = Assert.IsType<CleanupFact>(handle.Attempt.RollbackBlocker);
         Assert.Equal(CleanupStep.Remove, blocker.Step);
@@ -304,9 +303,9 @@ public sealed class PublicationAttemptTests
         run.Files.FailCreateNewPrefix = run.BaseName + ".fcabedrock-pending-";
         var handle = run.Preflight();
 
-        var failed = Assert.IsType<OperationHostFailure<Published>>(await run.PublishAsync(handle));
+        var failed = OutcomeAssert.PublishHostFailed(await run.PublishAsync(handle));
 
-        Assert.Equal(HostErrorKind.PublicationControlFailed, failed.Error.Kind);
+        Assert.Equal(HostErrorKind.PublicationControlFailed, failed.Kind);
         Assert.Equal(PublicationAttemptState.NotBegun, handle.Attempt.State);
         Assert.Equal(RollbackOutcome.NotOwed, handle.Attempt.Rollback);
         Assert.Null(handle.Attempt.RollbackBlocker);

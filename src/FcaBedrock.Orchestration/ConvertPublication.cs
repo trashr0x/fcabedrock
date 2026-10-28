@@ -90,7 +90,7 @@ public static class ConvertPublication
     /// labels do not have, and that is the run's diagnostic failure. <paramref name="diagnostics"/>
     /// is the run's complete prior list, and the returned list continues it.
     /// </summary>
-    public static OperationOutcome<EffectiveConversion> PlanConversion(
+    public static Diagnosed<EffectiveConversion> PlanConversion(
         PreparedFileRun run, bool v2Compatible, IReadOnlyList<BedrockDiagnostic> diagnostics)
     {
         ArgumentNullException.ThrowIfNull(run);
@@ -108,13 +108,13 @@ public static class ConvertPublication
             if (!planned.TryGetValue(out var effective))
             {
                 collected.AddRange(planned.Diagnostics);
-                return new OperationDiagnosticFailure<EffectiveConversion>(collected);
+                return PureOutcome<EffectiveConversion>.Failed(collected);
             }
 
             plan = effective;
         }
 
-        return new OperationCompleted<EffectiveConversion>(new EffectiveConversion(run, plan, settings), collected);
+        return PureOutcome<EffectiveConversion>.Completed(new EffectiveConversion(run, plan, settings), collected);
     }
 
     /// <summary>
@@ -137,7 +137,7 @@ public static class ConvertPublication
     /// <paramref name="output"/> selects neither context, or the progress <paramref name="run"/>
     /// carries is completed; thrown before any path is resolved.
     /// </exception>
-    public static OperationOutcome<PreflightedConvertOutput> Preflight(
+    public static Result<PreflightedConvertOutput, HostError> Preflight(
         ConvertOutput output, PreparedFileRun run, OrchestrationHost host, CancellationToken cancellation)
     {
         ArgumentNullException.ThrowIfNull(output);
@@ -167,7 +167,7 @@ public static class ConvertPublication
         }
     }
 
-    private static OperationOutcome<PreflightedConvertOutput> PreflightCore(
+    private static Result<PreflightedConvertOutput, HostError> PreflightCore(
         string baseSpelling,
         bool writesCxt,
         bool writesDat,
@@ -200,9 +200,8 @@ public static class ConvertPublication
         }
         catch (Exception exception) when (FailureFamily.IsPublicationFailure(exception))
         {
-            return new OperationHostFailure<PreflightedConvertOutput>(
-                RunPipeline.DataUnreadable(run.DataPath, RunPipeline.DataReadMessage(run.DataPath)),
-                OutcomeLists.NoDiagnostics);
+            return Result<PreflightedConvertOutput, HostError>.Err(
+                RunPipeline.DataUnreadable(run.DataPath, RunPipeline.DataReadMessage(run.DataPath)));
         }
 
         foreach (var file in run.SpecChain)
@@ -230,16 +229,14 @@ public static class ConvertPublication
 
         if (preparation is not PublicationReady(var transaction))
         {
-            return new OperationHostFailure<PreflightedConvertOutput>(
-                ((PublicationRefused)preparation).Error.ToHostError(), OutcomeLists.NoDiagnostics);
+            return Result<PreflightedConvertOutput, HostError>.Err(((PublicationRefused)preparation).Error.ToHostError());
         }
 
         // The transfer: the handle's constructor assigns fields only, and nothing fallible sits
         // between the transaction's return and the handle's. The progress is one more assignment.
         transaction.Progress = run.Input.Progress;
-        return new OperationCompleted<PreflightedConvertOutput>(
-            new PreflightedConvertOutput(transaction, run, writesCxt, writesDat, writesManifest),
-            OutcomeLists.NoDiagnostics);
+        return Result<PreflightedConvertOutput, HostError>.Ok(
+            new PreflightedConvertOutput(transaction, run, writesCxt, writesDat, writesManifest));
     }
 
     /// <summary>
@@ -275,7 +272,7 @@ public static class ConvertPublication
     /// <see cref="PublicationAttemptState.NotBegun"/>, and a completed progress refuses every later
     /// publish of it again.
     /// </exception>
-    public static async Task<OperationOutcome<Published>> PublishAsync(
+    public static async Task<Result<Diagnosed<Published>, HostFailure>> PublishAsync(
         EffectiveConversion conversion,
         PreflightedConvertOutput handle,
         ManifestHostFacts manifest,
@@ -319,7 +316,7 @@ public static class ConvertPublication
                 // The data could not be read during a pass. This rollback is deliberately not
                 // guarded: a fault met here propagates in place of the read failure, as it always has.
                 transaction.Rollback();
-                return new OperationHostFailure<Published>(
+                return MixedOutcome<Published>.HostFailed(
                     RunPipeline.DataUnreadable(
                         run.DataPath, DataReadExplanation.Message(run.DataPath, exception, run.Input.CurrentPassMark)),
                     collected);
@@ -358,7 +355,7 @@ public static class ConvertPublication
         }
     }
 
-    private static async Task<OperationOutcome<Published>> PublishCoreAsync(
+    private static async Task<Result<Diagnosed<Published>, HostFailure>> PublishCoreAsync(
         EffectiveConversion conversion,
         PreflightedConvertOutput handle,
         PublicationTransaction transaction,
@@ -380,7 +377,7 @@ public static class ConvertPublication
         progress?.Step(WorkingStep.Staging);
         if (transaction.Begin() is { } started)
         {
-            return Failed(started, diagnostics);
+            return HostFailed(started, diagnostics);
         }
 
         PublicationFailure? failure;
@@ -433,13 +430,13 @@ public static class ConvertPublication
         if (failure is not null)
         {
             transaction.Rollback();
-            return Failed(failure, diagnostics);
+            return HostFailed(failure, diagnostics);
         }
 
         if (run.Input.HasMismatch)
         {
             transaction.Rollback();
-            return new OperationHostFailure<Published>(RunPipeline.DataChanged(run.DataPath), diagnostics);
+            return MixedOutcome<Published>.HostFailed(RunPipeline.DataChanged(run.DataPath), diagnostics);
         }
 
         if (HasErrors(diagnostics))
@@ -453,7 +450,7 @@ public static class ConvertPublication
             // alone therefore does not show that DATA could not be read. The code-less DATA error
             // is only for an input that cannot be read (D-122 part 2).
             transaction.Rollback();
-            return new OperationDiagnosticFailure<Published>(diagnostics);
+            return MixedOutcome<Published>.Failed(diagnostics);
         }
 
         if (run.Input.Digest is null)
@@ -463,7 +460,7 @@ public static class ConvertPublication
             // evidence that its input was stable, so it is refused with the code-less DATA error
             // rather than published.
             transaction.Rollback();
-            return new OperationHostFailure<Published>(
+            return MixedOutcome<Published>.HostFailed(
                 RunPipeline.DataUnreadable(run.DataPath, RunPipeline.DataReadMessage(run.DataPath)), diagnostics);
         }
 
@@ -484,7 +481,7 @@ public static class ConvertPublication
             if (failure is not null)
             {
                 transaction.Rollback();
-                return Failed(failure, diagnostics);
+                return HostFailed(failure, diagnostics);
             }
         }
 
@@ -496,7 +493,7 @@ public static class ConvertPublication
         if (transaction.Seal(cancellation) is { } marked)
         {
             transaction.Rollback();
-            return Failed(marked, diagnostics);
+            return HostFailed(marked, diagnostics);
         }
 
         // Commit observes the host token before every pre-commit transition of its own; this is
@@ -507,18 +504,18 @@ public static class ConvertPublication
         if (transaction.Commit(cancellation) is { } committed)
         {
             transaction.Rollback();
-            return Failed(committed, diagnostics);
+            return HostFailed(committed, diagnostics);
         }
 
         // Committed: the record is built right here, so the outcome's value is its committed record.
         // No cancellation check runs after this point, because a signal arriving after the commit
         // point must not report a published run as cancelled.
-        return new OperationCompleted<Published>(handle.Record().Committed!, diagnostics);
+        return MixedOutcome<Published>.Completed(handle.Record().Committed!, diagnostics);
     }
 
-    private static OperationHostFailure<Published> Failed(
+    private static Result<Diagnosed<Published>, HostFailure> HostFailed(
         PublicationFailure failure, IReadOnlyList<BedrockDiagnostic> diagnostics) =>
-        new(failure.Error.ToHostError(), diagnostics);
+        MixedOutcome<Published>.HostFailed(failure.Error.ToHostError(), diagnostics);
 
     // The validity rule: an Error or Fatal anywhere in the run's list makes every staged artifact invalid.
     private static bool HasErrors(IReadOnlyList<BedrockDiagnostic> diagnostics)

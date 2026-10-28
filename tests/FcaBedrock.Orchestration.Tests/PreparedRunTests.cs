@@ -32,7 +32,7 @@ public sealed class PreparedRunTests
         ]);
         var data = temp.Write("data.csv", PublicationRun.Data);
 
-        var run = Assert.IsType<OperationCompleted<PreparedFileRun>>(await RunPreparation.PrepareAsync(
+        var run = OutcomeAssert.Completed(await RunPreparation.PrepareAsync(
             new FileRunRequest { SpecPath = rootPath, DataPath = data }, new OrchestrationHost(File.OpenRead), CancellationToken.None)).Value;
 
         Assert.Equal(2, run.SpecChain.Count);

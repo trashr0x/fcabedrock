@@ -200,7 +200,7 @@ changes an earlier one. A new entry MUST add its line here.
 - D-106: Discovery `probe`: caller-selected shape, no inference, universal identity + nominal, one set-based observation pass *(refines D-003/D-036; observation separated from the saved draft in place on 2026-10-15)*
 - D-107: Draft naming/binding matrix, validity guarantee, and content inventory; no stored fingerprints/clock/tool version; caller enrichment *(categories containing CR or LF, collision repair and baseline-name timing amended in place on 2026-10-15)*
 - D-108: Retention limit (100,000 default), strictly-greater truncation, prefix + `include` recovery, marker + always-written notes, probe options ownership; legacy retention-cap correction *(names across retention limits qualified in place on 2026-10-15)*
-- D-109: The general unbound streaming source session; adapter/engine split; package dependency direction; required EP-4 review *(read-failure reason and position added in place on 2026-10-14)*
+- D-109: The general unbound streaming source session; adapter/engine split; package dependency direction; required EP-4 review *(read-failure reason and position added in place on 2026-10-14; schema scope and downstream propagation amended in place on 2026-10-28)*
 - D-110: Probe boundedness: per-attribute limit + three aggregate guards, deterministic accounting, hard-failure semantics, no spill machinery, inherited subject-metadata carve-out *(refines D-095; guard precedence added in place on 2026-09-29; collision state and saved omission text bounded in place on 2026-10-15)*
 - D-111: Probe diagnostic governance: five future codes, two phase widenings, `ProbeSourceReadFailed` scope, cancellation is not a diagnostic, registry 70 → expected 75 *(refines D-067/D-085/D-099; `ProbeSourceReadFailed` message detail amended in place on 2026-10-14; two codes for categories containing CR or LF and the naming warning amended in place on 2026-10-15)*
 - D-112: Probe determinism and cancellation: record-sequence input, no ambient state, byte/diagnostic repeatability, no partial artifact; the M5 verification suite *(physical-line read-failure positions qualified in place on 2026-10-14; cancellation in the probe's own work during and after the record pass added in place on 2026-10-15)*
@@ -259,11 +259,11 @@ changes an earlier one. A new entry MUST add its line here.
 
 ### M9 (desktop) pre-implementation contract
 
-- D-139: M9 desktop contract: the shared run coordinator, documents and revisions, the recipe rule and the spec snapshot, saving, file use and operation lifetime, progress, the desktop manifest, evidence and the delivery order *(part 2's extraction realized by D-140, the working name `FcaBedrock.Runs` resolved to `FcaBedrock.Orchestration`; parts 8 and 9 realized by D-141, which supersedes part 9's callback and desktop-held-snapshot mechanism)*
+- D-139: M9 desktop contract: the shared run coordinator, documents and revisions, the recipe rule and the spec snapshot, saving, file use and operation lifetime, progress, the desktop manifest, evidence and the delivery order *(part 2's extraction realized by D-140, the working name `FcaBedrock.Runs` resolved to `FcaBedrock.Orchestration`; parts 8 and 9 realized by D-141, which supersedes part 9's callback and desktop-held-snapshot mechanism; part 15's delivery order amended in place on 2026-10-28 for the outcome carrier migration)*
 
 ### M9 (desktop) implementation
 
-- D-140: The run coordinator extracted into `FcaBedrock.Orchestration`: its public surface, outcome model, attempt record, host error kinds, relocation decisions, handle and association rules, friend grants, and the staging of the designed members *(part 3's host-constructed types amended in place, and part 14's progress member realized, by D-141)*
+- D-140: The run coordinator extracted into `FcaBedrock.Orchestration`: its public surface, outcome model, attempt record, host error kinds, relocation decisions, handle and association rules, friend grants, and the staging of the designed members *(part 3's host-constructed types amended in place, and part 14's progress member realized, by D-141; parts 3, 4, 5, 7 and 14 amended in place on 2026-10-28 for the standard result carriers, composed)*
 - D-141: Progress observation and the cancellation contract: one recorder per owned operation, passes with their closure and end, working steps, the latched snapshot, and what cancellation promises
 
 Spec-field defaults are recorded in spec §21 items 1–11 (see the final section
@@ -953,7 +953,7 @@ Refinements from the second audit pass.
 
 ### D-129: M8.2 writing governance: in-place decision compaction, `EP-` and `WP-` identifier ownership, the authored inventory, and the mechanical checker boundary
 
-- **Status:** accepted; the checker portion of rule (5) superseded by D-130; the heading-anchor clause of rule (1) superseded by D-131 for the one-time heading-separator migration; rule (2) amended in place on 2026-09-28 for EP-18's hot paths, EP-20's title and the new EP-23
+- **Status:** accepted; the checker portion of rule (5) superseded by D-130; the heading-anchor clause of rule (1) superseded by D-131 for the one-time heading-separator migration; rule (2) amended in place on 2026-09-28 for EP-18's hot paths, EP-20's title and the new EP-23, and on 2026-10-28 for EP-14's body and EP-4's failure transport
 - **Date:** 2026-09-22
 - **Decision:** five governance rules for the M8.2 authored-text pass.
   **(1) Compaction.** A decision entry may be shortened *in place*. Its ID, heading anchor, actual
@@ -974,6 +974,12 @@ Refinements from the second audit pass.
   the normal suite", and its heading anchor changes with it. EP-23 joins working discipline:
   external library behavior is verified at its source, not recalled, because recalled library
   behavior such as a method's exception contract has proved wrong in practice.
+  Amended in place on 2026-10-28: EP-14's body states the expected-failure default at a public
+  operation boundary, the streamed diagnostic collectors, the three named exception transports with
+  their owners and the internal halt protocols caught before the boundary, and EP-4 names each
+  public operation's failure transport and classification owner (D-140 part 4). A principle cites
+  no decision: the decision that applies or amends a principle cites the principle, and the
+  principles file states this rule.
   **(3) Writing policy.** `docs/writing-principles.md` is the single vendor-neutral owner of how
   this repository writes documents and comments, numbered `WP-1` onward. It binds humans and
   assistants. `AGENTS.md` carries a mandatory pointer to it, never a copy, and an instruction shim
@@ -4826,7 +4832,7 @@ and §17.
 ### D-109: The general unbound streaming source session; adapter/engine split; package dependency direction; required EP-4 review
 
 - **Status:** accepted (M5 pre-implementation audit); amended in place on 2026-10-14 for the
-  read-failure detail
+  read-failure detail, and on 2026-10-28 for the schema scope and downstream propagation
 - **Date:** 2026-07-18
 - **Decision:** Discovery consumes a **general unbound streaming source session** whose stable
   boundary is **ordered schema + streamed cleaned/normalized records + source-shape
@@ -4862,6 +4868,13 @@ and §17.
   A free-text or inner message is not an explanation a consumer may show: it can hold a path or
   source data. Invalid UTF-8 stays the decoder's own `DecoderFallbackException` (spec §5.1.1);
   no UTF-8 reason joins the public enum, because no decoder position is known to report.
+
+  Amended in place on 2026-10-28: the channel covers schema acquisition as well as records,
+  and a session caches a schema only after a successful read (D-098). The admitted families pass
+  unchanged through calibration, emission, replay and the writers until the operation that owns
+  the classification converts them: Discovery as `ProbeSourceReadFailed` with no draft (D-111), and
+  the Orchestration data-reading operations as the code-less `DataUnreadable` (D-122 part 2).
+  Strict UTF-8 stays the decoder's own exception (D-137).
 - **Why:** an abstraction over *schema + normalized records* (rather than over a byte
   stream) is what lets an in-memory or future SQL/SPARQL source feed Discovery with no CSV
   coupling; the determinism guarantee (D-112) must hold over a record sequence, not a file.
@@ -8047,7 +8060,8 @@ This section records the M9 contract, settled before any desktop code.
 - **Status:** accepted (M9 pre-implementation contract, approved by Constantinos Orphanides on
   2026-10-22); part 2's extraction realized by D-140 (2026-10-25), which resolves the working
   name `FcaBedrock.Runs` to `FcaBedrock.Orchestration`; parts 8 and 9 realized by D-141
-  (2026-10-27), which supersedes part 9's observer-callback and desktop-held-snapshot mechanism
+  (2026-10-27), which supersedes part 9's observer-callback and desktop-held-snapshot mechanism;
+  part 15's delivery order amended in place on 2026-10-28 for the outcome carrier migration (D-140)
 - **Date:** 2026-10-22
 - **Decision:** the M9 contract is settled before any desktop code, in sixteen parts. Each part
   binds the steps that implement it. Exact type names, signatures and synchronization primitives
@@ -8580,6 +8594,13 @@ This section records the M9 contract, settled before any desktop code.
   The real-backend smoke grows as features land, and exit verification runs the complete
   workflow. The CLI track is never blocked: after the extraction, no step changes CLI behavior.
 
+  Amended in place on 2026-10-28: the outcome carrier migration is a step of its own, after
+  progress and cancellation and before the desktop skeleton. It replaces the coordinator's own
+  outcome types with the standard result carriers, composed, under D-140's dated amendment, which
+  the maintainer accepted as its decision record. The skeleton begins only after the migration is
+  integrated, so the allowance above for progress and cancellation to proceed beside the skeleton
+  is not used.
+
   **16. Deferred and unchanged.** Deferred beyond M9: the CLI's progress renderer and flag,
   machine-readable diagnostics, the early refusal of reserved features, reading a literal U+FFFD,
   a distinct identity for the missing column, guided type detection in `probe`, structured
@@ -8656,6 +8677,8 @@ settled.
   CLI-internal coordinator of D-122 part 9 and D-123 point 1, revises D-123 point 13's
   eight-assembly lock, and moves the two hash seams D-124 benchmarks, with their friend grant.
   Part 3 is amended in place, and part 14's progress member realized, by D-141 (2026-10-27).
+  Parts 3, 4, 5, 7 and 14 amended in place on 2026-10-28 for the standard result carriers,
+  composed (EP-14).
 - **Date:** 2026-10-25
 - **Decision:** the run and publication coordinator moves out of `FcaBedrock.Cli` into a new
   production package, in eighteen parts. Each later M9 step re-verifies the designed members of part
@@ -8743,6 +8766,13 @@ settled.
   serialized. Its default value is representable, carries no observation and must never be compared
   with an observed key.
 
+  Amended in place on 2026-10-28: the four outcome types leave the public surface and
+  `HostFailure` joins the fact records, so 48 types are public, D-141's five included. The
+  operations return `Result<T, TError>` and `Diagnosed<T>` (part 4), the Diagnostics package's
+  public structs, which any assembly can construct and whose default values are representable, so
+  neither convention above covers them. The closed-family claim now covers the prepared runs, the
+  publication handles and the relocation decisions only.
+
   **4. Outcomes and diagnostics.** Every fallible operation returns an outcome: completed with a
   value, a diagnostic failure, or a host failure carrying one code-less `HostError` (D-122 part 2).
   It writes nothing to any stream, and cancellation is never an outcome. Preparation starts a run's
@@ -8769,6 +8799,26 @@ settled.
   byte-locked text, so a host that words its own presentation classifies by `Kind` and reads the
   structured fields, never the message. The registry stays 85.
 
+  Amended in place on 2026-10-28: the outcomes are the standard carriers, composed (EP-14),
+  each in its existing `Task`. `ConvertPublication.PlanConversion` and `SpecFreezing.Freeze` return
+  `Diagnosed<T>`. `ConvertPublication.Preflight`, both `SpecPublication.Preflight` overloads,
+  `SpecRelocation.Relocate` and `Recheck` and `SpecPublication.PublishAsync` return
+  `Result<T, HostError>` and carry no list. Both `RunPreparation.PrepareAsync` overloads,
+  `SpecValidation.ValidateAsync`, `ContextStatistics.CountAsync` and
+  `ConvertPublication.PublishAsync` return `Result<Diagnosed<T>, HostFailure>`, where `HostFailure`
+  is a fact record holding the `HostError` and the run's complete list when the failure occurred.
+  Completion is a produced value: an `Err` result is the host failure, and in a `Diagnosed<T>` a
+  value is completion and no value the diagnostic failure. `Diagnosed<T>.IsOk` and `HasErrors`
+  report diagnostic severity. `TryGetValue` requires both a present value and no Error or Fatal.
+  None is the test for coordinator completion; completion is decided by value presence. Every
+  payload is a reference type; a value-type payload would need its own rule. The severity rules
+  above are unchanged, and `CountAsync` can represent a diagnostic failure that it never
+  produces. Every list returned, in a `Diagnosed<T>` or a `HostFailure`, is the complete immutable
+  snapshot this part describes. The four outcome types were a second result vocabulary, adopted
+  without weighing EP-5 and EP-14, and the standard carriers composed carry the same contract. The
+  maintainer accepts this dated amendment as the decision record D-139 part 15 requires for this
+  step.
+
   **5. Cancellation, exceptions and completion.** Every asynchronous or cancellable operation
   observes the token the host passed, never a linked one, so the `OperationCanceledException` it
   raises carries that token. A prepared run captures no token: each call that reads data observes
@@ -8790,6 +8840,13 @@ settled.
   operations, whose reads its opening function must then serve concurrently. A prepared run, an
   effective conversion and a handle belong to one operation and are never used concurrently, and
   `Dispose` is never called concurrently with a publish of the same handle.
+
+  Amended in place on 2026-10-28: "expected failures are outcomes" means the results of the
+  operations in part 3. `SpecTextDecoding.Decode` and `ReadAllText` keep their two documented
+  exceptions, which the operation that owns the operand classifies: a root read as
+  `SpecUnreadable`, a base load as absence (`SpecExtendsNotFound`) and `migrate`'s `.bed` read
+  through `InputReadExplanation`. The Export writers' output streams keep their tagged transport
+  (part 10, `StageFailed`).
 
   **6. The two two-step publications.** Single-file delivery is `SpecPublication.Preflight`, then
   `SpecPublication.PublishAsync`. The preflight resolves the operands' full paths, recovers residue
@@ -8840,6 +8897,11 @@ settled.
   through the tagging guard would be a separate CLI decision. A prepared run supports any number of
   reads, each data pass hashed and compared with the first under the stability rule; publishing one
   run more than once is outside the contract.
+
+  Amended in place on 2026-10-28: outcomes leave the first sentence's list. A host-built or
+  default `Result<T, TError>` or `Diagnosed<T>` establishes no coordinator result, and the
+  association, spending and record rules apply to the prepared runs, the conversions and the
+  handles.
 
   **8. The attempt record.** `PreflightedPublication.Attempt` is the fact channel of both families,
   built under three rules.
@@ -9030,6 +9092,11 @@ settled.
   refresh inside a faulted operation and marks the chain facts for revalidation instead. A committed
   publish that threw is reported with its recorded cleanup state: `NotStarted` for a
   committed-marker fault and `Interrupted` for a fault inside the cleanup pass.
+
+  Amended in place on 2026-10-28: a later member that returns a result uses part 4's
+  carriers by the same rule: `Diagnosed<T>` when it is pure, `Result<T, HostError>` when it can
+  fail only on the host and carries no list, and `Result<Diagnosed<T>, HostFailure>` when it can
+  fail both ways.
 
   **15. The locks.** The architecture tests assert nine production assemblies, that Orchestration
   depends on no production package but the six it uses, and that no library package references it,

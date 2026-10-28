@@ -43,14 +43,13 @@ internal static class StatsCommand
         ArgumentNullException.ThrowIfNull(environment);
 
         var outcome = await RunRendering.PrepareAsync(invocation, environment).ConfigureAwait(false);
-        if (outcome is not OperationCompleted<PreparedFileRun> prepared)
+        if (outcome.IsError || outcome.Value.Value is not { } run)
         {
             return RunRendering.Fail(environment, outcome, environment.Signals.Token);
         }
 
-        var run = prepared.Value;
         var cancellation = environment.Signals.Token;
-        var diagnostics = new List<BedrockDiagnostic>(prepared.Diagnostics);
+        var diagnostics = new List<BedrockDiagnostic>(outcome.Value.Diagnostics);
 
         // Once, as for plan, and before the counting pass, so the stale warnings keep their
         // place ahead of the emit diagnostics in library order.
@@ -59,12 +58,12 @@ internal static class StatsCommand
         // The one counting pass, then the stability re-check, before any diagnostic or report byte
         // is written.
         var counted = await ContextStatistics.CountAsync(run, diagnostics, cancellation).ConfigureAwait(false);
-        if (counted is not OperationCompleted<ContextStatistics> counts)
+        if (counted.IsError || counted.Value.Value is not { } counts)
         {
             return RunRendering.Fail(environment, counted, cancellation);
         }
 
-        return RunRendering.Complete(environment, counts.Diagnostics, Render(counts.Value), cancellation);
+        return RunRendering.Complete(environment, counted.Value.Diagnostics, Render(counts), cancellation);
     }
 
     private static string Render(ContextStatistics counts)

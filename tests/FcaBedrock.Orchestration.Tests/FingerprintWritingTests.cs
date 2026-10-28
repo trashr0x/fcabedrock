@@ -27,7 +27,7 @@ public sealed class FingerprintWritingTests
             scale = { kind = "nominal" }
             """);
         var data = temp.Write("data.csv", PublicationRun.Data);
-        var run = Assert.IsType<OperationCompleted<PreparedFileRun>>(await RunPreparation.PrepareAsync(
+        var run = OutcomeAssert.Completed(await RunPreparation.PrepareAsync(
             new FileRunRequest { SpecPath = spec, DataPath = data }, new OrchestrationHost(File.OpenRead), CancellationToken.None)).Value;
 
         Assert.False(run.IsFullyFrozen);
